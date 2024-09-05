@@ -444,6 +444,19 @@ namespace dxvk {
     }
     
     
+    void cmdBindDescriptorSet(
+            DxvkCmdBuffer             cmdBuffer,
+            VkPipelineBindPoint       pipeline,
+            VkPipelineLayout          pipelineLayout,
+            VkDescriptorSet           descriptorSet,
+            uint32_t                  dynamicOffsetCount,
+      const uint32_t*                 pDynamicOffsets) {
+      m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
+        pipeline, pipelineLayout, 0, 1,
+        &descriptorSet, dynamicOffsetCount, pDynamicOffsets);
+    }
+    
+    
     void cmdBindDescriptorSets(
             VkPipelineBindPoint       pipeline,
             VkPipelineLayout          pipelineLayout,
@@ -481,6 +494,15 @@ namespace dxvk {
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) {
       m_vkd->vkCmdBindPipeline(m_cmd.execBuffer,
+        pipelineBindPoint, pipeline);
+    }
+
+
+    void cmdBindPipeline(
+            DxvkCmdBuffer           cmdBuffer,
+            VkPipelineBindPoint     pipelineBindPoint,
+            VkPipeline              pipeline) {
+      m_vkd->vkCmdBindPipeline(getCmdBuffer(cmdBuffer),
         pipelineBindPoint, pipeline);
     }
 
@@ -535,28 +557,30 @@ namespace dxvk {
     
     
     void cmdClearColorImage(
+            DxvkCmdBuffer           cmdBuffer,
             VkImage                 image,
             VkImageLayout           imageLayout,
       const VkClearColorValue*      pColor,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdClearColorImage(m_cmd.execBuffer,
+      m_vkd->vkCmdClearColorImage(getCmdBuffer(cmdBuffer),
         image, imageLayout, pColor,
         rangeCount, pRanges);
     }
     
     
     void cmdClearDepthStencilImage(
+            DxvkCmdBuffer           cmdBuffer,
             VkImage                 image,
             VkImageLayout           imageLayout,
       const VkClearDepthStencilValue* pDepthStencil,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdClearDepthStencilImage(m_cmd.execBuffer,
+      m_vkd->vkCmdClearDepthStencilImage(getCmdBuffer(cmdBuffer),
         image, imageLayout, pDepthStencil,
         rangeCount, pRanges);
     }
@@ -619,6 +643,17 @@ namespace dxvk {
             uint32_t                y,
             uint32_t                z) {
       m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+
+      m_vkd->vkCmdDispatch(m_cmd.execBuffer, x, y, z);
+    }
+    
+    
+    void cmdDispatch(
+            DxvkCmdBuffer           cmdBuffer,
+            uint32_t                x,
+            uint32_t                y,
+            uint32_t                z) {
+      m_cmd.usedFlags.set(cmdBuffer);
 
       m_vkd->vkCmdDispatch(m_cmd.execBuffer, x, y, z);
     }
@@ -775,6 +810,18 @@ namespace dxvk {
             uint32_t                size,
       const void*                   pValues) {
       m_vkd->vkCmdPushConstants(m_cmd.execBuffer,
+        layout, stageFlags, offset, size, pValues);
+    }
+    
+    
+    void cmdPushConstants(
+            DxvkCmdBuffer           cmdBuffer,
+            VkPipelineLayout        layout,
+            VkShaderStageFlags      stageFlags,
+            uint32_t                offset,
+            uint32_t                size,
+      const void*                   pValues) {
+      m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
         layout, stageFlags, offset, size, pValues);
     }
 

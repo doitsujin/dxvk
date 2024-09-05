@@ -1523,13 +1523,13 @@ namespace dxvk {
         if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           VkClearDepthStencilValue value = { };
 
-          m_cmd->cmdClearDepthStencilImage(image->handle(),
-            clearLayout, &value, 1, &subresources);
+          m_cmd->cmdClearDepthStencilImage(DxvkCmdBuffer::ExecBuffer,
+            image->handle(), clearLayout, &value, 1, &subresources);
         } else {
           VkClearColorValue value = { };
 
-          m_cmd->cmdClearColorImage(image->handle(),
-            clearLayout, &value, 1, &subresources);
+          m_cmd->cmdClearColorImage(DxvkCmdBuffer::ExecBuffer,
+            image->handle(), clearLayout, &value, 1, &subresources);
         }
       }
 
