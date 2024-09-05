@@ -672,7 +672,8 @@ namespace dxvk {
             VkDeviceSize          srcBufferOffset,
             VkOffset2D            srcOffset,
             VkExtent2D            srcExtent,
-            VkFormat              format);
+            VkFormat              format,
+            bool                  forceInit = false);
 
     /**
      * \brief Copies pages from a sparse resource to a buffer
@@ -1057,7 +1058,8 @@ namespace dxvk {
       const Rc<DxvkBuffer>&           buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
-      const void*                     data);
+      const void*                     data,
+            bool                      isInit = false);
     
     /**
      * \brief Updates an depth-stencil image
@@ -1108,7 +1110,7 @@ namespace dxvk {
       const void*                     data,
             VkDeviceSize              pitchPerRow,
             VkDeviceSize              pitchPerLayer);
-    
+
     /**
      * \brief Sets viewports
      * 
