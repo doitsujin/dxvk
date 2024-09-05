@@ -104,7 +104,6 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC1     m_desc;
 
     Rc<DxvkDevice>            m_device;
-    Rc<DxvkContext>           m_context;
 
     Rc<Presenter>             m_presenter;
 
@@ -138,11 +137,6 @@ namespace dxvk {
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
     HRESULT PresentImage(UINT SyncInterval);
-
-    void SubmitPresent(
-            D3D11ImmediateContext*  pContext,
-      const PresenterSync&          Sync,
-            uint32_t                Repeat);
 
     void SynchronizePresent();
 

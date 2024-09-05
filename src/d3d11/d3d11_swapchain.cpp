@@ -63,7 +63,6 @@ namespace dxvk {
     m_surfaceFactory(pSurfaceFactory),
     m_desc(*pDesc),
     m_device(pDevice->GetDXVKDevice()),
-    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
     CreatePresenter();
@@ -382,7 +381,7 @@ namespace dxvk {
 
         if (!m_presenter->hasSwapChain())
           return i ? S_OK : DXGI_STATUS_OCCLUDED;
-        
+
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
 
@@ -395,58 +394,53 @@ namespace dxvk {
         m_dirtyHdrMetadata = false;
       }
 
-      m_context->beginRecording(
-        m_device->createCommandList());
-      
-      m_blitter->presentImage(m_context.ptr(),
-        m_imageViews.at(imageIndex), VkRect2D(),
-        m_swapImageView, VkRect2D());
+      auto lock = immediateContext->LockContext();
 
-      if (m_hud != nullptr)
-        m_hud->render(m_context, info.format, info.imageExtent);
-      
-      SubmitPresent(immediateContext, sync, i);
+      // Bump frame ID as necessary
+      if (!i)
+        m_frameId += 1;
+
+      // Present from CS thread so that we don't
+      // have to synchronize with it first.
+      m_presentStatus.result = VK_NOT_READY;
+
+      immediateContext->EmitCs([this,
+        cRepeat      = i,
+        cSync        = sync,
+        cHud         = m_hud,
+        cPresentMode = m_presenter->info().presentMode,
+        cFrameId     = m_frameId,
+        cSwapchainImage = m_imageViews.at(imageIndex),
+        cBackbufferView = m_swapImageView,
+        cInfo        = info
+      ](DxvkContext* context) {
+        m_blitter->presentImage(context,
+          cSwapchainImage, VkRect2D(),
+          cBackbufferView, VkRect2D());
+
+        if (cHud != nullptr)
+          cHud->render(context, cInfo.format.colorSpace, cSwapchainImage);
+
+        auto commandList = context->endRecording();
+        commandList->setWsiSemaphores(cSync);
+        m_device->submitCommandList(commandList, nullptr);
+
+        if (cHud != nullptr && !cRepeat)
+          cHud->update();
+
+        uint64_t frameId = cRepeat ? 0 : cFrameId;
+
+        m_device->presentImage(m_presenter,
+          cPresentMode, frameId, &m_presentStatus);
+
+        context->beginRecording(
+          m_device->createCommandList());
+      });
+
+      immediateContext->FlushCsChunk();
     }
 
     return S_OK;
-  }
-
-
-  void D3D11SwapChain::SubmitPresent(
-          D3D11ImmediateContext*  pContext,
-    const PresenterSync&          Sync,
-          uint32_t                Repeat) {
-    auto lock = pContext->LockContext();
-
-    // Bump frame ID as necessary
-    if (!Repeat)
-      m_frameId += 1;
-
-    // Present from CS thread so that we don't
-    // have to synchronize with it first.
-    m_presentStatus.result = VK_NOT_READY;
-
-    pContext->EmitCs([this,
-      cRepeat      = Repeat,
-      cSync        = Sync,
-      cHud         = m_hud,
-      cPresentMode = m_presenter->info().presentMode,
-      cFrameId     = m_frameId,
-      cCommandList = m_context->endRecording()
-    ] (DxvkContext* ctx) {
-      cCommandList->setWsiSemaphores(cSync);
-      m_device->submitCommandList(cCommandList, nullptr);
-
-      if (cHud != nullptr && !cRepeat)
-        cHud->update();
-
-      uint64_t frameId = cRepeat ? 0 : cFrameId;
-
-      m_device->presentImage(m_presenter,
-        cPresentMode, frameId, &m_presentStatus);
-    });
-
-    pContext->FlushCsChunk();
   }
 
 
@@ -624,22 +618,7 @@ namespace dxvk {
     
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = 1;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = 1;
-
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    m_context->initImage(m_swapImage,
-      subresources, VK_IMAGE_LAYOUT_UNDEFINED);
-
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr);
+    m_parent->InitializeTexture(GetCommonTexture(m_backBuffer.ptr()));
   }
 
 
