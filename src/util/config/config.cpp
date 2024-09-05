@@ -26,14 +26,6 @@ namespace dxvk {
     { R"(\\Diablo IV\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False"  },
     }} },
-    /* WILD HEARTS™️                            *
-     * D3D12 title using D3D11 device for      *
-     * media texture creation, whereby a large *
-     * chunk size only slows down media        *
-     * initialization                          */
-    { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
-      { "dxvk.maxChunkSize",                 "4" },
-    }} },
     /* Ratchet & Clank: Rift Apart - does not allow
      * enabling ray tracing if it sees an AMD GPU. */
     { R"(\\RiftApart\.exe$)", {{
@@ -394,38 +386,6 @@ namespace dxvk {
     /* SnowRunner                                 */
     { R"(\\SnowRunner\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
-    }} },
-    /* Rockstar Games Launcher                    */
-    { R"(\\Rockstar Games\\Launcher\\Launcher\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* Rockstar Social Club                       */
-    { R"(\\Rockstar Games\\Social Club\\SocialClubHelper\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* EA Desktop App                             */
-    { R"(\\EADesktop\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* Origin app (legacy EA Desktop)             */
-    { R"(\\Origin\\(Origin|OriginWebHelperService)\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* Ubisoft Connect (UPlay)                    */
-    { R"(\\Ubisoft\\Ubisoft Game Launcher\\(UbisoftConnect|upc)\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* GOG Galaxy                                 */
-    { R"(\\GalaxyClient\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* Epic Games Launcher                        */
-    { R"(\\(EpicGamesLauncher|EpicWebHelper)\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1"   },
-    }} },
-    /* Blizzard Entertainment Battle.net          */
-    { R"(\\Battle\.net\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1" },
     }} },
     /* Fallout 76
      * Game tries to be too "smart" and changes sync
