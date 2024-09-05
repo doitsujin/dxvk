@@ -1093,7 +1093,12 @@ namespace dxvk {
     void uploadBuffer(
       const Rc<DxvkBuffer>&           buffer,
       const void*                     data);
-    
+
+    void uploadBufferFromBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+      const Rc<DxvkBuffer>&           srcBuffer,
+            VkDeviceSize              srcBufferOffset);
+
     /**
      * \brief Uses transfer queue to initialize image
      * 
@@ -1108,6 +1113,14 @@ namespace dxvk {
       const Rc<DxvkImage>&            image,
       const VkImageSubresourceLayers& subresources,
       const void*                     data,
+            VkDeviceSize              pitchPerRow,
+            VkDeviceSize              pitchPerLayer);
+
+    void uploadImageFromBuffer(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceLayers& subresources,
+      const Rc<DxvkBuffer>&           srcBuffer,
+            VkDeviceSize              srcOffset,
             VkDeviceSize              pitchPerRow,
             VkDeviceSize              pitchPerLayer);
 

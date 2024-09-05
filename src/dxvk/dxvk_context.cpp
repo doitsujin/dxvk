@@ -2377,6 +2377,40 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::uploadBufferFromBuffer(
+    const Rc<DxvkBuffer>&           buffer,
+    const Rc<DxvkBuffer>&           srcBuffer,
+          VkDeviceSize              srcBufferOffset) {
+    auto bufferSlice = buffer->getSliceHandle();
+    auto srcSlice = srcBuffer->getSliceHandle(srcBufferOffset, bufferSlice.length);
+
+    VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+    copyRegion.srcOffset = srcSlice.offset;
+    copyRegion.dstOffset = bufferSlice.offset;
+    copyRegion.size      = bufferSlice.length;
+
+    VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+    copyInfo.srcBuffer = srcSlice.handle;
+    copyInfo.dstBuffer = bufferSlice.handle;
+    copyInfo.regionCount = 1;
+    copyInfo.pRegions = &copyRegion;
+
+    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
+
+    m_sdmaBarriers.releaseBuffer(
+      m_initBarriers, bufferSlice,
+      m_device->queues().transfer.queueFamily,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      m_device->queues().graphics.queueFamily,
+      buffer->info().stages,
+      buffer->info().access);
+
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(buffer);
+  }
+
+
   void DxvkContext::uploadImage(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceLayers& subresources,
@@ -2432,6 +2466,97 @@ namespace dxvk {
         image->info().access);
     }
     
+    m_cmd->trackResource<DxvkAccess::Write>(image);
+  }
+
+  void DxvkContext::uploadImageFromBuffer(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceLayers& subresources,
+      const Rc<DxvkBuffer>&           srcBuffer,
+            VkDeviceSize              srcOffset,
+            VkDeviceSize              pitchPerRow,
+            VkDeviceSize              pitchPerLayer) {
+    VkOffset3D imageOffset = { 0, 0, 0 };
+    VkExtent3D imageExtent = image->mipLevelExtent(subresources.mipLevel);
+
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::SdmaBuffer;
+    DxvkBarrierSet* barriers = &m_sdmaAcquires;
+
+    if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      cmdBuffer = DxvkCmdBuffer::InitBuffer;
+      barriers = &m_initBarriers;
+    }
+
+    // Discard previous subresource contents
+    barriers->accessImage(image,
+      vk::makeSubresourceRange(subresources),
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+
+    barriers->recordCommands(m_cmd);
+
+
+    auto formatInfo = image->formatInfo();
+
+    for (uint32_t i = 0; i < subresources.layerCount; i++) {
+      uint32_t offset = i * pitchPerLayer + srcOffset;
+
+      for (auto aspects = subresources.aspectMask; aspects; ) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto extent = imageExtent;
+
+        VkDeviceSize elementSize = formatInfo->elementSize;
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+        uint32_t size = elementSize * util::flattenImageExtent(blockCount);
+
+        auto subresource = subresources;
+        subresource.aspectMask = aspect;
+
+        this->copyImageBufferData<true>(cmdBuffer,
+          image, subresource, imageOffset, imageExtent,
+          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+          srcBuffer->getSliceHandle(offset, size), 0, 0);
+
+        offset += blockCount.height * pitchPerRow;
+      }
+    }
+
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
+
+    // Transfer ownership to graphics queue
+    if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) {
+      m_sdmaBarriers.releaseImage(m_initBarriers,
+        image, vk::makeSubresourceRange(subresources),
+        m_device->queues().transfer.queueFamily,
+        image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        m_device->queues().graphics.queueFamily,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
+    } else {
+      barriers->accessImage(image,
+        vk::makeSubresourceRange(subresources),
+        image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
+    }
+
     m_cmd->trackResource<DxvkAccess::Write>(image);
   }
 
