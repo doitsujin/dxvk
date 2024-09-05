@@ -1842,6 +1842,10 @@ namespace dxvk {
   void D3D11Device::FlushInitContext(const D3D11InitChunkDispatchProc& DispatchProc) {
     m_initializer->EmitToCsThread(DispatchProc);
   }
+
+  void D3D11Device::InitializeTexture(D3D11CommonTexture* pTexture) {
+    m_initializer->InitTexture(pTexture, nullptr);
+  }
   
   
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(

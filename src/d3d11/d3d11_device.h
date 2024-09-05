@@ -392,6 +392,7 @@ namespace dxvk {
     }
 
     void FlushInitContext(const D3D11InitChunkDispatchProc& DispatchProc);
+    void InitializeTexture(D3D11CommonTexture* pTexture);
 
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
