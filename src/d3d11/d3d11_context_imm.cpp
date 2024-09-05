@@ -938,10 +938,11 @@ namespace dxvk {
     if (synchronizeSubmission)
       m_submitStatus.result = VK_NOT_READY;
 
-    // Flush init context so that new resources are fully initialized
-    // before the app can access them in any way. This has to happen
-    // unconditionally since we may otherwise deadlock on Map.
-    m_parent->FlushInitContext();
+    // Flush CS chunk before emitting the init chunks, so the seq num does not get messed up.
+    FlushCsChunk();
+    m_parent->FlushInitContext([this](DxvkCsChunkRef&& chunk) {
+      EmitCsChunk(std::move(chunk));
+    });
 
     // Exit early if there's nothing to do
     if (!GetPendingCsChunks() && !hEvent)

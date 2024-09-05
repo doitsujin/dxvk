@@ -390,9 +390,9 @@ namespace dxvk {
     Rc<DxvkDevice> GetDXVKDevice() {
       return m_dxvkDevice;
     }
-    
-    void FlushInitContext();
-    
+
+    void FlushInitContext(const D3D11InitChunkDispatchProc& DispatchProc);
+
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
     }

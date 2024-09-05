@@ -7,6 +7,8 @@ namespace dxvk {
 
   class D3D11Device;
 
+  using D3D11InitChunkDispatchProc = std::function<void (DxvkCsChunkRef&&)>;
+
   /**
    * \brief Resource initialization context
    * 
@@ -18,6 +20,8 @@ namespace dxvk {
   class D3D11Initializer {
     constexpr static size_t MaxTransferMemory    = 32 * 1024 * 1024;
     constexpr static size_t MaxTransferCommands  = 512;
+
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
 
     D3D11Initializer(
@@ -25,7 +29,7 @@ namespace dxvk {
     
     ~D3D11Initializer();
 
-    void Flush();
+    void EmitToCsThread(const D3D11InitChunkDispatchProc& DispatchProc);
 
     void InitBuffer(
             D3D11Buffer*                pBuffer,
@@ -37,17 +41,21 @@ namespace dxvk {
 
     void InitUavCounter(
             D3D11UnorderedAccessView*   pUav);
-    
+
   private:
 
     dxvk::mutex       m_mutex;
 
     D3D11Device*      m_parent;
     Rc<DxvkDevice>    m_device;
-    Rc<DxvkContext>   m_context;
 
     size_t            m_transferCommands  = 0;
     size_t            m_transferMemory    = 0;
+
+    DxvkStagingBuffer           m_staging;
+    DxvkCsChunkRef              m_chunk;
+    std::vector<DxvkCsChunkRef> m_chunks;
+    std::vector<D3D11CommonTexture*> m_texturesUpdateSeqNum;
 
     void InitDeviceLocalBuffer(
             D3D11Buffer*                pBuffer,
@@ -68,10 +76,18 @@ namespace dxvk {
     void InitTiledTexture(
             D3D11CommonTexture*         pTexture);
 
-    void FlushImplicit();
-    void FlushInternal();
-
     void SyncKeyedMutex(ID3D11Resource *pResource);
+
+    DxvkCsChunkRef AllocCsChunk();
+
+    template<typename Cmd>
+    void EmitCs(Cmd&& command) {
+      if (unlikely(!m_chunk->push(command))) {
+        m_chunks.push_back(std::move(m_chunk));
+        m_chunk = AllocCsChunk();
+        m_chunk->push(command);
+      }
+    }
 
   };
 

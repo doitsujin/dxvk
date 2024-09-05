@@ -1839,8 +1839,8 @@ namespace dxvk {
   }
   
   
-  void D3D11Device::FlushInitContext() {
-    m_initializer->Flush();
+  void D3D11Device::FlushInitContext(const D3D11InitChunkDispatchProc& DispatchProc) {
+    m_initializer->EmitToCsThread(DispatchProc);
   }
   
   
