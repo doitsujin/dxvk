@@ -9,6 +9,7 @@
 #include "dxvk_meta_mipgen.h"
 #include "dxvk_meta_pack.h"
 #include "dxvk_meta_resolve.h"
+#include "dxvk_meta_present_blit.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_unbound.h"
@@ -66,9 +67,13 @@ namespace dxvk {
     DxvkMetaResolveObjects& metaResolve() {
       return m_metaResolve.get(m_device);
     }
-    
+
     DxvkMetaPackObjects& metaPack() {
       return m_metaPack.get(m_device);
+    }
+
+    DxvkMetaPresentBlitObjects& metaPresentBlit() {
+      return m_metaPresentBlit.get(m_device);
     }
 
   private:
@@ -83,11 +88,12 @@ namespace dxvk {
 
     DxvkUnboundResources          m_dummyResources;
 
-    Lazy<DxvkMetaBlitObjects>     m_metaBlit;
-    Lazy<DxvkMetaClearObjects>    m_metaClear;
-    Lazy<DxvkMetaCopyObjects>     m_metaCopy;
-    Lazy<DxvkMetaResolveObjects>  m_metaResolve;
-    Lazy<DxvkMetaPackObjects>     m_metaPack;
+    Lazy<DxvkMetaBlitObjects>        m_metaBlit;
+    Lazy<DxvkMetaClearObjects>       m_metaClear;
+    Lazy<DxvkMetaCopyObjects>        m_metaCopy;
+    Lazy<DxvkMetaResolveObjects>     m_metaResolve;
+    Lazy<DxvkMetaPackObjects>        m_metaPack;
+    Lazy<DxvkMetaPresentBlitObjects> m_metaPresentBlit;
 
   };
 

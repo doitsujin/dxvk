@@ -6530,6 +6530,187 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::presentBlit(
+    const Rc<DxvkImageView>&      dstView,
+          VkRect2D                dstRect,
+    const Rc<DxvkImageView>&      srcView,
+          VkRect2D                srcRect,
+    const Rc<DxvkImageView>&      gammaView) {
+    this->invalidateState();
+
+    // Fix up default present areas if necessary
+    if (!dstRect.extent.width || !dstRect.extent.height) {
+      dstRect.offset = { 0, 0 };
+      dstRect.extent = {
+        dstView->imageInfo().extent.width,
+        dstView->imageInfo().extent.height };
+    }
+
+    if (!srcRect.extent.width || !srcRect.extent.height) {
+      srcRect.offset = { 0, 0 };
+      srcRect.extent = {
+        srcView->imageInfo().extent.width,
+        srcView->imageInfo().extent.height };
+    }
+
+    bool sameSize = dstRect.extent == srcRect.extent;
+
+    VkExtent2D dstExtent = {
+      dstView->imageInfo().extent.width,
+      dstView->imageInfo().extent.height };
+
+    if (m_execBarriers.isImageDirty(srcView->image(), srcView->subresources(), DxvkAccess::Read)
+      || m_execBarriers.isImageDirty(dstView->image(), dstView->subresources(), DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    VkImageLayout srcLayout = srcView->pickLayout(VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+    VkImageLayout dstLayout = dstView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    bool doDiscard = dstRect.extent == dstExtent;
+
+    if (dstView->imageInfo().layout != dstLayout || doDiscard) {
+      m_execAcquires.accessImage(
+        dstView->image(), dstView->subresources(),
+        doDiscard ? VK_IMAGE_LAYOUT_UNDEFINED
+                  : dstView->imageInfo().layout,
+        dstView->imageInfo().stages, 0,
+        dstLayout, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+    }
+
+    if (srcView->imageInfo().layout != srcLayout) {
+      m_execAcquires.accessImage(
+        srcView->image(), dstView->subresources(),
+        srcView->imageInfo().layout,
+        srcView->imageInfo().stages, 0,
+        srcLayout, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_ACCESS_SHADER_READ_BIT);
+    }
+
+    m_execAcquires.recordCommands(m_cmd);
+
+    Rc<DxvkImageView> drawSrcView;
+    DxvkPresentBlitFsType fs;
+    if (dstView->imageInfo().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      if (sameSize) {
+        drawSrcView = srcView;
+        fs = DxvkPresentBlitFsType::Resolve;
+      } else {
+        drawSrcView = m_common->metaPresentBlit().createResolveImage(m_device, srcView->imageInfo());
+        VkImageResolve resolve;
+        resolve.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        resolve.srcOffset      = { 0, 0, 0 };
+        resolve.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        resolve.dstOffset      = { 0, 0, 0 };
+        resolve.extent         = dstView->imageInfo().extent;
+        this->resolveImage(dstView->image(), srcView->image(), resolve, VK_FORMAT_UNDEFINED);
+        m_execBarriers.recordCommands(m_cmd);
+
+        fs = DxvkPresentBlitFsType::Blit;
+      }
+    } else {
+      drawSrcView = srcView;
+      if (sameSize) {
+        fs = DxvkPresentBlitFsType::Copy;
+      } else {
+        fs = DxvkPresentBlitFsType::Blit;
+      }
+    }
+
+    const DxvkMetaPresentBlitPipeline& pipeInfo = m_common->metaPresentBlit().getPipeline(
+      fs,
+      srcView->imageInfo().sampleCount,
+      dstView->imageInfo().sampleCount,
+      dstView->info().format,
+      gammaView != nullptr
+    );
+
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    attachmentInfo.imageLayout = dstLayout;
+    attachmentInfo.loadOp      = doDiscard ? VK_ATTACHMENT_LOAD_OP_DONT_CARE : VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachmentInfo.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+    attachmentInfo.imageView   = dstView->handle();
+
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments    = &attachmentInfo;
+    renderingInfo.renderArea           = dstRect;
+    renderingInfo.layerCount           = 1;
+
+    m_cmd->cmdBeginRendering(&renderingInfo);
+
+    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+
+    VkViewport viewport;
+    viewport.x        = float(dstRect.offset.x);
+    viewport.y        = float(dstRect.offset.y);
+    viewport.width    = float(dstRect.extent.width);
+    viewport.height   = float(dstRect.extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    m_cmd->cmdSetViewport(1, &viewport);
+    m_cmd->cmdSetScissor(1, &dstRect);
+
+    VkDescriptorSet set = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+    VkDescriptorImageInfo srcDescriptorImage;
+    srcDescriptorImage.sampler     = m_common->metaPresentBlit().srcSampler();
+    srcDescriptorImage.imageView   = srcView->handle();
+    srcDescriptorImage.imageLayout = srcLayout;
+
+    VkDescriptorImageInfo gammaDescriptorImage;
+    gammaDescriptorImage.sampler     = m_common->metaPresentBlit().gammaSampler();
+    gammaDescriptorImage.imageView   = gammaView != nullptr ? gammaView->handle() : VK_NULL_HANDLE;
+    gammaDescriptorImage.imageLayout = gammaView != nullptr ? gammaView->pickLayout(VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL) : VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL;
+
+    std::array<VkWriteDescriptorSet, 2> descriptorWrites;
+    descriptorWrites[0] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrites[0].dstSet           = set;
+    descriptorWrites[0].dstBinding       = 0;
+    descriptorWrites[0].dstArrayElement  = 0;
+    descriptorWrites[0].descriptorCount  = 1;
+    descriptorWrites[0].descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrites[0].pImageInfo       = &srcDescriptorImage;
+    descriptorWrites[1] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrites[1].dstSet           = set;
+    descriptorWrites[1].dstBinding       = 1;
+    descriptorWrites[1].dstArrayElement  = 0;
+    descriptorWrites[1].descriptorCount  = 1;
+    descriptorWrites[1].descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrites[1].pImageInfo       = &gammaDescriptorImage;
+
+    m_cmd->updateDescriptorSets(
+      descriptorWrites.size(),
+      descriptorWrites.data());
+
+    m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout, set, 0, nullptr);
+
+    DxvkMetaPresentBlitObjects::PresenterArgs args;
+    args.srcOffset = srcRect.offset;
+    if (dstRect.extent == srcRect.extent)
+      args.dstOffset = dstRect.offset;
+    else
+      args.srcExtent = srcRect.extent;
+
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      0,
+      sizeof(args),
+      &args);
+
+    m_cmd->cmdDraw(3, 1, 0, 0);
+
+    m_cmd->cmdEndRendering();
+
+    m_execBarriers.accessImage(
+        srcView->image(), srcView->subresources(),
+        srcLayout, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+        srcView->imageInfo().layout, srcView->imageInfo().stages, srcView->imageInfo().access);
+
+    m_execBarriers.accessImage(
+        dstView->image(), dstView->subresources(),
+        dstLayout, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        dstView->imageInfo().layout, dstView->imageInfo().stages, dstView->imageInfo().access);
+  }
+
+
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {
     auto idx = shaders.hash() % m_gpLookupCache.size();

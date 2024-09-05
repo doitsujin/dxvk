@@ -1403,6 +1403,13 @@ namespace dxvk {
         m_cmd->addStatCtr(counter, value);
     }
 
+    void presentBlit(
+      const Rc<DxvkImageView>&      dstView,
+            VkRect2D                dstRect,
+      const Rc<DxvkImageView>&      srcView,
+            VkRect2D                srcRect,
+      const Rc<DxvkImageView>&      gammaView);
+
   private:
     
     Rc<DxvkDevice>          m_device;
