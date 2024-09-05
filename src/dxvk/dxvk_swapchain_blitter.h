@@ -11,7 +11,7 @@ namespace dxvk {
   struct DxvkGammaCp {
     uint16_t r, g, b, a;
   };
-  
+
   /**
    * \brief Swap chain blitter
    *
@@ -19,7 +19,7 @@ namespace dxvk {
    * rendered images to a swap chain image.
    */
   class DxvkSwapchainBlitter : public RcObject {
-    
+
   public:
 
     DxvkSwapchainBlitter(const Rc<DxvkDevice>& device);
@@ -56,25 +56,7 @@ namespace dxvk {
 
   private:
 
-    enum BindingIds : uint32_t {
-      Image = 0,
-      Gamma = 1,
-    };
-
-    struct PresenterArgs {
-      VkOffset2D srcOffset;
-      union {
-        VkExtent2D srcExtent;
-        VkOffset2D dstOffset;
-      };
-    };
-
     Rc<DxvkDevice>      m_device;
-
-    Rc<DxvkShader>      m_fsCopy;
-    Rc<DxvkShader>      m_fsBlit;
-    Rc<DxvkShader>      m_fsResolve;
-    Rc<DxvkShader>      m_vs;
 
     Rc<DxvkBuffer>      m_gammaBuffer;
     Rc<DxvkImage>       m_gammaImage;
@@ -83,36 +65,8 @@ namespace dxvk {
     bool                m_gammaDirty = false;
     DxvkBufferSliceHandle m_gammaSlice = { };
 
-    Rc<DxvkImage>       m_resolveImage;
-    Rc<DxvkImageView>   m_resolveView;
-
-    Rc<DxvkSampler>     m_samplerPresent;
-    Rc<DxvkSampler>     m_samplerGamma;
-
-    void draw(
-            DxvkContext*        ctx,
-      const Rc<DxvkShader>&     fs,
-      const Rc<DxvkImageView>&  dstView,
-            VkRect2D            dstRect,
-      const Rc<DxvkImageView>&  srcView,
-            VkRect2D            srcRect);
-
-    void resolve(
-            DxvkContext*        ctx,
-      const Rc<DxvkImageView>&  dstView,
-      const Rc<DxvkImageView>&  srcView);
-
     void updateGammaTexture(DxvkContext* ctx);
 
-    void createSampler();
-
-    void createShaders();
-
-    void createResolveImage(
-      const DxvkImageCreateInfo&  info);
-
-    void destroyResolveImage();
-
   };
-  
+
 }
