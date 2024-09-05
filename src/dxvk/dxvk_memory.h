@@ -83,6 +83,8 @@ namespace dxvk {
     VkMemoryType      memType;
     uint32_t          memTypeId;
 
+    VkDeviceSize      chunkSize;
+
     std::vector<Rc<DxvkMemoryChunk>> chunks;
   };
   
@@ -212,6 +214,14 @@ namespace dxvk {
     ~DxvkMemoryChunk();
 
     /**
+     * \brief Queries chunk size
+     * \returns Chunk size
+     */
+    VkDeviceSize size() const {
+      return m_memory.memSize;
+    }
+
+    /**
      * \brief Allocates memory from the chunk
      * 
      * On failure, this returns a slice with
@@ -304,6 +314,9 @@ namespace dxvk {
     friend class DxvkMemoryChunk;
 
     constexpr static VkDeviceSize SmallAllocationThreshold = 256 << 10;
+
+    constexpr static VkDeviceSize MinChunkSize =   4ull << 20;
+    constexpr static VkDeviceSize MaxChunkSize = 256ull << 20;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
@@ -348,10 +361,8 @@ namespace dxvk {
     VkPhysicalDeviceMemoryProperties                m_memProps;
     
     dxvk::mutex                                     m_mutex;
-    std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps;
-    std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
-
-    VkDeviceSize                                    m_maxChunkSize;
+    std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps = { };
+    std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes = { };
 
     uint32_t m_sparseMemoryTypes = 0u;
 
@@ -388,7 +399,13 @@ namespace dxvk {
     
     VkDeviceSize pickChunkSize(
             uint32_t              memTypeId,
+            VkDeviceSize          requiredSize,
             DxvkMemoryFlags       hints) const;
+
+    void adjustChunkSize(
+            uint32_t              memTypeId,
+            VkDeviceSize          allocatedSize,
+            DxvkMemoryFlags       hints);
 
     bool shouldFreeChunk(
       const DxvkMemoryType*       type,
@@ -402,9 +419,6 @@ namespace dxvk {
       const DxvkMemoryHeap*       heap);
 
     uint32_t determineSparseMemoryTypes(
-            DxvkDevice*           device) const;
-
-    VkDeviceSize determineMaxChunkSize(
             DxvkDevice*           device) const;
 
     void logMemoryError(
