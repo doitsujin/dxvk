@@ -658,6 +658,12 @@ namespace dxvk {
 
 
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput1* pTarget) {
+    if (m_ModeChangeInProgress) {
+      Logger::warn("Nested EnterFullscreenMode");
+      return DXGI_STATUS_MODE_CHANGE_IN_PROGRESS;
+    }
+    scoped_bool in_progress(m_ModeChangeInProgress);
+
     Com<IDXGIOutput1> output = pTarget;
 
     if (!wsi::isWindow(m_window))
@@ -718,6 +724,12 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
+    if (m_ModeChangeInProgress) {
+      Logger::warn("Nested LeaveFullscreenMode");
+      return DXGI_STATUS_MODE_CHANGE_IN_PROGRESS;
+    }
+    scoped_bool in_progress(m_ModeChangeInProgress);
+
     if (FAILED(RestoreDisplayMode(m_monitor)))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
     
@@ -731,7 +743,7 @@ namespace dxvk {
       SetGammaControl(0, nullptr);
       ReleaseMonitorData();
     }
-    
+
     // Restore internal state
     m_descFs.Windowed = TRUE;
     m_target  = nullptr;
