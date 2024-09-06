@@ -43,4 +43,14 @@ namespace dxvk {
     return duration.count() / refreshPeriod.count();
   }
 
+  struct scoped_bool {
+    scoped_bool(bool &v) : m_val(v) {
+      m_val = true;
+    }
+    ~scoped_bool() {
+      m_val = false;
+    }
+
+    bool& m_val;
+  };
 }
