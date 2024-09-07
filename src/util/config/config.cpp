@@ -1137,11 +1137,19 @@ namespace dxvk {
     }} },
     /* Art of Murder FBI Confidential - CPU perf  */
     { R"(\\Art of Murder - FBI Confidential\\game\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",       "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Max Payne 1 - Stalls waiting for an index buffer */
     { R"(\\MaxPayne\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",    "False" },
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
+    /* Z: Steel Soldiers                          */
+    { R"(\\z2\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* FIFA Football 2003                         */
+    { R"(\\fifa2003(demo)?\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
   }};
 
