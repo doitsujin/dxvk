@@ -926,6 +926,22 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetViewport(const D3DVIEWPORT8* pViewport) {
+    if (likely(pViewport != nullptr)) {
+      // we need a valid render target to validate the viewport
+      if (unlikely(m_renderTarget == nullptr))
+          return D3DERR_INVALIDCALL;
+
+      D3DSURFACE_DESC rtDesc;
+      HRESULT res = m_renderTarget->GetDesc(&rtDesc);
+
+      // D3D8 will fail when setting a viewport that's outside of the
+      // current render target, although this apparently works in D3D9
+      if (likely(SUCCEEDED(res)) &&
+          unlikely(pViewport->X + pViewport->Width  > rtDesc.Width ||
+                   pViewport->Y + pViewport->Height > rtDesc.Height))
+        return D3DERR_INVALIDCALL;
+    }
+
     StateChange();
     return GetD3D9()->SetViewport(reinterpret_cast<const d3d9::D3DVIEWPORT9*>(pViewport));
   }
