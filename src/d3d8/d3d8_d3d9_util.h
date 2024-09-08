@@ -107,7 +107,12 @@ namespace dxvk {
     params.AutoDepthStencilFormat = d3d9::D3DFORMAT(pParams->AutoDepthStencilFormat);
     params.Flags = pParams->Flags;
 
-    params.FullScreen_RefreshRateInHz = pParams->FullScreen_RefreshRateInHz;
+    // D3DPRESENT_RATE_UNLIMITED is unsupported, use D3DPRESENT_RATE_DEFAULT (or 0)
+    if (unlikely(pParams->FullScreen_RefreshRateInHz == D3DPRESENT_RATE_UNLIMITED)) {
+      params.FullScreen_RefreshRateInHz = D3DPRESENT_RATE_DEFAULT;
+    } else {
+      params.FullScreen_RefreshRateInHz = pParams->FullScreen_RefreshRateInHz;
+    }
 
     // FullScreen_PresentationInterval -> PresentationInterval
     params.PresentationInterval = PresentationInterval;

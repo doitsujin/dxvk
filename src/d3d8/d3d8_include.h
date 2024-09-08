@@ -191,6 +191,10 @@ namespace d3d9 {
 #define D3DDEVINFOID_VERTEXSTATS        6   // Aka D3DDEVINFOID_D3DVERTEXSTATS
 #endif
 
+#ifndef D3DPRESENT_RATE_UNLIMITED
+#define D3DPRESENT_RATE_UNLIMITED       0x7FFFFFFF
+#endif
+
 #else // _MSC_VER
 
 // These are enum typedefs in the MinGW headers, but not defined by Microsoft
