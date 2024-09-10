@@ -441,10 +441,10 @@ namespace dxvk {
     Com<D3D8Surface, false>     m_renderTarget;
     Com<D3D8Surface, false>     m_depthStencil;
 
-    std::vector<D3D8VertexShaderInfo>           m_vertexShaders;
-    std::vector<d3d9::IDirect3DPixelShader9*>   m_pixelShaders;
-    DWORD                                       m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
-    DWORD                                       m_currentPixelShader   = 0;
+    std::vector<D3D8VertexShaderInfo>               m_vertexShaders;
+    std::vector<Com<d3d9::IDirect3DPixelShader9>>   m_pixelShaders;
+    DWORD                                           m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
+    DWORD                                           m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;

@@ -25,10 +25,10 @@ namespace dxvk {
   }
 
   struct D3D8VertexShaderInfo {
-    d3d9::IDirect3DVertexDeclaration9*  pVertexDecl   = nullptr;
-    d3d9::IDirect3DVertexShader9*       pVertexShader = nullptr;
-    std::vector<DWORD>                  declaration;
-    std::vector<DWORD>                  function;
+    Com<d3d9::IDirect3DVertexDeclaration9>  pVertexDecl;
+    Com<d3d9::IDirect3DVertexShader9>       pVertexShader;
+    std::vector<DWORD>                      declaration;
+    std::vector<DWORD>                      function;
   };
 
   D3D8Device::D3D8Device(
@@ -72,7 +72,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     HRESULT res;
-    d3d9::IDirect3DQuery9* pQuery = nullptr;
+    Com<d3d9::IDirect3DQuery9> pQuery;
     
     switch (DevInfoID) {
       // pre-D3D8 queries
@@ -133,18 +133,15 @@ namespace dxvk {
     res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
 
   done:
-    if (pQuery != nullptr)
-      pQuery->Release();
-    
     if (unlikely(FAILED(res))) {
       if (res == D3DERR_NOTAVAILABLE) // unsupported
         return E_FAIL;
       else // any unknown error
         return S_FALSE;
     }
+
     return res;
   }
-
 
   HRESULT STDMETHODCALLTYPE D3D8Device::TestCooperativeLevel() {
     // Equivalent of D3D11/DXGI present tests.
@@ -1609,7 +1606,7 @@ namespace dxvk {
 
     D3D8VertexShaderInfo& info = device->m_vertexShaders[Handle];
 
-    if (unlikely(!info.pVertexDecl && !info.pVertexShader)) {
+    if (unlikely(info.pVertexDecl == nullptr && info.pVertexShader == nullptr)) {
       Logger::debug(str::format("getVertexShaderInfo: Application provided deleted vertex shader ", std::hex, Handle));
       return nullptr;
     }
@@ -1634,8 +1631,8 @@ namespace dxvk {
 
       StateChange();
 
-      GetD3D9()->SetVertexDeclaration(info->pVertexDecl);
-      res = GetD3D9()->SetVertexShader(info->pVertexShader);
+      GetD3D9()->SetVertexDeclaration(info->pVertexDecl.ptr());
+      res = GetD3D9()->SetVertexShader(info->pVertexShader.ptr());
 
       if (likely(SUCCEEDED(res))) {
         // Cache current shader
@@ -1701,10 +1698,10 @@ namespace dxvk {
       if (!info)
         return D3DERR_INVALIDCALL;
 
-      if (info->pVertexDecl)
-        info->pVertexDecl->Release();
-      if (info->pVertexShader)
-        info->pVertexShader->Release();
+      if (info->pVertexDecl != nullptr)
+        info->pVertexDecl = nullptr;
+      if (info->pVertexShader != nullptr)
+        info->pVertexShader = nullptr;
 
       info->declaration.clear();
       info->function.clear();
@@ -1795,7 +1792,7 @@ namespace dxvk {
       return nullptr;
     }
 
-    d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle];
+    d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle].ptr();
 
     if (unlikely(pPixelShader == nullptr)) {
       Logger::debug(str::format("getPixelShaderPtr: Application provided deleted pixel shader ", std::hex, Handle));
@@ -1849,8 +1846,6 @@ namespace dxvk {
     if (unlikely(!pPixelShader)) {
       return D3DERR_INVALIDCALL;
     }
-
-    pPixelShader->Release();
 
     m_pixelShaders[getShaderIndex(Handle)] = nullptr;
 
