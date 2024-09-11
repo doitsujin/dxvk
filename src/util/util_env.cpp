@@ -80,7 +80,9 @@ namespace dxvk::env {
     exePath.resize(MAX_PATH + 1);
 
     DWORD len = ::GetModuleFileNameW(NULL, exePath.data(), MAX_PATH);
-    exePath.resize(len);
+    if (!len || len == MAX_PATH)
+      return "";
+    exePath.resize(len + 1);
 
     return str::fromws(exePath.data());
 #elif defined(__linux__)
