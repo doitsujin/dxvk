@@ -1111,6 +1111,11 @@ namespace dxvk {
     { R"(\\fifa2003(demo)?\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Splinter Cell: Pandora Tomorrow            *
+     * Broken inputs and physics above 60 FPS     */
+    { R"(\\SplinterCell2\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
   }};
 
 
