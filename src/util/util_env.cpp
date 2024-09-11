@@ -24,7 +24,9 @@ namespace dxvk::env {
     result.resize(MAX_PATH + 1);
 
     DWORD len = ::GetEnvironmentVariableW(str::tows(name).c_str(), result.data(), MAX_PATH);
-    result.resize(len);
+    if (!len || len >= MAX_PATH)
+      return "";
+    result.resize(len + 1);
 
     return str::fromws(result.data());
 #else
@@ -80,7 +82,9 @@ namespace dxvk::env {
     exePath.resize(MAX_PATH + 1);
 
     DWORD len = ::GetModuleFileNameW(NULL, exePath.data(), MAX_PATH);
-    exePath.resize(len);
+    if (!len || len == MAX_PATH)
+      return "";
+    exePath.resize(len + 1);
 
     return str::fromws(exePath.data());
 #elif defined(__linux__)
