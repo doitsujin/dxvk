@@ -313,7 +313,10 @@ namespace dxvk {
           VkDeviceSize                      align,
     const DxvkMemoryProperties&             info,
           DxvkMemoryFlags                   hints) {
-    VkDeviceSize chunkSize = pickChunkSize(type->memTypeId, size, hints);
+    constexpr VkDeviceSize DedicatedAllocationThreshold = 3;
+
+    VkDeviceSize chunkSize = pickChunkSize(type->memTypeId,
+      DedicatedAllocationThreshold * size, hints);
 
     DxvkMemory memory;
 
@@ -323,7 +326,7 @@ namespace dxvk {
 
     // Prefer a dedicated allocation for very large resources in order to
     // reduce fragmentation if a large number of those resources are in use
-    bool wantsDedicatedAllocation = 3 * size >= chunkSize;
+    bool wantsDedicatedAllocation = DedicatedAllocationThreshold * size > chunkSize;
 
     // Try to reuse existing memory as much as possible in case the heap is nearly full
     bool heapBudgedExceeded = 5 * type->heap->stats.memoryUsed + size > 4 * type->heap->properties.size;
@@ -332,12 +335,12 @@ namespace dxvk {
       // Attempt to suballocate from existing chunks first
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
         memory = type->chunks[i]->alloc(info.flags, size, align, hints);
-      
+
       // If no existing chunk can accomodate the allocation, and if a dedicated
       // allocation is not preferred, create a new chunk and suballocate from it
       if (!memory && !wantsDedicatedAllocation) {
         DxvkDeviceMemory devMem;
-        
+
         if (this->shouldFreeEmptyChunks(type->heap, chunkSize))
           this->freeEmptyChunks(type->heap);
 
@@ -497,7 +500,7 @@ namespace dxvk {
 
     VkDeviceSize chunkSize = m_memTypes[memTypeId].chunkSize;
 
-    while (chunkSize < requiredSize)
+    while (chunkSize < requiredSize && chunkSize < MaxChunkSize)
       chunkSize <<= 1u;
 
     if (hints.test(DxvkMemoryFlag::Small))
@@ -525,9 +528,8 @@ namespace dxvk {
 
     // Don't bump chunk size if we reached the maximum or if
     // we already were unable to allocate a full chunk.
-    if (chunkSize < MaxChunkSize && chunkSize <= allocatedSize
-     && chunkSize <= m_memTypes[memTypeId].heap->stats.memoryAllocated)
-      m_memTypes[memTypeId].chunkSize <<= 1u;
+    if (chunkSize <= allocatedSize && chunkSize <= m_memTypes[memTypeId].heap->stats.memoryAllocated)
+      m_memTypes[memTypeId].chunkSize = pickChunkSize(memTypeId, chunkSize * 2, DxvkMemoryFlags());
   }
 
 
