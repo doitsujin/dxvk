@@ -1,4 +1,5 @@
 #include "dxvk_hud_renderer.h"
+#include "vulkan/vulkan_core.h"
 
 #include <hud_graph_frag.h>
 #include <hud_graph_vert.h>
@@ -202,12 +203,86 @@ namespace dxvk::hud {
   }
   
   
-  HudRenderer::ShaderPair HudRenderer::createGraphShaders() {
-    ShaderPair result;
-
+  HudRenderer::Pipeline HudRenderer::createGraphPipeline() {
     SpirvCodeBuffer vsCode(hud_graph_vert);
     SpirvCodeBuffer fsCode(hud_graph_frag);
-    
+
+    const auto& vkd = m_device->vkd();
+    VkResult result;
+
+    VkShaderModule vs;
+    VkShaderModuleCreateInfo shaderModuleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    shaderModuleInfo.pCode    = vsCode.data();
+    shaderModuleInfo.codeSize = vsCode.size();
+    result = vkd->vkCreateShaderModule(vkd->device(), &shaderModuleInfo, nullptr, &vs);
+    VkShaderModule fs;
+    shaderModuleInfo.pCode    = fsCode.data();
+    shaderModuleInfo.codeSize = fsCode.size();
+    result = vkd->vkCreateShaderModule(vkd->device(), &shaderModuleInfo, nullptr, &fs);
+
+    std::array<VkPipelineShaderStageCreateInfo, 2> stages;
+    stages[0] = VkPipelineShaderStageCreateInfo {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+      VK_SHADER_STAGE_VERTEX_BIT, vs, "main" };
+    stages[1] = VkPipelineShaderStageCreateInfo {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+      VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main" };
+
+    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+
+    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    iaState.primitiveRestartEnable  = VK_FALSE;
+
+    uint32_t msMask = 0xFFFFFFFF;
+    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msState.pSampleMask = &msMask;
+
+    VkPipelineColorBlendAttachmentState cbAttachment = { };
+    cbAttachment.colorWriteMask =
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cbState.attachmentCount     = 1;
+    cbState.pAttachments        = &cbAttachment;
+
+    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    rtState.colorAttachmentCount = 1;
+    rtState.pColorAttachmentFormats = &viewFormat;
+
+    std::array<VkDynamicState, 2> dynStates = {{
+      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+    }};
+
+    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dynState.dynamicStateCount = dynStates.size();
+    dynState.pDynamicStates = dynStates.data();
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
+    pipelineInfo.stageCount          = stages.size();
+    pipelineInfo.pStages             = stages.data();
+    pipelineInfo.pVertexInputState   = &viState;
+    pipelineInfo.pInputAssemblyState = &iaState;
+    pipelineInfo.pMultisampleState   = &msState;
+    pipelineInfo.pDynamicState       = &dynState;
+
+
+
+
+    vkd->vkDestroyShaderModule(vkd->device(), vs, nullptr);
+    vkd->vkDestroyShaderModule(vkd->device(), fs, nullptr);
+
+
+
+
+
+
+
+
+    ShaderPair result;
     const std::array<DxvkBindingInfo, 1> fsBindings = {{
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};

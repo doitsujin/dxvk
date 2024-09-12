@@ -2,6 +2,7 @@
 
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
+#include "dxvk_hud_objects.h"
 #include "dxvk_memory.h"
 #include "dxvk_meta_blit.h"
 #include "dxvk_meta_clear.h"
@@ -10,6 +11,7 @@
 #include "dxvk_meta_pack.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_meta_present_blit.h"
+#include "dxvk_hud_objects.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_unbound.h"
@@ -76,6 +78,10 @@ namespace dxvk {
       return m_metaPresentBlit.get(m_device);
     }
 
+    DxvkHudObjects& hud() {
+      return m_hud.get(m_device);
+    }
+
   private:
 
     DxvkDevice*                   m_device;
@@ -94,6 +100,7 @@ namespace dxvk {
     Lazy<DxvkMetaResolveObjects>     m_metaResolve;
     Lazy<DxvkMetaPackObjects>        m_metaPack;
     Lazy<DxvkMetaPresentBlitObjects> m_metaPresentBlit;
+    Lazy<DxvkHudObjects>             m_hud;
 
   };
 

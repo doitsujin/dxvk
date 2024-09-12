@@ -3,6 +3,7 @@
 #include "../dxvk_device.h"
 
 #include "dxvk_hud_font.h"
+#include "vulkan/vulkan_core.h"
 
 namespace dxvk::hud {
   
@@ -142,6 +143,12 @@ namespace dxvk::hud {
       Rc<DxvkShader> vert;
       Rc<DxvkShader> frag;
     };
+
+    struct Pipeline {
+      VkPipeline pipeline;
+      VkDescriptorSetLayout descriptorSet;
+      VkPipelineLayout pipelineLayout;
+    };
     
     Mode                m_mode;
     float               m_scale;
@@ -172,8 +179,8 @@ namespace dxvk::hud {
 
     VkDeviceSize allocDataBuffer(VkDeviceSize size);
 
-    ShaderPair createTextShaders();
-    ShaderPair createGraphShaders();
+    Pipeline createTextPipeline();
+    Pipeline createGraphPipeline();
 
     Rc<DxvkBuffer> createDataBuffer();
     Rc<DxvkBufferView> createDataView();

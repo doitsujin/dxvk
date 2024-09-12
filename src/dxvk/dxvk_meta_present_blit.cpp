@@ -21,6 +21,15 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_fsCopy, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_fsBlit, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_fsResolve, nullptr);
+
+    m_vkd->vkDestroySampler(m_vkd->device(), m_srcSampler, nullptr);
+    m_vkd->vkDestroySampler(m_vkd->device(), m_gammaSampler, nullptr);
+
+    for (const auto& [key, pipeline] : m_pipelines) {
+      m_vkd->vkDestroyPipeline(m_vkd->device(), pipeline.pipeHandle, nullptr);
+      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), pipeline.pipeLayout, nullptr);
+      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), pipeline.dsetLayout, nullptr);
+    }
   }
 
   void DxvkMetaPresentBlitObjects::createShaders(const DxvkDevice* device) {

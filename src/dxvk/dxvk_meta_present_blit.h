@@ -88,14 +88,10 @@ namespace dxvk {
 
     Rc<vk::DeviceFn>  m_vkd;
 
-    VkSampler m_samplerCopy;
-    VkSampler m_samplerBlit;
-
     VkShaderModule     m_vs;
     VkShaderModule     m_fsBlit;
     VkShaderModule     m_fsCopy;
     VkShaderModule     m_fsResolve;
-    VkShaderModule     m_fsResolveAmd;
 
     VkSampler m_srcSampler;
     VkSampler m_gammaSampler;
