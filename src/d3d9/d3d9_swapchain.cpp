@@ -1041,7 +1041,9 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
-    desc.IsLockable         = (Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) != 0;
+    // we cannot respect D3DPRESENTFLAG_LOCKABLE_BACKBUFFER here because
+    // we might need to lock for the BlitGDI fallback path
+    desc.IsLockable         = true;
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D9Surface* surface;
