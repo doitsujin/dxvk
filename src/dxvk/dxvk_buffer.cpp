@@ -37,7 +37,7 @@ namespace dxvk {
       m_buffer = allocBuffer(m_physSliceCount, m_physSliceCount > 1);
 
       m_physSlice.handle = m_buffer.buffer;
-      m_physSlice.offset = 0;
+      m_physSlice.offset = m_buffer.getBaseOffset();
       m_physSlice.length = m_physSliceLength;
       m_physSlice.mapPtr = m_buffer.memory.mapPtr(0);
 
@@ -88,10 +88,13 @@ namespace dxvk {
 
 
   DxvkBuffer::~DxvkBuffer() {
-    for (const auto& buffer : m_buffers)
-      m_vkd->vkDestroyBuffer(m_vkd->device(), buffer.buffer, nullptr);
+    for (const auto& buffer : m_buffers) {
+      if (buffer.buffer != buffer.memory.buffer())
+        m_vkd->vkDestroyBuffer(m_vkd->device(), buffer.buffer, nullptr);
+    }
 
-    m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer.buffer, nullptr);
+    if (m_buffer.buffer != m_buffer.memory.buffer())
+      m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer.buffer, nullptr);
   }
   
   
@@ -104,31 +107,21 @@ namespace dxvk {
     
     DxvkBufferHandle handle;
 
-    if (m_vkd->vkCreateBuffer(m_vkd->device(), &info, nullptr, &handle.buffer)) {
-      throw DxvkError(str::format(
-        "DxvkBuffer: Failed to create buffer:"
-        "\n  flags: ", std::hex, info.flags,
-        "\n  size:  ", std::dec, info.size,
-        "\n  usage: ", std::hex, info.usage));
-    }
-
     // Query memory requirements and whether to use a dedicated allocation
     DxvkMemoryRequirements memoryRequirements = { };
     memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
     memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
     memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
-    VkBufferMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
-    memoryRequirementInfo.buffer = handle.buffer;
-    
-    m_vkd->vkGetBufferMemoryRequirements2(m_vkd->device(),
-      &memoryRequirementInfo, &memoryRequirements.core);
+    m_memAlloc->getBufferMemoryRequirements(info, memoryRequirements.core);
 
     // Fill in desired memory properties
     DxvkMemoryProperties memoryProperties = { };
     memoryProperties.flags = m_memFlags;
 
     if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
+      handle.buffer = createBuffer(info);
+
       memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
       memoryProperties.dedicated.buffer = handle.buffer;
     }
@@ -151,10 +144,17 @@ namespace dxvk {
       hints.set(DxvkMemoryFlag::Transient);
 
     handle.memory = m_memAlloc->alloc(memoryRequirements, memoryProperties, hints);
-    
-    if (m_vkd->vkBindBufferMemory(m_vkd->device(), handle.buffer,
-        handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
-      throw DxvkError("DxvkBuffer: Failed to bind device memory");
+
+    if (!handle.buffer && (!handle.memory.buffer() || (handle.memory.getBufferUsage() & info.usage) != info.usage))
+      handle.buffer = createBuffer(info);
+
+    if (handle.buffer) {
+      if (m_vkd->vkBindBufferMemory(m_vkd->device(), handle.buffer,
+          handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
+        throw DxvkError("DxvkBuffer: Failed to bind device memory");
+    } else {
+      handle.buffer = handle.memory.buffer();
+    }
     
     if (clear && (m_memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
       std::memset(handle.memory.mapPtr(0), 0, info.size);
@@ -182,6 +182,21 @@ namespace dxvk {
     }
 
     return handle;
+  }
+
+
+  VkBuffer DxvkBuffer::createBuffer(const VkBufferCreateInfo& info) const {
+    VkBuffer buffer = VK_NULL_HANDLE;
+
+    if (m_vkd->vkCreateBuffer(m_vkd->device(), &info, nullptr, &buffer)) {
+      throw DxvkError(str::format(
+        "DxvkBuffer: Failed to create buffer:"
+        "\n  flags: ", std::hex, info.flags,
+        "\n  size:  ", std::dec, info.size,
+        "\n  usage: ", std::hex, info.usage));
+    }
+
+    return buffer;
   }
 
 
