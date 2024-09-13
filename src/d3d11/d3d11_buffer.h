@@ -198,7 +198,8 @@ namespace dxvk {
 
     Rc<DxvkBuffer> CreateSoCounterBuffer();
 
-    D3D11_COMMON_BUFFER_MAP_MODE DetermineMapMode();
+    static D3D11_COMMON_BUFFER_MAP_MODE DetermineMapMode(
+            VkMemoryPropertyFlags MemFlags);
 
   };
 
