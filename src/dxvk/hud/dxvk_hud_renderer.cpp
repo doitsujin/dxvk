@@ -251,9 +251,10 @@ namespace dxvk::hud {
 
   Rc<DxvkBufferView> HudRenderer::createDataView() {
     DxvkBufferViewCreateInfo info;
-    info.format = VK_FORMAT_R8_UINT;
-    info.rangeOffset = 0;
-    info.rangeLength = m_dataBuffer->info().size;
+    info.format         = VK_FORMAT_R8_UINT;
+    info.rangeOffset    = 0;
+    info.rangeLength    = m_dataBuffer->info().size;
+    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     return m_device->createBufferView(m_dataBuffer, info);
   }
@@ -278,6 +279,7 @@ namespace dxvk::hud {
     info.format         = VK_FORMAT_UNDEFINED;
     info.rangeOffset    = 0;
     info.rangeLength    = m_fontBuffer->info().size;
+    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     return m_device->createBufferView(m_fontBuffer, info);
   }

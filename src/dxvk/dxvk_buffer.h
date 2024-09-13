@@ -52,6 +52,9 @@ namespace dxvk {
     
     /// Size of the buffer region to include in the view
     VkDeviceSize rangeLength;
+
+    /// Buffer view usage flags
+    VkBufferUsageFlags usage;
   };
 
 
@@ -577,7 +580,7 @@ namespace dxvk {
   public:
     
     DxvkBufferView(
-      const Rc<vk::DeviceFn>&         vkd,
+            DxvkDevice*               device,
       const Rc<DxvkBuffer>&           buffer,
       const DxvkBufferViewCreateInfo& info);
     
@@ -676,6 +679,7 @@ namespace dxvk {
     Rc<vk::DeviceFn>          m_vkd;
     DxvkBufferViewCreateInfo  m_info;
     Rc<DxvkBuffer>            m_buffer;
+    VkBufferUsageFlags        m_usage;
 
     DxvkBufferSliceHandle     m_bufferSlice;
     VkBufferView              m_bufferView;

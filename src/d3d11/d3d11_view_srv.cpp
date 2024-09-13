@@ -43,6 +43,7 @@ namespace dxvk {
 
       // Fill in buffer view info
       DxvkBufferViewCreateInfo viewInfo;
+      viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
       if (bufInfo.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
         // Raw buffer view. We'll represent this as a

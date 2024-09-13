@@ -26,6 +26,7 @@ namespace dxvk {
       auto buffer = static_cast<D3D11Buffer*>(pResource);
       
       DxvkBufferViewCreateInfo viewInfo;
+      viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       
       if (pDesc->Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
         viewInfo.format      = VK_FORMAT_R32_UINT;
@@ -454,6 +455,7 @@ namespace dxvk {
     viewInfo.format = VK_FORMAT_UNDEFINED;
     viewInfo.rangeOffset = 0;
     viewInfo.rangeLength = sizeof(uint32_t);
+    viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
     return device->createBufferView(buffer, viewInfo);
   }

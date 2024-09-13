@@ -96,6 +96,7 @@ namespace dxvk {
     bufferViewInfo.format      = bufferFormat;
     bufferViewInfo.rangeOffset = srcSlice.offset();
     bufferViewInfo.rangeLength = srcSlice.length();
+    bufferViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
 
     m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
