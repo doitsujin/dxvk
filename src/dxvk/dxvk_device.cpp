@@ -167,7 +167,7 @@ namespace dxvk {
   Rc<DxvkBufferView> DxvkDevice::createBufferView(
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& createInfo) {
-    return new DxvkBufferView(m_vkd, buffer, createInfo);
+    return new DxvkBufferView(this, buffer, createInfo);
   }
   
   

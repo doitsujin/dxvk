@@ -240,14 +240,18 @@ namespace dxvk {
 
   
   DxvkBufferView::DxvkBufferView(
-    const Rc<vk::DeviceFn>&         vkd,
+          DxvkDevice*               device,
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
-  : m_vkd(vkd), m_info(info), m_buffer(buffer),
+  : m_vkd(device->vkd()), m_info(info), m_buffer(buffer),
+    m_usage       (info.usage),
     m_bufferSlice (getSliceHandle()),
     m_bufferView  (VK_NULL_HANDLE) {
     if (m_info.format != VK_FORMAT_UNDEFINED)
       m_bufferView = createBufferView(m_bufferSlice);
+
+    if (!device->features().khrMaintenance5.maintenance5)
+      m_usage = 0;
   }
   
   
@@ -266,12 +270,18 @@ namespace dxvk {
   
   VkBufferView DxvkBufferView::createBufferView(
     const DxvkBufferSliceHandle& slice) {
+    VkBufferUsageFlags2CreateInfoKHR viewFlags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
+    viewFlags.usage = m_usage;
+
     VkBufferViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
     viewInfo.buffer = slice.handle;
     viewInfo.format = m_info.format;
     viewInfo.offset = slice.offset;
     viewInfo.range  = slice.length;
-    
+
+    if (!m_usage)
+      viewInfo.pNext = &viewFlags;
+
     VkBufferView result = VK_NULL_HANDLE;
 
     if (m_vkd->vkCreateBufferView(m_vkd->device(),

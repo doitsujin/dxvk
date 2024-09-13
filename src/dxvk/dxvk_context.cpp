@@ -873,10 +873,12 @@ namespace dxvk {
     viewInfo.format = format;
     viewInfo.rangeOffset = dstBufferOffset;
     viewInfo.rangeLength = dstBufferSlice.length;
+    viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> dstView = m_device->createBufferView(dstBuffer, viewInfo);
 
     viewInfo.rangeOffset = srcBufferOffset;
     viewInfo.rangeLength = srcBufferSlice.length;
+    viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> srcView;
 
     if (srcBuffer == dstBuffer
@@ -1066,11 +1068,13 @@ namespace dxvk {
     tmpViewInfoD.format      = dataFormatD;
     tmpViewInfoD.rangeOffset = 0;
     tmpViewInfoD.rangeLength = dataSizeD;
+    tmpViewInfoD.usage       = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     DxvkBufferViewCreateInfo tmpViewInfoS;
     tmpViewInfoS.format      = dataFormatS;
     tmpViewInfoS.rangeOffset = dataSizeD;
     tmpViewInfoS.rangeLength = dataSizeS;
+    tmpViewInfoS.usage       = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     auto tmpBufferViewD = m_device->createBufferView(tmpBuffer, tmpViewInfoD);
     auto tmpBufferViewS = m_device->createBufferView(tmpBuffer, tmpViewInfoS);

@@ -532,6 +532,7 @@ namespace dxvk {
         bufferViewInfo.format      = rawFormat;
         bufferViewInfo.rangeOffset = 0;
         bufferViewInfo.rangeLength = bufferInfo.size;
+        bufferViewInfo.usage       = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
         Rc<DxvkBufferView> bufferView = m_device->createBufferView(buffer,
           bufferViewInfo);
