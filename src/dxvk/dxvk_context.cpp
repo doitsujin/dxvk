@@ -6386,6 +6386,10 @@ namespace dxvk {
     if (buffer->isForeign())
       return false;
 
+    // Don't discard buffers that need a stable device address
+    if (buffer->info().usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+      return false;
+
     // Suspend the current render pass if transform feedback is active prior to
     // invalidating the buffer, since otherwise we may invalidate a bound buffer.
     if ((buffer->info().usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT)
