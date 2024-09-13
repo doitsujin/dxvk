@@ -49,6 +49,7 @@ namespace dxvk {
    * be persistently mapped.
    */
   struct DxvkDeviceMemory {
+    VkBuffer              buffer     = VK_NULL_HANDLE;
     VkDeviceMemory        memHandle  = VK_NULL_HANDLE;
     void*                 memPointer = nullptr;
     VkDeviceSize          memSize    = 0;
@@ -84,6 +85,7 @@ namespace dxvk {
     uint32_t          memTypeId;
 
     VkDeviceSize      chunkSize;
+    VkBufferUsageFlags bufferUsage;
 
     std::vector<Rc<DxvkMemoryChunk>> chunks;
   };
@@ -104,6 +106,7 @@ namespace dxvk {
       DxvkMemoryAllocator*  alloc,
       DxvkMemoryChunk*      chunk,
       DxvkMemoryType*       type,
+      VkBuffer              buffer,
       VkDeviceMemory        memory,
       VkDeviceSize          offset,
       VkDeviceSize          length,
@@ -123,6 +126,16 @@ namespace dxvk {
       return m_memory;
     }
     
+    /**
+     * \brief Buffer object
+     *
+     * Global buffer covering the entire memory allocation.
+     * \returns Buffer object
+     */
+    VkBuffer buffer() const {
+      return m_buffer;
+    }
+
     /**
      * \brief Offset into device memory
      * 
@@ -162,12 +175,21 @@ namespace dxvk {
     explicit operator bool () const {
       return m_memory != VK_NULL_HANDLE;
     }
-    
+
+    /**
+     * \brief Queries global buffer usage flags
+     * \returns Global buffer usage flags, if any
+     */
+    VkBufferUsageFlags getBufferUsage() const {
+      return m_buffer ? m_type->bufferUsage : 0u;
+    }
+
   private:
     
     DxvkMemoryAllocator*  m_alloc  = nullptr;
     DxvkMemoryChunk*      m_chunk  = nullptr;
     DxvkMemoryType*       m_type   = nullptr;
+    VkBuffer              m_buffer = VK_NULL_HANDLE;
     VkDeviceMemory        m_memory = VK_NULL_HANDLE;
     VkDeviceSize          m_offset = 0;
     VkDeviceSize          m_length = 0;
@@ -355,6 +377,30 @@ namespace dxvk {
       return m_memHeaps[heap].stats;
     }
     
+    /**
+     * \brief Queries buffer memory requirements
+     *
+     * Can be used to get memory requirements without having
+     * to create a buffer object first.
+     * \param [in] createInfo Buffer create info
+     * \param [in,out] memoryRequirements Memory requirements
+     */
+    bool getBufferMemoryRequirements(
+      const VkBufferCreateInfo&     createInfo,
+            VkMemoryRequirements2&  memoryRequirements) const;
+
+    /**
+     * \brief Queries image memory requirements
+     *
+     * Can be used to get memory requirements without having
+     * to create an image object first.
+     * \param [in] createInfo Image create info
+     * \param [in,out] memoryRequirements Memory requirements
+     */
+    bool getImageMemoryRequirements(
+      const VkImageCreateInfo&      createInfo,
+            VkMemoryRequirements2&  memoryRequirements) const;
+
   private:
 
     DxvkDevice*                                     m_device;
@@ -420,6 +466,8 @@ namespace dxvk {
 
     uint32_t determineSparseMemoryTypes(
             DxvkDevice*           device) const;
+
+    void determineBufferUsageFlagsPerMemoryType();
 
     void logMemoryError(
       const VkMemoryRequirements& req) const;
