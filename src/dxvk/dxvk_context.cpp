@@ -6710,6 +6710,288 @@ namespace dxvk {
         dstView->imageInfo().layout, dstView->imageInfo().stages, dstView->imageInfo().access);
   }
 
+  void DxvkContext::beginHudRendering(const Rc<DxvkImageView>&  dstView) {
+    this->invalidateState();
+
+    if (m_execBarriers.isImageDirty(dstView->image(), dstView->subresources(), DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    VkImageLayout dstLayout = dstView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+    if (dstView->imageInfo().layout != dstLayout) {
+      m_execAcquires.accessImage(
+        dstView->image(), dstView->subresources(),
+        dstView->imageInfo().layout,
+        dstView->imageInfo().stages, 0,
+        dstLayout, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+    }
+
+    m_execAcquires.recordCommands(m_cmd);
+
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    attachmentInfo.imageLayout = dstLayout;
+    attachmentInfo.loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachmentInfo.storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+    attachmentInfo.imageView   = dstView->handle();
+
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments    = &attachmentInfo;
+    renderingInfo.renderArea           = VkRect2D { VkOffset2D { 0, 0 }, VkExtent2D { dstView->imageInfo().extent.width, dstView->imageInfo().extent.height } };
+    renderingInfo.layerCount           = 1;
+
+    m_cmd->cmdBeginRendering(&renderingInfo);
+
+    VkViewport viewport;
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = float(dstView->imageInfo().extent.width);
+    viewport.height = float(dstView->imageInfo().extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor;
+    scissor.offset = { 0, 0 };
+    scissor.extent = VkExtent2D {
+      dstView->imageInfo().extent.width, dstView->imageInfo().extent.height
+    };
+
+    m_cmd->cmdSetViewport(1, &viewport);
+    m_cmd->cmdSetScissor(1, &scissor);
+
+    m_execBarriers.accessImage(
+        dstView->image(), dstView->subresources(),
+        dstLayout, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        dstView->imageInfo().layout, dstView->imageInfo().stages, dstView->imageInfo().access);
+  }
+
+  void DxvkContext::endHudRendering() {
+    m_cmd->cmdEndRendering();
+  }
+
+  void DxvkContext::startTextRendering(
+    const Rc<DxvkImageView>&  dstView,
+          VkColorSpaceKHR     colorSpace,
+    const Rc<DxvkBufferView>& dataBufferView,
+    const Rc<DxvkBufferView>& fontBufferView,
+    const Rc<DxvkImageView>&  fontView) {
+
+    DxvkHudPipelines pipelines = m_common->hud().getPipelines(
+      dstView->imageInfo().sampleCount,
+      dstView->info().format,
+      colorSpace
+    );
+
+    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.textPipeHandle);
+
+    VkDescriptorSet set = m_descriptorPool->alloc(pipelines.textDSetLayout);
+    VkDescriptorImageInfo fontDescriptorImageInfo;
+    fontDescriptorImageInfo.sampler     = m_common->hud().getFontSampler();
+    fontDescriptorImageInfo.imageView   = fontView->handle();
+    fontDescriptorImageInfo.imageLayout = fontView->pickLayout(VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+
+    VkDescriptorBufferInfo fontDescriptorBufferInfo;
+    fontDescriptorBufferInfo.buffer = fontBufferView->getSliceHandle().handle;
+    fontDescriptorBufferInfo.offset = fontBufferView->getSliceHandle().offset;
+    fontDescriptorBufferInfo.range  = fontBufferView->getSliceHandle().length;
+
+    VkBufferView dataBufferViewHandle = dataBufferView->handle();
+    std::array<VkWriteDescriptorSet, 3> descriptorWrites;
+    descriptorWrites[0] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrites[0].dstSet           = set;
+    descriptorWrites[0].dstBinding       = 0;
+    descriptorWrites[0].dstArrayElement  = 0;
+    descriptorWrites[0].descriptorCount  = 1;
+    descriptorWrites[0].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrites[0].pBufferInfo      = &fontDescriptorBufferInfo;
+    descriptorWrites[1] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrites[1].dstSet           = set;
+    descriptorWrites[1].dstBinding       = 1;
+    descriptorWrites[1].dstArrayElement  = 0;
+    descriptorWrites[1].descriptorCount  = 1;
+    descriptorWrites[1].descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    descriptorWrites[1].pTexelBufferView = &dataBufferViewHandle;
+    descriptorWrites[2] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrites[2].dstSet           = set;
+    descriptorWrites[2].dstBinding       = 2;
+    descriptorWrites[2].dstArrayElement  = 0;
+    descriptorWrites[2].descriptorCount  = 1;
+    descriptorWrites[2].descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrites[2].pImageInfo       = &fontDescriptorImageInfo;
+
+    m_cmd->updateDescriptorSets(
+      descriptorWrites.size(),
+      descriptorWrites.data());
+
+    m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.textPipeLayout, set, 0, nullptr);
+  }
+
+  void DxvkContext::drawText(
+          float               size,
+          HudPos              pos,
+          HudColor            color,
+          uint32_t            stringLength,
+          VkColorSpaceKHR     colorSpace,
+          float               scale,
+          uint32_t            dataBufferOffset,
+    const Rc<DxvkImageView>&  dstView,
+    const Rc<DxvkBufferView>& dataBufferView,
+    const Rc<DxvkBufferView>& fontBufferView,
+    const Rc<DxvkImageView>&  fontView) {
+    DxvkHudPipelines pipelines = m_common->hud().getPipelines(
+      dstView->imageInfo().sampleCount,
+      dstView->info().format,
+      colorSpace
+    );
+
+    if (dataBufferView->updateView()) {
+      VkDescriptorSet set = m_descriptorPool->alloc(pipelines.textDSetLayout);
+
+      VkDescriptorImageInfo fontDescriptorImageInfo;
+      fontDescriptorImageInfo.sampler     = m_common->hud().getFontSampler();
+      fontDescriptorImageInfo.imageView   = fontView->handle();
+      fontDescriptorImageInfo.imageLayout = fontView->pickLayout(VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL);
+
+      VkDescriptorBufferInfo fontDescriptorBufferInfo;
+      fontDescriptorBufferInfo.buffer = fontBufferView->getSliceHandle().handle;
+      fontDescriptorBufferInfo.offset = fontBufferView->getSliceHandle().offset;
+      fontDescriptorBufferInfo.range  = fontBufferView->getSliceHandle().length;
+
+      VkBufferView dataBufferViewHandle = dataBufferView->handle();
+      std::array<VkWriteDescriptorSet, 2> descriptorWrites;
+      descriptorWrites[0] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      descriptorWrites[0].dstSet           = set;
+      descriptorWrites[0].dstBinding       = 0;
+      descriptorWrites[0].dstArrayElement  = 0;
+      descriptorWrites[0].descriptorCount  = 1;
+      descriptorWrites[0].descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      descriptorWrites[0].pBufferInfo      = &fontDescriptorBufferInfo;
+      descriptorWrites[1] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      descriptorWrites[1].dstSet           = set;
+      descriptorWrites[1].dstBinding       = 1;
+      descriptorWrites[1].dstArrayElement  = 0;
+      descriptorWrites[1].descriptorCount  = 1;
+      descriptorWrites[1].descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+      descriptorWrites[1].pTexelBufferView = &dataBufferViewHandle;
+      descriptorWrites[2] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      descriptorWrites[2].dstSet           = set;
+      descriptorWrites[2].dstBinding       = 2;
+      descriptorWrites[2].dstArrayElement  = 0;
+      descriptorWrites[2].descriptorCount  = 1;
+      descriptorWrites[2].descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[2].pImageInfo       = &fontDescriptorImageInfo;
+
+      m_cmd->updateDescriptorSets(
+        descriptorWrites.size(),
+        descriptorWrites.data());
+
+      m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.textPipeLayout, set, 0, nullptr);
+    }
+
+    HudTextPushConstants pushData;
+    pushData.color   = color;
+    pushData.pos     = pos;
+    pushData.offset  = dataBufferOffset;
+    pushData.size    = size;
+    pushData.scale.x = scale / std::max(float(dstView->imageInfo().extent.width),  1.0f);
+    pushData.scale.y = scale / std::max(float(dstView->imageInfo().extent.height), 1.0f);
+
+    m_cmd->cmdPushConstants(
+      pipelines.textPipeLayout,
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0, sizeof(pushData), &pushData);
+
+    m_cmd->cmdDraw(6 * stringLength, 1, 0, 0);
+  }
+
+  void DxvkContext::startGraphRendering(
+          VkColorSpaceKHR     colorSpace,
+    const Rc<DxvkImageView>&  dstView,
+    const Rc<DxvkBufferView>& dataBufferView) {
+
+    DxvkHudPipelines pipelines = m_common->hud().getPipelines(
+      dstView->imageInfo().sampleCount,
+      dstView->info().format,
+      colorSpace
+    );
+
+    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.graphPipeHandle);
+
+    VkDescriptorSet set = m_descriptorPool->alloc(pipelines.graphDSetLayout);
+
+    VkDescriptorBufferInfo descriptorBufferInfo;
+    descriptorBufferInfo.buffer = dataBufferView->getSliceHandle().handle;
+    descriptorBufferInfo.offset = dataBufferView->getSliceHandle().offset;
+    descriptorBufferInfo.range  = dataBufferView->getSliceHandle().length;
+
+    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    descriptorWrite.dstSet           = set;
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptorWrite.pBufferInfo      = &descriptorBufferInfo;
+
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
+    m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.graphPipeLayout, set, 0, nullptr);
+  }
+
+  void DxvkContext::drawGraph(
+          HudPos              pos,
+          HudPos              size,
+          size_t              pointCount,
+          VkColorSpaceKHR     colorSpace,
+          float               scale,
+          float               opacity,
+          uint32_t            dataBufferPointOffset,
+    const Rc<DxvkImageView>&  dstView,
+    const Rc<DxvkBufferView>& dataBufferView) {
+
+    DxvkHudPipelines pipelines = m_common->hud().getPipelines(
+      dstView->imageInfo().sampleCount,
+      dstView->info().format,
+      colorSpace
+    );
+
+    if (dataBufferView->updateView()) {
+      VkDescriptorSet set = m_descriptorPool->alloc(pipelines.graphDSetLayout);
+
+      VkDescriptorBufferInfo descriptorBufferInfo;
+      descriptorBufferInfo.buffer = dataBufferView->getSliceHandle().handle;
+      descriptorBufferInfo.offset = dataBufferView->getSliceHandle().offset;
+      descriptorBufferInfo.range  = dataBufferView->getSliceHandle().length;
+
+      VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      descriptorWrite.dstSet           = set;
+      descriptorWrite.dstBinding       = 0;
+      descriptorWrite.dstArrayElement  = 0;
+      descriptorWrite.descriptorCount  = 1;
+      descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      descriptorWrite.pBufferInfo      = &descriptorBufferInfo;
+
+      m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
+      m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.graphPipeLayout, set, 0, nullptr);
+    }
+
+    HudGraphPushConstants pushData;
+    pushData.offset = dataBufferPointOffset;
+    pushData.count = pointCount;
+    pushData.pos = pos;
+    pushData.size = size;
+    pushData.scale.x = scale / std::max(float(dstView->imageInfo().extent.width),  1.0f);
+    pushData.scale.y = scale / std::max(float(dstView->imageInfo().extent.height), 1.0f);
+    pushData.opacity = opacity;
+
+    m_cmd->cmdPushConstants(
+      pipelines.graphPipeLayout,
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0, sizeof(pushData), &pushData);
+
+    m_cmd->cmdDraw(4, 1, 0, 0);
+  }
+
 
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {

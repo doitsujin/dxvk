@@ -1410,6 +1410,43 @@ namespace dxvk {
             VkRect2D                srcRect,
       const Rc<DxvkImageView>&      gammaView);
 
+
+    void beginHudRendering(const Rc<DxvkImageView>&  dstView);
+    void endHudRendering();
+    void startTextRendering(
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     colorSpace,
+      const Rc<DxvkBufferView>& dataBufferView,
+      const Rc<DxvkBufferView>& fontBufferView,
+      const Rc<DxvkImageView>&  fontView);
+    void drawText(
+            float               size,
+            HudPos              pos,
+            HudColor            color,
+            uint32_t            stringLength,
+            VkColorSpaceKHR     colorSpace,
+            float               scale,
+            uint32_t            dataBufferOffset,
+      const Rc<DxvkImageView>&  dstView,
+      const Rc<DxvkBufferView>& dataBufferView,
+      const Rc<DxvkBufferView>& fontBufferView,
+      const Rc<DxvkImageView>&  fontView);
+
+    void startGraphRendering(
+            VkColorSpaceKHR     colorSpace,
+      const Rc<DxvkImageView>&  dstView,
+      const Rc<DxvkBufferView>& dataBufferView);
+    void drawGraph(
+            HudPos              pos,
+            HudPos              size,
+            size_t              pointCount,
+            VkColorSpaceKHR     colorSpace,
+            float               scale,
+            float               opacity,
+            uint32_t            dataBufferPointOffset,
+      const Rc<DxvkImageView>&  dstView,
+      const Rc<DxvkBufferView>& dataBufferView);
+
   private:
     
     Rc<DxvkDevice>          m_device;

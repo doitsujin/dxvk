@@ -676,11 +676,14 @@ namespace dxvk {
      * well and needs to be re-created. Call this
      * prior to using the buffer view handle.
      */
-    void updateView() {
+    bool updateView() {
       DxvkBufferSliceHandle slice = getSliceHandle();
 
-      if (!m_bufferSlice.eq(slice))
+      if (!m_bufferSlice.eq(slice)) {
         this->updateBufferView(slice);
+        return true;
+      }
+      return false;
     }
     
   private:
