@@ -1116,6 +1116,11 @@ namespace dxvk {
     { R"(\\SplinterCell2\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* Chrome: Gold Edition                       *
+     * Broken character model motion at high FPS  */
+    { R"(\\Chrome(Single|Net)\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
   }};
 
 
