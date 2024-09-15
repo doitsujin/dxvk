@@ -1001,7 +1001,7 @@ namespace dxvk {
     D3D8DeviceLock lock = LockDevice();
 
     if (likely(pViewport != nullptr)) {
-      // we need a valid render target to validate the viewport
+      // We need a valid render target to validate the viewport
       if (unlikely(m_renderTarget == nullptr))
         return D3DERR_INVALIDCALL;
 
@@ -1012,8 +1012,20 @@ namespace dxvk {
       // current render target, although this apparently works in D3D9
       if (likely(SUCCEEDED(res)) &&
           unlikely(pViewport->X + pViewport->Width  > rtDesc.Width ||
-                   pViewport->Y + pViewport->Height > rtDesc.Height))
-        return D3DERR_INVALIDCALL;
+                   pViewport->Y + pViewport->Height > rtDesc.Height)) {
+        // On Linux/Wine and in windowed mode, we can get in situations
+        // where the actual render target dimensions are off by one
+        // pixel to what the game sets them to. Allow this corner case
+        // to skip the validation, in order to prevent issues.
+        bool isOnePixelWider  = pViewport->X + pViewport->Width  == rtDesc.Width  + 1;
+        bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
+
+        if (m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller)) {
+          Logger::debug("Viewport exceeds render target dimensions by one pixel");
+        } else {
+          return D3DERR_INVALIDCALL;
+        }
+      }
     }
 
     StateChange();
