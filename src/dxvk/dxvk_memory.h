@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_adapter.h"
+#include "dxvk_allocator.h"
 
 namespace dxvk {
   
@@ -287,17 +288,13 @@ namespace dxvk {
 
   private:
     
-    struct FreeSlice {
-      VkDeviceSize offset;
-      VkDeviceSize length;
-    };
-    
     DxvkMemoryAllocator*  m_alloc;
     DxvkMemoryType*       m_type;
     DxvkDeviceMemory      m_memory;
     DxvkMemoryFlags       m_hints;
-    
-    std::vector<FreeSlice> m_freeList;
+
+    DxvkPageAllocator     m_pageAllocator;
+    DxvkPoolAllocator     m_poolAllocator;
 
     bool checkHints(DxvkMemoryFlags hints) const;
     
