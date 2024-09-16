@@ -68,9 +68,10 @@ namespace dxvk {
           DxvkMemoryType*       type,
           DxvkDeviceMemory      memory,
           DxvkMemoryFlags       hints)
-  : m_alloc(alloc), m_type(type), m_memory(memory), m_hints(hints) {
-    // Mark the entire chunk as free
-    m_freeList.push_back(FreeSlice { 0, memory.memSize });
+  : m_alloc(alloc), m_type(type), m_memory(memory), m_hints(hints),
+    m_pageAllocator(memory.memSize),
+    m_poolAllocator(m_pageAllocator) {
+
   }
   
   
@@ -90,79 +91,35 @@ namespace dxvk {
     // be refined a bit in the future if necessary.
     if (m_memory.memFlags != flags || !checkHints(hints))
       return DxvkMemory();
-    
-    // If the chunk is full, return
-    if (m_freeList.size() == 0)
+
+    size = dxvk::align(size, align);
+
+    int64_t address = size <= DxvkPoolAllocator::MaxSize
+      ? m_poolAllocator.alloc(size)
+      : m_pageAllocator.alloc(size, align);
+
+    if (address < 0)
       return DxvkMemory();
-    
-    // Select the slice to allocate from in a worst-fit
-    // manner. This may help keep fragmentation low.
-    auto bestSlice = m_freeList.begin();
-    
-    for (auto slice = m_freeList.begin(); slice != m_freeList.end(); slice++) {
-      if (slice->length == size) {
-        bestSlice = slice;
-        break;
-      } else if (slice->length > bestSlice->length) {
-        bestSlice = slice;
-      }
-    }
-    
-    // We need to align the allocation to the requested alignment
-    const VkDeviceSize sliceStart = bestSlice->offset;
-    const VkDeviceSize sliceEnd   = bestSlice->offset + bestSlice->length;
-    
-    const VkDeviceSize allocStart = dxvk::align(sliceStart,        align);
-    const VkDeviceSize allocEnd   = dxvk::align(allocStart + size, align);
-    
-    if (allocEnd > sliceEnd)
-      return DxvkMemory();
-    
-    // We can use this slice, but we'll have to add
-    // the unused parts of it back to the free list.
-    m_freeList.erase(bestSlice);
-    
-    if (allocStart != sliceStart)
-      m_freeList.push_back({ sliceStart, allocStart - sliceStart });
-    
-    if (allocEnd != sliceEnd)
-      m_freeList.push_back({ allocEnd, sliceEnd - allocEnd });
-    
+
     // Create the memory object with the aligned slice
     return DxvkMemory(m_alloc, this, m_type,
-      m_memory.buffer, m_memory.memHandle, allocStart, allocEnd - allocStart,
-      reinterpret_cast<char*>(m_memory.memPointer) + allocStart);
+      m_memory.buffer, m_memory.memHandle, address, size,
+      reinterpret_cast<char*>(m_memory.memPointer) + address);
   }
   
   
   void DxvkMemoryChunk::free(
           VkDeviceSize  offset,
           VkDeviceSize  length) {
-    // Remove adjacent entries from the free list and then add
-    // a new slice that covers all those entries. Without doing
-    // so, the slice could not be reused for larger allocations.
-    auto curr = m_freeList.begin();
-    
-    while (curr != m_freeList.end()) {
-      if (curr->offset == offset + length) {
-        length += curr->length;
-        curr = m_freeList.erase(curr);
-      } else if (curr->offset + curr->length == offset) {
-        offset -= curr->length;
-        length += curr->length;
-        curr = m_freeList.erase(curr);
-      } else {
-        curr++;
-      }
-    }
-    
-    m_freeList.push_back({ offset, length });
+    if (length <= DxvkPoolAllocator::MaxSize)
+      m_poolAllocator.free(offset, length);
+    else
+      m_pageAllocator.free(offset, length);
   }
   
   
   bool DxvkMemoryChunk::isEmpty() const {
-    return m_freeList.size() == 1
-        && m_freeList[0].length == m_memory.memSize;
+    return m_pageAllocator.pagesUsed() == 0u;
   }
 
 
