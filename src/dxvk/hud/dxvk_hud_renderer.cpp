@@ -1,21 +1,11 @@
 #include "dxvk_hud_renderer.h"
-#include "vulkan/vulkan_core.h"
-
-#include <hud_graph_frag.h>
-#include <hud_graph_vert.h>
-
-#include <hud_text_frag.h>
-#include <hud_text_vert.h>
 
 namespace dxvk::hud {
   
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
   : m_mode          (Mode::RenderNone),
     m_scale         (1.0f),
-    m_surfaceSize   { 0, 0 },
     m_device        (device),
-    m_textShaders   (createTextShaders()),
-    m_graphShaders  (createGraphShaders()),
     m_dataBuffer    (createDataBuffer()),
     m_dataView      (createDataView()),
     m_dataOffset    (0ull),
@@ -26,29 +16,33 @@ namespace dxvk::hud {
     m_fontSampler   (createFontSampler()) {
 
   }
-  
-  
+
+
   HudRenderer::~HudRenderer() {
-    
+
   }
-  
-  
+
+
   void HudRenderer::beginFrame(
-          const Rc<DxvkContext>& context, 
-          VkExtent2D surfaceSize, 
-          float scale, 
-          float opacity) {
+    const Rc<DxvkContext>&   context,
+    const Rc<DxvkImageView>& dstView,
+          VkColorSpaceKHR    colorSpace,
+                       float scale,
+                       float opacity) {
     if (!m_initialized)
       this->initFontTexture(context);
 
     m_mode        = Mode::RenderNone;
     m_scale       = scale;
     m_opacity     = opacity;
-    m_surfaceSize = surfaceSize;
     m_context     = context;
+    m_dstView     = dstView;
+    m_colorSpace  = colorSpace;
+
+    m_context->beginHudRendering(m_dstView);
   }
-  
-  
+
+
   void HudRenderer::drawText(
           float             size,
           HudPos            pos,
@@ -71,22 +65,22 @@ namespace dxvk::hud {
     if (m_opacity != 1.0f)
       color.a *= m_opacity;
 
-    // Fill in push constants for the next draw
-    HudTextPushConstants pushData;
-    pushData.color = color;
-    pushData.pos = pos;
-    pushData.offset = offset;
-    pushData.size = size;
-    pushData.scale.x = m_scale / std::max(float(m_surfaceSize.width),  1.0f);
-    pushData.scale.y = m_scale / std::max(float(m_surfaceSize.height), 1.0f);
-
-    m_context->pushConstants(0, sizeof(pushData), &pushData);
-
-    // Draw with orignal vertex count
-    m_context->draw(6 * text.size(), 1, 0, 0);
+    m_context->drawText(
+      size,
+      pos,
+      color,
+      text.size(),
+      m_colorSpace,
+      m_scale,
+      offset,
+      m_dstView,
+      m_dataView,
+      m_fontBufferView,
+      m_fontView
+    );
   }
-  
-  
+
+
   void HudRenderer::drawGraph(
           HudPos            pos,
           HudPos            size,
@@ -98,58 +92,45 @@ namespace dxvk::hud {
     VkDeviceSize offset = allocDataBuffer(dataSize);
     std::memcpy(m_dataBuffer->mapPtr(offset), pointData, dataSize);
 
-    HudGraphPushConstants pushData;
-    pushData.offset = offset / sizeof(*pointData);
-    pushData.count = pointCount;
-    pushData.pos = pos;
-    pushData.size = size;
-    pushData.scale.x = m_scale / std::max(float(m_surfaceSize.width),  1.0f);
-    pushData.scale.y = m_scale / std::max(float(m_surfaceSize.height), 1.0f);
-    pushData.opacity = m_opacity;
-
-    m_context->pushConstants(0, sizeof(pushData), &pushData);
-    m_context->draw(4, 1, 0, 0);
+    m_context->drawGraph(
+      pos,
+      size,
+      pointCount,
+      m_colorSpace,
+      m_scale,
+      m_opacity,
+      offset / sizeof(*pointData),
+      m_dstView,
+      m_dataView
+    );
   }
-  
-  
+
+
   void HudRenderer::beginTextRendering() {
-    if (m_mode != Mode::RenderText) {
-      m_mode = Mode::RenderText;
+    if (m_mode == Mode::RenderText)
+      return;
 
-      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_textShaders.vert));
-      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_textShaders.frag));
-      
-      m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 0, Rc<DxvkBufferView>(m_fontBufferView));
-      m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 1, Rc<DxvkBufferView>(m_dataView));
-      m_context->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkSampler>(m_fontSampler));
-      m_context->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkImageView>(m_fontView));
-      
-      static const DxvkInputAssemblyState iaState = {
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        VK_FALSE, 0 };
-      
-      m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
-    }
+    m_mode = Mode::RenderText;
+
+    m_context->startTextRendering(
+      m_dstView, m_colorSpace, m_dataView, m_fontBufferView, m_fontView
+    );
   }
 
-  
+
   void HudRenderer::beginGraphRendering() {
-    if (m_mode != Mode::RenderGraph) {
-      m_mode = Mode::RenderGraph;
+    if (m_mode == Mode::RenderGraph)
+      return;
 
-      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_graphShaders.vert));
-      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_graphShaders.frag));
-      
-      m_context->bindResourceBufferView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, Rc<DxvkBufferView>(m_dataView));
+    m_mode = Mode::RenderGraph;
 
-      static const DxvkInputAssemblyState iaState = {
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-        VK_FALSE, 0 };
+    m_context->startGraphRendering(
+      m_colorSpace, m_dstView, m_dataView
+    );
+  }
 
-      m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
-    }
+  void HudRenderer::endFrame(const Rc<DxvkContext>& ctx) {
+    ctx->endHudRendering();
   }
 
 
@@ -158,156 +139,13 @@ namespace dxvk::hud {
       m_context->invalidateBuffer(m_dataBuffer, m_dataBuffer->allocSlice());
       m_dataOffset = 0;
     }
-    
+
     VkDeviceSize offset = m_dataOffset;
     m_dataOffset = align(offset + size, 64);
     return offset;
   }
-  
-
-  HudRenderer::ShaderPair HudRenderer::createTextShaders() {
-    ShaderPair result;
-
-    SpirvCodeBuffer vsCode(hud_text_vert);
-    SpirvCodeBuffer fsCode(hud_text_frag);
-    
-    const std::array<DxvkBindingInfo, 2> vsBindings = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_VERTEX_BIT, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_VERTEX_BIT, VK_ACCESS_SHADER_READ_BIT },
-    }};
-
-    const std::array<DxvkBindingInfo, 1> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-    }};
-
-    DxvkShaderCreateInfo vsInfo;
-    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vsInfo.bindingCount = vsBindings.size();
-    vsInfo.bindings = vsBindings.data();
-    vsInfo.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT;
-    vsInfo.pushConstSize = sizeof(HudTextPushConstants);
-    vsInfo.outputMask = 0x3;
-    result.vert = new DxvkShader(vsInfo, std::move(vsCode));
-
-    DxvkShaderCreateInfo fsInfo;
-    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.bindingCount = fsBindings.size();
-    fsInfo.bindings = fsBindings.data();
-    fsInfo.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT;
-    fsInfo.pushConstSize = sizeof(HudTextPushConstants);
-    fsInfo.inputMask = 0x3;
-    fsInfo.outputMask = 0x1;
-    result.frag = new DxvkShader(fsInfo, std::move(fsCode));
-
-    return result;
-  }
-  
-  
-  HudRenderer::Pipeline HudRenderer::createGraphPipeline() {
-    SpirvCodeBuffer vsCode(hud_graph_vert);
-    SpirvCodeBuffer fsCode(hud_graph_frag);
-
-    const auto& vkd = m_device->vkd();
-    VkResult result;
-
-    VkShaderModule vs;
-    VkShaderModuleCreateInfo shaderModuleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    shaderModuleInfo.pCode    = vsCode.data();
-    shaderModuleInfo.codeSize = vsCode.size();
-    result = vkd->vkCreateShaderModule(vkd->device(), &shaderModuleInfo, nullptr, &vs);
-    VkShaderModule fs;
-    shaderModuleInfo.pCode    = fsCode.data();
-    shaderModuleInfo.codeSize = fsCode.size();
-    result = vkd->vkCreateShaderModule(vkd->device(), &shaderModuleInfo, nullptr, &fs);
-
-    std::array<VkPipelineShaderStageCreateInfo, 2> stages;
-    stages[0] = VkPipelineShaderStageCreateInfo {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-      VK_SHADER_STAGE_VERTEX_BIT, vs, "main" };
-    stages[1] = VkPipelineShaderStageCreateInfo {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-      VK_SHADER_STAGE_FRAGMENT_BIT, fs, "main" };
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
-    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    iaState.primitiveRestartEnable  = VK_FALSE;
-
-    uint32_t msMask = 0xFFFFFFFF;
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &msMask;
-
-    VkPipelineColorBlendAttachmentState cbAttachment = { };
-    cbAttachment.colorWriteMask =
-      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbState.attachmentCount     = 1;
-    cbState.pAttachments        = &cbAttachment;
-
-    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtState.colorAttachmentCount = 1;
-    rtState.pColorAttachmentFormats = &viewFormat;
-
-    std::array<VkDynamicState, 2> dynStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    }};
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO };
-    pipelineInfo.stageCount          = stages.size();
-    pipelineInfo.pStages             = stages.data();
-    pipelineInfo.pVertexInputState   = &viState;
-    pipelineInfo.pInputAssemblyState = &iaState;
-    pipelineInfo.pMultisampleState   = &msState;
-    pipelineInfo.pDynamicState       = &dynState;
 
 
-
-
-    vkd->vkDestroyShaderModule(vkd->device(), vs, nullptr);
-    vkd->vkDestroyShaderModule(vkd->device(), fs, nullptr);
-
-
-
-
-
-
-
-
-    ShaderPair result;
-    const std::array<DxvkBindingInfo, 1> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-    }};
-
-    DxvkShaderCreateInfo vsInfo;
-    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vsInfo.outputMask = 0x1;
-    vsInfo.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    vsInfo.pushConstSize = sizeof(HudGraphPushConstants);
-    result.vert = new DxvkShader(vsInfo, std::move(vsCode));
-    
-    DxvkShaderCreateInfo fsInfo;
-    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.bindingCount = fsBindings.size();
-    fsInfo.bindings = fsBindings.data();
-    fsInfo.inputMask = 0x1;
-    fsInfo.outputMask = 0x1;
-    fsInfo.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.pushConstSize = sizeof(HudGraphPushConstants);
-    result.frag = new DxvkShader(fsInfo, std::move(fsCode));
-    
-    return result;
-  }
-  
-  
   Rc<DxvkBuffer> HudRenderer::createDataBuffer() {
     DxvkBufferCreateInfo info;
     info.size           = DataBufferSize;
@@ -316,7 +154,7 @@ namespace dxvk::hud {
     info.stages         = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
                         | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     info.access         = VK_ACCESS_SHADER_READ_BIT;
-    
+
     return m_device->createBuffer(info,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -343,7 +181,7 @@ namespace dxvk::hud {
                         | VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access         = VK_ACCESS_SHADER_READ_BIT
                         | VK_ACCESS_TRANSFER_WRITE_BIT;
-    
+
     return m_device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
@@ -375,11 +213,11 @@ namespace dxvk::hud {
                         | VK_ACCESS_SHADER_READ_BIT;
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    
+
     return m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
-  
-  
+
+
   Rc<DxvkImageView> HudRenderer::createFontView() {
     DxvkImageViewCreateInfo info;
     info.type           = VK_IMAGE_VIEW_TYPE_2D;
@@ -390,11 +228,11 @@ namespace dxvk::hud {
     info.numLevels      = 1;
     info.minLayer       = 0;
     info.numLayers      = 1;
-    
+
     return m_device->createImageView(m_fontImage, info);
   }
-  
-  
+
+
   Rc<DxvkSampler> HudRenderer::createFontSampler() {
     DxvkSamplerCreateInfo info;
     info.magFilter      = VK_FILTER_LINEAR;
@@ -414,11 +252,11 @@ namespace dxvk::hud {
     info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_TRUE;
     info.nonSeamless    = VK_FALSE;
-    
+
     return m_device->createSampler(info);
   }
-  
-  
+
+
   void HudRenderer::initFontTexture(
     const Rc<DxvkContext>& context) {
     HudFontGpuData gpuData = { };
@@ -442,8 +280,8 @@ namespace dxvk::hud {
     context->uploadImage(m_fontImage,
       VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
       g_hudFont.texture, g_hudFont.width, g_hudFont.width * g_hudFont.height);
-    
+
     m_initialized = true;
   }
-  
+
 }

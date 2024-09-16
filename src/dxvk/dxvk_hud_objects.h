@@ -114,7 +114,9 @@ namespace dxvk {
         VkFormat              viewFormat,
         VkColorSpaceKHR       colorSpace);
 
-    VkSampler getFontSampler();
+    VkSampler getFontSampler() const {
+      return m_fontSampler;
+    }
 
   private:
 

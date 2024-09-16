@@ -45,9 +45,9 @@ namespace dxvk::hud {
      * \param [in] surfaceSize Image size, in pixels
      */
     void render(
-      const Rc<DxvkContext>&  ctx,
-            VkSurfaceFormatKHR surfaceFormat,
-            VkExtent2D        surfaceSize);
+      const Rc<DxvkContext>&   ctx,
+            VkColorSpaceKHR    colorSpace,
+      const Rc<DxvkImageView>& dstView);
 
     /**
      * \brief Adds a HUD item if enabled
@@ -85,11 +85,6 @@ namespace dxvk::hud {
 
     float                 m_scale;
     float                 m_opacity;
-
-    void setupRendererState(
-      const Rc<DxvkContext>&  ctx,
-            VkSurfaceFormatKHR surfaceFormat,
-            VkExtent2D        surfaceSize);
 
     void renderHudElements(
       const Rc<DxvkContext>&  ctx);

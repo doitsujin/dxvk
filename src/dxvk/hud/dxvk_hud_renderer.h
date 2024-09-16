@@ -6,30 +6,6 @@
 #include "vulkan/vulkan_core.h"
 
 namespace dxvk::hud {
-  
-  /**
-   * \brief HUD coordinates
-   * 
-   * Coordinates relative to the top-left
-   * corner of the swap image, in pixels.
-   */
-  struct HudPos {
-    float x;
-    float y;
-  };
-  
-  /**
-   * \brief Color
-   * 
-   * SRGB color with alpha channel. The text
-   * will use this color for the most part.
-   */
-  struct HudColor {
-    float r;
-    float g;
-    float b;
-    float a;
-  };
 
   /**
    * \brief Normalized color
@@ -106,10 +82,11 @@ namespace dxvk::hud {
     ~HudRenderer();
     
     void beginFrame(
-      const Rc<DxvkContext>&  context,
-            VkExtent2D        surfaceSize,
-            float             scale,
-            float             opacity);
+      const Rc<DxvkContext>&   context,
+      const Rc<DxvkImageView>& dstView,
+            VkColorSpaceKHR    colorSpace,
+            float              scale,
+            float              opacity);
     
     void drawText(
             float             size,
@@ -122,9 +99,13 @@ namespace dxvk::hud {
             HudPos            size,
             size_t            pointCount,
       const HudGraphPoint*    pointData);
-    
+
+
+    void endFrame(
+      const Rc<DxvkContext>&   context);
+
     VkExtent2D surfaceSize() const {
-      return m_surfaceSize;
+      return VkExtent2D { m_dstView->imageInfo().extent.width, m_dstView->imageInfo().extent.height };
     }
 
     float scale() const {
@@ -153,7 +134,8 @@ namespace dxvk::hud {
     Mode                m_mode;
     float               m_scale;
     float               m_opacity;
-    VkExtent2D          m_surfaceSize;
+    Rc<DxvkImageView>   m_dstView;
+    VkColorSpaceKHR     m_colorSpace;
 
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;

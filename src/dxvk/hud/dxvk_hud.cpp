@@ -69,45 +69,19 @@ namespace dxvk::hud {
   
   void Hud::render(
     const Rc<DxvkContext>&  ctx,
-          VkSurfaceFormatKHR surfaceFormat,
-          VkExtent2D        surfaceSize) {
-    this->setupRendererState(ctx, surfaceFormat, surfaceSize);
-    this->renderHudElements(ctx);
-  }
-  
-  
-  Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
-    return new Hud(device);
-  }
-
-
-  void Hud::setupRendererState(
-    const Rc<DxvkContext>&  ctx,
-          VkSurfaceFormatKHR surfaceFormat,
-          VkExtent2D        surfaceSize) {
-    VkColorSpaceKHR colorSpace = surfaceFormat.colorSpace;
-
-    if (lookupFormatInfo(surfaceFormat.format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb))
+          VkColorSpaceKHR colorSpace,
+    const Rc<DxvkImageView>& dstView) {
+    if (lookupFormatInfo(dstView->info().format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb))
       colorSpace = VK_COLOR_SPACE_PASS_THROUGH_EXT;
 
-    VkViewport viewport;
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = float(surfaceSize.width);
-    viewport.height = float(surfaceSize.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    m_renderer.beginFrame(ctx, dstView, colorSpace, m_scale, m_opacity);
+    renderHudElements(ctx);
+    m_renderer.endFrame(ctx);
+  }
 
-    VkRect2D scissor;
-    scissor.offset = { 0, 0 };
-    scissor.extent = surfaceSize;
 
-    ctx->setViewports(1, &viewport, &scissor);
-    ctx->setRasterizerState(m_rsState);
-    ctx->setBlendMode(0, m_blendMode);
-
-    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, colorSpace);
-    m_renderer.beginFrame(ctx, surfaceSize, m_scale, m_opacity);
+  Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
+    return new Hud(device);
   }
 
 

@@ -830,7 +830,7 @@ namespace dxvk {
         swapImageView, srcRect);
 
       if (m_hud != nullptr)
-        m_hud->render(m_context, info.format, info.imageExtent);
+        m_hud->render(m_context, info.format.colorSpace, swapImageView);
 
       SubmitPresent(sync, i);
     }
