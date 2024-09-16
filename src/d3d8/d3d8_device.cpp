@@ -44,7 +44,8 @@ namespace dxvk {
     , m_presentParams(*pParams)
     , m_deviceType(DeviceType)
     , m_window(hFocusWindow)
-    , m_behaviorFlags(BehaviorFlags) {
+    , m_behaviorFlags(BehaviorFlags)
+    , m_multithread(BehaviorFlags & D3DCREATE_MULTITHREADED) {
     // Get the bridge interface to D3D9.
     if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), (void**)&m_bridge))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
@@ -226,6 +227,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+    D3D8DeviceLock lock = LockDevice();
+
     StateChange();
 
     if (unlikely(pPresentationParameters == nullptr))
@@ -248,6 +251,8 @@ namespace dxvk {
     const RECT* pDestRect,
           HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion) {
+    D3D8DeviceLock lock = LockDevice();
+
     m_batcher->EndFrame();
     StateChange();
     return GetD3D9()->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
@@ -257,6 +262,8 @@ namespace dxvk {
           UINT iBackBuffer,
           D3DBACKBUFFER_TYPE Type,
           IDirect3DSurface8** ppBackBuffer) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppBackBuffer);
 
     if (unlikely(ppBackBuffer == nullptr))
@@ -620,6 +627,8 @@ namespace dxvk {
           UINT                cRects,
           IDirect3DSurface8*  pDestinationSurface,
     const POINT*              pDestPointsArray) {
+    D3D8DeviceLock lock = LockDevice();
+
     // The source and destination surfaces can not be identical.
     if (unlikely(pSourceSurface == nullptr ||
                  pDestinationSurface == nullptr ||
@@ -879,6 +888,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetRenderTarget(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil) {
+    D3D8DeviceLock lock = LockDevice();
+
     HRESULT res;
 
     if (pRenderTarget != nullptr) {
@@ -910,6 +921,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetRenderTarget(IDirect3DSurface8** ppRenderTarget) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppRenderTarget);
 
     if (unlikely(ppRenderTarget == nullptr))
@@ -932,6 +945,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetDepthStencilSurface(IDirect3DSurface8** ppZStencilSurface) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppZStencilSurface);
 
     if (unlikely(ppZStencilSurface == nullptr))
@@ -983,6 +998,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetViewport(const D3DVIEWPORT8* pViewport) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (likely(pViewport != nullptr)) {
       // we need a valid render target to validate the viewport
       if (unlikely(m_renderTarget == nullptr))
@@ -1004,6 +1021,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetViewport(D3DVIEWPORT8* pViewport) {
+    D3D8DeviceLock lock = LockDevice();
     return GetD3D9()->GetViewport(reinterpret_cast<d3d9::D3DVIEWPORT9*>(pViewport));
   }
 
@@ -1046,6 +1064,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateStateBlock(
           D3DSTATEBLOCKTYPE     Type,
           DWORD*                pToken) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pToken == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1064,6 +1084,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::CaptureStateBlock(DWORD Token) {
+    D3D8DeviceLock lock = LockDevice();
+
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
@@ -1075,6 +1097,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::ApplyStateBlock(DWORD Token) {
+    D3D8DeviceLock lock = LockDevice();
+
     StateChange();
 
     auto stateBlockIter = m_stateBlocks.find(Token);
@@ -1088,6 +1112,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteStateBlock(DWORD Token) {
+    D3D8DeviceLock lock = LockDevice();
+
     // "Applications cannot delete a device-state block while another is being recorded"
     if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
@@ -1111,6 +1137,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::BeginStateBlock() {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(m_recorder != nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1129,6 +1157,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::EndStateBlock(DWORD* pToken) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pToken == nullptr || m_recorder == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1157,6 +1187,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetTexture(DWORD Stage, IDirect3DBaseTexture8** ppTexture) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppTexture);
 
     if (unlikely(ppTexture == nullptr))
@@ -1168,6 +1200,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(Stage >= d8caps::MAX_TEXTURE_STAGES))
       return D3DERR_INVALIDCALL;
 
@@ -1244,6 +1278,8 @@ namespace dxvk {
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             StartVertex,
           UINT             PrimitiveCount) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (ShouldBatch())
       return m_batcher->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
     return GetD3D9()->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
@@ -1255,6 +1291,8 @@ namespace dxvk {
           UINT             NumVertices,
           UINT             StartIndex,
           UINT             PrimitiveCount) {
+    D3D8DeviceLock lock = LockDevice();
+
     return GetD3D9()->DrawIndexedPrimitive(
       d3d9::D3DPRIMITIVETYPE(PrimitiveType),
       static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(INT_MAX))), // set by SetIndices
@@ -1269,6 +1307,8 @@ namespace dxvk {
           UINT             PrimitiveCount,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
+    D3D8DeviceLock lock = LockDevice();
+
     StateChange();
 
     // Stream 0 is set to null by this call
@@ -1286,6 +1326,8 @@ namespace dxvk {
           D3DFORMAT        IndexDataFormat,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
+    D3D8DeviceLock lock = LockDevice();
+
     StateChange();
 
     // Stream 0 and the index buffer are set to null by this call
@@ -1338,6 +1380,8 @@ namespace dxvk {
           UINT                    StreamNumber,
           IDirect3DVertexBuffer8* pStreamData,
           UINT                    Stride) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
       return D3DERR_INVALIDCALL;
 
@@ -1358,6 +1402,8 @@ namespace dxvk {
           UINT                     StreamNumber,
           IDirect3DVertexBuffer8** ppStreamData,
           UINT*                    pStride) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppStreamData);
 
     if (likely(pStride != nullptr))
@@ -1378,6 +1424,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
@@ -1403,6 +1451,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::GetIndices(
           IDirect3DIndexBuffer8** ppIndexData,
           UINT* pBaseVertexIndex) {
+    D3D8DeviceLock lock = LockDevice();
+
     InitReturnPtr(ppIndexData);
 
     if (unlikely(ppIndexData == nullptr || pBaseVertexIndex == nullptr))
@@ -1452,6 +1502,8 @@ namespace dxvk {
   static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
+    D3D8DeviceLock lock = LockDevice();
+
     d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
     bool stateChange = true;
 
@@ -1501,8 +1553,10 @@ namespace dxvk {
 
     if (stateChange) {
       DWORD value;
-      GetRenderState(State, &value);
-      if (value != Value)
+      // Value at this point is converted for use with D3D9,
+      // so we need to compare it against D3D9 directly
+      HRESULT res = GetD3D9()->GetRenderState(State9, &value);
+      if (likely(SUCCEEDED(res)) && value != Value)
         StateChange();
     }
 
@@ -1511,6 +1565,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1559,6 +1615,8 @@ namespace dxvk {
         const DWORD* pFunction,
               DWORD* pHandle,
               DWORD Usage ) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pDeclaration == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1596,7 +1654,7 @@ namespace dxvk {
   }
 
   inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8Device* device, DWORD Handle) {
-    
+
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
@@ -1615,6 +1673,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetVertexShader(DWORD Handle) {
+    D3D8DeviceLock lock = LockDevice();
+
     HRESULT res;
 
     if (unlikely(ShouldRecord())) {
@@ -1660,6 +1720,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShader(DWORD* pHandle) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1692,6 +1754,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteVertexShader(DWORD Handle) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (!isFVF(Handle)) {
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
@@ -1711,6 +1775,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData) {
+    D3D8DeviceLock lock = LockDevice();
+
     D3D8VertexShaderInfo* pInfo = getVertexShaderInfo(this, Handle);
 
     if (unlikely(!pInfo))
@@ -1737,6 +1803,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) {
+    D3D8DeviceLock lock = LockDevice();
+
     D3D8VertexShaderInfo* pInfo = getVertexShaderInfo(this, Handle);
 
     if (unlikely(!pInfo))
@@ -1768,6 +1836,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CreatePixelShader(
         const DWORD* pFunction,
               DWORD* pHandle) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1785,6 +1855,7 @@ namespace dxvk {
   }
 
   inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle) {
+    
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
@@ -1803,6 +1874,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetPixelShader(DWORD Handle) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(ShouldRecord())) {
       return m_recorder->SetPixelShader(Handle);
     }
@@ -1831,6 +1904,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShader(DWORD* pHandle) {
+    D3D8DeviceLock lock = LockDevice();
+
     if (unlikely(pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1841,6 +1916,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DeletePixelShader(DWORD Handle) {
+    D3D8DeviceLock lock = LockDevice();
+
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader)) {
@@ -1853,6 +1930,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) {
+    D3D8DeviceLock lock = LockDevice();
+
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader))

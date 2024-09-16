@@ -117,6 +117,8 @@ namespace d3d9 {
 #include "../util/log/log.h"
 #include "../util/log/log_debug.h"
 
+#include "../util/sync/sync_recursive.h"
+
 #include "../util/util_error.h"
 #include "../util/util_likely.h"
 #include "../util/util_string.h"

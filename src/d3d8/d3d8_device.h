@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d8_include.h"
+#include "d3d8_multithread.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
 #include "d3d8_swapchain.h"
@@ -360,6 +361,10 @@ namespace dxvk {
     inline bool ShouldRecord() { return m_recorder != nullptr; }
     inline bool ShouldBatch()  { return m_batcher  != nullptr; }
 
+    D3D8DeviceLock LockDevice() {
+      return m_multithread.AcquireLock();
+    }
+
     /**
      * Marks any state change in the device, so we can signal
      * the batcher to emit draw calls. StateChange should be
@@ -450,6 +455,8 @@ namespace dxvk {
     HWND                  m_window;
 
     DWORD                 m_behaviorFlags;
+
+    D3D8Multithread       m_multithread;
 
   };
 
