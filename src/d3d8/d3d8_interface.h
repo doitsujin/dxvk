@@ -161,7 +161,7 @@ namespace dxvk {
     std::vector<UINT>                               m_adapterModeCounts;
     std::vector<std::vector<d3d9::D3DDISPLAYMODE>>  m_adapterModes;
 
-    d3d9::IDirect3D9*                               m_d3d9;
+    Com<d3d9::IDirect3D9>                           m_d3d9;
     Com<IDxvkD3D8InterfaceBridge>                   m_bridge;
     D3D8Options                                     m_d3d8Options;
   };
