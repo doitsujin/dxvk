@@ -964,6 +964,10 @@ namespace dxvk {
     { R"(\\APB\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Battle Mages - helps CPU bound perf         */
+    { R"(\\Battle Mages\\mages\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
