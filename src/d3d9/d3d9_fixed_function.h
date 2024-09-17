@@ -9,7 +9,6 @@
 #include "../dxso/dxso_isgn.h"
 
 #include <unordered_map>
-#include <bitset>
 
 namespace dxvk {
 
@@ -252,6 +251,14 @@ namespace dxvk {
     D3D9FFShader GetShaderModule(
             D3D9DeviceEx*         pDevice,
       const D3D9FFShaderKeyFS&    ShaderKey);
+
+    UINT GetVSCount() const {
+      return m_vsModules.size();
+    }
+
+    UINT GetFSCount() const {
+      return m_fsModules.size();
+    }
 
   private:
 

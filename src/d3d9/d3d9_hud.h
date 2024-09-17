@@ -60,4 +60,29 @@ namespace dxvk::hud {
 
     };
 
+    /**
+     * \brief HUD item to display amount of generated fixed function shaders
+     */
+    class HudFixedFunctionShaders : public HudItem {
+    public:
+
+        HudFixedFunctionShaders(D3D9DeviceEx* device);
+
+        void update(dxvk::high_resolution_clock::time_point time);
+
+        HudPos render(
+                HudRenderer&      renderer,
+                HudPos            position);
+
+    private:
+
+        D3D9DeviceEx* m_device;
+
+        dxvk::high_resolution_clock::time_point m_lastUpdate
+          = dxvk::high_resolution_clock::now();
+
+        std::string m_ffShaderCount;
+
+    };
+
 }

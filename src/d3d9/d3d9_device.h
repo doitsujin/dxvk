@@ -1022,6 +1022,18 @@ namespace dxvk {
       return m_behaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING;
     }
 
+    UINT GetFixedFunctionVSCount() const {
+      return m_ffModules.GetVSCount();
+    }
+
+    UINT GetFixedFunctionFSCount() const {
+      return m_ffModules.GetFSCount();
+    }
+
+    UINT GetSWVPShaderCount() const {
+      return m_swvpEmulator.GetShaderCount();
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
