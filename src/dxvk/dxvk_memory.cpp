@@ -173,10 +173,8 @@ namespace dxvk {
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
   : m_device          (device),
     m_memProps        (device->adapter()->memoryProperties()) {
-    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++)
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
-      m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
-    }
     
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
       m_memTypes[i].heap       = &m_memHeaps[m_memProps.memoryTypes[i].heapIndex];
@@ -295,7 +293,7 @@ namespace dxvk {
     bool wantsDedicatedAllocation = DedicatedAllocationThreshold * size > chunkSize;
 
     // Try to reuse existing memory as much as possible in case the heap is nearly full
-    bool heapBudgedExceeded = 5 * type->heap->stats.memoryUsed + size > 4 * type->heap->properties.size;
+    bool heapBudgedExceeded = 5 * type->stats.memoryUsed + size > 4 * type->heap->properties.size;
 
     if (!needsDedicatedAlocation && (!wantsDedicatedAllocation || heapBudgedExceeded)) {
       // Attempt to suballocate from existing chunks first
@@ -307,7 +305,7 @@ namespace dxvk {
       if (!memory && !wantsDedicatedAllocation) {
         DxvkDeviceMemory devMem;
 
-        if (this->shouldFreeEmptyChunks(type->heap, chunkSize))
+        if (this->shouldFreeEmptyChunks(type->heapId, chunkSize))
           this->freeEmptyChunks(type->heap);
 
         for (uint32_t i = 0; i < 6 && (chunkSize >> i) >= size && !devMem.memHandle; i++)
@@ -327,7 +325,7 @@ namespace dxvk {
     // If a dedicated allocation is required or preferred and we haven't managed
     // to suballocate any memory before, try to create a dedicated allocation
     if (!memory && (needsDedicatedAlocation || wantsDedicatedAllocation)) {
-      if (this->shouldFreeEmptyChunks(type->heap, size))
+      if (this->shouldFreeEmptyChunks(type->heapId, size))
         this->freeEmptyChunks(type->heap);
 
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, info, false);
@@ -339,7 +337,7 @@ namespace dxvk {
     }
 
     if (memory) {
-      type->heap->stats.memoryUsed += memory.m_length;
+      type->stats.memoryUsed += memory.m_length;
       m_device->notifyMemoryUse(type->heapId, memory.m_length);
     }
 
@@ -440,7 +438,7 @@ namespace dxvk {
       }
     }
 
-    type->heap->stats.memoryAllocated += size;
+    type->stats.memoryAllocated += size;
     m_device->notifyMemoryAlloc(type->heapId, size);
     return result;
   }
@@ -449,7 +447,7 @@ namespace dxvk {
   void DxvkMemoryAllocator::free(
     const DxvkMemory&           memory) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
-    memory.m_type->heap->stats.memoryUsed -= memory.m_length;
+    memory.m_type->stats.memoryUsed -= memory.m_length;
 
     if (memory.m_chunk != nullptr) {
       this->freeChunkMemory(
@@ -498,7 +496,7 @@ namespace dxvk {
     vk->vkDestroyBuffer(vk->device(), memory.buffer, nullptr);
     vk->vkFreeMemory(vk->device(), memory.memHandle, nullptr);
 
-    type->heap->stats.memoryAllocated -= memory.memSize;
+    type->stats.memoryAllocated -= memory.memSize;
     m_device->notifyMemoryAlloc(type->heapId, memory.memSize);
   }
 
@@ -533,7 +531,7 @@ namespace dxvk {
 
     // Don't bump chunk size if we reached the maximum or if
     // we already were unable to allocate a full chunk.
-    if (chunkSize <= allocatedSize && chunkSize <= m_memTypes[memTypeId].heap->stats.memoryAllocated)
+    if (chunkSize <= allocatedSize && chunkSize <= m_memTypes[memTypeId].stats.memoryAllocated)
       m_memTypes[memTypeId].chunkSize = pickChunkSize(memTypeId, chunkSize * 2);
   }
 
@@ -542,7 +540,7 @@ namespace dxvk {
     const DxvkMemoryType*       type,
     const Rc<DxvkMemoryChunk>&  chunk) const {
     // Under memory pressure, we should start freeing everything.
-    if (this->shouldFreeEmptyChunks(type->heap, 0))
+    if (this->shouldFreeEmptyChunks(type->heapId, 0))
       return true;
 
     // Free chunks that are below the current chunk size since it probably
@@ -571,10 +569,12 @@ namespace dxvk {
 
 
   bool DxvkMemoryAllocator::shouldFreeEmptyChunks(
-    const DxvkMemoryHeap*       heap,
+          uint32_t              heapIndex,
           VkDeviceSize          allocationSize) const {
-    VkDeviceSize budget = (heap->properties.size * 4) / 5;
-    return heap->stats.memoryAllocated + allocationSize > budget;
+    VkDeviceSize budget = (m_memHeaps[heapIndex].properties.size * 4) / 5;
+
+    DxvkMemoryStats stats = getMemoryStats(heapIndex);
+    return stats.memoryAllocated + allocationSize > budget;
   }
 
 
@@ -720,6 +720,20 @@ namespace dxvk {
   }
 
 
+  DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats(uint32_t heap) const {
+    DxvkMemoryStats result = { };
+
+    for (size_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+      if (m_memTypes[i].heapId == heap) {
+        result.memoryAllocated += m_memTypes[i].stats.memoryAllocated;
+        result.memoryUsed += m_memTypes[i].stats.memoryUsed;
+      }
+    }
+
+    return result;
+  }
+
+
   bool DxvkMemoryAllocator::getBufferMemoryRequirements(
     const VkBufferCreateInfo&     createInfo,
           VkMemoryRequirements2&  memoryRequirements) const {
@@ -800,10 +814,12 @@ namespace dxvk {
     sstr << "Heap  Size (MiB)  Allocated   Used        Reserved    Budget" << std::endl;
 
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+      DxvkMemoryStats stats = getMemoryStats(i);
+
       sstr << std::setw(2) << i << ":   "
            << std::setw(6) << (m_memHeaps[i].properties.size >> 20) << "      "
-           << std::setw(6) << (m_memHeaps[i].stats.memoryAllocated >> 20) << "      "
-           << std::setw(6) << (m_memHeaps[i].stats.memoryUsed >> 20) << "      ";
+           << std::setw(6) << (stats.memoryAllocated >> 20) << "      "
+           << std::setw(6) << (stats.memoryUsed >> 20) << "      ";
 
       if (m_device->features().extMemoryBudget) {
         sstr << std::setw(6) << (memHeapInfo.heaps[i].memoryAllocated >> 20) << "      "
