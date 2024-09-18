@@ -64,8 +64,7 @@ namespace dxvk {
    * its properties as well as allocation statistics.
    */
   struct DxvkMemoryHeap {
-    VkMemoryHeap      properties;
-    DxvkMemoryStats   stats;
+    VkMemoryHeap      properties    = { };
   };
 
 
@@ -77,14 +76,16 @@ namespace dxvk {
    * this memory type.
    */
   struct DxvkMemoryType {
-    DxvkMemoryHeap*   heap;
-    uint32_t          heapId;
+    DxvkMemoryHeap*   heap          = nullptr;
+    uint32_t          heapId        = 0u;
 
-    VkMemoryType      memType;
-    uint32_t          memTypeId;
+    VkMemoryType      memType       = { };
+    uint32_t          memTypeId     = 0u;
 
-    VkDeviceSize      chunkSize;
-    VkBufferUsageFlags bufferUsage;
+    DxvkMemoryStats   stats         = { };
+
+    VkDeviceSize      chunkSize     = 0u;
+    VkBufferUsageFlags bufferUsage  = 0u;
 
     std::vector<Rc<DxvkMemoryChunk>> chunks;
   };
@@ -346,9 +347,7 @@ namespace dxvk {
      * \param [in] heap Heap index
      * \returns Memory stats for this heap
      */
-    DxvkMemoryStats getMemoryStats(uint32_t heap) const {
-      return m_memHeaps[heap].stats;
-    }
+    DxvkMemoryStats getMemoryStats(uint32_t heap) const;
     
     /**
      * \brief Queries buffer memory requirements
@@ -427,7 +426,7 @@ namespace dxvk {
       const Rc<DxvkMemoryChunk>&  chunk) const;
 
     bool shouldFreeEmptyChunks(
-      const DxvkMemoryHeap*       heap,
+            uint32_t              heapIndex,
             VkDeviceSize          allocationSize) const;
 
     void freeEmptyChunks(
