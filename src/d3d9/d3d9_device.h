@@ -774,7 +774,7 @@ namespace dxvk {
      * @param FirstIndex The first index
      * @param NumIndices The number of indices that will be drawn. If this is 0, the index buffer binding will not be modified.
      */
-    void UploadDynamicSysmemBuffers(
+    void UploadPerDrawData(
             UINT&                   FirstVertexIndex,
             UINT                    NumVertices,
             UINT&                   FirstIndex,
@@ -782,7 +782,7 @@ namespace dxvk {
             INT&                    BaseVertexIndex,
             bool*                   pDynamicVBOs,
             bool*                   pDynamicIBO);
-    
+
 
     void SetupFPU();
 
@@ -1022,6 +1022,10 @@ namespace dxvk {
       return m_behaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING;
     }
 
+    bool CanSWVP() const {
+      return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    }
+
     UINT GetFixedFunctionVSCount() const {
       return m_ffModules.GetVSCount();
     }
@@ -1061,10 +1065,6 @@ namespace dxvk {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
       }
-    }
-
-    bool CanSWVP() const {
-      return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
 
     // Device Reset detection for D3D9SwapChainEx::Present

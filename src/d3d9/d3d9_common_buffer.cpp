@@ -74,14 +74,6 @@ namespace dxvk {
     if (!(m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
-    // Tests show that DISCARD does not work for pure SWVP devices.
-    // So force staging buffer path to avoid stalls.
-    // Dark Romance: Vampire in Love also expects draws to be synchronous
-    // and breaks if we respect NOOVERWRITE.
-    // D&D Temple of Elemental Evil breaks if we respect DISCARD. 
-    if (m_parent->CanOnlySWVP())
-      return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-
     if (!options->allowDirectBufferMapping)
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
@@ -134,7 +126,8 @@ namespace dxvk {
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
-    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && m_parent->GetOptions()->cachedDynamicBuffers) {
+    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && (m_parent->GetOptions()->cachedDynamicBuffers || m_parent->CanOnlySWVP())) {
+      // Never use uncached memory on devices that support SWVP because we might end up reading from it.
       memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
