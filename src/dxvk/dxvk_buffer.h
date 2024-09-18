@@ -130,6 +130,13 @@ namespace dxvk {
    */
   class DxvkBuffer : public DxvkPagedResource {
     friend class DxvkBufferView;
+
+    constexpr static VkDeviceSize MaxAllocationSize = DxvkPageAllocator::PageSize;
+    constexpr static VkDeviceSize MinAllocationSize = DxvkPoolAllocator::MinSize;
+
+    constexpr static VkDeviceSize MinAllocationSizeLimit = MaxAllocationSize / 32u;
+
+    constexpr static uint32_t MaxSlicesPerAllocation = 64u;
   public:
     
     DxvkBuffer(
@@ -280,15 +287,17 @@ namespace dxvk {
       // backing buffer and add all slices to the free list.
       if (unlikely(m_freeSlices.empty())) {
         if (likely(!m_lazyAlloc)) {
-          DxvkBufferHandle handle = allocBuffer(m_physSliceCount, true);
+          DxvkBufferHandle handle = allocBuffer(m_allocationSize, true);
 
-          for (uint32_t i = 0; i < m_physSliceCount; i++)
+          for (uint32_t i = 0; (i + 1) * m_physSliceStride <= m_allocationSize; i++)
             pushSlice(handle, i);
 
           m_buffers.push_back(std::move(handle));
-          m_physSliceCount = std::min(m_physSliceCount * 2, m_physSliceMaxCount);
+
+          if (2u * m_allocationSize <= m_maxAllocationSize)
+            m_allocationSize *= 2u;
         } else {
-          for (uint32_t i = 1; i < m_physSliceCount; i++)
+          for (uint32_t i = 1; (i + 1) * m_physSliceStride <= m_allocationSize; i++)
             pushSlice(m_buffer, i);
 
           m_lazyAlloc = false;
@@ -342,8 +351,9 @@ namespace dxvk {
     uint32_t                m_lazyAlloc = false;
     VkDeviceSize            m_physSliceLength   = 0;
     VkDeviceSize            m_physSliceStride   = 0;
-    VkDeviceSize            m_physSliceCount    = 1;
-    VkDeviceSize            m_physSliceMaxCount = 1;
+
+    VkDeviceSize            m_allocationSize    = 0;
+    VkDeviceSize            m_maxAllocationSize = 0;
 
     std::vector<DxvkBufferHandle>       m_buffers;
     std::vector<DxvkBufferSliceHandle>  m_freeSlices;
@@ -362,7 +372,7 @@ namespace dxvk {
     }
 
     DxvkBufferHandle allocBuffer(
-            VkDeviceSize          sliceCount,
+            VkDeviceSize          allocationSize,
             bool                  clear) const;
 
     DxvkBufferHandle createSparseBuffer() const;
