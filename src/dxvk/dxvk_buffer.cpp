@@ -126,24 +126,7 @@ namespace dxvk {
       memoryProperties.dedicated.buffer = handle.buffer;
     }
 
-    // Use high memory priority for GPU-writable resources
-    bool isGpuWritable = (m_info.access & (
-      VK_ACCESS_SHADER_WRITE_BIT |
-      VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT)) != 0;
-
-    DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
-
-    if (isGpuWritable)
-      hints.set(DxvkMemoryFlag::GpuWritable);
-
-    // Staging buffers that can't even be used as a transfer destinations
-    // are likely short-lived, so we should put them on a separate memory
-    // pool in order to avoid fragmentation
-    if ((DxvkBarrierSet::getAccessTypes(m_info.access) == DxvkAccess::Read)
-     && (m_info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
-      hints.set(DxvkMemoryFlag::Transient);
-
-    handle.memory = m_memAlloc->alloc(memoryRequirements, memoryProperties, hints);
+    handle.memory = m_memAlloc->alloc(memoryRequirements, memoryProperties);
 
     if (!handle.buffer && (!handle.memory.buffer() || (handle.memory.getBufferUsage() & info.usage) != info.usage))
       handle.buffer = createBuffer(info);

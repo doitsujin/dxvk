@@ -97,20 +97,7 @@ namespace dxvk {
         memoryProperties.dedicated.image = m_image.image;
       }
 
-      // Use high memory priority for GPU-writable resources
-      bool isGpuWritable = (m_info.access & (
-        VK_ACCESS_SHADER_WRITE_BIT                  |
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT         |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT        |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)) != 0;
-
-      DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
-
-      if (isGpuWritable)
-        hints.set(DxvkMemoryFlag::GpuWritable);
-
-      m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties, hints);
+      m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties);
 
       // Try to bind the allocated memory slice to the image
       if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,
@@ -140,8 +127,7 @@ namespace dxvk {
         core.size      = SparseMemoryPageSize * properties.metadataPageCount;
         core.alignment = SparseMemoryPageSize;
 
-        m_image.memory = memAlloc.alloc(memoryRequirements,
-          memoryProperties, DxvkMemoryFlag::GpuReadable);
+        m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties);
       }
     }
   }

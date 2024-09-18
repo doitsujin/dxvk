@@ -54,8 +54,6 @@ namespace dxvk {
     VkDeviceMemory        memHandle  = VK_NULL_HANDLE;
     void*                 memPointer = nullptr;
     VkDeviceSize          memSize    = 0;
-    VkMemoryPropertyFlags memFlags   = 0;
-    float                 priority   = 0.0f;
   };
 
   
@@ -199,23 +197,6 @@ namespace dxvk {
     void free();
     
   };
-
-
-  /**
-   * \brief Memory allocation flags
-   *
-   * Used to batch similar allocations into the same
-   * set of chunks, which may help with fragmentation.
-   */
-  enum class DxvkMemoryFlag : uint32_t {
-    Small             = 0,  ///< Small allocation
-    GpuReadable       = 1,  ///< Medium-priority resource
-    GpuWritable       = 2,  ///< High-priority resource
-    Transient         = 3,  ///< Resource is short-lived
-    IgnoreConstraints = 4,  ///< Ignore most allocation flags
-  };
-
-  using DxvkMemoryFlags = Flags<DxvkMemoryFlag>;
   
   
   /**
@@ -231,8 +212,7 @@ namespace dxvk {
     DxvkMemoryChunk(
             DxvkMemoryAllocator*  alloc,
             DxvkMemoryType*       type,
-            DxvkDeviceMemory      memory,
-            DxvkMemoryFlags       m_hints);
+            DxvkDeviceMemory      memory);
     
     ~DxvkMemoryChunk();
 
@@ -258,8 +238,7 @@ namespace dxvk {
     DxvkMemory alloc(
             VkMemoryPropertyFlags flags,
             VkDeviceSize          size,
-            VkDeviceSize          align,
-            DxvkMemoryFlags       hints);
+            VkDeviceSize          align);
     
     /**
      * \brief Frees memory
@@ -280,24 +259,19 @@ namespace dxvk {
      */
     bool isEmpty() const;
 
-    /**
-     * \brief Checks whether hints and flags of another chunk match
-     * \param [in] other The chunk to compare to
-     */
-    bool isCompatible(const Rc<DxvkMemoryChunk>& other) const;
-
   private:
     
     DxvkMemoryAllocator*  m_alloc;
     DxvkMemoryType*       m_type;
     DxvkDeviceMemory      m_memory;
-    DxvkMemoryFlags       m_hints;
 
     DxvkPageAllocator     m_pageAllocator;
     DxvkPoolAllocator     m_poolAllocator;
 
-    bool checkHints(DxvkMemoryFlags hints) const;
-    
+    void mapChunk();
+
+    void unmapChunk();
+
   };
 
 
@@ -341,6 +315,10 @@ namespace dxvk {
     DxvkMemoryAllocator(DxvkDevice* device);
     ~DxvkMemoryAllocator();
     
+    DxvkDevice* device() const {
+      return m_device;
+    }
+
     /**
      * \brief Memory type mask for sparse resources
      * \returns Sparse resource memory types
@@ -354,13 +332,11 @@ namespace dxvk {
      * 
      * \param [in] req Memory requirements
      * \param [in] info Memory properties
-     * \param [in] hints Memory hints
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
             DxvkMemoryRequirements            req,
-            DxvkMemoryProperties              info,
-            DxvkMemoryFlags                   hints);
+            DxvkMemoryProperties              info);
     
     /**
      * \brief Queries memory stats
@@ -411,21 +387,19 @@ namespace dxvk {
 
     DxvkMemory tryAlloc(
       const DxvkMemoryRequirements&           req,
-      const DxvkMemoryProperties&             info,
-            DxvkMemoryFlags                   hints);
+      const DxvkMemoryProperties&             info);
     
     DxvkMemory tryAllocFromType(
             DxvkMemoryType*                   type,
             VkDeviceSize                      size,
             VkDeviceSize                      align,
-      const DxvkMemoryProperties&             info,
-            DxvkMemoryFlags                   hints);
+      const DxvkMemoryProperties&             info);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*                   type,
             VkDeviceSize                      size,
             DxvkMemoryProperties              info,
-            DxvkMemoryFlags                   hints);
+            bool                              isChunk);
     
     void free(
       const DxvkMemory&           memory);
@@ -442,13 +416,11 @@ namespace dxvk {
     
     VkDeviceSize pickChunkSize(
             uint32_t              memTypeId,
-            VkDeviceSize          requiredSize,
-            DxvkMemoryFlags       hints) const;
+            VkDeviceSize          requiredSize) const;
 
     void adjustChunkSize(
             uint32_t              memTypeId,
-            VkDeviceSize          allocatedSize,
-            DxvkMemoryFlags       hints);
+            VkDeviceSize          allocatedSize);
 
     bool shouldFreeChunk(
       const DxvkMemoryType*       type,
