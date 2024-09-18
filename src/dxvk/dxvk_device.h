@@ -396,12 +396,20 @@ namespace dxvk {
     DxvkStatCounters getStatCounters();
 
     /**
-     * \brief Retrieves memors statistics
+     * \brief Queries memory statistics
      *
      * \param [in] heap Memory heap index
-     * \returns Memory stats for this heap
+     * \returns Memory usage for this heap
      */
     DxvkMemoryStats getMemoryStats(uint32_t heap);
+
+    /**
+     * \brief Queries detailed memory allocation statistics
+     *
+     * Expensive, should be used with caution.
+     * \param [out] stats Allocation statistics
+     */
+    void getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
      * \brief Retreves current frame ID

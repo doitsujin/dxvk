@@ -235,6 +235,11 @@ namespace dxvk {
   }
 
 
+  void DxvkDevice::getMemoryAllocationStats(DxvkMemoryAllocationStats& stats) {
+    return m_objects.memoryManager().getAllocationStats(stats);
+  }
+
+
   uint32_t DxvkDevice::getCurrentFrameId() const {
     return m_statCounters.getCtr(DxvkStatCounter::QueuePresentCount);
   }

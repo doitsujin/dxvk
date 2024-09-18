@@ -92,6 +92,49 @@ namespace dxvk {
   
   
   /**
+   * \brief Memory type statistics
+   */
+  struct DxvkMemoryTypeStats {
+    /// Memory type properties
+    VkMemoryType properties = { };
+    /// Amount of memory allocated
+    VkDeviceSize allocated = 0u;
+    /// Amount of memory used
+    VkDeviceSize used = 0u;
+    /// First chunk in the array
+    size_t chunkIndex = 0u;
+    /// Number of chunks allocated
+    size_t chunkCount = 0u;
+  };
+
+
+  /**
+   * \brief Chunk statistics
+   */
+  struct DxvkMemoryChunkStats {
+    /// Chunk size, in bytes
+    VkDeviceSize capacity = 0u;
+    /// Used memory, in bytes
+    VkDeviceSize used = 0u;
+    /// Index of first page mask belonging to this
+    /// chunk in the page mask array
+    size_t pageMaskOffset = 0u;
+    /// Number of pages in this chunk.
+    size_t pageCount = 0u;
+  };
+
+
+  /**
+   * \brief Detailed memory allocation statistics
+   */
+  struct DxvkMemoryAllocationStats {
+    std::array<DxvkMemoryTypeStats, VK_MAX_MEMORY_TYPES> memoryTypes = { };
+    std::vector<DxvkMemoryChunkStats> chunks;
+    std::vector<uint32_t> pageMasks;
+  };
+
+
+  /**
    * \brief Memory slice
    * 
    * Represents a slice of memory that has
@@ -260,6 +303,14 @@ namespace dxvk {
      */
     bool isEmpty() const;
 
+    /**
+     * \brief Retrieves allocation stats for this chunk
+     *
+     * Adds overall stats and the page mask to the given structure.
+     * \param [out] stats Allocation stats
+     */
+    void getAllocationStats(DxvkMemoryAllocationStats& stats) const;
+
   private:
     
     DxvkMemoryAllocator*  m_alloc;
@@ -349,6 +400,15 @@ namespace dxvk {
      */
     DxvkMemoryStats getMemoryStats(uint32_t heap) const;
     
+    /**
+     * \brief Retrieves detailed memory statistics
+     *
+     * Queries statistics for each memory type and each allocated chunk.
+     * Can be useful to determine the degree of memory fragmentation.
+     * \param [out] stats Memory statistics
+     */
+    void getAllocationStats(DxvkMemoryAllocationStats& stats);
+
     /**
      * \brief Queries buffer memory requirements
      *
