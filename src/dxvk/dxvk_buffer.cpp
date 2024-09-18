@@ -22,31 +22,38 @@ namespace dxvk {
       VkDeviceSize sliceAlignment = computeSliceAlignment(device);
       m_physSliceLength = createInfo.size;
       m_physSliceStride = align(createInfo.size, sliceAlignment);
-      m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
 
-      // Limit size of multi-slice buffers to reduce fragmentation
-      constexpr VkDeviceSize MaxBufferSize = 256 << 10;
+      // Determine optimal allocation size for the buffer. If the buffer
+      // is small enough to hit the pool allocator, round its size up to
+      // a power of two to minimize the amount of internal fragmentation.
+      VkDeviceSize sliceSize = align(createInfo.size, sliceAlignment);
+      m_allocationSize = std::max(MinAllocationSize, sliceSize);
 
-      m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
-        ? MaxBufferSize / m_physSliceStride
-        : 1;
+      if (m_allocationSize <= DxvkPoolAllocator::MaxSize)
+        m_allocationSize = (VkDeviceSize(-1) >> bit::lzcnt(m_allocationSize - 1u)) + 1u;
+
+      m_maxAllocationSize = MaxSlicesPerAllocation * sliceSize;
+      m_maxAllocationSize = std::max(m_maxAllocationSize, MinAllocationSizeLimit);
+      m_maxAllocationSize = std::min(m_maxAllocationSize, MaxAllocationSize);
 
       // Allocate the initial set of buffer slices. Only clear
       // buffer memory if there is more than one slice, since
       // we expect the client api to initialize the first slice.
-      m_buffer = allocBuffer(m_physSliceCount, m_physSliceCount > 1);
+      bool hasMultipleSlices = m_allocationSize >= sliceSize + sliceSize;
+
+      m_buffer = allocBuffer(m_allocationSize, hasMultipleSlices);
 
       m_physSlice.handle = m_buffer.buffer;
       m_physSlice.offset = m_buffer.getBaseOffset();
       m_physSlice.length = m_physSliceLength;
       m_physSlice.mapPtr = m_buffer.memory.mapPtr(0);
 
-      m_lazyAlloc = m_physSliceCount > 1;
+      m_lazyAlloc = hasMultipleSlices;
     } else {
       m_physSliceLength = createInfo.size;
       m_physSliceStride = createInfo.size;
-      m_physSliceCount  = 1;
-      m_physSliceMaxCount = 1;
+
+      m_allocationSize  = createInfo.size;
 
       m_buffer = createSparseBuffer();
 
@@ -75,13 +82,13 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)) {
     m_physSliceLength = createInfo.size;
     m_physSliceStride = createInfo.size;
-    m_physSliceCount  = 1;
-    m_physSliceMaxCount = 1;
 
     m_physSlice.handle = importInfo.buffer;
     m_physSlice.offset = importInfo.offset;
     m_physSlice.length = createInfo.size;
     m_physSlice.mapPtr = importInfo.mapPtr;
+
+    m_allocationSize = createInfo.size;
 
     m_lazyAlloc = false;
   }
@@ -98,13 +105,13 @@ namespace dxvk {
   }
   
   
-  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear) const {
+  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize allocationSize, bool clear) const {
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
-    info.size = m_physSliceStride * sliceCount;
+    info.size = allocationSize;
     info.usage = m_info.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    
+
     DxvkBufferHandle handle;
 
     // Query memory requirements and whether to use a dedicated allocation
