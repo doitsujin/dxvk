@@ -153,9 +153,7 @@ namespace dxvk {
     DxvkMemoryProperties memoryProperties = { };
     memoryProperties.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    DxvkMemory memory = m_memory->alloc(memoryRequirements,
-      memoryProperties, DxvkMemoryFlag::GpuReadable);
-
+    DxvkMemory memory = m_memory->alloc(memoryRequirements, memoryProperties);
     return new DxvkSparsePage(std::move(memory));
   }
 
