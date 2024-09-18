@@ -4812,8 +4812,6 @@ namespace dxvk {
 
         if (texInfo == pResource) {
           m_activeTexturesToUpload |= 1 << i;
-          // We can early out here, no need to add another index for this.
-          break;
         }
       }
     }
