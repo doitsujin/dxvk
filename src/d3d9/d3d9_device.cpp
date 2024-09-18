@@ -2698,7 +2698,7 @@ namespace dxvk {
     uint32_t firstIndex     = 0;
     int32_t baseVertexIndex = 0;
     uint32_t vertexCount    = GetVertexCount(PrimitiveType, PrimitiveCount);
-    UploadDynamicSysmemBuffers(
+    UploadPerDrawData(
       StartVertex,
       vertexCount,
       firstIndex,
@@ -2747,7 +2747,7 @@ namespace dxvk {
     bool dynamicSysmemVBOs;
     bool dynamicSysmemIBO;
     uint32_t indexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
-    UploadDynamicSysmemBuffers(
+    UploadPerDrawData(
       MinVertexIndex,
       NumVertices,
       StartIndex,
@@ -2932,7 +2932,20 @@ namespace dxvk {
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    PrepareDraw(D3DPT_FORCE_DWORD, true, true);
+    bool dynamicSysmemVBOs;
+    uint32_t firstIndex     = 0;
+    int32_t baseVertexIndex = 0;
+    UploadPerDrawData(
+      SrcStartIndex,
+      VertexCount,
+      firstIndex,
+      0,
+      baseVertexIndex,
+      &dynamicSysmemVBOs,
+      nullptr
+    );
+
+    PrepareDraw(D3DPT_FORCE_DWORD, !dynamicSysmemVBOs, false);
 
     if (decl == nullptr) {
       DWORD FVF = dst->Desc()->FVF;
@@ -5057,7 +5070,7 @@ namespace dxvk {
     // Ignore DISCARD and NOOVERWRITE if the buffer is not DEFAULT pool (tests + Halo 2)
     // The docs say DISCARD and NOOVERWRITE are ignored if the buffer is not DYNAMIC
     // but tests say otherwise!
-    if (desc.Pool != D3DPOOL_DEFAULT)
+    if (desc.Pool != D3DPOOL_DEFAULT || CanOnlySWVP())
       Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
     // Ignore DONOTWAIT if we are DYNAMIC
@@ -5068,6 +5081,12 @@ namespace dxvk {
     // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
     if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
       Flags &= ~D3DLOCK_DISCARD;
+
+    // In SWVP mode, we always use the per-draw upload path.
+    // So the buffer will never be in use on the device.
+    // FVF Buffers are the exception. Those can be used as a destination for ProcessVertices.
+    if (unlikely(CanOnlySWVP() && !pResource->NeedsReadback()))
+      Flags |= D3DLOCK_NOOVERWRITE;
 
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
@@ -5209,7 +5228,7 @@ namespace dxvk {
 
 
 
-  void D3D9DeviceEx::UploadDynamicSysmemBuffers(
+  void D3D9DeviceEx::UploadPerDrawData(
           UINT&                   FirstVertexIndex,
           UINT                    NumVertices,
           UINT&                   FirstIndex,
@@ -5221,10 +5240,10 @@ namespace dxvk {
     bool dynamicSysmemVBOs = true;
     for (uint32_t i = 0; i < caps::MaxStreams && dynamicSysmemVBOs; i++) {
       auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
-      dynamicSysmemVBOs &= vbo == nullptr || vbo->IsSysmemDynamic();
+      dynamicSysmemVBOs &= vbo == nullptr || (vbo->DoPerDrawUpload() || CanOnlySWVP());
     }
     D3D9CommonBuffer* ibo = GetCommonBuffer(m_state.indices);
-    bool dynamicSysmemIBO = NumIndices != 0 && ibo != nullptr && ibo->IsSysmemDynamic();
+    bool dynamicSysmemIBO = NumIndices != 0 && ibo != nullptr && (ibo->DoPerDrawUpload() || CanOnlySWVP());
 
     *pDynamicVBOs = dynamicSysmemVBOs;
 
@@ -5255,6 +5274,21 @@ namespace dxvk {
       if (likely(vbo == nullptr)) {
         continue;
       }
+
+      if (unlikely(vbo->NeedsReadback())) {
+        // There's two ways the GPU can write to buffers in D3D9:
+        // - Copy data from a staging buffer to the primary one either on Unlock or at draw time depending on the D3DPOOL
+        //   for buffers with MAP_MODE_STAGING.
+        //   The backend handles inserting the required barriers.
+        // - Write data between Lock and Unlock to the buffer directly for buffers with MAP_MODE_DIRECT.
+        // - Write to the primary buffer using ProcessVertices. That is why we need to ensure the resource is idle.
+        //   Even when using MAP_MODE_BUFFER, ProcessVertices copies the data over from the primary buffer to the staging buffer
+        //   at the end. So it could end up writing to the buffer on the GPU while the same buffer gets read here on the CPU.
+        //   ProcessVertices is also exceptionally rare though which is why we're using a second sequence number
+        //   to avoid unnecessary CS thread synchronization.
+        WaitForResource(vbo->GetBuffer<D3D9_COMMON_BUFFER_TYPE_STAGING>(), vbo->GetMappingBufferSequenceNumber(), D3DLOCK_READONLY);
+      }
+
       const uint32_t vertexSize = m_state.vertexDecl->GetSize(i);
       const uint32_t vertexStride = m_state.vertexBuffers[i].stride;
       const uint32_t srcStride = vertexStride;
