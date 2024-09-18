@@ -111,12 +111,20 @@ namespace dxvk {
       info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       info.access |= VK_ACCESS_HOST_WRITE_BIT;
 
-      if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
-        info.access |= VK_ACCESS_HOST_READ_BIT;
-
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                  |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+      if ((m_desc.Usage & (D3DUSAGE_WRITEONLY | D3DUSAGE_DYNAMIC)) == 0
+        || DoPerDrawUpload()
+        || m_parent->CanOnlySWVP()
+        || m_parent->GetOptions()->cachedDynamicBuffers) {
+        // Never use uncached memory on devices that support SWVP because we might end up reading from it.
+
+        info.access |= VK_ACCESS_HOST_READ_BIT;
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+      } else {
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      }
     }
     else {
       info.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -124,13 +132,6 @@ namespace dxvk {
       info.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
 
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    }
-
-    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && (m_parent->GetOptions()->cachedDynamicBuffers || m_parent->CanOnlySWVP())) {
-      // Never use uncached memory on devices that support SWVP because we might end up reading from it.
-      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
 
     return m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
