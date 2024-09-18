@@ -1668,8 +1668,8 @@ namespace dxvk {
         ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
       });
     }
-    
-    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+
+    for (uint32_t i : bit::BitMask(~m_activeVertexBuffers & ((1 << 16) - 1))) {
       if (m_state.vertexBuffers[i].vertexBuffer == nullptr) {
         EmitCs([cIndex = i](DxvkContext* ctx) {
           ctx->bindVertexBuffer(cIndex, DxvkBufferSlice(), 0);
@@ -3342,12 +3342,25 @@ namespace dxvk {
     if (needsUpdate)
       vbo.vertexBuffer = buffer;
 
+    const uint32_t bit = 1u << StreamNumber;
+    m_activeVertexBuffers &= ~bit;
+    m_activeVertexBuffersToUploadPerDraw &= ~bit;
+    m_activeVertexBuffersToUpload &= ~bit;
+
     if (buffer != nullptr) {
       needsUpdate |= vbo.offset != OffsetInBytes
                   || vbo.stride != Stride;
 
       vbo.offset = OffsetInBytes;
       vbo.stride = Stride;
+
+      const D3D9CommonBuffer* commonBuffer = GetCommonBuffer(buffer);
+      m_activeVertexBuffers |= bit;
+      if (commonBuffer->DoPerDrawUpload() || CanOnlySWVP())
+        m_activeVertexBuffersToUploadPerDraw |= bit;
+      if (commonBuffer->NeedsUpload()) {
+        m_activeVertexBuffersToUpload |= bit;
+      }
     } else {
       // D3D9 doesn't actually unbind any vertex buffer when passing null.
       // Operation Flashpoint: Red River relies on this behavior.
@@ -5100,8 +5113,17 @@ namespace dxvk {
     uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : desc.Size;
     D3D9Range lockRange = D3D9Range(offset, offset + size);
 
-    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY))
+    bool updateDirtyRange = (desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY);
+    if (updateDirtyRange) {
       pResource->DirtyRange().Conjoin(lockRange);
+
+      for (uint32_t i : bit::BitMask(m_activeVertexBuffers)) {
+        auto commonBuffer = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
+        if (commonBuffer == pResource) {
+          m_activeVertexBuffersToUpload |= 1 << i;
+        }
+      }
+    }
 
     const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
     const bool needsReadback = pResource->NeedsReadback();
@@ -5237,11 +5259,9 @@ namespace dxvk {
           bool*                   pDynamicVBOs,
           bool*                   pDynamicIBO
   ) {
-    bool dynamicSysmemVBOs = true;
-    for (uint32_t i = 0; i < caps::MaxStreams && dynamicSysmemVBOs; i++) {
-      auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
-      dynamicSysmemVBOs &= vbo == nullptr || (vbo->DoPerDrawUpload() || CanOnlySWVP());
-    }
+    const uint32_t usedBuffersMask = (m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u) & m_activeVertexBuffers;
+    bool dynamicSysmemVBOs = usedBuffersMask == m_activeVertexBuffersToUploadPerDraw;
+
     D3D9CommonBuffer* ibo = GetCommonBuffer(m_state.indices);
     bool dynamicSysmemIBO = NumIndices != 0 && ibo != nullptr && (ibo->DoPerDrawUpload() || CanOnlySWVP());
 
@@ -5252,6 +5272,12 @@ namespace dxvk {
 
     if (likely(!dynamicSysmemVBOs && !dynamicSysmemIBO))
       return;
+
+    uint32_t vertexBuffersToUpload;
+    if (likely(dynamicSysmemVBOs))
+      vertexBuffersToUpload = m_activeVertexBuffersToUploadPerDraw & usedBuffersMask;
+    else
+      vertexBuffersToUpload = 0;
 
     // The UP buffer allocator will invalidate,
     // so we can only use 1 UP buffer slice per draw.
@@ -5269,7 +5295,7 @@ namespace dxvk {
     uint32_t totalUpBufferSize = 0;
     std::array<VBOCopy, caps::MaxStreams> vboCopies = {};
 
-    for (uint32_t i = 0; i < caps::MaxStreams && dynamicSysmemVBOs; i++) {
+    for (uint32_t i : bit::BitMask(vertexBuffersToUpload)) {
       auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
       if (likely(vbo == nullptr)) {
         continue;
@@ -5354,42 +5380,42 @@ namespace dxvk {
     auto upSlice = AllocUPBuffer(totalUpBufferSize);
 
     // Now copy the actual data and bind it.
-    for (uint32_t i = 0; i < caps::MaxStreams && dynamicSysmemVBOs; i++) {
-      const VBOCopy& copy = vboCopies[i];
+    if (dynamicSysmemVBOs) {
+      for (uint32_t i : bit::BitMask(vertexBuffersToUpload)) {
+        const VBOCopy& copy = vboCopies[i];
 
-      if (likely(copy.copyBufferLength != 0)) {
-        const auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
-        uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + copy.dstOffset;
-        const uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr) + copy.srcOffset;
+        if (likely(copy.copyBufferLength != 0)) {
+          const auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
+          uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + copy.dstOffset;
+          const uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr) + copy.srcOffset;
 
-        if (likely(copy.copyElementStride == copy.copyElementSize)) {
-          std::memcpy(data, src, copy.copyBufferLength);
-        } else {
-          for (uint32_t j = 0; j < copy.copyElementCount; j++) {
-            std::memcpy(data + j * copy.copyElementSize, src + j * copy.copyElementStride, copy.copyElementSize);
-          }
-          if (unlikely(copy.copyBufferLength > copy.copyElementCount * copy.copyElementSize)) {
-            // Partial vertex at the end
-            std::memcpy(
-              data + copy.copyElementCount * copy.copyElementSize,
-              src + copy.copyElementCount * copy.copyElementStride,
-              copy.copyBufferLength - copy.copyElementCount * copy.copyElementSize);
+          if (likely(copy.copyElementStride == copy.copyElementSize)) {
+            std::memcpy(data, src, copy.copyBufferLength);
+          } else {
+            for (uint32_t j = 0; j < copy.copyElementCount; j++) {
+              std::memcpy(data + j * copy.copyElementSize, src + j * copy.copyElementStride, copy.copyElementSize);
+            }
+            if (unlikely(copy.copyBufferLength > copy.copyElementCount * copy.copyElementSize)) {
+              // Partial vertex at the end
+              std::memcpy(
+                data + copy.copyElementCount * copy.copyElementSize,
+                src + copy.copyElementCount * copy.copyElementStride,
+                copy.copyBufferLength - copy.copyElementCount * copy.copyElementSize);
+            }
           }
         }
+
+        auto vboSlice = upSlice.slice.subSlice(copy.dstOffset, copy.copyBufferLength);
+        EmitCs([
+          cStream      = i,
+          cBufferSlice = std::move(vboSlice),
+          cStride      = copy.copyElementSize
+        ](DxvkContext* ctx) mutable {
+          ctx->bindVertexBuffer(cStream, std::move(cBufferSlice), cStride);
+        });
+        m_flags.set(D3D9DeviceFlag::DirtyVertexBuffers);
       }
 
-      auto vboSlice = upSlice.slice.subSlice(copy.dstOffset, copy.copyBufferLength);
-      EmitCs([
-        cStream      = i,
-        cBufferSlice = std::move(vboSlice),
-        cStride      = copy.copyElementSize
-      ](DxvkContext* ctx) mutable {
-        ctx->bindVertexBuffer(cStream, std::move(cBufferSlice), cStride);
-      });
-      m_flags.set(D3D9DeviceFlag::DirtyVertexBuffers);
-    }
-
-    if (dynamicSysmemVBOs) {
       // Change the draw call parameters to reflect the changed vertex buffers
       if (NumIndices != 0) {
         BaseVertexIndex = -FirstVertexIndex;
@@ -6821,10 +6847,15 @@ namespace dxvk {
       m_lastHazardsRT = m_activeHazardsRT;
     }
 
-    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
-      auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
-      if (vbo != nullptr && vbo->NeedsUpload() && UploadVBOs)
-        FlushBuffer(vbo);
+    if (likely(UploadVBOs)) {
+      const uint32_t usedBuffersMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u;
+      const uint32_t buffersToUpload = m_activeVertexBuffersToUpload & usedBuffersMask;
+      for (uint32_t bufferIdx : bit::BitMask(buffersToUpload)) {
+        auto* vbo = GetCommonBuffer(m_state.vertexBuffers[bufferIdx].vertexBuffer);
+        if (vbo != nullptr && vbo->NeedsUpload())
+          FlushBuffer(vbo);
+      }
+      m_activeVertexBuffersToUpload &= ~buffersToUpload;
     }
 
     const uint32_t usedSamplerMask = m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
@@ -6839,7 +6870,7 @@ namespace dxvk {
       GenerateTextureMips(texturesToGen);
 
     auto* ibo = GetCommonBuffer(m_state.indices);
-    if (ibo != nullptr && ibo->NeedsUpload() && UploadIBO)
+    if (UploadIBO && ibo != nullptr && ibo->NeedsUpload())
       FlushBuffer(ibo);
 
     UpdateFog();

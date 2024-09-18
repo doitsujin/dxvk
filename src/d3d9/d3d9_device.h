@@ -1385,6 +1385,10 @@ namespace dxvk {
     uint32_t                        m_activeTexturesToUpload = 0;
     uint32_t                        m_activeTexturesToGen    = 0;
 
+    uint32_t                        m_activeVertexBuffers                = 0;
+    uint32_t                        m_activeVertexBuffersToUpload        = 0;
+    uint32_t                        m_activeVertexBuffersToUploadPerDraw = 0;
+
     // m_fetch4Enabled is whether fetch4 is currently enabled
     // from the application.
     //

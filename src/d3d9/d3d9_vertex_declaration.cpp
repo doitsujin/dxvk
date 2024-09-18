@@ -374,6 +374,8 @@ namespace dxvk {
 
       if (element.Usage == D3DDECLUSAGE_TEXCOORD)
         m_texcoordMask |= GetDecltypeCount(D3DDECLTYPE(element.Type)) << (element.UsageIndex * 3);
+
+      m_streamMask |= 1 << element.Stream;
     }
   }
 
