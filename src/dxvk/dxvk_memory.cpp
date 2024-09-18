@@ -135,6 +135,18 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryChunk::getAllocationStats(DxvkMemoryAllocationStats& stats) const {
+    auto& chunkStats = stats.chunks.emplace_back();
+    chunkStats.capacity = uint64_t(m_pageAllocator.pageCount()) * DxvkPageAllocator::PageSize;
+    chunkStats.used = uint64_t(m_pageAllocator.pagesUsed()) * DxvkPageAllocator::PageSize;
+    chunkStats.pageMaskOffset = stats.pageMasks.size();
+    chunkStats.pageCount = m_pageAllocator.pageCount();
+
+    stats.pageMasks.resize(chunkStats.pageMaskOffset + (chunkStats.pageCount + 31u) / 32u);
+    m_pageAllocator.getPageAllocationMask(&stats.pageMasks.at(chunkStats.pageMaskOffset));
+  }
+
+
   void DxvkMemoryChunk::mapChunk() {
     if (m_memory.memPointer)
       return;
@@ -731,6 +743,27 @@ namespace dxvk {
     }
 
     return result;
+  }
+
+
+  void DxvkMemoryAllocator::getAllocationStats(DxvkMemoryAllocationStats& stats) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    stats.chunks.clear();
+    stats.pageMasks.clear();
+
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+      const auto& type = m_memTypes[i];
+
+      stats.memoryTypes[i].properties = type.memType;
+      stats.memoryTypes[i].allocated = type.stats.memoryAllocated;
+      stats.memoryTypes[i].used = type.stats.memoryUsed;
+      stats.memoryTypes[i].chunkIndex = stats.chunks.size();
+      stats.memoryTypes[i].chunkCount = type.chunks.size();
+
+      for (const auto& chunk : type.chunks)
+        chunk->getAllocationStats(stats);
+    }
   }
 
 
