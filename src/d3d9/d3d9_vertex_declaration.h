@@ -66,6 +66,10 @@ namespace dxvk {
       return m_texcoordMask;
     }
 
+    uint32_t GetStreamMask() const {
+      return m_streamMask;
+    }
+
   private:
 
     bool MapD3DDeclToFvf(
@@ -93,6 +97,8 @@ namespace dxvk {
     DWORD                          m_fvf;
 
     uint32_t                       m_texcoordMask = 0;
+
+    uint32_t                       m_streamMask = 0;
 
     std::array<uint32_t, caps::MaxStreams> m_sizes = {};
 
