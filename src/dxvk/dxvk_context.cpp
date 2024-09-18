@@ -1219,17 +1219,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::discardBuffer(
-    const Rc<DxvkBuffer>&       buffer) {
-    if ((buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-     || (buffer->info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT))
-      return;
-
-    if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
-      this->invalidateBuffer(buffer, buffer->allocSlice());
-  }
-
-
   void DxvkContext::discardImageView(
     const Rc<DxvkImageView>&      imageView,
           VkImageAspectFlags      discardAspects) {
