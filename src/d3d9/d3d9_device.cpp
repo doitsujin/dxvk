@@ -4233,7 +4233,7 @@ namespace dxvk {
 
 
   bool D3D9DeviceEx::SupportsSWVP() {
-    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics;
+    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics && m_dxvkDevice->features().vk12.shaderInt8;
   }
 
 
@@ -4261,6 +4261,7 @@ namespace dxvk {
 
     // ProcessVertices
     enabled.core.features.vertexPipelineStoresAndAtomics = supported.core.features.vertexPipelineStoresAndAtomics;
+    enabled.vk12.shaderInt8 = supported.vk12.shaderInt8;
 
     // DXVK Meta
     enabled.core.features.imageCubeArray = VK_TRUE;
