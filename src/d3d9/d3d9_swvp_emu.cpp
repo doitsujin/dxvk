@@ -262,8 +262,8 @@ namespace dxvk {
 
         // Bitcast to dwords before we write.
         uint32_t dwordCount  = GetDecltypeSize(D3DDECLTYPE(element.Type)) / sizeof(uint32_t);
-        uint32_t dwordVector = m_module.opBitcast(
-          m_module.defVectorType(uint_t, dwordCount),
+        uint32_t dwordVal = m_module.opBitcast(
+          dwordCount != 1 ? m_module.defVectorType(uint_t, dwordCount) : uint_t,
           componentSet);
 
         // Finally write each dword to the buffer!
@@ -271,7 +271,7 @@ namespace dxvk {
           std::array<uint32_t, 2> bufferIndices = { m_module.constu32(0), elementOffset };
 
           uint32_t writeDest = m_module.opAccessChain(m_module.defPointerType(uint_t, spv::StorageClassUniform), buffer, bufferIndices.size(), bufferIndices.data());
-          uint32_t currentDword = m_module.opCompositeExtract(uint_t, dwordVector, 1, &i);
+          uint32_t currentDword = dwordCount != 1 ? m_module.opCompositeExtract(uint_t, dwordVal, 1, &i) : dwordVal;
 
           m_module.opStore(writeDest, currentDword);
 
