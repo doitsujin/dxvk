@@ -78,10 +78,29 @@ namespace dxvk::hud {
 
         D3D9DeviceEx* m_device;
 
-        dxvk::high_resolution_clock::time_point m_lastUpdate
-          = dxvk::high_resolution_clock::now();
-
         std::string m_ffShaderCount;
+
+    };
+
+    /**
+     * \brief HUD item to whether or not we're in SWVP mode
+     */
+    class HudSWVPState : public HudItem {
+    public:
+
+        HudSWVPState(D3D9DeviceEx* device);
+
+        void update(dxvk::high_resolution_clock::time_point time);
+
+        HudPos render(
+                HudRenderer&      renderer,
+                HudPos            position);
+
+    private:
+
+        D3D9DeviceEx* m_device;
+
+        std::string m_isSWVPText;
 
     };
 

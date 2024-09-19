@@ -1026,6 +1026,10 @@ namespace dxvk {
       return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
 
+    bool IsSWVP() const {
+      return m_isSWVP;
+    }
+
     UINT GetFixedFunctionVSCount() const {
       return m_ffModules.GetVSCount();
     }
