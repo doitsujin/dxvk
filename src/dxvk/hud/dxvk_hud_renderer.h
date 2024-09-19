@@ -121,13 +121,22 @@ namespace dxvk::hud {
             HudPos            size,
             size_t            pointCount,
       const HudGraphPoint*    pointData);
-    
+
+    DxvkContext* getContext() {
+      m_mode = Mode::RenderNone;
+      return m_context.ptr();
+    }
+
     VkExtent2D surfaceSize() const {
       return m_surfaceSize;
     }
 
     float scale() const {
       return m_scale;
+    }
+
+    float opacity() const {
+      return m_opacity;
     }
     
   private:

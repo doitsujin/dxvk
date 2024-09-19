@@ -33,10 +33,10 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(
-          const Rc<DxvkContext>& context, 
-          VkExtent2D surfaceSize, 
-          float scale, 
-          float opacity) {
+    const Rc<DxvkContext>&  context,
+          VkExtent2D        surfaceSize, 
+          float             scale, 
+          float             opacity) {
     if (!m_initialized)
       this->initFontTexture(context);
 
@@ -128,7 +128,6 @@ namespace dxvk::hud {
         VK_FALSE, 0 };
       
       m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
     }
   }
 
@@ -147,7 +146,6 @@ namespace dxvk::hud {
         VK_FALSE, 0 };
 
       m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
     }
   }
 
