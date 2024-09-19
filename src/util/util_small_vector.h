@@ -33,7 +33,7 @@ namespace dxvk {
     };
 
     small_vector(small_vector&& other) {
-      if (other.m_size < N) {
+      if (other.m_size <= N) {
         for (size_t i = 0; i < other.m_size; i++) {
           new (&u.m_data[i]) T(std::move(*other.ptr(i)));
         }
@@ -54,7 +54,7 @@ namespace dxvk {
       if (m_capacity > N)
         delete[] u.m_ptr;
 
-      if (other.m_size < N) {
+      if (other.m_size <= N) {
         m_capacity = N;
         for (size_t i = 0; i < other.m_size; i++) {
           new (&u.m_data[i]) T(std::move(*other.ptr(i)));
