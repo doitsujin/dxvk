@@ -279,7 +279,7 @@ namespace dxvk {
     viewInfo.offset = slice.offset;
     viewInfo.range  = slice.length;
 
-    if (!m_usage)
+    if (m_usage)
       viewInfo.pNext = &viewFlags;
 
     VkBufferView result = VK_NULL_HANDLE;
