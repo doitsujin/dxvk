@@ -72,7 +72,8 @@ namespace dxvk {
         ExportImageInfo();
       }
 
-      CreateSampleView(0);
+      if ((m_image->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT) != 0)
+        CreateSampleView(0);
 
       if (!IsManaged()) {
         m_size = m_image->memory().length();
