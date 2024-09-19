@@ -56,6 +56,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `pipelines`: Shows the total number of graphics and compute pipelines.
 - `descriptors`: Shows the number of descriptor pools and descriptor sets.
 - `memory`: Shows the amount of device memory allocated and used.
+- `allocations`: Shows detailed memory chunk suballocation info.
 - `gpuload`: Shows estimated GPU load. May be inaccurate.
 - `version`: Shows DXVK version.
 - `api`: Shows the D3D feature level used by the application.
