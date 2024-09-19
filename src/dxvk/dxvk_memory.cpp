@@ -405,7 +405,7 @@ namespace dxvk {
     if (hints.test(DxvkMemoryFlag::GpuWritable))
       priority = 1.0f;
 
-    bool dedicated = false;
+    bool dedicated = info.dedicated.buffer || info.dedicated.image;
 
     DxvkDeviceMemory result;
     result.memSize  = size;
