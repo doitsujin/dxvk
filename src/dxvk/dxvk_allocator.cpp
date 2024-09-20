@@ -8,13 +8,8 @@
 
 namespace dxvk {
 
-  DxvkPageAllocator::DxvkPageAllocator(uint64_t capacity)
-  : m_pageCount(capacity / PageSize), m_freeListLutByPage(m_pageCount, -1) {
-    PageRange freeRange = { };
-    freeRange.index = 0u;
-    freeRange.count = m_pageCount;
+  DxvkPageAllocator::DxvkPageAllocator() {
 
-    insertFreeRange(freeRange, -1);
   }
 
 
@@ -47,7 +42,8 @@ namespace dxvk {
 
         insertFreeRange(entry, index);
 
-        m_pagesUsed += count;
+        uint32_t chunkIndex = pageIndex >> ChunkPageBits;
+        m_chunks[chunkIndex].pagesUsed += count;
         return pageIndex;
       } else {
         // Apply alignment and skip if the free range is too small.
@@ -72,7 +68,9 @@ namespace dxvk {
         if (nextRange.count)
           insertFreeRange(nextRange, -1);
 
-        m_pagesUsed += count;
+        uint32_t chunkIndex = pageIndex >> ChunkPageBits;
+        m_chunks[chunkIndex].pagesUsed += count;
+
         return pageIndex;
       }
     }
@@ -81,24 +79,24 @@ namespace dxvk {
   }
 
 
-  void DxvkPageAllocator::free(uint64_t address, uint64_t size) {
+  bool DxvkPageAllocator::free(uint64_t address, uint64_t size) {
     uint32_t pageIndex = address / PageSize;
     uint32_t pageCount = (size + PageSize - 1u) / PageSize;
 
-    freePages(pageIndex, pageCount);
+    return freePages(pageIndex, pageCount);
   }
 
 
-  void DxvkPageAllocator::freePages(uint32_t index, uint32_t count) {
+  bool DxvkPageAllocator::freePages(uint32_t index, uint32_t count) {
     // Use the lookup table to quickly determine which
     // free ranges we can actually merge with
     int32_t prevRange = -1;
     int32_t nextRange = -1;
 
-    if (index > 0u)
+    if (index & ChunkPageMask)
       prevRange = m_freeListLutByPage[index - 1];
 
-    if (index + count < m_pageCount)
+    if ((index + count) & ChunkPageMask)
       nextRange = m_freeListLutByPage[index + count];
 
     if (prevRange < 0) {
@@ -144,14 +142,60 @@ namespace dxvk {
       insertFreeRange(mergedRange, std::min(prevRange, nextRange));
     }
 
-    m_pagesUsed -= count;
+    uint32_t chunkIndex = index >> ChunkPageBits;
+    return !(m_chunks[chunkIndex].pagesUsed -= count);
   }
 
 
-  void DxvkPageAllocator::getPageAllocationMask(uint32_t* pageMask) const {
+  uint32_t DxvkPageAllocator::addChunk(uint64_t size) {
+    int32_t chunkIndex = m_freeChunk;
+
+    if (chunkIndex < 0) {
+      chunkIndex = m_chunks.size();
+
+      m_freeListLutByPage.resize((chunkIndex + 1u) << ChunkPageBits, -1);
+      m_chunks.emplace_back();
+    }
+
+    auto& chunk = m_chunks[chunkIndex];
+    m_freeChunk = chunk.nextChunk;
+
+    chunk.pageCount = size / PageSize;
+    chunk.pagesUsed = 0u;
+    chunk.nextChunk = -1;
+
+    PageRange pageRange = { };
+    pageRange.index = uint32_t(chunkIndex) << ChunkPageBits;
+    pageRange.count = chunk.pageCount;
+
+    insertFreeRange(pageRange, -1);
+
+    return uint32_t(chunkIndex);
+  }
+
+
+  void DxvkPageAllocator::removeChunk(uint32_t chunkIndex) {
+    auto& chunk = m_chunks[chunkIndex];
+    chunk.pageCount = 0u;
+    chunk.pagesUsed = 0u;
+    chunk.nextChunk = std::exchange(m_freeChunk, int32_t(chunkIndex));
+
+    uint32_t pageIndex = chunkIndex << ChunkPageBits;
+
+    PageRange pageRange = { };
+    pageRange.index = pageIndex;
+    pageRange.count = 0;
+
+    insertFreeRange(pageRange, m_freeListLutByPage[pageIndex]);
+  }
+
+
+  void DxvkPageAllocator::getPageAllocationMask(uint32_t chunkIndex, uint32_t* pageMask) const {
     // Initialize bit mask with all ones
-    uint32_t fullCount = m_pageCount / 32u;
-    uint32_t lastCount = m_pageCount % 32u;
+    const auto& chunk = m_chunks[chunkIndex];
+
+    uint32_t fullCount = chunk.pageCount / 32u;
+    uint32_t lastCount = chunk.pageCount % 32u;
 
     for (uint32_t i = 0; i < fullCount; i++)
       pageMask[i] = ~0u;
@@ -159,8 +203,14 @@ namespace dxvk {
     if (lastCount)
       pageMask[fullCount] = (1u << lastCount) - 1u;
 
-    // Iterate over free list and set all included pages to 0.
+    // Iterate over free list and set all pages included
+    // in the current chunk to 0.
     for (PageRange range : m_freeList) {
+      if ((range.index >> ChunkPageBits) != chunkIndex)
+        continue;
+
+      range.index &= ChunkPageMask;
+
       uint32_t index = range.index / 32u;
       uint32_t shift = range.index % 32u;
 
@@ -276,7 +326,7 @@ namespace dxvk {
 
 
   DxvkPoolAllocator::DxvkPoolAllocator(DxvkPageAllocator& pageAllocator)
-  : m_pageAllocator(&pageAllocator), m_pageInfos(m_pageAllocator->pageCount()) {
+  : m_pageAllocator(&pageAllocator) {
 
   }
 
@@ -349,7 +399,7 @@ namespace dxvk {
   }
 
 
-  void DxvkPoolAllocator::free(uint64_t address, uint64_t size) {
+  bool DxvkPoolAllocator::free(uint64_t address, uint64_t size) {
     uint32_t listIndex = computeListIndex(size);
 
     uint32_t pageIndex = computePageIndexFromByteAddress(address);
@@ -369,7 +419,9 @@ namespace dxvk {
       page.pool |= MaskType(1) << itemIndex;
 
       if (unlikely(bit::tzcnt(page.pool + 1u) >= poolCapacity))
-        freePage(pageIndex, listIndex);
+        return freePage(pageIndex, listIndex);
+
+      return false;
     } else {
       PageInfo& page = m_pageInfos[pageIndex];
       PagePool& pool = m_pagePools[page.pool];
@@ -390,9 +442,11 @@ namespace dxvk {
 
         if (unlikely(!pool.usedMask)) {
           freePagePool(page.pool);
-          freePage(pageIndex, listIndex);
+          return freePage(pageIndex, listIndex);
         }
       }
+
+      return false;
     }
   }
 
@@ -403,15 +457,20 @@ namespace dxvk {
     if (unlikely(pageIndex < 0))
       return -1;
 
+    if (unlikely(uint32_t(pageIndex) >= m_pageInfos.size())) {
+      uint32_t chunkCount = (pageIndex >> DxvkPageAllocator::ChunkPageBits) + 1u;
+      m_pageInfos.resize(chunkCount << DxvkPageAllocator::ChunkPageBits);
+    }
+
     addPageToList(pageIndex, listIndex);
     return pageIndex;
   }
 
 
-  void DxvkPoolAllocator::freePage(uint32_t pageIndex, uint32_t listIndex) {
+  bool DxvkPoolAllocator::freePage(uint32_t pageIndex, uint32_t listIndex) {
     removePageFromList(pageIndex, listIndex);
 
-    m_pageAllocator->freePages(pageIndex, 1u);
+    return m_pageAllocator->freePages(pageIndex, 1u);
   }
 
 

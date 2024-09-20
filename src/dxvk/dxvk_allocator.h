@@ -28,24 +28,51 @@ namespace dxvk {
     constexpr static uint32_t PageBits = 16;
     constexpr static uint64_t PageSize = 1u << PageBits;
 
-    DxvkPageAllocator(uint64_t capacity);
+    /// Maximum number of pages per chunk. Chunks represent contiguous memory
+    /// allocations whose free regions can be merged.
+    constexpr static uint32_t ChunkPageBits = 12u;
+    constexpr static uint32_t ChunkPageMask = (1u << ChunkPageBits) - 1u;
+
+    /// Chunk address bits. Can be used to quickly compute the chunk index
+    /// and allocation offset within the chunk from a raw byte address.
+    constexpr static uint32_t ChunkAddressBits = ChunkPageBits + PageBits;
+    constexpr static uint64_t ChunkAddressMask = (1u << ChunkAddressBits) - 1u;
+
+    constexpr static uint64_t MaxChunkSize = 1u << ChunkAddressBits;
+
+
+    DxvkPageAllocator();
 
     ~DxvkPageAllocator();
 
     /**
-     * \brief Queries number of available pages
-     * \returns Total page count
+     * \brief Queries total number of chunks
+     *
+     * This number may include chuks that have already been removed.
+     * \returns Total chunk count
      */
-    uint32_t pageCount() const {
-      return m_pageCount;
+    uint32_t chunkCount() const {
+      return uint32_t(m_chunks.size());
     }
 
     /**
-     * \brief Queries number of allocated pages
-     * \returns \c Used page count
+     * \brief Queries number of available pages in a chunk
+     *
+     * \param [in] chunkIndex Chunk index
+     * \returns Capacity of the given chunk
      */
-    uint32_t pagesUsed() const {
-      return m_pagesUsed;
+    uint32_t pageCount(uint32_t chunkIndex) const {
+      return m_chunks.at(chunkIndex).pageCount;
+    }
+
+    /**
+     * \brief Queries number of allocated pages in a chunk
+     *
+     * \param [in] chunkIndex Chunk index
+     * \returns Used page count in the given chunk
+     */
+    uint32_t pagesUsed(uint32_t chunkIndex) const {
+      return m_chunks.at(chunkIndex).pagesUsed;
     }
 
     /**
@@ -73,16 +100,36 @@ namespace dxvk {
      *
      * \param [in] address Allocated address, in bytes
      * \param [in] size Allocation size, in bytes
+     * \returns \c true if a chunk was freed
      */
-    void free(uint64_t address, uint64_t size);
+    bool free(uint64_t address, uint64_t size);
 
     /**
      * \brief Frees pages
      *
      * \param [in] index Index of first page to free
      * \param [in] count Number of pages to free
+     * \returns \c true if a chunk was freed
      */
-    void freePages(uint32_t index, uint32_t count);
+    bool freePages(uint32_t index, uint32_t count);
+
+    /**
+     * \brief Adds a chunk to the allocator
+     *
+     * Adds the given region to the free list, so
+     * that subsequent allocations can succeed.
+     * \param [in] size Total chunk size, in bytes
+     * \returns Chunk index
+     */
+    uint32_t addChunk(uint64_t size);
+
+    /**
+     * \brief Removes chunk from the allocator
+     *
+     * Must only be used if the entire chunk is unused.
+     * \param [in] chunkIndex Chunk index
+     */
+    void removeChunk(uint32_t chunkIndex);
 
     /**
      * \brief Queries page allocation mask
@@ -91,22 +138,29 @@ namespace dxvk {
      * a bit mask where each set bit represents an allocated page,
      * with the page index corresponding to the page index. The
      * output array must be sized appropriately.
+     * \param [out] chunkIndex Chunk index
      * \param [out] pageMask Page mask
      */
-    void getPageAllocationMask(uint32_t* pageMask) const;
+    void getPageAllocationMask(uint32_t chunkIndex, uint32_t* pageMask) const;
 
   private:
 
-    struct PageRange {
-      uint32_t index = 0u;
-      uint32_t count = 0u;
+    struct ChunkInfo {
+      uint32_t  pageCount = 0u;
+      uint32_t  pagesUsed = 0u;
+      int32_t   nextChunk = -1;
     };
 
-    uint32_t                m_pageCount = 0u;
-    uint32_t                m_pagesUsed = 0u;
+    struct PageRange {
+      uint32_t  index = 0u;
+      uint32_t  count = 0u;
+    };
 
     std::vector<PageRange>  m_freeList;
     std::vector<int32_t>    m_freeListLutByPage;
+
+    std::vector<ChunkInfo>  m_chunks;
+    int32_t                 m_freeChunk = -1;
 
     int32_t searchFreeList(uint32_t count);
 
@@ -163,8 +217,9 @@ namespace dxvk {
      *
      * \param [in] address Memory address, in bytes
      * \param [in] size Allocation size, in bytes
+     * \returns \c true if a chunk was freed
      */
-    void free(uint64_t address, uint64_t size);
+    bool free(uint64_t address, uint64_t size);
 
   private:
 
@@ -197,7 +252,7 @@ namespace dxvk {
 
     int32_t allocPage(uint32_t listIndex);
 
-    void freePage(uint32_t pageIndex, uint32_t listIndex);
+    bool freePage(uint32_t pageIndex, uint32_t listIndex);
 
     void addPageToList(uint32_t pageIndex, uint32_t listIndex);
 

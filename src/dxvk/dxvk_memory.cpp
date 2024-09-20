@@ -68,9 +68,8 @@ namespace dxvk {
           DxvkMemoryType*       type,
           DxvkDeviceMemory      memory)
   : m_alloc(alloc), m_type(type), m_memory(memory),
-    m_pageAllocator(memory.memSize),
     m_poolAllocator(m_pageAllocator) {
-
+    m_pageAllocator.addChunk(memory.memSize);
   }
   
   
@@ -131,19 +130,19 @@ namespace dxvk {
   
   
   bool DxvkMemoryChunk::isEmpty() const {
-    return m_pageAllocator.pagesUsed() == 0u;
+    return m_pageAllocator.pagesUsed(0u) == 0u;
   }
 
 
   void DxvkMemoryChunk::getAllocationStats(DxvkMemoryAllocationStats& stats) const {
     auto& chunkStats = stats.chunks.emplace_back();
-    chunkStats.capacity = uint64_t(m_pageAllocator.pageCount()) * DxvkPageAllocator::PageSize;
-    chunkStats.used = uint64_t(m_pageAllocator.pagesUsed()) * DxvkPageAllocator::PageSize;
+    chunkStats.capacity = uint64_t(m_pageAllocator.pageCount(0u)) * DxvkPageAllocator::PageSize;
+    chunkStats.used = uint64_t(m_pageAllocator.pagesUsed(0u)) * DxvkPageAllocator::PageSize;
     chunkStats.pageMaskOffset = stats.pageMasks.size();
-    chunkStats.pageCount = m_pageAllocator.pageCount();
+    chunkStats.pageCount = m_pageAllocator.pageCount(0u);
 
     stats.pageMasks.resize(chunkStats.pageMaskOffset + (chunkStats.pageCount + 31u) / 32u);
-    m_pageAllocator.getPageAllocationMask(&stats.pageMasks.at(chunkStats.pageMaskOffset));
+    m_pageAllocator.getPageAllocationMask(0u, &stats.pageMasks.at(chunkStats.pageMaskOffset));
   }
 
 
