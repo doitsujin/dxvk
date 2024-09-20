@@ -50,13 +50,51 @@ namespace dxvk {
    * be persistently mapped.
    */
   struct DxvkDeviceMemory {
-    VkBuffer              buffer     = VK_NULL_HANDLE;
-    VkDeviceMemory        memHandle  = VK_NULL_HANDLE;
-    void*                 memPointer = nullptr;
-    VkDeviceSize          memSize    = 0;
+    VkBuffer              buffer  = VK_NULL_HANDLE;
+    VkDeviceMemory        memory  = VK_NULL_HANDLE;
+    VkDeviceSize          size    = 0;
+    void*                 mapPtr  = nullptr;
   };
 
   
+  /**
+   * \brief Memory pool
+   *
+   * Stores a list of memory chunks, as well as an allocator
+   * over the entire pool.
+   */
+  struct DxvkMemoryPool {
+    constexpr static VkDeviceSize MaxChunkSize = DxvkPageAllocator::MaxChunkSize;
+    constexpr static VkDeviceSize MinChunkSize = MaxChunkSize / 64u;
+
+    /// Backing storage for allocated memory chunks
+    std::vector<DxvkDeviceMemory> chunks;
+    /// Memory allocator covering the entire memory pool
+    DxvkPageAllocator pageAllocator;
+    /// Pool allocator that sits on top of the page allocator
+    DxvkPoolAllocator poolAllocator = { pageAllocator };
+    /// Minimum desired allocation size for the next chunk.
+    /// Always a power of two.
+    VkDeviceSize nextChunkSize = MinChunkSize;
+    /// Maximum chunk size for the memory pool. Hard limit.
+    VkDeviceSize maxChunkSize = MaxChunkSize;
+
+    force_inline int64_t alloc(uint64_t size, uint64_t align) {
+      if (size <= DxvkPoolAllocator::MaxSize)
+        return poolAllocator.alloc(size);
+      else
+        return pageAllocator.alloc(size, align);
+    }
+
+    force_inline bool free(uint64_t address, uint64_t size) {
+      if (size <= DxvkPoolAllocator::MaxSize)
+        return poolAllocator.free(address, size);
+      else
+        return pageAllocator.free(address, size);
+    }
+  };
+
+
   /**
    * \brief Memory heap
    * 
@@ -64,6 +102,8 @@ namespace dxvk {
    * its properties as well as allocation statistics.
    */
   struct DxvkMemoryHeap {
+    uint32_t          index         = 0u;
+    uint32_t          memoryTypes   = 0u;
     VkMemoryHeap      properties    = { };
   };
 
@@ -76,21 +116,20 @@ namespace dxvk {
    * this memory type.
    */
   struct DxvkMemoryType {
-    DxvkMemoryHeap*   heap          = nullptr;
-    uint32_t          heapId        = 0u;
+    uint32_t          index         = 0u;
+    VkMemoryType      properties    = { };
 
-    VkMemoryType      memType       = { };
-    uint32_t          memTypeId     = 0u;
+    DxvkMemoryHeap*   heap          = nullptr;
 
     DxvkMemoryStats   stats         = { };
 
-    VkDeviceSize      chunkSize     = 0u;
     VkBufferUsageFlags bufferUsage  = 0u;
 
-    std::vector<Rc<DxvkMemoryChunk>> chunks;
+    DxvkMemoryPool    devicePool;
+    DxvkMemoryPool    mappedPool;
   };
-  
-  
+
+
   /**
    * \brief Memory type statistics
    */
@@ -147,11 +186,10 @@ namespace dxvk {
     DxvkMemory();
     DxvkMemory(
       DxvkMemoryAllocator*  alloc,
-      DxvkMemoryChunk*      chunk,
       DxvkMemoryType*       type,
       VkBuffer              buffer,
       VkDeviceMemory        memory,
-      VkDeviceSize          offset,
+      VkDeviceSize          address,
       VkDeviceSize          length,
       void*                 mapPtr);
     DxvkMemory             (DxvkMemory&& other);
@@ -187,7 +225,7 @@ namespace dxvk {
      * \returns Offset into device memory
      */
     VkDeviceSize offset() const {
-      return m_offset;
+      return m_address & DxvkPageAllocator::ChunkAddressMask;
     }
     
     /**
@@ -230,100 +268,15 @@ namespace dxvk {
   private:
     
     DxvkMemoryAllocator*  m_alloc  = nullptr;
-    DxvkMemoryChunk*      m_chunk  = nullptr;
     DxvkMemoryType*       m_type   = nullptr;
     VkBuffer              m_buffer = VK_NULL_HANDLE;
     VkDeviceMemory        m_memory = VK_NULL_HANDLE;
-    VkDeviceSize          m_offset = 0;
+    VkDeviceSize          m_address = 0;
     VkDeviceSize          m_length = 0;
     void*                 m_mapPtr = nullptr;
     
     void free();
     
-  };
-  
-  
-  /**
-   * \brief Memory chunk
-   * 
-   * A single chunk of memory that provides a
-   * sub-allocator. This is not thread-safe.
-   */
-  class DxvkMemoryChunk : public RcObject {
-    
-  public:
-    
-    DxvkMemoryChunk(
-            DxvkMemoryAllocator*  alloc,
-            DxvkMemoryType*       type,
-            DxvkDeviceMemory      memory);
-    
-    ~DxvkMemoryChunk();
-
-    /**
-     * \brief Queries chunk size
-     * \returns Chunk size
-     */
-    VkDeviceSize size() const {
-      return m_memory.memSize;
-    }
-
-    /**
-     * \brief Allocates memory from the chunk
-     * 
-     * On failure, this returns a slice with
-     * \c VK_NULL_HANDLE as the memory handle.
-     * \param [in] flags Requested memory type flags
-     * \param [in] size Number of bytes to allocate
-     * \param [in] align Required alignment
-     * \param [in] hints Memory category
-     * \returns The allocated memory slice
-     */
-    DxvkMemory alloc(
-            VkMemoryPropertyFlags flags,
-            VkDeviceSize          size,
-            VkDeviceSize          align);
-    
-    /**
-     * \brief Frees memory
-     * 
-     * Returns a slice back to the chunk.
-     * Called automatically when a memory
-     * slice runs out of scope.
-     * \param [in] offset Slice offset
-     * \param [in] length Slice length
-     */
-    void free(
-            VkDeviceSize  offset,
-            VkDeviceSize  length);
-
-    /**
-     * \brief Checks whether the chunk is being used
-     * \returns \c true if there are no allocations left
-     */
-    bool isEmpty() const;
-
-    /**
-     * \brief Retrieves allocation stats for this chunk
-     *
-     * Adds overall stats and the page mask to the given structure.
-     * \param [out] stats Allocation stats
-     */
-    void getAllocationStats(DxvkMemoryAllocationStats& stats) const;
-
-  private:
-    
-    DxvkMemoryAllocator*  m_alloc;
-    DxvkMemoryType*       m_type;
-    DxvkDeviceMemory      m_memory;
-
-    DxvkPageAllocator     m_pageAllocator;
-    DxvkPoolAllocator     m_poolAllocator;
-
-    void mapChunk();
-
-    void unmapChunk();
-
   };
 
 
@@ -358,10 +311,14 @@ namespace dxvk {
     friend class DxvkMemory;
     friend class DxvkMemoryChunk;
 
+    constexpr static uint64_t DedicatedChunkAddress = 1ull << 63u;
+
     constexpr static VkDeviceSize SmallAllocationThreshold = 256 << 10;
 
     constexpr static VkDeviceSize MinChunkSize =   4ull << 20;
     constexpr static VkDeviceSize MaxChunkSize = 256ull << 20;
+
+    constexpr static VkDeviceSize MinResourcesPerChunk = 4u;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
@@ -381,15 +338,44 @@ namespace dxvk {
 
     /**
      * \brief Allocates device memory
-     * 
+     *
+     * Legacy interface for memory allocation, to be removed.
      * \param [in] req Memory requirements
      * \param [in] info Memory properties
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
             DxvkMemoryRequirements            req,
-            DxvkMemoryProperties              info);
-    
+      const DxvkMemoryProperties&             info);
+
+    /**
+     * \brief Allocates memory for a regular resource
+     *
+     * This method should be used when a dedicated allocation is
+     * not required. Very large resources may still be placed in
+     * a dedicated allocation.
+     * \param [in] requirements Memory requirements
+     * \param [in] properties Memory property flags. Some of
+     *    these may be ignored in case of memory pressure.
+     */
+    DxvkMemory allocateMemory(
+      const VkMemoryRequirements&             requirements,
+            VkMemoryPropertyFlags             properties);
+
+    /**
+     * \brief Allocates memory for a resource
+     *
+     * Will always create a dedicated allocation.
+     * \param [in] requirements Memory requirements
+     * \param [in] properties Memory property flags. Some of
+     *    these may be ignored in case of memory pressure.
+     * \param [in] next Further memory properties
+     */
+    DxvkMemory allocateDedicatedMemory(
+      const VkMemoryRequirements&             requirements,
+            VkMemoryPropertyFlags             properties,
+      const void*                             next);
+
     /**
      * \brief Queries memory stats
      * 
@@ -435,72 +421,100 @@ namespace dxvk {
 
   private:
 
-    DxvkDevice*                                     m_device;
-    VkPhysicalDeviceMemoryProperties                m_memProps;
-    
-    dxvk::mutex                                     m_mutex;
-    std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps = { };
+    DxvkDevice* m_device;
+
+    dxvk::mutex m_mutex;
+
+    uint32_t m_memTypeCount = 0u;
+    uint32_t m_memHeapCount = 0u;
+
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes = { };
+    std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps = { };
 
     uint32_t m_sparseMemoryTypes = 0u;
 
-    DxvkMemory tryAlloc(
-      const DxvkMemoryRequirements&           req,
-      const DxvkMemoryProperties&             info);
-    
-    DxvkMemory tryAllocFromType(
-            DxvkMemoryType*                   type,
-            VkDeviceSize                      size,
-            VkDeviceSize                      align,
-      const DxvkMemoryProperties&             info);
-    
-    DxvkDeviceMemory tryAllocDeviceMemory(
-            DxvkMemoryType*                   type,
-            VkDeviceSize                      size,
-            DxvkMemoryProperties              info,
-            bool                              isChunk);
-    
+    std::array<uint32_t, 16> m_memTypesByPropertyFlags = { };
+
+    DxvkDeviceMemory allocateDeviceMemory(
+            DxvkMemoryType&       type,
+            VkDeviceSize          size,
+      const void*                 next);
+
+    bool allocateChunkInPool(
+            DxvkMemoryType&       type,
+            DxvkMemoryPool&       pool,
+            VkMemoryPropertyFlags properties,
+            VkDeviceSize          requiredSize,
+            VkDeviceSize          desiredSize);
+
+    DxvkMemory createMemory(
+            DxvkMemoryType&       type,
+            DxvkMemoryPool&       pool,
+            VkDeviceSize          address,
+            VkDeviceSize          size);
+
     void free(
       const DxvkMemory&           memory);
-    
-    void freeChunkMemory(
-            DxvkMemoryType*       type,
-            DxvkMemoryChunk*      chunk,
-            VkDeviceSize          offset,
-            VkDeviceSize          length);
-    
+
     void freeDeviceMemory(
-            DxvkMemoryType*       type,
+            DxvkMemoryType&       type,
             DxvkDeviceMemory      memory);
     
-    VkDeviceSize pickChunkSize(
-            uint32_t              memTypeId,
-            VkDeviceSize          requiredSize) const;
+    uint32_t countEmptyChunksInPool(
+      const DxvkMemoryPool&       pool) const;
 
-    void adjustChunkSize(
-            uint32_t              memTypeId,
-            VkDeviceSize          allocatedSize);
+    void freeEmptyChunksInHeap(
+      const DxvkMemoryHeap&       heap,
+            VkDeviceSize          allocationSize);
 
-    bool shouldFreeChunk(
-      const DxvkMemoryType*       type,
-      const Rc<DxvkMemoryChunk>&  chunk) const;
+    void freeEmptyChunksInPool(
+            DxvkMemoryType&       type,
+            DxvkMemoryPool&       pool,
+            VkDeviceSize          allocationSize);
 
-    bool shouldFreeEmptyChunks(
-            uint32_t              heapIndex,
-            VkDeviceSize          allocationSize) const;
+    int32_t findEmptyChunkInPool(
+      const DxvkMemoryPool&       pool,
+            VkDeviceSize          minSize,
+            VkDeviceSize          maxSize) const;
 
-    void freeEmptyChunks(
-      const DxvkMemoryHeap*       heap);
+    void mapDeviceMemory(
+            DxvkDeviceMemory&     memory,
+            VkMemoryPropertyFlags properties);
+
+    DxvkMemory createMemory(
+            DxvkMemoryType&       type,
+      const DxvkMemoryPool&       pool,
+            VkDeviceSize          address,
+            VkDeviceSize          size);
+
+    DxvkMemory createMemory(
+            DxvkMemoryType&       type,
+      const DxvkDeviceMemory&     memory);
+
+    void getAllocationStatsForPool(
+      const DxvkMemoryType&       type,
+      const DxvkMemoryPool&       pool,
+            DxvkMemoryAllocationStats& stats);
+
+    VkDeviceSize determineMaxChunkSize(
+      const DxvkMemoryType&       type,
+            bool                  mappable) const;
 
     uint32_t determineSparseMemoryTypes(
             DxvkDevice*           device) const;
 
     void determineBufferUsageFlagsPerMemoryType();
 
+    void determineMemoryTypesWithPropertyFlags();
+
     void logMemoryError(
       const VkMemoryRequirements& req) const;
 
     void logMemoryStats() const;
+
+    bit::BitMask getMemoryTypeMask(
+      const VkMemoryRequirements&             requirements,
+            VkMemoryPropertyFlags             properties) const;
 
   };
   

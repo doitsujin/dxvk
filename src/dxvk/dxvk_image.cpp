@@ -76,25 +76,27 @@ namespace dxvk {
       DxvkMemoryProperties memoryProperties = { };
       memoryProperties.flags = m_memFlags;
 
+      if (memoryRequirements.dedicated.prefersDedicatedAllocation || m_shared) {
+        memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+        memoryProperties.dedicated.image = m_image.image;
+      }
+
       if (m_shared) {
         memoryRequirements.dedicated.prefersDedicatedAllocation = VK_TRUE;
         memoryRequirements.dedicated.requiresDedicatedAllocation = VK_TRUE;
 
         if (createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
           memoryProperties.sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
+          memoryProperties.sharedExport.pNext = std::exchange(memoryProperties.dedicated.pNext, &memoryProperties.sharedExport);
           memoryProperties.sharedExport.handleTypes = createInfo.sharing.type;
         }
 
         if (createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
           memoryProperties.sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+          memoryProperties.sharedImportWin32.pNext = std::exchange(memoryProperties.dedicated.pNext, &memoryProperties.sharedImportWin32);
           memoryProperties.sharedImportWin32.handleType = createInfo.sharing.type;
           memoryProperties.sharedImportWin32.handle = createInfo.sharing.handle;
         }
-      }
-
-      if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
-        memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-        memoryProperties.dedicated.image = m_image.image;
       }
 
       m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties);
