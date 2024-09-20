@@ -244,14 +244,11 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(device->vkd()), m_info(info), m_buffer(buffer),
-    m_usage       (info.usage),
+    m_usage       (device->features().khrMaintenance5.maintenance5 ? info.usage : 0u),
     m_bufferSlice (getSliceHandle()),
     m_bufferView  (VK_NULL_HANDLE) {
     if (m_info.format != VK_FORMAT_UNDEFINED)
       m_bufferView = createBufferView(m_bufferSlice);
-
-    if (!device->features().khrMaintenance5.maintenance5)
-      m_usage = 0;
   }
   
   
