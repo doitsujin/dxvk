@@ -3,6 +3,8 @@
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
 
+#include "../util/util_time.h"
+
 namespace dxvk {
   
   class DxvkMemoryAllocator;
@@ -56,6 +58,20 @@ namespace dxvk {
     void*                 mapPtr  = nullptr;
   };
 
+
+  /**
+   * \brief Memory chunk
+   *
+   * Stores a device memory object with some metadata.
+   */
+  struct DxvkMemoryChunk {
+    /// Backing storage for this chunk
+    DxvkDeviceMemory memory;
+    /// Time when the chunk has been marked as unused. Must
+    /// be set to 0 when allocating memory from the chunk
+    high_resolution_clock::time_point unusedTime = { };
+  };
+
   
   /**
    * \brief Memory pool
@@ -68,7 +84,7 @@ namespace dxvk {
     constexpr static VkDeviceSize MinChunkSize = MaxChunkSize / 64u;
 
     /// Backing storage for allocated memory chunks
-    std::vector<DxvkDeviceMemory> chunks;
+    std::vector<DxvkMemoryChunk> chunks;
     /// Memory allocator covering the entire memory pool
     DxvkPageAllocator pageAllocator;
     /// Pool allocator that sits on top of the page allocator
@@ -423,7 +439,8 @@ namespace dxvk {
 
     DxvkDevice* m_device;
 
-    dxvk::mutex m_mutex;
+    dxvk::mutex               m_mutex;
+    dxvk::condition_variable  m_cond;
 
     uint32_t m_memTypeCount = 0u;
     uint32_t m_memHeapCount = 0u;
@@ -434,6 +451,9 @@ namespace dxvk {
     uint32_t m_sparseMemoryTypes = 0u;
 
     std::array<uint32_t, 16> m_memTypesByPropertyFlags = { };
+
+    dxvk::thread              m_worker;
+    bool                      m_stopWorker = false;
 
     DxvkDeviceMemory allocateDeviceMemory(
             DxvkMemoryType&       type,
@@ -465,12 +485,14 @@ namespace dxvk {
 
     void freeEmptyChunksInHeap(
       const DxvkMemoryHeap&       heap,
-            VkDeviceSize          allocationSize);
+            VkDeviceSize          allocationSize,
+            high_resolution_clock::time_point time);
 
     void freeEmptyChunksInPool(
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
-            VkDeviceSize          allocationSize);
+            VkDeviceSize          allocationSize,
+            high_resolution_clock::time_point time);
 
     int32_t findEmptyChunkInPool(
       const DxvkMemoryPool&       pool,
@@ -515,6 +537,8 @@ namespace dxvk {
     bit::BitMask getMemoryTypeMask(
       const VkMemoryRequirements&             requirements,
             VkMemoryPropertyFlags             properties) const;
+
+    void runWorker();
 
   };
   

@@ -95,14 +95,24 @@ namespace dxvk {
       m_sparseMemoryTypes = determineSparseMemoryTypes(device);
 
     determineBufferUsageFlagsPerMemoryType();
+
+    // Start worker after setting up everything else
+    m_worker = dxvk::thread([this] { runWorker(); });
   }
   
   
   DxvkMemoryAllocator::~DxvkMemoryAllocator() {
     auto vk = m_device->vkd();
 
+    { std::unique_lock lock(m_mutex);
+      m_stopWorker = true;
+      m_cond.notify_one();
+    }
+
+    m_worker.join();
+
     for (uint32_t i = 0; i < m_memHeapCount; i++)
-      freeEmptyChunksInHeap(m_memHeaps[i], VkDeviceSize(-1));
+      freeEmptyChunksInHeap(m_memHeaps[i], VkDeviceSize(-1), high_resolution_clock::time_point());
   }
   
   
@@ -180,14 +190,14 @@ namespace dxvk {
           size, selectedPool.maxChunkSize);
 
         if (freeChunkIndex >= 0) {
-          uint32_t poolChunkIndex = selectedPool.pageAllocator.addChunk(oppositePool.chunks[freeChunkIndex].size);
+          uint32_t poolChunkIndex = selectedPool.pageAllocator.addChunk(oppositePool.chunks[freeChunkIndex].memory.size);
           selectedPool.chunks.resize(std::max<size_t>(selectedPool.chunks.size(), poolChunkIndex + 1u));
           selectedPool.chunks[poolChunkIndex] = oppositePool.chunks[freeChunkIndex];
 
           oppositePool.pageAllocator.removeChunk(freeChunkIndex);
-          oppositePool.chunks[freeChunkIndex] = DxvkDeviceMemory();
+          oppositePool.chunks[freeChunkIndex] = DxvkMemoryChunk();
 
-          mapDeviceMemory(selectedPool.chunks[poolChunkIndex], properties);
+          mapDeviceMemory(selectedPool.chunks[poolChunkIndex].memory, properties);
 
           address = selectedPool.alloc(size, requirements.alignment);
 
@@ -261,7 +271,7 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     // Preemptively free some unused allocations to reduce memory waste
-    freeEmptyChunksInHeap(*type.heap, size);
+    freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
 
     VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, next };
     memoryInfo.allocationSize = size;
@@ -303,7 +313,7 @@ namespace dxvk {
     result.size = size;
 
     if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory)) {
-      freeEmptyChunksInHeap(*type.heap, VkDeviceSize(-1));
+      freeEmptyChunksInHeap(*type.heap, VkDeviceSize(-1), high_resolution_clock::time_point());
 
       if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory))
         return DxvkDeviceMemory();
@@ -385,7 +395,8 @@ namespace dxvk {
     uint32_t chunkIndex = pool.pageAllocator.addChunk(chunk.size);
 
     pool.chunks.resize(std::max<size_t>(pool.chunks.size(), chunkIndex + 1u));
-    pool.chunks[chunkIndex] = chunk;
+    pool.chunks[chunkIndex].memory = chunk;
+    pool.chunks[chunkIndex].unusedTime = high_resolution_clock::time_point();
     return true;
   }
 
@@ -400,13 +411,16 @@ namespace dxvk {
     m_device->notifyMemoryUse(type.properties.heapIndex, size);
 
     uint32_t chunkIndex = address >> DxvkPageAllocator::ChunkAddressBits;
-    const auto& chunk = pool.chunks[chunkIndex];
 
-    void* mapPtr = chunk.mapPtr
-      ? reinterpret_cast<char*>(chunk.mapPtr) + (address & DxvkPageAllocator::ChunkAddressMask)
+    auto& chunk = pool.chunks[chunkIndex];
+    chunk.unusedTime = high_resolution_clock::time_point();
+
+    void* mapPtr = chunk.memory.mapPtr
+      ? reinterpret_cast<char*>(chunk.memory.mapPtr) + (address & DxvkPageAllocator::ChunkAddressMask)
       : nullptr;
 
-    return DxvkMemory(this, &type, chunk.buffer, chunk.memory, address, size, mapPtr);
+    return DxvkMemory(this, &type, chunk.memory.buffer,
+      chunk.memory.memory, address, size, mapPtr);
   }
 
 
@@ -443,7 +457,7 @@ namespace dxvk {
         : memory.m_type->devicePool;
 
       if (unlikely(pool.free(memory.m_address, memory.m_length)))
-        freeEmptyChunksInPool(*memory.m_type, pool, 0);
+        freeEmptyChunksInPool(*memory.m_type, pool, 0, high_resolution_clock::now());
     }
   }
 
@@ -462,12 +476,13 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::freeEmptyChunksInHeap(
     const DxvkMemoryHeap&       heap,
-          VkDeviceSize          allocationSize) {
+          VkDeviceSize          allocationSize,
+          high_resolution_clock::time_point time) {
     for (auto typeIndex : bit::BitMask(heap.memoryTypes)) {
       auto& type = m_memTypes[typeIndex];
 
-      freeEmptyChunksInPool(type, type.devicePool, allocationSize);
-      freeEmptyChunksInPool(type, type.mappedPool, allocationSize);
+      freeEmptyChunksInPool(type, type.devicePool, allocationSize, time);
+      freeEmptyChunksInPool(type, type.mappedPool, allocationSize, time);
     }
   }
 
@@ -475,7 +490,8 @@ namespace dxvk {
   void DxvkMemoryAllocator::freeEmptyChunksInPool(
           DxvkMemoryType&       type,
           DxvkMemoryPool&       pool,
-          VkDeviceSize          allocationSize) {
+          VkDeviceSize          allocationSize,
+          high_resolution_clock::time_point time) {
     // Allow for one unused max-size chunk on device-local memory types.
     // For system memory allocations, we need to be more lenient since
     // applications will frequently allocate staging buffers.
@@ -486,38 +502,52 @@ namespace dxvk {
      && (&pool == &type.mappedPool))
       maxUnusedMemory *= env::is32BitHostPlatform() ? 2u : 4u;
 
+    // Factor current memory allocation into the decision to free chunks
     VkDeviceSize heapBudget = (type.heap->properties.size * 4) / 5;
     VkDeviceSize heapAllocated = getMemoryStats(type.heap->index).memoryAllocated;
 
     VkDeviceSize unusedMemory = 0u;
 
-    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
-      DxvkDeviceMemory chunk = pool.chunks[i];
+    bool chunkFreed = false;
 
-      if (!chunk.memory || pool.pageAllocator.pagesUsed(i))
+    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
+      DxvkMemoryChunk& chunk = pool.chunks[i];
+
+      if (!chunk.memory.memory || pool.pageAllocator.pagesUsed(i))
         continue;
 
       // Free the chunk if it is smaller than the current chunk size of
       // the pool, since it is unlikely to be useful for future allocations.
       // Also free if the pending allocation would exceed the heap budget.
-      bool shouldFree = chunk.size < pool.nextChunkSize
+      bool shouldFree = chunk.memory.size < pool.nextChunkSize
         || allocationSize + heapAllocated > heapBudget
         || allocationSize > heapBudget;
 
-      // If we don't free the chunk under these conditions, count it towards
-      // unused memory in the current memory pool. Once we exceed the limit,
-      // free any empty chunk we encounter.
+      // If we still don't free the chunk under these conditions, count it
+      // towards unused memory in the current memory pool. Once we exceed
+      // the limit, free any empty chunk we encounter.
       if (!shouldFree) {
-        unusedMemory += chunk.size;
+        unusedMemory += chunk.memory.size;
         shouldFree = unusedMemory > maxUnusedMemory;
       }
 
-      if (shouldFree) {
-        freeDeviceMemory(type, chunk);
-        heapAllocated -= chunk.size;
+      // Free chunks that have not been used in some time, but only free
+      // one chunk at a time and keep at least one empty chunk alive.
+      if (!shouldFree && time != high_resolution_clock::time_point()) {
+        if (chunk.unusedTime == high_resolution_clock::time_point() || chunkFreed)
+          chunk.unusedTime = time;
+        else if (unusedMemory > chunk.memory.size)
+          shouldFree = time - chunk.unusedTime >= std::chrono::seconds(20);
+      }
 
-        pool.chunks[i] = DxvkDeviceMemory();
+      if (shouldFree) {
+        freeDeviceMemory(type, chunk.memory);
+        heapAllocated -= chunk.memory.size;
+
+        chunk = DxvkMemoryChunk();
         pool.pageAllocator.removeChunk(i);
+
+        chunkFreed = true;
       }
     }
   }
@@ -528,9 +558,9 @@ namespace dxvk {
           VkDeviceSize          minSize,
           VkDeviceSize          maxSize) const {
     for (uint32_t i = 0; i < pool.chunks.size(); i++) {
-      if (pool.chunks[i].memory
-       && pool.chunks[i].size >= minSize
-       && pool.chunks[i].size <= maxSize
+      const auto& chunk = pool.chunks[i].memory;
+
+      if (chunk.memory && chunk.size >= minSize && chunk.size <= maxSize
        && !pool.pageAllocator.pagesUsed(i))
         return int32_t(i);
     }
@@ -582,13 +612,13 @@ namespace dxvk {
     auto& typeStats = stats.memoryTypes[type.index];
 
     for (uint32_t i = 0; i < pool.chunks.size(); i++) {
-      if (!pool.chunks[i].memory)
+      if (!pool.chunks[i].memory.memory)
         continue;
 
       typeStats.chunkCount += 1u;
 
       auto& chunkStats = stats.chunks.emplace_back();
-      chunkStats.capacity = pool.chunks[i].size;
+      chunkStats.capacity = pool.chunks[i].memory.size;
       chunkStats.used = pool.pageAllocator.pagesUsed(i) * DxvkPageAllocator::PageSize;
       chunkStats.pageMaskOffset = stats.pageMasks.size();
       chunkStats.pageCount = pool.pageAllocator.pageCount(i);
@@ -931,6 +961,27 @@ namespace dxvk {
     mask &= m_memTypesByPropertyFlags[uint32_t(properties) % uint32_t(m_memTypesByPropertyFlags.size())];
 
     return bit::BitMask(mask);
+  }
+
+
+  void DxvkMemoryAllocator::runWorker() {
+    env::setThreadName("dxvk-memory");
+
+    std::unique_lock lock(m_mutex);
+
+    while (true) {
+      m_cond.wait_for(lock, std::chrono::seconds(1u),
+        [this] { return m_stopWorker; });
+
+      if (m_stopWorker)
+        break;
+
+      // Periodically free unused memory chunks
+      auto currentTime = high_resolution_clock::now();
+
+      for (uint32_t i = 0; i < m_memHeapCount; i++)
+        freeEmptyChunksInHeap(m_memHeaps[i], 0, currentTime);
+    }
   }
 
 }
