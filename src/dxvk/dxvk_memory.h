@@ -173,9 +173,11 @@ namespace dxvk {
     VkDeviceSize used = 0u;
     /// Index of first page mask belonging to this
     /// chunk in the page mask array
-    size_t pageMaskOffset = 0u;
+    uint32_t pageMaskOffset = 0u;
     /// Number of pages in this chunk.
-    size_t pageCount = 0u;
+    uint16_t pageCount = 0u;
+    /// Whether this chunk is mapped
+    bool mapped = false;
   };
 
 
