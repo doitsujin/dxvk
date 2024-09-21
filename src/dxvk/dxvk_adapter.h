@@ -57,7 +57,19 @@ namespace dxvk {
     uint32_t transfer;
     uint32_t sparse;
   };
-  
+
+
+  /**
+   * \brief Adapter memory statistics
+   *
+   * Periodically updated by the devices using this adapter.
+   */
+  struct DxvkAdapterMemoryStats {
+    std::atomic<uint64_t> allocated = { 0u };
+    std::atomic<uint64_t> used = { 0u };
+  };
+
+
   /**
    * \brief Device import info
    */
@@ -228,22 +240,13 @@ namespace dxvk {
      * 
      * Updates memory alloc info accordingly.
      * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
+     * \param [in] allocated Allocated size delta
+     * \param [in] used Used size delta
      */
-    void notifyMemoryAlloc(
+    void notifyMemoryStats(
             uint32_t            heap,
-            int64_t             bytes);
-    
-    /**
-     * \brief Registers memory suballocation
-     * 
-     * Updates memory alloc info accordingly.
-     * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
-     */
-    void notifyMemoryUse(
-            uint32_t            heap,
-            int64_t             bytes);
+            int64_t             allocated,
+            int64_t             used);
     
     /**
      * \brief Tests if the driver matches certain criteria
@@ -328,8 +331,7 @@ namespace dxvk {
 
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
-    std::array<std::atomic<uint64_t>, VK_MAX_MEMORY_HEAPS> m_memoryAllocated = { };
-    std::array<std::atomic<uint64_t>, VK_MAX_MEMORY_HEAPS> m_memoryUsed = { };
+    std::array<DxvkAdapterMemoryStats, VK_MAX_MEMORY_HEAPS> m_memoryStats = { };
 
     void queryExtensions();
     void queryDeviceInfo();

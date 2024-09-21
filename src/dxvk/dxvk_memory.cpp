@@ -358,8 +358,6 @@ namespace dxvk {
     }
 
     type.stats.memoryAllocated += size;
-
-    m_device->notifyMemoryAlloc(type.properties.heapIndex, size);
     return result;
   }
 
@@ -408,8 +406,6 @@ namespace dxvk {
           VkDeviceSize          size) {
     type.stats.memoryUsed += size;
 
-    m_device->notifyMemoryUse(type.properties.heapIndex, size);
-
     uint32_t chunkIndex = address >> DxvkPageAllocator::ChunkAddressBits;
 
     auto& chunk = pool.chunks[chunkIndex];
@@ -429,8 +425,6 @@ namespace dxvk {
     const DxvkDeviceMemory&     memory) {
     type.stats.memoryUsed += memory.size;
 
-    m_device->notifyMemoryUse(type.properties.heapIndex, memory.size);
-
     return DxvkMemory(this, &type, memory.buffer, memory.memory,
       DedicatedChunkAddress, memory.size, memory.mapPtr);
   }
@@ -440,8 +434,6 @@ namespace dxvk {
     const DxvkMemory&           memory) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     memory.m_type->stats.memoryUsed -= memory.m_length;
-
-    m_device->notifyMemoryUse(memory.m_type->properties.heapIndex, -memory.m_length);
 
     if (unlikely(memory.m_address == DedicatedChunkAddress)) {
       DxvkDeviceMemory devMem;
@@ -470,7 +462,6 @@ namespace dxvk {
     vk->vkFreeMemory(vk->device(), memory.memory, nullptr);
 
     type.stats.memoryAllocated -= memory.size;
-    m_device->notifyMemoryAlloc(type.properties.heapIndex, memory.size);
   }
 
 
@@ -967,6 +958,9 @@ namespace dxvk {
   void DxvkMemoryAllocator::runWorker() {
     env::setThreadName("dxvk-memory");
 
+    // Local memory statistics that we use to compute stat deltas
+    std::array<DxvkMemoryStats, VK_MAX_MEMORY_HEAPS> heapStats = { };
+
     std::unique_lock lock(m_mutex);
 
     while (true) {
@@ -976,11 +970,29 @@ namespace dxvk {
       if (m_stopWorker)
         break;
 
-      // Periodically free unused memory chunks
+      // Periodically free unused memory chunks and update
+      // memory allocation statistics for the adapter.
       auto currentTime = high_resolution_clock::now();
 
-      for (uint32_t i = 0; i < m_memHeapCount; i++)
+      for (uint32_t i = 0; i < m_memHeapCount; i++) {
         freeEmptyChunksInHeap(m_memHeaps[i], 0, currentTime);
+
+        DxvkMemoryStats stats = getMemoryStats(i);
+
+        m_device->notifyMemoryStats(i,
+          stats.memoryAllocated - heapStats[i].memoryAllocated,
+          stats.memoryUsed - heapStats[i].memoryUsed);
+
+        heapStats[i] = stats;
+      }
+    }
+
+    // Ensure adapter allocation statistics are consistent
+    // when the deivce is being destroyed
+    for (uint32_t i = 0; i < m_memHeapCount; i++) {
+      m_device->notifyMemoryStats(i,
+        -heapStats[i].memoryAllocated,
+        -heapStats[i].memoryUsed);
     }
   }
 
