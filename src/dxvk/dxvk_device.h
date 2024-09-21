@@ -418,27 +418,17 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
-     * \brief Notifies adapter about memory allocation
+     * \brief Notifies adapter about memory allocation changes
      *
      * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
+     * \param [in] allocated Allocated size delta
+     * \param [in] used Used size delta
      */
-    void notifyMemoryAlloc(
+    void notifyMemoryStats(
             uint32_t            heap,
-            int64_t             bytes) {
-      m_adapter->notifyMemoryAlloc(heap, bytes);
-    }
-
-    /**
-     * \brief Notifies adapter about memory suballocation
-     *
-     * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
-     */
-    void notifyMemoryUse(
-            uint32_t            heap,
-            int64_t             bytes) {
-      m_adapter->notifyMemoryUse(heap, bytes);
+            int64_t             allocated,
+            int64_t             used) {
+      m_adapter->notifyMemoryStats(heap, allocated, used);
     }
 
     /**
