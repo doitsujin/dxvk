@@ -613,6 +613,7 @@ namespace dxvk {
       chunkStats.used = pool.pageAllocator.pagesUsed(i) * DxvkPageAllocator::PageSize;
       chunkStats.pageMaskOffset = stats.pageMasks.size();
       chunkStats.pageCount = pool.pageAllocator.pageCount(i);
+      chunkStats.mapped = &pool == &type.mappedPool;
 
       size_t maskCount = (chunkStats.pageCount + 31u) / 32u;
       stats.pageMasks.resize(chunkStats.pageMaskOffset + maskCount);

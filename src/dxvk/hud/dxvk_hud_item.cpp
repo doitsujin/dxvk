@@ -825,13 +825,13 @@ namespace dxvk::hud {
     args.size = size;
 
     if (!(memoryType.propertyFlags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) {
-      if (!(memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      if (!stats.mapped)
         args.color = 0xff202020u;
       else if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
         args.color = 0xff208020u;
       else
         args.color = 0xff202080u;
-    } else if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+    } else if (stats.mapped) {
       args.color = 0xff208080u;
     } else {
       args.color = 0xff804020u;
