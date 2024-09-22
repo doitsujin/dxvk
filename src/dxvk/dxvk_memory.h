@@ -70,8 +70,9 @@ namespace dxvk {
   struct DxvkDeviceMemory {
     VkBuffer              buffer  = VK_NULL_HANDLE;
     VkDeviceMemory        memory  = VK_NULL_HANDLE;
-    VkDeviceSize          size    = 0;
+    VkDeviceSize          size    = 0u;
     void*                 mapPtr  = nullptr;
+    VkDeviceAddress       gpuVa   = 0u;
   };
 
 
