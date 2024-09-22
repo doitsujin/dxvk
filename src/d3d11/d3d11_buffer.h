@@ -113,17 +113,17 @@ namespace dxvk {
         : DxvkBufferSlice();
     }
     
-    DxvkBufferSliceHandle AllocSlice() {
-      return m_buffer->allocSlice();
+    DxvkBufferAllocation AllocSlice() {
+      return m_buffer->allocateSlice();
     }
     
-    DxvkBufferSliceHandle DiscardSlice() {
-      m_mapped = m_buffer->allocSlice();
-      return m_mapped;
+    DxvkBufferAllocation DiscardSlice() {
+      m_allocation = m_buffer->allocateSlice();
+      return m_allocation;
     }
 
-    DxvkBufferSliceHandle GetMappedSlice() const {
-      return m_mapped;
+    DxvkBufferAllocation GetMappedSlice() const {
+      return m_allocation;
     }
 
     D3D10Buffer* GetD3D10Iface() {
@@ -184,7 +184,7 @@ namespace dxvk {
     Rc<DxvkBuffer>                m_buffer;
     Rc<DxvkBuffer>                m_soCounter;
     Rc<DxvkSparsePageAllocator>   m_sparseAllocator;
-    DxvkBufferSliceHandle         m_mapped;
+    DxvkBufferAllocation          m_allocation;
     uint64_t                      m_seq = 0ull;
 
     D3D11DXGIResource             m_resource;
