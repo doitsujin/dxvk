@@ -43,18 +43,16 @@ namespace dxvk {
 
     /**
      * \brief Increments reference count
-     * \returns New reference count
      */
-    uint32_t incRef() {
-      return acquire(DxvkAccess::None);
+    void incRef() {
+      acquire(DxvkAccess::None);
     }
 
     /**
      * \brief Decrements reference count
-     * \returns New reference count
      */
-    uint32_t decRef() {
-      return release(DxvkAccess::None);
+    void decRef() {
+      release(DxvkAccess::None);
     }
 
     /**
@@ -62,10 +60,9 @@ namespace dxvk {
      *
      * Atomically increments both the reference count
      * as well as the use count for the given access.
-     * \returns New reference count
      */
-    uint32_t acquire(DxvkAccess access) {
-      return uint32_t((m_useCount += getIncrement(access)) & RefcountMask);
+    void acquire(DxvkAccess access) {
+      m_useCount += getIncrement(access);
     }
 
     /**
@@ -73,10 +70,10 @@ namespace dxvk {
      *
      * Atomically decrements both the reference count
      * as well as the use count for the given access.
-     * \returns New reference count
      */
-    uint32_t release(DxvkAccess access) {
-      return uint32_t((m_useCount -= getIncrement(access)) & RefcountMask);
+    void release(DxvkAccess access) {
+      if (!(m_useCount -= getIncrement(access)))
+        delete this;
     }
 
     /**
