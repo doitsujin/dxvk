@@ -1,16 +1,9 @@
 #pragma once
 
 #include "dxvk_include.h"
+#include "dxvk_memory.h"
 
 namespace dxvk {
-  
-  enum class DxvkAccess : uint32_t {
-    Read    = 0,
-    Write   = 1,
-    None    = 2,
-  };
-  
-  using DxvkAccessFlags = Flags<DxvkAccess>;
   
   /**
    * \brief DXVK resource
