@@ -968,6 +968,11 @@ namespace dxvk {
     { R"(\\Battle Mages\\mages\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Prince of Persia (2008) - Can get stuck     *
+     * during loading at very high fps             */
+    { R"(\\PrinceOfPersia_Launcher\.exe$)", {{
+      { "d3d9.maxFrameRate",                 "240" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
