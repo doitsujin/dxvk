@@ -4386,16 +4386,16 @@ namespace dxvk {
     VkDeviceSize alignedSize = align(size, CACHE_LINE_SIZE);
 
     if (unlikely(m_upBufferOffset + alignedSize > UPBufferSize)) {
-      auto sliceHandle = m_upBuffer->allocSlice();
+      auto slice = m_upBuffer->allocateSlice();
 
       m_upBufferOffset = 0;
-      m_upBufferMapPtr = sliceHandle.mapPtr;
+      m_upBufferMapPtr = slice.mapPtr();
 
       EmitCs([
         cBuffer = m_upBuffer,
-        cSlice  = sliceHandle
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
+        cSlice  = std::move(slice)
+      ] (DxvkContext* ctx) mutable {
+        ctx->invalidateBuffer(cBuffer, std::move(cSlice));
       });
     }
 
@@ -5128,19 +5128,20 @@ namespace dxvk {
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
-    DxvkBufferSliceHandle physSlice;
+    uint8_t* data = nullptr;
 
     if ((Flags & D3DLOCK_DISCARD) && (directMapping || needsReadback)) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      physSlice = pResource->DiscardMapSlice();
+      auto bufferSlice = pResource->DiscardMapSlice();
+      data = reinterpret_cast<uint8_t*>(bufferSlice.mapPtr());
 
       EmitCs([
         cBuffer      = std::move(mappingBuffer),
-        cBufferSlice = physSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        cBufferSlice = std::move(bufferSlice)
+      ] (DxvkContext* ctx) mutable {
+        ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
       });
 
       pResource->SetNeedsReadback(false);
@@ -5149,7 +5150,7 @@ namespace dxvk {
       // Use map pointer from previous map operation. This
       // way we don't have to synchronize with the CS thread
       // if the map mode is D3DLOCK_NOOVERWRITE.
-      physSlice = pResource->GetMappedSlice();
+      data = reinterpret_cast<uint8_t*>(pResource->GetMappedSlice().mapPtr());
 
       const bool needsReadback = pResource->NeedsReadback();
       const bool readOnly = Flags & D3DLOCK_READONLY;
@@ -5166,7 +5167,6 @@ namespace dxvk {
       }
     }
 
-    uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
     // The offset/size is not clamped to or affected by the desc size.
     data += OffsetToLock;
 
@@ -5197,7 +5197,7 @@ namespace dxvk {
     D3D9Range& range = pResource->DirtyRange();
 
     D3D9BufferSlice slice = AllocStagingBuffer(range.max - range.min);
-    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
+    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr()) + range.min;
     memcpy(slice.mapPtr, srcData, range.max - range.min);
 
     EmitCs([
@@ -5379,7 +5379,7 @@ namespace dxvk {
         if (likely(copy.copyBufferLength != 0)) {
           const auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
           uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + copy.dstOffset;
-          const uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr) + copy.srcOffset;
+          const uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr()) + copy.srcOffset;
 
           if (likely(copy.copyElementStride == copy.copyElementSize)) {
             std::memcpy(data, src, copy.copyBufferLength);
@@ -5428,7 +5428,7 @@ namespace dxvk {
         VkIndexType indexType = DecodeIndexType(ibo->Desc()->Format);
         uint32_t offset = indexStride * FirstIndex;
         uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + iboUPBufferOffset;
-        uint8_t* src = reinterpret_cast<uint8_t*>(ibo->GetMappedSlice().mapPtr) + offset;
+        uint8_t* src = reinterpret_cast<uint8_t*>(ibo->GetMappedSlice().mapPtr()) + offset;
         std::memcpy(data, src, iboUPBufferSize);
 
         auto iboSlice = upSlice.slice.subSlice(iboUPBufferOffset, iboUPBufferSize);

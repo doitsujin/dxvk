@@ -14,7 +14,7 @@ namespace dxvk {
     if (m_mapMode == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       m_stagingBuffer = CreateStagingBuffer();
 
-    m_sliceHandle = GetMapBuffer()->getSliceHandle();
+    m_allocation = GetMapBuffer()->getAllocation();
 
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       m_dirtyRange = D3D9Range(0, m_desc.Size);
