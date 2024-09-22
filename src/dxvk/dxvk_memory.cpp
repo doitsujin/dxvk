@@ -311,7 +311,7 @@ namespace dxvk {
     // Ensure the allocation size is also aligned
     VkDeviceSize size = align(requirements.size, requirements.alignment);
 
-    for (auto typeIndex : getMemoryTypeMask(requirements, properties)) {
+    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(properties))) {
       auto& type = m_memTypes[typeIndex];
 
       // Use correct memory pool depending on property flags. This way we avoid
@@ -402,7 +402,7 @@ namespace dxvk {
 
     DxvkDeviceMemory memory = { };
 
-    for (auto typeIndex : getMemoryTypeMask(requirements, properties)) {
+    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(properties))) {
       auto& type = m_memTypes[typeIndex];
       memory = allocateDeviceMemory(type, requirements.size, next);
 
@@ -411,9 +411,6 @@ namespace dxvk {
         return createAllocation(type, memory);
       }
     }
-
-    logMemoryError(requirements);
-    logMemoryStats();
 
     return nullptr;
   }
@@ -1138,13 +1135,24 @@ namespace dxvk {
   }
 
 
-  bit::BitMask DxvkMemoryAllocator::getMemoryTypeMask(
-    const VkMemoryRequirements&             requirements,
-          VkMemoryPropertyFlags             properties) const {
-    uint32_t mask = requirements.memoryTypeBits;
-    mask &= m_memTypesByPropertyFlags[uint32_t(properties) % uint32_t(m_memTypesByPropertyFlags.size())];
+  uint32_t DxvkMemoryAllocator::getMemoryTypeMask(
+          VkMemoryPropertyFlags properties) const {
+    return m_memTypesByPropertyFlags[uint32_t(properties) % uint32_t(m_memTypesByPropertyFlags.size())];
+  }
 
-    return bit::BitMask(mask);
+
+  uint32_t DxvkMemoryAllocator::findGlobalBufferMemoryTypeMask(
+          VkBufferUsageFlags    usage) const {
+    // Iterate over all candidate memory types as a fallback in case
+    // the device has memory types with limited buffer support.
+    uint32_t mask = m_globalBufferMemoryTypes;
+
+    for (auto typeIndex : bit::BitMask(mask)) {
+      if (usage & ~m_memTypes[typeIndex].bufferUsage)
+        mask ^= 1u << typeIndex;
+    }
+
+    return mask;
   }
 
 
