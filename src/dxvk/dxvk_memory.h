@@ -834,6 +834,19 @@ namespace dxvk {
             VkMemoryPropertyFlags       properties);
 
     /**
+     * \brief Creates image resource
+     *
+     * \param [in] createInfo Image create info
+     * \param [in] properties Memory property flags
+     * \param [in] next External memory properties
+     * \returns Image resource
+     */
+    Rc<DxvkResourceAllocation> createImageResource(
+      const VkImageCreateInfo&          createInfo,
+            VkMemoryPropertyFlags       properties,
+      const void*                       next);
+
+    /**
      * \brief Queries memory stats
      * 
      * Returns the total amount of memory
