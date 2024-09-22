@@ -276,6 +276,12 @@ namespace dxvk {
       if (req.dedicated.requiresDedicatedAllocation && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
         allocation = allocateDedicatedMemory(req.core.memoryRequirements,
           info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &info.dedicated);
+
+        if (unlikely(!allocation)) {
+          logMemoryError(req.core.memoryRequirements);
+          logMemoryStats();
+        }
+
         return DxvkMemory(std::move(allocation));
       }
     }
@@ -286,6 +292,11 @@ namespace dxvk {
     if (unlikely(!allocation) && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
       allocation = allocateMemory(req.core.memoryRequirements,
         info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      if (unlikely(!allocation)) {
+        logMemoryError(req.core.memoryRequirements);
+        logMemoryStats();
+      }
     }
 
     return DxvkMemory(std::move(allocation));
@@ -378,9 +389,6 @@ namespace dxvk {
         return createAllocation(type, selectedPool, address, size);
       }
     }
-
-    logMemoryError(requirements);
-    logMemoryStats();
 
     return nullptr;
   }
