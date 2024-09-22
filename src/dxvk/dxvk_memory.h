@@ -961,9 +961,11 @@ namespace dxvk {
 
     void logMemoryStats() const;
 
-    bit::BitMask getMemoryTypeMask(
-      const VkMemoryRequirements&             requirements,
-            VkMemoryPropertyFlags             properties) const;
+    uint32_t getMemoryTypeMask(
+            VkMemoryPropertyFlags properties) const;
+
+    uint32_t findGlobalBufferMemoryTypeMask(
+            VkBufferUsageFlags    usage) const;
 
     void runWorker();
 
