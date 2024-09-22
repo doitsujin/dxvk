@@ -100,10 +100,10 @@ namespace dxvk {
    * to the mapped region..
    */
   struct DxvkBufferSliceHandle {
-    VkBuffer      handle;
-    VkDeviceSize  offset;
-    VkDeviceSize  length;
-    void*         mapPtr;
+    VkBuffer      handle = VK_NULL_HANDLE;
+    VkDeviceSize  offset = 0u;
+    VkDeviceSize  length = 0u;
+    void*         mapPtr = nullptr;
 
     bool eq(const DxvkBufferSliceHandle& other) const {
       return handle == other.handle
@@ -118,6 +118,61 @@ namespace dxvk {
       result.add(std::hash<VkDeviceSize>()(length));
       return result;
     }
+  };
+
+
+  /**
+   * \brief Buffer allocation
+   *
+   * References a buffer allocation and stores
+   * the offset. Used when renaming a buffer.
+   */
+  class DxvkBufferAllocation {
+    friend class DxvkBuffer;
+    friend class DxvkContext; /* TODO remove */
+  public:
+
+    DxvkBufferAllocation() = default;
+
+    explicit DxvkBufferAllocation(DxvkBufferSliceHandle slice)
+    : m_slice(slice) { }
+
+    DxvkBufferAllocation(const DxvkBufferAllocation&) = default;
+    DxvkBufferAllocation& operator = (const DxvkBufferAllocation&) = default;
+
+    DxvkBufferAllocation(DxvkBufferAllocation&& other)
+    : m_slice(other.m_slice) {
+      other.m_slice = DxvkBufferSliceHandle();
+    }
+
+    DxvkBufferAllocation& operator = (DxvkBufferAllocation&& other) {
+      m_slice = other.m_slice;
+      other.m_slice = DxvkBufferSliceHandle();
+      return *this;
+    }
+
+    ~DxvkBufferAllocation() = default;
+
+    /**
+     * \brief Retrieves CPU pointer
+     * \returns Pointer to the mapped buffer slice
+     */
+    void* mapPtr() const {
+      return m_slice.mapPtr;
+    }
+
+    /**
+     * \brief Checks whether the slice is valid
+     * \returns \c true if the slice is valid
+     */
+    explicit operator bool () const {
+      return m_slice.handle != VK_NULL_HANDLE;
+    }
+
+  private:
+
+    DxvkBufferSliceHandle m_slice = { };
+
   };
 
 
@@ -247,7 +302,7 @@ namespace dxvk {
     DxvkBufferSliceHandle rename(const DxvkBufferSliceHandle& slice) {
       return std::exchange(m_physSlice, slice);
     }
-    
+
     /**
      * \brief Transform feedback vertex stride
      * 
@@ -269,7 +324,7 @@ namespace dxvk {
     void setXfbVertexStride(uint32_t stride) {
       m_vertexStride = stride;
     }
-    
+
     /**
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
@@ -309,7 +364,34 @@ namespace dxvk {
       m_freeSlices.pop_back();
       return result;
     }
+
+    /**
+     * \brief Allocates a new buffer slice
+     * \returns New buffer slice
+     */
+    DxvkBufferAllocation allocateSlice() {
+      return DxvkBufferAllocation(allocSlice());
+    }
     
+    /**
+     * \brief Replaces backing storage
+     *
+     * Implicitly invalidates all views created for the buffer.
+     * \param [in] slice New buffer slice
+     * \returns Previous buffer allocation for lifetime tracking.
+     */
+    DxvkBufferAllocation assignSlice(DxvkBufferAllocation&& slice) {
+      return DxvkBufferAllocation(rename(slice.m_slice));
+    }
+
+    /**
+     * \brief Retrieves current backing storage
+     * \returns Current buffer allocation
+     */
+    DxvkBufferAllocation getAllocation() const {
+      return DxvkBufferAllocation(m_physSlice);
+    }
+
     /**
      * \brief Frees a buffer slice
      * 
