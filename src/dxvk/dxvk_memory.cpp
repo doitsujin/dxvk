@@ -938,6 +938,9 @@ namespace dxvk {
 
     // Only use a minimal set of usage flags for the global buffer if the
     // full combination of flags is not supported for whatever reason.
+    m_globalBufferUsageFlags = ~0u;
+    m_globalBufferMemoryTypes = 0u;
+
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
       bufferInfo.usage = m_memTypes[i].bufferUsage;
 
@@ -947,7 +950,15 @@ namespace dxvk {
                                   |  VK_BUFFER_USAGE_TRANSFER_DST_BIT
                                   |  VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
       }
+
+      if (m_memTypes[i].bufferUsage) {
+        m_globalBufferUsageFlags &= m_memTypes[i].bufferUsage;
+        m_globalBufferMemoryTypes |= 1u << i;
+      }
     }
+
+    Logger::info(str::format("Memory type mask for buffer resources: "
+      "0x", std::hex, m_globalBufferMemoryTypes, ", usage: 0x", m_globalBufferUsageFlags));
   }
 
 

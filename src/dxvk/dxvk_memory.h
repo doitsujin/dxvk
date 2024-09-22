@@ -876,7 +876,10 @@ namespace dxvk {
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes = { };
     std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps = { };
 
-    uint32_t m_sparseMemoryTypes = 0u;
+    VkBufferUsageFlags  m_globalBufferUsageFlags = 0u;
+    uint32_t            m_globalBufferMemoryTypes = 0u;
+
+    uint32_t            m_sparseMemoryTypes = 0u;
 
     std::array<uint32_t, 16> m_memTypesByPropertyFlags = { };
 
