@@ -1865,13 +1865,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::invalidateBuffer(
-    const Rc<DxvkBuffer>&           buffer,
-    const DxvkBufferSliceHandle&    slice) {
-    invalidateBuffer(buffer, DxvkBufferAllocation(slice));
-  }
-
-
   void DxvkContext::resolveImage(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,

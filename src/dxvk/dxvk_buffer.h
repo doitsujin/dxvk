@@ -290,20 +290,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Replaces backing resource
-     * 
-     * Replaces the underlying buffer and implicitly marks
-     * any buffer views using this resource as dirty. Do
-     * not call this directly as this is called implicitly
-     * by the context's \c invalidateBuffer method.
-     * \param [in] slice The new backing resource
-     * \returns Previous buffer slice
-     */
-    DxvkBufferSliceHandle rename(const DxvkBufferSliceHandle& slice) {
-      return std::exchange(m_physSlice, slice);
-    }
-
-    /**
      * \brief Transform feedback vertex stride
      * 
      * Used when drawing after transform feedback,
@@ -329,7 +315,7 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferSliceHandle allocSlice() {
+    DxvkBufferAllocation allocateSlice() {
       std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
       
       // If no slices are available, swap the two free lists.
@@ -360,28 +346,26 @@ namespace dxvk {
       }
       
       // Take the first slice from the queue
-      DxvkBufferSliceHandle result = m_freeSlices.back();
+      DxvkBufferAllocation result(m_freeSlices.back());
       m_freeSlices.pop_back();
       return result;
     }
 
     /**
-     * \brief Allocates a new buffer slice
-     * \returns New buffer slice
-     */
-    DxvkBufferAllocation allocateSlice() {
-      return DxvkBufferAllocation(allocSlice());
-    }
-    
-    /**
-     * \brief Replaces backing storage
-     *
-     * Implicitly invalidates all views created for the buffer.
-     * \param [in] slice New buffer slice
-     * \returns Previous buffer allocation for lifetime tracking.
+     * \brief Replaces backing resource
+     * 
+     * Replaces the underlying buffer and implicitly marks
+     * any buffer views using this resource as dirty. Do
+     * not call this directly as this is called implicitly
+     * by the context's \c invalidateBuffer method.
+     * \param [in] slice The new backing resource
+     * \returns Previous buffer slice
      */
     DxvkBufferAllocation assignSlice(DxvkBufferAllocation&& slice) {
-      return DxvkBufferAllocation(rename(slice.m_slice));
+      DxvkBufferAllocation result(m_physSlice);
+      m_physSlice = slice.m_slice;
+      slice.m_slice = DxvkBufferSliceHandle();
+      return result;
     }
 
     /**
@@ -403,7 +387,7 @@ namespace dxvk {
     void freeSlice(const DxvkBufferSliceHandle& slice) {
       // Add slice to a separate free list to reduce lock contention.
       std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-      m_nextSlices.push_back(slice);
+      m_nextSlices.emplace_back(slice);
     }
 
     /**
@@ -438,11 +422,11 @@ namespace dxvk {
     VkDeviceSize            m_maxAllocationSize = 0;
 
     std::vector<DxvkBufferHandle>       m_buffers;
-    std::vector<DxvkBufferSliceHandle>  m_freeSlices;
+    std::vector<DxvkBufferAllocation>   m_freeSlices;
 
     alignas(CACHE_LINE_SIZE)
     sync::Spinlock                      m_swapMutex;
-    std::vector<DxvkBufferSliceHandle>  m_nextSlices;
+    std::vector<DxvkBufferAllocation>   m_nextSlices;
 
     void pushSlice(const DxvkBufferHandle& handle, uint32_t index) {
       DxvkBufferSliceHandle slice;
@@ -450,7 +434,7 @@ namespace dxvk {
       slice.offset = handle.getBaseOffset() + m_physSliceStride * index;
       slice.length = m_physSliceLength;
       slice.mapPtr = handle.memory.mapPtr(m_physSliceStride * index);
-      m_freeSlices.push_back(slice);
+      m_freeSlices.emplace_back(slice);
     }
 
     DxvkBufferHandle allocBuffer(
