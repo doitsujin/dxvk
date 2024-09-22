@@ -5300,16 +5300,10 @@ namespace dxvk {
       }
 
       if (unlikely(vbo->NeedsReadback())) {
-        // There's two ways the GPU can write to buffers in D3D9:
-        // - Copy data from a staging buffer to the primary one either on Unlock or at draw time depending on the D3DPOOL
-        //   for buffers with MAP_MODE_STAGING.
-        //   The backend handles inserting the required barriers.
-        // - Write data between Lock and Unlock to the buffer directly for buffers with MAP_MODE_DIRECT.
-        // - Write to the primary buffer using ProcessVertices. That is why we need to ensure the resource is idle.
-        //   Even when using MAP_MODE_BUFFER, ProcessVertices copies the data over from the primary buffer to the staging buffer
-        //   at the end. So it could end up writing to the buffer on the GPU while the same buffer gets read here on the CPU.
-        //   ProcessVertices is also exceptionally rare though which is why we're using a second sequence number
-        //   to avoid unnecessary CS thread synchronization.
+        // There's only one way the GPU might write new data to a vertex buffer:
+        // - Write to the primary buffer using ProcessVertices which gets copied over to the staging buffer at the end.
+        //   So it could end up writing to the buffer on the GPU while the same buffer gets read here on the CPU.
+        //   That is why we need to ensure the staging buffer is idle here.
         WaitForResource(vbo->GetBuffer<D3D9_COMMON_BUFFER_TYPE_STAGING>(), vbo->GetMappingBufferSequenceNumber(), D3DLOCK_READONLY);
       }
 
