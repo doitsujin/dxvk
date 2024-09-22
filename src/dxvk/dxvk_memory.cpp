@@ -416,6 +416,120 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createBufferResource(
+    const VkBufferCreateInfo&         createInfo,
+          VkMemoryPropertyFlags       properties) {
+    Rc<DxvkResourceAllocation> allocation;
+
+    if (likely(!createInfo.flags && createInfo.sharingMode == VK_SHARING_MODE_EXCLUSIVE)) {
+      VkMemoryRequirements memoryRequirements = { };
+      memoryRequirements.size = createInfo.size;
+      memoryRequirements.alignment = GlobalBufferAlignment;
+      memoryRequirements.memoryTypeBits = m_globalBufferMemoryTypes;
+
+      if (unlikely(createInfo.usage & ~m_globalBufferUsageFlags))
+        memoryRequirements.memoryTypeBits = findGlobalBufferMemoryTypeMask(createInfo.usage);
+
+      // If there is at least one memory type that supports the required
+      // buffer usage flags and requested memory properties, suballocate
+      // from a global buffer.
+      if (likely(memoryRequirements.memoryTypeBits)) {
+        allocation = allocateMemory(memoryRequirements, properties);
+
+        if (likely(allocation && allocation->m_buffer))
+          return allocation;
+
+        if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          allocation = allocateMemory(memoryRequirements,
+            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+          if (likely(allocation && allocation->m_buffer))
+            return allocation;
+        }
+
+        // If we end up here with an allocation but no buffer, something
+        // is weird, but we can keep the allocation around for now.
+        if (allocation && !allocation->m_buffer) {
+          Logger::err(str::format("Got allocation from memory type ",
+            allocation->m_type->index, " without global buffer"));
+        }
+      }
+    }
+
+    // If we can't suballocate from an existing global buffer
+    // for any reason, create a dedicated buffer resource.
+    auto vk = m_device->vkd();
+
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateBuffer(vk->device(),
+      &createInfo, nullptr, &buffer);
+
+    if (vr != VK_SUCCESS) {
+      throw DxvkError(str::format("Failed to create buffer: ", vr,
+        "\n  size:    ", createInfo.size,
+        "\n  usage:   ", std::hex, createInfo.usage,
+        "\n  flags:   ", createInfo.flags));
+    }
+
+    if (!(createInfo.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
+      VkBufferMemoryRequirementsInfo2 requirementInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
+      requirementInfo.buffer = buffer;
+
+      VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+      vk->vkGetBufferMemoryRequirements2(vk->device(), &requirementInfo, &requirements);
+
+      // If we have an existing global allocation from earlier, make sure it is suitable
+      if (!allocation || !(requirements.memoryRequirements.memoryTypeBits & (1u << allocation->m_type->index))
+       || (allocation->m_size < requirements.memoryRequirements.size)
+       || (allocation->m_address & requirements.memoryRequirements.alignment))
+        allocation = allocateMemory(requirements.memoryRequirements, properties);
+
+      if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        allocation = allocateMemory(requirements.memoryRequirements,
+          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      }
+
+      if (!allocation) {
+        logMemoryError(requirements.memoryRequirements);
+        logMemoryStats();
+      }
+    } else {
+      // TODO implement sparse
+    }
+
+    if (!allocation) {
+      vk->vkDestroyBuffer(vk->device(), buffer, nullptr);
+      return nullptr;
+    }
+
+    // Transfer ownership of te Vulkan buffer to the allocation
+    // and set up all remaining properties.
+    allocation->m_flags.set(DxvkAllocationFlag::OwnsBuffer);
+    allocation->m_buffer = buffer;
+    allocation->m_bufferOffset = 0u;
+    allocation->m_bufferAddress = 0u;
+
+    // Bind memory if the buffer is not sparse
+    if (allocation->m_memory) {
+      vr = vk->vkBindBufferMemory(vk->device(), allocation->m_buffer,
+        allocation->m_memory, allocation->m_address & DxvkPageAllocator::ChunkAddressMask);
+
+      if (vr != VK_SUCCESS) {
+        throw DxvkError(str::format("Failed to bind buffer memory: ", vr,
+          "\n  size:    ", createInfo.size,
+          "\n  usage:   ", std::hex, createInfo.usage,
+          "\n  flags:   ", createInfo.flags));
+      }
+    }
+
+    // Query device address after binding memory, or the address would be invalid
+    if (createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+      allocation->m_bufferAddress = getBufferDeviceAddress(buffer);
+
+    return allocation;
+  }
+
+
   DxvkDeviceMemory DxvkMemoryAllocator::allocateDeviceMemory(
           DxvkMemoryType&       type,
           VkDeviceSize          size,
@@ -1083,6 +1197,16 @@ namespace dxvk {
       vk->vkDestroyImage(vk->device(), info.image, nullptr);
       return true;
     }
+  }
+
+
+  VkDeviceAddress DxvkMemoryAllocator::getBufferDeviceAddress(VkBuffer buffer) const {
+    auto vk = m_device->vkd();
+
+    VkBufferDeviceAddressInfo bdaInfo = { VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
+    bdaInfo.buffer = buffer;
+
+    return vk->vkGetBufferDeviceAddress(vk->device(), &bdaInfo);
   }
 
 
