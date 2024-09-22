@@ -530,6 +530,106 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createImageResource(
+    const VkImageCreateInfo&          createInfo,
+          VkMemoryPropertyFlags       properties,
+    const void*                       next) {
+    auto vk = m_device->vkd();
+
+    VkImage image = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateImage(vk->device(), &createInfo, nullptr, &image);
+
+    if (vr != VK_SUCCESS) {
+      throw DxvkError(str::format("Failed to create image: ", vr,
+        "\n  type:    ", createInfo.imageType,
+        "\n  format:  ", createInfo.format,
+        "\n  extent:  ", createInfo.extent.width, "x", createInfo.extent.height, "x", createInfo.extent.depth,
+        "\n  layers:  ", createInfo.arrayLayers,
+        "\n  mips:    ", createInfo.mipLevels,
+        "\n  samples: ", createInfo.samples));
+    }
+
+    // Check memory requirements, including whether or not we need a dedicated allocation
+    VkMemoryDedicatedRequirements dedicatedRequirements = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+
+    VkImageMemoryRequirementsInfo2 requirementInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
+    requirementInfo.image = image;
+
+    VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicatedRequirements };
+    vk->vkGetImageMemoryRequirements2(vk->device(), &requirementInfo, &requirements);
+
+    // For shared resources, we always require a dedicated allocation
+    if (next) {
+      dedicatedRequirements.requiresDedicatedAllocation = VK_TRUE;
+      dedicatedRequirements.prefersDedicatedAllocation = VK_TRUE;
+    }
+
+    // If a dedicated allocation is at least preferred for this resource, try this first
+    Rc<DxvkResourceAllocation> allocation;
+
+    if (dedicatedRequirements.prefersDedicatedAllocation) {
+      VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, next };
+      dedicatedInfo.image = image;
+
+      allocation = allocateDedicatedMemory(requirements.memoryRequirements, properties, &dedicatedInfo);
+
+      // Only retry with a dedicated sysmem allocation if a dedicated allocation
+      // is required. Otherwise, we should try to suballocate in device memory.
+      if (!allocation && dedicatedRequirements.requiresDedicatedAllocation
+       && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        allocation = allocateDedicatedMemory(requirements.memoryRequirements,
+          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &dedicatedInfo);
+      }
+    }
+
+    if (!allocation && !dedicatedRequirements.requiresDedicatedAllocation) {
+      // Pad alignment as necessary to not overlap tiled and linear memory.
+      if (createInfo.tiling == VK_IMAGE_TILING_OPTIMAL) {
+        requirements.memoryRequirements.alignment = std::max(
+          requirements.memoryRequirements.alignment,
+          m_device->properties().core.properties.limits.bufferImageGranularity);
+      }
+
+      // Try to suballocate memory and fall back to system memory on error.
+      allocation = allocateMemory(requirements.memoryRequirements, properties);
+
+      if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        allocation = allocateMemory(requirements.memoryRequirements,
+          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      }
+    }
+
+    if (!allocation) {
+      vk->vkDestroyImage(vk->device(), image, nullptr);
+
+      logMemoryError(requirements.memoryRequirements);
+      logMemoryStats();
+      return nullptr;
+    }
+
+    // Set up allocation object and bind memory
+    allocation->m_flags.set(DxvkAllocationFlag::OwnsImage);
+    allocation->m_image = image;
+
+    if (allocation->m_memory) {
+      vr = vk->vkBindImageMemory(vk->device(), image, allocation->m_memory,
+        allocation->m_address & DxvkPageAllocator::ChunkAddressMask);
+
+      if (vr != VK_SUCCESS) {
+        throw DxvkError(str::format("Failed to bind image memory: ", vr,
+          "\n  type:    ", createInfo.imageType,
+          "\n  format:  ", createInfo.format,
+          "\n  extent:  ", createInfo.extent.width, "x", createInfo.extent.height, "x", createInfo.extent.depth,
+          "\n  layers:  ", createInfo.arrayLayers,
+          "\n  mips:    ", createInfo.mipLevels,
+          "\n  samples: ", createInfo.samples));
+      }
+    }
+
+    return allocation;
+  }
+
+
   DxvkDeviceMemory DxvkMemoryAllocator::allocateDeviceMemory(
           DxvkMemoryType&       type,
           VkDeviceSize          size,
