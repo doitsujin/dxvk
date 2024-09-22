@@ -1828,10 +1828,10 @@ namespace dxvk {
   
   void DxvkContext::invalidateBuffer(
     const Rc<DxvkBuffer>&           buffer,
-    const DxvkBufferSliceHandle&    slice) {
+          DxvkBufferAllocation&&    slice) {
     // Allocate new backing resource
-    DxvkBufferSliceHandle prevSlice = buffer->rename(slice);
-    m_cmd->freeBufferSlice(buffer, prevSlice);
+    DxvkBufferAllocation prevSlice = buffer->assignSlice(std::move(slice));
+    m_cmd->freeBufferSlice(buffer, prevSlice.m_slice);
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
@@ -1862,6 +1862,13 @@ namespace dxvk {
 
     if (usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT)
       m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+  }
+
+
+  void DxvkContext::invalidateBuffer(
+    const Rc<DxvkBuffer>&           buffer,
+    const DxvkBufferSliceHandle&    slice) {
+    invalidateBuffer(buffer, DxvkBufferAllocation(slice));
   }
 
 
@@ -6385,10 +6392,10 @@ namespace dxvk {
      && (m_flags.test(DxvkContextFlag::GpXfbActive)))
       this->spillRenderPass(true);
 
-    this->invalidateBuffer(buffer, buffer->allocSlice());
+    this->invalidateBuffer(buffer, buffer->allocateSlice());
     return true;
   }
-  
+
 
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {

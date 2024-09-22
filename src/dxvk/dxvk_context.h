@@ -959,8 +959,12 @@ namespace dxvk {
      * \warning If the buffer is used by another context,
      * invalidating it will result in undefined behaviour.
      * \param [in] buffer The buffer to invalidate
-     * \param [in] slice New buffer slice handle
+     * \param [in] slice New buffer slice
      */
+    void invalidateBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+            DxvkBufferAllocation&&    slice);
+
     void invalidateBuffer(
       const Rc<DxvkBuffer>&           buffer,
       const DxvkBufferSliceHandle&    slice);
