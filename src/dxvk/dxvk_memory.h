@@ -821,6 +821,19 @@ namespace dxvk {
       const void*                             next);
 
     /**
+     * \brief Creates buffer resource
+     *
+     * Will make use of global buffers whenever possible, but
+     * may fall back to creating a dedicated Vulkan buffer.
+     * \param [in] createInfo Buffer create info
+     * \param [in] properties Memory property flags
+     * \returns Buffer resource
+     */
+    Rc<DxvkResourceAllocation> createBufferResource(
+      const VkBufferCreateInfo&         createInfo,
+            VkMemoryPropertyFlags       properties);
+
+    /**
      * \brief Queries memory stats
      * 
      * Returns the total amount of memory
@@ -955,6 +968,9 @@ namespace dxvk {
     void determineBufferUsageFlagsPerMemoryType();
 
     void determineMemoryTypesWithPropertyFlags();
+
+    VkDeviceAddress getBufferDeviceAddress(
+            VkBuffer              buffer) const;
 
     void logMemoryError(
       const VkMemoryRequirements& req) const;
