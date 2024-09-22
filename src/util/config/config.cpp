@@ -973,6 +973,11 @@ namespace dxvk {
     { R"(\\PrinceOfPersia_Launcher\.exe$)", {{
       { "d3d9.maxFrameRate",                 "240" },
     }} },
+    /* F.E.A.R 1 & expansions                      *
+     * Graphics glitches at very high fps          */
+    { R"(\\FEAR(MP|XP|XP2)?\.exe$)", {{
+      { "d3d9.maxFrameRate",                 "360" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
