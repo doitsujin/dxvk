@@ -779,7 +779,7 @@ namespace dxvk::hud {
     }
 
     if (!m_stats.pageMasks.empty()) {
-      context->invalidateBuffer(m_pageMaskBuffer, m_pageMaskBuffer->allocSlice());
+      context->invalidateBuffer(m_pageMaskBuffer, m_pageMaskBuffer->allocateSlice());
       std::memcpy(m_pageMaskBuffer->mapPtr(0), &m_stats.pageMasks.at(0), size);
     }
   }

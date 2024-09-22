@@ -152,7 +152,7 @@ namespace dxvk::hud {
 
   VkDeviceSize HudRenderer::allocDataBuffer(VkDeviceSize size) {
     if (m_dataOffset + size > m_dataBuffer->info().size) {
-      m_context->invalidateBuffer(m_dataBuffer, m_dataBuffer->allocSlice());
+      m_context->invalidateBuffer(m_dataBuffer, m_dataBuffer->allocateSlice());
       m_dataOffset = 0;
     }
     
