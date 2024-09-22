@@ -713,8 +713,12 @@ namespace dxvk {
          && (requirements.memoryRequirements.memoryTypeBits & (1u << type.index))) {
           status = vk->vkBindBufferMemory(vk->device(), buffer, result.memory, 0);
 
-          if (status == VK_SUCCESS)
+          if (status == VK_SUCCESS) {
             result.buffer = buffer;
+
+            if (type.bufferUsage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+              result.gpuVa = getBufferDeviceAddress(buffer);
+          }
         }
 
         if (!result.buffer)
@@ -796,6 +800,8 @@ namespace dxvk {
     if (chunk.memory.buffer) {
       allocation->m_buffer = chunk.memory.buffer;
       allocation->m_bufferOffset = offset;
+      allocation->m_bufferAddress = chunk.memory.gpuVa
+        ? chunk.memory.gpuVa + offset : 0u;
     }
 
     return allocation;
@@ -819,6 +825,7 @@ namespace dxvk {
     allocation->m_mapPtr = memory.mapPtr;
 
     allocation->m_buffer = memory.buffer;
+    allocation->m_bufferAddress = memory.gpuVa;
     return allocation;
   }
 
