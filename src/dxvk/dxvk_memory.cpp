@@ -4,6 +4,7 @@
 
 #include "dxvk_device.h"
 #include "dxvk_memory.h"
+#include "dxvk_sparse.h"
 
 namespace dxvk {
   
@@ -58,6 +59,203 @@ namespace dxvk {
   void DxvkMemory::free() {
     if (m_alloc != nullptr)
       m_alloc->free(*this);
+  }
+
+
+
+
+  DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
+          DxvkMemoryAllocator*        allocator,
+          VkBuffer                    buffer)
+  : m_vkd(allocator->device()->vkd()), m_buffer(buffer),
+    m_passBufferUsage(allocator->device()->features().khrMaintenance5.maintenance5) {
+
+  }
+
+
+  DxvkResourceBufferViewMap::~DxvkResourceBufferViewMap() {
+    for (const auto& view : m_views)
+      m_vkd->vkDestroyBufferView(m_vkd->device(), view.second, nullptr);
+  }
+
+
+  VkBufferView DxvkResourceBufferViewMap::createBufferView(
+    const DxvkBufferViewKey&          key,
+          VkDeviceSize                baseOffset) {
+    std::lock_guard lock(m_mutex);
+
+    auto entry = m_views.find(key);
+
+    if (entry != m_views.end())
+      return entry->second;
+
+    VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
+    flags.usage = key.usage;
+
+    VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+    info.buffer = m_buffer;
+    info.format = key.format;
+    info.offset = key.offset + baseOffset;
+    info.range = key.size;
+
+    if (m_passBufferUsage)
+      info.pNext = &flags;
+
+    VkBufferView view = VK_NULL_HANDLE;
+
+    VkResult vr = m_vkd->vkCreateBufferView(
+      m_vkd->device(), &info, nullptr, &view);
+
+    if (vr != VK_SUCCESS) {
+      throw DxvkError(str::format("Failed to create Vulkan buffer view: ", vr,
+        "\n   usage:  0x", std::hex, key.usage,
+        "\n   format: ", key.format,
+        "\n   offset: ", std::dec, key.offset,
+        "\n   size:   ", std::dec, key.size));
+    }
+
+    m_views.insert({ key, view });
+    return view;
+  }
+
+
+
+
+  DxvkResourceImageViewMap::DxvkResourceImageViewMap(
+          DxvkMemoryAllocator*        allocator,
+          VkImage                     image)
+  : m_vkd(allocator->device()->vkd()), m_image(image) {
+
+  }
+
+
+  DxvkResourceImageViewMap::~DxvkResourceImageViewMap() {
+    for (const auto& view : m_views)
+      m_vkd->vkDestroyImageView(m_vkd->device(), view.second, nullptr);
+  }
+
+
+  VkImageView DxvkResourceImageViewMap::createImageView(
+    const DxvkImageViewKey&           key) {
+    std::lock_guard lock(m_mutex);
+
+    auto entry = m_views.find(key);
+
+    if (entry != m_views.end())
+      return entry->second;
+
+    VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+    usage.usage = key.usage;
+
+    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usage };
+    info.image = m_image;
+    info.viewType = key.viewType;
+    info.format = key.format;
+    info.components.r = VkComponentSwizzle((key.packedSwizzle >>  0) & 0xf);
+    info.components.g = VkComponentSwizzle((key.packedSwizzle >>  4) & 0xf);
+    info.components.b = VkComponentSwizzle((key.packedSwizzle >>  8) & 0xf);
+    info.components.a = VkComponentSwizzle((key.packedSwizzle >> 12) & 0xf);
+    info.subresourceRange.aspectMask = key.aspects;
+    info.subresourceRange.baseMipLevel = key.mipIndex;
+    info.subresourceRange.levelCount = key.mipCount;
+    info.subresourceRange.baseArrayLayer = key.layerIndex;
+    info.subresourceRange.layerCount = key.layerCount;
+
+    VkImageView view = VK_NULL_HANDLE;
+
+    VkResult vr = m_vkd->vkCreateImageView(
+      m_vkd->device(), &info, nullptr, &view);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+
+    m_views.insert({ key, view });
+    return view;
+  }
+
+
+
+
+  DxvkResourceAllocation::DxvkResourceAllocation() {
+
+  }
+
+
+  DxvkResourceAllocation::~DxvkResourceAllocation() {
+    if (m_buffer) {
+      if (unlikely(m_bufferViews))
+        delete m_bufferViews;
+
+      if (unlikely(m_flags.test(DxvkAllocationFlag::OwnsBuffer))) {
+        auto vk = m_allocator->device()->vkd();
+        vk->vkDestroyBuffer(vk->device(), m_buffer, nullptr);
+      }
+    }
+
+    if (m_image) {
+      if (likely(m_imageViews))
+        delete m_imageViews;
+
+      if (likely(m_flags.test(DxvkAllocationFlag::OwnsImage))) {
+        auto vk = m_allocator->device()->vkd();
+        vk->vkDestroyImage(vk->device(), m_image, nullptr);
+      }
+    }
+
+    if (unlikely(m_flags.test(DxvkAllocationFlag::OwnsMemory))) {
+      auto vk = m_allocator->device()->vkd();
+      vk->vkFreeMemory(vk->device(), m_memory, nullptr);
+
+      if (unlikely(m_sparsePageTable))
+        delete m_sparsePageTable;
+    }
+  }
+
+
+  VkBufferView DxvkResourceAllocation::createBufferView(
+    const DxvkBufferViewKey&          key) {
+    if (unlikely(!m_bufferViews))
+      m_bufferViews = new DxvkResourceBufferViewMap(m_allocator, m_buffer);
+
+    return m_bufferViews->createBufferView(key, m_bufferOffset);
+  }
+
+
+  VkImageView DxvkResourceAllocation::createImageView(
+    const DxvkImageViewKey&           key) {
+    if (unlikely(!m_imageViews))
+      m_imageViews = new DxvkResourceImageViewMap(m_allocator, m_image);
+
+    return m_imageViews->createImageView(key);
+  }
+
+
+
+
+  DxvkResourceAllocationPool::DxvkResourceAllocationPool() {
+
+  }
+
+
+  DxvkResourceAllocationPool::~DxvkResourceAllocationPool() {
+    auto list = m_next;
+
+    while (list) {
+      auto next = list->next;
+      list->~StorageList();
+      list = next;
+    }
+  }
+
+
+  void DxvkResourceAllocationPool::createPool() {
+    auto pool = std::make_unique<StoragePool>();
+    pool->next = std::move(m_pool);
+
+    for (size_t i = 0; i < pool->objects.size(); i++)
+      m_next = new (pool->objects[i].data) StorageList(m_next);
+
+    m_pool = std::move(pool);
   }
 
 
@@ -477,6 +675,30 @@ namespace dxvk {
     vk->vkFreeMemory(vk->device(), memory.memory, nullptr);
 
     type.stats.memoryAllocated -= memory.size;
+  }
+
+
+  void DxvkMemoryAllocator::freeAllocation(
+          DxvkResourceAllocation* allocation) {
+    std::unique_lock lock(m_mutex);
+
+    if (likely(allocation->m_type)) {
+      allocation->m_type->stats.memoryUsed -= allocation->m_size;
+
+      if (unlikely(allocation->m_flags.test(DxvkAllocationFlag::OwnsMemory))) {
+        // We free the actual allocation later, just update stats here.
+        allocation->m_type->stats.memoryAllocated -= allocation->m_size;
+      } else {
+        auto& pool = allocation->m_mapPtr
+          ? allocation->m_type->mappedPool
+          : allocation->m_type->devicePool;
+
+        if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
+          freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+      }
+    }
+
+    m_allocationPool.free(allocation);
   }
 
 
