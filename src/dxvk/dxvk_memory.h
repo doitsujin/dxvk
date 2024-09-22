@@ -1,7 +1,10 @@
 #pragma once
 
+#include <memory>
+
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
+#include "dxvk_hash.h"
 
 #include "../util/util_time.h"
 
@@ -9,7 +12,20 @@ namespace dxvk {
   
   class DxvkMemoryAllocator;
   class DxvkMemoryChunk;
-  
+  class DxvkSparsePageTable;
+
+  /**
+   * \brief Resource access flags
+   */
+  enum class DxvkAccess : uint32_t {
+    None    = 0,
+    Read    = 1,
+    Write   = 2,
+  };
+
+  using DxvkAccessFlags = Flags<DxvkAccess>;
+
+
   /**
    * \brief Memory stats
    * 
@@ -192,6 +208,443 @@ namespace dxvk {
 
 
   /**
+   * \brief Memory requirement info
+   */
+  struct DxvkMemoryRequirements {
+    VkImageTiling                 tiling;
+    VkMemoryDedicatedRequirements dedicated;
+    VkMemoryRequirements2         core;
+  };
+
+
+  /**
+   * \brief Memory allocation info
+   */
+  struct DxvkMemoryProperties {
+    VkExportMemoryAllocateInfo    sharedExport;
+    VkImportMemoryWin32HandleInfoKHR sharedImportWin32;
+    VkMemoryDedicatedAllocateInfo dedicated;
+    VkMemoryPropertyFlags         flags;
+  };
+
+
+  /**
+   * \brief Buffer view key
+   *
+   * Stores buffer view properties.
+   */
+  struct DxvkBufferViewKey {
+    /// Buffer view format
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    /// View usage. Must include one or both texel buffer flags.
+    VkBufferUsageFlags usage = 0u;
+    /// Buffer offset, in bytes
+    VkDeviceSize offset = 0u;
+    /// Buffer view size, in bytes
+    VkDeviceSize size = 0u;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(format));
+      hash.add(uint32_t(usage));
+      hash.add(offset);
+      hash.add(size);
+      return hash;
+    }
+
+    bool eq(const DxvkBufferViewKey& other) const {
+      return format == other.format
+          && usage  == other.usage
+          && offset == other.offset
+          && size   == other.size;
+    }
+  };
+
+
+  /**
+   * \brief Image view map
+   */
+  class DxvkResourceBufferViewMap {
+
+  public:
+
+    DxvkResourceBufferViewMap(
+            DxvkMemoryAllocator*        allocator,
+            VkBuffer                    buffer);
+
+    ~DxvkResourceBufferViewMap();
+
+    /**
+     * \brief Creates a buffer view
+     *
+     * \param [in] key View properties
+     * \param [in] baseOffset Buffer offset
+     * \returns Buffer view handle
+     */
+    VkBufferView createBufferView(
+      const DxvkBufferViewKey&          key,
+            VkDeviceSize                baseOffset);
+
+  private:
+
+    Rc<vk::DeviceFn>  m_vkd;
+    VkBuffer          m_buffer          = VK_NULL_HANDLE;
+    bool              m_passBufferUsage = false;
+
+    dxvk::mutex       m_mutex;
+    std::unordered_map<DxvkBufferViewKey,
+      VkBufferView, DxvkHash, DxvkEq> m_views;
+
+  };
+
+
+  /**
+   * \brief Image view key
+   *
+   * Stores a somewhat compressed representation
+   * of image view properties.
+   */
+  struct DxvkImageViewKey {
+    /// View type
+    VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    /// View usage flags
+    VkImageUsageFlags usage = 0u;
+    /// View format
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    /// Aspect flags to include in this view
+    VkImageAspectFlags aspects = 0u;
+    /// First mip
+    uint8_t mipIndex = 0u;
+    /// Number of mips
+    uint8_t mipCount = 0u;
+    /// First array layer
+    uint16_t layerIndex = 0u;
+    /// Number of array layers
+    uint16_t layerCount = 0u;
+    /// Packed component swizzle, with four bits per component
+    uint16_t packedSwizzle = 0u;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(viewType));
+      hash.add(uint32_t(usage));
+      hash.add(uint32_t(format));
+      hash.add(uint32_t(aspects));
+      hash.add(uint32_t(mipIndex) | (uint32_t(mipCount) << 16));
+      hash.add(uint32_t(layerIndex) | (uint32_t(layerCount) << 16));
+      hash.add(uint32_t(packedSwizzle));
+      return hash;
+    }
+
+    bool eq(const DxvkImageViewKey& other) const {
+      return viewType == other.viewType
+          && usage == other.usage
+          && format == other.format
+          && aspects == other.aspects
+          && mipIndex == other.mipIndex
+          && mipCount == other.mipCount
+          && layerIndex == other.layerIndex
+          && layerCount == other.layerCount
+          && packedSwizzle == other.packedSwizzle;
+    }
+  };
+
+
+  /**
+   * \brief Image view map
+   */
+  class DxvkResourceImageViewMap {
+
+  public:
+
+    DxvkResourceImageViewMap(
+            DxvkMemoryAllocator*        allocator,
+            VkImage                     image);
+
+    ~DxvkResourceImageViewMap();
+
+    /**
+     * \brief Creates an image view
+     *
+     * \param [in] key View properties
+     * \returns Image view handle
+     */
+    VkImageView createImageView(
+      const DxvkImageViewKey&           key);
+
+  private:
+
+    Rc<vk::DeviceFn>  m_vkd;
+    VkImage           m_image = VK_NULL_HANDLE;
+
+    dxvk::mutex       m_mutex;
+    std::unordered_map<DxvkImageViewKey,
+      VkImageView, DxvkHash, DxvkEq> m_views;
+
+  };
+
+
+  /**
+   * \brief Buffer properties
+   */
+  struct DxvkResourceBufferInfo {
+    /// Buffer handle
+    VkBuffer buffer = VK_NULL_HANDLE;
+    /// Buffer offset, in bytes
+    VkDeviceSize offset = 0u;
+    /// Buffer size, in bytes
+    VkDeviceSize size = 0u;
+    /// Pointer to mapped memory region
+    void* mapPtr = nullptr;
+    /// GPU address of the buffer
+    VkDeviceSize gpuAddress = 0u;
+  };
+
+
+  /**
+   * \brief Image properties
+   */
+  struct DxvkResourceImageInfo {
+    /// Image handle
+    VkImage image = VK_NULL_HANDLE;
+    /// Pointer to mapped memory region
+    void* mapPtr = nullptr;
+  };
+
+
+  /**
+   * \brief Resource allocation flags
+   */
+  enum class DxvkAllocationFlag : uint32_t {
+    OwnsMemory  = 0,
+    OwnsBuffer  = 1,
+    OwnsImage   = 2,
+  };
+
+  using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
+
+
+  /**
+   * \brief Vulkan resource with memory allocation
+   *
+   * Reference-counted object that stores a Vulkan resource together
+   * with the memory allocation backing the resource, as well as views
+   * created from that resource.
+   */
+  class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
+    friend DxvkMemoryAllocator;
+  public:
+
+    DxvkResourceAllocation();
+
+    ~DxvkResourceAllocation();
+
+    force_inline void incRef() { acquire(DxvkAccess::None); }
+    force_inline void decRef() { release(DxvkAccess::None); }
+
+    /**
+     * \brief Releases allocation
+     *
+     * Increments the use counter of the allocation.
+     * \param [in] access Resource access
+     */
+    force_inline void acquire(DxvkAccess access) {
+      m_useCount.fetch_add(getIncrement(access), std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Releases allocation
+     *
+     * Decrements the use counter and frees the allocation if necessary.
+     * \param [in] access Resource access
+     */
+    force_inline void release(DxvkAccess access) {
+      uint64_t increment = getIncrement(access);
+      uint64_t remaining = m_useCount.fetch_sub(increment, std::memory_order_release) - increment;
+
+      if (unlikely(!remaining))
+        free();
+    }
+
+    /**
+     * \brief Checks whether the resource is in use
+     *
+     * Note that when checking for read access, this will also
+     * return \c true if the resource is being written to.
+     * \param [in] access Access to check
+     */
+    force_inline bool isInUse(DxvkAccess access) const {
+      uint64_t cur = m_useCount.load(std::memory_order_acquire);
+      return cur >= getIncrement(access);
+    }
+
+    /**
+     * \brief Queries buffer info
+     * \returns Buffer info
+     */
+    DxvkResourceBufferInfo getBufferInfo() const {
+      DxvkResourceBufferInfo result = { };
+      result.buffer = m_buffer;
+      result.offset = m_bufferOffset;
+      result.size = m_size;
+      result.mapPtr = m_mapPtr;
+      result.gpuAddress = m_bufferAddress;
+      return result;
+    }
+
+    /**
+     * \brief Queries image info
+     * \returns Image info
+     */
+    DxvkResourceImageInfo getImageInfo() const {
+      DxvkResourceImageInfo result = { };
+      result.image = m_image;
+      result.mapPtr = m_mapPtr;
+      return result;
+    }
+
+    /**
+     * \brief Queries sparse page table
+     *
+     * Only applies to sparse resources.
+     * \returns Pointer to sparse page table
+     */
+    DxvkSparsePageTable* getSparsePageTable() const {
+      return m_sparsePageTable;
+    }
+
+    /**
+     * \brief Queries memory property flags
+     *
+     * May be 0 for imported or foreign resources.
+     * \returns Memory property flags
+     */
+    VkMemoryPropertyFlags getMemoryProperties() const {
+      return m_type ? m_type->properties.propertyFlags : 0u;
+    }
+
+    /**
+     * \brief Creates buffer view
+     *
+     * \param [in] key View properties
+     * \returns Buffer view handle
+     */
+    VkBufferView createBufferView(
+      const DxvkBufferViewKey&          key);
+
+    /**
+     * \brief Creates image view
+     *
+     * \param [in] key View properties
+     * \returns Image view handle
+     */
+    VkImageView createImageView(
+      const DxvkImageViewKey&           key);
+
+  private:
+
+    std::atomic<uint64_t>       m_useCount = { 0u };
+
+    uint32_t                    m_resourceCookie = 0u;
+    DxvkAllocationFlags         m_flags = 0u;
+
+    VkDeviceMemory              m_memory = VK_NULL_HANDLE;
+    VkDeviceSize                m_address = 0u;
+    VkDeviceSize                m_size = 0u;
+    void*                       m_mapPtr = nullptr;
+
+    VkBuffer                    m_buffer = VK_NULL_HANDLE;
+    VkDeviceSize                m_bufferOffset = 0u;
+    VkDeviceAddress             m_bufferAddress = 0u;
+    DxvkResourceBufferViewMap*  m_bufferViews = nullptr;
+
+    VkImage                     m_image = VK_NULL_HANDLE;
+    DxvkResourceImageViewMap*   m_imageViews = nullptr;
+
+    DxvkSparsePageTable*        m_sparsePageTable = nullptr;
+
+    DxvkMemoryAllocator*        m_allocator = nullptr;
+    DxvkMemoryType*             m_type = nullptr;
+
+    void free();
+
+    static force_inline uint64_t getIncrement(DxvkAccess access) {
+      return uint64_t(1u) << (20u * uint32_t(access));
+    }
+
+  };
+
+  static_assert(sizeof(DxvkResourceAllocation) == 2u * CACHE_LINE_SIZE);
+
+
+  /**
+   * \brief Resource allocation pool
+   *
+   * Creates and recycles resource allocation objects.
+   */
+  class DxvkResourceAllocationPool {
+
+  public:
+
+    DxvkResourceAllocationPool();
+
+    ~DxvkResourceAllocationPool();
+
+    template<typename... Args>
+    Rc<DxvkResourceAllocation> create(Args&&... args) {
+      return new (alloc()) DxvkResourceAllocation(std::forward<Args>(args)...);
+    }
+
+    void free(DxvkResourceAllocation* allocation) {
+      allocation->~DxvkResourceAllocation();
+      recycle(allocation);
+    }
+
+  private:
+
+    struct Storage {
+      alignas(DxvkResourceAllocation)
+      char data[sizeof(DxvkResourceAllocation)];
+    };
+
+    struct StorageList {
+      StorageList(StorageList* next_)
+      : next(next_) { }
+
+      StorageList* next = nullptr;
+    };
+
+    struct StoragePool {
+      std::array<Storage, 1023> objects;
+      std::unique_ptr<StoragePool> next;
+    };
+
+    std::unique_ptr<StoragePool>  m_pool;
+    StorageList*                  m_next = nullptr;
+
+    void* alloc() {
+      if (unlikely(!m_next))
+        createPool();
+
+      StorageList* list = m_next;
+      m_next = list->next;
+      list->~StorageList();
+
+      auto storage = std::launder(reinterpret_cast<Storage*>(list));
+      return storage->data;
+    }
+
+    void recycle(void* allocation) {
+      auto storage = std::launder(reinterpret_cast<Storage*>(allocation));
+      m_next = new (storage->data) StorageList(m_next);
+    }
+
+    void createPool();
+
+  };
+
+
+  /**
    * \brief Memory slice
    * 
    * Represents a slice of memory that has
@@ -299,39 +752,16 @@ namespace dxvk {
 
 
   /**
-   * \brief Memory requirement info
-   */
-  struct DxvkMemoryRequirements {
-    VkImageTiling                 tiling;
-    VkMemoryDedicatedRequirements dedicated;
-    VkMemoryRequirements2         core;
-  };
-
-
-  /**
-   * \brief Memory allocation info
-   */
-  struct DxvkMemoryProperties {
-    VkExportMemoryAllocateInfo    sharedExport;
-    VkImportMemoryWin32HandleInfoKHR sharedImportWin32;
-    VkMemoryDedicatedAllocateInfo dedicated;
-    VkMemoryPropertyFlags         flags;
-  };
-
-
-  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
    * Memory objects will be destroyed automatically.
    */
   class DxvkMemoryAllocator {
-    friend class DxvkMemory;
-    friend class DxvkMemoryChunk;
+    friend DxvkMemory;
+    friend DxvkResourceAllocation;
 
     constexpr static uint64_t DedicatedChunkAddress = 1ull << 63u;
-
-    constexpr static VkDeviceSize SmallAllocationThreshold = 256 << 10;
 
     constexpr static VkDeviceSize MinChunkSize =   4ull << 20;
     constexpr static VkDeviceSize MaxChunkSize = 256ull << 20;
@@ -456,6 +886,8 @@ namespace dxvk {
 
     std::array<uint32_t, 16> m_memTypesByPropertyFlags = { };
 
+    DxvkResourceAllocationPool  m_allocationPool;
+
     dxvk::thread              m_worker;
     bool                      m_stopWorker = false;
 
@@ -483,7 +915,10 @@ namespace dxvk {
     void freeDeviceMemory(
             DxvkMemoryType&       type,
             DxvkDeviceMemory      memory);
-    
+
+    void freeAllocation(
+            DxvkResourceAllocation* allocation);
+
     uint32_t countEmptyChunksInPool(
       const DxvkMemoryPool&       pool) const;
 
@@ -546,4 +981,10 @@ namespace dxvk {
 
   };
   
+
+
+  inline void DxvkResourceAllocation::free() {
+    m_allocator->freeAllocation(this);
+  }
+
 }
