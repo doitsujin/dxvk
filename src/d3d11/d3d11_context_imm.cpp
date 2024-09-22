@@ -332,24 +332,23 @@ namespace dxvk {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      auto physSlice = pResource->DiscardSlice();
-      pMappedResource->pData      = physSlice.mapPtr;
+      auto bufferSlice = pResource->DiscardSlice();
+      pMappedResource->pData      = bufferSlice.mapPtr();
       pMappedResource->RowPitch   = bufferSize;
       pMappedResource->DepthPitch = bufferSize;
       
       EmitCs([
         cBuffer      = pResource->GetBuffer(),
-        cBufferSlice = physSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        cBufferSlice = std::move(bufferSlice)
+      ] (DxvkContext* ctx) mutable {
+        ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
       });
 
       return S_OK;
     } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // Put this on a fast path without any extra checks since it's
       // a somewhat desired method to partially update large buffers
-      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
-      pMappedResource->pData      = physSlice.mapPtr;
+      pMappedResource->pData      = pResource->GetMappedSlice().mapPtr();
       pMappedResource->RowPitch   = bufferSize;
       pMappedResource->DepthPitch = bufferSize;
       return S_OK;
@@ -377,18 +376,21 @@ namespace dxvk {
       }
 
       if (doInvalidatePreserve) {
-        auto prevSlice = pResource->GetMappedSlice();
-        auto physSlice = pResource->DiscardSlice();
+        auto srcSlice = pResource->GetMappedSlice();
+        auto dstSlice = pResource->DiscardSlice();
+
+        auto srcPtr = srcSlice.mapPtr();
+        auto dstPtr = dstSlice.mapPtr();
 
         EmitCs([
           cBuffer      = std::move(buffer),
-          cBufferSlice = physSlice
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cBuffer, cBufferSlice);
+          cBufferSlice = std::move(dstSlice)
+        ] (DxvkContext* ctx) mutable {
+          ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
         });
 
-        std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
-        pMappedResource->pData      = physSlice.mapPtr;
+        std::memcpy(dstPtr, srcPtr, bufferSize);
+        pMappedResource->pData      = dstPtr;
         pMappedResource->RowPitch   = bufferSize;
         pMappedResource->DepthPitch = bufferSize;
         return S_OK;
@@ -396,8 +398,7 @@ namespace dxvk {
         if (!WaitForResource(buffer, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
 
-        DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
-        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->pData      = pResource->GetMappedSlice().mapPtr();
         pMappedResource->RowPitch   = bufferSize;
         pMappedResource->DepthPitch = bufferSize;
         return S_OK;
@@ -497,7 +498,7 @@ namespace dxvk {
 
         // Don't implicitly discard large buffers or buffers of images with
         // multiple subresources, as that is likely to cause memory issues.
-        VkDeviceSize bufferSize = pResource->GetMappedSlice(Subresource).length;
+        VkDeviceSize bufferSize = mappedBuffer->info().size;
 
         if (bufferSize >= m_maxImplicitDiscardSize || pResource->CountSubresources() > 1) {
           // Don't check access flags, WaitForResource will return
@@ -522,20 +523,23 @@ namespace dxvk {
       }
 
       if (doFlags & DoInvalidate) {
-        DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
-        DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
+        VkDeviceSize bufferSize = mappedBuffer->info().size;
+
+        auto srcSlice = pResource->GetMappedSlice(Subresource);
+        auto dstSlice = pResource->DiscardSlice(Subresource);
+
+        auto srcPtr = srcSlice.mapPtr();
+        mapPtr = dstSlice.mapPtr();
 
         EmitCs([
-          cImageBuffer = mappedBuffer,
-          cBufferSlice = physSlice
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+          cImageBuffer      = mappedBuffer,
+          cImageBufferSlice = std::move(dstSlice)
+        ] (DxvkContext* ctx) mutable {
+          ctx->invalidateBuffer(cImageBuffer, std::move(cImageBufferSlice));
         });
 
         if (doFlags & DoPreserve)
-          std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
-
-        mapPtr = physSlice.mapPtr;
+          std::memcpy(mapPtr, srcPtr, bufferSize);
       } else {
         if (doFlags & DoWait) {
           // We cannot respect DO_NOT_WAIT for buffer-mapped resources since
@@ -548,7 +552,7 @@ namespace dxvk {
             return DXGI_ERROR_WAS_STILL_DRAWING;
         }
 
-        mapPtr = pResource->GetMappedSlice(Subresource).mapPtr;
+        mapPtr = pResource->GetMappedSlice(Subresource).mapPtr();
       }
     }
 
@@ -696,22 +700,23 @@ namespace dxvk {
           UINT                          Length,
     const void*                         pSrcData,
           UINT                          CopyFlags) {
-    DxvkBufferSliceHandle slice;
+    void* mapPtr = nullptr;
 
     if (likely(CopyFlags != D3D11_COPY_NO_OVERWRITE)) {
-      slice = pDstBuffer->DiscardSlice();
+      auto bufferSlice = pDstBuffer->DiscardSlice();
+      mapPtr = bufferSlice.mapPtr();
 
       EmitCs([
         cBuffer      = pDstBuffer->GetBuffer(),
-        cBufferSlice = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        cBufferSlice = std::move(bufferSlice)
+      ] (DxvkContext* ctx) mutable {
+        ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
       });
     } else {
-      slice = pDstBuffer->GetMappedSlice();
+      mapPtr = pDstBuffer->GetMappedSlice().mapPtr();
     }
 
-    std::memcpy(reinterpret_cast<char*>(slice.mapPtr) + Offset, pSrcData, Length);
+    std::memcpy(reinterpret_cast<char*>(mapPtr) + Offset, pSrcData, Length);
   }
 
 
