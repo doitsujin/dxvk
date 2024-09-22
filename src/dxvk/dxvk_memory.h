@@ -433,9 +433,13 @@ namespace dxvk {
    */
   class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
     friend DxvkMemoryAllocator;
+    friend class DxvkMemory;
   public:
 
-    DxvkResourceAllocation();
+    DxvkResourceAllocation(
+            DxvkMemoryAllocator*        allocator,
+            DxvkMemoryType*             type)
+    : m_allocator(allocator), m_type(type) { }
 
     ~DxvkResourceAllocation();
 
@@ -650,22 +654,16 @@ namespace dxvk {
    * Represents a slice of memory that has
    * been sub-allocated from a bigger chunk.
    */
-  class DxvkMemory {
-    friend class DxvkMemoryAllocator;
-  public:
-    
-    DxvkMemory();
-    DxvkMemory(
-      DxvkMemoryAllocator*  alloc,
-      DxvkMemoryType*       type,
-      VkBuffer              buffer,
-      VkDeviceMemory        memory,
-      VkDeviceSize          address,
-      VkDeviceSize          length,
-      void*                 mapPtr);
-    DxvkMemory             (DxvkMemory&& other);
-    DxvkMemory& operator = (DxvkMemory&& other);
-    ~DxvkMemory();
+  struct DxvkMemory {
+    DxvkMemory() = default;
+
+    explicit DxvkMemory(Rc<DxvkResourceAllocation>&& allocation_)
+    : allocation(std::move(allocation_)) { }
+
+    DxvkMemory(DxvkMemory&& other) = default;
+    DxvkMemory& operator = (DxvkMemory&& other) = default;
+
+    ~DxvkMemory() = default;
     
     /**
      * \brief Memory object
@@ -675,7 +673,7 @@ namespace dxvk {
      * \returns Memory object
      */
     VkDeviceMemory memory() const {
-      return m_memory;
+      return allocation ? allocation->m_memory : VK_NULL_HANDLE;
     }
     
     /**
@@ -685,7 +683,7 @@ namespace dxvk {
      * \returns Buffer object
      */
     VkBuffer buffer() const {
-      return m_buffer;
+      return allocation ? allocation->m_buffer : VK_NULL_HANDLE;
     }
 
     /**
@@ -696,7 +694,9 @@ namespace dxvk {
      * \returns Offset into device memory
      */
     VkDeviceSize offset() const {
-      return m_address & DxvkPageAllocator::ChunkAddressMask;
+      return allocation
+        ? allocation->m_address & DxvkPageAllocator::ChunkAddressMask
+        : 0u;
     }
     
     /**
@@ -706,16 +706,17 @@ namespace dxvk {
      * \returns Pointer to mapped data
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return reinterpret_cast<char*>(m_mapPtr) + offset;
+      return allocation && allocation->m_mapPtr
+        ? reinterpret_cast<char*>(allocation->m_mapPtr) + offset
+        : nullptr;
     }
 
     /**
      * \brief Returns length of memory allocated
-     * 
      * \returns Memory size
      */
     VkDeviceSize length() const {
-      return m_length;
+      return allocation ? allocation->m_size : 0u;
     }
 
     /**
@@ -725,7 +726,7 @@ namespace dxvk {
      *          memory, and \c false if it is undefined.
      */
     explicit operator bool () const {
-      return m_memory != VK_NULL_HANDLE;
+      return bool(allocation);
     }
 
     /**
@@ -733,21 +734,12 @@ namespace dxvk {
      * \returns Global buffer usage flags, if any
      */
     VkBufferUsageFlags getBufferUsage() const {
-      return m_buffer ? m_type->bufferUsage : 0u;
+      return allocation && allocation->m_type
+        ? allocation->m_type->bufferUsage
+        : 0u;
     }
 
-  private:
-    
-    DxvkMemoryAllocator*  m_alloc  = nullptr;
-    DxvkMemoryType*       m_type   = nullptr;
-    VkBuffer              m_buffer = VK_NULL_HANDLE;
-    VkDeviceMemory        m_memory = VK_NULL_HANDLE;
-    VkDeviceSize          m_address = 0;
-    VkDeviceSize          m_length = 0;
-    void*                 m_mapPtr = nullptr;
-    
-    void free();
-    
+    Rc<DxvkResourceAllocation> allocation;
   };
 
 
@@ -807,8 +799,9 @@ namespace dxvk {
      * \param [in] requirements Memory requirements
      * \param [in] properties Memory property flags. Some of
      *    these may be ignored in case of memory pressure.
+     * \returns Allocated memory
      */
-    DxvkMemory allocateMemory(
+    Rc<DxvkResourceAllocation> allocateMemory(
       const VkMemoryRequirements&             requirements,
             VkMemoryPropertyFlags             properties);
 
@@ -820,8 +813,9 @@ namespace dxvk {
      * \param [in] properties Memory property flags. Some of
      *    these may be ignored in case of memory pressure.
      * \param [in] next Further memory properties
+     * \returns Allocated memory
      */
-    DxvkMemory allocateDedicatedMemory(
+    Rc<DxvkResourceAllocation> allocateDedicatedMemory(
       const VkMemoryRequirements&             requirements,
             VkMemoryPropertyFlags             properties,
       const void*                             next);
@@ -903,15 +897,6 @@ namespace dxvk {
             VkDeviceSize          requiredSize,
             VkDeviceSize          desiredSize);
 
-    DxvkMemory createMemory(
-            DxvkMemoryType&       type,
-            DxvkMemoryPool&       pool,
-            VkDeviceSize          address,
-            VkDeviceSize          size);
-
-    void free(
-      const DxvkMemory&           memory);
-
     void freeDeviceMemory(
             DxvkMemoryType&       type,
             DxvkDeviceMemory      memory);
@@ -942,13 +927,13 @@ namespace dxvk {
             DxvkDeviceMemory&     memory,
             VkMemoryPropertyFlags properties);
 
-    DxvkMemory createMemory(
+    Rc<DxvkResourceAllocation> createAllocation(
             DxvkMemoryType&       type,
-      const DxvkMemoryPool&       pool,
+            DxvkMemoryPool&       pool,
             VkDeviceSize          address,
             VkDeviceSize          size);
 
-    DxvkMemory createMemory(
+    Rc<DxvkResourceAllocation> createAllocation(
             DxvkMemoryType&       type,
       const DxvkDeviceMemory&     memory);
 

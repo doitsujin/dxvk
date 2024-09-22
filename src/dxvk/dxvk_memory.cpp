@@ -7,62 +7,6 @@
 #include "dxvk_sparse.h"
 
 namespace dxvk {
-  
-  DxvkMemory::DxvkMemory() { }
-  DxvkMemory::DxvkMemory(
-          DxvkMemoryAllocator*  alloc,
-          DxvkMemoryType*       type,
-          VkBuffer              buffer,
-          VkDeviceMemory        memory,
-          VkDeviceSize          address,
-          VkDeviceSize          length,
-          void*                 mapPtr)
-  : m_alloc   (alloc),
-    m_type    (type),
-    m_buffer  (buffer),
-    m_memory  (memory),
-    m_address (address),
-    m_length  (length),
-    m_mapPtr  (mapPtr) {
-
-  }
-  
-  
-  DxvkMemory::DxvkMemory(DxvkMemory&& other)
-  : m_alloc   (std::exchange(other.m_alloc,  nullptr)),
-    m_type    (std::exchange(other.m_type,   nullptr)),
-    m_buffer  (std::exchange(other.m_buffer, VkBuffer(VK_NULL_HANDLE))),
-    m_memory  (std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE))),
-    m_address (std::exchange(other.m_address, 0)),
-    m_length  (std::exchange(other.m_length, 0)),
-    m_mapPtr  (std::exchange(other.m_mapPtr, nullptr)) { }
-  
-  
-  DxvkMemory& DxvkMemory::operator = (DxvkMemory&& other) {
-    this->free();
-    m_alloc   = std::exchange(other.m_alloc,  nullptr);
-    m_type    = std::exchange(other.m_type,   nullptr);
-    m_buffer  = std::exchange(other.m_buffer, VkBuffer(VK_NULL_HANDLE));
-    m_memory  = std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE));
-    m_address = std::exchange(other.m_address, 0);
-    m_length  = std::exchange(other.m_length, 0);
-    m_mapPtr  = std::exchange(other.m_mapPtr, nullptr);
-    return *this;
-  }
-  
-  
-  DxvkMemory::~DxvkMemory() {
-    this->free();
-  }
-  
-  
-  void DxvkMemory::free() {
-    if (m_alloc != nullptr)
-      m_alloc->free(*this);
-  }
-
-
-
 
   DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
           DxvkMemoryAllocator*        allocator,
@@ -174,11 +118,6 @@ namespace dxvk {
   }
 
 
-
-
-  DxvkResourceAllocation::DxvkResourceAllocation() {
-
-  }
 
 
   DxvkResourceAllocation::~DxvkResourceAllocation() {
@@ -328,31 +267,32 @@ namespace dxvk {
     // fails, we may still fall back to a suballocation unless a
     // dedicated allocation is explicitly required.
     if (unlikely(info.dedicated.buffer || info.dedicated.image)) {
-      DxvkMemory memory = allocateDedicatedMemory(
+      Rc<DxvkResourceAllocation> allocation = allocateDedicatedMemory(
         req.core.memoryRequirements, info.flags, &info.dedicated);
 
-      if (memory)
-        return memory;
+      if (allocation)
+        return DxvkMemory(std::move(allocation));
 
       if (req.dedicated.requiresDedicatedAllocation && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-        return allocateDedicatedMemory(req.core.memoryRequirements,
+        allocation = allocateDedicatedMemory(req.core.memoryRequirements,
           info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &info.dedicated);
+        return DxvkMemory(std::move(allocation));
       }
     }
 
     // Suballocate memory from an existing chunk
-    DxvkMemory memory = allocateMemory(req.core.memoryRequirements, info.flags);
+    Rc<DxvkResourceAllocation> allocation = allocateMemory(req.core.memoryRequirements, info.flags);
 
-    if (unlikely(!memory) && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-      memory = allocateMemory(req.core.memoryRequirements,
+    if (unlikely(!allocation) && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+      allocation = allocateMemory(req.core.memoryRequirements,
         info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     }
 
-    return memory;
+    return DxvkMemory(std::move(allocation));
   }
 
 
-  DxvkMemory DxvkMemoryAllocator::allocateMemory(
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::allocateMemory(
     const VkMemoryRequirements&             requirements,
           VkMemoryPropertyFlags             properties) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
@@ -375,7 +315,7 @@ namespace dxvk {
       int64_t address = selectedPool.alloc(size, requirements.alignment);
 
       if (likely(address >= 0))
-        return createMemory(type, selectedPool, address, size);
+        return createAllocation(type, selectedPool, address, size);
 
       // If the memory type is host-visible, try to find an existing chunk
       // in the other memory pool of the memory type and move over.
@@ -400,7 +340,7 @@ namespace dxvk {
           address = selectedPool.alloc(size, requirements.alignment);
 
           if (likely(address >= 0))
-            return createMemory(type, selectedPool, address, size);
+            return createAllocation(type, selectedPool, address, size);
         }
       }
 
@@ -423,7 +363,7 @@ namespace dxvk {
           continue;
 
         mapDeviceMemory(memory, properties);
-        return createMemory(type, memory);
+        return createAllocation(type, memory);
       }
 
       // Try to allocate a new chunk that is large enough to hold
@@ -435,18 +375,18 @@ namespace dxvk {
 
       if (allocateChunkInPool(type, selectedPool, properties, size, desiredSize)) {
         address = selectedPool.alloc(size, requirements.alignment);
-        return createMemory(type, selectedPool, address, size);
+        return createAllocation(type, selectedPool, address, size);
       }
     }
 
     logMemoryError(requirements);
     logMemoryStats();
 
-    return DxvkMemory();
+    return nullptr;
   }
 
 
-  DxvkMemory DxvkMemoryAllocator::allocateDedicatedMemory(
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::allocateDedicatedMemory(
     const VkMemoryRequirements&             requirements,
           VkMemoryPropertyFlags             properties,
     const void*                             next) {
@@ -460,14 +400,14 @@ namespace dxvk {
 
       if (likely(memory.memory != VK_NULL_HANDLE)) {
         mapDeviceMemory(memory, properties);
-        return createMemory(type, memory);
+        return createAllocation(type, memory);
       }
     }
 
     logMemoryError(requirements);
     logMemoryStats();
 
-    return DxvkMemory();
+    return nullptr;
   }
 
 
@@ -612,7 +552,7 @@ namespace dxvk {
   }
 
 
-  DxvkMemory DxvkMemoryAllocator::createMemory(
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createAllocation(
           DxvkMemoryType&       type,
           DxvkMemoryPool&       pool,
           VkDeviceSize          address,
@@ -624,46 +564,43 @@ namespace dxvk {
     auto& chunk = pool.chunks[chunkIndex];
     chunk.unusedTime = high_resolution_clock::time_point();
 
-    void* mapPtr = chunk.memory.mapPtr
-      ? reinterpret_cast<char*>(chunk.memory.mapPtr) + (address & DxvkPageAllocator::ChunkAddressMask)
-      : nullptr;
+    VkDeviceSize offset = address & DxvkPageAllocator::ChunkAddressMask;
 
-    return DxvkMemory(this, &type, chunk.memory.buffer,
-      chunk.memory.memory, address, size, mapPtr);
+    auto allocation = m_allocationPool.create(this, &type);
+    allocation->m_memory = chunk.memory.memory;
+    allocation->m_address = address;
+    allocation->m_size = size;
+
+    if (chunk.memory.mapPtr)
+      allocation->m_mapPtr = reinterpret_cast<char*>(chunk.memory.mapPtr) + offset;
+
+    if (chunk.memory.buffer) {
+      allocation->m_buffer = chunk.memory.buffer;
+      allocation->m_bufferOffset = offset;
+    }
+
+    return allocation;
   }
 
 
-  DxvkMemory DxvkMemoryAllocator::createMemory(
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createAllocation(
           DxvkMemoryType&       type,
     const DxvkDeviceMemory&     memory) {
     type.stats.memoryUsed += memory.size;
 
-    return DxvkMemory(this, &type, memory.buffer, memory.memory,
-      DedicatedChunkAddress, memory.size, memory.mapPtr);
-  }
+    auto allocation = m_allocationPool.create(this, &type);
+    allocation->m_flags.set(DxvkAllocationFlag::OwnsMemory);
 
+    if (memory.buffer)
+      allocation->m_flags.set(DxvkAllocationFlag::OwnsBuffer);
 
-  void DxvkMemoryAllocator::free(
-    const DxvkMemory&           memory) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-    memory.m_type->stats.memoryUsed -= memory.m_length;
+    allocation->m_memory = memory.memory;
+    allocation->m_address = DedicatedChunkAddress;
+    allocation->m_size = memory.size;
+    allocation->m_mapPtr = memory.mapPtr;
 
-    if (unlikely(memory.m_address == DedicatedChunkAddress)) {
-      DxvkDeviceMemory devMem;
-      devMem.buffer   = memory.m_buffer;
-      devMem.memory   = memory.m_memory;
-      devMem.mapPtr   = nullptr;
-      devMem.size     = memory.m_length;
-
-      this->freeDeviceMemory(*memory.m_type, devMem);
-    } else {
-      DxvkMemoryPool& pool = memory.m_mapPtr
-        ? memory.m_type->mappedPool
-        : memory.m_type->devicePool;
-
-      if (unlikely(pool.free(memory.m_address, memory.m_length)))
-        freeEmptyChunksInPool(*memory.m_type, pool, 0, high_resolution_clock::now());
-    }
+    allocation->m_buffer = memory.buffer;
+    return allocation;
   }
 
 
