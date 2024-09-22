@@ -549,7 +549,8 @@ namespace dxvk {
 
     VkImageUsageFlags EnableMetaCopyUsage(
             VkFormat              Format,
-            VkImageTiling         Tiling) const;
+            VkImageTiling         Tiling,
+            VkSampleCountFlags    SampleCount) const;
 
     D3D9_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const;
 

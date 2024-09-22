@@ -324,10 +324,7 @@ namespace dxvk {
 
     DecodeMultiSampleType(m_device->GetDXVKDevice(), m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
 
-    // We need SAMPLED_BIT for StretchRect.
-    // However, StretchRect does not allow stretching for DS formats,
-    // so unless we need to resolve, it should always hit code paths that only need TRANSFER_BIT.
-    if (!m_desc.IsAttachmentOnly || !IsDepthStencilFormat(m_desc.Format) || imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT)
+    if (!m_desc.IsAttachmentOnly)
       imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
     // The image must be marked as mutable if it can be reinterpreted
@@ -387,7 +384,7 @@ namespace dxvk {
     // For some formats, we need to enable render target
     // capabilities if available, but these should
     // in no way affect the default image layout
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
+    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling, imageInfo.sampleCount);
 
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
@@ -464,7 +461,8 @@ namespace dxvk {
 
   VkImageUsageFlags D3D9CommonTexture::EnableMetaCopyUsage(
           VkFormat              Format,
-          VkImageTiling         Tiling) const {
+          VkImageTiling         Tiling,
+          VkSampleCountFlags    SampleCount) const {
     VkFormatFeatureFlags2 requestedFeatures = 0;
 
     if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT)
@@ -472,6 +470,12 @@ namespace dxvk {
 
     if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT)
       requestedFeatures |=  VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
+
+    // We need SAMPLED_BIT for StretchRect.
+    // However, StretchRect does not allow stretching for DS formats,
+    // so unless we need to resolve, it should always hit code paths that only need TRANSFER_BIT.
+    if (!IsDepthStencilFormat(m_desc.Format) || SampleCount != VK_SAMPLE_COUNT_1_BIT)
+      requestedFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
     if (!requestedFeatures)
       return 0;
@@ -482,12 +486,15 @@ namespace dxvk {
     requestedFeatures &= Tiling == VK_IMAGE_TILING_OPTIMAL
       ? properties.optimal
       : properties.linear;
-    
+
     VkImageUsageFlags requestedUsage = 0;
-    
+
+    if (requestedFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)
+      requestedUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
     if (requestedFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
       requestedUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    
+
     if (requestedFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT)
       requestedUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
