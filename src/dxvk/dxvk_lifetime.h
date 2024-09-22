@@ -71,10 +71,8 @@ namespace dxvk {
     }
 
     void release() const {
-      if (m_resource) {
-        if (!m_resource->release(m_access))
-          delete m_resource;
-      }
+      if (m_resource)
+        m_resource->release(m_access);
     }
 
   };
