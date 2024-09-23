@@ -247,7 +247,7 @@ namespace dxvk {
         m_rc[slot].imageView = nullptr;
 
       if (view != nullptr) {
-        m_rc[slot].bufferSlice = view->slice();
+        m_rc[slot].bufferSlice = DxvkBufferSlice(view);
         m_rc[slot].bufferView = std::move(view);
       } else {
         m_rc[slot].bufferSlice = DxvkBufferSlice();

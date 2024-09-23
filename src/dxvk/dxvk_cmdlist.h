@@ -261,6 +261,12 @@ namespace dxvk {
       m_resources.trackResource<Access>(rc.ptr());
     }
     
+    template<DxvkAccess Access, typename T>
+    void trackResource(T* rc) {
+      // TODO remove this jank once things are refactored
+      m_resources.trackResource<Access>(rc);
+    }
+    
     /**
      * \brief Tracks a GPU event
      * 

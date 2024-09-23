@@ -311,18 +311,7 @@ namespace dxvk {
     Rc<DxvkBuffer> createBuffer(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
-    
-    /**
-     * \brief Creates a buffer view
-     * 
-     * \param [in] buffer The buffer to view
-     * \param [in] createInfo Buffer view properties
-     * \returns The buffer view object
-     */
-    Rc<DxvkBufferView> createBufferView(
-      const Rc<DxvkBuffer>&           buffer,
-      const DxvkBufferViewCreateInfo& createInfo);
-    
+
     /**
      * \brief Creates an image object
      * 

@@ -254,7 +254,7 @@ namespace dxvk::hud {
     info.rangeLength    = m_dataBuffer->info().size;
     info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    return m_device->createBufferView(m_dataBuffer, info);
+    return m_dataBuffer->createView(info);
   }
 
 
@@ -279,7 +279,7 @@ namespace dxvk::hud {
     info.rangeLength    = m_fontBuffer->info().size;
     info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    return m_device->createBufferView(m_fontBuffer, info);
+    return m_fontBuffer->createView(info);
   }
 
 

@@ -164,13 +164,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBufferView> DxvkDevice::createBufferView(
-    const Rc<DxvkBuffer>&           buffer,
-    const DxvkBufferViewCreateInfo& createInfo) {
-    return new DxvkBufferView(this, buffer, createInfo);
-  }
-  
-  
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {

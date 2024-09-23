@@ -775,7 +775,7 @@ namespace dxvk::hud {
       viewInfo.rangeLength = info.size;
       viewInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-      m_pageMaskView = m_device->createBufferView(m_pageMaskBuffer, viewInfo);
+      m_pageMaskView = m_pageMaskBuffer->createView(viewInfo);
     }
 
     if (!m_stats.pageMasks.empty()) {

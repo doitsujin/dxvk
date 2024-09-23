@@ -51,8 +51,7 @@ namespace dxvk {
       m_info.Buffer.Offset = viewInfo.rangeOffset;
       m_info.Buffer.Length = viewInfo.rangeLength;
 
-      m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
-        buffer->GetBuffer(), viewInfo);
+      m_bufferView = buffer->GetBuffer()->createView(viewInfo);
     } else {
       auto texture = GetCommonTexture(pResource);
       auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
@@ -457,7 +456,7 @@ namespace dxvk {
     viewInfo.rangeLength = sizeof(uint32_t);
     viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
-    return device->createBufferView(buffer, viewInfo);
+    return buffer->createView(viewInfo);
   }
   
 }

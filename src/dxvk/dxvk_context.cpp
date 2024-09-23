@@ -253,10 +253,6 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    // The view range might have been invalidated, so
-    // we need to make sure the handle is up to date
-    bufferView->updateView();
-
     auto bufferSlice = bufferView->getSliceHandle();
 
     if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
@@ -308,8 +304,8 @@ namespace dxvk {
     m_execBarriers.accessBuffer(bufferSlice,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
-      bufferView->bufferInfo().stages,
-      bufferView->bufferInfo().access);
+      bufferView->buffer()->info().stages,
+      bufferView->buffer()->info().access);
     
     m_cmd->trackResource<DxvkAccess::None>(bufferView);
     m_cmd->trackResource<DxvkAccess::Write>(bufferView->buffer());
@@ -874,7 +870,7 @@ namespace dxvk {
     viewInfo.rangeOffset = dstBufferOffset;
     viewInfo.rangeLength = dstBufferSlice.length;
     viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    Rc<DxvkBufferView> dstView = m_device->createBufferView(dstBuffer, viewInfo);
+    Rc<DxvkBufferView> dstView = dstBuffer->createView(viewInfo);
 
     viewInfo.rangeOffset = srcBufferOffset;
     viewInfo.rangeLength = srcBufferSlice.length;
@@ -917,11 +913,11 @@ namespace dxvk {
         VK_ACCESS_SHADER_READ_BIT);
 
       viewInfo.rangeOffset = 0;
-      srcView = m_device->createBufferView(tmpBuffer, viewInfo);
+      srcView = tmpBuffer->createView(viewInfo);
 
       m_cmd->trackResource<DxvkAccess::Write>(tmpBuffer);
     } else {
-      srcView = m_device->createBufferView(srcBuffer, viewInfo);
+      srcView = srcBuffer->createView(viewInfo);
     }
 
     auto pipeInfo = m_common->metaCopy().getCopyBufferImagePipeline();
@@ -1076,8 +1072,8 @@ namespace dxvk {
     tmpViewInfoS.rangeLength = dataSizeS;
     tmpViewInfoS.usage       = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    auto tmpBufferViewD = m_device->createBufferView(tmpBuffer, tmpViewInfoD);
-    auto tmpBufferViewS = m_device->createBufferView(tmpBuffer, tmpViewInfoS);
+    auto tmpBufferViewD = tmpBuffer->createView(tmpViewInfoD);
+    auto tmpBufferViewS = tmpBuffer->createView(tmpViewInfoS);
 
     // Create descriptor set for the unpack operation
     DxvkMetaUnpackDescriptors descriptors;
@@ -5326,7 +5322,6 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.bufferView != nullptr) {
-              res.bufferView->updateView();
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -5342,7 +5337,6 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.bufferView != nullptr) {
-              res.bufferView->updateView();
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -6106,7 +6100,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < slices.size() && !requiresBarrier; i++) {
         if ((slices[i]->length())
-         && (slices[i]->bufferInfo().access & storageBufferAccess)) {
+         && (slices[i]->buffer()->info().access & storageBufferAccess)) {
           requiresBarrier = this->checkBufferBarrier<DoEmit>(*slices[i],
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
             VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
@@ -6191,8 +6185,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             if ((slot.bufferView != nullptr)
-             && (slot.bufferView->bufferInfo().access & storageBufferAccess)) {
-              slot.bufferView->updateView();
+             && (slot.bufferView->buffer()->info().access & storageBufferAccess)) {
               requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
                 util::pipelineStages(binding.stage), binding.access);
             }
@@ -6258,8 +6251,8 @@ namespace dxvk {
       m_execBarriers.accessBuffer(
         bufferView->getSliceHandle(),
         stages, access,
-        bufferView->bufferInfo().stages,
-        bufferView->bufferInfo().access);
+        bufferView->buffer()->info().stages,
+        bufferView->buffer()->info().access);
       return false;
     } else {
       DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(access);
