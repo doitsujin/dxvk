@@ -45,16 +45,16 @@ namespace dxvk {
    */
   struct DxvkBufferViewCreateInfo {
     /// Buffer data format, like image data
-    VkFormat format;
+    VkFormat format = VK_FORMAT_UNDEFINED;
     
     /// Offset of the buffer region to include in the view
-    VkDeviceSize rangeOffset;
+    VkDeviceSize rangeOffset = 0u;
     
     /// Size of the buffer region to include in the view
-    VkDeviceSize rangeLength;
+    VkDeviceSize rangeLength = 0u;
 
     /// Buffer view usage flags
-    VkBufferUsageFlags usage;
+    VkBufferUsageFlags usage = 0u;
   };
 
 
@@ -129,36 +129,20 @@ namespace dxvk {
    */
   class DxvkBufferAllocation {
     friend class DxvkBuffer;
-    friend class DxvkContext; /* TODO remove */
   public:
 
     DxvkBufferAllocation() = default;
 
-    explicit DxvkBufferAllocation(DxvkBufferSliceHandle slice)
-    : m_slice(slice) { }
-
-    DxvkBufferAllocation(const DxvkBufferAllocation&) = default;
-    DxvkBufferAllocation& operator = (const DxvkBufferAllocation&) = default;
-
-    DxvkBufferAllocation(DxvkBufferAllocation&& other)
-    : m_slice(other.m_slice) {
-      other.m_slice = DxvkBufferSliceHandle();
-    }
-
-    DxvkBufferAllocation& operator = (DxvkBufferAllocation&& other) {
-      m_slice = other.m_slice;
-      other.m_slice = DxvkBufferSliceHandle();
-      return *this;
-    }
-
-    ~DxvkBufferAllocation() = default;
+    DxvkBufferAllocation(
+            Rc<DxvkResourceAllocation>    allocation)
+    : m_allocation(std::move(allocation)) { }
 
     /**
      * \brief Retrieves CPU pointer
      * \returns Pointer to the mapped buffer slice
      */
     void* mapPtr() const {
-      return m_slice.mapPtr;
+      return m_allocation->getBufferInfo().mapPtr;
     }
 
     /**
@@ -166,12 +150,20 @@ namespace dxvk {
      * \returns \c true if the slice is valid
      */
     explicit operator bool () const {
-      return m_slice.handle != VK_NULL_HANDLE;
+      return bool(m_allocation);
+    }
+
+    /**
+     * \brief Extracts resource allocation
+     * \returns Underlying resource allocation
+     */
+    Rc<DxvkResourceAllocation> extract() {
+      return std::move(m_allocation);
     }
 
   private:
 
-    DxvkBufferSliceHandle m_slice = { };
+    Rc<DxvkResourceAllocation>  m_allocation;
 
   };
 
@@ -189,9 +181,8 @@ namespace dxvk {
     constexpr static VkDeviceSize MaxAllocationSize = DxvkPageAllocator::PageSize;
     constexpr static VkDeviceSize MinAllocationSize = DxvkPoolAllocator::MinSize;
 
-    constexpr static VkDeviceSize MinAllocationSizeLimit = MaxAllocationSize / 32u;
-
-    constexpr static uint32_t MaxSlicesPerAllocation = 64u;
+    constexpr static VkDeviceSize MinMappedAllocationSize = DxvkPageAllocator::PageSize / 32u;
+    constexpr static VkDeviceSize MinMappedSlicesPerAllocation = 3u;
   public:
     
     DxvkBuffer(
@@ -224,7 +215,7 @@ namespace dxvk {
      * \returns Vulkan memory flags
      */
     VkMemoryPropertyFlags memFlags() const {
-      return m_memFlags;
+      return m_properties;
     }
     
     /**
@@ -237,7 +228,9 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return reinterpret_cast<char*>(m_physSlice.mapPtr) + offset;
+      return m_bufferInfo.mapPtr
+        ? reinterpret_cast<char*>(m_bufferInfo.mapPtr) + offset
+        : nullptr;
     }
 
     /**
@@ -255,7 +248,12 @@ namespace dxvk {
      * \returns Buffer slice handle
      */
     DxvkBufferSliceHandle getSliceHandle() const {
-      return m_physSlice;
+      DxvkBufferSliceHandle result = { };
+      result.handle = m_bufferInfo.buffer;
+      result.offset = m_bufferInfo.offset;
+      result.length = m_info.size;
+      result.mapPtr = mapPtr(0);
+      return result;
     }
 
     /**
@@ -266,9 +264,9 @@ namespace dxvk {
      * \returns Buffer slice handle
      */
     DxvkBufferSliceHandle getSliceHandle(VkDeviceSize offset, VkDeviceSize length) const {
-      DxvkBufferSliceHandle result;
-      result.handle = m_physSlice.handle;
-      result.offset = m_physSlice.offset + offset;
+      DxvkBufferSliceHandle result = { };
+      result.handle = m_bufferInfo.buffer;
+      result.offset = m_bufferInfo.offset + offset;
       result.length = length;
       result.mapPtr = mapPtr(offset);
       return result;
@@ -282,10 +280,10 @@ namespace dxvk {
      * \returns Buffer slice descriptor
      */
     DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
-      DxvkDescriptorInfo result;
-      result.buffer.buffer = m_physSlice.handle;
-      result.buffer.offset = m_physSlice.offset + offset;
-      result.buffer.range  = length;
+      DxvkDescriptorInfo result = { };
+      result.buffer.buffer = m_bufferInfo.buffer;
+      result.buffer.offset = m_bufferInfo.offset + offset;
+      result.buffer.range = length;
       return result;
     }
 
@@ -296,7 +294,7 @@ namespace dxvk {
      * \returns The current xfb vertex stride
      */
     uint32_t getXfbVertexStride() const {
-      return m_vertexStride;
+      return m_xfbStride;
     }
     
     /**
@@ -308,7 +306,7 @@ namespace dxvk {
      * \param [in] stride Vertex stride
      */
     void setXfbVertexStride(uint32_t stride) {
-      m_vertexStride = stride;
+      m_xfbStride = stride;
     }
 
     /**
@@ -316,39 +314,13 @@ namespace dxvk {
      * \returns The new buffer slice
      */
     DxvkBufferAllocation allocateSlice() {
-      std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
-      
-      // If no slices are available, swap the two free lists.
-      if (unlikely(m_freeSlices.empty())) {
-        std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-        std::swap(m_freeSlices, m_nextSlices);
-      }
+      VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+      info.flags = m_info.flags;
+      info.usage = m_info.usage;
+      info.size = m_info.size;
+      info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      // If there are still no slices available, create a new
-      // backing buffer and add all slices to the free list.
-      if (unlikely(m_freeSlices.empty())) {
-        if (likely(!m_lazyAlloc)) {
-          DxvkBufferHandle handle = allocBuffer(m_allocationSize, true);
-
-          for (uint32_t i = 0; (i + 1) * m_physSliceStride <= m_allocationSize; i++)
-            pushSlice(handle, i);
-
-          m_buffers.push_back(std::move(handle));
-
-          if (2u * m_allocationSize <= m_maxAllocationSize)
-            m_allocationSize *= 2u;
-        } else {
-          for (uint32_t i = 1; (i + 1) * m_physSliceStride <= m_allocationSize; i++)
-            pushSlice(m_buffer, i);
-
-          m_lazyAlloc = false;
-        }
-      }
-      
-      // Take the first slice from the queue
-      DxvkBufferAllocation result(m_freeSlices.back());
-      m_freeSlices.pop_back();
-      return result;
+      return DxvkBufferAllocation(m_allocator->createBufferResource(info, m_properties));
     }
 
     /**
@@ -359,12 +331,13 @@ namespace dxvk {
      * not call this directly as this is called implicitly
      * by the context's \c invalidateBuffer method.
      * \param [in] slice The new backing resource
-     * \returns Previous buffer slice
+     * \returns Previous buffer allocation
      */
-    DxvkBufferAllocation assignSlice(DxvkBufferAllocation&& slice) {
-      DxvkBufferAllocation result(m_physSlice);
-      m_physSlice = slice.m_slice;
-      slice.m_slice = DxvkBufferSliceHandle();
+    Rc<DxvkResourceAllocation> assignSlice(DxvkBufferAllocation&& slice) {
+      Rc<DxvkResourceAllocation> result = std::move(m_storage);
+
+      m_storage = std::move(slice.m_allocation);
+      m_bufferInfo = m_storage->getBufferInfo();
       return result;
     }
 
@@ -373,21 +346,7 @@ namespace dxvk {
      * \returns Current buffer allocation
      */
     DxvkBufferAllocation getAllocation() const {
-      return DxvkBufferAllocation(m_physSlice);
-    }
-
-    /**
-     * \brief Frees a buffer slice
-     * 
-     * Marks the slice as free so that it can be used for
-     * subsequent allocations. Called automatically when
-     * the slice is no longer needed by the GPU.
-     * \param [in] slice The buffer slice to free
-     */
-    void freeSlice(const DxvkBufferSliceHandle& slice) {
-      // Add slice to a separate free list to reduce lock contention.
-      std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-      m_nextSlices.emplace_back(slice);
+      return DxvkBufferAllocation(m_storage);
     }
 
     /**
@@ -400,53 +359,19 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn>        m_vkd;
-    DxvkBufferCreateInfo    m_info;
-    DxvkBufferImportInfo    m_import;
-    DxvkMemoryAllocator*    m_memAlloc;
-    VkMemoryPropertyFlags   m_memFlags;
-    VkShaderStageFlags      m_shaderStages;
-    
-    DxvkBufferHandle        m_buffer;
-    DxvkBufferSliceHandle   m_physSlice;
-    uint32_t                m_vertexStride = 0;
+    Rc<vk::DeviceFn>            m_vkd;
+    DxvkMemoryAllocator*        m_allocator     = nullptr;
+    VkMemoryPropertyFlags       m_properties    = 0u;
+    VkShaderStageFlags          m_shaderStages  = 0u;
 
-    alignas(CACHE_LINE_SIZE)
-    sync::Spinlock          m_freeMutex;
+    DxvkBufferCreateInfo        m_info          = { };
+    DxvkBufferImportInfo        m_import        = { };
 
-    uint32_t                m_lazyAlloc = false;
-    VkDeviceSize            m_physSliceLength   = 0;
-    VkDeviceSize            m_physSliceStride   = 0;
+    VkDeviceSize                m_xfbStride     = 0u;
 
-    VkDeviceSize            m_allocationSize    = 0;
-    VkDeviceSize            m_maxAllocationSize = 0;
+    DxvkResourceBufferInfo      m_bufferInfo    = { };
 
-    std::vector<DxvkBufferHandle>       m_buffers;
-    std::vector<DxvkBufferAllocation>   m_freeSlices;
-
-    alignas(CACHE_LINE_SIZE)
-    sync::Spinlock                      m_swapMutex;
-    std::vector<DxvkBufferAllocation>   m_nextSlices;
-
-    void pushSlice(const DxvkBufferHandle& handle, uint32_t index) {
-      DxvkBufferSliceHandle slice;
-      slice.handle = handle.buffer;
-      slice.offset = handle.getBaseOffset() + m_physSliceStride * index;
-      slice.length = m_physSliceLength;
-      slice.mapPtr = handle.memory.mapPtr(m_physSliceStride * index);
-      m_freeSlices.emplace_back(slice);
-    }
-
-    DxvkBufferHandle allocBuffer(
-            VkDeviceSize          allocationSize,
-            bool                  clear) const;
-
-    DxvkBufferHandle createSparseBuffer() const;
-
-    VkBuffer createBuffer(const VkBufferCreateInfo& info) const;
-
-    VkDeviceSize computeSliceAlignment(
-            DxvkDevice*           device) const;
+    Rc<DxvkResourceAllocation>  m_storage;
     
   };
   
@@ -772,48 +697,5 @@ namespace dxvk {
       const DxvkBufferSliceHandle& slice);
     
   };
-  
-  
-  /**
-   * \brief Buffer slice tracker
-   * 
-   * Stores a list of buffer slices that can be
-   * freed. Useful when buffers have been renamed
-   * and the original slice is no longer needed.
-   */
-  class DxvkBufferTracker {
-    
-  public:
-    
-    DxvkBufferTracker();
-    ~DxvkBufferTracker();
-    
-    /**
-     * \brief Add buffer slice for tracking
-     *
-     * The slice will be returned to the
-     * buffer on the next call to \c reset.
-     * \param [in] buffer The parent buffer
-     * \param [in] slice The buffer slice
-     */
-    void freeBufferSlice(const Rc<DxvkBuffer>& buffer, const DxvkBufferSliceHandle& slice) {
-      m_entries.push_back({ buffer, slice });
-    }
-    
-    /**
-     * \brief Returns tracked buffer slices
-     */
-    void reset();
-    
-  private:
-    
-    struct Entry {
-      Rc<DxvkBuffer>        buffer;
-      DxvkBufferSliceHandle slice;
-    };
-    
-    std::vector<Entry> m_entries;
-    
-  };
-  
+
 }
