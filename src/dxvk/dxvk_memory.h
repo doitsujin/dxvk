@@ -484,6 +484,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries mapped memory region
+     * \returns Mapped memory region
+     */
+    void* mapPtr() const {
+      return m_mapPtr;
+    }
+
+    /**
      * \brief Queries buffer info
      * \returns Buffer info
      */

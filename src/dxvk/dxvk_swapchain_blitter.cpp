@@ -91,10 +91,10 @@ namespace dxvk {
         m_gammaSlice = m_gammaBuffer->allocateSlice();
       }
 
-      std::memcpy(m_gammaSlice.mapPtr(), cpData, size);
+      std::memcpy(m_gammaSlice->mapPtr(), cpData, size);
     } else {
       m_gammaBuffer = nullptr;
-      m_gammaSlice = DxvkBufferAllocation();
+      m_gammaSlice = nullptr;
     }
 
     m_gammaCpCount = cpCount;

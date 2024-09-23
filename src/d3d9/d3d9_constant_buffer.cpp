@@ -68,7 +68,7 @@ namespace dxvk {
       ctx->bindUniformBufferRange(cStages, cBinding, cOffset, cLength);
     });
 
-    void* mapPtr = reinterpret_cast<char*>(m_slice.mapPtr()) + m_offset;
+    void* mapPtr = reinterpret_cast<char*>(m_slice->mapPtr()) + m_offset;
     m_offset += size;
     return mapPtr;
   }
@@ -87,11 +87,11 @@ namespace dxvk {
       ctx->invalidateBuffer(cBuffer, std::move(cSlice));
     });
 
-    return m_slice.mapPtr();
+    return m_slice->mapPtr();
   }
 
 
-  DxvkBufferAllocation D3D9ConstantBuffer::createBuffer() {
+  Rc<DxvkResourceAllocation> D3D9ConstantBuffer::createBuffer() {
     auto options = m_device->GetOptions();
 
     // Buffer usage and access flags don't make much of a difference

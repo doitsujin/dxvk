@@ -119,7 +119,7 @@ namespace dxvk {
       m_sparseAllocator = m_parent->GetDXVKDevice()->createSparsePageAllocator();
       m_sparseAllocator->setCapacity(info.size / SparseMemoryPageSize);
 
-      m_allocation = DxvkBufferAllocation();
+      m_allocation = nullptr;
       m_mapMode = D3D11_COMMON_BUFFER_MAP_MODE_NONE;
     }
 

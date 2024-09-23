@@ -75,24 +75,6 @@ namespace dxvk {
 
   
   /**
-   * \brief Buffer info
-   * 
-   * Stores a Vulkan buffer handle and the
-   * memory object that is bound to the buffer.
-   */
-  struct DxvkBufferHandle {
-    VkBuffer      buffer = VK_NULL_HANDLE;
-    DxvkMemory    memory;
-
-    VkDeviceSize getBaseOffset() const {
-      return buffer == memory.buffer()
-        ? memory.offset()
-        : 0u;
-    }
-  };
-  
-
-  /**
    * \brief Buffer slice info
    * 
    * Stores the Vulkan buffer handle, offset
@@ -118,53 +100,6 @@ namespace dxvk {
       result.add(std::hash<VkDeviceSize>()(length));
       return result;
     }
-  };
-
-
-  /**
-   * \brief Buffer allocation
-   *
-   * References a buffer allocation and stores
-   * the offset. Used when renaming a buffer.
-   */
-  class DxvkBufferAllocation {
-    friend class DxvkBuffer;
-  public:
-
-    DxvkBufferAllocation() = default;
-
-    DxvkBufferAllocation(
-            Rc<DxvkResourceAllocation>    allocation)
-    : m_allocation(std::move(allocation)) { }
-
-    /**
-     * \brief Retrieves CPU pointer
-     * \returns Pointer to the mapped buffer slice
-     */
-    void* mapPtr() const {
-      return m_allocation->getBufferInfo().mapPtr;
-    }
-
-    /**
-     * \brief Checks whether the slice is valid
-     * \returns \c true if the slice is valid
-     */
-    explicit operator bool () const {
-      return bool(m_allocation);
-    }
-
-    /**
-     * \brief Extracts resource allocation
-     * \returns Underlying resource allocation
-     */
-    Rc<DxvkResourceAllocation> extract() {
-      return std::move(m_allocation);
-    }
-
-  private:
-
-    Rc<DxvkResourceAllocation>  m_allocation;
-
   };
 
 
@@ -313,14 +248,14 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferAllocation allocateSlice() {
+    Rc<DxvkResourceAllocation> allocateSlice() {
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
       info.usage = m_info.usage;
       info.size = m_info.size;
       info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      return DxvkBufferAllocation(m_allocator->createBufferResource(info, m_properties));
+      return m_allocator->createBufferResource(info, m_properties);
     }
 
     /**
@@ -333,10 +268,10 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer allocation
      */
-    Rc<DxvkResourceAllocation> assignSlice(DxvkBufferAllocation&& slice) {
+    Rc<DxvkResourceAllocation> assignSlice(Rc<DxvkResourceAllocation>&& slice) {
       Rc<DxvkResourceAllocation> result = std::move(m_storage);
 
-      m_storage = std::move(slice.m_allocation);
+      m_storage = std::move(slice);
       m_bufferInfo = m_storage->getBufferInfo();
       return result;
     }
@@ -345,8 +280,8 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Current buffer allocation
      */
-    DxvkBufferAllocation getAllocation() const {
-      return DxvkBufferAllocation(m_storage);
+    Rc<DxvkResourceAllocation> getAllocation() const {
+      return m_storage;
     }
 
     /**

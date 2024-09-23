@@ -113,16 +113,16 @@ namespace dxvk {
         : DxvkBufferSlice();
     }
     
-    DxvkBufferAllocation AllocSlice() {
+    Rc<DxvkResourceAllocation> AllocSlice() {
       return m_buffer->allocateSlice();
     }
     
-    DxvkBufferAllocation DiscardSlice() {
+    Rc<DxvkResourceAllocation> DiscardSlice() {
       m_allocation = m_buffer->allocateSlice();
       return m_allocation;
     }
 
-    DxvkBufferAllocation GetMappedSlice() const {
+    Rc<DxvkResourceAllocation> GetMappedSlice() const {
       return m_allocation;
     }
 
@@ -184,7 +184,7 @@ namespace dxvk {
     Rc<DxvkBuffer>                m_buffer;
     Rc<DxvkBuffer>                m_soCounter;
     Rc<DxvkSparsePageAllocator>   m_sparseAllocator;
-    DxvkBufferAllocation          m_allocation;
+    Rc<DxvkResourceAllocation>    m_allocation;
     uint64_t                      m_seq = 0ull;
 
     D3D11DXGIResource             m_resource;
