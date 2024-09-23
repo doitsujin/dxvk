@@ -339,7 +339,7 @@ namespace dxvk {
 
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
-      cSrcSlice = counterView->slice()
+      cSrcSlice = DxvkBufferSlice(counterView)
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
@@ -446,7 +446,7 @@ namespace dxvk {
        || bufferView->info().format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
         EmitCs([
           cClearValue = clearValue.color.uint32[0],
-          cDstSlice   = bufferView->slice()
+          cDstSlice   = DxvkBufferSlice(bufferView)
         ] (DxvkContext* ctx) {
           ctx->clearBuffer(
             cDstSlice.buffer(),
@@ -460,8 +460,7 @@ namespace dxvk {
           DxvkBufferViewCreateInfo info = bufferView->info();
           info.format = rawFormat;
 
-          bufferView = m_device->createBufferView(
-            bufferView->buffer(), info);
+          bufferView = bufferView->buffer()->createView(info);
         }
 
         EmitCs([
@@ -534,8 +533,7 @@ namespace dxvk {
         bufferViewInfo.rangeLength = bufferInfo.size;
         bufferViewInfo.usage       = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
-        Rc<DxvkBufferView> bufferView = m_device->createBufferView(buffer,
-          bufferViewInfo);
+        Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
 
         EmitCs([
           cDstView    = std::move(imageView),
@@ -3781,7 +3779,7 @@ namespace dxvk {
             : VK_SHADER_STAGE_ALL_GRAPHICS;
 
           if (cCounterView != nullptr && cCounterValue != ~0u) {
-            auto counterSlice = cCounterView->slice();
+            DxvkBufferSlice counterSlice(cCounterView);
 
             ctx->updateBuffer(
               counterSlice.buffer(),

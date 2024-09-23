@@ -61,7 +61,7 @@ namespace dxvk {
     if (counterView == nullptr)
       return;
 
-    auto counterSlice = counterView->slice();
+    DxvkBufferSlice counterSlice(counterView);
 
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_transferCommands += 1;
