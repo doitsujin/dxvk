@@ -1830,9 +1830,9 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
           DxvkBufferAllocation&&    slice) {
     // Allocate new backing resource
-    DxvkBufferAllocation prevSlice = buffer->assignSlice(std::move(slice));
-    m_cmd->freeBufferSlice(buffer, prevSlice.m_slice);
-    
+    Rc<DxvkResourceAllocation> prevAllocation = buffer->assignSlice(std::move(slice));
+    m_cmd->trackResource<DxvkAccess::None>(prevAllocation);
+
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
     VkBufferUsageFlags usage = buffer->info().usage &
