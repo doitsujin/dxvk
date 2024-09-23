@@ -133,12 +133,12 @@ namespace dxvk {
       return DxvkBufferSlice();
     }
 
-    inline DxvkBufferAllocation DiscardMapSlice() {
+    inline Rc<DxvkResourceAllocation> DiscardMapSlice() {
       m_allocation = GetMapBuffer()->allocateSlice();
       return m_allocation;
     }
 
-    inline DxvkBufferAllocation GetMappedSlice() const {
+    inline Rc<DxvkResourceAllocation> GetMappedSlice() const {
       return m_allocation;
     }
 
@@ -236,7 +236,7 @@ namespace dxvk {
     Rc<DxvkBuffer>              m_buffer;
     Rc<DxvkBuffer>              m_stagingBuffer;
 
-    DxvkBufferAllocation        m_allocation;
+    Rc<DxvkResourceAllocation>  m_allocation;
 
     D3D9Range                   m_dirtyRange;
 

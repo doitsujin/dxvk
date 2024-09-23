@@ -963,7 +963,7 @@ namespace dxvk {
      */
     void invalidateBuffer(
       const Rc<DxvkBuffer>&           buffer,
-            DxvkBufferAllocation&&    slice);
+            Rc<DxvkResourceAllocation>&& slice);
     
     /**
      * \brief Updates push constants

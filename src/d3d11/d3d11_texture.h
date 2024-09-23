@@ -219,13 +219,13 @@ namespace dxvk {
      * \param [in] Subresource Subresource to discard
      * \returns Newly allocated mapped buffer slice
      */
-    DxvkBufferAllocation DiscardSlice(UINT Subresource) {
+    Rc<DxvkResourceAllocation> DiscardSlice(UINT Subresource) {
       if (Subresource < m_buffers.size()) {
-        DxvkBufferAllocation slice = m_buffers[Subresource].buffer->allocateSlice();
+        Rc<DxvkResourceAllocation> slice = m_buffers[Subresource].buffer->allocateSlice();
         m_buffers[Subresource].slice = slice;
         return slice;
       } else {
-        return DxvkBufferAllocation();
+        return nullptr;
       }
     }
 
@@ -235,10 +235,10 @@ namespace dxvk {
      * \param [in] Subresource Subresource index to query
      * \returns Currently mapped buffer slice
      */
-    DxvkBufferAllocation GetMappedSlice(UINT Subresource) const {
+    Rc<DxvkResourceAllocation> GetMappedSlice(UINT Subresource) const {
       return Subresource < m_buffers.size()
         ? m_buffers[Subresource].slice
-        : DxvkBufferAllocation();
+        : nullptr;
     }
 
     /**
@@ -473,8 +473,8 @@ namespace dxvk {
   private:
     
     struct MappedBuffer {
-      Rc<DxvkBuffer>        buffer;
-      DxvkBufferAllocation  slice;
+      Rc<DxvkBuffer>              buffer;
+      Rc<DxvkResourceAllocation>  slice;
 
       std::vector<D3D11_COMMON_TEXTURE_REGION> dirtyRegions;
     };

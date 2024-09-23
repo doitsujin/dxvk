@@ -1828,7 +1828,7 @@ namespace dxvk {
   
   void DxvkContext::invalidateBuffer(
     const Rc<DxvkBuffer>&           buffer,
-          DxvkBufferAllocation&&    slice) {
+          Rc<DxvkResourceAllocation>&& slice) {
     // Allocate new backing resource
     Rc<DxvkResourceAllocation> prevAllocation = buffer->assignSlice(std::move(slice));
     m_cmd->trackResource<DxvkAccess::None>(prevAllocation);

@@ -279,13 +279,13 @@ namespace dxvk {
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
       auto bufferSlice = pBuffer->AllocSlice();
-      pMappedResource->pData = bufferSlice.mapPtr();
+      pMappedResource->pData = bufferSlice->mapPtr();
 
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
         cDstSlice  = std::move(bufferSlice)
       ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cDstBuffer, DxvkBufferAllocation(cDstSlice));
+        ctx->invalidateBuffer(cDstBuffer, Rc<DxvkResourceAllocation>(cDstSlice));
       });
     } else {
       // For GPU-writable resources, we need a data slice
@@ -297,8 +297,8 @@ namespace dxvk {
         cDstBuffer = pBuffer->GetBuffer(),
         cDataSlice = dataSlice
       ] (DxvkContext* ctx) {
-        DxvkBufferAllocation slice = cDstBuffer->allocateSlice();
-        std::memcpy(slice.mapPtr(), cDataSlice.ptr(), cDataSlice.length());
+        Rc<DxvkResourceAllocation> slice = cDstBuffer->allocateSlice();
+        std::memcpy(slice->mapPtr(), cDataSlice.ptr(), cDataSlice.length());
         ctx->invalidateBuffer(cDstBuffer, std::move(slice));
       });
     }
