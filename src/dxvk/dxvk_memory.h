@@ -335,8 +335,6 @@ namespace dxvk {
 
     constexpr static VkDeviceSize MinChunkSize =   4ull << 20;
     constexpr static VkDeviceSize MaxChunkSize = 256ull << 20;
-
-    constexpr static VkDeviceSize MinResourcesPerChunk = 4u;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);

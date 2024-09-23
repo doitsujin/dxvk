@@ -209,7 +209,16 @@ namespace dxvk {
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
       // especially when a multiple such resources are created at once.
-      if (size * MinResourcesPerChunk > selectedPool.maxChunkSize) {
+      uint32_t minResourcesPerChunk = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? 1u : 4u;
+
+      // If we're on a mapped memory type and we're about to lose an entire chunk
+      // worth of memory to huge resources causing fragmentation, use dedicated
+      // allocations anyway and hope that the app doesn't do this every frame.
+      if (minResourcesPerChunk == 1u && size > selectedPool.maxChunkSize / 2u
+       && type.stats.memoryAllocated - type.stats.memoryUsed + selectedPool.maxChunkSize - size >= selectedPool.maxChunkSize)
+        minResourcesPerChunk = 2u;
+
+      if (size * minResourcesPerChunk > selectedPool.maxChunkSize) {
         DxvkDeviceMemory memory = allocateDeviceMemory(type, requirements.size, nullptr);
 
         if (!memory.memory)
@@ -223,7 +232,7 @@ namespace dxvk {
       // multiple resources of the type we're tying to allocate.
       VkDeviceSize desiredSize = selectedPool.nextChunkSize;
 
-      while (desiredSize < size * MinResourcesPerChunk)
+      while (desiredSize < size * minResourcesPerChunk)
         desiredSize *= 2u;
 
       if (allocateChunkInPool(type, selectedPool, properties, size, desiredSize)) {
@@ -484,14 +493,13 @@ namespace dxvk {
           VkDeviceSize          allocationSize,
           high_resolution_clock::time_point time) {
     // Allow for one unused max-size chunk on device-local memory types.
-    // For system memory allocations, we need to be more lenient since
-    // applications will frequently allocate staging buffers.
+    // For mapped memory allocations, we need to be more lenient since
+    // applications will frequently allocate staging buffers or dynamic
+    // resources.
     VkDeviceSize maxUnusedMemory = pool.maxChunkSize;
 
-    if (!(type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-     && (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-     && (&pool == &type.mappedPool))
-      maxUnusedMemory *= env::is32BitHostPlatform() ? 2u : 4u;
+    if (&pool == &type.mappedPool)
+      maxUnusedMemory *= 4u;
 
     // Factor current memory allocation into the decision to free chunks
     VkDeviceSize heapBudget = (type.heap->properties.size * 4) / 5;
