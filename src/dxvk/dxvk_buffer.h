@@ -108,7 +108,7 @@ namespace dxvk {
   /**
    * \brief Virtual buffer view
    */
-  class DxvkBufferView : public DxvkResource {
+  class DxvkBufferView {
 
   public:
 
