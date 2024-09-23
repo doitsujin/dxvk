@@ -307,7 +307,6 @@ namespace dxvk {
       bufferView->buffer()->info().stages,
       bufferView->buffer()->info().access);
     
-    m_cmd->trackResource<DxvkAccess::None>(bufferView);
     m_cmd->trackResource<DxvkAccess::Write>(bufferView->buffer());
   }
   
@@ -991,9 +990,6 @@ namespace dxvk {
     // Track all involved resources
     m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
     m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
-
-    m_cmd->trackResource<DxvkAccess::None>(dstView);
-    m_cmd->trackResource<DxvkAccess::None>(srcView);
   }
 
 
@@ -1185,9 +1181,7 @@ namespace dxvk {
     // Track all involved resources
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
-
-    m_cmd->trackResource<DxvkAccess::None>(tmpBufferViewD);
-    m_cmd->trackResource<DxvkAccess::None>(tmpBufferViewS);
+    m_cmd->trackResource<DxvkAccess::Read>(tmpBuffer);
   }
 
 
@@ -5324,10 +5318,8 @@ namespace dxvk {
             if (res.bufferView != nullptr) {
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
-              if (m_rcTracked.set(binding.resourceBinding)) {
-                m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+              if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
-              }
             } else {
               descriptorInfo.texelBuffer = VK_NULL_HANDLE;
             }
@@ -5339,10 +5331,8 @@ namespace dxvk {
             if (res.bufferView != nullptr) {
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
-              if (m_rcTracked.set(binding.resourceBinding)) {
-                m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+              if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
-              }
             } else {
               descriptorInfo.texelBuffer = VK_NULL_HANDLE;
             }
