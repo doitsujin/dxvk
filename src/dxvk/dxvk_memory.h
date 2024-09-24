@@ -13,6 +13,7 @@ namespace dxvk {
   class DxvkMemoryAllocator;
   class DxvkMemoryChunk;
   class DxvkSparsePageTable;
+  class DxvkSharedAllocationCache;
 
   /**
    * \brief Resource access flags
@@ -160,6 +161,8 @@ namespace dxvk {
 
     DxvkMemoryPool    devicePool;
     DxvkMemoryPool    mappedPool;
+
+    DxvkSharedAllocationCache* sharedCache = nullptr;
   };
 
 
@@ -584,6 +587,8 @@ namespace dxvk {
 
     DxvkResourceAllocation*     m_next = nullptr;
 
+    void destroyBufferViews();
+
     void free();
 
     static force_inline uint64_t getIncrement(DxvkAccess access) {
@@ -765,10 +770,12 @@ namespace dxvk {
    * context classes in order to reduce lock contention.
    */
   class DxvkLocalAllocationCache {
-    friend class DxvkMemoryAllocator;
+    constexpr static VkDeviceSize PoolCapacityInBytes = 4u * DxvkPageAllocator::PageSize;
+
+    friend DxvkMemoryAllocator;
   public:
-    constexpr static uint32_t PoolCount = 8u;
-    constexpr static uint32_t MinAllocationCountPerPool = 8u;
+    // Cache allocations up to 128 kiB
+    constexpr static uint32_t PoolCount = 10u;
 
     constexpr static VkDeviceSize MinSize = DxvkPoolAllocator::MinSize;
     constexpr static VkDeviceSize MaxSize = MinSize << (PoolCount - 1u);
@@ -816,6 +823,24 @@ namespace dxvk {
     static uint32_t computePreferredAllocationCount(
             VkDeviceSize                size);
 
+    /**
+     * \brief Computes pool index for a given allocation size
+     *
+     * \param [in] size Allocation size
+     * \returns Pool index
+     */
+    static uint32_t computePoolIndex(
+            VkDeviceSize                size);
+
+    /**
+     * \brief Computes allocation size for a given index
+     *
+     * \param [in] poolIndex Pool index
+     * \returns Allocation size for the pool
+     */
+    static VkDeviceSize computeAllocationSize(
+            uint32_t                    index);
+
   private:
 
     DxvkMemoryAllocator*  m_allocator   = nullptr;
@@ -832,8 +857,74 @@ namespace dxvk {
 
     void freeCache();
 
-    static uint32_t computePoolIndex(
-            VkDeviceSize                size);
+  };
+
+
+  /**
+   * \brief Shared allocation cache
+   *
+   * Accumulates small allocations in free lists
+   * that can be allocated in their entirety.
+   */
+  class DxvkSharedAllocationCache {
+    constexpr static uint32_t PoolCount = DxvkLocalAllocationCache::PoolCount;
+    constexpr static uint32_t PoolSize = env::is32BitHostPlatform() ? 6u : 12u;
+
+    friend DxvkMemoryAllocator;
+  public:
+
+    DxvkSharedAllocationCache(
+            DxvkMemoryAllocator*        allocator);
+
+    ~DxvkSharedAllocationCache();
+
+    /**
+     * \brief Retrieves list of cached allocations
+     *
+     * \param [in] allocationSize Required allocation size
+     * \returns Pointer to head of allocation list,
+     *    or \c nullptr if the cache is empty.
+     */
+    DxvkResourceAllocation* getAllocationList(
+            VkDeviceSize                allocationSize);
+
+    /**
+     * \brief Frees cacheable allocation
+     *
+     * \param [in] allocation Allocation to free
+     * \returns List to destroy if the cache is full. Usually,
+     *    \c nullptr if the allocation was successfully added.
+     */
+    DxvkResourceAllocation* freeAllocation(
+            DxvkResourceAllocation*     allocation);
+
+  private:
+
+    struct FreeList {
+      uint16_t size = 0u;
+      uint16_t capacity = 0u;
+
+      DxvkResourceAllocation* head = nullptr;
+    };
+
+    struct Pool {
+      uint32_t listCount = 0u;
+      std::array<DxvkResourceAllocation*, PoolSize> lists = { };
+      high_resolution_clock::time_point drainTime = { };
+    };
+
+    alignas(CACHE_LINE_SIZE)
+    DxvkMemoryAllocator*        m_allocator = nullptr;
+
+    dxvk::mutex                 m_freeMutex;
+    std::array<FreeList, PoolCount> m_freeLists = { };
+
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                 m_poolMutex;
+    std::array<Pool, PoolCount> m_pools = { };
+
+    void cleanupUnusedFromLockedAllocator(
+            high_resolution_clock::time_point time);
 
   };
 
@@ -848,6 +939,7 @@ namespace dxvk {
     friend DxvkMemory;
     friend DxvkResourceAllocation;
     friend DxvkLocalAllocationCache;
+    friend DxvkSharedAllocationCache;
 
     constexpr static uint64_t DedicatedChunkAddress = 1ull << 63u;
 
@@ -1044,6 +1136,9 @@ namespace dxvk {
 
     void freeLocalCache(
             DxvkLocalAllocationCache* cache);
+
+    void freeCachedAllocations(
+            DxvkResourceAllocation* allocation);
 
     void freeCachedAllocationsLocked(
             DxvkResourceAllocation* allocation);
