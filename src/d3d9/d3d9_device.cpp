@@ -7640,16 +7640,13 @@ namespace dxvk {
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
 
-    auto srcVulkanFormatInfo = lookupFormatInfo(srcFormatInfo.FormatColor);
-    auto dstVulkanFormatInfo = lookupFormatInfo(dstFormatInfo.FormatColor);
-
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
-        dstVulkanFormatInfo->aspectMask, 0);
+        dstFormatInfo.Aspect, 0);
 
     const VkImageSubresource srcSubresource =
       srcTextureInfo->GetSubresourceFromIndex(
-        srcVulkanFormatInfo->aspectMask, src->GetSubresource());
+        srcFormatInfo.Aspect, src->GetSubresource());
 
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
