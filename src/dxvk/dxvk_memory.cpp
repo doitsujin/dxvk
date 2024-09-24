@@ -531,11 +531,11 @@ namespace dxvk {
       }
 
       // Free chunks that have not been used in some time, but only free
-      // one chunk at a time and keep at least one empty chunk alive.
+      // one chunk per iteration. Reset the timer if we already freed one.
       if (!shouldFree && time != high_resolution_clock::time_point()) {
         if (chunk.unusedTime == high_resolution_clock::time_point() || chunkFreed)
           chunk.unusedTime = time;
-        else if (unusedMemory > chunk.memory.size)
+        else
           shouldFree = time - chunk.unusedTime >= std::chrono::seconds(20);
       }
 
