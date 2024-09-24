@@ -332,7 +332,7 @@ namespace dxvk {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      auto bufferSlice = pResource->DiscardSlice();
+      auto bufferSlice = pResource->DiscardSlice(&m_allocationCache);
       pMappedResource->pData      = bufferSlice->mapPtr();
       pMappedResource->RowPitch   = bufferSize;
       pMappedResource->DepthPitch = bufferSize;
@@ -377,7 +377,7 @@ namespace dxvk {
 
       if (doInvalidatePreserve) {
         auto srcSlice = pResource->GetMappedSlice();
-        auto dstSlice = pResource->DiscardSlice();
+        auto dstSlice = pResource->DiscardSlice(nullptr);
 
         auto srcPtr = srcSlice->mapPtr();
         auto dstPtr = dstSlice->mapPtr();
@@ -703,7 +703,7 @@ namespace dxvk {
     void* mapPtr = nullptr;
 
     if (likely(CopyFlags != D3D11_COPY_NO_OVERWRITE)) {
-      auto bufferSlice = pDstBuffer->DiscardSlice();
+      auto bufferSlice = pDstBuffer->DiscardSlice(&m_allocationCache);
       mapPtr = bufferSlice->mapPtr();
 
       EmitCs([
