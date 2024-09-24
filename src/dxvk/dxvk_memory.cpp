@@ -169,6 +169,14 @@ namespace dxvk {
   }
 
 
+  void DxvkResourceAllocation::destroyBufferViews() {
+    if (m_bufferViews) {
+      delete m_bufferViews;
+      m_bufferViews = nullptr;
+    }
+  }
+
+
 
 
   DxvkResourceAllocationPool::DxvkResourceAllocationPool() {
@@ -231,9 +239,9 @@ namespace dxvk {
   uint32_t DxvkLocalAllocationCache::computePreferredAllocationCount(
           VkDeviceSize                size) {
     uint32_t poolIndex = computePoolIndex(size);
-    uint32_t count = (DxvkPageAllocator::PageSize / MinSize) >> poolIndex;
+    uint32_t count = (PoolCapacityInBytes / MinSize) >> poolIndex;
 
-    return std::max(count, MinAllocationCountPerPool);
+    return std::max(count, 1u);
   }
 
 
@@ -246,6 +254,95 @@ namespace dxvk {
   VkDeviceSize DxvkLocalAllocationCache::computeAllocationSize(
           uint32_t                    index) {
     return MinSize << index;
+  }
+
+
+
+
+  DxvkSharedAllocationCache::DxvkSharedAllocationCache(
+          DxvkMemoryAllocator*        allocator)
+  : m_allocator(allocator) {
+    for (uint32_t i = 0; i < m_pools.size(); i++) {
+      VkDeviceSize size = DxvkLocalAllocationCache::computeAllocationSize(i);
+      m_freeLists[i].capacity = DxvkLocalAllocationCache::computePreferredAllocationCount(size);
+    }
+  }
+
+
+  DxvkSharedAllocationCache::~DxvkSharedAllocationCache() {
+    for (const auto& freeList : m_freeLists)
+      m_allocator->freeCachedAllocations(freeList.head);
+
+    for (const auto& pool : m_pools) {
+      for (auto list : pool.lists)
+        m_allocator->freeCachedAllocations(list);
+    }
+  }
+
+
+  DxvkResourceAllocation* DxvkSharedAllocationCache::getAllocationList(
+          VkDeviceSize                allocationSize) {
+    uint32_t poolIndex = DxvkLocalAllocationCache::computePoolIndex(allocationSize);
+
+    // If there's a list ready for us, take the whole thing
+    std::unique_lock poolLock(m_poolMutex);
+    auto& pool = m_pools[poolIndex];
+
+    if (!pool.listCount)
+      return nullptr;
+
+    if (!(--pool.listCount))
+      pool.drainTime = high_resolution_clock::now();
+
+    return std::exchange(pool.lists[pool.listCount], nullptr);
+  }
+
+
+  DxvkResourceAllocation* DxvkSharedAllocationCache::freeAllocation(
+          DxvkResourceAllocation*     allocation) {
+    uint32_t poolIndex = DxvkLocalAllocationCache::computePoolIndex(allocation->m_size);
+
+    { std::unique_lock freeLock(m_freeMutex);
+      auto& list = m_freeLists[poolIndex];
+
+      allocation->m_next = list.head;
+      list.head = allocation;
+
+      if (++list.size < list.capacity)
+        return nullptr;
+
+      // Free list is full, try to add it to the list array
+      // so that subsequent allocations can use it.
+      list.head = nullptr;
+      list.size = 0u;
+    }
+
+    // Add free list to the pool if possible.
+    { std::unique_lock poolLock(m_poolMutex);
+      auto& pool = m_pools[poolIndex];
+
+      if (likely(pool.listCount < PoolSize)) {
+        pool.lists[pool.listCount++] = allocation;
+        return nullptr;
+      }
+
+      // If the pool is full, destroy the entire free list
+      return allocation;
+    }
+  }
+
+
+  void DxvkSharedAllocationCache::cleanupUnusedFromLockedAllocator(
+          high_resolution_clock::time_point time) {
+    std::unique_lock poolLock(m_poolMutex);
+
+    for (auto& pool : m_pools) {
+      if (pool.listCount && time - pool.drainTime >= std::chrono::seconds(1u)) {
+        m_allocator->freeCachedAllocationsLocked(std::exchange(
+          pool.lists[--pool.listCount], nullptr));
+        pool.drainTime = time;
+      }
+    }
   }
 
 
@@ -299,6 +396,14 @@ namespace dxvk {
 
     m_worker.join();
 
+    // Destroy shared caches so that any allocations
+    // that are still alive get returned to the device
+    for (uint32_t i = 0; i < m_memTypeCount; i++) {
+      if (m_memTypes[i].sharedCache)
+        delete m_memTypes[i].sharedCache;
+    }
+
+    // Now that no allocations are alive, we can free chunks
     for (uint32_t i = 0; i < m_memHeapCount; i++)
       freeEmptyChunksInHeap(m_memHeaps[i], VkDeviceSize(-1), high_resolution_clock::time_point());
   }
@@ -485,8 +590,11 @@ namespace dxvk {
       if (likely(memoryRequirements.memoryTypeBits)) {
         // If the given allocation cache supports the memory types and usage
         // flags that we need, try to use it to service this allocation.
+        // Only use the allocation cache for mappable allocations since those
+        // are expected to happen frequently.
         if (allocationCache && createInfo.size <= DxvkLocalAllocationCache::MaxSize
-         && allocationCache->m_memoryTypes && !(allocationCache->m_memoryTypes & ~memoryRequirements.memoryTypeBits)) {
+         && allocationCache->m_memoryTypes && !(allocationCache->m_memoryTypes & ~memoryRequirements.memoryTypeBits)
+         && (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
           allocation = allocationCache->allocateFromCache(createInfo.size);
 
           if (likely(allocation))
@@ -924,25 +1032,37 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::freeAllocation(
           DxvkResourceAllocation* allocation) {
-    std::unique_lock lock(m_mutex);
+    if (allocation->m_flags.test(DxvkAllocationFlag::Cacheable)) {
+      // Return cacheable allocations to the shared cache
+      allocation->destroyBufferViews();
 
-    if (likely(allocation->m_type)) {
-      allocation->m_type->stats.memoryUsed -= allocation->m_size;
+      if (allocation->m_type->sharedCache)
+        allocation = allocation->m_type->sharedCache->freeAllocation(allocation);
 
-      if (unlikely(allocation->m_flags.test(DxvkAllocationFlag::OwnsMemory))) {
-        // We free the actual allocation later, just update stats here.
-        allocation->m_type->stats.memoryAllocated -= allocation->m_size;
-      } else {
-        auto& pool = allocation->m_mapPtr
-          ? allocation->m_type->mappedPool
-          : allocation->m_type->devicePool;
+      // If we get a list of allocations back from the
+      // shared cache, free all of them in one go
+      freeCachedAllocations(allocation);
+    } else {
+      std::unique_lock lock(m_mutex);
 
-        if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
-          freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+      if (likely(allocation->m_type)) {
+        allocation->m_type->stats.memoryUsed -= allocation->m_size;
+
+        if (unlikely(allocation->m_flags.test(DxvkAllocationFlag::OwnsMemory))) {
+          // We free the actual allocation later, just update stats here.
+          allocation->m_type->stats.memoryAllocated -= allocation->m_size;
+        } else {
+          auto& pool = allocation->m_mapPtr
+            ? allocation->m_type->mappedPool
+            : allocation->m_type->devicePool;
+
+          if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
+            freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+        }
       }
-    }
 
-    m_allocationPool.free(allocation);
+      m_allocationPool.free(allocation);
+    }
   }
 
 
@@ -952,6 +1072,15 @@ namespace dxvk {
 
     for (size_t i = 0; i < cache->m_pools.size(); i++)
       freeCachedAllocationsLocked(std::exchange(cache->m_pools[i], nullptr));
+  }
+
+
+  void DxvkMemoryAllocator::freeCachedAllocations(
+          DxvkResourceAllocation* allocation) {
+    if (allocation) {
+      std::unique_lock lock(m_mutex);
+      freeCachedAllocationsLocked(allocation);
+    }
   }
 
 
@@ -1105,42 +1234,58 @@ namespace dxvk {
 
 
   bool DxvkMemoryAllocator::refillAllocationCache(
-          DxvkLocalAllocationCache* cache,
-    const VkMemoryRequirements& requirements,
-          VkMemoryPropertyFlags properties) {
+          DxvkLocalAllocationCache*   cache,
+    const VkMemoryRequirements&       requirements,
+          VkMemoryPropertyFlags       properties) {
+    // Ensure that all cached allocations report a power-of-two size.
+    // The shared cache implementation currently relies on this.
     VkDeviceSize allocationSize = (VkDeviceSize(-1) >> bit::lzcnt(requirements.size - 1u)) + 1u;
     allocationSize = std::max(allocationSize, DxvkLocalAllocationCache::MinSize);
 
-    // TODO implement shared caches per memory pool
-
-    // No suitable allocations available from the shared cache, create some
-    // new ones so that subsequent allocations of this size category can be
-    // handled without locking the allocator.
+    // Maximum number of allocations when we miss in the shared cache
     uint32_t allocationCount = DxvkLocalAllocationCache::computePreferredAllocationCount(allocationSize);
 
-    DxvkResourceAllocation* head = nullptr;
-    DxvkResourceAllocation* tail = nullptr;
-
-    std::unique_lock lock(m_mutex);
-
     for (auto typeIndex : bit::BitMask(cache->m_memoryTypes)) {
-      auto& pool = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        ? m_memTypes[typeIndex].mappedPool
-        : m_memTypes[typeIndex].devicePool;
+      auto& memoryType = m_memTypes[typeIndex];
+
+      // Initialize shared cache on demand only
+      if (unlikely(!memoryType.sharedCache)) {
+        std::unique_lock lock(m_mutex);
+
+        if (!memoryType.sharedCache)
+          memoryType.sharedCache = new DxvkSharedAllocationCache(this);
+      }
+
+      // Try to grab a list of allocations from the shared cache first. If
+      // this succeeds, allocating several pages of memory is near instant.
+      DxvkResourceAllocation* allocation = memoryType.sharedCache->getAllocationList(allocationSize);
+
+      if (likely(allocation)) {
+        allocation = cache->assignCache(allocationSize, allocation);
+        freeCachedAllocations(allocation);
+        return true;
+      }
+
+      // Fill cache with the preferred allocation count of this size category so
+      // that subsequent allocations can be handled without locking the allocator.
+      DxvkResourceAllocation* head = nullptr;
+      DxvkResourceAllocation* tail = nullptr;
+
+      std::unique_lock lock(m_mutex);
+      auto& memoryPool = memoryType.mappedPool;
 
       while (allocationCount) {
         // Try to suballocate from existing chunks, but do not create
         // any new chunks. Let the regular code path handle that case
         // as necessary.
-        int64_t address = pool.alloc(allocationSize, requirements.alignment);
+        int64_t address = memoryPool.alloc(allocationSize, requirements.alignment);
 
         if (address < 0)
           break;
 
         // Add allocation to the list and mark it as cacheable,
         // so it will get recycled as-is after use.
-        DxvkResourceAllocation* allocation = createAllocation(
-          m_memTypes[typeIndex], pool, address, allocationSize);
+        allocation = createAllocation(memoryType, memoryPool, address, allocationSize);
         allocation->m_flags.set(DxvkAllocationFlag::Cacheable);
 
         if (tail) {
@@ -1154,15 +1299,13 @@ namespace dxvk {
         allocationCount--;
       }
 
-      if (!allocationCount)
-        break;
+      if (tail) {
+        tail->m_next = cache->assignCache(allocationSize, head);
+        return true;
+      }
     }
 
-    if (!tail)
-      return false;
-
-    tail->m_next = cache->assignCache(allocationSize, head);
-    return true;
+    return false;
   }
 
 
@@ -1587,6 +1730,12 @@ namespace dxvk {
           stats.memoryUsed - heapStats[i].memoryUsed);
 
         heapStats[i] = stats;
+      }
+
+      // Periodically clean up unused cached allocations
+      for (uint32_t i = 0; i < m_memTypeCount; i++) {
+        if (m_memTypes[i].sharedCache)
+          m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
       }
     }
 
