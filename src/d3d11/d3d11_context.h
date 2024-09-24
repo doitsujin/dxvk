@@ -775,6 +775,8 @@ namespace dxvk {
     DxvkCsChunkRef              m_csChunk;
     D3D11CmdData*               m_cmdData;
 
+    DxvkLocalAllocationCache    m_allocationCache;
+
     DxvkCsChunkRef AllocCsChunk();
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);

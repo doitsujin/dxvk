@@ -21,7 +21,34 @@ namespace dxvk {
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {
+    // Create local allocation cache with the same properties
+    // that we will use for common dynamic buffer types
+    uint32_t cachedDynamic = pParent->GetOptions()->cachedDynamicResources;
 
+    VkMemoryPropertyFlags memoryFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    if (cachedDynamic & D3D11_BIND_CONSTANT_BUFFER) {
+      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      cachedDynamic = 0;
+    }
+
+    VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    if (!(cachedDynamic & D3D11_BIND_SHADER_RESOURCE)) {
+      bufferUsage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    }
+
+    if (!(cachedDynamic & D3D11_BIND_VERTEX_BUFFER))
+      bufferUsage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+    if (!(cachedDynamic & D3D11_BIND_INDEX_BUFFER))
+      bufferUsage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+    m_allocationCache = m_device->createAllocationCache(bufferUsage, memoryFlags);
   }
 
 

@@ -113,12 +113,12 @@ namespace dxvk {
         : DxvkBufferSlice();
     }
     
-    Rc<DxvkResourceAllocation> AllocSlice() {
-      return m_buffer->allocateSlice();
+    Rc<DxvkResourceAllocation> AllocSlice(DxvkLocalAllocationCache* cache) {
+      return m_buffer->allocateSlice(cache);
     }
     
-    Rc<DxvkResourceAllocation> DiscardSlice() {
-      m_allocation = m_buffer->allocateSlice();
+    Rc<DxvkResourceAllocation> DiscardSlice(DxvkLocalAllocationCache* cache) {
+      m_allocation = m_buffer->allocateSlice(cache);
       return m_allocation;
     }
 
