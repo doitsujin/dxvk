@@ -329,16 +329,28 @@ namespace dxvk {
 
     /**
      * \brief Allocates new buffer slice
-     * \returns The new buffer slice
+     * \returns The new backing resource
      */
     Rc<DxvkResourceAllocation> allocateSlice() {
+      return allocateSlice(nullptr);
+    }
+
+    /**
+     * \brief Allocates new buffer slice with cache
+     *
+     * Uses the given cache to service small allocations without
+     * having to block the actual allocator if possible.
+     * \param [in] cache Optional allocation cache
+     * \returns The new buffer slice
+     */
+    Rc<DxvkResourceAllocation> allocateSlice(DxvkLocalAllocationCache* cache) {
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
       info.usage = m_info.usage;
       info.size = m_info.size;
       info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-      return m_allocator->createBufferResource(info, m_properties);
+      return m_allocator->createBufferResource(info, m_properties, cache);
     }
 
     /**

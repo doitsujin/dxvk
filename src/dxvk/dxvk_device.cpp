@@ -182,8 +182,15 @@ namespace dxvk {
     const DxvkSamplerCreateInfo&  createInfo) {
     return new DxvkSampler(this, createInfo);
   }
-  
-  
+
+
+  DxvkLocalAllocationCache DxvkDevice::createAllocationCache(
+          VkBufferUsageFlags    bufferUsage,
+          VkMemoryPropertyFlags propertyFlags) {
+    return m_objects.memoryManager().createAllocationCache(bufferUsage, propertyFlags);
+  }
+
+
   Rc<DxvkSparsePageAllocator> DxvkDevice::createSparsePageAllocator() {
     return new DxvkSparsePageAllocator(m_objects.memoryManager());
   }

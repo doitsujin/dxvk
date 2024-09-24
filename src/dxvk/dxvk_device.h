@@ -344,6 +344,17 @@ namespace dxvk {
       const DxvkSamplerCreateInfo&  createInfo);
 
     /**
+     * \brief Creates local allocation cache
+     *
+     * \param [in] bufferUsage Required buffer usage
+     * \param [in] propertyFlags Memory properties
+     * \returns Allocation cache object
+     */
+    DxvkLocalAllocationCache createAllocationCache(
+            VkBufferUsageFlags    bufferUsage,
+            VkMemoryPropertyFlags propertyFlags);
+
+    /**
      * \brief Creates a sparse page allocator
      * \returns Sparse page allocator
      */

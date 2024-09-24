@@ -420,6 +420,7 @@ namespace dxvk {
     OwnsMemory  = 0,
     OwnsBuffer  = 1,
     OwnsImage   = 2,
+    Cacheable   = 3,
   };
 
   using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
@@ -434,6 +435,8 @@ namespace dxvk {
    */
   class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
     friend DxvkMemoryAllocator;
+    friend class DxvkLocalAllocationCache;
+    friend class DxvkSharedAllocationCache;
     friend class DxvkMemory;
   public:
 
@@ -579,6 +582,8 @@ namespace dxvk {
     DxvkMemoryAllocator*        m_allocator = nullptr;
     DxvkMemoryType*             m_type = nullptr;
 
+    DxvkResourceAllocation*     m_next = nullptr;
+
     void free();
 
     static force_inline uint64_t getIncrement(DxvkAccess access) {
@@ -604,7 +609,7 @@ namespace dxvk {
     ~DxvkResourceAllocationPool();
 
     template<typename... Args>
-    Rc<DxvkResourceAllocation> create(Args&&... args) {
+    DxvkResourceAllocation* create(Args&&... args) {
       return new (alloc()) DxvkResourceAllocation(std::forward<Args>(args)...);
     }
 
@@ -753,6 +758,87 @@ namespace dxvk {
 
 
   /**
+   * \brief Local allocation cache
+   *
+   * Provides pre-allocated memory of supported power-of-two sizes
+   * in a non-thread safe manner. This is intended to be used for
+   * context classes in order to reduce lock contention.
+   */
+  class DxvkLocalAllocationCache {
+    friend class DxvkMemoryAllocator;
+  public:
+    constexpr static uint32_t PoolCount = 8u;
+    constexpr static uint32_t MinAllocationCountPerPool = 8u;
+
+    constexpr static VkDeviceSize MinSize = DxvkPoolAllocator::MinSize;
+    constexpr static VkDeviceSize MaxSize = MinSize << (PoolCount - 1u);
+
+    DxvkLocalAllocationCache() = default;
+
+    DxvkLocalAllocationCache(
+            DxvkMemoryAllocator*        allocator,
+            uint32_t                    memoryTypes)
+    : m_allocator(allocator), m_memoryTypes(memoryTypes) { }
+
+    DxvkLocalAllocationCache(DxvkLocalAllocationCache&& other)
+    : m_allocator(other.m_allocator), m_memoryTypes(other.m_memoryTypes),
+      m_pools(other.m_pools) {
+      other.m_allocator = nullptr;
+      other.m_memoryTypes = 0u;
+      other.m_pools = { };
+    }
+
+    DxvkLocalAllocationCache& operator = (DxvkLocalAllocationCache&& other) {
+      freeCache();
+
+      m_allocator = other.m_allocator;
+      m_memoryTypes = other.m_memoryTypes;
+      m_pools = other.m_pools;
+
+      other.m_allocator = nullptr;
+      other.m_memoryTypes = 0u;
+      other.m_pools = { };
+      return *this;
+    }
+
+    ~DxvkLocalAllocationCache() {
+      freeCache();
+    }
+
+    /**
+     * \brief Computes preferred number of cached allocations
+     *
+     * Depends on size so that a large enough number of consecutive
+     * allocations can be handled by the local cache without wasting
+     * too much memory on larger allocations.
+     * \param [in] size Allocation size
+     */
+    static uint32_t computePreferredAllocationCount(
+            VkDeviceSize                size);
+
+  private:
+
+    DxvkMemoryAllocator*  m_allocator   = nullptr;
+    uint32_t              m_memoryTypes = 0u;
+
+    std::array<DxvkResourceAllocation*, PoolCount> m_pools = { };
+
+    DxvkResourceAllocation* allocateFromCache(
+            VkDeviceSize                size);
+
+    DxvkResourceAllocation* assignCache(
+            VkDeviceSize                size,
+            DxvkResourceAllocation*     allocation);
+
+    void freeCache();
+
+    static uint32_t computePoolIndex(
+            VkDeviceSize                size);
+
+  };
+
+
+  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
@@ -761,6 +847,7 @@ namespace dxvk {
   class DxvkMemoryAllocator {
     friend DxvkMemory;
     friend DxvkResourceAllocation;
+    friend DxvkLocalAllocationCache;
 
     constexpr static uint64_t DedicatedChunkAddress = 1ull << 63u;
 
@@ -836,11 +923,13 @@ namespace dxvk {
      * may fall back to creating a dedicated Vulkan buffer.
      * \param [in] createInfo Buffer create info
      * \param [in] properties Memory property flags
+     * \param [in] allocationCache Optional allocation cache
      * \returns Buffer resource
      */
     Rc<DxvkResourceAllocation> createBufferResource(
       const VkBufferCreateInfo&         createInfo,
-            VkMemoryPropertyFlags       properties);
+            VkMemoryPropertyFlags       properties,
+            DxvkLocalAllocationCache*   allocationCache);
 
     /**
      * \brief Creates image resource
@@ -854,6 +943,17 @@ namespace dxvk {
       const VkImageCreateInfo&          createInfo,
             VkMemoryPropertyFlags       properties,
       const void*                       next);
+
+    /**
+     * \brief Creates local allocation cache for buffer resources
+     *
+     * \param [in] bufferUsage Required buffer usage flags
+     * \param [in] properties Required memory properties
+     * \returns Local allocation cache
+     */
+    DxvkLocalAllocationCache createAllocationCache(
+            VkBufferUsageFlags          bufferUsage,
+            VkMemoryPropertyFlags       properties);
 
     /**
      * \brief Queries memory stats
@@ -942,6 +1042,12 @@ namespace dxvk {
     void freeAllocation(
             DxvkResourceAllocation* allocation);
 
+    void freeLocalCache(
+            DxvkLocalAllocationCache* cache);
+
+    void freeCachedAllocationsLocked(
+            DxvkResourceAllocation* allocation);
+
     uint32_t countEmptyChunksInPool(
       const DxvkMemoryPool&       pool) const;
 
@@ -965,15 +1071,20 @@ namespace dxvk {
             DxvkDeviceMemory&     memory,
             VkMemoryPropertyFlags properties);
 
-    Rc<DxvkResourceAllocation> createAllocation(
+    DxvkResourceAllocation* createAllocation(
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
             VkDeviceSize          address,
             VkDeviceSize          size);
 
-    Rc<DxvkResourceAllocation> createAllocation(
+    DxvkResourceAllocation* createAllocation(
             DxvkMemoryType&       type,
       const DxvkDeviceMemory&     memory);
+
+    bool refillAllocationCache(
+            DxvkLocalAllocationCache* cache,
+      const VkMemoryRequirements& requirements,
+            VkMemoryPropertyFlags properties);
 
     void getAllocationStatsForPool(
       const DxvkMemoryType&       type,
