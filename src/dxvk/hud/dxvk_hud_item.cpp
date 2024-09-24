@@ -652,7 +652,14 @@ namespace dxvk::hud {
 
 
   void HudMemoryDetailsItem::update(dxvk::high_resolution_clock::time_point time) {
-    m_device->getMemoryAllocationStats(m_stats);
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      m_cacheStats = m_device->getMemoryAllocationStats(m_stats);
+      m_displayCacheStats |= m_cacheStats.requestCount != 0u;
+
+      m_lastUpdate = time;
+    }
   }
 
 
@@ -702,6 +709,9 @@ namespace dxvk::hud {
       pos.y -= 30.0f + 4.0f;
     }
 
+    if (m_displayCacheStats)
+      pos.y -= 20.0f;
+
     // Actually render the thing
     for (uint32_t i = 0; i < m_stats.memoryTypes.size(); i++) {
       const auto& type = m_stats.memoryTypes.at(i);
@@ -745,6 +755,18 @@ namespace dxvk::hud {
       }
 
       pos.y += 46.0f;
+    }
+
+    if (m_displayCacheStats) {
+      uint32_t hitCount = m_cacheStats.requestCount - m_cacheStats.missCount;
+      uint32_t hitRate = (100 * hitCount) / std::max(m_cacheStats.requestCount, 1u);
+
+      std::string cacheStr = str::format("Cache: ", m_cacheStats.size >> 10, " kB (", hitRate, "% hit)");
+
+      renderer.drawText(14.0f,
+        { pos.x, pos.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        cacheStr);
     }
 
     return position;
