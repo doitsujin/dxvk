@@ -200,6 +200,57 @@ namespace dxvk {
 
 
 
+  DxvkResourceAllocation* DxvkLocalAllocationCache::allocateFromCache(
+          VkDeviceSize                size) {
+    uint32_t poolIndex = computePoolIndex(size);
+    DxvkResourceAllocation* allocation = m_pools[poolIndex];
+
+    if (!allocation)
+      return nullptr;
+
+    m_pools[poolIndex] = allocation->m_next;
+    allocation->m_next = nullptr;
+    return allocation;
+  }
+
+
+  DxvkResourceAllocation* DxvkLocalAllocationCache::assignCache(
+          VkDeviceSize                size,
+          DxvkResourceAllocation*     allocation) {
+    uint32_t poolIndex = computePoolIndex(size);
+    return std::exchange(m_pools[poolIndex], allocation);
+  }
+
+
+  void DxvkLocalAllocationCache::freeCache() {
+    if (m_allocator)
+      m_allocator->freeLocalCache(this);
+  }
+
+
+  uint32_t DxvkLocalAllocationCache::computePreferredAllocationCount(
+          VkDeviceSize                size) {
+    uint32_t poolIndex = computePoolIndex(size);
+    uint32_t count = (DxvkPageAllocator::PageSize / MinSize) >> poolIndex;
+
+    return std::max(count, MinAllocationCountPerPool);
+  }
+
+
+  uint32_t DxvkLocalAllocationCache::computePoolIndex(
+          VkDeviceSize                size) {
+    return 64u - bit::lzcnt((std::max(size, MinSize) - 1u) / MinSize);
+  }
+
+
+  VkDeviceSize DxvkLocalAllocationCache::computeAllocationSize(
+          uint32_t                    index) {
+    return MinSize << index;
+  }
+
+
+
+
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
   : m_device(device) {
     VkPhysicalDeviceMemoryProperties memInfo = device->adapter()->memoryProperties();
@@ -418,7 +469,8 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createBufferResource(
     const VkBufferCreateInfo&         createInfo,
-          VkMemoryPropertyFlags       properties) {
+          VkMemoryPropertyFlags       properties,
+          DxvkLocalAllocationCache*   allocationCache) {
     Rc<DxvkResourceAllocation> allocation;
 
     if (likely(!createInfo.flags && createInfo.sharingMode == VK_SHARING_MODE_EXCLUSIVE)) {
@@ -430,10 +482,26 @@ namespace dxvk {
       if (unlikely(createInfo.usage & ~m_globalBufferUsageFlags))
         memoryRequirements.memoryTypeBits = findGlobalBufferMemoryTypeMask(createInfo.usage);
 
-      // If there is at least one memory type that supports the required
-      // buffer usage flags and requested memory properties, suballocate
-      // from a global buffer.
       if (likely(memoryRequirements.memoryTypeBits)) {
+        // If the given allocation cache supports the memory types and usage
+        // flags that we need, try to use it to service this allocation.
+        if (allocationCache && createInfo.size <= DxvkLocalAllocationCache::MaxSize
+         && allocationCache->m_memoryTypes && !(allocationCache->m_memoryTypes & ~memoryRequirements.memoryTypeBits)) {
+          allocation = allocationCache->allocateFromCache(createInfo.size);
+
+          if (likely(allocation))
+            return allocation;
+
+          // If the cache is currently empty for the required allocation size,
+          // make sure it's not. This will also initialize the shared caches
+          // for any relevant memory pools as necessary.
+          if (refillAllocationCache(allocationCache, memoryRequirements, properties))
+            return allocationCache->allocateFromCache(createInfo.size);
+        }
+
+        // If there is at least one memory type that supports the required
+        // buffer usage flags and requested memory properties, suballocate
+        // from a global buffer.
         allocation = allocateMemory(memoryRequirements, properties);
 
         if (likely(allocation && allocation->m_buffer))
@@ -630,6 +698,19 @@ namespace dxvk {
   }
 
 
+  DxvkLocalAllocationCache DxvkMemoryAllocator::createAllocationCache(
+          VkBufferUsageFlags          bufferUsage,
+          VkMemoryPropertyFlags       properties) {
+    uint32_t memoryTypeMask = m_globalBufferMemoryTypes;
+
+    if (bufferUsage & ~m_globalBufferUsageFlags)
+      memoryTypeMask = findGlobalBufferMemoryTypeMask(bufferUsage);
+
+    memoryTypeMask &= getMemoryTypeMask(properties);
+    return DxvkLocalAllocationCache(this, memoryTypeMask);
+  }
+
+
   DxvkDeviceMemory DxvkMemoryAllocator::allocateDeviceMemory(
           DxvkMemoryType&       type,
           VkDeviceSize          size,
@@ -775,7 +856,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createAllocation(
+  DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
           DxvkMemoryType&       type,
           DxvkMemoryPool&       pool,
           VkDeviceSize          address,
@@ -808,7 +889,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createAllocation(
+  DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
           DxvkMemoryType&       type,
     const DxvkDeviceMemory&     memory) {
     type.stats.memoryUsed += memory.size;
@@ -862,6 +943,34 @@ namespace dxvk {
     }
 
     m_allocationPool.free(allocation);
+  }
+
+
+  void DxvkMemoryAllocator::freeLocalCache(
+          DxvkLocalAllocationCache* cache) {
+    std::unique_lock lock(m_mutex);
+
+    for (size_t i = 0; i < cache->m_pools.size(); i++)
+      freeCachedAllocationsLocked(std::exchange(cache->m_pools[i], nullptr));
+  }
+
+
+  void DxvkMemoryAllocator::freeCachedAllocationsLocked(
+          DxvkResourceAllocation* allocation) {
+    while (allocation) {
+      auto& pool = allocation->m_mapPtr
+        ? allocation->m_type->mappedPool
+        : allocation->m_type->devicePool;
+
+      // Cached allocations may have a reference count of 0, but they
+      // still own the memory, so make sure to release it here.
+      allocation->m_type->stats.memoryUsed -= allocation->m_size;
+
+      if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
+        freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+
+      m_allocationPool.free(std::exchange(allocation, allocation->m_next));
+    }
   }
 
 
@@ -992,6 +1101,68 @@ namespace dxvk {
 
       memory.mapPtr = nullptr;
     }
+  }
+
+
+  bool DxvkMemoryAllocator::refillAllocationCache(
+          DxvkLocalAllocationCache* cache,
+    const VkMemoryRequirements& requirements,
+          VkMemoryPropertyFlags properties) {
+    VkDeviceSize allocationSize = (VkDeviceSize(-1) >> bit::lzcnt(requirements.size - 1u)) + 1u;
+    allocationSize = std::max(allocationSize, DxvkLocalAllocationCache::MinSize);
+
+    // TODO implement shared caches per memory pool
+
+    // No suitable allocations available from the shared cache, create some
+    // new ones so that subsequent allocations of this size category can be
+    // handled without locking the allocator.
+    uint32_t allocationCount = DxvkLocalAllocationCache::computePreferredAllocationCount(allocationSize);
+
+    DxvkResourceAllocation* head = nullptr;
+    DxvkResourceAllocation* tail = nullptr;
+
+    std::unique_lock lock(m_mutex);
+
+    for (auto typeIndex : bit::BitMask(cache->m_memoryTypes)) {
+      auto& pool = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        ? m_memTypes[typeIndex].mappedPool
+        : m_memTypes[typeIndex].devicePool;
+
+      while (allocationCount) {
+        // Try to suballocate from existing chunks, but do not create
+        // any new chunks. Let the regular code path handle that case
+        // as necessary.
+        int64_t address = pool.alloc(allocationSize, requirements.alignment);
+
+        if (address < 0)
+          break;
+
+        // Add allocation to the list and mark it as cacheable,
+        // so it will get recycled as-is after use.
+        DxvkResourceAllocation* allocation = createAllocation(
+          m_memTypes[typeIndex], pool, address, allocationSize);
+        allocation->m_flags.set(DxvkAllocationFlag::Cacheable);
+
+        if (tail) {
+          tail->m_next = allocation;
+          tail = allocation;
+        } else {
+          head = allocation;
+          tail = allocation;
+        }
+
+        allocationCount--;
+      }
+
+      if (!allocationCount)
+        break;
+    }
+
+    if (!tail)
+      return false;
+
+    tail->m_next = cache->assignCache(allocationSize, head);
+    return true;
   }
 
 
