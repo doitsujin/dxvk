@@ -286,14 +286,19 @@ namespace dxvk {
 
     // If there's a list ready for us, take the whole thing
     std::unique_lock poolLock(m_poolMutex);
+    m_numRequests += 1u;
+
     auto& pool = m_pools[poolIndex];
 
-    if (!pool.listCount)
+    if (!pool.listCount) {
+      m_numMisses += 1u;
       return nullptr;
+    }
 
     if (!(--pool.listCount))
       pool.drainTime = high_resolution_clock::now();
 
+    m_cacheSize -= PoolCapacityInBytes;
     return std::exchange(pool.lists[pool.listCount], nullptr);
   }
 
@@ -323,12 +328,31 @@ namespace dxvk {
 
       if (likely(pool.listCount < PoolSize)) {
         pool.lists[pool.listCount++] = allocation;
+
+        if ((m_cacheSize += PoolCapacityInBytes) > m_maxCacheSize)
+          m_maxCacheSize = m_cacheSize;
+
         return nullptr;
       }
 
       // If the pool is full, destroy the entire free list
       return allocation;
     }
+  }
+
+
+  DxvkSharedAllocationCacheStats DxvkSharedAllocationCache::getStats() {
+    std::unique_lock poolLock(m_poolMutex);
+
+    DxvkSharedAllocationCacheStats result = { };
+    result.requestCount = m_numRequests;
+    result.missCount = m_numMisses;
+    result.size = m_maxCacheSize;
+
+    m_numRequests = 0u;
+    m_numMisses = 0u;
+    m_maxCacheSize = 0u;
+    return result;
   }
 
 
@@ -1568,6 +1592,24 @@ namespace dxvk {
       getAllocationStatsForPool(typeInfo, typeInfo.devicePool, stats);
       getAllocationStatsForPool(typeInfo, typeInfo.mappedPool, stats);
     }
+  }
+
+
+  DxvkSharedAllocationCacheStats DxvkMemoryAllocator::getAllocationCacheStats() const {
+    DxvkSharedAllocationCacheStats result = { };
+
+    for (uint32_t i = 0; i < m_memTypeCount; i++) {
+      const auto& type = m_memTypes[i];
+
+      if (type.sharedCache) {
+        DxvkSharedAllocationCacheStats stats = type.sharedCache->getStats();
+        result.requestCount += stats.requestCount;
+        result.missCount += stats.missCount;
+        result.size += stats.size;
+      }
+    }
+
+    return result;
   }
 
 
