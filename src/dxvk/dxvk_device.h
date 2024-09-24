@@ -408,8 +408,9 @@ namespace dxvk {
      *
      * Expensive, should be used with caution.
      * \param [out] stats Allocation statistics
+     * \returns Shared allocation cache stats
      */
-    void getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
+    DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
      * \brief Retreves current frame ID

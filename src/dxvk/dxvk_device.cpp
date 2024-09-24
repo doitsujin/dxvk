@@ -235,8 +235,9 @@ namespace dxvk {
   }
 
 
-  void DxvkDevice::getMemoryAllocationStats(DxvkMemoryAllocationStats& stats) {
-    return m_objects.memoryManager().getAllocationStats(stats);
+  DxvkSharedAllocationCacheStats DxvkDevice::getMemoryAllocationStats(DxvkMemoryAllocationStats& stats) {
+    m_objects.memoryManager().getAllocationStats(stats);
+    return m_objects.memoryManager().getAllocationCacheStats();
   }
 
 

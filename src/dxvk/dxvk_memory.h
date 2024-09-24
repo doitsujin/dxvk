@@ -770,8 +770,6 @@ namespace dxvk {
    * context classes in order to reduce lock contention.
    */
   class DxvkLocalAllocationCache {
-    constexpr static VkDeviceSize PoolCapacityInBytes = 4u * DxvkPageAllocator::PageSize;
-
     friend DxvkMemoryAllocator;
   public:
     // Cache allocations up to 128 kiB
@@ -779,6 +777,8 @@ namespace dxvk {
 
     constexpr static VkDeviceSize MinSize = DxvkPoolAllocator::MinSize;
     constexpr static VkDeviceSize MaxSize = MinSize << (PoolCount - 1u);
+
+    constexpr static VkDeviceSize PoolCapacityInBytes = 4u * DxvkPageAllocator::PageSize;
 
     DxvkLocalAllocationCache() = default;
 
@@ -861,6 +861,22 @@ namespace dxvk {
 
 
   /**
+   * \brief Allocation cache stats
+   *
+   * Keeps track of the number of requests as
+   * well as the total size of the cache.
+   */
+  struct DxvkSharedAllocationCacheStats {
+    /// Total number of requests
+    uint32_t requestCount = 0u;
+    /// Number of failed requests
+    uint32_t missCount = 0u;
+    /// Cache size, in bytes
+    VkDeviceSize size = 0u;
+  };
+
+
+  /**
    * \brief Shared allocation cache
    *
    * Accumulates small allocations in free lists
@@ -869,6 +885,8 @@ namespace dxvk {
   class DxvkSharedAllocationCache {
     constexpr static uint32_t PoolCount = DxvkLocalAllocationCache::PoolCount;
     constexpr static uint32_t PoolSize = env::is32BitHostPlatform() ? 6u : 12u;
+
+    constexpr static VkDeviceSize PoolCapacityInBytes = DxvkLocalAllocationCache::PoolCapacityInBytes;
 
     friend DxvkMemoryAllocator;
   public:
@@ -898,6 +916,22 @@ namespace dxvk {
     DxvkResourceAllocation* freeAllocation(
             DxvkResourceAllocation*     allocation);
 
+    /**
+     * \brief Queries statistics
+     * \returns Cache statistics
+     */
+    DxvkSharedAllocationCacheStats getStats();
+
+    /**
+     * \brief Frees unused memory
+     *
+     * Periodically called from the worker to free some
+     * memory that has not been used in some time.
+     * \param [in] time Current time
+     */
+    void cleanupUnusedFromLockedAllocator(
+            high_resolution_clock::time_point time);
+
   private:
 
     struct FreeList {
@@ -923,8 +957,11 @@ namespace dxvk {
     dxvk::mutex                 m_poolMutex;
     std::array<Pool, PoolCount> m_pools = { };
 
-    void cleanupUnusedFromLockedAllocator(
-            high_resolution_clock::time_point time);
+    uint32_t                    m_numRequests = 0u;
+    uint32_t                    m_numMisses = 0u;
+
+    VkDeviceSize                m_cacheSize = 0u;
+    VkDeviceSize                m_maxCacheSize = 0u;
 
   };
 
@@ -1056,7 +1093,7 @@ namespace dxvk {
      * \returns Memory stats for this heap
      */
     DxvkMemoryStats getMemoryStats(uint32_t heap) const;
-    
+
     /**
      * \brief Retrieves detailed memory statistics
      *
@@ -1065,6 +1102,14 @@ namespace dxvk {
      * \param [out] stats Memory statistics
      */
     void getAllocationStats(DxvkMemoryAllocationStats& stats);
+
+    /**
+     * \brief Queries shared cache stats
+     *
+     * Returns statistics for all shared caches.
+     * \returns Shared cache stats
+     */
+    DxvkSharedAllocationCacheStats getAllocationCacheStats() const;
 
     /**
      * \brief Queries buffer memory requirements
