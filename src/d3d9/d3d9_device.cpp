@@ -7640,13 +7640,25 @@ namespace dxvk {
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
 
-    const VkImageSubresource dstSubresource =
+    VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
         dstFormatInfo.Aspect, 0);
 
-    const VkImageSubresource srcSubresource =
+    VkImageSubresource srcSubresource =
       srcTextureInfo->GetSubresourceFromIndex(
         srcFormatInfo.Aspect, src->GetSubresource());
+
+    if ((dstSubresource.aspectMask & srcSubresource.aspectMask) != 0) {
+      // for depthStencil -> depth or depthStencil -> stencil copies, only copy the aspect that both images support
+      dstSubresource.aspectMask = dstSubresource.aspectMask & srcSubresource.aspectMask;
+      srcSubresource.aspectMask = dstSubresource.aspectMask & srcSubresource.aspectMask;
+    } else if (unlikely(dstSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT && srcSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)) {
+      Logger::err(str::format("D3D9DeviceEx::ResolveZ: Trying to blit from ",
+        srcFormatInfo.FormatColor, " (aspect ", srcSubresource.aspectMask, ")", " to ",
+        dstFormatInfo.FormatColor, " (aspect ", dstSubresource.aspectMask, ")"
+      ));
+      return;
+    }
 
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
