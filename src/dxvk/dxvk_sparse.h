@@ -292,7 +292,8 @@ namespace dxvk {
 
     DxvkSparsePageTable(
             DxvkDevice*             device,
-      const DxvkImage*              image);
+      const VkImageCreateInfo&      imageInfo,
+            VkImage                 imageHandle);
 
     /**
      * \brief Checks whether page table is defined
@@ -413,8 +414,7 @@ namespace dxvk {
   private:
 
     VkBuffer m_buffer = VK_NULL_HANDLE;
-
-    const DxvkImage* m_image = nullptr;
+    VkImage m_image = VK_NULL_HANDLE;
 
     DxvkSparseImageProperties                         m_properties    = { };
     std::vector<DxvkSparseImageSubresourceProperties> m_subresources;
