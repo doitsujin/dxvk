@@ -384,6 +384,12 @@ namespace dxvk {
     Rc<DxvkBufferView> createView(
       const DxvkBufferViewCreateInfo& info);
 
+    /**
+     * \brief Retrieves sparse binding table
+     * \returns Sparse binding table
+     */
+    DxvkSparsePageTable* getSparsePageTable();
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;

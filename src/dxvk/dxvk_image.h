@@ -330,7 +330,13 @@ namespace dxvk {
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
     HANDLE sharedHandle() const;
-    
+
+    /**
+     * \brief Retrives sparse page table
+     * \returns Page table
+     */
+    DxvkSparsePageTable* getSparsePageTable();
+
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
@@ -338,6 +344,8 @@ namespace dxvk {
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
     DxvkPhysicalImage     m_image;
+
+    DxvkSparsePageTable   m_sparsePageTable;
 
     bool m_shared = false;
 

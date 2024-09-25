@@ -1279,6 +1279,9 @@ namespace dxvk {
             DxvkMemoryType&       type,
       const DxvkDeviceMemory&     memory);
 
+    DxvkResourceAllocation* createAllocation(
+            DxvkSparsePageTable*  sparsePageTable);
+
     bool refillAllocationCache(
             DxvkLocalAllocationCache* cache,
       const VkMemoryRequirements& requirements,

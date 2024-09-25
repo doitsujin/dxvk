@@ -182,9 +182,10 @@ namespace dxvk {
 
   DxvkSparsePageTable::DxvkSparsePageTable(
           DxvkDevice*             device,
-    const DxvkBuffer*             buffer)
-  : m_buffer(buffer) {
-    VkDeviceSize bufferSize = buffer->info().size;
+    const VkBufferCreateInfo&     bufferInfo,
+          VkBuffer                bufferHandle)
+  : m_buffer(bufferHandle) {
+    VkDeviceSize bufferSize = bufferInfo.size;
 
     // For linear buffers, the mapping is very simple
     // and consists of consecutive 64k pages
@@ -357,7 +358,7 @@ namespace dxvk {
 
 
   VkBuffer DxvkSparsePageTable::getBufferHandle() const {
-    return m_buffer ? m_buffer->getSliceHandle().handle : VK_NULL_HANDLE;
+    return m_buffer;
   }
 
 
