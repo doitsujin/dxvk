@@ -969,6 +969,17 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::importImageResource(
+    const VkImageCreateInfo&          createInfo,
+          VkImage                     imageHandle) {
+    Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
+    allocation->m_flags.set(DxvkAllocationFlag::Imported);
+    allocation->m_image = imageHandle;
+
+    return allocation;
+  }
+
+
   DxvkDeviceMemory DxvkMemoryAllocator::allocateDeviceMemory(
           DxvkMemoryType&       type,
           VkDeviceSize          size,

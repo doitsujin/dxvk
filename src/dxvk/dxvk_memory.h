@@ -1168,6 +1168,17 @@ namespace dxvk {
       const DxvkBufferImportInfo&       importInfo);
 
     /**
+     * \brief Imports existing image resource
+     *
+     * \param [in] createInfo Image create info
+     * \param [in] imageHandle Image handle
+     * \returns Image resource
+     */
+    Rc<DxvkResourceAllocation> importImageResource(
+      const VkImageCreateInfo&          createInfo,
+            VkImage                     imageHandle);
+
+    /**
      * \brief Queries memory stats
      * 
      * Returns the total amount of memory
