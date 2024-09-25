@@ -894,6 +894,26 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createSparsePage() {
+    VkMemoryRequirements requirements = { };
+    requirements.size = SparseMemoryPageSize;
+    requirements.alignment = SparseMemoryPageSize;
+    requirements.memoryTypeBits = m_sparseMemoryTypes;
+
+    // Try device memory first, fall back to system memory if that fails.
+    // We might get an allocation with a global buffer, just ignore that.
+    auto allocation = allocateMemory(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    if (!allocation)
+      allocation = allocateMemory(requirements, 0);
+
+    if (!allocation)
+      return nullptr;
+
+    return allocation;
+  }
+
+
   DxvkLocalAllocationCache DxvkMemoryAllocator::createAllocationCache(
           VkBufferUsageFlags          bufferUsage,
           VkMemoryPropertyFlags       properties) {

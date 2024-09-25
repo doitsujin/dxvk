@@ -2683,7 +2683,7 @@ namespace dxvk {
           key.offset = pageInfo.buffer.offset;
           key.size   = pageInfo.buffer.length;
 
-          m_cmd->bindBufferMemory(key, mapping.getHandle());
+          m_cmd->bindBufferMemory(key, mapping.getMemoryInfo());
         } break;
 
         case DxvkSparsePageType::Image: {
@@ -2693,7 +2693,7 @@ namespace dxvk {
           key.offset = pageInfo.image.offset;
           key.extent = pageInfo.image.extent;
 
-          m_cmd->bindImageMemory(key, mapping.getHandle());
+          m_cmd->bindImageMemory(key, mapping.getMemoryInfo());
         } break;
 
         case DxvkSparsePageType::ImageMipTail: {
@@ -2703,7 +2703,7 @@ namespace dxvk {
           key.size   = pageInfo.mipTail.resourceLength;
           key.flags  = 0;
 
-          m_cmd->bindImageOpaqueMemory(key, mapping.getHandle());
+          m_cmd->bindImageOpaqueMemory(key, mapping.getMemoryInfo());
         } break;
       }
 

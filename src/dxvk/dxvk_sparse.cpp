@@ -16,7 +16,7 @@ namespace dxvk {
 
   DxvkSparseMapping::DxvkSparseMapping(
           Rc<DxvkSparsePageAllocator> allocator,
-          Rc<DxvkSparsePage>          page)
+          Rc<DxvkResourceAllocation>  page)
   : m_pool(std::move(allocator)),
     m_page(std::move(page)) {
 
@@ -110,18 +110,18 @@ namespace dxvk {
       if (!m_useCount)
         m_pages.resize(pageCount);
     } else if (pageCount > m_pageCount) {
-      std::vector<Rc<DxvkSparsePage>> newPages;
+      std::vector<Rc<DxvkResourceAllocation>> newPages;
       newPages.reserve(pageCount - m_pageCount);
 
       for (size_t i = 0; i < pageCount - m_pageCount; i++)
-        newPages.push_back(allocPage());
+        newPages.push_back(m_memory->createSparsePage());
 
       // Sort page by memory and offset to enable more
       // batching opportunities during page table updates
       std::sort(newPages.begin(), newPages.end(),
-        [] (const Rc<DxvkSparsePage>& a, const Rc<DxvkSparsePage>& b) {
-          auto aHandle = a->getHandle();
-          auto bHandle = b->getHandle();
+        [] (const Rc<DxvkResourceAllocation>& a, const Rc<DxvkResourceAllocation>& b) {
+          auto aHandle = a->getMemoryInfo();
+          auto bHandle = b->getMemoryInfo();
 
           // Ignore length here, the offsets cannot be the same anyway.
           if (aHandle.memory < bHandle.memory) return true;
@@ -138,35 +138,15 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkSparsePage> DxvkSparsePageAllocator::allocPage() {
-    DxvkMemoryRequirements memoryRequirements = { };
-    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
-    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-
-    // We don't know what kind of resource the memory6
-    // might be bound to, so just guess the memory types
-    auto& core = memoryRequirements.core.memoryRequirements;
-    core.size           = SparseMemoryPageSize;
-    core.alignment      = SparseMemoryPageSize;
-    core.memoryTypeBits = m_memory->getSparseMemoryTypes();
-
-    DxvkMemoryProperties memoryProperties = { };
-    memoryProperties.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    DxvkMemory memory = m_memory->alloc(memoryRequirements, memoryProperties);
-    return new DxvkSparsePage(std::move(memory));
-  }
-
-
   void DxvkSparsePageAllocator::acquirePage(
-    const Rc<DxvkSparsePage>&   page) {
+    const Rc<DxvkResourceAllocation>& page) {
     std::lock_guard lock(m_mutex);
     m_useCount += 1;
   }
 
 
   void DxvkSparsePageAllocator::releasePage(
-    const Rc<DxvkSparsePage>&   page) {
+    const Rc<DxvkResourceAllocation>& page) {
     std::lock_guard lock(m_mutex);
     m_useCount -= 1;
 

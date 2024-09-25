@@ -156,38 +156,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Sparse memory page
-   *
-   * Stores a single reference-counted page
-   * of memory. The page size is 64k.
-   */
-  class DxvkSparsePage : public DxvkResource {
-
-  public:
-
-    DxvkSparsePage(DxvkMemory&& memory)
-    : m_memory(std::move(memory)) { }
-
-    /**
-     * \brief Queries memory handle
-     * \returns Memory information
-     */
-    DxvkResourceMemoryInfo getHandle() const {
-      DxvkResourceMemoryInfo result;
-      result.memory = m_memory.memory();
-      result.offset = m_memory.offset();
-      result.size = m_memory.length();
-      return result;
-    }
-
-  private:
-
-    DxvkMemory  m_memory;
-
-  };
-
-
-  /**
    * \brief Sparse page mapping
    *
    * Stores a reference to a page as well as the pool that the page
@@ -213,11 +181,11 @@ namespace dxvk {
      * \brief Queries memory handle
      * \returns Memory information
      */
-    DxvkResourceMemoryInfo getHandle() const {
-      if (m_page == nullptr)
+    DxvkResourceMemoryInfo getMemoryInfo() const {
+      if (!m_page)
         return DxvkResourceMemoryInfo();
 
-      return m_page->getHandle();
+      return m_page->getMemoryInfo();
     }
 
     bool operator == (const DxvkSparseMapping& other) const {
@@ -236,11 +204,11 @@ namespace dxvk {
   private:
 
     Rc<DxvkSparsePageAllocator> m_pool;
-    Rc<DxvkSparsePage>          m_page;
+    Rc<DxvkResourceAllocation>  m_page;
 
     DxvkSparseMapping(
             Rc<DxvkSparsePageAllocator> allocator,
-            Rc<DxvkSparsePage>          page);
+            Rc<DxvkResourceAllocation>  page);
 
     void acquire() const;
 
@@ -294,15 +262,13 @@ namespace dxvk {
     dxvk::mutex                       m_mutex;
     uint32_t                          m_pageCount = 0u;
     uint32_t                          m_useCount = 0u;
-    std::vector<Rc<DxvkSparsePage>>   m_pages;
-
-    Rc<DxvkSparsePage> allocPage();
+    std::vector<Rc<DxvkResourceAllocation>> m_pages;
 
     void acquirePage(
-      const Rc<DxvkSparsePage>&   page);
+      const Rc<DxvkResourceAllocation>& page);
 
     void releasePage(
-      const Rc<DxvkSparsePage>&   page);
+      const Rc<DxvkResourceAllocation>& page);
 
   };
 
