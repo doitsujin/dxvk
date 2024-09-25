@@ -1821,7 +1821,7 @@ namespace dxvk {
           Rc<DxvkResourceAllocation>&& slice) {
     // Allocate new backing resource
     Rc<DxvkResourceAllocation> prevAllocation = buffer->assignSlice(std::move(slice));
-    m_cmd->trackResource<DxvkAccess::None>(prevAllocation);
+    m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
 
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.

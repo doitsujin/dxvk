@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <ostream>
+#include <utility>
 
 namespace dxvk {
 
@@ -104,6 +105,15 @@ namespace dxvk {
     
     explicit operator bool () const {
       return m_object != nullptr;
+    }
+
+    void unsafeInsert(T* object) {
+      this->decRef();
+      m_object = object;
+    }
+
+    T* unsafeExtract() {
+      return std::exchange(m_object, nullptr);
     }
 
   private:

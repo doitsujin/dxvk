@@ -21,8 +21,16 @@ namespace dxvk {
 
     DxvkLifetime() = default;
 
+    template<typename Tx>
     DxvkLifetime(
-            T*                      resource,
+            Rc<Tx>&&                resource,
+            DxvkAccess              access)
+    : m_ptr(reinterpret_cast<uintptr_t>(resource.ptr()) | uintptr_t(access)) {
+      resource.unsafeExtract()->convertRef(DxvkAccess::None, access);
+    }
+
+    DxvkLifetime(
+      const T*                      resource,
             DxvkAccess              access)
     : m_ptr(reinterpret_cast<uintptr_t>(resource) | uintptr_t(access)) {
       acquire();
@@ -92,37 +100,28 @@ namespace dxvk {
    * device has finished using them.
    */
   class DxvkLifetimeTracker {
-    
+
   public:
-    
+
     DxvkLifetimeTracker();
     ~DxvkLifetimeTracker();
-    
+
     /**
      * \brief Adds a resource to track
-     * \param [in] rc The resource to track
+     * \param [in] res The resource to track
      */
-    template<DxvkAccess Access>
-    void trackResource(DxvkResource* rc) {
-      m_resources.emplace_back(rc, Access);
+    void trackResource(DxvkLifetime<DxvkResource>&& res) {
+      m_resources.push_back(std::move(res));
     }
 
     /**
      * \brief Adds a resource allocation to track
-     * \param [in] rc The allocation to track
+     * \param [in] res The allocation to track
      */
-    template<DxvkAccess Access>
-    void trackResource(DxvkResourceAllocation* rc) {
-      m_allocations.emplace_back(rc, Access);
+    void trackResource(DxvkLifetime<DxvkResourceAllocation>&& res) {
+      m_allocations.push_back(std::move(res));
     }
 
-    /**
-     * \brief Releases resources
-     *
-     * Marks all tracked resources as unused.
-     */
-    void notify();
-    
     /**
      * \brief Resets the command list
      * 
@@ -130,12 +129,12 @@ namespace dxvk {
      * the command list has completed execution.
      */
     void reset();
-    
+
   private:
-    
+
     std::vector<DxvkLifetime<DxvkResource>> m_resources;
     std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;
-    
+
   };
   
 }
