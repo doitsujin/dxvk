@@ -1068,14 +1068,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Memory type mask for sparse resources
-     * \returns Sparse resource memory types
-     */
-    uint32_t getSparseMemoryTypes() const {
-      return m_sparseMemoryTypes;
-    }
-
-    /**
      * \brief Allocates device memory
      *
      * Legacy interface for memory allocation, to be removed.
@@ -1144,6 +1136,14 @@ namespace dxvk {
       const VkImageCreateInfo&          createInfo,
             VkMemoryPropertyFlags       properties,
       const void*                       next);
+
+    /**
+     * \brief Creates allocation for sparse binding
+     *
+     * Allocates a single page of memory for sparse binding.
+     * \returns Allocated memory region
+     */
+    Rc<DxvkResourceAllocation> createSparsePage();
 
     /**
      * \brief Creates local allocation cache for buffer resources
