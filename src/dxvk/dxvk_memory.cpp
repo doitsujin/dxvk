@@ -828,38 +828,63 @@ namespace dxvk {
       dedicatedRequirements.prefersDedicatedAllocation = VK_TRUE;
     }
 
-    // If a dedicated allocation is at least preferred for this resource, try this first
     Rc<DxvkResourceAllocation> allocation;
 
-    if (dedicatedRequirements.prefersDedicatedAllocation) {
-      VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, next };
-      dedicatedInfo.image = image;
+    if (!(createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
+      // If a dedicated allocation is at least preferred for this resource, try this first
+      if (!allocation && dedicatedRequirements.prefersDedicatedAllocation) {
+        VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, next };
+        dedicatedInfo.image = image;
 
-      allocation = allocateDedicatedMemory(requirements.memoryRequirements, properties, &dedicatedInfo);
+        allocation = allocateDedicatedMemory(requirements.memoryRequirements, properties, &dedicatedInfo);
 
-      // Only retry with a dedicated sysmem allocation if a dedicated allocation
-      // is required. Otherwise, we should try to suballocate in device memory.
-      if (!allocation && dedicatedRequirements.requiresDedicatedAllocation
-       && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-        allocation = allocateDedicatedMemory(requirements.memoryRequirements,
-          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &dedicatedInfo);
-      }
-    }
-
-    if (!allocation && !dedicatedRequirements.requiresDedicatedAllocation) {
-      // Pad alignment as necessary to not overlap tiled and linear memory.
-      if (createInfo.tiling == VK_IMAGE_TILING_OPTIMAL) {
-        requirements.memoryRequirements.alignment = std::max(
-          requirements.memoryRequirements.alignment,
-          m_device->properties().core.properties.limits.bufferImageGranularity);
+        // Only retry with a dedicated sysmem allocation if a dedicated allocation
+        // is required. Otherwise, we should try to suballocate in device memory.
+        if (!allocation && dedicatedRequirements.requiresDedicatedAllocation
+        && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          allocation = allocateDedicatedMemory(requirements.memoryRequirements,
+            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &dedicatedInfo);
+        }
       }
 
-      // Try to suballocate memory and fall back to system memory on error.
-      allocation = allocateMemory(requirements.memoryRequirements, properties);
+      if (!allocation && !dedicatedRequirements.requiresDedicatedAllocation) {
+        // Pad alignment as necessary to not overlap tiled and linear memory.
+        if (createInfo.tiling == VK_IMAGE_TILING_OPTIMAL) {
+          requirements.memoryRequirements.alignment = std::max(
+            requirements.memoryRequirements.alignment,
+            m_device->properties().core.properties.limits.bufferImageGranularity);
+        }
 
-      if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-        allocation = allocateMemory(requirements.memoryRequirements,
-          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        // Try to suballocate memory and fall back to system memory on error.
+        allocation = allocateMemory(requirements.memoryRequirements, properties);
+
+        if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          allocation = allocateMemory(requirements.memoryRequirements,
+            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        }
+      }
+    } else {
+      // Create a sparse page table and determine whether we need to allocate
+      // actual memory for the metadata aspect of the image or not.
+      auto pageTable = std::make_unique<DxvkSparsePageTable>(m_device, createInfo, image);
+      auto pageProperties = pageTable->getProperties();
+
+      if (pageProperties.metadataPageCount) {
+        VkMemoryRequirements metadataRequirements = { };
+        metadataRequirements.size = SparseMemoryPageSize * pageProperties.metadataPageCount;
+        metadataRequirements.alignment = SparseMemoryPageSize;
+        metadataRequirements.memoryTypeBits = requirements.memoryRequirements.memoryTypeBits;
+
+        allocation = allocateMemory(metadataRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        if (!allocation)
+          allocation = allocateMemory(metadataRequirements, 0u);
+
+        if (allocation)
+          allocation->m_sparsePageTable = pageTable.release();
+      } else {
+        // Just need a page table, but no memory
+        allocation = createAllocation(pageTable.release());
       }
     }
 
