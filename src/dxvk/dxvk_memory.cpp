@@ -758,7 +758,7 @@ namespace dxvk {
         logMemoryStats();
       }
     } else {
-      // TODO implement sparse
+      allocation = createAllocation(new DxvkSparsePageTable(m_device, createInfo, buffer));
     }
 
     if (!allocation) {
@@ -1097,6 +1097,15 @@ namespace dxvk {
       allocation->m_bufferAddress = chunk.memory.gpuVa
         ? chunk.memory.gpuVa + offset : 0u;
     }
+
+    return allocation;
+  }
+
+
+  DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
+          DxvkSparsePageTable*  sparsePageTable) {
+    auto allocation = m_allocationPool.create(this, nullptr);
+    allocation->m_sparsePageTable = sparsePageTable;
 
     return allocation;
   }

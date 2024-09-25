@@ -215,6 +215,11 @@ namespace dxvk {
   }
 
 
+  DxvkSparsePageTable* DxvkImage::getSparsePageTable() {
+    return &m_sparsePageTable;
+  }
+
+
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,

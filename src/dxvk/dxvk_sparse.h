@@ -331,7 +331,8 @@ namespace dxvk {
 
     DxvkSparsePageTable(
             DxvkDevice*             device,
-      const DxvkBuffer*             buffer);
+      const VkBufferCreateInfo&     bufferInfo,
+            VkBuffer                bufferHandle);
 
     DxvkSparsePageTable(
             DxvkDevice*             device,
@@ -455,8 +456,9 @@ namespace dxvk {
 
   private:
 
-    const DxvkBuffer* m_buffer  = nullptr;
-    const DxvkImage*  m_image   = nullptr;
+    VkBuffer m_buffer = VK_NULL_HANDLE;
+
+    const DxvkImage* m_image = nullptr;
 
     DxvkSparseImageProperties                         m_properties    = { };
     std::vector<DxvkSparseImageSubresourceProperties> m_subresources;
@@ -478,17 +480,12 @@ namespace dxvk {
 
     /**
      * \brief Queries sparse page table
+     *
+     * Should be removed once storage objects can
+     * be retrieved from resources diectly.
      * \returns Sparse page table, if defined
      */
-    DxvkSparsePageTable* getSparsePageTable() {
-      return m_sparsePageTable
-        ? &m_sparsePageTable
-        : nullptr;
-    }
-
-  protected:
-
-    DxvkSparsePageTable m_sparsePageTable;
+    virtual DxvkSparsePageTable* getSparsePageTable() = 0;
 
   };
 

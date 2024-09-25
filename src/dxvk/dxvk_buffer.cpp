@@ -64,4 +64,9 @@ namespace dxvk {
     return &entry.first->second;
   }
 
+
+  DxvkSparsePageTable* DxvkBuffer::getSparsePageTable() {
+    return m_storage->getSparsePageTable();
+  }
+  
 }
