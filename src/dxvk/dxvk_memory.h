@@ -424,6 +424,7 @@ namespace dxvk {
     OwnsBuffer  = 1,
     OwnsImage   = 2,
     Cacheable   = 3,
+    Imported    = 4,
   };
 
   using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
@@ -502,6 +503,14 @@ namespace dxvk {
     force_inline bool isInUse(DxvkAccess access) const {
       uint64_t cur = m_useCount.load(std::memory_order_acquire);
       return cur >= getIncrement(access);
+    }
+
+    /**
+     * \brief Queries allocation flags
+     * \returns Allocation flags
+     */
+    DxvkAllocationFlags flags() const {
+      return m_flags;
     }
 
     /**
@@ -989,6 +998,22 @@ namespace dxvk {
 
 
   /**
+   * \brief Buffer import info
+   *
+   * Used to import an existing Vulkan buffer. Note
+   * that imported buffers must not be renamed.
+   */
+  struct DxvkBufferImportInfo {
+    /// Buffer handle
+    VkBuffer buffer = VK_NULL_HANDLE;
+    /// Buffer offset
+    VkDeviceSize offset = 0;
+    /// Pointer to mapped memory region
+    void* mapPtr = nullptr;
+  };
+
+
+  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
@@ -1105,6 +1130,17 @@ namespace dxvk {
     DxvkLocalAllocationCache createAllocationCache(
             VkBufferUsageFlags          bufferUsage,
             VkMemoryPropertyFlags       properties);
+
+    /**
+     * \brief Imports existing buffer resource
+     *
+     * \param [in] createInfo Buffer create info
+     * \param [in] importInfo Buffer import info
+     * \returns Buffer resource
+     */
+    Rc<DxvkResourceAllocation> importBufferResource(
+      const VkBufferCreateInfo&         createInfo,
+      const DxvkBufferImportInfo&       importInfo);
 
     /**
      * \brief Queries memory stats

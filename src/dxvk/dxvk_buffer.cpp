@@ -25,13 +25,20 @@ namespace dxvk {
           DxvkDevice*           device,
     const DxvkBufferCreateInfo& createInfo,
     const DxvkBufferImportInfo& importInfo,
+          DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
   : m_vkd           (device->vkd()),
+    m_allocator     (&allocator),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
-    m_info          (createInfo),
-    m_import        (importInfo) {
+    m_info          (createInfo) {
+    VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    info.flags = m_info.flags;
+    info.usage = m_info.usage;
+    info.size = m_info.size;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
+    assignSlice(allocator.importBufferResource(info, importInfo));
   }
 
 
