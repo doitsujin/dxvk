@@ -95,7 +95,9 @@ namespace dxvk {
     D3D11CommonTexture* texture = GetCommonTexture(m_resource);
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
-    VkResult vr = dxvkDevice->vkd()->wine_vkAcquireKeyedMutex(dxvkDevice->handle(), texture->GetImage()->memory().memory(), Key, dwMilliseconds);
+    VkResult vr = dxvkDevice->vkd()->wine_vkAcquireKeyedMutex(
+      dxvkDevice->handle(), texture->GetImage()->getMemoryInfo().memory, Key, dwMilliseconds);
+
     switch (vr) {
       case VK_SUCCESS: return S_OK;
       case VK_TIMEOUT: return WAIT_TIMEOUT;
@@ -123,9 +125,10 @@ namespace dxvk {
       context->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
     }
 
-    return dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(dxvkDevice->handle(), texture->GetImage()->memory().memory(), Key) == VK_SUCCESS
-      ? S_OK
-      : DXGI_ERROR_INVALID_CALL;
+    VkResult vr = dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(
+      dxvkDevice->handle(), texture->GetImage()->getMemoryInfo().memory, Key);
+
+    return vr == VK_SUCCESS ? S_OK : DXGI_ERROR_INVALID_CALL;
   }
 
   D3D11DXGIResource::D3D11DXGIResource(

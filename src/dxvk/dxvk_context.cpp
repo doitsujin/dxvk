@@ -1542,8 +1542,7 @@ namespace dxvk {
 
     // Bind metadata aspects. Since the image was just created,
     // we do not need to interrupt our command list for that.
-    VkDeviceMemory imageMemory = image->memory().memory();
-    VkDeviceSize   imageOffset = image->memory().offset();
+    DxvkResourceMemoryInfo memoryInfo = image->getMemoryInfo();
 
     for (const auto& r : req) {
       if (!(r.formatProperties.aspectMask & VK_IMAGE_ASPECT_METADATA_BIT))
@@ -1560,13 +1559,13 @@ namespace dxvk {
         key.flags   = VK_SPARSE_MEMORY_BIND_METADATA_BIT;
 
         DxvkResourceMemoryInfo page;
-        page.memory = imageMemory;
-        page.offset = imageOffset;
+        page.memory = memoryInfo.memory;
+        page.offset = memoryInfo.offset;
         page.size = r.imageMipTailSize;
 
         m_cmd->bindImageOpaqueMemory(key, page);
 
-        imageOffset += r.imageMipTailSize;
+        memoryInfo.offset += r.imageMipTailSize;
       }
     }
 

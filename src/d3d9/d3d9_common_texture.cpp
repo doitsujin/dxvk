@@ -76,7 +76,7 @@ namespace dxvk {
         CreateSampleView(0);
 
       if (!IsManaged()) {
-        m_size = m_image->memory().length();
+        m_size = m_image->getMemoryInfo().size;
         if (!m_device->ChangeReportedMemory(-m_size))
           throw DxvkError("D3D9: Reporting out of memory from tracking.");
       }
