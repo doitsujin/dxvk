@@ -59,22 +59,6 @@ namespace dxvk {
     VkBufferUsageFlags usage = 0u;
   };
 
-
-  /**
-   * \brief Buffer import info
-   *
-   * Used to import an existing Vulkan buffer. Note
-   * that imported buffers must not be renamed.
-   */
-  struct DxvkBufferImportInfo {
-    /// Buffer handle
-    VkBuffer buffer = VK_NULL_HANDLE;
-    /// Buffer offset
-    VkDeviceSize offset = 0;
-    /// Pointer to mapped memory region
-    void* mapPtr = nullptr;
-  };
-
   
   /**
    * \brief Buffer slice info
@@ -213,6 +197,7 @@ namespace dxvk {
             DxvkDevice*           device,
       const DxvkBufferCreateInfo& createInfo,
       const DxvkBufferImportInfo& importInfo,
+            DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
 
     ~DxvkBuffer();
@@ -387,7 +372,7 @@ namespace dxvk {
      * \returns \c true if the buffer is imported
      */
     bool isForeign() const {
-      return m_import.buffer != VK_NULL_HANDLE;
+      return m_storage->flags().test(DxvkAllocationFlag::Imported);
     }
 
     /**
@@ -407,7 +392,6 @@ namespace dxvk {
     VkShaderStageFlags          m_shaderStages  = 0u;
 
     DxvkBufferCreateInfo        m_info          = { };
-    DxvkBufferImportInfo        m_import        = { };
 
     uint32_t                    m_xfbStride     = 0u;
     uint32_t                    m_version       = 0u;

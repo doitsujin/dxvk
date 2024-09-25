@@ -218,7 +218,8 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
     const DxvkBufferImportInfo& importInfo,
           VkMemoryPropertyFlags memoryType) {
-    return new DxvkBuffer(this, createInfo, importInfo, memoryType);
+    return new DxvkBuffer(this, createInfo,
+      importInfo, m_objects.memoryManager(), memoryType);
   }
 
 

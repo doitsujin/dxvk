@@ -907,6 +907,23 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkMemoryAllocator::importBufferResource(
+    const VkBufferCreateInfo&         createInfo,
+    const DxvkBufferImportInfo&       importInfo) {
+    Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
+    allocation->m_flags.set(DxvkAllocationFlag::Imported);
+    allocation->m_size = createInfo.size;
+    allocation->m_mapPtr = importInfo.mapPtr;
+    allocation->m_buffer = importInfo.buffer;
+    allocation->m_bufferOffset = importInfo.offset;
+
+    if (createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+      allocation->m_bufferAddress = getBufferDeviceAddress(importInfo.buffer) + importInfo.offset;
+
+    return allocation;
+  }
+
+
   DxvkDeviceMemory DxvkMemoryAllocator::allocateDeviceMemory(
           DxvkMemoryType&       type,
           VkDeviceSize          size,
