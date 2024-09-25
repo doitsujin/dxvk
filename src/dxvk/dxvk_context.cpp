@@ -1559,10 +1559,10 @@ namespace dxvk {
         key.size    = r.imageMipTailSize;
         key.flags   = VK_SPARSE_MEMORY_BIND_METADATA_BIT;
 
-        DxvkSparsePageHandle page;
+        DxvkResourceMemoryInfo page;
         page.memory = imageMemory;
         page.offset = imageOffset;
-        page.length = r.imageMipTailSize;
+        page.size = r.imageMipTailSize;
 
         m_cmd->bindImageOpaqueMemory(key, page);
 
