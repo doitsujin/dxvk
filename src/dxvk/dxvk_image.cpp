@@ -108,7 +108,7 @@ namespace dxvk {
     } else {
       // Initialize sparse info. We do not immediately bind the metadata
       // aspects of the image here, the caller needs to explicitly do that.
-      m_sparsePageTable = DxvkSparsePageTable(device, this);
+      m_sparsePageTable = DxvkSparsePageTable(device, info, m_image.image);
 
       // Allocate memory for sparse metadata if necessary
       auto properties = m_sparsePageTable.getProperties();
