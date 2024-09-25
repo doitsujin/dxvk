@@ -266,6 +266,12 @@ namespace dxvk {
       VkDeviceSize size = DxvkLocalAllocationCache::computeAllocationSize(i);
       m_freeLists[i].capacity = DxvkLocalAllocationCache::computePreferredAllocationCount(size);
     }
+
+    // Initialize unallocated list of lists
+    for (uint32_t i = 0u; i < m_lists.size() - 1u; i++)
+      m_lists[i].next = i + 1;
+
+    m_nextList = 0;
   }
 
 
@@ -273,10 +279,8 @@ namespace dxvk {
     for (const auto& freeList : m_freeLists)
       m_allocator->freeCachedAllocations(freeList.head);
 
-    for (const auto& pool : m_pools) {
-      for (auto list : pool.lists)
-        m_allocator->freeCachedAllocations(list);
-    }
+    for (const auto& list : m_lists)
+      m_allocator->freeCachedAllocations(list.head);
   }
 
 
@@ -289,8 +293,9 @@ namespace dxvk {
     m_numRequests += 1u;
 
     auto& pool = m_pools[poolIndex];
+    int32_t listIndex = pool.listIndex;
 
-    if (!pool.listCount) {
+    if (listIndex < 0) {
       m_numMisses += 1u;
       return nullptr;
     }
@@ -298,8 +303,17 @@ namespace dxvk {
     if (!(--pool.listCount))
       pool.drainTime = high_resolution_clock::now();
 
+    // Extract allocations and mark list as free
+    DxvkResourceAllocation* allocation = m_lists[listIndex].head;
+    pool.listIndex = m_lists[listIndex].next;
+
+    m_lists[listIndex].head = nullptr;
+    m_lists[listIndex].next = m_nextList;
+
+    m_nextList = listIndex;
+
     m_cacheSize -= PoolCapacityInBytes;
-    return std::exchange(pool.lists[pool.listCount], nullptr);
+    return allocation;
   }
 
 
@@ -326,17 +340,53 @@ namespace dxvk {
     { std::unique_lock poolLock(m_poolMutex);
       auto& pool = m_pools[poolIndex];
 
-      if (likely(pool.listCount < PoolSize)) {
-        pool.lists[pool.listCount++] = allocation;
+      if (unlikely(m_nextList < 0)) {
+        // Cache is currently full, see if we can steal a list from
+        // the largest pool. This automatically balances pool sizes
+        // under cache pressure.
+        uint32_t largestPoolIndex = 0;
+
+        for (uint32_t i = 1; i < PoolCount; i++) {
+          if (m_pools[i].listCount > m_pools[largestPoolIndex].listCount)
+            largestPoolIndex = i;
+        }
+
+        // If the current pool is already (one of) the largest, give up
+        // and free the entire list to avoid pools playing ping-pong.
+        if (m_pools[largestPoolIndex].listCount == pool.listCount)
+          return allocation;
+
+        // Move first list of largest pool to current pool and free any
+        // allocations associated with it.
+        auto& largestPool = m_pools[largestPoolIndex];
+        int32_t listIndex = largestPool.listIndex;
+
+        DxvkResourceAllocation* result = m_lists[listIndex].head;
+        largestPool.listIndex = m_lists[listIndex].next;
+        largestPool.listCount -= 1u;
+
+        m_lists[listIndex].head = allocation;
+        m_lists[listIndex].next = pool.listIndex;
+
+        pool.listIndex = listIndex;
+        pool.listCount += 1u;
+        return result;
+      } else {
+        // Otherwise, allocate a fresh list and assign it to the pool
+        int32_t listIndex = m_nextList;
+        m_nextList = m_lists[listIndex].next;
+
+        m_lists[listIndex].head = allocation;
+        m_lists[listIndex].next = pool.listIndex;
+
+        pool.listIndex = listIndex;
+        pool.listCount += 1u;
 
         if ((m_cacheSize += PoolCapacityInBytes) > m_maxCacheSize)
           m_maxCacheSize = m_cacheSize;
 
         return nullptr;
       }
-
-      // If the pool is full, destroy the entire free list
-      return allocation;
     }
   }
 
@@ -361,10 +411,24 @@ namespace dxvk {
     std::unique_lock poolLock(m_poolMutex);
 
     for (auto& pool : m_pools) {
-      if (pool.listCount && time - pool.drainTime >= std::chrono::seconds(1u)) {
-        m_allocator->freeCachedAllocationsLocked(std::exchange(
-          pool.lists[--pool.listCount], nullptr));
+      int32_t listIndex = pool.listIndex;
+
+      if (listIndex < 0)
+        continue;
+
+      if (time - pool.drainTime >= std::chrono::seconds(1u)) {
+        m_allocator->freeCachedAllocationsLocked(m_lists[listIndex].head);
+
+        pool.listIndex = m_lists[listIndex].next;
+        pool.listCount -= 1u;
         pool.drainTime = time;
+
+        m_lists[listIndex].head = nullptr;
+        m_lists[listIndex].next = m_nextList;
+
+        m_nextList = listIndex;
+
+        m_cacheSize -= PoolCapacityInBytes;
       }
     }
   }

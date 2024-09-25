@@ -884,7 +884,7 @@ namespace dxvk {
    */
   class DxvkSharedAllocationCache {
     constexpr static uint32_t PoolCount = DxvkLocalAllocationCache::PoolCount;
-    constexpr static uint32_t PoolSize = env::is32BitHostPlatform() ? 6u : 12u;
+    constexpr static uint32_t PoolSize = PoolCount * (env::is32BitHostPlatform() ? 6u : 12u);
 
     constexpr static VkDeviceSize PoolCapacityInBytes = DxvkLocalAllocationCache::PoolCapacityInBytes;
 
@@ -941,9 +941,14 @@ namespace dxvk {
       DxvkResourceAllocation* head = nullptr;
     };
 
+    struct List {
+      DxvkResourceAllocation* head = nullptr;
+      int32_t                 next = -1;
+    };
+
     struct Pool {
-      uint32_t listCount = 0u;
-      std::array<DxvkResourceAllocation*, PoolSize> lists = { };
+      int32_t   listIndex = -1;
+      uint32_t  listCount = 0u;
       high_resolution_clock::time_point drainTime = { };
     };
 
@@ -956,6 +961,8 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_poolMutex;
     std::array<Pool, PoolCount> m_pools = { };
+    std::array<List, PoolSize>  m_lists = { };
+    int32_t                     m_nextList = -1;
 
     uint32_t                    m_numRequests = 0u;
     uint32_t                    m_numMisses = 0u;
