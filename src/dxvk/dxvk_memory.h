@@ -212,27 +212,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Memory requirement info
-   */
-  struct DxvkMemoryRequirements {
-    VkImageTiling                 tiling;
-    VkMemoryDedicatedRequirements dedicated;
-    VkMemoryRequirements2         core;
-  };
-
-
-  /**
-   * \brief Memory allocation info
-   */
-  struct DxvkMemoryProperties {
-    VkExportMemoryAllocateInfo    sharedExport;
-    VkImportMemoryWin32HandleInfoKHR sharedImportWin32;
-    VkMemoryDedicatedAllocateInfo dedicated;
-    VkMemoryPropertyFlags         flags;
-  };
-
-
-  /**
    * \brief Buffer view key
    *
    * Stores buffer view properties.
@@ -452,9 +431,9 @@ namespace dxvk {
    */
   class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
     friend DxvkMemoryAllocator;
+
     friend class DxvkLocalAllocationCache;
     friend class DxvkSharedAllocationCache;
-    friend class DxvkMemory;
   public:
 
     DxvkResourceAllocation(
@@ -717,101 +696,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Memory slice
-   * 
-   * Represents a slice of memory that has
-   * been sub-allocated from a bigger chunk.
-   */
-  struct DxvkMemory {
-    DxvkMemory() = default;
-
-    explicit DxvkMemory(Rc<DxvkResourceAllocation>&& allocation_)
-    : allocation(std::move(allocation_)) { }
-
-    DxvkMemory(DxvkMemory&& other) = default;
-    DxvkMemory& operator = (DxvkMemory&& other) = default;
-
-    ~DxvkMemory() = default;
-    
-    /**
-     * \brief Memory object
-     * 
-     * This information is required when
-     * binding memory to Vulkan objects.
-     * \returns Memory object
-     */
-    VkDeviceMemory memory() const {
-      return allocation ? allocation->m_memory : VK_NULL_HANDLE;
-    }
-    
-    /**
-     * \brief Buffer object
-     *
-     * Global buffer covering the entire memory allocation.
-     * \returns Buffer object
-     */
-    VkBuffer buffer() const {
-      return allocation ? allocation->m_buffer : VK_NULL_HANDLE;
-    }
-
-    /**
-     * \brief Offset into device memory
-     * 
-     * This information is required when
-     * binding memory to Vulkan objects.
-     * \returns Offset into device memory
-     */
-    VkDeviceSize offset() const {
-      return allocation
-        ? allocation->m_address & DxvkPageAllocator::ChunkAddressMask
-        : 0u;
-    }
-    
-    /**
-     * \brief Pointer to mapped data
-     * 
-     * \param [in] offset Byte offset
-     * \returns Pointer to mapped data
-     */
-    void* mapPtr(VkDeviceSize offset) const {
-      return allocation && allocation->m_mapPtr
-        ? reinterpret_cast<char*>(allocation->m_mapPtr) + offset
-        : nullptr;
-    }
-
-    /**
-     * \brief Returns length of memory allocated
-     * \returns Memory size
-     */
-    VkDeviceSize length() const {
-      return allocation ? allocation->m_size : 0u;
-    }
-
-    /**
-     * \brief Checks whether the memory slice is defined
-     * 
-     * \returns \c true if this slice points to actual device
-     *          memory, and \c false if it is undefined.
-     */
-    explicit operator bool () const {
-      return bool(allocation);
-    }
-
-    /**
-     * \brief Queries global buffer usage flags
-     * \returns Global buffer usage flags, if any
-     */
-    VkBufferUsageFlags getBufferUsage() const {
-      return allocation && allocation->m_type
-        ? allocation->m_type->bufferUsage
-        : 0u;
-    }
-
-    Rc<DxvkResourceAllocation> allocation;
-  };
-
-
-  /**
    * \brief Local allocation cache
    *
    * Provides pre-allocated memory of supported power-of-two sizes
@@ -1045,7 +929,6 @@ namespace dxvk {
    * Memory objects will be destroyed automatically.
    */
   class DxvkMemoryAllocator {
-    friend DxvkMemory;
     friend DxvkResourceAllocation;
     friend DxvkLocalAllocationCache;
     friend DxvkSharedAllocationCache;
@@ -1066,18 +949,6 @@ namespace dxvk {
     DxvkDevice* device() const {
       return m_device;
     }
-
-    /**
-     * \brief Allocates device memory
-     *
-     * Legacy interface for memory allocation, to be removed.
-     * \param [in] req Memory requirements
-     * \param [in] info Memory properties
-     * \returns Allocated memory slice
-     */
-    DxvkMemory alloc(
-            DxvkMemoryRequirements            req,
-      const DxvkMemoryProperties&             info);
 
     /**
      * \brief Allocates memory for a regular resource

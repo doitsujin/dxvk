@@ -497,56 +497,6 @@ namespace dxvk {
   }
   
   
-  DxvkMemory DxvkMemoryAllocator::alloc(
-          DxvkMemoryRequirements            req,
-    const DxvkMemoryProperties&             info) {
-    // Enforce that tiled images do not overlap with buffers in memory.
-    // Only changes anything for small images on older Nvidia hardware.
-    if (req.tiling == VK_IMAGE_TILING_OPTIMAL) {
-      req.core.memoryRequirements.alignment = std::max(req.core.memoryRequirements.alignment,
-        m_device->properties().core.properties.limits.bufferImageGranularity);
-    }
-
-    // If requested, try to create a dedicated allocation. If this
-    // fails, we may still fall back to a suballocation unless a
-    // dedicated allocation is explicitly required.
-    if (unlikely(info.dedicated.buffer || info.dedicated.image)) {
-      Rc<DxvkResourceAllocation> allocation = allocateDedicatedMemory(
-        req.core.memoryRequirements, info.flags, &info.dedicated);
-
-      if (allocation)
-        return DxvkMemory(std::move(allocation));
-
-      if (req.dedicated.requiresDedicatedAllocation && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-        allocation = allocateDedicatedMemory(req.core.memoryRequirements,
-          info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &info.dedicated);
-
-        if (unlikely(!allocation)) {
-          logMemoryError(req.core.memoryRequirements);
-          logMemoryStats();
-        }
-
-        return DxvkMemory(std::move(allocation));
-      }
-    }
-
-    // Suballocate memory from an existing chunk
-    Rc<DxvkResourceAllocation> allocation = allocateMemory(req.core.memoryRequirements, info.flags);
-
-    if (unlikely(!allocation) && (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-      allocation = allocateMemory(req.core.memoryRequirements,
-        info.flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      if (unlikely(!allocation)) {
-        logMemoryError(req.core.memoryRequirements);
-        logMemoryStats();
-      }
-    }
-
-    return DxvkMemory(std::move(allocation));
-  }
-
-
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::allocateMemory(
     const VkMemoryRequirements&             requirements,
           VkMemoryPropertyFlags             properties) {
