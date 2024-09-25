@@ -1005,21 +1005,21 @@ namespace dxvk {
 
     void bindBufferMemory(
       const DxvkSparseBufferBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindBufferMemory(key, memory);
     }
 
 
     void bindImageMemory(
       const DxvkSparseImageBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindImageMemory(key, memory);
     }
 
 
     void bindImageOpaqueMemory(
       const DxvkSparseImageOpaqueBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindImageOpaqueMemory(key, memory);
     }
 

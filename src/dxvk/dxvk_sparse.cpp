@@ -446,21 +446,21 @@ namespace dxvk {
 
   void DxvkSparseBindSubmission::bindBufferMemory(
     const DxvkSparseBufferBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_bufferBinds.insert_or_assign(key, memory);
   }
 
 
   void DxvkSparseBindSubmission::bindImageMemory(
     const DxvkSparseImageBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_imageBinds.insert_or_assign(key, memory);
   }
 
 
   void DxvkSparseBindSubmission::bindImageOpaqueMemory(
     const DxvkSparseImageOpaqueBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_imageOpaqueBinds.insert_or_assign(key, memory);
   }
 
@@ -560,8 +560,8 @@ namespace dxvk {
 
 
   bool DxvkSparseBindSubmission::tryMergeImageBind(
-          std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
-    const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind) {
+          std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& oldBind,
+    const std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& newBind) {
     if (oldBind.first.image != newBind.first.image
      || oldBind.first.subresource.aspectMask != newBind.first.subresource.aspectMask
      || oldBind.first.subresource.mipLevel != newBind.first.subresource.mipLevel
@@ -572,7 +572,7 @@ namespace dxvk {
       return false;
 
     if (oldBind.second.memory) {
-      if (oldBind.second.offset + oldBind.second.length != newBind.second.offset)
+      if (oldBind.second.offset + oldBind.second.size != newBind.second.offset)
         return false;
     }
 
@@ -604,7 +604,7 @@ namespace dxvk {
       oldBind.first.extent.depth  += delta.depth;
 
       if (oldBind.second.memory)
-        oldBind.second.length += newBind.second.length;
+        oldBind.second.size += newBind.second.size;
     }
 
     return canMerge;
@@ -641,14 +641,14 @@ namespace dxvk {
 
   void DxvkSparseBindSubmission::processImageBinds(
           DxvkSparseImageBindArrays&        image) {
-    std::vector<std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>> binds;
+    std::vector<std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>> binds;
     binds.reserve(m_imageBinds.size());
 
     for (const auto& e : m_imageBinds) {
-      std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> newBind = e;
+      std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo> newBind = e;
 
       while (!binds.empty()) {
-        std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> oldBind = binds.back();
+        std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo> oldBind = binds.back();
 
         if (!tryMergeImageBind(oldBind, newBind))
           break;

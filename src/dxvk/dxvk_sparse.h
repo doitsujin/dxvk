@@ -19,16 +19,6 @@ namespace dxvk {
   constexpr static VkDeviceSize SparseMemoryPageSize = 1ull << 16;
 
   /**
-   * \brief Sparse page handle
-   */
-  struct DxvkSparsePageHandle {
-    VkDeviceMemory  memory;
-    VkDeviceSize    offset;
-    VkDeviceSize    length;
-  };
-
-
-  /**
    * \brief Buffer info for sparse page
    *
    * Stores the buffer region backed by
@@ -182,11 +172,11 @@ namespace dxvk {
      * \brief Queries memory handle
      * \returns Memory information
      */
-    DxvkSparsePageHandle getHandle() const {
-      DxvkSparsePageHandle result;
+    DxvkResourceMemoryInfo getHandle() const {
+      DxvkResourceMemoryInfo result;
       result.memory = m_memory.memory();
       result.offset = m_memory.offset();
-      result.length = m_memory.length();
+      result.size = m_memory.length();
       return result;
     }
 
@@ -223,9 +213,9 @@ namespace dxvk {
      * \brief Queries memory handle
      * \returns Memory information
      */
-    DxvkSparsePageHandle getHandle() const {
+    DxvkResourceMemoryInfo getHandle() const {
       if (m_page == nullptr)
-        return DxvkSparsePageHandle();
+        return DxvkResourceMemoryInfo();
 
       return m_page->getHandle();
     }
@@ -670,7 +660,7 @@ namespace dxvk {
      */
     void bindBufferMemory(
       const DxvkSparseBufferBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo&  memory);
 
     /**
      * \brief Adds an image memory bind
@@ -680,7 +670,7 @@ namespace dxvk {
      */
     void bindImageMemory(
       const DxvkSparseImageBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo& memory);
 
     /**
      * \brief Adds an opaque image memory bind
@@ -690,7 +680,7 @@ namespace dxvk {
      */
     void bindImageOpaqueMemory(
       const DxvkSparseImageOpaqueBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo& memory);
 
     /**
      * \brief Submits sparse binding operation
@@ -720,17 +710,17 @@ namespace dxvk {
     std::vector<uint64_t>     m_signalSemaphoreValues;
     std::vector<VkSemaphore>  m_signalSemaphores;
 
-    std::map<DxvkSparseBufferBindKey,      DxvkSparsePageHandle> m_bufferBinds;
-    std::map<DxvkSparseImageBindKey,       DxvkSparsePageHandle> m_imageBinds;
-    std::map<DxvkSparseImageOpaqueBindKey, DxvkSparsePageHandle> m_imageOpaqueBinds;
+    std::map<DxvkSparseBufferBindKey,      DxvkResourceMemoryInfo> m_bufferBinds;
+    std::map<DxvkSparseImageBindKey,       DxvkResourceMemoryInfo> m_imageBinds;
+    std::map<DxvkSparseImageOpaqueBindKey, DxvkResourceMemoryInfo> m_imageOpaqueBinds;
 
     static bool tryMergeMemoryBind(
             VkSparseMemoryBind&               oldBind,
       const VkSparseMemoryBind&               newBind);
 
     static bool tryMergeImageBind(
-            std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
-      const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind);
+            std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& oldBind,
+      const std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& newBind);
 
     void processBufferBinds(
             DxvkSparseBufferBindArrays&       buffer);

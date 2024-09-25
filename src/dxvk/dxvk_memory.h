@@ -389,6 +389,19 @@ namespace dxvk {
 
 
   /**
+   * \brief Memory properties
+   */
+  struct DxvkResourceMemoryInfo {
+    /// Vulkan memory handle
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    /// Offset into memory object
+    VkDeviceSize offset = 0u;
+    /// Size of memory range
+    VkDeviceSize size = 0u;
+  };
+
+
+  /**
    * \brief Buffer properties
    */
   struct DxvkResourceBufferInfo {
@@ -519,6 +532,18 @@ namespace dxvk {
      */
     void* mapPtr() const {
       return m_mapPtr;
+    }
+
+    /**
+     * \brief Queries memory info
+     * \returns Memory info
+     */
+    DxvkResourceMemoryInfo getMemoryInfo() const {
+      DxvkResourceMemoryInfo result = { };
+      result.memory = m_memory;
+      result.offset = m_address & DxvkPageAllocator::ChunkAddressMask;
+      result.size = m_size;
+      return result;
     }
 
     /**
