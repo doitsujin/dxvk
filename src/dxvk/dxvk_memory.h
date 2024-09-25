@@ -478,6 +478,21 @@ namespace dxvk {
     }
 
     /**
+     * \brief Converts reference
+     *
+     * Decrements and increments the use counter according
+     * to the given access types in a single operation.
+     * \param [in] from Previous access type
+     * \param [in] to New access type
+     */
+    force_inline void convertRef(DxvkAccess from, DxvkAccess to) {
+      uint64_t increment = getIncrement(to) - getIncrement(from);
+
+      if (increment)
+        m_useCount.fetch_add(increment, std::memory_order_acq_rel);
+    }
+
+    /**
      * \brief Checks whether the resource is in use
      *
      * Note that when checking for read access, this will also

@@ -77,6 +77,19 @@ namespace dxvk {
     }
 
     /**
+     * \brief Converts reference type
+     *
+     * \param [in] from Old access type
+     * \param [in] to New access type
+     */
+    void convertRef(DxvkAccess from, DxvkAccess to) {
+      uint64_t increment = getIncrement(to) - getIncrement(from);
+
+      if (increment)
+        m_useCount += increment;
+    }
+
+    /**
      * \brief Checks whether resource is in use
      * 
      * Returns \c true if there are pending accesses to
