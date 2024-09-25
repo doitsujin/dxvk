@@ -227,7 +227,8 @@ namespace dxvk {
     const DxvkImageCreateInfo&  createInfo,
           VkImage               image,
           VkMemoryPropertyFlags memoryType) {
-    return new DxvkImage(this, createInfo, image, memoryType);
+    return new DxvkImage(this, createInfo, image,
+      m_objects.memoryManager(), memoryType);
   }
 
 
