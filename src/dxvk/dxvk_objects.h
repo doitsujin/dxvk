@@ -11,6 +11,7 @@
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_renderpass.h"
+#include "dxvk_sampler.h"
 #include "dxvk_unbound.h"
 
 #include "../util/util_lazy.h"
@@ -25,6 +26,7 @@ namespace dxvk {
     : m_device          (device),
       m_memoryManager   (device),
       m_pipelineManager (device),
+      m_samplerPool     (device),
       m_eventPool       (device),
       m_queryPool       (device),
       m_dummyResources  (device) {
@@ -37,6 +39,10 @@ namespace dxvk {
 
     DxvkPipelineManager& pipelineManager() {
       return m_pipelineManager;
+    }
+
+    DxvkSamplerPool& samplerPool() {
+      return m_samplerPool;
     }
 
     DxvkGpuEventPool& eventPool() {
@@ -78,6 +84,7 @@ namespace dxvk {
     DxvkMemoryAllocator           m_memoryManager;
     DxvkPipelineManager           m_pipelineManager;
 
+    DxvkSamplerPool               m_samplerPool;
     DxvkGpuEventPool              m_eventPool;
     DxvkGpuQueryPool              m_queryPool;
 

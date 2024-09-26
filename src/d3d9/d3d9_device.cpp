@@ -6690,41 +6690,36 @@ namespace dxvk {
 
       auto mipFilter = DecodeMipFilter(cKey.MipFilter);
 
-      DxvkSamplerCreateInfo info;
-      info.addressModeU   = DecodeAddressMode(cKey.AddressU);
-      info.addressModeV   = DecodeAddressMode(cKey.AddressV);
-      info.addressModeW   = DecodeAddressMode(cKey.AddressW);
-      info.compareToDepth = cKey.Depth;
-      info.compareOp      = cKey.Depth ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_NEVER;
-      info.magFilter      = DecodeFilter(cKey.MagFilter);
-      info.minFilter      = DecodeFilter(cKey.MinFilter);
-      info.mipmapMode     = mipFilter.MipFilter;
-      info.maxAnisotropy  = float(cKey.MaxAnisotropy);
-      info.useAnisotropy  = cKey.MaxAnisotropy > 1;
+      DxvkSamplerKey info = { };
 
-      info.mipmapLodBias  = cKey.MipmapLodBias + m_d3d9Options.samplerLodBias;
+      info.setFilter(
+        DecodeFilter(cKey.MinFilter),
+        DecodeFilter(cKey.MagFilter),
+        mipFilter.MipFilter);
+
+      info.setAddressModes(
+        DecodeAddressMode(cKey.AddressU),
+        DecodeAddressMode(cKey.AddressV),
+        DecodeAddressMode(cKey.AddressW));
+
+      info.setDepthCompare(cKey.Depth,
+        VK_COMPARE_OP_LESS_OR_EQUAL);
+
+      info.setAniso(cKey.MaxAnisotropy);
+
+      float lodBias = cKey.MipmapLodBias + m_d3d9Options.samplerLodBias;
+
       if (m_d3d9Options.clampNegativeLodBias)
-        info.mipmapLodBias = std::max(info.mipmapLodBias, 0.0f);
+        lodBias = std::max(lodBias, 0.0f);
 
-      info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
-      info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
-      info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-      info.usePixelCoord  = VK_FALSE;
-      info.nonSeamless    = m_dxvkDevice->features().extNonSeamlessCubeMap.nonSeamlessCubeMap && !m_d3d9Options.seamlessCubes;
+      info.setLodRange(
+        mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0.0f,
+        mipFilter.MipsEnabled ? FLT_MAX : 0.0f,
+        lodBias);
+
+      info.setLegacyCubeFilter(!m_d3d9Options.seamlessCubes);
 
       DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
-
-      if (!m_dxvkDevice->features().extCustomBorderColor.customBorderColorWithoutFormat) {
-        // HACK: Let's get OPAQUE_WHITE border color over
-        // TRANSPARENT_BLACK if the border RGB is white.
-        if (info.borderColor.float32[0] == 1.0f
-        && info.borderColor.float32[1] == 1.0f
-        && info.borderColor.float32[2] == 1.0f
-        && !m_dxvkDevice->features().extCustomBorderColor.customBorderColors) {
-          // Then set the alpha to 1.
-          info.borderColor.float32[3] = 1.0f;
-        }
-      }
 
       try {
         auto sampler = m_dxvkDevice->createSampler(info);

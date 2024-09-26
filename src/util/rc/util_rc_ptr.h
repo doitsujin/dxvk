@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <ostream>
 #include <utility>
@@ -107,18 +109,46 @@ namespace dxvk {
       return m_object != nullptr;
     }
 
+    /**
+     * \brief Sets pointer without acquiring a reference
+     *
+     * Must only be use when a reference has been taken via
+     * other means.
+     * \param [in] object Object pointer
+     */
     void unsafeInsert(T* object) {
       this->decRef();
       m_object = object;
     }
 
+    /**
+     * \brief Extracts raw pointer
+     *
+     * Sets the smart pointer to null without decrementing the
+     * reference count. Must only be used when the reference
+     * count is decremented in some other way.
+     * \returns Pointer to owned object
+     */
     T* unsafeExtract() {
       return std::exchange(m_object, nullptr);
+    }
+
+    /**
+     * \brief Creates smart pointer without taking reference
+     *
+     * Must only be used when a refernece has been obtained via other means.
+     * \param [in] object Pointer to object to take ownership of
+     */
+    static Rc<T> unsafeCreate(T* object) {
+      return Rc<T>(object, false);
     }
 
   private:
 
     T* m_object = nullptr;
+
+    explicit Rc(T* object, bool)
+    : m_object(object) { }
 
     force_inline void incRef() const {
       if (m_object != nullptr)
@@ -144,6 +174,13 @@ namespace dxvk {
 
   template<typename Tx, typename Ty>
   bool operator != (Tx* a, const Rc<Ty>& b) { return b != a; }
+
+  struct RcHash {
+    template<typename T>
+    size_t operator () (const Rc<T>& rc) const {
+      return reinterpret_cast<uintptr_t>(rc.ptr()) / sizeof(T);
+    }
+  };
 
 }
 

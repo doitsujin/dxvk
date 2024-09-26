@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "dxvk_resource.h"
+#include "dxvk_sampler.h"
 
 namespace dxvk {
   
@@ -107,6 +108,14 @@ namespace dxvk {
     ~DxvkLifetimeTracker();
 
     /**
+     * \brief Adds a sampler to track
+     * \param [in] res The sampler to track
+     */
+    void trackSampler(const Rc<DxvkSampler>& res) {
+      m_samplers.push_back(res);
+    }
+
+    /**
      * \brief Adds a resource to track
      * \param [in] res The resource to track
      */
@@ -131,6 +140,8 @@ namespace dxvk {
     void reset();
 
   private:
+
+    std::vector<Rc<DxvkSampler>> m_samplers;
 
     std::vector<DxvkLifetime<DxvkResource>> m_resources;
     std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;
