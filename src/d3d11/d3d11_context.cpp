@@ -21,7 +21,34 @@ namespace dxvk {
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {
+    // Create local allocation cache with the same properties
+    // that we will use for common dynamic buffer types
+    uint32_t cachedDynamic = pParent->GetOptions()->cachedDynamicResources;
 
+    VkMemoryPropertyFlags memoryFlags =
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    if (cachedDynamic & D3D11_BIND_CONSTANT_BUFFER) {
+      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      cachedDynamic = 0;
+    }
+
+    VkBufferUsageFlags bufferUsage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    if (!(cachedDynamic & D3D11_BIND_SHADER_RESOURCE)) {
+      bufferUsage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    }
+
+    if (!(cachedDynamic & D3D11_BIND_VERTEX_BUFFER))
+      bufferUsage |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+
+    if (!(cachedDynamic & D3D11_BIND_INDEX_BUFFER))
+      bufferUsage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+
+    m_allocationCache = m_device->createAllocationCache(bufferUsage, memoryFlags);
   }
 
 
@@ -339,7 +366,7 @@ namespace dxvk {
 
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
-      cSrcSlice = counterView->slice()
+      cSrcSlice = DxvkBufferSlice(counterView)
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
@@ -446,7 +473,7 @@ namespace dxvk {
        || bufferView->info().format == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
         EmitCs([
           cClearValue = clearValue.color.uint32[0],
-          cDstSlice   = bufferView->slice()
+          cDstSlice   = DxvkBufferSlice(bufferView)
         ] (DxvkContext* ctx) {
           ctx->clearBuffer(
             cDstSlice.buffer(),
@@ -460,8 +487,7 @@ namespace dxvk {
           DxvkBufferViewCreateInfo info = bufferView->info();
           info.format = rawFormat;
 
-          bufferView = m_device->createBufferView(
-            bufferView->buffer(), info);
+          bufferView = bufferView->buffer()->createView(info);
         }
 
         EmitCs([
@@ -486,12 +512,12 @@ namespace dxvk {
       // we'll have to use a fallback using a texel buffer view and buffer copies.
       bool isViewCompatible = uavFormat == rawFormat;
 
-      if (!isViewCompatible && (imageView->imageInfo().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
-        uint32_t formatCount = imageView->imageInfo().viewFormatCount;
+      if (!isViewCompatible && (imageView->image()->info().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
+        uint32_t formatCount = imageView->image()->info().viewFormatCount;
         isViewCompatible = formatCount == 0;
 
         for (uint32_t i = 0; i < formatCount && !isViewCompatible; i++)
-          isViewCompatible = imageView->imageInfo().viewFormats[i] == rawFormat;
+          isViewCompatible = imageView->image()->info().viewFormats[i] == rawFormat;
       }
 
       if (isViewCompatible || isZeroClearValue) {
@@ -532,9 +558,9 @@ namespace dxvk {
         bufferViewInfo.format      = rawFormat;
         bufferViewInfo.rangeOffset = 0;
         bufferViewInfo.rangeLength = bufferInfo.size;
+        bufferViewInfo.usage       = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
-        Rc<DxvkBufferView> bufferView = m_device->createBufferView(buffer,
-          bufferViewInfo);
+        Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
 
         EmitCs([
           cDstView    = std::move(imageView),
@@ -2422,6 +2448,17 @@ namespace dxvk {
     if (unlikely(NumViewports > m_state.rs.viewports.size()))
       return;
 
+    for (uint32_t i = 0; i < NumViewports; i++) {
+      const D3D11_VIEWPORT& vp = pViewports[i];
+
+      bool valid = vp.Width >= 0.0f && vp.Height >= 0.0f
+                && vp.MinDepth >= 0.0f && vp.MaxDepth <= 1.0f
+                && vp.MinDepth <= vp.MaxDepth;
+
+      if (!valid)
+        return;
+    }
+
     bool dirty = m_state.rs.numViewports != NumViewports;
     m_state.rs.numViewports = NumViewports;
 
@@ -3769,7 +3806,7 @@ namespace dxvk {
             : VK_SHADER_STAGE_ALL_GRAPHICS;
 
           if (cCounterView != nullptr && cCounterValue != ~0u) {
-            auto counterSlice = cCounterView->slice();
+            DxvkBufferSlice counterSlice(cCounterView);
 
             ctx->updateBuffer(
               counterSlice.buffer(),
@@ -5391,8 +5428,8 @@ namespace dxvk {
            || curView->info().numLayers != refView->info().numLayers)
             return false;
 
-          if (curView->imageInfo().sampleCount
-           != refView->imageInfo().sampleCount)
+          if (curView->image()->info().sampleCount
+           != refView->image()->info().sampleCount)
             return false;
 
           // Color targets must all be the same size

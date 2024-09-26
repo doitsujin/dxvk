@@ -19,16 +19,6 @@ namespace dxvk {
   constexpr static VkDeviceSize SparseMemoryPageSize = 1ull << 16;
 
   /**
-   * \brief Sparse page handle
-   */
-  struct DxvkSparsePageHandle {
-    VkDeviceMemory  memory;
-    VkDeviceSize    offset;
-    VkDeviceSize    length;
-  };
-
-
-  /**
    * \brief Buffer info for sparse page
    *
    * Stores the buffer region backed by
@@ -166,38 +156,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Sparse memory page
-   *
-   * Stores a single reference-counted page
-   * of memory. The page size is 64k.
-   */
-  class DxvkSparsePage : public DxvkResource {
-
-  public:
-
-    DxvkSparsePage(DxvkMemory&& memory)
-    : m_memory(std::move(memory)) { }
-
-    /**
-     * \brief Queries memory handle
-     * \returns Memory information
-     */
-    DxvkSparsePageHandle getHandle() const {
-      DxvkSparsePageHandle result;
-      result.memory = m_memory.memory();
-      result.offset = m_memory.offset();
-      result.length = m_memory.length();
-      return result;
-    }
-
-  private:
-
-    DxvkMemory  m_memory;
-
-  };
-
-
-  /**
    * \brief Sparse page mapping
    *
    * Stores a reference to a page as well as the pool that the page
@@ -223,11 +181,11 @@ namespace dxvk {
      * \brief Queries memory handle
      * \returns Memory information
      */
-    DxvkSparsePageHandle getHandle() const {
-      if (m_page == nullptr)
-        return DxvkSparsePageHandle();
+    DxvkResourceMemoryInfo getMemoryInfo() const {
+      if (!m_page)
+        return DxvkResourceMemoryInfo();
 
-      return m_page->getHandle();
+      return m_page->getMemoryInfo();
     }
 
     bool operator == (const DxvkSparseMapping& other) const {
@@ -246,11 +204,11 @@ namespace dxvk {
   private:
 
     Rc<DxvkSparsePageAllocator> m_pool;
-    Rc<DxvkSparsePage>          m_page;
+    Rc<DxvkResourceAllocation>  m_page;
 
     DxvkSparseMapping(
             Rc<DxvkSparsePageAllocator> allocator,
-            Rc<DxvkSparsePage>          page);
+            Rc<DxvkResourceAllocation>  page);
 
     void acquire() const;
 
@@ -304,15 +262,13 @@ namespace dxvk {
     dxvk::mutex                       m_mutex;
     uint32_t                          m_pageCount = 0u;
     uint32_t                          m_useCount = 0u;
-    std::vector<Rc<DxvkSparsePage>>   m_pages;
-
-    Rc<DxvkSparsePage> allocPage();
+    std::vector<Rc<DxvkResourceAllocation>> m_pages;
 
     void acquirePage(
-      const Rc<DxvkSparsePage>&   page);
+      const Rc<DxvkResourceAllocation>& page);
 
     void releasePage(
-      const Rc<DxvkSparsePage>&   page);
+      const Rc<DxvkResourceAllocation>& page);
 
   };
 
@@ -331,11 +287,13 @@ namespace dxvk {
 
     DxvkSparsePageTable(
             DxvkDevice*             device,
-      const DxvkBuffer*             buffer);
+      const VkBufferCreateInfo&     bufferInfo,
+            VkBuffer                bufferHandle);
 
     DxvkSparsePageTable(
             DxvkDevice*             device,
-      const DxvkImage*              image);
+      const VkImageCreateInfo&      imageInfo,
+            VkImage                 imageHandle);
 
     /**
      * \brief Checks whether page table is defined
@@ -455,8 +413,8 @@ namespace dxvk {
 
   private:
 
-    const DxvkBuffer* m_buffer  = nullptr;
-    const DxvkImage*  m_image   = nullptr;
+    VkBuffer m_buffer = VK_NULL_HANDLE;
+    VkImage m_image = VK_NULL_HANDLE;
 
     DxvkSparseImageProperties                         m_properties    = { };
     std::vector<DxvkSparseImageSubresourceProperties> m_subresources;
@@ -478,17 +436,12 @@ namespace dxvk {
 
     /**
      * \brief Queries sparse page table
+     *
+     * Should be removed once storage objects can
+     * be retrieved from resources diectly.
      * \returns Sparse page table, if defined
      */
-    DxvkSparsePageTable* getSparsePageTable() {
-      return m_sparsePageTable
-        ? &m_sparsePageTable
-        : nullptr;
-    }
-
-  protected:
-
-    DxvkSparsePageTable m_sparsePageTable;
+    virtual DxvkSparsePageTable* getSparsePageTable() = 0;
 
   };
 
@@ -673,7 +626,7 @@ namespace dxvk {
      */
     void bindBufferMemory(
       const DxvkSparseBufferBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo&  memory);
 
     /**
      * \brief Adds an image memory bind
@@ -683,7 +636,7 @@ namespace dxvk {
      */
     void bindImageMemory(
       const DxvkSparseImageBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo& memory);
 
     /**
      * \brief Adds an opaque image memory bind
@@ -693,7 +646,7 @@ namespace dxvk {
      */
     void bindImageOpaqueMemory(
       const DxvkSparseImageOpaqueBindKey& key,
-      const DxvkSparsePageHandle&   memory);
+      const DxvkResourceMemoryInfo& memory);
 
     /**
      * \brief Submits sparse binding operation
@@ -723,17 +676,17 @@ namespace dxvk {
     std::vector<uint64_t>     m_signalSemaphoreValues;
     std::vector<VkSemaphore>  m_signalSemaphores;
 
-    std::map<DxvkSparseBufferBindKey,      DxvkSparsePageHandle> m_bufferBinds;
-    std::map<DxvkSparseImageBindKey,       DxvkSparsePageHandle> m_imageBinds;
-    std::map<DxvkSparseImageOpaqueBindKey, DxvkSparsePageHandle> m_imageOpaqueBinds;
+    std::map<DxvkSparseBufferBindKey,      DxvkResourceMemoryInfo> m_bufferBinds;
+    std::map<DxvkSparseImageBindKey,       DxvkResourceMemoryInfo> m_imageBinds;
+    std::map<DxvkSparseImageOpaqueBindKey, DxvkResourceMemoryInfo> m_imageOpaqueBinds;
 
     static bool tryMergeMemoryBind(
             VkSparseMemoryBind&               oldBind,
       const VkSparseMemoryBind&               newBind);
 
     static bool tryMergeImageBind(
-            std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
-      const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind);
+            std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& oldBind,
+      const std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& newBind);
 
     void processBufferBinds(
             DxvkSparseBufferBindArrays&       buffer);

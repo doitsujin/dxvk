@@ -18,7 +18,9 @@ namespace dxvk {
     None  = 5,
   };
   
-  using PFN_wineLogOutput = int (STDMETHODCALLTYPE *)(const char *);
+#ifdef _WIN32
+  using PFN_wineLogOutput = int (__cdecl *)(const char *);
+#endif
 
   /**
    * \brief Logger
@@ -55,7 +57,9 @@ namespace dxvk {
     std::ofstream     m_fileStream;
 
     bool              m_initialized = false;
+#ifdef _WIN32
     PFN_wineLogOutput m_wineLogOutput = nullptr;
+#endif
 
     void emitMsg(LogLevel level, const std::string& message);
     

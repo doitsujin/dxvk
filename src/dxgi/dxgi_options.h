@@ -30,9 +30,6 @@ namespace dxvk {
     VkDeviceSize maxDeviceMemory;
     VkDeviceSize maxSharedMemory;
 
-    /// Emulate UMA
-    bool emulateUMA;
-
     /// Reports Nvidia GPUs running on the proprietary driver as a different
     /// vendor (usually AMD). Proton will generally disable this option.
     bool hideNvidiaGpu;

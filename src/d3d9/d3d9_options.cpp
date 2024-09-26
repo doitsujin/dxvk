@@ -67,7 +67,6 @@ namespace dxvk {
     this->forceSampleRateShading        = config.getOption<bool>        ("d3d9.forceSampleRateShading",        false);
     this->forceAspectRatio              = config.getOption<std::string> ("d3d9.forceAspectRatio",              "");
     this->enumerateByDisplays           = config.getOption<bool>        ("d3d9.enumerateByDisplays",           true);
-    this->longMad                       = config.getOption<bool>        ("d3d9.longMad",                       false);
     this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
@@ -95,7 +94,8 @@ namespace dxvk {
     } else {
       bool hasMulz = adapter != nullptr
                   && (adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
-                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK));
+                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
+                   || adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE, Version(2, 0, 316), Version()));
       d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
 

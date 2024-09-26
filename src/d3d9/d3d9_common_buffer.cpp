@@ -14,7 +14,7 @@ namespace dxvk {
     if (m_mapMode == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       m_stagingBuffer = CreateStagingBuffer();
 
-    m_sliceHandle = GetMapBuffer()->getSliceHandle();
+    m_allocation = GetMapBuffer()->getAllocation();
 
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       m_dirtyRange = D3D9Range(0, m_desc.Size);
@@ -74,14 +74,6 @@ namespace dxvk {
     if (!(m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
-    // Tests show that DISCARD does not work for pure SWVP devices.
-    // So force staging buffer path to avoid stalls.
-    // Dark Romance: Vampire in Love also expects draws to be synchronous
-    // and breaks if we respect NOOVERWRITE.
-    // D&D Temple of Elemental Evil breaks if we respect DISCARD. 
-    if (m_parent->CanOnlySWVP())
-      return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-
     if (!options->allowDirectBufferMapping)
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
@@ -119,12 +111,20 @@ namespace dxvk {
       info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       info.access |= VK_ACCESS_HOST_WRITE_BIT;
 
-      if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
-        info.access |= VK_ACCESS_HOST_READ_BIT;
-
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                  |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+      if ((m_desc.Usage & (D3DUSAGE_WRITEONLY | D3DUSAGE_DYNAMIC)) == 0
+        || DoPerDrawUpload()
+        || m_parent->CanOnlySWVP()
+        || m_parent->GetOptions()->cachedDynamicBuffers) {
+        // Never use uncached memory on devices that support SWVP because we might end up reading from it.
+
+        info.access |= VK_ACCESS_HOST_READ_BIT;
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+      } else {
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+      }
     }
     else {
       info.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -132,12 +132,6 @@ namespace dxvk {
       info.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
 
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    }
-
-    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && m_parent->GetOptions()->cachedDynamicBuffers) {
-      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
 
     return m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);

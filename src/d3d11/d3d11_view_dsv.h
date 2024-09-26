@@ -50,7 +50,7 @@ namespace dxvk {
     }
     
     VkImageLayout GetRenderLayout() const {
-      if (m_view->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL) {
+      if (m_view->image()->info().tiling == VK_IMAGE_TILING_OPTIMAL) {
         switch (m_desc.Flags & (D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL)) {
           default:  // case 0
             return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -67,7 +67,7 @@ namespace dxvk {
     }
 
     UINT GetSampleCount() const {
-      return UINT(m_view->imageInfo().sampleCount);
+      return UINT(m_view->image()->info().sampleCount);
     }
 
     VkImageAspectFlags GetWritableAspectMask() const {

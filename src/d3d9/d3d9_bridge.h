@@ -31,7 +31,7 @@ IDxvkD3D8Bridge : public IUnknown {
   /**
    * \brief Enables or disables D3D9-specific device features and validations
    * 
-   * \param [in] compatibility state
+   * \param [in] compatMode Compatibility state
    */
   virtual void SetD3D8CompatibilityMode(const bool compatMode) = 0;
 

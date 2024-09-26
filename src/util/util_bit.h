@@ -152,6 +152,18 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t lzcnt(uint64_t n) {
+    #if defined(DXVK_ARCH_X86_64) && ((defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__))
+    return _lzcnt_u64(n);
+    #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
+    return n != 0 ? __builtin_clzll(n) : 64;
+    #else
+    uint32_t lo = uint32_t(n);
+    uint32_t hi = uint32_t(n >> 32u);
+    return hi ? lzcnt(hi) : lzcnt(lo) + 32u;
+    #endif
+  }
+
   template<typename T>
   uint32_t pack(T& dst, uint32_t& shift, T src, uint32_t count) {
     constexpr uint32_t Bits = 8 * sizeof(T);

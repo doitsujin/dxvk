@@ -368,9 +368,6 @@ namespace dxvk {
     // that are no longer in use
     m_resources.reset();
 
-    // Return buffer memory slices
-    m_bufferTracker.reset();
-
     // Return query and event handles
     m_gpuQueryTracker.reset();
     m_gpuEventTracker.reset();

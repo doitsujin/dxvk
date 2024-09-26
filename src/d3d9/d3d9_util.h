@@ -204,6 +204,11 @@ namespace dxvk {
 
   bool IsDepthFormat(D3D9Format Format);
 
+  bool IsDepthStencilFormat(D3D9Format Format);
+
+  bool IsLockableDepthStencilFormat(D3D9Format Format);
+
+
   inline bool IsPoolManaged(D3DPOOL Pool) {
     return Pool == D3DPOOL_MANAGED || Pool == D3DPOOL_MANAGED_EX;
   }

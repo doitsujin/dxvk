@@ -1,5 +1,9 @@
 #include "dxvk_hud_item.h"
 
+#include <hud_chunk_frag_background.h>
+#include <hud_chunk_frag_visualize.h>
+#include <hud_chunk_vert.h>
+
 #include <iomanip>
 #include <version.h>
 
@@ -611,6 +615,257 @@ namespace dxvk::hud {
   }
 
 
+
+
+  HudMemoryDetailsItem::HudMemoryDetailsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+    DxvkShaderCreateInfo shaderInfo;
+    shaderInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    shaderInfo.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderInfo.pushConstSize = sizeof(ShaderArgs);
+    shaderInfo.outputMask = 0x1;
+
+    m_vs = new DxvkShader(shaderInfo, SpirvCodeBuffer(hud_chunk_vert));
+
+    shaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderInfo.outputMask = 0x1;
+
+    m_fsBackground = new DxvkShader(shaderInfo, SpirvCodeBuffer(hud_chunk_frag_background));
+
+    DxvkBindingInfo pageMaskBinding = {
+      VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM,
+      VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT };
+
+    shaderInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    shaderInfo.bindingCount = 1;
+    shaderInfo.bindings = &pageMaskBinding;
+    shaderInfo.inputMask = 0x1;
+    shaderInfo.outputMask = 0x1;
+
+    m_fsVisualize = new DxvkShader(shaderInfo, SpirvCodeBuffer(hud_chunk_frag_visualize));
+  }
+
+
+  HudMemoryDetailsItem::~HudMemoryDetailsItem() {
+
+  }
+
+
+  void HudMemoryDetailsItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      m_cacheStats = m_device->getMemoryAllocationStats(m_stats);
+      m_displayCacheStats |= m_cacheStats.requestCount != 0u;
+
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudMemoryDetailsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    uploadChunkData(renderer);
+
+    // Chunk memory per type, not including dedicated allocations
+    std::array<VkDeviceSize, VK_MAX_MEMORY_TYPES> chunkMemoryAllocated = { };
+    std::array<VkDeviceSize, VK_MAX_MEMORY_TYPES> chunkMemoryUsed = { };
+
+    // Compute layout, align the entire element to the bottom right.
+    float maxWidth = 556.0f;
+
+    HudPos pos = {
+      float(renderer.surfaceSize().width) / renderer.scale() - 8.0f - maxWidth,
+      float(renderer.surfaceSize().height) / renderer.scale() - 8.0f,
+    };
+
+    for (uint32_t i = 0; i < m_stats.memoryTypes.size(); i++) {
+      const auto& type = m_stats.memoryTypes.at(i);
+
+      if (!type.allocated)
+        continue;
+
+      // Reserve space for one line of text
+      pos.y -= 20.0f;
+
+      float width = 0.0f;
+
+      for (uint32_t j = 0; j < type.chunkCount; j++) {
+        const auto& chunk = m_stats.chunks.at(type.chunkIndex + j);
+        chunkMemoryAllocated.at(i) += chunk.capacity;
+        chunkMemoryUsed.at(i) += chunk.used;
+
+        float pixels = float((chunk.pageCount + 15u) / 16u);
+
+        if (width + pixels > maxWidth) {
+          pos.y -= 30.0f;
+          width = 0.0f;
+        }
+
+        width += pixels + 6.0f;
+      }
+
+      pos.y -= 30.0f + 4.0f;
+    }
+
+    if (m_displayCacheStats)
+      pos.y -= 20.0f;
+
+    // Actually render the thing
+    for (uint32_t i = 0; i < m_stats.memoryTypes.size(); i++) {
+      const auto& type = m_stats.memoryTypes.at(i);
+
+      if (!type.allocated)
+        continue;
+
+      VkDeviceSize dedicated = type.allocated - chunkMemoryAllocated.at(i);
+      VkDeviceSize allocated = chunkMemoryAllocated.at(i) + dedicated;
+      VkDeviceSize used = chunkMemoryUsed.at(i) + dedicated;
+
+      std::string headline = str::format("Mem type ", i, " [", type.properties.heapIndex, "]: ",
+        type.chunkCount, " chunk", type.chunkCount != 1u ? "s" : "", " (", (allocated >> 20u), " MB, ",
+        ((used >= (1u << 20u)) ? used >> 20 : used >> 10),
+        (used >= (1u << 20u) ? " MB" : " kB"), " used)");
+
+      renderer.drawText(14.0f,
+        { pos.x, pos.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        headline);
+
+      pos.y += 8.0f;
+
+      float width = 0.0f;
+
+      for (uint32_t j = 0; j < type.chunkCount; j++) {
+        const auto& chunk = m_stats.chunks.at(type.chunkIndex + j);
+        float pixels = float((chunk.pageCount + 15u) / 16u);
+
+        if (width + pixels > maxWidth) {
+          pos.y += 30.0f;
+          width = 0.0f;
+        }
+
+        drawChunk(renderer,
+          { pos.x + width, pos.y },
+          { pixels, 24.0f },
+          type.properties, chunk);
+
+        width += pixels + 6.0f;
+      }
+
+      pos.y += 46.0f;
+    }
+
+    if (m_displayCacheStats) {
+      uint32_t hitCount = m_cacheStats.requestCount - m_cacheStats.missCount;
+      uint32_t hitRate = (100 * hitCount) / std::max(m_cacheStats.requestCount, 1u);
+
+      std::string cacheStr = str::format("Cache: ", m_cacheStats.size >> 10, " kB (", hitRate, "% hit)");
+
+      renderer.drawText(14.0f,
+        { pos.x, pos.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        cacheStr);
+    }
+
+    return position;
+  }
+
+
+  void HudMemoryDetailsItem::uploadChunkData(HudRenderer& renderer) {
+    DxvkContext* context = renderer.getContext();
+
+    VkDeviceSize size = sizeof(uint32_t) * m_stats.pageMasks.size();
+
+    if (m_pageMaskBuffer == nullptr || m_pageMaskBuffer->info().size < size) {
+      DxvkBufferCreateInfo info = { };
+      info.size = std::max(VkDeviceSize(1u << 14),
+        (VkDeviceSize(-1) >> bit::lzcnt(size - 1u)) + 1u);
+      info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+      info.access = VK_ACCESS_SHADER_READ_BIT;
+      info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+      m_pageMaskBuffer = m_device->createBuffer(info,
+        VK_MEMORY_HEAP_DEVICE_LOCAL_BIT |
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+      DxvkBufferViewCreateInfo viewInfo = { };
+      viewInfo.format = VK_FORMAT_UNDEFINED;
+      viewInfo.rangeOffset = 0;
+      viewInfo.rangeLength = info.size;
+      viewInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+      m_pageMaskView = m_pageMaskBuffer->createView(viewInfo);
+    }
+
+    if (!m_stats.pageMasks.empty()) {
+      context->invalidateBuffer(m_pageMaskBuffer, m_pageMaskBuffer->allocateSlice());
+      std::memcpy(m_pageMaskBuffer->mapPtr(0), &m_stats.pageMasks.at(0), size);
+    }
+  }
+
+
+  void HudMemoryDetailsItem::drawChunk(
+          HudRenderer&      renderer,
+          HudPos            pos,
+          HudPos            size,
+    const VkMemoryType&     memoryType,
+    const DxvkMemoryChunkStats& stats) const {
+    DxvkContext* context = renderer.getContext();
+    VkExtent2D surfaceSize = renderer.surfaceSize();
+
+    static const DxvkInputAssemblyState iaState = {
+      VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+      VK_FALSE, 0 };
+
+    context->setInputAssemblyState(iaState);
+    context->bindResourceBufferView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, Rc<DxvkBufferView>(m_pageMaskView));
+
+    context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
+    context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fsBackground));
+
+    ShaderArgs args = { };
+    args.pos.x = pos.x - 1.0f;
+    args.pos.y = pos.y - 1.0f;
+    args.size.x = size.x + 2.0f;
+    args.size.y = size.y + 2.0f;
+    args.scale.x = renderer.scale() / std::max(float(surfaceSize.width), 1.0f);
+    args.scale.y = renderer.scale() / std::max(float(surfaceSize.height), 1.0f);
+    args.opacity = renderer.opacity();
+    args.color = 0xc0000000u;
+    args.maskIndex = stats.pageMaskOffset;
+    args.pageCount = stats.pageCount;
+
+    context->pushConstants(0, sizeof(args), &args);
+    context->draw(4, 1, 0, 0);
+
+    context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fsVisualize));
+
+    args.pos = pos;
+    args.size = size;
+
+    if (!(memoryType.propertyFlags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)) {
+      if (!stats.mapped)
+        args.color = 0xff202020u;
+      else if (memoryType.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+        args.color = 0xff208020u;
+      else
+        args.color = 0xff202080u;
+    } else if (stats.mapped) {
+      args.color = 0xff208080u;
+    } else {
+      args.color = 0xff804020u;
+    }
+
+    context->pushConstants(0, sizeof(args), &args);
+    context->draw(4, 1, 0, 0);
+  }
+
+
+
+
   HudCsThreadItem::HudCsThreadItem(const Rc<DxvkDevice>& device)
   : m_device(device) {
 
@@ -799,7 +1054,7 @@ namespace dxvk::hud {
         string = str::format(string, " (", computePercentage(), "%)");
 
       renderer.drawText(16.0f,
-        { position.x, renderer.surfaceSize().height / renderer.scale() - 20.0f },
+        { position.x, float(renderer.surfaceSize().height) / renderer.scale() - 20.0f },
         { 1.0f, 1.0f, 1.0f, 1.0f },
         string);
     }

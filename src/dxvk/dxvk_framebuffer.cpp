@@ -16,13 +16,13 @@ namespace dxvk {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_renderTargets.color[i].view != nullptr) {
         m_attachments[m_attachmentCount++] = i;
-        m_sampleCount = m_renderTargets.color[i].view->imageInfo().sampleCount;
+        m_sampleCount = m_renderTargets.color[i].view->image()->info().sampleCount;
       }
     }
 
     if (m_renderTargets.depth.view != nullptr) {
       m_attachments[m_attachmentCount++] = -1;
-      m_sampleCount = m_renderTargets.depth.view->imageInfo().sampleCount;
+      m_sampleCount = m_renderTargets.depth.view->image()->info().sampleCount;
     }
   }
 

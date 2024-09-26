@@ -302,7 +302,7 @@ namespace dxvk {
         return hr;
       }
 
-      frontendSwapChain = new DxgiSwapChain(this, presenter.ptr(), hWnd, &desc, &fsDesc);
+      frontendSwapChain = new DxgiSwapChain(this, presenter.ptr(), hWnd, &desc, &fsDesc, pDevice);
     } else {
       Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
       return DXGI_ERROR_UNSUPPORTED;

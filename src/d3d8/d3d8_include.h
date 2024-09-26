@@ -117,6 +117,8 @@ namespace d3d9 {
 #include "../util/log/log.h"
 #include "../util/log/log_debug.h"
 
+#include "../util/sync/sync_recursive.h"
+
 #include "../util/util_error.h"
 #include "../util/util_likely.h"
 #include "../util/util_string.h"
@@ -189,6 +191,10 @@ namespace d3d9 {
 
 #ifndef D3DDEVINFOID_VERTEXSTATS
 #define D3DDEVINFOID_VERTEXSTATS        6   // Aka D3DDEVINFOID_D3DVERTEXSTATS
+#endif
+
+#ifndef D3DPRESENT_RATE_UNLIMITED
+#define D3DPRESENT_RATE_UNLIMITED       0x7FFFFFFF
 #endif
 
 #else // _MSC_VER

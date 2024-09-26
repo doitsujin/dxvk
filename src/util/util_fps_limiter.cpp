@@ -17,7 +17,7 @@ namespace dxvk {
 
     if (!env.empty()) {
       try {
-        setTargetFrameRate(std::stod(env));
+        setTargetFrameRate(std::stod(env), 0);
         m_envOverride = true;
       } catch (const std::invalid_argument&) {
         // no-op
@@ -31,7 +31,7 @@ namespace dxvk {
   }
 
 
-  void FpsLimiter::setTargetFrameRate(double frameRate) {
+  void FpsLimiter::setTargetFrameRate(double frameRate, uint32_t maxLatency) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_envOverride) {
@@ -42,8 +42,11 @@ namespace dxvk {
       if (m_targetInterval != interval) {
         m_targetInterval = interval;
 
+        m_heuristicFrameTime = TimePoint();
         m_heuristicFrameCount = 0;
         m_heuristicEnable = false;
+
+        m_maxLatency = maxLatency;
       }
     }
   }
@@ -52,6 +55,7 @@ namespace dxvk {
   void FpsLimiter::delay() {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     auto interval = m_targetInterval;
+    auto latency = m_maxLatency;
 
     if (interval == TimerDuration::zero()) {
       m_nextFrame = TimePoint();
@@ -63,7 +67,7 @@ namespace dxvk {
     if (interval < TimerDuration::zero()) {
       interval = -interval;
 
-      if (!testRefreshHeuristic(interval, t1))
+      if (!testRefreshHeuristic(interval, t1, latency))
         return;
     }
 
@@ -80,38 +84,48 @@ namespace dxvk {
   }
 
 
-  bool FpsLimiter::testRefreshHeuristic(TimerDuration interval, TimePoint now) {
+  bool FpsLimiter::testRefreshHeuristic(TimerDuration interval, TimePoint now, uint32_t maxLatency) {
     if (m_heuristicEnable)
       return true;
 
-    // Use a sliding window to determine whether the current
-    // frame rate is higher than the targeted refresh rate
-    uint32_t heuristicWindow = m_heuristicFrameTimes.size();
-    auto windowStart = m_heuristicFrameTimes[m_heuristicFrameCount % heuristicWindow];
-    auto windowDuration = std::chrono::duration_cast<TimerDuration>(now - windowStart);
+    constexpr static uint32_t MinWindowSize = 8;
+    constexpr static uint32_t MaxWindowSize = 128;
 
-    m_heuristicFrameTimes[m_heuristicFrameCount % heuristicWindow] = now;
-    m_heuristicFrameCount += 1;
+    if (m_heuristicFrameCount >= MinWindowSize) {
+      TimerDuration windowTotalTime = now - m_heuristicFrameTime;
+      TimerDuration windowExpectedTime = m_heuristicFrameCount * interval;
 
-    // The first window of frames may contain faster frames as the
-    // internal swap chain queue fills up, so we should ignore it.
-    if (m_heuristicFrameCount < 2 * heuristicWindow)
-      return false;
+      uint32_t minFrameCount = m_heuristicFrameCount - 1;
+      uint32_t maxFrameCount = m_heuristicFrameCount + maxLatency;
 
-    // Test whether we should engage the frame rate limiter. It will
-    // stay enabled until the refresh rate or vsync enablement change.
-    m_heuristicEnable = (103 * windowDuration) < (100 * heuristicWindow) * interval;
+      // Enable frame rate limiter if frames have been delivered faster than
+      // the desired refresh rate even accounting for swap chain buffering.
+      if ((maxFrameCount * windowTotalTime) < (m_heuristicFrameCount * windowExpectedTime)) {
+        double got = (double(m_heuristicFrameCount) * double(TimerDuration::period::den))
+                   / (double(windowTotalTime.count()) * double(TimerDuration::period::num));
+        double refresh = double(TimerDuration::period::den) / (double(TimerDuration::period::num) * double(interval.count()));
 
-    if (m_heuristicEnable) {
-      double got = (double(heuristicWindow) * double(TimerDuration::period::den))
-                 / (double(windowDuration.count()) * double(TimerDuration::period::num));
-      double refresh = double(TimerDuration::period::den) / (double(TimerDuration::period::num) * double(interval.count()));
+        Logger::info(str::format("Detected frame rate (~", uint32_t(got), ") higher than selected refresh rate of ~",
+          uint32_t(refresh), " Hz.\n", "Engaging frame rate limiter."));
 
-      Logger::info(str::format("Detected frame rate (~", uint32_t(got), ") higher than selected refresh rate of ~",
-        uint32_t(refresh), " Hz.\n", "Engaging frame rate limiter."));
+        m_heuristicEnable = true;
+        return true;
+      }
+
+      // Reset heuristics if frames have been delivered slower than the refresh rate.
+      if (((minFrameCount * windowTotalTime) > (m_heuristicFrameCount * windowExpectedTime))
+       || (m_heuristicFrameCount >= MaxWindowSize)) {
+        m_heuristicFrameCount = 1;
+        m_heuristicFrameTime = now;
+        return false;
+      }
     }
 
-    return m_heuristicEnable;
+    if (!m_heuristicFrameCount)
+      m_heuristicFrameTime = now;
+
+    m_heuristicFrameCount += 1;
+    return false;
   }
 
 }

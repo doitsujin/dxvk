@@ -45,7 +45,7 @@ namespace dxvk {
         RecreateSwapChain();
     }
 
-    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount)))
+    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags)))
       throw DxvkError("D3D9: Failed to create swapchain backbuffers");
 
     CreateBlitter();
@@ -302,6 +302,7 @@ namespace dxvk {
       resolveInfo.mipLevels     = 1;
       resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
                                 | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                                 | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
       resolveInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                                 | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -357,6 +358,7 @@ namespace dxvk {
       blitCreateInfo.mipLevels     = 1;
       blitCreateInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
                                    | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                   | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                                    | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
       blitCreateInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                                    | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -627,7 +629,7 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    hr = CreateBackBuffers(m_presentParams.BackBufferCount);
+    hr = CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags);
     if (FAILED(hr))
       return hr;
 
@@ -799,11 +801,14 @@ namespace dxvk {
 
       VkResult status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
 
-      while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+      while (status != VK_SUCCESS) {
         RecreateSwapChain();
         
         info = m_wctx->presenter->info();
         status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
+
+        if (status == VK_SUBOPTIMAL_KHR)
+          break;
       }
 
       if (m_hdrMetadata && m_dirtyHdrMetadata) {
@@ -978,12 +983,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < info.imageCount; i++) {
       VkImage imageHandle = m_wctx->presenter->getImage(i).image;
       
-      Rc<DxvkImage> image = new DxvkImage(
-        m_device.ptr(), imageInfo, imageHandle,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      m_wctx->imageViews[i] = new DxvkImageView(
-        m_device->vkd(), image, viewInfo);
+      Rc<DxvkImage> image = m_device->importImage(imageInfo,
+        imageHandle, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      m_wctx->imageViews[i] = image->createView(viewInfo);
     }
   }
 
@@ -1013,7 +1015,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
+  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers, DWORD Flags) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     DestroyBackBuffers();
@@ -1038,8 +1040,9 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
-    desc.IsLockable         = TRUE;
+    // we cannot respect D3DPRESENTFLAG_LOCKABLE_BACKBUFFER here because
+    // we might need to lock for the BlitGDI fallback path
+    desc.IsLockable         = true;
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D9Surface* surface;
@@ -1094,6 +1097,8 @@ namespace dxvk {
     if (m_hud != nullptr) {
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
+      m_hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
+      m_hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 
 #ifdef D3D9_ALLOW_UNMAPPING
       m_hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
@@ -1120,7 +1125,7 @@ namespace dxvk {
     if (SyncInterval && frameRateOption == 0.0)
       frameRate = -m_displayRefreshRate / double(SyncInterval);
 
-    m_wctx->presenter->setFrameRateLimit(frameRate);
+    m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
   }
 
 

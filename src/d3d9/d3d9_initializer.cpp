@@ -44,11 +44,21 @@ namespace dxvk {
     if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)
       return;
 
+    void* mapPtr = nullptr;
+
+    if (pTexture->Desc()->Pool != D3DPOOL_DEFAULT) {
+      mapPtr = pTexture->GetData(0);
+      if (mapPtr == nullptr)
+        throw DxvkError("D3D9: InitTexture: map failed");
+    }
+
     if (pTexture->GetImage() != nullptr)
       InitDeviceLocalTexture(pTexture);
 
-    if (pTexture->Desc()->Pool != D3DPOOL_DEFAULT)
-      InitHostVisibleTexture(pTexture, pInitialData);
+    if (mapPtr != nullptr) {
+      InitHostVisibleTexture(pTexture, pInitialData, mapPtr);
+      pTexture->UnmapData();
+    }
   }
 
 
@@ -109,11 +119,11 @@ namespace dxvk {
 
   void D3D9Initializer::InitHostVisibleTexture(
           D3D9CommonTexture* pTexture,
-          void*              pInitialData) {
+          void*              pInitialData,
+          void*              mapPtr) {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    void* mapPtr = pTexture->GetData(0);
     if (pInitialData) {
       // Initial data is only supported for textures with 1 subresource
       VkExtent3D mipExtent = pTexture->GetExtentMip(0);
@@ -141,7 +151,6 @@ namespace dxvk {
         mapPtr, 0,
         pTexture->GetTotalSize());
     }
-    pTexture->UnmapData();
   }
 
 

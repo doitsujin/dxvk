@@ -249,21 +249,6 @@ namespace dxvk {
     void next();
     
     /**
-     * \brief Frees buffer slice
-     * 
-     * After the command buffer execution has finished,
-     * the given buffer slice will be released to the
-     * virtual buffer object so that it can be reused.
-     * \param [in] buffer The virtual buffer object
-     * \param [in] slice The buffer slice handle
-     */
-    void freeBufferSlice(
-      const Rc<DxvkBuffer>&           buffer,
-      const DxvkBufferSliceHandle&    slice) {
-      m_bufferTracker.freeBufferSlice(buffer, slice);
-    }
-    
-    /**
      * \brief Adds a resource to track
      * 
      * Adds a resource to the internal resource tracker.
@@ -271,11 +256,31 @@ namespace dxvk {
      * the device can guarantee that the submission has
      * completed.
      */
+    template<DxvkAccess Access>
+    void trackResource(Rc<DxvkResourceAllocation>&& rc) {
+      m_resources.trackResource(DxvkLifetime<DxvkResourceAllocation>(std::move(rc), Access));
+    }
+
+    template<DxvkAccess Access>
+    void trackResource(const Rc<DxvkResourceAllocation>& rc) {
+      m_resources.trackResource(DxvkLifetime<DxvkResourceAllocation>(rc.ptr(), Access));
+    }
+
+    template<DxvkAccess Access, typename T>
+    void trackResource(Rc<T>&& rc) {
+      m_resources.trackResource(DxvkLifetime<DxvkResource>(std::move(rc), Access));
+    }
+
     template<DxvkAccess Access, typename T>
     void trackResource(const Rc<T>& rc) {
-      m_resources.trackResource<Access>(rc.ptr());
+      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc.ptr(), Access));
     }
-    
+
+    template<DxvkAccess Access, typename T>
+    void trackResource(T* rc) {
+      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
+    }
+
     /**
      * \brief Tracks a GPU event
      * 
@@ -323,7 +328,7 @@ namespace dxvk {
      * \brief Notifies resources and signals
      */
     void notifyObjects() {
-      m_resources.notify();
+      m_resources.reset();
       m_signalTracker.notify();
     }
 
@@ -1000,21 +1005,21 @@ namespace dxvk {
 
     void bindBufferMemory(
       const DxvkSparseBufferBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindBufferMemory(key, memory);
     }
 
 
     void bindImageMemory(
       const DxvkSparseImageBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindImageMemory(key, memory);
     }
 
 
     void bindImageOpaqueMemory(
       const DxvkSparseImageOpaqueBindKey& key,
-      const DxvkSparsePageHandle&   memory) {
+      const DxvkResourceMemoryInfo& memory) {
       getSparseBindSubmission().bindImageOpaqueMemory(key, memory);
     }
 
@@ -1048,7 +1053,6 @@ namespace dxvk {
     DxvkSignalTracker         m_signalTracker;
     DxvkGpuEventTracker       m_gpuEventTracker;
     DxvkGpuQueryTracker       m_gpuQueryTracker;
-    DxvkBufferTracker         m_bufferTracker;
     DxvkStatCounters          m_statCounters;
 
     DxvkCommandSubmission     m_commandSubmission;

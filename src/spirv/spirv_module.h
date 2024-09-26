@@ -1,5 +1,7 @@
 #pragma once
 
+#include <queue>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "spirv_code_buffer.h"
@@ -59,7 +61,7 @@ namespace dxvk {
 
     ~SpirvModule();
     
-    SpirvCodeBuffer compile() const;
+    SpirvCodeBuffer compile();
 
     size_t getInsertionPtr() {
       return m_code.getInsertionPtr();
@@ -1325,6 +1327,10 @@ namespace dxvk {
 
     bool isInterfaceVar(
             spv::StorageClass       sclass) const;
+
+    void classifyBlocks(
+            std::unordered_set<uint32_t>& reachableBlocks,
+            std::unordered_set<uint32_t>& mergeBlocks);
 
   };
   

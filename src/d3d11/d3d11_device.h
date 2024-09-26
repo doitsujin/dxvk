@@ -434,6 +434,18 @@ namespace dxvk {
     
     static DxvkDeviceFeatures GetDeviceFeatures(
       const Rc<DxvkAdapter>&  Adapter);
+
+    DxvkBarrierControlFlags GetOptionsBarrierControlFlags() {
+      DxvkBarrierControlFlags barrierControl;
+
+      if (m_d3d11Options.relaxedBarriers)
+        barrierControl.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
+
+      if (m_d3d11Options.ignoreGraphicsBarriers)
+        barrierControl.set(DxvkBarrierControl::IgnoreGraphicsBarriers);
+
+      return barrierControl;
+    }
     
   private:
     

@@ -9,8 +9,6 @@
 
 namespace dxvk {
 
-  class DxvkImageView;
-  
   /**
    * \brief Image create info
    * 
@@ -19,41 +17,41 @@ namespace dxvk {
    */
   struct DxvkImageCreateInfo {
     /// Image dimension
-    VkImageType type;
+    VkImageType type = VK_IMAGE_TYPE_2D;
     
     /// Pixel format
-    VkFormat format;
+    VkFormat format = VK_FORMAT_UNDEFINED;
     
     /// Flags
-    VkImageCreateFlags flags;
+    VkImageCreateFlags flags = 0u;
     
     /// Sample count for MSAA
-    VkSampleCountFlagBits sampleCount;
+    VkSampleCountFlagBits sampleCount = VkSampleCountFlagBits(0u);
     
     /// Image size, in texels
-    VkExtent3D extent;
+    VkExtent3D extent = { };
     
     /// Number of image array layers
-    uint32_t numLayers;
+    uint32_t numLayers = 0u;
     
     /// Number of mip levels
-    uint32_t mipLevels;
+    uint32_t mipLevels = 0u;
     
     /// Image usage flags
-    VkImageUsageFlags usage;
+    VkImageUsageFlags usage = 0u;
     
     /// Pipeline stages that can access
     /// the contents of the image
-    VkPipelineStageFlags stages;
+    VkPipelineStageFlags stages = 0u;
     
     /// Allowed access pattern
-    VkAccessFlags access;
+    VkAccessFlags access = 0u;
     
     /// Image tiling mode
-    VkImageTiling tiling;
+    VkImageTiling tiling = VK_IMAGE_TILING_OPTIMAL;
     
     /// Common image layout
-    VkImageLayout layout;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     // Initial image layout
     VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -64,11 +62,11 @@ namespace dxvk {
 
     // Image view formats that can
     // be used with this image
-    uint32_t        viewFormatCount = 0;
-    const VkFormat* viewFormats     = nullptr;
+    uint32_t viewFormatCount = 0;
+    const VkFormat* viewFormats = nullptr;
 
     // Shared handle info
-    DxvkSharedHandleInfo sharing;
+    DxvkSharedHandleInfo sharing = { };
   };
   
   
@@ -104,27 +102,215 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY,
     };
   };
-
-
+  
+  
   /**
-   * \brief Stores an image and its memory slice.
+   * \brief Virtual image view
+   *
+   * Stores views for a number of different view types
+   * that the defined view is compatible with.
    */
-  struct DxvkPhysicalImage {
-    VkImage     image = VK_NULL_HANDLE;
-    DxvkMemory  memory;
+  class DxvkImageView {
+    constexpr static uint32_t ViewCount = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY + 1;
+  public:
+
+    DxvkImageView(
+            DxvkImage*                image,
+      const DxvkImageViewKey&         key);
+
+    ~DxvkImageView();
+
+    void incRef();
+    void decRef();
+
+    /**
+     * \brief Image view handle for the default type
+     *
+     * The default view type is guaranteed to be
+     * supported by the image view, and should be
+     * preferred over picking a different type.
+     * \returns Image view handle
+     */
+    VkImageView handle() {
+      return handle(m_key.viewType);
+    }
+
+    /**
+     * \brief Image view handle for a given view type
+     *
+     * If the view does not support the requested image
+     * view type, \c VK_NULL_HANDLE will be returned.
+     * \param [in] viewType The requested view type
+     * \returns The image view handle
+     */
+    VkImageView handle(VkImageViewType viewType);
+
+    /**
+     * \brief Image view type
+     *
+     * Convenience method to query the view type
+     * in order to check for resource compatibility.
+     * \returns Image view type
+     */
+    VkImageViewType type() const {
+      return m_key.viewType;
+    }
+
+    /**
+     * \brief Image view properties
+     * \returns Image view properties
+     */
+    DxvkImageViewCreateInfo info() const {
+      DxvkImageViewCreateInfo info = { };
+      info.type = m_key.viewType;
+      info.format = m_key.format;
+      info.usage = m_key.usage;
+      info.aspect = m_key.aspects;
+      info.minLevel = m_key.mipIndex;
+      info.numLevels = m_key.mipCount;
+      info.minLayer = m_key.layerIndex;
+      info.numLayers = m_key.layerCount;
+      info.swizzle.r = VkComponentSwizzle((m_key.packedSwizzle >>  0) & 0xf);
+      info.swizzle.g = VkComponentSwizzle((m_key.packedSwizzle >>  4) & 0xf);
+      info.swizzle.b = VkComponentSwizzle((m_key.packedSwizzle >>  8) & 0xf);
+      info.swizzle.a = VkComponentSwizzle((m_key.packedSwizzle >> 12) & 0xf);
+      return info;
+    }
+
+    /**
+     * \brief Image object
+     * \returns Image object
+     */
+    DxvkImage* image() const {
+      return m_image;
+    }
+
+    /**
+     * \brief View format info
+     * \returns View format info
+     */
+    const DxvkFormatInfo* formatInfo() const {
+      return lookupFormatInfo(m_key.format);
+    }
+
+    /**
+     * \brief Mip level size
+     *
+     * Computes the mip level size relative to
+     * the first mip level that the view includes.
+     * \param [in] level Mip level
+     * \returns Size of that level
+     */
+    VkExtent3D mipLevelExtent(uint32_t level) const;
+
+    /**
+     * \brief View subresource range
+     *
+     * Returns the subresource range from the image
+     * description. For 2D views of 3D images, this
+     * will return the viewed 3D slices.
+     * \returns View subresource range
+     */
+    VkImageSubresourceRange subresources() const {
+      VkImageSubresourceRange result;
+      result.aspectMask     = m_key.aspects;
+      result.baseMipLevel   = m_key.mipIndex;
+      result.levelCount     = m_key.mipCount;
+      result.baseArrayLayer = m_key.layerIndex;
+      result.layerCount     = m_key.layerCount;
+      return result;
+    }
+
+    /**
+     * \brief Actual image subresource range
+     *
+     * Handles 3D images correctly in that it only
+     * returns one single array layer. Use this for
+     * barriers.
+     * \returns Image subresource range
+     */
+    VkImageSubresourceRange imageSubresources() const;
+
+    /**
+     * \brief Picks an image layout
+     * \see DxvkImage::pickLayout
+     */
+    VkImageLayout pickLayout(VkImageLayout layout) const;
+
+    /**
+     * \brief Retrieves descriptor info
+     * 
+     * \param [in] type Exact view type
+     * \param [in] layout Image layout
+     * \returns Image descriptor
+     */
+    DxvkDescriptorInfo getDescriptor(VkImageViewType type, VkImageLayout layout) {
+      DxvkDescriptorInfo result;
+      result.image.sampler = VK_NULL_HANDLE;
+      result.image.imageView = handle(type);
+      result.image.imageLayout = layout;
+      return result;
+    }
+
+    /**
+     * \brief Checks whether this view matches another
+     *
+     * \param [in] view The other view to check
+     * \returns \c true if the two views have the same subresources
+     */
+    bool matchesView(const Rc<DxvkImageView>& view) const {
+      if (this == view.ptr())
+        return true;
+
+      return this->image()        == view->image()
+          && this->subresources() == view->subresources()
+          && this->info().type    == view->info().type
+          && this->info().format  == view->info().format;
+    }
+
+    /**
+     * \brief Checks whether this view overlaps with another one
+     *
+     * Two views overlap if they were created for the same
+     * image and have at least one subresource in common.
+     * \param [in] view The other view to check
+     * \returns \c true if the two views overlap
+     */
+    bool checkSubresourceOverlap(const Rc<DxvkImageView>& view) const {
+      if (likely(m_image != view->m_image))
+        return false;
+
+      return vk::checkSubresourceRangeOverlap(
+        this->imageSubresources(),
+        view->imageSubresources());
+    }
+
+  private:
+
+    DxvkImage*              m_image     = nullptr;
+    DxvkImageViewKey        m_key       = { };
+
+    uint32_t                m_version   = 0u;
+
+    std::array<VkImageView, ViewCount> m_views = { };
+
+    VkImageView createView(VkImageViewType type) const;
+
+    void updateViews();
+
   };
-  
-  
+
+
   /**
-   * \brief DXVK image
+   * \brief Virtual image resource
    * 
    * An image resource consisting of various subresources.
    * Can be accessed by the host if allocated on a suitable
    * memory type and if created with the linear tiling option.
    */
   class DxvkImage : public DxvkPagedResource {
+    friend DxvkImageView;
     friend class DxvkContext;
-    friend class DxvkImageView;
   public:
     
     DxvkImage(
@@ -143,8 +329,9 @@ namespace dxvk {
      */
     DxvkImage(
             DxvkDevice*           device,
-      const DxvkImageCreateInfo&  info,
-            VkImage               image,
+      const DxvkImageCreateInfo&  createInfo,
+            VkImage               imageHandle,
+            DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
     
     /**
@@ -162,7 +349,7 @@ namespace dxvk {
      * \returns Image handle
      */
     VkImage handle() const {
-      return m_image.image;
+      return m_imageInfo.image;
     }
 
     /**
@@ -183,9 +370,19 @@ namespace dxvk {
      * \returns Vulkan memory flags
      */
     VkMemoryPropertyFlags memFlags() const {
-      return m_memFlags;
+      return m_properties;
     }
     
+    /**
+     * \brief Queries shader stages that can access this image
+     *
+     * Derived from the pipeline stage mask passed in during creation.
+     * \returns Shader stages that may access this image
+     */
+    VkShaderStageFlags getShaderStages() const {
+      return m_shaderStages;
+    }
+
     /**
      * \brief Map pointer
      * 
@@ -196,7 +393,7 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_image.memory.mapPtr(offset);
+      return reinterpret_cast<char*>(m_imageInfo.mapPtr) + offset;
     }
     
     /**
@@ -225,23 +422,6 @@ namespace dxvk {
      */
     VkExtent3D mipLevelExtent(uint32_t level, VkImageAspectFlags aspect) const {
       return util::computeMipLevelExtent(m_info.extent, level, m_info.format, aspect);
-    }
-    
-    /**
-     * \brief Queries memory layout of a subresource
-     * 
-     * Can be used to retrieve the exact pointer to a
-     * subresource of a mapped image with linear tiling.
-     * \param [in] subresource The image subresource
-     * \returns Memory layout of that subresource
-     */
-    VkSubresourceLayout querySubresourceLayout(
-      const VkImageSubresource& subresource) const {
-      VkSubresourceLayout result;
-      m_vkd->vkGetImageSubresourceLayout(
-        m_vkd->device(), m_image.image,
-        &subresource, &result);
-      return result;
     }
     
     /**
@@ -306,8 +486,8 @@ namespace dxvk {
      * \brief Memory object
      * \returns Backing memory
      */
-    const DxvkMemory& memory() const {
-      return m_image.memory;
+    DxvkResourceMemoryInfo getMemoryInfo() const {
+      return m_storage->getMemoryInfo();
     }
 
     /**
@@ -326,239 +506,156 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries memory layout of a subresource
+     *
+     * Can be used to retrieve the exact pointer to a
+     * subresource of a mapped image with linear tiling.
+     * \param [in] subresource The image subresource
+     * \returns Memory layout of that subresource
+     */
+    VkSubresourceLayout querySubresourceLayout(
+      const VkImageSubresource& subresource) const;
+
+    /**
      * \brief Create a new shared handle to dedicated memory backing the image
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
     HANDLE sharedHandle() const;
-    
-  private:
-    
-    Rc<vk::DeviceFn>      m_vkd;
-    const DxvkDevice*     m_device;
-    DxvkImageCreateInfo   m_info;
-    VkMemoryPropertyFlags m_memFlags;
-    DxvkPhysicalImage     m_image;
 
-    bool m_shared = false;
+    /**
+     * \brief Retrives sparse page table
+     * \returns Page table
+     */
+    DxvkSparsePageTable* getSparsePageTable();
 
-    small_vector<VkFormat, 4> m_viewFormats;
-    
-    bool canShareImage(const VkImageCreateInfo&  createInfo, const DxvkSharedHandleInfo& sharingInfo) const;
-
-  };
-  
-  
-  /**
-   * \brief DXVK image view
-   */
-  class DxvkImageView : public DxvkResource {
-    friend class DxvkImage;
-    constexpr static uint32_t ViewCount = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY + 1;
-  public:
-    
-    DxvkImageView(
-      const Rc<vk::DeviceFn>&         vkd,
-      const Rc<DxvkImage>&            image,
-      const DxvkImageViewCreateInfo&  info);
-    
-    ~DxvkImageView();
-    
     /**
-     * \brief Image view handle for the default type
-     * 
-     * The default view type is guaranteed to be
-     * supported by the image view, and should be
-     * preferred over picking a different type.
-     * \returns Image view handle
-     */
-    VkImageView handle() const {
-      return handle(m_info.type);
-    }
-    
-    /**
-     * \brief Image view handle for a given view type
-     * 
-     * If the view does not support the requested image
-     * view type, \c VK_NULL_HANDLE will be returned.
-     * \param [in] viewType The requested view type
-     * \returns The image view handle
-     */
-    VkImageView handle(VkImageViewType viewType) const {
-      if (unlikely(viewType == VK_IMAGE_VIEW_TYPE_MAX_ENUM))
-        viewType = m_info.type;
-      return m_views[viewType];
-    }
-    
-    /**
-     * \brief Image view type
-     * 
-     * Convenience method to query the view type
-     * in order to check for resource compatibility.
-     * \returns Image view type
-     */
-    VkImageViewType type() const {
-      return m_info.type;
-    }
-    
-    /**
-     * \brief Image view properties
-     * \returns Image view properties
-     */
-    const DxvkImageViewCreateInfo& info() const {
-      return m_info;
-    }
-    
-    /**
-     * \brief Image handle
-     * \returns Image handle
-     */
-    VkImage imageHandle() const {
-      return m_image->handle();
-    }
-    
-    /**
-     * \brief Image properties
-     * \returns Image properties
-     */
-    const DxvkImageCreateInfo& imageInfo() const {
-      return m_image->info();
-    }
-    
-    /**
-     * \brief Image object
-     * \returns Image object
-     */
-    const Rc<DxvkImage>& image() const {
-      return m_image;
-    }
-    
-    /**
-     * \brief View format info
-     * \returns View format info
-     */
-    const DxvkFormatInfo* formatInfo() const {
-      return lookupFormatInfo(m_info.format);
-    }
-    
-    /**
-     * \brief Mip level size
-     * 
-     * Computes the mip level size relative to
-     * the first mip level that the view includes.
-     * \param [in] level Mip level
-     * \returns Size of that level
-     */
-    VkExtent3D mipLevelExtent(uint32_t level) const {
-      return m_image->mipLevelExtent(level + m_info.minLevel, m_info.aspect);
-    }
-    
-    /**
-     * \brief View subresource range
+     * \brief Creates image resource
      *
-     * Returns the subresource range from the image
-     * description. For 2D views of 3D images, this
-     * will return the viewed 3D slices.
-     * \returns View subresource range
+     * The returned image can be used as backing storage.
+     * \returns New underlying image resource
      */
-    VkImageSubresourceRange subresources() const {
-      VkImageSubresourceRange result;
-      result.aspectMask     = m_info.aspect;
-      result.baseMipLevel   = m_info.minLevel;
-      result.levelCount     = m_info.numLevels;
-      result.baseArrayLayer = m_info.minLayer;
-      result.layerCount     = m_info.numLayers;
-      return result;
-    }
+    Rc<DxvkResourceAllocation> createResource();
 
     /**
-     * \brief Actual image subresource range
+     * \brief Assigns backing storage to the image
      *
-     * Handles 3D images correctly in that it only
-     * returns one single array layer. Use this for
-     * barriers.
-     * \returns Image subresource range
+     * Implicitly invalidates all image views.
+     * \param [in] resource New backing storage
+     * \returns Previous backing storage
      */
-    VkImageSubresourceRange imageSubresources() const {
-      VkImageSubresourceRange result;
-      result.aspectMask     = m_info.aspect;
-      result.baseMipLevel   = m_info.minLevel;
-      result.levelCount     = m_info.numLevels;
-      if (likely(m_image->info().type != VK_IMAGE_TYPE_3D)) {
-        result.baseArrayLayer = m_info.minLayer;
-        result.layerCount     = m_info.numLayers;
-      } else {
-        result.baseArrayLayer = 0;
-        result.layerCount     = 1;
-      }
-      return result;
-    }
-    
-    /**
-     * \brief Picks an image layout
-     * \see DxvkImage::pickLayout
-     */
-    VkImageLayout pickLayout(VkImageLayout layout) const {
-      return m_image->pickLayout(layout);
+    Rc<DxvkResourceAllocation> assignResource(Rc<DxvkResourceAllocation>&& resource) {
+      Rc<DxvkResourceAllocation> old = std::move(m_storage);
+
+      m_storage = std::move(resource);
+      m_imageInfo = m_storage->getImageInfo();
+
+      m_version += 1u;
+      return old;
     }
 
     /**
-     * \brief Retrieves descriptor info
-     * 
-     * \param [in] type Exact view type
-     * \param [in] layout Image layout
-     * \returns Image descriptor
+     * \brief Retrieves current backing storage
+     * \returns Backing storage for this image
      */
-    DxvkDescriptorInfo getDescriptor(VkImageViewType type, VkImageLayout layout) const {
-      DxvkDescriptorInfo result;
-      result.image.sampler      = VK_NULL_HANDLE;
-      result.image.imageView    = handle(type);
-      result.image.imageLayout  = layout;
-      return result;
+    Rc<DxvkResourceAllocation> getAllocation() const {
+      return m_storage;
     }
 
     /**
-     * \brief Checks whether this view matches another
+     * \brief Creates or retrieves an image view
      *
-     * \param [in] view The other view to check
-     * \returns \c true if the two views have the same subresources
+     * \param [in] info Image view create info
+     * \returns Newly created image view
      */
-    bool matchesView(const Rc<DxvkImageView>& view) const {
-      if (this == view.ptr())
-        return true;
-
-      return this->image()        == view->image()
-          && this->subresources() == view->subresources()
-          && this->info().type    == view->info().type
-          && this->info().format  == view->info().format;
-    }
-
-    /**
-     * \brief Checks whether this view overlaps with another one
-     *
-     * Two views overlap if they were created for the same
-     * image and have at least one subresource in common.
-     * \param [in] view The other view to check
-     * \returns \c true if the two views overlap
-     */
-    bool checkSubresourceOverlap(const Rc<DxvkImageView>& view) const {
-      if (likely(m_image != view->m_image))
-        return false;
-
-      return vk::checkSubresourceRangeOverlap(
-        this->imageSubresources(),
-        view->imageSubresources());
-    }
+    Rc<DxvkImageView> createView(
+      const DxvkImageViewCreateInfo& info);
 
   private:
-    
-    Rc<vk::DeviceFn>  m_vkd;
-    Rc<DxvkImage>     m_image;
-    
-    DxvkImageViewCreateInfo m_info;
-    VkImageView             m_views[ViewCount];
 
-    void createView(VkImageViewType type, uint32_t numLayers);
-    
+    Rc<vk::DeviceFn>            m_vkd;
+    DxvkMemoryAllocator*        m_allocator   = nullptr;
+    VkMemoryPropertyFlags       m_properties  = 0u;
+    VkShaderStageFlags          m_shaderStages = 0u;
+
+    DxvkImageCreateInfo         m_info        = { };
+
+    uint32_t                    m_version     = 0u;
+    VkBool32                    m_shared      = VK_FALSE;
+
+    DxvkResourceImageInfo       m_imageInfo   = { };
+
+    Rc<DxvkResourceAllocation>  m_storage     = nullptr;
+
+    small_vector<VkFormat, 4>   m_viewFormats;
+
+    dxvk::mutex                 m_viewMutex;
+    std::unordered_map<DxvkImageViewKey,
+      DxvkImageView, DxvkHash, DxvkEq> m_views;
+
+    VkImageCreateInfo getImageCreateInfo() const;
+
+    void copyFormatList(
+            uint32_t              formatCount,
+      const VkFormat*             formats);
+
+    bool canShareImage(
+            DxvkDevice*           device,
+      const VkImageCreateInfo&    createInfo,
+      const DxvkSharedHandleInfo& sharingInfo) const;
+
   };
-  
+
+
+
+
+  inline void DxvkImageView::incRef() {
+    m_image->incRef();
+  }
+
+
+  inline void DxvkImageView::decRef() {
+    m_image->decRef();
+  }
+
+
+  inline VkImageSubresourceRange DxvkImageView::imageSubresources() const {
+    VkImageSubresourceRange result = { };
+    result.aspectMask     = m_key.aspects;
+    result.baseMipLevel   = m_key.mipIndex;
+    result.levelCount     = m_key.mipCount;
+
+    if (likely(m_image->info().type != VK_IMAGE_TYPE_3D)) {
+      result.baseArrayLayer = m_key.layerIndex;
+      result.layerCount     = m_key.layerCount;
+    } else {
+      result.baseArrayLayer = 0;
+      result.layerCount     = 1;
+    }
+
+    return result;
+  }
+
+
+  inline VkExtent3D DxvkImageView::mipLevelExtent(uint32_t level) const {
+    return m_image->mipLevelExtent(level + m_key.mipIndex, m_key.aspects);
+  }
+
+
+  inline VkImageLayout DxvkImageView::pickLayout(VkImageLayout layout) const {
+    return m_image->pickLayout(layout);
+  }
+
+
+  inline VkImageView DxvkImageView::handle(VkImageViewType viewType) {
+    viewType = viewType != VK_IMAGE_VIEW_TYPE_MAX_ENUM ? viewType : m_key.viewType;
+
+    if (unlikely(m_version < m_image->m_version))
+      updateViews();
+
+    if (unlikely(!m_views[viewType]))
+      m_views[viewType] = createView(viewType);
+
+    return m_views[viewType];
+  }
+
 }

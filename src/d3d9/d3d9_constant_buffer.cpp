@@ -42,22 +42,20 @@ namespace dxvk {
 
 
   void* D3D9ConstantBuffer::Alloc(VkDeviceSize size) {
-    if (unlikely(m_buffer == nullptr)) {
-      this->createBuffer();
-      m_slice = m_buffer->getSliceHandle();
-    }
+    if (unlikely(m_buffer == nullptr))
+      m_slice = this->createBuffer();
 
     size = align(size, m_align);
 
     if (unlikely(m_offset + size > m_size)) {
-      m_slice = m_buffer->allocSlice();
+      m_slice = m_buffer->allocateSlice();
       m_offset = 0;
 
       m_device->EmitCs([
         cBuffer = m_buffer,
         cSlice  = m_slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
+      ] (DxvkContext* ctx) mutable {
+        ctx->invalidateBuffer(cBuffer, std::move(cSlice));
       });
     }
 
@@ -70,7 +68,7 @@ namespace dxvk {
       ctx->bindUniformBufferRange(cStages, cBinding, cOffset, cLength);
     });
 
-    void* mapPtr = reinterpret_cast<char*>(m_slice.mapPtr) + m_offset;
+    void* mapPtr = reinterpret_cast<char*>(m_slice->mapPtr()) + m_offset;
     m_offset += size;
     return mapPtr;
   }
@@ -78,22 +76,22 @@ namespace dxvk {
 
   void* D3D9ConstantBuffer::AllocSlice() {
     if (unlikely(m_buffer == nullptr))
-      this->createBuffer();
-
-    m_slice = m_buffer->allocSlice();
+      m_slice = this->createBuffer();
+    else
+      m_slice = m_buffer->allocateSlice();
 
     m_device->EmitCs([
       cBuffer = m_buffer,
       cSlice  = m_slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
+    ] (DxvkContext* ctx) mutable {
+      ctx->invalidateBuffer(cBuffer, std::move(cSlice));
     });
 
-    return m_slice.mapPtr;
+    return m_slice->mapPtr();
   }
 
 
-  void D3D9ConstantBuffer::createBuffer() {
+  Rc<DxvkResourceAllocation> D3D9ConstantBuffer::createBuffer() {
     auto options = m_device->GetOptions();
 
     // Buffer usage and access flags don't make much of a difference
@@ -125,6 +123,8 @@ namespace dxvk {
     ] (DxvkContext* ctx) mutable {
       ctx->bindUniformBuffer(cStages, cBinding, std::move(cSlice));
     });
+
+    return m_buffer->getAllocation();
   }
 
 

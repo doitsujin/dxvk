@@ -9,171 +9,187 @@ namespace dxvk {
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(device->vkd()), m_device(device), m_info(createInfo), m_memFlags(memFlags) {
+  : m_vkd           (device->vkd()),
+    m_allocator     (&memAlloc),
+    m_properties    (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_info          (createInfo) {
+    copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
-    // Copy the compatible view formats to a persistent array
-    m_viewFormats.resize(createInfo.viewFormatCount);
-    for (uint32_t i = 0; i < createInfo.viewFormatCount; i++)
-      m_viewFormats[i] = createInfo.viewFormats[i];
-    m_info.viewFormats = m_viewFormats.data();
+    // Determine whether the image is shareable before creating the resource
+    VkImageCreateInfo imageInfo = getImageCreateInfo();
+    m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
-    // If defined, we should provide a format list, which
-    // allows some drivers to enable image compression
-    VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
-    formatList.viewFormatCount = createInfo.viewFormatCount;
-    formatList.pViewFormats    = createInfo.viewFormats;
-
-    VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
-    externalInfo.handleTypes   = createInfo.sharing.type;
-
-    VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, &formatList };
-    info.flags                 = createInfo.flags;
-    info.imageType             = createInfo.type;
-    info.format                = createInfo.format;
-    info.extent                = createInfo.extent;
-    info.mipLevels             = createInfo.mipLevels;
-    info.arrayLayers           = createInfo.numLayers;
-    info.samples               = createInfo.sampleCount;
-    info.tiling                = createInfo.tiling;
-    info.usage                 = createInfo.usage;
-    info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-    info.initialLayout         = createInfo.initialLayout;
-
-    if ((m_shared = canShareImage(info, createInfo.sharing)))
-      externalInfo.pNext = std::exchange(info.pNext, &externalInfo);
-
-    if (m_vkd->vkCreateImage(m_vkd->device(), &info, nullptr, &m_image.image)) {
-      throw DxvkError(str::format(
-        "DxvkImage: Failed to create image:",
-        "\n  Type:            ", info.imageType,
-        "\n  Format:          ", info.format,
-        "\n  Flags:           ", info.flags,
-        "\n  Extent:          ", "(", info.extent.width,
-                                 ",", info.extent.height,
-                                 ",", info.extent.depth, ")",
-        "\n  Mip levels:      ", info.mipLevels,
-        "\n  Array layers:    ", info.arrayLayers,
-        "\n  Samples:         ", info.samples,
-        "\n  Usage:           ", info.usage,
-        "\n  Tiling:          ", info.tiling));
-    }
-
-    VkImageMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
-    memoryRequirementInfo.image = m_image.image;
-
-    if (!(info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
-      // Get memory requirements for the image and ask driver
-      // whether we need to use a dedicated allocation.
-      DxvkMemoryRequirements memoryRequirements = { };
-      memoryRequirements.tiling = info.tiling;
-      memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
-      memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
-
-      m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
-        &memoryRequirementInfo, &memoryRequirements.core);
-
-      // Fill in desired memory properties
-      DxvkMemoryProperties memoryProperties = { };
-      memoryProperties.flags = m_memFlags;
-
-      if (m_shared) {
-        memoryRequirements.dedicated.prefersDedicatedAllocation = VK_TRUE;
-        memoryRequirements.dedicated.requiresDedicatedAllocation = VK_TRUE;
-
-        if (createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
-          memoryProperties.sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
-          memoryProperties.sharedExport.handleTypes = createInfo.sharing.type;
-        }
-
-        if (createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
-          memoryProperties.sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-          memoryProperties.sharedImportWin32.handleType = createInfo.sharing.type;
-          memoryProperties.sharedImportWin32.handle = createInfo.sharing.handle;
-        }
-      }
-
-      if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
-        memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-        memoryProperties.dedicated.image = m_image.image;
-      }
-
-      // Use high memory priority for GPU-writable resources
-      bool isGpuWritable = (m_info.access & (
-        VK_ACCESS_SHADER_WRITE_BIT                  |
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT         |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT        |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)) != 0;
-
-      DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
-
-      if (isGpuWritable)
-        hints.set(DxvkMemoryFlag::GpuWritable);
-
-      m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties, hints);
-
-      // Try to bind the allocated memory slice to the image
-      if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,
-          m_image.memory.memory(), m_image.memory.offset()) != VK_SUCCESS)
-        throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
-    } else {
-      // Initialize sparse info. We do not immediately bind the metadata
-      // aspects of the image here, the caller needs to explicitly do that.
-      m_sparsePageTable = DxvkSparsePageTable(device, this);
-
-      // Allocate memory for sparse metadata if necessary
-      auto properties = m_sparsePageTable.getProperties();
-
-      if (properties.metadataPageCount) {
-        DxvkMemoryRequirements memoryRequirements = { };
-        memoryRequirements.tiling = VK_IMAGE_TILING_OPTIMAL;
-        memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-
-        m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
-          &memoryRequirementInfo, &memoryRequirements.core);
-
-        DxvkMemoryProperties memoryProperties = { };
-        memoryProperties.flags = m_memFlags;
-
-        // Set size and alignment to match the metadata requirements
-        auto& core = memoryRequirements.core.memoryRequirements;
-        core.size      = SparseMemoryPageSize * properties.metadataPageCount;
-        core.alignment = SparseMemoryPageSize;
-
-        m_image.memory = memAlloc.alloc(memoryRequirements,
-          memoryProperties, DxvkMemoryFlag::GpuReadable);
-      }
-    }
+    assignResource(createResource());
   }
-  
-  
+
+
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
-    const DxvkImageCreateInfo&  info,
-          VkImage               image,
+    const DxvkImageCreateInfo&  createInfo,
+          VkImage               imageHandle,
+          DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(device->vkd()), m_device(device), m_info(info), m_memFlags(memFlags), m_image({ image }) {
-    m_viewFormats.resize(info.viewFormatCount);
-    for (uint32_t i = 0; i < info.viewFormatCount; i++)
-      m_viewFormats[i] = info.viewFormats[i];
+  : m_vkd           (device->vkd()),
+    m_allocator     (&memAlloc),
+    m_properties    (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_info          (createInfo) {
+    copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
+
+    // Create backing storage for existing image resource
+    VkImageCreateInfo imageInfo = getImageCreateInfo();
+    assignResource(m_allocator->importImageResource(imageInfo, imageHandle));
+  }
+
+
+  DxvkImage::~DxvkImage() {
+
+  }
+
+
+  VkSubresourceLayout DxvkImage::querySubresourceLayout(
+    const VkImageSubresource& subresource) const {
+    VkSubresourceLayout result = { };
+
+    m_vkd->vkGetImageSubresourceLayout(m_vkd->device(),
+      m_imageInfo.image, &subresource, &result);
+
+    return result;
+  }
+
+
+  HANDLE DxvkImage::sharedHandle() const {
+    HANDLE handle = INVALID_HANDLE_VALUE;
+
+    if (!m_shared)
+      return INVALID_HANDLE_VALUE;
+
+#ifdef _WIN32
+    DxvkResourceMemoryInfo memoryInfo = m_storage->getMemoryInfo();
+
+    VkMemoryGetWin32HandleInfoKHR handleInfo = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
+    handleInfo.handleType = m_info.sharing.type;
+    handleInfo.memory = memoryInfo.memory;
+
+    if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
+      Logger::warn("DxvkImage::DxvkImage: Failed to get shared handle for image");
+#endif
+
+    return handle;
+  }
+
+
+  DxvkSparsePageTable* DxvkImage::getSparsePageTable() {
+    return m_storage->getSparsePageTable();
+  }
+
+
+  Rc<DxvkImageView> DxvkImage::createView(
+    const DxvkImageViewCreateInfo& info) {
+    DxvkImageViewKey key = { };
+    key.viewType = info.type;
+    key.format = info.format;
+    key.usage = info.usage;
+    key.aspects = info.aspect;
+    key.mipIndex = info.minLevel;
+    key.mipCount = info.numLevels;
+    key.layerIndex = info.minLayer;
+    key.layerCount = info.numLayers;
+    key.packedSwizzle =
+      (uint16_t(info.swizzle.r) <<  0) |
+      (uint16_t(info.swizzle.g) <<  4) |
+      (uint16_t(info.swizzle.b) <<  8) |
+      (uint16_t(info.swizzle.a) << 12);
+
+    std::unique_lock lock(m_viewMutex);
+
+    auto entry = m_views.emplace(std::piecewise_construct,
+      std::make_tuple(key), std::make_tuple(this, key));
+
+    return &entry.first->second;
+  }
+
+
+  Rc<DxvkResourceAllocation> DxvkImage::createResource() {
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
+
+    VkImageCreateInfo imageInfo = getImageCreateInfo();
+
+    // Set up view format list so that drivers can better enable
+    // compression. Skip for planar formats due to validation errors.
+    VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
+
+    if (!(formatInfo->aspectMask & VK_IMAGE_ASPECT_PLANE_0_BIT)) {
+      formatList.viewFormatCount = m_info.viewFormatCount;
+      formatList.pViewFormats    = m_info.viewFormats;
+    }
+
+    if ((m_info.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && formatList.viewFormatCount)
+      formatList.pNext = std::exchange(imageInfo.pNext, &formatList);
+
+    // Set up external memory parameters for shared images
+    VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
+
+    if (m_shared) {
+      externalInfo.pNext = std::exchange(imageInfo.pNext, &externalInfo);
+      externalInfo.handleTypes = m_info.sharing.type;
+    }
+
+    // Set up shared memory properties
+    void* sharedMemoryInfo = nullptr;
+
+    VkExportMemoryAllocateInfo sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
+    VkImportMemoryWin32HandleInfoKHR sharedImportWin32= { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+
+    if (m_shared && m_info.sharing.mode == DxvkSharedHandleMode::Export) {
+      sharedExport.pNext = std::exchange(sharedMemoryInfo, &sharedExport);
+      sharedExport.handleTypes = m_info.sharing.type;
+    }
+
+    if (m_shared && m_info.sharing.mode == DxvkSharedHandleMode::Import) {
+      sharedImportWin32.pNext = std::exchange(sharedMemoryInfo, &sharedImportWin32);
+      sharedImportWin32.handleType = m_info.sharing.type;
+      sharedImportWin32.handle = m_info.sharing.handle;
+    }
+
+    return m_allocator->createImageResource(imageInfo, m_properties, sharedMemoryInfo);
+  }
+
+
+  VkImageCreateInfo DxvkImage::getImageCreateInfo() const {
+    VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    info.flags = m_info.flags;
+    info.imageType = m_info.type;
+    info.format = m_info.format;
+    info.extent = m_info.extent;
+    info.mipLevels = m_info.mipLevels;
+    info.arrayLayers = m_info.numLayers;
+    info.samples = m_info.sampleCount;
+    info.tiling = m_info.tiling;
+    info.usage = m_info.usage;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    info.initialLayout = m_info.initialLayout;
+
+    return info;
+  }
+
+
+  void DxvkImage::copyFormatList(uint32_t formatCount, const VkFormat* formats) {
+    m_viewFormats.resize(formatCount);
+
+    for (uint32_t i = 0; i < formatCount; i++)
+      m_viewFormats[i] = formats[i];
+
     m_info.viewFormats = m_viewFormats.data();
   }
-  
-  
-  DxvkImage::~DxvkImage() {
-    // This is a bit of a hack to determine whether
-    // the image is implementation-handled or not
-    if ((m_image.memory.memory())
-     || (m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
-      m_vkd->vkDestroyImage(m_vkd->device(), m_image.image, nullptr);
-  }
 
 
-  bool DxvkImage::canShareImage(const VkImageCreateInfo& createInfo, const DxvkSharedHandleInfo& sharingInfo) const {
+  bool DxvkImage::canShareImage(DxvkDevice* device, const VkImageCreateInfo& createInfo, const DxvkSharedHandleInfo& sharingInfo) const {
     if (sharingInfo.mode == DxvkSharedHandleMode::None)
       return false;
 
-    if (!m_device->features().khrExternalMemoryWin32) {
+    if (!device->features().khrExternalMemoryWin32) {
       Logger::err("Failed to create shared resource: VK_KHR_EXTERNAL_MEMORY_WIN32 not supported");
       return false;
     }
@@ -191,7 +207,7 @@ namespace dxvk {
     formatQuery.flags = createInfo.flags;
     formatQuery.handleType = sharingInfo.type;
 
-    auto limits = m_device->getFormatLimits(formatQuery);
+    auto limits = device->getFormatLimits(formatQuery);
 
     if (!limits)
       return false;
@@ -209,127 +225,93 @@ namespace dxvk {
   }
 
 
-  HANDLE DxvkImage::sharedHandle() const {
-    HANDLE handle = INVALID_HANDLE_VALUE;
 
-    if (!m_shared)
-      return INVALID_HANDLE_VALUE;
-
-#ifdef _WIN32
-    VkMemoryGetWin32HandleInfoKHR handleInfo = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
-    handleInfo.handleType = m_info.sharing.type;
-    handleInfo.memory = m_image.memory.memory();
-    if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
-      Logger::warn("DxvkImage::DxvkImage: Failed to get shared handle for image");
-#endif
-
-    return handle;
-  }
 
 
   DxvkImageView::DxvkImageView(
-    const Rc<vk::DeviceFn>&         vkd,
-    const Rc<DxvkImage>&            image,
-    const DxvkImageViewCreateInfo&  info)
-  : m_vkd(vkd), m_image(image), m_info(info) {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_views[i] = VK_NULL_HANDLE;
-    
-    switch (m_info.type) {
-      case VK_IMAGE_VIEW_TYPE_1D:
-      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_1D,       1);
-        this->createView(VK_IMAGE_VIEW_TYPE_1D_ARRAY, m_info.numLayers);
-      } break;
-      
-      case VK_IMAGE_VIEW_TYPE_2D:
-      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-        this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
-        [[fallthrough]];
+          DxvkImage*                image,
+    const DxvkImageViewKey&         key)
+  : m_image(image), m_key(key) {
 
-      case VK_IMAGE_VIEW_TYPE_CUBE:
-      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_info.numLayers);
-        
-        if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
-          uint32_t cubeCount = m_info.numLayers / 6;
-        
-          if (cubeCount > 0) {
-            this->createView(VK_IMAGE_VIEW_TYPE_CUBE,       6);
-            this->createView(VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6 * cubeCount);
-          }
-        }
-      } break;
-        
-      case VK_IMAGE_VIEW_TYPE_3D: {
-        this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
-        
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT && m_info.numLevels == 1) {
-          this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
-          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
-        }
-      } break;
-      
-      default:
-        throw DxvkError(str::format("DxvkImageView: Invalid view type: ", m_info.type));
-    }
   }
-  
-  
+
+
   DxvkImageView::~DxvkImageView() {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+
   }
 
-  
-  void DxvkImageView::createView(VkImageViewType type, uint32_t numLayers) {
-    VkImageSubresourceRange subresourceRange;
-    subresourceRange.aspectMask     = m_info.aspect;
-    subresourceRange.baseMipLevel   = m_info.minLevel;
-    subresourceRange.levelCount     = m_info.numLevels;
-    subresourceRange.baseArrayLayer = m_info.minLayer;
-    subresourceRange.layerCount     = numLayers;
 
-    VkImageViewUsageCreateInfo viewUsage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    viewUsage.usage           = m_info.usage;
-    
-    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &viewUsage };
-    viewInfo.image            = m_image->handle();
-    viewInfo.viewType         = type;
-    viewInfo.format           = m_info.format;
-    viewInfo.components       = m_info.swizzle;
-    viewInfo.subresourceRange = subresourceRange;
+  VkImageView DxvkImageView::createView(VkImageViewType type) const {
+    DxvkImageViewKey key = m_key;
+    key.viewType = type;
 
-    if (m_info.usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
-      viewInfo.components = {
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+    // Only use one layer for non-arrayed view types
+    if (type == VK_IMAGE_VIEW_TYPE_1D || type == VK_IMAGE_VIEW_TYPE_2D)
+      key.layerCount = 1u;
+
+    switch (m_image->info().type) {
+      case VK_IMAGE_TYPE_1D: {
+        // Trivial, just validate that view types are compatible
+        if (type != VK_IMAGE_VIEW_TYPE_1D && type != VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+          return VK_NULL_HANDLE;
+      } break;
+
+      case VK_IMAGE_TYPE_2D: {
+        if (type == VK_IMAGE_VIEW_TYPE_CUBE || type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+          // Ensure that the image is compatible with cube maps
+          if (key.layerCount < 6 || !(m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
+            return VK_NULL_HANDLE;
+
+          // Adjust layer count to make sure it's a multiple of 6
+          key.layerCount = type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+            ? key.layerCount - key.layerCount % 6u : 6u;
+        } else if (type != VK_IMAGE_VIEW_TYPE_2D && type != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+          return VK_NULL_HANDLE;
+        }
+      } break;
+
+      case VK_IMAGE_TYPE_3D: {
+        if (type == VK_IMAGE_VIEW_TYPE_2D || type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+          // Ensure that the image is actually compatible with 2D views
+          if (!(m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT))
+            return VK_NULL_HANDLE;
+
+          // In case the view's native type is 3D, we can only create 2D compat
+          // views if there is only one mip and with the full set of array layers.
+          if (m_key.viewType == VK_IMAGE_VIEW_TYPE_3D) {
+            if (m_key.mipCount != 1u)
+              return VK_NULL_HANDLE;
+
+            key.layerIndex = 0u;
+            key.layerCount = type == VK_IMAGE_VIEW_TYPE_2D_ARRAY
+              ? m_image->mipLevelExtent(key.mipIndex).depth : 1u;
+          }
+        } else if (type != VK_IMAGE_VIEW_TYPE_3D) {
+          return VK_NULL_HANDLE;
+        }
+      } break;
+
+      default:
+        return VK_NULL_HANDLE;
     }
-    
-    if (m_vkd->vkCreateImageView(m_vkd->device(),
-          &viewInfo, nullptr, &m_views[type]) != VK_SUCCESS) {
-      throw DxvkError(str::format(
-        "DxvkImageView: Failed to create image view:"
-        "\n  View type:       ", viewInfo.viewType,
-        "\n  View format:     ", viewInfo.format,
-        "\n  Subresources:    ",
-        "\n    Aspect mask:   ", std::hex, viewInfo.subresourceRange.aspectMask,
-        "\n    Mip levels:    ", viewInfo.subresourceRange.baseMipLevel, " - ",
-                                 viewInfo.subresourceRange.levelCount,
-        "\n    Array layers:  ", viewInfo.subresourceRange.baseArrayLayer, " - ",
-                                 viewInfo.subresourceRange.layerCount,
-        "\n  Image properties:",
-        "\n    Type:          ", m_image->info().type,
-        "\n    Format:        ", m_image->info().format,
-        "\n    Extent:        ", "(", m_image->info().extent.width,
-                                 ",", m_image->info().extent.height,
-                                 ",", m_image->info().extent.depth, ")",
-        "\n    Mip levels:    ", m_image->info().mipLevels,
-        "\n    Array layers:  ", m_image->info().numLayers,
-        "\n    Samples:       ", m_image->info().sampleCount,
-        "\n    Usage:         ", std::hex, m_image->info().usage,
-        "\n    Tiling:        ", m_image->info().tiling));
+
+    // We need to expose RT and UAV swizzles to the backend,
+    // but cannot legally pass them down to Vulkan
+    if (key.usage != VK_IMAGE_USAGE_SAMPLED_BIT)
+      key.packedSwizzle = 0u;
+
+    return m_image->m_storage->createImageView(key);
+  }
+
+
+  void DxvkImageView::updateViews() {
+    // Update all views that are not currently null
+    for (uint32_t i = 0; i < m_views.size(); i++) {
+      if (m_views[i])
+        m_views[i] = createView(VkImageViewType(i));
     }
+
+    m_version = m_image->m_version;
   }
   
 }

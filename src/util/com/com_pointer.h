@@ -96,6 +96,7 @@ namespace dxvk {
     
     ~Com() {
       this->decRef();
+      m_ptr = nullptr;
     }
     
     T* operator -> () const {

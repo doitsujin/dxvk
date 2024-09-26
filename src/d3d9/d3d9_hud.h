@@ -60,4 +60,48 @@ namespace dxvk::hud {
 
     };
 
+    /**
+     * \brief HUD item to display amount of generated fixed function shaders
+     */
+    class HudFixedFunctionShaders : public HudItem {
+    public:
+
+        HudFixedFunctionShaders(D3D9DeviceEx* device);
+
+        void update(dxvk::high_resolution_clock::time_point time);
+
+        HudPos render(
+                HudRenderer&      renderer,
+                HudPos            position);
+
+    private:
+
+        D3D9DeviceEx* m_device;
+
+        std::string m_ffShaderCount;
+
+    };
+
+    /**
+     * \brief HUD item to whether or not we're in SWVP mode
+     */
+    class HudSWVPState : public HudItem {
+    public:
+
+        HudSWVPState(D3D9DeviceEx* device);
+
+        void update(dxvk::high_resolution_clock::time_point time);
+
+        HudPos render(
+                HudRenderer&      renderer,
+                HudPos            position);
+
+    private:
+
+        D3D9DeviceEx* m_device;
+
+        std::string m_isSWVPText;
+
+    };
+
 }

@@ -40,6 +40,10 @@ namespace dxvk {
 
     Rc<DxvkShader> GetShaderModule(D3D9DeviceEx* pDevice,  D3D9CompactVertexElements&& elements);
 
+    UINT GetShaderCount() const {
+      return m_modules.size();
+    }
+
   private:
 
     dxvk::mutex                               m_mutex;

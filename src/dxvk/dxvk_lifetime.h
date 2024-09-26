@@ -11,39 +11,46 @@ namespace dxvk {
    *
    * Keeps a resource alive and stores access information.
    */
+  template<typename T>
   class DxvkLifetime {
+    static constexpr uintptr_t AccessMask = 0x3u;
+    static constexpr uintptr_t PointerMask = ~AccessMask;
 
+    static_assert(alignof(T) > AccessMask);
   public:
 
-    DxvkLifetime()
-    : m_resource(nullptr), m_access(DxvkAccess::None) { }
+    DxvkLifetime() = default;
+
+    template<typename Tx>
+    DxvkLifetime(
+            Rc<Tx>&&                resource,
+            DxvkAccess              access)
+    : m_ptr(reinterpret_cast<uintptr_t>(resource.ptr()) | uintptr_t(access)) {
+      resource.unsafeExtract()->convertRef(DxvkAccess::None, access);
+    }
 
     DxvkLifetime(
-            DxvkResource*           resource,
+      const T*                      resource,
             DxvkAccess              access)
-    : m_resource(resource), m_access(access) {
+    : m_ptr(reinterpret_cast<uintptr_t>(resource) | uintptr_t(access)) {
       acquire();
     }
 
     DxvkLifetime(DxvkLifetime&& other)
-    : m_resource(other.m_resource), m_access(other.m_access) {
-      other.m_resource = nullptr;
-      other.m_access = DxvkAccess::None;
+    : m_ptr(other.m_ptr) {
+      other.m_ptr = 0u;
     }
 
     DxvkLifetime(const DxvkLifetime& other)
-    : m_resource(other.m_resource), m_access(other.m_access) {
+    : m_ptr(other.m_ptr) {
       acquire();
     }
 
     DxvkLifetime& operator = (DxvkLifetime&& other) {
       release();
 
-      m_resource = other.m_resource;
-      m_access = other.m_access;
-
-      other.m_resource = nullptr;
-      other.m_access = DxvkAccess::None;
+      m_ptr = other.m_ptr;
+      other.m_ptr = 0u;
       return *this;
     }
 
@@ -51,8 +58,7 @@ namespace dxvk {
       other.acquire();
       release();
 
-      m_resource  = other.m_resource;
-      m_access = other.m_access;
+      m_ptr = other.m_ptr;
       return *this;
     }
 
@@ -62,19 +68,24 @@ namespace dxvk {
 
   private:
 
-    DxvkResource*   m_resource;
-    DxvkAccess      m_access;
+    uintptr_t m_ptr = 0u;
+
+    T* ptr() const {
+      return reinterpret_cast<T*>(m_ptr & PointerMask);
+    }
+
+    DxvkAccess access() const {
+      return DxvkAccess(m_ptr & AccessMask);
+    }
 
     void acquire() const {
-      if (m_resource)
-        m_resource->acquire(m_access);
+      if (m_ptr)
+        ptr()->acquire(access());
     }
 
     void release() const {
-      if (m_resource) {
-        if (!m_resource->release(m_access))
-          delete m_resource;
-      }
+      if (m_ptr)
+        ptr()->release(access());
     }
 
   };
@@ -89,28 +100,28 @@ namespace dxvk {
    * device has finished using them.
    */
   class DxvkLifetimeTracker {
-    
+
   public:
-    
+
     DxvkLifetimeTracker();
     ~DxvkLifetimeTracker();
-    
+
     /**
      * \brief Adds a resource to track
-     * \param [in] rc The resource to track
+     * \param [in] res The resource to track
      */
-    template<DxvkAccess Access>
-    void trackResource(DxvkResource* rc) {
-      m_resources.emplace_back(rc, Access);
+    void trackResource(DxvkLifetime<DxvkResource>&& res) {
+      m_resources.push_back(std::move(res));
     }
 
     /**
-     * \brief Releases resources
-     *
-     * Marks all tracked resources as unused.
+     * \brief Adds a resource allocation to track
+     * \param [in] res The allocation to track
      */
-    void notify();
-    
+    void trackResource(DxvkLifetime<DxvkResourceAllocation>&& res) {
+      m_allocations.push_back(std::move(res));
+    }
+
     /**
      * \brief Resets the command list
      * 
@@ -118,11 +129,12 @@ namespace dxvk {
      * the command list has completed execution.
      */
     void reset();
-    
+
   private:
-    
-    std::vector<DxvkLifetime> m_resources;
-    
+
+    std::vector<DxvkLifetime<DxvkResource>> m_resources;
+    std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;
+
   };
   
 }

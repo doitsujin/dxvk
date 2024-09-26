@@ -265,44 +265,24 @@ namespace dxvk {
           ID3D11Resource*               pResource,
           D3D11_MAPPED_SUBRESOURCE*     pMappedResource) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
-    
+
     if (unlikely(pBuffer->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
-    
+
+    auto bufferSlice = pBuffer->AllocSlice(&m_allocationCache);
+    pMappedResource->pData = bufferSlice->mapPtr();
     pMappedResource->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMappedResource->DepthPitch   = pBuffer->Desc()->ByteWidth;
-    
-    if (likely(m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
-      // For resources that cannot be written by the GPU,
-      // we may write to the buffer resource directly and
-      // just swap in the buffer slice as needed.
-      auto bufferSlice = pBuffer->AllocSlice();
-      pMappedResource->pData = bufferSlice.mapPtr;
 
-      EmitCs([
-        cDstBuffer = pBuffer->GetBuffer(),
-        cPhysSlice = bufferSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
-      });
-    } else {
-      // For GPU-writable resources, we need a data slice
-      // to perform the update operation at execution time.
-      auto dataSlice = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
-      pMappedResource->pData = dataSlice.ptr();
+    EmitCs([
+      cDstBuffer = pBuffer->GetBuffer(),
+      cDstSlice  = std::move(bufferSlice)
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cDstBuffer, Rc<DxvkResourceAllocation>(cDstSlice));
+    });
 
-      EmitCs([
-        cDstBuffer = pBuffer->GetBuffer(),
-        cDataSlice = dataSlice
-      ] (DxvkContext* ctx) {
-        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
-        std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
-        ctx->invalidateBuffer(cDstBuffer, slice);
-      });
-    }
-    
     return S_OK;
   }
   

@@ -429,6 +429,10 @@ namespace dxvk {
 
       case D3D9Format::RAWZ: return {}; // Unsupported
 
+      case D3D9Format::R16:  return {}; // Unsupported
+
+      case D3D9Format::AL16: return {}; // Unsupported
+
       default:
         Logger::warn(str::format("ConvertFormat: Unknown format encountered: ", Format));
         return {}; // Unsupported
@@ -505,9 +509,6 @@ namespace dxvk {
     static const DxvkFormatInfo a8r3g3b2    = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
     static const DxvkFormatInfo a8p8        = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
     static const DxvkFormatInfo p8          = { 1, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo l6v5u5      = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo x8l8v8u8    = { 4, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo a2w10v10u10 = { 4, VK_IMAGE_ASPECT_COLOR_BIT };
     static const DxvkFormatInfo cxv8u8      = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
     static const DxvkFormatInfo unknown     = {};
 
@@ -526,15 +527,6 @@ namespace dxvk {
 
       case D3D9Format::P8:
         return &p8;
-
-      case D3D9Format::L6V5U5:
-        return &l6v5u5;
-
-      case D3D9Format::X8L8V8U8:
-        return &x8l8v8u8;
-
-      case D3D9Format::A2W10V10U10:
-        return &a2w10v10u10;
 
       // MULTI2_ARGB8 -> Don't have a clue what this is.
 

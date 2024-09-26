@@ -50,6 +50,18 @@ namespace dxvk {
   }
 
 
+  void SpirvCodeBuffer::append(const SpirvInstruction& ins) {
+    const size_t size = m_code.size();
+
+    m_code.resize(size + ins.length());
+
+    for (uint32_t i = 0; i < ins.length(); i++)
+      m_code[size + i] = ins.arg(i);
+
+    m_ptr += ins.length();
+  }
+
+
   void SpirvCodeBuffer::append(const SpirvCodeBuffer& other) {
     if (other.size() != 0) {
       const size_t size = m_code.size();

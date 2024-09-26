@@ -31,7 +31,8 @@ namespace dxvk {
             IDXGIVkSwapChain*           pPresenter,
             HWND                        hWnd,
       const DXGI_SWAP_CHAIN_DESC1*      pDesc,
-      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*  pFullscreenDesc);
+      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*  pFullscreenDesc,
+            IUnknown*                   pDevice);
     
     ~DxgiSwapChain();
     
@@ -184,6 +185,7 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC1           m_desc;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
     UINT                            m_presentId;
+    bool                            m_ModeChangeInProgress = false;
 
     Com<IDXGIVkSwapChain>           m_presenter;
     Com<IDXGIVkSwapChain1>          m_presenter1;
@@ -197,6 +199,7 @@ namespace dxvk {
     double                          m_frameRateOption = 0.0;
     double                          m_frameRateRefresh = 0.0;
     double                          m_frameRateLimit = 0.0;
+    bool                            m_is_d3d12;
 
     DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
 

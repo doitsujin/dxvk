@@ -311,18 +311,7 @@ namespace dxvk {
     Rc<DxvkBuffer> createBuffer(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
-    
-    /**
-     * \brief Creates a buffer view
-     * 
-     * \param [in] buffer The buffer to view
-     * \param [in] createInfo Buffer view properties
-     * \returns The buffer view object
-     */
-    Rc<DxvkBufferView> createBufferView(
-      const Rc<DxvkBuffer>&           buffer,
-      const DxvkBufferViewCreateInfo& createInfo);
-    
+
     /**
      * \brief Creates an image object
      * 
@@ -353,6 +342,17 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
+
+    /**
+     * \brief Creates local allocation cache
+     *
+     * \param [in] bufferUsage Required buffer usage
+     * \param [in] propertyFlags Memory properties
+     * \returns Allocation cache object
+     */
+    DxvkLocalAllocationCache createAllocationCache(
+            VkBufferUsageFlags    bufferUsage,
+            VkMemoryPropertyFlags propertyFlags);
 
     /**
      * \brief Creates a sparse page allocator
@@ -396,12 +396,21 @@ namespace dxvk {
     DxvkStatCounters getStatCounters();
 
     /**
-     * \brief Retrieves memors statistics
+     * \brief Queries memory statistics
      *
      * \param [in] heap Memory heap index
-     * \returns Memory stats for this heap
+     * \returns Memory usage for this heap
      */
     DxvkMemoryStats getMemoryStats(uint32_t heap);
+
+    /**
+     * \brief Queries detailed memory allocation statistics
+     *
+     * Expensive, should be used with caution.
+     * \param [out] stats Allocation statistics
+     * \returns Shared allocation cache stats
+     */
+    DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
      * \brief Retreves current frame ID
@@ -410,27 +419,17 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
-     * \brief Notifies adapter about memory allocation
+     * \brief Notifies adapter about memory allocation changes
      *
      * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
+     * \param [in] allocated Allocated size delta
+     * \param [in] used Used size delta
      */
-    void notifyMemoryAlloc(
+    void notifyMemoryStats(
             uint32_t            heap,
-            int64_t             bytes) {
-      m_adapter->notifyMemoryAlloc(heap, bytes);
-    }
-
-    /**
-     * \brief Notifies adapter about memory suballocation
-     *
-     * \param [in] heap Memory heap index
-     * \param [in] bytes Allocation size
-     */
-    void notifyMemoryUse(
-            uint32_t            heap,
-            int64_t             bytes) {
-      m_adapter->notifyMemoryUse(heap, bytes);
+            int64_t             allocated,
+            int64_t             used) {
+      m_adapter->notifyMemoryStats(heap, allocated, used);
     }
 
     /**

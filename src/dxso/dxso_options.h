@@ -42,11 +42,6 @@ namespace dxvk {
     /// Should the SWVP float constant buffer be a SSBO (because of the size on NV)
     bool vertexFloatConstantBufferAsSSBO;
 
-    /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
-    /// This solves some rendering bugs in games that have z-pass shaders which
-    /// don't match entirely to the regular vertex shader in this way.
-    bool longMad;
-
     /// Whether or not we can rely on robustness2 to handle oob constant access
     bool robustness2Supported;
 

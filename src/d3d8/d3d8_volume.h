@@ -17,9 +17,15 @@ namespace dxvk {
       : D3D8VolumeBase(pDevice, std::move(pVolume), pTexture) {}
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVOLUME_DESC* pDesc) {
+      if (unlikely(pDesc == nullptr))
+        return D3DERR_INVALIDCALL;
+
       d3d9::D3DVOLUME_DESC desc;
       HRESULT res = GetD3D9()->GetDesc(&desc);
-      ConvertVolumeDesc8(&desc, pDesc);
+
+      if (likely(SUCCEEDED(res)))
+        ConvertVolumeDesc8(&desc, pDesc);
+
       return res;
     }
 

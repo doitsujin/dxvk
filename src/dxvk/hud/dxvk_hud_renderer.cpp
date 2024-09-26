@@ -33,10 +33,10 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(
-          const Rc<DxvkContext>& context, 
-          VkExtent2D surfaceSize, 
-          float scale, 
-          float opacity) {
+    const Rc<DxvkContext>&  context,
+          VkExtent2D        surfaceSize, 
+          float             scale, 
+          float             opacity) {
     if (!m_initialized)
       this->initFontTexture(context);
 
@@ -128,7 +128,6 @@ namespace dxvk::hud {
         VK_FALSE, 0 };
       
       m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
     }
   }
 
@@ -147,14 +146,13 @@ namespace dxvk::hud {
         VK_FALSE, 0 };
 
       m_context->setInputAssemblyState(iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
     }
   }
 
 
   VkDeviceSize HudRenderer::allocDataBuffer(VkDeviceSize size) {
     if (m_dataOffset + size > m_dataBuffer->info().size) {
-      m_context->invalidateBuffer(m_dataBuffer, m_dataBuffer->allocSlice());
+      m_context->invalidateBuffer(m_dataBuffer, m_dataBuffer->allocateSlice());
       m_dataOffset = 0;
     }
     
@@ -251,11 +249,12 @@ namespace dxvk::hud {
 
   Rc<DxvkBufferView> HudRenderer::createDataView() {
     DxvkBufferViewCreateInfo info;
-    info.format = VK_FORMAT_R8_UINT;
-    info.rangeOffset = 0;
-    info.rangeLength = m_dataBuffer->info().size;
+    info.format         = VK_FORMAT_R8_UINT;
+    info.rangeOffset    = 0;
+    info.rangeLength    = m_dataBuffer->info().size;
+    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    return m_device->createBufferView(m_dataBuffer, info);
+    return m_dataBuffer->createView(info);
   }
 
 
@@ -278,8 +277,9 @@ namespace dxvk::hud {
     info.format         = VK_FORMAT_UNDEFINED;
     info.rangeOffset    = 0;
     info.rangeLength    = m_fontBuffer->info().size;
+    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    return m_device->createBufferView(m_fontBuffer, info);
+    return m_fontBuffer->createView(info);
   }
 
 

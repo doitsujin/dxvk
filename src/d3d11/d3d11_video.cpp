@@ -1296,10 +1296,10 @@ namespace dxvk {
         uboData.yMax = 0.9215686f;
       }
 
-      DxvkBufferSliceHandle uboSlice = m_ubo->allocSlice();
-      memcpy(uboSlice.mapPtr, &uboData, sizeof(uboData));
+      Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateSlice();
+      memcpy(uboSlice->mapPtr(), &uboData, sizeof(uboData));
 
-      ctx->invalidateBuffer(m_ubo, uboSlice);
+      ctx->invalidateBuffer(m_ubo, std::move(uboSlice));
       ctx->setViewports(1, &viewport, &scissor);
 
       ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));

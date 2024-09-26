@@ -16,7 +16,7 @@ namespace dxvk {
 
   DxvkSparseMapping::DxvkSparseMapping(
           Rc<DxvkSparsePageAllocator> allocator,
-          Rc<DxvkSparsePage>          page)
+          Rc<DxvkResourceAllocation>  page)
   : m_pool(std::move(allocator)),
     m_page(std::move(page)) {
 
@@ -110,18 +110,18 @@ namespace dxvk {
       if (!m_useCount)
         m_pages.resize(pageCount);
     } else if (pageCount > m_pageCount) {
-      std::vector<Rc<DxvkSparsePage>> newPages;
+      std::vector<Rc<DxvkResourceAllocation>> newPages;
       newPages.reserve(pageCount - m_pageCount);
 
       for (size_t i = 0; i < pageCount - m_pageCount; i++)
-        newPages.push_back(allocPage());
+        newPages.push_back(m_memory->createSparsePage());
 
       // Sort page by memory and offset to enable more
       // batching opportunities during page table updates
       std::sort(newPages.begin(), newPages.end(),
-        [] (const Rc<DxvkSparsePage>& a, const Rc<DxvkSparsePage>& b) {
-          auto aHandle = a->getHandle();
-          auto bHandle = b->getHandle();
+        [] (const Rc<DxvkResourceAllocation>& a, const Rc<DxvkResourceAllocation>& b) {
+          auto aHandle = a->getMemoryInfo();
+          auto bHandle = b->getMemoryInfo();
 
           // Ignore length here, the offsets cannot be the same anyway.
           if (aHandle.memory < bHandle.memory) return true;
@@ -138,37 +138,15 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkSparsePage> DxvkSparsePageAllocator::allocPage() {
-    DxvkMemoryRequirements memoryRequirements = { };
-    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
-    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
-
-    // We don't know what kind of resource the memory6
-    // might be bound to, so just guess the memory types
-    auto& core = memoryRequirements.core.memoryRequirements;
-    core.size           = SparseMemoryPageSize;
-    core.alignment      = SparseMemoryPageSize;
-    core.memoryTypeBits = m_memory->getSparseMemoryTypes();
-
-    DxvkMemoryProperties memoryProperties = { };
-    memoryProperties.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    DxvkMemory memory = m_memory->alloc(memoryRequirements,
-      memoryProperties, DxvkMemoryFlag::GpuReadable);
-
-    return new DxvkSparsePage(std::move(memory));
-  }
-
-
   void DxvkSparsePageAllocator::acquirePage(
-    const Rc<DxvkSparsePage>&   page) {
+    const Rc<DxvkResourceAllocation>& page) {
     std::lock_guard lock(m_mutex);
     m_useCount += 1;
   }
 
 
   void DxvkSparsePageAllocator::releasePage(
-    const Rc<DxvkSparsePage>&   page) {
+    const Rc<DxvkResourceAllocation>& page) {
     std::lock_guard lock(m_mutex);
     m_useCount -= 1;
 
@@ -184,9 +162,10 @@ namespace dxvk {
 
   DxvkSparsePageTable::DxvkSparsePageTable(
           DxvkDevice*             device,
-    const DxvkBuffer*             buffer)
-  : m_buffer(buffer) {
-    VkDeviceSize bufferSize = buffer->info().size;
+    const VkBufferCreateInfo&     bufferInfo,
+          VkBuffer                bufferHandle)
+  : m_buffer(bufferHandle) {
+    VkDeviceSize bufferSize = bufferInfo.size;
 
     // For linear buffers, the mapping is very simple
     // and consists of consecutive 64k pages
@@ -213,16 +192,17 @@ namespace dxvk {
 
   DxvkSparsePageTable::DxvkSparsePageTable(
           DxvkDevice*             device,
-    const DxvkImage*              image)
-  : m_image(image) {
+    const VkImageCreateInfo&      imageInfo,
+          VkImage                 imageHandle)
+  : m_image(imageHandle) {
     auto vk = device->vkd();
 
     // Query sparse memory requirements
     uint32_t reqCount = 0;
-    vk->vkGetImageSparseMemoryRequirements(vk->device(), image->handle(), &reqCount, nullptr);
+    vk->vkGetImageSparseMemoryRequirements(vk->device(), imageHandle, &reqCount, nullptr);
 
     std::vector<VkSparseImageMemoryRequirements> req(reqCount);
-    vk->vkGetImageSparseMemoryRequirements(vk->device(), image->handle(), &reqCount, req.data());
+    vk->vkGetImageSparseMemoryRequirements(vk->device(), imageHandle, &reqCount, req.data());
 
     // Find first non-metadata struct and use it to fill in the image properties
     bool foundMainAspect = false;
@@ -232,52 +212,53 @@ namespace dxvk {
         VkDeviceSize metadataSize = r.imageMipTailSize;
 
         if (!(r.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT))
-          metadataSize *= m_image->info().numLayers;
+          metadataSize *= imageInfo.arrayLayers;
 
         m_properties.metadataPageCount += uint32_t(metadataSize / SparseMemoryPageSize);
       } else if (!foundMainAspect) {
         m_properties.flags = r.formatProperties.flags;
         m_properties.pageRegionExtent = r.formatProperties.imageGranularity;
 
-        if (r.imageMipTailFirstLod < image->info().mipLevels && r.imageMipTailSize) {
+        if (r.imageMipTailFirstLod < imageInfo.mipLevels && r.imageMipTailSize) {
           m_properties.pagedMipCount = r.imageMipTailFirstLod;
           m_properties.mipTailOffset = r.imageMipTailOffset;
           m_properties.mipTailSize = r.imageMipTailSize;
           m_properties.mipTailStride = r.imageMipTailStride;
         } else {
-          m_properties.pagedMipCount = image->info().mipLevels;
+          m_properties.pagedMipCount = imageInfo.mipLevels;
         }
 
         foundMainAspect = true;
       } else {
         Logger::err(str::format("Found multiple aspects for sparse image:"
-          "\n  Type:            ", image->info().type,
-          "\n  Format:          ", image->info().format,
-          "\n  Flags:           ", image->info().flags,
-          "\n  Extent:          ", "(", image->info().extent.width,
-                                  ",", image->info().extent.height,
-                                  ",", image->info().extent.depth, ")",
-          "\n  Mip levels:      ", image->info().mipLevels,
-          "\n  Array layers:    ", image->info().numLayers,
-          "\n  Samples:         ", image->info().sampleCount,
-          "\n  Usage:           ", image->info().usage,
-          "\n  Tiling:          ", image->info().tiling));
+          "\n  Type:            ", imageInfo.imageType,
+          "\n  Format:          ", imageInfo.format,
+          "\n  Flags:           ", imageInfo.flags,
+          "\n  Extent:          ", "(", imageInfo.extent.width,
+                                  ",", imageInfo.extent.height,
+                                  ",", imageInfo.extent.depth, ")",
+          "\n  Mip levels:      ", imageInfo.mipLevels,
+          "\n  Array layers:    ", imageInfo.arrayLayers,
+          "\n  Samples:         ", imageInfo.samples,
+          "\n  Usage:           ", imageInfo.usage,
+          "\n  Tiling:          ", imageInfo.tiling));
       }
     }
 
     // Fill in subresource metadata and compute page count
     uint32_t totalPageCount = 0;
-    uint32_t subresourceCount = image->info().numLayers * image->info().mipLevels;
+    uint32_t subresourceCount = imageInfo.arrayLayers * imageInfo.mipLevels;
     m_subresources.reserve(subresourceCount);
 
-    for (uint32_t l = 0; l < image->info().numLayers; l++) {
-      for (uint32_t m = 0; m < image->info().mipLevels; m++) {
+    for (uint32_t l = 0; l < imageInfo.arrayLayers; l++) {
+      for (uint32_t m = 0; m < imageInfo.mipLevels; m++) {
         if (m < m_properties.pagedMipCount) {
           // Compute block count for current mip based on image properties
+          VkExtent3D mipExtent = util::computeMipLevelExtent(imageInfo.extent, m);
+
           DxvkSparseImageSubresourceProperties subresourceInfo;
           subresourceInfo.isMipTail = VK_FALSE;
-          subresourceInfo.pageCount = util::computeBlockCount(
-            image->mipLevelExtent(m), m_properties.pageRegionExtent);
+          subresourceInfo.pageCount = util::computeBlockCount(mipExtent, m_properties.pageRegionExtent);
 
           // Advance total page count by number of pages in the subresource
           subresourceInfo.pageIndex = totalPageCount;
@@ -301,7 +282,7 @@ namespace dxvk {
       uint32_t mipTailPageCount = m_properties.mipTailSize / SparseMemoryPageSize;
 
       if (!(m_properties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT))
-        mipTailPageCount *= m_image->info().numLayers;
+        mipTailPageCount *= imageInfo.arrayLayers;
 
       totalPageCount += mipTailPageCount;
     }
@@ -310,9 +291,11 @@ namespace dxvk {
     m_metadata.reserve(totalPageCount);
     m_mappings.resize(totalPageCount);
 
-    for (uint32_t l = 0; l < image->info().numLayers; l++) {
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(imageInfo.format);
+
+    for (uint32_t l = 0; l < imageInfo.arrayLayers; l++) {
       for (uint32_t m = 0; m < m_properties.pagedMipCount; m++) {
-        VkExtent3D mipExtent = image->mipLevelExtent(m);
+        VkExtent3D mipExtent = util::computeMipLevelExtent(imageInfo.extent, m);
         VkExtent3D pageCount = util::computeBlockCount(mipExtent, m_properties.pageRegionExtent);
 
         for (uint32_t z = 0; z < pageCount.depth; z++) {
@@ -320,7 +303,7 @@ namespace dxvk {
             for (uint32_t x = 0; x < pageCount.width; x++) {
               DxvkSparsePageInfo pageInfo;
               pageInfo.type = DxvkSparsePageType::Image;
-              pageInfo.image.subresource.aspectMask = image->formatInfo()->aspectMask;
+              pageInfo.image.subresource.aspectMask = formatInfo->aspectMask;
               pageInfo.image.subresource.mipLevel = m;
               pageInfo.image.subresource.arrayLayer = l;
               pageInfo.image.offset.x = x * m_properties.pageRegionExtent.width;
@@ -341,7 +324,7 @@ namespace dxvk {
       uint32_t layerCount = 1;
 
       if (!(m_properties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT))
-        layerCount = image->info().numLayers;
+        layerCount = imageInfo.arrayLayers;
 
       for (uint32_t i = 0; i < layerCount; i++) {
         for (uint32_t j = 0; j < pageCount; j++) {
@@ -359,12 +342,12 @@ namespace dxvk {
 
 
   VkBuffer DxvkSparsePageTable::getBufferHandle() const {
-    return m_buffer ? m_buffer->getSliceHandle().handle : VK_NULL_HANDLE;
+    return m_buffer;
   }
 
 
   VkImage DxvkSparsePageTable::getImageHandle() const {
-    return m_image ? m_image->handle() : VK_NULL_HANDLE;
+    return m_image;
   }
 
 
@@ -447,21 +430,21 @@ namespace dxvk {
 
   void DxvkSparseBindSubmission::bindBufferMemory(
     const DxvkSparseBufferBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_bufferBinds.insert_or_assign(key, memory);
   }
 
 
   void DxvkSparseBindSubmission::bindImageMemory(
     const DxvkSparseImageBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_imageBinds.insert_or_assign(key, memory);
   }
 
 
   void DxvkSparseBindSubmission::bindImageOpaqueMemory(
     const DxvkSparseImageOpaqueBindKey& key,
-    const DxvkSparsePageHandle&   memory) {
+    const DxvkResourceMemoryInfo& memory) {
     m_imageOpaqueBinds.insert_or_assign(key, memory);
   }
 
@@ -561,8 +544,8 @@ namespace dxvk {
 
 
   bool DxvkSparseBindSubmission::tryMergeImageBind(
-          std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
-    const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind) {
+          std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& oldBind,
+    const std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>& newBind) {
     if (oldBind.first.image != newBind.first.image
      || oldBind.first.subresource.aspectMask != newBind.first.subresource.aspectMask
      || oldBind.first.subresource.mipLevel != newBind.first.subresource.mipLevel
@@ -573,7 +556,7 @@ namespace dxvk {
       return false;
 
     if (oldBind.second.memory) {
-      if (oldBind.second.offset + oldBind.second.length != newBind.second.offset)
+      if (oldBind.second.offset + oldBind.second.size != newBind.second.offset)
         return false;
     }
 
@@ -605,7 +588,7 @@ namespace dxvk {
       oldBind.first.extent.depth  += delta.depth;
 
       if (oldBind.second.memory)
-        oldBind.second.length += newBind.second.length;
+        oldBind.second.size += newBind.second.size;
     }
 
     return canMerge;
@@ -642,14 +625,14 @@ namespace dxvk {
 
   void DxvkSparseBindSubmission::processImageBinds(
           DxvkSparseImageBindArrays&        image) {
-    std::vector<std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>> binds;
+    std::vector<std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo>> binds;
     binds.reserve(m_imageBinds.size());
 
     for (const auto& e : m_imageBinds) {
-      std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> newBind = e;
+      std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo> newBind = e;
 
       while (!binds.empty()) {
-        std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> oldBind = binds.back();
+        std::pair<DxvkSparseImageBindKey, DxvkResourceMemoryInfo> oldBind = binds.back();
 
         if (!tryMergeImageBind(oldBind, newBind))
           break;

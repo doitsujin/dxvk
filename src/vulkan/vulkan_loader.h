@@ -198,8 +198,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkBindImageMemory);
     VULKAN_FN(vkGetBufferMemoryRequirements);
     VULKAN_FN(vkGetBufferMemoryRequirements2);
+    VULKAN_FN(vkGetDeviceBufferMemoryRequirements);
     VULKAN_FN(vkGetImageMemoryRequirements);
     VULKAN_FN(vkGetImageMemoryRequirements2);
+    VULKAN_FN(vkGetDeviceImageMemoryRequirements);
     VULKAN_FN(vkGetImageSparseMemoryRequirements);
     VULKAN_FN(vkGetImageSparseMemoryRequirements2);
     VULKAN_FN(vkQueueBindSparse);

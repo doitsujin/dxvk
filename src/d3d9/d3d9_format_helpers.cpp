@@ -96,7 +96,8 @@ namespace dxvk {
     bufferViewInfo.format      = bufferFormat;
     bufferViewInfo.rangeOffset = srcSlice.offset();
     bufferViewInfo.rangeLength = srcSlice.length();
-    auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
+    bufferViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    auto tmpBufferView = srcSlice.buffer()->createView(bufferViewInfo);
 
     m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
     m_context->bindResourceImageView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Image, std::move(tmpImageView));

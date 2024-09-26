@@ -353,7 +353,7 @@ namespace dxvk {
     m_targetFrameRate = FrameRate;
 
     if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimit(m_targetFrameRate);
+      m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
   }
 
 
@@ -377,7 +377,7 @@ namespace dxvk {
 
       VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
 
-      while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+      while (status != VK_SUCCESS) {
         RecreateSwapChain();
 
         if (!m_presenter->hasSwapChain())
@@ -385,6 +385,9 @@ namespace dxvk {
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
+
+        if (status == VK_SUBOPTIMAL_KHR)
+          break;
       }
 
       if (m_hdrMetadata && m_dirtyHdrMetadata) {
@@ -506,7 +509,7 @@ namespace dxvk {
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
-    m_presenter->setFrameRateLimit(m_targetFrameRate);
+    m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
   }
 
 
@@ -553,12 +556,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < info.imageCount; i++) {
       VkImage imageHandle = m_presenter->getImage(i).image;
       
-      Rc<DxvkImage> image = new DxvkImage(
-        m_device.ptr(), imageInfo, imageHandle,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      m_imageViews[i] = new DxvkImageView(
-        m_device->vkd(), image, viewInfo);
+      Rc<DxvkImage> image = m_device->importImage(imageInfo,
+        imageHandle, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      m_imageViews[i] = image->createView(viewInfo);
     }
   }
 

@@ -64,6 +64,7 @@ function build_arch {
         $opt_strip                                          \
         --bindir "x$1"                                      \
         --libdir "x$1"                                      \
+        -Db_ndebug=if-release                               \
         -Dbuild_id=$opt_buildid                             \
         "$DXVK_BUILD_DIR/build.$1"
 

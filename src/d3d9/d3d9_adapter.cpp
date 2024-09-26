@@ -134,7 +134,7 @@ namespace dxvk {
     if (rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT)
       return D3DERR_NOTAVAILABLE;
 
-    if (ds && !IsDepthFormat(CheckFormat))
+    if (ds && !IsDepthStencilFormat(CheckFormat))
       return D3DERR_NOTAVAILABLE;
 
     if (rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional)
@@ -169,7 +169,11 @@ namespace dxvk {
       return D3D_OK;
 
     // Let's actually ask Vulkan now that we got some quirks out the way!
-    return CheckDeviceVkFormat(mapping.FormatColor, Usage, RType);
+    VkFormat format = mapping.FormatColor;
+    if (unlikely(mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED)) {
+      format = mapping.ConversionFormatInfo.FormatColor;
+    }
+    return CheckDeviceVkFormat(format, Usage, RType);
   }
 
 
@@ -224,7 +228,7 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
           D3D9Format DepthStencilFormat) {
-    if (!IsDepthFormat(DepthStencilFormat))
+    if (!IsDepthStencilFormat(DepthStencilFormat))
       return D3DERR_NOTAVAILABLE;
 
     auto dsfMapping = GetFormatMapping(DepthStencilFormat);
@@ -247,7 +251,8 @@ namespace dxvk {
           D3D9Format SourceFormat,
           D3D9Format TargetFormat) {
     bool sourceSupported = SourceFormat != D3D9Format::Unknown
-                        && IsSupportedBackBufferFormat(SourceFormat);
+                        && (IsSupportedBackBufferFormat(SourceFormat)
+                        || (IsFourCCFormat(SourceFormat) && !IsVendorFormat(SourceFormat)));
     bool targetSupported = TargetFormat == D3D9Format::X1R5G5B5
                         || TargetFormat == D3D9Format::A1R5G5B5
                         || TargetFormat == D3D9Format::R5G6B5

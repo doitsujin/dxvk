@@ -81,7 +81,7 @@ namespace dxvk {
     Rc<DxvkImageView>   m_gammaView;
     uint32_t            m_gammaCpCount = 0;
     bool                m_gammaDirty = false;
-    DxvkBufferSliceHandle m_gammaSlice = { };
+    Rc<DxvkResourceAllocation> m_gammaSlice = { };
 
     Rc<DxvkImage>       m_resolveImage;
     Rc<DxvkImageView>   m_resolveView;

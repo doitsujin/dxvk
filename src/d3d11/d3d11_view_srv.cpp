@@ -43,6 +43,7 @@ namespace dxvk {
 
       // Fill in buffer view info
       DxvkBufferViewCreateInfo viewInfo;
+      viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
       if (bufInfo.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
         // Raw buffer view. We'll represent this as a
@@ -68,8 +69,7 @@ namespace dxvk {
       m_info.Buffer.Length = viewInfo.rangeLength;
 
       // Create underlying buffer view object
-      m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
-        buffer->GetBuffer(), viewInfo);
+      m_bufferView = buffer->GetBuffer()->createView(viewInfo);
     } else {
       auto texture = GetCommonTexture(pResource);
       auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
@@ -183,6 +183,7 @@ namespace dxvk {
   
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
     ResourceReleasePrivate(m_resource);
+    m_resource = nullptr;
   }
   
   

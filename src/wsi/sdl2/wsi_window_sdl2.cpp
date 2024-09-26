@@ -136,6 +136,17 @@ namespace dxvk::wsi {
   }
 
 
+  bool Sdl2WsiDriver::isMinimized(HWND hWindow) {
+    SDL_Window* window = fromHwnd(hWindow);
+    return (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) != 0;
+  }
+
+
+  bool Sdl2WsiDriver::isOccluded(HWND hWindow) {
+    return false;
+  }
+
+
   void Sdl2WsiDriver::updateFullscreenWindow(
           HMONITOR hMonitor,
           HWND     hWindow,

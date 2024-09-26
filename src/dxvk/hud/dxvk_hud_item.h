@@ -391,6 +391,63 @@ namespace dxvk::hud {
 
 
   /**
+   * \brief HUD item to display detailed memory allocation info
+   */
+  class HudMemoryDetailsItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudMemoryDetailsItem(const Rc<DxvkDevice>& device);
+
+    ~HudMemoryDetailsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    struct ShaderArgs {
+      HudPos pos;
+      HudPos size;
+      HudPos scale;
+      float opacity;
+      uint32_t color;
+      uint32_t maskIndex;
+      uint32_t pageCount;
+    };
+
+    Rc<DxvkDevice>                    m_device;
+    DxvkMemoryAllocationStats         m_stats;
+    DxvkSharedAllocationCacheStats    m_cacheStats;
+
+    high_resolution_clock::time_point m_lastUpdate = { };
+
+    bool                m_displayCacheStats = false;
+
+    Rc<DxvkShader>      m_vs;
+    Rc<DxvkShader>      m_fsBackground;
+    Rc<DxvkShader>      m_fsVisualize;
+
+    Rc<DxvkBuffer>      m_pageMaskBuffer;
+    Rc<DxvkBufferView>  m_pageMaskView;
+
+    void uploadChunkData(
+            HudRenderer&      renderer);
+
+    void drawChunk(
+            HudRenderer&      renderer,
+            HudPos            pos,
+            HudPos            size,
+      const VkMemoryType&     memoryType,
+      const DxvkMemoryChunkStats& stats) const;
+
+  };
+
+
+  /**
    * \brief HUD item to display CS thread statistics
    */
   class HudCsThreadItem : public HudItem {

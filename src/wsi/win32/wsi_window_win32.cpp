@@ -254,6 +254,16 @@ namespace dxvk::wsi {
   }
 
 
+  bool Win32WsiDriver::isMinimized(HWND hWindow) {
+    return (::GetWindowLongW(hWindow, GWL_STYLE) & WS_MINIMIZE) != 0;
+  }
+
+
+  bool Win32WsiDriver::isOccluded(HWND hWindow) {
+    return ::GetForegroundWindow() != hWindow;
+  }
+
+
   void Win32WsiDriver::updateFullscreenWindow(
           HMONITOR hMonitor,
           HWND     hWindow,
