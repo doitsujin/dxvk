@@ -13,8 +13,8 @@ namespace dxvk {
       { VK_IMAGE_VIEW_TYPE_3D,       VK_IMAGE_VIEW_TYPE_2D_ARRAY },
     }};
     
-    m_srcViewType = viewTypes.at(uint32_t(view->imageInfo().type)).first;
-    m_dstViewType = viewTypes.at(uint32_t(view->imageInfo().type)).second;
+    m_srcViewType = viewTypes.at(uint32_t(view->image()->info().type)).first;
+    m_dstViewType = viewTypes.at(uint32_t(view->image()->info().type)).second;
     
     // Create image views and framebuffers
     m_passes.resize(view->info().numLevels - 1);
@@ -35,7 +35,7 @@ namespace dxvk {
   VkExtent3D DxvkMetaMipGenRenderPass::computePassExtent(uint32_t passId) const {
     VkExtent3D extent = m_view->mipLevelExtent(passId + 1);
     
-    if (m_view->imageInfo().type != VK_IMAGE_TYPE_3D)
+    if (m_view->image()->info().type != VK_IMAGE_TYPE_3D)
       extent.depth = m_view->info().numLayers;
     
     return extent;
@@ -48,7 +48,7 @@ namespace dxvk {
     VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
 
     VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    viewInfo.image = m_view->imageHandle();
+    viewInfo.image = m_view->image()->handle();
     viewInfo.format = m_view->info().format;
     
     // Create source image view, which points to
@@ -76,7 +76,7 @@ namespace dxvk {
     dstSubresources.baseMipLevel   = m_view->info().minLevel + pass + 1;
     dstSubresources.levelCount     = 1;
     
-    if (m_view->imageInfo().type != VK_IMAGE_TYPE_3D) {
+    if (m_view->image()->info().type != VK_IMAGE_TYPE_3D) {
       dstSubresources.baseArrayLayer = m_view->info().minLayer;
       dstSubresources.layerCount = m_view->info().numLayers;
     } else {

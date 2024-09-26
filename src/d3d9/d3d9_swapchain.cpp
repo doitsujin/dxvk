@@ -985,9 +985,7 @@ namespace dxvk {
       
       Rc<DxvkImage> image = m_device->importImage(imageInfo,
         imageHandle, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      m_wctx->imageViews[i] = new DxvkImageView(
-        m_device->vkd(), image, viewInfo);
+      m_wctx->imageViews[i] = image->createView(viewInfo);
     }
   }
 

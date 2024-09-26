@@ -174,7 +174,7 @@ namespace dxvk {
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  createInfo) {
-    return new DxvkImageView(m_vkd, image, createInfo);
+    return image->createView(createInfo);
   }
   
   
