@@ -98,7 +98,7 @@ namespace dxvk {
       info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
       m_buffer = m_parent->GetDXVKDevice()->importBuffer(info, importInfo, GetMemoryFlags());
-      m_allocation = m_buffer->getAllocation();
+      m_mapPtr = m_buffer->mapPtr(0);
 
       m_mapMode = DetermineMapMode(m_buffer->memFlags());
     } else if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
@@ -114,12 +114,12 @@ namespace dxvk {
       // Create the buffer and set the entire buffer slice as mapped,
       // so that we only have to update it when invalidating the buffer
       m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
-      m_allocation = m_buffer->getAllocation();
+      m_mapPtr = m_buffer->mapPtr(0);
     } else {
       m_sparseAllocator = m_parent->GetDXVKDevice()->createSparsePageAllocator();
       m_sparseAllocator->setCapacity(info.size / SparseMemoryPageSize);
 
-      m_allocation = nullptr;
+      m_mapPtr = nullptr;
       m_mapMode = D3D11_COMMON_BUFFER_MAP_MODE_NONE;
     }
 

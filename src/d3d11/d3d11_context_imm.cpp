@@ -348,7 +348,7 @@ namespace dxvk {
     } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // Put this on a fast path without any extra checks since it's
       // a somewhat desired method to partially update large buffers
-      pMappedResource->pData      = pResource->GetMappedSlice()->mapPtr();
+      pMappedResource->pData      = pResource->GetMapPtr();
       pMappedResource->RowPitch   = bufferSize;
       pMappedResource->DepthPitch = bufferSize;
       return S_OK;
@@ -376,10 +376,9 @@ namespace dxvk {
       }
 
       if (doInvalidatePreserve) {
-        auto srcSlice = pResource->GetMappedSlice();
-        auto dstSlice = pResource->DiscardSlice(nullptr);
+        auto srcPtr = pResource->GetMapPtr();
 
-        auto srcPtr = srcSlice->mapPtr();
+        auto dstSlice = pResource->DiscardSlice(nullptr);
         auto dstPtr = dstSlice->mapPtr();
 
         EmitCs([
@@ -398,7 +397,7 @@ namespace dxvk {
         if (!WaitForResource(buffer, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
 
-        pMappedResource->pData      = pResource->GetMappedSlice()->mapPtr();
+        pMappedResource->pData      = pResource->GetMapPtr();
         pMappedResource->RowPitch   = bufferSize;
         pMappedResource->DepthPitch = bufferSize;
         return S_OK;
@@ -713,7 +712,7 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
       });
     } else {
-      mapPtr = pDstBuffer->GetMappedSlice()->mapPtr();
+      mapPtr = pDstBuffer->GetMapPtr();
     }
 
     std::memcpy(reinterpret_cast<char*>(mapPtr) + Offset, pSrcData, Length);
