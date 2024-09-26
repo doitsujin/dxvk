@@ -19,7 +19,7 @@ namespace dxvk {
     : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_d3d9Interop(pInterface, this) {
     if (m_desc.Format == D3D9Format::Unknown)
       m_desc.Format = (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
-                    ? D3D9Format::D32
+                    ? D3D9Format::D24X8
                     : D3D9Format::X8R8G8B8;
 
     m_exposedMipLevels = m_desc.MipLevels;
