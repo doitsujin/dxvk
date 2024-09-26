@@ -528,10 +528,6 @@ namespace dxvk {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
 
-    // CopyRects cannot perform format conversions.
-    if (srcDesc.Format != dstDesc.Format)
-      return D3DERR_INVALIDCALL;
-
     bool compressed = isDXT(srcDesc.Format);
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
@@ -647,10 +643,8 @@ namespace dxvk {
 
     // This method cannot be applied to surfaces whose formats
     // are classified as depth stencil formats.
-    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format)) ||
-                 isDepthStencilFormat(D3DFORMAT(dstDesc.Format)))) {
+    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
       return D3DERR_INVALIDCALL;
-    }
 
     StateChange();
 
