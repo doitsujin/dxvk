@@ -335,6 +335,10 @@ namespace dxvk {
 
     constexpr static VkDeviceSize MinChunkSize =   4ull << 20;
     constexpr static VkDeviceSize MaxChunkSize = 256ull << 20;
+
+    // Assume an alignment of 256 bytes. This is enough to satisfy all
+    // buffer use cases, and matches our minimum allocation size.
+    constexpr static VkDeviceSize GlobalBufferAlignment = 256u;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
