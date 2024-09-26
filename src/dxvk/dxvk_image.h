@@ -374,6 +374,16 @@ namespace dxvk {
     }
     
     /**
+     * \brief Queries shader stages that can access this image
+     *
+     * Derived from the pipeline stage mask passed in during creation.
+     * \returns Shader stages that may access this image
+     */
+    VkShaderStageFlags getShaderStages() const {
+      return m_shaderStages;
+    }
+
+    /**
      * \brief Map pointer
      * 
      * If the image has been created on a host-visible
@@ -544,6 +554,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves current backing storage
+     * \returns Backing storage for this image
+     */
+    Rc<DxvkResourceAllocation> getAllocation() const {
+      return m_storage;
+    }
+
+    /**
      * \brief Creates or retrieves an image view
      *
      * \param [in] info Image view create info
@@ -557,6 +575,7 @@ namespace dxvk {
     Rc<vk::DeviceFn>            m_vkd;
     DxvkMemoryAllocator*        m_allocator   = nullptr;
     VkMemoryPropertyFlags       m_properties  = 0u;
+    VkShaderStageFlags          m_shaderStages = 0u;
 
     DxvkImageCreateInfo         m_info        = { };
 

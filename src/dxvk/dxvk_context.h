@@ -964,6 +964,19 @@ namespace dxvk {
     void invalidateBuffer(
       const Rc<DxvkBuffer>&           buffer,
             Rc<DxvkResourceAllocation>&& slice);
+
+    /**
+     * \brief Invalidates image content
+     *
+     * Replaces the backing storage of an image.
+     * \warning If the image is used by another context,
+     * invalidating it will result in undefined behaviour.
+     * \param [in] buffer The buffer to invalidate
+     * \param [in] slice New buffer slice
+     */
+    void invalidateImage(
+      const Rc<DxvkImage>&            image,
+            Rc<DxvkResourceAllocation>&& slice);
     
     /**
      * \brief Updates push constants
