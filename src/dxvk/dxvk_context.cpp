@@ -5260,7 +5260,7 @@ namespace dxvk {
               descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
               if (m_rcTracked.set(binding.resourceBinding))
-                m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+                m_cmd->trackSampler(res.sampler);
             } else {
               descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
               descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -5312,7 +5312,7 @@ namespace dxvk {
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
-                m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+                m_cmd->trackSampler(res.sampler);
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {

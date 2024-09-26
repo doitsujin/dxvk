@@ -9,6 +9,7 @@ namespace dxvk {
   void DxvkLifetimeTracker::reset() {
     m_resources.clear();
     m_allocations.clear();
+    m_samplers.clear();
   }
   
 }

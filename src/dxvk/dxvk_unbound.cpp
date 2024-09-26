@@ -54,25 +54,15 @@ namespace dxvk {
 
 
   Rc<DxvkSampler> DxvkUnboundResources::createSampler() {
-    DxvkSamplerCreateInfo info;
-    info.minFilter      = VK_FILTER_LINEAR;
-    info.magFilter      = VK_FILTER_LINEAR;
-    info.mipmapMode     = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    info.mipmapLodBias  = 0.0f;
-    info.mipmapLodMin   = -256.0f;
-    info.mipmapLodMax   =  256.0f;
-    info.useAnisotropy  = VK_FALSE;
-    info.maxAnisotropy  = 1.0f;
-    info.addressModeU   = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV   = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW   = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.compareToDepth = VK_FALSE;
-    info.compareOp      = VK_COMPARE_OP_NEVER;
-    info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-    info.borderColor    = VkClearColorValue();
-    info.usePixelCoord  = VK_FALSE;
-    info.nonSeamless    = VK_FALSE;
-    
+    DxvkSamplerKey info;
+    info.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR);
+    info.setLodRange(-256.0f, 256.0f, 0.0f);
+    info.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    info.setReduction(VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE);
+
     return m_device->createSampler(info);
   }
   

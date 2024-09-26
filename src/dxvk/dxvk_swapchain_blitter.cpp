@@ -286,30 +286,23 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::createSampler() {
-    DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
-    samplerInfo.minFilter       = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipmapLodBias   = 0.0f;
-    samplerInfo.mipmapLodMin    = 0.0f;
-    samplerInfo.mipmapLodMax    = 0.0f;
-    samplerInfo.useAnisotropy   = VK_FALSE;
-    samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.compareToDepth  = VK_FALSE;
-    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-    samplerInfo.borderColor     = VkClearColorValue();
-    samplerInfo.usePixelCoord   = VK_TRUE;
-    samplerInfo.nonSeamless     = VK_FALSE;
+    DxvkSamplerKey samplerInfo = { };
+    samplerInfo.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
+      VK_SAMPLER_MIPMAP_MODE_NEAREST);
+    samplerInfo.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
+    samplerInfo.setUsePixelCoordinates(true);
+ 
     m_samplerPresent = m_device->createSampler(samplerInfo);
 
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.usePixelCoord   = VK_FALSE;
+    samplerInfo.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    samplerInfo.setUsePixelCoordinates(false);
+ 
     m_samplerGamma = m_device->createSampler(samplerInfo);
   }
 

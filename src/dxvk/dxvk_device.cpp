@@ -172,8 +172,8 @@ namespace dxvk {
   
   
   Rc<DxvkSampler> DxvkDevice::createSampler(
-    const DxvkSamplerCreateInfo&  createInfo) {
-    return new DxvkSampler(this, createInfo);
+    const DxvkSamplerKey&         createInfo) {
+    return m_objects.samplerPool().createSampler(createInfo);
   }
 
 

@@ -281,6 +281,10 @@ namespace dxvk {
       m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
     }
 
+    void trackSampler(const Rc<DxvkSampler>& sampler) {
+      m_resources.trackSampler(sampler);
+    }
+
     /**
      * \brief Tracks a GPU event
      * 

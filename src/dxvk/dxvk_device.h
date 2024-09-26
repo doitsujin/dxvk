@@ -330,7 +330,7 @@ namespace dxvk {
      * \returns Newly created sampler object
      */
     Rc<DxvkSampler> createSampler(
-      const DxvkSamplerCreateInfo&  createInfo);
+      const DxvkSamplerKey&         createInfo);
 
     /**
      * \brief Creates local allocation cache
