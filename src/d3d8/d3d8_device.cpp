@@ -109,11 +109,12 @@ namespace dxvk {
         }
 
         break;
-      case D3DDEVINFOID_RESOURCEMANAGER:
-        // May not be implemented by D9VK.
+
+      case D3DDEVINFOID_RESOURCEMANAGER: // Not yet implemented by D9VK.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_RESOURCEMANAGER, &pQuery);
         break;
-      case D3DDEVINFOID_VERTEXSTATS:
+
+      case D3DDEVINFOID_VERTEXSTATS: // Not yet implemented by D9VK.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VERTEXSTATS, &pQuery);
         break;
 
@@ -122,26 +123,20 @@ namespace dxvk {
         return E_FAIL;
     }
 
-    if (unlikely(FAILED(res)))
-      goto done;
-    
-    // Immediately issue the query.
-    // D3D9 will begin it automatically before ending.
-    res = pQuery->Issue(D3DISSUE_END);
-    if (unlikely(FAILED(res))) {
-      goto done;
-    }
-
-    // TODO: Will immediately issuing the query without doing any API calls
-    // actually yield meaingful results? And should we flush or let it mellow?
-    res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
-
-  done:
-    if (unlikely(FAILED(res))) {
+    if (FAILED(res)) {
       if (res == D3DERR_NOTAVAILABLE) // unsupported
         return E_FAIL;
       else // any unknown error
         return S_FALSE;
+    }
+
+    if (pQuery != nullptr) {
+      // Immediately issue the query. D3D9 will begin it automatically before ending.
+      pQuery->Issue(D3DISSUE_END);
+      // TODO: Will immediately issuing the query actually yield meaingful results?
+      // Only relevant once RESOURCEMANAGER or VERTEXSTATS are implemented by D9VK,
+      // since VCACHE queries will immediately return data during this call.
+      res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
     }
 
     return res;
