@@ -279,6 +279,12 @@ namespace dxvk {
     const void*                 next) {
     auto vk = m_device->vkd();
 
+    // If global buffers are enabled for this allocation, pad the allocation size
+    // to a multiple of the global buffer alignment. This can happen when we create
+    // a dedicated allocation for a large resource.
+    if (type.bufferUsage && !next)
+      size = align(size, GlobalBufferAlignment);
+
     // Preemptively free some unused allocations to reduce memory waste
     freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
 
