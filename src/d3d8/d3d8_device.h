@@ -405,9 +405,11 @@ namespace dxvk {
         m_backBuffers[i] = new D3D8Surface(this, std::move(pSurface9));
       }
 
-      Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
-      GetD3D9()->GetDepthStencilSurface(&pStencil9);
-      m_autoDepthStencil = new D3D8Surface(this, std::move(pStencil9));
+      Com<d3d9::IDirect3DSurface9> pStencil9;
+      // This call will fail if the D3D9 device is created without
+      // the EnableAutoDepthStencil presentation parameter set to TRUE.
+      HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
+      m_autoDepthStencil = FAILED(res) ? nullptr : new D3D8Surface(this, std::move(pStencil9));
 
       m_renderTarget = m_backBuffers[0];
       m_depthStencil = m_autoDepthStencil;
