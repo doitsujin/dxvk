@@ -50,7 +50,7 @@ namespace dxvk {
     else
       InitDeviceLocalTexture(pTexture, pInitialData);
 
-    SyncKeyedMutex(pTexture->GetInterface());
+    SyncSharedTexture(pTexture);
   }
 
 
@@ -287,13 +287,30 @@ namespace dxvk {
   }
 
 
-  void D3D11Initializer::SyncKeyedMutex(ID3D11Resource *pResource) {
-    Com<IDXGIKeyedMutex> keyedMutex;
-    if (pResource->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&keyedMutex)) != S_OK)
+  void D3D11Initializer::SyncSharedTexture(D3D11CommonTexture* pResource) {
+    if (!(pResource->Desc()->MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE)))
       return;
 
-    keyedMutex->AcquireSync(0, 0);
-    keyedMutex->ReleaseSync(0);
+    // Ensure that initialization commands are submitted and waited on before
+    // returning control to the application in order to avoid race conditions
+    // in case the texture is used immediately on a secondary device.
+    auto mapMode = pResource->GetMapMode();
+
+    if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+     || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+      FlushInternal();
+
+      m_device->waitForResource(pResource->GetImage(), DxvkAccess::Write);
+    }
+
+    // If a keyed mutex is used, initialize that to the correct state as well.
+    Com<IDXGIKeyedMutex> keyedMutex;
+
+    if (SUCCEEDED(pResource->GetInterface()->QueryInterface(
+        __uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&keyedMutex)))) {
+      keyedMutex->AcquireSync(0, 0);
+      keyedMutex->ReleaseSync(0);
+    }
   }
 
 }
