@@ -9,7 +9,11 @@ namespace dxvk {
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(device->vkd()), m_allocator(&memAlloc), m_properties(memFlags), m_info(createInfo) {
+  : m_vkd           (device->vkd()),
+    m_allocator     (&memAlloc),
+    m_properties    (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_info          (createInfo) {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Determine whether the image is shareable before creating the resource
@@ -22,12 +26,16 @@ namespace dxvk {
 
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
-    const DxvkImageCreateInfo&  info,
+    const DxvkImageCreateInfo&  createInfo,
           VkImage               imageHandle,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(device->vkd()), m_allocator(&memAlloc), m_properties(memFlags), m_info(info) {
-    copyFormatList(info.viewFormatCount, info.viewFormats);
+  : m_vkd           (device->vkd()),
+    m_allocator     (&memAlloc),
+    m_properties    (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_info          (createInfo) {
+    copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
     VkImageCreateInfo imageInfo = getImageCreateInfo();

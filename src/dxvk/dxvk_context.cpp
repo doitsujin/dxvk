@@ -1815,7 +1815,6 @@ namespace dxvk {
   void DxvkContext::invalidateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           Rc<DxvkResourceAllocation>&& slice) {
-    // Allocate new backing resource
     Rc<DxvkResourceAllocation> prevAllocation = buffer->assignSlice(std::move(slice));
     m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
 
@@ -1848,6 +1847,31 @@ namespace dxvk {
 
     if (usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT)
       m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+  }
+
+
+  void DxvkContext::invalidateImage(
+    const Rc<DxvkImage>&            image,
+          Rc<DxvkResourceAllocation>&& slice) {
+    Rc<DxvkResourceAllocation> prevAllocation = image->assignResource(std::move(slice));
+    m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
+
+    VkImageUsageFlags usage = image->info().usage;
+
+    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT))
+      m_descriptorState.dirtyViews(image->getShaderStages());
+
+    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      // Interrupt the current render pass if the image is bound for rendering
+      for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+        if (m_state.om.framebufferInfo.getAttachment(i).view->image() == image) {
+          this->spillRenderPass(false);
+
+          m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+          break;
+        }
+      }
+    }
   }
 
 
