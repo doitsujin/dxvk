@@ -77,6 +77,35 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkImageView> DxvkImage::createView(
+    const DxvkImageViewCreateInfo& info) {
+    DxvkImageViewKey key = { };
+    key.viewType = info.type;
+    key.format = info.format;
+    key.usage = info.usage;
+    key.aspects = info.aspect;
+    key.mipIndex = info.minLevel;
+    key.mipCount = info.numLevels;
+    key.layerIndex = info.minLayer;
+    key.layerCount = info.numLayers;
+
+    if (info.usage == VK_IMAGE_USAGE_SAMPLED_BIT) {
+      key.packedSwizzle =
+        (uint16_t(info.swizzle.r) <<  0) |
+        (uint16_t(info.swizzle.g) <<  4) |
+        (uint16_t(info.swizzle.b) <<  8) |
+        (uint16_t(info.swizzle.a) << 12);
+    }
+
+    std::unique_lock lock(m_viewMutex);
+
+    auto entry = m_views.emplace(std::piecewise_construct,
+      std::make_tuple(key), std::make_tuple(this, key));
+
+    return &entry.first->second;
+  }
+
+
   Rc<DxvkResourceAllocation> DxvkImage::createResource() {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
 
@@ -195,108 +224,84 @@ namespace dxvk {
 
 
   DxvkImageView::DxvkImageView(
-    const Rc<vk::DeviceFn>&         vkd,
-    const Rc<DxvkImage>&            image,
-    const DxvkImageViewCreateInfo&  info)
-  : m_vkd(vkd), m_image(image), m_info(info) {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_views[i] = VK_NULL_HANDLE;
-    
-    switch (m_info.type) {
-      case VK_IMAGE_VIEW_TYPE_1D:
-      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_1D,       1);
-        this->createView(VK_IMAGE_VIEW_TYPE_1D_ARRAY, m_info.numLayers);
-      } break;
-      
-      case VK_IMAGE_VIEW_TYPE_2D:
-      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
-        this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
-        [[fallthrough]];
+          DxvkImage*                image,
+    const DxvkImageViewKey&         key)
+  : m_image(image), m_key(key) {
 
-      case VK_IMAGE_VIEW_TYPE_CUBE:
-      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_info.numLayers);
-        
-        if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
-          uint32_t cubeCount = m_info.numLayers / 6;
-        
-          if (cubeCount > 0) {
-            this->createView(VK_IMAGE_VIEW_TYPE_CUBE,       6);
-            this->createView(VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6 * cubeCount);
-          }
-        }
-      } break;
-        
-      case VK_IMAGE_VIEW_TYPE_3D: {
-        this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
-        
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT && m_info.numLevels == 1) {
-          this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
-          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
-        }
-      } break;
-      
-      default:
-        throw DxvkError(str::format("DxvkImageView: Invalid view type: ", m_info.type));
-    }
   }
-  
-  
+
+
   DxvkImageView::~DxvkImageView() {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+
   }
 
-  
-  void DxvkImageView::createView(VkImageViewType type, uint32_t numLayers) {
-    VkImageSubresourceRange subresourceRange;
-    subresourceRange.aspectMask     = m_info.aspect;
-    subresourceRange.baseMipLevel   = m_info.minLevel;
-    subresourceRange.levelCount     = m_info.numLevels;
-    subresourceRange.baseArrayLayer = m_info.minLayer;
-    subresourceRange.layerCount     = numLayers;
 
-    VkImageViewUsageCreateInfo viewUsage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    viewUsage.usage           = m_info.usage;
-    
-    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &viewUsage };
-    viewInfo.image            = m_image->handle();
-    viewInfo.viewType         = type;
-    viewInfo.format           = m_info.format;
-    viewInfo.components       = m_info.swizzle;
-    viewInfo.subresourceRange = subresourceRange;
+  VkImageView DxvkImageView::createView(VkImageViewType type) const {
+    DxvkImageViewKey key = m_key;
+    key.viewType = type;
 
-    if (m_info.usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
-      viewInfo.components = {
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+    // Only use one layer for non-arrayed view types
+    if (type == VK_IMAGE_VIEW_TYPE_1D || type == VK_IMAGE_VIEW_TYPE_2D)
+      key.layerCount = 1u;
+
+    switch (m_image->info().type) {
+      case VK_IMAGE_TYPE_1D: {
+        // Trivial, just validate that view types are compatible
+        if (type != VK_IMAGE_VIEW_TYPE_1D && type != VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+          return VK_NULL_HANDLE;
+      } break;
+
+      case VK_IMAGE_TYPE_2D: {
+        if (type == VK_IMAGE_VIEW_TYPE_CUBE || type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+          // Ensure that the image is compatible with cube maps
+          if (key.layerCount < 6 || !(m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
+            return VK_NULL_HANDLE;
+
+          // Adjust layer count to make sure it's a multiple of 6
+          key.layerCount = type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
+            ? key.layerCount - key.layerCount % 6u : 6u;
+        } else if (type != VK_IMAGE_VIEW_TYPE_2D && type != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+          return VK_NULL_HANDLE;
+        }
+      } break;
+
+      case VK_IMAGE_TYPE_3D: {
+        if (type == VK_IMAGE_VIEW_TYPE_2D || type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+          // Ensure that the image is actually compatible with 2D views
+          if (!(m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT))
+            return VK_NULL_HANDLE;
+
+          // In case the view's native type is 3D, we can only create 2D compat
+          // views if there is only one mip and with the full set of array layers.
+          if (m_key.viewType == VK_IMAGE_VIEW_TYPE_3D) {
+            if (m_key.mipCount != 1u)
+              return VK_NULL_HANDLE;
+
+            key.layerIndex = 0u;
+            key.layerCount = type == VK_IMAGE_VIEW_TYPE_2D_ARRAY
+              ? m_image->mipLevelExtent(key.mipIndex).depth : 1u;
+          }
+        } else if (type != VK_IMAGE_VIEW_TYPE_3D) {
+          return VK_NULL_HANDLE;
+        }
+      } break;
+
+      default:
+        return VK_NULL_HANDLE;
     }
-    
-    if (m_vkd->vkCreateImageView(m_vkd->device(),
-          &viewInfo, nullptr, &m_views[type]) != VK_SUCCESS) {
-      throw DxvkError(str::format(
-        "DxvkImageView: Failed to create image view:"
-        "\n  View type:       ", viewInfo.viewType,
-        "\n  View format:     ", viewInfo.format,
-        "\n  Subresources:    ",
-        "\n    Aspect mask:   ", std::hex, viewInfo.subresourceRange.aspectMask,
-        "\n    Mip levels:    ", viewInfo.subresourceRange.baseMipLevel, " - ",
-                                 viewInfo.subresourceRange.levelCount,
-        "\n    Array layers:  ", viewInfo.subresourceRange.baseArrayLayer, " - ",
-                                 viewInfo.subresourceRange.layerCount,
-        "\n  Image properties:",
-        "\n    Type:          ", m_image->info().type,
-        "\n    Format:        ", m_image->info().format,
-        "\n    Extent:        ", "(", m_image->info().extent.width,
-                                 ",", m_image->info().extent.height,
-                                 ",", m_image->info().extent.depth, ")",
-        "\n    Mip levels:    ", m_image->info().mipLevels,
-        "\n    Array layers:  ", m_image->info().numLayers,
-        "\n    Samples:       ", m_image->info().sampleCount,
-        "\n    Usage:         ", std::hex, m_image->info().usage,
-        "\n    Tiling:        ", m_image->info().tiling));
+
+    return m_image->m_storage->createImageView(key);
+  }
+
+
+  void DxvkImageView::updateViews() {
+    // Update all views that are not currently null
+    for (uint32_t i = 0; i < m_views.size(); i++) {
+      if (m_views[i])
+        m_views[i] = createView(VkImageViewType(i));
     }
+
+    m_version = m_image->m_version;
   }
   
 }

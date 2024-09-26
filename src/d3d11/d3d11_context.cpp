@@ -512,12 +512,12 @@ namespace dxvk {
       // we'll have to use a fallback using a texel buffer view and buffer copies.
       bool isViewCompatible = uavFormat == rawFormat;
 
-      if (!isViewCompatible && (imageView->imageInfo().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
-        uint32_t formatCount = imageView->imageInfo().viewFormatCount;
+      if (!isViewCompatible && (imageView->image()->info().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
+        uint32_t formatCount = imageView->image()->info().viewFormatCount;
         isViewCompatible = formatCount == 0;
 
         for (uint32_t i = 0; i < formatCount && !isViewCompatible; i++)
-          isViewCompatible = imageView->imageInfo().viewFormats[i] == rawFormat;
+          isViewCompatible = imageView->image()->info().viewFormats[i] == rawFormat;
       }
 
       if (isViewCompatible || isZeroClearValue) {
@@ -5428,8 +5428,8 @@ namespace dxvk {
            || curView->info().numLayers != refView->info().numLayers)
             return false;
 
-          if (curView->imageInfo().sampleCount
-           != refView->imageInfo().sampleCount)
+          if (curView->image()->info().sampleCount
+           != refView->image()->info().sampleCount)
             return false;
 
           // Color targets must all be the same size
