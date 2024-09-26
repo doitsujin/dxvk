@@ -96,14 +96,11 @@ namespace dxvk {
     key.mipCount = info.numLevels;
     key.layerIndex = info.minLayer;
     key.layerCount = info.numLayers;
-
-    if (info.usage == VK_IMAGE_USAGE_SAMPLED_BIT) {
-      key.packedSwizzle =
-        (uint16_t(info.swizzle.r) <<  0) |
-        (uint16_t(info.swizzle.g) <<  4) |
-        (uint16_t(info.swizzle.b) <<  8) |
-        (uint16_t(info.swizzle.a) << 12);
-    }
+    key.packedSwizzle =
+      (uint16_t(info.swizzle.r) <<  0) |
+      (uint16_t(info.swizzle.g) <<  4) |
+      (uint16_t(info.swizzle.b) <<  8) |
+      (uint16_t(info.swizzle.a) << 12);
 
     std::unique_lock lock(m_viewMutex);
 
@@ -297,6 +294,11 @@ namespace dxvk {
       default:
         return VK_NULL_HANDLE;
     }
+
+    // We need to expose RT and UAV swizzles to the backend,
+    // but cannot legally pass them down to Vulkan
+    if (key.usage != VK_IMAGE_USAGE_SAMPLED_BIT)
+      key.packedSwizzle = 0u;
 
     return m_image->m_storage->createImageView(key);
   }
