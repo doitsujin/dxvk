@@ -4370,15 +4370,16 @@ namespace dxvk {
       info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
       Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+      void* mapPtr = buffer->mapPtr(0);
 
       if (size <= UPBufferSize) {
         m_upBuffer = std::move(buffer);
-        m_upBufferMapPtr = m_upBuffer->mapPtr(0);
+        m_upBufferMapPtr = mapPtr;
       } else {
         // Temporary buffer
         D3D9BufferSlice result;
         result.slice = DxvkBufferSlice(std::move(buffer), 0, size);
-        result.mapPtr = buffer->mapPtr(0);
+        result.mapPtr = mapPtr;
         return result;
       }
     }
