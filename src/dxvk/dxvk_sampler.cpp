@@ -151,6 +151,8 @@ namespace dxvk {
 
         sampler->m_lruPrev = nullptr;
         sampler->m_lruNext = nullptr;
+
+        m_samplersLive.store(m_samplersLive.load() + 1u);
       }
 
       // We already took a reference, forward the pointer as-is
@@ -163,9 +165,13 @@ namespace dxvk {
       destroyLeastRecentlyUsedSampler();
 
     // Create new sampler object
-    return &m_samplers.emplace(std::piecewise_construct,
+    DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
       std::forward_as_tuple(key),
       std::forward_as_tuple(this, key)).first->second;
+
+    m_samplersTotal.store(m_samplers.size());
+    m_samplersLive.store(m_samplersLive.load() + 1u);
+    return sampler;
   }
 
 
@@ -195,6 +201,9 @@ namespace dxvk {
 
     m_lruTail = sampler;
 
+    // Don't need an atomic add for these
+    m_samplersLive.store(m_samplersLive.load() - 1u);
+
     // Try to keep some samplers available for subsequent allocations
     if (m_samplers.size() > MinSamplerCount)
       destroyLeastRecentlyUsedSampler();
@@ -213,6 +222,7 @@ namespace dxvk {
         m_lruTail = nullptr;
 
       m_samplers.erase(sampler->key());
+      m_samplersTotal.store(m_samplers.size());
     }
   }
 

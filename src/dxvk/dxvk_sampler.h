@@ -195,7 +195,18 @@ namespace dxvk {
     VkBorderColor determineBorderColorType() const;
 
   };
-  
+
+
+  /**
+   * \brief Sampler statistics
+   */
+  struct DxvkSamplerStats {
+    /// Number of sampler objects created
+    uint32_t totalCount = 0u;
+    /// Number of samplers currently in use
+    uint32_t liveCount = 0u;
+  };
+
 
   /**
    * \brief Sampler pool
@@ -225,6 +236,19 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(const DxvkSamplerKey& key);
 
+    /**
+     * \brief Retrieves sampler statistics
+     *
+     * Note that these might be out of date immediately.
+     * \returns Sampler counts
+     */
+    DxvkSamplerStats getStats() const {
+      DxvkSamplerStats stats = { };
+      stats.totalCount = m_samplersTotal.load();
+      stats.liveCount = m_samplersLive.load();
+      return stats;
+    }
+
   private:
 
     DxvkDevice* m_device;
@@ -235,6 +259,9 @@ namespace dxvk {
 
     DxvkSampler* m_lruHead = nullptr;
     DxvkSampler* m_lruTail = nullptr;
+
+    std::atomic<uint32_t> m_samplersLive = { 0u };
+    std::atomic<uint32_t> m_samplersTotal = { 0u };
 
     void releaseSampler(DxvkSampler* sampler);
 
