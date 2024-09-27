@@ -110,7 +110,7 @@ namespace dxvk {
     m_info.Image.NumLayers = viewInfo.numLayers;
     
     // Create the underlying image view object
-    m_view = pDevice->GetDXVKDevice()->createImageView(texture->GetImage(), viewInfo);
+    m_view = texture->GetImage()->createView(viewInfo);
   }
   
   

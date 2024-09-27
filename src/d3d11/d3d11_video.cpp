@@ -219,7 +219,7 @@ namespace dxvk {
       if (viewInfo.aspect != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = pDevice->GetDXVKDevice()->createImageView(dxvkImage, viewInfo);
+      m_views[i] = dxvkImage->createView(viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
@@ -314,8 +314,7 @@ namespace dxvk {
         throw DxvkError("Invalid view dimension");
     }
 
-    m_view = pDevice->GetDXVKDevice()->createImageView(
-      GetCommonTexture(pResource)->GetImage(), viewInfo);
+    m_view = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
   }
 
 

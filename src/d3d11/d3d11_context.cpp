@@ -526,7 +526,7 @@ namespace dxvk {
           DxvkImageViewCreateInfo info = imageView->info();
           info.format = rawFormat;
 
-          imageView = m_device->createImageView(imageView->image(), info);
+          imageView = imageView->image()->createView(info);
         }
 
         EmitCs([

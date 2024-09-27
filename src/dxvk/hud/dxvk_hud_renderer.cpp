@@ -316,7 +316,7 @@ namespace dxvk::hud {
     info.minLayer       = 0;
     info.numLayers      = 1;
     
-    return m_device->createImageView(m_fontImage, info);
+    return m_fontImage->createView(info);
   }
   
   

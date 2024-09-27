@@ -322,17 +322,6 @@ namespace dxvk {
     Rc<DxvkImage> createImage(
       const DxvkImageCreateInfo&  createInfo,
             VkMemoryPropertyFlags memoryType);
-
-    /**
-     * \brief Creates an image view
-     * 
-     * \param [in] image The image to create a view for
-     * \param [in] createInfo Image view create info
-     * \returns The image view
-     */
-    Rc<DxvkImageView> createImageView(
-      const Rc<DxvkImage>&            image,
-      const DxvkImageViewCreateInfo&  createInfo);
     
     /**
      * \brief Creates a sampler object

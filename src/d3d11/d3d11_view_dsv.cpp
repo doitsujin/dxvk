@@ -99,8 +99,7 @@ namespace dxvk {
       m_info.Image.Aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
     // Create the underlying image view object
-    m_view = pDevice->GetDXVKDevice()->createImageView(
-      GetCommonTexture(pResource)->GetImage(), viewInfo);
+    m_view = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
   }
   
   

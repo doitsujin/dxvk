@@ -121,8 +121,7 @@ namespace dxvk {
       m_info.Image.NumLevels = viewInfo.numLevels;
       m_info.Image.NumLayers = viewInfo.numLayers;
 
-      m_imageView = pDevice->GetDXVKDevice()->createImageView(
-        GetCommonTexture(pResource)->GetImage(), viewInfo);
+      m_imageView = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
     }
   }
   

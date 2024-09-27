@@ -267,7 +267,7 @@ namespace dxvk {
         viewInfo.minLayer   = 0;
         viewInfo.numLayers  = 1;
         
-        m_gammaView = m_device->createImageView(m_gammaImage, viewInfo);
+        m_gammaView = m_gammaImage->createView(viewInfo);
       }
 
       ctx->invalidateBuffer(m_gammaBuffer, std::move(m_gammaSlice));
@@ -380,7 +380,7 @@ namespace dxvk {
     viewInfo.numLevels = 1;
     viewInfo.minLayer  = 0;
     viewInfo.numLayers = 1;
-    m_resolveView = m_device->createImageView(m_resolveImage, viewInfo);
+    m_resolveView = m_resolveImage->createView(viewInfo);
   }
 
 

@@ -85,7 +85,7 @@ namespace dxvk {
     imageViewInfo.numLevels = 1;
     imageViewInfo.minLayer  = dstSubresource.baseArrayLayer;
     imageViewInfo.numLayers = dstSubresource.layerCount;
-    auto tmpImageView = m_device->createImageView(dstImage, imageViewInfo);
+    auto tmpImageView = dstImage->createView(imageViewInfo);
 
     VkExtent3D imageExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
     imageExtent = VkExtent3D{ imageExtent.width  / macroPixelRun.width,

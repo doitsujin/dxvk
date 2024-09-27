@@ -663,7 +663,7 @@ namespace dxvk {
                            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
 
     // Create the underlying image view object
-    return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
+    return GetImage()->createView(viewInfo);
   }
 
 

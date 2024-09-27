@@ -171,13 +171,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImageView> DxvkDevice::createImageView(
-    const Rc<DxvkImage>&            image,
-    const DxvkImageViewCreateInfo&  createInfo) {
-    return image->createView(createInfo);
-  }
-  
-  
   Rc<DxvkSampler> DxvkDevice::createSampler(
     const DxvkSamplerCreateInfo&  createInfo) {
     return new DxvkSampler(this, createInfo);

@@ -3919,7 +3919,7 @@ namespace dxvk {
     if (dstImage->mipLevelExtent(dstSubresource.mipLevel) != dstExtent)
       return false;
 
-    auto view = m_device->createImageView(dstImage, viewInfo);
+    auto view = dstImage->createView(viewInfo);
     this->deferClear(view, srcSubresource.aspectMask, clear->clearValue);
     return true;
   }

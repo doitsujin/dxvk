@@ -617,7 +617,7 @@ namespace dxvk {
     viewInfo.numLevels  = 1;
     viewInfo.minLayer   = 0;
     viewInfo.numLayers  = 1;
-    m_swapImageView = m_device->createImageView(m_swapImage, viewInfo);
+    m_swapImageView = m_swapImage->createView(viewInfo);
     
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
