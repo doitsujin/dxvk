@@ -917,6 +917,8 @@ namespace dxvk {
 
     void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadVBOs, bool UploadIBOs);
 
+    void EnsureSamplerLimit();
+
     template <DxsoProgramType ShaderStage>
     void BindShader(
       const D3D9CommonShader*                 pShaderModule);
@@ -1458,6 +1460,19 @@ namespace dxvk {
     D3D9VkInteropDevice             m_d3d9Interop;
     D3D9On12                        m_d3d9On12;
     DxvkD3D8Bridge                  m_d3d8Bridge;
+
+    // Sampler statistics
+    constexpr static uint32_t       SamplerCountBits = 12u;
+    constexpr static uint64_t       SamplerCountMask = (1u << SamplerCountBits) - 1u;
+
+    uint64_t                        m_samplerBindCount = 0u;
+
+    uint64_t                        m_lastSamplerLiveCount = 0u;
+    uint64_t                        m_lastSamplerBindCount = 0u;
+
+    // Written by CS thread
+    alignas(CACHE_LINE_SIZE)
+    std::atomic<uint64_t>           m_lastSamplerStats = { 0u };
   };
 
 }

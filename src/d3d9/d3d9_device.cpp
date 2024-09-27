@@ -6642,11 +6642,14 @@ namespace dxvk {
       samplerInfo.first, DxsoBindingType::Image,
       samplerInfo.second);
 
+    m_samplerBindCount++;
+
     EmitCs([this,
       cSlot     = slot,
       cState    = D3D9SamplerInfo(m_state.samplerStates[Sampler]),
       cIsCube   = bool(m_cubeTextures & (1u << Sampler)),
-      cIsDepth  = bool(m_depthTextures & (1u << Sampler))
+      cIsDepth  = bool(m_depthTextures & (1u << Sampler)),
+      cBindId   = m_samplerBindCount
     ] (DxvkContext* ctx) {
       DxvkSamplerKey key = { };
 
@@ -6697,6 +6700,10 @@ namespace dxvk {
 
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
       ctx->bindResourceSampler(stage, cSlot, m_dxvkDevice->createSampler(key));
+
+      // Let the main thread know about current sampler stats
+      uint64_t liveCount = m_dxvkDevice->getSamplerStats().liveCount;
+      m_lastSamplerStats.store(liveCount | (cBindId << SamplerCountBits), std::memory_order_relaxed);
     });
   }
 
@@ -6741,6 +6748,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtySamplers(uint32_t mask) {
+    EnsureSamplerLimit();
+
     for (uint32_t i : bit::BitMask(mask))
       BindSampler(i);
 
@@ -6969,6 +6978,69 @@ namespace dxvk {
       BindIndices();
       m_flags.clr(D3D9DeviceFlag::DirtyIndexBuffer);
     }
+  }
+
+
+  void D3D9DeviceEx::EnsureSamplerLimit() {
+    constexpr uint32_t MaxSamplerCount = DxvkSamplerPool::MaxSamplerCount - SamplerCount;
+
+    // Maximum possible number of live samplers we can have
+    // since last reading back from the CS thread.
+    if (likely(m_lastSamplerLiveCount + m_samplerBindCount - m_lastSamplerBindCount <= MaxSamplerCount))
+      return;
+
+    // Update current stats from CS thread and check again. We
+    // don't want to do this every time due to potential cache
+    // thrashing.
+    uint64_t lastStats = m_lastSamplerStats.load(std::memory_order_relaxed);
+    m_lastSamplerLiveCount = lastStats & SamplerCountMask;
+    m_lastSamplerBindCount = lastStats >> SamplerCountBits;
+
+    if (likely(m_lastSamplerLiveCount + m_samplerBindCount - m_lastSamplerBindCount <= MaxSamplerCount))
+      return;
+
+    // If we have a large number of sampler updates in flight, wait for
+    // the CS thread to complete some and re-evaluate. We should not hit
+    // this path under normal gameplay conditions.
+    ConsiderFlush(GpuFlushType::ImplicitSynchronization);
+
+    uint64_t sequenceNumber = m_csThread.lastSequenceNumber();
+
+    while (++sequenceNumber <= GetCurrentSequenceNumber()) {
+      SynchronizeCsThread(sequenceNumber);
+
+      uint64_t lastStats = m_lastSamplerStats.load(std::memory_order_relaxed);
+      m_lastSamplerLiveCount = lastStats & SamplerCountMask;
+      m_lastSamplerBindCount = lastStats >> SamplerCountBits;
+
+      if (m_lastSamplerLiveCount + m_samplerBindCount - m_lastSamplerBindCount <= MaxSamplerCount)
+        return;
+    }
+
+    // If we end up here, the game somehow managed to queue up so
+    // many samplers that we need to wait for the GPU to free some.
+    // We should absolutely never hit this path in the real world.
+    Logger::warn("Sampler pool exhausted, synchronizing with GPU.");
+
+    Flush();
+    SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+
+    uint64_t submissionId = m_submissionFence->value();
+
+    while (++submissionId <= m_submissionId) {
+      m_submissionFence->wait(submissionId);
+
+      // Need to manually update sampler stats here since we
+      // might otherwise hit this path again the next time
+      auto samplerStats = m_dxvkDevice->getSamplerStats();
+      m_lastSamplerStats = samplerStats.liveCount | (m_samplerBindCount << SamplerCountBits);
+
+      if (samplerStats.liveCount <= MaxSamplerCount)
+        return;
+    }
+
+    // If we end up *here*, good luck.
+    Logger::warn("Sampler pool exhausted, cannot create any new samplers.");
   }
 
 
