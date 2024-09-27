@@ -6636,59 +6636,6 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::BindSampler(DWORD Sampler) {
-    auto& state = m_state.samplerStates[Sampler];
-
-    D3DTEXTUREFILTERTYPE minFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MINFILTER]);
-    D3DTEXTUREFILTERTYPE magFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MAGFILTER]);
-    D3DTEXTUREFILTERTYPE mipFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MIPFILTER]);
-
-    DxvkSamplerKey key = { };
-
-    key.setFilter(
-      DecodeFilter(minFilter),
-      DecodeFilter(magFilter),
-      DecodeMipFilter(mipFilter));
-
-    if (m_cubeTextures & (1u << Sampler)) {
-      key.setAddressModes(
-        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-      key.setLegacyCubeFilter(!m_d3d9Options.seamlessCubes);
-    } else {
-      key.setAddressModes(
-        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSU])),
-        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSV])),
-        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSW])));
-    }
-
-    key.setDepthCompare(m_depthTextures & (1u << Sampler), VK_COMPARE_OP_LESS_OR_EQUAL);
-
-    if (mipFilter) {
-      // Anisotropic filtering doesn't make any sense with only one mip
-      uint32_t anisotropy = state[D3DSAMP_MAXANISOTROPY];
-
-      if (minFilter != D3DTEXF_ANISOTROPIC)
-        anisotropy = 0u;
-
-      if (m_d3d9Options.samplerAnisotropy != -1 && minFilter > D3DTEXF_POINT)
-        anisotropy = m_d3d9Options.samplerAnisotropy;
-
-      key.setAniso(anisotropy);
-
-      float lodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
-      lodBias += m_d3d9Options.samplerLodBias;
-
-      if (m_d3d9Options.clampNegativeLodBias)
-        lodBias = std::max(lodBias, 0.0f);
-
-      key.setLodRange(float(state[D3DSAMP_MAXMIPLEVEL]), 16.0f, lodBias);
-    }
-
-    if (key.u.p.hasBorder)
-      DecodeD3DCOLOR(D3DCOLOR(state[D3DSAMP_BORDERCOLOR]), key.borderColor.float32);
-
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
     const uint32_t slot = computeResourceSlotId(
@@ -6696,11 +6643,60 @@ namespace dxvk {
       samplerInfo.second);
 
     EmitCs([this,
-      cSlot = slot,
-      cKey  = key
+      cSlot     = slot,
+      cState    = D3D9SamplerInfo(m_state.samplerStates[Sampler]),
+      cIsCube   = bool(m_cubeTextures & (1u << Sampler)),
+      cIsDepth  = bool(m_depthTextures & (1u << Sampler))
     ] (DxvkContext* ctx) {
+      DxvkSamplerKey key = { };
+
+      key.setFilter(
+        DecodeFilter(cState.minFilter),
+        DecodeFilter(cState.magFilter),
+        DecodeMipFilter(cState.mipFilter));
+
+      if (cIsCube) {
+        key.setAddressModes(
+          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+          VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+        key.setLegacyCubeFilter(!m_d3d9Options.seamlessCubes);
+      } else {
+        key.setAddressModes(
+          DecodeAddressMode(cState.addressU),
+          DecodeAddressMode(cState.addressV),
+          DecodeAddressMode(cState.addressW));
+      }
+
+      key.setDepthCompare(cIsDepth, VK_COMPARE_OP_LESS_OR_EQUAL);
+
+      if (cState.mipFilter) {
+        // Anisotropic filtering doesn't make any sense with only one mip
+        uint32_t anisotropy = cState.maxAnisotropy;
+
+        if (cState.minFilter != D3DTEXF_ANISOTROPIC)
+          anisotropy = 0u;
+
+        if (m_d3d9Options.samplerAnisotropy != -1 && cState.minFilter > D3DTEXF_POINT)
+          anisotropy = m_d3d9Options.samplerAnisotropy;
+
+        key.setAniso(anisotropy);
+
+        float lodBias = cState.mipLodBias;
+        lodBias += m_d3d9Options.samplerLodBias;
+
+        if (m_d3d9Options.clampNegativeLodBias)
+          lodBias = std::max(lodBias, 0.0f);
+
+        key.setLodRange(float(cState.maxMipLevel), 16.0f, lodBias);
+      }
+
+      if (key.u.p.hasBorder)
+        DecodeD3DCOLOR(cState.borderColor, key.borderColor.float32);
+
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-      ctx->bindResourceSampler(stage, cSlot, m_dxvkDevice->createSampler(cKey));
+      ctx->bindResourceSampler(stage, cSlot, m_dxvkDevice->createSampler(key));
     });
   }
 
