@@ -523,7 +523,7 @@ namespace dxvk {
       if (isViewCompatible || isZeroClearValue) {
         // Create a view with an integer format if necessary
         if (uavFormat != rawFormat && !isZeroClearValue) {
-          DxvkImageViewCreateInfo info = imageView->info();
+          DxvkImageViewKey info = imageView->info();
           info.format = rawFormat;
 
           imageView = imageView->image()->createView(info);
@@ -542,7 +542,7 @@ namespace dxvk {
       } else {
         DxvkBufferCreateInfo bufferInfo;
         bufferInfo.size   = imageView->formatInfo()->elementSize
-                          * imageView->info().numLayers
+                          * imageView->info().layerCount
                           * util::flattenImageExtent(imageView->mipLevelExtent(0));
         bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                           | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
@@ -718,7 +718,7 @@ namespace dxvk {
 
     // 3D views are unsupported
     if (imgView != nullptr
-     && imgView->info().type == VK_IMAGE_VIEW_TYPE_3D)
+     && imgView->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
       return;
 
     // Query the view format. We'll have to convert
@@ -5402,8 +5402,8 @@ namespace dxvk {
           // Render target views must all have the same sample count,
           // layer count, and type. The size can mismatch under certain
           // conditions, the D3D11 documentation is wrong here.
-          if (curView->info().type      != refView->info().type
-           || curView->info().numLayers != refView->info().numLayers)
+          if (curView->info().viewType != refView->info().viewType
+           || curView->info().layerCount != refView->info().layerCount)
             return false;
 
           if (curView->image()->info().sampleCount

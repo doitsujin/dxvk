@@ -330,6 +330,21 @@ namespace dxvk {
           && layerCount == other.layerCount
           && packedSwizzle == other.packedSwizzle;
     }
+
+    VkComponentMapping unpackSwizzle() const {
+      return VkComponentMapping {
+        VkComponentSwizzle((packedSwizzle >>  0) & 0xf),
+        VkComponentSwizzle((packedSwizzle >>  4) & 0xf),
+        VkComponentSwizzle((packedSwizzle >>  8) & 0xf),
+        VkComponentSwizzle((packedSwizzle >> 12) & 0xf) };
+    }
+
+    static uint16_t packSwizzle(VkComponentMapping mapping) {
+      return (uint16_t(mapping.r) <<  0)
+           | (uint16_t(mapping.g) <<  4)
+           | (uint16_t(mapping.b) <<  8)
+           | (uint16_t(mapping.a) << 12);
+    }
   };
 
 

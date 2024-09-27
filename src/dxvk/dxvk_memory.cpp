@@ -95,10 +95,7 @@ namespace dxvk {
     info.image = m_image;
     info.viewType = key.viewType;
     info.format = key.format;
-    info.components.r = VkComponentSwizzle((key.packedSwizzle >>  0) & 0xf);
-    info.components.g = VkComponentSwizzle((key.packedSwizzle >>  4) & 0xf);
-    info.components.b = VkComponentSwizzle((key.packedSwizzle >>  8) & 0xf);
-    info.components.a = VkComponentSwizzle((key.packedSwizzle >> 12) & 0xf);
+    info.components = key.unpackSwizzle();
     info.subresourceRange.aspectMask = key.aspects;
     info.subresourceRange.baseMipLevel = key.mipIndex;
     info.subresourceRange.levelCount = key.mipCount;

@@ -17,58 +17,58 @@ namespace dxvk {
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
 
-    DxvkImageViewCreateInfo viewInfo;
+    DxvkImageViewKey viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
-    viewInfo.aspect = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.usage  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
     switch (pDesc->ViewDimension) {
       case D3D11_DSV_DIMENSION_TEXTURE1D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
-        viewInfo.minLevel   = pDesc->Texture1D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
+        viewInfo.mipIndex   = pDesc->Texture1D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
         
       case D3D11_DSV_DIMENSION_TEXTURE1DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-        viewInfo.minLevel   = pDesc->Texture1DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture1DArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture1DArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        viewInfo.mipIndex   = pDesc->Texture1DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture1DArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture1DArray.ArraySize;
         break;
         
       case D3D11_DSV_DIMENSION_TEXTURE2D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = pDesc->Texture2D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = pDesc->Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
         
       case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = pDesc->Texture2DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture2DArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = pDesc->Texture2DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture2DArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture2DArray.ArraySize;
         break;
         
       case D3D11_DSV_DIMENSION_TEXTURE2DMS:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
       
       case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture2DMSArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture2DMSArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture2DMSArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture2DMSArray.ArraySize;
         break;
       
       default:
@@ -77,20 +77,22 @@ namespace dxvk {
     
     // Normalize view type so that we won't accidentally
     // bind 2D array views and 2D views at the same time
-    if (viewInfo.numLayers == 1) {
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
+    if (viewInfo.layerCount == 1) {
+      if (viewInfo.viewType == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_1D;
+      if (viewInfo.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     }
 
     // Populate view info struct
     m_info.pResource = pResource;
     m_info.Dimension = resourceDesc.Dim;
     m_info.BindFlags = resourceDesc.BindFlags;
-    m_info.Image.Aspects   = viewInfo.aspect;
-    m_info.Image.MinLevel  = viewInfo.minLevel;
-    m_info.Image.MinLayer  = viewInfo.minLayer;
-    m_info.Image.NumLevels = viewInfo.numLevels;
-    m_info.Image.NumLayers = viewInfo.numLayers;
+    m_info.Image.Aspects   = viewInfo.aspects;
+    m_info.Image.MinLevel  = viewInfo.mipIndex;
+    m_info.Image.MinLayer  = viewInfo.layerIndex;
+    m_info.Image.NumLevels = viewInfo.mipCount;
+    m_info.Image.NumLayers = viewInfo.layerCount;
 
     if (m_desc.Flags & D3D11_DSV_READ_ONLY_DEPTH)
       m_info.Image.Aspects &= ~VK_IMAGE_ASPECT_DEPTH_BIT;

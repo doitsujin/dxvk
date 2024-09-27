@@ -318,7 +318,7 @@ namespace dxvk {
     // Make sure the color components are ordered correctly
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       clearValue.color = util::swizzleClearColor(clearValue.color,
-        util::invertComponentMapping(imageView->info().swizzle));
+        util::invertComponentMapping(imageView->info().unpackSwizzle()));
     }
     
     // Check whether the render target view is an attachment
@@ -357,7 +357,7 @@ namespace dxvk {
       clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
       clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
       clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = imageView->info().numLayers;
+      clearRect.layerCount          = imageView->info().layerCount;
 
       m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
     } else
@@ -375,7 +375,7 @@ namespace dxvk {
 
     if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       value.color = util::swizzleClearColor(value.color,
-        util::invertComponentMapping(imageView->info().swizzle));
+        util::invertComponentMapping(imageView->info().unpackSwizzle()));
     }
     
     if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
@@ -730,18 +730,18 @@ namespace dxvk {
       return;
     
     // Create one depth view and one stencil view
-    DxvkImageViewCreateInfo dViewInfo = { };
-    dViewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    DxvkImageViewKey dViewInfo = { };
+    dViewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     dViewInfo.format     = srcImage->info().format;
     dViewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-    dViewInfo.aspect     = VK_IMAGE_ASPECT_DEPTH_BIT;
-    dViewInfo.minLevel   = srcSubresource.mipLevel;
-    dViewInfo.numLevels  = 1;
-    dViewInfo.minLayer   = srcSubresource.baseArrayLayer;
-    dViewInfo.numLayers  = srcSubresource.layerCount;
+    dViewInfo.aspects    = VK_IMAGE_ASPECT_DEPTH_BIT;
+    dViewInfo.mipIndex   = srcSubresource.mipLevel;
+    dViewInfo.mipCount   = 1;
+    dViewInfo.layerIndex = srcSubresource.baseArrayLayer;
+    dViewInfo.layerCount = srcSubresource.layerCount;
 
-    DxvkImageViewCreateInfo sViewInfo = dViewInfo;
-    sViewInfo.aspect     = VK_IMAGE_ASPECT_STENCIL_BIT;
+    DxvkImageViewKey sViewInfo = dViewInfo;
+    sViewInfo.aspects    = VK_IMAGE_ASPECT_STENCIL_BIT;
     
     Rc<DxvkImageView> dView = srcImage->createView(dViewInfo);
     Rc<DxvkImageView> sView = srcImage->createView(sViewInfo);
@@ -1643,7 +1643,7 @@ namespace dxvk {
   void DxvkContext::generateMipmaps(
     const Rc<DxvkImageView>&        imageView,
           VkFilter                  filter) {
-    if (imageView->info().numLevels <= 1)
+    if (imageView->info().mipCount <= 1)
       return;
     
     this->spillRenderPass(false);
@@ -2038,7 +2038,7 @@ namespace dxvk {
 
     bool is3D = imageView->image()->info().type == VK_IMAGE_TYPE_3D;
 
-    if ((clearAspects | discardAspects) == imageView->info().aspect && !is3D) {
+    if ((clearAspects | discardAspects) == imageView->info().aspects && !is3D) {
       colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
       depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
@@ -2066,7 +2066,7 @@ namespace dxvk {
 
       VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
-      renderingInfo.layerCount = imageView->info().numLayers;
+      renderingInfo.layerCount = imageView->info().layerCount;
 
       VkImageLayout loadLayout;
       VkImageLayout storeLayout;
@@ -2095,12 +2095,12 @@ namespace dxvk {
                     |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        if (imageView->info().aspect & VK_IMAGE_ASPECT_DEPTH_BIT) {
+        if (imageView->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
           renderingInfo.pDepthAttachment = &attachmentInfo;
           attachmentInfo.loadOp = depthOp.loadOpD;
         }
 
-        if (imageView->info().aspect & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
           renderingInfo.pStencilAttachment = &stencilInfo;
           stencilInfo.loadOp = depthOp.loadOpS;
         }
@@ -2123,13 +2123,13 @@ namespace dxvk {
 
       if (hasViewFormatMismatch) {
         VkClearAttachment clearInfo = { };
-        clearInfo.aspectMask = imageView->info().aspect;
+        clearInfo.aspectMask = imageView->info().aspects;
         clearInfo.clearValue = clearValue;
 
         VkClearRect clearRect = { };
         clearRect.rect.extent.width = extent.width;
         clearRect.rect.extent.height = extent.height;
-        clearRect.layerCount = imageView->info().numLayers;
+        clearRect.layerCount = imageView->info().layerCount;
 
         m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
       }
@@ -3304,7 +3304,7 @@ namespace dxvk {
       if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
 
-      clearLayout = (imageView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT)
+      clearLayout = (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT)
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
         : imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
@@ -3318,9 +3318,9 @@ namespace dxvk {
 
       VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
-      renderingInfo.layerCount = imageView->info().numLayers;
+      renderingInfo.layerCount = imageView->info().layerCount;
 
-      if (imageView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+      if (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
                     |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
@@ -3333,10 +3333,10 @@ namespace dxvk {
         clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                     |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
-        if (imageView->info().aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
+        if (imageView->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
           renderingInfo.pDepthAttachment = &attachmentInfo;
 
-        if (imageView->info().aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
+        if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
           renderingInfo.pStencilAttachment = &attachmentInfo;
       }
 
@@ -3373,7 +3373,7 @@ namespace dxvk {
     clearRect.rect.extent.width   = extent.width;
     clearRect.rect.extent.height  = extent.height;
     clearRect.baseArrayLayer      = 0;
-    clearRect.layerCount          = imageView->info().numLayers;
+    clearRect.layerCount          = imageView->info().layerCount;
 
     m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
 
@@ -3900,14 +3900,14 @@ namespace dxvk {
 
     // Create a view for the destination image with the general
     // properties ofthe source image view used for the clear
-    DxvkImageViewCreateInfo viewInfo = clear->imageView->info();
-    viewInfo.type = dstImage->info().type == VK_IMAGE_TYPE_1D
+    DxvkImageViewKey viewInfo = clear->imageView->info();
+    viewInfo.viewType = dstImage->info().type == VK_IMAGE_TYPE_1D
       ? VK_IMAGE_VIEW_TYPE_1D_ARRAY
       : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    viewInfo.minLevel = dstSubresource.mipLevel;
-    viewInfo.numLevels = 1;
-    viewInfo.minLayer = dstSubresource.baseArrayLayer;
-    viewInfo.numLayers = dstSubresource.layerCount;
+    viewInfo.mipIndex = dstSubresource.mipLevel;
+    viewInfo.mipCount = 1;
+    viewInfo.layerIndex = dstSubresource.baseArrayLayer;
+    viewInfo.layerCount = dstSubresource.layerCount;
 
     // That is, if the formats are actually compatible
     // so that we can safely use the same clear value
@@ -4631,7 +4631,7 @@ namespace dxvk {
 
     if (depthAttachment.layout != ops.depthOps.loadLayout
      && depthAttachment.view != nullptr) {
-      VkImageAspectFlags depthAspects = depthAttachment.view->info().aspect;
+      VkImageAspectFlags depthAspects = depthAttachment.view->info().aspects;
 
       VkPipelineStageFlags depthStages =
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
@@ -4801,7 +4801,7 @@ namespace dxvk {
 
     if (framebufferInfo.getDepthTarget().view != nullptr) {
       const auto& depthTarget = framebufferInfo.getDepthTarget();
-      depthStencilAspects = depthTarget.view->info().aspect;
+      depthStencilAspects = depthTarget.view->info().aspects;
       depthInfo.imageView = depthTarget.view->handle();
       depthInfo.imageLayout = depthTarget.layout;
       depthInfo.loadOp = ops.depthOps.loadOpD;
@@ -5451,7 +5451,7 @@ namespace dxvk {
         const Rc<DxvkImageView>& attachment = fbInfo.getColorTarget(i).view;
 
         VkComponentMapping mapping = attachment != nullptr
-          ? util::invertComponentMapping(attachment->info().swizzle)
+          ? util::invertComponentMapping(attachment->info().unpackSwizzle())
           : VkComponentMapping();
 
         m_state.gp.state.omSwizzle[i] = DxvkOmAttachmentSwizzle(mapping);

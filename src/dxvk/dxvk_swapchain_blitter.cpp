@@ -257,15 +257,15 @@ namespace dxvk {
         m_gammaImage = m_device->createImage(
           imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        DxvkImageViewCreateInfo viewInfo;
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
+        DxvkImageViewKey viewInfo;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
         viewInfo.format     = VK_FORMAT_R16G16B16A16_UNORM;
         viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-        viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.aspects    = VK_IMAGE_ASPECT_COLOR_BIT;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         
         m_gammaView = m_gammaImage->createView(viewInfo);
       }
@@ -371,15 +371,15 @@ namespace dxvk {
     newInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     m_resolveImage = m_device->createImage(newInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
+    DxvkImageViewKey viewInfo;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = info.format;
     viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    viewInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.minLevel  = 0;
-    viewInfo.numLevels = 1;
-    viewInfo.minLayer  = 0;
-    viewInfo.numLayers = 1;
+    viewInfo.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.mipIndex = 0;
+    viewInfo.mipCount = 1;
+    viewInfo.layerIndex = 0;
+    viewInfo.layerCount = 1;
     m_resolveView = m_resolveImage->createView(viewInfo);
   }
 

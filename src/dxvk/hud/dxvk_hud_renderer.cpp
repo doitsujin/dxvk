@@ -306,15 +306,15 @@ namespace dxvk::hud {
   
   
   Rc<DxvkImageView> HudRenderer::createFontView() {
-    DxvkImageViewCreateInfo info;
-    info.type           = VK_IMAGE_VIEW_TYPE_2D;
+    DxvkImageViewKey info;
+    info.viewType       = VK_IMAGE_VIEW_TYPE_2D;
     info.format         = m_fontImage->info().format;
     info.usage          = VK_IMAGE_USAGE_SAMPLED_BIT;
-    info.aspect         = VK_IMAGE_ASPECT_COLOR_BIT;
-    info.minLevel       = 0;
-    info.numLevels      = 1;
-    info.minLayer       = 0;
-    info.numLayers      = 1;
+    info.aspects        = VK_IMAGE_ASPECT_COLOR_BIT;
+    info.mipIndex       = 0;
+    info.mipCount       = 1;
+    info.layerIndex     = 0;
+    info.layerCount     = 1;
     
     return m_fontImage->createView(info);
   }

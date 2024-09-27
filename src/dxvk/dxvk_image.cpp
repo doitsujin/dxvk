@@ -86,26 +86,11 @@ namespace dxvk {
 
 
   Rc<DxvkImageView> DxvkImage::createView(
-    const DxvkImageViewCreateInfo& info) {
-    DxvkImageViewKey key = { };
-    key.viewType = info.type;
-    key.format = info.format;
-    key.usage = info.usage;
-    key.aspects = info.aspect;
-    key.mipIndex = info.minLevel;
-    key.mipCount = info.numLevels;
-    key.layerIndex = info.minLayer;
-    key.layerCount = info.numLayers;
-    key.packedSwizzle =
-      (uint16_t(info.swizzle.r) <<  0) |
-      (uint16_t(info.swizzle.g) <<  4) |
-      (uint16_t(info.swizzle.b) <<  8) |
-      (uint16_t(info.swizzle.a) << 12);
-
+    const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
 
     auto entry = m_views.emplace(std::piecewise_construct,
-      std::make_tuple(key), std::make_tuple(this, key));
+      std::make_tuple(info), std::make_tuple(this, info));
 
     return &entry.first->second;
   }

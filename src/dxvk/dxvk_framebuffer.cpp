@@ -58,7 +58,7 @@ namespace dxvk {
   bool DxvkFramebufferInfo::isFullSize(const Rc<DxvkImageView>& view) const {
     return m_renderSize.width  == view->mipLevelExtent(0).width
         && m_renderSize.height == view->mipLevelExtent(0).height
-        && m_renderSize.layers == view->info().numLayers;
+        && m_renderSize.layers == view->info().layerCount;
   }
 
 
@@ -118,7 +118,7 @@ namespace dxvk {
   DxvkFramebufferSize DxvkFramebufferInfo::computeRenderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
     auto extent = renderTarget->mipLevelExtent(0);
-    auto layers = renderTarget->info().numLayers;
+    auto layers = renderTarget->info().layerCount;
     return DxvkFramebufferSize { extent.width, extent.height, layers };
   }
 

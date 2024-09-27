@@ -71,40 +71,6 @@ namespace dxvk {
   
   
   /**
-   * \brief Image create info
-   * 
-   * The properties of an image view that are
-   * passed to \ref DxvkDevice::createImageView
-   */
-  struct DxvkImageViewCreateInfo {
-    /// Image view dimension
-    VkImageViewType type = VK_IMAGE_VIEW_TYPE_2D;
-    
-    /// Pixel format
-    VkFormat format = VK_FORMAT_UNDEFINED;
-
-    /// Image view usage flags
-    VkImageUsageFlags usage = 0;
-    
-    /// Subresources to use in the view
-    VkImageAspectFlags aspect = 0;
-    
-    uint32_t minLevel  = 0;
-    uint32_t numLevels = 0;
-    uint32_t minLayer  = 0;
-    uint32_t numLayers = 0;
-    
-    /// Component mapping. Defaults to identity.
-    VkComponentMapping swizzle = {
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-    };
-  };
-  
-  
-  /**
    * \brief Virtual image view
    *
    * Stores views for a number of different view types
@@ -160,21 +126,8 @@ namespace dxvk {
      * \brief Image view properties
      * \returns Image view properties
      */
-    DxvkImageViewCreateInfo info() const {
-      DxvkImageViewCreateInfo info = { };
-      info.type = m_key.viewType;
-      info.format = m_key.format;
-      info.usage = m_key.usage;
-      info.aspect = m_key.aspects;
-      info.minLevel = m_key.mipIndex;
-      info.numLevels = m_key.mipCount;
-      info.minLayer = m_key.layerIndex;
-      info.numLayers = m_key.layerCount;
-      info.swizzle.r = VkComponentSwizzle((m_key.packedSwizzle >>  0) & 0xf);
-      info.swizzle.g = VkComponentSwizzle((m_key.packedSwizzle >>  4) & 0xf);
-      info.swizzle.b = VkComponentSwizzle((m_key.packedSwizzle >>  8) & 0xf);
-      info.swizzle.a = VkComponentSwizzle((m_key.packedSwizzle >> 12) & 0xf);
-      return info;
+    DxvkImageViewKey info() const {
+      return m_key;
     }
 
     /**
@@ -262,10 +215,10 @@ namespace dxvk {
       if (this == view.ptr())
         return true;
 
-      return this->image()        == view->image()
-          && this->subresources() == view->subresources()
-          && this->info().type    == view->info().type
-          && this->info().format  == view->info().format;
+      return this->image()         == view->image()
+          && this->subresources()  == view->subresources()
+          && this->info().viewType == view->info().viewType
+          && this->info().format   == view->info().format;
     }
 
     /**
@@ -568,7 +521,7 @@ namespace dxvk {
      * \returns Newly created image view
      */
     Rc<DxvkImageView> createView(
-      const DxvkImageViewCreateInfo& info);
+      const DxvkImageViewKey& info);
 
   private:
 

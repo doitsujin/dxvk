@@ -56,55 +56,55 @@ namespace dxvk {
       auto texture = GetCommonTexture(pResource);
       auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
       
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format  = formatInfo.Format;
-      viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
+      DxvkImageViewKey viewInfo;
+      viewInfo.format = formatInfo.Format;
+      viewInfo.aspects = formatInfo.Aspect;
+      viewInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
 
       if (!util::isIdentityMapping(formatInfo.Swizzle))
         Logger::warn(str::format("UAV format ", pDesc->Format, " has non-identity swizzle, but UAV swizzles are not supported"));
 
       switch (pDesc->ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
-          viewInfo.minLevel  = pDesc->Texture1D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
+          viewInfo.mipIndex   = pDesc->Texture1D.MipSlice;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-          viewInfo.minLevel  = pDesc->Texture1DArray.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = pDesc->Texture1DArray.FirstArraySlice;
-          viewInfo.numLayers = pDesc->Texture1DArray.ArraySize;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.mipIndex   = pDesc->Texture1DArray.MipSlice;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = pDesc->Texture1DArray.FirstArraySlice;
+          viewInfo.layerCount = pDesc->Texture1DArray.ArraySize;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
-          viewInfo.minLevel  = pDesc->Texture2D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+          viewInfo.mipIndex   = pDesc->Texture2D.MipSlice;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-          viewInfo.minLevel  = pDesc->Texture2DArray.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = pDesc->Texture2DArray.FirstArraySlice;
-          viewInfo.numLayers = pDesc->Texture2DArray.ArraySize;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.mipIndex   = pDesc->Texture2DArray.MipSlice;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = pDesc->Texture2DArray.FirstArraySlice;
+          viewInfo.layerCount = pDesc->Texture2DArray.ArraySize;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE3D:
           // FIXME we actually have to map this to a
           // 2D array view in order to support W slices
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
-          viewInfo.minLevel  = pDesc->Texture3D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_3D;
+          viewInfo.mipIndex   = pDesc->Texture3D.MipSlice;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         default:
@@ -112,14 +112,14 @@ namespace dxvk {
       }
 
       if (texture->GetPlaneCount() > 1)
-        viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
+        viewInfo.aspects = vk::getPlaneAspect(GetPlaneSlice(pDesc));
 
       // Populate view info struct
-      m_info.Image.Aspects   = viewInfo.aspect;
-      m_info.Image.MinLevel  = viewInfo.minLevel;
-      m_info.Image.MinLayer  = viewInfo.minLayer;
-      m_info.Image.NumLevels = viewInfo.numLevels;
-      m_info.Image.NumLayers = viewInfo.numLayers;
+      m_info.Image.Aspects   = viewInfo.aspects;
+      m_info.Image.MinLevel  = viewInfo.mipIndex;
+      m_info.Image.MinLayer  = viewInfo.layerIndex;
+      m_info.Image.NumLevels = viewInfo.mipCount;
+      m_info.Image.NumLayers = viewInfo.layerCount;
 
       m_imageView = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
     }

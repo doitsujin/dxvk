@@ -635,32 +635,31 @@ namespace dxvk {
           UINT                   Lod,
           VkImageUsageFlags      UsageFlags,
           bool                   Srgb) {    
-    DxvkImageViewCreateInfo viewInfo;
+    DxvkImageViewKey viewInfo;
     viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
                        ? PickSRGB(m_mapping.ConversionFormatInfo.FormatColor, m_mapping.ConversionFormatInfo.FormatSrgb, Srgb)
                        : PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
-    viewInfo.aspect    = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.swizzle   = m_mapping.Swizzle;
+    viewInfo.aspects   = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage     = UsageFlags;
-    viewInfo.type      = GetImageViewTypeFromResourceType(m_type, Layer);
-    viewInfo.minLevel  = Lod;
-    viewInfo.numLevels = m_desc.MipLevels - Lod;
-    viewInfo.minLayer  = Layer == AllLayers ? 0                : Layer;
-    viewInfo.numLayers = Layer == AllLayers ? m_desc.ArraySize : 1;
+    viewInfo.viewType  = GetImageViewTypeFromResourceType(m_type, Layer);
+    viewInfo.mipIndex  = Lod;
+    viewInfo.mipCount  = m_desc.MipLevels - Lod;
+    viewInfo.layerIndex = Layer == AllLayers ? 0 : Layer;
+    viewInfo.layerCount = Layer == AllLayers ? m_desc.ArraySize : 1;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(m_mapping.Swizzle);
 
     // Remove the stencil aspect if we are trying to create a regular image
     // view of a depth stencil format 
     if (UsageFlags != VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      viewInfo.aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+      viewInfo.aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
     if (UsageFlags == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ||
         UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      viewInfo.numLevels = 1;
+      viewInfo.mipCount = 1;
 
     // Remove swizzle on depth views.
     if (UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      viewInfo.swizzle = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-                           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+      viewInfo.packedSwizzle = 0u;
 
     // Create the underlying image view object
     return GetImage()->createView(viewInfo);

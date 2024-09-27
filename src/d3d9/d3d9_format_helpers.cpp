@@ -76,15 +76,15 @@ namespace dxvk {
           VkFormat                      bufferFormat,
           uint32_t                      specConstantValue,
           VkExtent2D                    macroPixelRun) {
-    DxvkImageViewCreateInfo imageViewInfo;
-    imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
+    DxvkImageViewKey imageViewInfo;
+    imageViewInfo.viewType  = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format    = dstImage->info().format;
     imageViewInfo.usage     = VK_IMAGE_USAGE_STORAGE_BIT;
-    imageViewInfo.aspect    = dstSubresource.aspectMask;
-    imageViewInfo.minLevel  = dstSubresource.mipLevel;
-    imageViewInfo.numLevels = 1;
-    imageViewInfo.minLayer  = dstSubresource.baseArrayLayer;
-    imageViewInfo.numLayers = dstSubresource.layerCount;
+    imageViewInfo.aspects   = dstSubresource.aspectMask;
+    imageViewInfo.mipIndex  = dstSubresource.mipLevel;
+    imageViewInfo.mipCount  = 1;
+    imageViewInfo.layerIndex = dstSubresource.baseArrayLayer;
+    imageViewInfo.layerCount = dstSubresource.layerCount;
     auto tmpImageView = dstImage->createView(imageViewInfo);
 
     VkExtent3D imageExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);

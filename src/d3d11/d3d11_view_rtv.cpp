@@ -22,67 +22,67 @@ namespace dxvk {
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
       pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR);
 
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.swizzle = formatInfo.Swizzle;
-    viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    DxvkImageViewKey viewInfo;
+    viewInfo.format = formatInfo.Format;
+    viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
     
     switch (pDesc->ViewDimension) {
       case D3D11_RTV_DIMENSION_TEXTURE1D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
-        viewInfo.minLevel   = pDesc->Texture1D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
+        viewInfo.mipIndex   = pDesc->Texture1D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
         
       case D3D11_RTV_DIMENSION_TEXTURE1DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-        viewInfo.minLevel   = pDesc->Texture1DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture1DArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture1DArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        viewInfo.mipIndex   = pDesc->Texture1DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture1DArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture1DArray.ArraySize;
         break;
         
       case D3D11_RTV_DIMENSION_TEXTURE2D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = pDesc->Texture2D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = pDesc->Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
         
       case D3D11_RTV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = pDesc->Texture2DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture2DArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = pDesc->Texture2DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture2DArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture2DArray.ArraySize;
         break;
         
       case D3D11_RTV_DIMENSION_TEXTURE2DMS:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
       
       case D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture2DMSArray.FirstArraySlice;
-        viewInfo.numLayers  = pDesc->Texture2DMSArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = 0;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture2DMSArray.FirstArraySlice;
+        viewInfo.layerCount = pDesc->Texture2DMSArray.ArraySize;
         break;
       
       case D3D11_RTV_DIMENSION_TEXTURE3D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = pDesc->Texture3D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = pDesc->Texture3D.FirstWSlice;
-        viewInfo.numLayers  = pDesc->Texture3D.WSize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = pDesc->Texture3D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = pDesc->Texture3D.FirstWSlice;
+        viewInfo.layerCount = pDesc->Texture3D.WSize;
         break;
       
       default:
@@ -90,24 +90,26 @@ namespace dxvk {
     }
     
     if (texture->GetPlaneCount() > 1)
-      viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
+      viewInfo.aspects = vk::getPlaneAspect(GetPlaneSlice(pDesc));
 
     // Normalize view type so that we won't accidentally
     // bind 2D array views and 2D views at the same time
-    if (viewInfo.numLayers == 1) {
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
+    if (viewInfo.layerCount == 1) {
+      if (viewInfo.viewType == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_1D;
+      if (viewInfo.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     }
 
     // Populate view info struct
     m_info.pResource = pResource;
     m_info.Dimension = resourceDesc.Dim;
     m_info.BindFlags = resourceDesc.BindFlags;
-    m_info.Image.Aspects   = viewInfo.aspect;
-    m_info.Image.MinLevel  = viewInfo.minLevel;
-    m_info.Image.MinLayer  = viewInfo.minLayer;
-    m_info.Image.NumLevels = viewInfo.numLevels;
-    m_info.Image.NumLayers = viewInfo.numLayers;
+    m_info.Image.Aspects   = viewInfo.aspects;
+    m_info.Image.MinLevel  = viewInfo.mipIndex;
+    m_info.Image.MinLayer  = viewInfo.layerIndex;
+    m_info.Image.NumLevels = viewInfo.mipCount;
+    m_info.Image.NumLayers = viewInfo.layerCount;
     
     // Create the underlying image view object
     m_view = texture->GetImage()->createView(viewInfo);
