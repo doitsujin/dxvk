@@ -3143,29 +3143,6 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  DxvkDataSlice D3D11CommonContext<ContextType>::AllocUpdateBufferSlice(size_t Size) {
-    constexpr size_t UpdateBufferSize = 1 * 1024 * 1024;
-    
-    if (Size >= UpdateBufferSize) {
-      Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
-      return buffer->alloc(Size);
-    } else {
-      if (m_updateBuffer == nullptr)
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-      
-      DxvkDataSlice slice = m_updateBuffer->alloc(Size);
-      
-      if (slice.ptr() == nullptr) {
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-        slice = m_updateBuffer->alloc(Size);
-      }
-      
-      return slice;
-    }
-  }
-
-
-  template<typename ContextType>
   DxvkBufferSlice D3D11CommonContext<ContextType>::AllocStagingBuffer(
           VkDeviceSize                      Size) {
     return m_staging.alloc(256, Size);
@@ -5143,27 +5120,28 @@ namespace dxvk {
           UINT                              Offset,
           UINT                              Length,
     const void*                             pSrcData) {
+    constexpr uint32_t MaxDirectUpdateSize = 64u;
+
     DxvkBufferSlice bufferSlice = pDstBuffer->GetBufferSlice(Offset, Length);
 
-    if (Length <= 1024 && !(Offset & 0x3) && !(Length & 0x3)) {
+    if (Length <= MaxDirectUpdateSize && !((Offset | Length) & 0x3)) {
       // The backend has special code paths for small buffer updates,
       // however both offset and size must be aligned to four bytes.
-      DxvkDataSlice dataSlice = AllocUpdateBufferSlice(Length);
-      std::memcpy(dataSlice.ptr(), pSrcData, Length);
+      std::array<char, MaxDirectUpdateSize> data;
+      std::memcpy(data.data(), pSrcData, Length);
 
       EmitCs([
-        cDataBuffer   = std::move(dataSlice),
-        cBufferSlice  = std::move(bufferSlice)
+        cBufferData = data,
+        cBufferSlice = std::move(bufferSlice)
       ] (DxvkContext* ctx) {
         ctx->updateBuffer(
           cBufferSlice.buffer(),
           cBufferSlice.offset(),
           cBufferSlice.length(),
-          cDataBuffer.ptr());
+          cBufferData.data());
       });
     } else {
-      // Otherwise, to avoid large data copies on the CS thread,
-      // write directly to a staging buffer and dispatch a copy
+      // Write directly to a staging buffer and dispatch a copy
       DxvkBufferSlice stagingSlice = AllocStagingBuffer(Length);
       std::memcpy(stagingSlice.mapPtr(0), pSrcData, Length);
 

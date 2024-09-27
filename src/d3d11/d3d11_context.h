@@ -769,7 +769,6 @@ namespace dxvk {
     UINT                        m_flags;
 
     DxvkStagingBuffer           m_staging;
-    Rc<DxvkDataBuffer>          m_updateBuffer;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
@@ -778,8 +777,6 @@ namespace dxvk {
     DxvkLocalAllocationCache    m_allocationCache;
 
     DxvkCsChunkRef AllocCsChunk();
-    
-    DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     DxvkBufferSlice AllocStagingBuffer(
             VkDeviceSize                      Size);
