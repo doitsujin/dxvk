@@ -4,7 +4,6 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
-#include "dxvk_data.h"
 #include "dxvk_objects.h"
 #include "dxvk_queue.h"
 #include "dxvk_resource.h"

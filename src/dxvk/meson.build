@@ -70,7 +70,6 @@ dxvk_src = [
   'dxvk_compute.cpp',
   'dxvk_context.cpp',
   'dxvk_cs.cpp',
-  'dxvk_data.cpp',
   'dxvk_descriptor.cpp',
   'dxvk_device.cpp',
   'dxvk_device_filter.cpp',

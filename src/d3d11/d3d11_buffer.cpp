@@ -2,8 +2,6 @@
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 
-#include "../dxvk/dxvk_data.h"
-
 namespace dxvk {
   
   D3D11Buffer::D3D11Buffer(
