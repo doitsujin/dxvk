@@ -484,7 +484,7 @@ namespace dxvk {
       } else {
         // Create a view with an integer format if necessary
         if (uavFormat != rawFormat)  {
-          DxvkBufferViewCreateInfo info = bufferView->info();
+          DxvkBufferViewKey info = bufferView->info();
           info.format = rawFormat;
 
           bufferView = bufferView->buffer()->createView(info);
@@ -554,11 +554,11 @@ namespace dxvk {
         Rc<DxvkBuffer> buffer = m_device->createBuffer(bufferInfo,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        DxvkBufferViewCreateInfo bufferViewInfo;
-        bufferViewInfo.format      = rawFormat;
-        bufferViewInfo.rangeOffset = 0;
-        bufferViewInfo.rangeLength = bufferInfo.size;
-        bufferViewInfo.usage       = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+        DxvkBufferViewKey bufferViewInfo;
+        bufferViewInfo.format = rawFormat;
+        bufferViewInfo.offset = 0;
+        bufferViewInfo.size   = bufferInfo.size;
+        bufferViewInfo.usage  = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
         Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
 
@@ -754,7 +754,7 @@ namespace dxvk {
 
       if (bufView != nullptr) {
         VkDeviceSize offset = 0;
-        VkDeviceSize length = bufView->info().rangeLength / formatInfo->elementSize;
+        VkDeviceSize length = bufView->info().size / formatInfo->elementSize;
 
         if (pRect) {
           offset = pRect[i].left;

@@ -42,31 +42,31 @@ namespace dxvk {
       }
 
       // Fill in buffer view info
-      DxvkBufferViewCreateInfo viewInfo;
+      DxvkBufferViewKey viewInfo;
       viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
       if (bufInfo.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
         // Raw buffer view. We'll represent this as a
         // uniform texel buffer with UINT32 elements.
         viewInfo.format = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = sizeof(uint32_t) * bufInfo.FirstElement;
-        viewInfo.rangeLength = sizeof(uint32_t) * bufInfo.NumElements;
+        viewInfo.offset = sizeof(uint32_t) * bufInfo.FirstElement;
+        viewInfo.size = sizeof(uint32_t) * bufInfo.NumElements;
       } else if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
         // Structured buffer view
         viewInfo.format = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = buffer->Desc()->StructureByteStride * bufInfo.FirstElement;
-        viewInfo.rangeLength = buffer->Desc()->StructureByteStride * bufInfo.NumElements;
+        viewInfo.offset = buffer->Desc()->StructureByteStride * bufInfo.FirstElement;
+        viewInfo.size = buffer->Desc()->StructureByteStride * bufInfo.NumElements;
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
         const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
-        viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
-        viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
+        viewInfo.offset = formatInfo->elementSize * bufInfo.FirstElement;
+        viewInfo.size = formatInfo->elementSize * bufInfo.NumElements;
       }
 
       // Populate view info struct
-      m_info.Buffer.Offset = viewInfo.rangeOffset;
-      m_info.Buffer.Length = viewInfo.rangeLength;
+      m_info.Buffer.Offset = viewInfo.offset;
+      m_info.Buffer.Length = viewInfo.size;
 
       // Create underlying buffer view object
       m_bufferView = buffer->GetBuffer()->createView(viewInfo);

@@ -861,15 +861,15 @@ namespace dxvk {
       return;
     }
 
-    DxvkBufferViewCreateInfo viewInfo;
+    DxvkBufferViewKey viewInfo;
     viewInfo.format = format;
-    viewInfo.rangeOffset = dstBufferOffset;
-    viewInfo.rangeLength = dstBufferSlice.length;
+    viewInfo.offset = dstBufferOffset;
+    viewInfo.size = dstBufferSlice.length;
     viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> dstView = dstBuffer->createView(viewInfo);
 
-    viewInfo.rangeOffset = srcBufferOffset;
-    viewInfo.rangeLength = srcBufferSlice.length;
+    viewInfo.offset = srcBufferOffset;
+    viewInfo.size = srcBufferSlice.length;
     viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> srcView;
 
@@ -908,7 +908,7 @@ namespace dxvk {
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
 
-      viewInfo.rangeOffset = 0;
+      viewInfo.offset = 0;
       srcView = tmpBuffer->createView(viewInfo);
 
       m_cmd->trackResource<DxvkAccess::Write>(tmpBuffer);
@@ -1053,17 +1053,17 @@ namespace dxvk {
     auto tmpBuffer = m_device->createBuffer(tmpBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // Create formatted buffer views
-    DxvkBufferViewCreateInfo tmpViewInfoD;
-    tmpViewInfoD.format      = dataFormatD;
-    tmpViewInfoD.rangeOffset = 0;
-    tmpViewInfoD.rangeLength = dataSizeD;
-    tmpViewInfoD.usage       = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    DxvkBufferViewKey tmpViewInfoD;
+    tmpViewInfoD.format = dataFormatD;
+    tmpViewInfoD.offset = 0;
+    tmpViewInfoD.size = dataSizeD;
+    tmpViewInfoD.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
-    DxvkBufferViewCreateInfo tmpViewInfoS;
-    tmpViewInfoS.format      = dataFormatS;
-    tmpViewInfoS.rangeOffset = dataSizeD;
-    tmpViewInfoS.rangeLength = dataSizeS;
-    tmpViewInfoS.usage       = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    DxvkBufferViewKey tmpViewInfoS;
+    tmpViewInfoS.format = dataFormatS;
+    tmpViewInfoS.offset = dataSizeD;
+    tmpViewInfoS.size = dataSizeS;
+    tmpViewInfoS.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     auto tmpBufferViewD = tmpBuffer->createView(tmpViewInfoD);
     auto tmpBufferViewS = tmpBuffer->createView(tmpViewInfoS);
@@ -1146,13 +1146,13 @@ namespace dxvk {
 
     std::array<VkBufferImageCopy2, 2> copyRegions;
     copyRegions[0] = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
-    copyRegions[0].bufferOffset = tmpBufferViewD->info().rangeOffset;
+    copyRegions[0].bufferOffset = tmpBufferViewD->info().offset;
     copyRegions[0].imageSubresource = dstSubresourceD;
     copyRegions[0].imageOffset = dstOffset3D;
     copyRegions[0].imageExtent = dstExtent3D;
 
     copyRegions[1] = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
-    copyRegions[1].bufferOffset = tmpBufferViewS->info().rangeOffset;
+    copyRegions[1].bufferOffset = tmpBufferViewS->info().offset;
     copyRegions[1].imageSubresource = dstSubresourceS;
     copyRegions[1].imageOffset = dstOffset3D;
     copyRegions[1].imageExtent = dstExtent3D;

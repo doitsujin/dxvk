@@ -248,11 +248,11 @@ namespace dxvk::hud {
 
 
   Rc<DxvkBufferView> HudRenderer::createDataView() {
-    DxvkBufferViewCreateInfo info;
-    info.format         = VK_FORMAT_R8_UINT;
-    info.rangeOffset    = 0;
-    info.rangeLength    = m_dataBuffer->info().size;
-    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    DxvkBufferViewKey info;
+    info.format = VK_FORMAT_R8_UINT;
+    info.offset = 0;
+    info.size = m_dataBuffer->info().size;
+    info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     return m_dataBuffer->createView(info);
   }
@@ -273,11 +273,11 @@ namespace dxvk::hud {
 
 
   Rc<DxvkBufferView> HudRenderer::createFontBufferView() {
-    DxvkBufferViewCreateInfo info;
-    info.format         = VK_FORMAT_UNDEFINED;
-    info.rangeOffset    = 0;
-    info.rangeLength    = m_fontBuffer->info().size;
-    info.usage          = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    DxvkBufferViewKey info;
+    info.format = VK_FORMAT_UNDEFINED;
+    info.offset = 0;
+    info.size = m_fontBuffer->info().size;
+    info.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
     return m_fontBuffer->createView(info);
   }

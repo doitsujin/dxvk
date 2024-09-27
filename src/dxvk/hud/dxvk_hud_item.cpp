@@ -791,10 +791,10 @@ namespace dxvk::hud {
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-      DxvkBufferViewCreateInfo viewInfo = { };
+      DxvkBufferViewKey viewInfo = { };
       viewInfo.format = VK_FORMAT_UNDEFINED;
-      viewInfo.rangeOffset = 0;
-      viewInfo.rangeLength = info.size;
+      viewInfo.offset = 0;
+      viewInfo.size = info.size;
       viewInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
       m_pageMaskView = m_pageMaskBuffer->createView(viewInfo);

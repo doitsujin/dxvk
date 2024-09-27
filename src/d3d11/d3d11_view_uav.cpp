@@ -25,31 +25,31 @@ namespace dxvk {
     if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto buffer = static_cast<D3D11Buffer*>(pResource);
       
-      DxvkBufferViewCreateInfo viewInfo;
+      DxvkBufferViewKey viewInfo;
       viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       
       if (pDesc->Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
-        viewInfo.format      = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = sizeof(uint32_t) * pDesc->Buffer.FirstElement;
-        viewInfo.rangeLength = sizeof(uint32_t) * pDesc->Buffer.NumElements;
+        viewInfo.format = VK_FORMAT_R32_UINT;
+        viewInfo.offset = sizeof(uint32_t) * pDesc->Buffer.FirstElement;
+        viewInfo.size = sizeof(uint32_t) * pDesc->Buffer.NumElements;
       } else if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
-        viewInfo.format      = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = buffer->Desc()->StructureByteStride * pDesc->Buffer.FirstElement;
-        viewInfo.rangeLength = buffer->Desc()->StructureByteStride * pDesc->Buffer.NumElements;
+        viewInfo.format = VK_FORMAT_R32_UINT;
+        viewInfo.offset = buffer->Desc()->StructureByteStride * pDesc->Buffer.FirstElement;
+        viewInfo.size = buffer->Desc()->StructureByteStride * pDesc->Buffer.NumElements;
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
         const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
-        viewInfo.rangeOffset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
-        viewInfo.rangeLength = formatInfo->elementSize * pDesc->Buffer.NumElements;
+        viewInfo.offset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
+        viewInfo.size = formatInfo->elementSize * pDesc->Buffer.NumElements;
       }
       
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
         m_counterView = CreateCounterBufferView();
       
       // Populate view info struct
-      m_info.Buffer.Offset = viewInfo.rangeOffset;
-      m_info.Buffer.Length = viewInfo.rangeLength;
+      m_info.Buffer.Offset = viewInfo.offset;
+      m_info.Buffer.Length = viewInfo.size;
 
       m_bufferView = buffer->GetBuffer()->createView(viewInfo);
     } else {
@@ -449,10 +449,10 @@ namespace dxvk {
 
     Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    DxvkBufferViewCreateInfo viewInfo;
+    DxvkBufferViewKey viewInfo;
     viewInfo.format = VK_FORMAT_UNDEFINED;
-    viewInfo.rangeOffset = 0;
-    viewInfo.rangeLength = sizeof(uint32_t);
+    viewInfo.offset = 0;
+    viewInfo.size = sizeof(uint32_t);
     viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
     return buffer->createView(viewInfo);

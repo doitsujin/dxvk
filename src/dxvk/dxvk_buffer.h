@@ -37,29 +37,8 @@ namespace dxvk {
     /// Allowed access patterns
     VkAccessFlags access;
   };
-  
-  
-  /**
-   * \brief Buffer view create info
-   * 
-   * The properties of a buffer view that
-   * are to \ref DxvkDevice::createBufferView
-   */
-  struct DxvkBufferViewCreateInfo {
-    /// Buffer data format, like image data
-    VkFormat format = VK_FORMAT_UNDEFINED;
-    
-    /// Offset of the buffer region to include in the view
-    VkDeviceSize rangeOffset = 0u;
-    
-    /// Size of the buffer region to include in the view
-    VkDeviceSize rangeLength = 0u;
 
-    /// Buffer view usage flags
-    VkBufferUsageFlags usage = 0u;
-  };
 
-  
   /**
    * \brief Buffer slice info
    * 
@@ -134,13 +113,8 @@ namespace dxvk {
      * \brief Buffer view properties
      * \returns Buffer view properties
      */
-    DxvkBufferViewCreateInfo info() const {
-      DxvkBufferViewCreateInfo info = { };
-      info.format = m_key.format;
-      info.rangeOffset = m_key.offset;
-      info.rangeLength = m_key.size;
-      info.usage = m_key.usage;
-      return info;
+    DxvkBufferViewKey info() const {
+      return m_key;
     }
 
     /**
@@ -382,7 +356,7 @@ namespace dxvk {
      * \returns Newly created buffer view
      */
     Rc<DxvkBufferView> createView(
-      const DxvkBufferViewCreateInfo& info);
+      const DxvkBufferViewKey& info);
 
     /**
      * \brief Retrieves sparse binding table
@@ -438,7 +412,7 @@ namespace dxvk {
     : DxvkBufferSlice(std::move(buffer), 0, buffer->info().size) { }
 
     explicit DxvkBufferSlice(const Rc<DxvkBufferView>& view)
-    : DxvkBufferSlice(view->buffer(), view->info().rangeOffset, view->info().rangeLength) { }
+    : DxvkBufferSlice(view->buffer(), view->info().offset, view->info().size) { }
 
     DxvkBufferSlice(const DxvkBufferSlice& ) = default;
     DxvkBufferSlice(      DxvkBufferSlice&&) = default;

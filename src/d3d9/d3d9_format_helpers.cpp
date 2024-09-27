@@ -92,10 +92,10 @@ namespace dxvk {
                               imageExtent.height / macroPixelRun.height,
                               1 };
 
-    DxvkBufferViewCreateInfo bufferViewInfo;
-    bufferViewInfo.format      = bufferFormat;
-    bufferViewInfo.rangeOffset = srcSlice.offset();
-    bufferViewInfo.rangeLength = srcSlice.length();
+    DxvkBufferViewKey bufferViewInfo;
+    bufferViewInfo.format = bufferFormat;
+    bufferViewInfo.offset = srcSlice.offset();
+    bufferViewInfo.size = srcSlice.length();
     bufferViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     auto tmpBufferView = srcSlice.buffer()->createView(bufferViewInfo);
 

@@ -49,17 +49,11 @@ namespace dxvk {
 
 
   Rc<DxvkBufferView> DxvkBuffer::createView(
-    const DxvkBufferViewCreateInfo& info) {
-    DxvkBufferViewKey key = { };
-    key.format = info.format;
-    key.offset = info.rangeOffset;
-    key.size = info.rangeLength;
-    key.usage = info.usage;
-
+    const DxvkBufferViewKey& info) {
     std::unique_lock lock(m_viewMutex);
 
     auto entry = m_views.emplace(std::piecewise_construct,
-      std::make_tuple(key), std::make_tuple(this, key));
+      std::make_tuple(info), std::make_tuple(this, info));
 
     return &entry.first->second;
   }
