@@ -402,6 +402,14 @@ namespace dxvk {
     DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
+     * \brief Queries sampler statistics
+     * \returns Sampler stats
+     */
+    DxvkSamplerStats getSamplerStats() {
+      return m_objects.samplerPool().getStats();
+    }
+
+    /**
      * \brief Retreves current frame ID
      * \returns Current frame ID
      */
