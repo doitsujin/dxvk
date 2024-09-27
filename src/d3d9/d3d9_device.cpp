@@ -6647,7 +6647,7 @@ namespace dxvk {
     key.setFilter(
       DecodeFilter(minFilter),
       DecodeFilter(magFilter),
-      DecodeMipFilter(mipFilter).MipFilter);
+      DecodeMipFilter(mipFilter));
 
     if (m_cubeTextures & (1u << Sampler)) {
       key.setAddressModes(
@@ -6665,7 +6665,7 @@ namespace dxvk {
 
     key.setDepthCompare(m_depthTextures & (1u << Sampler), VK_COMPARE_OP_LESS_OR_EQUAL);
 
-    if (mipFilter != D3DTEXF_NONE) {
+    if (mipFilter) {
       // Anisotropic filtering doesn't make any sense with only one mip
       uint32_t anisotropy = state[D3DSAMP_MAXANISOTROPY];
 
