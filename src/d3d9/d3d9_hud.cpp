@@ -10,7 +10,8 @@ namespace dxvk::hud {
 
 
   void HudSamplerCount::update(dxvk::high_resolution_clock::time_point time) {
-    m_samplerCount = str::format(m_device->GetSamplerCount());
+    DxvkSamplerStats stats = m_device->GetDXVKDevice()->getSamplerStats();
+    m_samplerCount = str::format(stats.totalCount);
   }
 
 

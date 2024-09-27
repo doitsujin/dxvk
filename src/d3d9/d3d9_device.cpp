@@ -6638,36 +6638,56 @@ namespace dxvk {
   void D3D9DeviceEx::BindSampler(DWORD Sampler) {
     auto& state = m_state.samplerStates[Sampler];
 
-    D3D9SamplerKey key;
-    key.AddressU      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSU]);
-    key.AddressV      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSV]);
-    key.AddressW      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSW]);
-    key.MagFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MAGFILTER]);
-    key.MinFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MINFILTER]);
-    key.MipFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MIPFILTER]);
-    key.MaxAnisotropy = state[D3DSAMP_MAXANISOTROPY];
-    key.MipmapLodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
-    key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
-    key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
-    key.Depth         = m_depthTextures & (1u << Sampler);
+    D3DTEXTUREFILTERTYPE minFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MINFILTER]);
+    D3DTEXTUREFILTERTYPE magFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MAGFILTER]);
+    D3DTEXTUREFILTERTYPE mipFilter = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MIPFILTER]);
+
+    DxvkSamplerKey key = { };
+
+    key.setFilter(
+      DecodeFilter(minFilter),
+      DecodeFilter(magFilter),
+      DecodeMipFilter(mipFilter).MipFilter);
 
     if (m_cubeTextures & (1u << Sampler)) {
-      key.AddressU = D3DTADDRESS_CLAMP;
-      key.AddressV = D3DTADDRESS_CLAMP;
-      key.AddressW = D3DTADDRESS_CLAMP;
+      key.setAddressModes(
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+      key.setLegacyCubeFilter(!m_d3d9Options.seamlessCubes);
+    } else {
+      key.setAddressModes(
+        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSU])),
+        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSV])),
+        DecodeAddressMode(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSW])));
     }
 
-    if (m_d3d9Options.samplerAnisotropy != -1) {
-      if (key.MagFilter == D3DTEXF_LINEAR)
-        key.MagFilter = D3DTEXF_ANISOTROPIC;
+    key.setDepthCompare(m_depthTextures & (1u << Sampler), VK_COMPARE_OP_LESS_OR_EQUAL);
 
-      if (key.MinFilter == D3DTEXF_LINEAR)
-        key.MinFilter = D3DTEXF_ANISOTROPIC;
+    if (mipFilter != D3DTEXF_NONE) {
+      // Anisotropic filtering doesn't make any sense with only one mip
+      uint32_t anisotropy = state[D3DSAMP_MAXANISOTROPY];
 
-      key.MaxAnisotropy = m_d3d9Options.samplerAnisotropy;
+      if (minFilter != D3DTEXF_ANISOTROPIC)
+        anisotropy = 0u;
+
+      if (m_d3d9Options.samplerAnisotropy != -1 && minFilter > D3DTEXF_POINT)
+        anisotropy = m_d3d9Options.samplerAnisotropy;
+
+      key.setAniso(anisotropy);
+
+      float lodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
+      lodBias += m_d3d9Options.samplerLodBias;
+
+      if (m_d3d9Options.clampNegativeLodBias)
+        lodBias = std::max(lodBias, 0.0f);
+
+      key.setLodRange(float(state[D3DSAMP_MAXMIPLEVEL]), 16.0f, lodBias);
     }
 
-    NormalizeSamplerKey(key);
+    if (key.u.p.hasBorder)
+      DecodeD3DCOLOR(D3DCOLOR(state[D3DSAMP_BORDERCOLOR]), key.borderColor.float32);
 
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
@@ -6680,58 +6700,7 @@ namespace dxvk {
       cKey  = key
     ] (DxvkContext* ctx) {
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-      auto pair = m_samplers.find(cKey);
-      if (pair != m_samplers.end()) {
-        ctx->bindResourceSampler(stage, cSlot,
-          Rc<DxvkSampler>(pair->second));
-        return;
-      }
-
-      auto mipFilter = DecodeMipFilter(cKey.MipFilter);
-
-      DxvkSamplerKey info = { };
-
-      info.setFilter(
-        DecodeFilter(cKey.MinFilter),
-        DecodeFilter(cKey.MagFilter),
-        mipFilter.MipFilter);
-
-      info.setAddressModes(
-        DecodeAddressMode(cKey.AddressU),
-        DecodeAddressMode(cKey.AddressV),
-        DecodeAddressMode(cKey.AddressW));
-
-      info.setDepthCompare(cKey.Depth,
-        VK_COMPARE_OP_LESS_OR_EQUAL);
-
-      info.setAniso(cKey.MaxAnisotropy);
-
-      float lodBias = cKey.MipmapLodBias + m_d3d9Options.samplerLodBias;
-
-      if (m_d3d9Options.clampNegativeLodBias)
-        lodBias = std::max(lodBias, 0.0f);
-
-      info.setLodRange(
-        mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0.0f,
-        mipFilter.MipsEnabled ? FLT_MAX : 0.0f,
-        lodBias);
-
-      info.setLegacyCubeFilter(!m_d3d9Options.seamlessCubes);
-
-      DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
-
-      try {
-        auto sampler = m_dxvkDevice->createSampler(info);
-
-        m_samplers.insert(std::make_pair(cKey, sampler));
-        ctx->bindResourceSampler(stage, cSlot, std::move(sampler));
-
-        m_samplerCount++;
-      }
-      catch (const DxvkError& e) {
-        Logger::err(e.message());
-      }
+      ctx->bindResourceSampler(stage, cSlot, m_dxvkDevice->createSampler(cKey));
     });
   }
 

@@ -33,7 +33,6 @@ d3d9_src = [
   'd3d9_multithread.cpp',
   'd3d9_options.cpp',
   'd3d9_stateblock.cpp',
-  'd3d9_sampler.cpp',
   'd3d9_util.cpp',
   'd3d9_initializer.cpp',
   'd3d9_fixed_function.cpp',
