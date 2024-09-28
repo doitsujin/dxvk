@@ -1526,17 +1526,6 @@ namespace dxvk {
             VkImageSubresourceLayers srcSubresource,
             VkOffset3D            srcOffset,
             VkExtent3D            extent);
-    
-    void copyImageFbDirect(
-      const Rc<DxvkImage>&        dstImage,
-            VkImageSubresourceLayers dstSubresource,
-            VkOffset3D            dstOffset,
-            VkFormat              dstFormat,
-      const Rc<DxvkImage>&        srcImage,
-            VkImageSubresourceLayers srcSubresource,
-            VkOffset3D            srcOffset,
-            VkFormat              srcFormat,
-            VkExtent3D            extent);
 
     bool copyImageClear(
       const Rc<DxvkImage>&        dstImage,

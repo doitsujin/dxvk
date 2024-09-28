@@ -75,12 +75,11 @@ namespace dxvk {
    * Creates and manages views used in a
    * framebuffer-based copy operations.
    */
-  class DxvkMetaCopyViews : public DxvkResource {
+  class DxvkMetaCopyViews {
 
   public:
 
     DxvkMetaCopyViews(
-      const Rc<vk::DeviceFn>&         vkd,
       const Rc<DxvkImage>&            dstImage,
       const VkImageSubresourceLayers& dstSubresources,
             VkFormat                  dstFormat,
@@ -90,24 +89,9 @@ namespace dxvk {
     
     ~DxvkMetaCopyViews();
 
-    VkImageView getDstView() const { return m_dstImageView; }
-    VkImageView getSrcView() const { return m_srcImageView; }
-    VkImageView getSrcStencilView() const { return m_srcStencilView; }
-
-    VkImageViewType getSrcViewType() const {
-      return m_srcViewType;
-    }
-
-  private:
-
-    Rc<vk::DeviceFn>  m_vkd;
-
-    VkImageViewType   m_srcViewType     = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    VkImageViewType   m_dstViewType     = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-
-    VkImageView       m_dstImageView    = VK_NULL_HANDLE;
-    VkImageView       m_srcImageView    = VK_NULL_HANDLE;
-    VkImageView       m_srcStencilView  = VK_NULL_HANDLE;
+    Rc<DxvkImageView> dstImageView;
+    Rc<DxvkImageView> srcImageView;
+    Rc<DxvkImageView> srcStencilView;
 
   };
 

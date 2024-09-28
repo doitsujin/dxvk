@@ -16,63 +16,57 @@
 namespace dxvk {
 
   DxvkMetaCopyViews::DxvkMetaCopyViews(
-    const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            dstImage,
     const VkImageSubresourceLayers& dstSubresources,
           VkFormat                  dstFormat,
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources,
-          VkFormat                  srcFormat)
-  : m_vkd(vkd) {
+          VkFormat                  srcFormat) {
     VkImageAspectFlags dstAspects = dstImage->formatInfo()->aspectMask;
     VkImageAspectFlags srcAspects = srcImage->formatInfo()->aspectMask;
 
     // We don't support 3D here, so we can safely ignore that case
-    m_dstViewType = dstImage->info().type == VK_IMAGE_TYPE_1D
+    VkImageViewType dstViewType = dstImage->info().type == VK_IMAGE_TYPE_1D
       ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    m_srcViewType = srcImage->info().type == VK_IMAGE_TYPE_1D
+    VkImageViewType srcViewType = srcImage->info().type == VK_IMAGE_TYPE_1D
       ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
 
-    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    usageInfo.usage = (dstAspects & VK_IMAGE_ASPECT_COLOR_BIT)
-      ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-      : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    DxvkImageViewKey dstViewInfo;
+    dstViewInfo.viewType = dstViewType;
+    dstViewInfo.format = dstFormat;
+    dstViewInfo.aspects = dstSubresources.aspectMask;
+    dstViewInfo.mipIndex = dstSubresources.mipLevel;
+    dstViewInfo.mipCount = 1u;
+    dstViewInfo.layerIndex = dstSubresources.baseArrayLayer;
+    dstViewInfo.layerCount = dstSubresources.layerCount;
+    dstViewInfo.usage = (dstAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    // Create destination view
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    info.image = dstImage->handle();
-    info.viewType = m_dstViewType;
-    info.format = dstFormat;
-    info.subresourceRange = vk::makeSubresourceRange(dstSubresources);
-
-    if ((m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_dstImageView)))
-      throw DxvkError("DxvkMetaCopyViews: Failed to create destination image view");
+    dstImageView = dstImage->createView(dstViewInfo);
 
     // Create source image views
-    usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    DxvkImageViewKey srcViewInfo;
+    srcViewInfo.viewType = srcViewType;
+    srcViewInfo.format = srcFormat;
+    srcViewInfo.aspects = srcSubresources.aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT;
+    srcViewInfo.mipIndex = srcSubresources.mipLevel;
+    srcViewInfo.mipCount = 1u;
+    srcViewInfo.layerIndex = srcSubresources.baseArrayLayer;
+    srcViewInfo.layerCount = srcSubresources.layerCount;
+    srcViewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    info.image = srcImage->handle();
-    info.viewType = m_srcViewType;
-    info.format = srcFormat;
-    info.subresourceRange = vk::makeSubresourceRange(srcSubresources);
-    info.subresourceRange.aspectMask = srcAspects & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
-
-    if ((m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_srcImageView)))
-      throw DxvkError("DxvkMetaCopyViews: Failed to create source image view");
+    srcImageView = srcImage->createView(srcViewInfo);
 
     if (srcAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-      info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
-
-      if ((m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_srcStencilView)))
-        throw DxvkError("DxvkMetaCopyViews: Failed to create source stencil view");
+      srcViewInfo.aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+      srcStencilView = srcImage->createView(srcViewInfo);
     }
   }
   
 
   DxvkMetaCopyViews::~DxvkMetaCopyViews() {
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_dstImageView, nullptr);
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcImageView, nullptr);
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcStencilView, nullptr);
+
   }
 
   
