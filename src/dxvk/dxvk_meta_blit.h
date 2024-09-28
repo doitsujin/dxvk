@@ -86,51 +86,7 @@ namespace dxvk {
     VkPipeline            pipeHandle;
   };
   
-  
-  /**
-   * \brief Blit render pass
-   *
-   * Stores image view, render pass and framebuffer
-   * objects for a blit operation, as well as some
-   * metadata.
-   */
-  class DxvkMetaBlitRenderPass : public DxvkResource {
 
-  public:
-
-    DxvkMetaBlitRenderPass(
-      const Rc<DxvkDevice>&       device,
-      const Rc<DxvkImage>&        dstImage,
-      const Rc<DxvkImage>&        srcImage,
-      const VkImageBlit&          region,
-      const VkComponentMapping&   mapping);
-
-    ~DxvkMetaBlitRenderPass();
-
-    VkImageViewType viewType() const;
-
-    uint32_t framebufferLayerIndex() const;
-    uint32_t framebufferLayerCount() const;
-
-    VkImageView getDstView() const { return m_dstView; }
-    VkImageView getSrcView() const { return m_srcView; }
-
-  private:
-
-    Rc<vk::DeviceFn>  m_vkd;
-    Rc<DxvkImage>     m_dstImage;
-    Rc<DxvkImage>     m_srcImage;
-
-    VkImageBlit       m_region;
-    VkImageView       m_dstView;
-    VkImageView       m_srcView;
-
-    VkImageView createDstView();
-    VkImageView createSrcView(const VkComponentMapping& mapping);
-
-  };
-
-  
   /**
    * \brief Blitter objects
    * 
