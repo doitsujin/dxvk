@@ -217,9 +217,8 @@ namespace dxvk {
     friend DxvkSampler;
   public:
 
-    // The Vulkan limit for samplers is at least 4000.
-    // Keep some objects available for internal use.
-    constexpr static uint32_t MaxSamplerCount = 3584u;
+    // Lower limit for sampler counts in Vulkan.
+    constexpr static uint32_t MaxSamplerCount = 4000u;
 
     // Minimum number of samplers to keep alive.
     constexpr static uint32_t MinSamplerCount = 1024u;
