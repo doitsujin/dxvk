@@ -2107,6 +2107,11 @@ namespace dxvk {
       }
     }
 
+    // If the source image is shader-readable anyway, we can use the
+    // FB path if it's beneficial on the device we're running on
+    if (m_device->perfHints().preferFbDepthStencilCopy)
+      useFb |= srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT;
+
     if (useFb) {
       this->resolveImageFb(
         dstImage, srcImage, region, VK_FORMAT_UNDEFINED,
@@ -4287,6 +4292,16 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
+    DxvkImageUsageInfo usageInfo = { };
+    usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    if (!ensureImageCompatibility(dstImage, usageInfo)
+     || !ensureImageCompatibility(srcImage, usageInfo)) {
+      Logger::err(str::format("DxvkContext: resolveImageDs: Unsupported images:"
+        "\n  dst format: ", dstImage->info().format,
+        "\n  src format: ", srcImage->info().format));
+    }
+
     if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
@@ -4322,15 +4337,14 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
 
     // Create a pair of views for the attachment resolve
-    Rc<DxvkMetaResolveViews> views = new DxvkMetaResolveViews(m_device->vkd(),
-      dstImage, region.dstSubresource, srcImage, region.srcSubresource,
-      dstImage->info().format);
+    DxvkMetaResolveViews views(dstImage, region.dstSubresource,
+      srcImage, region.srcSubresource, dstImage->info().format);
 
     VkRenderingAttachmentInfo depthAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    depthAttachment.imageView = views->getSrcView();
+    depthAttachment.imageView = views.srcView->handle();
     depthAttachment.imageLayout = srcLayout;
     depthAttachment.resolveMode = depthMode;
-    depthAttachment.resolveImageView = views->getDstView();
+    depthAttachment.resolveImageView = views.dstView->handle();
     depthAttachment.resolveImageLayout = dstLayout;
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -4375,11 +4389,10 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
-    m_cmd->trackResource<DxvkAccess::None>(views);
   }
 
 
-  void DxvkContext::resolveImageFbDirect(
+  void DxvkContext::resolveImageFb(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
@@ -4390,6 +4403,33 @@ namespace dxvk {
 
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+
+    // Ensure we can access the destination image for rendering,
+    // and the source image for reading within the shader.
+    DxvkImageUsageInfo dstUsage = { };
+    dstUsage.usage = (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    DxvkImageUsageInfo srcUsage = { };
+    srcUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    if (format) {
+      dstUsage.viewFormatCount = 1u;
+      dstUsage.viewFormats = &format;
+
+      srcUsage.viewFormatCount = 1u;
+      srcUsage.viewFormats = &format;
+    }
+
+    if (!ensureImageCompatibility(dstImage, dstUsage)
+     || !ensureImageCompatibility(srcImage, srcUsage)) {
+      Logger::err(str::format("DxvkContext: resolveImageFb: Unsupported images:",
+        "\n  dst format:  ", dstImage->info().format,
+        "\n  src format:  ", srcImage->info().format,
+        "\n  view format: ", format));
+      return;
+    }
 
     if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
@@ -4569,58 +4609,6 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
-  }
-
-
-  void DxvkContext::resolveImageFb(
-    const Rc<DxvkImage>&            dstImage,
-    const Rc<DxvkImage>&            srcImage,
-    const VkImageResolve&           region,
-          VkFormat                  format,
-          VkResolveModeFlagBits     depthMode,
-          VkResolveModeFlagBits     stencilMode) {
-    // Usually we should be able to draw directly to the destination image,
-    // but in some cases this might not be possible, e.g. if when copying
-    // from something like D32_SFLOAT to RGBA8_UNORM. In those situations,
-    // create a temporary image to draw to, and then copy to the actual
-    // destination image using a regular Vulkan transfer function.
-    bool useDirectCopy = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-                      && (!format || dstImage->isViewCompatible(format));
-
-    if (useDirectCopy) {
-      this->resolveImageFbDirect(dstImage, srcImage,
-        region, format, depthMode, stencilMode);
-    } else {
-      DxvkImageCreateInfo imageInfo;
-      imageInfo.type = dstImage->info().type;
-      imageInfo.format = format;
-      imageInfo.flags = 0;
-      imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-      imageInfo.extent = region.extent;
-      imageInfo.numLayers = region.dstSubresource.layerCount;
-      imageInfo.mipLevels = 1;
-      imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-      imageInfo.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
-      imageInfo.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
-      imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-      imageInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-      Rc<DxvkImage> tmpImage = m_device->createImage(imageInfo,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      VkImageResolve tmpRegion = region;
-      tmpRegion.dstSubresource.baseArrayLayer = 0;
-      tmpRegion.dstSubresource.mipLevel = 0;
-      tmpRegion.dstOffset = VkOffset3D { 0, 0, 0 };
-
-      this->resolveImageFbDirect(tmpImage, srcImage,
-        tmpRegion, format, depthMode, stencilMode);
-
-      this->copyImageHw(
-        dstImage, region.dstSubresource, region.dstOffset,
-        tmpImage, tmpRegion.dstSubresource, tmpRegion.dstOffset,
-        region.extent);
-    }
   }
 
 
