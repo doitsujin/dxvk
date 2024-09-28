@@ -1666,19 +1666,34 @@ namespace dxvk {
     this->spillRenderPass(false);
     this->invalidateState();
 
-    // Create image views, etc.
-    Rc<DxvkMetaMipGenRenderPass> mipGenerator = new DxvkMetaMipGenRenderPass(m_device->vkd(), imageView);
-    
+    // Make sure we can both render to and read from the image
+    VkFormat viewFormat = imageView->info().format;
+
+    DxvkImageUsageInfo usageInfo;
+    usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    usageInfo.viewFormatCount = 1;
+    usageInfo.viewFormats = &viewFormat;
+
+    if (!ensureImageCompatibility(imageView->image(), usageInfo)) {
+      Logger::err(str::format("DxvkContext: generateMipmaps: Unsupported operation:"
+        "\n  view format:  ", imageView->info().format,
+        "\n  image format: ", imageView->image()->info().format));
+      return;
+    }
+
     if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
 
+    // Create image views, etc.
+    DxvkMetaMipGenViews mipGenerator(imageView);
+    
     VkImageLayout dstLayout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     VkImageLayout srcLayout = imageView->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     // If necessary, transition first mip level to the read-only layout
     if (imageView->image()->info().layout != srcLayout) {
       m_execAcquires.accessImage(imageView->image(),
-        mipGenerator->getTopSubresource(),
+        mipGenerator.getTopSubresource(),
         imageView->image()->info().layout,
         imageView->image()->info().stages, 0,
         srcLayout,
@@ -1689,7 +1704,7 @@ namespace dxvk {
     // If necessary, initialize all levels that are written to
     if (imageView->image()->info().layout != dstLayout) {
       m_execAcquires.accessImage(imageView->image(),
-        mipGenerator->getAllTargetSubresources(),
+        mipGenerator.getAllTargetSubresources(),
         VK_IMAGE_LAYOUT_UNDEFINED,
         imageView->image()->info().stages, 0,
         dstLayout,
@@ -1724,14 +1739,14 @@ namespace dxvk {
     
     // Retrieve a compatible pipeline to use for rendering
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
-      mipGenerator->getSrcViewType(), imageView->info().format, VK_SAMPLE_COUNT_1_BIT);
+      mipGenerator.getSrcViewType(), imageView->info().format, VK_SAMPLE_COUNT_1_BIT);
     
-    for (uint32_t i = 0; i < mipGenerator->getPassCount(); i++) {
+    for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
       // Width, height and layer count for the current pass
-      VkExtent3D passExtent = mipGenerator->computePassExtent(i);
+      VkExtent3D passExtent = mipGenerator.computePassExtent(i);
       
       // Create descriptor set with the current source view
-      descriptorImage.imageView = mipGenerator->getSrcView(i);
+      descriptorImage.imageView = mipGenerator.getSrcViewHandle(i);
       descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
       m_cmd->updateDescriptorSets(1, &descriptorWrite);
       
@@ -1749,7 +1764,7 @@ namespace dxvk {
       scissor.extent    = { passExtent.width, passExtent.height };
       
       // Set up rendering info
-      attachmentInfo.imageView = mipGenerator->getDstView(i);
+      attachmentInfo.imageView = mipGenerator.getDstViewHandle(i);
       renderingInfo.renderArea = scissor;
       renderingInfo.layerCount = passExtent.depth;
       
@@ -1761,7 +1776,7 @@ namespace dxvk {
 
       if (i) {
         m_execAcquires.accessImage(imageView->image(),
-          mipGenerator->getSourceSubresource(i),
+          mipGenerator.getSourceSubresource(i),
           dstLayout,
           VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
           VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -1804,7 +1819,7 @@ namespace dxvk {
         imageView->image()->info().access);
     } else {
       m_execBarriers.accessImage(imageView->image(),
-        mipGenerator->getAllSourceSubresources(),
+        mipGenerator.getAllSourceSubresources(),
         srcLayout,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -1815,7 +1830,7 @@ namespace dxvk {
         imageView->image()->info().access);
 
       m_execBarriers.accessImage(imageView->image(),
-        mipGenerator->getBottomSubresource(),
+        mipGenerator.getBottomSubresource(),
         dstLayout,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
@@ -1824,7 +1839,6 @@ namespace dxvk {
         imageView->image()->info().access);
     }
 
-    m_cmd->trackResource<DxvkAccess::None>(mipGenerator);
     m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
   }
   
