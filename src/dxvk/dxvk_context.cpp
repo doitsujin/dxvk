@@ -3747,105 +3747,33 @@ namespace dxvk {
       dstImage->info().format, dstSubresource.aspectMask,
       srcImage->info().format, srcSubresource.aspectMask);
     
-    // Usually we should be able to draw directly to the destination image,
-    // but in some cases this might not be possible, e.g. if when copying
-    // from something like D32_SFLOAT to RGBA8_UNORM. In those situations,
-    // create a temporary image to draw to, and then copy to the actual
-    // destination image using a regular Vulkan transfer function.
-    bool dstIsCompatible = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-                        && (dstImage->isViewCompatible(viewFormats.dstFormat));
-    bool srcIsCompatible = (srcImage->info().usage & (VK_IMAGE_USAGE_SAMPLED_BIT))
-                        && (srcImage->isViewCompatible(viewFormats.srcFormat));
+    // Guarantee that we can render to or sample the images
+    DxvkImageUsageInfo dstUsage = { };
+    dstUsage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    dstUsage.viewFormatCount = 1;
+    dstUsage.viewFormats = &viewFormats.dstFormat;
 
-    if (dstIsCompatible && srcIsCompatible) {
-      this->copyImageFbDirect(
-        dstImage, dstSubresource, dstOffset, viewFormats.dstFormat,
-        srcImage, srcSubresource, srcOffset, viewFormats.srcFormat, extent);
-    } else if (dstIsCompatible || srcIsCompatible) {
-      DxvkImageCreateInfo imageInfo = dstImage->info();
-      imageInfo.flags = 0;
-      imageInfo.extent = extent;
-      imageInfo.mipLevels = 1;
-      imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-      imageInfo.viewFormatCount = 0;
+    if (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      dstUsage.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-      if (!dstIsCompatible) {
-        imageInfo.format = viewFormats.dstFormat;
-        imageInfo.numLayers = dstSubresource.layerCount;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-        imageInfo.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-        imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-        imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
+    DxvkImageUsageInfo srcUsage = { };
+    srcUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    srcUsage.viewFormatCount = 1;
+    srcUsage.viewFormats = &viewFormats.srcFormat;
 
-        if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-          imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-          imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-          imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        } else {
-          imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-          imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                           |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-          imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-        }
-      } else /* if (!srcIsCompatible) */ {
-        imageInfo.format = viewFormats.srcFormat;
-        imageInfo.numLayers = srcSubresource.layerCount;
-        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-        imageInfo.layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        imageInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-      }
-
-      Rc<DxvkImage> tmpImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      VkImageSubresourceLayers tmpSubresource = { };
-      tmpSubresource.aspectMask = tmpImage->formatInfo()->aspectMask;
-      tmpSubresource.mipLevel = 0;
-      tmpSubresource.baseArrayLayer = 0;
-      tmpSubresource.layerCount = imageInfo.numLayers;
-
-      VkOffset3D tmpOffset = { 0, 0, 0 };
-
-      if (!dstIsCompatible) {
-        this->copyImageFbDirect(
-          tmpImage, tmpSubresource, tmpOffset, viewFormats.dstFormat,
-          srcImage, srcSubresource, srcOffset, viewFormats.srcFormat, extent);
-
-        this->copyImageHw(
-          dstImage, dstSubresource, dstOffset,
-          tmpImage, tmpSubresource, tmpOffset, extent);
-      } else /* if (!srcIsCompatible) */ {
-        this->copyImageHw(
-          tmpImage, tmpSubresource, tmpOffset,
-          srcImage, srcSubresource, srcOffset, extent);
-
-        this->copyImageFbDirect(
-          dstImage, dstSubresource, dstOffset, viewFormats.dstFormat,
-          tmpImage, tmpSubresource, tmpOffset, viewFormats.srcFormat, extent);
-      }
-    } else {
-      Logger::err(str::format("DxvkContext: copyImageFb: Unsupported operation:\n"
-        "  srcFormat = ", srcImage->info().format, " (aspect ", srcSubresource.aspectMask, ")\n",
-        "  dstFormat = ", dstImage->info().format, " (aspect ", dstSubresource.aspectMask, ")"));
+    if (!ensureImageCompatibility(dstImage, dstUsage)
+     || !ensureImageCompatibility(srcImage, srcUsage)) {
+      Logger::err(str::format("DxvkContext: copyImageFb: Unsupported images:"
+        "\n  dst format: ", dstImage->info().format,
+        "\n  src format: ", srcImage->info().format));
+      return;
     }
-  }
 
-
-  void DxvkContext::copyImageFbDirect(
-    const Rc<DxvkImage>&        dstImage,
-          VkImageSubresourceLayers dstSubresource,
-          VkOffset3D            dstOffset,
-          VkFormat              dstFormat,
-    const Rc<DxvkImage>&        srcImage,
-          VkImageSubresourceLayers srcSubresource,
-          VkOffset3D            srcOffset,
-          VkFormat              srcFormat,
-          VkExtent3D            extent) {
     this->invalidateState();
 
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
-    
+
     if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
@@ -3903,21 +3831,26 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
 
     // Create source and destination image views
-    Rc<DxvkMetaCopyViews> views = new DxvkMetaCopyViews(m_device->vkd(),
-      dstImage, dstSubresource, dstFormat,
-      srcImage, srcSubresource, srcFormat);
-    
+    DxvkMetaCopyViews views(
+      dstImage, dstSubresource, viewFormats.dstFormat,
+      srcImage, srcSubresource, viewFormats.srcFormat);
+
     // Create pipeline for the copy operation
     DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getPipeline(
-      views->getSrcViewType(), dstFormat, dstImage->info().sampleCount);
+      views.srcImageView->info().viewType, viewFormats.dstFormat, dstImage->info().sampleCount);
 
     // Create and initialize descriptor set    
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
 
     std::array<VkDescriptorImageInfo, 2> descriptorImages = {{
-      { VK_NULL_HANDLE, views->getSrcView(),        srcLayout },
-      { VK_NULL_HANDLE, views->getSrcStencilView(), srcLayout },
+      { VK_NULL_HANDLE, views.srcImageView->handle(), srcLayout },
+      { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED },
     }};
+
+    if (views.srcStencilView) {
+      descriptorImages[1].imageView = views.srcStencilView->handle();
+      descriptorImages[1].imageLayout = srcLayout;
+    }
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites;
 
@@ -3950,7 +3883,7 @@ namespace dxvk {
     VkExtent3D mipExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = views->getDstView();
+    attachmentInfo.imageView = views.dstImageView->handle();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -4013,7 +3946,6 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
-    m_cmd->trackResource<DxvkAccess::None>(views);
   }
 
 
@@ -4530,7 +4462,7 @@ namespace dxvk {
 
     VkExtent3D passExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
 
-    Rc<DxvkMetaCopyViews> views = new DxvkMetaCopyViews(m_device->vkd(),
+    DxvkMetaCopyViews views(
       dstImage, region.dstSubresource, dstFormat,
       srcImage, region.srcSubresource, srcFormat);
 
@@ -4541,9 +4473,14 @@ namespace dxvk {
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
 
     std::array<VkDescriptorImageInfo, 2> descriptorImages = {{
-      { VK_NULL_HANDLE, views->getSrcView(),        srcLayout },
-      { VK_NULL_HANDLE, views->getSrcStencilView(), srcLayout },
+      { VK_NULL_HANDLE, views.srcImageView->handle(), srcLayout },
+      { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED },
     }};
+
+    if (views.srcStencilView) {
+      descriptorImages[1].imageView = views.srcStencilView->handle();
+      descriptorImages[1].imageLayout = srcLayout;
+    }
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites;
 
@@ -4574,7 +4511,7 @@ namespace dxvk {
     scissor.extent    = { region.extent.width, region.extent.height };
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = views->getDstView();
+    attachmentInfo.imageView = views.dstImageView->handle();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -4632,7 +4569,6 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
-    m_cmd->trackResource<DxvkAccess::None>(views);
   }
 
 
