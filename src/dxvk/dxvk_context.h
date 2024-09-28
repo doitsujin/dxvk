@@ -978,6 +978,35 @@ namespace dxvk {
             Rc<DxvkResourceAllocation>&& slice);
     
     /**
+     * \brief Invalidates image content and add usage flag
+     *
+     * Replaces the backing storage of an image.
+     * \warning If the image is used by another context,
+     * invalidating it will result in undefined behaviour.
+     * \param [in] buffer The buffer to invalidate
+     * \param [in] slice New buffer slice
+     * \param [in] usageInfo Added usage info
+     */
+    void invalidateImageWithUsage(
+      const Rc<DxvkImage>&            image,
+            Rc<DxvkResourceAllocation>&& slice,
+      const DxvkImageUsageInfo&       usageInfo);
+
+    /**
+     * \brief Ensures that an image supports the given usage
+     *
+     * No-op if the image already supports the requested properties.
+     * Otherwise, this will allocate a new backing resource with the
+     * requested properties and copy the current contents to it.
+     * \param [in] image Image resource
+     * \param [in] usageInfo Usage info to add
+     * \returns \c true if the image can support the given usage
+     */
+    bool ensureImageCompatibility(
+      const Rc<DxvkImage>&            image,
+      const DxvkImageUsageInfo&       usageInfo);
+
+    /**
      * \brief Updates push constants
      * 
      * Updates the given push constant range.
