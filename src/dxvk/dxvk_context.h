@@ -1751,6 +1751,10 @@ namespace dxvk {
       const Rc<DxvkBuffer>&           buffer,
             VkDeviceSize              copySize);
 
+    Rc<DxvkImageView> ensureImageViewCompatibility(
+      const Rc<DxvkImageView>&        view,
+            VkImageUsageFlagBits      usage);
+
     void relocateResources(
             size_t                    bufferCount,
       const DxvkRelocateBufferInfo*   bufferInfos,

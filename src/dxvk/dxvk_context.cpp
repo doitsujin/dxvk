@@ -6525,6 +6525,46 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkImageView> DxvkContext::ensureImageViewCompatibility(
+    const Rc<DxvkImageView>&        view,
+          VkImageUsageFlagBits      usage) {
+    // Return existing view if it already compatible with the image
+    VkFormat viewFormat = view->info().format;
+
+    bool isFormatCompatible = view->image()->isViewCompatible(viewFormat);
+    bool isUsageCompatible = (view->image()->info().usage & usage) == usage;
+
+    if (isFormatCompatible && isUsageCompatible) {
+      if (view->info().usage & usage)
+        return view;
+
+      // Just create a new view with the correct usage flag
+      DxvkImageViewKey viewInfo = view->info();
+      viewInfo.usage = usage;
+      return view->image()->createView(viewInfo);
+    } else {
+      // Actually need to relocate the image
+      DxvkImageUsageInfo usageInfo = { };
+      usageInfo.usage = usage;
+
+      if (!isFormatCompatible) {
+        usageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+                        |  VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+
+        usageInfo.viewFormatCount = 1u;
+        usageInfo.viewFormats = &viewFormat;
+      }
+
+      if (!ensureImageCompatibility(view->image(), usageInfo))
+        return nullptr;
+
+      DxvkImageViewKey viewInfo = view->info();
+      viewInfo.usage = usage;
+      return view->image()->createView(viewInfo);
+    }
+  }
+
+
   void DxvkContext::relocateResources(
           size_t                    bufferCount,
     const DxvkRelocateBufferInfo*   bufferInfos,
