@@ -1853,7 +1853,15 @@ namespace dxvk {
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice) {
-    Rc<DxvkResourceAllocation> prevAllocation = image->assignResource(std::move(slice));
+    invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo());
+  }
+
+
+  void DxvkContext::invalidateImageWithUsage(
+    const Rc<DxvkImage>&            image,
+          Rc<DxvkResourceAllocation>&& slice,
+    const DxvkImageUsageInfo&       usageInfo) {
+    Rc<DxvkResourceAllocation> prevAllocation = image->assignResourceWithUsage(std::move(slice), usageInfo);
     m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
 
     VkImageUsageFlags usage = image->info().usage;
@@ -1872,6 +1880,140 @@ namespace dxvk {
         }
       }
     }
+  }
+
+
+  bool DxvkContext::ensureImageCompatibility(
+    const Rc<DxvkImage>&            image,
+    const DxvkImageUsageInfo&       usageInfo) {
+    // Check whether image usage, flags and view formats are supported.
+    // If any of these are false, we need to create a new image.
+    bool isUsageAndFormatCompatible = (image->info().usage & usageInfo.usage) == usageInfo.usage
+                                   && (image->info().flags & usageInfo.flags) == usageInfo.flags;
+
+    for (uint32_t i = 0; i < usageInfo.viewFormatCount && isUsageAndFormatCompatible; i++)
+      isUsageAndFormatCompatible &= image->isViewCompatible(usageInfo.viewFormats[i]);
+
+    // Check if we need to insert a barrier and update image properties
+    bool isAccessAndLayoutCompatible = (image->info().stages & usageInfo.stages) == usageInfo.stages
+                                    && (image->info().access & usageInfo.access) == usageInfo.access
+                                    && (usageInfo.layout && image->info().layout == usageInfo.layout);
+
+    // If everything matches already, no need to do anything.
+    if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible)
+      return true;
+
+    // Ensure the image is accessible and in its default layout
+    this->spillRenderPass(true);
+    this->prepareImage(image, image->getAvailableSubresources());
+
+    if (m_execBarriers.isImageDirty(image, image->getAvailableSubresources(), DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    if (isUsageAndFormatCompatible) {
+      // Emit a barrier. If used in internal passes, this function
+      // must be called *before* emitting dirty checks there.
+      VkImageLayout oldLayout = image->info().layout;
+      VkImageLayout newLayout = usageInfo.layout ? usageInfo.layout : oldLayout;
+
+      image->assignResourceWithUsage(image->getAllocation(), usageInfo);
+
+      m_execBarriers.accessImage(image, image->getAvailableSubresources(),
+        oldLayout, image->info().stages, image->info().access,
+        newLayout, image->info().stages, image->info().access);
+
+      m_cmd->trackResource<DxvkAccess::Write>(image);
+      return true;
+    }
+
+    // Some images have to stay in their place, we can't do much in that case.
+    if (!image->canRelocate()) {
+      Logger::err(str::format("DxvkContext: Cannot relocate image:",
+        "\n  Current usage:   0x", std::hex, image->info().usage, ", flags: 0x", image->info().flags, ", ", std::dec, image->info().viewFormatCount, " view formats"
+        "\n  Requested usage: 0x", std::hex, usageInfo.usage, ", flags: 0x", usageInfo.flags, ", ", std::dec, usageInfo.viewFormatCount, " view formats"));
+      return false;
+    }
+
+    // Enable mutable format bit as necessary. We do not require
+    // setting this explicitly so that the caller does not have
+    // to check image formats every time.
+    VkImageCreateFlags createFlags = 0u;
+
+    for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+      if (usageInfo.viewFormats[i] != image->info().format) {
+        createFlags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+        break;
+      }
+    }
+
+    // Ensure that the image can support the requested usage
+    VkFormatFeatureFlagBits2 required = 0u;
+
+    switch (usageInfo.usage) {
+      case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+        required |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
+        break;
+
+      case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+        required |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
+        break;
+
+      case VK_IMAGE_USAGE_SAMPLED_BIT:
+        required |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+        break;
+
+      case VK_IMAGE_USAGE_STORAGE_BIT:
+        required |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
+        break;
+
+      case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
+        required |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
+        break;
+
+      case VK_IMAGE_USAGE_TRANSFER_DST_BIT:
+        required |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
+        break;
+
+      default:
+        break;
+    }
+
+    // Make sure to use the correct set of feature flags for this image
+    auto features = m_device->getFormatFeatures(image->info().format);
+    auto& supported = image->info().tiling == VK_IMAGE_TILING_OPTIMAL
+      ? features.optimal : features.linear;
+
+    if ((supported & required) != required) {
+      // Check if any of the view formats support the required features
+      for (uint32_t i = 0; i < image->info().viewFormatCount; i++) {
+        auto extendedFeatures = m_device->getFormatFeatures(image->info().viewFormats[i]);
+        features.optimal |= extendedFeatures.optimal;
+        features.linear |= extendedFeatures.linear;
+      }
+
+      for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+        auto extendedFeatures = m_device->getFormatFeatures(usageInfo.viewFormats[i]);
+        features.optimal |= extendedFeatures.optimal;
+        features.linear |= extendedFeatures.linear;
+      }
+
+      if ((supported & required) != required)
+        return false;
+
+      // We're good, just need to enable extended usage
+      createFlags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+    }
+
+    // Allocate new backing storage and relocate the image
+    auto storage = image->createResourceWithUsage(usageInfo);
+
+    DxvkRelocateImageInfo relocateInfo;
+    relocateInfo.image = image;
+    relocateInfo.storage = storage;
+    relocateInfo.usageInfo = usageInfo;
+
+    relocateResources(0, nullptr, 1, &relocateInfo);
+    return true;
   }
 
 
@@ -6421,10 +6563,10 @@ namespace dxvk {
       dstBarrier.subresourceRange = info.image->getAvailableSubresources();
 
       VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      dstBarrier.srcStageMask = info.image->info().stages;
-      dstBarrier.srcAccessMask = info.image->info().access;
-      dstBarrier.dstStageMask = info.image->info().stages;
-      dstBarrier.dstAccessMask = info.image->info().access;
+      srcBarrier.srcStageMask = info.image->info().stages;
+      srcBarrier.srcAccessMask = info.image->info().access;
+      srcBarrier.dstStageMask = info.image->info().stages;
+      srcBarrier.dstAccessMask = info.image->info().access;
       srcBarrier.oldLayout = info.image->info().layout;
       srcBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
       srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -6531,7 +6673,7 @@ namespace dxvk {
       m_cmd->trackResource<DxvkAccess::Write>(info.image);
 
       // Invalidate image and emit post-copy barrier to use the correct layout
-      invalidateImage(info.image, Rc<DxvkResourceAllocation>(info.storage));
+      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
 
       VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
       dstBarrier.srcStageMask = info.image->info().stages;

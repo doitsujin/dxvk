@@ -17,7 +17,7 @@ namespace dxvk {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Determine whether the image is shareable before creating the resource
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
+    VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
     assignResource(createResource());
@@ -38,13 +38,20 @@ namespace dxvk {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
+    VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     assignResource(m_allocator->importImageResource(imageInfo, imageHandle));
   }
 
 
   DxvkImage::~DxvkImage() {
 
+  }
+
+
+  bool DxvkImage::canRelocate() const {
+    return !m_imageInfo.mapPtr && !m_shared
+        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
+        && !(m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
 
 
@@ -97,17 +104,36 @@ namespace dxvk {
 
 
   Rc<DxvkResourceAllocation> DxvkImage::createResource() {
-    const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
+    return createResourceWithUsage(DxvkImageUsageInfo());
+  }
 
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
+
+  Rc<DxvkResourceAllocation> DxvkImage::createResourceWithUsage(const DxvkImageUsageInfo& usageInfo) {
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
+    small_vector<VkFormat, 4> localViewFormats;
+
+    VkImageCreateInfo imageInfo = getImageCreateInfo(usageInfo);
 
     // Set up view format list so that drivers can better enable
     // compression. Skip for planar formats due to validation errors.
     VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
 
     if (!(formatInfo->aspectMask & VK_IMAGE_ASPECT_PLANE_0_BIT)) {
-      formatList.viewFormatCount = m_info.viewFormatCount;
-      formatList.pViewFormats    = m_info.viewFormats;
+      if (usageInfo.viewFormatCount) {
+        for (uint32_t i = 0; i < m_viewFormats.size(); i++)
+          localViewFormats.push_back(m_viewFormats[i]);
+
+        for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+          if (!isViewCompatible(usageInfo.viewFormats[i]))
+            localViewFormats.push_back(usageInfo.viewFormats[i]);
+        }
+
+        formatList.viewFormatCount = localViewFormats.size();
+        formatList.pViewFormats = localViewFormats.data();
+      } else {
+        formatList.viewFormatCount = m_viewFormats.size();
+        formatList.pViewFormats = m_viewFormats.data();
+      }
     }
 
     if ((m_info.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && formatList.viewFormatCount)
@@ -142,9 +168,52 @@ namespace dxvk {
   }
 
 
-  VkImageCreateInfo DxvkImage::getImageCreateInfo() const {
+  Rc<DxvkResourceAllocation> DxvkImage::assignResource(
+          Rc<DxvkResourceAllocation>&& resource) {
+    return assignResourceWithUsage(std::move(resource), DxvkImageUsageInfo());
+  }
+
+
+  Rc<DxvkResourceAllocation> DxvkImage::assignResourceWithUsage(
+          Rc<DxvkResourceAllocation>&& resource,
+    const DxvkImageUsageInfo&         usageInfo) {
+    Rc<DxvkResourceAllocation> old = std::move(m_storage);
+
+    // Self-assignment is possible here if we
+    // just update the image properties
+    m_storage = std::move(resource);
+
+    if (m_storage != old) {
+      m_imageInfo = m_storage->getImageInfo();
+      m_version += 1u;
+    }
+
+    m_info.flags |= usageInfo.flags;
+    m_info.usage |= usageInfo.usage;
+    m_info.stages |= usageInfo.stages;
+    m_info.access |= usageInfo.access;
+
+    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED)
+      m_info.layout = usageInfo.layout;
+
+    for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+      if (!isViewCompatible(usageInfo.viewFormats[i]))
+        m_viewFormats.push_back(usageInfo.viewFormats[i]);
+    }
+
+    if (!m_viewFormats.empty()) {
+      m_info.viewFormatCount = m_viewFormats.size();
+      m_info.viewFormats = m_viewFormats.data();
+    }
+
+    return old;
+  }
+
+
+  VkImageCreateInfo DxvkImage::getImageCreateInfo(
+    const DxvkImageUsageInfo&         usageInfo) const {
     VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    info.flags = m_info.flags;
+    info.flags = m_info.flags | usageInfo.flags;
     info.imageType = m_info.type;
     info.format = m_info.format;
     info.extent = m_info.extent;
@@ -152,7 +221,7 @@ namespace dxvk {
     info.arrayLayers = m_info.numLayers;
     info.samples = m_info.sampleCount;
     info.tiling = m_info.tiling;
-    info.usage = m_info.usage;
+    info.usage = m_info.usage | usageInfo.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = m_info.initialLayout;
 

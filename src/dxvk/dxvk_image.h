@@ -71,6 +71,30 @@ namespace dxvk {
   
   
   /**
+   * \brief Extra image usage info
+   *
+   * Useful when recreating an image with different usage flags.
+   */
+  struct DxvkImageUsageInfo {
+    // New image flags to add.
+    VkImageCreateFlags flags = 0u;
+    // Usage flags to add to the image
+    VkImageUsageFlags usage = 0u;
+    // Stage flags to add to the image
+    VkPipelineStageFlags stages = 0u;
+    // Access flags to add to the image
+    VkAccessFlags access = 0u;
+    // New image layout. If undefined, the
+    // default layout will not be changed.
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // Number of new view formats to add
+    uint32_t viewFormatCount = 0u;
+    // View formats to add to the compatibility list
+    const VkFormat* viewFormats = nullptr;
+  };
+
+
+  /**
    * \brief Virtual image view
    *
    * Stores views for a number of different view types
@@ -459,6 +483,15 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether the image can be relocated
+     *
+     * Images that are shared, imported from a different API
+     * or mapped to host address space cannot be relocated.
+     * \returns \c true if the image can be relocated
+     */
+    bool canRelocate() const;
+
+    /**
      * \brief Queries memory layout of a subresource
      *
      * Can be used to retrieve the exact pointer to a
@@ -490,21 +523,37 @@ namespace dxvk {
     Rc<DxvkResourceAllocation> createResource();
 
     /**
+     * \brief Creates image resource with extra usage
+     *
+     * Creates new backing storage with additional usage flags
+     * enabled. Useful to expand on usage flags after creation.
+     * \param [in] usage Usage flags to add
+     * \returns New underlying image resource
+     */
+    Rc<DxvkResourceAllocation> createResourceWithUsage(
+      const DxvkImageUsageInfo&       usage);
+
+    /**
      * \brief Assigns backing storage to the image
      *
      * Implicitly invalidates all image views.
      * \param [in] resource New backing storage
      * \returns Previous backing storage
      */
-    Rc<DxvkResourceAllocation> assignResource(Rc<DxvkResourceAllocation>&& resource) {
-      Rc<DxvkResourceAllocation> old = std::move(m_storage);
+    Rc<DxvkResourceAllocation> assignResource(
+            Rc<DxvkResourceAllocation>&& resource);
 
-      m_storage = std::move(resource);
-      m_imageInfo = m_storage->getImageInfo();
-
-      m_version += 1u;
-      return old;
-    }
+    /**
+     * \brief Assigns backing storage to the image with extra usage
+     *
+     * Implicitly invalidates all image views.
+     * \param [in] resource New backing storage
+     * \param [in] usageInfo Added usage info
+     * \returns Previous backing storage
+     */
+    Rc<DxvkResourceAllocation> assignResourceWithUsage(
+            Rc<DxvkResourceAllocation>&& resource,
+      const DxvkImageUsageInfo&         usageInfo);
 
     /**
      * \brief Retrieves current backing storage
@@ -545,7 +594,8 @@ namespace dxvk {
     std::unordered_map<DxvkImageViewKey,
       DxvkImageView, DxvkHash, DxvkEq> m_views;
 
-    VkImageCreateInfo getImageCreateInfo() const;
+    VkImageCreateInfo getImageCreateInfo(
+      const DxvkImageUsageInfo&         usageInfo) const;
 
     void copyFormatList(
             uint32_t              formatCount,
@@ -567,6 +617,8 @@ namespace dxvk {
     Rc<DxvkImage> image;
     /// Backing storage to copy to
     Rc<DxvkResourceAllocation> storage;
+    /// Additional image usage
+    DxvkImageUsageInfo usageInfo;
   };
 
 
