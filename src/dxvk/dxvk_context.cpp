@@ -723,6 +723,14 @@ namespace dxvk {
 
     this->invalidateState();
 
+    DxvkImageUsageInfo usageInfo = { };
+    usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    if (!ensureImageCompatibility(srcImage, usageInfo)) {
+      Logger::err(str::format("DxvkContext: copyDepthStencilImageToPackedBuffer: Unsupported image:"
+        "\n  src format: ", srcImage->info().format));
+    }
+
     // Retrieve compute pipeline for the given format
     auto pipeInfo = m_common->metaPack().getPackPipeline(format);
 
@@ -1004,6 +1012,15 @@ namespace dxvk {
     this->invalidateState();
 
     this->prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
+
+    DxvkImageUsageInfo usageInfo = { };
+    usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    if (!ensureImageCompatibility(dstImage, usageInfo)) {
+      Logger::err(str::format("DxvkCOntext: copyPackedBufferToDepthStencilImage: Unsupported image:"
+        "\n  dst format: ", dstImage->info().format));
+      return;
+    }
 
     if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read)
      || m_execBarriers.isImageDirty(dstImage, vk::makeSubresourceRange(dstSubresource), DxvkAccess::Write))
