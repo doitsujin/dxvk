@@ -118,6 +118,10 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
+    void SetCursorTexture(UINT Width, UINT Height, uint8_t* pCursorBitmap);
+
+    void SetCursorPosition(UINT X, UINT Y, UINT Width, UINT Height);
+
     HRESULT SetDialogBoxMode(bool bEnableDialogs);
 
     D3D9Surface* GetBackBuffer(UINT iBackBuffer);

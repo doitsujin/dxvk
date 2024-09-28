@@ -354,14 +354,14 @@ namespace dxvk {
     hwCursor |= inputWidth  <= HardwareCursorWidth
              || inputHeight <= HardwareCursorHeight;
 
+    D3DLOCKED_BOX lockedBox;
+    HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
+    if (FAILED(hr))
+      return hr;
+
+    const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
+
     if (hwCursor) {
-      D3DLOCKED_BOX lockedBox;
-      HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
-      if (FAILED(hr))
-        return hr;
-
-      const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
-
       // Windows works with a stride of 128, lets respect that.
       // Copy data to the bitmap...
       CursorBitmap bitmap = { 0 };
@@ -376,10 +376,58 @@ namespace dxvk {
 
       // Set this as our cursor.
       return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
+    } else {
+      // The cursor bitmap passed by the application has the potential
+      // to not be clipped to the correct dimensions, so we need to
+      // discard any transparent edges and keep only a tight rectangle
+      // bounded by the cursor's visible edge pixels
+      uint32_t leftEdge   = inputWidth * HardwareCursorFormatSize;
+      uint32_t topEdge    = inputHeight;
+      uint32_t rightEdge  = 0;
+      uint32_t bottomEdge = 0;
+
+      uint32_t rowPitch = inputWidth * HardwareCursorFormatSize;
+
+      for (uint32_t h = 0; h < inputHeight; h++) {
+        uint32_t rowOffset = h * rowPitch;
+        for (uint32_t w = 0; w < rowPitch; w += HardwareCursorFormatSize) {
+          // Examine only pixels with non-zero alpha
+          if (data[rowOffset + w + 3] != 0) {
+            if (leftEdge > w) leftEdge = w;
+            if (topEdge > h) topEdge = h;
+            if (rightEdge < w) rightEdge = w;
+            if (bottomEdge < h) bottomEdge = h;
+          }
+        }
+      }
+      leftEdge  /= HardwareCursorFormatSize;
+      rightEdge /= HardwareCursorFormatSize;
+
+      if (leftEdge > rightEdge || topEdge > bottomEdge) {
+        UnlockImage(cursorTex, 0, 0);
+
+        return D3DERR_INVALIDCALL;
+      }
+
+      // Calculate clipped bitmap dimensions
+      uint32_t clippedInputWidth  = rightEdge  + 1 - leftEdge + 1;
+      uint32_t clippedInputHeight = bottomEdge + 1 - topEdge  + 1;
+      // Windows works with a stride of 128, lets respect that.
+      uint32_t clippedCopyPitch = clippedInputWidth * HardwareCursorFormatSize;
+
+      std::vector<uint8_t> clippedBitmap(clippedInputHeight * clippedCopyPitch, 0);
+
+      for (uint32_t h = 0; h < clippedInputHeight; h++)
+        std::memcpy(&clippedBitmap[h * clippedCopyPitch],
+                    &data[(h + topEdge) * lockedBox.RowPitch + leftEdge * HardwareCursorFormatSize], clippedCopyPitch);
+
+      UnlockImage(cursorTex, 0, 0);
+
+      m_implicitSwapchain->SetCursorTexture(clippedInputWidth, clippedInputHeight, &clippedBitmap[0]);
+
+      return m_cursor.SetSoftwareCursor(clippedInputWidth, clippedInputHeight, XHotSpot, YHotSpot);
     }
 
-    // Software Cursor...
-    Logger::warn("D3D9DeviceEx::SetCursorProperties: Software cursor not implemented.");
     return D3D_OK;
   }
 
@@ -459,6 +507,7 @@ namespace dxvk {
     }
 
     m_flags.clr(D3D9DeviceFlag::InScene);
+    m_cursor.ResetCursor();
 
     /*
       * Before calling the IDirect3DDevice9::Reset method for a device,
@@ -3852,6 +3901,19 @@ namespace dxvk {
           HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
           DWORD dwFlags) {
+
+    if (m_cursor.IsSoftwareCursor()) {
+      m_cursor.RefreshSoftwareCursorPosition();
+
+      D3D9_SOFTWARE_CURSOR* pSoftwareCursor = m_cursor.GetSoftwareCursor();
+
+      UINT cursorWidth  = m_cursor.IsCursorVisible() ? pSoftwareCursor->Width : 0;
+      UINT cursorHeight = m_cursor.IsCursorVisible() ? pSoftwareCursor->Height : 0;
+
+      m_implicitSwapchain->SetCursorPosition(pSoftwareCursor->X, pSoftwareCursor->Y,
+                                             cursorWidth, cursorHeight);
+    }
+
     return m_implicitSwapchain->Present(
       pSourceRect,
       pDestRect,

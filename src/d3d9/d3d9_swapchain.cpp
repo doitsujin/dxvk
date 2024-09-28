@@ -748,6 +748,32 @@ namespace dxvk {
   }
 
 
+  void D3D9SwapChainEx::SetCursorTexture(UINT Width, UINT Height, uint8_t* pCursorBitmap) {
+      VkExtent2D cursorSize = { uint32_t(Width), uint32_t(Height) };
+
+      m_blitter->setCursorTexture(
+        cursorSize,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        (void *) pCursorBitmap);
+  }
+
+
+  void D3D9SwapChainEx::SetCursorPosition(UINT X, UINT Y, UINT Width, UINT Height) {
+      VkOffset2D cursorPosition = { int32_t(X), int32_t(Y) };
+      VkExtent2D cursorSize     = { uint32_t(Width), uint32_t(Height) };
+
+      VkRect2D   cursorRect     = { cursorPosition, cursorSize };
+
+      m_parent->EmitCs([
+        cBlitter = m_blitter,
+        cRect    = cursorRect
+      ] (DxvkContext* ctx) {
+        cBlitter->setCursorPos(
+          cRect);
+      });
+  }
+
+
   HRESULT D3D9SwapChainEx::SetDialogBoxMode(bool bEnableDialogs) {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
