@@ -381,11 +381,6 @@ namespace dxvk {
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL && imageInfo.sharing.mode == DxvkSharedHandleMode::None)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
 
-    // For some formats, we need to enable render target
-    // capabilities if available, but these should
-    // in no way affect the default image layout
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling, imageInfo.sampleCount);
-
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
@@ -456,49 +451,6 @@ namespace dxvk {
         && (pImageInfo->numLayers     <= properties->maxArrayLayers)
         && (pImageInfo->mipLevels     <= properties->maxMipLevels)
         && (pImageInfo->sampleCount    & properties->sampleCounts);
-  }
-
-
-  VkImageUsageFlags D3D9CommonTexture::EnableMetaCopyUsage(
-          VkFormat              Format,
-          VkImageTiling         Tiling,
-          VkSampleCountFlags    SampleCount) const {
-    VkFormatFeatureFlags2 requestedFeatures = 0;
-
-    if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT)
-      requestedFeatures |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-    if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT)
-      requestedFeatures |=  VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
-
-    // We need SAMPLED_BIT for StretchRect.
-    // However, StretchRect does not allow stretching for DS formats,
-    // so unless we need to resolve, it should always hit code paths that only need TRANSFER_BIT.
-    if (!IsDepthStencilFormat(m_desc.Format) || SampleCount != VK_SAMPLE_COUNT_1_BIT)
-      requestedFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
-
-    if (!requestedFeatures)
-      return 0;
-
-    // Enable usage flags for all supported and requested features
-    DxvkFormatFeatures properties = m_device->GetDXVKDevice()->getFormatFeatures(Format);
-
-    requestedFeatures &= Tiling == VK_IMAGE_TILING_OPTIMAL
-      ? properties.optimal
-      : properties.linear;
-
-    VkImageUsageFlags requestedUsage = 0;
-
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    return requestedUsage;
   }
 
 
