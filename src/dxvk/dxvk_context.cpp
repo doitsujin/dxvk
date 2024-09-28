@@ -1726,8 +1726,10 @@ namespace dxvk {
     
     // Common descriptor set properties that we use to
     // bind the source image view to the fragment shader
+    Rc<DxvkSampler> sampler = createBlitSampler(filter);
+
     VkDescriptorImageInfo descriptorImage = { };
-    descriptorImage.sampler     = m_common->metaBlit().getSampler(filter);
+    descriptorImage.sampler     = sampler->handle();
     descriptorImage.imageLayout = srcLayout;
     
     VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -1850,6 +1852,7 @@ namespace dxvk {
     }
 
     m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
+    m_cmd->trackSampler(sampler);
   }
   
   
@@ -3179,8 +3182,10 @@ namespace dxvk {
     m_cmd->cmdSetScissor(1, &scissor);
 
     // Bind source image view
+    Rc<DxvkSampler> sampler = createBlitSampler(filter);
+
     VkDescriptorImageInfo descriptorImage;
-    descriptorImage.sampler     = m_common->metaBlit().getSampler(filter);
+    descriptorImage.sampler     = sampler->handle();
     descriptorImage.imageView   = srcView->handle();
     descriptorImage.imageLayout = srcLayout;
     
@@ -3240,6 +3245,7 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstView->image());
     m_cmd->trackResource<DxvkAccess::Read>(srcView->image());
+    m_cmd->trackSampler(sampler);
   }
 
 
@@ -6722,6 +6728,20 @@ namespace dxvk {
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+  }
+
+
+  Rc<DxvkSampler> DxvkContext::createBlitSampler(
+          VkFilter                    filter) {
+    DxvkSamplerKey samplerKey;
+    samplerKey.setFilter(filter, filter,
+      VK_SAMPLER_MIPMAP_MODE_NEAREST);
+    samplerKey.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+    return m_device->createSampler(samplerKey);
   }
 
 

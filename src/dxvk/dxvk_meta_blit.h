@@ -115,21 +115,9 @@ namespace dxvk {
             VkFormat              viewFormat,
             VkSampleCountFlagBits samples);
     
-    /**
-     * \brief Retrieves sampler with a given filter
-     *
-     * \param [in] filter The desired filter
-     * \returns Sampler object with the given filter
-     */
-    VkSampler getSampler(
-            VkFilter              filter);
-    
   private:
     
     Rc<vk::DeviceFn>  m_vkd;
-    
-    VkSampler m_samplerCopy;
-    VkSampler m_samplerBlit;
     
     VkShaderModule m_shaderVert   = VK_NULL_HANDLE;
     VkShaderModule m_shaderGeom   = VK_NULL_HANDLE;
@@ -143,9 +131,6 @@ namespace dxvk {
       DxvkMetaBlitPipelineKey,
       DxvkMetaBlitPipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
-    VkSampler createSampler(
-            VkFilter                    filter) const;
     
     VkShaderModule createShaderModule(
       const SpirvCodeBuffer&            code) const;

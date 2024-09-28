@@ -1741,6 +1741,9 @@ namespace dxvk {
             size_t                    imageCount,
       const DxvkRelocateImageInfo*    imageInfos);
 
+    Rc<DxvkSampler> createBlitSampler(
+            VkFilter                  filter);
+
     DxvkGraphicsPipeline* lookupGraphicsPipeline(
       const DxvkGraphicsPipelineShaders&  shaders);
 
