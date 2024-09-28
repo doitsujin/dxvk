@@ -383,19 +383,17 @@ namespace dxvk {
     /**
      * \brief Blits an image
      * 
-     * \param [in] dstImage Destination image
-     * \param [in] dstMapping Destination swizzle
-     * \param [in] srcImage Source image
-     * \param [in] srcMapping Source swizzle
-     * \param [in] region Blit region
+     * \param [in] dstView Destination image view
+     * \param [in] srcView Source image view
+     * \param [in] dstOffsets Two pixel coordinates in the destination image
+     * \param [in] srcOffsets Two pixel coordinates in the source image
      * \param [in] filter Texture filter
      */
-    void blitImage(
-      const Rc<DxvkImage>&        dstImage,
-      const VkComponentMapping&   dstMapping,
-      const Rc<DxvkImage>&        srcImage,
-      const VkComponentMapping&   srcMapping,
-      const VkImageBlit&          region,
+    void blitImageView(
+      const Rc<DxvkImageView>&    dstView,
+      const VkOffset3D*           dstOffsets,
+      const Rc<DxvkImageView>&    srcView,
+      const VkOffset3D*           srcOffsets,
             VkFilter              filter);
     
     /**
@@ -1462,16 +1460,17 @@ namespace dxvk {
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
     void blitImageFb(
-      const Rc<DxvkImage>&        dstImage,
-      const Rc<DxvkImage>&        srcImage,
-      const VkImageBlit&          region,
-      const VkComponentMapping&   mapping,
+            Rc<DxvkImageView>     dstView,
+      const VkOffset3D*           dstOffsets,
+            Rc<DxvkImageView>     srcView,
+      const VkOffset3D*           srcOffsets,
             VkFilter              filter);
 
     void blitImageHw(
-      const Rc<DxvkImage>&        dstImage,
-      const Rc<DxvkImage>&        srcImage,
-      const VkImageBlit&          region,
+      const Rc<DxvkImageView>&    dstView,
+      const VkOffset3D*           dstOffsets,
+      const Rc<DxvkImageView>&    srcView,
+      const VkOffset3D*           srcOffsets,
             VkFilter              filter);
 
     template<bool ToImage>

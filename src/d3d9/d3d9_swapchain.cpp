@@ -414,17 +414,37 @@ namespace dxvk {
       }
 #endif
 
+      DxvkImageViewKey dstViewInfo;
+      dstViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      dstViewInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      dstViewInfo.format = blittedSrc->info().format;
+      dstViewInfo.aspects = blitInfo.dstSubresource.aspectMask;
+      dstViewInfo.mipIndex = blitInfo.dstSubresource.mipLevel;
+      dstViewInfo.mipCount = 1;
+      dstViewInfo.layerIndex = blitInfo.dstSubresource.baseArrayLayer;
+      dstViewInfo.layerCount = blitInfo.dstSubresource.layerCount;
+      dstViewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(dstTexInfo->GetMapping().Swizzle);
+
+      DxvkImageViewKey srcViewInfo;
+      srcViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      srcViewInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      srcViewInfo.format = srcImage->info().format;
+      srcViewInfo.aspects = blitInfo.srcSubresource.aspectMask;
+      srcViewInfo.mipIndex = blitInfo.srcSubresource.mipLevel;
+      srcViewInfo.mipCount = 1;
+      srcViewInfo.layerIndex = blitInfo.srcSubresource.baseArrayLayer;
+      srcViewInfo.layerCount = blitInfo.srcSubresource.layerCount;
+      srcViewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(srcTexInfo->GetMapping().Swizzle);
+
       m_parent->EmitCs([
-        cDstImage = blittedSrc,
-        cDstMap   = dstTexInfo->GetMapping().Swizzle,
-        cSrcImage = srcImage,
-        cSrcMap   = srcTexInfo->GetMapping().Swizzle,
+        cDstView  = blittedSrc->createView(dstViewInfo),
+        cSrcView  = srcImage->createView(srcViewInfo),
         cBlitInfo = blitInfo
       ] (DxvkContext* ctx) {
-        ctx->blitImage(
-          cDstImage, cDstMap,
-          cSrcImage, cSrcMap,
-          cBlitInfo, VK_FILTER_NEAREST);
+        ctx->blitImageView(
+          cDstView, cBlitInfo.dstOffsets,
+          cSrcView, cBlitInfo.srcOffsets,
+          VK_FILTER_NEAREST);
       });
 
       srcImage = std::move(blittedSrc);
