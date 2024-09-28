@@ -6383,6 +6383,192 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::relocateResources(
+          size_t                    bufferCount,
+    const DxvkRelocateBufferInfo*   bufferInfos,
+          size_t                    imageCount,
+    const DxvkRelocateImageInfo*    imageInfos) {
+    if (!bufferCount && !imageCount)
+      return;
+
+    small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
+
+    VkMemoryBarrier2 bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    bufferBarrier.dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    bufferBarrier.dstAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+
+    for (size_t i = 0; i < bufferCount; i++) {
+      const auto& info = bufferInfos[i];
+
+      bufferBarrier.srcStageMask |= info.buffer->info().stages;
+      bufferBarrier.srcAccessMask |= info.buffer->info().access;
+    }
+
+    for (size_t i = 0; i < imageCount; i++) {
+      const auto& info = imageInfos[i];
+      auto oldStorage = info.image->getAllocation();
+
+      VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+      dstBarrier.srcStageMask = info.image->info().stages;
+      dstBarrier.srcAccessMask = info.image->info().access;
+      dstBarrier.dstStageMask = info.image->info().stages;
+      dstBarrier.dstAccessMask = info.image->info().access;
+      dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      dstBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      dstBarrier.image = info.storage->getImageInfo().image;
+      dstBarrier.subresourceRange = info.image->getAvailableSubresources();
+
+      VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+      dstBarrier.srcStageMask = info.image->info().stages;
+      dstBarrier.srcAccessMask = info.image->info().access;
+      dstBarrier.dstStageMask = info.image->info().stages;
+      dstBarrier.dstAccessMask = info.image->info().access;
+      srcBarrier.oldLayout = info.image->info().layout;
+      srcBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      srcBarrier.image = oldStorage->getImageInfo().image;
+      srcBarrier.subresourceRange = info.image->getAvailableSubresources();
+
+      imageBarriers.push_back(dstBarrier);
+      imageBarriers.push_back(srcBarrier);
+    }
+
+    // Submit all pending barriers in one go
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+    if (imageCount) {
+      depInfo.imageMemoryBarrierCount = imageBarriers.size();
+      depInfo.pImageMemoryBarriers = imageBarriers.data();
+    }
+
+    if (bufferCount) {
+      depInfo.memoryBarrierCount = 1u;
+      depInfo.pMemoryBarriers = &bufferBarrier;
+    }
+
+    m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+
+    imageBarriers.clear();
+
+    // Copy and invalidate all buffers
+    for (size_t i = 0; i < bufferCount; i++) {
+      const auto& info = bufferInfos[i];
+      auto oldStorage = info.buffer->getAllocation();
+
+      DxvkResourceBufferInfo dstInfo = info.storage->getBufferInfo();
+      DxvkResourceBufferInfo srcInfo = oldStorage->getBufferInfo();
+
+      VkBufferCopy2 region = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+      region.dstOffset = dstInfo.offset;
+      region.srcOffset = srcInfo.offset;
+      region.size = info.buffer->info().size;
+
+      VkCopyBufferInfo2 copy = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+      copy.dstBuffer = dstInfo.buffer;
+      copy.srcBuffer = srcInfo.buffer;
+      copy.regionCount = 1;
+      copy.pRegions = &region;
+
+      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copy);
+      m_cmd->trackResource<DxvkAccess::Write>(info.buffer);
+
+      invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
+    }
+
+    // Copy and invalidate all images
+    for (size_t i = 0; i < imageCount; i++) {
+      const auto& info = imageInfos[i];
+      auto oldStorage = info.image->getAllocation();
+
+      DxvkResourceImageInfo dstInfo = info.storage->getImageInfo();
+      DxvkResourceImageInfo srcInfo = oldStorage->getImageInfo();
+
+      // Iterate over all subresources and compute copy regions. We need
+      // one region per mip or plane, so size the local array accordingly.
+      small_vector<VkImageCopy2, 16> imageRegions;
+
+      uint32_t planeCount = 1;
+
+      auto formatInfo = info.image->formatInfo();
+
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        planeCount = vk::getPlaneCount(formatInfo->aspectMask);
+
+      for (uint32_t p = 0; p < planeCount; p++) {
+        for (uint32_t m = 0; m < info.image->info().mipLevels; m++) {
+          VkImageCopy2 region = { VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
+          region.dstSubresource.aspectMask = formatInfo->aspectMask;
+          region.dstSubresource.mipLevel = m;
+          region.dstSubresource.baseArrayLayer = 0;
+          region.dstSubresource.layerCount = info.image->info().numLayers;
+          region.srcSubresource = region.dstSubresource;
+          region.extent = info.image->mipLevelExtent(m);
+
+          if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+            region.dstSubresource.aspectMask = vk::getPlaneAspect(p);
+            region.srcSubresource.aspectMask = vk::getPlaneAspect(p);
+
+            region.extent.width /= formatInfo->planes[p].blockSize.width;
+            region.extent.height /= formatInfo->planes[p].blockSize.height;
+          }
+
+          imageRegions.push_back(region);
+        }
+      }
+
+      VkCopyImageInfo2 copy = { VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2 };
+      copy.dstImage = dstInfo.image;
+      copy.dstImageLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      copy.srcImage = srcInfo.image;
+      copy.srcImageLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+      copy.regionCount = imageRegions.size();
+      copy.pRegions = imageRegions.data();
+
+      m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
+      m_cmd->trackResource<DxvkAccess::Write>(info.image);
+
+      // Invalidate image and emit post-copy barrier to use the correct layout
+      invalidateImage(info.image, Rc<DxvkResourceAllocation>(info.storage));
+
+      VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+      dstBarrier.srcStageMask = info.image->info().stages;
+      dstBarrier.srcAccessMask = info.image->info().access;
+      dstBarrier.dstStageMask = info.image->info().stages;
+      dstBarrier.dstAccessMask = info.image->info().access;
+      dstBarrier.oldLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+      dstBarrier.newLayout = info.image->info().layout;
+      dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      dstBarrier.image = info.storage->getImageInfo().image;
+      dstBarrier.subresourceRange = info.image->getAvailableSubresources();
+
+      imageBarriers.push_back(dstBarrier);
+    }
+
+    // Submit post-copy barriers
+    bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    bufferBarrier.srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    bufferBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    for (size_t i = 0; i < bufferCount; i++) {
+      const auto& info = bufferInfos[i];
+
+      bufferBarrier.dstStageMask |= info.buffer->info().stages;
+      bufferBarrier.dstAccessMask |= info.buffer->info().access;
+    }
+
+    if (imageCount) {
+      depInfo.imageMemoryBarrierCount = imageBarriers.size();
+      depInfo.pImageMemoryBarriers = imageBarriers.data();
+    }
+
+    m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+  }
+
+
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {
     auto idx = shaders.hash() % m_gpLookupCache.size();

@@ -559,6 +559,17 @@ namespace dxvk {
   };
 
 
+  /**
+   * \brief Image relocation info
+   */
+  struct DxvkRelocateImageInfo {
+    /// Buffer object. Stores metadata.
+    Rc<DxvkImage> image;
+    /// Backing storage to copy to
+    Rc<DxvkResourceAllocation> storage;
+  };
+
+
 
 
   inline void DxvkImageView::incRef() {
