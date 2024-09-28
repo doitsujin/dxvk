@@ -208,15 +208,6 @@ namespace dxvk {
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL && !isMultiPlane && imageInfo.sharing.mode == DxvkSharedHandleMode::None)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
 
-    // For some formats, we need to enable sampled and/or
-    // render target capabilities if available, but these
-    // should in no way affect the default image layout
-    imageInfo.usage |= EnableMetaPackUsage(imageInfo.format, m_desc.CPUAccessFlags);
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
-
-    for (uint32_t i = 0; i < imageInfo.viewFormatCount; i++)
-      imageInfo.usage |= EnableMetaCopyUsage(imageInfo.viewFormats[i], imageInfo.tiling);
-
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
@@ -568,66 +559,6 @@ namespace dxvk {
 
     return (support.linear  & Features) == Features
         || (support.optimal & Features) == Features;
-  }
-  
-  
-  VkImageUsageFlags D3D11CommonTexture::EnableMetaCopyUsage(
-          VkFormat              Format,
-          VkImageTiling         Tiling) const {
-    VkFormatFeatureFlags2 requestedFeatures = 0;
-
-    if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT) {
-      requestedFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT
-                        |  VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
-    }
-
-    if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT) {
-      requestedFeatures |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT
-                        |  VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
-    }
-
-    if (Format == VK_FORMAT_D32_SFLOAT_S8_UINT || Format == VK_FORMAT_D24_UNORM_S8_UINT)
-      requestedFeatures |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-    if (!requestedFeatures)
-      return 0;
-
-    // Enable usage flags for all supported and requested features
-    DxvkFormatFeatures support = m_device->GetDXVKDevice()->getFormatFeatures(Format);
-
-    requestedFeatures &= Tiling == VK_IMAGE_TILING_OPTIMAL
-      ? support.optimal
-      : support.linear;
-    
-    VkImageUsageFlags requestedUsage = 0;
-
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    
-    if (requestedFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT)
-      requestedUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    return requestedUsage;
-  }
-
-
-  VkImageUsageFlags D3D11CommonTexture::EnableMetaPackUsage(
-          VkFormat              Format,
-          UINT                  CpuAccess) const {
-    if ((CpuAccess & D3D11_CPU_ACCESS_READ) == 0)
-      return 0;
-    
-    const auto dsMask = VK_IMAGE_ASPECT_DEPTH_BIT
-                      | VK_IMAGE_ASPECT_STENCIL_BIT;
-
-    auto formatInfo = lookupFormatInfo(Format);
-
-    return formatInfo->aspectMask == dsMask
-      ? VK_IMAGE_USAGE_SAMPLED_BIT
-      : 0;
   }
 
   

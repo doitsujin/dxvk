@@ -508,14 +508,6 @@ namespace dxvk {
             VkFormat              Format,
             VkFormatFeatureFlags2 Features) const;
     
-    VkImageUsageFlags EnableMetaCopyUsage(
-            VkFormat              Format,
-            VkImageTiling         Tiling) const;
-    
-    VkImageUsageFlags EnableMetaPackUsage(
-            VkFormat              Format,
-            UINT                  CpuAccess) const;
-    
     VkMemoryPropertyFlags GetMemoryFlags() const;
     
     D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode(
