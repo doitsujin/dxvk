@@ -11,9 +11,9 @@
 #include "dxvk_marker.h"
 
 namespace dxvk {
-  
+
   /**
-   * \brief DXVk context
+   * \brief DXVK context
    * 
    * Tracks pipeline state and records command lists.
    * This is where the actual rendering commands are
@@ -1721,6 +1721,12 @@ namespace dxvk {
     bool tryInvalidateDeviceLocalBuffer(
       const Rc<DxvkBuffer>&           buffer,
             VkDeviceSize              copySize);
+
+    void relocateResources(
+            size_t                    bufferCount,
+      const DxvkRelocateBufferInfo*   bufferInfos,
+            size_t                    imageCount,
+      const DxvkRelocateImageInfo*    imageInfos);
 
     DxvkGraphicsPipeline* lookupGraphicsPipeline(
       const DxvkGraphicsPipelineShaders&  shaders);

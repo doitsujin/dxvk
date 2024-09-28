@@ -385,6 +385,17 @@ namespace dxvk {
       DxvkBufferView, DxvkHash, DxvkEq> m_views;
 
   };
+
+
+  /**
+   * \brief Buffer relocation info
+   */
+  struct DxvkRelocateBufferInfo {
+    /// Buffer object. Stores metadata.
+    Rc<DxvkBuffer> buffer;
+    /// Backing storage to copy to
+    Rc<DxvkResourceAllocation> storage;
+  };
   
   
   /**
