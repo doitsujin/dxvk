@@ -13,8 +13,6 @@ namespace dxvk {
   
   DxvkMetaBlitObjects::DxvkMetaBlitObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
-    m_samplerCopy (createSampler(VK_FILTER_NEAREST)),
-    m_samplerBlit (createSampler(VK_FILTER_LINEAR)),
     m_shaderFrag1D(createShaderModule(dxvk_blit_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_blit_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_blit_frag_3d)) {
@@ -39,9 +37,6 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFrag1D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
-    
-    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerBlit, nullptr);
-    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerCopy, nullptr);
   }
   
   
@@ -64,32 +59,8 @@ namespace dxvk {
     m_pipelines.insert({ key, pipeline });
     return pipeline;
   }
-  
-  
-  VkSampler DxvkMetaBlitObjects::getSampler(VkFilter filter) {
-    return filter == VK_FILTER_NEAREST
-      ? m_samplerCopy
-      : m_samplerBlit;
-  }
-  
-  
-  VkSampler DxvkMetaBlitObjects::createSampler(VkFilter filter) const {
-    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-    info.magFilter              = filter;
-    info.minFilter              = filter;
-    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    
-    VkSampler result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaBlitObjects: Failed to create sampler");
-    return result;
-  }
-  
-  
+
+
   VkShaderModule DxvkMetaBlitObjects::createShaderModule(const SpirvCodeBuffer& code) const {
     VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize               = code.size();
