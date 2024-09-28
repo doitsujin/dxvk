@@ -2,10 +2,9 @@
 
 namespace dxvk {
 
-  DxvkMetaMipGenRenderPass::DxvkMetaMipGenRenderPass(
-    const Rc<vk::DeviceFn>&   vkd,
+  DxvkMetaMipGenViews::DxvkMetaMipGenViews(
     const Rc<DxvkImageView>&  view)
-  : m_vkd(vkd), m_view(view) {
+  : m_view(view) {
     // Determine view type based on image type
     const std::array<std::pair<VkImageViewType, VkImageViewType>, 3> viewTypes = {{
       { VK_IMAGE_VIEW_TYPE_1D_ARRAY, VK_IMAGE_VIEW_TYPE_1D_ARRAY },
@@ -24,15 +23,12 @@ namespace dxvk {
   }
   
   
-  DxvkMetaMipGenRenderPass::~DxvkMetaMipGenRenderPass() {
-    for (const auto& views : m_passes) {
-      m_vkd->vkDestroyImageView(m_vkd->device(), views.src, nullptr);
-      m_vkd->vkDestroyImageView(m_vkd->device(), views.dst, nullptr);
-    }
+  DxvkMetaMipGenViews::~DxvkMetaMipGenViews() {
+
   }
   
   
-  VkExtent3D DxvkMetaMipGenRenderPass::computePassExtent(uint32_t passId) const {
+  VkExtent3D DxvkMetaMipGenViews::computePassExtent(uint32_t passId) const {
     VkExtent3D extent = m_view->mipLevelExtent(passId + 1);
     
     if (m_view->image()->info().type != VK_IMAGE_TYPE_3D)
@@ -42,54 +38,43 @@ namespace dxvk {
   }
   
   
-  DxvkMetaMipGenRenderPass::PassViews DxvkMetaMipGenRenderPass::createViews(uint32_t pass) const {
+  DxvkMetaMipGenViews::PassViews DxvkMetaMipGenViews::createViews(uint32_t pass) const {
     PassViews result = { };
 
-    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+    // Source image view
+    DxvkImageViewKey srcViewInfo;
+    srcViewInfo.viewType = m_srcViewType;
+    srcViewInfo.format = m_view->info().format;
+    srcViewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    srcViewInfo.aspects = m_view->info().aspects;
+    srcViewInfo.mipIndex = m_view->info().mipIndex + pass;
+    srcViewInfo.mipCount = 1;
+    srcViewInfo.layerIndex = m_view->info().layerIndex;
+    srcViewInfo.layerCount = m_view->info().layerCount;
 
-    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    viewInfo.image = m_view->image()->handle();
-    viewInfo.format = m_view->info().format;
-    
-    // Create source image view, which points to
-    // the one mip level we're going to sample.
-    VkImageSubresourceRange srcSubresources;
-    srcSubresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    srcSubresources.baseMipLevel   = m_view->info().mipIndex + pass;
-    srcSubresources.levelCount     = 1;
-    srcSubresources.baseArrayLayer = m_view->info().layerIndex;
-    srcSubresources.layerCount     = m_view->info().layerCount;
-    
-    usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    viewInfo.viewType = m_srcViewType;
-    viewInfo.subresourceRange = srcSubresources;
-
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &viewInfo, nullptr, &result.src) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaMipGenRenderPass: Failed to create source image view");
+    result.src = m_view->image()->createView(srcViewInfo);
     
     // Create destination image view, which points
     // to the mip level we're going to render to.
     VkExtent3D dstExtent = m_view->mipLevelExtent(pass + 1);
     
-    VkImageSubresourceRange dstSubresources;
-    dstSubresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    dstSubresources.baseMipLevel   = m_view->info().mipIndex + pass + 1;
-    dstSubresources.levelCount     = 1;
+    DxvkImageViewKey dstViewInfo;
+    dstViewInfo.viewType = m_dstViewType;
+    dstViewInfo.format = m_view->info().format;
+    dstViewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    dstViewInfo.aspects = m_view->info().aspects;
+    dstViewInfo.mipIndex = m_view->info().mipIndex + pass + 1;
+    dstViewInfo.mipCount = 1u;
     
     if (m_view->image()->info().type != VK_IMAGE_TYPE_3D) {
-      dstSubresources.baseArrayLayer = m_view->info().layerIndex;
-      dstSubresources.layerCount = m_view->info().layerCount;
+      dstViewInfo.layerIndex = m_view->info().layerIndex;
+      dstViewInfo.layerCount = m_view->info().layerCount;
     } else {
-      dstSubresources.baseArrayLayer = 0;
-      dstSubresources.layerCount = dstExtent.depth;
+      dstViewInfo.layerIndex = 0;
+      dstViewInfo.layerCount = dstExtent.depth;
     }
-    
-    usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    viewInfo.viewType = m_dstViewType;
-    viewInfo.subresourceRange = dstSubresources;
-    
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &viewInfo, nullptr, &result.dst) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaMipGenRenderPass: Failed to create destination image view");
+
+    result.dst = m_view->image()->createView(dstViewInfo);
 
     return result;
   }
