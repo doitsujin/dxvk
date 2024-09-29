@@ -91,6 +91,8 @@ namespace dxvk {
     uint32_t viewFormatCount = 0u;
     // View formats to add to the compatibility list
     const VkFormat* viewFormats = nullptr;
+    // Requtes the image to not be relocated in the future
+    VkBool32 stableGpuAddress = VK_FALSE;
   };
 
 
@@ -583,6 +585,7 @@ namespace dxvk {
 
     uint32_t                    m_version     = 0u;
     VkBool32                    m_shared      = VK_FALSE;
+    VkBool32                    m_stableAddress = VK_FALSE;
 
     DxvkResourceImageInfo       m_imageInfo   = { };
 
