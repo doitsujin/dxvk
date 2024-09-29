@@ -886,6 +886,15 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::EmitCsChunkExternal(
+          DxvkCsChunkRef&&            Chunk,
+          bool                        Synchronize) {
+    // Do not update the sequence number when emitting a chunk
+    // from an external source since that would break tracking
+    m_csThread.injectChunk(std::move(Chunk), Synchronize);
+  }
+
+
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
   }

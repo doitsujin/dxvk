@@ -97,6 +97,10 @@ namespace dxvk {
       return m_multithread.AcquireLock();
     }
 
+    void EmitCsChunkExternal(
+            DxvkCsChunkRef&&            Chunk,
+            bool                        Synchronize);
+
   private:
     
     DxvkCsThread            m_csThread;
