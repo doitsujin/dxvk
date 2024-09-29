@@ -6478,20 +6478,8 @@ namespace dxvk {
     if (copySize != buffer->info().size || copySize > 0x40000)
       return false;
 
-    // Don't discard host-visible buffers since that may interfere with the frontend
-    if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      return false;
-
-    // Don't discard sparse buffers
-    if (buffer->info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
-      return false;
-
-    // Don't discard imported buffers
-    if (buffer->isForeign())
-      return false;
-
-    // Don't discard buffers that need a stable device address
-    if (buffer->info().usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    // Check if the buffer is safe to move at all
+    if (!buffer->canRelocate())
       return false;
 
     // Suspend the current render pass if transform feedback is active prior to
