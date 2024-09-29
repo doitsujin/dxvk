@@ -1464,9 +1464,9 @@ namespace dxvk {
     if (mappable)
       size /= env::is32BitHostPlatform() ? 16u : 4u;
 
-    // Ensure that we can at least do 15 allocations to fill
+    // Ensure that we can at least do 7  allocations to fill
     // the heap. Might be useful on systems with small BAR.
-    while (15u * size > type.heap->properties.size)
+    while (7u * size > type.heap->properties.size)
       size /= 2u;
 
     // Always use at least the minimum chunk size
