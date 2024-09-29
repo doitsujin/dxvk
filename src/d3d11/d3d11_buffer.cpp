@@ -82,6 +82,10 @@ namespace dxvk {
         info.access |= VK_ACCESS_HOST_WRITE_BIT;
     }
 
+    // Always enable BDA usage if available so that CUDA interop can work
+    if (m_parent->GetDXVKDevice()->features().vk12.bufferDeviceAddress)
+      info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
     if (p11on12Info) {
       m_11on12 = *p11on12Info;
 
@@ -92,9 +96,6 @@ namespace dxvk {
       if (m_desc.CPUAccessFlags)
         m_11on12.Resource->Map(0, nullptr, &importInfo.mapPtr);
 
-      // D3D12 will always have BDA enabled
-      info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-
       m_buffer = m_parent->GetDXVKDevice()->importBuffer(info, importInfo, GetMemoryFlags());
       m_mapPtr = m_buffer->mapPtr(0);
 
@@ -102,12 +103,6 @@ namespace dxvk {
     } else if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
       VkMemoryPropertyFlags memoryFlags = GetMemoryFlags();
       m_mapMode = DetermineMapMode(memoryFlags);
-
-      // Prevent buffer renaming for buffers that are not mappable, so
-      // that interop interfaces can safely query the GPU address.
-      if (m_mapMode == D3D11_COMMON_BUFFER_MAP_MODE_NONE
-       && m_parent->GetDXVKDevice()->features().vk12.bufferDeviceAddress)
-        info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
       // Create the buffer and set the entire buffer slice as mapped,
       // so that we only have to update it when invalidating the buffer

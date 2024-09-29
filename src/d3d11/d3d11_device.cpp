@@ -2621,16 +2621,20 @@ namespace dxvk {
       *gpuVAStart = imageViewAddressProperties.deviceAddress;
       *gpuVASize = imageViewAddressProperties.size;
     } else if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      D3D11Buffer *buffer = GetCommonBuffer(pResource);
-      const DxvkBufferSliceHandle bufSliceHandle = buffer->GetBuffer()->getSliceHandle();
-      VkBuffer vkBuffer = bufSliceHandle.handle;
+      Rc<DxvkBuffer> dxvkBuffer = GetCommonBuffer(pResource)->GetBuffer();
 
-      VkBufferDeviceAddressInfo bdaInfo = { VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
-      bdaInfo.buffer = vkBuffer;
+      if (dxvkBuffer->canRelocate()) {
+        auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
 
-      VkDeviceAddress bufAddr = dxvkDevice->vkd()->vkGetBufferDeviceAddress(vkDevice, &bdaInfo);
-      *gpuVAStart = uint64_t(bufAddr) + bufSliceHandle.offset;
-      *gpuVASize = bufSliceHandle.length;
+        chunk->push([cBuffer = dxvkBuffer] (DxvkContext* ctx) {
+          ctx->ensureBufferAddress(cBuffer);
+        });
+
+        m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
+      }
+
+      *gpuVAStart = dxvkBuffer->gpuAddress();
+      *gpuVASize = dxvkBuffer->info().size;
     } else {
       Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Unsupported resource type: ", resourceDesc.Dim));
       return false;
