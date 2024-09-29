@@ -2558,21 +2558,9 @@ namespace dxvk {
     ID3D11Resource* pResource = static_cast<ID3D11Resource*>(hObject);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
-    if (FAILED(GetCommonResourceDesc(pResource, &resourceDesc))) {
-      Logger::warn("GetResourceHandleGPUVirtualAddressAndSize() - GetCommonResourceDesc() failed");
-      return false;
-    }
 
-    switch (resourceDesc.Dim) {
-    case D3D11_RESOURCE_DIMENSION_BUFFER:
-    case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-      // okay - we can deal with those two dimensions
-      break;
-    case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-    case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-    case D3D11_RESOURCE_DIMENSION_UNKNOWN:
-    default:
-      Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(?) - failure - unsupported dimension: ", resourceDesc.Dim));
+    if (FAILED(GetCommonResourceDesc(pResource, &resourceDesc))) {
+      Logger::warn("GetResourceHandleGPUVirtualAddressAndSize: Invalid resource");
       return false;
     }
 
@@ -2581,47 +2569,58 @@ namespace dxvk {
 
     if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
       D3D11CommonTexture *texture = GetCommonTexture(pResource);
+
+      // Ensure that the image has a stable GPU address and
+      // won't be relocated by the backend going forward
       Rc<DxvkImage> dxvkImage = texture->GetImage();
-      if (0 == (dxvkImage->info().usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))) {
-        Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(res=", pResource,") image info missing required usage bit(s); can't be used for vkGetImageViewHandleNVX - failure"));
-        return false;
+
+      if (dxvkImage->canRelocate()) {
+        auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
+        bool feedback = false;
+
+        chunk->push([cImage = dxvkImage, &feedback] (DxvkContext* ctx) {
+          DxvkImageUsageInfo usageInfo;
+          usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+          usageInfo.stableGpuAddress = VK_TRUE;
+
+          feedback = ctx->ensureImageCompatibility(cImage, usageInfo);
+        });
+
+        m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
+
+        if (!feedback) {
+          Logger::err(str::format("GetResourceHandleGPUVirtualAddressAndSize(res=", pResource,"): Failed to lock resource"));
+          return false;
+        }
       }
 
-      // The d3d11 nvapi provides us a texture but vulkan only lets us get the GPU address from an imageview.  So, make a private imageview and get the address from that...
+      // The d3d11 nvapi provides us a texture, but vulkan only lets us
+      // get the GPU address from an image view. So, make a private image
+      // view and get the address from that.
+      DxvkImageViewKey viewInfo;
+      viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      viewInfo.format = dxvkImage->info().format;
+      viewInfo.aspects = dxvkImage->formatInfo()->aspectMask;
+      viewInfo.mipIndex = 0;
+      viewInfo.mipCount = dxvkImage->info().mipLevels;
+      viewInfo.layerIndex = 0;
+      viewInfo.layerCount = 1;
+      viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-      D3D11_SHADER_RESOURCE_VIEW_DESC resourceViewDesc;
+      auto dxvkView = dxvkImage->createView(viewInfo);
+      VkImageViewAddressPropertiesNVX imageViewAddressProperties = { VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX };
 
-      const D3D11_COMMON_TEXTURE_DESC *texDesc = texture->Desc();
-      if (texDesc->ArraySize != 1) {
-        Logger::debug(str::format("GetResourceHandleGPUVirtualAddressAndSize(?) - unexpected array size: ", texDesc->ArraySize));
-      }
-      resourceViewDesc.Format = texDesc->Format;
-      resourceViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-      resourceViewDesc.Texture2D.MostDetailedMip = 0;
-      resourceViewDesc.Texture2D.MipLevels = texDesc->MipLevels;
+      VkResult vr = dxvkDevice->vkd()->vkGetImageViewAddressNVX(vkDevice,
+        dxvkView->handle(), &imageViewAddressProperties);
 
-      Com<ID3D11ShaderResourceView> pNewSRV;
-      HRESULT hr = m_device->CreateShaderResourceView(pResource, &resourceViewDesc, &pNewSRV);
-      if (FAILED(hr)) {
-        Logger::warn("GetResourceHandleGPUVirtualAddressAndSize() - private CreateShaderResourceView() failed");
-        return false;
-      }
-
-      Rc<DxvkImageView> dxvkImageView = static_cast<D3D11ShaderResourceView*>(pNewSRV.ptr())->GetImageView();
-      VkImageView vkImageView = dxvkImageView->handle();
-
-      VkImageViewAddressPropertiesNVX imageViewAddressProperties = {VK_STRUCTURE_TYPE_IMAGE_VIEW_ADDRESS_PROPERTIES_NVX};
-
-      VkResult res = dxvkDevice->vkd()->vkGetImageViewAddressNVX(vkDevice, vkImageView, &imageViewAddressProperties);
-      if (res != VK_SUCCESS) {
-        Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): vkGetImageViewAddressNVX() result is failure: ", res));
+      if (vr != VK_SUCCESS) {
+        Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Failed: vr = ", vr));
         return false;
       }
 
       *gpuVAStart = imageViewAddressProperties.deviceAddress;
       *gpuVASize = imageViewAddressProperties.size;
-    }
-    else if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+    } else if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       D3D11Buffer *buffer = GetCommonBuffer(pResource);
       const DxvkBufferSliceHandle bufSliceHandle = buffer->GetBuffer()->getSliceHandle();
       VkBuffer vkBuffer = bufSliceHandle.handle;
@@ -2632,6 +2631,9 @@ namespace dxvk {
       VkDeviceAddress bufAddr = dxvkDevice->vkd()->vkGetBufferDeviceAddress(vkDevice, &bdaInfo);
       *gpuVAStart = uint64_t(bufAddr) + bufSliceHandle.offset;
       *gpuVASize = bufSliceHandle.length;
+    } else {
+      Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Unsupported resource type: ", resourceDesc.Dim));
+      return false;
     }
 
     if (!*gpuVAStart)
