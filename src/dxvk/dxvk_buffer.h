@@ -342,12 +342,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks whether the buffer is imported
-     * \returns \c true if the buffer is imported
+     * \brief Checks whether the buffer can be relocated
+     *
+     * Buffers that require a stable GPU or CPU address cannot be
+     * moved, unless it's done explicitly done by the client API.
+     * \returns \c true if the backend can safely relocate the buffer
      */
-    bool isForeign() const {
-      return m_storage->flags().test(DxvkAllocationFlag::Imported);
-    }
+    bool canRelocate() const;
 
     /**
      * \brief Creates or retrieves a buffer view
