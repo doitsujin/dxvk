@@ -49,7 +49,7 @@ namespace dxvk {
 
 
   bool DxvkImage::canRelocate() const {
-    return !m_imageInfo.mapPtr && !m_shared
+    return !m_imageInfo.mapPtr && !m_shared && !m_stableAddress
         && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
@@ -151,7 +151,7 @@ namespace dxvk {
     void* sharedMemoryInfo = nullptr;
 
     VkExportMemoryAllocateInfo sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
-    VkImportMemoryWin32HandleInfoKHR sharedImportWin32= { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+    VkImportMemoryWin32HandleInfoKHR sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
 
     if (m_shared && m_info.sharing.mode == DxvkSharedHandleMode::Export) {
       sharedExport.pNext = std::exchange(sharedMemoryInfo, &sharedExport);
@@ -164,7 +164,8 @@ namespace dxvk {
       sharedImportWin32.handle = m_info.sharing.handle;
     }
 
-    return m_allocator->createImageResource(imageInfo, m_properties, sharedMemoryInfo);
+    return m_allocator->createImageResource(imageInfo,
+      m_properties, sharedMemoryInfo);
   }
 
 
@@ -206,6 +207,7 @@ namespace dxvk {
       m_info.viewFormats = m_viewFormats.data();
     }
 
+    m_stableAddress |= usageInfo.stableGpuAddress;
     return old;
   }
 

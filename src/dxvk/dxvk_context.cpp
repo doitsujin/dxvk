@@ -1943,9 +1943,14 @@ namespace dxvk {
                                     && (image->info().access & usageInfo.access) == usageInfo.access
                                     && (usageInfo.layout && image->info().layout == usageInfo.layout);
 
-    // If everything matches already, no need to do anything.
-    if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible)
+    // If everything matches already, no need to do anything. Only ensure
+    // that the stable adress bit is respected if set for the first time.
+    if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible) {
+      if (usageInfo.stableGpuAddress && image->canRelocate())
+        image->assignResourceWithUsage(image->getAllocation(), usageInfo);
+
       return true;
+    }
 
     // Ensure the image is accessible and in its default layout
     this->spillRenderPass(true);
