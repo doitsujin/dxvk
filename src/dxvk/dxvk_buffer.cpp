@@ -48,9 +48,8 @@ namespace dxvk {
 
 
   bool DxvkBuffer::canRelocate() const {
-    return !m_storage->flags().test(DxvkAllocationFlag::Imported)
-        && !m_bufferInfo.mapPtr
-        && !(m_info.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    return !m_bufferInfo.mapPtr && !m_stableAddress
+        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT);
   }
 

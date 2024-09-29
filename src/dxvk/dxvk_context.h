@@ -963,6 +963,18 @@ namespace dxvk {
             Rc<DxvkResourceAllocation>&& slice);
 
     /**
+     * \brief Ensures that buffer will not be relocated
+     *
+     * This guarantees that the buffer's GPU address remains the same
+     * throughout its lifetime. Only prevents implicit invalidation or
+     * relocation by the backend, client APIs must take care to respect
+     * this too.
+     * \param [in] buffer Buffer to lock in place
+     */
+    void ensureBufferAddress(
+      const Rc<DxvkBuffer>&           buffer);
+
+    /**
      * \brief Invalidates image content
      *
      * Replaces the backing storage of an image.
