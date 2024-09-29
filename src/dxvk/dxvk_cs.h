@@ -183,6 +183,11 @@ namespace dxvk {
       return true;
     }
 
+    template<typename T>
+    bool push(T&& command) {
+      return push(command);
+    }
+
     /**
      * \brief Adds a command with data to the chunk 
      * 
@@ -398,7 +403,20 @@ namespace dxvk {
      * \returns Sequence number of the submission
      */
     uint64_t dispatchChunk(DxvkCsChunkRef&& chunk);
-    
+
+    /**
+     * \brief Injects chunk into the command stream
+     *
+     * This is meant to be used when serialized execution is required
+     * from a thread other than the main thread recording rendering
+     * commands. The context can still be safely accessed, but chunks
+     * will not be executed in any particular oder. These chunks also
+     * do not contribute to the main timeline.
+     * \param [in] chunk The chunk to dispatch
+     * \param [in] synchronize Whether to wait for execution to complete
+     */
+    void injectChunk(DxvkCsChunkRef&& chunk, bool synchronize);
+
     /**
      * \brief Synchronizes with the thread
      * 
@@ -428,12 +446,16 @@ namespace dxvk {
     dxvk::mutex                 m_counterMutex;
     std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
     std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
+
+    std::atomic<uint64_t>       m_chunksInjectedCount     = { 0ull };
+    std::atomic<uint64_t>       m_chunksInjectedComplete  = { 0ull };
     
     std::atomic<bool>           m_stopped = { false };
     dxvk::mutex                 m_mutex;
     dxvk::condition_variable    m_condOnAdd;
     dxvk::condition_variable    m_condOnSync;
     std::vector<DxvkCsChunkRef> m_chunksQueued;
+    std::vector<DxvkCsChunkRef> m_chunksInjected;
     dxvk::thread                m_thread;
     
     void threadFunc();
