@@ -2492,15 +2492,15 @@ namespace dxvk {
 
     D3D11SamplerState* pSS = static_cast<D3D11SamplerState*>(samplerState);
     Rc<DxvkSampler> pDSS = pSS->GetDXVKSampler();
-    VkSampler vkSampler = pDSS->handle();
 
     D3D11ShaderResourceView* pSRV = static_cast<D3D11ShaderResourceView*>(srv);
     Rc<DxvkImageView> pIV = pSRV->GetImageView();
-    VkImageView vkImageView = pIV->handle();
 
-    VkImageViewHandleInfoNVX imageViewHandleInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX};
-    imageViewHandleInfo.imageView = vkImageView;
-    imageViewHandleInfo.sampler = vkSampler;
+    LockImage(pIV->image(), 0u);
+
+    VkImageViewHandleInfoNVX imageViewHandleInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX };
+    imageViewHandleInfo.imageView = pIV->handle();
+    imageViewHandleInfo.sampler = pDSS->handle();
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     // note: there's no implicit lifetime management here; it's up to the
@@ -2574,25 +2574,8 @@ namespace dxvk {
       // won't be relocated by the backend going forward
       Rc<DxvkImage> dxvkImage = texture->GetImage();
 
-      if (dxvkImage->canRelocate()) {
-        auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
-        bool feedback = false;
-
-        chunk->push([cImage = dxvkImage, &feedback] (DxvkContext* ctx) {
-          DxvkImageUsageInfo usageInfo;
-          usageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-          usageInfo.stableGpuAddress = VK_TRUE;
-
-          feedback = ctx->ensureImageCompatibility(cImage, usageInfo);
-        });
-
-        m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
-
-        if (!feedback) {
-          Logger::err(str::format("GetResourceHandleGPUVirtualAddressAndSize(res=", pResource,"): Failed to lock resource"));
-          return false;
-        }
-      }
+      if (!LockImage(dxvkImage, VK_IMAGE_USAGE_SAMPLED_BIT))
+        return false;
 
       // The d3d11 nvapi provides us a texture, but vulkan only lets us
       // get the GPU address from an image view. So, make a private image
@@ -2622,16 +2605,7 @@ namespace dxvk {
       *gpuVASize = imageViewAddressProperties.size;
     } else if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       Rc<DxvkBuffer> dxvkBuffer = GetCommonBuffer(pResource)->GetBuffer();
-
-      if (dxvkBuffer->canRelocate()) {
-        auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
-
-        chunk->push([cBuffer = dxvkBuffer] (DxvkContext* ctx) {
-          ctx->ensureBufferAddress(cBuffer);
-        });
-
-        m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
-      }
+      LockBuffer(dxvkBuffer);
 
       *gpuVAStart = dxvkBuffer->gpuAddress();
       *gpuVASize = dxvkBuffer->info().size;
@@ -2647,102 +2621,99 @@ namespace dxvk {
   }
 
 
-  bool STDMETHODCALLTYPE D3D11DeviceExt::CreateUnorderedAccessViewAndGetDriverHandleNVX(ID3D11Resource* pResource, const D3D11_UNORDERED_ACCESS_VIEW_DESC*  pDesc, ID3D11UnorderedAccessView** ppUAV, uint32_t* pDriverHandle) {
-    D3D11_COMMON_RESOURCE_DESC resourceDesc;
-    if (!SUCCEEDED(GetCommonResourceDesc(pResource, &resourceDesc))) {
-      Logger::warn("CreateUnorderedAccessViewAndGetDriverHandleNVX() - GetCommonResourceDesc() failed");
-      return false;
-    }
+  bool STDMETHODCALLTYPE D3D11DeviceExt::CreateUnorderedAccessViewAndGetDriverHandleNVX(
+          ID3D11Resource*                     pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC*   pDesc,
+          ID3D11UnorderedAccessView**         ppUAV,
+          uint32_t*                           pDriverHandle) {
+    D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
     if (resourceDesc.Dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::warn(str::format("CreateUnorderedAccessViewAndGetDriverHandleNVX() - failure - unsupported dimension: ", resourceDesc.Dim));
+      Logger::warn(str::format("CreateUnorderedAccessViewAndGetDriverHandleNVX(): Unsupported dimension: ", resourceDesc.Dim));
       return false;
     }
 
-    auto texture = GetCommonTexture(pResource);
-    Rc<DxvkImage> dxvkImage = texture->GetImage();
-    if (0 == (dxvkImage->info().usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))) {
-      Logger::warn(str::format("CreateUnorderedAccessViewAndGetDriverHandleNVX(res=", pResource, ") image info missing required usage bit(s); can't be used for vkGetImageViewHandleNVX - failure"));
+    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
+
+    if (!(dxvkImage->info().usage & VK_IMAGE_USAGE_STORAGE_BIT)) {
+      Logger::warn(str::format("CreateUnorderedAccessViewAndGetDriverHandleNVX(res=", pResource, "): Image not UAV compatible"));
       return false;
     }
 
-    if (!SUCCEEDED(m_device->CreateUnorderedAccessView(pResource, pDesc, ppUAV))) {
-      return false;
-    }
+    Com<ID3D11UnorderedAccessView> uav;
 
-    D3D11UnorderedAccessView *pUAV = static_cast<D3D11UnorderedAccessView *>(*ppUAV);
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
-    VkDevice vkDevice = dxvkDevice->handle();
+    if (FAILED(m_device->CreateUnorderedAccessView(pResource, pDesc, &uav)))
+      return false;
+
+    Rc<DxvkImageView> dxvkImageView = static_cast<D3D11UnorderedAccessView*>(uav.ptr())->GetImageView();
+    LockImage(dxvkImageView->image(), 0u);
 
     VkImageViewHandleInfoNVX imageViewHandleInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX};
-    Rc<DxvkImageView> dxvkImageView = pUAV->GetImageView();
-    VkImageView vkImageView = dxvkImageView->handle();
-
-    imageViewHandleInfo.imageView = vkImageView;
+    imageViewHandleInfo.imageView = dxvkImageView->handle();
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
-    *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(vkDevice, &imageViewHandleInfo);
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+    *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(
+      dxvkDevice->handle(), &imageViewHandleInfo);
 
     if (!*pDriverHandle) {
-      Logger::warn("CreateUnorderedAccessViewAndGetDriverHandleNVX() handle==0 - failure");
-      pUAV->Release();
+      Logger::warn("CreateUnorderedAccessViewAndGetDriverHandleNVX(): Handle is 0");
       return false;
     }
 
+    *ppUAV = uav.ref();
     return true;
   }
 
 
   bool STDMETHODCALLTYPE D3D11DeviceExt::CreateShaderResourceViewAndGetDriverHandleNVX(ID3D11Resource* pResource, const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc, ID3D11ShaderResourceView** ppSRV, uint32_t* pDriverHandle) {
-    D3D11_COMMON_RESOURCE_DESC resourceDesc;
-    if (!SUCCEEDED(GetCommonResourceDesc(pResource, &resourceDesc))) {
-      Logger::warn("CreateShaderResourceViewAndGetDriverHandleNVX() - GetCommonResourceDesc() failed");
-      return false;
-    }
+    D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
     if (resourceDesc.Dim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::warn(str::format("CreateShaderResourceViewAndGetDriverHandleNVX() - failure - unsupported dimension: ", resourceDesc.Dim));
+      Logger::warn(str::format("CreateShaderResourceViewAndGetDriverHandleNVX(): Unsupported dimension: ", resourceDesc.Dim));
       return false;
     }
 
-    auto texture = GetCommonTexture(pResource);
-    Rc<DxvkImage> dxvkImage = texture->GetImage();
-    if (0 == (dxvkImage->info().usage & (VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT))) {
-      Logger::warn(str::format("CreateShaderResourceViewAndGetDriverHandleNVX(res=", pResource, ") image info missing required usage bit(s); can't be used for vkGetImageViewHandleNVX - failure"));
+    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
+
+    if (!(dxvkImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
+      Logger::warn(str::format("CreateShaderResourceViewAndGetDriverHandleNVX(res=", pResource, "): Image not SRV compatible"));
       return false;
     }
 
-    if (!SUCCEEDED(m_device->CreateShaderResourceView(pResource, pDesc, ppSRV))) {
-      return false;
-    }
+    Com<ID3D11ShaderResourceView> srv;
 
-    D3D11ShaderResourceView* pSRV = static_cast<D3D11ShaderResourceView*>(*ppSRV);
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
-    VkDevice vkDevice = dxvkDevice->handle();
+    if (FAILED(m_device->CreateShaderResourceView(pResource, pDesc, &srv)))
+      return false;
+
+    Rc<DxvkImageView> dxvkImageView = static_cast<D3D11ShaderResourceView*>(srv.ptr())->GetImageView();
+    LockImage(dxvkImageView->image(), 0u);
 
     VkImageViewHandleInfoNVX imageViewHandleInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX};
-    Rc<DxvkImageView> dxvkImageView = pSRV->GetImageView();
-    VkImageView vkImageView = dxvkImageView->handle();
-
-    imageViewHandleInfo.imageView = vkImageView;
+    imageViewHandleInfo.imageView = dxvkImageView->handle();
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(vkDevice, &imageViewHandleInfo);
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+    *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(
+      dxvkDevice->handle(), &imageViewHandleInfo);
 
     if (!*pDriverHandle) {
-      Logger::warn("CreateShaderResourceViewAndGetDriverHandleNVX() handle==0 - failure");
-      pSRV->Release();
+      Logger::warn("CreateShaderResourceViewAndGetDriverHandleNVX(): Handle is 0");
       return false;
     }
 
     // will need to look-up resource from uint32 handle later
-    AddSrvAndHandleNVX(*ppSRV, *pDriverHandle);
+    *ppSRV = srv.ref();
+    AddSrvAndHandleNVX(srv.ptr(), *pDriverHandle);
     return true;
   }
 
 
   bool STDMETHODCALLTYPE D3D11DeviceExt::CreateSamplerStateAndGetDriverHandleNVX(const D3D11_SAMPLER_DESC* pSamplerDesc, ID3D11SamplerState** ppSamplerState, uint32_t* pDriverHandle) {
-    if (!SUCCEEDED(m_device->CreateSamplerState(pSamplerDesc, ppSamplerState))) {
+    if (FAILED(m_device->CreateSamplerState(pSamplerDesc, ppSamplerState)))
       return false;
-    }
 
     // for our purposes the actual value doesn't matter, only its uniqueness
     static std::atomic<ULONG> s_seqNum = 0;
@@ -2788,8 +2759,57 @@ namespace dxvk {
   }
 
 
+  bool D3D11DeviceExt::LockImage(
+    const Rc<DxvkImage>&            Image,
+          VkImageUsageFlags         Usage) {
+    if (!Image->canRelocate() && (Image->info().usage & Usage))
+      return true;
 
-  
+    bool feedback = false;
+
+    auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
+
+    chunk->push([
+      cImage  = Image,
+      cUsage  = Usage,
+      &feedback
+    ] (DxvkContext* ctx) {
+      DxvkImageUsageInfo usageInfo;
+      usageInfo.usage = cUsage;
+      usageInfo.stableGpuAddress = VK_TRUE;
+
+      feedback = ctx->ensureImageCompatibility(cImage, usageInfo);
+    });
+
+    m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
+
+    if (!feedback) {
+      Logger::err(str::format("Failed to lock image:"
+        "\n  Image format:  ", Image->info().format,
+        "\n  Image usage:   ", std::hex, Image->info().usage,
+        "\n  Desired usage: ", std::hex, Usage));
+    }
+
+    return feedback;
+  }
+
+
+  void D3D11DeviceExt::LockBuffer(
+    const Rc<DxvkBuffer>&           Buffer) {
+    if (!Buffer->canRelocate())
+      return;
+
+    auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
+
+    chunk->push([cBuffer = Buffer] (DxvkContext* ctx) {
+      ctx->ensureBufferAddress(cBuffer);
+    });
+
+    m_device->GetContext()->EmitCsChunkExternal(std::move(chunk), true);
+  }
+
+
+
   
   D3D11VideoDevice::D3D11VideoDevice(
           D3D11DXGIDevice*        pContainer,
