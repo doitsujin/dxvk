@@ -1894,6 +1894,13 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::ensureBufferAddress(
+    const Rc<DxvkBuffer>&           buffer) {
+    // Really nothing else to do here but set the flag
+    buffer->enableStableAddress();
+  }
+
+
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice) {

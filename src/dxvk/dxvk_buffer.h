@@ -211,6 +211,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief GPU address
+     *
+     * May be 0 if the device address usage flag is not
+     * enabled for this buffer.
+     */
+    VkDeviceAddress gpuAddress() const {
+      return m_bufferInfo.gpuAddress;
+    }
+
+    /**
      * \brief Queries shader stages that can access this buffer
      *
      * Derived from the pipeline stage mask passed in during creation.
@@ -351,6 +361,16 @@ namespace dxvk {
     bool canRelocate() const;
 
     /**
+     * \brief Enables stable GPU address
+     *
+     * Subsequent calls to \c canRelocate will be \c false, preventing
+     * the buffer from being relocated or invalidated by the backend.
+     */
+    void enableStableAddress() {
+      m_stableAddress = true;
+    }
+
+    /**
      * \brief Creates or retrieves a buffer view
      *
      * \param [in] info Buffer view create info
@@ -376,6 +396,8 @@ namespace dxvk {
 
     uint32_t                    m_xfbStride     = 0u;
     uint32_t                    m_version       = 0u;
+
+    bool                        m_stableAddress = false;
 
     DxvkResourceBufferInfo      m_bufferInfo    = { };
 
