@@ -398,13 +398,16 @@ namespace dxvk {
       m_context->beginRecording(
         m_device->createCommandList());
       
-      m_blitter->presentImage(m_context.ptr(),
-        m_imageViews.at(imageIndex), VkRect2D(),
-        m_swapImageView, VkRect2D());
+      m_blitter->beginPresent(m_context->beginExternalRendering(),
+        m_imageViews.at(imageIndex), m_colorspace, VkRect2D(),
+        m_swapImageView, m_colorspace, VkRect2D());
 
-      if (m_hud != nullptr)
-        m_hud->render(m_context, info.format, info.imageExtent);
+      // if (m_hud != nullptr)
+      //   m_hud->render(m_context, info.format, info.imageExtent);
       
+      m_blitter->endPresent(m_context->beginExternalRendering(),
+        m_imageViews.at(imageIndex));
+
       SubmitPresent(immediateContext, sync, i);
     }
 

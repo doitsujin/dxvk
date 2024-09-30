@@ -847,12 +847,15 @@ namespace dxvk {
         {  int32_t(m_dstRect.left),                    int32_t(m_dstRect.top)                    },
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
-      m_blitter->presentImage(m_context.ptr(),
-        m_wctx->imageViews.at(imageIndex), dstRect,
-        swapImageView, srcRect);
+      m_blitter->beginPresent(m_context->beginExternalRendering(),
+        m_wctx->imageViews.at(imageIndex), m_colorspace, dstRect,
+        swapImageView, m_colorspace, srcRect);
 
-      if (m_hud != nullptr)
-        m_hud->render(m_context, info.format, info.imageExtent);
+      // if (m_hud != nullptr)
+      //   m_hud->render(m_context, info.format, info.imageExtent);
+
+      m_blitter->endPresent(m_context->beginExternalRendering(),
+        m_wctx->imageViews.at(imageIndex));
 
       SubmitPresent(sync, i);
     }
