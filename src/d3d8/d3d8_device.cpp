@@ -18,7 +18,7 @@ namespace dxvk {
 
   static constexpr DWORD getShaderIndex(DWORD Handle) {
     if ((Handle & D3DFVF_RESERVED0) != 0) {
-      return (Handle & ~(D3DFVF_RESERVED0)) >> 1;
+      return ((Handle & ~(D3DFVF_RESERVED0)) >> 1) - 1;
     } else {
       return Handle;
     }
@@ -1657,7 +1657,7 @@ namespace dxvk {
 
     if (likely(SUCCEEDED(res))) {
       // Set bit to indicate this is not an FVF
-      *pHandle = getShaderHandle(m_vertexShaders.size() - 1);
+      *pHandle = getShaderHandle(m_vertexShaders.size());
     }
 
     return res;
@@ -1858,7 +1858,7 @@ namespace dxvk {
     if (likely(SUCCEEDED(res))) {
       m_pixelShaders.push_back(pPixelShader);
       // Still set the shader bit, to prevent conflicts with NULL.
-      *pHandle = getShaderHandle(m_pixelShaders.size() - 1);
+      *pHandle = getShaderHandle(m_pixelShaders.size());
     }
 
     return res;
