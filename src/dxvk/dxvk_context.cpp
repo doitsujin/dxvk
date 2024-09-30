@@ -112,7 +112,19 @@ namespace dxvk {
     this->beginRecording(
       m_device->createCommandList());
   }
-  
+
+
+  DxvkContextObjects DxvkContext::beginExternalRendering() {
+    // Flush and invalidate everything
+    endCurrentCommands();
+    beginCurrentCommands();
+
+    DxvkContextObjects result;
+    result.cmd = m_cmd;
+    result.descriptorPool = m_descriptorPool;
+    return result;
+  }
+
   
   void DxvkContext::beginQuery(const Rc<DxvkGpuQuery>& query) {
     m_queryManager.enableQuery(m_cmd, query);
