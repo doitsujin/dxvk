@@ -6,15 +6,7 @@
 #include "dxvk_hud_renderer.h"
 
 namespace dxvk::hud {
-  
-  /**
-   * \brief HUD uniform data
-   * Shader data for the HUD.
-   */
-  struct HudUniformData {
-    VkExtent2D surfaceSize;
-  };
-  
+
   /**
    * \brief DXVK HUD
    * 
@@ -41,13 +33,14 @@ namespace dxvk::hud {
      * \brief Render HUD
      * 
      * Renders the HUD to the given context.
-     * \param [in] ctx Device context
-     * \param [in] surfaceSize Image size, in pixels
+     * \param [in] ctx Context objects for rendering
+     * \param [in] dstView Swap chain image view
+     * \param [in] dstColorSpace Color space
      */
     void render(
-      const Rc<DxvkContext>&  ctx,
-            VkSurfaceFormatKHR surfaceFormat,
-            VkExtent2D        surfaceSize);
+      const DxvkContextObjects& ctx,
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     dstColorSpace);
 
     /**
      * \brief Adds a HUD item if enabled
@@ -74,25 +67,12 @@ namespace dxvk::hud {
     
   private:
     
-    const Rc<DxvkDevice>  m_device;
+    Rc<DxvkDevice>        m_device;
     
-    DxvkRasterizerState   m_rsState;
-    DxvkBlendMode         m_blendMode;
-
-    HudUniformData        m_uniformData;
     HudRenderer           m_renderer;
     HudItemSet            m_hudItems;
 
-    float                 m_scale;
-    float                 m_opacity;
-
-    void setupRendererState(
-      const Rc<DxvkContext>&  ctx,
-            VkSurfaceFormatKHR surfaceFormat,
-            VkExtent2D        surfaceSize);
-
-    void renderHudElements(
-      const Rc<DxvkContext>&  ctx);
+    HudOptions            m_options;
     
   };
   

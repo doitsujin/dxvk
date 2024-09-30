@@ -851,8 +851,10 @@ namespace dxvk {
         m_wctx->imageViews.at(imageIndex), m_colorspace, dstRect,
         swapImageView, m_colorspace, srcRect);
 
-      // if (m_hud != nullptr)
-      //   m_hud->render(m_context, info.format, info.imageExtent);
+      if (m_hud) {
+        m_hud->render(m_context->beginExternalRendering(),
+          m_wctx->imageViews.at(imageIndex), m_colorspace);
+      }
 
       m_blitter->endPresent(m_context->beginExternalRendering(),
         m_wctx->imageViews.at(imageIndex));

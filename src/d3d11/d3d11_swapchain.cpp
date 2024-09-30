@@ -402,8 +402,10 @@ namespace dxvk {
         m_imageViews.at(imageIndex), m_colorspace, VkRect2D(),
         m_swapImageView, m_colorspace, VkRect2D());
 
-      // if (m_hud != nullptr)
-      //   m_hud->render(m_context, info.format, info.imageExtent);
+      if (m_hud) {
+        m_hud->render(m_context->beginExternalRendering(),
+          m_imageViews.at(imageIndex), m_colorspace);
+      }
       
       m_blitter->endPresent(m_context->beginExternalRendering(),
         m_imageViews.at(imageIndex));

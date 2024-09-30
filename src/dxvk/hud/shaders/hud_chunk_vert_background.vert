@@ -1,15 +1,22 @@
 #version 450
 
-layout(location = 0) out vec2 o_coord;
+struct draw_info_t {
+  uint packed_xy;
+  uint packed_wh;
+  uint packed_range;
+  uint color;
+};
+
+layout(binding = 0, std430)
+readonly buffer draw_data_t {
+  draw_info_t draw_infos[];
+};
 
 layout(push_constant)
 uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
-  uint  packed_xy;
-  uint  packed_wh;
-  uint  frame_index;
 };
 
 vec2 unpack_u16(uint v) {
@@ -20,19 +27,21 @@ vec2 unpack_u16(uint v) {
 }
 
 void main() {
+  draw_info_t draw = draw_infos[gl_InstanceIndex];
+
   vec2 coord = vec2(
     float(gl_VertexIndex  & 1),
     float(gl_VertexIndex >> 1));
-  o_coord = vec2(coord.x, 1.0f - coord.y);
 
   vec2 surface_size_f = vec2(surface_size) / scale;
 
-  vec2 pos = unpack_u16(packed_xy);
+  vec2 pos = unpack_u16(draw.packed_xy);
+  vec2 size = unpack_u16(draw.packed_wh);
+
   pos = mix(pos, surface_size_f + pos, lessThan(pos, vec2(0.0f)));
 
-  vec2 size = unpack_u16(packed_wh);
-
-  vec2 pixel_pos = pos + size * coord;
+  vec2 pixel_pos = pos + size * coord + (2.0f * coord - 1.0f);
   vec2 scaled_pos = 2.0f * (pixel_pos / surface_size_f) - 1.0f;
+
   gl_Position = vec4(scaled_pos, 0.0f, 1.0f);
 }
