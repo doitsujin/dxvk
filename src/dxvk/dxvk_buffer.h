@@ -443,7 +443,9 @@ namespace dxvk {
       m_length(rangeLength) { }
 
     explicit DxvkBufferSlice(Rc<DxvkBuffer> buffer)
-    : DxvkBufferSlice(std::move(buffer), 0, buffer->info().size) { }
+    : m_buffer(std::move(buffer)),
+      m_offset(0),
+      m_length(m_buffer->info().size) { }
 
     explicit DxvkBufferSlice(const Rc<DxvkBufferView>& view)
     : DxvkBufferSlice(view->buffer(), view->info().offset, view->info().size) { }
