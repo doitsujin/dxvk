@@ -1,0 +1,197 @@
+#version 460
+
+#extension GL_KHR_memory_scope_semantics : enable
+
+#define NUM_FRAME_TIME_STAMPS (420u)
+
+#define MAX_TEXT_LENGTH (16u)
+#define MAX_TEXT_DRAWS (2u)
+
+struct draw_param_t {
+  uint vertex_count;
+  uint instance_count;
+  uint first_vertex;
+  uint first_instance;
+};
+
+struct draw_info_t {
+  uint text_offset;
+  uint text_length_and_size;
+  uint packed_xy;
+  uint color;
+};
+
+layout(binding = 0, std430)
+workgroupcoherent buffer timestamp_buffer_t {
+  uvec2 frame_timestamps_raw[2u];
+  float frame_interval_ms[NUM_FRAME_TIME_STAMPS];
+
+  float frame_time_avg_ms;
+  float frame_time_min_ms;
+  float frame_time_max_ms;
+};
+
+layout(binding = 1, std430)
+writeonly buffer draw_param_buffer_t {
+  draw_param_t draw_params[];
+};
+
+layout(binding = 2, std430)
+writeonly buffer draw_info_buffer_t {
+  draw_info_t draw_infos[];
+};
+
+layout(binding = 3)
+uniform writeonly uimageBuffer text_buffer;
+
+layout(push_constant)
+uniform push_data_t {
+  float ms_per_tick;
+  uint curr_data_point;
+  uint packed_xy_for_min;
+  uint packed_xy_for_max;
+};
+
+
+layout(local_size_x = 256) in;
+
+uint extract_digit(inout float number) {
+  float high_part = floor(number / 10.0f + 0.03125f);
+  float digit = number - 10.0f * high_part;
+  number = high_part;
+  return uint(digit);
+}
+
+// Three-way reduction: Sum, Min, Max
+shared vec3 ms_shared[NUM_FRAME_TIME_STAMPS / 2u];
+
+shared uint text_chars[MAX_TEXT_DRAWS][MAX_TEXT_LENGTH];
+shared uint text_length[MAX_TEXT_DRAWS];
+
+void main() {
+  uint tid = gl_LocalInvocationIndex;
+
+  if (tid == 0u) {
+    uint curr_index = curr_data_point & 1u;
+    uint prev_index = curr_index ^ 1u;
+
+    uvec2 curr_time = frame_timestamps_raw[curr_index];
+    uvec2 prev_time = frame_timestamps_raw[prev_index];
+
+    // We can't require 64-bit integer support, just do this manually
+    // and account for the possibility of timestamps wrapping around.
+    uvec2 borrow;
+
+    uvec2 time_diff;
+    time_diff.x = usubBorrow(curr_time.x, prev_time.x, borrow.x);
+    time_diff.y = usubBorrow(curr_time.y, prev_time.y + borrow.x, borrow.y);
+
+    if (borrow.y != 0u)
+      time_diff = uvec2(0u);
+
+    // Ignore first frame that has no timestamp at all
+    if ((prev_time.x | prev_time.y) == 0u)
+      time_diff = uvec2(0u);
+
+    // We will most likely lose a few bits here, but that's fine
+    float ticks = time_diff.x + (time_diff.y * pow(2.0f, 32.0f));
+    frame_interval_ms[curr_data_point] = ticks * ms_per_tick;
+  }
+
+  controlBarrier(gl_ScopeWorkgroup, gl_ScopeWorkgroup,
+    gl_StorageSemanticsBuffer, gl_SemanticsAcquireRelease);
+
+  // Perform initial reduction on frame interval data and write
+  // everything to shared memory. There are more efficient ways
+  // to do reductions, but we cannot require a lot of shader
+  // features just for the frame time HUD.
+  if (2u * tid < NUM_FRAME_TIME_STAMPS) {
+    float a = frame_interval_ms[2u * tid + 0u];
+    float b = frame_interval_ms[2u * tid + 1u];
+
+    ms_shared[tid] = vec3(a + b, min(a, b), max(a, b));
+  }
+
+  barrier();
+
+  uint input_count = NUM_FRAME_TIME_STAMPS / 2u;
+
+  while (input_count > 1u) {
+    uint output_count = (input_count + 1u) / 2u;
+
+    if (tid + output_count < input_count) {
+      vec3 a = ms_shared[tid];
+      vec3 b = ms_shared[tid + output_count];
+
+      ms_shared[tid] = vec3(a.x + b.x,
+        min(a.y, b.y), max(a.z, b.z));
+    }
+
+    barrier();
+
+    input_count = output_count;
+  }
+
+  // Write reduced stats to buffer 
+  vec3 stats = ms_shared[0u];
+
+  if (tid == 0u) {
+    frame_time_avg_ms = stats.x / float(NUM_FRAME_TIME_STAMPS);
+    frame_time_min_ms = stats.y;
+    frame_time_max_ms = stats.z;
+  }
+
+  if (tid < MAX_TEXT_DRAWS) {
+    // Convert number to string with a single decimal point. This
+    // is fairly naive code, but this is not performance-critical.
+    text_chars[tid][0] = 0x73; // 's'
+    text_chars[tid][1] = 0x6d; // 'm'
+    text_chars[tid][2] = 0x20; // ' '
+
+    uint zero = 0x30; // '0'
+
+    float number = round(10.0f * (tid == 0u ? stats.y : stats.z));
+    text_chars[tid][3] = zero + extract_digit(number);
+    text_chars[tid][4] = 0x2e; // '.'
+    text_chars[tid][5] = zero + extract_digit(number);
+
+    uint len = 6u;
+
+    while (number > 0.0f && len < MAX_TEXT_LENGTH)
+      text_chars[tid][len++] = zero + extract_digit(number);
+
+    text_length[tid] = len;
+
+    // Emit draw infos for the text
+    draw_infos[tid].text_offset = MAX_TEXT_LENGTH * tid;
+    draw_infos[tid].text_length_and_size = len | (12u << 16u);
+    draw_infos[tid].packed_xy = tid == 0u
+      ? packed_xy_for_min : packed_xy_for_max;
+    draw_infos[tid].color = 0xffffffffu;
+
+    // Emit indirect draw parameters
+    draw_params[tid].vertex_count = 6u * len;
+    draw_params[tid].instance_count = 1u;
+    draw_params[tid].first_vertex = 0u;
+    draw_params[tid].first_instance = 0u;
+  }
+
+  barrier();
+
+  // Use remaining threads to write text into the acual string
+  // buffer. Characters are stored in reverse order in LDS, so
+  // fix that up.
+  uint text_id = tid / MAX_TEXT_LENGTH;
+  uint text_ch = tid % MAX_TEXT_LENGTH;
+
+  if (text_id < MAX_TEXT_DRAWS) {
+    uint len = text_length[text_id];
+
+    uint ch = 0x20; // ' '
+
+    if (text_ch < len)
+      ch = text_chars[text_id][len - text_ch - 1u];
+
+    imageStore(text_buffer, int(tid), uvec4(ch));
+  }
+}

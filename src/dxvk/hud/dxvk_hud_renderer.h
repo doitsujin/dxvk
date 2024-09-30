@@ -5,7 +5,16 @@
 #include "dxvk_hud_font.h"
 
 namespace dxvk::hud {
-  
+
+  /**
+   * \brief HUD options
+   */
+  struct HudOptions {
+    float scale = 1.0f;
+    float opacity = 1.0f;
+  };
+
+
   /**
    * \brief HUD coordinates
    * 
@@ -13,81 +22,68 @@ namespace dxvk::hud {
    * corner of the swap image, in pixels.
    */
   struct HudPos {
-    float x;
-    float y;
-  };
-  
-  /**
-   * \brief Color
-   * 
-   * SRGB color with alpha channel. The text
-   * will use this color for the most part.
-   */
-  struct HudColor {
-    float r;
-    float g;
-    float b;
-    float a;
+    int32_t x = 0;
+    int32_t y = 0;
   };
 
-  /**
-   * \brief Normalized color
-   *
-   * SRGB color with alpha channel.
-   */
-  struct HudNormColor {
-    uint8_t a;
-    uint8_t b;
-    uint8_t g;
-    uint8_t r;
-  };
-  
-  /**
-   * \brief Graph point with color
-   */
-  struct HudGraphPoint {
-    float         value;
-    HudNormColor  color;
-  };
 
   /**
-   * \brief HUD push constant data
+   * \brief Draw parameters for text
    */
-  struct HudTextPushConstants {
-    HudColor color;
-    HudPos pos;
-    uint32_t offset;
-    float size;
-    HudPos scale;
+  struct HudTextDrawInfo {
+    uint32_t textOffset = 0u;
+    uint16_t textLength = 0u;
+    uint16_t fontSize = 0u;
+    int16_t  posX = 0;
+    int16_t  posY = 0;
+    uint32_t color = 0u;
   };
 
-  struct HudGraphPushConstants {
-    uint32_t offset;
-    uint32_t count;
-    HudPos pos;
-    HudPos size;
-    HudPos scale;
-    float  opacity;
+
+  struct HudPushConstants {
+    VkExtent2D surfaceSize;
+    float opacity;
+    float scale;
   };
+
 
   /**
-   * \brief Glyph data
+   * \brief Pipeline key
    */
-  struct HudGlyphGpuData {
-    int16_t x;
-    int16_t y;
-    int16_t w;
-    int16_t h;
-    int16_t originX;
-    int16_t originY;
+  struct HudPipelineKey {
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    VkColorSpaceKHR colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(format));
+      hash.add(uint32_t(colorSpace));
+      return hash;
+    }
+
+    bool eq(const HudPipelineKey& other) const {
+      return format == other.format && colorSpace == other.colorSpace;
+    }
   };
 
-  struct HudFontGpuData {
-    float size;
-    float advance;
-    uint32_t padding[2];
-    HudGlyphGpuData glyphs[256];
+
+  /**
+   * \brief Specialization constants
+   */
+  struct HudSpecConstants {
+    VkColorSpaceKHR dstSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkBool32 dstIsSrgb = VK_FALSE;
   };
+
+
+  /**
+   * \brief Shader module info
+   */
+  struct HudShaderModule {
+    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+  };
+
 
   /**
    * \brief Text renderer for the HUD
@@ -103,99 +99,92 @@ namespace dxvk::hud {
       const Rc<DxvkDevice>&   device);
     
     ~HudRenderer();
-    
+
     void beginFrame(
-      const Rc<DxvkContext>&  context,
-            VkExtent2D        surfaceSize,
-            float             scale,
-            float             opacity);
-    
+      const DxvkContextObjects& ctx,
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     dstColorSpace,
+      const HudOptions&         options);
+
     void drawText(
-            float             size,
-            HudPos            pos,
-            HudColor          color,
-      const std::string&      text);
-    
-    void drawGraph(
-            HudPos            pos,
-            HudPos            size,
-            size_t            pointCount,
-      const HudGraphPoint*    pointData);
+            uint32_t            size,
+            HudPos              pos,
+            uint32_t            color,
+      const std::string&        text);
 
-    DxvkContext* getContext() {
-      m_mode = Mode::RenderNone;
-      return m_context.ptr();
-    }
+    void drawTextIndirect(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const VkDescriptorBufferInfo& drawArgs,
+      const VkDescriptorBufferInfo& drawInfos,
+            VkBufferView        text,
+            uint32_t            drawCount);
 
-    VkExtent2D surfaceSize() const {
-      return m_surfaceSize;
-    }
+    void flushDraws(
+      const DxvkContextObjects& ctx,
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     dstColorSpace,
+      const HudOptions&         options);
 
-    float scale() const {
-      return m_scale;
-    }
+    HudPipelineKey getPipelineKey(
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     dstColorSpace) const;
 
-    float opacity() const {
-      return m_opacity;
-    }
-    
+    HudSpecConstants getSpecConstants(
+      const HudPipelineKey&     key) const;
+
+    HudPushConstants getPushConstants() const;
+
+    VkSpecializationInfo getSpecInfo(
+      const HudSpecConstants*   constants) const;
+
+    void createShaderModule(
+            HudShaderModule&    shader,
+            VkShaderStageFlagBits stage,
+            size_t              size,
+      const uint32_t*           code) const;
+
   private:
-    
-    enum class Mode {
-      RenderNone,
-      RenderText,
-      RenderGraph,
-    };
 
-    struct ShaderPair {
-      Rc<DxvkShader> vert;
-      Rc<DxvkShader> frag;
-    };
-    
-    Mode                m_mode;
-    float               m_scale;
-    float               m_opacity;
-    VkExtent2D          m_surfaceSize;
+    Rc<DxvkDevice>          m_device;
 
-    Rc<DxvkDevice>      m_device;
-    Rc<DxvkContext>     m_context;
-    
-    ShaderPair          m_textShaders;
-    ShaderPair          m_graphShaders;
-    
-    Rc<DxvkBuffer>      m_dataBuffer;
-    Rc<DxvkBufferView>  m_dataView;
-    VkDeviceSize        m_dataOffset;
+    Rc<DxvkBuffer>          m_fontBuffer;
+    Rc<DxvkImage>           m_fontTexture;
+    Rc<DxvkImageView>       m_fontTextureView;
+    Rc<DxvkSampler>         m_fontSampler;
 
-    Rc<DxvkBuffer>      m_fontBuffer;
-    Rc<DxvkBufferView>  m_fontBufferView;
-    Rc<DxvkImage>       m_fontImage;
-    Rc<DxvkImageView>   m_fontView;
-    Rc<DxvkSampler>     m_fontSampler;
+    Rc<DxvkBuffer>          m_textBuffer;
+    Rc<DxvkBufferView>      m_textBufferView;
 
-    bool                m_initialized = false;
+    std::vector<HudTextDrawInfo>  m_textDraws;
+    std::vector<char>             m_textData;
 
-    void beginTextRendering();
-    
-    void beginGraphRendering();
+    HudShaderModule         m_textVs;
+    HudShaderModule         m_textFs;
 
-    VkDeviceSize allocDataBuffer(VkDeviceSize size);
+    VkDescriptorSetLayout   m_textSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout        m_textPipelineLayout = VK_NULL_HANDLE;
 
-    ShaderPair createTextShaders();
-    ShaderPair createGraphShaders();
+    HudPushConstants        m_pushConstants = { };
 
-    Rc<DxvkBuffer> createDataBuffer();
-    Rc<DxvkBufferView> createDataView();
+    std::unordered_map<HudPipelineKey,
+      VkPipeline, DxvkHash, DxvkEq> m_textPipelines;
 
-    Rc<DxvkBuffer> createFontBuffer();
-    Rc<DxvkBufferView> createFontBufferView();
-    Rc<DxvkImage> createFontImage();
-    Rc<DxvkImageView> createFontView();
-    Rc<DxvkSampler> createFontSampler();
-    
-    void initFontTexture(
-      const Rc<DxvkContext>& context);
-    
+    void createFontResources();
+
+    void uploadFontResources(
+      const DxvkContextObjects& ctx);
+
+    VkDescriptorSetLayout createSetLayout();
+
+    VkPipelineLayout createPipelineLayout();
+
+    VkPipeline createPipeline(
+      const HudPipelineKey&     key);
+
+    VkPipeline getPipeline(
+      const HudPipelineKey&     key);
+
   };
   
 }

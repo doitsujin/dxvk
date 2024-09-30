@@ -53,7 +53,10 @@ dxvk_shaders = files([
 
   'hud/shaders/hud_chunk_frag_background.frag',
   'hud/shaders/hud_chunk_frag_visualize.frag',
-  'hud/shaders/hud_chunk_vert.vert',
+  'hud/shaders/hud_chunk_vert_background.vert',
+  'hud/shaders/hud_chunk_vert_visualize.vert',
+
+  'hud/shaders/hud_frame_time_eval.comp',
 
   'hud/shaders/hud_graph_frag.frag',
   'hud/shaders/hud_graph_vert.vert',
