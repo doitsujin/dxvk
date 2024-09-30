@@ -13,6 +13,17 @@
 namespace dxvk {
 
   /**
+   * \brief Context-provided objects
+   *
+   * Useful when submitting raw Vulkan commands to a command list.
+   */
+  struct DxvkContextObjects {
+    Rc<DxvkCommandList> cmd;
+    Rc<DxvkDescriptorPool> descriptorPool;
+  };
+
+
+  /**
    * \brief DXVK context
    * 
    * Tracks pipeline state and records command lists.
@@ -25,7 +36,7 @@ namespace dxvk {
     
     DxvkContext(const Rc<DxvkDevice>& device, DxvkContextType type);
     ~DxvkContext();
-    
+
     /**
      * \brief Begins command buffer recording
      * 
@@ -67,6 +78,14 @@ namespace dxvk {
      */
     void flushCommandList(DxvkSubmitStatus* status);
     
+    /**
+     * \brief Begins external rendering
+     *
+     * Invalidates all state and provides the caller
+     * with the objects necessary to start drawing.
+     */
+    DxvkContextObjects beginExternalRendering();
+
     /**
      * \brief Begins generating query data
      * \param [in] query The query to end
