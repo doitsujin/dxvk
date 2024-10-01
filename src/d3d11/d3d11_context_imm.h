@@ -101,6 +101,15 @@ namespace dxvk {
             DxvkCsChunkRef&&            Chunk,
             bool                        Synchronize);
 
+    template<typename Fn>
+    void InjectCsCommand(
+            Fn&&                        Command) {
+      auto chunk = AllocCsChunk();
+      chunk->push(std::move(Command));
+
+      EmitCsChunkExternal(std::move(chunk), false);
+    }
+
   private:
     
     DxvkCsThread            m_csThread;
