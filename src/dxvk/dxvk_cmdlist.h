@@ -489,9 +489,10 @@ namespace dxvk {
 
 
     void cmdBindPipeline(
+            DxvkCmdBuffer           cmdBuffer,
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) {
-      m_vkd->vkCmdBindPipeline(m_cmd.execBuffer,
+      m_vkd->vkCmdBindPipeline(getCmdBuffer(cmdBuffer),
         pipelineBindPoint, pipeline);
     }
 
@@ -627,22 +628,23 @@ namespace dxvk {
     
     
     void cmdDispatch(
+            DxvkCmdBuffer           cmdBuffer,
             uint32_t                x,
             uint32_t                y,
             uint32_t                z) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdDispatch(m_cmd.execBuffer, x, y, z);
+      m_vkd->vkCmdDispatch(getCmdBuffer(cmdBuffer), x, y, z);
     }
     
     
     void cmdDispatchIndirect(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                buffer,
             VkDeviceSize            offset) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdDispatchIndirect(
-        m_cmd.execBuffer, buffer, offset);
+      m_vkd->vkCmdDispatchIndirect(getCmdBuffer(cmdBuffer), buffer, offset);
     }
     
     

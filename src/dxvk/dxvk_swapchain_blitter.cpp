@@ -121,7 +121,8 @@ namespace dxvk {
     ctx.cmd->cmdSetViewport(1, &viewport);
     ctx.cmd->cmdSetScissor(1, &dstRect);
 
-    ctx.cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
 
