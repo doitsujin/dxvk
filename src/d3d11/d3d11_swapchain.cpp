@@ -63,7 +63,6 @@ namespace dxvk {
     m_surfaceFactory(pSurfaceFactory),
     m_desc(*pDesc),
     m_device(pDevice->GetDXVKDevice()),
-    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
     CreatePresenter();
@@ -360,98 +359,86 @@ namespace dxvk {
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Flush pending rendering commands before
     auto immediateContext = m_parent->GetContext();
+    auto immediateContextLock = immediateContext->LockContext();
+
     immediateContext->EndFrame();
     immediateContext->Flush();
 
-    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
-      SynchronizePresent();
+    SynchronizePresent();
+
+    if (!m_presenter->hasSwapChain())
+      return DXGI_STATUS_OCCLUDED;
+
+    // Presentation semaphores and WSI swap chain image
+    PresenterInfo info = m_presenter->info();
+    PresenterSync sync;
+
+    uint32_t imageIndex = 0;
+
+    VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
+
+    while (status != VK_SUCCESS) {
+      RecreateSwapChain();
 
       if (!m_presenter->hasSwapChain())
-        return i ? S_OK : DXGI_STATUS_OCCLUDED;
-
-      // Presentation semaphores and WSI swap chain image
-      PresenterInfo info = m_presenter->info();
-      PresenterSync sync;
-
-      uint32_t imageIndex = 0;
-
-      VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
-
-      while (status != VK_SUCCESS) {
-        RecreateSwapChain();
-
-        if (!m_presenter->hasSwapChain())
-          return i ? S_OK : DXGI_STATUS_OCCLUDED;
-        
-        info = m_presenter->info();
-        status = m_presenter->acquireNextImage(sync, imageIndex);
-
-        if (status == VK_SUBOPTIMAL_KHR)
-          break;
-      }
-
-      if (m_hdrMetadata && m_dirtyHdrMetadata) {
-        m_presenter->setHdrMetadata(*m_hdrMetadata);
-        m_dirtyHdrMetadata = false;
-      }
-
-      m_context->beginRecording(
-        m_device->createCommandList());
+        return DXGI_STATUS_OCCLUDED;
       
-      m_blitter->beginPresent(m_context->beginExternalRendering(),
-        m_imageViews.at(imageIndex), m_colorspace, VkRect2D(),
-        m_swapImageView, m_colorspace, VkRect2D());
+      info = m_presenter->info();
+      status = m_presenter->acquireNextImage(sync, imageIndex);
 
-      if (m_hud) {
-        m_hud->render(m_context->beginExternalRendering(),
-          m_imageViews.at(imageIndex), m_colorspace);
-      }
-      
-      m_blitter->endPresent(m_context->beginExternalRendering(),
-        m_imageViews.at(imageIndex));
-
-      SubmitPresent(immediateContext, sync, i);
+      if (status == VK_SUBOPTIMAL_KHR)
+        break;
     }
 
-    return S_OK;
-  }
+    if (m_hdrMetadata && m_dirtyHdrMetadata) {
+      m_presenter->setHdrMetadata(*m_hdrMetadata);
+      m_dirtyHdrMetadata = false;
+    }
 
-
-  void D3D11SwapChain::SubmitPresent(
-          D3D11ImmediateContext*  pContext,
-    const PresenterSync&          Sync,
-          uint32_t                Repeat) {
-    auto lock = pContext->LockContext();
-
-    // Bump frame ID as necessary
-    if (!Repeat)
-      m_frameId += 1;
+    m_frameId += 1;
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
-    pContext->EmitCs([this,
-      cRepeat      = Repeat,
-      cSync        = Sync,
-      cHud         = m_hud,
-      cPresentMode = m_presenter->info().presentMode,
-      cFrameId     = m_frameId,
-      cCommandList = m_context->endRecording()
+    immediateContext->EmitCs([
+      cPresentStatus  = &m_presentStatus,
+      cDevice         = m_device,
+      cBlitter        = m_blitter,
+      cBackBuffer     = m_imageViews.at(imageIndex),
+      cSwapImage      = m_swapImageView,
+      cSync           = sync,
+      cHud            = m_hud,
+      cPresenter      = m_presenter,
+      cColorSpace     = m_colorspace,
+      cFrameId        = m_frameId
     ] (DxvkContext* ctx) {
-      cCommandList->setWsiSemaphores(cSync);
-      m_device->submitCommandList(cCommandList, nullptr);
+      // Blit the D3D back buffer onto the actual Vulkan
+      // swap chain and render the HUD if we have one.
+      auto contextObjects = ctx->beginExternalRendering();
 
-      if (cHud != nullptr && !cRepeat)
+      cBlitter->beginPresent(contextObjects,
+        cBackBuffer, cColorSpace, VkRect2D(),
+        cSwapImage, cColorSpace, VkRect2D());
+
+      if (cHud != nullptr) {
         cHud->update();
+        cHud->render(contextObjects, cBackBuffer, cColorSpace);
+      }
 
-      uint64_t frameId = cRepeat ? 0 : cFrameId;
+      cBlitter->endPresent(contextObjects, cBackBuffer);
 
-      m_device->presentImage(m_presenter,
-        cPresentMode, frameId, &m_presentStatus);
+      // Submit current command list and present
+      ctx->synchronizeWsi(cSync);
+      ctx->flushCommandList(nullptr);
+
+      cDevice->presentImage(cPresenter,
+        cPresenter->info().presentMode,
+        cFrameId, cPresentStatus);
     });
 
-    pContext->FlushCsChunk();
+    immediateContext->FlushCsChunk();
+    return S_OK;
   }
 
 
