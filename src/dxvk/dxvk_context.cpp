@@ -307,19 +307,16 @@ namespace dxvk {
     VkExtent3D workgroups = util::computeBlockCount(
       pushArgs.extent, pipeInfo.workgroupSize);
     
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeline);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
-    m_cmd->cmdDispatch(
-      workgroups.width,
-      workgroups.height,
-      workgroups.depth);
+    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+      workgroups.width, workgroups.height, workgroups.depth);
     
     m_execBarriers.accessBuffer(bufferSlice,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -811,9 +808,8 @@ namespace dxvk {
     args.dstOffset = dstOffset;
     args.dstExtent = dstExtent;
 
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeHandle);
     
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
@@ -823,7 +819,7 @@ namespace dxvk {
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
-    m_cmd->cmdDispatch(
+    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       (srcExtent.width  + 7) / 8,
       (srcExtent.height + 7) / 8,
       srcSubresource.layerCount);
@@ -977,9 +973,8 @@ namespace dxvk {
     args.dstSize = { dstSize.width, dstSize.height };
     args.srcSize = { srcSize.width, srcSize.height };
 
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeHandle);
     
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
@@ -989,7 +984,7 @@ namespace dxvk {
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
-    m_cmd->cmdDispatch(
+    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       (extent.width  + 7) / 8,
       (extent.height + 7) / 8,
       extent.depth);
@@ -1117,9 +1112,8 @@ namespace dxvk {
     args.dstOffset = VkOffset2D { 0, 0 };
     args.dstExtent = dstExtent;
 
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeHandle);
     
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
@@ -1129,7 +1123,7 @@ namespace dxvk {
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
-    m_cmd->cmdDispatch(
+    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       (dstExtent.width + 63) / 64,
       dstExtent.height,
       dstSubresource.layerCount);
@@ -1263,7 +1257,7 @@ namespace dxvk {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
-      m_cmd->cmdDispatch(x, y, z);
+      m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer, x, y, z);
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1288,9 +1282,8 @@ namespace dxvk {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
-      m_cmd->cmdDispatchIndirect(
-        bufferSlice.handle,
-        bufferSlice.offset);
+      m_cmd->cmdDispatchIndirect(DxvkCmdBuffer::ExecBuffer,
+        bufferSlice.handle, bufferSlice.offset);
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1803,7 +1796,8 @@ namespace dxvk {
       }
 
       m_cmd->cmdBeginRendering(&renderingInfo);
-      m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
       m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
         descriptorWrite.dstSet, 0, nullptr);
@@ -3178,7 +3172,8 @@ namespace dxvk {
       dstView->info().viewType, dstView->info().format,
       dstView->image()->info().sampleCount);
 
-    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
 
     // Set up viewport
     VkViewport viewport;
@@ -3660,19 +3655,16 @@ namespace dxvk {
     else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
       workgroups.depth = imageView->subresources().layerCount;
     
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeline);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
-    m_cmd->cmdDispatch(
-      workgroups.width,
-      workgroups.height,
-      workgroups.depth);
+    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+      workgroups.width, workgroups.height, workgroups.depth);
     
     m_execBarriers.accessImage(
       imageView->image(),
@@ -3966,7 +3958,8 @@ namespace dxvk {
 
     // Perform the actual copy operation
     m_cmd->cmdBeginRendering(&renderingInfo);
-    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
@@ -4633,7 +4626,8 @@ namespace dxvk {
       region.srcOffset.y - region.dstOffset.y };
     
     m_cmd->cmdBeginRendering(&renderingInfo);
-    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
@@ -5110,9 +5104,8 @@ namespace dxvk {
     if (unlikely(!pipelineHandle))
       return false;
 
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipelineHandle);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineHandle);
 
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
@@ -5227,9 +5220,8 @@ namespace dxvk {
     if (unlikely(!pipelineInfo.first))
       return false;
 
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipelineInfo.first);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.first);
 
     // For pipelines created from graphics pipeline libraries, we need to
     // apply a bunch of dynamic state that is otherwise static or unused
