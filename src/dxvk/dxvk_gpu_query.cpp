@@ -339,10 +339,9 @@ namespace dxvk {
       handle.queryPool,
       handle.queryId);
     
-    cmd->cmdWriteTimestamp(
+    cmd->cmdWriteTimestamp(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-      handle.queryPool,
-      handle.queryId);
+      handle.queryPool, handle.queryId);
     
     cmd->trackResource<DxvkAccess::None>(query);
   }

@@ -610,6 +610,7 @@ namespace dxvk {
 
 
     void cmdCopyQueryPoolResults(
+            DxvkCmdBuffer           cmdBuffer,
             VkQueryPool             queryPool,
             uint32_t                firstQuery,
             uint32_t                queryCount,
@@ -617,9 +618,9 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            stride,
             VkQueryResultFlags      flags) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdCopyQueryPoolResults(m_cmd.execBuffer,
+      m_vkd->vkCmdCopyQueryPoolResults(getCmdBuffer(cmdBuffer),
         queryPool, firstQuery, queryCount,
         dstBuffer, dstOffset, stride, flags);
     }
@@ -788,6 +789,18 @@ namespace dxvk {
       const void*                   pValues) {
       m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
         layout, stageFlags, offset, size, pValues);
+    }
+
+
+    void cmdResetQueryPool(
+            DxvkCmdBuffer           cmdBuffer,
+            VkQueryPool             queryPool,
+            uint32_t                firstQuery,
+            uint32_t                queryCount) {
+      m_cmd.usedFlags.set(cmdBuffer);
+
+      m_vkd->vkCmdResetQueryPool(getCmdBuffer(cmdBuffer),
+        queryPool, firstQuery, queryCount);
     }
 
 
@@ -969,12 +982,13 @@ namespace dxvk {
 
 
     void cmdWriteTimestamp(
+            DxvkCmdBuffer           cmdBuffer,
             VkPipelineStageFlagBits2 pipelineStage,
             VkQueryPool             queryPool,
             uint32_t                query) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.usedFlags.set(cmdBuffer);
 
-      m_vkd->vkCmdWriteTimestamp2(m_cmd.execBuffer,
+      m_vkd->vkCmdWriteTimestamp2(getCmdBuffer(cmdBuffer),
         pipelineStage, queryPool, query);
     }
     
