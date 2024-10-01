@@ -626,22 +626,13 @@ namespace dxvk {
     
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = 1;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = 1;
-
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    m_context->initImage(m_swapImage,
-      subresources, VK_IMAGE_LAYOUT_UNDEFINED);
-
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr);
+    m_parent->GetContext()->InjectCsCommand([
+      cSwapImage = m_swapImage
+    ] (DxvkContext* ctx) {
+      ctx->initImage(cSwapImage,
+        cSwapImage->getAvailableSubresources(),
+        VK_IMAGE_LAYOUT_UNDEFINED);
+    });
   }
 
 

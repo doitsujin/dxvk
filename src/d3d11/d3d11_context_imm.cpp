@@ -30,6 +30,10 @@ namespace dxvk {
 
       ctx->setBarrierControl(cBarrierControlFlags);
     });
+
+    // Stall here so that external submissions to the
+    // CS thread can actually access the command list
+    SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     
     ClearState();
   }
