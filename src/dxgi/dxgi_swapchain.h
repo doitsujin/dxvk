@@ -199,6 +199,7 @@ namespace dxvk {
     double                          m_frameRateOption = 0.0;
     double                          m_frameRateRefresh = 0.0;
     double                          m_frameRateLimit = 0.0;
+    uint32_t                        m_frameRateSyncInterval = 0u;
     bool                            m_is_d3d12;
 
     DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
