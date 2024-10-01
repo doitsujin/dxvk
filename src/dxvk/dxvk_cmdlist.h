@@ -778,12 +778,13 @@ namespace dxvk {
     
     
     void cmdPushConstants(
+            DxvkCmdBuffer           cmdBuffer,
             VkPipelineLayout        layout,
             VkShaderStageFlags      stageFlags,
             uint32_t                offset,
             uint32_t                size,
       const void*                   pValues) {
-      m_vkd->vkCmdPushConstants(m_cmd.execBuffer,
+      m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
         layout, stageFlags, offset, size, pValues);
     }
 

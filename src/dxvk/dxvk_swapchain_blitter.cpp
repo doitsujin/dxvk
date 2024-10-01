@@ -153,8 +153,9 @@ namespace dxvk {
     args.srcExtent = srcRect.extent;
     args.dstOffset = dstRect.offset;
 
-    ctx.cmd->cmdPushConstants(m_pipelineLayout,
-      VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(args), &args);
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(args), &args);
 
     ctx.cmd->cmdDraw(3, 1, 0, 0);
 
