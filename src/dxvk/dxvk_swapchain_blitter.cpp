@@ -145,8 +145,11 @@ namespace dxvk {
         set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
     }};
 
-    ctx.cmd->updateDescriptorSets(descriptorWrites.size(), descriptorWrites.data());
-    ctx.cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, set, 0, nullptr);
+    ctx.cmd->updateDescriptorSets(
+      descriptorWrites.size(), descriptorWrites.data());
+    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+      set, 0, nullptr);
 
     PushConstants args = { };
     args.srcOffset = srcRect.offset;
