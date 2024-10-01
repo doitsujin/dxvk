@@ -314,9 +314,8 @@ namespace dxvk {
       VK_PIPELINE_BIND_POINT_COMPUTE,
       pipeInfo.pipeLayout, descriptorSet,
       0, nullptr);
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
     m_cmd->cmdDispatch(
       workgroups.width,
@@ -822,9 +821,8 @@ namespace dxvk {
       pipeInfo.pipeLayout, dset,
       0, nullptr);
     
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
     m_cmd->cmdDispatch(
@@ -990,9 +988,8 @@ namespace dxvk {
       pipeInfo.pipeLayout, descriptorSet,
       0, nullptr);
     
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
     m_cmd->cmdDispatch(
@@ -1132,9 +1129,8 @@ namespace dxvk {
       pipeInfo.pipeLayout, dset,
       0, nullptr);
     
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(args), &args);
     
     m_cmd->cmdDispatch(
@@ -1818,11 +1814,9 @@ namespace dxvk {
       m_cmd->cmdSetViewport(1, &viewport);
       m_cmd->cmdSetScissor(1, &scissor);
       
-      m_cmd->cmdPushConstants(
-        pipeInfo.pipeLayout,
-        VK_SHADER_STAGE_FRAGMENT_BIT,
-        0, sizeof(pushConstants),
-        &pushConstants);
+      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+        pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+        0, sizeof(pushConstants), &pushConstants);
       
       m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
       m_cmd->cmdEndRendering();
@@ -3239,11 +3233,9 @@ namespace dxvk {
       float(srcOffsetsAdjusted[1].z) / float(srcExtent.depth) };
     pushConstants.layerCount = dstView->info().layerCount;
 
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(pushConstants),
-      &pushConstants);
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(pushConstants), &pushConstants);
 
     m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
@@ -3677,9 +3669,8 @@ namespace dxvk {
       VK_PIPELINE_BIND_POINT_COMPUTE,
       pipeInfo.pipeLayout, descriptorSet,
       0, nullptr);
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
     m_cmd->cmdDispatch(
       workgroups.width,
@@ -3989,10 +3980,9 @@ namespace dxvk {
       srcOffset.x - dstOffset.x,
       srcOffset.y - dstOffset.y };
     
-    m_cmd->cmdPushConstants(pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(srcCoordOffset),
-      &srcCoordOffset);
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(srcCoordOffset), &srcCoordOffset);
     
     m_cmd->cmdDraw(3, dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
@@ -4650,8 +4640,8 @@ namespace dxvk {
       pipeInfo.pipeLayout, descriptorSet, 0, nullptr);
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
-    m_cmd->cmdPushConstants(pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_FRAGMENT_BIT,
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(srcOffset), &srcOffset);
     m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
@@ -6069,7 +6059,7 @@ namespace dxvk {
     if (!pushConstRange.size)
       return;
 
-    m_cmd->cmdPushConstants(
+    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       bindings->getPipelineLayout(independentSets),
       pushConstRange.stageFlags,
       pushConstRange.offset,
