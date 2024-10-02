@@ -1905,8 +1905,6 @@ namespace dxvk {
     enabled.core.features.shaderImageGatherExtended               = VK_TRUE;
     enabled.core.features.textureCompressionBC                    = VK_TRUE;
 
-    enabled.vk11.shaderDrawParameters                             = VK_TRUE;
-
     enabled.vk12.samplerMirrorClampToEdge                         = VK_TRUE;
 
     enabled.vk13.shaderDemoteToHelperInvocation                   = VK_TRUE;
@@ -1923,7 +1921,6 @@ namespace dxvk {
     // Required for Feature Level 11_0
     enabled.core.features.drawIndirectFirstInstance               = supported.core.features.drawIndirectFirstInstance;
     enabled.core.features.fragmentStoresAndAtomics                = supported.core.features.fragmentStoresAndAtomics;
-    enabled.core.features.multiDrawIndirect                       = supported.core.features.multiDrawIndirect;
     enabled.core.features.tessellationShader                      = supported.core.features.tessellationShader;
 
     // Required for Feature Level 11_1
