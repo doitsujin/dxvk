@@ -890,7 +890,7 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::EmitCsChunkExternal(
+  void D3D11ImmediateContext::InjectCsChunk(
           DxvkCsChunkRef&&            Chunk,
           bool                        Synchronize) {
     // Do not update the sequence number when emitting a chunk

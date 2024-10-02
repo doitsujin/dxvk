@@ -613,7 +613,7 @@ namespace dxvk {
     
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
-    m_parent->GetContext()->InjectCsCommand([
+    m_parent->GetContext()->InjectCs([
       cSwapImage = m_swapImage
     ] (DxvkContext* ctx) {
       ctx->initImage(cSwapImage,
