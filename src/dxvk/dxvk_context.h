@@ -77,7 +77,17 @@ namespace dxvk {
      * \param [out] status Submission feedback
      */
     void flushCommandList(DxvkSubmitStatus* status);
-    
+
+    /**
+     * \brief Synchronizes command list with WSI
+     *
+     * The next submission can be used to render
+     * to the swap chain image and present after.
+     */
+    void synchronizeWsi(PresenterSync sync) {
+      m_cmd->setWsiSemaphores(sync);
+    }
+
     /**
      * \brief Begins external rendering
      *
