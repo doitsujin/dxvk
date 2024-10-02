@@ -1665,6 +1665,7 @@ namespace dxvk {
       result.memoryUsed += type.stats.memoryUsed;
     }
 
+    result.memoryBudget = m_memHeaps[heap].memoryBudget;
     return result;
   }
 
