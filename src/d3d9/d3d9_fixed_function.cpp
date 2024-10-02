@@ -814,7 +814,7 @@ namespace dxvk {
     const D3D9FFShaderKeyVS&       Key,
     const std::string&             Name,
           D3D9FixedFunctionOptions Options)
-  : m_module(spvVersion(1, 3)), m_options(Options) {
+  : m_module(spvVersion(1, 6)), m_options(Options) {
     m_programType = DxsoProgramTypes::VertexShader;
     m_vsKey    = Key;
     m_filename = Name;
@@ -826,7 +826,7 @@ namespace dxvk {
     const D3D9FFShaderKeyFS&       Key,
     const std::string&             Name,
           D3D9FixedFunctionOptions Options)
-  : m_module(spvVersion(1, 3)), m_options(Options) {
+  : m_module(spvVersion(1, 6)), m_options(Options) {
     m_programType = DxsoProgramTypes::PixelShader;
     m_fsKey    = Key;
     m_filename = Name;

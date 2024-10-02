@@ -23,7 +23,7 @@ namespace dxvk {
     , m_programInfo( programInfo )
     , m_analysis   ( &analysis )
     , m_layout     ( &layout )
-    , m_module     ( spvVersion(1, 3) ) {
+    , m_module     ( spvVersion(1, 6) ) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();
