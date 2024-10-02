@@ -38,7 +38,7 @@ namespace dxvk {
     int32_t samplerAnisotropyOption = device->GetOptions()->samplerAnisotropy;
 
     if (samplerAnisotropyOption >= 0 && minFilter == VK_FILTER_LINEAR)
-      anisotropy = samplerAnisotropyOption > 0;
+      anisotropy = samplerAnisotropyOption;
 
     info.setAniso(anisotropy);
 
