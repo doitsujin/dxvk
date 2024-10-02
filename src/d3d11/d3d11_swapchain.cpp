@@ -66,7 +66,7 @@ namespace dxvk {
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
     CreatePresenter();
-    CreateBackBuffer();
+    CreateBackBuffers();
     CreateBlitter();
     CreateHud();
 
@@ -140,12 +140,12 @@ namespace dxvk {
           void**                    ppBuffer) {
     InitReturnPtr(ppBuffer);
 
-    if (BufferId > 0) {
-      Logger::err("D3D11: GetImage: BufferId > 0 not supported");
+    if (BufferId >= m_backBuffers.size()) {
+      Logger::err("D3D11: GetImage: Invalid buffer ID");
       return DXGI_ERROR_UNSUPPORTED;
     }
 
-    return m_backBuffer->QueryInterface(riid, ppBuffer);
+    return m_backBuffers[BufferId]->QueryInterface(riid, ppBuffer);
   }
 
 
@@ -184,7 +184,7 @@ namespace dxvk {
             || m_desc.Flags       != pDesc->Flags;
 
     m_desc = *pDesc;
-    CreateBackBuffer();
+    CreateBackBuffers();
     return S_OK;
   }
 
@@ -356,6 +356,23 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkImageView> D3D11SwapChain::GetBackBufferView() {
+    Rc<DxvkImage> image = GetCommonTexture(m_backBuffers[0].ptr())->GetImage();
+
+    DxvkImageViewKey key;
+    key.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    key.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    key.format = image->info().format;
+    key.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+    key.mipIndex = 0u;
+    key.mipCount = 1u;
+    key.layerIndex = 0u;
+    key.layerCount = 1u;
+
+    return image->createView(key);
+  }
+
+
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Flush pending rendering commands before
     auto immediateContext = m_parent->GetContext();
@@ -406,7 +423,7 @@ namespace dxvk {
       cDevice         = m_device,
       cBlitter        = m_blitter,
       cBackBuffer     = m_imageViews.at(imageIndex),
-      cSwapImage      = m_swapImageView,
+      cSwapImage      = GetBackBufferView(),
       cSync           = sync,
       cHud            = m_hud,
       cPresenter      = m_presenter,
@@ -437,8 +454,30 @@ namespace dxvk {
         cFrameId, cPresentStatus);
     });
 
+    if (m_backBuffers.size() > 1u)
+      RotateBackBuffers(immediateContext);
+
     immediateContext->FlushCsChunk();
     return S_OK;
+  }
+
+
+  void D3D11SwapChain::RotateBackBuffers(D3D11ImmediateContext* ctx) {
+    small_vector<Rc<DxvkImage>, 4> images;
+
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
+      images.push_back(GetCommonTexture(m_backBuffers[i].ptr())->GetImage());
+
+    ctx->EmitCs([
+      cImages = std::move(images)
+    ] (DxvkContext* ctx) {
+      auto allocation = cImages[0]->getAllocation();
+
+      for (size_t i = 0u; i + 1 < cImages.size(); i++)
+        ctx->invalidateImage(cImages[i], cImages[i + 1]->getAllocation());
+
+      ctx->invalidateImage(cImages[cImages.size() - 1u], std::move(allocation));
+    });
   }
 
 
@@ -555,12 +594,14 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::CreateBackBuffer() {
+  void D3D11SwapChain::CreateBackBuffers() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    m_swapImage         = nullptr;
-    m_swapImageView     = nullptr;
-    m_backBuffer        = nullptr;
+    m_backBuffers.clear();
+
+    bool sequential = m_desc.SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL ||
+                      m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    uint32_t backBufferCount = sequential ? m_desc.BufferCount : 1u;
 
     // Create new back buffer
     D3D11_COMMON_TEXTURE_DESC desc;
@@ -591,34 +632,32 @@ namespace dxvk {
     
     DXGI_USAGE dxgiUsage = DXGI_USAGE_BACK_BUFFER;
 
-    if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
-     || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
-      dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
+    for (uint32_t i = 0; i < backBufferCount; i++) {
+      if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
+       || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
+         dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
-    m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
+      m_backBuffers.push_back(new D3D11Texture2D(
+        m_parent, this, &desc, dxgiUsage));
 
-    // Create an image view that allows the
-    // image to be bound as a shader resource.
-    DxvkImageViewKey viewInfo;
-    viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format     = m_swapImage->info().format;
-    viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-    viewInfo.aspects    = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.mipIndex   = 0;
-    viewInfo.mipCount   = 1;
-    viewInfo.layerIndex = 0;
-    viewInfo.layerCount = 1;
-    m_swapImageView = m_swapImage->createView(viewInfo);
-    
-    // Initialize the image so that we can use it. Clearing
+      dxgiUsage |= DXGI_USAGE_READ_ONLY;
+    }
+
+    small_vector<Rc<DxvkImage>, 4> images;
+
+    for (uint32_t i = 0; i < backBufferCount; i++)
+      images.push_back(GetCommonTexture(m_backBuffers[i].ptr())->GetImage());
+
+    // Initialize images so that we can use them. Clearing
     // to black prevents garbled output for the first frame.
     m_parent->GetContext()->InjectCs([
-      cSwapImage = m_swapImage
+      cImages = std::move(images)
     ] (DxvkContext* ctx) {
-      ctx->initImage(cSwapImage,
-        cSwapImage->getAvailableSubresources(),
-        VK_IMAGE_LAYOUT_UNDEFINED);
+      for (size_t i = 0; i < cImages.size(); i++) {
+        ctx->initImage(cImages[i],
+          cImages[i]->getAvailableSubresources(),
+          VK_IMAGE_LAYOUT_UNDEFINED);
+      }
     });
   }
 
