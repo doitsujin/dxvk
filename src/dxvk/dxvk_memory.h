@@ -36,6 +36,7 @@ namespace dxvk {
   struct DxvkMemoryStats {
     VkDeviceSize memoryAllocated = 0;
     VkDeviceSize memoryUsed      = 0;
+    VkDeviceSize memoryBudget    = 0;
   };
 
 
