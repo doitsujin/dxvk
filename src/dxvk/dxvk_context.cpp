@@ -1901,6 +1901,9 @@ namespace dxvk {
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice) {
+    // Ensure image is in the correct layout and not currently tracked
+    prepareImage(image, image->getAvailableSubresources());
+
     invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo());
   }
 
@@ -6545,6 +6548,13 @@ namespace dxvk {
     const DxvkRelocateImageInfo*    imageInfos) {
     if (!bufferCount && !imageCount)
       return;
+
+    // Ensure images are in the expected layout and any sort of layout
+    // tracking does not happen after the backing storage is swapped.
+    for (size_t i = 0; i < imageCount; i++)
+      prepareImage(imageInfos[i].image, imageInfos[i].image->getAvailableSubresources());
+
+    m_execBarriers.recordCommands(m_cmd);
 
     small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
 
