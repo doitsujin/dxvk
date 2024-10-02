@@ -435,7 +435,7 @@ namespace dxvk {
 
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
   : m_device(device) {
-    VkPhysicalDeviceMemoryProperties memInfo = device->adapter()->memoryProperties();
+    VkPhysicalDeviceMemoryProperties memInfo = m_device->adapter()->memoryProperties();
 
     m_memTypeCount = memInfo.memoryTypeCount;
     m_memHeapCount = memInfo.memoryHeapCount;
@@ -444,6 +444,7 @@ namespace dxvk {
       auto& heap = m_memHeaps[i];
 
       heap.index = i;
+      heap.memoryBudget = memInfo.memoryHeaps[i].size;
       heap.properties = memInfo.memoryHeaps[i];
     }
 
@@ -465,6 +466,8 @@ namespace dxvk {
       m_sparseMemoryTypes = determineSparseMemoryTypes(device);
 
     determineBufferUsageFlagsPerMemoryType();
+
+    updateMemoryHeapBudgets();
 
     // Start worker after setting up everything else
     m_worker = dxvk::thread([this] { runWorker(); });
@@ -1248,7 +1251,7 @@ namespace dxvk {
       maxUnusedMemory *= 4u;
 
     // Factor current memory allocation into the decision to free chunks
-    VkDeviceSize heapBudget = (type.heap->properties.size * 4) / 5;
+    VkDeviceSize heapBudget = type.heap->memoryBudget;
     VkDeviceSize heapAllocated = getMemoryStats(type.heap->index).memoryAllocated;
 
     VkDeviceSize unusedMemory = 0u;
@@ -1836,6 +1839,23 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::updateMemoryHeapBudgets() {
+    if (!m_device->features().extMemoryBudget)
+      return;
+
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT };
+    VkPhysicalDeviceMemoryProperties2 memInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2, &memBudget };
+
+    auto vki = m_device->adapter()->vki();
+    vki->vkGetPhysicalDeviceMemoryProperties2(m_device->adapter()->handle(), &memInfo);
+
+    for (uint32_t i = 0; i < m_memHeapCount; i++) {
+      if (memBudget.heapBudget[i])
+        m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i], m_memHeaps[i].properties.size);
+    }
+  }
+
+
   void DxvkMemoryAllocator::runWorker() {
     env::setThreadName("dxvk-memory");
 
@@ -1850,6 +1870,9 @@ namespace dxvk {
 
       if (m_stopWorker)
         break;
+
+      // Re-query current memory budgets
+      updateMemoryHeapBudgets();
 
       // Periodically free unused memory chunks and update
       // memory allocation statistics for the adapter.

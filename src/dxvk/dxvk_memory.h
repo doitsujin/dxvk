@@ -138,6 +138,7 @@ namespace dxvk {
   struct DxvkMemoryHeap {
     uint32_t          index         = 0u;
     uint32_t          memoryTypes   = 0u;
+    VkDeviceSize      memoryBudget  = 0u;
     VkMemoryHeap      properties    = { };
   };
 
@@ -1238,6 +1239,8 @@ namespace dxvk {
 
     uint32_t findGlobalBufferMemoryTypeMask(
             VkBufferUsageFlags    usage) const;
+
+    void updateMemoryHeapBudgets();
 
     void runWorker();
 
