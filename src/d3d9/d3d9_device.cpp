@@ -1276,26 +1276,26 @@ namespace dxvk {
     }
 
     auto EmitResolveCS = [&](const Rc<DxvkImage>& resolveDst, bool intermediate) {
-      VkImageResolve region;
-      region.srcSubresource = blitInfo.srcSubresource;
-      region.srcOffset      = blitInfo.srcOffsets[0];
-      region.dstSubresource = intermediate ? blitInfo.srcSubresource : blitInfo.dstSubresource;
-      region.dstOffset      = intermediate ? blitInfo.srcOffsets[0]  : blitInfo.dstOffsets[0];
-      region.extent         = srcCopyExtent;
-
       EmitCs([
-        cDstImage = resolveDst,
-        cSrcImage = srcImage,
-        cRegion   = region
+        cDstImage    = resolveDst,
+        cSrcImage    = srcImage,
+        cSubresource = intermediate ? blitInfo.srcSubresource : blitInfo.dstSubresource
       ] (DxvkContext* ctx) {
-        if (cRegion.srcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        VkImageResolve region;
+        region.srcSubresource = cSubresource;
+        region.srcOffset      = VkOffset3D { 0, 0, 0 };
+        region.dstSubresource = cSubresource;
+        region.dstOffset      = VkOffset3D { 0, 0, 0 };
+        region.extent         = cDstImage->mipLevelExtent(cSubresource.mipLevel);
+
+        if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           ctx->resolveImage(
-            cDstImage, cSrcImage, cRegion,
+            cDstImage, cSrcImage, region,
             VK_FORMAT_UNDEFINED);
         }
         else {
           ctx->resolveDepthStencilImage(
-            cDstImage, cSrcImage, cRegion,
+            cDstImage, cSrcImage, region,
             VK_RESOLVE_MODE_AVERAGE_BIT,
             VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
         }
