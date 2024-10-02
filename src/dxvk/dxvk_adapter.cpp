@@ -308,6 +308,10 @@ namespace dxvk {
     // Always enable robust buffer access
     enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
 
+    // Always enable features used by the HUD
+    enabledFeatures.core.features.multiDrawIndirect = VK_TRUE;
+    enabledFeatures.vk11.shaderDrawParameters = VK_TRUE;
+
     // Enable variable multisample rate if supported
     enabledFeatures.core.features.variableMultisampleRate =
       m_deviceFeatures.core.features.variableMultisampleRate;
