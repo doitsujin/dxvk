@@ -591,7 +591,9 @@ namespace dxvk::hud {
 
       uint64_t memUsedMib = m_heaps[i].memoryUsed >> 20;
       uint64_t memAllocatedMib = m_heaps[i].memoryAllocated >> 20;
-      uint64_t percentage = (100 * m_heaps[i].memoryAllocated) / m_memory.memoryHeaps[i].size;
+      uint64_t percentage = m_heaps[i].memoryBudget
+        ? (100u * m_heaps[i].memoryAllocated) / m_heaps[i].memoryBudget
+        : 0u;
 
       std::string label = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ": ");
       std::string text  = str::format(std::setfill(' '), std::setw(5), memAllocatedMib, " MB (", percentage, "%) ",
