@@ -97,17 +97,17 @@ namespace dxvk {
       return m_multithread.AcquireLock();
     }
 
-    void EmitCsChunkExternal(
+    void InjectCsChunk(
             DxvkCsChunkRef&&            Chunk,
             bool                        Synchronize);
 
     template<typename Fn>
-    void InjectCsCommand(
+    void InjectCs(
             Fn&&                        Command) {
       auto chunk = AllocCsChunk();
       chunk->push(std::move(Command));
 
-      EmitCsChunkExternal(std::move(chunk), false);
+      InjectCsChunk(std::move(chunk), false);
     }
 
   private:
