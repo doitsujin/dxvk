@@ -26,7 +26,6 @@ namespace dxvk {
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode)
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
-    , m_context          (m_device->createContext(DxvkContextType::Supplementary))
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
     , m_dialog           (pDevice->GetOptions()->enableDialogMode)
     , m_swapchainExt     (this) {
@@ -815,7 +814,7 @@ namespace dxvk {
 
       // Presentation semaphores and WSI swap chain image
       PresenterInfo info = m_wctx->presenter->info();
-      PresenterSync sync;
+      PresenterSync sync = { };
 
       uint32_t imageIndex = 0;
 
@@ -836,9 +835,6 @@ namespace dxvk {
         m_dirtyHdrMetadata = false;
       }
 
-      m_context->beginRecording(
-        m_device->createCommandList());
-
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
         { uint32_t(m_srcRect.right - m_srcRect.left), uint32_t(m_srcRect.bottom - m_srcRect.top) } };
@@ -847,19 +843,57 @@ namespace dxvk {
         {  int32_t(m_dstRect.left),                    int32_t(m_dstRect.top)                    },
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
-      m_blitter->beginPresent(m_context->beginExternalRendering(),
-        m_wctx->imageViews.at(imageIndex), m_colorspace, dstRect,
-        swapImageView, m_colorspace, srcRect);
+      // Bump frame ID
+      if (!i)
+        m_wctx->frameId += 1;
 
-      if (m_hud) {
-        m_hud->render(m_context->beginExternalRendering(),
-          m_wctx->imageViews.at(imageIndex), m_colorspace);
-      }
+      // Present from CS thread so that we don't
+      // have to synchronize with it first.
+      m_presentStatus.result = VK_NOT_READY;
 
-      m_blitter->endPresent(m_context->beginExternalRendering(),
-        m_wctx->imageViews.at(imageIndex));
+      m_parent->EmitCs([
+        cPresentStatus  = &m_presentStatus,
+        cDevice         = m_device,
+        cPresenter      = m_wctx->presenter,
+        cBlitter        = m_blitter,
+        cColorSpace     = m_colorspace,
+        cSrcView        = swapImageView,
+        cSrcRect        = srcRect,
+        cDstView        = m_wctx->imageViews.at(imageIndex),
+        cDstRect        = dstRect,
+        cRepeat         = i,
+        cSync           = sync,
+        cHud            = m_hud,
+        cFrameId        = m_wctx->frameId
+      ] (DxvkContext* ctx) {
+        // Blit back buffer onto Vulkan swap chain
+        auto contextObjects = ctx->beginExternalRendering();
 
-      SubmitPresent(sync, i);
+        cBlitter->beginPresent(contextObjects,
+          cDstView, cColorSpace, cDstRect,
+          cSrcView, cColorSpace, cSrcRect);
+
+        if (cHud) {
+          if (!cRepeat)
+            cHud->update();
+
+          cHud->render(contextObjects, cDstView, cColorSpace);
+        }
+
+        cBlitter->endPresent(contextObjects, cDstView);
+
+        // Submit command list and present
+        ctx->synchronizeWsi(cSync);
+        ctx->flushCommandList(nullptr);
+
+        uint64_t frameId = cRepeat ? 0 : cFrameId;
+
+        cDevice->presentImage(cPresenter,
+          cPresenter->info().presentMode,
+          frameId, cPresentStatus);
+      });
+
+      m_parent->FlushCsChunk();
     }
 
     SyncFrameLatency();
@@ -870,39 +904,6 @@ namespace dxvk {
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-  }
-
-
-  void D3D9SwapChainEx::SubmitPresent(const PresenterSync& Sync, uint32_t Repeat) {
-    // Bump frame ID
-    if (!Repeat)
-      m_wctx->frameId += 1;
-
-    // Present from CS thread so that we don't
-    // have to synchronize with it first.
-    m_presentStatus.result = VK_NOT_READY;
-
-    m_parent->EmitCs([this,
-      cRepeat      = Repeat,
-      cSync        = Sync,
-      cHud         = m_hud,
-      cPresentMode = m_wctx->presenter->info().presentMode,
-      cFrameId     = m_wctx->frameId,
-      cCommandList = m_context->endRecording()
-    ] (DxvkContext* ctx) {
-      cCommandList->setWsiSemaphores(cSync);
-      m_device->submitCommandList(cCommandList, nullptr);
-
-      if (cHud != nullptr && !cRepeat)
-        cHud->update();
-
-      uint64_t frameId = cRepeat ? 0 : cFrameId;
-
-      m_device->presentImage(m_wctx->presenter,
-        cPresentMode, frameId, &m_presentStatus);
-    });
-
-    m_parent->FlushCsChunk();
   }
 
 
@@ -1083,29 +1084,22 @@ namespace dxvk {
       m_backBuffers.emplace_back(surface);
     }
 
-    auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = 1;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = 1;
+    small_vector<Rc<DxvkImage>, 4> images;
 
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
-      m_context->initImage(
-        m_backBuffers[i]->GetCommonTexture()->GetImage(),
-        subresources, VK_IMAGE_LAYOUT_UNDEFINED);
-    }
+    for (size_t i = 0; i < m_backBuffers.size(); i++)
+      images.push_back(m_backBuffers[i]->GetCommonTexture()->GetImage());
 
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr);
+    m_parent->InjectCs([
+      cImages = std::move(images)
+    ] (DxvkContext* ctx) {
+      for (size_t i = 0; i < cImages.size(); i++) {
+        ctx->initImage(cImages[i],
+          cImages[i]->getAvailableSubresources(),
+          VK_IMAGE_LAYOUT_UNDEFINED);
+      }
+    });
 
     return D3D_OK;
   }

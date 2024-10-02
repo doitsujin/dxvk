@@ -1039,6 +1039,19 @@ namespace dxvk {
       return m_swvpEmulator.GetShaderCount();
     }
 
+    void InjectCsChunk(
+            DxvkCsChunkRef&&            Chunk,
+            bool                        Synchronize);
+
+    template<typename Fn>
+    void InjectCs(
+            Fn&&                        Command) {
+      auto chunk = AllocCsChunk();
+      chunk->push(std::move(Command));
+
+      InjectCsChunk(std::move(chunk), false);
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {

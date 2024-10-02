@@ -85,6 +85,8 @@ namespace dxvk {
       ctx->setLogicOpState(loState);
     });
 
+    SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
 
@@ -5462,6 +5464,13 @@ namespace dxvk {
       // Change the draw call parameters to reflect the changed index buffer
       FirstIndex = 0;
     }
+  }
+
+
+  void D3D9DeviceEx::InjectCsChunk(
+          DxvkCsChunkRef&&            Chunk,
+          bool                        Synchronize) {
+    m_csThread.injectChunk(std::move(Chunk), Synchronize);
   }
 
 
