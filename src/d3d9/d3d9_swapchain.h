@@ -145,7 +145,6 @@ namespace dxvk {
     D3DGAMMARAMP              m_ramp;
 
     Rc<DxvkDevice>            m_device;
-    Rc<DxvkContext>           m_context;
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
     std::unordered_map<
@@ -191,8 +190,6 @@ namespace dxvk {
     D3D9VkExtSwapchain m_swapchainExt;
 
     void PresentImage(UINT PresentInterval);
-
-    void SubmitPresent(const PresenterSync& Sync, uint32_t Repeat);
 
     void SynchronizePresent();
 
