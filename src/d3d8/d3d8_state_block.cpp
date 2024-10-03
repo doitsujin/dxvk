@@ -13,6 +13,13 @@ HRESULT dxvk::D3D8StateBlock::Capture() {
       m_textures[stage] = m_device->m_textures[stage].ptr();
   }
 
+  for (DWORD stream = 0; stream < m_streams.size(); stream++) {
+    if (m_capture.streams.get(stream)) {
+      m_streams[stream].buffer = m_device->m_streams[stream].buffer.ptr();
+      m_streams[stream].stride = m_device->m_streams[stream].stride;
+    }
+  }
+
   if (m_capture.indices) {
     m_baseVertexIndex = m_device->m_baseVertexIndex;
     m_indices = m_device->m_indices.ptr();
@@ -36,6 +43,11 @@ HRESULT dxvk::D3D8StateBlock::Apply() {
   for (DWORD stage = 0; stage < m_textures.size(); stage++) {
     if (m_capture.textures.get(stage))
       m_device->SetTexture(stage, m_textures[stage]);
+  }
+
+  for (DWORD stream = 0; stream < m_streams.size(); stream++) {
+    if (m_capture.streams.get(stream))
+      m_device->SetStreamSource(stream, m_streams[stream].buffer, m_streams[stream].stride);
   }
 
   if (m_capture.indices)

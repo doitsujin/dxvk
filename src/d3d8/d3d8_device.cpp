@@ -1400,6 +1400,9 @@ namespace dxvk {
     if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStreamSource(StreamNumber, pStreamData, Stride);
+
     D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
     HRESULT res = GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
 
