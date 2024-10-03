@@ -53,6 +53,9 @@ namespace dxvk {
 
     m_bridge->SetAPIName("D3D8");
     m_bridge->SetD3D8CompatibilityMode(true);
+    // The default value of D3DRS_POINTSIZE_MIN in D3D8 is 0.0f,
+    // whereas it's initialized to 1.0f in D3D9 by default
+    GetD3D9()->SetRenderState(d3d9::D3DRS_POINTSIZE_MIN, bit::cast<DWORD>(0.0f));
 
     ResetState();
     RecreateBackBuffersAndAutoDepthStencil();
