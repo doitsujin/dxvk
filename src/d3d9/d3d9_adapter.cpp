@@ -186,6 +186,12 @@ namespace dxvk {
     if (pQualityLevels != nullptr)
       *pQualityLevels = 1;
 
+    if (unlikely(MultiSampleType > D3DMULTISAMPLE_16_SAMPLES))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(SurfaceFormat == D3D9Format::Unknown))
+      return D3DERR_INVALIDCALL;
+
     auto dst = ConvertFormatUnfixed(SurfaceFormat);
     if (dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
@@ -194,7 +200,12 @@ namespace dxvk {
      && (SurfaceFormat == D3D9Format::D32_LOCKABLE
       || SurfaceFormat == D3D9Format::D32F_LOCKABLE
       || SurfaceFormat == D3D9Format::D16_LOCKABLE
-      || SurfaceFormat == D3D9Format::INTZ))
+      || SurfaceFormat == D3D9Format::INTZ
+      || SurfaceFormat == D3D9Format::DXT1
+      || SurfaceFormat == D3D9Format::DXT2
+      || SurfaceFormat == D3D9Format::DXT3
+      || SurfaceFormat == D3D9Format::DXT4
+      || SurfaceFormat == D3D9Format::DXT5))
       return D3DERR_NOTAVAILABLE;
 
     uint32_t sampleCount = std::max<uint32_t>(MultiSampleType, 1u);
