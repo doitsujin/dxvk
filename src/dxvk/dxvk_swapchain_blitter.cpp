@@ -261,17 +261,26 @@ namespace dxvk {
       m_gammaView = m_gammaImage->createView(viewInfo);
     }
 
+    uploadTexture(ctx, m_gammaImage, m_gammaBuffer);
+    m_gammaBuffer = nullptr;
+  }
+
+
+  void DxvkSwapchainBlitter::uploadTexture(
+    const DxvkContextObjects&         ctx,
+    const Rc<DxvkImage>&              image,
+    const Rc<DxvkBuffer>&             buffer) {
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-    barrier.srcStageMask = m_gammaImage->info().stages;
-    barrier.srcAccessMask = m_gammaImage->info().access;
+    barrier.srcStageMask = image->info().stages;
+    barrier.srcAccessMask = image->info().access;
     barrier.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
     barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = m_gammaImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    barrier.newLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = m_gammaImage->handle();
-    barrier.subresourceRange = m_gammaImage->getAvailableSubresources();
+    barrier.image = image->handle();
+    barrier.subresourceRange = image->getAvailableSubresources();
 
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
     depInfo.imageMemoryBarrierCount = 1;
@@ -279,18 +288,18 @@ namespace dxvk {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    DxvkBufferSliceHandle bufferSlice = m_gammaBuffer->getSliceHandle();
+    DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle();
 
     VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
     copyRegion.bufferOffset = bufferSlice.offset;
-    copyRegion.imageExtent = { m_gammaCpCount, 1u, 1u };
+    copyRegion.imageExtent = image->info().extent;
     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 copy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
     copy.srcBuffer = bufferSlice.handle;
-    copy.dstImage = m_gammaImage->handle();
-    copy.dstImageLayout = m_gammaImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copy.dstImage = image->handle();
+    copy.dstImageLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copy.regionCount = 1;
     copy.pRegions = &copyRegion;
 
@@ -298,17 +307,15 @@ namespace dxvk {
 
     barrier.srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstStageMask = m_gammaImage->info().stages;
-    barrier.dstAccessMask = m_gammaImage->info().access;
+    barrier.dstStageMask = image->info().stages;
+    barrier.dstAccessMask = image->info().access;
     barrier.oldLayout = barrier.newLayout;
-    barrier.newLayout = m_gammaImage->info().layout;
+    barrier.newLayout = image->info().layout;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gammaImage->getAllocation());
-
-    m_gammaBuffer = nullptr;
+    ctx.cmd->trackResource<DxvkAccess::Read>(buffer->getAllocation());
+    ctx.cmd->trackResource<DxvkAccess::Write>(image->getAllocation());
   }
 
 

@@ -180,6 +180,14 @@ namespace dxvk {
     void uploadGammaImage(
       const DxvkContextObjects&         ctx);
 
+    void uploadCursorImage(
+      const DxvkContextObjects&         ctx);
+
+    void uploadTexture(
+      const DxvkContextObjects&         ctx,
+      const Rc<DxvkImage>&              image,
+      const Rc<DxvkBuffer>&             buffer);
+
     void createSampler();
 
     void createShaders();
