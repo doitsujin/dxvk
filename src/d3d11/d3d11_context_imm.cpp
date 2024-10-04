@@ -992,6 +992,10 @@ namespace dxvk {
     // Vulkan queue submission is performed.
     if (synchronizeSubmission)
       m_device->waitForSubmission(&m_submitStatus);
+
+    // Free local staging buffer so that we don't
+    // end up with a persistent allocation
+    ResetStagingBuffer();
   }
   
 }
