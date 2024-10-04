@@ -103,7 +103,9 @@ namespace dxvk {
 
     inline HRESULT SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer8* pStreamData, UINT Stride) {
       m_streams[StreamNumber].buffer = pStreamData;
-      m_streams[StreamNumber].stride = Stride;
+      // The previous stride is preserved if pStreamData is NULL
+      if (likely(pStreamData != nullptr))
+        m_streams[StreamNumber].stride = Stride;
       m_capture.streams.set(StreamNumber, true);
       return D3D_OK;
     }
