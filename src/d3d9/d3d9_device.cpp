@@ -8152,6 +8152,12 @@ namespace dxvk {
       "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n",
       "    - Swap effect:        ", pPresentationParameters->SwapEffect, "\n"));
 
+    if (!pPresentationParameters->Windowed &&
+        (pPresentationParameters->BackBufferWidth  == 0
+      || pPresentationParameters->BackBufferHeight == 0)) {
+      return D3DERR_INVALIDCALL;
+    }
+
     if (backBufferFmt != D3D9Format::Unknown && !unlockedFormats) {
       if (!IsSupportedBackBufferFormat(backBufferFmt)) {
         Logger::err(str::format("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format: ",
