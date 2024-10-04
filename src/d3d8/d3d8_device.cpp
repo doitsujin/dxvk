@@ -219,7 +219,7 @@ namespace dxvk {
     );
 
     if (likely(SUCCEEDED(res)))
-      *ppSwapChain = ref(new D3D8SwapChain(this, std::move(pSwapChain9)));
+      *ppSwapChain = ref(new D3D8SwapChain(this, pPresentationParameters, std::move(pSwapChain9)));
 
     return res;
   }
