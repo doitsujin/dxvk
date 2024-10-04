@@ -58,7 +58,12 @@ namespace dxvk {
   }
 
   // (9<-8) D3DD3DPRESENT_PARAMETERS: Returns D3D9's params given an input for D3D8
-  inline d3d9::D3DPRESENT_PARAMETERS ConvertPresentParameters9(const D3DPRESENT_PARAMETERS* pParams) {
+  inline d3d9::D3DPRESENT_PARAMETERS ConvertPresentParameters9(D3DPRESENT_PARAMETERS* pParams) {
+    // A 0 back buffer count needs to be corrected and made visible to the D3D8 application as well
+    pParams->BackBufferCount = std::max(pParams->BackBufferCount, 1u);
+
+    if (pParams->BackBufferFormat == D3DFMT_UNKNOWN)
+      pParams->BackBufferFormat = D3DFMT_X8R8G8B8;
 
     d3d9::D3DPRESENT_PARAMETERS params;
     params.BackBufferWidth = pParams->BackBufferWidth;
@@ -68,7 +73,6 @@ namespace dxvk {
 
     params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
     params.MultiSampleQuality = 0; // (D3D8: no MultiSampleQuality), TODO: get a value for this
-
 
     UINT PresentationInterval = pParams->FullScreen_PresentationInterval;
 
