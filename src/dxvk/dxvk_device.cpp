@@ -14,11 +14,11 @@ namespace dxvk {
     m_instance          (instance),
     m_adapter           (adapter),
     m_vkd               (vkd),
+    m_queues            (queues),
     m_features          (features),
     m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
-    m_queues            (queues),
     m_submissionQueue   (this, queueCallback) {
 
   }

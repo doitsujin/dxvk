@@ -214,6 +214,33 @@ namespace dxvk {
 
 
   /**
+   * \brief Sharing mode info
+   *
+   * Stores available queue families and provides methods
+   * to fill in sharing mode infos for resource creation.
+   */
+  struct DxvkSharingModeInfo {
+    std::array<uint32_t, 2u> queueFamilies = { };
+
+    VkSharingMode sharingMode() const {
+      return queueFamilies[0] != queueFamilies[1]
+        ? VK_SHARING_MODE_CONCURRENT
+        : VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    template<typename CreateInfo>
+    void fill(CreateInfo& info) const {
+      info.sharingMode = sharingMode();
+
+      if (info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+        info.queueFamilyIndexCount = queueFamilies.size();
+        info.pQueueFamilyIndices = queueFamilies.data();
+      }
+    }
+  };
+
+
+  /**
    * \brief Buffer view key
    *
    * Stores buffer view properties.
@@ -1120,6 +1147,8 @@ namespace dxvk {
   private:
 
     DxvkDevice* m_device;
+
+    DxvkSharingModeInfo       m_sharingModeInfo;
 
     dxvk::mutex               m_mutex;
     dxvk::condition_variable  m_cond;

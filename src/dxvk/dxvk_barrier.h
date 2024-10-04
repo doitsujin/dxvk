@@ -533,16 +533,6 @@ namespace dxvk {
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
 
-    void releaseBuffer(
-            DxvkBarrierSet&           acquire,
-      const DxvkBufferSliceHandle&    bufSlice,
-            uint32_t                  srcQueue,
-            VkPipelineStageFlags      srcStages,
-            VkAccessFlags             srcAccess,
-            uint32_t                  dstQueue,
-            VkPipelineStageFlags      dstStages,
-            VkAccessFlags             dstAccess);
-
     void releaseImage(
             DxvkBarrierSet&           acquire,
       const Rc<DxvkImage>&            image,

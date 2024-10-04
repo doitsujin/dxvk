@@ -434,7 +434,7 @@ namespace dxvk {
 
 
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
-  : m_device(device) {
+  : m_device(device), m_sharingModeInfo(m_device->getSharingMode()) {
     VkPhysicalDeviceMemoryProperties memInfo = m_device->adapter()->memoryProperties();
 
     m_memTypeCount = memInfo.memoryTypeCount;
@@ -616,7 +616,7 @@ namespace dxvk {
           DxvkLocalAllocationCache*   allocationCache) {
     Rc<DxvkResourceAllocation> allocation;
 
-    if (likely(!createInfo.flags && createInfo.sharingMode == VK_SHARING_MODE_EXCLUSIVE)) {
+    if (likely(!createInfo.flags)) {
       VkMemoryRequirements memoryRequirements = { };
       memoryRequirements.size = createInfo.size;
       memoryRequirements.alignment = GlobalBufferAlignment;
@@ -998,7 +998,7 @@ namespace dxvk {
       VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       bufferInfo.size = size;
       bufferInfo.usage = type.bufferUsage;
-      bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      m_sharingModeInfo.fill(bufferInfo);
 
       VkResult status = vk->vkCreateBuffer(vk->device(), &bufferInfo, nullptr, &buffer);
 
@@ -1499,7 +1499,7 @@ namespace dxvk {
                             | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                             | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                             | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    bufferInfo.sharingMode  = VK_SHARING_MODE_EXCLUSIVE;
+    m_sharingModeInfo.fill(bufferInfo);
 
     if (getBufferMemoryRequirements(bufferInfo, requirements))
       typeMask &= requirements.memoryRequirements.memoryTypeBits;
@@ -1561,7 +1561,7 @@ namespace dxvk {
     // to be supported, but we need to be robust around buffer creation anyway.
     VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     bufferInfo.size = 65536;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    m_sharingModeInfo.fill(bufferInfo);
 
     VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
 

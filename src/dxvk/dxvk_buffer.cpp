@@ -15,6 +15,7 @@ namespace dxvk {
     m_allocator     (&allocator),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
     // Create and assign actual buffer resource
     assignSlice(allocateSlice());
@@ -31,12 +32,13 @@ namespace dxvk {
     m_allocator     (&allocator),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
+    m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.usage = m_info.usage;
     info.size = m_info.size;
-    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    m_sharingMode.fill(info);
 
     assignSlice(allocator.importBufferResource(info, importInfo));
   }

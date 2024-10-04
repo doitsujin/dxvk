@@ -317,7 +317,7 @@ namespace dxvk {
       info.flags = m_info.flags;
       info.usage = m_info.usage;
       info.size = m_info.size;
-      info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      m_sharingMode.fill(info);
 
       return m_allocator->createBufferResource(info, m_properties, cache);
     }
@@ -391,6 +391,7 @@ namespace dxvk {
     DxvkMemoryAllocator*        m_allocator     = nullptr;
     VkMemoryPropertyFlags       m_properties    = 0u;
     VkShaderStageFlags          m_shaderStages  = 0u;
+    DxvkSharingModeInfo         m_sharingMode   = { };
 
     DxvkBufferCreateInfo        m_info          = { };
 

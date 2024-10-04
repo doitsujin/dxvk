@@ -1435,11 +1435,9 @@ namespace dxvk {
       slice.handle, slice.offset,
       dxvk::align(slice.length, 4), 0);
 
-    m_initBarriers.accessBuffer(slice,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    m_initBarriers.accessMemory(
+      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+      buffer->info().stages, buffer->info().access);
 
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
@@ -2556,15 +2554,23 @@ namespace dxvk {
 
     m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
 
-    m_sdmaBarriers.releaseBuffer(
-      m_initBarriers, bufferSlice,
-      m_device->queues().transfer.queueFamily,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      m_device->queues().graphics.queueFamily,
-      buffer->info().stages,
-      buffer->info().access);
-    
+    if (m_device->hasDedicatedTransferQueue()) {
+      // Buffers use SHARING_MODE_CONCURRENT, so no explicit queue
+      // family ownership transfer is required. Access is serialized
+      // via a semaphore.
+      m_sdmaBarriers.accessMemory(
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_NONE, VK_ACCESS_NONE);
+
+      m_initBarriers.accessMemory(
+        VK_PIPELINE_STAGE_NONE, VK_ACCESS_NONE,
+        buffer->info().stages, buffer->info().access);
+    } else {
+      m_sdmaBarriers.accessMemory(
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+        buffer->info().stages, buffer->info().access);
+    }
+
     m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }

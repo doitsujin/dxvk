@@ -134,7 +134,18 @@ namespace dxvk {
       return m_queues.transfer.queueHandle
           != m_queues.graphics.queueHandle;
     }
-    
+
+    /**
+     * \brief Queries sharing mode info
+     * \returns Sharing mode info
+     */
+    DxvkSharingModeInfo getSharingMode() const {
+      DxvkSharingModeInfo result = { };
+      result.queueFamilies[0] = m_queues.graphics.queueFamily;
+      result.queueFamilies[1] = m_queues.transfer.queueFamily;
+      return result;
+    }
+
     /**
      * \brief The instance
      * 
@@ -539,6 +550,8 @@ namespace dxvk {
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
 
+    DxvkDeviceQueueSet          m_queues;
+
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
     
@@ -547,8 +560,6 @@ namespace dxvk {
 
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
-    
-    DxvkDeviceQueueSet          m_queues;
     
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     

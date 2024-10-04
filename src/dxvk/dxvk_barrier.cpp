@@ -117,50 +117,6 @@ namespace dxvk {
   }
 
 
-  void DxvkBarrierSet::releaseBuffer(
-          DxvkBarrierSet&           acquire,
-    const DxvkBufferSliceHandle&    bufSlice,
-          uint32_t                  srcQueue,
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          uint32_t                  dstQueue,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess) {
-    auto& release = *this;
-
-    m_allBarrierSrcStages |= srcStages;
-
-    VkBufferMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
-    barrier.srcStageMask                = srcStages & vk::StageDeviceMask;
-    barrier.srcAccessMask               = srcAccess & vk::AccessWriteMask;
-    barrier.dstStageMask                = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-    barrier.dstAccessMask               = 0;
-    barrier.srcQueueFamilyIndex         = srcQueue;
-    barrier.dstQueueFamilyIndex         = dstQueue;
-    barrier.buffer                      = bufSlice.handle;
-    barrier.offset                      = bufSlice.offset;
-    barrier.size                        = bufSlice.length;
-    release.m_bufBarriers.push_back(barrier);
-
-    barrier.srcStageMask                = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-    barrier.srcAccessMask               = 0;
-    barrier.dstStageMask                = dstStages;
-    barrier.dstAccessMask               = dstAccess;
-    acquire.m_bufBarriers.push_back(barrier);
-
-    if (dstAccess & vk::AccessHostMask) {
-      acquire.m_hostBarrierSrcStages |= srcStages & vk::StageDeviceMask;
-      acquire.m_hostBarrierDstAccess |= dstAccess & vk::AccessHostMask;
-    }
-
-    DxvkAccessFlags access(DxvkAccess::Read, DxvkAccess::Write);
-    release.m_bufSlices.insert(bufSlice.handle,
-      DxvkBarrierBufferSlice(bufSlice.offset, bufSlice.length, access));
-    acquire.m_bufSlices.insert(bufSlice.handle,
-      DxvkBarrierBufferSlice(bufSlice.offset, bufSlice.length, access));
-  }
-
-
   void DxvkBarrierSet::releaseImage(
           DxvkBarrierSet&           acquire,
     const Rc<DxvkImage>&            image,
