@@ -38,11 +38,10 @@ namespace dxvk {
      *
      * Tries to suballocate from existing buffer,
      * or creates a new buffer if necessary.
-     * \param [in] align Minimum alignment
      * \param [in] size Number of bytes to allocate
      * \returns Allocated slice
      */
-    DxvkBufferSlice alloc(VkDeviceSize align, VkDeviceSize size);
+    DxvkBufferSlice alloc(VkDeviceSize size);
 
     /**
      * \brief Resets staging buffer and allocator
