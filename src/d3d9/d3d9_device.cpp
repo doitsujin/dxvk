@@ -531,7 +531,7 @@ namespace dxvk {
     if (unlikely(m_losableResourceCounter.load() != 0 && !IsExtended() && m_d3d9Options.countLosableResources)) {
       Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
-      return D3DERR_INVALIDCALL;
+      return D3DERR_DEVICELOST;
     }
 
     HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
