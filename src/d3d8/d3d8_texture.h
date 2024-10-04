@@ -93,7 +93,7 @@ namespace dxvk {
       HRESULT res = D3DERR_INVALIDCALL;
       if constexpr (std::is_same_v<D3D8, IDirect3DTexture8>) {
         res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr); 
-      } else if constexpr (std::is_same_v<D3D8, IDirect3DVolume8>) {
+      } else if constexpr (std::is_same_v<D3D8, IDirect3DVolumeTexture8>) {
         res = this->GetD3D9()->GetVolumeLevel(Index, &ptr);
       } else if constexpr (std::is_same_v<D3D8, IDirect3DCubeTexture8>) {
         res = this->GetD3D9()->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACES(Index % CUBE_FACES), Index / CUBE_FACES, &ptr);
