@@ -2540,7 +2540,7 @@ namespace dxvk {
     const void*                     data) {
     auto bufferSlice = buffer->getSliceHandle();
 
-    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE, bufferSlice.length);
+    auto stagingSlice = m_staging.alloc(bufferSlice.length);
     auto stagingHandle = stagingSlice.getSliceHandle();
     std::memcpy(stagingHandle.mapPtr, data, bufferSlice.length);
 
@@ -3478,7 +3478,7 @@ namespace dxvk {
         }
 
         auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
-        auto stagingSlice  = m_staging.alloc(CACHE_LINE_SIZE, elementSize * util::flattenImageExtent(blockCount));
+        auto stagingSlice  = m_staging.alloc(elementSize * util::flattenImageExtent(blockCount));
         auto stagingHandle = stagingSlice.getSliceHandle();
 
         util::packImageData(stagingHandle.mapPtr, layerData,

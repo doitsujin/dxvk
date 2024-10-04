@@ -3103,7 +3103,7 @@ namespace dxvk {
   template<typename ContextType>
   DxvkBufferSlice D3D11CommonContext<ContextType>::AllocStagingBuffer(
           VkDeviceSize                      Size) {
-    return m_staging.alloc(256, Size);
+    return m_staging.alloc(Size);
   }
 
 
