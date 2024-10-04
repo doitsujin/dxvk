@@ -114,10 +114,12 @@ namespace dxvk {
      * Finishes rendering and prepares the image for presentation.
      * \param [in] ctx Context objects
      * \param [in] dstView Swap chain image view
+     * \param [in] dstColorSpace Swap chain color space
      */
     void endPresent(
       const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView);
+      const Rc<DxvkImageView>&  dstView,
+            VkColorSpaceKHR     dstColorSpace);
 
     /**
      * \brief Sets gamma ramp
@@ -131,6 +133,30 @@ namespace dxvk {
     void setGammaRamp(
             uint32_t            cpCount,
       const DxvkGammaCp*        cpData);
+
+    /**
+     * \brief Sets software cursor texture
+     *
+     * The cursor image is assumed to be in sRGB color space.
+     * \param [in] extent Texture size, in pixels
+     * \param [in] format Texture format
+     * \param [in] data Texture data. Assumed to be
+     *    tightly packed according to the format.
+     */
+    void setCursorTexture(
+            VkExtent2D          extent,
+            VkFormat            format,
+      const void*               data);
+
+    /**
+     * \brief Sets cursor position
+     *
+     * If the size does not match the texture size, the
+     * cursor will be rendered with a linear filter.
+     * \param [in] rect Cursor rectangle, in pixels
+     */
+    void setCursorPos(
+            VkRect2D            rect);
 
   private:
 
@@ -168,6 +194,11 @@ namespace dxvk {
     Rc<DxvkImageView>   m_gammaView;
     uint32_t            m_gammaCpCount = 0;
 
+    Rc<DxvkBuffer>      m_cursorBuffer;
+    Rc<DxvkImage>       m_cursorImage;
+    Rc<DxvkImageView>   m_cursorView;
+    VkRect2D            m_cursorRect = { };
+
     Rc<DxvkSampler>     m_samplerPresent;
     Rc<DxvkSampler>     m_samplerGamma;
 
@@ -176,6 +207,16 @@ namespace dxvk {
 
     std::unordered_map<DxvkSwapchainPipelineKey,
       VkPipeline, DxvkHash, DxvkEq> m_pipelines;
+
+    void performDraw(
+      const DxvkContextObjects&         ctx,
+      const Rc<DxvkImageView>&          dstView,
+            VkColorSpaceKHR             dstColorSpace,
+            VkRect2D                    dstRect,
+      const Rc<DxvkImageView>&          srcView,
+            VkColorSpaceKHR             srcColorSpace,
+            VkRect2D                    srcRect,
+            VkBool32                    enableBlending);
 
     void uploadGammaImage(
       const DxvkContextObjects&         ctx);

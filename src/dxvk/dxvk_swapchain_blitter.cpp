@@ -63,6 +63,9 @@ namespace dxvk {
     if (m_gammaBuffer)
       uploadGammaImage(ctx);
 
+    if (m_cursorBuffer)
+      uploadCursorImage(ctx);
+
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -99,85 +102,29 @@ namespace dxvk {
 
     ctx.cmd->cmdBeginRendering(&renderInfo);
 
-    DxvkSwapchainPipelineKey key;
-    key.srcSpace = srcColorSpace;
-    key.srcSamples = srcView->image()->info().sampleCount;
-    key.srcIsSrgb = srcView->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
-    key.dstSpace = dstColorSpace;
-    key.dstFormat = dstView->info().format;
-    key.needsGamma = m_gammaView != nullptr;
-    key.needsBlit = dstRect.extent != srcRect.extent;
-
-    VkPipeline pipeline = getPipeline(key);
-
-    VkViewport viewport = { };
-    viewport.x = float(dstRect.offset.x);
-    viewport.y = float(dstRect.offset.y);
-    viewport.width = float(dstRect.extent.width);
-    viewport.height = float(dstRect.extent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 0.0f;
-
-    ctx.cmd->cmdSetViewport(1, &viewport);
-    ctx.cmd->cmdSetScissor(1, &dstRect);
-
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
-
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = m_samplerPresent->handle();
-    imageDescriptor.imageView = srcView->handle();
-    imageDescriptor.imageLayout = srcView->image()->info().layout;
-
-    VkDescriptorImageInfo gammaDescriptor = { };
-    gammaDescriptor.sampler = m_samplerGamma->handle();
-
-    if (m_gammaView) {
-      gammaDescriptor.imageView = m_gammaView->handle();
-      gammaDescriptor.imageLayout = m_gammaView->image()->info().layout;
-    }
-
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(), descriptorWrites.data());
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-      set, 0, nullptr);
-
-    PushConstants args = { };
-    args.srcOffset = srcRect.offset;
-    args.srcExtent = srcRect.extent;
-    args.dstOffset = dstRect.offset;
-
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(args), &args);
-
-    ctx.cmd->cmdDraw(3, 1, 0, 0);
-
-    // Make sure to keep used resources alive
-    ctx.cmd->trackResource<DxvkAccess::Read>(srcView->image());
-    ctx.cmd->trackResource<DxvkAccess::Write>(dstView->image());
-
-    if (m_gammaImage)
-      ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaImage->getAllocation());
-
-    ctx.cmd->trackSampler(m_samplerGamma);
-    ctx.cmd->trackSampler(m_samplerPresent);
+    performDraw(ctx,
+      dstView, dstColorSpace, dstRect,
+      srcView, srcColorSpace, srcRect,
+      VK_FALSE);
   }
 
 
   void DxvkSwapchainBlitter::endPresent(
     const DxvkContextObjects& ctx,
-    const Rc<DxvkImageView>&  dstView) {
+    const Rc<DxvkImageView>&  dstView,
+          VkColorSpaceKHR     dstColorSpace) {
+    std::unique_lock lock(m_mutex);
+
+    if (m_cursorView) {
+      VkRect2D cursorArea = { };
+      cursorArea.extent.width = m_cursorImage->info().extent.width;
+      cursorArea.extent.height = m_cursorImage->info().extent.height;
+
+      performDraw(ctx, dstView, dstColorSpace, m_cursorRect,
+        m_cursorView, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, cursorArea,
+        VK_TRUE);
+    }
+
     ctx.cmd->cmdEndRendering();
 
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -228,6 +175,182 @@ namespace dxvk {
   }
 
 
+  void DxvkSwapchainBlitter::setCursorTexture(
+          VkExtent2D          extent,
+          VkFormat            format,
+    const void*               data) {
+    std::unique_lock lock(m_mutex);
+
+    if (extent.width && extent.height && format && data) {
+      auto formatInfo = lookupFormatInfo(format);
+
+      DxvkBufferCreateInfo bufferInfo = { };
+      bufferInfo.size = extent.width * extent.height * formatInfo->elementSize;
+      bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+      bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
+
+      m_cursorBuffer = m_device->createBuffer(bufferInfo,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+      std::memcpy(m_cursorBuffer->mapPtr(0), data, bufferInfo.size);
+
+      DxvkImageCreateInfo imageInfo = { };
+      imageInfo.type = VK_IMAGE_TYPE_2D;
+      imageInfo.format = format;
+      imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+      imageInfo.extent = { extent.width, extent.height, 1u };
+      imageInfo.numLayers = 1u;
+      imageInfo.mipLevels = 1u;
+      imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                      | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                      | VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                       | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      imageInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
+                       | VK_ACCESS_TRANSFER_READ_BIT
+                       | VK_ACCESS_SHADER_READ_BIT;
+      imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+      imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+      m_cursorImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      DxvkImageViewKey viewInfo = { };
+      viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+      viewInfo.format = format;
+      viewInfo.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.mipIndex = 0u;
+      viewInfo.mipCount = 1u;
+      viewInfo.layerIndex = 0u;
+      viewInfo.layerCount = 1u;
+
+      m_cursorView = m_cursorImage->createView(viewInfo);
+    } else {
+      // Destroy cursor image
+      m_cursorBuffer = nullptr;
+      m_cursorImage = nullptr;
+      m_cursorView = nullptr;
+    }
+  }
+
+
+  void DxvkSwapchainBlitter::setCursorPos(
+          VkRect2D            rect) {
+    std::unique_lock lock(m_mutex);
+    m_cursorRect = rect;
+  }
+
+
+  void DxvkSwapchainBlitter::performDraw(
+    const DxvkContextObjects& ctx,
+    const Rc<DxvkImageView>&  dstView,
+          VkColorSpaceKHR     dstColorSpace,
+          VkRect2D            dstRect,
+    const Rc<DxvkImageView>&  srcView,
+          VkColorSpaceKHR     srcColorSpace,
+          VkRect2D            srcRect,
+          VkBool32            enableBlending) {
+    VkExtent3D dstExtent = dstView->mipLevelExtent(0);
+
+    VkOffset2D coordA = dstRect.offset;
+    VkOffset2D coordB = {
+      coordA.x + int32_t(dstRect.extent.width),
+      coordA.y + int32_t(dstRect.extent.height)
+    };
+
+    coordA.x = std::max(coordA.x, 0);
+    coordA.y = std::max(coordA.y, 0);
+    coordB.x = std::min(coordB.x, int32_t(dstExtent.width));
+    coordB.y = std::min(coordB.y, int32_t(dstExtent.height));
+
+    if (coordA.x >= coordB.x || coordA.y >= coordB.y)
+      return;
+
+    VkViewport viewport = { };
+    viewport.x = float(dstRect.offset.x);
+    viewport.y = float(dstRect.offset.y);
+    viewport.width = float(dstRect.extent.width);
+    viewport.height = float(dstRect.extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 0.0f;
+
+    ctx.cmd->cmdSetViewport(1, &viewport);
+
+    VkRect2D scissor = { };
+    scissor.offset = coordA;
+    scissor.extent.width = uint32_t(coordB.x - coordA.x);
+    scissor.extent.height = uint32_t(coordB.y - coordA.y);
+
+    ctx.cmd->cmdSetScissor(1, &scissor);
+
+    DxvkSwapchainPipelineKey key;
+    key.srcSpace = srcColorSpace;
+    key.srcSamples = srcView->image()->info().sampleCount;
+    key.srcIsSrgb = srcView->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+    key.dstSpace = dstColorSpace;
+    key.dstFormat = dstView->info().format;
+    key.needsGamma = m_gammaView != nullptr;
+    key.needsBlit = dstRect.extent != srcRect.extent;
+    key.needsBlending = enableBlending;
+
+    VkPipeline pipeline = getPipeline(key);
+
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
+
+    VkDescriptorImageInfo imageDescriptor = { };
+    imageDescriptor.sampler = m_samplerPresent->handle();
+    imageDescriptor.imageView = srcView->handle();
+    imageDescriptor.imageLayout = srcView->image()->info().layout;
+
+    VkDescriptorImageInfo gammaDescriptor = { };
+    gammaDescriptor.sampler = m_samplerGamma->handle();
+
+    if (m_gammaView) {
+      gammaDescriptor.imageView = m_gammaView->handle();
+      gammaDescriptor.imageLayout = m_gammaView->image()->info().layout;
+    }
+
+    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
+    }};
+
+    ctx.cmd->updateDescriptorSets(
+      descriptorWrites.size(), descriptorWrites.data());
+
+    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
+      set, 0, nullptr);
+
+    PushConstants args = { };
+    args.srcOffset = srcRect.offset;
+    args.srcExtent = srcRect.extent;
+    args.dstOffset = dstRect.offset;
+
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(args), &args);
+
+    ctx.cmd->cmdDraw(3, 1, 0, 0);
+
+    // Make sure to keep used resources alive
+    ctx.cmd->trackResource<DxvkAccess::Read>(srcView->image());
+    ctx.cmd->trackResource<DxvkAccess::Write>(dstView->image());
+
+    if (m_gammaImage)
+      ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaImage->getAllocation());
+
+    ctx.cmd->trackSampler(m_samplerGamma);
+    ctx.cmd->trackSampler(m_samplerPresent);
+  }
+
+
   void DxvkSwapchainBlitter::uploadGammaImage(
     const DxvkContextObjects&         ctx) {
     if (!m_gammaImage || m_gammaImage->info().extent.width != m_gammaCpCount) {
@@ -263,6 +386,13 @@ namespace dxvk {
 
     uploadTexture(ctx, m_gammaImage, m_gammaBuffer);
     m_gammaBuffer = nullptr;
+  }
+
+
+  void DxvkSwapchainBlitter::uploadCursorImage(
+    const DxvkContextObjects&         ctx) {
+    uploadTexture(ctx, m_cursorImage, m_cursorBuffer);
+    m_cursorBuffer = nullptr;
   }
 
 

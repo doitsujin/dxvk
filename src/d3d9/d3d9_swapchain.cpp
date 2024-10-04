@@ -880,7 +880,7 @@ namespace dxvk {
           cHud->render(contextObjects, cDstView, cColorSpace);
         }
 
-        cBlitter->endPresent(contextObjects, cDstView);
+        cBlitter->endPresent(contextObjects, cDstView, cColorSpace);
 
         // Submit command list and present
         ctx->synchronizeWsi(cSync);

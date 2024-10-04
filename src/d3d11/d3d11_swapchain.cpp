@@ -443,7 +443,7 @@ namespace dxvk {
         cHud->render(contextObjects, cBackBuffer, cColorSpace);
       }
 
-      cBlitter->endPresent(contextObjects, cBackBuffer);
+      cBlitter->endPresent(contextObjects, cBackBuffer, cColorSpace);
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
