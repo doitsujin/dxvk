@@ -43,6 +43,8 @@ namespace dxvk {
     VkBool32 needsBlit = VK_FALSE;
     /// Bit indicating whether a gamma curve is to be applied.
     VkBool32 needsGamma = VK_FALSE;
+    /// Bit indicating whether alpha blending is required
+    VkBool32 needsBlending = VK_FALSE;
 
     size_t hash() const {
       DxvkHashState hash;
@@ -53,6 +55,7 @@ namespace dxvk {
       hash.add(uint32_t(dstFormat));
       hash.add(uint32_t(needsBlit));
       hash.add(uint32_t(needsGamma));
+      hash.add(uint32_t(needsBlending));
       return hash;
     }
 
@@ -63,7 +66,8 @@ namespace dxvk {
           && dstSpace == other.dstSpace
           && dstFormat == other.dstFormat
           && needsBlit == other.needsBlit
-          && needsGamma == other.needsGamma;
+          && needsGamma == other.needsGamma
+          && needsBlending == other.needsBlending;
     }
   };
 

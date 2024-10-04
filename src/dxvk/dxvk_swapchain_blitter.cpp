@@ -494,14 +494,24 @@ namespace dxvk {
     msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
     msState.pSampleMask = &sampleMask;
 
-    VkPipelineColorBlendAttachmentState cbOpaqueAttachment = { };
-    cbOpaqueAttachment.colorWriteMask =
+    VkPipelineColorBlendAttachmentState cbAttachment = { };
+    cbAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo cbOpaqueState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbOpaqueState.attachmentCount = 1;
-    cbOpaqueState.pAttachments = &cbOpaqueAttachment;
+    if (key.needsBlending) {
+      cbAttachment.blendEnable = VK_TRUE;
+      cbAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+      cbAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+      cbAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+      cbAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+      cbAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+      cbAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    }
+
+    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cbState.attachmentCount = 1;
+    cbState.pAttachments = &cbAttachment;
 
     static const std::array<VkDynamicState, 2> dynStates = {
       VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
@@ -520,7 +530,7 @@ namespace dxvk {
     blitInfo.pViewportState = &vpState;
     blitInfo.pRasterizationState = &rsState;
     blitInfo.pMultisampleState = &msState;
-    blitInfo.pColorBlendState = &cbOpaqueState;
+    blitInfo.pColorBlendState = &cbState;
     blitInfo.pDynamicState = &dynState;
     blitInfo.layout = m_pipelineLayout;
     blitInfo.basePipelineIndex = -1;
