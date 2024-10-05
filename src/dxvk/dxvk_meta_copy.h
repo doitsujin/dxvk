@@ -17,7 +17,7 @@ namespace dxvk {
   /**
    * \brief Push constants for buffer image copies
    */
-  struct DxvkCopyBufferImageArgs {
+  struct DxvkFormattedBufferCopyArgs {
     VkOffset3D dstOffset; uint32_t pad0;
     VkOffset3D srcOffset; uint32_t pad1;
     VkExtent3D extent;    uint32_t pad2;
@@ -29,8 +29,8 @@ namespace dxvk {
    * \brief Pair of view formats for copy operation
    */
   struct DxvkMetaCopyFormats {
-    VkFormat dstFormat;
-    VkFormat srcFormat;
+    VkFormat dstFormat = VK_FORMAT_UNDEFINED;
+    VkFormat srcFormat = VK_FORMAT_UNDEFINED;
   };
 
   /**
@@ -40,9 +40,9 @@ namespace dxvk {
    * that is used for fragment shader copies.
    */
   struct DxvkMetaCopyPipeline {
-    VkDescriptorSetLayout dsetLayout;
-    VkPipelineLayout      pipeLayout;
-    VkPipeline            pipeHandle;
+    VkDescriptorSetLayout dsetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout      pipeLayout = VK_NULL_HANDLE;
+    VkPipeline            pipeHandle = VK_NULL_HANDLE;
   };
 
   /**
@@ -120,7 +120,7 @@ namespace dxvk {
      * \param [in] srcAspect Source aspect mask
      * \returns Corresponding color format
      */
-    DxvkMetaCopyFormats getFormats(
+    DxvkMetaCopyFormats getCopyImageFormats(
             VkFormat              dstFormat,
             VkImageAspectFlags    dstAspect,
             VkFormat              srcFormat,
@@ -134,7 +134,7 @@ namespace dxvk {
      * \param [in] dstSamples Destination sample count
      * \returns Compatible pipeline for the operation
      */
-    DxvkMetaCopyPipeline getPipeline(
+    DxvkMetaCopyPipeline getCopyImagePipeline(
             VkImageViewType       viewType,
             VkFormat              dstFormat,
             VkSampleCountFlagBits dstSamples);
@@ -143,7 +143,7 @@ namespace dxvk {
      * \brief Creates pipeline for buffer image copy
      * \returns Compute pipeline for buffer image copies
      */
-    DxvkMetaCopyPipeline getCopyBufferImagePipeline();
+    DxvkMetaCopyPipeline getCopyFormattedBufferPipeline();
 
   private:
 
@@ -174,7 +174,7 @@ namespace dxvk {
     VkShaderModule createShaderModule(
       const SpirvCodeBuffer&          code) const;
     
-    DxvkMetaCopyPipeline createCopyBufferImagePipeline();
+    DxvkMetaCopyPipeline createCopyFormattedBufferPipeline();
 
     DxvkMetaCopyPipeline createPipeline(
       const DxvkMetaCopyPipelineKey&  key);

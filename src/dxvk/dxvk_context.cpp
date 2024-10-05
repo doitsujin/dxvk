@@ -938,7 +938,7 @@ namespace dxvk {
       srcView = srcBuffer->createView(viewInfo);
     }
 
-    auto pipeInfo = m_common->metaCopy().getCopyBufferImagePipeline();
+    auto pipeInfo = m_common->metaCopy().getCopyFormattedBufferPipeline();
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites;
@@ -966,7 +966,7 @@ namespace dxvk {
 
     m_cmd->updateDescriptorSets(descriptorWrites.size(), descriptorWrites.data());
 
-    DxvkCopyBufferImageArgs args = { };
+    DxvkFormattedBufferCopyArgs args = { };
     args.dstOffset = dstOffset;
     args.srcOffset = srcOffset;
     args.extent = extent;
@@ -3801,7 +3801,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    DxvkMetaCopyFormats viewFormats = m_common->metaCopy().getFormats(
+    DxvkMetaCopyFormats viewFormats = m_common->metaCopy().getCopyImageFormats(
       dstImage->info().format, dstSubresource.aspectMask,
       srcImage->info().format, srcSubresource.aspectMask);
     
@@ -3894,7 +3894,7 @@ namespace dxvk {
       srcImage, srcSubresource, viewFormats.srcFormat);
 
     // Create pipeline for the copy operation
-    DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getPipeline(
+    DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getCopyImagePipeline(
       views.srcImageView->info().viewType, viewFormats.dstFormat, dstImage->info().sampleCount);
 
     // Create and initialize descriptor set    
