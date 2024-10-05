@@ -1151,14 +1151,17 @@ namespace dxvk {
     
     /**
      * \brief Uses transfer queue to initialize buffer
-     * 
-     * Only safe to use if the buffer is not in use by the GPU.
+     *
+     * Always replaces the entire buffer. Only safe to use
+     * if the buffer is currently not in use by the GPU.
      * \param [in] buffer The buffer to initialize
-     * \param [in] data The data to copy to the buffer
+     * \param [in] source Staging buffer containing data
+     * \param [in] sourceOffset Offset into staging buffer
      */
     void uploadBuffer(
       const Rc<DxvkBuffer>&           buffer,
-      const void*                     data);
+      const Rc<DxvkBuffer>&           source,
+            VkDeviceSize              sourceOffset);
     
     /**
      * \brief Uses transfer queue to initialize image

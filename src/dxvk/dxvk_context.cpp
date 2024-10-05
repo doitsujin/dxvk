@@ -2537,20 +2537,18 @@ namespace dxvk {
 
   void DxvkContext::uploadBuffer(
     const Rc<DxvkBuffer>&           buffer,
-    const void*                     data) {
+    const Rc<DxvkBuffer>&           source,
+          VkDeviceSize              sourceOffset) {
     auto bufferSlice = buffer->getSliceHandle();
-
-    auto stagingSlice = m_staging.alloc(bufferSlice.length);
-    auto stagingHandle = stagingSlice.getSliceHandle();
-    std::memcpy(stagingHandle.mapPtr, data, bufferSlice.length);
+    auto sourceSlice = source->getSliceHandle(sourceOffset, buffer->info().size);
 
     VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
-    copyRegion.srcOffset = stagingHandle.offset;
+    copyRegion.srcOffset = sourceSlice.offset;
     copyRegion.dstOffset = bufferSlice.offset;
     copyRegion.size      = bufferSlice.length;
 
     VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    copyInfo.srcBuffer = stagingHandle.handle;
+    copyInfo.srcBuffer = sourceSlice.handle;
     copyInfo.dstBuffer = bufferSlice.handle;
     copyInfo.regionCount = 1;
     copyInfo.pRegions = &copyRegion;
@@ -2574,7 +2572,7 @@ namespace dxvk {
         buffer->info().stages, buffer->info().access);
     }
 
-    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Read>(source);
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
 

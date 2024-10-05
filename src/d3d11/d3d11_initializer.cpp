@@ -9,7 +9,8 @@ namespace dxvk {
           D3D11Device*                pParent)
   : m_parent(pParent),
     m_device(pParent->GetDXVKDevice()),
-    m_context(m_device->createContext(DxvkContextType::Supplementary)) {
+    m_context(m_device->createContext(DxvkContextType::Supplementary)),
+    m_stagingBuffer(m_device, StagingBufferSize) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
@@ -81,20 +82,22 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
+    Rc<DxvkBuffer> buffer = pBuffer->GetBuffer();
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
-      m_transferMemory   += bufferSlice.length();
+      auto stagingSlice = m_stagingBuffer.alloc(buffer->info().size);
+      std::memcpy(stagingSlice.mapPtr(0), pInitialData->pSysMem, stagingSlice.length());
+
+      m_transferMemory += buffer->info().size;
       m_transferCommands += 1;
       
-      m_context->uploadBuffer(
-        bufferSlice.buffer(),
-        pInitialData->pSysMem);
+      m_context->uploadBuffer(buffer,
+        stagingSlice.buffer(),
+        stagingSlice.offset());
     } else {
       m_transferCommands += 1;
 
-      m_context->initBuffer(
-        bufferSlice.buffer());
+      m_context->initBuffer(buffer);
     }
 
     FlushImplicit();
@@ -284,6 +287,8 @@ namespace dxvk {
     
     m_transferCommands = 0;
     m_transferMemory   = 0;
+
+    m_stagingBuffer.reset();
   }
 
 
