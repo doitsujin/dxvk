@@ -508,77 +508,35 @@ namespace dxvk {
       bool isZeroClearValue = !(clearValue.color.uint32[0] | clearValue.color.uint32[1]
                               | clearValue.color.uint32[2] | clearValue.color.uint32[3]);
 
-      // Check if we can create an image view with the given raw format. If not,
-      // we'll have to use a fallback using a texel buffer view and buffer copies.
-      bool isViewCompatible = uavFormat == rawFormat;
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = imageView,
+        cDstFormat  = isZeroClearValue ? uavFormat : rawFormat
+      ] (DxvkContext* ctx) {
+        // Ensure that we can write to the image with the given format
+        DxvkImageUsageInfo imageUsage = { };
+        imageUsage.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+        imageUsage.viewFormatCount = 1;
+        imageUsage.viewFormats = &cDstFormat;
 
-      if (!isViewCompatible && (imageView->image()->info().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
-        uint32_t formatCount = imageView->image()->info().viewFormatCount;
-        isViewCompatible = formatCount == 0;
+        ctx->ensureImageCompatibility(cDstView->image(), imageUsage);
 
-        for (uint32_t i = 0; i < formatCount && !isViewCompatible; i++)
-          isViewCompatible = imageView->image()->info().viewFormats[i] == rawFormat;
-      }
+        // If necessary, recreate the view
+        Rc<DxvkImageView> view = cDstView;
 
-      if (isViewCompatible || isZeroClearValue) {
-        // Create a view with an integer format if necessary
-        if (uavFormat != rawFormat && !isZeroClearValue) {
-          DxvkImageViewKey info = imageView->info();
-          info.format = rawFormat;
+        if (view->info().format != cDstFormat) {
+          DxvkImageViewKey key = cDstView->info();
+          key.format = cDstFormat;
 
-          imageView = imageView->image()->createView(info);
+          view = cDstView->image()->createView(key);
         }
 
-        EmitCs([
-          cClearValue = clearValue,
-          cDstView    = imageView
-        ] (DxvkContext* ctx) {
-          ctx->clearImageView(cDstView,
-            VkOffset3D { 0, 0, 0 },
-            cDstView->mipLevelExtent(0),
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            cClearValue);
-        });
-      } else {
-        DxvkBufferCreateInfo bufferInfo;
-        bufferInfo.size   = imageView->formatInfo()->elementSize
-                          * imageView->info().layerCount
-                          * util::flattenImageExtent(imageView->mipLevelExtent(0));
-        bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                          | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-        bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                          | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-                          | VK_ACCESS_SHADER_WRITE_BIT;
-
-        Rc<DxvkBuffer> buffer = m_device->createBuffer(bufferInfo,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        DxvkBufferViewKey bufferViewInfo;
-        bufferViewInfo.format = rawFormat;
-        bufferViewInfo.offset = 0;
-        bufferViewInfo.size   = bufferInfo.size;
-        bufferViewInfo.usage  = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-
-        Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-
-        EmitCs([
-          cDstView    = std::move(imageView),
-          cSrcView    = std::move(bufferView),
-          cClearValue = clearValue.color
-        ] (DxvkContext* ctx) {
-          ctx->clearBufferView(
-            cSrcView, 0,
-            cSrcView->elementCount(),
-            cClearValue);
-
-          ctx->copyBufferToImage(cDstView->image(),
-            vk::pickSubresourceLayers(cDstView->subresources(), 0),
-            VkOffset3D { 0, 0, 0 },
-            cDstView->mipLevelExtent(0),
-            cSrcView->buffer(), 0, 0, 0);
-        });
-      }
+        ctx->clearImageView(view,
+          VkOffset3D { 0, 0, 0 },
+          cDstView->mipLevelExtent(0),
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          cClearValue);
+      });
     }
   }
 
