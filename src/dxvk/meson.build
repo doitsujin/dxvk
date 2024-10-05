@@ -3,6 +3,10 @@ dxvk_shaders = files([
   'shaders/dxvk_blit_frag_2d.frag',
   'shaders/dxvk_blit_frag_3d.frag',
 
+  'shaders/dxvk_buffer_to_image_d.frag',
+  'shaders/dxvk_buffer_to_image_ds_export.frag',
+  'shaders/dxvk_buffer_to_image_s_discard.frag',
+
   'shaders/dxvk_clear_buffer_u.comp',
   'shaders/dxvk_clear_buffer_f.comp',
   'shaders/dxvk_clear_image1d_u.comp',
@@ -29,6 +33,9 @@ dxvk_shaders = files([
   'shaders/dxvk_fullscreen_geom.geom',
   'shaders/dxvk_fullscreen_vert.vert',
   'shaders/dxvk_fullscreen_layer_vert.vert',
+
+  'shaders/dxvk_image_to_buffer_ds.comp',
+  'shaders/dxvk_image_to_buffer_f.comp',
 
   'shaders/dxvk_pack_d24s8.comp',
   'shaders/dxvk_pack_d32s8.comp',
