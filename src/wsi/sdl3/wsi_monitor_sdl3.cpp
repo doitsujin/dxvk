@@ -1,9 +1,9 @@
-#if defined(DXVK_WSI_SDL2)
+#if defined(DXVK_WSI_SDL3)
 
 #include "../wsi_monitor.h"
 
-#include "wsi/native_sdl2.h"
-#include "wsi_platform_sdl2.h"
+#include "wsi/native_sdl3.h"
+#include "wsi_platform_sdl3.h"
 
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
@@ -14,22 +14,22 @@
 
 namespace dxvk::wsi {
 
-  HMONITOR Sdl2WsiDriver::getDefaultMonitor() {
+  HMONITOR Sdl3WsiDriver::getDefaultMonitor() {
     return enumMonitors(0);
   }
 
 
-  HMONITOR Sdl2WsiDriver::enumMonitors(uint32_t index) {
+  HMONITOR Sdl3WsiDriver::enumMonitors(uint32_t index) {
     return isDisplayValid(int32_t(index))
       ? toHmonitor(index)
       : nullptr;
   }
 
-  HMONITOR Sdl2WsiDriver::enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
+  HMONITOR Sdl3WsiDriver::enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
     return enumMonitors(index);
   }
 
-  bool Sdl2WsiDriver::getDisplayName(
+  bool Sdl3WsiDriver::getDisplayName(
           HMONITOR         hMonitor,
           WCHAR            (&Name)[32]) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -49,7 +49,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool Sdl2WsiDriver::getDesktopCoordinates(
+  bool Sdl3WsiDriver::getDesktopCoordinates(
           HMONITOR         hMonitor,
           RECT*            pRect) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -92,7 +92,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool Sdl2WsiDriver::getDisplayMode(
+  bool Sdl3WsiDriver::getDisplayMode(
           HMONITOR         hMonitor,
           uint32_t         ModeNumber,
           WsiMode*         pMode) {
@@ -111,7 +111,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool Sdl2WsiDriver::getCurrentDisplayMode(
+  bool Sdl3WsiDriver::getCurrentDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -131,7 +131,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool Sdl2WsiDriver::getDesktopDisplayMode(
+  bool Sdl3WsiDriver::getDesktopDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -150,7 +150,7 @@ namespace dxvk::wsi {
     return true;
   }
 
-  std::vector<uint8_t> Sdl2WsiDriver::getMonitorEdid(HMONITOR hMonitor) {
+  std::vector<uint8_t> Sdl3WsiDriver::getMonitorEdid(HMONITOR hMonitor) {
     Logger::err("getMonitorEdid not implemented on this platform.");
     return {};
   }
