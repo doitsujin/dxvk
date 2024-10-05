@@ -19,6 +19,11 @@ namespace dxvk::wsi {
       RECT rect    = { 0, 0, 0, 0 };
     } win;
 #endif
+#if defined(DXVK_WSI_SDL3)
+    struct {
+      WsiMode fullscreenMode = { };
+    } sdl3;
+#endif
 #if defined(DXVK_WSI_SDL2)
     // Nothing to store
 #endif
