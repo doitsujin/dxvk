@@ -130,6 +130,7 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     
+    // Image migt be null if this is a staging resource
     Rc<DxvkImage> image = pTexture->GetImage();
 
     auto mapMode = pTexture->GetMapMode();
@@ -139,52 +140,54 @@ namespace dxvk {
     auto formatInfo = lookupFormatInfo(packedFormat);
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
-      // pInitialData is an array that stores an entry for
-      // every single subresource. Since we will define all
-      // subresources, this counts as initialization.
-      for (uint32_t layer = 0; layer < desc->ArraySize; layer++) {
-        for (uint32_t level = 0; level < desc->MipLevels; level++) {
-          const uint32_t id = D3D11CalcSubresource(
-            level, layer, desc->MipLevels);
+      // Compute data size for all subresources and allocate staging buffer memory
+      DxvkBufferSlice stagingSlice;
 
-          VkOffset3D mipLevelOffset = { 0, 0, 0 };
-          VkExtent3D mipLevelExtent = pTexture->MipLevelExtent(level);
+      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+        VkDeviceSize dataSize = 0u;
+
+        for (uint32_t mip = 0; mip < image->info().mipLevels; mip++) {
+          dataSize += image->info().numLayers * util::computeImageDataSize(
+            packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
+        }
+
+        stagingSlice = m_stagingBuffer.alloc(dataSize);
+      }
+
+      // Copy initial data for each subresource into the staging buffer,
+      // as well as the mapped per-subresource buffers if available.
+      VkDeviceSize dataOffset = 0u;
+
+      for (uint32_t mip = 0; mip < desc->MipLevels; mip++) {
+        for (uint32_t layer = 0; layer < desc->ArraySize; layer++) {
+          uint32_t index = D3D11CalcSubresource(mip, layer, desc->MipLevels);
+          VkExtent3D mipLevelExtent = pTexture->MipLevelExtent(mip);
 
           if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+            VkDeviceSize mipSizePerLayer = util::computeImageDataSize(
+              packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
+
             m_transferCommands += 1;
-            m_transferMemory   += pTexture->GetSubresourceLayout(formatInfo->aspectMask, id).Size;
-            
-            VkImageSubresourceLayers subresourceLayers;
-            subresourceLayers.aspectMask     = formatInfo->aspectMask;
-            subresourceLayers.mipLevel       = level;
-            subresourceLayers.baseArrayLayer = layer;
-            subresourceLayers.layerCount     = 1;
-            
-            if (formatInfo->aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              m_context->uploadImage(
-                image, subresourceLayers,
-                pInitialData[id].pSysMem,
-                pInitialData[id].SysMemPitch,
-                pInitialData[id].SysMemSlicePitch);
-            } else {
-              m_context->updateDepthStencilImage(
-                image, subresourceLayers,
-                VkOffset2D { mipLevelOffset.x,     mipLevelOffset.y      },
-                VkExtent2D { mipLevelExtent.width, mipLevelExtent.height },
-                pInitialData[id].pSysMem,
-                pInitialData[id].SysMemPitch,
-                pInitialData[id].SysMemSlicePitch,
-                packedFormat);
-            }
+            m_transferMemory += mipSizePerLayer;
+
+            util::packImageData(stagingSlice.mapPtr(dataOffset),
+              pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
+              0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
+
+            dataOffset += mipSizePerLayer;
           }
 
           if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
-            util::packImageData(pTexture->GetMappedBuffer(id)->mapPtr(0),
-              pInitialData[id].pSysMem, pInitialData[id].SysMemPitch, pInitialData[id].SysMemSlicePitch,
+            util::packImageData(pTexture->GetMappedBuffer(index)->mapPtr(0),
+              pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
               0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
           }
         }
       }
+
+      // Upload all subresources of the image in one go
+      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING)
+        m_context->uploadImage(image, stagingSlice.buffer(), stagingSlice.offset(), packedFormat);
     } else {
       if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
         m_transferCommands += 1;

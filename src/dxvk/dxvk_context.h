@@ -1128,28 +1128,6 @@ namespace dxvk {
       const void*                     data);
     
     /**
-     * \brief Updates an depth-stencil image
-     * 
-     * \param [in] image Destination image
-     * \param [in] subsresources Image subresources to update
-     * \param [in] imageOffset Offset of the image area to update
-     * \param [in] imageExtent Size of the image area to update
-     * \param [in] data Source data
-     * \param [in] pitchPerRow Row pitch of the source data
-     * \param [in] pitchPerLayer Layer pitch of the source data
-     * \param [in] format Packed depth-stencil format
-     */
-    void updateDepthStencilImage(
-      const Rc<DxvkImage>&            image,
-      const VkImageSubresourceLayers& subresources,
-            VkOffset2D                imageOffset,
-            VkExtent2D                imageExtent,
-      const void*                     data,
-            VkDeviceSize              pitchPerRow,
-            VkDeviceSize              pitchPerLayer,
-            VkFormat                  format);
-    
-    /**
      * \brief Uses transfer queue to initialize buffer
      *
      * Always replaces the entire buffer. Only safe to use
@@ -1166,20 +1144,22 @@ namespace dxvk {
     /**
      * \brief Uses transfer queue to initialize image
      * 
-     * Only safe to use if the image is not in use by the GPU.
+     * Only safe to use if the image is not in use by the GPU. Data is
+     * assumed to be tightly packed, with all layers of the top-level mip
+     * stored first, then the next mip etc. If the given format does not
+     * match the image format and is not \c VK_FORMAT_UNDEFINED, the data
+     * will be converted to the image format before performing the upload.
      * \param [in] image The image to initialize
-     * \param [in] subresources Subresources to initialize
-     * \param [in] data Source data
-     * \param [in] pitchPerRow Row pitch of the source data
-     * \param [in] pitchPerLayer Layer pitch of the source data
+     * \param [in] source Staging buffer containing data
+     * \param [in] sourceOffset Offset into staging buffer
+     * \param [in] format Actual data format
      */
     void uploadImage(
       const Rc<DxvkImage>&            image,
-      const VkImageSubresourceLayers& subresources,
-      const void*                     data,
-            VkDeviceSize              pitchPerRow,
-            VkDeviceSize              pitchPerLayer);
-    
+      const Rc<DxvkBuffer>&           source,
+            VkDeviceSize              sourceOffset,
+            VkFormat                  format);
+
     /**
      * \brief Sets viewports
      * 
@@ -1529,15 +1509,16 @@ namespace dxvk {
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment);
 
-    void copyImageHostData(
-            DxvkCmdBuffer         cmd,
+    void copyBufferToImageFb(
       const Rc<DxvkImage>&        image,
       const VkImageSubresourceLayers& imageSubresource,
             VkOffset3D            imageOffset,
             VkExtent3D            imageExtent,
-      const void*                 hostData,
-            VkDeviceSize          rowPitch,
-            VkDeviceSize          slicePitch);
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          bufferOffset,
+            VkDeviceSize          bufferRowAlignment,
+            VkDeviceSize          bufferSliceAlignment,
+            VkFormat              bufferFormat);
 
     void clearImageViewFb(
       const Rc<DxvkImageView>&    imageView,
@@ -1621,7 +1602,18 @@ namespace dxvk {
             VkFormat                  format,
             VkResolveModeFlagBits     depthMode,
             VkResolveModeFlagBits     stencilMode);
-    
+
+    void uploadImageFb(
+      const Rc<DxvkImage>&            image,
+      const Rc<DxvkBuffer>&           source,
+            VkDeviceSize              sourceOffset,
+            VkFormat                  format);
+
+    void uploadImageHw(
+      const Rc<DxvkImage>&            image,
+      const Rc<DxvkBuffer>&           source,
+            VkDeviceSize              sourceOffset);
+
     void performClear(
       const Rc<DxvkImageView>&        imageView,
             int32_t                   attachmentIndex,
@@ -1768,7 +1760,7 @@ namespace dxvk {
             VkAccessFlags             srcAccess,
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
-    
+
     void trackDrawBuffer();
 
     bool tryInvalidateDeviceLocalBuffer(
@@ -1805,6 +1797,9 @@ namespace dxvk {
     void endCurrentCommands();
 
     void splitCommands();
+
+    static VkFormat sanitizeTexelBufferFormat(
+            VkFormat                  srcFormat);
 
   };
   

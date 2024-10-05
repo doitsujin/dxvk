@@ -175,14 +175,12 @@ namespace dxvk {
 
 
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferToImagePipeline(
-          VkImageViewType       viewType,
           VkFormat              dstFormat,
           VkFormat              srcFormat,
           VkImageAspectFlags    aspects) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaBufferImageCopyPipelineKey key;
-    key.imageViewType = viewType;
     key.imageFormat = dstFormat;
     key.bufferFormat = srcFormat;
     key.imageAspects = aspects;

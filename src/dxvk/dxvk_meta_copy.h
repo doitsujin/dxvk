@@ -169,13 +169,11 @@ namespace dxvk {
      *
      * Note that setting both depth and stencil aspects
      * requires device support for depth-stencil export.
-     * \param [in] viewType Image view type
      * \param [in] dstFormat Destionation image format
      * \param [in] srcFormat Source buffer data format
      * \param [in] aspects Aspect mask to copy
      */
     DxvkMetaCopyPipeline getCopyBufferToImagePipeline(
-            VkImageViewType       viewType,
             VkFormat              dstFormat,
             VkFormat              srcFormat,
             VkImageAspectFlags    aspects);
