@@ -675,20 +675,10 @@ namespace dxvk {
         cSrcDepthPitch  = subresourceLayout.DepthPitch,
         cPackedFormat   = pResource->GetPackedFormat()
       ] (DxvkContext* ctx) {
-        if (cDstSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyBufferToImage(
-            cDstImage, cDstSubresource, cDstOffset, cDstExtent,
-            cSrcBuffer, cSrcOffset, cSrcRowPitch, cSrcDepthPitch);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(
-            cDstImage, cDstSubresource,
-            VkOffset2D { cDstOffset.x, cDstOffset.y },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cSrcBuffer, 0,
-            VkOffset2D { cDstOffset.x, cDstOffset.y },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cPackedFormat);
-        }
+        ctx->copyBufferToImage(
+          cDstImage, cDstSubresource, cDstOffset, cDstExtent,
+          cSrcBuffer, cSrcOffset, cSrcRowPitch, cSrcDepthPitch,
+          cPackedFormat);
       });
     }
 

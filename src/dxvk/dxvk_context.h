@@ -547,6 +547,8 @@ namespace dxvk {
      * \param [in] srcOffset Source offset, in bytes
      * \param [in] rowAlignment Row alignment, in bytes
      * \param [in] sliceAlignment Slice alignment, in bytes
+     * \param [in] srcFormat Buffer data format. May be
+     *    \c VK_FORMAT_UNKNOWN to use the image format.
      */
     void copyBufferToImage(
       const Rc<DxvkImage>&        dstImage,
@@ -556,7 +558,8 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       srcBuffer,
             VkDeviceSize          srcOffset,
             VkDeviceSize          rowAlignment,
-            VkDeviceSize          sliceAlignment);
+            VkDeviceSize          sliceAlignment,
+            VkFormat              srcFormat);
     
     /**
      * \brief Copies data from one image to another
@@ -1505,6 +1508,16 @@ namespace dxvk {
             VkExtent3D            imageExtent,
             VkImageLayout         imageLayout,
       const DxvkBufferSliceHandle& bufferSlice,
+            VkDeviceSize          bufferRowAlignment,
+            VkDeviceSize          bufferSliceAlignment);
+
+    void copyBufferToImageHw(
+      const Rc<DxvkImage>&        image,
+      const VkImageSubresourceLayers& imageSubresource,
+            VkOffset3D            imageOffset,
+            VkExtent3D            imageExtent,
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          bufferOffset,
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment);
 
