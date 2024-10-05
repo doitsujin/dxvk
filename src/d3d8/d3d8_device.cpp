@@ -887,14 +887,15 @@ namespace dxvk {
     if (pRenderTarget != nullptr) {
       D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
 
-      if (likely(m_renderTarget != surf)) {
-        StateChange();
-        res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf));
+      // This will always be a state change and needs to be forwarded to
+      // D3D9, even when the same render target is set, as the viewport
+      // needs to be readjusted and reset.
+      StateChange();
+      res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf));
 
-        if (unlikely(FAILED(res))) return res;
+      if (unlikely(FAILED(res))) return res;
 
-        m_renderTarget = surf;
-      }
+      m_renderTarget = surf;
     }
 
     // SetDepthStencilSurface is a separate call
