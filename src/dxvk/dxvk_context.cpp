@@ -16,8 +16,7 @@ namespace dxvk {
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
-    m_queryManager(m_common->queryPool()),
-    m_staging     (device, StagingBufferSize) {
+    m_queryManager(m_common->queryPool()) {
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
