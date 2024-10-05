@@ -3990,25 +3990,16 @@ namespace dxvk {
               cDstLayers  = dstLayer,
               cDstOffset  = DstOffset,
               cDstExtent  = dstExtent,
+              cDstFormat  = pDstTexture->GetPackedFormat(),
               cSrcBuffer  = pSrcTexture->GetMappedBuffer(srcSubresource),
               cSrcLayout  = pSrcTexture->GetSubresourceLayout(srcAspectMask, srcSubresource),
               cSrcOffset  = pSrcTexture->ComputeMappedOffset(srcSubresource, j, SrcOffset),
               cSrcCoord   = SrcOffset,
-              cSrcExtent  = srcMipExtent,
-              cSrcFormat  = pSrcTexture->GetPackedFormat()
+              cSrcExtent  = srcMipExtent
             ] (DxvkContext* ctx) {
-              if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                ctx->copyBufferToImage(cDstImage, cDstLayers, cDstOffset, cDstExtent,
-                  cSrcBuffer, cSrcOffset, cSrcLayout.RowPitch, cSrcLayout.DepthPitch);
-              } else {
-                ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
-                  VkOffset2D { cDstOffset.x,     cDstOffset.y      },
-                  VkExtent2D { cDstExtent.width, cDstExtent.height },
-                  cSrcBuffer, cSrcLayout.Offset,
-                  VkOffset2D { cSrcCoord.x,      cSrcCoord.y       },
-                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
-                  cSrcFormat);
-              }
+              ctx->copyBufferToImage(cDstImage, cDstLayers, cDstOffset, cDstExtent,
+                cSrcBuffer, cSrcOffset, cSrcLayout.RowPitch, cSrcLayout.DepthPitch,
+                cDstFormat);
             });
           } else if (srcIsImage) {
             VkImageSubresourceLayers srcLayer = { srcAspectMask,
@@ -5194,21 +5185,11 @@ namespace dxvk {
         cStagingSlice     = std::move(StagingBuffer),
         cPackedFormat     = pDstTexture->GetPackedFormat()
       ] (DxvkContext* ctx) {
-        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyBufferToImage(cDstImage,
-            cDstLayers, cDstOffset, cDstExtent,
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(), 0, 0);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
-            VkOffset2D { cDstOffset.x,     cDstOffset.y      },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(),
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cPackedFormat);
-        }
+        ctx->copyBufferToImage(cDstImage,
+          cDstLayers, cDstOffset, cDstExtent,
+          cStagingSlice.buffer(),
+          cStagingSlice.offset(), 0, 0,
+          cPackedFormat);
       });
     } else {
       // If the destination image is backed only by a buffer, we need to use

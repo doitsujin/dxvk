@@ -5082,22 +5082,11 @@ namespace dxvk {
         cOffset         = alignedDestOffset,
         cPackedDSFormat = packedDSFormat
       ] (DxvkContext* ctx) {
-        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyBufferToImage(
-            cDstImage,  cDstLayers,
-            cOffset, cDstLevelExtent,
-            cSrcSlice.buffer(), cSrcSlice.offset(),
-            1, 1);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(
-                cDstImage, cDstLayers,
-                VkOffset2D { cOffset.x, cOffset.y },
-                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-                cSrcSlice.buffer(), cSrcSlice.offset(),
-                VkOffset2D { 0, 0 },
-                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-                cPackedDSFormat);
-        }
+        ctx->copyBufferToImage(
+          cDstImage,  cDstLayers,
+          cOffset, cDstLevelExtent,
+          cSrcSlice.buffer(), cSrcSlice.offset(),
+          0, 0, cPackedDSFormat);
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
