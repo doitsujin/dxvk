@@ -16,6 +16,12 @@ namespace dxvk {
     m_info          (createInfo) {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
+    // Always enable depth-stencil attachment usage for depth-stencil
+    // formats since some internal operations rely on it. Read-only
+    // versions of these make little sense to begin with.
+    if (lookupFormatInfo(createInfo.format)->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      m_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
     // Determine whether the image is shareable before creating the resource
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
