@@ -345,9 +345,19 @@ namespace dxvk {
     uint32_t inputWidth  = cursorTex->Desc()->Width;
     uint32_t inputHeight = cursorTex->Desc()->Height;
 
-    // Always use a hardware cursor when windowed.
+    // Check if surface dimensions are powers of two.
+    if ((inputWidth  && (inputWidth  & (inputWidth  - 1)))
+     || (inputHeight && (inputHeight & (inputHeight - 1))))
+      return D3DERR_INVALIDCALL;
+
     D3DPRESENT_PARAMETERS params;
     m_implicitSwapchain->GetPresentParameters(&params);
+
+    if (inputWidth  > params.BackBufferWidth
+     || inputHeight > params.BackBufferHeight)
+      return D3DERR_INVALIDCALL;
+
+    // Always use a hardware cursor when windowed.
     bool hwCursor  = params.Windowed;
 
     // Always use a hardware cursor w/h <= 32 px
