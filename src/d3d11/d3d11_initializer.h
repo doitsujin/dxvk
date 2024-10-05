@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../dxvk/dxvk_staging.h"
+
 #include "d3d11_buffer.h"
 #include "d3d11_texture.h"
 
@@ -18,6 +20,9 @@ namespace dxvk {
   class D3D11Initializer {
     constexpr static size_t MaxTransferMemory    = 32 * 1024 * 1024;
     constexpr static size_t MaxTransferCommands  = 512;
+
+    // Use a staging buffer with a linear allocator to service small uploads
+    constexpr static VkDeviceSize StagingBufferSize = 1ull << 20;
   public:
 
     D3D11Initializer(
@@ -45,6 +50,8 @@ namespace dxvk {
     D3D11Device*      m_parent;
     Rc<DxvkDevice>    m_device;
     Rc<DxvkContext>   m_context;
+    
+    DxvkStagingBuffer m_stagingBuffer;
 
     size_t            m_transferCommands  = 0;
     size_t            m_transferMemory    = 0;
