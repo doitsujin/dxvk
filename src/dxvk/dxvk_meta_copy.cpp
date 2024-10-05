@@ -114,7 +114,7 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyFormats DxvkMetaCopyObjects::getFormats(
+  DxvkMetaCopyFormats DxvkMetaCopyObjects::getCopyImageFormats(
           VkFormat              dstFormat,
           VkImageAspectFlags    dstAspect,
           VkFormat              srcFormat,
@@ -140,7 +140,7 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getPipeline(
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyImagePipeline(
           VkImageViewType       viewType,
           VkFormat              dstFormat,
           VkSampleCountFlagBits dstSamples) {
@@ -161,11 +161,11 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferImagePipeline() {
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyFormattedBufferPipeline() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_copyBufferImagePipeline.pipeHandle)
-      m_copyBufferImagePipeline = createCopyBufferImagePipeline();
+      m_copyBufferImagePipeline = createCopyFormattedBufferPipeline();
 
     return m_copyBufferImagePipeline;
   }
@@ -184,7 +184,7 @@ namespace dxvk {
   }
 
   
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyBufferImagePipeline() {
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyFormattedBufferPipeline() {
     DxvkMetaCopyPipeline pipeline;
 
     std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
@@ -199,7 +199,7 @@ namespace dxvk {
     if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &setLayoutInfo, nullptr, &pipeline.dsetLayout) != VK_SUCCESS)
       throw DxvkError("DxvkMetaCopyObjects: Failed to create descriptor set layout");
 
-    VkPushConstantRange pushRange = { VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DxvkCopyBufferImageArgs) };
+    VkPushConstantRange pushRange = { VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DxvkFormattedBufferCopyArgs) };
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     pipelineLayoutInfo.setLayoutCount = 1;
