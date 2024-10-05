@@ -40,6 +40,10 @@ namespace dxvk {
 
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
+    // Cursor visibility remains unchanged (typically FALSE) if the cursor isn't set.
+    if (unlikely(m_hCursor == nullptr && m_sCursor.Width == 0 && m_sCursor.Height == 0))
+      return m_visible;
+
     if (likely(m_hCursor != nullptr))
       ::SetCursor(bShow ? m_hCursor : nullptr);
     
