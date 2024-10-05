@@ -1,0 +1,55 @@
+#version 460
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+#extension GL_GOOGLE_include_directive : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+
+#include "dxvk_formats.glsl"
+
+layout(constant_id = 0) const uint dst_format = VK_FORMAT_UNDEFINED;
+
+layout(binding = 0) uniform writeonly uimageBuffer u_buffer;
+layout(binding = 1) uniform texture2DArray u_image;
+
+layout(push_constant)
+uniform push_data_t {
+  uvec3 image_offset;
+  uint buffer_offset;
+  uvec3 image_extent;
+  uint buffer_image_width;
+  uint buffer_image_height;
+  uint stencil_bit_index;
+};
+
+void main() {
+  uvec3 location = uvec3(gl_GlobalInvocationID);
+
+  if (any(greaterThanEqual(location, image_extent)))
+    return;
+
+  int offset = int(buffer_offset + location.x +
+    buffer_image_width * (location.y + buffer_image_height * location.z));
+
+  uvec4 dst_color = uvec4(0u);
+  vec4 src_color = texelFetch(u_image, ivec3(location.xy + image_offset.xy, location.z), 0);
+
+  switch (dst_format) {
+    case VK_FORMAT_D16_UNORM:
+    case VK_FORMAT_D16_UNORM_S8_UINT:
+      dst_color.x = uint(roundEven(src_color.x * float(0xffffu)));
+      break;
+
+    case VK_FORMAT_D24_UNORM_S8_UINT:
+    case VK_FORMAT_X8_D24_UNORM_PACK32:
+      dst_color.x = uint(roundEven(src_color.x * float(0xffffffu)));
+      break;
+
+    case VK_FORMAT_D32_SFLOAT:
+    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+      dst_color.x = floatBitsToUint(src_color.x);
+      break;
+  }
+
+  imageStore(u_buffer, offset, dst_color);
+}
