@@ -973,7 +973,14 @@ namespace dxvk {
       m_vkd->vkCmdSetStencilReference(m_cmd.execBuffer,
         faceMask, reference);
     }
-    
+
+
+    void cmdSetStencilWriteMask(
+            VkStencilFaceFlags      faceMask,
+            uint32_t                writeMask) {
+      m_vkd->vkCmdSetStencilWriteMask(m_cmd.execBuffer, faceMask, writeMask);
+    }
+
     
     void cmdSetViewport(
             uint32_t                viewportCount,
