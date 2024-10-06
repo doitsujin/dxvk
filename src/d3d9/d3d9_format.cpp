@@ -439,6 +439,27 @@ namespace dxvk {
     }
   }
 
+  // Block size of formats that require some form of alignment
+  D3D9_FORMAT_BLOCK_SIZE GetFormatBlockSize(D3D9Format Format) {
+    switch (Format) {
+      case D3D9Format::DXT1:
+      case D3D9Format::DXT2:
+      case D3D9Format::DXT3:
+      case D3D9Format::DXT4:
+      case D3D9Format::DXT5:
+      case D3D9Format::ATI1:
+      case D3D9Format::ATI2:
+        return { 4, 4, 1 };
+
+      case D3D9Format::YUY2:
+      case D3D9Format::UYVY:
+        return { 2, 1, 1 };
+
+      default:
+        return {}; // Irrelevant or unknown block size
+    }
+  }
+
   D3D9VkFormatTable::D3D9VkFormatTable(
     const Rc<DxvkAdapter>& adapter,
     const D3D9Options&     options) {

@@ -147,6 +147,12 @@ namespace dxvk {
     VkFormat             FormatSrgb     = VK_FORMAT_UNDEFINED;
   };
 
+  struct D3D9_FORMAT_BLOCK_SIZE {
+    uint8_t            Width  = 0;
+    uint8_t            Height = 0;
+    uint8_t            Depth  = 0;
+  };
+
   /**
    * \brief Format mapping
    * 
@@ -170,6 +176,8 @@ namespace dxvk {
   };
 
   D3D9_VK_FORMAT_MAPPING ConvertFormatUnfixed(D3D9Format Format);
+
+  D3D9_FORMAT_BLOCK_SIZE GetFormatBlockSize(D3D9Format Format);
 
   /**
    * \brief Format table
@@ -237,6 +245,14 @@ namespace dxvk {
       && format != D3D9Format::DXT3
       && format != D3D9Format::DXT4
       && format != D3D9Format::DXT5;
+  }
+
+  inline bool IsDXTFormat(D3D9Format format) {
+    return format == D3D9Format::DXT1
+        || format == D3D9Format::DXT2
+        || format == D3D9Format::DXT3
+        || format == D3D9Format::DXT4
+        || format == D3D9Format::DXT5;
   }
 
 }
