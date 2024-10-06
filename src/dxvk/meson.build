@@ -37,9 +37,6 @@ dxvk_shaders = files([
   'shaders/dxvk_image_to_buffer_ds.comp',
   'shaders/dxvk_image_to_buffer_f.comp',
 
-  'shaders/dxvk_pack_d24s8.comp',
-  'shaders/dxvk_pack_d32s8.comp',
-
   'shaders/dxvk_present_frag.frag',
   'shaders/dxvk_present_frag_blit.frag',
   'shaders/dxvk_present_frag_ms.frag',
@@ -53,10 +50,6 @@ dxvk_shaders = files([
   'shaders/dxvk_resolve_frag_f_amd.frag',
   'shaders/dxvk_resolve_frag_i.frag',
   'shaders/dxvk_resolve_frag_u.frag',
-
-  'shaders/dxvk_unpack_d24s8_as_d32s8.comp',
-  'shaders/dxvk_unpack_d24s8.comp',
-  'shaders/dxvk_unpack_d32s8.comp',
 
   'hud/shaders/hud_chunk_frag_background.frag',
   'hud/shaders/hud_chunk_frag_visualize.frag',
@@ -99,7 +92,6 @@ dxvk_src = [
   'dxvk_meta_clear.cpp',
   'dxvk_meta_copy.cpp',
   'dxvk_meta_mipgen.cpp',
-  'dxvk_meta_pack.cpp',
   'dxvk_meta_resolve.cpp',
   'dxvk_options.cpp',
   'dxvk_pipelayout.cpp',

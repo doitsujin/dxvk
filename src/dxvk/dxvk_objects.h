@@ -7,7 +7,6 @@
 #include "dxvk_meta_clear.h"
 #include "dxvk_meta_copy.h"
 #include "dxvk_meta_mipgen.h"
-#include "dxvk_meta_pack.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_renderpass.h"
@@ -73,10 +72,6 @@ namespace dxvk {
       return m_metaResolve.get(m_device);
     }
     
-    DxvkMetaPackObjects& metaPack() {
-      return m_metaPack.get(m_device);
-    }
-
   private:
 
     DxvkDevice*                   m_device;
@@ -94,7 +89,6 @@ namespace dxvk {
     Lazy<DxvkMetaClearObjects>    m_metaClear;
     Lazy<DxvkMetaCopyObjects>     m_metaCopy;
     Lazy<DxvkMetaResolveObjects>  m_metaResolve;
-    Lazy<DxvkMetaPackObjects>     m_metaPack;
 
   };
 
