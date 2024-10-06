@@ -623,34 +623,6 @@ namespace dxvk {
             VkExtent3D            srcExtent);
     
     /**
-     * \brief Packs depth-stencil image data to a buffer
-     * 
-     * Packs data from both the depth and stencil aspects
-     * of an image into a buffer. The supported formats are:
-     * - \c VK_FORMAT_D24_UNORM_S8_UINT: 0xssdddddd
-     * - \c VK_FORMAT_D32_SFLOAT_S8_UINT: 0xdddddddd 0x000000ss
-     * \param [in] dstBuffer Destination buffer
-     * \param [in] dstBufferOffset Destination offset, in bytes
-     * \param [in] dstOffset Destination image offset
-     * \param [in] dstSize Destination image size
-     * \param [in] srcImage Source image
-     * \param [in] srcSubresource Source subresource
-     * \param [in] srcOffset Source area offset
-     * \param [in] srcExtent Source area size
-     * \param [in] format Packed data format
-     */
-    void copyDepthStencilImageToPackedBuffer(
-      const Rc<DxvkBuffer>&       dstBuffer,
-            VkDeviceSize          dstBufferOffset,
-            VkOffset2D            dstOffset,
-            VkExtent2D            dstExtent,
-      const Rc<DxvkImage>&        srcImage,
-            VkImageSubresourceLayers srcSubresource,
-            VkOffset2D            srcOffset,
-            VkExtent2D            srcExtent,
-            VkFormat              format);
-    
-    /**
      * \brief Copies image data stored in a linear buffer to another
      *
      * The source and destination regions may overlap, in which case
@@ -677,33 +649,6 @@ namespace dxvk {
             VkExtent3D            srcSize,
             VkExtent3D            extent,
             VkDeviceSize          elementSize);
-
-    /**
-     * \brief Unpacks buffer data to a depth-stencil image
-     * 
-     * Writes the packed depth-stencil data to an image.
-     * See \ref copyDepthStencilImageToPackedBuffer for
-     * which formats are supported and how they are packed.
-     * \param [in] dstImage Destination image
-     * \param [in] dstSubresource Destination subresource
-     * \param [in] dstOffset Image area offset
-     * \param [in] dstExtent Image area size
-     * \param [in] srcBuffer Packed data buffer
-     * \param [in] srcBufferOffset Buffer offset of source image
-     * \param [in] srcOffset Offset into the source image
-     * \param [in] srcExtent Total size of the source image
-     * \param [in] format Packed data format
-     */
-    void copyPackedBufferToDepthStencilImage(
-      const Rc<DxvkImage>&        dstImage,
-            VkImageSubresourceLayers dstSubresource,
-            VkOffset2D            dstOffset,
-            VkExtent2D            dstExtent,
-      const Rc<DxvkBuffer>&       srcBuffer,
-            VkDeviceSize          srcBufferOffset,
-            VkOffset2D            srcOffset,
-            VkExtent2D            srcExtent,
-            VkFormat              format);
 
     /**
      * \brief Copies pages from a sparse resource to a buffer
