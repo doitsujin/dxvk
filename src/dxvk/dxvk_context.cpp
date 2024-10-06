@@ -2059,12 +2059,15 @@ namespace dxvk {
     }
 
     // Allocate new backing storage and relocate the image
-    auto storage = image->createResourceWithUsage(usageInfo);
+    DxvkImageUsageInfo usage = usageInfo;
+    usage.flags |= createFlags;
+
+    auto storage = image->createResourceWithUsage(usage);
 
     DxvkRelocateImageInfo relocateInfo;
     relocateInfo.image = image;
     relocateInfo.storage = storage;
-    relocateInfo.usageInfo = usageInfo;
+    relocateInfo.usageInfo = usage;
 
     relocateResources(0, nullptr, 1, &relocateInfo);
     return true;
@@ -6530,9 +6533,7 @@ namespace dxvk {
       usageInfo.usage = usage;
 
       if (!isFormatCompatible) {
-        usageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
-                        |  VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-
+        usageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
         usageInfo.viewFormatCount = 1u;
         usageInfo.viewFormats = &viewFormat;
       }
