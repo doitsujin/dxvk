@@ -605,6 +605,7 @@ namespace dxvk {
      * \param [in] dstExtent Destination data extent
      * \param [in] rowAlignment Row alignment, in bytes
      * \param [in] sliceAlignment Slice alignment, in bytes
+     * \param [in] dstFormat Buffer format
      * \param [in] srcImage Source image
      * \param [in] srcSubresource Source subresource
      * \param [in] srcOffset Source area offset
@@ -615,6 +616,7 @@ namespace dxvk {
             VkDeviceSize          dstOffset,
             VkDeviceSize          rowAlignment,
             VkDeviceSize          sliceAlignment,
+            VkFormat              dstFormat,
       const Rc<DxvkImage>&        srcImage,
             VkImageSubresourceLayers srcSubresource,
             VkOffset3D            srcOffset,
@@ -1531,6 +1533,27 @@ namespace dxvk {
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment,
             VkFormat              bufferFormat);
+
+    void copyImageToBufferHw(
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          bufferOffset,
+            VkDeviceSize          bufferRowAlignment,
+            VkDeviceSize          bufferSliceAlignment,
+      const Rc<DxvkImage>&        image,
+            VkImageSubresourceLayers imageSubresource,
+            VkOffset3D            imageOffset,
+            VkExtent3D            imageExtent);
+
+    void copyImageToBufferFb(
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          bufferOffset,
+            VkDeviceSize          bufferRowAlignment,
+            VkDeviceSize          bufferSliceAlignment,
+            VkFormat              bufferFormat,
+      const Rc<DxvkImage>&        image,
+            VkImageSubresourceLayers imageSubresource,
+            VkOffset3D            imageOffset,
+            VkExtent3D            imageExtent);
 
     void clearImageViewFb(
       const Rc<DxvkImageView>&    imageView,
