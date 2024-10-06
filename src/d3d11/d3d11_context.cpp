@@ -4007,6 +4007,7 @@ namespace dxvk {
 
             EmitCs([
               cSrcImage   = pSrcTexture->GetImage(),
+              cSrcFormat  = pSrcTexture->GetPackedFormat(),
               cSrcLayers  = srcLayer,
               cSrcOffset  = SrcOffset,
               cSrcExtent  = SrcExtent,
@@ -4014,21 +4015,10 @@ namespace dxvk {
               cDstLayout  = pDstTexture->GetSubresourceLayout(dstAspectMask, dstSubresource),
               cDstOffset  = pDstTexture->ComputeMappedOffset(dstSubresource, j, DstOffset),
               cDstCoord   = DstOffset,
-              cDstExtent  = dstMipExtent,
-              cDstFormat  = pDstTexture->GetPackedFormat()
+              cDstExtent  = dstMipExtent
             ] (DxvkContext* ctx) {
-              if (cSrcLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                ctx->copyImageToBuffer(cDstBuffer, cDstOffset, cDstLayout.RowPitch,
-                  cDstLayout.DepthPitch, cSrcImage, cSrcLayers, cSrcOffset, cSrcExtent);
-              } else {
-                ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, cDstLayout.Offset,
-                  VkOffset2D { cDstCoord.x,      cDstCoord.y       },
-                  VkExtent2D { cDstExtent.width, cDstExtent.height },
-                  cSrcImage, cSrcLayers,
-                  VkOffset2D { cSrcOffset.x,     cSrcOffset.y      },
-                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
-                  cDstFormat);
-              }
+              ctx->copyImageToBuffer(cDstBuffer, cDstOffset, cDstLayout.RowPitch,
+                cDstLayout.DepthPitch, cSrcFormat, cSrcImage, cSrcLayers, cSrcOffset, cSrcExtent);
             });
           } else {
             // The backend is not aware of image metadata in this case,

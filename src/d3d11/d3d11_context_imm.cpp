@@ -617,18 +617,8 @@ namespace dxvk {
       VkOffset3D offset = { 0, 0, 0 };
       VkExtent3D extent = cSrcImage->mipLevelExtent(cSrcSubresource.mipLevel);
 
-      if (cSrcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-        ctx->copyImageToBuffer(cDstBuffer, 0, 0, 0,
-          cSrcImage, cSrcSubresource, offset, extent);
-      } else {
-        ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, 0,
-          VkOffset2D { 0, 0 },
-          VkExtent2D { extent.width, extent.height },
-          cSrcImage, cSrcSubresource,
-          VkOffset2D { 0, 0 },
-          VkExtent2D { extent.width, extent.height },
-          cPackedFormat);
-      }
+      ctx->copyImageToBuffer(cDstBuffer, 0, 0, 0, cPackedFormat,
+        cSrcImage, cSrcSubresource, offset, extent);
     });
 
     if (pResource->HasSequenceNumber())
