@@ -2463,6 +2463,9 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
           break;
 
+        case D3DRS_ADAPTIVETESS_Y:
+          break;
+
         case D3DRS_ADAPTIVETESS_X:
         case D3DRS_ADAPTIVETESS_Z:
         case D3DRS_ADAPTIVETESS_W:
