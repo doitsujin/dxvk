@@ -156,6 +156,16 @@ namespace dxvk {
 
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
+
+    // Native drivers won't allow the creation of DXT format
+    // textures that aren't aligned to block dimensions.
+    if (IsDXTFormat(pDesc->Format)) {
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(pDesc->Format);
+
+      if ((blockSize.Width  && (pDesc->Width  & (blockSize.Width  - 1)))
+       || (blockSize.Height && (pDesc->Height & (blockSize.Height - 1))))
+        return D3DERR_INVALIDCALL;
+    }
     
     if (FAILED(DecodeMultiSampleType(pDevice->GetDXVKDevice(), pDesc->MultiSample, pDesc->MultisampleQuality, nullptr)))
       return D3DERR_INVALIDCALL;
