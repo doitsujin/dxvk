@@ -29,6 +29,7 @@ namespace dxvk {
                 | VK_ACCESS_SHADER_READ_BIT;
 
     VkDeviceSize alignedSize = dxvk::align(size, 256u);
+    m_allocationCounter += alignedSize;
 
     if (2 * alignedSize > m_size) {
       return DxvkBufferSlice(m_device->createBuffer(info,
@@ -55,6 +56,8 @@ namespace dxvk {
   void DxvkStagingBuffer::reset() {
     m_buffer = nullptr;
     m_offset = 0;
+
+    m_allocationCounterValueOnReset = m_allocationCounter;
   }
   
 }

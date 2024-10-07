@@ -15,7 +15,6 @@
 #include "dxvk_presenter.h"
 #include "dxvk_signal.h"
 #include "dxvk_sparse.h"
-#include "dxvk_staging.h"
 #include "dxvk_stats.h"
 
 namespace dxvk {
