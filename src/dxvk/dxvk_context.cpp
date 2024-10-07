@@ -502,8 +502,7 @@ namespace dxvk {
           VkDeviceSize          rowAlignment,
           VkDeviceSize          sliceAlignment,
           VkFormat              srcFormat) {
-    bool useFb = (srcFormat && srcFormat != dstImage->info().format) ||
-      (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+    bool useFb = !formatsAreCopyCompatible(dstImage->info().format, srcFormat);
 
     if (useFb) {
       copyBufferToImageFb(dstImage, dstSubresource, dstOffset, dstExtent,
@@ -630,8 +629,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            srcExtent) {
-    bool useFb = (dstFormat && dstFormat != srcImage->info().format) ||
-      (srcImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+    bool useFb = !formatsAreCopyCompatible(srcImage->info().format, dstFormat);
 
     if (useFb) {
       copyImageToBufferFb(dstBuffer, dstOffset, rowAlignment, sliceAlignment,
@@ -2148,8 +2146,7 @@ namespace dxvk {
     // Always use framebuffer path for depth-stencil images since we know
     // they are writeable and can't use Vulkan transfer queues. Stencil
     // data is interleaved and needs to be decoded manually anyway.
-    bool useFb = (format && format != image->info().format) ||
-      (image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+    bool useFb = !formatsAreCopyCompatible(image->info().format, format);
 
     if (useFb)
       uploadImageFb(image, source, sourceOffset, format);
@@ -6975,6 +6972,21 @@ namespace dxvk {
     m_cmd->next();
 
     this->beginCurrentCommands();
+  }
+
+
+  bool DxvkContext::formatsAreCopyCompatible(
+          VkFormat                  imageFormat,
+          VkFormat                  bufferFormat) {
+    if (!bufferFormat)
+      bufferFormat = imageFormat;
+
+    // Depth-stencil data is packed differently in client APIs than what
+    // we can do in Vulkan, and these formats cannot be reinterpreted.
+    auto imageFormatInfo = lookupFormatInfo(imageFormat);
+    auto bufferFormatInfo = lookupFormatInfo(bufferFormat);
+
+    return !((imageFormatInfo->aspectMask | bufferFormatInfo->aspectMask) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
   }
 
 
