@@ -86,7 +86,7 @@ namespace dxvk {
 
     void setLodRange(float min, float max, float bias) {
       u.p.minLod = bit::encodeFixed<uint32_t, 4, 8>(min);
-      u.p.maxLod = bit::encodeFixed<uint32_t, 4, 8>(max);
+      u.p.maxLod = bit::encodeFixed<uint32_t, 4, 8>(std::max(max, min));
       u.p.lodBias = bit::encodeFixed<int32_t, 6, 8>(bias);
     }
 
