@@ -138,7 +138,7 @@ namespace dxvk {
     DWORD token;
 
     std::stringstream dbg;
-    dbg << "Vertex Declaration Tokens:\n\t";
+    dbg << "D3D8: Vertex Declaration Tokens:\n\t";
 
     WORD currentStream = 0;
     WORD currentOffset = 0;
