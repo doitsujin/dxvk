@@ -114,8 +114,32 @@ namespace dxvk {
     if (unlikely(pLockedRect == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // LockRect clears any existing content present in pLockedRect,
+    // and returns blank values should pRect boundary validations fail
+    pLockedRect->pBits = nullptr;
+    pLockedRect->Pitch = 0;
+
     D3DBOX box;
-    if (pRect != nullptr) {
+    if (unlikely(pRect != nullptr)) {
+      D3DRESOURCETYPE type = m_texture->GetType();
+      auto& desc = *(m_texture->Desc());
+
+      // The boundaries of pRect are validated for surfaces created via
+      // CreateImageSurface and cube textures outside of D3DPOOL_DEFAULT
+      if ((desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
+       || (desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
+        // Negative coordinates
+        if (pRect->right  < 0 || pRect->left < 0
+         || pRect->bottom < 0 || pRect->top  < 0
+        // Negative or zero length dimensions
+         || pRect->right  - pRect->left <= 0
+         || pRect->bottom - pRect->top  <= 0
+        // Exceeding surface dimensions
+         || static_cast<UINT>(pRect->right)  > desc.Width
+         || static_cast<UINT>(pRect->bottom) > desc.Height)
+          return D3DERR_INVALIDCALL;
+      }
+
       box.Left   = pRect->left;
       box.Right  = pRect->right;
       box.Top    = pRect->top;
