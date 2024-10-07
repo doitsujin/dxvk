@@ -120,14 +120,30 @@ namespace dxvk {
     pLockedRect->Pitch = 0;
 
     D3DBOX box;
+
     if (unlikely(pRect != nullptr)) {
       D3DRESOURCETYPE type = m_texture->GetType();
       auto& desc = *(m_texture->Desc());
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
 
-      // The boundaries of pRect are validated for surfaces created via
-      // CreateImageSurface and cube textures outside of D3DPOOL_DEFAULT
-      if ((desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
-       || (desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
+      // LockRect call on textures with formats which need to be block
+      // aligned, must be validated for mip level 0.
+      if (m_mipLevel == 0 && desc.Pool == D3DPOOL_DEFAULT
+       && blockSize.Width > 0 && blockSize.Height > 0
+       && ((pRect->left   && (pRect->left   & (blockSize.Width  - 1))) ||
+           (pRect->top    && (pRect->top    & (blockSize.Height - 1))) ||
+           (pRect->right  && (pRect->right  & (blockSize.Width  - 1))) ||
+           (pRect->bottom && (pRect->bottom & (blockSize.Height - 1)))))
+        return D3DERR_INVALIDCALL;
+
+      // The boundaries of pRect are validated for D3DPOOL_DEFAULT surfaces
+      // with formats which need to be block aligned (mip 0), surfaces created via
+      // CreateImageSurface and D3D8 cube textures outside of D3DPOOL_DEFAULT
+      if ((m_mipLevel == 0 && desc.Pool == D3DPOOL_DEFAULT &&
+           blockSize.Width > 0 && blockSize.Height > 0)
+       || (desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
+       || (m_texture->Device()->IsD3D8Compatible() &&
+           desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
         // Negative coordinates
         if (pRect->right  < 0 || pRect->left < 0
          || pRect->bottom < 0 || pRect->top  < 0
