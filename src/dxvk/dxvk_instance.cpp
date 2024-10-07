@@ -330,7 +330,7 @@ namespace dxvk {
       case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   logLevel = LogLevel::Error; break;
     }
 
-    static const std::array<uint32_t, 8> ignoredIds = {
+    static const std::array<uint32_t, 9> ignoredIds = {
       // Ignore image format features for depth-compare instructions.
       // These errors are expected in D3D9 and some D3D11 apps.
       0x23259a0d,
@@ -344,6 +344,8 @@ namespace dxvk {
       0x151f5e5a,
       0x6c16bfb4,
       0xd6d77e1e,
+      // Ignore spam about OpSampledImage, validation is wrong here.
+      0xa5625282,
     };
 
     for (auto id : ignoredIds) {
