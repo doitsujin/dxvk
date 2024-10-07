@@ -20,6 +20,7 @@ namespace dxvk {
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_submissionFence(new sync::CallbackFence()),
     m_flushTracker(pParent->GetOptions()->reproducibleCommandStream),
+    m_stagingBufferFence(new sync::Fence(0)),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
     EmitCs([
@@ -956,9 +957,12 @@ namespace dxvk {
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId,
-      cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr
+      cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr,
+      cStagingFence     = m_stagingBufferFence,
+      cStagingMemory    = m_staging.getStatistics().allocatedTotal
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
+      ctx->signal(cStagingFence, cStagingMemory);
       ctx->flushCommandList(cSubmissionStatus);
     });
 
@@ -977,5 +981,25 @@ namespace dxvk {
     // end up with a persistent allocation
     ResetStagingBuffer();
   }
-  
+
+
+  void D3D11ImmediateContext::ThrottleAllocation() {
+    DxvkStagingBufferStats stats = m_staging.getStatistics();
+
+    VkDeviceSize stagingMemoryInFlight = stats.allocatedTotal - m_stagingBufferFence->value();
+
+    if (stagingMemoryInFlight > stats.allocatedSinceLastReset + D3D11Initializer::MaxMemoryInFlight) {
+      // Stall calling thread to avoid situation where we keep growing the staging
+      // buffer indefinitely, but ignore the newly allocated amount so that we don't
+      // wait for the GPU to go fully idle in case of a large allocation.
+      ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
+
+      m_stagingBufferFence->wait(stats.allocatedTotal - stats.allocatedSinceLastReset - D3D11Initializer::MaxMemoryInFlight);
+    } else if (stats.allocatedSinceLastReset >= D3D11Initializer::MaxMemoryPerSubmission) {
+      // Flush somewhat aggressively if there's a lot of memory in flight
+      ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
+    }
+  }
+
+
 }

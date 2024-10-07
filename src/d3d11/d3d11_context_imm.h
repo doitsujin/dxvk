@@ -126,11 +126,13 @@ namespace dxvk {
     uint64_t                m_flushSeqNum = 0ull;
     GpuFlushTracker         m_flushTracker;
 
+    Rc<sync::Fence>         m_stagingBufferFence;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
     Com<D3D11DeviceContextState, false> m_stateObject;
-    
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
@@ -194,6 +196,8 @@ namespace dxvk {
             GpuFlushType                FlushType,
             HANDLE                      hEvent,
             BOOL                        Synchronize);
+
+    void ThrottleAllocation();
 
   };
   

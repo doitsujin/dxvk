@@ -3010,6 +3010,9 @@ namespace dxvk {
     CopyTiledResourceData(pDestTiledResource,
       pDestTileRegionStartCoordinate,
       pDestTileRegionSize, slice, Flags);
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
@@ -5099,6 +5102,9 @@ namespace dxvk {
 
     if (pDstBuffer->HasSequenceNumber())
       GetTypedContext()->TrackBufferSequenceNumber(pDstBuffer);
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
@@ -5151,6 +5157,9 @@ namespace dxvk {
 
     UpdateImage(pDstTexture, &subresource,
       offset, extent, std::move(stagingSlice));
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
