@@ -458,6 +458,12 @@ namespace dxvk {
 
       type.devicePool.maxChunkSize = determineMaxChunkSize(type, false);
       type.mappedPool.maxChunkSize = determineMaxChunkSize(type, true);
+
+      // Uncached system memory is going to be used for large temporary allocations
+      // during resource creation. Account for that by always using full-sized chunks.
+      if ((type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+       && !(type.properties.propertyFlags & (VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT)))
+        type.mappedPool.nextChunkSize = type.mappedPool.maxChunkSize;
     }
 
     determineMemoryTypesWithPropertyFlags();
