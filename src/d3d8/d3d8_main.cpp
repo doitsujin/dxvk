@@ -52,8 +52,6 @@ extern "C" {
   }
 
   DLLEXPORT IDirect3D8* __stdcall Direct3DCreate8(UINT nSDKVersion) {
-    dxvk::Logger::trace("Direct3DCreate8 called");
-
     IDirect3D8* pDirect3D = nullptr;
     dxvk::CreateD3D8(&pDirect3D);
 

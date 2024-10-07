@@ -696,7 +696,7 @@ namespace dxvk {
       POINT dstPt = { dstRect.left, dstRect.top };
 
       auto unhandled = [&] {
-        Logger::warn(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+        Logger::warn(str::format("D3D8Device::CopyRects: Unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
         return D3DERR_INVALIDCALL;
       };
 
@@ -704,7 +704,7 @@ namespace dxvk {
         if (FAILED(res)) {
           // Only a debug message because some games mess up CopyRects every frame in a way
           // that fails on native too but are perfectly fine with it.
-          Logger::debug(str::format("CopyRects: FAILED to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+          Logger::debug(str::format("D3D8Device::CopyRects: Failed to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
         }
         return res;
       };
@@ -1014,7 +1014,7 @@ namespace dxvk {
         bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
 
         if (m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller)) {
-          Logger::debug("Viewport exceeds render target dimensions by one pixel");
+          Logger::debug("D3D8Device::SetViewport: Viewport exceeds render target dimensions by one pixel");
         } else {
           return D3DERR_INVALIDCALL;
         }
@@ -1097,8 +1097,8 @@ namespace dxvk {
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to CaptureStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::CaptureStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     return stateBlockIter->second.Capture();
@@ -1112,8 +1112,8 @@ namespace dxvk {
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to ApplyStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::ApplyStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     return stateBlockIter->second.Apply();
@@ -1129,8 +1129,8 @@ namespace dxvk {
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to DeleteStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::DeleteStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     m_stateBlocks.erase(stateBlockIter);
@@ -1444,7 +1444,7 @@ namespace dxvk {
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
     if (unlikely(BaseVertexIndex > INT_MAX))
-      Logger::warn("BaseVertexIndex exceeds INT_MAX and will be clamped on use.");
+      Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
     // used by DrawIndexedPrimitive
     m_baseVertexIndex = BaseVertexIndex;
@@ -1672,14 +1672,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
-      Logger::debug(str::format("getVertexShaderInfo: Invalid vertex shader index ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Invalid vertex shader index ", std::hex, Handle));
       return nullptr;
     }
 
     D3D8VertexShaderInfo& info = device->m_vertexShaders[Handle];
 
     if (unlikely(info.pVertexDecl == nullptr && info.pVertexShader == nullptr)) {
-      Logger::debug(str::format("getVertexShaderInfo: Application provided deleted vertex shader ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Application provided deleted vertex shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -1873,14 +1873,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
-      Logger::debug(str::format("getPixelShaderPtr: Invalid pixel shader index ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Invalid pixel shader index ", std::hex, Handle));
       return nullptr;
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle].ptr();
 
     if (unlikely(pPixelShader == nullptr)) {
-      Logger::debug(str::format("getPixelShaderPtr: Application provided deleted pixel shader ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Application provided deleted pixel shader ", std::hex, Handle));
       return nullptr;
     }
 

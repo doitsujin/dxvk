@@ -75,7 +75,7 @@ namespace dxvk {
       if (likely(m_stateBlock == nullptr)) {
         m_stateBlock = std::move(pStateBlock);
       } else {
-        Logger::err("D3D8StateBlock::SetD3D9 called when m_stateBlock has already been initialized");
+        Logger::err("D3D8StateBlock::SetD3D9: m_stateBlock has already been initialized");
       }
     }
 

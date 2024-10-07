@@ -81,7 +81,7 @@ namespace dxvk {
       if (unlikely(PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT)) {
         // TODO: what does dx8 do if windowed app sets FullScreen_PresentationInterval?
         Logger::warn(str::format(
-          "D3D8 Application is windowed yet requested FullScreen_PresentationInterval ", PresentationInterval,
+          "D3D8: Application is windowed yet requested FullScreen_PresentationInterval ", PresentationInterval,
           " (should be D3DPRESENT_INTERVAL_DEFAULT). This will be ignored."));
       }
 
