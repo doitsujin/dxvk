@@ -1778,6 +1778,10 @@ namespace dxvk {
 
     void splitCommands();
 
+    static bool formatsAreCopyCompatible(
+            VkFormat                  imageFormat,
+            VkFormat                  bufferFormat);
+
     static VkFormat sanitizeTexelBufferFormat(
             VkFormat                  srcFormat);
 
