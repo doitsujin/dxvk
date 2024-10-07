@@ -18,12 +18,19 @@ namespace dxvk {
    * zero-initialization for buffers and images.
    */
   class D3D11Initializer {
-    constexpr static size_t MaxTransferMemory    = 32 * 1024 * 1024;
-    constexpr static size_t MaxTransferCommands  = 512;
-
     // Use a staging buffer with a linear allocator to service small uploads
     constexpr static VkDeviceSize StagingBufferSize = 1ull << 20;
   public:
+
+    // Maximum number of copy and clear commands to record before flushing
+    constexpr static size_t MaxCommandsPerSubmission = 512u;
+
+    // Maximum amount of staging memory to allocate before flushing
+    constexpr static size_t MaxMemoryPerSubmission = (env::is32BitHostPlatform() ? 12u : 48u) << 20;
+
+    // Maximum amount of memory in flight. If there are pending uploads while
+    // this limit is exceeded, further initialization will be stalled.
+    constexpr static size_t MaxMemoryInFlight = 3u * MaxMemoryPerSubmission;
 
     D3D11Initializer(
             D3D11Device*                pParent);
@@ -52,9 +59,9 @@ namespace dxvk {
     Rc<DxvkContext>   m_context;
     
     DxvkStagingBuffer m_stagingBuffer;
+    Rc<sync::Fence>   m_stagingSignal;
 
     size_t            m_transferCommands  = 0;
-    size_t            m_transferMemory    = 0;
 
     void InitDeviceLocalBuffer(
             D3D11Buffer*                pBuffer,
@@ -75,8 +82,9 @@ namespace dxvk {
     void InitTiledTexture(
             D3D11CommonTexture*         pTexture);
 
-    void FlushImplicit();
-    void FlushInternal();
+    void ThrottleAllocation(VkDeviceSize allocationSize);
+
+    void ExecuteFlush();
 
     void SyncSharedTexture(
             D3D11CommonTexture*         pResource);

@@ -10,7 +10,8 @@ namespace dxvk {
   : m_parent(pParent),
     m_device(pParent->GetDXVKDevice()),
     m_context(m_device->createContext(DxvkContextType::Supplementary)),
-    m_stagingBuffer(m_device, StagingBufferSize) {
+    m_stagingBuffer(m_device, StagingBufferSize),
+    m_stagingSignal(new sync::Fence(0)) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
@@ -25,7 +26,7 @@ namespace dxvk {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_transferCommands != 0)
-      FlushInternal();
+      ExecuteFlush();
   }
 
   void D3D11Initializer::InitBuffer(
@@ -73,7 +74,7 @@ namespace dxvk {
       counterSlice.offset(),
       sizeof(zero), &zero);
 
-    FlushImplicit();
+    ExecuteFlush();
   }
 
 
@@ -85,12 +86,13 @@ namespace dxvk {
     Rc<DxvkBuffer> buffer = pBuffer->GetBuffer();
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
+      ThrottleAllocation(buffer->info().size);
+
       auto stagingSlice = m_stagingBuffer.alloc(buffer->info().size);
       std::memcpy(stagingSlice.mapPtr(0), pInitialData->pSysMem, stagingSlice.length());
 
-      m_transferMemory += buffer->info().size;
       m_transferCommands += 1;
-      
+
       m_context->uploadBuffer(buffer,
         stagingSlice.buffer(),
         stagingSlice.offset());
@@ -100,7 +102,7 @@ namespace dxvk {
       m_context->initBuffer(buffer);
     }
 
-    FlushImplicit();
+    ThrottleAllocation(0);
   }
 
 
@@ -151,6 +153,7 @@ namespace dxvk {
             packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
         }
 
+        ThrottleAllocation(dataSize);
         stagingSlice = m_stagingBuffer.alloc(dataSize);
       }
 
@@ -168,7 +171,6 @@ namespace dxvk {
               packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
 
             m_transferCommands += 1;
-            m_transferMemory += mipSizePerLayer;
 
             util::packImageData(stagingSlice.mapPtr(dataOffset),
               pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
@@ -213,7 +215,7 @@ namespace dxvk {
       }
     }
 
-    FlushImplicit();
+    ThrottleAllocation(0);
   }
 
 
@@ -265,7 +267,7 @@ namespace dxvk {
     m_context->initImage(image, subresources, VK_IMAGE_LAYOUT_PREINITIALIZED);
 
     m_transferCommands += 1;
-    FlushImplicit();
+    ThrottleAllocation(0);
   }
 
 
@@ -274,24 +276,37 @@ namespace dxvk {
     m_context->initSparseImage(pTexture->GetImage());
 
     m_transferCommands += 1;
-    FlushImplicit();
+    ThrottleAllocation(0);
   }
 
 
-  void D3D11Initializer::FlushImplicit() {
-    if (m_transferCommands > MaxTransferCommands
-     || m_transferMemory   > MaxTransferMemory)
-      FlushInternal();
+  void D3D11Initializer::ThrottleAllocation(VkDeviceSize allocationSize) {
+    DxvkStagingBufferStats stats = m_stagingBuffer.getStatistics();
+
+    // If the amount of memory in flight exceeds the limit, stall the
+    // calling thread and wait for some memory to actually get released.
+    VkDeviceSize stagingMemoryInFlight = stats.allocatedTotal - m_stagingSignal->value();
+
+    if (stagingMemoryInFlight > MaxMemoryInFlight) {
+      ExecuteFlush();
+
+      m_stagingSignal->wait(stats.allocatedTotal - MaxMemoryInFlight);
+    } else if (m_transferCommands >= MaxCommandsPerSubmission || stats.allocatedSinceLastReset >= MaxMemoryPerSubmission) {
+      // Flush pending commands if there are a lot of updates in flight
+      // to keep both execution time and staging memory in check.
+      ExecuteFlush();
+    }
   }
 
 
-  void D3D11Initializer::FlushInternal() {
+  void D3D11Initializer::ExecuteFlush() {
+    DxvkStagingBufferStats stats = m_stagingBuffer.getStatistics();
+
+    m_context->signal(m_stagingSignal, stats.allocatedTotal);
     m_context->flushCommandList(nullptr);
-    
-    m_transferCommands = 0;
-    m_transferMemory   = 0;
 
     m_stagingBuffer.reset();
+    m_transferCommands = 0;
   }
 
 
@@ -306,7 +321,7 @@ namespace dxvk {
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
      || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      FlushInternal();
+      ExecuteFlush();
 
       m_device->waitForResource(pResource->GetImage(), DxvkAccess::Write);
     }
