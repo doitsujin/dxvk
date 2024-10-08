@@ -13,6 +13,7 @@ namespace dxvk {
     m_common      (&device->m_objects),
     m_sdmaAcquires(DxvkCmdBuffer::SdmaBuffer),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
+    m_initAcquires(DxvkCmdBuffer::InitBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
@@ -1059,12 +1060,14 @@ namespace dxvk {
     } else {
       VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      m_initBarriers.accessImage(image, subresources,
+      m_initAcquires.accessImage(image, subresources,
         initialLayout,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
         clearLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT);
+
+      m_initAcquires.recordCommands(m_cmd);
 
       auto formatInfo = image->formatInfo();
 
@@ -1115,7 +1118,7 @@ namespace dxvk {
               copyInfo.regionCount = 1;
               copyInfo.pRegions = &copyRegion;
 
-              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
+              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &copyInfo);
             }
           }
 
@@ -1125,17 +1128,17 @@ namespace dxvk {
         if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           VkClearDepthStencilValue value = { };
 
-          m_cmd->cmdClearDepthStencilImage(image->handle(),
-            clearLayout, &value, 1, &subresources);
+          m_cmd->cmdClearDepthStencilImage(DxvkCmdBuffer::InitBuffer,
+            image->handle(), clearLayout, &value, 1, &subresources);
         } else {
           VkClearColorValue value = { };
 
-          m_cmd->cmdClearColorImage(image->handle(),
-            clearLayout, &value, 1, &subresources);
+          m_cmd->cmdClearColorImage(DxvkCmdBuffer::InitBuffer,
+            image->handle(), clearLayout, &value, 1, &subresources);
         }
       }
 
-      m_execBarriers.accessImage(image, subresources,
+      m_initBarriers.accessImage(image, subresources,
         clearLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -6892,7 +6895,24 @@ namespace dxvk {
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    this->initBuffer(m_zeroBuffer);
+    DxvkBufferSliceHandle slice = m_zeroBuffer->getSliceHandle();
+
+    m_cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
+      slice.handle, slice.offset, slice.length, 0);
+
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.memoryBarrierCount = 1;
+    depInfo.pMemoryBarriers = &barrier;
+
+    m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+
     return m_zeroBuffer;
   }
   
