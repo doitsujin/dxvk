@@ -1839,11 +1839,6 @@ namespace dxvk {
   }
   
   
-  void D3D11Device::FlushInitContext() {
-    m_initializer->Flush();
-  }
-  
-  
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
     const Rc<DxvkInstance>& Instance,
     const Rc<DxvkAdapter>&  Adapter) {
