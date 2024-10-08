@@ -8,10 +8,12 @@ namespace dxvk {
    * \brief D3D9 Software Cursor
    */
   struct D3D9_SOFTWARE_CURSOR {
-    UINT Width = 0;
+    UINT Width  = 0;
     UINT Height = 0;
     UINT X = 0;
     UINT Y = 0;
+    bool DrawCursor  = false;
+    bool ResetCursor = false;
   };
 
   constexpr uint32_t HardwareCursorWidth      = 32u;
@@ -36,6 +38,10 @@ namespace dxvk {
 #endif
 
     void ResetCursor();
+
+    void ResetHardwareCursor();
+
+    void ResetSoftwareCursor();
 
     void UpdateCursor(int X, int Y);
 
