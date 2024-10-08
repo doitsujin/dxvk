@@ -97,6 +97,18 @@ namespace dxvk {
     if (unlikely(pLockedBox == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // LockBox clears any existing content present in pLockedBox
+    pLockedBox->pBits = nullptr;
+    pLockedBox->RowPitch = 0;
+    pLockedBox->SlicePitch = 0;
+
+    auto& desc = *(m_texture->Desc());
+
+    // Volume textures in D3DPOOL_DEFAULT must have
+    // the D3DUSAGE_DYNAMIC flag set in order to be lockable
+    if (desc.Pool == D3DPOOL_DEFAULT && !(desc.Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
     return m_parent->LockImage(
       m_texture,
       m_face, m_mipLevel,
