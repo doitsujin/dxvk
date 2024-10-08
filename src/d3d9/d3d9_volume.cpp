@@ -109,6 +109,19 @@ namespace dxvk {
     if (desc.Pool == D3DPOOL_DEFAULT && !(desc.Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
 
+    // LockBox call on textures with formats which need to be block
+    // aligned, must be validated for mip level 0.
+    if (unlikely(pBox != nullptr && m_mipLevel == 0)) {
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+
+      if (blockSize.Width > 0 && blockSize.Height > 0
+       && ((pBox->Left   && (pBox->Left   & (blockSize.Width  - 1))) ||
+           (pBox->Top    && (pBox->Top    & (blockSize.Height - 1))) ||
+           (pBox->Right  && (pBox->Right  & (blockSize.Width  - 1))) ||
+           (pBox->Bottom && (pBox->Bottom & (blockSize.Height - 1)))))
+        return D3DERR_INVALIDCALL;
+    }
+
     return m_parent->LockImage(
       m_texture,
       m_face, m_mipLevel,
