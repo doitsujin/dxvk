@@ -3917,11 +3917,22 @@ namespace dxvk {
 
       D3D9_SOFTWARE_CURSOR* pSoftwareCursor = m_cursor.GetSoftwareCursor();
 
-      UINT cursorWidth  = m_cursor.IsCursorVisible() ? pSoftwareCursor->Width : 0;
-      UINT cursorHeight = m_cursor.IsCursorVisible() ? pSoftwareCursor->Height : 0;
+      UINT cursorWidth  = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Width : 0;
+      UINT cursorHeight = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Height : 0;
 
       m_implicitSwapchain->SetCursorPosition(pSoftwareCursor->X, pSoftwareCursor->Y,
                                              cursorWidth, cursorHeight);
+
+      // Once a hardware cursor has been set or the device has been reset,
+      // we need to ensure that we render a 0-sized rectangle first, and
+      // only then fully clear the software cursor.
+      if (unlikely(pSoftwareCursor->ResetCursor)) {
+        pSoftwareCursor->Width = 0;
+        pSoftwareCursor->Height = 0;
+        pSoftwareCursor->X = 0;
+        pSoftwareCursor->Y = 0;
+        pSoftwareCursor->ResetCursor = false;
+      }
     }
 
     return m_implicitSwapchain->Present(
