@@ -1052,12 +1052,12 @@ namespace dxvk {
       InjectCsChunk(std::move(chunk), false);
     }
 
-  private:
-
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
+
+  private:
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
