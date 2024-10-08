@@ -536,6 +536,7 @@ namespace dxvk {
        exploit so we must force AMD vendor ID.    */
     { R"(\\csgo\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
+      { "d3d9.allowDirectBufferMapping",    "True" },
     }} },
     /* Vampire - The Masquerade Bloodlines        */
     { R"(\\vampire\.exe$)", {{
@@ -752,7 +753,6 @@ namespace dxvk {
      * Very prone to address space crashes      */
     { R"(\\(GHWT|GHWT_Definitive)\.exe$)", {{
       { "d3d9.textureMemory",               "16" },
-      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
     /* Heroes of Annihilated Empires            *
      * Has issues with texture rendering and    *
@@ -772,13 +772,6 @@ namespace dxvk {
     /* Hammer World Editor                      */
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* Dragon Age Origins                       *
-     * Keeps unmapping the same 3 1MB buffers   *
-     * thousands of times when you alt-tab out  *
-     * Causing it to crash OOM                  */
-    { R"(\\DAOrigins\.exe$)" , {{
-      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
     /* Fallout 3 - Doesn't like Intel Id       */
     { R"(\\Fallout3\.exe$)", {{
@@ -828,12 +821,6 @@ namespace dxvk {
      * Black textures                          */
     { R"(\\eldorado\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict"   },
-      { "d3d9.allowDirectBufferMapping",    "False" },
-    }} },
-    /* Injustice: Gods Among Us                *
-     * Locks a buffer that's still in use      */
-    { R"(\\injustice\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
     /* STEINS;GATE ELITE                       */
     { R"(\\SG_ELITE\\Game\.exe$)", {{
@@ -866,11 +853,6 @@ namespace dxvk {
     /* Battlestations Midway                   */
     { R"(\\Battlestationsmidway\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",     "True" },
-    }} },
-    /* SkyDrift                                 *
-     * Works around alt tab OOM crash           */
-    { R"(\\SkyDrift\.exe$)" , {{
-      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
      /* Assassin's Creed 2                      *
      *  Helps alt tab crash on Linux            */
@@ -1001,18 +983,6 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "1024" },
     }} },
-    /* Red Faction                               *
-     * Fixes crashing when starting a new game   */
-    { R"(\\RF\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
-    }} },
-    /* Commandos 3                               *
-     * The game doesn't use NOOVERWRITE properly *
-     * and reads from actively modified buffers, *
-     * which causes graphical glitches at times  */
-    { R"(\\Commandos3\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
-    }} },
     /* Motor City Online                         */
     { R"(\\MCity_d\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
@@ -1084,12 +1054,6 @@ namespace dxvk {
     { R"(\\Alexander\\Data\\engine\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
     }} },
-    /* 3DMark2001 (SE)                            *
-     * Fixes a drastic performance drop in the    *
-     * "Car Chase - High Detail" benchmark        */
-    { R"(\\3DMark2001(SE)?\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
-    }} },
     /* Delta Force: Black Hawk Down               */
     { R"(\\dfbhd\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
@@ -1117,10 +1081,6 @@ namespace dxvk {
     { R"(\\Art of Murder - FBI Confidential\\game\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Max Payne 1 - Stalls waiting for an index buffer */
-    { R"(\\MaxPayne\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
-    }} },
     /* Z: Steel Soldiers                          */
     { R"(\\z2\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
@@ -1143,7 +1103,6 @@ namespace dxvk {
      * Missing geometry and textures without      *
      * legacy DISCARD behavior                    */
     { R"(\\Rayman3\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
   }};
