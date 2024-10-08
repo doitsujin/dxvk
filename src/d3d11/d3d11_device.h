@@ -391,7 +391,13 @@ namespace dxvk {
       return m_dxvkDevice;
     }
     
-    void FlushInitContext();
+    void FlushInitCommands() {
+      m_initializer->FlushCsChunk();
+    }
+
+    void NotifyContextFlush() {
+      m_initializer->NotifyContextFlush();
+    }
     
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();

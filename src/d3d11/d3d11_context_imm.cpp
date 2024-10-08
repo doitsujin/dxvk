@@ -881,6 +881,10 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
+    // Flush init commands so that the CS thread
+    // can processe them before the first use.
+    m_parent->FlushInitCommands();
+
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
   }
 
@@ -936,11 +940,6 @@ namespace dxvk {
     if (synchronizeSubmission)
       m_submitStatus.result = VK_NOT_READY;
 
-    // Flush init context so that new resources are fully initialized
-    // before the app can access them in any way. This has to happen
-    // unconditionally since we may otherwise deadlock on Map.
-    m_parent->FlushInitContext();
-
     // Exit early if there's nothing to do
     if (!GetPendingCsChunks() && !hEvent)
       return;
@@ -980,6 +979,10 @@ namespace dxvk {
     // Free local staging buffer so that we don't
     // end up with a persistent allocation
     ResetStagingBuffer();
+
+    // Notify the device that the context has been flushed,
+    // this resets some resource initialization heuristics.
+    m_parent->NotifyContextFlush();
   }
 
 
