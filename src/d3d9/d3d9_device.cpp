@@ -5353,7 +5353,7 @@ namespace dxvk {
 
     *pDynamicVBOs = dynamicSysmemVBOs;
 
-    if (pDynamicIBO)
+    if (unlikely(pDynamicIBO))
       *pDynamicIBO = dynamicSysmemIBO;
 
     if (likely(!dynamicSysmemVBOs && !dynamicSysmemIBO))
@@ -6908,7 +6908,7 @@ namespace dxvk {
       const uint32_t buffersToUpload = m_activeVertexBuffersToUpload & usedBuffersMask;
       for (uint32_t bufferIdx : bit::BitMask(buffersToUpload)) {
         auto* vbo = GetCommonBuffer(m_state.vertexBuffers[bufferIdx].vertexBuffer);
-        if (vbo != nullptr && vbo->NeedsUpload())
+        if (likely(vbo != nullptr && vbo->NeedsUpload()))
           FlushBuffer(vbo);
       }
       m_activeVertexBuffersToUpload &= ~buffersToUpload;
@@ -6926,44 +6926,44 @@ namespace dxvk {
       GenerateTextureMips(texturesToGen);
 
     auto* ibo = GetCommonBuffer(m_state.indices);
-    if (UploadIBO && ibo != nullptr && ibo->NeedsUpload())
+    if (unlikely(UploadIBO && ibo != nullptr && ibo->NeedsUpload()))
       FlushBuffer(ibo);
 
     UpdateFog();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyFramebuffer)))
       BindFramebuffer();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyViewportScissor)))
       BindViewportAndScissor();
 
     const uint32_t activeDirtySamplers = m_dirtySamplerStates & usedTextureMask;
-    if (activeDirtySamplers)
+    if (unlikely(activeDirtySamplers))
       UndirtySamplers(activeDirtySamplers);
 
     const uint32_t usedDirtyTextures = m_dirtyTextures & usedSamplerMask;
-    if (usedDirtyTextures)
+    if (likely(usedDirtyTextures))
       UndirtyTextures(usedDirtyTextures);
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyBlendState)))
       BindBlendState();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState)))
       BindDepthStencilState();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyRasterizerState)))
       BindRasterizerState();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyDepthBias))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyDepthBias)))
       BindDepthBias();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyMultiSampleState))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyMultiSampleState)))
       BindMultiSampleState();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState)))
       BindAlphaTestState();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyClipPlanes)))
       UpdateClipPlanes();
 
     UpdatePointMode(PrimitiveType == D3DPT_POINTLIST);
@@ -6989,7 +6989,7 @@ namespace dxvk {
       UpdateFixedFunctionVS();
     }
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyInputLayout)))
       BindInputLayout();
 
     if (likely(UseProgrammablePS())) {
@@ -7022,7 +7022,7 @@ namespace dxvk {
     const uint32_t drefClampMask = m_drefClamp & depthTextureMask;
     UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask, drefClampMask);
 
-    if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData))) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
 
       auto mapPtr = m_psShared.AllocSlice();
@@ -7043,7 +7043,7 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyDepthBounds)) {
+    if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyDepthBounds))) {
       m_flags.clr(D3D9DeviceFlag::DirtyDepthBounds);
 
       DxvkDepthBounds db;
