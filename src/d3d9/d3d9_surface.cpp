@@ -114,15 +114,18 @@ namespace dxvk {
     if (unlikely(pLockedRect == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // LockRect clears any existing content present in pLockedRect,
-    // and returns blank values should pRect boundary validations fail
-    pLockedRect->pBits = nullptr;
-    pLockedRect->Pitch = 0;
+    D3DRESOURCETYPE type = m_texture->GetType();
+
+    if (m_texture->Device()->IsD3D8Compatible() && type != D3DRTYPE_TEXTURE) {
+      // D3D8 LockRect clears any existing content present in
+      // pLockedRect for anything beside D3DRTYPE_TEXTURE surfaces
+      pLockedRect->pBits = nullptr;
+      pLockedRect->Pitch = 0;
+    }
 
     D3DBOX box;
 
     if (unlikely(pRect != nullptr)) {
-      D3DRESOURCETYPE type = m_texture->GetType();
       auto& desc = *(m_texture->Desc());
       D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
 
@@ -172,6 +175,8 @@ namespace dxvk {
       &lockedBox,
       pRect != nullptr ? &box : nullptr,
       Flags);
+
+    if (FAILED(hr)) return hr;
 
     pLockedRect->pBits = lockedBox.pBits;
     pLockedRect->Pitch = lockedBox.RowPitch;
