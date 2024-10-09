@@ -11,7 +11,7 @@ namespace dxvk {
 
     if (m_hCursor != nullptr)
       ResetHardwareCursor();
-    else
+    else if (IsSoftwareCursor())
       ResetSoftwareCursor();
   }
 
@@ -48,12 +48,12 @@ namespace dxvk {
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
     // Cursor visibility remains unchanged (typically FALSE) if the cursor isn't set.
-    if (unlikely(m_hCursor == nullptr && m_sCursor.Width == 0 && m_sCursor.Height == 0))
+    if (unlikely(m_hCursor == nullptr && !IsSoftwareCursor()))
       return m_visible;
 
     if (m_hCursor != nullptr)
       ::SetCursor(bShow ? m_hCursor : nullptr);
-    else
+    else if (likely(!m_sCursor.ResetCursor))
       m_sCursor.DrawCursor = bShow;
     
     return std::exchange(m_visible, bShow);
@@ -95,10 +95,11 @@ namespace dxvk {
     if (m_hCursor != nullptr)
       ResetHardwareCursor();
 
-    m_sCursor.Width  = Width;
-    m_sCursor.Height = Height;
-    m_sCursor.X      = XHotSpot;
-    m_sCursor.Y      = YHotSpot;
+    m_sCursor.Width       = Width;
+    m_sCursor.Height      = Height;
+    m_sCursor.X           = XHotSpot;
+    m_sCursor.Y           = YHotSpot;
+    m_sCursor.ResetCursor = false;
 
     ShowCursor(m_visible);
 
@@ -110,13 +111,16 @@ namespace dxvk {
     Logger::warn("D3D9Cursor::ResetCursor: Not supported on current platform.");
   }
 
+
   void D3D9Cursor::ResetHardwareCursor() {
     Logger::warn("D3D9Cursor::ResetHardwareCursor: Not supported on current platform.");
   }
 
+
   void D3D9Cursor::ResetSoftwareCursor() {
     Logger::warn("D3D9Cursor::ResetSoftwareCursor: Not supported on current platform.");
   }
+
 
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     Logger::warn("D3D9Cursor::UpdateCursor: Not supported on current platform.");
