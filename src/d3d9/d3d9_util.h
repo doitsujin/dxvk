@@ -23,7 +23,7 @@ namespace dxvk {
   };
 
   static constexpr D3D9ShaderMasks FixedFunctionMask =
-    { 0b1111111, 0b1 };
+    { 0b11111111, 0b1 };
 
   struct D3D9BlendState {
     D3DBLEND   Src;
