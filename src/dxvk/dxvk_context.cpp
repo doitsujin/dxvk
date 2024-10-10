@@ -6994,6 +6994,81 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::flushImageLayoutTransitions(
+          DxvkCmdBuffer             cmdBuffer) {
+    if (m_imageLayoutTransitions.empty())
+      return;
+
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.imageMemoryBarrierCount = m_imageLayoutTransitions.size();
+    depInfo.pImageMemoryBarriers = m_imageLayoutTransitions.data();
+
+    m_cmd->cmdPipelineBarrier(cmdBuffer, &depInfo);
+
+    m_imageLayoutTransitions.clear();
+  }
+
+
+  void DxvkContext::addImageLayoutTransition(
+    const DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    if (srcLayout == dstLayout && srcStages == dstStages)
+      return;
+
+    auto& barrier = m_imageLayoutTransitions.emplace_back();
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
+    barrier.srcStageMask = srcStages;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
+    barrier.dstAccessMask = dstAccess;
+    barrier.oldLayout = srcLayout;
+    barrier.newLayout = dstLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image.handle();
+    barrier.subresourceRange = subresources;
+  }
+
+
+  void DxvkContext::addImageLayoutTransition(
+    const DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess,
+          bool                      discard) {
+    // If discard is false, this assumes that the image is
+    // in its default layout and ready to be accessed via
+    // its standard access patterns.
+    VkImageLayout srcLayout = image.info().layout;
+
+    if (discard)
+      srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    addImageLayoutTransition(image, subresources,
+      srcLayout, dstStages, 0,
+      dstLayout, dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::addImageInitTransition(
+    const DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    addImageLayoutTransition(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      dstLayout, dstStages, dstAccess);
+  }
+
+
   bool DxvkContext::formatsAreCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {
