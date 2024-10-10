@@ -2604,30 +2604,13 @@ namespace dxvk {
     VkImageLayout dstLayout = dstView->image()->pickLayout(
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-    if (dstView->image()->info().layout != dstLayout) {
-      m_execAcquires.accessImage(
-        dstView->image(),
-        dstView->imageSubresources(),
-        dstView->image()->info().layout,
-        dstView->image()->info().stages, 0,
-        dstLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-    }
-
-    if (srcView->image()->info().layout != srcLayout) {
-      m_execAcquires.accessImage(
-        srcView->image(),
-        srcView->imageSubresources(),
-        srcView->image()->info().layout,
-        srcView->image()->info().stages, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*dstView->image(), dstView->imageSubresources(),
+      dstLayout, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, false);
+    addImageLayoutTransition(*srcView->image(), srcView->imageSubresources(),
+      srcLayout, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_2_SHADER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Sort out image offsets so that dstOffset[0] points
     // to the top-left corner of the target area
