@@ -11,7 +11,6 @@ namespace dxvk {
   : m_device      (device),
     m_type        (type),
     m_common      (&device->m_objects),
-    m_sdmaAcquires(DxvkCmdBuffer::SdmaBuffer),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
     m_initAcquires(DxvkCmdBuffer::InitBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
@@ -4729,14 +4728,9 @@ namespace dxvk {
     // Initialize all subresources of the image at once
     VkImageLayout transferLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    m_sdmaAcquires.accessImage(image,
-      image->getAvailableSubresources(),
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
-      transferLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
-
-    m_sdmaAcquires.recordCommands(m_cmd);
+    addImageInitTransition(*image, image->getAvailableSubresources(),
+      transferLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    flushImageLayoutTransitions(DxvkCmdBuffer::SdmaBuffer);
 
     // Copy image data, one mip at a time
     VkDeviceSize dataOffset = sourceOffset;

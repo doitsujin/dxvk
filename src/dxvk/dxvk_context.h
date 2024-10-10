@@ -1406,7 +1406,6 @@ namespace dxvk {
     Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorManager> m_descriptorManager;
 
-    DxvkBarrierSet          m_sdmaAcquires;
     DxvkBarrierSet          m_sdmaBarriers;
     DxvkBarrierSet          m_initAcquires;
     DxvkBarrierSet          m_initBarriers;
