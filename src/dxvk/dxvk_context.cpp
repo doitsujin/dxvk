@@ -3237,15 +3237,9 @@ namespace dxvk {
     // Select a suitable image layout for the transfer op
     VkImageLayout srcImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    m_execAcquires.accessImage(
-      image, srcSubresourceRange,
-      image->info().layout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-      srcImageLayoutTransfer,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT);
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*image, srcSubresourceRange, srcImageLayoutTransfer, 
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     this->copyImageBufferData<false>(DxvkCmdBuffer::ExecBuffer,
       image, imageSubresource, imageOffset, imageExtent, srcImageLayoutTransfer,
