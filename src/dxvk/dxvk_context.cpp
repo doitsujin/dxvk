@@ -3507,14 +3507,9 @@ namespace dxvk {
           renderingInfo.pStencilAttachment = &attachmentInfo;
       }
 
-      if (clearLayout != imageView->image()->info().layout) {
-        m_execAcquires.accessImage(
-          imageView->image(),
-          imageView->imageSubresources(),
-          imageView->image()->info().layout, clearStages, 0,
-          clearLayout, clearStages, clearAccess);
-        m_execAcquires.recordCommands(m_cmd);
-      }
+      addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
+        clearLayout, clearStages, clearAccess, false);
+      flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
       // We cannot leverage render pass clears
       // because we clear only part of the view
