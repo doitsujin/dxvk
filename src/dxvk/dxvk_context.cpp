@@ -3056,12 +3056,9 @@ namespace dxvk {
       ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
       : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    m_execAcquires.accessImage(image, vk::makeSubresourceRange(imageSubresource),
-      discard ? VK_IMAGE_LAYOUT_UNDEFINED : image->info().layout,
-      image->info().stages, image->info().access,
-      imageLayout, stages, access);
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*image, vk::makeSubresourceRange(imageSubresource),
+      imageLayout, stages, access, discard);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Bind image for rendering
     VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
