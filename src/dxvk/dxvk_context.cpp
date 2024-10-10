@@ -1897,15 +1897,9 @@ namespace dxvk {
         storeLayout = depthOp.storeLayout;
       }
 
-      if (loadLayout != imageLayout) {
-        m_execAcquires.accessImage(
-          imageView->image(),
-          imageView->imageSubresources(),
-          loadLayout, clearStages, 0,
-          imageLayout, clearStages, clearAccess);
-
-        m_execAcquires.recordCommands(m_cmd);
-      }
+      addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
+        loadLayout, clearStages, 0, imageLayout, clearStages, clearAccess);
+      flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
       m_cmd->cmdBeginRendering(&renderingInfo);
 
