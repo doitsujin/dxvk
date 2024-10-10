@@ -1292,28 +1292,17 @@ namespace dxvk {
     VkImageLayout srcLayout = imageView->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     // If necessary, transition first mip level to the read-only layout
-    if (imageView->image()->info().layout != srcLayout) {
-      m_execAcquires.accessImage(imageView->image(),
-        mipGenerator.getTopSubresource(),
-        imageView->image()->info().layout,
-        imageView->image()->info().stages, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-    }
+    addImageLayoutTransition(*imageView->image(),
+      mipGenerator.getTopSubresource(), srcLayout,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_2_SHADER_READ_BIT, false);
 
-    // If necessary, initialize all levels that are written to
-    if (imageView->image()->info().layout != dstLayout) {
-      m_execAcquires.accessImage(imageView->image(),
-        mipGenerator.getAllTargetSubresources(),
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        imageView->image()->info().stages, 0,
-        dstLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-    }
+    addImageLayoutTransition(*imageView->image(),
+      mipGenerator.getAllTargetSubresources(), dstLayout,
+      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
 
-    m_execAcquires.recordCommands(m_cmd);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
     
     // Common descriptor set properties that we use to
     // bind the source image view to the fragment shader
@@ -1378,15 +1367,14 @@ namespace dxvk {
       pushConstants.layerCount = passExtent.depth;
 
       if (i) {
-        m_execAcquires.accessImage(imageView->image(),
-          mipGenerator.getSourceSubresource(i),
-          dstLayout,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-          srcLayout,
-          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-          VK_ACCESS_SHADER_READ_BIT);
-        m_execAcquires.recordCommands(m_cmd);
+        addImageLayoutTransition(*imageView->image(),
+          mipGenerator.getSourceSubresource(i), dstLayout,
+          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, srcLayout,
+          VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+          VK_ACCESS_2_SHADER_READ_BIT);
+
+        flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
       }
 
       m_cmd->cmdBeginRendering(&renderingInfo);
