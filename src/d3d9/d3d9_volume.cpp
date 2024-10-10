@@ -97,12 +97,49 @@ namespace dxvk {
     if (unlikely(pLockedBox == nullptr))
       return D3DERR_INVALIDCALL;
 
-    return m_parent->LockImage(
+    if (m_texture->Device()->IsD3D8Compatible()) {
+      // D3D8 LockBox clears any existing content present in pLockedBox
+      pLockedBox->pBits = nullptr;
+      pLockedBox->RowPitch = 0;
+      pLockedBox->SlicePitch = 0;
+    }
+
+    auto& desc = *(m_texture->Desc());
+
+    // Volume textures in D3DPOOL_DEFAULT must have
+    // the D3DUSAGE_DYNAMIC flag set in order to be lockable
+    if (desc.Pool == D3DPOOL_DEFAULT && !(desc.Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
+    // LockBox call on textures with formats which need to be block
+    // aligned, must be validated for mip level 0.
+    if (unlikely(pBox != nullptr && m_mipLevel == 0)) {
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+
+      if (blockSize.Width > 0 && blockSize.Height > 0
+       && ((pBox->Left   && (pBox->Left   & (blockSize.Width  - 1))) ||
+           (pBox->Top    && (pBox->Top    & (blockSize.Height - 1))) ||
+           (pBox->Right  && (pBox->Right  & (blockSize.Width  - 1))) ||
+           (pBox->Bottom && (pBox->Bottom & (blockSize.Height - 1)))))
+        return D3DERR_INVALIDCALL;
+    }
+
+    D3DLOCKED_BOX lockedBox;
+
+    HRESULT hr = m_parent->LockImage(
       m_texture,
       m_face, m_mipLevel,
-      pLockedBox,
+      &lockedBox,
       pBox,
       Flags);
+
+    if (FAILED(hr)) return hr;
+
+    pLockedBox->pBits      = lockedBox.pBits;
+    pLockedBox->RowPitch   = lockedBox.RowPitch;
+    pLockedBox->SlicePitch = lockedBox.SlicePitch;
+
+    return hr;
   }
 
 

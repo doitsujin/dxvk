@@ -174,6 +174,12 @@ namespace dxvk {
     if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
 
+    // Volume textures in D3DPOOL_SCRATCH must not have DYNAMIC usage
+    if (ResourceType == D3DRTYPE_VOLUMETEXTURE
+      && pDesc->Pool == D3DPOOL_SCRATCH
+      && (pDesc->Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
     // D3DUSAGE_WRITEONLY doesn't apply to textures.
     if (pDesc->Usage & D3DUSAGE_WRITEONLY)
       return D3DERR_INVALIDCALL;
