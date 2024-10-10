@@ -2761,29 +2761,11 @@ namespace dxvk {
     auto dstLayout = dstView->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     auto srcLayout = srcView->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    if (dstView->image()->info().layout != dstLayout) {
-      m_execAcquires.accessImage(
-        dstView->image(),
-        dstView->imageSubresources(),
-        dstView->image()->info().layout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        dstLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-    }
-
-    if (srcView->image()->info().layout != srcLayout) {
-      m_execAcquires.accessImage(
-        srcView->image(),
-        srcView->imageSubresources(),
-        srcView->image()->info().layout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*dstView->image(), dstView->imageSubresources(),
+      dstLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
+    addImageLayoutTransition(*srcView->image(), srcView->imageSubresources(),
+      srcLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Perform the blit operation
     VkImageBlit2 blitRegion = { VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
