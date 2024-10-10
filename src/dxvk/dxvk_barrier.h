@@ -201,6 +201,68 @@ namespace dxvk {
 
 
   /**
+   * \brief Barrier batch
+   *
+   * Simple helper class to accumulate barriers that can then
+   * be recorded into a command buffer in a single step.
+   */
+  class DxvkBarrierBatch {
+
+  public:
+
+    DxvkBarrierBatch(DxvkCmdBuffer cmdBuffer);
+    ~DxvkBarrierBatch();
+
+    /**
+     * \brief Adds a memory barrier
+     *
+     * Host read access will only be flushed
+     * at the end of a command list.
+     * \param [in] barrier Memory barrier
+     */
+    void addMemoryBarrier(
+      const VkMemoryBarrier2&           barrier);
+
+    /**
+     * \brief Adds an image barrier
+     *
+     * This will automatically turn into a normal memory barrier
+     * if no queue family ownership transfer or layout transition
+     * happens.
+     * \param [in] barrier Memory barrier
+     */
+    void addImageBarrier(
+      const VkImageMemoryBarrier2&      barrier);
+
+    /**
+     * \brief Flushes batched memory barriers
+     * \param [in] list Command list
+     */
+    void flush(
+      const Rc<DxvkCommandList>&        list);
+
+    /**
+     * \brief Flushes batched memory and host barriers
+     * \param [in] list Command list
+     */
+    void finalize(
+      const Rc<DxvkCommandList>&        list);
+
+  private:
+
+    DxvkCmdBuffer         m_cmdBuffer;
+
+    VkMemoryBarrier2      m_memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+
+    VkPipelineStageFlags2 m_hostSrcStages = 0u;
+    VkAccessFlags2        m_hostDstAccess = 0u;
+
+    std::vector<VkImageMemoryBarrier2> m_imageBarriers = { };
+
+  };
+
+
+  /**
    * \brief Buffer slice for barrier tracking
    *
    * Stores the offset and length of a buffer slice,
