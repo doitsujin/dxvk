@@ -1433,6 +1433,8 @@ namespace dxvk {
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
+    std::vector<VkImageMemoryBarrier2> m_imageLayoutTransitions;
+
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
       const VkOffset3D*           dstOffsets,
@@ -1778,6 +1780,34 @@ namespace dxvk {
     void endCurrentCommands();
 
     void splitCommands();
+
+    void flushImageLayoutTransitions(
+            DxvkCmdBuffer             cmdBuffer);
+
+    void addImageLayoutTransition(
+      const DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void addImageLayoutTransition(
+      const DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            bool                      discard);
+
+    void addImageInitTransition(
+      const DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
