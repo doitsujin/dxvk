@@ -186,6 +186,8 @@ namespace dxvk {
     m_activeRTsWhichAreTextures = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
+
+    m_gamescopeWSI = dxvk::env::getEnvVar("ENABLE_GAMESCOPE_WSI") == "1";
   }
 
 
@@ -1154,6 +1156,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
     if (unlikely(iSwapChain != 0))
       return D3DERR_INVALIDCALL;
+
+    #ifdef _WIN32
+    if (!IsGamescopeWSIEnabled()) {
+      return D3D9SwapChainEx::GetFrontBufferDataGDI(pDestSurface);
+    }
+    #endif
 
     D3D9DeviceLock lock = LockDevice();
 
