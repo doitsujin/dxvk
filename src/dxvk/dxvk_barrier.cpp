@@ -225,11 +225,6 @@ namespace dxvk {
       depInfo.pMemoryBarriers = &m_memBarrier;
     }
 
-    if (!m_bufBarriers.empty()) {
-      depInfo.bufferMemoryBarrierCount = m_bufBarriers.size();
-      depInfo.pBufferMemoryBarriers = m_bufBarriers.data();
-    }
-
     if (!m_imgBarriers.empty()) {
       depInfo.imageMemoryBarrierCount = m_imgBarriers.size();
       depInfo.pImageMemoryBarriers = m_imgBarriers.data();
@@ -289,8 +284,7 @@ namespace dxvk {
     m_memBarrier.dstStageMask = 0;
     m_memBarrier.dstAccessMask = 0;
 
-    m_bufBarriers.resize(0);
-    m_imgBarriers.resize(0);
+    m_imgBarriers.clear();
 
     m_bufSlices.clear();
     m_imgSlices.clear();

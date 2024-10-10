@@ -602,7 +602,6 @@ namespace dxvk {
     VkPipelineStageFlags2 m_allBarrierSrcStages = 0;
 
     VkMemoryBarrier2 m_memBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    std::vector<VkBufferMemoryBarrier2> m_bufBarriers;
     std::vector<VkImageMemoryBarrier2>  m_imgBarriers;
 
     DxvkBarrierSubresourceSet<VkBuffer, DxvkBarrierBufferSlice> m_bufSlices;
