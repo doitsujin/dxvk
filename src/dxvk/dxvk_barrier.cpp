@@ -410,6 +410,96 @@ namespace dxvk {
 
 
 
+  DxvkBarrierBatch::DxvkBarrierBatch(DxvkCmdBuffer cmdBuffer)
+  : m_cmdBuffer(cmdBuffer) { }
+
+
+  DxvkBarrierBatch::~DxvkBarrierBatch() {
+
+  }
+
+
+  void DxvkBarrierBatch::addMemoryBarrier(
+    const VkMemoryBarrier2&           barrier) {
+    if (unlikely(barrier.dstAccessMask & vk::AccessHostMask)) {
+      m_hostSrcStages |= barrier.srcStageMask & vk::StageDeviceMask;
+      m_hostDstAccess |= barrier.dstAccessMask & vk::AccessHostMask;
+    }
+
+    m_memoryBarrier.srcStageMask |= barrier.srcStageMask & vk::StageDeviceMask;
+    m_memoryBarrier.srcAccessMask |= barrier.srcAccessMask & vk::AccessWriteMask;
+    m_memoryBarrier.dstStageMask |= barrier.dstStageMask & vk::StageDeviceMask;
+    m_memoryBarrier.dstAccessMask |= barrier.dstAccessMask & vk::AccessDeviceMask;
+  }
+
+
+  void DxvkBarrierBatch::addImageBarrier(
+    const VkImageMemoryBarrier2&      barrier) {
+    if (unlikely(barrier.dstAccessMask & vk::AccessHostMask)) {
+      m_hostSrcStages |= barrier.srcStageMask & vk::StageDeviceMask;
+      m_hostDstAccess |= barrier.dstAccessMask & vk::AccessHostMask;
+    }
+
+    if (barrier.oldLayout != barrier.newLayout || barrier.srcQueueFamilyIndex != barrier.dstQueueFamilyIndex) {
+      auto& entry = m_imageBarriers.emplace_back(barrier);
+
+      entry.srcStageMask &= vk::StageDeviceMask;
+      entry.srcAccessMask &= vk::AccessWriteMask;
+      entry.dstStageMask &= vk::StageDeviceMask;
+      entry.dstAccessMask &= vk::AccessDeviceMask;
+    } else {
+      m_memoryBarrier.srcStageMask |= barrier.srcStageMask & vk::StageDeviceMask;
+      m_memoryBarrier.srcAccessMask |= barrier.srcAccessMask & vk::AccessWriteMask;
+      m_memoryBarrier.dstStageMask |= barrier.dstStageMask & vk::StageDeviceMask;
+      m_memoryBarrier.dstAccessMask |= barrier.dstAccessMask & vk::AccessDeviceMask;
+    }
+  }
+
+
+  void DxvkBarrierBatch::flush(
+    const Rc<DxvkCommandList>&        list) {
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+    if (m_memoryBarrier.srcStageMask | m_memoryBarrier.dstStageMask) {
+      depInfo.memoryBarrierCount = 1;
+      depInfo.pMemoryBarriers = &m_memoryBarrier;
+    }
+
+    if (!m_imageBarriers.empty()) {
+      depInfo.imageMemoryBarrierCount = m_imageBarriers.size();
+      depInfo.pImageMemoryBarriers = m_imageBarriers.data();
+    }
+
+    if (!(depInfo.memoryBarrierCount | depInfo.imageMemoryBarrierCount))
+      return;
+
+    list->cmdPipelineBarrier(m_cmdBuffer, &depInfo);
+
+    m_memoryBarrier.srcStageMask = 0u;
+    m_memoryBarrier.srcAccessMask = 0u;
+    m_memoryBarrier.dstStageMask = 0u;
+    m_memoryBarrier.dstAccessMask = 0u;
+
+    m_imageBarriers.clear();
+  }
+
+
+  void DxvkBarrierBatch::finalize(
+    const Rc<DxvkCommandList>&        list) {
+    if (m_hostDstAccess) {
+      m_memoryBarrier.srcStageMask |= m_hostSrcStages;
+      m_memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_2_HOST_BIT;
+      m_memoryBarrier.dstAccessMask |= m_hostDstAccess;
+
+      m_hostSrcStages = 0u;
+      m_hostDstAccess = 0u;
+    }
+
+    flush(list);
+  }
+
+
+
 
   DxvkBarrierSet:: DxvkBarrierSet(DxvkCmdBuffer cmdBuffer)
   : m_cmdBuffer(cmdBuffer) {
