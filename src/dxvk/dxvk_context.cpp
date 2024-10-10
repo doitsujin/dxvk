@@ -2937,21 +2937,12 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
 
     // Initialize the image if the entire subresource is covered
-    VkImageLayout dstImageLayoutInitial = image->info().layout;
     VkImageLayout dstImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    if (image->isFullSubresource(imageSubresource, imageExtent))
-      dstImageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    m_execAcquires.accessImage(
-      image, dstSubresourceRange,
-      dstImageLayoutInitial,
-      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-      dstImageLayoutTransfer,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*image, dstSubresourceRange, dstImageLayoutTransfer,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      image->isFullSubresource(imageSubresource, imageExtent));
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     this->copyImageBufferData<true>(DxvkCmdBuffer::ExecBuffer,
       image, imageSubresource, imageOffset, imageExtent, dstImageLayoutTransfer,
