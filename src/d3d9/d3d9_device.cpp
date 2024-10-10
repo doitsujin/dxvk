@@ -71,7 +71,7 @@ namespace dxvk {
     if (m_dxvkDevice->instance()->extensions().extDebugUtils)
       m_annotation = new D3D9UserDefinedAnnotation(this);
 
-    m_initializer      = new D3D9Initializer(m_dxvkDevice);
+    m_initializer      = new D3D9Initializer(this);
     m_converter        = new D3D9FormatHelper(m_dxvkDevice);
 
     EmitCs([
@@ -5543,6 +5543,10 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::EmitCsChunk(DxvkCsChunkRef&& chunk) {
+    // Flush init commands so that the CS thread
+    // can processe them before the first use.
+    m_initializer->FlushCsChunk();
+
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
   }
 
@@ -5912,7 +5916,6 @@ namespace dxvk {
     if constexpr (Synchronize9On12)
       m_submitStatus.result = VK_NOT_READY;
 
-    m_initializer->Flush();
     m_converter->Flush();
 
     EmitStagingBufferMarker();
@@ -5939,6 +5942,10 @@ namespace dxvk {
     // Vulkan queue submission is performed.
     if constexpr (Synchronize9On12)
       m_dxvkDevice->waitForSubmission(&m_submitStatus);
+
+    // Notify the device that the context has been flushed,
+    // this resets some resource initialization heuristics.
+    m_initializer->NotifyContextFlush();
   }
 
 
