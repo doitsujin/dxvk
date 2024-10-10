@@ -3332,18 +3332,9 @@ namespace dxvk {
       ? image->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
       : image->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    if (imageLayout != image->info().layout) {
-      m_execAcquires.accessImage(image,
-        vk::makeSubresourceRange(imageSubresource),
-        image->info().layout,
-        image->info().stages,
-        image->info().access,
-        imageLayout,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-
-      m_execAcquires.recordCommands(m_cmd);
-    }
+    addImageLayoutTransition(*image, vk::makeSubresourceRange(imageSubresource),
+      imageLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Retrieve pipeline
     VkImageViewType viewType = image->info().type == VK_IMAGE_TYPE_1D
