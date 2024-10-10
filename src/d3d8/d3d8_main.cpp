@@ -51,6 +51,10 @@ extern "C" {
     return S_OK;
   }
 
+  DLLEXPORT void __stdcall DebugSetMute() {
+    dxvk::Logger::debug("D3D8: DebugSetMute: Stub");
+  }
+
   DLLEXPORT IDirect3D8* __stdcall Direct3DCreate8(UINT nSDKVersion) {
     IDirect3D8* pDirect3D = nullptr;
     dxvk::CreateD3D8(&pDirect3D);
