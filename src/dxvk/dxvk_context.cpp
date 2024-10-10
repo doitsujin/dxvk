@@ -12,7 +12,6 @@ namespace dxvk {
     m_type        (type),
     m_common      (&device->m_objects),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
-    m_initAcquires(DxvkCmdBuffer::InitBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
@@ -1059,14 +1058,9 @@ namespace dxvk {
     } else {
       VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      m_initAcquires.accessImage(image, subresources,
-        initialLayout,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-        clearLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-
-      m_initAcquires.recordCommands(m_cmd);
+      addImageInitTransition(*image, subresources, clearLayout,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+      flushImageLayoutTransitions(DxvkCmdBuffer::InitBuffer);
 
       auto formatInfo = image->formatInfo();
 
