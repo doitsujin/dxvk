@@ -3786,27 +3786,12 @@ namespace dxvk {
     VkImageLayout srcLayout = (srcSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
       ? srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
       : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-    
-    if (srcImage->info().layout != srcLayout) {
-      m_execAcquires.accessImage(
-        srcImage, srcSubresourceRange,
-        srcImage->info().layout,
-        srcImage->info().stages, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-    }
 
-    if (dstImage->info().layout != dstLayout || doDiscard) {
-      m_execAcquires.accessImage(
-        dstImage, dstSubresourceRange,
-        doDiscard ? VK_IMAGE_LAYOUT_UNDEFINED
-                  : dstImage->info().layout,
-        dstImage->info().stages, 0,
-        dstLayout, dstStages, dstAccess);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout,
+      dstStages, dstAccess, doDiscard);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Create source and destination image views
     DxvkMetaCopyViews views(
