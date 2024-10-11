@@ -758,8 +758,8 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::SetCursorPosition(UINT X, UINT Y, UINT Width, UINT Height) {
-      VkOffset2D cursorPosition = { int32_t(X), int32_t(Y) };
+  void D3D9SwapChainEx::SetCursorPosition(int32_t X, int32_t Y, UINT Width, UINT Height) {
+      VkOffset2D cursorPosition = { X, Y };
       VkExtent2D cursorSize     = { uint32_t(Width), uint32_t(Height) };
 
       VkRect2D   cursorRect     = { cursorPosition, cursorSize };

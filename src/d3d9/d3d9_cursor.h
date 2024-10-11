@@ -10,8 +10,10 @@ namespace dxvk {
   struct D3D9_SOFTWARE_CURSOR {
     UINT Width  = 0;
     UINT Height = 0;
-    UINT X = 0;
-    UINT Y = 0;
+    UINT XHotSpot = 0;
+    UINT YHotSpot = 0;
+    int32_t X = 0;
+    int32_t Y = 0;
     bool DrawCursor  = false;
     bool ResetCursor = false;
   };
