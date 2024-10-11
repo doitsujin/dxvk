@@ -4171,31 +4171,12 @@ namespace dxvk {
     VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    VkImageLayout initialLayout = dstImage->info().layout;
-
-    if (dstImage->isFullSubresource(region.dstSubresource, region.extent))
-      initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    if (dstLayout != initialLayout) {
-      m_execAcquires.accessImage(
-        dstImage, dstSubresourceRange, initialLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        dstLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-    }
-
-    if (srcLayout != srcImage->info().layout) {
-      m_execAcquires.accessImage(
-        srcImage, srcSubresourceRange,
-        srcImage->info().layout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      dstImage->isFullSubresource(region.dstSubresource, region.extent));
+    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     VkImageResolve2 resolveRegion = { VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2 };
     resolveRegion.srcSubresource = region.srcSubresource;
