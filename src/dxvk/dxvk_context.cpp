@@ -1238,8 +1238,7 @@ namespace dxvk {
       return;
     }
 
-    if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
     // Create image views, etc.
     DxvkMetaMipGenViews mipGenerator(imageView);
@@ -1354,36 +1353,24 @@ namespace dxvk {
     // Issue barriers to ensure we can safely access all mip
     // levels of the image in all ways the image can be used
     if (srcLayout == dstLayout) {
-      m_execBarriers.accessImage(imageView->image(),
-        imageView->imageSubresources(),
-        srcLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_SHADER_READ_BIT,
-        imageView->image()->info().layout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(), imageView->imageSubresources(), srcLayout,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+        VK_ACCESS_2_SHADER_READ_BIT);
     } else {
-      m_execBarriers.accessImage(imageView->image(),
-        mipGenerator.getAllSourceSubresources(),
-        srcLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_SHADER_READ_BIT,
-        imageView->image()->info().layout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(), mipGenerator.getAllSourceSubresources(), srcLayout,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
+        VK_ACCESS_2_SHADER_READ_BIT);
 
-      m_execBarriers.accessImage(imageView->image(),
-        mipGenerator.getBottomSubresource(),
-        dstLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        imageView->image()->info().layout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(), mipGenerator.getBottomSubresource(), dstLayout,
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
     }
 
     m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
