@@ -350,6 +350,11 @@ namespace dxvk {
      || (inputHeight && (inputHeight & (inputHeight - 1))))
       return D3DERR_INVALIDCALL;
 
+    // It makes no sense to have a hotspot outside of the bitmap.
+    if (XHotSpot > std::max(inputWidth  - 1, 0u)
+     || YHotSpot > std::max(inputHeight - 1, 0u))
+      return D3DERR_INVALIDCALL;
+
     D3DPRESENT_PARAMETERS params;
     m_implicitSwapchain->GetPresentParameters(&params);
 
@@ -387,55 +392,17 @@ namespace dxvk {
       // Set this as our cursor.
       return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
     } else {
-      // The cursor bitmap passed by the application has the potential
-      // to not be clipped to the correct dimensions, so we need to
-      // discard any transparent edges and keep only a tight rectangle
-      // bounded by the cursor's visible edge pixels
-      uint32_t leftEdge   = inputWidth * HardwareCursorFormatSize;
-      uint32_t topEdge    = inputHeight;
-      uint32_t rightEdge  = 0;
-      uint32_t bottomEdge = 0;
+      size_t copyPitch = inputWidth * HardwareCursorFormatSize;
+      std::vector<uint8_t> bitmap(inputHeight * copyPitch, 0);
 
-      uint32_t rowPitch = inputWidth * HardwareCursorFormatSize;
-
-      for (uint32_t h = 0; h < inputHeight; h++) {
-        uint32_t rowOffset = h * rowPitch;
-        for (uint32_t w = 0; w < rowPitch; w += HardwareCursorFormatSize) {
-          // Examine only pixels with non-zero alpha
-          if (data[rowOffset + w + 3] != 0) {
-            if (leftEdge > w) leftEdge = w;
-            if (topEdge > h) topEdge = h;
-            if (rightEdge < w) rightEdge = w;
-            if (bottomEdge < h) bottomEdge = h;
-          }
-        }
-      }
-      leftEdge  /= HardwareCursorFormatSize;
-      rightEdge /= HardwareCursorFormatSize;
-
-      if (leftEdge > rightEdge || topEdge > bottomEdge) {
-        UnlockImage(cursorTex, 0, 0);
-
-        return D3DERR_INVALIDCALL;
-      }
-
-      // Calculate clipped bitmap dimensions
-      uint32_t clippedInputWidth  = rightEdge  + 1 - leftEdge + 1;
-      uint32_t clippedInputHeight = bottomEdge + 1 - topEdge  + 1;
-      // Windows works with a stride of 128, lets respect that.
-      uint32_t clippedCopyPitch = clippedInputWidth * HardwareCursorFormatSize;
-
-      std::vector<uint8_t> clippedBitmap(clippedInputHeight * clippedCopyPitch, 0);
-
-      for (uint32_t h = 0; h < clippedInputHeight; h++)
-        std::memcpy(&clippedBitmap[h * clippedCopyPitch],
-                    &data[(h + topEdge) * lockedBox.RowPitch + leftEdge * HardwareCursorFormatSize], clippedCopyPitch);
+      for (uint32_t h = 0; h < inputHeight; h++)
+        std::memcpy(&bitmap[h * copyPitch], &data[h * lockedBox.RowPitch], copyPitch);
 
       UnlockImage(cursorTex, 0, 0);
 
-      m_implicitSwapchain->SetCursorTexture(clippedInputWidth, clippedInputHeight, &clippedBitmap[0]);
+      m_implicitSwapchain->SetCursorTexture(inputWidth, inputHeight, &bitmap[0]);
 
-      return m_cursor.SetSoftwareCursor(clippedInputWidth, clippedInputHeight, XHotSpot, YHotSpot);
+      return m_cursor.SetSoftwareCursor(inputWidth, inputHeight, XHotSpot, YHotSpot);
     }
 
     return D3D_OK;
@@ -3929,6 +3896,8 @@ namespace dxvk {
       if (unlikely(pSoftwareCursor->ResetCursor)) {
         pSoftwareCursor->Width = 0;
         pSoftwareCursor->Height = 0;
+        pSoftwareCursor->XHotSpot = 0;
+        pSoftwareCursor->YHotSpot = 0;
         pSoftwareCursor->X = 0;
         pSoftwareCursor->Y = 0;
         pSoftwareCursor->ResetCursor = false;

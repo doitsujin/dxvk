@@ -41,8 +41,8 @@ namespace dxvk {
     POINT currentPos = { };
     ::GetCursorPos(&currentPos);
 
-    m_sCursor.X = static_cast<UINT>(currentPos.x);
-    m_sCursor.Y = static_cast<UINT>(currentPos.y);
+    m_sCursor.X = static_cast<int32_t>(currentPos.x) - m_sCursor.XHotSpot;
+    m_sCursor.Y = static_cast<int32_t>(currentPos.y) - m_sCursor.YHotSpot;
   }
 
 
@@ -97,8 +97,8 @@ namespace dxvk {
 
     m_sCursor.Width       = Width;
     m_sCursor.Height      = Height;
-    m_sCursor.X           = XHotSpot;
-    m_sCursor.Y           = YHotSpot;
+    m_sCursor.XHotSpot    = XHotSpot;
+    m_sCursor.YHotSpot    = YHotSpot;
     m_sCursor.ResetCursor = false;
 
     ShowCursor(m_visible);
