@@ -262,20 +262,17 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    auto bufferSlice = bufferView->getSliceHandle();
+    flushPendingAccesses(*bufferView, DxvkAccess::Write);
 
-    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-    
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
       lookupFormatInfo(bufferView->info().format)->flags);
-    
+
     // Create a descriptor set pointing to the view
     VkBufferView viewObject = bufferView->handle();
-    
+
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
-    
+
     VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
     descriptorWrite.dstSet           = descriptorSet;
     descriptorWrite.dstBinding       = 0;
@@ -284,16 +281,16 @@ namespace dxvk {
     descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
     descriptorWrite.pTexelBufferView = &viewObject;
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
-    
+
     // Prepare shader arguments
     DxvkMetaClearArgs pushArgs = { };
     pushArgs.clearValue = value;
     pushArgs.offset = VkOffset3D {  int32_t(offset), 0, 0 };
     pushArgs.extent = VkExtent3D { uint32_t(length), 1, 1 };
-    
+
     VkExtent3D workgroups = util::computeBlockCount(
       pushArgs.extent, pipeInfo.workgroupSize);
-    
+
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
@@ -304,13 +301,10 @@ namespace dxvk {
       0, sizeof(pushArgs), &pushArgs);
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
-    
-    m_execBarriers.accessBuffer(bufferSlice,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_WRITE_BIT,
-      bufferView->buffer()->info().stages,
-      bufferView->buffer()->info().access);
-    
+
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *bufferView,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
+
     m_cmd->trackResource<DxvkAccess::Write>(bufferView->buffer());
   }
   
