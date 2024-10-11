@@ -1806,6 +1806,50 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
 
+    void accessMemory(
+            DxvkCmdBuffer             cmdBuffer,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void accessImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void accessImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkBuffer&               buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkBuffer&               buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
             VkFormat                  bufferFormat);
