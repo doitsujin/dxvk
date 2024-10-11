@@ -1022,8 +1022,8 @@ namespace dxvk {
       slice.handle, slice.offset,
       dxvk::align(slice.length, 4), 0);
 
-    m_initBarriers.accessMemory(
-      VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+    accessMemory(DxvkCmdBuffer::InitBuffer,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       buffer->info().stages, buffer->info().access);
 
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
