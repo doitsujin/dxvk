@@ -6882,6 +6882,102 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::accessMemory(
+          DxvkCmdBuffer             cmdBuffer,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    auto* batch = &m_execBarriers;
+
+    if (cmdBuffer != DxvkCmdBuffer::ExecBuffer) {
+      batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
+        ? &m_initBarriers
+        : &m_sdmaBarriers;
+    }
+
+    batch->accessMemory(srcStages, srcAccess, dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::accessImage(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessImage(cmdBuffer, image, subresources,
+      srcLayout, srcStages, srcAccess,
+      image.info().layout,
+      image.info().stages,
+      image.info().access);
+  }
+
+
+  void DxvkContext::accessImage(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    auto* batch = &m_execBarriers;
+
+    if (cmdBuffer != DxvkCmdBuffer::ExecBuffer) {
+      batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
+        ? &m_initBarriers
+        : &m_sdmaBarriers;
+    }
+
+    batch->accessImage(&image, subresources,
+      srcLayout, srcStages, srcAccess,
+      dstLayout, dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkBuffer&               buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessBuffer(cmdBuffer, buffer, offset, size,
+      srcStages, srcAccess,
+      buffer.info().stages,
+      buffer.info().access);
+  }
+
+
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkBuffer&               buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    auto* batch = &m_execBarriers;
+
+    if (cmdBuffer != DxvkCmdBuffer::ExecBuffer) {
+      batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
+        ? &m_initBarriers
+        : &m_sdmaBarriers;
+    }
+
+    DxvkBufferSliceHandle slice = buffer.getSliceHandle(offset, size);
+
+    batch->accessBuffer(slice,
+      srcStages, srcAccess,
+      dstStages, dstAccess);
+  }
+
+
   bool DxvkContext::formatsAreCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {
