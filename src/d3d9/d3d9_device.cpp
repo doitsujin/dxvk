@@ -4656,6 +4656,26 @@ namespace dxvk {
     if (unlikely(!desc.IsLockable))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pBox != nullptr)) {
+      D3DRESOURCETYPE type = pResource->GetType();
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+
+      bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
+      bool isNotLeftAligned   = pBox->Left   && (pBox->Left   & (blockSize.Width  - 1));
+      bool isNotTopAligned    = pBox->Top    && (pBox->Top    & (blockSize.Height - 1));
+      bool isNotRightAligned  = pBox->Right  && (pBox->Right  & (blockSize.Width  - 1));
+      bool isNotBottomAligned = pBox->Bottom && (pBox->Bottom & (blockSize.Height - 1));
+
+      // LockImage calls on D3DPOOL_DEFAULT surfaces and volume textures with formats
+      // which need to be block aligned, must be validated for mip level 0.
+      if (MipLevel == 0 && isBlockAlignedFormat
+        && (type == D3DRTYPE_VOLUMETEXTURE ||
+           (type != D3DRTYPE_VOLUMETEXTURE && desc.Pool == D3DPOOL_DEFAULT))
+        && (isNotLeftAligned  || isNotTopAligned ||
+            isNotRightAligned || isNotBottomAligned))
+        return D3DERR_INVALIDCALL;
+    }
+
     auto& formatMapping = pResource->GetFormatMapping();
 
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
