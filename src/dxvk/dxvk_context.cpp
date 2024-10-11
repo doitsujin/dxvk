@@ -6986,6 +6986,94 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkBufferView&           bufferView,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessBuffer(cmdBuffer,
+      *bufferView.buffer(),
+      bufferView.info().offset,
+      bufferView.info().size,
+      srcStages, srcAccess);
+  }
+
+
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkBufferView&           bufferView,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    accessBuffer(cmdBuffer,
+      *bufferView.buffer(),
+      bufferView.info().offset,
+      bufferView.info().size,
+      srcStages, srcAccess,
+      dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::flushPendingAccesses(
+          DxvkBuffer&               buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          DxvkAccess                access) {
+    if (m_execBarriers.isBufferDirty(buffer.getSliceHandle(offset, size), access))
+      m_execBarriers.recordCommands(m_cmd);
+  }
+
+
+  void DxvkContext::flushPendingAccesses(
+          DxvkBufferView&           bufferView,
+          DxvkAccess                access) {
+    flushPendingAccesses(*bufferView.buffer(),
+      bufferView.info().offset,
+      bufferView.info().size,
+      access);
+  }
+
+
+  void DxvkContext::flushPendingAccesses(
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          DxvkAccess                access) {
+    if (m_execBarriers.isImageDirty(&image, subresources, access))
+      m_execBarriers.recordCommands(m_cmd);
+  }
+
+
+  void DxvkContext::flushPendingAccesses(
+          DxvkImageView&            imageView,
+          DxvkAccess                access) {
+    flushPendingAccesses(*imageView.image(),
+      imageView.imageSubresources(), access);
+  }
+
+
+  void DxvkContext::flushBarriers() {
+    m_execBarriers.recordCommands(m_cmd);
+  }
+
+
+  bool DxvkContext::resourceHasAccess(
+          DxvkBuffer&               buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          DxvkAccess                access) {
+    return m_execBarriers.getBufferAccess(buffer.getSliceHandle(offset, size)).test(access);
+  }
+
+
+  bool DxvkContext::resourceHasAccess(
+          DxvkImageView&            imageView,
+          DxvkAccess                access) {
+    return m_execBarriers.getImageAccess(imageView.image(),
+      imageView.imageSubresources()).test(access);
+  }
+
+
   bool DxvkContext::formatsAreCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {

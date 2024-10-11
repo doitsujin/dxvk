@@ -1850,6 +1850,55 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
 
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkBufferView&           bufferView,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkBufferView&           bufferView,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void flushPendingAccesses(
+            DxvkBuffer&               buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            DxvkAccess                access);
+
+    void flushPendingAccesses(
+            DxvkBufferView&           bufferView,
+            DxvkAccess                access);
+
+    void flushPendingAccesses(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            DxvkAccess                access);
+
+    void flushPendingAccesses(
+            DxvkImageView&            imageView,
+            DxvkAccess                access);
+
+    void flushBarriers();
+
+    bool resourceHasAccess(
+            DxvkBuffer&               buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            DxvkAccess                access);
+
+    bool resourceHasAccess(
+            DxvkBufferView&           buffer,
+            DxvkAccess                access);
+
+    bool resourceHasAccess(
+            DxvkImageView&            imageView,
+            DxvkAccess                access);
+
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
             VkFormat                  bufferFormat);
