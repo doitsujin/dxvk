@@ -6158,9 +6158,11 @@ namespace dxvk {
       // Guaranteed to not be nullptr...
       auto texInfo = GetCommonTexture(m_state.textures[texIdx]);
 
-      if (texInfo->NeedsMipGen()) {
+      if (likely(texInfo->NeedsMipGen())) {
         this->EmitGenerateMips(texInfo);
-        texInfo->SetNeedsMipGen(false);
+        if (likely(!IsTextureBoundAsAttachment(texInfo))) {
+          texInfo->SetNeedsMipGen(false);
+        }
       }
     }
 
@@ -6185,14 +6187,18 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkTextureMipsUnDirty(D3D9CommonTexture* pResource) {
-    pResource->SetNeedsMipGen(false);
+    if (likely(!IsTextureBoundAsAttachment(pResource))) {
+      // We need to keep the texture marked as needing mipmap generation because we don't set that when rendering.
+      pResource->SetNeedsMipGen(false);
 
-    for (uint32_t i : bit::BitMask(m_activeTextures)) {
-      // Guaranteed to not be nullptr...
-      auto texInfo = GetCommonTexture(m_state.textures[i]);
+      for (uint32_t i : bit::BitMask(m_activeTextures)) {
+        // Guaranteed to not be nullptr...
+        auto texInfo = GetCommonTexture(m_state.textures[i]);
 
-      if (texInfo == pResource)
-        m_activeTexturesToGen &= ~(1 << i);
+        if (unlikely(texInfo == pResource)) {
+          m_activeTexturesToGen &= ~(1 << i);
+        }
+      }
     }
   }
 
