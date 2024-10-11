@@ -188,15 +188,11 @@ namespace dxvk {
 
       this->prepareImage(image, subresources);
 
-      if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
-        m_execBarriers.recordCommands(m_cmd);
+      flushPendingAccesses(*image, subresources, DxvkAccess::Write);
 
-      m_execBarriers.accessImage(image, subresources,
-        image->info().layout,
-        image->info().stages, 0,
-        layout,
-        image->info().stages,
-        image->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer, *image, subresources,
+        image->info().layout, image->info().stages, 0,
+        layout, image->info().stages, image->info().access);
 
       image->setLayout(layout);
 
