@@ -1035,12 +1035,9 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             initialLayout) {
     if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-      m_initBarriers.accessImage(image, subresources,
-        initialLayout,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-        image->info().layout,
-        image->info().stages,
-        image->info().access);
+      accessImage(DxvkCmdBuffer::InitBuffer,
+        *image, subresources, initialLayout,
+        VK_PIPELINE_STAGE_2_NONE, 0);
 
       m_cmd->trackResource<DxvkAccess::None>(image);
     } else {
@@ -1119,13 +1116,10 @@ namespace dxvk {
         }
       }
 
-      m_initBarriers.accessImage(image, subresources,
-        clearLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        image->info().layout,
-        image->info().stages,
-        image->info().access);
+      accessImage(DxvkCmdBuffer::InitBuffer,
+        *image, subresources, clearLayout,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+        VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
       m_cmd->trackResource<DxvkAccess::Write>(image);
     }
