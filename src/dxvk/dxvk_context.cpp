@@ -434,21 +434,15 @@ namespace dxvk {
 
     m_cmd->cmdCopyBuffer(cmdBuffer, &copyInfo);
 
-    auto& barriers = replaceBuffer
-      ? m_initBarriers
-      : m_execBarriers;
+    accessBuffer(cmdBuffer,
+      *srcBuffer, srcOffset, numBytes,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_READ_BIT);
 
-    barriers.accessBuffer(srcSlice,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT,
-      srcBuffer->info().stages,
-      srcBuffer->info().access);
-
-    barriers.accessBuffer(dstSlice,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      dstBuffer->info().stages,
-      dstBuffer->info().access);
+    accessBuffer(cmdBuffer,
+      *dstBuffer, dstOffset, numBytes,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
     m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
