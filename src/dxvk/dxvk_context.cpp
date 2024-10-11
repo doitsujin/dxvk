@@ -4094,16 +4094,9 @@ namespace dxvk {
       ? VK_ACCESS_TRANSFER_READ_BIT
       : VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    if (sparse->info().layout != transferLayout) {
-      m_execAcquires.accessImage(sparse, sparseSubresources,
-        sparse->info().layout,
-        sparse->info().stages, 0,
-        transferLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        transferAccess);
-
-      m_execAcquires.recordCommands(m_cmd);
-    }
+    addImageLayoutTransition(*sparse, sparseSubresources, transferLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, transferAccess, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     for (uint32_t i = 0; i < pageCount; i++) {
       auto pageInfo = pageTable->getPageInfo(pages[i]);
