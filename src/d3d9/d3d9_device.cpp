@@ -4702,8 +4702,13 @@ namespace dxvk {
     if (unlikely(!desc.IsLockable))
       return D3DERR_INVALIDCALL;
 
+    D3DRESOURCETYPE type = pResource->GetType();
+
+    // Volume textures in D3DPOOL_DEFAULT must have the D3DUSAGE_DYNAMIC flag set in order to be lockable.
+    if (unlikely(type == D3DRTYPE_VOLUMETEXTURE && desc.Pool == D3DPOOL_DEFAULT && !(desc.Usage & D3DUSAGE_DYNAMIC)))
+      return D3DERR_INVALIDCALL;
+
     if (unlikely(pBox != nullptr)) {
-      D3DRESOURCETYPE type = pResource->GetType();
       D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
 
       // LockImage calls on D3DPOOL_DEFAULT surfaces and volume textures with formats
