@@ -834,9 +834,11 @@ namespace dxvk {
     auto bufferSlice = m_state.id.argBuffer.getSliceHandle(
       offset, sizeof(VkDispatchIndirectCommand));
 
-    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
-      m_execBarriers.recordCommands(m_cmd);
-    
+    flushPendingAccesses(
+      *m_state.id.argBuffer.buffer(),
+      m_state.id.argBuffer.offset() + offset,
+      sizeof(VkDispatchIndirectCommand), DxvkAccess::Read);
+
     if (this->commitComputeState()) {
       this->commitComputeBarriers<false>();
       this->commitComputeBarriers<true>();
@@ -849,12 +851,13 @@ namespace dxvk {
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
-      m_execBarriers.accessBuffer(bufferSlice,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-        VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
-        m_state.id.argBuffer.bufferInfo().stages,
-        m_state.id.argBuffer.bufferInfo().access);
+
+      accessBuffer(DxvkCmdBuffer::ExecBuffer,
+        *m_state.id.argBuffer.buffer(),
+        m_state.id.argBuffer.offset() + offset,
+        sizeof(VkDispatchIndirectCommand),
+        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+        VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
       
       this->trackDrawBuffer();
     }
