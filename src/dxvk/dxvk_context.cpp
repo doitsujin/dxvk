@@ -1488,8 +1488,7 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->prepareImage(image, image->getAvailableSubresources());
 
-    if (m_execBarriers.isImageDirty(image, image->getAvailableSubresources(), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*image, image->getAvailableSubresources(), DxvkAccess::Write);
 
     if (isUsageAndFormatCompatible) {
       // Emit a barrier. If used in internal passes, this function
@@ -1499,7 +1498,7 @@ namespace dxvk {
 
       image->assignResourceWithUsage(image->getAllocation(), usageInfo);
 
-      m_execBarriers.accessImage(image, image->getAvailableSubresources(),
+      accessImage(DxvkCmdBuffer::ExecBuffer, *image, image->getAvailableSubresources(),
         oldLayout, image->info().stages, image->info().access,
         newLayout, image->info().stages, image->info().access);
 
