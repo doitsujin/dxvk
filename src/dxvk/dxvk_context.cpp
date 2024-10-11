@@ -4385,15 +4385,6 @@ namespace dxvk {
         dstAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     }
 
-    if (dstImage->info().layout != dstLayout || doDiscard) {
-      m_execAcquires.accessImage(
-        dstImage, dstSubresourceRange,
-        doDiscard ? VK_IMAGE_LAYOUT_UNDEFINED
-                  : dstImage->info().layout,
-        dstImage->info().stages, 0,
-        dstLayout, dstStages, dstAccess);
-    }
-
     // Check source image layout, and try to avoid transitions if we can
     VkImageLayout srcLayout = srcImage->info().layout;
     
@@ -4403,18 +4394,12 @@ namespace dxvk {
         ? srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
         : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     }
-    
-    if (srcImage->info().layout != srcLayout) {
-      m_execAcquires.accessImage(
-        srcImage, srcSubresourceRange,
-        srcImage->info().layout,
-        srcImage->info().stages, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-    }
 
-    m_execAcquires.recordCommands(m_cmd);
+    addImageLayoutTransition(*dstImage, dstSubresourceRange,
+      dstLayout, dstStages, dstAccess, doDiscard);
+    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Create a framebuffer and pipeline for the resolve op
     VkFormat dstFormat = format ? format : dstImage->info().format;
