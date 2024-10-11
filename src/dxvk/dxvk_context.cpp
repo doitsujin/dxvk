@@ -1184,7 +1184,8 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     this->spillRenderPass(true);
 
-    m_execBarriers.accessBuffer(resource->getSliceHandle(),
+    accessBuffer(DxvkCmdBuffer::ExecBuffer,
+      *resource, 0, resource->info().size,
       srcStages, srcAccess, dstStages, dstAccess);
 
     m_cmd->trackResource<DxvkAccess::Write>(resource);
@@ -1202,11 +1203,10 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->prepareImage(resource, resource->getAvailableSubresources());
 
-    if (m_execBarriers.isImageDirty(resource, resource->getAvailableSubresources(), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*resource, resource->getAvailableSubresources(), DxvkAccess::Write);
 
-    m_execBarriers.accessImage(
-      resource, resource->getAvailableSubresources(),
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *resource, resource->getAvailableSubresources(),
       srcLayout, srcStages, srcAccess,
       dstLayout, dstStages, dstAccess);
 
