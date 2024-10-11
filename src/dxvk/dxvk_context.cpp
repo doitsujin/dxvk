@@ -1698,16 +1698,12 @@ namespace dxvk {
     this->spillRenderPass(false);
     
     if (srcLayout != dstLayout) {
-      m_execBarriers.recordCommands(m_cmd);
+      flushPendingAccesses(*dstImage, dstSubresources, DxvkAccess::Write);
 
-      m_execBarriers.accessImage(
-        dstImage, dstSubresources,
-        srcLayout,
-        dstImage->info().stages,
-        dstImage->info().access,
-        dstLayout,
-        dstImage->info().stages,
-        dstImage->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *dstImage, dstSubresources,
+        srcLayout, dstImage->info().stages, dstImage->info().access,
+        dstLayout, dstImage->info().stages, dstImage->info().access);
       
       m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     }
