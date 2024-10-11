@@ -477,6 +477,9 @@ namespace dxvk {
       m_autoDepthStencil = nullptr;
     } else {
       // Extended devices only reset the bound render targets
+      m_rtLimitsRenderArea = (1 << 4) - 1;
+      m_dsvLimitsRenderArea = true;
+      m_renderArea = { ~0u, ~0u };
       for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++) {
         SetRenderTargetInternal(i, nullptr);
       }
@@ -2273,8 +2276,19 @@ namespace dxvk {
         [[fallthrough]];
         case D3DRS_STENCILENABLE:
         case D3DRS_ZENABLE:
-          if (likely(m_state.depthStencil != nullptr))
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+          if (likely(m_state.depthStencil != nullptr)) {
+            // The DS state change only impacts the frame buffer if it results in a change of the render area
+            VkExtent2D dsvExtent = m_state.depthStencil->GetSurfaceExtent();
+            const bool anyDSStateEnabled = m_state.renderStates[D3DRS_ZENABLE]
+              || m_state.renderStates[D3DRS_ZWRITEENABLE]
+              || m_state.renderStates[D3DRS_STENCILENABLE]
+              || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+
+            const bool extendsRenderArea = !anyDSStateEnabled && m_dsvLimitsRenderArea;
+            const bool shrinksRenderArea = anyDSStateEnabled && (dsvExtent.width < m_renderArea.width || dsvExtent.height < m_renderArea.height);
+            if (unlikely(extendsRenderArea || shrinksRenderArea))
+              m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+          }
 
           m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
           break;
@@ -3615,8 +3629,9 @@ namespace dxvk {
     // If we have any RTs we would have bound to the the FB
     // not in the new shader mask, mark the framebuffer as dirty
     // so we unbind them.
-    uint32_t oldUseMask = m_boundRTs & m_anyColorWrites & m_psShaderMasks.rtMask;
-    uint32_t newUseMask = m_boundRTs & m_anyColorWrites & newShaderMasks.rtMask;
+    const uint32_t doesntLimitRenderAreaMask = (~m_rtLimitsRenderArea) & ((1u << 4u) - 1u);
+    uint32_t oldUseMask = m_boundRTs & (m_anyColorWrites | doesntLimitRenderAreaMask) & m_psShaderMasks.rtMask;
+    uint32_t newUseMask = m_boundRTs & (m_anyColorWrites | doesntLimitRenderAreaMask) & newShaderMasks.rtMask;
     if (oldUseMask != newUseMask)
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
@@ -5965,7 +5980,16 @@ namespace dxvk {
 
     // The 0th RT is always bound.
     if (Index == 0 || m_boundRTs & bit) {
-      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      // The color write mask only impacts the frame buffer if it results in a change of the render area
+      if (m_boundRTs & bit) {
+        // The only time m_boundRTs can ever be 0 is when this is called in ResetState
+        VkExtent2D rtExtent = m_state.renderTargets[Index]->GetSurfaceExtent();
+        const bool extendsRenderArea = !has && m_rtLimitsRenderArea & (1u << Index);
+        const bool shrinksRenderArea = has && (rtExtent.width < m_renderArea.width || rtExtent.height < m_renderArea.height);
+        if (unlikely(extendsRenderArea || shrinksRenderArea))
+          m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      }
+
       UpdateActiveRTs(Index);
     }
   }
@@ -6309,6 +6333,8 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
+    m_renderArea = { ~0u, ~0u };
+    m_rtLimitsRenderArea = 0;
     for (uint32_t i : bit::BitMask(m_boundRTs)) {
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
@@ -6317,29 +6343,50 @@ namespace dxvk {
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
-      if (!(m_anyColorWrites & (1 << i)))
-        continue;
-
       if (!(m_psShaderMasks.rtMask & (1 << i)))
         continue;
+
+      VkExtent2D rtExtent = m_state.renderTargets[i]->GetSurfaceExtent();
+      bool rtLimitsRenderArea = m_renderArea.width != rtExtent.width || m_renderArea.height != rtExtent.height;
+      m_rtLimitsRenderArea |= rtLimitsRenderArea << i;
+
+      // We only need to skip binding the RT if it would shrink the render area
+      // despite not having color writes enabled,
+      // otherwise we might end up with unnecessary render pass spills
+      if (!(m_anyColorWrites & (1 << i)) && rtLimitsRenderArea)
+        continue;
+
+      m_renderArea.width = std::min(m_renderArea.width, rtExtent.width);
+      m_renderArea.height = std::min(m_renderArea.height, rtExtent.height);
 
       attachments.color[i] = {
         m_state.renderTargets[i]->GetRenderTargetView(srgb),
         m_state.renderTargets[i]->GetRenderTargetLayout(m_hazardLayout) };
     }
 
-    if (m_state.depthStencil != nullptr &&
-      (m_state.renderStates[D3DRS_ZENABLE]
+    m_dsvLimitsRenderArea = false;
+    if (m_state.depthStencil != nullptr) {
+      VkExtent2D dsvExtent = m_state.depthStencil->GetSurfaceExtent();
+      m_dsvLimitsRenderArea = m_renderArea.width != dsvExtent.width || m_renderArea.height != dsvExtent.height;
+
+      // We only need to skip binding the DSV if it would shrink the render area
+      // despite not being used, otherwise we might end up with unnecessary render pass spills
+      const bool anyDSStateEnabled = m_state.renderStates[D3DRS_ZENABLE]
         || m_state.renderStates[D3DRS_ZWRITEENABLE]
         || m_state.renderStates[D3DRS_STENCILENABLE]
-        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB))) {
-      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
-      const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+      if (anyDSStateEnabled || !m_dsvLimitsRenderArea) {
+        m_renderArea.width = std::min(m_renderArea.width, dsvExtent.width);
+        m_renderArea.height = std::min(m_renderArea.height, dsvExtent.height);
 
-      if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
-        attachments.depth = {
-          m_state.depthStencil->GetDepthStencilView(),
-          m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
+        const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
+        const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+        if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
+          attachments.depth = {
+            m_state.depthStencil->GetDepthStencilView(),
+            m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
+        }
       }
     }
 
@@ -8081,6 +8128,9 @@ namespace dxvk {
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
 
+    m_rtLimitsRenderArea = (1 << 4) - 1;
+    m_dsvLimitsRenderArea = true;
+    m_renderArea = { ~0u, ~0u };
     UpdateAnyColorWrites<0>(true);
     UpdateAnyColorWrites<1>(true);
     UpdateAnyColorWrites<2>(true);

@@ -1380,6 +1380,10 @@ namespace dxvk {
     uint32_t                        m_activeRTsWhichAreTextures : 4;
     uint32_t                        m_alphaSwizzleRTs : 4;
     uint32_t                        m_lastHazardsRT   : 4;
+    uint32_t                        m_rtLimitsRenderArea : 4;
+    bool                            m_dsvLimitsRenderArea;
+
+    VkExtent2D                      m_renderArea;
 
     uint32_t                        m_activeTextureRTs       = 0;
     uint32_t                        m_activeTextureDSs       = 0;
