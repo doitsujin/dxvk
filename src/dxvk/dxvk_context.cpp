@@ -1167,13 +1167,9 @@ namespace dxvk {
     }
 
     // Perform initial layout transition
-    m_initBarriers.accessImage(image,
-      image->getAvailableSubresources(),
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
+    accessImage(DxvkCmdBuffer::InitBuffer,
+      *image, image->getAvailableSubresources(),
+      VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0);
 
     m_cmd->trackResource<DxvkAccess::Write>(image);
   }
