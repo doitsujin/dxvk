@@ -13,7 +13,6 @@ namespace dxvk {
     m_common      (&device->m_objects),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
-    m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()) {
     // Init framebuffer info with default render pass in case

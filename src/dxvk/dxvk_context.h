@@ -1408,7 +1408,6 @@ namespace dxvk {
 
     DxvkBarrierSet          m_sdmaBarriers;
     DxvkBarrierSet          m_initBarriers;
-    DxvkBarrierSet          m_execAcquires;
     DxvkBarrierSet          m_execBarriers;
     DxvkBarrierControlFlags m_barrierControl;
 
