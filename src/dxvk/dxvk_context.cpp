@@ -631,13 +631,6 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    auto dstBufferSlice = dstBuffer->getSliceHandle(dstBufferOffset, elementSize * util::flattenImageExtent(dstSize));
-    auto srcBufferSlice = srcBuffer->getSliceHandle(srcBufferOffset, elementSize * util::flattenImageExtent(srcSize));
-
-    if (m_execBarriers.isBufferDirty(dstBufferSlice, DxvkAccess::Write)
-     || m_execBarriers.isBufferDirty(srcBufferSlice, DxvkAccess::Read))
-      m_execBarriers.recordCommands(m_cmd);
-
     // We'll use texel buffer views with an appropriately
     // sized integer format to perform the copy
     VkFormat format = VK_FORMAT_UNDEFINED;
@@ -659,21 +652,24 @@ namespace dxvk {
     DxvkBufferViewKey viewInfo;
     viewInfo.format = format;
     viewInfo.offset = dstBufferOffset;
-    viewInfo.size = dstBufferSlice.length;
+    viewInfo.size = elementSize * util::flattenImageExtent(dstSize);
     viewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> dstView = dstBuffer->createView(viewInfo);
 
     viewInfo.offset = srcBufferOffset;
-    viewInfo.size = srcBufferSlice.length;
+    viewInfo.size = elementSize * util::flattenImageExtent(srcSize);
     viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-    Rc<DxvkBufferView> srcView;
+    Rc<DxvkBufferView> srcView = srcBuffer->createView(viewInfo);
+
+    flushPendingAccesses(*dstView, DxvkAccess::Write);
+    flushPendingAccesses(*srcView, DxvkAccess::Read);
 
     if (srcBuffer == dstBuffer
-     && srcBufferSlice.offset < dstBufferSlice.offset + dstBufferSlice.length
-     && srcBufferSlice.offset + srcBufferSlice.length > dstBufferSlice.offset) {
+     && srcView->info().offset < dstView->info().offset + dstView->info().size
+     && srcView->info().offset + srcView->info().size > dstView->info().offset) {
       // Create temporary copy in case of overlapping regions
       DxvkBufferCreateInfo bufferInfo;
-      bufferInfo.size   = srcBufferSlice.length;
+      bufferInfo.size   = srcView->info().size;
       bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
                         | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
@@ -683,6 +679,7 @@ namespace dxvk {
       Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       auto tmpBufferSlice = tmpBuffer->getSliceHandle();
+      auto srcBufferSlice = srcView->getSliceHandle();
 
       VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
       copyRegion.srcOffset = srcBufferSlice.offset;
@@ -707,8 +704,6 @@ namespace dxvk {
       srcView = tmpBuffer->createView(viewInfo);
 
       m_cmd->trackResource<DxvkAccess::Write>(tmpBuffer);
-    } else {
-      srcView = srcBuffer->createView(viewInfo);
     }
 
     auto pipeInfo = m_common->metaCopy().getCopyFormattedBufferPipeline();
@@ -762,19 +757,11 @@ namespace dxvk {
       (extent.height + 7) / 8,
       extent.depth);
     
-    m_execBarriers.accessBuffer(
-      dstView->getSliceHandle(),
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_WRITE_BIT,
-      dstBuffer->info().stages,
-      dstBuffer->info().access);
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *dstView,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
 
-    m_execBarriers.accessBuffer(
-      srcView->getSliceHandle(),
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT,
-      srcBuffer->info().stages,
-      srcBuffer->info().access);
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *srcView,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
 
     // Track all involved resources
     m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
