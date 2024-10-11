@@ -2038,15 +2038,9 @@ namespace dxvk {
       bufferSlice.length,
       data);
 
-    auto& barriers = replaceBuffer
-      ? m_initBarriers
-      : m_execBarriers;
-
-    barriers.accessBuffer(bufferSlice,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    accessBuffer(cmdBuffer, *buffer, offset, size,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
