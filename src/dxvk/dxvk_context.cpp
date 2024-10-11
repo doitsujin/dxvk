@@ -401,9 +401,8 @@ namespace dxvk {
     if (!replaceBuffer) {
       this->spillRenderPass(true);
 
-      if (m_execBarriers.isBufferDirty(srcSlice, DxvkAccess::Read)
-       || m_execBarriers.isBufferDirty(dstSlice, DxvkAccess::Write))
-        m_execBarriers.recordCommands(m_cmd);
+      flushPendingAccesses(*srcBuffer, srcOffset, numBytes, DxvkAccess::Read);
+      flushPendingAccesses(*dstBuffer, dstOffset, numBytes, DxvkAccess::Write);
     }
 
     DxvkCmdBuffer cmdBuffer = replaceBuffer
