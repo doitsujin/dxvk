@@ -97,12 +97,29 @@ namespace dxvk {
     if (unlikely(pLockedBox == nullptr))
       return D3DERR_INVALIDCALL;
 
-    return m_parent->LockImage(
+    if (m_texture->Device()->IsD3D8Compatible()) {
+      // D3D8 LockBox clears any existing content present in pLockedBox
+      pLockedBox->pBits = nullptr;
+      pLockedBox->RowPitch = 0;
+      pLockedBox->SlicePitch = 0;
+    }
+
+    D3DLOCKED_BOX lockedBox;
+
+    HRESULT hr = m_parent->LockImage(
       m_texture,
       m_face, m_mipLevel,
-      pLockedBox,
+      &lockedBox,
       pBox,
       Flags);
+
+    if (FAILED(hr)) return hr;
+
+    pLockedBox->pBits      = lockedBox.pBits;
+    pLockedBox->RowPitch   = lockedBox.RowPitch;
+    pLockedBox->SlicePitch = lockedBox.SlicePitch;
+
+    return hr;
   }
 
 
