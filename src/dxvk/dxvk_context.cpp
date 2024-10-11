@@ -2070,16 +2070,16 @@ namespace dxvk {
       // Buffers use SHARING_MODE_CONCURRENT, so no explicit queue
       // family ownership transfer is required. Access is serialized
       // via a semaphore.
-      m_sdmaBarriers.accessMemory(
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_NONE, VK_ACCESS_NONE);
+      accessMemory(DxvkCmdBuffer::SdmaBuffer,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
 
-      m_initBarriers.accessMemory(
-        VK_PIPELINE_STAGE_NONE, VK_ACCESS_NONE,
+      accessMemory(DxvkCmdBuffer::InitBuffer,
+        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
         buffer->info().stages, buffer->info().access);
     } else {
-      m_sdmaBarriers.accessMemory(
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+      accessMemory(DxvkCmdBuffer::SdmaBuffer,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
         buffer->info().stages, buffer->info().access);
     }
 
