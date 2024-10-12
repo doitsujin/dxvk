@@ -4480,13 +4480,8 @@ namespace dxvk {
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
       const auto& attachment = framebufferInfo.getAttachment(i);
 
-      if (m_execBarriers.isImageDirty(
-          attachment.view->image(),
-          attachment.view->imageSubresources(),
-          DxvkAccess::Write)) {
-        m_execBarriers.recordCommands(m_cmd);
-        break;
-      }
+      flushPendingAccesses(*attachment.view->image(),
+        attachment.view->imageSubresources(), DxvkAccess::Write);
     }
 
     // Transition all images to the render layout as necessary
@@ -4496,27 +4491,27 @@ namespace dxvk {
      && depthAttachment.view != nullptr) {
       VkImageAspectFlags depthAspects = depthAttachment.view->info().aspects;
 
-      VkPipelineStageFlags depthStages =
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      VkAccessFlags depthAccess = 0;
+      VkPipelineStageFlags2 depthStages =
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+      VkAccessFlags2 depthAccess = VK_ACCESS_2_NONE;
 
       if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
        || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD))
-        depthAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
       if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD != VK_ATTACHMENT_LOAD_OP_LOAD)
        || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS != VK_ATTACHMENT_LOAD_OP_LOAD)
        || (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL))
-        depthAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
       if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
         depthStages |= m_device->getShaderPipelineStages();
-        depthAccess |= VK_ACCESS_SHADER_READ_BIT;
+        depthAccess |= VK_ACCESS_2_SHADER_READ_BIT;
       }
 
-      m_execBarriers.accessImage(
-        depthAttachment.view->image(),
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *depthAttachment.view->image(),
         depthAttachment.view->imageSubresources(),
         ops.depthOps.loadLayout,
         depthStages, 0,
@@ -4529,18 +4524,18 @@ namespace dxvk {
 
       if (colorAttachment.layout != ops.colorOps[i].loadLayout
        && colorAttachment.view != nullptr) {
-        VkAccessFlags colorAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        VkAccessFlags2 colorAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
         if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
-          colorAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+          colorAccess |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
 
-        m_execBarriers.accessImage(
-          colorAttachment.view->image(),
+        accessImage(DxvkCmdBuffer::ExecBuffer,
+          *colorAttachment.view->image(),
           colorAttachment.view->imageSubresources(),
           ops.colorOps[i].loadLayout,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
           colorAttachment.layout,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
           colorAccess);
       }
     }
@@ -4548,7 +4543,7 @@ namespace dxvk {
     // Unconditionally emit barriers here. We need to do this
     // even if there are no layout transitions, since we don't
     // track resource usage during render passes.
-    m_execBarriers.recordCommands(m_cmd);
+    flushBarriers();
   }
 
 
