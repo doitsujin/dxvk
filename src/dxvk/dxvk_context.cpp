@@ -607,7 +607,7 @@ namespace dxvk {
     bool useFb = !formatsAreCopyCompatible(srcImage->info().format, dstFormat);
 
     if (useFb) {
-      copyImageToBufferFb(dstBuffer, dstOffset, rowAlignment, sliceAlignment,
+      copyImageToBufferCs(dstBuffer, dstOffset, rowAlignment, sliceAlignment,
         dstFormat ? dstFormat : srcImage->info().format,
         srcImage, srcSubresource, srcOffset, srcExtent);
     } else {
@@ -3135,7 +3135,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::copyImageToBufferFb(
+  void DxvkContext::copyImageToBufferCs(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          bufferOffset,
           VkDeviceSize          bufferRowAlignment,
@@ -3156,8 +3156,7 @@ namespace dxvk {
 
     ensureImageCompatibility(image, imageUsage);
 
-    if (m_execBarriers.isImageDirty(image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Read);
 
     auto formatInfo = lookupFormatInfo(bufferFormat);
 
@@ -3191,11 +3190,7 @@ namespace dxvk {
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
     VkBufferView bufferViewHandle = bufferView->handle();
 
-    DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle(
-      bufferViewInfo.offset, bufferViewInfo.size);
-
-    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*bufferView, DxvkAccess::Write);
 
     // Transition image to a layout we can use for reading as necessary
     VkImageLayout imageLayout = (image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
@@ -3293,20 +3288,12 @@ namespace dxvk {
       workgroupCount.height,
       workgroupCount.depth);
 
-    m_execBarriers.accessBuffer(bufferSlice,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_WRITE_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *bufferView,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
 
-    m_execBarriers.accessImage(image,
-      vk::makeSubresourceRange(imageSubresource),
-      imageLayout,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer, *image,
+      vk::makeSubresourceRange(imageSubresource), imageLayout,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(buffer);
     m_cmd->trackResource<DxvkAccess::Read>(image);
