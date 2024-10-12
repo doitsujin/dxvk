@@ -2870,8 +2870,7 @@ namespace dxvk {
 
     this->prepareImage(image, vk::makeSubresourceRange(imageSubresource));
 
-    if (m_execBarriers.isImageDirty(image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Write);
 
     auto formatInfo = lookupFormatInfo(bufferFormat);
 
@@ -2904,6 +2903,8 @@ namespace dxvk {
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
     VkBufferView bufferViewHandle = bufferView->handle();
+
+    flushPendingAccesses(*bufferView, DxvkAccess::Read);
 
     // Create image view to render to
     bool discard = image->isFullSubresource(imageSubresource, imageExtent);
@@ -2972,12 +2973,6 @@ namespace dxvk {
 
     if (image->formatInfo()->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
       renderingInfo.pStencilAttachment = &attachment;
-
-    DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle(
-      bufferOffset, slicePitch * renderingInfo.layerCount);
-
-    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
-      m_execBarriers.recordCommands(m_cmd);
 
     m_cmd->cmdBeginRendering(&renderingInfo);
 
@@ -3077,16 +3072,13 @@ namespace dxvk {
 
     m_cmd->cmdEndRendering();
 
-    m_execBarriers.accessImage(image,
-      vk::makeSubresourceRange(imageSubresource),
-      imageLayout, stages, access,
-      image->info().layout, image->info().stages, image->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *image, vk::makeSubresourceRange(imageSubresource),
+      imageLayout, stages, access);
 
-    m_execBarriers.accessBuffer(bufferSlice,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *bufferView,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_2_SHADER_READ_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(image);
     m_cmd->trackResource<DxvkAccess::Read>(buffer);
