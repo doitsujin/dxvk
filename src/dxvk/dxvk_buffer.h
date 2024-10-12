@@ -352,6 +352,15 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves resource ID for barrier tracking
+     * \returns Unique resource ID
+     */
+    uint64_t getResourceId() const {
+      constexpr static size_t Align = alignof(DxvkResourceAllocation);
+      return reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align);
+    }
+
+    /**
      * \brief Checks whether the buffer can be relocated
      *
      * Buffers that require a stable GPU or CPU address cannot be

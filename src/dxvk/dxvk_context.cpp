@@ -4699,8 +4699,8 @@ namespace dxvk {
     // If there are pending layout transitions, execute them immediately
     // since the backend expects images to be in the store layout after
     // a render pass instance. This is expected to be rare.
-    if (m_execBarriers.hasResourceBarriers())
-      m_execBarriers.recordCommands(m_cmd);
+    if (m_execBarriers.hasLayoutTransitions())
+      flushBarriers();
   }
   
   
@@ -5861,7 +5861,7 @@ namespace dxvk {
 
     // Exit early if we're only checking for hazards and
     // if the barrier set is empty, to avoid some overhead.
-    if (!DoEmit && !m_execBarriers.hasResourceBarriers())
+    if (!DoEmit && m_barrierTracker.empty())
       return;
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::CsSetCount; i++) {
@@ -6107,8 +6107,9 @@ namespace dxvk {
       return false;
 
     if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-      VkPipelineStageFlags stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-      return !(m_execBarriers.getSrcStages() & ~stageMask);
+      VkPipelineStageFlags2 stageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                                      | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+      return !m_execBarriers.hasPendingStages(~stageMask);
     }
 
     return true;
@@ -6222,7 +6223,7 @@ namespace dxvk {
     for (size_t i = 0; i < imageCount; i++)
       prepareImage(imageInfos[i].image, imageInfos[i].image->getAvailableSubresources());
 
-    m_execBarriers.recordCommands(m_cmd);
+    flushBarriers();
 
     small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
 
@@ -6539,6 +6540,8 @@ namespace dxvk {
     m_sdmaBarriers.finalize(m_cmd);
     m_initBarriers.finalize(m_cmd);
     m_execBarriers.finalize(m_cmd);
+
+    m_barrierTracker.clear();
   }
 
 
@@ -6564,6 +6567,7 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = m_imageLayoutTransitions.data();
 
     m_cmd->cmdPipelineBarrier(cmdBuffer, &depInfo);
+    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1u);
 
     m_imageLayoutTransitions.clear();
   }
@@ -6635,21 +6639,15 @@ namespace dxvk {
           VkAccessFlags2            srcAccess,
           VkPipelineStageFlags2     dstStages,
           VkAccessFlags2            dstAccess) {
-    if (likely(cmdBuffer == DxvkCmdBuffer::ExecBuffer)) {
-      m_execBarriers.accessMemory(srcStages, srcAccess, dstStages, dstAccess);
-    } else {
-      auto& batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
-        ? m_initBarriers
-        : m_sdmaBarriers;
+    auto& batch = getBarrierBatch(cmdBuffer);
 
-      VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-      barrier.srcStageMask = srcStages;
-      barrier.srcAccessMask = srcAccess;
-      barrier.dstStageMask = dstStages;
-      barrier.dstAccessMask = dstAccess;
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = srcStages;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
+    barrier.dstAccessMask = dstAccess;
 
-      batch.addMemoryBarrier(barrier);
-    }
+    batch.addMemoryBarrier(barrier);
   }
 
 
@@ -6678,28 +6676,53 @@ namespace dxvk {
           VkImageLayout             dstLayout,
           VkPipelineStageFlags2     dstStages,
           VkAccessFlags2            dstAccess) {
-    if (likely(cmdBuffer == DxvkCmdBuffer::ExecBuffer)) {
-      m_execBarriers.accessImage(&image, subresources,
-        srcLayout, srcStages, srcAccess,
-        dstLayout, dstStages, dstAccess);
-    } else {
-      auto& batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
-        ? m_initBarriers
-        : m_sdmaBarriers;
+    auto& batch = getBarrierBatch(cmdBuffer);
 
-      VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      barrier.srcStageMask = srcStages;
-      barrier.srcAccessMask = srcAccess;
-      barrier.dstStageMask = dstStages;
-      barrier.dstAccessMask = dstAccess;
-      barrier.oldLayout = srcLayout;
-      barrier.newLayout = dstLayout;
-      barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.image = image.handle();
-      barrier.subresourceRange = subresources;
+    VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = srcStages;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
+    barrier.dstAccessMask = dstAccess;
+    barrier.oldLayout = srcLayout;
+    barrier.newLayout = dstLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image.handle();
+    barrier.subresourceRange = subresources;
 
-      batch.addImageBarrier(barrier);
+    batch.addImageBarrier(barrier);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+      bool hasWrite = (srcAccess & vk::AccessWriteMask) || (srcLayout != dstLayout);
+      bool hasRead = (srcAccess & vk::AccessReadMask);
+
+      uint32_t layerCount = image.info().numLayers;
+
+      if (subresources.levelCount == 1u || subresources.layerCount == layerCount) {
+        DxvkAddressRange range;
+        range.resource = image.getResourceId();
+        range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
+        range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
+                       + (subresources.baseArrayLayer + subresources.layerCount - 1u);
+
+        if (hasWrite)
+          m_barrierTracker.insertRange(range, DxvkAccess::Write);
+        if (hasRead)
+          m_barrierTracker.insertRange(range, DxvkAccess::Read);
+      } else {
+        DxvkAddressRange range;
+        range.resource = image.getResourceId();
+
+        for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount; i++) {
+          range.rangeStart = i * layerCount + subresources.baseArrayLayer;
+          range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
+
+          if (hasWrite)
+            m_barrierTracker.insertRange(range, DxvkAccess::Write);
+          if (hasRead)
+            m_barrierTracker.insertRange(range, DxvkAccess::Read);
+        }
+      }
     }
   }
 
@@ -6727,21 +6750,29 @@ namespace dxvk {
           VkAccessFlags2            srcAccess,
           VkPipelineStageFlags2     dstStages,
           VkAccessFlags2            dstAccess) {
-    if (likely(cmdBuffer == DxvkCmdBuffer::ExecBuffer)) {
-      DxvkBufferSliceHandle slice = buffer.getSliceHandle(offset, size);
-      m_execBarriers.accessBuffer(slice, srcStages, srcAccess, dstStages, dstAccess);
-    } else {
-      auto& batch = cmdBuffer == DxvkCmdBuffer::InitBuffer
-        ? m_initBarriers
-        : m_sdmaBarriers;
+    if (unlikely(!size))
+      return;
 
-      VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-      barrier.srcStageMask = srcStages;
-      barrier.srcAccessMask = srcAccess;
-      barrier.dstStageMask = dstStages;
-      barrier.dstAccessMask = dstAccess;
+    auto& batch = getBarrierBatch(cmdBuffer);
 
-      batch.addMemoryBarrier(barrier);
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = srcStages;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
+    barrier.dstAccessMask = dstAccess;
+
+    batch.addMemoryBarrier(barrier);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+      DxvkAddressRange range;
+      range.resource = buffer.getResourceId();
+      range.rangeStart = offset;
+      range.rangeEnd = offset + size - 1;
+
+      if (srcAccess & vk::AccessWriteMask)
+        m_barrierTracker.insertRange(range, DxvkAccess::Write);
+      if (srcAccess & vk::AccessReadMask)
+        m_barrierTracker.insertRange(range, DxvkAccess::Read);
     }
   }
 
@@ -6780,8 +6811,13 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
           DxvkAccess                access) {
-    if (m_execBarriers.isBufferDirty(buffer.getSliceHandle(offset, size), access))
-      m_execBarriers.recordCommands(m_cmd);
+    bool flush = resourceHasAccess(buffer, offset, size, DxvkAccess::Write);
+
+    if (access == DxvkAccess::Write && !flush)
+      flush = resourceHasAccess(buffer, offset, size, DxvkAccess::Read);
+
+    if (flush)
+      flushBarriers();
   }
 
 
@@ -6799,8 +6835,13 @@ namespace dxvk {
           DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           DxvkAccess                access) {
-    if (m_execBarriers.isImageDirty(&image, subresources, access))
-      m_execBarriers.recordCommands(m_cmd);
+    bool flush = resourceHasAccess(image, subresources, DxvkAccess::Write);
+
+    if (access == DxvkAccess::Write && !flush)
+      flush = resourceHasAccess(image, subresources, DxvkAccess::Read);
+
+    if (flush)
+      flushBarriers();
   }
 
 
@@ -6813,7 +6854,8 @@ namespace dxvk {
 
 
   void DxvkContext::flushBarriers() {
-    m_execBarriers.recordCommands(m_cmd);
+    m_execBarriers.flush(m_cmd);
+    m_barrierTracker.clear();
   }
 
 
@@ -6822,7 +6864,15 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
           DxvkAccess                access) {
-    return m_execBarriers.getBufferAccess(buffer.getSliceHandle(offset, size)).test(access);
+    if (unlikely(!size))
+      return false;
+
+    DxvkAddressRange range;
+    range.resource = buffer.getResourceId();
+    range.rangeStart = offset;
+    range.rangeEnd = offset + size - 1;
+
+    return m_barrierTracker.findRange(range, access);
   }
 
 
@@ -6836,10 +6886,55 @@ namespace dxvk {
 
 
   bool DxvkContext::resourceHasAccess(
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          DxvkAccess                access) {
+    uint32_t layerCount = image.info().numLayers;
+
+    // Subresources are enumerated in such a way that array layers of
+    // one mip form a consecutive address range, and we do not track
+    // individual image aspects. This is useful since image views for
+    // rendering and compute can only access one mip level.
+    DxvkAddressRange range;
+    range.resource = image.getResourceId();
+    range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
+    range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
+                   + (subresources.baseArrayLayer + subresources.layerCount - 1u);
+
+    // Probe all subresources first, only check individual mip levels
+    // if there are overlaps and if we are checking a subset of array
+    // layers of multiple mips.
+    bool dirty = m_barrierTracker.findRange(range, access);
+
+    if (!dirty || subresources.levelCount == 1u || subresources.layerCount == layerCount)
+      return dirty;
+
+    for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount && !dirty; i++) {
+      range.rangeStart = i * layerCount + subresources.baseArrayLayer;
+      range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
+
+      dirty = m_barrierTracker.findRange(range, access);
+    }
+
+    return dirty;
+  }
+
+
+  bool DxvkContext::resourceHasAccess(
           DxvkImageView&            imageView,
           DxvkAccess                access) {
-    return m_execBarriers.getImageAccess(imageView.image(),
-      imageView.imageSubresources()).test(access);
+    return resourceHasAccess(*imageView.image(), imageView.imageSubresources(), access);
+  }
+
+
+  DxvkBarrierBatch& DxvkContext::getBarrierBatch(
+          DxvkCmdBuffer             cmdBuffer) {
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      return m_execBarriers;
+
+    return cmdBuffer == DxvkCmdBuffer::InitBuffer
+      ? m_initBarriers
+      : m_sdmaBarriers;
   }
 
 
