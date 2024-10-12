@@ -1299,6 +1299,10 @@ namespace dxvk {
       m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
     }
 
+    bool IsGamescopeWSIEnabled() const {
+      return m_gamescopeWSI;
+    }
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1461,6 +1465,8 @@ namespace dxvk {
     std::atomic<uint32_t>           m_losableResourceCounter   = { 0 };
 
     D3D9SwapChainEx*                m_mostRecentlyUsedSwapchain = nullptr;
+
+    bool                            m_gamescopeWSI;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
