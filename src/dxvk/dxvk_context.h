@@ -1489,7 +1489,7 @@ namespace dxvk {
             VkOffset3D            imageOffset,
             VkExtent3D            imageExtent);
 
-    void copyImageToBufferFb(
+    void copyImageToBufferCs(
       const Rc<DxvkBuffer>&       buffer,
             VkDeviceSize          bufferOffset,
             VkDeviceSize          bufferRowAlignment,
