@@ -3817,11 +3817,9 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset) {
     auto pageTable = sparse->getSparsePageTable();
-    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
 
-    if (m_execBarriers.isBufferDirty(bufferHandle,
-        ToBuffer ? DxvkAccess::Write : DxvkAccess::Read))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*buffer, offset, SparseMemoryPageSize * pageCount,
+      ToBuffer ? DxvkAccess::Write : DxvkAccess::Read);
 
     if (pageTable->getBufferHandle()) {
       this->copySparseBufferPages<ToBuffer>(
@@ -3832,6 +3830,11 @@ namespace dxvk {
         static_cast<DxvkImage*>(sparse.ptr()),
         pageCount, pages, buffer, offset);
     }
+
+    accessBuffer(DxvkCmdBuffer::ExecBuffer, *buffer,
+      offset, SparseMemoryPageSize * pageCount,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT);
   }
 
 
@@ -3850,9 +3853,8 @@ namespace dxvk {
     auto sparseHandle = sparse->getSliceHandle();
     auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
 
-    if (m_execBarriers.isBufferDirty(sparseHandle,
-        ToBuffer ? DxvkAccess::Read : DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*sparse, 0, sparse->info().size,
+      ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
 
     for (uint32_t i = 0; i < pageCount; i++) {
       auto pageInfo = pageTable->getPageInfo(pages[i]);
@@ -3879,17 +3881,9 @@ namespace dxvk {
     if (info.regionCount)
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &info);
 
-    m_execBarriers.accessBuffer(sparseHandle,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      ToBuffer ? VK_ACCESS_TRANSFER_READ_BIT : VK_ACCESS_TRANSFER_WRITE_BIT,
-      sparse->info().stages,
-      sparse->info().access);
-
-    m_execBarriers.accessBuffer(bufferHandle,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      ToBuffer ? VK_ACCESS_TRANSFER_WRITE_BIT : VK_ACCESS_TRANSFER_READ_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    accessBuffer(DxvkCmdBuffer::ExecBuffer,
+      *sparse, 0, sparse->info().size, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->trackResource<ToBuffer ? DxvkAccess::Read : DxvkAccess::Write>(sparse);
     m_cmd->trackResource<ToBuffer ? DxvkAccess::Write : DxvkAccess::Read>(buffer);
@@ -3912,8 +3906,8 @@ namespace dxvk {
     auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
     auto sparseSubresources = sparse->getAvailableSubresources();
 
-    if (m_execBarriers.isImageDirty(sparse, sparseSubresources, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*sparse, sparseSubresources,
+      ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
 
     VkImageLayout transferLayout = sparse->pickLayout(ToBuffer
       ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
@@ -3965,19 +3959,9 @@ namespace dxvk {
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info);
     }
 
-    m_execBarriers.accessImage(sparse, sparseSubresources,
-      transferLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      transferAccess,
-      sparse->info().layout,
-      sparse->info().stages,
-      sparse->info().access);
-
-    m_execBarriers.accessBuffer(bufferHandle,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      ToBuffer ? VK_ACCESS_TRANSFER_WRITE_BIT : VK_ACCESS_TRANSFER_READ_BIT,
-      buffer->info().stages,
-      buffer->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *sparse, sparseSubresources, transferLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, transferAccess);
 
     m_cmd->trackResource<ToBuffer ? DxvkAccess::Read : DxvkAccess::Write>(sparse);
     m_cmd->trackResource<ToBuffer ? DxvkAccess::Write : DxvkAccess::Read>(buffer);
