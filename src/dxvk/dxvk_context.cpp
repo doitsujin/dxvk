@@ -4553,56 +4553,36 @@ namespace dxvk {
     const auto& depthAttachment = framebufferInfo.getDepthTarget();
 
     if (depthAttachment.view != nullptr) {
-      if (depthAttachment.layout != ops.depthOps.storeLayout) {
-        m_execBarriers.accessImage(
-          depthAttachment.view->image(),
-          depthAttachment.view->imageSubresources(),
-          depthAttachment.layout,
-          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-          ops.depthOps.storeLayout,
-          depthAttachment.view->image()->info().stages,
-          depthAttachment.view->image()->info().access);
-      } else {
-        VkAccessFlags srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      VkAccessFlags2 srcAccess = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
-        if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-          srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+        srcAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-        m_execBarriers.accessMemory(
-          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-          srcAccess,
-          depthAttachment.view->image()->info().stages,
-          depthAttachment.view->image()->info().access);
-      }
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *depthAttachment.view->image(),
+        depthAttachment.view->imageSubresources(),
+        depthAttachment.layout,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+        srcAccess, ops.depthOps.storeLayout,
+        depthAttachment.view->image()->info().stages,
+        depthAttachment.view->image()->info().access);
     }
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorAttachment = framebufferInfo.getColorTarget(i);
 
       if (colorAttachment.view != nullptr) {
-        if (colorAttachment.layout != ops.colorOps[i].storeLayout) {
-          m_execBarriers.accessImage(
-            colorAttachment.view->image(),
-            colorAttachment.view->imageSubresources(),
-            colorAttachment.layout,
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            ops.colorOps[i].storeLayout,
-            colorAttachment.view->image()->info().stages,
-            colorAttachment.view->image()->info().access);
-        } else {
-          m_execBarriers.accessMemory(
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-            VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-            colorAttachment.view->image()->info().stages,
-            colorAttachment.view->image()->info().access);
-        }
+        accessImage(DxvkCmdBuffer::ExecBuffer,
+          *colorAttachment.view->image(),
+          colorAttachment.view->imageSubresources(),
+          colorAttachment.layout,
+          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
+          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+          ops.colorOps[i].storeLayout,
+          colorAttachment.view->image()->info().stages,
+          colorAttachment.view->image()->info().access);
       }
     }
 
