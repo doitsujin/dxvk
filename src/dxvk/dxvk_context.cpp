@@ -3415,17 +3415,17 @@ namespace dxvk {
           VkClearValue          value) {
     this->spillRenderPass(false);
     this->invalidateState();
-    
-    if (m_execBarriers.isImageDirty(
-          imageView->image(),
-          imageView->imageSubresources(),
-          DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-    
+
+    flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
+
+    addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
+      VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+      imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
+
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
       imageView->type(), lookupFormatInfo(imageView->info().format)->flags);
-    
+
     // Create a descriptor set pointing to the view
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     
@@ -3467,17 +3467,12 @@ namespace dxvk {
       0, sizeof(pushArgs), &pushArgs);
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
-    
-    m_execBarriers.accessImage(
-      imageView->image(),
-      imageView->imageSubresources(),
-      imageView->image()->info().layout,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_WRITE_BIT,
-      imageView->image()->info().layout,
-      imageView->image()->info().stages,
-      imageView->image()->info().access);
-    
+
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *imageView->image(), imageView->imageSubresources(),
+      VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      VK_ACCESS_2_SHADER_WRITE_BIT);
+
     m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
   }
 
