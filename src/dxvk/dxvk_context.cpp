@@ -5338,14 +5338,11 @@ namespace dxvk {
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
     if (oldLayout != attachment.view->image()->info().layout) {
-      m_execBarriers.accessImage(
-        attachment.view->image(),
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *attachment.view->image(),
         attachment.view->imageSubresources(), oldLayout,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        attachment.view->image()->info().layout,
-        attachment.view->image()->info().stages,
-        attachment.view->image()->info().access);
+        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
 
       m_cmd->trackResource<DxvkAccess::Write>(attachment.view->image());
     }
@@ -5356,16 +5353,14 @@ namespace dxvk {
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
     if (oldLayout != attachment.view->image()->info().layout) {
-      m_execBarriers.accessImage(
-        attachment.view->image(),
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *attachment.view->image(),
         attachment.view->imageSubresources(), oldLayout,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
         oldLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-          ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
-        attachment.view->image()->info().layout,
-        attachment.view->image()->info().stages,
-        attachment.view->image()->info().access);
+          ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+          : VK_ACCESS_2_NONE);
 
       m_cmd->trackResource<DxvkAccess::Write>(attachment.view->image());
     }
