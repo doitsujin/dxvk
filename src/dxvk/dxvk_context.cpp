@@ -1772,8 +1772,7 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       bool hasViewFormatMismatch = imageView->info().format != imageView->image()->info().format;
 
-      if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
-        m_execBarriers.recordCommands(m_cmd);
+      flushPendingAccesses(*imageView, DxvkAccess::Write);
 
       // Set up a temporary render pass to execute the clear
       VkImageLayout imageLayout = ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -1856,11 +1855,9 @@ namespace dxvk {
 
       m_cmd->cmdEndRendering();
 
-      m_execBarriers.accessImage(
-        imageView->image(),
-        imageView->imageSubresources(),
-        imageLayout, clearStages, clearAccess,
-        storeLayout,
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(), imageView->imageSubresources(),
+        imageLayout, clearStages, clearAccess, storeLayout,
         imageView->image()->info().stages,
         imageView->image()->info().access);
 
