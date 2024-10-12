@@ -4457,13 +4457,13 @@ namespace dxvk {
       else
         this->transitionRenderTargetLayouts(false);
 
-      m_execBarriers.recordCommands(m_cmd);
+      flushBarriers();
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
         m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
         this->transitionRenderTargetLayouts(false);
-        m_execBarriers.recordCommands(m_cmd);
+        flushBarriers();
       }
 
       // Execute deferred clears if necessary
