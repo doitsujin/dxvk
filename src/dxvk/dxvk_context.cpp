@@ -2509,9 +2509,8 @@ namespace dxvk {
       return;
     }
 
-    if (m_execBarriers.isImageDirty(dstView->image(), dstView->imageSubresources(), DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcView->image(), srcView->imageSubresources(), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*dstView, DxvkAccess::Write);
+    flushPendingAccesses(*srcView, DxvkAccess::Read);
 
     VkImageLayout srcLayout = srcView->image()->pickLayout(srcIsDepthStencil
       ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
@@ -2639,23 +2638,15 @@ namespace dxvk {
     m_cmd->cmdEndRendering();
 
     // Add barriers and track image objects
-    m_execBarriers.accessImage(
-      dstView->image(),
-      dstView->imageSubresources(), dstLayout,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      dstView->image()->info().layout,
-      dstView->image()->info().stages,
-      dstView->image()->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *dstView->image(), dstView->imageSubresources(), dstLayout,
+      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
     
-    m_execBarriers.accessImage(
-      srcView->image(),
-      srcView->imageSubresources(), srcLayout,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT,
-      srcView->image()->info().layout,
-      srcView->image()->info().stages,
-      srcView->image()->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *srcView->image(), srcView->imageSubresources(), srcLayout,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_2_SHADER_READ_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(dstView->image());
     m_cmd->trackResource<DxvkAccess::Read>(srcView->image());
