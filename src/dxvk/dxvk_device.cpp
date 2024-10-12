@@ -147,7 +147,7 @@ namespace dxvk {
           VkQueryType           type,
           VkQueryControlFlags   flags,
           uint32_t              index) {
-    return new DxvkQuery(m_vkd, type, flags, index);
+    return new DxvkQuery(this, type, flags, index);
   }
 
 
