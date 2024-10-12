@@ -132,7 +132,7 @@ namespace dxvk {
     D3D9Texture2D(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            HANDLE*                   pSharedHandle);
+            HANDLE*                   pSharedHandle = nullptr);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

@@ -34,7 +34,7 @@ ID3D9VkInteropInterface : public IUnknown {
  * \brief D3D9 texture interface for Vulkan interop
  * 
  * Provides access to the backing resource of a
- * D3D9 texture.
+ * D3D9 texture or surface.
  */
 MIDL_INTERFACE("d56344f5-8d35-46fd-806d-94c351b472c1")
 ID3D9VkInteropTexture : public IUnknown {
@@ -72,6 +72,27 @@ ID3D9VkInteropTexture : public IUnknown {
           VkImage*              pHandle,
           VkImageLayout*        pLayout,
           VkImageCreateInfo*    pInfo) = 0;
+};
+
+
+/**
+ * \brief D3D9 image description
+ */
+struct D3D9VkExtImageDesc {
+  D3DRESOURCETYPE     Type;               // Can be SURFACE, TEXTURE, CUBETEXTURE, VOLUMETEXTURE
+  UINT                Width;
+  UINT                Height;
+  UINT                Depth;              // Can be > 1 for VOLUMETEXTURE
+  UINT                MipLevels;          // Can be > 1 for TEXTURE, CUBETEXTURE, VOLUMETEXTURE
+  DWORD               Usage;
+  D3DFORMAT           Format;
+  D3DPOOL             Pool;
+  D3DMULTISAMPLE_TYPE MultiSample;        // Must be NONE unless Type is SURFACE
+  DWORD               MultisampleQuality;
+  bool                Discard;            // Depth stencils only
+  bool                IsAttachmentOnly;   // If false, then VK_IMAGE_USAGE_SAMPLED_BIT will be added
+  bool                IsLockable;
+  VkImageUsageFlags   ImageUsage;         // Additional image usage flags
 };
 
 /**
@@ -194,6 +215,17 @@ ID3D9VkInteropDevice : public IUnknown {
   virtual bool STDMETHODCALLTYPE WaitForResource(
           IDirect3DResource9*  pResource,
           DWORD                MapFlags) = 0;
+
+  /**
+   * \brief Creates a custom image/surface/texture
+   * 
+   * \param [in] desc Image description
+   * \param [out, retval] ppResult Pointer to a resource of the D3DRESOURCETYPE given by desc.Type
+   * \returns D3D_OK, D3DERR_INVALIDCALL, or D3DERR_OUTOFVIDEOMEMORY
+   */
+  virtual HRESULT STDMETHODCALLTYPE CreateImage(
+          const D3D9VkExtImageDesc* desc,
+          IDirect3DResource9**      ppResult) = 0;
 };
 
 /**

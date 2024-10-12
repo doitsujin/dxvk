@@ -48,6 +48,9 @@ namespace dxvk {
     bool                IsBackBuffer;
     bool                IsAttachmentOnly;
     bool                IsLockable;
+
+    // Additional paramters for ID3D9VkInteropDevice
+    VkImageUsageFlags   ImageUsage = 0;
   };
 
   struct D3D9ColorView {
