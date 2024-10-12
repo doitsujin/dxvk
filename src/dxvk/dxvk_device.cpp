@@ -139,7 +139,7 @@ namespace dxvk {
 
 
   Rc<DxvkEvent> DxvkDevice::createGpuEvent() {
-    return new DxvkEvent(m_vkd);
+    return new DxvkEvent(this);
   }
 
 
