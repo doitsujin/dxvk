@@ -5904,7 +5904,7 @@ namespace dxvk {
         }
 
         if (requiresBarrier) {
-          m_execBarriers.recordCommands(m_cmd);
+          flushBarriers();
           return;
         }
       }
@@ -6052,23 +6052,15 @@ namespace dxvk {
           VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
     if constexpr (DoEmit) {
-      m_execBarriers.accessBuffer(
-        bufferSlice.getSliceHandle(),
-        stages, access,
-        bufferSlice.bufferInfo().stages,
-        bufferSlice.bufferInfo().access);
+      accessBuffer(DxvkCmdBuffer::ExecBuffer,
+        *bufferSlice.buffer(), bufferSlice.offset(),
+        bufferSlice.length(), stages, access);
       return false;
     } else {
-      DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(access);
-
-      bool dirty = m_execBarriers.isBufferDirty(
-        bufferSlice.getSliceHandle(), dstAccess);
-
-      if (!dirty || dstAccess.test(DxvkAccess::Read) || !this->canIgnoreWawHazards(stages))
-        return dirty;
-
-      DxvkAccessFlags srcAccess = m_execBarriers.getBufferAccess(bufferSlice.getSliceHandle());
-      return srcAccess.test(DxvkAccess::Read);
+      return checkResourceBarrier([this, &bufferSlice] (DxvkAccess access) {
+        return resourceHasAccess(*bufferSlice.buffer(),
+          bufferSlice.offset(), bufferSlice.length(), access);
+      }, stages, access);
     }
   }
 
@@ -6079,23 +6071,13 @@ namespace dxvk {
           VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
     if constexpr (DoEmit) {
-      m_execBarriers.accessBuffer(
-        bufferView->getSliceHandle(),
-        stages, access,
-        bufferView->buffer()->info().stages,
-        bufferView->buffer()->info().access);
+      accessBuffer(DxvkCmdBuffer::ExecBuffer,
+        *bufferView, stages, access);
       return false;
     } else {
-      DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(access);
-
-      bool dirty = m_execBarriers.isBufferDirty(
-        bufferView->getSliceHandle(), dstAccess);
-
-      if (!dirty || dstAccess.test(DxvkAccess::Read) || !this->canIgnoreWawHazards(stages))
-        return dirty;
-
-      DxvkAccessFlags srcAccess = m_execBarriers.getBufferAccess(bufferView->getSliceHandle());
-      return srcAccess.test(DxvkAccess::Read);
+      return checkResourceBarrier([this, &bufferView] (DxvkAccess access) {
+        return resourceHasAccess(*bufferView, access);
+      }, stages, access);
     }
   }
 
@@ -6106,29 +6088,16 @@ namespace dxvk {
           VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
     if constexpr (DoEmit) {
-      m_execBarriers.accessImage(
-        imageView->image(),
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(),
         imageView->imageSubresources(),
         imageView->image()->info().layout,
-        stages, access,
-        imageView->image()->info().layout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access);
+        stages, access);
       return false;
     } else {
-      DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(access);
-
-      bool dirty = m_execBarriers.isImageDirty(
-        imageView->image(),
-        imageView->imageSubresources(),
-        dstAccess);
-
-      if (!dirty || dstAccess.test(DxvkAccess::Read) || !this->canIgnoreWawHazards(stages))
-        return dirty;
-
-      DxvkAccessFlags srcAccess = m_execBarriers.getImageAccess(
-        imageView->image(), imageView->imageSubresources());
-      return srcAccess.test(DxvkAccess::Read);
+      return checkResourceBarrier([this, &imageView] (DxvkAccess access) {
+        return resourceHasAccess(*imageView, access);
+      }, stages, access);
     }
   }
 
@@ -6854,6 +6823,15 @@ namespace dxvk {
           VkDeviceSize              size,
           DxvkAccess                access) {
     return m_execBarriers.getBufferAccess(buffer.getSliceHandle(offset, size)).test(access);
+  }
+
+
+  bool DxvkContext::resourceHasAccess(
+          DxvkBufferView&           bufferView,
+          DxvkAccess                access) {
+    return resourceHasAccess(*bufferView.buffer(),
+      bufferView.info().offset,
+      bufferView.info().size, access);
   }
 
 
