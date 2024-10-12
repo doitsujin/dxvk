@@ -288,7 +288,7 @@ namespace dxvk {
      * \brief Creates a GPU event
      * \returns New GPU event
      */
-    Rc<DxvkGpuEvent> createGpuEvent();
+    Rc<DxvkEvent> createGpuEvent();
 
     /**
      * \brief Creates a query
@@ -298,7 +298,7 @@ namespace dxvk {
      * \param [in] index Query index
      * \returns New query
      */
-    Rc<DxvkGpuQuery> createGpuQuery(
+    Rc<DxvkQuery> createGpuQuery(
             VkQueryType           type,
             VkQueryControlFlags   flags,
             uint32_t              index);

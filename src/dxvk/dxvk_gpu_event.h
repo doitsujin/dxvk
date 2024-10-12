@@ -42,12 +42,12 @@ namespace dxvk {
    * the application to check whether a specific
    * command has completed execution.
    */
-  class DxvkGpuEvent : public DxvkResource {
+  class DxvkEvent : public DxvkResource {
 
   public:
 
-    DxvkGpuEvent(const Rc<vk::DeviceFn>& vkd);
-    ~DxvkGpuEvent();
+    DxvkEvent(const Rc<vk::DeviceFn>& vkd);
+    ~DxvkEvent();
 
     /**
      * \brief Retrieves event status

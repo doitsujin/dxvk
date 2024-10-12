@@ -126,12 +126,12 @@ namespace dxvk {
   }
 
   
-  void DxvkContext::beginQuery(const Rc<DxvkGpuQuery>& query) {
+  void DxvkContext::beginQuery(const Rc<DxvkQuery>& query) {
     m_queryManager.enableQuery(m_cmd, query);
   }
 
 
-  void DxvkContext::endQuery(const Rc<DxvkGpuQuery>& query) {
+  void DxvkContext::endQuery(const Rc<DxvkQuery>& query) {
     m_queryManager.disableQuery(m_cmd, query);
   }
   
@@ -2467,7 +2467,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
+  void DxvkContext::signalGpuEvent(const Rc<DxvkEvent>& event) {
     this->spillRenderPass(true);
     
     DxvkGpuEventHandle handle = m_common->eventPool().allocEvent();
@@ -2556,7 +2556,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::writeTimestamp(const Rc<DxvkGpuQuery>& query) {
+  void DxvkContext::writeTimestamp(const Rc<DxvkQuery>& query) {
     m_queryManager.writeTimestamp(m_cmd, query);
   }
 

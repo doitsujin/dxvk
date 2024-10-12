@@ -116,17 +116,17 @@ namespace dxvk {
    * Manages Vulkan queries that are sub-allocated
    * from larger query pools 
    */
-  class DxvkGpuQuery : public DxvkResource {
+  class DxvkQuery : public DxvkResource {
 
   public:
 
-    DxvkGpuQuery(
+    DxvkQuery(
       const Rc<vk::DeviceFn>&   vkd,
             VkQueryType         type,
             VkQueryControlFlags flags,
             uint32_t            index);
     
-    ~DxvkGpuQuery();
+    ~DxvkQuery();
 
     /**
      * \brief Query type
@@ -351,7 +351,7 @@ namespace dxvk {
      */
     void enableQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
     
     /**
      * \brief Disables a query
@@ -363,7 +363,7 @@ namespace dxvk {
      */
     void disableQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
     
     /**
      * \brief Signals a time stamp query
@@ -374,7 +374,7 @@ namespace dxvk {
      */
     void writeTimestamp(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
 
     /**
      * \brief Begins queries of a given type
@@ -404,15 +404,15 @@ namespace dxvk {
 
     DxvkGpuQueryPool*             m_pool;
     uint32_t                      m_activeTypes;
-    std::vector<Rc<DxvkGpuQuery>> m_activeQueries;
+    std::vector<Rc<DxvkQuery>> m_activeQueries;
 
     void beginSingleQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
 
     void endSingleQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
     
     static uint32_t getQueryTypeBit(
             VkQueryType           type);

@@ -3,17 +3,17 @@
 
 namespace dxvk {
 
-  DxvkGpuEvent::DxvkGpuEvent(const Rc<vk::DeviceFn>& vkd)
+  DxvkEvent::DxvkEvent(const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) { }
 
 
-  DxvkGpuEvent::~DxvkGpuEvent() {
+  DxvkEvent::~DxvkEvent() {
     if (m_handle.pool && m_handle.event)
       m_handle.pool->freeEvent(m_handle.event);
   }
 
 
-  DxvkGpuEventStatus DxvkGpuEvent::test() const {
+  DxvkGpuEventStatus DxvkEvent::test() const {
     if (!m_handle.event)
       return DxvkGpuEventStatus::Invalid;
     
@@ -28,7 +28,7 @@ namespace dxvk {
   }
 
 
-  DxvkGpuEventHandle DxvkGpuEvent::reset(DxvkGpuEventHandle handle) {
+  DxvkGpuEventHandle DxvkEvent::reset(DxvkGpuEventHandle handle) {
     m_vkd->vkResetEvent(m_vkd->device(), handle.event);
     return std::exchange(m_handle, handle);
   }
