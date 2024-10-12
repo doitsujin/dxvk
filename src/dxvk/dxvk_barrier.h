@@ -248,6 +248,30 @@ namespace dxvk {
     void finalize(
       const Rc<DxvkCommandList>&        list);
 
+    /**
+     * \brief Check whether there are pending layout transitions
+     * \returns \c true if there are any image layout transitions
+     */
+    bool hasLayoutTransitions() const {
+      return !m_imageBarriers.empty();
+    }
+
+    /**
+     * \brief Checks whether there are barriers using the given source stages
+     * \returns \c true if any barriers use the given source stages
+     */
+    bool hasPendingStages(VkPipelineStageFlags2 stages) const {
+      if (m_memoryBarrier.srcStageMask & stages)
+        return true;
+
+      for (const auto& b : m_imageBarriers) {
+        if (b.srcStageMask & stages)
+          return true;
+      }
+
+      return false;
+    }
+
   private:
 
     DxvkCmdBuffer         m_cmdBuffer;
