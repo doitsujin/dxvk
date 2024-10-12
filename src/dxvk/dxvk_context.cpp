@@ -4041,9 +4041,8 @@ namespace dxvk {
         "\n  src format: ", srcImage->info().format));
     }
 
-    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
+    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
     // Transition both images to usable layouts if necessary. For the source image we
     // can be fairly leniet since writable layouts are allowed for resolve attachments.
@@ -4095,23 +4094,17 @@ namespace dxvk {
     m_cmd->cmdEndRendering();
 
     // Add barriers for the resolve operation
-    m_execBarriers.accessImage(srcImage, srcSubresourceRange,
-      srcLayout,
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-      srcImage->info().layout,
-      srcImage->info().stages,
-      srcImage->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
 
-    m_execBarriers.accessImage(dstImage, dstSubresourceRange,
-      dstLayout,
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      dstImage->info().layout,
-      dstImage->info().stages,
-      dstImage->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *dstImage, dstSubresourceRange, dstLayout,
+      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
