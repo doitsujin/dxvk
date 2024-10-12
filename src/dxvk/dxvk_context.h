@@ -101,14 +101,14 @@ namespace dxvk {
      * \param [in] query The query to end
      */
     void beginQuery(
-      const Rc<DxvkGpuQuery>&   query);
+      const Rc<DxvkQuery>&      query);
     
     /**
      * \brief Ends generating query data
      * \param [in] query The query to end
      */
     void endQuery(
-      const Rc<DxvkGpuQuery>&   query);
+      const Rc<DxvkQuery>&      query);
     
     /**
      * \brief Sets render targets
@@ -1299,14 +1299,14 @@ namespace dxvk {
      * \param [in] event The event
      */
     void signalGpuEvent(
-      const Rc<DxvkGpuEvent>&   event);
+      const Rc<DxvkEvent>&      event);
     
     /**
      * \brief Writes to a timestamp query
      * \param [in] query The timestamp query
      */
     void writeTimestamp(
-      const Rc<DxvkGpuQuery>&   query);
+      const Rc<DxvkQuery>&      query);
     
     /**
      * \brief Queues a signal

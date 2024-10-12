@@ -6,7 +6,7 @@
 
 namespace dxvk {
 
-  DxvkGpuQuery::DxvkGpuQuery(
+  DxvkQuery::DxvkQuery(
     const Rc<vk::DeviceFn>&   vkd,
           VkQueryType         type,
           VkQueryControlFlags flags,
@@ -17,18 +17,18 @@ namespace dxvk {
   }
   
   
-  DxvkGpuQuery::~DxvkGpuQuery() {
+  DxvkQuery::~DxvkQuery() {
     for (size_t i = 0; i < m_handles.size(); i++)
       m_handles[i].allocator->freeQuery(m_handles[i]);
   }
 
 
-  bool DxvkGpuQuery::isIndexed() const {
+  bool DxvkQuery::isIndexed() const {
     return m_type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
   }
 
 
-  DxvkGpuQueryStatus DxvkGpuQuery::getData(DxvkQueryData& queryData) {
+  DxvkGpuQueryStatus DxvkQuery::getData(DxvkQueryData& queryData) {
     queryData = DxvkQueryData();
 
     // Callers must ensure that no begin call is pending when
@@ -56,7 +56,7 @@ namespace dxvk {
   }
 
 
-  void DxvkGpuQuery::begin(const Rc<DxvkCommandList>& cmd) {
+  void DxvkQuery::begin(const Rc<DxvkCommandList>& cmd) {
     // Not useful to enforce a memory order here since
     // only the false->true transition is defined.
     m_ended.store(false, std::memory_order_relaxed);
@@ -73,13 +73,13 @@ namespace dxvk {
   }
 
   
-  void DxvkGpuQuery::end() {
+  void DxvkQuery::end() {
     // Ensure that all prior writes are made available
     m_ended.store(true, std::memory_order_release);
   }
 
 
-  void DxvkGpuQuery::addQueryHandle(const DxvkGpuQueryHandle& handle) {
+  void DxvkQuery::addQueryHandle(const DxvkGpuQueryHandle& handle) {
     // Already accumulate available queries here in case
     // we already allocated a large number of queries
     if (m_handles.size() >= m_handles.MinCapacity)
@@ -89,7 +89,7 @@ namespace dxvk {
   }
 
 
-  DxvkGpuQueryStatus DxvkGpuQuery::accumulateQueryDataForHandle(
+  DxvkGpuQueryStatus DxvkQuery::accumulateQueryDataForHandle(
     const DxvkGpuQueryHandle& handle) {
     DxvkQueryData tmpData = { };
 
@@ -142,7 +142,7 @@ namespace dxvk {
   }
 
 
-  DxvkGpuQueryStatus DxvkGpuQuery::accumulateQueryData() {
+  DxvkGpuQueryStatus DxvkQuery::accumulateQueryData() {
     DxvkGpuQueryStatus status = DxvkGpuQueryStatus::Available;
 
     // Process available queries and return them to the
@@ -298,7 +298,7 @@ namespace dxvk {
 
   void DxvkGpuQueryManager::enableQuery(
     const Rc<DxvkCommandList>&  cmd,
-    const Rc<DxvkGpuQuery>&     query) {
+    const Rc<DxvkQuery>&        query) {
     query->begin(cmd);
 
     m_activeQueries.push_back(query);
@@ -310,7 +310,7 @@ namespace dxvk {
   
   void DxvkGpuQueryManager::disableQuery(
     const Rc<DxvkCommandList>&  cmd,
-    const Rc<DxvkGpuQuery>&     query) {
+    const Rc<DxvkQuery>&        query) {
     auto iter = std::find(
       m_activeQueries.begin(),
       m_activeQueries.end(),
@@ -328,7 +328,7 @@ namespace dxvk {
 
   void DxvkGpuQueryManager::writeTimestamp(
     const Rc<DxvkCommandList>&  cmd,
-    const Rc<DxvkGpuQuery>&     query) {
+    const Rc<DxvkQuery>&        query) {
     DxvkGpuQueryHandle handle = m_pool->allocQuery(query->type());
     
     query->begin(cmd);
@@ -373,7 +373,7 @@ namespace dxvk {
 
   void DxvkGpuQueryManager::beginSingleQuery(
     const Rc<DxvkCommandList>&  cmd,
-    const Rc<DxvkGpuQuery>&     query) {
+    const Rc<DxvkQuery>&        query) {
     DxvkGpuQueryHandle handle = m_pool->allocQuery(query->type());
     
     cmd->resetQuery(
@@ -399,7 +399,7 @@ namespace dxvk {
 
   void DxvkGpuQueryManager::endSingleQuery(
     const Rc<DxvkCommandList>&  cmd,
-    const Rc<DxvkGpuQuery>&     query) {
+    const Rc<DxvkQuery>&        query) {
     DxvkGpuQueryHandle handle = query->handle();
     
     if (query->isIndexed()) {
