@@ -26,6 +26,9 @@ namespace dxvk {
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
+    if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
+      m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
+
     assignResource(createResource());
   }
 
@@ -215,6 +218,56 @@ namespace dxvk {
 
     m_stableAddress |= usageInfo.stableGpuAddress;
     return old;
+  }
+
+
+  void DxvkImage::trackInitialization(
+    const VkImageSubresourceRange& subresources) {
+    if (!m_uninitializedSubresourceCount)
+      return;
+
+    if (subresources.levelCount == m_info.mipLevels && subresources.layerCount == m_info.numLayers) {
+      // Trivial case, everything gets initialized at once
+      m_uninitializedSubresourceCount = 0u;
+      m_uninitializedMipsPerLayer.clear();
+    } else {
+      // Partial initialization. Track each layer individually.
+      if (m_uninitializedMipsPerLayer.empty()) {
+        m_uninitializedMipsPerLayer.resize(m_info.numLayers);
+
+        for (uint32_t i = 0; i < m_info.numLayers; i++)
+          m_uninitializedMipsPerLayer[i] = uint16_t(1u << m_info.mipLevels) - 1u;
+      }
+
+      uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+
+      for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
+        m_uninitializedSubresourceCount -= bit::popcnt(m_uninitializedMipsPerLayer[i] & mipMask);
+        m_uninitializedMipsPerLayer[i] &= ~mipMask;
+      }
+
+      if (!m_uninitializedSubresourceCount)
+        m_uninitializedMipsPerLayer.clear();
+    }
+  }
+
+
+  bool DxvkImage::isInitialized(
+    const VkImageSubresourceRange& subresources) const {
+    if (likely(!m_uninitializedSubresourceCount))
+      return true;
+
+    if (m_uninitializedMipsPerLayer.empty())
+      return false;
+
+    uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+
+    for (uint32_t i = 0; i < subresources.layerCount; i++) {
+      if (m_uninitializedMipsPerLayer[subresources.baseArrayLayer + i] & mipMask)
+        return false;
+    }
+
+    return true;
   }
 
 
