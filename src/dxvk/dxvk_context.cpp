@@ -3974,11 +3974,10 @@ namespace dxvk {
     const VkImageResolve&           region) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
-    
-    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-    
+
+    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
+    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
+
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
     VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -4008,22 +4007,16 @@ namespace dxvk {
 
     m_cmd->cmdResolveImage(&resolveInfo);
   
-    m_execBarriers.accessImage(
-      dstImage, dstSubresourceRange, dstLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      dstImage->info().layout,
-      dstImage->info().stages,
-      dstImage->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *dstImage, dstSubresourceRange, dstLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    m_execBarriers.accessImage(
-      srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT,
-      srcImage->info().layout,
-      srcImage->info().stages,
-      srcImage->info().access);
-    
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_READ_BIT);
+
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
