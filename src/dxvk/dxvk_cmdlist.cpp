@@ -370,7 +370,6 @@ namespace dxvk {
 
     // Return query and event handles
     m_gpuQueryTracker.reset();
-    m_gpuEventTracker.reset();
 
     // Less important stuff
     m_signalTracker.reset();

@@ -2470,22 +2470,21 @@ namespace dxvk {
   void DxvkContext::signalGpuEvent(const Rc<DxvkEvent>& event) {
     this->spillRenderPass(true);
     
-    DxvkGpuEventHandle handle = m_common->eventPool().allocEvent();
+    Rc<DxvkGpuEvent> gpuEvent = m_common->eventPool().allocEvent();
+    event->assignGpuEvent(gpuEvent);
 
     // Supported client APIs can't access device memory in a defined manner
     // without triggering a queue submission first, so we really only need
     // to wait for prior commands, especially queries, to complete.
     VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    barrier.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    barrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
 
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
     depInfo.memoryBarrierCount = 1;
     depInfo.pMemoryBarriers = &barrier;
 
-    m_cmd->cmdSetEvent(handle.event, &depInfo);
-
-    m_cmd->trackGpuEvent(event->reset(handle));
-    m_cmd->trackResource<DxvkAccess::None>(event);
+    m_cmd->cmdSetEvent(gpuEvent->handle(), &depInfo);
+    m_cmd->trackEvent(std::move(gpuEvent));
   }
   
 

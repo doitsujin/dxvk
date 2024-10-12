@@ -284,17 +284,10 @@ namespace dxvk {
       m_resources.trackSampler(sampler);
     }
 
-    /**
-     * \brief Tracks a GPU event
-     * 
-     * The event will be returned to its event pool
-     * after the command buffer has finished executing.
-     * \param [in] handle Event handle
-     */
-    void trackGpuEvent(DxvkGpuEventHandle handle) {
-      m_gpuEventTracker.trackEvent(handle);
+    void trackEvent(Rc<DxvkGpuEvent>&& event) {
+      m_resources.trackEvent(std::move(event));
     }
-    
+
     /**
      * \brief Tracks a GPU query
      * 
@@ -1082,7 +1075,6 @@ namespace dxvk {
 
     DxvkLifetimeTracker       m_resources;
     DxvkSignalTracker         m_signalTracker;
-    DxvkGpuEventTracker       m_gpuEventTracker;
     DxvkGpuQueryTracker       m_gpuQueryTracker;
     DxvkStatCounters          m_statCounters;
 
