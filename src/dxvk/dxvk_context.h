@@ -1408,7 +1408,8 @@ namespace dxvk {
 
     DxvkBarrierBatch        m_sdmaBarriers;
     DxvkBarrierBatch        m_initBarriers;
-    DxvkBarrierSet          m_execBarriers;
+    DxvkBarrierBatch        m_execBarriers;
+    DxvkBarrierTracker      m_barrierTracker;
     DxvkBarrierControlFlags m_barrierControl;
 
     DxvkGpuQueryManager     m_queryManager;
@@ -1896,8 +1897,16 @@ namespace dxvk {
             DxvkAccess                access);
 
     bool resourceHasAccess(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            DxvkAccess                access);
+
+    bool resourceHasAccess(
             DxvkImageView&            imageView,
             DxvkAccess                access);
+
+    DxvkBarrierBatch& getBarrierBatch(
+            DxvkCmdBuffer             cmdBuffer);
 
     template<typename Pred>
     bool checkResourceBarrier(
