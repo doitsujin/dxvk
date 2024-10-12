@@ -1161,9 +1161,8 @@ namespace dxvk {
     // Emit barrier early so we can fold this into
     // the spill render pass barrier if possible
     if (srcStages | dstStages) {
-      m_execBarriers.accessMemory(
-        srcStages, srcAccess,
-        dstStages, dstAccess);
+      accessMemory(DxvkCmdBuffer::ExecBuffer,
+        srcStages, srcAccess, dstStages, dstAccess);
     }
 
     this->spillRenderPass(true);
@@ -1172,7 +1171,7 @@ namespace dxvk {
     // This is necessary because there are no resources
     // associated with the barrier to allow tracking.
     if (srcStages | dstStages)
-      m_execBarriers.recordCommands(m_cmd);
+      flushBarriers();
   }
 
 
