@@ -392,7 +392,7 @@ namespace dxvk {
     // When overwriting small buffers, we can allocate a new slice in order to
     // avoid suspending the current render pass or inserting barriers. The source
     // buffer must be read-only since otherwise we cannot schedule the copy early.
-    bool srcIsReadOnly = DxvkBarrierSet::getAccessTypes(srcBuffer->info().access) == DxvkAccess::Read;
+    bool srcIsReadOnly = !(srcBuffer->info().access & vk::AccessWriteMask);
     bool replaceBuffer = srcIsReadOnly && this->tryInvalidateDeviceLocalBuffer(dstBuffer, numBytes);
 
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
@@ -4979,8 +4979,7 @@ namespace dxvk {
     srcBarrier.access |= pipelineBarrier.access;
 
     if (srcBarrier.stages) {
-      DxvkAccessFlags access = DxvkBarrierSet::getAccessTypes(srcBarrier.access);
-      DxvkGlobalPipelineBarrier dstBarrier = access.test(DxvkAccess::Write)
+      DxvkGlobalPipelineBarrier dstBarrier = (srcBarrier.access & vk::AccessWriteMask)
         ? m_globalRwGraphicsBarrier
         : m_globalRoGraphicsBarrier;
 
