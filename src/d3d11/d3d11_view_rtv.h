@@ -52,9 +52,7 @@ namespace dxvk {
     }
     
     VkImageLayout GetRenderLayout() const {
-      return m_view->image()->info().tiling == VK_IMAGE_TILING_OPTIMAL
-        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
+      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
     UINT GetSampleCount() const {

@@ -120,8 +120,15 @@ namespace dxvk {
     void bindRenderTargets(
             DxvkRenderTargets&&   targets,
             VkImageAspectFlags    feedbackLoop) {
-      // Set up default render pass ops
+      // Set up default render pass ops and normalize layouts
       m_state.om.renderTargets = std::move(targets);
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        auto& rt = m_state.om.renderTargets.color[i];
+
+        if (rt.view)
+          rt.layout = rt.view->pickLayout(rt.layout);
+      }
 
       if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
         m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
