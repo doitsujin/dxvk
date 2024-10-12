@@ -1892,12 +1892,34 @@ namespace dxvk {
             DxvkAccess                access);
 
     bool resourceHasAccess(
-            DxvkBufferView&           buffer,
+            DxvkBufferView&           bufferView,
             DxvkAccess                access);
 
     bool resourceHasAccess(
             DxvkImageView&            imageView,
             DxvkAccess                access);
+
+    template<typename Pred>
+    bool checkResourceBarrier(
+      const Pred&                     pred,
+            VkPipelineStageFlags      stages,
+            VkAccessFlags             access) {
+      // Check for read-after-write first, this is common
+      bool hasPendingWrite = pred(DxvkAccess::Write);
+
+      if (access & vk::AccessReadMask)
+        return hasPendingWrite;
+
+      // Check for a write-after-write hazard, but
+      // ignore it if there are no reads involved.
+      bool ignoreWaW = canIgnoreWawHazards(stages);
+
+      if (hasPendingWrite && !ignoreWaW)
+        return true;
+
+      // Check whether there are any pending reads.
+      return pred(DxvkAccess::Read);
+    }
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
