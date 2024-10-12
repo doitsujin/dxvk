@@ -4984,7 +4984,7 @@ namespace dxvk {
         ? m_globalRwGraphicsBarrier
         : m_globalRoGraphicsBarrier;
 
-      m_execBarriers.accessMemory(
+      accessMemory(DxvkCmdBuffer::ExecBuffer,
         srcBarrier.stages, srcBarrier.access,
         dstBarrier.stages, dstBarrier.access);
     }
