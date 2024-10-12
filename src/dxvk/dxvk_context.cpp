@@ -3325,8 +3325,7 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass(false);
 
-      if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
-        m_execBarriers.recordCommands(m_cmd);
+      flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       clearLayout = (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT)
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -3400,13 +3399,9 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       m_cmd->cmdEndRendering();
 
-      m_execBarriers.accessImage(
-        imageView->image(),
-        imageView->imageSubresources(),
-        clearLayout, clearStages, clearAccess,
-        imageView->image()->info().layout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access);
+      accessImage(DxvkCmdBuffer::ExecBuffer,
+        *imageView->image(), imageView->imageSubresources(),
+        clearLayout, clearStages, clearAccess);
 
       m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
     }
