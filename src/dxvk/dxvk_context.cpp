@@ -3490,9 +3490,8 @@ namespace dxvk {
 
     auto dstFormatInfo = dstImage->formatInfo();
 
-    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
+    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
     VkImageLayout dstImageLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcImageLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -3536,25 +3535,15 @@ namespace dxvk {
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
     }
-    
-    m_execBarriers.accessImage(
-      dstImage, dstSubresourceRange,
-      dstImageLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      dstImage->info().layout,
-      dstImage->info().stages,
-      dstImage->info().access);
 
-    m_execBarriers.accessImage(
-      srcImage, srcSubresourceRange,
-      srcImageLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT,
-      srcImage->info().layout,
-      srcImage->info().stages,
-      srcImage->info().access);
-    
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *dstImage, dstSubresourceRange, dstImageLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *srcImage, srcSubresourceRange, srcImageLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
