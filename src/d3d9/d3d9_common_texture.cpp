@@ -501,27 +501,26 @@ namespace dxvk {
              | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
              | VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
 
+    // Storage images require GENERAL.
+    if (Usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      return VK_IMAGE_LAYOUT_GENERAL;
+
+    // Use GENERAL for non-renderable images to avoid layout transitions.
+    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
+      return VK_IMAGE_LAYOUT_GENERAL;
+
     // If the image is used only as an attachment, we never
-    // have to transform the image back to a different layout
+    // have to transform the image back to a different layout.
     if (Usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
       return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     
     if (Usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
-    Usage &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-             | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    
-    // If the image is used for reading but not as a storage
-    // image, we can optimize the image for texture access
-    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT) {
-      return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
-    
-    // Otherwise, we have to stick with the default layout
-    return VK_IMAGE_LAYOUT_GENERAL;
+
+    // Otherwise, pick a layout that can be used for reading.
+    return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
 
   D3D9_COMMON_TEXTURE_MAP_MODE D3D9CommonTexture::DetermineMapMode() const {
