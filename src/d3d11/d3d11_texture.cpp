@@ -730,33 +730,34 @@ namespace dxvk {
   
   VkImageLayout D3D11CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) {
     const VkImageUsageFlags usageFlags = Usage;
-    
+
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
              | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    
+
+    // Storage images require GENERAL.
+    if (Usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      return VK_IMAGE_LAYOUT_GENERAL;
+
+    // Also use GENERAL if the image cannot be rendered to. This
+    // should not harm any hardware in practice and may avoid some
+    // redundant layout transitions for regular textures.
+    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
+      return VK_IMAGE_LAYOUT_GENERAL;
+
     // If the image is used only as an attachment, we never
-    // have to transform the image back to a different layout
+    // have to transform the image back to a different layout.
     if (Usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
       return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     
     if (Usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
-    Usage &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-             | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    
-    // If the image is used for reading but not as a storage
-    // image, we can optimize the image for texture access
-    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT) {
-      return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
-    
-    // Otherwise, we have to stick with the default layout
-    return VK_IMAGE_LAYOUT_GENERAL;
+
+    // Otherwise, pick a layout that can be used for reading.
+    return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
   
   
