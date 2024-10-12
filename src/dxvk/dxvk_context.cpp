@@ -2660,9 +2660,8 @@ namespace dxvk {
     const Rc<DxvkImageView>&    srcView,
     const VkOffset3D*           srcOffsets,
           VkFilter              filter) {
-    if (m_execBarriers.isImageDirty(dstView->image(), dstView->imageSubresources(), DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcView->image(), srcView->imageSubresources(), DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    flushPendingAccesses(*dstView, DxvkAccess::Write);
+    flushPendingAccesses(*srcView, DxvkAccess::Read);
 
     // Prepare the two images for transfer ops if necessary
     auto dstLayout = dstView->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -2695,23 +2694,13 @@ namespace dxvk {
 
     m_cmd->cmdBlitImage(&blitInfo);
     
-    m_execBarriers.accessImage(
-      dstView->image(),
-      dstView->imageSubresources(), dstLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      dstView->image()->info().layout,
-      dstView->image()->info().stages,
-      dstView->image()->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *dstView->image(), dstView->imageSubresources(), dstLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
     
-    m_execBarriers.accessImage(
-      srcView->image(),
-      srcView->imageSubresources(), srcLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT,
-      srcView->image()->info().layout,
-      srcView->image()->info().stages,
-      srcView->image()->info().access);
+    accessImage(DxvkCmdBuffer::ExecBuffer,
+      *srcView->image(), srcView->imageSubresources(), srcLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
     m_cmd->trackResource<DxvkAccess::Write>(dstView->image());
     m_cmd->trackResource<DxvkAccess::Read>(srcView->image());
