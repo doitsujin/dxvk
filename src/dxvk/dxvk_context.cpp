@@ -6573,7 +6573,7 @@ namespace dxvk {
 
 
   void DxvkContext::addImageLayoutTransition(
-    const DxvkImage&                image,
+          DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             srcLayout,
           VkPipelineStageFlags2     srcStages,
@@ -6583,6 +6583,9 @@ namespace dxvk {
           VkAccessFlags2            dstAccess) {
     if (srcLayout == dstLayout && srcStages == dstStages)
       return;
+
+    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+      image.trackInitialization(subresources);
 
     auto& barrier = m_imageLayoutTransitions.emplace_back();
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -6600,19 +6603,27 @@ namespace dxvk {
 
 
   void DxvkContext::addImageLayoutTransition(
-    const DxvkImage&                image,
+          DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             dstLayout,
           VkPipelineStageFlags2     dstStages,
           VkAccessFlags2            dstAccess,
           bool                      discard) {
-    // If discard is false, this assumes that the image is
-    // in its default layout and ready to be accessed via
-    // its standard access patterns.
+    // If discard is false, this assumes that the image is in its default
+    // layout and ready to be accessed via its standard access patterns.
     VkImageLayout srcLayout = image.info().layout;
 
-    if (discard)
-      srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    if (discard) {
+      // Only discard if the image is either uninitialized or if it is
+      // GPU-writable. Discarding is most likely not useful otherwise.
+      constexpr VkImageUsageFlags WritableFlags =
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_STORAGE_BIT;
+
+      if ((image.info().usage & WritableFlags) || !image.isInitialized(subresources))
+        srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
 
     addImageLayoutTransition(image, subresources,
       srcLayout, dstStages, 0,
@@ -6621,7 +6632,7 @@ namespace dxvk {
 
 
   void DxvkContext::addImageInitTransition(
-    const DxvkImage&                image,
+          DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             dstLayout,
           VkPipelineStageFlags2     dstStages,
@@ -6676,6 +6687,9 @@ namespace dxvk {
           VkPipelineStageFlags2     dstStages,
           VkAccessFlags2            dstAccess) {
     auto& batch = getBarrierBatch(cmdBuffer);
+
+    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+      image.trackInitialization(subresources);
 
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = srcStages;

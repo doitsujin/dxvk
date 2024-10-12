@@ -1790,7 +1790,7 @@ namespace dxvk {
             DxvkCmdBuffer             cmdBuffer);
 
     void addImageLayoutTransition(
-      const DxvkImage&                image,
+            DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             srcLayout,
             VkPipelineStageFlags2     srcStages,
@@ -1800,7 +1800,7 @@ namespace dxvk {
             VkAccessFlags2            dstAccess);
 
     void addImageLayoutTransition(
-      const DxvkImage&                image,
+            DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
@@ -1808,7 +1808,7 @@ namespace dxvk {
             bool                      discard);
 
     void addImageInitTransition(
-      const DxvkImage&                image,
+            DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
