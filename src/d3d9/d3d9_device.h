@@ -796,12 +796,10 @@ namespace dxvk {
 
     void EndFrame();
 
-    void UpdateBoundRTs(uint32_t index);
-
     void UpdateActiveRTs(uint32_t index);
 
     template <uint32_t Index>
-    void UpdateAnyColorWrites(bool has);
+    void UpdateAnyColorWrites();
 
     void UpdateActiveTextures(uint32_t index, DWORD combinedUsage);
 
@@ -1301,7 +1299,7 @@ namespace dxvk {
 
     bool IsTextureBoundAsAttachment(const D3D9CommonTexture* pTexture) const {
       if (unlikely(pTexture->IsRenderTarget())) {
-        for (uint32_t i : bit::BitMask(m_boundRTs)) {
+        for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
           auto texInfo = m_state.renderTargets[i]->GetCommonTexture();
           if (unlikely(texInfo == pTexture)) {
             return true;
@@ -1314,6 +1312,11 @@ namespace dxvk {
         }
       }
       return false;
+    }
+
+    inline bool HasRenderTargetBound(uint32_t Index) const {
+      return m_state.renderTargets[Index] != nullptr
+        && !m_state.renderTargets[Index]->IsNull();
     }
 
     Com<D3D9InterfaceEx>            m_parent;
@@ -1392,8 +1395,6 @@ namespace dxvk {
     uint32_t                        m_dirtySamplerStates = 0;
     uint32_t                        m_dirtyTextures      = 0;
 
-    uint32_t                        m_boundRTs        : 4;
-    uint32_t                        m_anyColorWrites  : 4;
     uint32_t                        m_activeRTsWhichAreTextures : 4;
     uint32_t                        m_alphaSwizzleRTs : 4;
     uint32_t                        m_lastHazardsRT   : 4;

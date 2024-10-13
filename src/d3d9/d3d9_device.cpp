@@ -181,8 +181,6 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
 
     // Bitfields can't be initialized in header.
-    m_boundRTs = 0;
-    m_anyColorWrites = 0;
     m_activeRTsWhichAreTextures = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
@@ -1568,7 +1566,6 @@ namespace dxvk {
 
     m_state.renderTargets[RenderTargetIndex] = rt;
 
-    UpdateBoundRTs(RenderTargetIndex);
     UpdateActiveRTs(RenderTargetIndex);
 
     uint32_t originalAlphaSwizzleRTs = m_alphaSwizzleRTs;
@@ -1843,8 +1840,10 @@ namespace dxvk {
 
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
-        for (uint32_t rt : bit::BitMask(m_boundRTs)) {
+        for (uint32_t rt = 0u; rt < m_state.renderTargets.size(); rt++) {
           const auto& rts = m_state.renderTargets[rt];
+          if (rts == nullptr)
+            continue;
           const auto& rtv = rts->GetRenderTargetView(srgb);
 
           if (likely(rtv != nullptr)) {
@@ -2222,22 +2221,22 @@ namespace dxvk {
 
         case D3DRS_COLORWRITEENABLE:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites<0>(!!Value);
+            UpdateAnyColorWrites<0>();
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites<1>(!!Value);
+            UpdateAnyColorWrites<1>();
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites<2>(!!Value);
+            UpdateAnyColorWrites<2>();
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites<3>(!!Value);
+            UpdateAnyColorWrites<3>();
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -3618,8 +3617,15 @@ namespace dxvk {
     // If we have any RTs we would have bound to the the FB
     // not in the new shader mask, mark the framebuffer as dirty
     // so we unbind them.
-    uint32_t oldUseMask = m_boundRTs & m_anyColorWrites & m_psShaderMasks.rtMask;
-    uint32_t newUseMask = m_boundRTs & m_anyColorWrites & newShaderMasks.rtMask;
+    uint32_t boundMask = 0u;
+    uint32_t anyColorWriteMask = 0u;
+    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
+      boundMask |= HasRenderTargetBound(i) << i;
+      anyColorWriteMask |= (m_state.renderStates[ColorWriteIndex(i)] != 0) << i;
+    }
+
+    uint32_t oldUseMask = boundMask & anyColorWriteMask & m_psShaderMasks.rtMask;
+    uint32_t newUseMask = boundMask & anyColorWriteMask & newShaderMasks.rtMask;
     if (oldUseMask != newUseMask)
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
@@ -5940,42 +5946,25 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateBoundRTs(uint32_t index) {
-    const uint32_t bit = 1 << index;
-    
-    m_boundRTs &= ~bit;
-
-    if (m_state.renderTargets[index] != nullptr &&
-       !m_state.renderTargets[index]->IsNull())
-      m_boundRTs |= bit;
-  }
-
-
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
     m_activeRTsWhichAreTextures &= ~bit;
 
-    if ((m_boundRTs & bit) != 0 &&
+    if (HasRenderTargetBound(index) &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
-        m_anyColorWrites & bit)
+        m_state.renderStates[ColorWriteIndex(index)] != 0)
       m_activeRTsWhichAreTextures |= bit;
 
     UpdateActiveHazardsRT(bit);
   }
 
   template <uint32_t Index>
-  inline void D3D9DeviceEx::UpdateAnyColorWrites(bool has) {
-    const uint32_t bit = 1 << Index;
-
-    m_anyColorWrites &= ~bit;
-
-    if (has)
-      m_anyColorWrites |= bit;
-
+  inline void D3D9DeviceEx::UpdateAnyColorWrites() {
     // The 0th RT is always bound.
-    if (Index == 0 || m_boundRTs & bit) {
-      if (m_boundRTs & bit) {
+    bool bound = HasRenderTargetBound(Index);
+    if (Index == 0 || bound) {
+      if (bound) {
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
 
@@ -6336,9 +6325,13 @@ namespace dxvk {
     // if the RT has the same size or is bigger than the smallest active RT.
 
     uint32_t boundMask = 0u;
+    uint32_t anyColorWriteMask = 0u;
     uint32_t limitsRenderAreaMask = 0u;
     VkExtent2D renderArea = { ~0u, ~0u };
-    for (uint32_t i : bit::BitMask(m_boundRTs)) {
+    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
+      if (m_state.renderTargets[i] == nullptr)
+        continue;
+
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
       // Dont bind it if the sample count doesnt match
@@ -6359,8 +6352,10 @@ namespace dxvk {
 
       // It will only get bound if its not smaller than the others.
       // So RTs with a disabled color write mask will never impact the render area.
-      if (!(m_anyColorWrites & (1 << i)))
+      if (m_state.renderStates[ColorWriteIndex(i)] == 0)
         continue;
+
+      anyColorWriteMask |= 1 << i;
 
       if (rtExtent.width < renderArea.width && rtExtent.height < renderArea.height) {
         // It's smaller on both axis, so the previous RTs no longer limit the size
@@ -6396,7 +6391,7 @@ namespace dxvk {
     // We only need to skip binding the RT if it would shrink the render area
     // despite not having color writes enabled,
     // otherwise we might end up with unnecessary render pass spills
-    boundMask &= (m_anyColorWrites | ~limitsRenderAreaMask);
+    boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
     for (uint32_t i : bit::BitMask(boundMask)) {
       attachments.color[i] = {
         m_state.renderTargets[i]->GetRenderTargetView(srgb),
@@ -8149,10 +8144,10 @@ namespace dxvk {
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
 
-    UpdateAnyColorWrites<0>(true);
-    UpdateAnyColorWrites<1>(true);
-    UpdateAnyColorWrites<2>(true);
-    UpdateAnyColorWrites<3>(true);
+    UpdateAnyColorWrites<0>();
+    UpdateAnyColorWrites<1>();
+    UpdateAnyColorWrites<2>();
+    UpdateAnyColorWrites<3>();
 
     SetIndices(nullptr);
     for (uint32_t i = 0; i < caps::MaxStreams; i++) {
