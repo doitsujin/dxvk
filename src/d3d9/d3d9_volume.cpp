@@ -104,6 +104,20 @@ namespace dxvk {
       pLockedBox->SlicePitch = 0;
     }
 
+    if (unlikely(pBox != nullptr)) {
+      auto& desc = *(m_texture->Desc());
+
+      // Negative or zero length dimensions
+      if ( static_cast<LONG>(pBox->Right)  - static_cast<LONG>(pBox->Left)  <= 0
+        || static_cast<LONG>(pBox->Bottom) - static_cast<LONG>(pBox->Top)   <= 0
+        || static_cast<LONG>(pBox->Back)   - static_cast<LONG>(pBox->Front) <= 0
+      // Exceeding surface dimensions
+        || pBox->Right  > desc.Width
+        || pBox->Bottom > desc.Height
+        || pBox->Back   > desc.Depth)
+        return D3DERR_INVALIDCALL;
+    }
+
     D3DLOCKED_BOX lockedBox;
 
     HRESULT hr = m_parent->LockImage(
