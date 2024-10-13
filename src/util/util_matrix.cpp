@@ -205,7 +205,7 @@ namespace dxvk {
     Vector4 dot0    = { m[0] * row0 };
     float dot1      = (dot0.x + dot0.y) + (dot0.z + dot0.w);
 
-    if (unlikely(std::abs(dot1) <= 0.000001f)) {
+    if (unlikely(std::abs(dot1) <= std::numeric_limits<float>::min() * 10)) {
       return m;
     }
 
