@@ -133,11 +133,9 @@ namespace dxvk {
 
     Rc<DxvkInstance> GetInstance() { return m_instance; }
 
+    HRESULT ValidatePresentationParameters(D3DPRESENT_PARAMETERS* params, bool isExDevice);
+
   private:
-
-    void CacheModes(D3D9Format Format);
-
-    static const char* GetDriverDllName(DxvkGpuVendor vendor);
 
     Rc<DxvkInstance>              m_instance;
 
