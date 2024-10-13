@@ -350,15 +350,20 @@ namespace dxvk {
           IDirect3DDevice9Ex**   ppReturnedDeviceInterface) {
     InitReturnPtr(ppReturnedDeviceInterface);
 
-    if (ppReturnedDeviceInterface == nullptr
-    || pPresentationParameters    == nullptr)
+    if (unlikely(ppReturnedDeviceInterface  == nullptr
+              || pPresentationParameters    == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // creating a device with D3DCREATE_PUREDEVICE only works in conjunction
-    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers
-    if (BehaviorFlags & D3DCREATE_PUREDEVICE &&
-    !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING))
+    // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
+    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
+    if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
+               !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING)))
       return D3DERR_INVALIDCALL;
+
+    HRESULT hr = ValidatePresentationParameters(pPresentationParameters);
+
+    if (unlikely(FAILED(hr)))
+      return hr;
 
     auto* adapter = GetAdapter(Adapter);
 
@@ -378,9 +383,9 @@ namespace dxvk {
         BehaviorFlags,
         dxvkDevice);
 
-      HRESULT hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
+      hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
 
-      if (FAILED(hr))
+      if (unlikely(FAILED(hr)))
         return hr;
 
       *ppReturnedDeviceInterface = ref(device);

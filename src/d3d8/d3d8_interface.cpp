@@ -122,6 +122,13 @@ namespace dxvk
                  ppReturnedDeviceInterface == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
+    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
+    // RC Cars depends on it not being rejected.
+    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
+              && pPresentationParameters->BackBufferCount > 1))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     HRESULT res = m_d3d9->CreateDevice(

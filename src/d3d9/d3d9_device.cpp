@@ -476,6 +476,11 @@ namespace dxvk {
     Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
+    HRESULT hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
+
+    if (unlikely(FAILED(hr)))
+      return hr;
+
     if (!IsExtended()) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
       ResetState(pPresentationParameters);
@@ -507,8 +512,8 @@ namespace dxvk {
       return D3DERR_DEVICELOST;
     }
 
-    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
-    if (FAILED(hr)) {
+    hr = ResetSwapChain(pPresentationParameters, nullptr);
+    if (unlikely(FAILED(hr))) {
       if (!IsExtended()) {
         Logger::warn("Device reset failed: Device not reset");
         m_deviceLostState = D3D9DeviceLostState::NotReset;
