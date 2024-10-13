@@ -1074,6 +1074,10 @@ namespace dxvk {
     if (unlikely(pToken == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Applications cannot create a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
@@ -1094,6 +1098,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CaptureStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
+    // Applications cannot capture a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
@@ -1106,6 +1114,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8Device::ApplyStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
+
+    // Applications cannot apply a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
 
     StateChange();
 
@@ -1122,7 +1134,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
-    // "Applications cannot delete a device-state block while another is being recorded"
+    // Applications cannot delete a state block while another is being recorded
     if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
