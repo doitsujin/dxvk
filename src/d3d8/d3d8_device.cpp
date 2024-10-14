@@ -306,6 +306,9 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DPOOL             Pool,
           IDirect3DTexture8** ppTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppTexture);
 
     if (unlikely(ppTexture == nullptr))
@@ -341,6 +344,9 @@ namespace dxvk {
           D3DFORMAT                 Format,
           D3DPOOL                   Pool,
           IDirect3DVolumeTexture8** ppVolumeTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppVolumeTexture);
 
     if (unlikely(ppVolumeTexture == nullptr))
@@ -368,6 +374,9 @@ namespace dxvk {
           D3DFORMAT               Format,
           D3DPOOL                 Pool,
           IDirect3DCubeTexture8** ppCubeTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppCubeTexture);
 
     if (unlikely(ppCubeTexture == nullptr))
@@ -441,6 +450,9 @@ namespace dxvk {
           D3DMULTISAMPLE_TYPE MultiSample,
           BOOL                Lockable,
           IDirect3DSurface8** ppSurface) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -469,6 +481,9 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DMULTISAMPLE_TYPE MultiSample,
           IDirect3DSurface8** ppSurface) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -496,7 +511,12 @@ namespace dxvk {
           UINT                Height,
           D3DFORMAT           Format,
           IDirect3DSurface8** ppSurface) {
+    // Only CreateImageSurface clears the content of ppSurface
+    // before checking if Format is equal to D3DFMT_UNKNOWN.
     InitReturnPtr(ppSurface);
+
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
