@@ -71,14 +71,6 @@ namespace dxvk {
       { "d3d11.dcSingleUseMode",            "False" },
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
-    /* Far Cry 2: Set vendor ID to Nvidia to avoid
-     * vegetation artifacts on Intel, and set
-     * apitrace mode to True to improve perf on all
-     * hardware.                                  */
-    { R"(\\(FarCry2|farcry2game)\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
-      { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
      * Nvidia. We assume that the Vulkan drivers  *
@@ -986,6 +978,14 @@ namespace dxvk {
      * 512MB vram locking higher graphics presets  */
     { R"(\\SecretWorldLegends\.exe$)", {{
       { "d3d9.memoryTrackTest",              "True" },
+    }} },
+    /* Far Cry 2: Set vendor ID to Nvidia to      *
+     * avoid vegetation artifacts on Intel, and   *
+     * set apitrace mode to True to improve perf  *
+     * on all hardware.                           */
+    { R"(\\(FarCry2|farcry2game)\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
 
     /**********************************************/
