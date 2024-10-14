@@ -1,0 +1,19 @@
+#version 460
+
+#extension GL_GOOGLE_include_directive : enable
+
+#define CS_MIPS_PER_PASS (5u)
+
+#include "dxvk_mipgen_common.glsl"
+
+shared u32vec4 csLds[c_lds_pixels][c_lds_pixels];
+
+void csStoreLds(u32vec2 location, f32vec4 data) {
+  csLds[location.y][location.x] = csPackPixelValue(data);
+}
+
+f32vec4 csLoadLds(u32vec2 location) {
+  return csUnpackPixelValue(u32vec4(csLds[location.y][location.x]));
+}
+
+#include "dxvk_mipgen.glsl"
