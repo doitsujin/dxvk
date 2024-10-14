@@ -46,7 +46,20 @@ namespace dxvk {
 
 
   HRESULT D3D9CommonBuffer::ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc) {
-    if (pDesc->Size == 0)
+    if (unlikely(pDesc->Size == 0))
+      return D3DERR_INVALIDCALL;
+
+    // Neither vertex nor index buffers can be created in D3DPOOL_SCRATCH
+    // or in D3DPOOL_MANAGED with D3DUSAGE_DYNAMIC.
+    if (unlikely(pDesc->Pool == D3DPOOL_SCRATCH
+             || (pDesc->Pool == D3DPOOL_MANAGED && (pDesc->Usage & D3DUSAGE_DYNAMIC))))
+      return D3DERR_INVALIDCALL;
+
+    // D3DUSAGE_AUTOGENMIPMAP, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET
+    // are not permitted on index or vertex buffers.
+    if (unlikely((pDesc->Usage & D3DUSAGE_AUTOGENMIPMAP)
+              || (pDesc->Usage & D3DUSAGE_DEPTHSTENCIL)
+              || (pDesc->Usage & D3DUSAGE_RENDERTARGET)))
       return D3DERR_INVALIDCALL;
 
     return D3D_OK;
