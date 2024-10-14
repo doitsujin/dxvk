@@ -97,7 +97,8 @@ namespace dxvk {
         };
 
         if (FAILED(res)) {
-          if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
+          // The struct size needs to be at least equal or larger
+          if (DevInfoStructSize < sizeof(D3DDEVINFO_VCACHE))
             return D3DERR_INVALIDCALL;
 
           memset(pDevInfoStruct, 0, sizeof(D3DDEVINFO_VCACHE));

@@ -3796,7 +3796,7 @@ namespace dxvk {
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
-      return D3DERR_INVALIDCALL;
+      return D3DERR_NOTAVAILABLE;
     }
   }
 
