@@ -1,8 +1,11 @@
 #pragma once
 
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include "../util/util_small_vector.h"
+#include "../util/thread.h"
 
 #include "dxvk_meta_blit.h"
 
@@ -145,5 +148,91 @@ namespace dxvk {
     PassViews createViews(uint32_t pass) const;
     
   };
-  
+
+
+  /**
+   * \brief Compute shader args for mip gen pass
+   */
+  struct DxvkMetaMipGenArgs {
+    VkExtent2D extent;
+    uint32_t mipLevels;
+  };
+
+
+  /**
+   * \brief Compute pipeline for single-pass mip generation
+   */
+  struct DxvkMetaMipGenPipeline {
+    VkDescriptorSetLayout setLayout = VK_NULL_HANDLE;
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    uint32_t mipsPerPass = 0u;
+  };
+
+
+  /**
+   * \brief Mip gen pipeline
+   *
+   * Provides a compute pipeline that can generate mipmaps for common formats.
+   * Depending on the format size, this can support up to 12 mip levels in one
+   * single dispatch.
+   */
+  class DxvkMetaMipGenObjects {
+
+  public:
+
+    constexpr static uint32_t MaxDstDescriptors = 12;
+
+    DxvkMetaMipGenObjects(DxvkDevice* device);
+    ~DxvkMetaMipGenObjects();
+
+    /**
+     * \brief Queries compute-compatible format for a given format
+     *
+     * \param [in] format Image format
+     * \returns Matching non-sRGB format
+     */
+    VkFormat getNonSrgbFormat(VkFormat format) const;
+
+    /**
+     * \brief Checks whether compute mip generation is supported for a format
+     *
+     * \param [in] format Format to query
+     * \param [in] tiling Image tiling mode
+     * \returns \c true if the format is supported
+     */
+    bool supportsFormat(VkFormat format, VkImageTiling tiling) const;
+
+    /**
+     * \brief Retrieves pipeline for a given format
+     *
+     * \param [in] format Format to query
+     * \returns Pipeline objects and properties
+     */
+    DxvkMetaMipGenPipeline getPipeline(VkFormat format);
+
+  private:
+
+    struct SpecConstants {
+      VkFormat format = VK_FORMAT_UNDEFINED;
+      uint32_t mipsPerPass = 0u;
+    };
+
+    DxvkDevice* m_device = nullptr;
+
+    VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
+    VkPipelineLayout m_pipelineLayout = VK_NULL_HANDLE;
+
+    dxvk::mutex m_mutex;
+
+    std::unordered_map<VkFormat, DxvkMetaMipGenPipeline> m_pipelines;
+
+    void createSetLayout();
+
+    void createPipelineLayout();
+
+    DxvkMetaMipGenPipeline createPipeline(VkFormat format);
+
+  };
+
 }

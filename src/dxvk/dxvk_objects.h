@@ -72,6 +72,10 @@ namespace dxvk {
       return m_metaResolve.get(m_device);
     }
     
+    DxvkMetaMipGenObjects& metaMipgen() {
+      return m_metaMipgen.get(m_device);
+    }
+    
   private:
 
     DxvkDevice*                   m_device;
@@ -89,6 +93,7 @@ namespace dxvk {
     Lazy<DxvkMetaClearObjects>    m_metaClear;
     Lazy<DxvkMetaCopyObjects>     m_metaCopy;
     Lazy<DxvkMetaResolveObjects>  m_metaResolve;
+    Lazy<DxvkMetaMipGenObjects>   m_metaMipgen;
 
   };
 
