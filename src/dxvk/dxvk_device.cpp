@@ -332,6 +332,13 @@ namespace dxvk {
     hints.preferFbResolve = m_features.amdShaderFragmentMask
       && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
+    // For AMD, only enable the compute mipgen pass on newer GPUs where
+    // storage image usage does not hurt performance. The subgroup size
+    // check should catch GFX10, GFX11 and future GPUs. The proprietary
+    // driver is broken with our shader, so leave it disabled.
+    hints.preferCsMipgen = m_properties.vk13.minSubgroupSize == 32u
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR));
     return hints;
   }
 

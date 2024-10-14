@@ -1571,6 +1571,13 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       buffer,
             VkDeviceSize          offset);
 
+    void generateMipmapsFb(
+      const Rc<DxvkImageView>&        imageView,
+            VkFilter                  filter);
+
+    void generateMipmapsCs(
+      const Rc<DxvkImageView>&        imageView);
+
     void resolveImageHw(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
