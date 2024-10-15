@@ -355,6 +355,11 @@ namespace dxvk {
      && m_deviceInfo.vk12.driverID != VK_DRIVER_ID_AMD_PROPRIETARY)
       enabledFeatures.vk13.maintenance4 = VK_TRUE;
 
+    // Advanced shader features that are only used for the mip gen shader. These
+    // are required per spec, but don't break on non-conformant implementations.
+    enabledFeatures.vk13.subgroupSizeControl = m_deviceFeatures.vk13.subgroupSizeControl;
+    enabledFeatures.vk13.computeFullSubgroups = m_deviceFeatures.vk13.computeFullSubgroups;
+
     // We expose depth clip rather than depth clamp to client APIs
     enabledFeatures.extDepthClipEnable.depthClipEnable =
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
