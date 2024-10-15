@@ -49,7 +49,7 @@ namespace dxvk {
     bool                IsAttachmentOnly;
     bool                IsLockable;
 
-    // Additional paramters for ID3D9VkInteropDevice
+    // Additional parameters for ID3D9VkInteropDevice
     VkImageUsageFlags   ImageUsage = 0;
   };
 
