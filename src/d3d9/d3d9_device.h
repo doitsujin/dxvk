@@ -1300,6 +1300,9 @@ namespace dxvk {
     bool IsTextureBoundAsAttachment(const D3D9CommonTexture* pTexture) const {
       if (unlikely(pTexture->IsRenderTarget())) {
         for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
+          if (m_state.renderTargets[i] == nullptr)
+            continue;
+
           auto texInfo = m_state.renderTargets[i]->GetCommonTexture();
           if (unlikely(texInfo == pTexture)) {
             return true;

@@ -1841,9 +1841,9 @@ namespace dxvk {
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
         for (uint32_t rt = 0u; rt < m_state.renderTargets.size(); rt++) {
-          const auto& rts = m_state.renderTargets[rt];
-          if (rts == nullptr)
+          if (!HasRenderTargetBound(rt))
             continue;
+          const auto& rts = m_state.renderTargets[rt];
           const auto& rtv = rts->GetRenderTargetView(srgb);
 
           if (likely(rtv != nullptr)) {
@@ -6329,7 +6329,7 @@ namespace dxvk {
     uint32_t limitsRenderAreaMask = 0u;
     VkExtent2D renderArea = { ~0u, ~0u };
     for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
-      if (m_state.renderTargets[i] == nullptr)
+      if (!HasRenderTargetBound(i))
         continue;
 
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
