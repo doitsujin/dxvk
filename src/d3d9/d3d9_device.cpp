@@ -351,8 +351,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     // It makes no sense to have a hotspot outside of the bitmap.
-    if (XHotSpot > std::max(inputWidth  - 1, 0u)
-     || YHotSpot > std::max(inputHeight - 1, 0u))
+    if ((inputWidth  && (XHotSpot > inputWidth  - 1))
+     || (inputHeight && (YHotSpot > inputHeight - 1)))
       return D3DERR_INVALIDCALL;
 
     D3DPRESENT_PARAMETERS params;
