@@ -88,7 +88,7 @@ struct D3D9VkExtImageDesc {
   D3DFORMAT           Format;
   D3DPOOL             Pool;
   D3DMULTISAMPLE_TYPE MultiSample;        // Must be NONE unless Type is SURFACE
-  DWORD               MultisampleQuality;
+  DWORD               MultiSampleQuality;
   bool                Discard;            // Depth stencils only
   bool                IsAttachmentOnly;   // If false, then VK_IMAGE_USAGE_SAMPLED_BIT will be added
   bool                IsLockable;

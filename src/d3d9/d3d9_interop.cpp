@@ -290,7 +290,7 @@ namespace dxvk {
     desc.Pool               = params->Pool;
     desc.Discard            = params->Discard;
     desc.MultiSample        = params->MultiSample;
-    desc.MultisampleQuality = params->MultisampleQuality;
+    desc.MultisampleQuality = params->MultiSampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = params->IsAttachmentOnly;
     desc.IsLockable         = params->IsLockable;
