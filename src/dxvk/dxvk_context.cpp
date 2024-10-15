@@ -5788,7 +5788,7 @@ namespace dxvk {
       if (unlikely(!this->updateGraphicsPipeline()))
         return false;
     }
-    
+
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
@@ -5800,8 +5800,18 @@ namespace dxvk {
           DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
       this->commitGraphicsBarriers<Indexed, Indirect, false>();
 
+      // If transform feedback is active and there is a chance that we might
+      // need to rebind the pipeline, we need to end transform feedback and
+      // issue a barrier. End the render pass to do that. Ignore dirty vertex
+      // buffers here since non-dynamic vertex strides are such an extreme
+      // edge case that it's likely irrelevant in practice.
+      if (m_flags.test(DxvkContextFlag::GpXfbActive)
+       && m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
+                      DxvkContextFlag::GpDirtySpecConstants))
+        this->spillRenderPass(true);
+
       // This can only happen if the render pass was active before,
-      // so we'll never strat the render pass twice in one draw
+      // so we'll never begin the render pass twice in one draw
       if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
         this->startRenderPass();
 
