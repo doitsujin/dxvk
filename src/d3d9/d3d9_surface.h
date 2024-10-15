@@ -20,8 +20,12 @@ namespace dxvk {
     D3D9Surface(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            IUnknown*                 pContainer    = nullptr,
-            HANDLE*                   pSharedHandle = nullptr);
+            IUnknown*                 pContainer,
+            HANDLE*                   pSharedHandle);
+
+    D3D9Surface(
+            D3D9DeviceEx*             pDevice,
+      const D3D9_COMMON_TEXTURE_DESC* pDesc);
 
     D3D9Surface(
             D3D9DeviceEx*             pDevice,
