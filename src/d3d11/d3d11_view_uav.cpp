@@ -129,6 +129,10 @@ namespace dxvk {
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
+
+    m_bufferView = nullptr;
+    m_counterView = nullptr;
+    m_imageView = nullptr;
   }
   
   

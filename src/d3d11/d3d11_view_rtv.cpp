@@ -119,6 +119,8 @@ namespace dxvk {
   D3D11RenderTargetView::~D3D11RenderTargetView() {
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
+
+    m_view = nullptr;
   }
   
   
