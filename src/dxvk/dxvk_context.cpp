@@ -2047,6 +2047,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const Rc<DxvkBuffer>&           source,
           VkDeviceSize              sourceOffset,
+          VkDeviceSize              subresourceAlignment,
           VkFormat                  format) {
     // Always use framebuffer path for depth-stencil images since we know
     // they are writeable and can't use Vulkan transfer queues. Stencil
@@ -2054,9 +2055,9 @@ namespace dxvk {
     bool useFb = !formatsAreCopyCompatible(image->info().format, format);
 
     if (useFb)
-      uploadImageFb(image, source, sourceOffset, format);
+      uploadImageFb(image, source, sourceOffset, subresourceAlignment, format);
     else
-      uploadImageHw(image, source, sourceOffset);
+      uploadImageHw(image, source, sourceOffset, subresourceAlignment);
   }
 
 
@@ -4316,20 +4317,30 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const Rc<DxvkBuffer>&           source,
           VkDeviceSize              sourceOffset,
+          VkDeviceSize              subresourceAlignment,
           VkFormat                  format) {
     if (!format)
       format = image->info().format;
 
-    for (uint32_t i = 0; i < image->info().mipLevels; i++) {
-      VkExtent3D mipExtent = image->mipLevelExtent(i);
+    for (uint32_t m = 0; m < image->info().mipLevels; m++) {
+      VkExtent3D mipExtent = image->mipLevelExtent(m);
 
-      copyBufferToImageFb(image,
-        vk::pickSubresourceLayers(image->getAvailableSubresources(), i),
-        VkOffset3D { 0, 0, 0 }, mipExtent,
-        source, sourceOffset, 0, 0, format);
-
-      sourceOffset += image->info().numLayers * util::computeImageDataSize(
+      VkDeviceSize mipSize = util::computeImageDataSize(
         format, mipExtent, image->formatInfo()->aspectMask);
+
+      for (uint32_t l = 0; l < image->info().numLayers; l++) {
+        VkImageSubresourceLayers layers = { };
+        layers.aspectMask = image->formatInfo()->aspectMask;
+        layers.mipLevel = m;
+        layers.baseArrayLayer = l;
+        layers.layerCount = 1;
+
+        copyBufferToImageFb(image, layers,
+          VkOffset3D { 0, 0, 0 }, mipExtent,
+          source, sourceOffset, 0, 0, format);
+
+        sourceOffset += align(mipSize, subresourceAlignment);
+      }
     }
   }
 
@@ -4337,7 +4348,8 @@ namespace dxvk {
   void DxvkContext::uploadImageHw(
     const Rc<DxvkImage>&            image,
     const Rc<DxvkBuffer>&           source,
-          VkDeviceSize              sourceOffset) {
+          VkDeviceSize              sourceOffset,
+          VkDeviceSize              subresourceAlignment) {
     // Initialize all subresources of the image at once
     VkImageLayout transferLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
@@ -4348,18 +4360,25 @@ namespace dxvk {
     // Copy image data, one mip at a time
     VkDeviceSize dataOffset = sourceOffset;
 
-    for (uint32_t i = 0; i < image->info().mipLevels; i++) {
-      VkExtent3D mipExtent = image->mipLevelExtent(i);
+    for (uint32_t m = 0; m < image->info().mipLevels; m++) {
+      VkExtent3D mipExtent = image->mipLevelExtent(m);
 
-      VkDeviceSize mipSize = image->info().numLayers * util::computeImageDataSize(
+      VkDeviceSize mipSize = util::computeImageDataSize(
         image->info().format, mipExtent, image->formatInfo()->aspectMask);
 
-      copyImageBufferData<true>(DxvkCmdBuffer::SdmaBuffer,
-        image, vk::pickSubresourceLayers(image->getAvailableSubresources(), i),
-        VkOffset3D { 0, 0, 0 }, mipExtent, transferLayout,
-        source->getSliceHandle(dataOffset, mipSize), 0, 0);
+      for (uint32_t l = 0; l < image->info().numLayers; l++) {
+        VkImageSubresourceLayers layers = { };
+        layers.aspectMask = image->formatInfo()->aspectMask;
+        layers.mipLevel = m;
+        layers.baseArrayLayer = l;
+        layers.layerCount = 1;
 
-      dataOffset += mipSize;
+        copyImageBufferData<true>(DxvkCmdBuffer::SdmaBuffer,
+          image, layers, VkOffset3D { 0, 0, 0 }, mipExtent, transferLayout,
+          source->getSliceHandle(dataOffset, mipSize), 0, 0);
+
+        dataOffset += align(mipSize, subresourceAlignment);
+      }
     }
 
     if (m_device->hasDedicatedTransferQueue()) {

@@ -155,8 +155,8 @@ namespace dxvk {
         VkDeviceSize dataSize = 0u;
 
         for (uint32_t mip = 0; mip < image->info().mipLevels; mip++) {
-          dataSize += image->info().numLayers * util::computeImageDataSize(
-            packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
+          dataSize += image->info().numLayers * align(util::computeImageDataSize(
+            packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask), CACHE_LINE_SIZE);
         }
 
         stagingSlice = m_stagingBuffer.alloc(dataSize);
@@ -181,7 +181,7 @@ namespace dxvk {
               pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
               0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
 
-            dataOffset += mipSizePerLayer;
+            dataOffset += align(mipSizePerLayer, CACHE_LINE_SIZE);
           }
 
           if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
@@ -202,7 +202,7 @@ namespace dxvk {
           ctx->uploadImage(cImage,
             cStagingSlice.buffer(),
             cStagingSlice.offset(),
-            cFormat);
+            CACHE_LINE_SIZE, cFormat);
         });
       }
     } else {
