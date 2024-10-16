@@ -1094,20 +1094,21 @@ namespace dxvk {
     /**
      * \brief Uses transfer queue to initialize image
      * 
-     * Only safe to use if the image is not in use by the GPU. Data is
-     * assumed to be tightly packed, with all layers of the top-level mip
-     * stored first, then the next mip etc. If the given format does not
-     * match the image format and is not \c VK_FORMAT_UNDEFINED, the data
-     * will be converted to the image format before performing the upload.
+     * Only safe to use if the image is not in use by the GPU.
+     * Data for each subresource is tightly packed, but individual
+     * subresources must be aligned to \c subresourceAlignment in
+     * order to meet Vulkan requirements when using transfer queues.
      * \param [in] image The image to initialize
      * \param [in] source Staging buffer containing data
      * \param [in] sourceOffset Offset into staging buffer
+     * \param [in] subresourceAlignment Subresource alignment
      * \param [in] format Actual data format
      */
     void uploadImage(
       const Rc<DxvkImage>&            image,
       const Rc<DxvkBuffer>&           source,
             VkDeviceSize              sourceOffset,
+            VkDeviceSize              subresourceAlignment,
             VkFormat                  format);
 
     /**
@@ -1588,11 +1589,13 @@ namespace dxvk {
       const Rc<DxvkImage>&            image,
       const Rc<DxvkBuffer>&           source,
             VkDeviceSize              sourceOffset,
+            VkDeviceSize              subresourceAlignment,
             VkFormat                  format);
 
     void uploadImageHw(
       const Rc<DxvkImage>&            image,
       const Rc<DxvkBuffer>&           source,
+            VkDeviceSize              subresourceAlignment,
             VkDeviceSize              sourceOffset);
 
     void performClear(
