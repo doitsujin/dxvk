@@ -3,7 +3,13 @@
 #include <atomic>
 #include <vector>
 
-#include "dxvk_resource.h"
+#include "../util/thread.h"
+
+#include "../util/sync/sync_spinlock.h"
+
+#include "../vulkan/vulkan_loader.h"
+
+#include "dxvk_access.h"
 
 namespace dxvk {
 
@@ -30,7 +36,7 @@ namespace dxvk {
    * as a pointer to the pool that the event
    * was allocated from.
    */
-  class DxvkGpuEvent {
+  class DxvkGpuEvent : public DxvkTrackable {
 
   public:
 
@@ -39,10 +45,12 @@ namespace dxvk {
 
     ~DxvkGpuEvent();
 
+    void trackRelease(DxvkAccess);
+
     /**
      * \brief Increments ref count
      */
-    void incRef() {
+    force_inline void incRef() {
       m_refs.fetch_add(1u, std::memory_order_acquire);
     }
 
@@ -52,7 +60,7 @@ namespace dxvk {
      * Returns event to the pool if no further
      * references exist for this event.
      */
-    void decRef() {
+    force_inline void decRef() {
       if (m_refs.fetch_sub(1u, std::memory_order_release) == 1u)
         free();
     }
@@ -63,6 +71,14 @@ namespace dxvk {
      */
     VkEvent handle() const {
       return m_event;
+    }
+
+    /**
+     * \brief Obtains tracking reference to self
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef() {
+      return DxvkTrackingRef(this);
     }
 
   private:
@@ -78,7 +94,7 @@ namespace dxvk {
 
 
   /**
-   * \brief GPU event
+   * \brief Virtual event
    *
    * An event managed by the GPU which allows
    * the application to check whether a specific

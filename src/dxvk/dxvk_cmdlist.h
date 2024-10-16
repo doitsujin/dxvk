@@ -282,10 +282,6 @@ namespace dxvk {
       m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
     }
 
-    void trackEvent(Rc<DxvkGpuEvent>&& event) {
-      m_resources.trackEvent(std::move(event));
-    }
-
     void trackQuery(Rc<DxvkGpuQuery>&& query) {
       m_resources.trackQuery(std::move(query));
     }

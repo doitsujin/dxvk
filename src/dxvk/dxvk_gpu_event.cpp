@@ -22,6 +22,11 @@ namespace dxvk {
   }
 
 
+  void DxvkGpuEvent::trackRelease(DxvkAccess) {
+    decRef();
+  }
+
+
   void DxvkGpuEvent::free() {
     m_pool->freeEvent(this);
   }
