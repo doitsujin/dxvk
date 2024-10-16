@@ -3422,6 +3422,7 @@ namespace dxvk {
     addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
       imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
