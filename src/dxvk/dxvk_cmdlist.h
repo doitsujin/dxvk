@@ -1,7 +1,9 @@
 #pragma once
 
 #include <limits>
+#include <vector>
 
+#include "dxvk_access.h"
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
@@ -292,6 +294,10 @@ namespace dxvk {
       m_resources.trackQuery(std::move(query));
     }
 
+    void track(DxvkTrackingRef&& object) {
+      m_trackedObjects.push_back(std::move(object));
+    }
+
     /**
      * \brief Tracks a graphics pipeline
      * \param [in] pipeline Pipeline
@@ -318,6 +324,7 @@ namespace dxvk {
      */
     void notifyObjects() {
       m_resources.reset();
+      m_trackedObjects.clear();
       m_signalTracker.notify();
     }
 
@@ -1071,6 +1078,9 @@ namespace dxvk {
     DxvkStatCounters          m_statCounters;
 
     DxvkCommandSubmission     m_commandSubmission;
+
+    // Not small, but never invokes copies on reallocation unlike std::vector
+    small_vector<DxvkTrackingRef, 1> m_trackedObjects;
 
     std::vector<DxvkFenceValuePair> m_waitSemaphores;
     std::vector<DxvkFenceValuePair> m_signalSemaphores;

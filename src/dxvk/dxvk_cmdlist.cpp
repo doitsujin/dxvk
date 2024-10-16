@@ -367,6 +367,7 @@ namespace dxvk {
     // Free resources and other objects
     // that are no longer in use
     m_resources.reset();
+    m_trackedObjects.clear();
 
     // Less important stuff
     m_signalTracker.reset();
