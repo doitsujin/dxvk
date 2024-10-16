@@ -15,37 +15,37 @@ namespace dxvk {
 extern "C" {
 
   DLLEXPORT HRESULT __stdcall ValidatePixelShader(
-      const DWORD*     pixelshader,
-      const D3DCAPS8*  caps,
-      BOOL             boolValue,
-      char**           errorString) {
+      const DWORD*     pPixelShader,
+      const D3DCAPS8*  pCaps,
+      BOOL             errorReturn,
+      char**           pErrorString) {
     dxvk::Logger::warn("D3D8: ValidatePixelShader: Stub");
 
-    if (unlikely(pixelshader == nullptr))
+    if (unlikely(pPixelShader == nullptr))
       return E_FAIL;
 
-    if (likely(errorString != nullptr)) {
+    if (errorReturn && pErrorString != nullptr) {
       const char* errorMessage = "";
-      *errorString = (char *) errorMessage;
+      *pErrorString = (char *) errorMessage;
     }
 
     return S_OK;
   }
 
   DLLEXPORT HRESULT __stdcall ValidateVertexShader(
-      const DWORD*     vertexShader,
-      const DWORD*     vertexDecl,
-      const D3DCAPS8*  caps,
-      BOOL             boolValue,
-      char**           errorString) {
+      const DWORD*     pVertexShader,
+      const DWORD*     pVertexDecl,
+      const D3DCAPS8*  pCaps,
+      BOOL             errorReturn,
+      char**           pErrorString) {
     dxvk::Logger::warn("D3D8: ValidateVertexShader: Stub");
 
-    if (unlikely(vertexShader == nullptr))
+    if (unlikely(pVertexShader == nullptr))
       return E_FAIL;
 
-    if (likely(errorString != nullptr)) {
+    if (errorReturn && pErrorString != nullptr) {
       const char* errorMessage = "";
-      *errorString = (char *) errorMessage;
+      *pErrorString = (char *) errorMessage;
     }
 
     return S_OK;
