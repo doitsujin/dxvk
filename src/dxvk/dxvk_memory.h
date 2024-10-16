@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include "dxvk_access.h"
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
 #include "dxvk_hash.h"
@@ -14,18 +15,6 @@ namespace dxvk {
   class DxvkMemoryChunk;
   class DxvkSparsePageTable;
   class DxvkSharedAllocationCache;
-
-  /**
-   * \brief Resource access flags
-   */
-  enum class DxvkAccess : uint32_t {
-    None    = 0,
-    Read    = 1,
-    Write   = 2,
-  };
-
-  using DxvkAccessFlags = Flags<DxvkAccess>;
-
 
   /**
    * \brief Memory stats
