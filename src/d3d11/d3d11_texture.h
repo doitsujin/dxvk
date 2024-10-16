@@ -221,7 +221,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> DiscardSlice(UINT Subresource) {
       if (Subresource < m_buffers.size()) {
-        Rc<DxvkResourceAllocation> slice = m_buffers[Subresource].buffer->allocateSlice();
+        Rc<DxvkResourceAllocation> slice = m_buffers[Subresource].buffer->allocateStorage();
         m_buffers[Subresource].slice = slice;
         return slice;
       } else {

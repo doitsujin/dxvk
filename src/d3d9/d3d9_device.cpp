@@ -4477,7 +4477,7 @@ namespace dxvk {
     VkDeviceSize alignedSize = align(size, CACHE_LINE_SIZE);
 
     if (unlikely(m_upBufferOffset + alignedSize > UPBufferSize)) {
-      auto slice = m_upBuffer->allocateSlice();
+      auto slice = m_upBuffer->allocateStorage();
 
       m_upBufferOffset = 0;
       m_upBufferMapPtr = slice->mapPtr();

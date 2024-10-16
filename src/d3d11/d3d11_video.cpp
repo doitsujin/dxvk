@@ -1295,7 +1295,7 @@ namespace dxvk {
         uboData.yMax = 0.9215686f;
       }
 
-      Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateSlice();
+      Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateStorage();
       memcpy(uboSlice->mapPtr(), &uboData, sizeof(uboData));
 
       ctx->invalidateBuffer(m_ubo, std::move(uboSlice));

@@ -48,7 +48,7 @@ namespace dxvk {
     size = align(size, m_align);
 
     if (unlikely(m_offset + size > m_size)) {
-      m_slice = m_buffer->allocateSlice();
+      m_slice = m_buffer->allocateStorage();
       m_offset = 0;
 
       m_device->EmitCs([
@@ -78,7 +78,7 @@ namespace dxvk {
     if (unlikely(m_buffer == nullptr))
       m_slice = this->createBuffer();
     else
-      m_slice = m_buffer->allocateSlice();
+      m_slice = m_buffer->allocateStorage();
 
     m_device->EmitCs([
       cBuffer = m_buffer,
@@ -124,7 +124,7 @@ namespace dxvk {
       ctx->bindUniformBuffer(cStages, cBinding, std::move(cSlice));
     });
 
-    return m_buffer->getAllocation();
+    return m_buffer->storage();
   }
 
 
