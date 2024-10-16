@@ -24,7 +24,6 @@
 #include "dxvk_sparse.h"
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
-#include "dxvk_marker.h"
 
 namespace dxvk {
   
