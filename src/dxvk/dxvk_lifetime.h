@@ -108,14 +108,6 @@ namespace dxvk {
     ~DxvkLifetimeTracker();
 
     /**
-     * \brief Adds a query to track
-     * \param [in] query The query to track
-     */
-    void trackQuery(Rc<DxvkGpuQuery>&& query) {
-      m_queries.push_back(std::move(query));
-    }
-
-    /**
      * \brief Adds a resource to track
      * \param [in] res The resource to track
      */
@@ -140,8 +132,6 @@ namespace dxvk {
     void reset();
 
   private:
-
-    std::vector<Rc<DxvkGpuQuery>> m_queries;
 
     std::vector<DxvkLifetime<DxvkResource>> m_resources;
     std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;

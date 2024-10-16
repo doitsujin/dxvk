@@ -5,12 +5,18 @@
 #include <list>
 #include <vector>
 
-#include "../util/util_small_vector.h"
+#include "../util/sync/sync_spinlock.h"
 
-#include "dxvk_resource.h"
+#include "../util/util_small_vector.h"
+#include "../util/thread.h"
+
+#include "../vulkan/vulkan_loader.h"
+
+#include "dxvk_access.h"
 
 namespace dxvk {
 
+  class DxvkDevice;
   class DxvkCommandList;
 
   class DxvkGpuQueryPool;
@@ -104,9 +110,14 @@ namespace dxvk {
    * query pools have to be reset on the GPU,
    * this also comes with a reset event.
    */
-  class DxvkGpuQuery {
+  class DxvkGpuQuery : public DxvkTrackable {
     friend class DxvkGpuQueryAllocator;
   public:
+
+    DxvkGpuQuery();
+    ~DxvkGpuQuery();
+
+    void trackRelease(DxvkAccess);
 
     /**
      * \brief Increments query reference count
@@ -130,6 +141,14 @@ namespace dxvk {
      */
     std::pair<VkQueryPool, uint32_t> getQuery() const {
       return std::make_pair(m_pool, m_index);
+    }
+
+    /**
+     * \brief Obtains tracking reference to self
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef() {
+      return DxvkTrackingRef(this);
     }
 
   private:

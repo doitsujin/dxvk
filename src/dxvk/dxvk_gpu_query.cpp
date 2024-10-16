@@ -6,6 +6,14 @@
 
 namespace dxvk {
 
+  DxvkGpuQuery::DxvkGpuQuery() { }
+  DxvkGpuQuery::~DxvkGpuQuery() { }
+
+  void DxvkGpuQuery::trackRelease(DxvkAccess) {
+    decRef();
+  }
+
+
   void DxvkGpuQuery::free() {
     m_allocator->freeQuery(this);
   }
@@ -352,7 +360,7 @@ namespace dxvk {
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
       handle.first, handle.second);
 
-    cmd->trackQuery(std::move(q));
+    cmd->track(q->trackRef());
   }
 
 
@@ -425,7 +433,7 @@ namespace dxvk {
       else
         cmd->cmdBeginQuery(handle.first, handle.second, flags);
 
-      cmd->trackQuery(Rc<DxvkGpuQuery>(array.gpuQuery));
+      cmd->track(array.gpuQuery->trackRef());
     }
   }
 
