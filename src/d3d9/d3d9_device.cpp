@@ -50,6 +50,7 @@ namespace dxvk {
     , m_shaderAllocator ( )
     , m_shaderModules   ( new D3D9ShaderModuleSet )
     , m_stagingBuffer   ( dxvkDevice, StagingBufferSize )
+    , m_stagingBufferFence(new sync::Fence())
     , m_d3d9Options     ( dxvkDevice, pParent->GetInstance()->config() )
     , m_multithread     ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
@@ -4499,8 +4500,6 @@ namespace dxvk {
 
 
   D3D9BufferSlice D3D9DeviceEx::AllocStagingBuffer(VkDeviceSize size) {
-    m_stagingBufferAllocated += size;
-
     D3D9BufferSlice result;
     result.slice = m_stagingBuffer.alloc(size);
     result.mapPtr = result.slice.mapPtr(0);
@@ -4508,79 +4507,34 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::EmitStagingBufferMarker() {
-    if (m_stagingBufferLastAllocated == m_stagingBufferAllocated)
-      return;
-
-    D3D9StagingBufferMarkerPayload payload;
-    payload.sequenceNumber = GetCurrentSequenceNumber();
-    payload.allocated = m_stagingBufferAllocated;
-    m_stagingBufferLastAllocated = m_stagingBufferAllocated;
-
-    Rc<D3D9StagingBufferMarker> marker = new D3D9StagingBufferMarker(payload);
-    m_stagingBufferMarkers.push(marker);
-
-    EmitCs([
-      cMarker = std::move(marker)
-    ] (DxvkContext* ctx) {
-      ctx->insertMarker(cMarker);
-    });
-  }
-
-
   void D3D9DeviceEx::WaitStagingBuffer() {
-    // The number below is not a hard limit, however we can be reasonably
-    // sure that there will never be more than two additional staging buffers
-    // in flight in addition to the number of staging buffers specified here.
-    constexpr VkDeviceSize maxStagingMemoryInFlight = env::is32BitHostPlatform()
+    // Treshold for staging memory in flight. Since the staging buffer granularity
+    // is somewhat coars, it is possible for one additional allocation to be in use,
+    // but otherwise this is a hard upper bound.
+    constexpr VkDeviceSize MaxStagingMemoryInFlight = env::is32BitHostPlatform()
       ? StagingBufferSize * 4
       : StagingBufferSize * 16;
 
-    // If the game uploads a significant amount of data at once, it's
-    // possible that we exceed the limit while the queue is empty. In
-    // that case, enforce a flush early to populate the marker queue.
-    bool didFlush = false;
+    // Threshold at which to submit eagerly. This is useful to ensure
+    // that staging buffer memory gets recycled relatively soon.
+    constexpr VkDeviceSize MaxStagingMemoryPerSubmission = MaxStagingMemoryInFlight / 3u;
 
-    if (m_stagingBufferLastSignaled + maxStagingMemoryInFlight < m_stagingBufferAllocated
-     && m_stagingBufferMarkers.empty()) {
-      Flush();
-      didFlush = true;
+    VkDeviceSize stagingBufferAllocated = m_stagingBuffer.getStatistics().allocatedTotal;
+
+    if (stagingBufferAllocated > m_stagingMemorySignaled + MaxStagingMemoryPerSubmission) {
+      // Perform submission. If the amount of staging memory allocated since the
+      // last submission exceeds the hard limit, we need to submit to guarantee
+      // forward progress. Ideally, this should not happen very often.
+      GpuFlushType flushType = stagingBufferAllocated <= m_stagingMemorySignaled + MaxStagingMemoryInFlight
+        ? GpuFlushType::ImplicitSynchronization
+        : GpuFlushType::ExplicitFlush;
+
+      ConsiderFlush(flushType);
     }
 
-    // Process the marker queue. We'll remove as many markers as we
-    // can without stalling, and will stall until we're below the
-    // allocation limit again.
-    uint64_t lastSequenceNumber = m_csThread.lastSequenceNumber();
-
-    while (!m_stagingBufferMarkers.empty()) {
-      const auto& marker = m_stagingBufferMarkers.front();
-      const auto& payload = marker->payload();
-
-      bool needsStall = m_stagingBufferLastSignaled + maxStagingMemoryInFlight < m_stagingBufferAllocated;
-
-      if (payload.sequenceNumber > lastSequenceNumber) {
-        if (!needsStall)
-          break;
-
-        SynchronizeCsThread(payload.sequenceNumber);
-        lastSequenceNumber = payload.sequenceNumber;
-      }
-
-      if (marker->isInUse(DxvkAccess::Read)) {
-        if (!needsStall)
-          break;
-
-        if (!didFlush) {
-          Flush();
-          didFlush = true;
-        }
-
-        m_dxvkDevice->waitForResource(marker, DxvkAccess::Read);
-      }
-
-      m_stagingBufferLastSignaled = marker->payload().allocated;
-      m_stagingBufferMarkers.pop();
-    }
+    // Wait for staging memory to get recycled.
+    if (stagingBufferAllocated > MaxStagingMemoryInFlight)
+      m_stagingBufferFence->wait(stagingBufferAllocated - MaxStagingMemoryInFlight);
   }
 
 
@@ -5896,7 +5850,8 @@ namespace dxvk {
 
     m_converter->Flush();
 
-    EmitStagingBufferMarker();
+    // Update signaled staging buffer counter and signal the fence
+    m_stagingMemorySignaled = m_stagingBuffer.getStatistics().allocatedTotal;
 
     // Add commands to flush the threaded
     // context, then flush the command list
@@ -5905,9 +5860,12 @@ namespace dxvk {
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId,
-      cSubmissionStatus = Synchronize9On12 ? &m_submitStatus : nullptr
+      cSubmissionStatus = Synchronize9On12 ? &m_submitStatus : nullptr,
+      cStagingBufferFence = m_stagingBufferFence,
+      cStagingBufferAllocated = m_stagingMemorySignaled
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
+      ctx->signal(cStagingBufferFence, cStagingBufferAllocated);
       ctx->flushCommandList(cSubmissionStatus);
     });
 

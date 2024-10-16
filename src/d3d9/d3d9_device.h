@@ -1093,8 +1093,6 @@ namespace dxvk {
 
     D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
 
-    void EmitStagingBufferMarker();
-
     void WaitStagingBuffer();
 
     bool ShouldRecord();
@@ -1362,10 +1360,8 @@ namespace dxvk {
     void*                           m_upBufferMapPtr  = nullptr;
 
     DxvkStagingBuffer               m_stagingBuffer;
-    VkDeviceSize                    m_stagingBufferAllocated      = 0ull;
-    VkDeviceSize                    m_stagingBufferLastAllocated  = 0ull;
-    VkDeviceSize                    m_stagingBufferLastSignaled   = 0ull;
-    std::queue<Rc<D3D9StagingBufferMarker>> m_stagingBufferMarkers;
+    Rc<sync::Fence>                 m_stagingBufferFence;
+    VkDeviceSize                    m_stagingMemorySignaled = 0ull;
 
     D3D9Cursor                      m_cursor;
 
