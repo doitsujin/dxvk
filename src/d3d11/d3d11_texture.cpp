@@ -713,7 +713,7 @@ namespace dxvk {
     
     MappedBuffer result;
     result.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
-    result.slice = result.buffer->getAllocation();
+    result.slice = result.buffer->storage();
     return result;
   }
   
