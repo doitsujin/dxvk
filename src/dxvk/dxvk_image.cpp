@@ -29,7 +29,7 @@ namespace dxvk {
     if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
       m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
 
-    assignResource(createResource());
+    assignStorage(allocateStorage());
   }
 
 
@@ -48,7 +48,7 @@ namespace dxvk {
 
     // Create backing storage for existing image resource
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
-    assignResource(m_allocator->importImageResource(imageInfo, imageHandle));
+    assignStorage(m_allocator->importImageResource(imageInfo, imageHandle));
   }
 
 
@@ -112,12 +112,12 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::createResource() {
-    return createResourceWithUsage(DxvkImageUsageInfo());
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorage() {
+    return allocateStorageWithUsage(DxvkImageUsageInfo());
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::createResourceWithUsage(const DxvkImageUsageInfo& usageInfo) {
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(const DxvkImageUsageInfo& usageInfo) {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
     small_vector<VkFormat, 4> localViewFormats;
 
@@ -178,13 +178,13 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::assignResource(
+  Rc<DxvkResourceAllocation> DxvkImage::assignStorage(
           Rc<DxvkResourceAllocation>&& resource) {
-    return assignResourceWithUsage(std::move(resource), DxvkImageUsageInfo());
+    return assignStorageWithUsage(std::move(resource), DxvkImageUsageInfo());
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::assignResourceWithUsage(
+  Rc<DxvkResourceAllocation> DxvkImage::assignStorageWithUsage(
           Rc<DxvkResourceAllocation>&& resource,
     const DxvkImageUsageInfo&         usageInfo) {
     Rc<DxvkResourceAllocation> old = std::move(m_storage);

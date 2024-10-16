@@ -391,7 +391,7 @@ namespace dxvk::hud {
       drawInfoBuffer, textBufferView, 2u);
 
     // Make sure GPU resources are being kept alive as necessary
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->getAllocation());
+    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->storage());
     ctx.cmd->trackResource<DxvkAccess::Write>(m_queryPool);
   }
 
@@ -437,7 +437,7 @@ namespace dxvk::hud {
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_gpuBuffer->getAllocation());
+    ctx.cmd->trackResource<DxvkAccess::Read>(m_gpuBuffer->storage());
   }
 
 
@@ -491,7 +491,7 @@ namespace dxvk::hud {
     depInfo.pMemoryBarriers = &barrier;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->getAllocation());
+    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->storage());
 
     // We'll use and initialize this later as necessary
     m_queryPool = new HudFrameTimeQueryPool(m_device);
@@ -1195,7 +1195,7 @@ namespace dxvk::hud {
     ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
     // Track data buffer lifetime
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_dataBuffer->getAllocation());
+    ctx.cmd->trackResource<DxvkAccess::Read>(m_dataBuffer->storage());
 
     m_drawInfos.clear();
   }
@@ -1225,7 +1225,7 @@ namespace dxvk::hud {
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     } else {
       // Ensure we can update the buffer without overriding live data
-      m_dataBuffer->assignSlice(m_dataBuffer->allocateSlice());
+      m_dataBuffer->assignStorage(m_dataBuffer->allocateStorage());
     }
 
     // Update draw infos and pad unused area with zeroes

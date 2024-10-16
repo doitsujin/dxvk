@@ -1380,7 +1380,7 @@ namespace dxvk {
   void DxvkContext::invalidateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           Rc<DxvkResourceAllocation>&& slice) {
-    Rc<DxvkResourceAllocation> prevAllocation = buffer->assignSlice(std::move(slice));
+    Rc<DxvkResourceAllocation> prevAllocation = buffer->assignStorage(std::move(slice));
     m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
 
     // We also need to update all bindings that the buffer
@@ -1436,7 +1436,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice,
     const DxvkImageUsageInfo&       usageInfo) {
-    Rc<DxvkResourceAllocation> prevAllocation = image->assignResourceWithUsage(std::move(slice), usageInfo);
+    Rc<DxvkResourceAllocation> prevAllocation = image->assignStorageWithUsage(std::move(slice), usageInfo);
     m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
 
     VkImageUsageFlags usage = image->info().usage;
@@ -1478,7 +1478,7 @@ namespace dxvk {
     // that the stable adress bit is respected if set for the first time.
     if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible) {
       if (usageInfo.stableGpuAddress && image->canRelocate())
-        image->assignResourceWithUsage(image->getAllocation(), usageInfo);
+        image->assignStorageWithUsage(image->storage(), usageInfo);
 
       return true;
     }
@@ -1495,7 +1495,7 @@ namespace dxvk {
       VkImageLayout oldLayout = image->info().layout;
       VkImageLayout newLayout = usageInfo.layout ? usageInfo.layout : oldLayout;
 
-      image->assignResourceWithUsage(image->getAllocation(), usageInfo);
+      image->assignStorageWithUsage(image->storage(), usageInfo);
 
       accessImage(DxvkCmdBuffer::ExecBuffer, *image, image->getAvailableSubresources(),
         oldLayout, image->info().stages, image->info().access,
@@ -1587,7 +1587,7 @@ namespace dxvk {
     DxvkImageUsageInfo usage = usageInfo;
     usage.flags |= createFlags;
 
-    auto storage = image->createResourceWithUsage(usage);
+    auto storage = image->allocateStorageWithUsage(usage);
 
     DxvkRelocateImageInfo relocateInfo;
     relocateInfo.image = image;
@@ -6196,7 +6196,7 @@ namespace dxvk {
      && (m_flags.test(DxvkContextFlag::GpXfbActive)))
       this->spillRenderPass(true);
 
-    this->invalidateBuffer(buffer, buffer->allocateSlice());
+    this->invalidateBuffer(buffer, buffer->allocateStorage());
     return true;
   }
 
@@ -6269,7 +6269,7 @@ namespace dxvk {
 
     for (size_t i = 0; i < imageCount; i++) {
       const auto& info = imageInfos[i];
-      auto oldStorage = info.image->getAllocation();
+      auto oldStorage = info.image->storage();
 
       VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
       dstBarrier.srcStageMask = info.image->info().stages;
@@ -6319,7 +6319,7 @@ namespace dxvk {
     // Copy and invalidate all buffers
     for (size_t i = 0; i < bufferCount; i++) {
       const auto& info = bufferInfos[i];
-      auto oldStorage = info.buffer->getAllocation();
+      auto oldStorage = info.buffer->storage();
 
       DxvkResourceBufferInfo dstInfo = info.storage->getBufferInfo();
       DxvkResourceBufferInfo srcInfo = oldStorage->getBufferInfo();
@@ -6344,7 +6344,7 @@ namespace dxvk {
     // Copy and invalidate all images
     for (size_t i = 0; i < imageCount; i++) {
       const auto& info = imageInfos[i];
-      auto oldStorage = info.image->getAllocation();
+      auto oldStorage = info.image->storage();
 
       DxvkResourceImageInfo dstInfo = info.storage->getImageInfo();
       DxvkResourceImageInfo srcInfo = oldStorage->getImageInfo();

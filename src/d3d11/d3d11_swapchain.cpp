@@ -471,10 +471,10 @@ namespace dxvk {
     ctx->EmitCs([
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
-      auto allocation = cImages[0]->getAllocation();
+      auto allocation = cImages[0]->storage();
 
       for (size_t i = 0u; i + 1 < cImages.size(); i++)
-        ctx->invalidateImage(cImages[i], cImages[i + 1]->getAllocation());
+        ctx->invalidateImage(cImages[i], cImages[i + 1]->storage());
 
       ctx->invalidateImage(cImages[cImages.size() - 1u], std::move(allocation));
     });
