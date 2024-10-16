@@ -190,9 +190,9 @@ namespace dxvk::hud {
       m_textBufferView->handle(), m_textDraws.size());
 
     // Ensure all used resources are kept alive
-    ctx.cmd->trackResource<DxvkAccess::None>(m_textBuffer->storage());
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_fontBuffer->storage());
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_fontTexture->storage());
+    ctx.cmd->track(m_textBuffer->trackRef(DxvkAccess::Read));
+    ctx.cmd->track(m_fontBuffer->trackRef(DxvkAccess::Read));
+    ctx.cmd->track(m_fontTexture->trackRef(DxvkAccess::Read));
     ctx.cmd->track(m_fontSampler->trackRef());
 
     // Reset internal text buffers
@@ -481,9 +481,9 @@ namespace dxvk::hud {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(uploadBuffer->storage());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_fontBuffer->storage());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_fontTexture->storage());
+    ctx.cmd->track(uploadBuffer->trackRef(DxvkAccess::Read));
+    ctx.cmd->track(m_fontBuffer->trackRef(DxvkAccess::Write));
+    ctx.cmd->track(m_fontTexture->trackRef(DxvkAccess::Write));
   }
 
 

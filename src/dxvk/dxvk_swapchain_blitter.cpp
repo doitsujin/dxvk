@@ -344,7 +344,7 @@ namespace dxvk {
     ctx.cmd->trackResource<DxvkAccess::Write>(dstView->image());
 
     if (m_gammaImage)
-      ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaImage->storage());
+      ctx.cmd->track(m_gammaImage->trackRef(DxvkAccess::Read));
 
     ctx.cmd->track(m_samplerGamma->trackRef());
     ctx.cmd->track(m_samplerPresent->trackRef());
@@ -444,8 +444,8 @@ namespace dxvk {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(buffer->storage());
-    ctx.cmd->trackResource<DxvkAccess::Write>(image->storage());
+    ctx.cmd->track(buffer->trackRef(DxvkAccess::Read));
+    ctx.cmd->track(image->trackRef(DxvkAccess::Write));
   }
 
 

@@ -148,6 +148,11 @@ namespace dxvk {
   }
 
 
+  void DxvkResourceAllocation::trackRelease(DxvkAccess access) {
+    release(access);
+  }
+
+
   VkBufferView DxvkResourceAllocation::createBufferView(
     const DxvkBufferViewKey&          key) {
     if (unlikely(!m_bufferViews))

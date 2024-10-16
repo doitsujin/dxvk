@@ -116,14 +116,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Adds a resource allocation to track
-     * \param [in] res The allocation to track
-     */
-    void trackResource(DxvkLifetime<DxvkResourceAllocation>&& res) {
-      m_allocations.push_back(std::move(res));
-    }
-
-    /**
      * \brief Resets the command list
      * 
      * Called automatically by the device when
@@ -134,7 +126,6 @@ namespace dxvk {
   private:
 
     std::vector<DxvkLifetime<DxvkResource>> m_resources;
-    std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;
 
   };
   

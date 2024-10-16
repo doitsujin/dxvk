@@ -394,6 +394,16 @@ namespace dxvk {
      */
     DxvkSparsePageTable* getSparsePageTable();
 
+    /**
+     * \brief Obtains tracking reference to backing storage
+     *
+     * \param [in] access Resource access
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef(DxvkAccess access) {
+      return m_storage->trackRef(access);
+    }
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;

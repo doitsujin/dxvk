@@ -462,7 +462,7 @@ namespace dxvk {
    * with the memory allocation backing the resource, as well as views
    * created from that resource.
    */
-  class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
+  class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation : public DxvkTrackable {
     friend DxvkMemoryAllocator;
 
     friend class DxvkLocalAllocationCache;
@@ -475,6 +475,8 @@ namespace dxvk {
     : m_allocator(allocator), m_type(type) { }
 
     ~DxvkResourceAllocation();
+
+    void trackRelease(DxvkAccess access);
 
     force_inline void incRef() { acquire(DxvkAccess::None); }
     force_inline void decRef() { release(DxvkAccess::None); }
@@ -621,6 +623,16 @@ namespace dxvk {
     VkImageView createImageView(
       const DxvkImageViewKey&           key);
 
+    /**
+     * \brief Obtains tracking reference to self
+     *
+     * \param [in] access Resource access
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef(DxvkAccess access) {
+      return DxvkTrackingRef(this, access);
+    }
+
   private:
 
     std::atomic<uint64_t>       m_useCount = { 0u };
@@ -657,8 +669,6 @@ namespace dxvk {
     }
 
   };
-
-  static_assert(sizeof(DxvkResourceAllocation) == 2u * CACHE_LINE_SIZE);
 
 
   /**
