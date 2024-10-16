@@ -1373,7 +1373,7 @@ namespace dxvk {
     }
 
     m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
-    m_cmd->trackSampler(sampler);
+    m_cmd->track(sampler->trackRef());
   }
   
   
@@ -2651,7 +2651,7 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstView->image());
     m_cmd->trackResource<DxvkAccess::Read>(srcView->image());
-    m_cmd->trackSampler(sampler);
+    m_cmd->track(sampler->trackRef());
   }
 
 
@@ -5115,7 +5115,7 @@ namespace dxvk {
               descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
               if (m_rcTracked.set(binding.resourceBinding))
-                m_cmd->trackSampler(res.sampler);
+                m_cmd->track(res.sampler->trackRef());
             } else {
               descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
               descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -5167,7 +5167,7 @@ namespace dxvk {
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
-                m_cmd->trackSampler(res.sampler);
+                m_cmd->track(res.sampler->trackRef());
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {

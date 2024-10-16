@@ -5,7 +5,6 @@
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_resource.h"
-#include "dxvk_sampler.h"
 
 namespace dxvk {
   
@@ -110,14 +109,6 @@ namespace dxvk {
     ~DxvkLifetimeTracker();
 
     /**
-     * \brief Adds a sampler to track
-     * \param [in] res The sampler to track
-     */
-    void trackSampler(const Rc<DxvkSampler>& res) {
-      m_samplers.push_back(res);
-    }
-
-    /**
      * \brief Adds an event to track
      * \param [in] res The event to track
      */
@@ -159,7 +150,6 @@ namespace dxvk {
 
   private:
 
-    std::vector<Rc<DxvkSampler>> m_samplers;
     std::vector<Rc<DxvkGpuEvent>> m_events;
     std::vector<Rc<DxvkGpuQuery>> m_queries;
 

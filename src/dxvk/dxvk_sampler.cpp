@@ -114,6 +114,11 @@ namespace dxvk {
   }
 
 
+  void DxvkSampler::trackRelease(DxvkAccess) {
+    decRef();
+  }
+
+
 
 
   DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)

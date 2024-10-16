@@ -135,7 +135,7 @@ namespace dxvk {
    * a pipeline. Sampler objects provide parameters
    * for texture lookups within a shader.
    */
-  class DxvkSampler {
+  class DxvkSampler : public DxvkTrackable {
     friend class DxvkSamplerPool;
   public:
     
@@ -144,6 +144,8 @@ namespace dxvk {
       const DxvkSamplerKey&         key);
 
     ~DxvkSampler();
+
+    void trackRelease(DxvkAccess);
 
     /**
      * \brief Increments reference count
@@ -176,6 +178,14 @@ namespace dxvk {
      */
     const DxvkSamplerKey& key() const {
       return m_key;
+    }
+
+    /**
+     * \brief Obtains tracking reference to self
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef() {
+      return DxvkTrackingRef(this);
     }
 
   private:

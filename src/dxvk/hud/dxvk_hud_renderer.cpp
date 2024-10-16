@@ -193,7 +193,7 @@ namespace dxvk::hud {
     ctx.cmd->trackResource<DxvkAccess::None>(m_textBuffer->storage());
     ctx.cmd->trackResource<DxvkAccess::Read>(m_fontBuffer->storage());
     ctx.cmd->trackResource<DxvkAccess::Read>(m_fontTexture->storage());
-    ctx.cmd->trackSampler(m_fontSampler);
+    ctx.cmd->track(m_fontSampler->trackRef());
 
     // Reset internal text buffers
     m_textDraws.clear();
