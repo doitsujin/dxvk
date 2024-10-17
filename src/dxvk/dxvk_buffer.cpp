@@ -17,6 +17,8 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     // Create and assign actual buffer resource
     assignStorage(allocateStorage());
   }
@@ -34,6 +36,8 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     DxvkAllocationInfo allocationInfo = { };
     allocationInfo.resourceCookie = cookie();
 
@@ -48,7 +52,7 @@ namespace dxvk {
 
 
   DxvkBuffer::~DxvkBuffer() {
-
+    m_allocator->unregisterResource(this);
   }
 
 
