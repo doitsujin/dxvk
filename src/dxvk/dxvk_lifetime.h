@@ -28,14 +28,14 @@ namespace dxvk {
     DxvkLifetime(
             Rc<Tx>&&                resource,
             DxvkAccess              access)
-    : m_ptr(reinterpret_cast<uintptr_t>(resource.ptr()) | uintptr_t(access)) {
+    : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkResource*>(resource.ptr())) | uintptr_t(access)) {
       resource.unsafeExtract()->convertRef(DxvkAccess::None, access);
     }
 
     DxvkLifetime(
       const T*                      resource,
             DxvkAccess              access)
-    : m_ptr(reinterpret_cast<uintptr_t>(resource) | uintptr_t(access)) {
+    : m_ptr(reinterpret_cast<uintptr_t>(static_cast<const DxvkResource*>(resource)) | uintptr_t(access)) {
       acquire();
     }
 
@@ -145,7 +145,7 @@ namespace dxvk {
      * \brief Adds a resource allocation to track
      * \param [in] res The allocation to track
      */
-    void trackResource(DxvkLifetime<DxvkResourceAllocation>&& res) {
+    void trackResource(Rc<DxvkResourceAllocation>&& res) {
       m_allocations.push_back(std::move(res));
     }
 
@@ -164,7 +164,7 @@ namespace dxvk {
     std::vector<Rc<DxvkGpuQuery>> m_queries;
 
     std::vector<DxvkLifetime<DxvkResource>> m_resources;
-    std::vector<DxvkLifetime<DxvkResourceAllocation>> m_allocations;
+    std::vector<Rc<DxvkResourceAllocation>> m_allocations;
 
   };
   

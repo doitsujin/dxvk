@@ -373,7 +373,7 @@ namespace dxvk::hud {
       drawInfoBuffer, textBufferView, 2u);
 
     // Make sure GPU resources are being kept alive as necessary
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->storage());
+    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer);
     ctx.cmd->trackQuery(Rc<DxvkGpuQuery>(m_query));
   }
 
@@ -419,7 +419,7 @@ namespace dxvk::hud {
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_gpuBuffer->storage());
+    ctx.cmd->trackResource<DxvkAccess::Read>(m_gpuBuffer);
   }
 
 
@@ -473,7 +473,7 @@ namespace dxvk::hud {
     depInfo.pMemoryBarriers = &barrier;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->storage());
+    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer);
 
     m_query = m_device->createRawQuery(VK_QUERY_TYPE_TIMESTAMP);
   }
@@ -1146,7 +1146,7 @@ namespace dxvk::hud {
     VkDescriptorBufferInfo drawDescriptor = { };
     VkDescriptorBufferInfo dataDescriptor = { };
 
-    updateDataBuffer(drawDescriptor, dataDescriptor);
+    updateDataBuffer(ctx, drawDescriptor, dataDescriptor);
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
@@ -1176,13 +1176,14 @@ namespace dxvk::hud {
     ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
     // Track data buffer lifetime
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_dataBuffer->storage());
+    ctx.cmd->trackResource<DxvkAccess::Read>(m_dataBuffer);
 
     m_drawInfos.clear();
   }
 
 
   void HudMemoryDetailsItem::updateDataBuffer(
+    const DxvkContextObjects& ctx,
           VkDescriptorBufferInfo& drawDescriptor,
           VkDescriptorBufferInfo& dataDescriptor) {
     size_t drawInfoSize = m_drawInfos.size() * sizeof(DrawInfo);
@@ -1206,7 +1207,8 @@ namespace dxvk::hud {
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     } else {
       // Ensure we can update the buffer without overriding live data
-      m_dataBuffer->assignStorage(m_dataBuffer->allocateStorage());
+      auto allocation = m_dataBuffer->assignStorage(m_dataBuffer->allocateStorage());
+      ctx.cmd->trackResource(std::move(allocation));
     }
 
     // Update draw infos and pad unused area with zeroes
