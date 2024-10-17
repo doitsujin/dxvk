@@ -4964,10 +4964,12 @@ namespace dxvk {
       if (m_device->features().core.features.depthBounds)
         m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
 
-      if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleRateShading)
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask)
-        m_flags.set(DxvkContextFlag::GpDynamicMultisampleState);
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
+       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask) {
+        m_flags.set(m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleRateShading)
+          ? DxvkContextFlag::GpDynamicMultisampleState
+          : DxvkContextFlag::GpDirtyMultisampleState);
+       }
     } else {
       m_flags.set(m_state.gp.state.useDynamicDepthBias()
         ? DxvkContextFlag::GpDynamicDepthBias
