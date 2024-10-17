@@ -180,7 +180,7 @@ namespace dxvk {
     // in case the texture is used immediately on a secondary device.
     ExecuteFlush();
 
-    m_device->waitForResource(pResource->GetImage(), DxvkAccess::Write);
+    m_device->waitForResource(*pResource->GetImage(), DxvkAccess::Write);
   }
 
 

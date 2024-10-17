@@ -399,7 +399,7 @@ namespace dxvk {
         pMappedResource->DepthPitch = bufferSize;
         return S_OK;
       } else {
-        if (!WaitForResource(buffer, sequenceNumber, MapType, MapFlags))
+        if (!WaitForResource(*buffer, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
 
         pMappedResource->pData      = pResource->GetMapPtr();
@@ -455,7 +455,7 @@ namespace dxvk {
         MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
 
       if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(mappedImage, sequenceNumber, MapType, MapFlags))
+        if (!WaitForResource(*mappedImage, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
       
@@ -552,7 +552,7 @@ namespace dxvk {
             MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
 
           // Wait for mapped buffer to become available
-          if (!WaitForResource(mappedBuffer, sequenceNumber, MapType, MapFlags))
+          if (!WaitForResource(*mappedBuffer, sequenceNumber, MapType, MapFlags))
             return DXGI_ERROR_WAS_STILL_DRAWING;
         }
 
@@ -829,7 +829,7 @@ namespace dxvk {
 
 
   bool D3D11ImmediateContext::WaitForResource(
-    const Rc<DxvkResource>&                 Resource,
+    const DxvkPagedResource&                Resource,
           uint64_t                          SequenceNumber,
           D3D11_MAP                         MapType,
           UINT                              MapFlags) {
@@ -841,11 +841,11 @@ namespace dxvk {
     // Wait for any CS chunk using the resource to execute, since
     // otherwise we cannot accurately determine if the resource is
     // actually being used by the GPU right now.
-    bool isInUse = Resource->isInUse(access);
+    bool isInUse = Resource.isInUse(access);
 
     if (!isInUse) {
       SynchronizeCsThread(SequenceNumber);
-      isInUse = Resource->isInUse(access);
+      isInUse = Resource.isInUse(access);
     }
 
     if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {

@@ -690,7 +690,7 @@ namespace dxvk {
       D3D9Format            Format) const;
 
     bool WaitForResource(
-      const Rc<DxvkResource>&                 Resource,
+      const DxvkPagedResource&                Resource,
             uint64_t                          SequenceNumber,
             DWORD                             MapFlags);
 
