@@ -2387,7 +2387,7 @@ namespace dxvk {
     depInfo.pMemoryBarriers = &barrier;
 
     m_cmd->cmdSetEvent(gpuEvent->handle(), &depInfo);
-    m_cmd->trackEvent(std::move(gpuEvent));
+    m_cmd->track(std::move(gpuEvent));
   }
   
 
