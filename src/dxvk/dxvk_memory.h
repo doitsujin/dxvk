@@ -16,6 +16,7 @@ namespace dxvk {
   class DxvkSparsePageTable;
   class DxvkSharedAllocationCache;
   class DxvkResourceAllocation;
+  class DxvkPagedResource;
 
   /**
    * \brief Memory stats
@@ -1117,6 +1118,22 @@ namespace dxvk {
       const VkImageCreateInfo&      createInfo,
             VkMemoryRequirements2&  memoryRequirements) const;
 
+    /**
+     * \brief Registers a paged resource with cookie
+     *
+     * Useful when the allocator needs to track resources.
+     * \param [in] resource Resource to add
+     */
+    void registerResource(
+            DxvkPagedResource*          resource);
+
+    /**
+     * \brief Unregisters a paged resource
+     * \param [in] resource Resource to remove
+     */
+    void unregisterResource(
+            DxvkPagedResource*          resource);
+
   private:
 
     DxvkDevice* m_device;
@@ -1143,6 +1160,10 @@ namespace dxvk {
 
     dxvk::thread              m_worker;
     bool                      m_stopWorker = false;
+
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex               m_resourceMutex;
+    std::unordered_map<uint64_t, DxvkPagedResource*> m_resourceMap;
 
     DxvkDeviceMemory allocateDeviceMemory(
             DxvkMemoryType&       type,
