@@ -3,7 +3,7 @@
 #include <atomic>
 #include <vector>
 
-#include "dxvk_resource.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
 

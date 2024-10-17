@@ -7,7 +7,7 @@
 
 #include "dxvk_barrier.h"
 #include "dxvk_cmdlist.h"
-#include "dxvk_resource.h"
+#include "dxvk_image.h"
 
 namespace dxvk {
 
