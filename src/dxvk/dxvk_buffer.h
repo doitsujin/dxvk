@@ -313,6 +313,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> allocateStorage(DxvkLocalAllocationCache* cache) {
       DxvkAllocationInfo allocationInfo = { };
+      allocationInfo.resourceCookie = cookie();
       allocationInfo.properties = m_properties;
 
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
