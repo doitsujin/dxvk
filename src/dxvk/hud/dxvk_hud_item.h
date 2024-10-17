@@ -585,6 +585,7 @@ namespace dxvk::hud {
             HudRenderer&        renderer);
 
     void updateDataBuffer(
+      const DxvkContextObjects& ctx,
             VkDescriptorBufferInfo& drawDescriptor,
             VkDescriptorBufferInfo& dataDescriptor);
 

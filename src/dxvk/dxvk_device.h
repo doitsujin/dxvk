@@ -538,7 +538,7 @@ namespace dxvk {
      * \param [in] resource Resource to wait for
      * \param [in] access Access mode to check
      */
-    void waitForResource(const Rc<DxvkResource>& resource, DxvkAccess access);
+    void waitForResource(const DxvkPagedResource& resource, DxvkAccess access);
     
     /**
      * \brief Waits until the device becomes idle

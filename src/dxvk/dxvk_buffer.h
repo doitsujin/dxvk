@@ -7,7 +7,6 @@
 #include "dxvk_format.h"
 #include "dxvk_hash.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 
 namespace dxvk {
@@ -300,8 +299,8 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new backing resource
      */
-    Rc<DxvkResourceAllocation> allocateSlice() {
-      return allocateSlice(nullptr);
+    Rc<DxvkResourceAllocation> allocateStorage() {
+      return allocateStorage(nullptr);
     }
 
     /**
@@ -312,7 +311,7 @@ namespace dxvk {
      * \param [in] cache Optional allocation cache
      * \returns The new buffer slice
      */
-    Rc<DxvkResourceAllocation> allocateSlice(DxvkLocalAllocationCache* cache) {
+    Rc<DxvkResourceAllocation> allocateStorage(DxvkLocalAllocationCache* cache) {
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
       info.usage = m_info.usage;
@@ -332,7 +331,7 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer allocation
      */
-    Rc<DxvkResourceAllocation> assignSlice(Rc<DxvkResourceAllocation>&& slice) {
+    Rc<DxvkResourceAllocation> assignStorage(Rc<DxvkResourceAllocation>&& slice) {
       Rc<DxvkResourceAllocation> result = std::move(m_storage);
 
       m_storage = std::move(slice);
@@ -347,7 +346,7 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Current buffer allocation
      */
-    Rc<DxvkResourceAllocation> getAllocation() const {
+    Rc<DxvkResourceAllocation> storage() const {
       return m_storage;
     }
 

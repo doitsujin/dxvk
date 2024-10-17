@@ -9,7 +9,6 @@
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_graphics.h"
-#include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_presenter.h"
@@ -248,48 +247,39 @@ namespace dxvk {
     void next();
     
     /**
-     * \brief Adds a resource to track
-     * 
-     * Adds a resource to the internal resource tracker.
-     * Resources will be kept alive and "in use" until
-     * the device can guarantee that the submission has
-     * completed.
+     * \brief Tracks an object
+     *
+     * Keeps the object alive until the command list finishes
+     * execution on the GPU.
+     * \param [in] object Object to track
      */
-    template<DxvkAccess Access>
-    void trackResource(Rc<DxvkResourceAllocation>&& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResourceAllocation>(std::move(rc), Access));
+    template<typename T>
+    void track(Rc<T> object) {
+      m_objectTracker.track<DxvkObjectRef<T>>(std::move(object));
     }
 
-    template<DxvkAccess Access>
-    void trackResource(const Rc<DxvkResourceAllocation>& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResourceAllocation>(rc.ptr(), Access));
+    /**
+     * \brief Tracks a resource with access mode
+     *
+     * Keeps the object alive and tracks resource access for
+     * the purpoe of CPU access synchronization. The different
+     * overloads try to reduce atomic operations.
+     * \param [in] object Object to track
+     * \param [in] access Resource access mode
+     */
+    template<typename T>
+    void track(Rc<T>&& object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(std::move(object), access);
     }
 
-    template<DxvkAccess Access, typename T>
-    void trackResource(Rc<T>&& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(std::move(rc), Access));
+    template<typename T>
+    void track(const Rc<T>& object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(object.ptr(), access);
     }
 
-    template<DxvkAccess Access, typename T>
-    void trackResource(const Rc<T>& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc.ptr(), Access));
-    }
-
-    template<DxvkAccess Access, typename T>
-    void trackResource(T* rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
-    }
-
-    void trackSampler(const Rc<DxvkSampler>& sampler) {
-      m_resources.trackSampler(sampler);
-    }
-
-    void trackEvent(Rc<DxvkGpuEvent>&& event) {
-      m_resources.trackEvent(std::move(event));
-    }
-
-    void trackQuery(Rc<DxvkGpuQuery>&& query) {
-      m_resources.trackQuery(std::move(query));
+    template<typename T>
+    void track(T* object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(object, access);
     }
 
     /**
@@ -317,7 +307,7 @@ namespace dxvk {
      * \brief Notifies resources and signals
      */
     void notifyObjects() {
-      m_resources.reset();
+      m_objectTracker.clear();
       m_signalTracker.notify();
     }
 
@@ -1066,7 +1056,7 @@ namespace dxvk {
 
     PresenterSync             m_wsiSemaphores = { };
 
-    DxvkLifetimeTracker       m_resources;
+    DxvkObjectTracker         m_objectTracker;
     DxvkSignalTracker         m_signalTracker;
     DxvkStatCounters          m_statCounters;
 

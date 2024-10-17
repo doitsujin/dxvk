@@ -7,10 +7,11 @@
 
 #include "../util/util_small_vector.h"
 
-#include "dxvk_resource.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
 
+  class DxvkDevice;
   class DxvkCommandList;
 
   class DxvkGpuQueryPool;

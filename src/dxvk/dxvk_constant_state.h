@@ -3,7 +3,6 @@
 #include "dxvk_buffer.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_limits.h"
-#include "dxvk_resource.h"
 #include "dxvk_shader.h"
 
 namespace dxvk {

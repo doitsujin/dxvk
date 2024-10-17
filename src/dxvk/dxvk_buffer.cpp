@@ -18,7 +18,7 @@ namespace dxvk {
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
     // Create and assign actual buffer resource
-    assignSlice(allocateSlice());
+    assignStorage(allocateStorage());
   }
 
 
@@ -40,7 +40,7 @@ namespace dxvk {
     info.size = m_info.size;
     m_sharingMode.fill(info);
 
-    assignSlice(allocator.importBufferResource(info, importInfo));
+    assignStorage(allocator.importBufferResource(info, importInfo));
   }
 
 

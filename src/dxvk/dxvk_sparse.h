@@ -2,8 +2,8 @@
 
 #include <map>
 
+#include "dxvk_access.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 
 namespace dxvk {
 
@@ -427,13 +427,80 @@ namespace dxvk {
   /**
    * \brief Paged resource
    *
-   * Base class for any resource that can
-   * hold a sparse page table.
+   * Base class for memory-backed resources that may
+   * or may not also have a sparse page table.
    */
-  class DxvkPagedResource : public DxvkResource {
+  class DxvkPagedResource {
 
   public:
 
+    virtual ~DxvkPagedResource();
+
+    /**
+     * \brief Increments reference count
+     */
+    force_inline void incRef() {
+      acquire(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Decrements reference count
+     */
+    force_inline void decRef() {
+      release(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Acquires resource with given access
+     *
+     * Atomically increments both the reference count
+     * as well as the use count for the given access.
+     */
+    force_inline void acquire(DxvkAccess access) {
+      m_useCount.fetch_add(getIncrement(access), std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Releases resource with given access
+     *
+     * Atomically decrements both the reference count
+     * as well as the use count for the given access.
+     */
+    force_inline void release(DxvkAccess access) {
+      uint64_t increment = getIncrement(access);
+      uint64_t remaining = m_useCount.fetch_sub(increment, std::memory_order_release);
+
+      if (unlikely(remaining == increment))
+        delete this;
+    }
+
+    /**
+     * \brief Converts reference type
+     *
+     * \param [in] from Old access type
+     * \param [in] to New access type
+     */
+    force_inline void convertRef(DxvkAccess from, DxvkAccess to) {
+      uint64_t increment = getIncrement(to) - getIncrement(from);
+
+      if (increment)
+        m_useCount.fetch_add(increment, std::memory_order_acq_rel);
+    }
+
+    /**
+     * \brief Checks whether resource is in use
+     * 
+     * Returns \c true if there are pending accesses to
+     * the resource by the GPU matching the given access
+     * type. Note that checking for reads will also return
+     * \c true if the resource is being written to.
+     * \param [in] access Access type to check for
+     * \returns \c true if the resource is in use
+     */
+    force_inline bool isInUse(DxvkAccess access) const {
+      return m_useCount.load(std::memory_order_acquire) >= getIncrement(access);
+    }
+    
     /**
      * \brief Queries sparse page table
      *
@@ -442,6 +509,45 @@ namespace dxvk {
      * \returns Sparse page table, if defined
      */
     virtual DxvkSparsePageTable* getSparsePageTable() = 0;
+
+  private:
+
+    std::atomic<uint64_t> m_useCount = { 0u };
+
+    static constexpr uint64_t getIncrement(DxvkAccess access) {
+      return uint64_t(1u) << (uint32_t(access) * 20u);
+    }
+
+  };
+
+
+  /**
+   * \brief Typed tracking reference for resources
+   *
+   * Does not provide any access information.
+   */
+  class DxvkResourceRef : public DxvkTrackingRef {
+    constexpr static uintptr_t AccessMask = 0x3u;
+
+    static_assert(alignof(DxvkPagedResource) > AccessMask);
+  public:
+
+    template<typename T>
+    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkPagedResource*>(object.ptr())) | uintptr_t(access)) {
+      object.unsafeExtract()->convertRef(DxvkAccess::None, access);
+    }
+
+    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(object) | uintptr_t(access)) {
+      object->acquire(access);
+    }
+
+    ~DxvkResourceRef();
+
+  private:
+
+    uintptr_t m_ptr = 0u;
 
   };
 

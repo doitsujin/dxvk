@@ -3,7 +3,6 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 #include "dxvk_util.h"
 
@@ -522,7 +521,7 @@ namespace dxvk {
      * The returned image can be used as backing storage.
      * \returns New underlying image resource
      */
-    Rc<DxvkResourceAllocation> createResource();
+    Rc<DxvkResourceAllocation> allocateStorage();
 
     /**
      * \brief Creates image resource with extra usage
@@ -532,7 +531,7 @@ namespace dxvk {
      * \param [in] usage Usage flags to add
      * \returns New underlying image resource
      */
-    Rc<DxvkResourceAllocation> createResourceWithUsage(
+    Rc<DxvkResourceAllocation> allocateStorageWithUsage(
       const DxvkImageUsageInfo&       usage);
 
     /**
@@ -542,7 +541,7 @@ namespace dxvk {
      * \param [in] resource New backing storage
      * \returns Previous backing storage
      */
-    Rc<DxvkResourceAllocation> assignResource(
+    Rc<DxvkResourceAllocation> assignStorage(
             Rc<DxvkResourceAllocation>&& resource);
 
     /**
@@ -553,7 +552,7 @@ namespace dxvk {
      * \param [in] usageInfo Added usage info
      * \returns Previous backing storage
      */
-    Rc<DxvkResourceAllocation> assignResourceWithUsage(
+    Rc<DxvkResourceAllocation> assignStorageWithUsage(
             Rc<DxvkResourceAllocation>&& resource,
       const DxvkImageUsageInfo&         usageInfo);
 
@@ -561,7 +560,7 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Backing storage for this image
      */
-    Rc<DxvkResourceAllocation> getAllocation() const {
+    Rc<DxvkResourceAllocation> storage() const {
       return m_storage;
     }
 

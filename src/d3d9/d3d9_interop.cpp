@@ -220,7 +220,7 @@ namespace dxvk {
     m_lock = D3D9DeviceLock();
   }
 
-  static Rc<DxvkResource> GetDxvkResource(IDirect3DResource9 *pResource) {
+  static Rc<DxvkPagedResource> GetDxvkResource(IDirect3DResource9 *pResource) {
     switch (pResource->GetType()) {
       case D3DRTYPE_SURFACE:       return static_cast<D3D9Surface*>     (pResource)->GetCommonTexture()->GetImage();
       // Does not inherit from IDirect3DResource9... lol.
@@ -237,7 +237,7 @@ namespace dxvk {
   bool STDMETHODCALLTYPE D3D9VkInteropDevice::WaitForResource(
           IDirect3DResource9*  pResource,
           DWORD                MapFlags) {
-    return m_device->WaitForResource(GetDxvkResource(pResource), DxvkCsThread::SynchronizeAll, MapFlags);
+    return m_device->WaitForResource(*GetDxvkResource(pResource), DxvkCsThread::SynchronizeAll, MapFlags);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::CreateImage(

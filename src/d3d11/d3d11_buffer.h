@@ -114,11 +114,11 @@ namespace dxvk {
     }
     
     Rc<DxvkResourceAllocation> AllocSlice(DxvkLocalAllocationCache* cache) {
-      return m_buffer->allocateSlice(cache);
+      return m_buffer->allocateStorage(cache);
     }
     
     Rc<DxvkResourceAllocation> DiscardSlice(DxvkLocalAllocationCache* cache) {
-      auto allocation = m_buffer->allocateSlice(cache);
+      auto allocation = m_buffer->allocateStorage(cache);
       m_mapPtr = allocation->mapPtr();
       return allocation;
     }

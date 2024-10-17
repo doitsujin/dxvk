@@ -66,6 +66,7 @@ dxvk_shaders = files([
 ])
 
 dxvk_src = [
+  'dxvk_access.cpp',
   'dxvk_adapter.cpp',
   'dxvk_allocator.cpp',
   'dxvk_barrier.cpp',
@@ -86,7 +87,6 @@ dxvk_src = [
   'dxvk_graphics.cpp',
   'dxvk_image.cpp',
   'dxvk_instance.cpp',
-  'dxvk_lifetime.cpp',
   'dxvk_memory.cpp',
   'dxvk_meta_blit.cpp',
   'dxvk_meta_clear.cpp',
@@ -99,7 +99,6 @@ dxvk_src = [
   'dxvk_platform_exts.cpp',
   'dxvk_presenter.cpp',
   'dxvk_queue.cpp',
-  'dxvk_resource.cpp',
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
   'dxvk_shader_key.cpp',

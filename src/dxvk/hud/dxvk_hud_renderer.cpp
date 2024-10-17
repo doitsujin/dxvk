@@ -155,7 +155,8 @@ namespace dxvk::hud {
       m_textBufferView = m_textBuffer->createView(textViewInfo);
     } else {
       // Discard and invalidate buffer so we can safely update it
-      m_textBuffer->assignSlice(Rc<DxvkResourceAllocation>(m_textBuffer->allocateSlice()));
+      auto storage = m_textBuffer->assignStorage(Rc<DxvkResourceAllocation>(m_textBuffer->allocateStorage()));
+      ctx.cmd->track(std::move(storage));
     }
 
     // Upload aligned text data in such a way that we write full cache lines
@@ -190,10 +191,10 @@ namespace dxvk::hud {
       m_textBufferView->handle(), m_textDraws.size());
 
     // Ensure all used resources are kept alive
-    ctx.cmd->trackResource<DxvkAccess::None>(m_textBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_fontBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_fontTexture->getAllocation());
-    ctx.cmd->trackSampler(m_fontSampler);
+    ctx.cmd->track(m_textBuffer, DxvkAccess::Read);
+    ctx.cmd->track(m_fontBuffer, DxvkAccess::Read);
+    ctx.cmd->track(m_fontTexture, DxvkAccess::Read);
+    ctx.cmd->track(m_fontSampler);
 
     // Reset internal text buffers
     m_textDraws.clear();
@@ -481,9 +482,9 @@ namespace dxvk::hud {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(uploadBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_fontBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_fontTexture->getAllocation());
+    ctx.cmd->track(uploadBuffer, DxvkAccess::Read);
+    ctx.cmd->track(m_fontBuffer, DxvkAccess::Write);
+    ctx.cmd->track(m_fontTexture, DxvkAccess::Write);
   }
 
 

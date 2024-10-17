@@ -6,7 +6,6 @@
 #include "dxvk_context_state.h"
 #include "dxvk_objects.h"
 #include "dxvk_queue.h"
-#include "dxvk_resource.h"
 #include "dxvk_util.h"
 
 namespace dxvk {

@@ -7,6 +7,17 @@
 
 namespace dxvk {
 
+  DxvkPagedResource::~DxvkPagedResource() {
+
+  }
+
+
+  DxvkResourceRef::~DxvkResourceRef() {
+    auto resource = reinterpret_cast<DxvkPagedResource*>(m_ptr & ~AccessMask);
+    resource->release(DxvkAccess(m_ptr & AccessMask));
+  }
+
+
   DxvkSparseMapping::DxvkSparseMapping()
   : m_pool(nullptr),
     m_page(nullptr) {
@@ -395,7 +406,7 @@ namespace dxvk {
           DxvkSparseMapping&&     mapping) {
     if (m_mappings[page] != mapping) {
       if (m_mappings[page])
-        cmd->trackResource<DxvkAccess::None>(m_mappings[page].m_page);
+        cmd->track(m_mappings[page].m_page);
 
       m_mappings[page] = std::move(mapping);
     }

@@ -171,7 +171,7 @@ namespace dxvk {
     void EndFrame();
     
     bool WaitForResource(
-      const Rc<DxvkResource>&           Resource,
+      const DxvkPagedResource&          Resource,
             uint64_t                    SequenceNumber,
             D3D11_MAP                   MapType,
             UINT                        MapFlags);
