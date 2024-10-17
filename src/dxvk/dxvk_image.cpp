@@ -183,6 +183,7 @@ namespace dxvk {
     DxvkAllocationInfo allocationInfo = { };
     allocationInfo.resourceCookie = cookie();
     allocationInfo.properties = m_properties;
+    allocationInfo.mode = mode;
 
     return m_allocator->createImageResource(imageInfo,
       allocationInfo, sharedMemoryInfo);
