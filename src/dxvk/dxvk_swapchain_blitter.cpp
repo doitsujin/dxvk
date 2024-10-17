@@ -346,8 +346,8 @@ namespace dxvk {
     if (m_gammaImage)
       ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaImage);
 
-    ctx.cmd->trackSampler(m_samplerGamma);
-    ctx.cmd->trackSampler(m_samplerPresent);
+    ctx.cmd->track(m_samplerGamma);
+    ctx.cmd->track(m_samplerPresent);
   }
 
 
