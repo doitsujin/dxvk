@@ -6271,32 +6271,55 @@ namespace dxvk {
       const auto& info = imageInfos[i];
       auto oldStorage = info.image->storage();
 
-      VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      dstBarrier.srcStageMask = info.image->info().stages;
-      dstBarrier.srcAccessMask = info.image->info().access;
-      dstBarrier.dstStageMask = info.image->info().stages;
-      dstBarrier.dstAccessMask = info.image->info().access;
-      dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      dstBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-      dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      dstBarrier.image = info.storage->getImageInfo().image;
-      dstBarrier.subresourceRange = info.image->getAvailableSubresources();
+      // The source image may only be partially initialized. Ignore any subresources
+      // that aren't, but try to do process as much in one go as possible.
+      VkImageSubresourceRange availableSubresources = info.image->getAvailableSubresources();
 
-      VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      srcBarrier.srcStageMask = info.image->info().stages;
-      srcBarrier.srcAccessMask = info.image->info().access;
-      srcBarrier.dstStageMask = info.image->info().stages;
-      srcBarrier.dstAccessMask = info.image->info().access;
-      srcBarrier.oldLayout = info.image->info().layout;
-      srcBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-      srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      srcBarrier.image = oldStorage->getImageInfo().image;
-      srcBarrier.subresourceRange = info.image->getAvailableSubresources();
+      uint32_t mipStep = info.image->isInitialized(availableSubresources)
+        ? availableSubresources.levelCount : 1u;
 
-      imageBarriers.push_back(dstBarrier);
-      imageBarriers.push_back(srcBarrier);
+      for (uint32_t m = 0; m < availableSubresources.levelCount; m += mipStep) {
+        VkImageSubresourceRange subresourceRange = availableSubresources;
+        subresourceRange.baseMipLevel = m;
+        subresourceRange.levelCount = mipStep;
+
+        uint32_t layerStep = info.image->isInitialized(subresourceRange)
+          ? availableSubresources.layerCount : 1u;
+
+        for (uint32_t l = 0; l < availableSubresources.layerCount; l += layerStep) {
+          subresourceRange.baseArrayLayer = l;
+          subresourceRange.layerCount = layerStep;
+
+          if (info.image->isInitialized(subresourceRange)) {
+            VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+            dstBarrier.srcStageMask = info.image->info().stages;
+            dstBarrier.srcAccessMask = info.image->info().access;
+            dstBarrier.dstStageMask = info.image->info().stages;
+            dstBarrier.dstAccessMask = info.image->info().access;
+            dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            dstBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+            dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            dstBarrier.image = info.storage->getImageInfo().image;
+            dstBarrier.subresourceRange = subresourceRange;
+
+            VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+            srcBarrier.srcStageMask = info.image->info().stages;
+            srcBarrier.srcAccessMask = info.image->info().access;
+            srcBarrier.dstStageMask = info.image->info().stages;
+            srcBarrier.dstAccessMask = info.image->info().access;
+            srcBarrier.oldLayout = info.image->info().layout;
+            srcBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+            srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            srcBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            srcBarrier.image = oldStorage->getImageInfo().image;
+            srcBarrier.subresourceRange = subresourceRange;
+
+            imageBarriers.push_back(dstBarrier);
+            imageBarriers.push_back(srcBarrier);
+          }
+        }
+      }
     }
 
     // Submit all pending barriers in one go
@@ -6349,6 +6372,8 @@ namespace dxvk {
       DxvkResourceImageInfo dstInfo = info.storage->getImageInfo();
       DxvkResourceImageInfo srcInfo = oldStorage->getImageInfo();
 
+      VkImageSubresourceRange availableSubresources = info.image->getAvailableSubresources();
+
       // Iterate over all subresources and compute copy regions. We need
       // one region per mip or plane, so size the local array accordingly.
       small_vector<VkImageCopy2, 16> imageRegions;
@@ -6362,23 +6387,54 @@ namespace dxvk {
 
       for (uint32_t p = 0; p < planeCount; p++) {
         for (uint32_t m = 0; m < info.image->info().mipLevels; m++) {
-          VkImageCopy2 region = { VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
-          region.dstSubresource.aspectMask = formatInfo->aspectMask;
-          region.dstSubresource.mipLevel = m;
-          region.dstSubresource.baseArrayLayer = 0;
-          region.dstSubresource.layerCount = info.image->info().numLayers;
-          region.srcSubresource = region.dstSubresource;
-          region.extent = info.image->mipLevelExtent(m);
+          VkImageSubresourceRange subresourceRange = availableSubresources;
+          subresourceRange.baseMipLevel = m;
+          subresourceRange.levelCount = 1u;
 
-          if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-            region.dstSubresource.aspectMask = vk::getPlaneAspect(p);
-            region.srcSubresource.aspectMask = vk::getPlaneAspect(p);
+          uint32_t layerStep = info.image->isInitialized(subresourceRange)
+            ? subresourceRange.layerCount : 1u;
 
-            region.extent.width /= formatInfo->planes[p].blockSize.width;
-            region.extent.height /= formatInfo->planes[p].blockSize.height;
+          for (uint32_t l = 0; l < subresourceRange.layerCount; l += layerStep) {
+            subresourceRange.baseArrayLayer = l;
+            subresourceRange.layerCount = layerStep;
+
+            if (info.image->isInitialized(subresourceRange)) {
+              VkImageCopy2 region = { VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
+              region.dstSubresource.aspectMask = formatInfo->aspectMask;
+              region.dstSubresource.mipLevel = m;
+              region.dstSubresource.baseArrayLayer = l;
+              region.dstSubresource.layerCount = layerStep;
+              region.srcSubresource = region.dstSubresource;
+              region.extent = info.image->mipLevelExtent(m);
+
+              if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+                region.dstSubresource.aspectMask = vk::getPlaneAspect(p);
+                region.srcSubresource.aspectMask = vk::getPlaneAspect(p);
+
+                region.extent.width /= formatInfo->planes[p].blockSize.width;
+                region.extent.height /= formatInfo->planes[p].blockSize.height;
+              }
+
+              imageRegions.push_back(region);
+
+              // Emit image barrier for this region. We could in theory transition the
+              // entire image in one go as long as all subresources are initialized,
+              // but there is usually no reason to do so.
+              VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+              dstBarrier.srcStageMask = info.image->info().stages;
+              dstBarrier.srcAccessMask = info.image->info().access;
+              dstBarrier.dstStageMask = info.image->info().stages;
+              dstBarrier.dstAccessMask = info.image->info().access;
+              dstBarrier.oldLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+              dstBarrier.newLayout = info.image->info().layout;
+              dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+              dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+              dstBarrier.image = info.storage->getImageInfo().image;
+              dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource),
+
+              imageBarriers.push_back(dstBarrier);
+            }
           }
-
-          imageRegions.push_back(region);
         }
       }
 
@@ -6393,22 +6449,7 @@ namespace dxvk {
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
       m_cmd->track(info.image, DxvkAccess::Write);
 
-      // Invalidate image and emit post-copy barrier to use the correct layout
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
-
-      VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      dstBarrier.srcStageMask = info.image->info().stages;
-      dstBarrier.srcAccessMask = info.image->info().access;
-      dstBarrier.dstStageMask = info.image->info().stages;
-      dstBarrier.dstAccessMask = info.image->info().access;
-      dstBarrier.oldLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-      dstBarrier.newLayout = info.image->info().layout;
-      dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      dstBarrier.image = info.storage->getImageInfo().image;
-      dstBarrier.subresourceRange = info.image->getAvailableSubresources();
-
-      imageBarriers.push_back(dstBarrier);
     }
 
     // Submit post-copy barriers
