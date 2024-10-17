@@ -133,6 +133,14 @@ namespace dxvk {
       return lookupFormatInfo(m_key.format);
     }
 
+    /**
+     * \brief Obtains tracking reference to backing storage
+     *
+     * \param [in] access Resource access
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef(DxvkAccess access);
+
   private:
 
     DxvkBuffer*       m_buffer  = nullptr;
@@ -672,6 +680,11 @@ namespace dxvk {
 
   inline void DxvkBufferView::decRef() {
     m_buffer->decRef();
+  }
+
+
+  inline DxvkTrackingRef DxvkBufferView::trackRef(DxvkAccess access) {
+    return m_buffer->trackRef(access);
   }
 
 }

@@ -264,6 +264,14 @@ namespace dxvk {
         view->imageSubresources());
     }
 
+    /**
+     * \brief Obtains tracking reference to backing storage
+     *
+     * \param [in] access Resource access
+     * \returns Tracking reference
+     */
+    DxvkTrackingRef trackRef(DxvkAccess access);
+
   private:
 
     DxvkImage*              m_image     = nullptr;
@@ -725,6 +733,11 @@ namespace dxvk {
       m_views[viewType] = createView(viewType);
 
     return m_views[viewType];
+  }
+
+
+  inline DxvkTrackingRef DxvkImageView::trackRef(DxvkAccess access) {
+    return m_image->trackRef(access);
   }
 
 }

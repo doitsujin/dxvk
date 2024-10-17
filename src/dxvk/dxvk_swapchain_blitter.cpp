@@ -340,8 +340,8 @@ namespace dxvk {
     ctx.cmd->cmdDraw(3, 1, 0, 0);
 
     // Make sure to keep used resources alive
-    ctx.cmd->trackResource<DxvkAccess::Read>(srcView->image());
-    ctx.cmd->trackResource<DxvkAccess::Write>(dstView->image());
+    ctx.cmd->track(srcView->trackRef(DxvkAccess::Read));
+    ctx.cmd->track(dstView->trackRef(DxvkAccess::Write));
 
     if (m_gammaImage)
       ctx.cmd->track(m_gammaImage->trackRef(DxvkAccess::Read));
