@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <map>
 
 #include "dxvk_access.h"
@@ -434,7 +435,18 @@ namespace dxvk {
 
   public:
 
+    DxvkPagedResource()
+    : m_cookie(++s_cookie) { }
+
     virtual ~DxvkPagedResource();
+
+    /**
+     * \brief Queries resource cookie
+     * \returns Resource cookie
+     */
+    uint64_t cookie() const {
+      return m_cookie;
+    }
 
     /**
      * \brief Increments reference count
@@ -513,10 +525,13 @@ namespace dxvk {
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };
+    uint64_t              m_cookie = { 0u };
 
     static constexpr uint64_t getIncrement(DxvkAccess access) {
       return uint64_t(1u) << (uint32_t(access) * 20u);
     }
+
+    static std::atomic<uint64_t> s_cookie;
 
   };
 
