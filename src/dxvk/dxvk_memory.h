@@ -608,7 +608,7 @@ namespace dxvk {
     DxvkMemoryAllocator*        m_allocator = nullptr;
     DxvkMemoryType*             m_type = nullptr;
 
-    DxvkResourceAllocation*     m_next = nullptr;
+    DxvkResourceAllocation*     m_nextCached = nullptr;
 
     void destroyBufferViews();
 

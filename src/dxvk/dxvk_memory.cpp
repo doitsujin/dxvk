@@ -213,8 +213,8 @@ namespace dxvk {
     if (!allocation)
       return nullptr;
 
-    m_pools[poolIndex] = allocation->m_next;
-    allocation->m_next = nullptr;
+    m_pools[poolIndex] = allocation->m_nextCached;
+    allocation->m_nextCached = nullptr;
     return allocation;
   }
 
@@ -321,7 +321,7 @@ namespace dxvk {
     { std::unique_lock freeLock(m_freeMutex);
       auto& list = m_freeLists[poolIndex];
 
-      allocation->m_next = list.head;
+      allocation->m_nextCached = list.head;
       list.head = allocation;
 
       if (++list.size < list.capacity)
@@ -1224,7 +1224,7 @@ namespace dxvk {
       if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
         freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
 
-      m_allocationPool.free(std::exchange(allocation, allocation->m_next));
+      m_allocationPool.free(std::exchange(allocation, allocation->m_nextCached));
     }
   }
 
@@ -1415,7 +1415,7 @@ namespace dxvk {
         allocation->m_flags.set(DxvkAllocationFlag::Cacheable);
 
         if (tail) {
-          tail->m_next = allocation;
+          tail->m_nextCached = allocation;
           tail = allocation;
         } else {
           head = allocation;
@@ -1426,7 +1426,7 @@ namespace dxvk {
       }
 
       if (tail) {
-        tail->m_next = cache->assignCache(allocationSize, head);
+        tail->m_nextCached = cache->assignCache(allocationSize, head);
         return true;
       }
     }
