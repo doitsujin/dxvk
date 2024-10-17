@@ -516,6 +516,15 @@ namespace dxvk {
     DxvkSparsePageTable* getSparsePageTable();
 
     /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags
+     * \returns Operation status and allocation
+     */
+    Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode);
+
+    /**
      * \brief Creates image resource
      *
      * The returned image can be used as backing storage.
@@ -529,10 +538,12 @@ namespace dxvk {
      * Creates new backing storage with additional usage flags
      * enabled. Useful to expand on usage flags after creation.
      * \param [in] usage Usage flags to add
+     * \param [in] mode Allocation constraints
      * \returns New underlying image resource
      */
     Rc<DxvkResourceAllocation> allocateStorageWithUsage(
-      const DxvkImageUsageInfo&       usage);
+      const DxvkImageUsageInfo&         usage,
+            DxvkAllocationModes         mode);
 
     /**
      * \brief Assigns backing storage to the image

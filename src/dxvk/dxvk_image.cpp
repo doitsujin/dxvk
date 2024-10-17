@@ -108,6 +108,15 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkImage::relocateStorage(
+          DxvkAllocationModes         mode) {
+    if (!canRelocate())
+      return nullptr;
+
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), mode);
+  }
+
+
   Rc<DxvkImageView> DxvkImage::createView(
     const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
@@ -120,11 +129,13 @@ namespace dxvk {
 
 
   Rc<DxvkResourceAllocation> DxvkImage::allocateStorage() {
-    return allocateStorageWithUsage(DxvkImageUsageInfo());
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), 0u);
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(const DxvkImageUsageInfo& usageInfo) {
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(
+    const DxvkImageUsageInfo&         usageInfo,
+          DxvkAllocationModes         mode) {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
     small_vector<VkFormat, 4> localViewFormats;
 
