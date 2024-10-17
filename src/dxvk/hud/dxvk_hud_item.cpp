@@ -1208,7 +1208,7 @@ namespace dxvk::hud {
     } else {
       // Ensure we can update the buffer without overriding live data
       auto allocation = m_dataBuffer->assignStorage(m_dataBuffer->allocateStorage());
-      ctx.cmd->trackResource(std::move(allocation));
+      ctx.cmd->track(std::move(allocation));
     }
 
     // Update draw infos and pad unused area with zeroes

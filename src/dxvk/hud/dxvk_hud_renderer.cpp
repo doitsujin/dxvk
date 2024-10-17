@@ -156,7 +156,7 @@ namespace dxvk::hud {
     } else {
       // Discard and invalidate buffer so we can safely update it
       auto storage = m_textBuffer->assignStorage(Rc<DxvkResourceAllocation>(m_textBuffer->allocateStorage()));
-      ctx.cmd->trackResource(std::move(storage));
+      ctx.cmd->track(std::move(storage));
     }
 
     // Upload aligned text data in such a way that we write full cache lines

@@ -255,14 +255,6 @@ namespace dxvk {
      * the device can guarantee that the submission has
      * completed.
      */
-    void trackResource(Rc<DxvkResourceAllocation>&& rc) {
-      m_resources.trackResource(std::move(rc));
-    }
-
-    void trackResource(const Rc<DxvkResourceAllocation>& rc) {
-      m_resources.trackResource(Rc<DxvkResourceAllocation>(rc));
-    }
-
     template<DxvkAccess Access, typename T>
     void trackResource(Rc<T>&& rc) {
       m_resources.trackResource(DxvkLifetime<DxvkResource>(std::move(rc), Access));
