@@ -373,7 +373,7 @@ namespace dxvk::hud {
       drawInfoBuffer, textBufferView, 2u);
 
     // Make sure GPU resources are being kept alive as necessary
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer);
+    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
     ctx.cmd->track(m_query);
   }
 
@@ -419,7 +419,7 @@ namespace dxvk::hud {
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_gpuBuffer);
+    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Read);
   }
 
 
@@ -473,7 +473,7 @@ namespace dxvk::hud {
     depInfo.pMemoryBarriers = &barrier;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer);
+    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
 
     m_query = m_device->createRawQuery(VK_QUERY_TYPE_TIMESTAMP);
   }
@@ -1176,7 +1176,7 @@ namespace dxvk::hud {
     ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
     // Track data buffer lifetime
-    ctx.cmd->trackResource<DxvkAccess::Read>(m_dataBuffer);
+    ctx.cmd->track(m_dataBuffer, DxvkAccess::Read);
 
     m_drawInfos.clear();
   }

@@ -340,11 +340,11 @@ namespace dxvk {
     ctx.cmd->cmdDraw(3, 1, 0, 0);
 
     // Make sure to keep used resources alive
-    ctx.cmd->trackResource<DxvkAccess::Read>(srcView->image());
-    ctx.cmd->trackResource<DxvkAccess::Write>(dstView->image());
+    ctx.cmd->track(srcView->image(), DxvkAccess::Read);
+    ctx.cmd->track(dstView->image(), DxvkAccess::Write);
 
     if (m_gammaImage)
-      ctx.cmd->trackResource<DxvkAccess::Read>(m_gammaImage);
+      ctx.cmd->track(m_gammaImage, DxvkAccess::Read);
 
     ctx.cmd->track(m_samplerGamma);
     ctx.cmd->track(m_samplerPresent);
@@ -444,8 +444,8 @@ namespace dxvk {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->trackResource<DxvkAccess::Read>(buffer);
-    ctx.cmd->trackResource<DxvkAccess::Write>(image);
+    ctx.cmd->track(buffer, DxvkAccess::Read);
+    ctx.cmd->track(image, DxvkAccess::Write);
   }
 
 

@@ -9,7 +9,6 @@
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_graphics.h"
-#include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_presenter.h"
@@ -248,29 +247,6 @@ namespace dxvk {
     void next();
     
     /**
-     * \brief Adds a resource to track
-     * 
-     * Adds a resource to the internal resource tracker.
-     * Resources will be kept alive and "in use" until
-     * the device can guarantee that the submission has
-     * completed.
-     */
-    template<DxvkAccess Access, typename T>
-    void trackResource(Rc<T>&& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(std::move(rc), Access));
-    }
-
-    template<DxvkAccess Access, typename T>
-    void trackResource(const Rc<T>& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc.ptr(), Access));
-    }
-
-    template<DxvkAccess Access, typename T>
-    void trackResource(T* rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
-    }
-
-    /**
      * \brief Tracks an object
      *
      * Keeps the object alive until the command list finishes
@@ -331,7 +307,6 @@ namespace dxvk {
      * \brief Notifies resources and signals
      */
     void notifyObjects() {
-      m_resources.reset();
       m_objectTracker.clear();
       m_signalTracker.notify();
     }
@@ -1082,8 +1057,6 @@ namespace dxvk {
     PresenterSync             m_wsiSemaphores = { };
 
     DxvkObjectTracker         m_objectTracker;
-
-    DxvkLifetimeTracker       m_resources;
     DxvkSignalTracker         m_signalTracker;
     DxvkStatCounters          m_statCounters;
 

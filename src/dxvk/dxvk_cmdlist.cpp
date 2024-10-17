@@ -366,7 +366,6 @@ namespace dxvk {
   void DxvkCommandList::reset() {
     // Free resources and other objects
     // that are no longer in use
-    m_resources.reset();
     m_objectTracker.clear();
 
     // Less important stuff
