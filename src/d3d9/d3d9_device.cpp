@@ -350,8 +350,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     // It makes no sense to have a hotspot outside of the bitmap.
-    if (XHotSpot > std::max(inputWidth  - 1, 0u)
-     || YHotSpot > std::max(inputHeight - 1, 0u))
+    if ((inputWidth  && (XHotSpot > inputWidth  - 1))
+     || (inputHeight && (YHotSpot > inputHeight - 1)))
       return D3DERR_INVALIDCALL;
 
     D3DPRESENT_PARAMETERS params;
@@ -469,6 +469,11 @@ namespace dxvk {
     Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
+    HRESULT hr = m_parent->ValidatePresentationParameters(pPresentationParameters, IsExtended());
+
+    if (unlikely(FAILED(hr)))
+      return hr;
+
     if (!IsExtended()) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
       ResetState(pPresentationParameters);
@@ -500,8 +505,8 @@ namespace dxvk {
       return D3DERR_DEVICELOST;
     }
 
-    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
-    if (FAILED(hr)) {
+    hr = ResetSwapChain(pPresentationParameters, nullptr);
+    if (unlikely(FAILED(hr))) {
       if (!IsExtended()) {
         Logger::warn("Device reset failed: Device not reset");
         m_deviceLostState = D3D9DeviceLostState::NotReset;
@@ -1922,7 +1927,8 @@ namespace dxvk {
 
     const uint32_t idx = GetTransformIndex(TransformState);
 
-    if (unlikely(ShouldRecord()))
+    // D3D8 state blocks ignore capturing calls to MultiplyTransform().
+    if (unlikely(!m_isD3D8Compatible && ShouldRecord()))
       return m_recorder->MultiplyStateTransform(idx, pMatrix);
 
     m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
@@ -3790,7 +3796,7 @@ namespace dxvk {
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
-      return D3DERR_INVALIDCALL;
+      return D3DERR_NOTAVAILABLE;
     }
   }
 
@@ -4655,6 +4661,27 @@ namespace dxvk {
 
     if (unlikely(!desc.IsLockable))
       return D3DERR_INVALIDCALL;
+
+    D3DRESOURCETYPE type = pResource->GetType();
+
+    // Volume textures in D3DPOOL_DEFAULT must have the D3DUSAGE_DYNAMIC flag set in order to be lockable.
+    if (unlikely(type == D3DRTYPE_VOLUMETEXTURE && desc.Pool == D3DPOOL_DEFAULT && !(desc.Usage & D3DUSAGE_DYNAMIC)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pBox != nullptr)) {
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+
+      // LockImage calls on D3DPOOL_DEFAULT surfaces and volume textures with formats
+      // which need to be block aligned, must be validated for mip level 0.
+      if (MipLevel == 0 && (type == D3DRTYPE_VOLUMETEXTURE ||
+        (type != D3DRTYPE_VOLUMETEXTURE && desc.Pool == D3DPOOL_DEFAULT))
+        && blockSize.Width > 0 && blockSize.Height > 0
+        && ((pBox->Left   && (pBox->Left   & (blockSize.Width  - 1))) ||
+            (pBox->Top    && (pBox->Top    & (blockSize.Height - 1))) ||
+            (pBox->Right  && (pBox->Right  & (blockSize.Width  - 1))) ||
+            (pBox->Bottom && (pBox->Bottom & (blockSize.Height - 1)))))
+        return D3DERR_INVALIDCALL;
+    }
 
     auto& formatMapping = pResource->GetFormatMapping();
 
