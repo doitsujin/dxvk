@@ -286,10 +286,6 @@ namespace dxvk {
       m_resources.trackEvent(std::move(event));
     }
 
-    void trackQuery(Rc<DxvkGpuQuery>&& query) {
-      m_resources.trackQuery(std::move(query));
-    }
-
     /**
      * \brief Tracks an object
      *
