@@ -427,12 +427,33 @@ namespace dxvk {
   /**
    * \brief Paged resource
    *
-   * Base class for any resource that can
-   * hold a sparse page table.
+   * Base class for any memory-backed virtual resource.
+   * Provides usage tracking and access to the sparse
+   * page table of the resoruce, if any.
    */
   class DxvkPagedResource : public DxvkResource {
 
   public:
+
+    /**
+     * \brief Checks whether resource is in use
+     * 
+     * Returns \c true if there are pending accesses to
+     * the resource by the GPU matching the given access
+     * type. Note that checking for reads will also return
+     * \c true if the resource is being written to.
+     * \param [in] access Access type to check for
+     * \returns \c true if the resource is in use
+     */
+    virtual bool isInUse(DxvkAccess access = DxvkAccess::Read) const = 0;
+
+    /**
+     * \brief Obtains tracking reference to backing storage
+     *
+     * \param [in] access Resource access
+     * \returns Tracking reference
+     */
+    virtual DxvkTrackingRef trackRef(DxvkAccess access) = 0;
 
     /**
      * \brief Queries sparse page table

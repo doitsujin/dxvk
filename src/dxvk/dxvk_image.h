@@ -511,12 +511,6 @@ namespace dxvk {
     HANDLE sharedHandle() const;
 
     /**
-     * \brief Retrives sparse page table
-     * \returns Page table
-     */
-    DxvkSparsePageTable* getSparsePageTable();
-
-    /**
      * \brief Creates image resource
      *
      * The returned image can be used as backing storage.
@@ -603,14 +597,30 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources) const;
 
     /**
+     * \brief Checks whether resource is in use
+     *
+     * \param [in] access Access type to check for
+     * \returns \c true if the resource is busy
+     */
+    bool isInUse(DxvkAccess access) const final {
+      return m_storage->isInUse(access);
+    }
+
+    /**
      * \brief Obtains tracking reference to backing storage
      *
      * \param [in] access Resource access
      * \returns Tracking reference
      */
-    DxvkTrackingRef trackRef(DxvkAccess access) {
+    DxvkTrackingRef trackRef(DxvkAccess access) final {
       return m_storage->trackRef(access);
     }
+
+    /**
+     * \brief Retrives sparse page table
+     * \returns Page table
+     */
+    DxvkSparsePageTable* getSparsePageTable() final;
 
   private:
 

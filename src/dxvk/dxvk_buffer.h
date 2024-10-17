@@ -389,10 +389,14 @@ namespace dxvk {
       const DxvkBufferViewKey& info);
 
     /**
-     * \brief Retrieves sparse binding table
-     * \returns Sparse binding table
+     * \brief Checks whether resource is in use
+     *
+     * \param [in] access Access type to check for
+     * \returns \c true if the resource is busy
      */
-    DxvkSparsePageTable* getSparsePageTable();
+    bool isInUse(DxvkAccess access) const final {
+      return m_storage->isInUse(access);
+    }
 
     /**
      * \brief Obtains tracking reference to backing storage
@@ -400,9 +404,15 @@ namespace dxvk {
      * \param [in] access Resource access
      * \returns Tracking reference
      */
-    DxvkTrackingRef trackRef(DxvkAccess access) {
+    DxvkTrackingRef trackRef(DxvkAccess access) final {
       return m_storage->trackRef(access);
     }
+
+    /**
+     * \brief Retrieves sparse binding table
+     * \returns Sparse binding table
+     */
+    DxvkSparsePageTable* getSparsePageTable() final;
 
   private:
 

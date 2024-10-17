@@ -89,23 +89,6 @@ namespace dxvk {
         m_useCount += increment;
     }
 
-    /**
-     * \brief Checks whether resource is in use
-     * 
-     * Returns \c true if there are pending accesses to
-     * the resource by the GPU matching the given access
-     * type. Note that checking for reads will also return
-     * \c true if the resource is being written to.
-     * \param [in] access Access type to check for
-     * \returns \c true if the resource is in use
-     */
-    bool isInUse(DxvkAccess access = DxvkAccess::Read) const {
-      uint64_t mask = WrAccessMask;
-      if (access == DxvkAccess::Read)
-        mask |= RdAccessMask;
-      return bool(m_useCount.load() & mask);
-    }
-    
   private:
     
     std::atomic<uint64_t> m_useCount;

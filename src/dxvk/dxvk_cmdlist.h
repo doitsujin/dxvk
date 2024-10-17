@@ -259,17 +259,17 @@ namespace dxvk {
      */
     template<DxvkAccess Access, typename T>
     void trackResource(Rc<T>&& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(std::move(rc), Access));
+      m_resources.trackResource(rc->trackRef(Access));
     }
 
     template<DxvkAccess Access, typename T>
     void trackResource(const Rc<T>& rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc.ptr(), Access));
+      m_resources.trackResource(rc->trackRef(Access));
     }
 
     template<DxvkAccess Access, typename T>
     void trackResource(T* rc) {
-      m_resources.trackResource(DxvkLifetime<DxvkResource>(rc, Access));
+      m_resources.trackResource(rc->trackRef(Access));
     }
 
     void track(DxvkTrackingRef&& object) {
