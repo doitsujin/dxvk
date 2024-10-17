@@ -66,6 +66,7 @@ dxvk_shaders = files([
 ])
 
 dxvk_src = [
+  'dxvk_access.cpp',
   'dxvk_adapter.cpp',
   'dxvk_allocator.cpp',
   'dxvk_barrier.cpp',

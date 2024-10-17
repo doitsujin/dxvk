@@ -291,6 +291,42 @@ namespace dxvk {
     }
 
     /**
+     * \brief Tracks an object
+     *
+     * Keeps the object alive until the command list finishes
+     * execution on the GPU.
+     * \param [in] object Object to track
+     */
+    template<typename T>
+    void track(Rc<T> object) {
+      m_objectTracker.track<DxvkObjectRef<T>>(std::move(object));
+    }
+
+    /**
+     * \brief Tracks a resource with access mode
+     *
+     * Keeps the object alive and tracks resource access for
+     * the purpoe of CPU access synchronization. The different
+     * overloads try to reduce atomic operations.
+     * \param [in] object Object to track
+     * \param [in] access Resource access mode
+     */
+    template<typename T>
+    void track(Rc<T>&& object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(std::move(object), access);
+    }
+
+    template<typename T>
+    void track(const Rc<T>& object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(object.ptr(), access);
+    }
+
+    template<typename T>
+    void track(T* object, DxvkAccess access) {
+      m_objectTracker.track<DxvkResourceRef>(object, access);
+    }
+
+    /**
      * \brief Tracks a graphics pipeline
      * \param [in] pipeline Pipeline
      */
@@ -316,6 +352,7 @@ namespace dxvk {
      */
     void notifyObjects() {
       m_resources.reset();
+      m_objectTracker.clear();
       m_signalTracker.notify();
     }
 
@@ -1063,6 +1100,8 @@ namespace dxvk {
     DxvkCommandSubmissionInfo m_cmd;
 
     PresenterSync             m_wsiSemaphores = { };
+
+    DxvkObjectTracker         m_objectTracker;
 
     DxvkLifetimeTracker       m_resources;
     DxvkSignalTracker         m_signalTracker;

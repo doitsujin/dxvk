@@ -447,6 +447,37 @@ namespace dxvk {
 
 
   /**
+   * \brief Typed tracking reference for resources
+   *
+   * Does not provide any access information.
+   */
+  class DxvkResourceRef : public DxvkTrackingRef {
+    constexpr static uintptr_t AccessMask = 0x3u;
+
+    static_assert(alignof(DxvkPagedResource) > AccessMask);
+  public:
+
+    template<typename T>
+    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkPagedResource*>(object.ptr())) | uintptr_t(access)) {
+      object.unsafeExtract()->convertRef(DxvkAccess::None, access);
+    }
+
+    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(object) | uintptr_t(access)) {
+      object->acquire(access);
+    }
+
+    ~DxvkResourceRef();
+
+  private:
+
+    uintptr_t m_ptr = 0u;
+
+  };
+
+
+  /**
    * \brief Key for sparse buffer binding entry
    *
    * Provides a strong ordering by resource, resource offset,
