@@ -2,8 +2,8 @@
 
 #include <map>
 
+#include "dxvk_access.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 
 namespace dxvk {
 
@@ -431,9 +431,26 @@ namespace dxvk {
    * Provides usage tracking and access to the sparse
    * page table of the resoruce, if any.
    */
-  class DxvkPagedResource : public DxvkResource {
+  class DxvkPagedResource {
 
   public:
+
+    virtual ~DxvkPagedResource();
+
+    /**
+     * \brief Increments ref count
+     */
+    force_inline void incRef() {
+      m_refCount.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Decrements ref count
+     */
+    force_inline void decRef() {
+      if (m_refCount.fetch_sub(1u, std::memory_order_acquire) == 1u)
+        delete this;
+    }
 
     /**
      * \brief Checks whether resource is in use
@@ -463,6 +480,10 @@ namespace dxvk {
      * \returns Sparse page table, if defined
      */
     virtual DxvkSparsePageTable* getSparsePageTable() = 0;
+
+  private:
+
+    std::atomic<uint32_t> m_refCount = { 0u };
 
   };
 

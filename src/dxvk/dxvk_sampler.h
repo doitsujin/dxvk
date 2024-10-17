@@ -5,7 +5,10 @@
 #include "../util/util_bit.h"
 #include "../util/thread.h"
 
-#include "dxvk_resource.h"
+#include "../vulkan/vulkan_loader.h"
+
+#include "dxvk_access.h"
+#include "dxvk_hash.h"
 
 namespace dxvk {
 

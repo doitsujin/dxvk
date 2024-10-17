@@ -3,7 +3,6 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 #include "dxvk_util.h"
 

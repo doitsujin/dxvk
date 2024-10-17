@@ -3,7 +3,8 @@
 #include <utility>
 #include <vector>
 
-#include "../dxvk/dxvk_resource.h"
+#include "../dxvk/dxvk_buffer.h"
+#include "../dxvk/dxvk_image.h"
 
 #include "../util/com/com_guid.h"
 #include "../util/com/com_object.h"

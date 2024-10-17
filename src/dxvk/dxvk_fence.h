@@ -5,7 +5,8 @@
 #include <utility>
 #include <vector>
 
-#include "dxvk_resource.h"
+#include "dxvk_buffer.h"
+#include "dxvk_image.h"
 
 #include "../util/thread.h"
 

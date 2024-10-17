@@ -7,7 +7,6 @@
 #include "dxvk_format.h"
 #include "dxvk_hash.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 
 namespace dxvk {

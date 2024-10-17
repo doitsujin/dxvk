@@ -7,6 +7,11 @@
 
 namespace dxvk {
 
+  DxvkPagedResource::~DxvkPagedResource() {
+
+  }
+
+
   DxvkSparseMapping::DxvkSparseMapping()
   : m_pool(nullptr),
     m_page(nullptr) {
