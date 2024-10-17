@@ -448,8 +448,9 @@ namespace dxvk {
     OwnsMemory  = 0,
     OwnsBuffer  = 1,
     OwnsImage   = 2,
-    Cacheable   = 3,
-    Imported    = 4,
+    CanCache    = 3,
+    CanMove     = 4,
+    Imported    = 5,
   };
 
   using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
