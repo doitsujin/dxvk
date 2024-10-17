@@ -374,7 +374,7 @@ namespace dxvk::hud {
 
     // Make sure GPU resources are being kept alive as necessary
     ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer);
-    ctx.cmd->trackQuery(Rc<DxvkGpuQuery>(m_query));
+    ctx.cmd->track(m_query);
   }
 
 
