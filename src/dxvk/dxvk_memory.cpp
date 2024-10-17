@@ -1848,6 +1848,20 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::registerResource(
+          DxvkPagedResource*          resource) {
+    std::lock_guard lock(m_resourceMutex);
+    m_resourceMap.emplace(resource->cookie(), resource);
+  }
+
+
+  void DxvkMemoryAllocator::unregisterResource(
+          DxvkPagedResource*          resource) {
+    std::lock_guard lock(m_resourceMutex);
+    m_resourceMap.erase(resource->cookie());
+  }
+
+
   VkDeviceAddress DxvkMemoryAllocator::getBufferDeviceAddress(VkBuffer buffer) const {
     auto vk = m_device->vkd();
 

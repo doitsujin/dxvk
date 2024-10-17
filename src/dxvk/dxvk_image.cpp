@@ -14,6 +14,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Always enable depth-stencil attachment usage for depth-stencil
@@ -44,6 +46,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
@@ -56,7 +60,7 @@ namespace dxvk {
 
 
   DxvkImage::~DxvkImage() {
-
+    m_allocator->unregisterResource(this);
   }
 
 
