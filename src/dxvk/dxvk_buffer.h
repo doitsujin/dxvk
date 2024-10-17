@@ -397,6 +397,15 @@ namespace dxvk {
      */
     DxvkSparsePageTable* getSparsePageTable();
 
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags
+     * \returns Operation status and allocation
+     */
+    Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode);
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
