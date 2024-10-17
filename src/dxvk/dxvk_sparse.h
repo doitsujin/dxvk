@@ -522,6 +522,21 @@ namespace dxvk {
      */
     virtual DxvkSparsePageTable* getSparsePageTable() = 0;
 
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags to control behaviour.
+     *    When relocating the resource to a preferred memory type,
+     *    \c NoFallback should be set, when defragmenting device
+     *    memory then \c NoAllocation should also be set.
+     * \returns \c true in the first field if the operation is
+     *    considered successful, i.e. if an new backing allocation
+     *    was successfully created or is unnecessary. The second
+     *    field will contain the new allocation itself.
+     */
+    virtual Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode) = 0;
+
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };

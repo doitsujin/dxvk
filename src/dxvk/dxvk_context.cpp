@@ -1586,7 +1586,7 @@ namespace dxvk {
     DxvkImageUsageInfo usage = usageInfo;
     usage.flags |= createFlags;
 
-    auto storage = image->allocateStorageWithUsage(usage);
+    auto storage = image->allocateStorageWithUsage(usage, 0u);
 
     DxvkRelocateImageInfo relocateInfo;
     relocateInfo.image = image;
