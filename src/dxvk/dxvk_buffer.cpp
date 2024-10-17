@@ -35,7 +35,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_stableAddress (true) {
     m_allocator->registerResource(this);
 
     DxvkAllocationInfo allocationInfo = { };
@@ -58,7 +59,6 @@ namespace dxvk {
 
   bool DxvkBuffer::canRelocate() const {
     return !m_bufferInfo.mapPtr && !m_stableAddress
-        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT);
   }
 

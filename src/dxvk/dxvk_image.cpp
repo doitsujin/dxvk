@@ -45,7 +45,8 @@ namespace dxvk {
     m_allocator     (&memAlloc),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_stableAddress (true) {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
@@ -66,7 +67,6 @@ namespace dxvk {
 
   bool DxvkImage::canRelocate() const {
     return !m_imageInfo.mapPtr && !m_shared && !m_stableAddress
-        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
 
