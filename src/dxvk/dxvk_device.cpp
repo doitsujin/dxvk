@@ -151,6 +151,12 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkGpuQuery> DxvkDevice::createRawQuery(
+          VkQueryType           type) {
+    return m_objects.queryPool().allocQuery(type);
+  }
+
+
   Rc<DxvkFence> DxvkDevice::createFence(
     const DxvkFenceCreateInfo& fenceInfo) {
     return new DxvkFence(this, fenceInfo);

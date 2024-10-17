@@ -211,25 +211,6 @@ namespace dxvk::hud {
   }
 
 
-  HudFrameTimeQueryPool::HudFrameTimeQueryPool(
-    const Rc<DxvkDevice>&           device)
-  : m_vkd(device->vkd()) {
-    VkQueryPoolCreateInfo info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
-    info.queryType = VK_QUERY_TYPE_TIMESTAMP;
-    info.queryCount = 1;
-
-    VkResult vr = m_vkd->vkCreateQueryPool(m_vkd->device(), &info, nullptr, &m_pool);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time query pool: ", vr));
-  }
-
-
-  HudFrameTimeQueryPool::~HudFrameTimeQueryPool() {
-    m_vkd->vkDestroyQueryPool(m_vkd->device(), m_pool, nullptr);
-  }
-
-
   HudFrameTimeItem::HudFrameTimeItem(const Rc<DxvkDevice>& device, HudRenderer* renderer)
   : m_device            (device),
     m_gfxSetLayout      (createDescriptorSetLayout()),
@@ -298,16 +279,17 @@ namespace dxvk::hud {
           HudPos              maxPos) {
     // Write current time stamp to the buffer
     DxvkBufferSliceHandle sliceHandle = m_gpuBuffer->getSliceHandle();
+    std::pair<VkQueryPool, uint32_t> query = m_query->getQuery();
 
     ctx.cmd->cmdResetQueryPool(DxvkCmdBuffer::InitBuffer,
-      m_queryPool->handle(), 0, 1);
+      query.first, query.second, 1);
 
     ctx.cmd->cmdWriteTimestamp(DxvkCmdBuffer::InitBuffer,
       VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-      m_queryPool->handle(), 0);
+      query.first, query.second);
 
     ctx.cmd->cmdCopyQueryPoolResults(DxvkCmdBuffer::InitBuffer,
-      m_queryPool->handle(), 0, 1, sliceHandle.handle,
+      query.first, query.second, 1, sliceHandle.handle,
       sliceHandle.offset + (dataPoint & 1u) * sizeof(uint64_t), sizeof(uint64_t),
       VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
 
@@ -392,7 +374,7 @@ namespace dxvk::hud {
 
     // Make sure GPU resources are being kept alive as necessary
     ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->getAllocation());
-    ctx.cmd->trackResource<DxvkAccess::Write>(m_queryPool);
+    ctx.cmd->trackQuery(Rc<DxvkGpuQuery>(m_query));
   }
 
 
@@ -493,8 +475,7 @@ namespace dxvk::hud {
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
     ctx.cmd->trackResource<DxvkAccess::Write>(m_gpuBuffer->getAllocation());
 
-    // We'll use and initialize this later as necessary
-    m_queryPool = new HudFrameTimeQueryPool(m_device);
+    m_query = m_device->createRawQuery(VK_QUERY_TYPE_TIMESTAMP);
   }
 
 
