@@ -12,6 +12,9 @@ namespace dxvk::wsi {
 #if defined(DXVK_WSI_WIN32)
     &Win32WSI,
 #endif
+#if defined(DXVK_WSI_SDL3)
+    &Sdl3WSI,
+#endif
 #if defined(DXVK_WSI_SDL2)
     &Sdl2WSI,
 #endif

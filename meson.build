@@ -148,16 +148,20 @@ else
     './include/native/directx'
   ]
 
+  lib_sdl3 = dependency('SDL3', required: false)
   lib_sdl2 = dependency('SDL2', required: false)
   lib_glfw = dependency('glfw', required: false)
+  if lib_sdl3.found()
+    compiler_args += ['-DDXVK_WSI_SDL3']
+  endif
   if lib_sdl2.found()
     compiler_args += ['-DDXVK_WSI_SDL2']
   endif
   if lib_glfw.found()
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
-  if (not lib_sdl2.found() and not lib_glfw.found())
-    error('SDL2 or GLFW are required to build dxvk-native')
+  if (not lib_sdl3.found() and not lib_sdl2.found() and not lib_glfw.found())
+    error('SDL3, SDL2, or GLFW are required to build dxvk-native')
   endif
   
   dxvk_name_prefix = 'dxvk_'

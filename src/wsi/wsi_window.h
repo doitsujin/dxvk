@@ -19,6 +19,9 @@ namespace dxvk::wsi {
       RECT rect    = { 0, 0, 0, 0 };
     } win;
 #endif
+#if defined(DXVK_WSI_SDL3)
+    // Nothing to store
+#endif
 #if defined(DXVK_WSI_SDL2)
     // Nothing to store
 #endif
