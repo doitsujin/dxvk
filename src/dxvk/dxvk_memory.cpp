@@ -8,6 +8,32 @@
 
 namespace dxvk {
 
+  void DxvkMemoryChunk::addAllocation(DxvkResourceAllocation* allocation) {
+    allocation->m_nextInChunk = allocationList;
+
+    if (allocationList)
+      allocationList->m_prevInChunk = allocation;
+
+    allocationList = allocation;
+  }
+
+
+  void DxvkMemoryChunk::removeAllocation(DxvkResourceAllocation* allocation) {
+    if (allocation->m_nextInChunk)
+      allocation->m_nextInChunk->m_prevInChunk = allocation->m_prevInChunk;
+
+    if (allocation->m_prevInChunk)
+      allocation->m_prevInChunk->m_nextInChunk = allocation->m_nextInChunk;
+    else if (allocationList == allocation)
+      allocationList = allocation->m_nextInChunk;
+
+    allocation->m_prevInChunk = nullptr;
+    allocation->m_nextInChunk = nullptr;
+  }
+
+
+
+
   DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
           DxvkMemoryAllocator*        allocator,
           VkBuffer                    buffer)
@@ -1114,11 +1140,10 @@ namespace dxvk {
     type.stats.memoryUsed += size;
 
     uint32_t chunkIndex = address >> DxvkPageAllocator::ChunkAddressBits;
+    VkDeviceSize offset = address & DxvkPageAllocator::ChunkAddressMask;
 
     auto& chunk = pool.chunks[chunkIndex];
     chunk.unusedTime = high_resolution_clock::time_point();
-
-    VkDeviceSize offset = address & DxvkPageAllocator::ChunkAddressMask;
 
     auto allocation = m_allocationPool.create(this, &type);
 
@@ -1139,6 +1164,9 @@ namespace dxvk {
       allocation->m_bufferAddress = chunk.memory.gpuVa
         ? chunk.memory.gpuVa + offset : 0u;
     }
+
+    if (&pool == &type.devicePool)
+      chunk.addAllocation(allocation);
 
     return allocation;
   }
@@ -1215,9 +1243,14 @@ namespace dxvk {
           // We free the actual allocation later, just update stats here.
           allocation->m_type->stats.memoryAllocated -= allocation->m_size;
         } else {
-          auto& pool = allocation->m_mapPtr
+          DxvkMemoryPool& pool = allocation->m_mapPtr
             ? allocation->m_type->mappedPool
             : allocation->m_type->devicePool;
+
+          if (!allocation->m_mapPtr) {
+            uint32_t chunkIndex = allocation->m_address >> DxvkPageAllocator::ChunkAddressBits;
+            pool.chunks[chunkIndex].removeAllocation(allocation);
+          }
 
           if (unlikely(pool.free(allocation->m_address, allocation->m_size))) {
             if (freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now()))
