@@ -34,13 +34,16 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.usage = m_info.usage;
     info.size = m_info.size;
     m_sharingMode.fill(info);
 
-    assignStorage(allocator.importBufferResource(info, importInfo));
+    assignStorage(allocator.importBufferResource(info, allocationInfo, importInfo));
   }
 
 

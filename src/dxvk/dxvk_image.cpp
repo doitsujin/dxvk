@@ -47,8 +47,11 @@ namespace dxvk {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
-    assignStorage(m_allocator->importImageResource(imageInfo, imageHandle));
+    assignStorage(m_allocator->importImageResource(imageInfo, allocationInfo, imageHandle));
   }
 
 
@@ -174,6 +177,7 @@ namespace dxvk {
     }
 
     DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
     allocationInfo.properties = m_properties;
 
     return m_allocator->createImageResource(imageInfo,
