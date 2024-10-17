@@ -99,7 +99,6 @@ dxvk_src = [
   'dxvk_platform_exts.cpp',
   'dxvk_presenter.cpp',
   'dxvk_queue.cpp',
-  'dxvk_resource.cpp',
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
   'dxvk_shader_key.cpp',

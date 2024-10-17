@@ -5,7 +5,8 @@
 #include "../util/util_bit.h"
 #include "../util/thread.h"
 
-#include "dxvk_resource.h"
+#include "dxvk_hash.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
 
