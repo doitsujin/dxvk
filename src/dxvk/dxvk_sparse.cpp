@@ -7,6 +7,12 @@
 
 namespace dxvk {
 
+  DxvkResourceRef::~DxvkResourceRef() {
+    auto resource = reinterpret_cast<DxvkPagedResource*>(m_ptr & ~AccessMask);
+    resource->release(DxvkAccess(m_ptr & AccessMask));
+  }
+
+
   DxvkSparseMapping::DxvkSparseMapping()
   : m_pool(nullptr),
     m_page(nullptr) {
