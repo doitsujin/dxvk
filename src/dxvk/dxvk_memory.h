@@ -921,6 +921,8 @@ namespace dxvk {
    * \brief Allocation properties
    */
   struct DxvkAllocationInfo {
+    /// Virtual resource cookie for the allocation
+    uint64_t resourceCookie = 0u;
     /// Desired memory property flags
     VkMemoryPropertyFlags properties = 0u;
   };
@@ -1040,6 +1042,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> importBufferResource(
       const VkBufferCreateInfo&         createInfo,
+      const DxvkAllocationInfo&         allocationInfo,
       const DxvkBufferImportInfo&       importInfo);
 
     /**
@@ -1051,6 +1054,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> importImageResource(
       const VkImageCreateInfo&          createInfo,
+      const DxvkAllocationInfo&         allocationInfo,
             VkImage                     imageHandle);
 
     /**
@@ -1186,14 +1190,17 @@ namespace dxvk {
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
             VkDeviceSize          address,
-            VkDeviceSize          size);
+            VkDeviceSize          size,
+      const DxvkAllocationInfo&   allocationInfo);
 
     DxvkResourceAllocation* createAllocation(
             DxvkMemoryType&       type,
-      const DxvkDeviceMemory&     memory);
+      const DxvkDeviceMemory&     memory,
+      const DxvkAllocationInfo&   allocationInfo);
 
     DxvkResourceAllocation* createAllocation(
-            DxvkSparsePageTable*  sparsePageTable);
+            DxvkSparsePageTable*  sparsePageTable,
+      const DxvkAllocationInfo&   allocationInfo);
 
     bool refillAllocationCache(
             DxvkLocalAllocationCache* cache,
