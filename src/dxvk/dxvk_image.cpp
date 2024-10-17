@@ -173,8 +173,11 @@ namespace dxvk {
       sharedImportWin32.handle = m_info.sharing.handle;
     }
 
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.properties = m_properties;
+
     return m_allocator->createImageResource(imageInfo,
-      m_properties, sharedMemoryInfo);
+      allocationInfo, sharedMemoryInfo);
   }
 
 
