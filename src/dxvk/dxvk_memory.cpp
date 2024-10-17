@@ -524,7 +524,7 @@ namespace dxvk {
       int64_t address = selectedPool.alloc(size, requirements.alignment);
 
       if (likely(address >= 0))
-        return createAllocation(type, selectedPool, address, size);
+        return createAllocation(type, selectedPool, address, size, allocationInfo);
 
       // If the memory type is host-visible, try to find an existing chunk
       // in the other memory pool of the memory type and move over.
@@ -549,7 +549,7 @@ namespace dxvk {
           address = selectedPool.alloc(size, requirements.alignment);
 
           if (likely(address >= 0))
-            return createAllocation(type, selectedPool, address, size);
+            return createAllocation(type, selectedPool, address, size, allocationInfo);
         }
       }
 
@@ -572,7 +572,7 @@ namespace dxvk {
           continue;
 
         mapDeviceMemory(memory, allocationInfo.properties);
-        return createAllocation(type, memory);
+        return createAllocation(type, memory, allocationInfo);
       }
 
       // Try to allocate a new chunk that is large enough to hold
@@ -584,7 +584,7 @@ namespace dxvk {
 
       if (allocateChunkInPool(type, selectedPool, allocationInfo.properties, size, desiredSize)) {
         address = selectedPool.alloc(size, requirements.alignment);
-        return createAllocation(type, selectedPool, address, size);
+        return createAllocation(type, selectedPool, address, size, allocationInfo);
       }
     }
 
@@ -606,7 +606,7 @@ namespace dxvk {
 
       if (likely(memory.memory != VK_NULL_HANDLE)) {
         mapDeviceMemory(memory, allocationInfo.properties);
-        return createAllocation(type, memory);
+        return createAllocation(type, memory, allocationInfo);
       }
     }
 
@@ -716,7 +716,9 @@ namespace dxvk {
         logMemoryStats();
       }
     } else {
-      allocation = createAllocation(new DxvkSparsePageTable(m_device, createInfo, buffer));
+      allocation = createAllocation(
+        new DxvkSparsePageTable(m_device, createInfo, buffer),
+        allocationInfo);
     }
 
     if (!allocation) {
@@ -853,7 +855,7 @@ namespace dxvk {
           allocation->m_sparsePageTable = pageTable.release();
       } else {
         // Just need a page table, but no memory
-        allocation = createAllocation(pageTable.release());
+        allocation = createAllocation(pageTable.release(), allocationInfo);
       }
     }
 
@@ -928,9 +930,11 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::importBufferResource(
     const VkBufferCreateInfo&         createInfo,
+    const DxvkAllocationInfo&         allocationInfo,
     const DxvkBufferImportInfo&       importInfo) {
     Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
     allocation->m_flags.set(DxvkAllocationFlag::Imported);
+    allocation->m_resourceCookie = allocation->m_resourceCookie;
     allocation->m_size = createInfo.size;
     allocation->m_mapPtr = importInfo.mapPtr;
     allocation->m_buffer = importInfo.buffer;
@@ -945,9 +949,11 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::importImageResource(
     const VkImageCreateInfo&          createInfo,
+    const DxvkAllocationInfo&         allocationInfo,
           VkImage                     imageHandle) {
     Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
     allocation->m_flags.set(DxvkAllocationFlag::Imported);
+    allocation->m_resourceCookie = allocation->m_resourceCookie;
     allocation->m_image = imageHandle;
 
     return allocation;
@@ -1103,7 +1109,8 @@ namespace dxvk {
           DxvkMemoryType&       type,
           DxvkMemoryPool&       pool,
           VkDeviceSize          address,
-          VkDeviceSize          size) {
+          VkDeviceSize          size,
+    const DxvkAllocationInfo&   allocationInfo) {
     type.stats.memoryUsed += size;
 
     uint32_t chunkIndex = address >> DxvkPageAllocator::ChunkAddressBits;
@@ -1114,6 +1121,7 @@ namespace dxvk {
     VkDeviceSize offset = address & DxvkPageAllocator::ChunkAddressMask;
 
     auto allocation = m_allocationPool.create(this, &type);
+    allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_memory = chunk.memory.memory;
     allocation->m_address = address;
     allocation->m_size = size;
@@ -1133,8 +1141,10 @@ namespace dxvk {
 
 
   DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
-          DxvkSparsePageTable*  sparsePageTable) {
+          DxvkSparsePageTable*  sparsePageTable,
+    const DxvkAllocationInfo&   allocationInfo) {
     auto allocation = m_allocationPool.create(this, nullptr);
+    allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_sparsePageTable = sparsePageTable;
 
     return allocation;
@@ -1143,7 +1153,8 @@ namespace dxvk {
 
   DxvkResourceAllocation* DxvkMemoryAllocator::createAllocation(
           DxvkMemoryType&       type,
-    const DxvkDeviceMemory&     memory) {
+    const DxvkDeviceMemory&     memory,
+    const DxvkAllocationInfo&   allocationInfo) {
     type.stats.memoryUsed += memory.size;
 
     auto allocation = m_allocationPool.create(this, &type);
@@ -1152,6 +1163,7 @@ namespace dxvk {
     if (memory.buffer)
       allocation->m_flags.set(DxvkAllocationFlag::OwnsBuffer);
 
+    allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_memory = memory.memory;
     allocation->m_address = DedicatedChunkAddress;
     allocation->m_size = memory.size;
@@ -1440,7 +1452,8 @@ namespace dxvk {
 
         // Add allocation to the list and mark it as cacheable,
         // so it will get recycled as-is after use.
-        allocation = createAllocation(memoryType, memoryPool, address, allocationSize);
+        allocation = createAllocation(memoryType, memoryPool,
+          address, allocationSize, DxvkAllocationInfo());
         allocation->m_flags.set(DxvkAllocationFlag::Cacheable);
 
         if (tail) {
