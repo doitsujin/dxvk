@@ -7,6 +7,8 @@
 
 #include "../../util/util_time.h"
 
+#include "../dxvk_gpu_query.h"
+
 #include "dxvk_hud_renderer.h"
 
 namespace dxvk::hud {
@@ -230,30 +232,6 @@ namespace dxvk::hud {
 
 
   /**
-   * \brief Trackable GPU query pool
-   */
-  class HudFrameTimeQueryPool : public DxvkResource {
-
-  public:
-
-    HudFrameTimeQueryPool(
-      const Rc<DxvkDevice>&           device);
-
-    ~HudFrameTimeQueryPool();
-
-    VkQueryPool handle() const {
-      return m_pool;
-    }
-
-  private:
-
-    Rc<vk::DeviceFn>  m_vkd;
-    VkQueryPool       m_pool = VK_NULL_HANDLE;
-
-  };
-
-
-  /**
    * \brief HUD item to display the frame rate
    */
   class HudFrameTimeItem : public HudItem {
@@ -308,7 +286,7 @@ namespace dxvk::hud {
     Rc<DxvkDevice>            m_device;
     Rc<DxvkBuffer>            m_gpuBuffer;
     Rc<DxvkBufferView>        m_textView;
-    Rc<HudFrameTimeQueryPool> m_queryPool;
+    Rc<DxvkGpuQuery>          m_query;
 
     VkDescriptorSetLayout     m_computeSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout          m_computePipelineLayout = VK_NULL_HANDLE;

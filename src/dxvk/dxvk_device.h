@@ -301,7 +301,16 @@ namespace dxvk {
             VkQueryType           type,
             VkQueryControlFlags   flags,
             uint32_t              index);
-    
+
+    /**
+     * \brief Creates a raw GPU query
+     *
+     * \param [in] type Query type
+     * \returns New query
+     */
+    Rc<DxvkGpuQuery> createRawQuery(
+            VkQueryType           type);
+
     /**
      * \brief Creates new fence
      *
