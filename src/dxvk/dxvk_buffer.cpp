@@ -77,5 +77,27 @@ namespace dxvk {
   DxvkSparsePageTable* DxvkBuffer::getSparsePageTable() {
     return m_storage->getSparsePageTable();
   }
+
+
+  Rc<DxvkResourceAllocation> DxvkBuffer::relocateStorage(
+          DxvkAllocationModes         mode) {
+    // The resource may become non-relocatable even after we allocate new
+    // backing storage, but if it already is then don't waste memory.
+    if (!canRelocate())
+      return nullptr;
+
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+    allocationInfo.properties = m_properties;
+    allocationInfo.mode = mode;
+
+    VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    info.flags = m_info.flags;
+    info.usage = m_info.usage;
+    info.size = m_info.size;
+    m_sharingMode.fill(info);
+
+    return m_allocator->createBufferResource(info, allocationInfo, nullptr);
+  }
   
 }
