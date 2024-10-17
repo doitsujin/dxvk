@@ -6336,6 +6336,7 @@ namespace dxvk {
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
     imageBarriers.clear();
 
@@ -6470,6 +6471,7 @@ namespace dxvk {
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
   }
 
 
