@@ -282,10 +282,6 @@ namespace dxvk {
       m_resources.trackSampler(sampler);
     }
 
-    void trackEvent(Rc<DxvkGpuEvent>&& event) {
-      m_resources.trackEvent(std::move(event));
-    }
-
     /**
      * \brief Tracks an object
      *
