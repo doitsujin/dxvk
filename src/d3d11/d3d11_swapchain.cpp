@@ -257,6 +257,9 @@ namespace dxvk {
     if (!(PresentFlags & DXGI_PRESENT_TEST))
       m_dirty |= m_presenter->setSyncInterval(SyncInterval) != VK_SUCCESS;
 
+    if (pPresentParameters)
+      Logger::err(str::format("dirty rects: ", pPresentParameters->DirtyRectsCount, ", scroll: ", !!pPresentParameters->pScrollRect));
+
     HRESULT hr = S_OK;
 
     if (!m_presenter->hasSwapChain()) {
