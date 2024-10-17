@@ -1123,6 +1123,10 @@ namespace dxvk {
     VkDeviceSize offset = address & DxvkPageAllocator::ChunkAddressMask;
 
     auto allocation = m_allocationPool.create(this, &type);
+
+    if (!(allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && allocationInfo.resourceCookie)
+      allocation->m_flags.set(DxvkAllocationFlag::CanMove);
+
     allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_memory = chunk.memory.memory;
     allocation->m_address = address;
@@ -1165,6 +1169,9 @@ namespace dxvk {
     if (memory.buffer)
       allocation->m_flags.set(DxvkAllocationFlag::OwnsBuffer);
 
+    if (!(allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && allocationInfo.resourceCookie)
+      allocation->m_flags.set(DxvkAllocationFlag::CanMove);
+
     allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_memory = memory.memory;
     allocation->m_address = DedicatedChunkAddress;
@@ -1190,7 +1197,7 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::freeAllocation(
           DxvkResourceAllocation* allocation) {
-    if (allocation->m_flags.test(DxvkAllocationFlag::Cacheable)) {
+    if (allocation->m_flags.test(DxvkAllocationFlag::CanCache)) {
       // Return cacheable allocations to the shared cache
       allocation->destroyBufferViews();
 
@@ -1445,7 +1452,7 @@ namespace dxvk {
         // so it will get recycled as-is after use.
         allocation = createAllocation(memoryType, memoryPool,
           address, allocationSize, DxvkAllocationInfo());
-        allocation->m_flags.set(DxvkAllocationFlag::Cacheable);
+        allocation->m_flags.set(DxvkAllocationFlag::CanCache);
 
         if (tail) {
           tail->m_nextCached = allocation;
