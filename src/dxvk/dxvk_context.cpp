@@ -1381,7 +1381,7 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
           Rc<DxvkResourceAllocation>&& slice) {
     Rc<DxvkResourceAllocation> prevAllocation = buffer->assignStorage(std::move(slice));
-    m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
+    m_cmd->trackResource(std::move(prevAllocation));
 
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
@@ -1437,7 +1437,7 @@ namespace dxvk {
           Rc<DxvkResourceAllocation>&& slice,
     const DxvkImageUsageInfo&       usageInfo) {
     Rc<DxvkResourceAllocation> prevAllocation = image->assignStorageWithUsage(std::move(slice), usageInfo);
-    m_cmd->trackResource<DxvkAccess::None>(std::move(prevAllocation));
+    m_cmd->trackResource(std::move(prevAllocation));
 
     VkImageUsageFlags usage = image->info().usage;
 

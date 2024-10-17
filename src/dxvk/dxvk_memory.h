@@ -476,58 +476,20 @@ namespace dxvk {
 
     ~DxvkResourceAllocation();
 
-    force_inline void incRef() { acquire(DxvkAccess::None); }
-    force_inline void decRef() { release(DxvkAccess::None); }
-
     /**
-     * \brief Releases allocation
-     *
-     * Increments the use counter of the allocation.
-     * \param [in] access Resource access
+     * \brief Increments reference count
      */
-    force_inline void acquire(DxvkAccess access) {
-      m_useCount.fetch_add(getIncrement(access), std::memory_order_acquire);
+    force_inline void incRef() {
+      m_useCount.fetch_add(1u, std::memory_order_acquire);
     }
 
     /**
-     * \brief Releases allocation
-     *
-     * Decrements the use counter and frees the allocation if necessary.
-     * \param [in] access Resource access
+     * \brief Decrements reference count
+     * Frees allocation if necessary
      */
-    force_inline void release(DxvkAccess access) {
-      uint64_t increment = getIncrement(access);
-      uint64_t remaining = m_useCount.fetch_sub(increment, std::memory_order_release) - increment;
-
-      if (unlikely(!remaining))
+    force_inline void decRef() {
+      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_acquire) == 1u))
         free();
-    }
-
-    /**
-     * \brief Converts reference
-     *
-     * Decrements and increments the use counter according
-     * to the given access types in a single operation.
-     * \param [in] from Previous access type
-     * \param [in] to New access type
-     */
-    force_inline void convertRef(DxvkAccess from, DxvkAccess to) {
-      uint64_t increment = getIncrement(to) - getIncrement(from);
-
-      if (increment)
-        m_useCount.fetch_add(increment, std::memory_order_acq_rel);
-    }
-
-    /**
-     * \brief Checks whether the resource is in use
-     *
-     * Note that when checking for read access, this will also
-     * return \c true if the resource is being written to.
-     * \param [in] access Access to check
-     */
-    force_inline bool isInUse(DxvkAccess access) const {
-      uint64_t cur = m_useCount.load(std::memory_order_acquire);
-      return cur >= getIncrement(access);
     }
 
     /**
@@ -623,10 +585,10 @@ namespace dxvk {
 
   private:
 
-    std::atomic<uint64_t>       m_useCount = { 0u };
-
-    uint32_t                    m_resourceCookie = 0u;
+    std::atomic<uint32_t>       m_useCount = { 0u };
     DxvkAllocationFlags         m_flags = 0u;
+
+    uint64_t                    m_resourceCookie = 0u;
 
     VkDeviceMemory              m_memory = VK_NULL_HANDLE;
     VkDeviceSize                m_address = 0u;

@@ -395,7 +395,7 @@ namespace dxvk {
           DxvkSparseMapping&&     mapping) {
     if (m_mappings[page] != mapping) {
       if (m_mappings[page])
-        cmd->trackResource<DxvkAccess::None>(m_mappings[page].m_page);
+        cmd->trackResource(m_mappings[page].m_page);
 
       m_mappings[page] = std::move(mapping);
     }
