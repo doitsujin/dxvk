@@ -4554,9 +4554,9 @@ namespace dxvk {
   }
 
   bool D3D9DeviceEx::WaitForResource(
-  const Rc<DxvkResource>&                 Resource,
-        uint64_t                          SequenceNumber,
-        DWORD                             MapFlags) {
+    const DxvkPagedResource&                Resource,
+          uint64_t                          SequenceNumber,
+          DWORD                             MapFlags) {
     // Wait for the any pending D3D9 command to be executed
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.
@@ -4566,10 +4566,10 @@ namespace dxvk {
       ? DxvkAccess::Write
       : DxvkAccess::Read;
 
-    if (!Resource->isInUse(access))
+    if (!Resource.isInUse(access))
       SynchronizeCsThread(SequenceNumber);
 
-    if (Resource->isInUse(access)) {
+    if (Resource.isInUse(access)) {
       if (MapFlags & D3DLOCK_DONOTWAIT) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
@@ -4790,7 +4790,7 @@ namespace dxvk {
         TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
       }
 
-      if (!WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
+      if (!WaitForResource(*mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
         return D3DERR_WASSTILLDRAWING;
     }
 
@@ -4963,7 +4963,7 @@ namespace dxvk {
       // That means that NeedsReadback is only true if the texture has been used with GetRTData or GetFrontbufferData before.
       // Those functions create a buffer, so the buffer always exists here.
       const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer();
-      WaitForResource(buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
+      WaitForResource(*buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
       pSrcTexture->SetNeedsReadback(SrcSubresource, false);
     }
 
@@ -5180,7 +5180,7 @@ namespace dxvk {
       const bool skipWait = (!needsReadback && (readOnly || !directMapping)) || noOverwrite;
       if (!skipWait) {
         const Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
-        if (!WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
+        if (!WaitForResource(*mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
           return D3DERR_WASSTILLDRAWING;
 
         pResource->SetNeedsReadback(false);
@@ -5324,7 +5324,7 @@ namespace dxvk {
         // - Write to the primary buffer using ProcessVertices which gets copied over to the staging buffer at the end.
         //   So it could end up writing to the buffer on the GPU while the same buffer gets read here on the CPU.
         //   That is why we need to ensure the staging buffer is idle here.
-        WaitForResource(vbo->GetBuffer<D3D9_COMMON_BUFFER_TYPE_STAGING>(), vbo->GetMappingBufferSequenceNumber(), D3DLOCK_READONLY);
+        WaitForResource(*vbo->GetBuffer<D3D9_COMMON_BUFFER_TYPE_STAGING>(), vbo->GetMappingBufferSequenceNumber(), D3DLOCK_READONLY);
       }
 
       const uint32_t vertexSize = m_state.vertexDecl->GetSize(i);

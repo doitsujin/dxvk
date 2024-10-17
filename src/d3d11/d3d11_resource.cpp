@@ -122,7 +122,7 @@ namespace dxvk {
         Logger::warn("D3D11DXGIKeyedMutex::ReleaseSync: Called without context locking enabled.");
 
       D3D10DeviceLock lock = context->LockContext();
-      context->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+      context->WaitForResource(*texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
     }
 
     VkResult vr = dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(
