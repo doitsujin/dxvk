@@ -581,6 +581,10 @@ namespace dxvk {
         }
       }
 
+      // If we're not allowed to allocate device memory, move on.
+      if (allocationInfo.mode.test(DxvkAllocationMode::NoAllocation))
+        continue;
+
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
       // especially when a multiple such resources are created at once.
@@ -685,7 +689,8 @@ namespace dxvk {
         if (likely(allocation && allocation->m_buffer))
           return allocation;
 
-        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+         && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
           DxvkAllocationInfo fallbackInfo = allocationInfo;
           fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -695,9 +700,21 @@ namespace dxvk {
             return allocation;
         }
 
+        // If we can't get an allocation for a global buffer, there's no
+        // real point in retrying with a dedicated buffer since the result
+        // will most likely be the same.
+        if (!allocation) {
+          if (allocationInfo.mode.isClear()) {
+            logMemoryError(memoryRequirements);
+            logMemoryStats();
+          }
+
+          return nullptr;
+        }
+
         // If we end up here with an allocation but no buffer, something
         // is weird, but we can keep the allocation around for now.
-        if (allocation && !allocation->m_buffer) {
+        if (!allocation->m_buffer) {
           Logger::err(str::format("Got allocation from memory type ",
             allocation->m_type->index, " without global buffer"));
         }
@@ -732,14 +749,15 @@ namespace dxvk {
        || (allocation->m_address & requirements.memoryRequirements.alignment))
         allocation = allocateMemory(requirements.memoryRequirements, allocationInfo);
 
-      if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+      if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+       && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
         DxvkAllocationInfo fallbackInfo = allocationInfo;
         fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
         allocation = allocateMemory(requirements.memoryRequirements, fallbackInfo);
       }
 
-      if (!allocation) {
+      if (!allocation && allocationInfo.mode.isClear()) {
         logMemoryError(requirements.memoryRequirements);
         logMemoryStats();
       }
@@ -820,7 +838,8 @@ namespace dxvk {
 
     if (!(createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
       // If a dedicated allocation is at least preferred for this resource, try this first
-      if (!allocation && dedicatedRequirements.prefersDedicatedAllocation) {
+      if (!allocation && dedicatedRequirements.prefersDedicatedAllocation
+       && !allocationInfo.mode.test(DxvkAllocationMode::NoAllocation)) {
         VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, next };
         dedicatedInfo.image = image;
 
@@ -830,7 +849,8 @@ namespace dxvk {
         // Only retry with a dedicated sysmem allocation if a dedicated allocation
         // is required. Otherwise, we should try to suballocate in device memory.
         if (!allocation && dedicatedRequirements.requiresDedicatedAllocation
-        && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+         && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)
+         && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
           DxvkAllocationInfo fallbackInfo = allocationInfo;
           fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -850,7 +870,8 @@ namespace dxvk {
         // Try to suballocate memory and fall back to system memory on error.
         allocation = allocateMemory(requirements.memoryRequirements, allocationInfo);
 
-        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+         && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
           DxvkAllocationInfo fallbackInfo = allocationInfo;
           fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
@@ -890,8 +911,11 @@ namespace dxvk {
     if (!allocation) {
       vk->vkDestroyImage(vk->device(), image, nullptr);
 
-      logMemoryError(requirements.memoryRequirements);
-      logMemoryStats();
+      if (allocationInfo.mode.isClear()) {
+        logMemoryError(requirements.memoryRequirements);
+        logMemoryStats();
+      }
+
       return nullptr;
     }
 

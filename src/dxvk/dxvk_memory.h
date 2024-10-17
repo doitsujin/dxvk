@@ -928,6 +928,23 @@ namespace dxvk {
 
 
   /**
+   * \brief Allocation modes
+   */
+  enum class DxvkAllocationMode : uint32_t {
+    /// If set, the allocation will fail if video memory is
+    /// full rather than falling back to system memory.
+    NoFallback      = 0,
+    /// If set, the allocation will only succeed if it
+    /// can be suballocated from an existing chunk.
+    NoAllocation    = 1,
+
+    eFlagEnum
+  };
+
+  using DxvkAllocationModes = Flags<DxvkAllocationMode>;
+
+
+  /**
    * \brief Allocation properties
    */
   struct DxvkAllocationInfo {
@@ -935,6 +952,8 @@ namespace dxvk {
     uint64_t resourceCookie = 0u;
     /// Desired memory property flags
     VkMemoryPropertyFlags properties = 0u;
+    /// Allocation mode flags
+    DxvkAllocationModes mode = 0u;
   };
 
 
