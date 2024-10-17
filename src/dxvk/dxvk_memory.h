@@ -918,6 +918,15 @@ namespace dxvk {
 
 
   /**
+   * \brief Allocation properties
+   */
+  struct DxvkAllocationInfo {
+    /// Desired memory property flags
+    VkMemoryPropertyFlags properties = 0u;
+  };
+
+
+  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
@@ -952,27 +961,27 @@ namespace dxvk {
      * not required. Very large resources may still be placed in
      * a dedicated allocation.
      * \param [in] requirements Memory requirements
+     * \param [in] allocationInfo Allocation info
      * \param [in] properties Memory property flags. Some of
      *    these may be ignored in case of memory pressure.
      * \returns Allocated memory
      */
     Rc<DxvkResourceAllocation> allocateMemory(
       const VkMemoryRequirements&             requirements,
-            VkMemoryPropertyFlags             properties);
+      const DxvkAllocationInfo&               allocationInfo);
 
     /**
      * \brief Allocates memory for a resource
      *
      * Will always create a dedicated allocation.
      * \param [in] requirements Memory requirements
-     * \param [in] properties Memory property flags. Some of
-     *    these may be ignored in case of memory pressure.
+     * \param [in] allocationInfo Allocation info
      * \param [in] next Further memory properties
      * \returns Allocated memory
      */
     Rc<DxvkResourceAllocation> allocateDedicatedMemory(
       const VkMemoryRequirements&             requirements,
-            VkMemoryPropertyFlags             properties,
+      const DxvkAllocationInfo&               allocationInfo,
       const void*                             next);
 
     /**
@@ -981,26 +990,26 @@ namespace dxvk {
      * Will make use of global buffers whenever possible, but
      * may fall back to creating a dedicated Vulkan buffer.
      * \param [in] createInfo Buffer create info
-     * \param [in] properties Memory property flags
+     * \param [in] allocationInfo Allocation properties
      * \param [in] allocationCache Optional allocation cache
      * \returns Buffer resource
      */
     Rc<DxvkResourceAllocation> createBufferResource(
       const VkBufferCreateInfo&         createInfo,
-            VkMemoryPropertyFlags       properties,
+      const DxvkAllocationInfo&         allocationInfo,
             DxvkLocalAllocationCache*   allocationCache);
 
     /**
      * \brief Creates image resource
      *
      * \param [in] createInfo Image create info
-     * \param [in] properties Memory property flags
+     * \param [in] allocationInfo Allocation properties
      * \param [in] next External memory properties
      * \returns Image resource
      */
     Rc<DxvkResourceAllocation> createImageResource(
       const VkImageCreateInfo&          createInfo,
-            VkMemoryPropertyFlags       properties,
+      const DxvkAllocationInfo&         allocationInfo,
       const void*                       next);
 
     /**
