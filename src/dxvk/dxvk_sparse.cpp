@@ -7,6 +7,9 @@
 
 namespace dxvk {
 
+  std::atomic<uint64_t> DxvkPagedResource::s_cookie = { 0u };
+
+
   DxvkPagedResource::~DxvkPagedResource() {
 
   }
