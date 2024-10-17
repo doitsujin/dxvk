@@ -690,9 +690,9 @@ namespace dxvk {
       D3D9Format            Format) const;
 
     bool WaitForResource(
-      const Rc<DxvkResource>&                 Resource,
-            uint64_t                          SequenceNumber,
-            DWORD                             MapFlags);
+      const DxvkPagedResource&      Resource,
+            uint64_t                SequenceNumber,
+            DWORD                   MapFlags);
 
     /**
      * \brief Locks a subresource of an image

@@ -300,12 +300,12 @@ namespace dxvk {
   }
 
 
-  void DxvkDevice::waitForResource(const Rc<DxvkResource>& resource, DxvkAccess access) {
-    if (resource->isInUse(access)) {
+  void DxvkDevice::waitForResource(const DxvkPagedResource& resource, DxvkAccess access) {
+    if (resource.isInUse(access)) {
       auto t0 = dxvk::high_resolution_clock::now();
 
-      m_submissionQueue.synchronizeUntil([resource, access] {
-        return !resource->isInUse(access);
+      m_submissionQueue.synchronizeUntil([&resource, access] {
+        return !resource.isInUse(access);
       });
 
       auto t1 = dxvk::high_resolution_clock::now();

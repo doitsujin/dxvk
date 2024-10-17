@@ -360,7 +360,7 @@ namespace dxvk {
      || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       ExecuteFlush();
 
-      m_device->waitForResource(pResource->GetImage(), DxvkAccess::Write);
+      m_device->waitForResource(*pResource->GetImage(), DxvkAccess::Write);
     }
 
     // If a keyed mutex is used, initialize that to the correct state as well.
