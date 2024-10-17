@@ -505,19 +505,19 @@ namespace dxvk {
   
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::allocateMemory(
     const VkMemoryRequirements&             requirements,
-          VkMemoryPropertyFlags             properties) {
+    const DxvkAllocationInfo&               allocationInfo) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     // Ensure the allocation size is also aligned
     VkDeviceSize size = align(requirements.size, requirements.alignment);
 
-    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(properties))) {
+    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties))) {
       auto& type = m_memTypes[typeIndex];
 
       // Use correct memory pool depending on property flags. This way we avoid
       // wasting address space on fallback allocations, or on UMA devices that
       // only expose one memory type.
-      auto& selectedPool = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      auto& selectedPool = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
         ? type.mappedPool
         : type.devicePool;
 
@@ -531,7 +531,7 @@ namespace dxvk {
       // If the memory type is host-visible, try to find an existing chunk
       // in the other memory pool of the memory type and move over.
       if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        auto& oppositePool = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        auto& oppositePool = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
           ? type.devicePool
           : type.mappedPool;
 
@@ -546,7 +546,7 @@ namespace dxvk {
           oppositePool.pageAllocator.removeChunk(freeChunkIndex);
           oppositePool.chunks[freeChunkIndex] = DxvkMemoryChunk();
 
-          mapDeviceMemory(selectedPool.chunks[poolChunkIndex].memory, properties);
+          mapDeviceMemory(selectedPool.chunks[poolChunkIndex].memory, allocationInfo.properties);
 
           address = selectedPool.alloc(size, requirements.alignment);
 
@@ -558,7 +558,7 @@ namespace dxvk {
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
       // especially when a multiple such resources are created at once.
-      uint32_t minResourcesPerChunk = (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? 1u : 4u;
+      uint32_t minResourcesPerChunk = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? 1u : 4u;
 
       // If we're on a mapped memory type and we're about to lose an entire chunk
       // worth of memory to huge resources causing fragmentation, use dedicated
@@ -573,7 +573,7 @@ namespace dxvk {
         if (!memory.memory)
           continue;
 
-        mapDeviceMemory(memory, properties);
+        mapDeviceMemory(memory, allocationInfo.properties);
         return createAllocation(type, memory);
       }
 
@@ -584,7 +584,7 @@ namespace dxvk {
       while (desiredSize < size * minResourcesPerChunk)
         desiredSize *= 2u;
 
-      if (allocateChunkInPool(type, selectedPool, properties, size, desiredSize)) {
+      if (allocateChunkInPool(type, selectedPool, allocationInfo.properties, size, desiredSize)) {
         address = selectedPool.alloc(size, requirements.alignment);
         return createAllocation(type, selectedPool, address, size);
       }
@@ -596,18 +596,18 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::allocateDedicatedMemory(
     const VkMemoryRequirements&             requirements,
-          VkMemoryPropertyFlags             properties,
+    const DxvkAllocationInfo&               allocationInfo,
     const void*                             next) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkDeviceMemory memory = { };
 
-    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(properties))) {
+    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties))) {
       auto& type = m_memTypes[typeIndex];
       memory = allocateDeviceMemory(type, requirements.size, next);
 
       if (likely(memory.memory != VK_NULL_HANDLE)) {
-        mapDeviceMemory(memory, properties);
+        mapDeviceMemory(memory, allocationInfo.properties);
         return createAllocation(type, memory);
       }
     }
@@ -618,7 +618,7 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createBufferResource(
     const VkBufferCreateInfo&         createInfo,
-          VkMemoryPropertyFlags       properties,
+    const DxvkAllocationInfo&         allocationInfo,
           DxvkLocalAllocationCache*   allocationCache) {
     Rc<DxvkResourceAllocation> allocation;
 
@@ -638,7 +638,7 @@ namespace dxvk {
         // are expected to happen frequently.
         if (allocationCache && createInfo.size <= DxvkLocalAllocationCache::MaxSize
          && allocationCache->m_memoryTypes && !(allocationCache->m_memoryTypes & ~memoryRequirements.memoryTypeBits)
-         && (properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+         && (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
           allocation = allocationCache->allocateFromCache(createInfo.size);
 
           if (likely(allocation))
@@ -647,21 +647,23 @@ namespace dxvk {
           // If the cache is currently empty for the required allocation size,
           // make sure it's not. This will also initialize the shared caches
           // for any relevant memory pools as necessary.
-          if (refillAllocationCache(allocationCache, memoryRequirements, properties))
+          if (refillAllocationCache(allocationCache, memoryRequirements, allocationInfo.properties))
             return allocationCache->allocateFromCache(createInfo.size);
         }
 
         // If there is at least one memory type that supports the required
         // buffer usage flags and requested memory properties, suballocate
         // from a global buffer.
-        allocation = allocateMemory(memoryRequirements, properties);
+        allocation = allocateMemory(memoryRequirements, allocationInfo);
 
         if (likely(allocation && allocation->m_buffer))
           return allocation;
 
-        if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-          allocation = allocateMemory(memoryRequirements,
-            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          DxvkAllocationInfo fallbackInfo = allocationInfo;
+          fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+          allocation = allocateMemory(memoryRequirements, fallbackInfo);
 
           if (likely(allocation && allocation->m_buffer))
             return allocation;
@@ -702,11 +704,13 @@ namespace dxvk {
       if (!allocation || !(requirements.memoryRequirements.memoryTypeBits & (1u << allocation->m_type->index))
        || (allocation->m_size < requirements.memoryRequirements.size)
        || (allocation->m_address & requirements.memoryRequirements.alignment))
-        allocation = allocateMemory(requirements.memoryRequirements, properties);
+        allocation = allocateMemory(requirements.memoryRequirements, allocationInfo);
 
-      if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-        allocation = allocateMemory(requirements.memoryRequirements,
-          properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        DxvkAllocationInfo fallbackInfo = allocationInfo;
+        fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+        allocation = allocateMemory(requirements.memoryRequirements, fallbackInfo);
       }
 
       if (!allocation) {
@@ -752,7 +756,7 @@ namespace dxvk {
 
   Rc<DxvkResourceAllocation> DxvkMemoryAllocator::createImageResource(
     const VkImageCreateInfo&          createInfo,
-          VkMemoryPropertyFlags       properties,
+    const DxvkAllocationInfo&         allocationInfo,
     const void*                       next) {
     auto vk = m_device->vkd();
 
@@ -792,14 +796,18 @@ namespace dxvk {
         VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO, next };
         dedicatedInfo.image = image;
 
-        allocation = allocateDedicatedMemory(requirements.memoryRequirements, properties, &dedicatedInfo);
+        allocation = allocateDedicatedMemory(requirements.memoryRequirements,
+          allocationInfo, &dedicatedInfo);
 
         // Only retry with a dedicated sysmem allocation if a dedicated allocation
         // is required. Otherwise, we should try to suballocate in device memory.
         if (!allocation && dedicatedRequirements.requiresDedicatedAllocation
-        && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+        && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          DxvkAllocationInfo fallbackInfo = allocationInfo;
+          fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
           allocation = allocateDedicatedMemory(requirements.memoryRequirements,
-            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &dedicatedInfo);
+            fallbackInfo, &dedicatedInfo);
         }
       }
 
@@ -812,11 +820,13 @@ namespace dxvk {
         }
 
         // Try to suballocate memory and fall back to system memory on error.
-        allocation = allocateMemory(requirements.memoryRequirements, properties);
+        allocation = allocateMemory(requirements.memoryRequirements, allocationInfo);
 
-        if (!allocation && (properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
-          allocation = allocateMemory(requirements.memoryRequirements,
-            properties & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+          DxvkAllocationInfo fallbackInfo = allocationInfo;
+          fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+          allocation = allocateMemory(requirements.memoryRequirements, fallbackInfo);
         }
       }
     } else {
@@ -831,10 +841,15 @@ namespace dxvk {
         metadataRequirements.alignment = SparseMemoryPageSize;
         metadataRequirements.memoryTypeBits = requirements.memoryRequirements.memoryTypeBits;
 
-        allocation = allocateMemory(metadataRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        DxvkAllocationInfo metadataInfo = { };
+        metadataInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        if (!allocation)
-          allocation = allocateMemory(metadataRequirements, 0u);
+        allocation = allocateMemory(metadataRequirements, metadataInfo);
+
+        if (!allocation) {
+          metadataInfo.properties = 0u;
+          allocation = allocateMemory(metadataRequirements, metadataInfo);
+        }
 
         if (allocation)
           allocation->m_sparsePageTable = pageTable.release();
@@ -883,10 +898,15 @@ namespace dxvk {
 
     // Try device memory first, fall back to system memory if that fails.
     // We might get an allocation with a global buffer, just ignore that.
-    auto allocation = allocateMemory(requirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (!allocation)
-      allocation = allocateMemory(requirements, 0);
+    auto allocation = allocateMemory(requirements, allocationInfo);
+
+    if (!allocation) {
+      allocationInfo.properties = 0u;
+      allocation = allocateMemory(requirements, allocationInfo);
+    }
 
     if (!allocation)
       return nullptr;
