@@ -15,6 +15,7 @@ namespace dxvk {
   class DxvkMemoryChunk;
   class DxvkSparsePageTable;
   class DxvkSharedAllocationCache;
+  class DxvkResourceAllocation;
 
   /**
    * \brief Memory stats
@@ -78,6 +79,11 @@ namespace dxvk {
     /// Time when the chunk has been marked as unused. Must
     /// be set to 0 when allocating memory from the chunk
     high_resolution_clock::time_point unusedTime = { };
+    /// Unordered list of resources suballocated from this chunk.
+    DxvkResourceAllocation* allocationList = nullptr;
+
+    void addAllocation(DxvkResourceAllocation* allocation);
+    void removeAllocation(DxvkResourceAllocation* allocation);
   };
 
   
@@ -466,6 +472,7 @@ namespace dxvk {
   class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
     friend DxvkMemoryAllocator;
 
+    friend struct DxvkMemoryChunk;
     friend class DxvkLocalAllocationCache;
     friend class DxvkSharedAllocationCache;
   public:
@@ -611,6 +618,9 @@ namespace dxvk {
 
     DxvkResourceAllocation*     m_nextCached = nullptr;
 
+    DxvkResourceAllocation*     m_prevInChunk = nullptr;
+    DxvkResourceAllocation*     m_nextInChunk = nullptr;
+
     void destroyBufferViews();
 
     void free();
@@ -620,8 +630,6 @@ namespace dxvk {
     }
 
   };
-
-  static_assert(sizeof(DxvkResourceAllocation) == 2u * CACHE_LINE_SIZE);
 
 
   /**
