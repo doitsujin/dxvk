@@ -1195,6 +1195,7 @@ namespace dxvk {
     pool.chunks.resize(std::max<size_t>(pool.chunks.size(), chunkIndex + 1u));
     pool.chunks[chunkIndex].memory = chunk;
     pool.chunks[chunkIndex].unusedTime = high_resolution_clock::time_point();
+    pool.chunks[chunkIndex].chunkCookie = ++pool.nextChunkCookie;
     return true;
   }
 
@@ -1591,6 +1592,8 @@ namespace dxvk {
           DxvkMemoryAllocationStats& stats) {
     auto& typeStats = stats.memoryTypes[type.index];
 
+    size_t first = stats.chunks.size();
+
     for (uint32_t i = 0; i < pool.chunks.size(); i++) {
       if (!pool.chunks[i].memory.memory)
         continue;
@@ -1604,12 +1607,18 @@ namespace dxvk {
       chunkStats.pageCount = pool.pageAllocator.pageCount(i);
       chunkStats.mapped = &pool == &type.mappedPool;
       chunkStats.active = pool.pageAllocator.chunkIsAvailable(i);
+      chunkStats.cookie = pool.chunks[i].chunkCookie;
 
       size_t maskCount = (chunkStats.pageCount + 31u) / 32u;
       stats.pageMasks.resize(chunkStats.pageMaskOffset + maskCount);
 
       pool.pageAllocator.getPageAllocationMask(i, &stats.pageMasks[chunkStats.pageMaskOffset]);
     }
+
+    std::sort(stats.chunks.begin() + first, stats.chunks.end(),
+      [] (const DxvkMemoryChunkStats& a, const DxvkMemoryChunkStats& b) {
+        return a.cookie < b.cookie;
+      });
   }
 
 
