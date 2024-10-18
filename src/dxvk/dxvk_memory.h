@@ -995,11 +995,13 @@ namespace dxvk {
     /**
      * \brief Retrieves list of resources to move
      *
-     * Clears the internally stored list. Any
-     * duplicate entries will be removed.
+     * Removes items from the internally stored list.
+     * Any duplicate entries will be removed.
+     * \param [in] count Number of entries to return
      * \returns List of resources to move
      */
-    std::vector<DxvkRelocationEntry> poll();
+    std::vector<DxvkRelocationEntry> poll(
+            uint32_t                    count);
 
     /**
      * \brief Adds relocation entry to the list
@@ -1240,10 +1242,12 @@ namespace dxvk {
 
     /**
      * \brief Polls relocation list
+     *
+     * \param [in] count Desired entry count
      * \returns Relocation entries
      */
-    auto pollRelocationList() {
-      return m_relocations.poll();
+    auto pollRelocationList(uint32_t count) {
+      return m_relocations.poll(count);
     }
 
   private:
