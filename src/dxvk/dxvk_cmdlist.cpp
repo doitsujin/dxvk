@@ -232,7 +232,7 @@ namespace dxvk {
           timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
-      // Submit transfer commands as necessary
+      // Execute transfer command buffer, if any
       if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.sdmaBuffer);
 
@@ -294,6 +294,16 @@ namespace dxvk {
         if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
           return status;
       }
+
+      // Finally, submit semaphore wait on the transfer queue. If this
+      // is not the final iteration, fold the wait into the next one.
+      if (cmd.syncSdma) {
+        m_commandSubmission.waitSemaphore(semaphores.graphics,
+          timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+
+        if (isLast && (status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
+          return status;
+      }
     }
 
     return VK_SUCCESS;
@@ -349,7 +359,9 @@ namespace dxvk {
       m_cmd.sdmaBuffer = m_transferPool->getCommandBuffer();
     }
 
+    m_cmd.syncSdma = VK_FALSE;
     m_cmd.usedFlags = 0;
+    m_cmd.sparseBind = VK_FALSE;
   }
 
   
