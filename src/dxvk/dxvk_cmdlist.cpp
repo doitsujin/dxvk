@@ -174,18 +174,6 @@ namespace dxvk {
     const auto& graphicsQueue = m_device->queues().graphics;
     const auto& transferQueue = m_device->queues().transfer;
 
-    VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-
-    if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_bindSemaphore)
-     || m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_postSemaphore)
-     || m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore))
-      throw DxvkError("DxvkCommandList: Failed to create semaphore");
-
-    VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-
-    if (m_vkd->vkCreateFence(m_vkd->device(), &fenceInfo, nullptr, &m_fence))
-      throw DxvkError("DxvkCommandList: Failed to create fence");
-
     m_graphicsPool = new DxvkCommandPool(device, graphicsQueue.queueFamily);
 
     if (transferQueue.queueFamily != graphicsQueue.queueFamily)
@@ -197,16 +185,12 @@ namespace dxvk {
   
   DxvkCommandList::~DxvkCommandList() {
     this->reset();
-
-    m_vkd->vkDestroySemaphore(m_vkd->device(), m_bindSemaphore, nullptr);
-    m_vkd->vkDestroySemaphore(m_vkd->device(), m_postSemaphore, nullptr);
-    m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
-
-    m_vkd->vkDestroyFence(m_vkd->device(), m_fence, nullptr);
   }
   
   
-  VkResult DxvkCommandList::submit() {
+  VkResult DxvkCommandList::submit(
+    const DxvkTimelineSemaphores&       semaphores,
+          DxvkTimelineSemaphoreValues&  timelines) {
     VkResult status = VK_SUCCESS;
 
     const auto& graphics = m_device->queues().graphics;
@@ -236,18 +220,16 @@ namespace dxvk {
       if (sparseBind) {
         // Sparse binding needs to serialize command execution, so wait
         // for any prior submissions, then block any subsequent ones
-        m_commandSubmission.signalSemaphore(m_bindSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        sparseBind->waitSemaphore(semaphores.graphics, timelines.graphics);
+        sparseBind->waitSemaphore(semaphores.transfer, timelines.transfer);
 
-        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
-          return status;
-
-        sparseBind->waitSemaphore(m_bindSemaphore, 0);
-        sparseBind->signalSemaphore(m_postSemaphore, 0);
+        sparseBind->signalSemaphore(semaphores.graphics, ++timelines.graphics);
 
         if ((status = sparseBind->submit(m_device, sparse.queueHandle)))
           return status;
 
-        m_commandSubmission.waitSemaphore(m_postSemaphore, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+        m_commandSubmission.waitSemaphore(semaphores.graphics,
+          timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
       // Submit transfer commands as necessary
@@ -257,12 +239,14 @@ namespace dxvk {
       // If we had either a transfer command or a semaphore wait, submit to the
       // transfer queue so that all subsequent commands get stalled as necessary.
       if (m_device->hasDedicatedTransferQueue() && !m_commandSubmission.isEmpty()) {
-        m_commandSubmission.signalSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        m_commandSubmission.signalSemaphore(semaphores.transfer,
+          ++timelines.transfer, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
         if ((status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
           return status;
 
-        m_commandSubmission.waitSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+        m_commandSubmission.waitSemaphore(semaphores.transfer,
+          timelines.transfer, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
       // We promise to never do weird stuff to WSI images on
@@ -291,14 +275,25 @@ namespace dxvk {
           m_commandSubmission.signalSemaphore(m_wsiSemaphores.present,
             0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
-
-        // Signal synchronization fence on final submission
-        m_commandSubmission.signalFence(m_fence);
       }
+
+      m_commandSubmission.signalSemaphore(semaphores.graphics,
+        ++timelines.graphics, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
       // Finally, submit all graphics commands of the current submission
       if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
         return status;
+
+      // If there are WSI semaphores involved, do another submit only
+      // containing a timeline semaphore signal so that we can be sure
+      // that they are safe to use afterwards.
+      if ((m_wsiSemaphores.present || m_wsiSemaphores.acquire) && isLast) {
+        m_commandSubmission.signalSemaphore(semaphores.graphics,
+          ++timelines.graphics, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+
+        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
+          return status;
+      }
     }
 
     return VK_SUCCESS;
@@ -358,11 +353,6 @@ namespace dxvk {
   }
 
   
-  VkResult DxvkCommandList::synchronizeFence() {
-    return m_vkd->vkWaitForFences(m_vkd->device(), 1, &m_fence, VK_TRUE, ~0ull);
-  }
-
-
   void DxvkCommandList::reset() {
     // Free resources and other objects
     // that are no longer in use
@@ -395,10 +385,6 @@ namespace dxvk {
     // Reset actual command buffers and pools
     m_graphicsPool->reset();
     m_transferPool->reset();
-
-    // Reset fence
-    if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence))
-      Logger::err("DxvkCommandList: Failed to reset fence");
   }
 
 
