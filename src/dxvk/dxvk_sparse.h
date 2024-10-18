@@ -514,6 +514,28 @@ namespace dxvk {
     }
     
     /**
+     * \brief Tries to acquire reference
+     *
+     * If the reference count is zero at the time this is called,
+     * the method will fail, otherwise the reference count will
+     * be incremented by one. This is useful to safely obtain a
+     * pointer from a look-up table that does not own references.
+     * \returns \c true on success
+     */
+    Rc<DxvkPagedResource> tryAcquire() {
+      uint64_t increment = getIncrement(DxvkAccess::None);
+      uint64_t refCount = m_useCount.load(std::memory_order_acquire);
+
+      do {
+        if (!refCount)
+          return nullptr;
+      } while (!m_useCount.compare_exchange_strong( refCount,
+        refCount + increment, std::memory_order_relaxed));
+
+      return Rc<DxvkPagedResource>::unsafeCreate(this);
+    }
+
+    /**
      * \brief Queries sparse page table
      *
      * Should be removed once storage objects can
