@@ -24,6 +24,7 @@ layout(location = 0) out vec2 o_coord;
 layout(location = 1, component = 0) out uint o_color;
 layout(location = 1, component = 1) out uint o_mask_index;
 layout(location = 1, component = 2) out uint o_page_count;
+layout(location = 1, component = 3) out uint o_active;
 
 vec2 unpack_u16(uint v) {
   // Inputs may be signed
@@ -42,7 +43,8 @@ void main() {
   o_coord = coord;
   o_color = draw.color;
   o_mask_index = bitfieldExtract(draw.packed_range,  0, 16);
-  o_page_count = bitfieldExtract(draw.packed_range, 16, 16);
+  o_page_count = bitfieldExtract(draw.packed_range, 16, 15);
+  o_active = bitfieldExtract(draw.packed_range, 31, 1);
 
   vec2 surface_size_f = vec2(surface_size) / scale;
 
