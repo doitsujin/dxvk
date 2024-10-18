@@ -374,6 +374,28 @@ namespace dxvk {
     // Obtain a page for the size category
     int32_t pageIndex = m_pageLists[listIndex].head;
 
+    if (likely(pageIndex >= 0)) {
+      uint32_t chunkIndex = uint32_t(pageIndex) >> DxvkPageAllocator::ChunkPageBits;
+
+      // If the selected page is from a dead chunk, do not allocate
+      // into it anymore so that the chunk can actually be freed.
+      if (unlikely(!m_pageAllocator->chunkIsAvailable(chunkIndex))) {
+        int32_t nextIndex = pageIndex;
+
+        do {
+          // This works because we add pages to the end
+          removePageFromList(nextIndex, listIndex);
+          addPageToList(nextIndex, listIndex);
+
+          nextIndex = m_pageLists[listIndex].head;
+          chunkIndex = uint32_t(nextIndex) >> DxvkPageAllocator::ChunkPageBits;
+        } while (nextIndex != pageIndex && !m_pageAllocator->chunkIsAvailable(chunkIndex));
+
+        // Allocate a new page if the entire list is dead
+        pageIndex = nextIndex != pageIndex ? nextIndex : -1;
+      }
+    }
+
     if (unlikely(pageIndex < 0)) {
       if ((pageIndex = allocPage(listIndex)) < 0)
         return -1;
