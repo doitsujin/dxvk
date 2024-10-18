@@ -4658,7 +4658,7 @@ namespace dxvk {
 
     if (unlikely(pBox != nullptr)) {
       D3DRESOURCETYPE type = pResource->GetType();
-      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(desc.Format);
 
       bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
       bool isNotLeftAligned   = pBox->Left   && (pBox->Left   & (blockSize.Width  - 1));

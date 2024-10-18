@@ -160,7 +160,7 @@ namespace dxvk {
     // Native drivers won't allow the creation of DXT format
     // textures that aren't aligned to block dimensions.
     if (IsDXTFormat(pDesc->Format)) {
-      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(pDesc->Format);
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(pDesc->Format);
 
       if ((blockSize.Width  && (pDesc->Width  & (blockSize.Width  - 1)))
        || (blockSize.Height && (pDesc->Height & (blockSize.Height - 1))))
