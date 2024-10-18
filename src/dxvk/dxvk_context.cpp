@@ -103,6 +103,8 @@ namespace dxvk {
 
 
   void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
+    relocateQueuedResources();
+
     m_device->submitCommandList(
       this->endRecording(), status);
     
@@ -6492,6 +6494,54 @@ namespace dxvk {
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+  }
+
+
+  void DxvkContext::relocateQueuedResources() {
+    auto resourceList = m_common->memoryManager().pollRelocationList();
+
+    if (resourceList.empty())
+      return;
+
+    std::vector<DxvkRelocateBufferInfo> bufferInfos;
+    std::vector<DxvkRelocateImageInfo> imageInfos;
+
+    // Iterate over resource list and try to create and assign new allocations
+    // for them based on the mode selected by the allocator. Failures here are
+    // not fatal, but may lead to weird behaviour down the line - ignore for now.
+    for (const auto& e : resourceList) {
+      auto storage = e.resource->relocateStorage(e.mode);
+
+      if (!storage)
+        continue;
+
+      Rc<DxvkImage> image = dynamic_cast<DxvkImage*>(e.resource.ptr());
+      Rc<DxvkBuffer> buffer = dynamic_cast<DxvkBuffer*>(e.resource.ptr());
+
+      if (image) {
+        auto& e = imageInfos.emplace_back();
+        e.image = std::move(image);
+        e.storage = std::move(storage);
+      } else if (buffer) {
+        auto& e = bufferInfos.emplace_back();
+        e.buffer = std::move(buffer);
+        e.storage = std::move(storage);
+      }
+    }
+
+    if (bufferInfos.empty() && imageInfos.empty())
+      return;
+
+    // If there are any resources to relocate, we have to stall the transfer
+    // queue so that subsequent resource uploads do not overlap with resource
+    // copies on the graphics timeline.
+    this->spillRenderPass(true);
+
+    relocateResources(
+      bufferInfos.size(), bufferInfos.data(),
+      imageInfos.size(), imageInfos.data());
+
+    m_cmd->setSubmissionBarrier();
   }
 
 
