@@ -29,6 +29,8 @@ namespace dxvk {
             DWORD       Flags) final {
       HRESULT hr;
       if (Flags & D3DSPD_IUNKNOWN) {
+        if(unlikely(SizeOfData != sizeof(IUnknown*)))
+          return D3DERR_INVALIDCALL;
         IUnknown* unknown =
           const_cast<IUnknown*>(
             reinterpret_cast<const IUnknown*>(pData));
@@ -39,7 +41,7 @@ namespace dxvk {
         hr = m_privateData.setData(
           refguid, SizeOfData, pData);
 
-      if (FAILED(hr))
+      if (unlikely(FAILED(hr)))
         return D3DERR_INVALIDCALL;
 
       return D3D_OK;
@@ -49,11 +51,20 @@ namespace dxvk {
             REFGUID     refguid,
             void*       pData,
             DWORD*      pSizeOfData) final {
+      if (unlikely(pData == nullptr && pSizeOfData == nullptr))
+        return D3DERR_NOTFOUND;
+
       HRESULT hr = m_privateData.getData(
         refguid, reinterpret_cast<UINT*>(pSizeOfData), pData);
 
-      if (FAILED(hr))
-        return D3DERR_INVALIDCALL;
+      if (unlikely(FAILED(hr))) {
+        if(hr == DXGI_ERROR_MORE_DATA)
+          return D3DERR_MOREDATA;
+        else if (hr == DXGI_ERROR_NOT_FOUND)
+          return D3DERR_NOTFOUND;
+        else
+          return D3DERR_INVALIDCALL;
+      }
 
       return D3D_OK;
     }
@@ -61,7 +72,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE FreePrivateData(REFGUID refguid) final {
       HRESULT hr = m_privateData.setData(refguid, 0, nullptr);
 
-      if (FAILED(hr))
+      if (unlikely(FAILED(hr)))
         return D3DERR_INVALIDCALL;
 
       return D3D_OK;
