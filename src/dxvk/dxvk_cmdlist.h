@@ -19,6 +19,26 @@
 namespace dxvk {
   
   /**
+   * \brief Timeline semaphore pair
+   *
+   * One semaphore for each queue.
+   */
+  struct DxvkTimelineSemaphores {
+    VkSemaphore graphics = VK_NULL_HANDLE;
+    VkSemaphore transfer = VK_NULL_HANDLE;
+  };
+
+
+  /**
+   * \brief Timeline semaphore values
+   */
+  struct DxvkTimelineSemaphoreValues {
+    uint64_t graphics = 0u;
+    uint64_t transfer = 0u;
+  };
+
+
+  /**
    * \brief Command buffer flags
    * 
    * A set of flags used to specify which of
@@ -109,10 +129,10 @@ namespace dxvk {
 
   private:
 
-    VkFence                                m_fence = VK_NULL_HANDLE;
-    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreWaits;
-    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreSignals;
-    std::vector<VkCommandBufferSubmitInfo> m_commandBuffers;
+    VkFence                                     m_fence = VK_NULL_HANDLE;
+    small_vector<VkSemaphoreSubmitInfo, 4>      m_semaphoreWaits;
+    small_vector<VkSemaphoreSubmitInfo, 4>      m_semaphoreSignals;
+    small_vector<VkCommandBufferSubmitInfo, 4>  m_commandBuffers;
 
   };
 
@@ -125,6 +145,7 @@ namespace dxvk {
    */
   struct DxvkCommandSubmissionInfo {
     DxvkCmdBufferFlags  usedFlags   = 0;
+    VkBool32            syncSdma    = VK_FALSE;
     VkCommandBuffer     execBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     initBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     sdmaBuffer  = VK_NULL_HANDLE;
@@ -195,9 +216,14 @@ namespace dxvk {
     
     /**
      * \brief Submits command list
+     *
+     * \param [in] semaphores Timeline semaphore pair
+     * \param [in] timelines Timeline semaphore values
      * \returns Submission status
      */
-    VkResult submit();
+    VkResult submit(
+      const DxvkTimelineSemaphores&       semaphores,
+            DxvkTimelineSemaphoreValues&  timelines);
     
     /**
      * \brief Stat counters
@@ -342,10 +368,15 @@ namespace dxvk {
     }
 
     /**
-     * \brief Synchronizes with command list fence
-     * \returns Return value of vkWaitForFences call
+     * \brief Sets flag to stall transfer queue
+     *
+     * If set, the current submission will submit a semaphore
+     * wait to the transfer queue in order to stall subsequent
+     * submissions. Necessary in case of resource relocations.
      */
-    VkResult synchronizeFence();
+    void setSubmissionBarrier() {
+      m_cmd.syncSdma = VK_TRUE;
+    }
 
     /**
      * \brief Resets the command list
@@ -1047,11 +1078,6 @@ namespace dxvk {
     Rc<DxvkCommandPool>       m_graphicsPool;
     Rc<DxvkCommandPool>       m_transferPool;
 
-    VkSemaphore               m_bindSemaphore = VK_NULL_HANDLE;
-    VkSemaphore               m_postSemaphore = VK_NULL_HANDLE;
-    VkSemaphore               m_sdmaSemaphore = VK_NULL_HANDLE;
-    VkFence                   m_fence         = VK_NULL_HANDLE;
-
     DxvkCommandSubmissionInfo m_cmd;
 
     PresenterSync             m_wsiSemaphores = { };
@@ -1062,11 +1088,11 @@ namespace dxvk {
 
     DxvkCommandSubmission     m_commandSubmission;
 
-    std::vector<DxvkFenceValuePair> m_waitSemaphores;
-    std::vector<DxvkFenceValuePair> m_signalSemaphores;
+    small_vector<DxvkFenceValuePair, 4> m_waitSemaphores;
+    small_vector<DxvkFenceValuePair, 4> m_signalSemaphores;
 
-    std::vector<DxvkCommandSubmissionInfo> m_cmdSubmissions;
-    std::vector<DxvkSparseBindSubmission>  m_cmdSparseBinds;
+    small_vector<DxvkCommandSubmissionInfo, 4> m_cmdSubmissions;
+    small_vector<DxvkSparseBindSubmission, 4>  m_cmdSparseBinds;
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,

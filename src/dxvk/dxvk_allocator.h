@@ -76,6 +76,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether a chunk is alive
+     *
+     * \param [in] chunkIndex Chunk index
+     * \returns \c true if chunk can be used
+     */
+    bool chunkIsAvailable(uint32_t chunkIndex) const {
+      return !m_chunks.at(chunkIndex).disabled;
+    }
+
+    /**
      * \brief Allocates given number of bytes from the pool
      *
      * \param [in] size Allocation size, in bytes
@@ -132,6 +142,31 @@ namespace dxvk {
     void removeChunk(uint32_t chunkIndex);
 
     /**
+     * \brief Disables a chunk
+     *
+     * Makes an entire chunk unavailable for subsequent allocations.
+     * This can be useful when moving allocations out of that chunk
+     * in an attempt to free some memory.
+     * \param [in] chunkIndex Chunk index
+     */
+    void killChunk(uint32_t chunkIndex);
+
+    /**
+     * \brief Re-enables a chunk
+     *
+     * Makes all disabled chunks available for allocations again.
+     * Should be used before allocating new chunk memory.
+     * \param [in] chunkIndex Chunk index
+     */
+    void reviveChunk(uint32_t chunkIndex);
+
+    /**
+     * \brief Re-enables all disabled chunks
+     * \returns Number of chunks re-enabled
+     */
+    uint32_t reviveChunks();
+
+    /**
      * \brief Queries page allocation mask
      *
      * Should be used for informational purposes only. Retrieves
@@ -149,6 +184,7 @@ namespace dxvk {
       uint32_t  pageCount = 0u;
       uint32_t  pagesUsed = 0u;
       int32_t   nextChunk = -1;
+      bool      disabled  = false;
     };
 
     struct PageRange {

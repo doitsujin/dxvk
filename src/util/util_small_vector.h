@@ -133,9 +133,9 @@ namespace dxvk {
     }
 
     template<typename... Args>
-    void emplace_back(Args... args) {
+    T& emplace_back(Args... args) {
       reserve(m_size + 1);
-      new (ptr(m_size++)) T(std::forward<Args>(args)...);
+      return *(new (ptr(m_size++)) T(std::forward<Args>(args)...));
     }
 
     void erase(size_t idx) {
