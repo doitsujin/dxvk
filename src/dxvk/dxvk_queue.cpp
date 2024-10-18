@@ -141,10 +141,12 @@ namespace dxvk {
         if (m_callback)
           m_callback(true);
 
-        if (entry.submit.cmdList != nullptr)
-          entry.result = entry.submit.cmdList->submit();
-        else if (entry.present.presenter != nullptr)
+        if (entry.submit.cmdList != nullptr) {
+          entry.result = entry.submit.cmdList->submit(m_semaphores, m_timelines);
+          entry.timelines = m_timelines;
+        } else if (entry.present.presenter != nullptr) {
           entry.result = entry.present.presenter->presentImage(entry.present.presentMode, entry.present.frameId);
+        }
 
         if (m_callback)
           m_callback(false);
@@ -182,6 +184,8 @@ namespace dxvk {
   void DxvkSubmissionQueue::finishCmdLists() {
     env::setThreadName("dxvk-queue");
 
+    auto vk = m_device->vkd();
+
     while (!m_stopped.load()) {
       std::unique_lock<dxvk::mutex> lock(m_mutex);
 
@@ -204,10 +208,19 @@ namespace dxvk {
       
       if (entry.submit.cmdList != nullptr) {
         VkResult status = m_lastError.load();
-        
-        if (status != VK_ERROR_DEVICE_LOST)
-          status = entry.submit.cmdList->synchronizeFence();
-        
+
+        if (status != VK_ERROR_DEVICE_LOST) {
+          std::array<VkSemaphore, 2> semaphores = { m_semaphores.graphics, m_semaphores.transfer };
+          std::array<uint64_t, 2> timelines = { entry.timelines.graphics, entry.timelines.transfer };
+
+          VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
+          waitInfo.semaphoreCount = semaphores.size();
+          waitInfo.pSemaphores = semaphores.data();
+          waitInfo.pValues = timelines.data();
+
+          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
+        }
+
         if (status != VK_SUCCESS) {
           m_lastError = status;
 
