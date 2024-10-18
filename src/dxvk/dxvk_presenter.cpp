@@ -48,10 +48,13 @@ namespace dxvk {
 
 
   VkResult Presenter::acquireNextImage(PresenterSync& sync, uint32_t& index) {
-    sync = m_semaphores.at(m_frameIndex);
+    PresenterSync& semaphores = m_semaphores.at(m_frameIndex);
+    sync = semaphores;
 
     // Don't acquire more than one image at a time
     if (m_acquireStatus == VK_NOT_READY) {
+      waitForSwapchainFence(semaphores);
+
       m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
         m_swapchain, std::numeric_limits<uint64_t>::max(),
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
@@ -68,11 +71,15 @@ namespace dxvk {
   VkResult Presenter::presentImage(
           VkPresentModeKHR  mode,
           uint64_t          frameId) {
-    PresenterSync sync = m_semaphores.at(m_frameIndex);
+    PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
     presentId.swapchainCount = 1;
     presentId.pPresentIds   = &frameId;
+
+    VkSwapchainPresentFenceInfoEXT fenceInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT };
+    fenceInfo.swapchainCount = 1;
+    fenceInfo.pFences       = &currSync.fence;
 
     VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
     modeInfo.swapchainCount = 1;
@@ -80,7 +87,7 @@ namespace dxvk {
 
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores    = &sync.present;
+    info.pWaitSemaphores    = &currSync.present;
     info.swapchainCount     = 1;
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
@@ -88,11 +95,16 @@ namespace dxvk {
     if (m_device->features().khrPresentId.presentId && frameId)
       presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
 
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
       modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
+      fenceInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &fenceInfo));
+    }
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
+
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+      currSync.fenceSignaled = status >= 0;
 
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR)
       return status;
@@ -102,11 +114,12 @@ namespace dxvk {
     m_frameIndex += 1;
     m_frameIndex %= m_semaphores.size();
 
-    sync = m_semaphores.at(m_frameIndex);
+    PresenterSync& nextSync = m_semaphores.at(m_frameIndex);
+    waitForSwapchainFence(nextSync);
 
     m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
       m_swapchain, std::numeric_limits<uint64_t>::max(),
-      sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+      nextSync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
     return status;
   }
@@ -356,10 +369,19 @@ namespace dxvk {
         return status;
     }
 
-    // Create one set of semaphores per swap image
-    m_semaphores.resize(m_info.imageCount);
+    // Create one set of semaphores per swap image, as well as a fence
+    // that we use to ensure that semaphores are safe to access.
+    uint32_t semaphoreCount = m_info.imageCount;
 
-    for (uint32_t i = 0; i < m_semaphores.size(); i++) {
+    if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+      // Without support for present fences, just give up and allocate extra
+      // semaphores. We have no real guarantees when they are safe to access.
+      semaphoreCount *= 2u;
+    }
+
+    m_semaphores.resize(semaphoreCount);
+
+    for (uint32_t i = 0; i < semaphoreCount; i++) {
       VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
@@ -368,6 +390,12 @@ namespace dxvk {
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
           &semInfo, nullptr, &m_semaphores[i].present)))
+        return status;
+
+      VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+
+      if ((status = m_vkd->vkCreateFence(m_vkd->device(),
+          &fenceInfo, nullptr, &m_semaphores[i].fence)))
         return status;
     }
     
@@ -623,12 +651,16 @@ namespace dxvk {
     if (m_signal != nullptr)
       m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
 
+    for (auto& sem : m_semaphores)
+      waitForSwapchainFence(sem);
+
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
     for (const auto& sem : m_semaphores) {
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);
+      m_vkd->vkDestroyFence(m_vkd->device(), sem.fence, nullptr);
     }
 
     m_vkd->vkDestroySwapchainKHR(m_vkd->device(), m_swapchain, nullptr);
@@ -645,6 +677,24 @@ namespace dxvk {
     m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
 
     m_surface = VK_NULL_HANDLE;
+  }
+
+
+  void Presenter::waitForSwapchainFence(
+          PresenterSync&            sync) {
+    if (!sync.fenceSignaled)
+      return;
+
+    VkResult vr = m_vkd->vkWaitForFences(m_vkd->device(),
+      1, &sync.fence, VK_TRUE, ~0ull);
+
+    if (vr)
+      Logger::err(str::format("Failed to wait for WSI fence: ", vr));
+
+    if ((vr = m_vkd->vkResetFences(m_vkd->device(), 1, &sync.fence)))
+      Logger::err(str::format("Failed to reset WSI fence: ", vr));
+
+    sync.fenceSignaled = VK_FALSE;
   }
 
 
