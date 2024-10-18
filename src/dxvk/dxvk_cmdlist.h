@@ -145,6 +145,7 @@ namespace dxvk {
    */
   struct DxvkCommandSubmissionInfo {
     DxvkCmdBufferFlags  usedFlags   = 0;
+    VkBool32            syncSdma    = VK_FALSE;
     VkCommandBuffer     execBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     initBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     sdmaBuffer  = VK_NULL_HANDLE;
@@ -364,6 +365,17 @@ namespace dxvk {
      */
     void setWsiSemaphores(const PresenterSync& wsiSemaphores) {
       m_wsiSemaphores = wsiSemaphores;
+    }
+
+    /**
+     * \brief Sets flag to stall transfer queue
+     *
+     * If set, the current submission will submit a semaphore
+     * wait to the transfer queue in order to stall subsequent
+     * submissions. Necessary in case of resource relocations.
+     */
+    void setSubmissionBarrier() {
+      m_cmd.syncSdma = VK_TRUE;
     }
 
     /**
