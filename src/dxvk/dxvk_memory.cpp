@@ -469,16 +469,24 @@ namespace dxvk {
   }
 
 
-  std::vector<DxvkRelocationEntry> DxvkRelocationList::poll() {
+  std::vector<DxvkRelocationEntry> DxvkRelocationList::poll(uint32_t count) {
     std::lock_guard lock(m_mutex);
 
     std::vector<DxvkRelocationEntry> result;
-    result.reserve(m_entries.size());
+    count = std::min(count, uint32_t(m_entries.size()));
 
-    for (const auto& p : m_entries)
-      result.push_back({ p.first, p.second });
+    if (!count)
+      return result;
 
-    m_entries.clear();
+    result.reserve(count);
+
+    for (uint32_t i = 0; i < count; i++) {
+      auto iter = m_entries.begin();
+
+      result.push_back({ iter->first, iter->second });
+      m_entries.erase(iter);
+    }
+
     return result;
   }
 
