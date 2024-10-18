@@ -1377,6 +1377,12 @@ namespace dxvk {
     void updateMemoryHeapStats(
             uint32_t              heapIndex);
 
+    void moveDefragChunks(
+            DxvkMemoryType&       type);
+
+    void pickDefragChunk(
+            DxvkMemoryType&       type);
+
     void performTimedTasksLocked(
             high_resolution_clock::time_point currentTime);
 
