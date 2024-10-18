@@ -135,7 +135,7 @@ namespace dxvk {
 
     if (unlikely(pRect != nullptr)) {
       auto& desc = *(m_texture->Desc());
-      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(desc.Format);
 
       bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
 

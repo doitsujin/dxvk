@@ -177,7 +177,7 @@ namespace dxvk {
 
   D3D9_VK_FORMAT_MAPPING ConvertFormatUnfixed(D3D9Format Format);
 
-  D3D9_FORMAT_BLOCK_SIZE GetFormatBlockSize(D3D9Format Format);
+  D3D9_FORMAT_BLOCK_SIZE GetFormatAlignedBlockSize(D3D9Format Format);
 
   /**
    * \brief Format table
