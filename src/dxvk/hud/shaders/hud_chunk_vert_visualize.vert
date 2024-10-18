@@ -42,7 +42,7 @@ void main() {
   o_coord = coord;
   o_color = draw.color;
   o_mask_index = bitfieldExtract(draw.packed_range,  0, 16);
-  o_page_count = bitfieldExtract(draw.packed_range, 16, 16);
+  o_page_count = bitfieldExtract(draw.packed_range, 16, 15);
 
   vec2 surface_size_f = vec2(surface_size) / scale;
 

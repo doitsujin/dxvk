@@ -540,7 +540,7 @@ namespace dxvk::hud {
       int16_t w;
       int16_t h;
       uint16_t pageMask;
-      uint16_t pageCount;
+      uint16_t pageCountAndActiveBit;
       uint32_t color;
     };
 
