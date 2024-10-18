@@ -66,17 +66,19 @@ namespace dxvk {
    * image acquisition.
    */
   struct PresenterSync {
-    VkSemaphore acquire;
-    VkSemaphore present;
+    VkSemaphore acquire = VK_NULL_HANDLE;
+    VkSemaphore present = VK_NULL_HANDLE;
+    VkFence fence = VK_NULL_HANDLE;
+    VkBool32 fenceSignaled = VK_FALSE;
   };
 
   /**
    * \brief Queued frame
    */
   struct PresenterFrame {
-    uint64_t          frameId;
-    VkPresentModeKHR  mode;
-    VkResult          result;
+    uint64_t          frameId = 0u;
+    VkPresentModeKHR  mode    = VK_PRESENT_MODE_FIFO_KHR;
+    VkResult          result  = VK_NOT_READY;
   };
 
   /**
@@ -293,6 +295,9 @@ namespace dxvk {
     void destroySwapchain();
 
     void destroySurface();
+
+    void waitForSwapchainFence(
+            PresenterSync&            sync);
 
     void runFrameThread();
 
