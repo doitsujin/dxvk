@@ -459,6 +459,46 @@ namespace dxvk {
 
 
 
+  DxvkRelocationList::DxvkRelocationList() {
+
+  }
+
+
+  DxvkRelocationList::~DxvkRelocationList() {
+
+  }
+
+
+  std::vector<DxvkRelocationEntry> DxvkRelocationList::poll() {
+    std::lock_guard lock(m_mutex);
+
+    std::vector<DxvkRelocationEntry> result;
+    result.reserve(m_entries.size());
+
+    for (const auto& p : m_entries)
+      result.push_back({ p.first, p.second });
+
+    m_entries.clear();
+    return result;
+  }
+
+
+  void DxvkRelocationList::addResource(
+          Rc<DxvkPagedResource>&&     resource,
+          DxvkAllocationModes         mode) {
+    std::lock_guard lock(m_mutex);
+    m_entries.emplace(std::move(resource), mode);
+  }
+
+
+  void DxvkRelocationList::clear() {
+    std::lock_guard lock(m_mutex);
+    m_entries.clear();
+  }
+
+
+
+
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
   : m_device(device), m_sharingModeInfo(m_device->getSharingMode()) {
     VkPhysicalDeviceMemoryProperties memInfo = m_device->adapter()->memoryProperties();
@@ -508,6 +548,8 @@ namespace dxvk {
   
   DxvkMemoryAllocator::~DxvkMemoryAllocator() {
     auto vk = m_device->vkd();
+
+    m_relocations.clear();
 
     { std::unique_lock lock(m_mutex);
       m_stopWorker = true;
