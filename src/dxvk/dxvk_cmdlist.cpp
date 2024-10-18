@@ -211,9 +211,9 @@ namespace dxvk {
 
       if (isFirst) {
         // Wait for per-command list semaphores on first submission
-        for (const auto& entry : m_waitSemaphores) {
-          m_commandSubmission.waitSemaphore(entry.fence->handle(),
-            entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+        for (size_t i = 0; i < m_waitSemaphores.size(); i++) {
+          m_commandSubmission.waitSemaphore(m_waitSemaphores[i].fence->handle(),
+            m_waitSemaphores[i].value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
         }
       }
 
@@ -265,9 +265,9 @@ namespace dxvk {
 
       if (isLast) {
         // Signal per-command list semaphores on the final submission
-        for (const auto& entry : m_signalSemaphores) {
-          m_commandSubmission.signalSemaphore(entry.fence->handle(),
-            entry.value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        for (size_t i = 0; i < m_signalSemaphores.size(); i++) {
+          m_commandSubmission.signalSemaphore(m_signalSemaphores[i].fence->handle(),
+            m_signalSemaphores[i].value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         // Signal WSI semaphore on the final submission
