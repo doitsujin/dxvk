@@ -1014,6 +1014,14 @@ namespace dxvk {
      */
     void clear();
 
+    /**
+     * \brief Checks whether resource list is empty
+     * \returns \c true if the list is empty
+     */
+    bool empty() {
+      return m_entries.empty();
+    }
+
   private:
 
     dxvk::mutex                               m_mutex;
@@ -1376,6 +1384,12 @@ namespace dxvk {
 
     void updateMemoryHeapStats(
             uint32_t              heapIndex);
+
+    void moveDefragChunks(
+            DxvkMemoryType&       type);
+
+    void pickDefragChunk(
+            DxvkMemoryType&       type);
 
     void performTimedTasksLocked(
             high_resolution_clock::time_point currentTime);

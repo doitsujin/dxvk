@@ -596,6 +596,21 @@ namespace dxvk {
       if (likely(address >= 0))
         return createAllocation(type, selectedPool, address, size, allocationInfo);
 
+      // If we're not allowed to allocate additional device memory, move on.
+      // Also do not try to revive any chunks marked for defragmentation since
+      // that would defeat the purpose.
+      if (allocationInfo.mode.test(DxvkAllocationMode::NoAllocation))
+        continue;
+
+      // Otherwise, if there are any chunks marked for defragmentation, stop
+      // that process and use any available memory for new allocations.
+      if (selectedPool.pageAllocator.reviveChunks()) {
+        address = selectedPool.alloc(size, requirements.alignment);
+
+        if (address >= 0)
+          return createAllocation(type, selectedPool, address, size, allocationInfo);
+      }
+
       // If the memory type is host-visible, try to find an existing chunk
       // in the other memory pool of the memory type and move over.
       if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
@@ -622,10 +637,6 @@ namespace dxvk {
             return createAllocation(type, selectedPool, address, size, allocationInfo);
         }
       }
-
-      // If we're not allowed to allocate device memory, move on.
-      if (allocationInfo.mode.test(DxvkAllocationMode::NoAllocation))
-        continue;
 
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
@@ -2048,6 +2059,137 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::moveDefragChunks(
+          DxvkMemoryType&       type) {
+    auto& pool = type.devicePool;
+
+    DxvkAllocationModes mode(
+      DxvkAllocationMode::NoAllocation,
+      DxvkAllocationMode::NoFallback);
+
+    std::unique_lock lock(m_resourceMutex, std::defer_lock);
+
+    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
+      if (!pool.chunks[i].memory.memory
+       || !pool.pageAllocator.pagesUsed(i)
+       || pool.pageAllocator.chunkIsAvailable(i))
+        continue;
+
+      // Iterate over the chunk's allocation list and look up resources
+      for (auto a = pool.chunks[i].allocationList; a; a = a->m_nextInChunk) {
+        if (!a->m_flags.test(DxvkAllocationFlag::CanMove))
+          continue;
+
+        if (!lock)
+          lock.lock();
+
+        // If we can't find the resource by its cookie, it has probably
+        // already been destroyed. This is fine since the allocation will
+        // likely get freed soon anyway.
+        auto entry = m_resourceMap.find(a->m_resourceCookie);
+
+        if (entry == m_resourceMap.end())
+          continue;
+
+        // Same if there are no external references. There is a small chance
+        // that we pick up a newly created resource here that has no public
+        // references yet, but skipping that will not affect correctness.
+        auto resource = entry->second->tryAcquire();
+
+        if (!resource)
+          continue;
+
+        // Acquired the resource, add it to the relocation list.
+        m_relocations.addResource(std::move(resource), mode);
+      }
+    }
+  }
+
+
+  void DxvkMemoryAllocator::pickDefragChunk(
+          DxvkMemoryType&       type) {
+    auto& pool = type.devicePool;
+
+    // Only engage defragmentation at all if we have a significant
+    // amount of memory wasted, or if we're under memory pressure.
+    auto heapStats = getMemoryStats(type.heap->index);
+
+    bool engageDefrag = heapStats.memoryAllocated + pool.nextChunkSize > heapStats.memoryBudget
+                     || heapStats.memoryAllocated > (pool.nextChunkSize + (heapStats.memoryUsed * 7u) / 6u);
+
+    if (!engageDefrag)
+      return;
+
+    // Find live chunk with the lowest number of pages used. Skip
+    // empty chunks since the goal here is to turn a used chunk
+    // into an empty one.
+    uint32_t chunkIndex = 0u;
+    uint32_t chunkPages = 0u;
+
+    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
+      if (!pool.chunks[i].memory.memory)
+        continue;
+
+      // Mark any empty chunk as dead for now as well so that we don't
+      // keep moving resources between multiple otherwise unused chunks
+      uint32_t pagesUsed = pool.pageAllocator.pagesUsed(i);
+
+      if (!pagesUsed) {
+        pool.pageAllocator.killChunk(i);
+        continue;
+      }
+
+      // If there's a non-empty chunk already marked as dead and we haven't
+      // finished moving resources around yet, killing another chunk would
+      // do more harm than good so wait for that to finish first.
+      if (!pool.pageAllocator.chunkIsAvailable(i)) {
+        if (!m_relocations.empty())
+          return;
+        continue;
+      }
+
+      if (!chunkPages || pagesUsed < chunkPages) {
+        chunkIndex = i;
+        chunkPages = pagesUsed;
+      }
+    }
+
+    if (!chunkPages)
+      return;
+
+    // Check if the remaining chunks in the pool have sufficient free space.
+    // This is not a strong guarantee that relocation will succeed, but the
+    // chance is reasonably high.
+    uint32_t freePages = 0u;
+
+    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
+      uint32_t pagesUsed = pool.pageAllocator.pagesUsed(i);
+      uint32_t pageCount = pool.pageAllocator.pageCount(i);
+
+      if (pagesUsed && pool.pageAllocator.chunkIsAvailable(i) && i != chunkIndex)
+        freePages += pageCount - pagesUsed;
+    }
+
+    if (freePages < 2u * chunkPages)
+      return;
+
+    // We only want one non-empty dead chunk at a time in order to prevent
+    // situations where defragmation locks itself up in a suboptimal state.
+    // If we already have a dead chunk with a resource that cannot be moved,
+    // revive it and mark the newly selected one instead so that it can be
+    // moved into the previously dead chunk.
+    for (uint32_t i = 0; i < pool.chunks.size(); i++) {
+      if (!pool.pageAllocator.chunkIsAvailable(i) && pool.pageAllocator.pagesUsed(i))
+        pool.pageAllocator.reviveChunk(i);
+    }
+
+    // Mark the chunk as dead. If it does not subsequently get reactivated
+    // because the game is loading more resources, the next worker iteration
+    // will queue all live resources for relocation.
+    pool.pageAllocator.killChunk(chunkIndex);
+  }
+
+
   void DxvkMemoryAllocator::performTimedTasks() {
     static constexpr auto Interval = std::chrono::seconds(1u);
 
@@ -2083,6 +2225,16 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
       if (m_memTypes[i].sharedCache)
         m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
+    }
+
+    // Periodically defragment device-local memory types. We cannot
+    // do anything about mapped allocations since we rely on pointer
+    // stability there.
+    for (uint32_t i = 0; i < m_memTypeCount; i++) {
+      if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+        moveDefragChunks(m_memTypes[i]);
+        pickDefragChunk(m_memTypes[i]);
+      }
     }
   }
 
