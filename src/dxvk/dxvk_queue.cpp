@@ -7,7 +7,20 @@ namespace dxvk {
   : m_device(device), m_callback(callback),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
+    auto vk = m_device->vkd();
 
+    VkSemaphoreTypeCreateInfo semaphoreType = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+    semaphoreType.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+    VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &semaphoreType };
+
+    VkResult vrGraphics = vk->vkCreateSemaphore(vk->device(), &semaphoreInfo, nullptr, &m_semaphores.graphics);
+    VkResult vrTransfer = vk->vkCreateSemaphore(vk->device(), &semaphoreInfo, nullptr, &m_semaphores.transfer);
+
+    if (vrGraphics || vrTransfer) {
+      throw DxvkError(str::format("Failed to create timeline semaphores: ",
+        vrGraphics > vrTransfer ? vrGraphics : vrTransfer));
+    }
   }
   
   
@@ -23,6 +36,9 @@ namespace dxvk {
 
     m_submitThread.join();
     m_finishThread.join();
+
+    vk->vkDestroySemaphore(vk->device(), m_semaphores.graphics, nullptr);
+    vk->vkDestroySemaphore(vk->device(), m_semaphores.transfer, nullptr);
   }
   
   
