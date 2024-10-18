@@ -113,6 +113,8 @@ namespace dxvk {
     VkDeviceSize maxChunkSize = MaxChunkSize;
     /// Next chunk cookie, used to order chunks in statistics
     uint32_t nextChunkCookie = 0u;
+    /// Next chunk to relocate for defragmentation
+    uint32_t nextDefragChunk = ~0u;
 
     force_inline int64_t alloc(uint64_t size, uint64_t align) {
       if (size <= DxvkPoolAllocator::MaxSize)
@@ -1014,6 +1016,14 @@ namespace dxvk {
      */
     void clear();
 
+    /**
+     * \brief Checks whether resource list is empty
+     * \returns \c true if the list is empty
+     */
+    bool empty() {
+      return m_entries.empty();
+    }
+
   private:
 
     dxvk::mutex                               m_mutex;
@@ -1376,6 +1386,12 @@ namespace dxvk {
 
     void updateMemoryHeapStats(
             uint32_t              heapIndex);
+
+    void moveDefragChunk(
+            DxvkMemoryType&       type);
+
+    void pickDefragChunk(
+            DxvkMemoryType&       type);
 
     void performTimedTasksLocked(
             high_resolution_clock::time_point currentTime);
