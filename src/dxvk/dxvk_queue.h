@@ -60,6 +60,26 @@ namespace dxvk {
 
 
   /**
+   * \brief Timeline semaphore pair
+   *
+   * One semaphore for each queue.
+   */
+  struct DxvkTimelineSemaphores {
+    VkSemaphore graphics = VK_NULL_HANDLE;
+    VkSemaphore transfer = VK_NULL_HANDLE;
+  };
+
+
+  /**
+   * \brief Timeline semaphore values
+   */
+  struct DxvkTimelineSemaphoreValues {
+    uint64_t graphics = 0u;
+    uint64_t transfer = 0u;
+  };
+
+
+  /**
    * \brief Submission queue
    */
   class DxvkSubmissionQueue {
@@ -178,6 +198,9 @@ namespace dxvk {
 
     DxvkDevice*                 m_device;
     DxvkQueueCallback           m_callback;
+
+    DxvkTimelineSemaphores      m_semaphores;
+    DxvkTimelineSemaphoreValues m_timelines;
 
     std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     
