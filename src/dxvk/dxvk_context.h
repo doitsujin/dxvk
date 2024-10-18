@@ -1756,6 +1756,8 @@ namespace dxvk {
             size_t                    imageCount,
       const DxvkRelocateImageInfo*    imageInfos);
 
+    void relocateQueuedResources();
+
     Rc<DxvkSampler> createBlitSampler(
             VkFilter                  filter);
 
