@@ -196,6 +196,8 @@ namespace dxvk {
     uint16_t pageCount = 0u;
     /// Whether this chunk is mapped
     bool mapped = false;
+    /// Whether this chunk is active
+    bool active = false;
   };
 
 
