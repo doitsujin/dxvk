@@ -9,6 +9,7 @@ layout(location = 0) in  vec2 v_coord;
 layout(location = 1, component = 0) flat in uint v_color;
 layout(location = 1, component = 1) flat in uint v_mask_index;
 layout(location = 1, component = 2) flat in uint v_page_count;
+layout(location = 1, component = 3) flat in uint v_active;
 
 layout(location = 0) out vec4 o_color;
 
@@ -62,5 +63,13 @@ void main() {
 
   float blendFactor = 0.5f * float(bitsSet) / max(float(bitsTotal), 1.0f);
   o_color = vec4(mix(color.rgb, vec3(1.0f), blendFactor), color.a * opacity);
+
+  if (v_active == 0u) {
+    uvec2 pos = uvec2(gl_FragCoord.xy);
+
+    if (((pos.x + pos.y) & 7u) < 2u)
+      o_color.xyz = vec3(0.25f);
+  }
+
   o_color = linear_to_output(o_color);
 }
