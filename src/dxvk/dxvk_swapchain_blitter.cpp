@@ -417,6 +417,7 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = &barrier;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    image->trackInitialization(barrier.subresourceRange);
 
     DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle();
 
