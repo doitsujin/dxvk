@@ -26,6 +26,8 @@ vec2 unpack_u16(uint v) {
   return vec2(float(lo >> 16), float(hi >> 16));
 }
 
+layout(location = 0) out uint o_active;
+
 void main() {
   draw_info_t draw = draw_infos[gl_InstanceIndex];
 
@@ -43,5 +45,6 @@ void main() {
   vec2 pixel_pos = pos + size * coord + (2.0f * coord - 1.0f);
   vec2 scaled_pos = 2.0f * (pixel_pos / surface_size_f) - 1.0f;
 
+  o_active = bitfieldExtract(draw.packed_range, 31, 1);
   gl_Position = vec4(scaled_pos, 0.0f, 1.0f);
 }
