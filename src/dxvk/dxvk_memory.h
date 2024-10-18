@@ -82,6 +82,8 @@ namespace dxvk {
     high_resolution_clock::time_point unusedTime = { };
     /// Unordered list of resources suballocated from this chunk.
     DxvkResourceAllocation* allocationList = nullptr;
+    /// Chunk cookie
+    uint32_t chunkCookie = 0u;
 
     void addAllocation(DxvkResourceAllocation* allocation);
     void removeAllocation(DxvkResourceAllocation* allocation);
@@ -109,6 +111,8 @@ namespace dxvk {
     VkDeviceSize nextChunkSize = MinChunkSize;
     /// Maximum chunk size for the memory pool. Hard limit.
     VkDeviceSize maxChunkSize = MaxChunkSize;
+    /// Next chunk cookie, used to order chunks in statistics
+    uint32_t nextChunkCookie = 0u;
 
     force_inline int64_t alloc(uint64_t size, uint64_t align) {
       if (size <= DxvkPoolAllocator::MaxSize)
@@ -198,6 +202,8 @@ namespace dxvk {
     bool mapped = false;
     /// Whether this chunk is active
     bool active = false;
+    /// Chunk cookie
+    uint32_t cookie = 0u;
   };
 
 
