@@ -28,6 +28,11 @@ namespace dxvk {
     // We can't match up by names on Linux/Wine as they don't match at all
     // like on Windows, so this is our best option.
 #ifdef _WIN32
+    // Windows reference counts DLLs per process.
+    // Hold a reference to the DLL to make sure the application cannot unload it before properly cleaning up.
+    // This works around a crash in the Skyrim Launcher.
+    m_dllHandle = LoadLibrary("d3d9.dll");
+
     if (m_d3d9Options.enumerateByDisplays) {
       DISPLAY_DEVICEA device = { };
       device.cb = sizeof(device);
@@ -72,6 +77,10 @@ namespace dxvk {
 
   D3D9InterfaceEx::~D3D9InterfaceEx() {
     g_dxvkInstance.release();
+
+#ifdef _WIN32
+  FreeLibrary(m_dllHandle);
+#endif
   }
 
 
