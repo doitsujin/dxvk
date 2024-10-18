@@ -6498,7 +6498,8 @@ namespace dxvk {
 
 
   void DxvkContext::relocateQueuedResources() {
-    auto resourceList = m_common->memoryManager().pollRelocationList();
+    constexpr static uint32_t MaxRelocationsPerSubmission = 128u;
+    auto resourceList = m_common->memoryManager().pollRelocationList(MaxRelocationsPerSubmission);
 
     if (resourceList.empty())
       return;
