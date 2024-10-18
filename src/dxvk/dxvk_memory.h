@@ -958,6 +958,64 @@ namespace dxvk {
 
 
   /**
+   * \brief Relocation entry
+   */
+  struct DxvkRelocationEntry {
+    /// Resource to relocate
+    Rc<DxvkPagedResource> resource;
+    /// Resource to relocate
+    DxvkAllocationModes mode = 0u;
+  };
+
+
+  /**
+   * \brief Resource relocation helper
+   *
+   * Simple thread-safe data structure used to pass a list of
+   * resources to move from the allocator to the CS thread.
+   */
+  class DxvkRelocationList {
+
+  public:
+
+    DxvkRelocationList();
+
+    ~DxvkRelocationList();
+
+    /**
+     * \brief Retrieves list of resources to move
+     *
+     * Clears the internally stored list. Any
+     * duplicate entries will be removed.
+     * \returns List of resources to move
+     */
+    std::vector<DxvkRelocationEntry> poll();
+
+    /**
+     * \brief Adds relocation entry to the list
+     *
+     * \param [in] resource Resource to add
+     * \param [in] mode Allocation mode
+     */
+    void addResource(
+            Rc<DxvkPagedResource>&&     resource,
+            DxvkAllocationModes         mode);
+
+    /**
+     * \brief Clears list
+     */
+    void clear();
+
+  private:
+
+    dxvk::mutex                               m_mutex;
+    std::unordered_map<Rc<DxvkPagedResource>,
+      DxvkAllocationModes, RcHash>            m_entries;
+
+  };
+
+
+  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
@@ -1162,6 +1220,14 @@ namespace dxvk {
      */
     void performTimedTasks();
 
+    /**
+     * \brief Polls relocation list
+     * \returns Relocation entries
+     */
+    auto pollRelocationList() {
+      return m_relocations.poll();
+    }
+
   private:
 
     DxvkDevice* m_device;
@@ -1192,6 +1258,9 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex               m_resourceMutex;
     std::unordered_map<uint64_t, DxvkPagedResource*> m_resourceMap;
+
+    alignas(CACHE_LINE_SIZE)
+    DxvkRelocationList        m_relocations;
 
     DxvkDeviceMemory allocateDeviceMemory(
             DxvkMemoryType&       type,
