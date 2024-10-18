@@ -1365,6 +1365,12 @@ namespace dxvk {
 
     void updateMemoryHeapBudgets();
 
+    void moveDefragChunks(
+            DxvkMemoryType&       type);
+
+    void pickDefragChunk(
+            DxvkMemoryType&       type);
+
     void runWorker();
 
   };
