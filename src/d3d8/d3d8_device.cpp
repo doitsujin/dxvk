@@ -1403,10 +1403,7 @@ namespace dxvk {
       if (ShouldBatch())
         m_batcher->SetStream(StreamNumber, buffer, Stride);
 
-      m_streams[StreamNumber].buffer = buffer;
-      // The previous stride is preserved if pStreamData is NULL
-      if (likely(buffer != nullptr))
-        m_streams[StreamNumber].stride = Stride;
+      m_streams[StreamNumber] = D3D8VBO {buffer, Stride};
     }
 
     return res;
