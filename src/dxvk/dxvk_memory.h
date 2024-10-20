@@ -1095,6 +1095,15 @@ namespace dxvk {
       const VkImageCreateInfo&      createInfo,
             VkMemoryRequirements2&  memoryRequirements) const;
 
+    /**
+     * \brief Performs clean-up tasks
+     *
+     * Intended to be called periodically by a worker thread in order
+     * to initiate defragmentation, clean up the allocation cache and
+     * free unused memory.
+     */
+    void performTimedTasks();
+
   private:
 
     DxvkDevice* m_device;
@@ -1102,7 +1111,6 @@ namespace dxvk {
     DxvkSharingModeInfo       m_sharingModeInfo;
 
     dxvk::mutex               m_mutex;
-    dxvk::condition_variable  m_cond;
 
     uint32_t m_memTypeCount = 0u;
     uint32_t m_memHeapCount = 0u;
@@ -1119,8 +1127,9 @@ namespace dxvk {
 
     DxvkResourceAllocationPool  m_allocationPool;
 
-    dxvk::thread              m_worker;
-    bool                      m_stopWorker = false;
+    alignas(CACHE_LINE_SIZE)
+    high_resolution_clock::time_point m_taskDeadline = { };
+    std::array<DxvkMemoryStats, VK_MAX_MEMORY_HEAPS> m_adapterHeapStats = { };
 
     DxvkDeviceMemory allocateDeviceMemory(
             DxvkMemoryType&       type,
@@ -1158,7 +1167,7 @@ namespace dxvk {
             VkDeviceSize          allocationSize,
             high_resolution_clock::time_point time);
 
-    void freeEmptyChunksInPool(
+    bool freeEmptyChunksInPool(
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
             VkDeviceSize          allocationSize,
@@ -1223,7 +1232,11 @@ namespace dxvk {
 
     void updateMemoryHeapBudgets();
 
-    void runWorker();
+    void updateMemoryHeapStats(
+            uint32_t              heapIndex);
+
+    void performTimedTasksLocked(
+            high_resolution_clock::time_point currentTime);
 
   };
   

@@ -177,6 +177,10 @@ namespace dxvk {
 
       m_submitQueue.pop();
       m_submitCond.notify_all();
+
+      // Good time to invoke allocator tasks now since we
+      // expect this to get called somewhat periodically.
+      m_device->m_objects.memoryManager().performTimedTasks();
     }
   }
   
