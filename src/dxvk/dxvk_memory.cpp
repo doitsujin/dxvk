@@ -474,21 +474,11 @@ namespace dxvk {
     determineBufferUsageFlagsPerMemoryType();
 
     updateMemoryHeapBudgets();
-
-    // Start worker after setting up everything else
-    m_worker = dxvk::thread([this] { runWorker(); });
   }
   
   
   DxvkMemoryAllocator::~DxvkMemoryAllocator() {
     auto vk = m_device->vkd();
-
-    { std::unique_lock lock(m_mutex);
-      m_stopWorker = true;
-      m_cond.notify_one();
-    }
-
-    m_worker.join();
 
     // Destroy shared caches so that any allocations
     // that are still alive get returned to the device
@@ -500,6 +490,14 @@ namespace dxvk {
     // Now that no allocations are alive, we can free chunks
     for (uint32_t i = 0; i < m_memHeapCount; i++)
       freeEmptyChunksInHeap(m_memHeaps[i], VkDeviceSize(-1), high_resolution_clock::time_point());
+
+    // Ensure adapter allocation statistics are consistent
+    // when the deivce is being destroyed
+    for (uint32_t i = 0; i < m_memHeapCount; i++) {
+      m_device->notifyMemoryStats(i,
+        -m_adapterHeapStats[i].memoryAllocated,
+        -m_adapterHeapStats[i].memoryUsed);
+    }
   }
   
   
@@ -1182,8 +1180,10 @@ namespace dxvk {
             ? allocation->m_type->mappedPool
             : allocation->m_type->devicePool;
 
-          if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
-            freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+          if (unlikely(pool.free(allocation->m_address, allocation->m_size))) {
+            if (freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now()))
+              updateMemoryHeapStats(allocation->m_type->properties.heapIndex);
+          }
         }
       }
 
@@ -1221,8 +1221,10 @@ namespace dxvk {
       // still own the memory, so make sure to release it here.
       allocation->m_type->stats.memoryUsed -= allocation->m_size;
 
-      if (unlikely(pool.free(allocation->m_address, allocation->m_size)))
-        freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now());
+      if (unlikely(pool.free(allocation->m_address, allocation->m_size))) {
+        if (freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now()))
+          updateMemoryHeapStats(allocation->m_type->properties.heapIndex);
+      }
 
       m_allocationPool.free(std::exchange(allocation, allocation->m_next));
     }
@@ -1233,16 +1235,21 @@ namespace dxvk {
     const DxvkMemoryHeap&       heap,
           VkDeviceSize          allocationSize,
           high_resolution_clock::time_point time) {
+    bool freed = false;
+
     for (auto typeIndex : bit::BitMask(heap.memoryTypes)) {
       auto& type = m_memTypes[typeIndex];
 
-      freeEmptyChunksInPool(type, type.devicePool, allocationSize, time);
-      freeEmptyChunksInPool(type, type.mappedPool, allocationSize, time);
+      freed |= freeEmptyChunksInPool(type, type.devicePool, allocationSize, time);
+      freed |= freeEmptyChunksInPool(type, type.mappedPool, allocationSize, time);
     }
+
+    if (freed)
+      updateMemoryHeapStats(heap.index);
   }
 
 
-  void DxvkMemoryAllocator::freeEmptyChunksInPool(
+  bool DxvkMemoryAllocator::freeEmptyChunksInPool(
           DxvkMemoryType&       type,
           DxvkMemoryPool&       pool,
           VkDeviceSize          allocationSize,
@@ -1304,6 +1311,8 @@ namespace dxvk {
         chunkFreed = true;
       }
     }
+
+    return chunkFreed;
   }
 
 
@@ -1863,53 +1872,52 @@ namespace dxvk {
   }
 
 
-  void DxvkMemoryAllocator::runWorker() {
-    env::setThreadName("dxvk-memory");
+  void DxvkMemoryAllocator::updateMemoryHeapStats(uint32_t heapIndex) {
+    DxvkMemoryStats stats = getMemoryStats(heapIndex);
 
-    // Local memory statistics that we use to compute stat deltas
-    std::array<DxvkMemoryStats, VK_MAX_MEMORY_HEAPS> heapStats = { };
+    m_device->notifyMemoryStats(heapIndex,
+      stats.memoryAllocated - m_adapterHeapStats[heapIndex].memoryAllocated,
+      stats.memoryUsed - m_adapterHeapStats[heapIndex].memoryUsed);
+
+    m_adapterHeapStats[heapIndex] = stats;
+  }
+
+
+  void DxvkMemoryAllocator::performTimedTasks() {
+    static constexpr auto Interval = std::chrono::seconds(1u);
+
+    // This function shouldn't be called concurrently, so checking and
+    // updating the deadline is fine without taking the global lock
+    auto currentTime = high_resolution_clock::now();
+
+    if (m_taskDeadline != high_resolution_clock::time_point()
+     && m_taskDeadline > currentTime)
+      return;
+
+    if (m_taskDeadline == high_resolution_clock::time_point()
+     || m_taskDeadline + Interval <= currentTime)
+      m_taskDeadline = currentTime + Interval;
+    else
+      m_taskDeadline = m_taskDeadline + Interval;
 
     std::unique_lock lock(m_mutex);
+    performTimedTasksLocked(currentTime);
+  }
 
-    while (true) {
-      m_cond.wait_for(lock, std::chrono::seconds(1u),
-        [this] { return m_stopWorker; });
 
-      if (m_stopWorker)
-        break;
+  void DxvkMemoryAllocator::performTimedTasksLocked(high_resolution_clock::time_point currentTime) {
+    // Re-query current memory budgets
+    updateMemoryHeapBudgets();
 
-      // Re-query current memory budgets
-      updateMemoryHeapBudgets();
+    // Periodically free unused memory chunks and update
+    // memory allocation statistics for the adapter.
+    for (uint32_t i = 0; i < m_memHeapCount; i++)
+      freeEmptyChunksInHeap(m_memHeaps[i], 0, currentTime);
 
-      // Periodically free unused memory chunks and update
-      // memory allocation statistics for the adapter.
-      auto currentTime = high_resolution_clock::now();
-
-      for (uint32_t i = 0; i < m_memHeapCount; i++) {
-        freeEmptyChunksInHeap(m_memHeaps[i], 0, currentTime);
-
-        DxvkMemoryStats stats = getMemoryStats(i);
-
-        m_device->notifyMemoryStats(i,
-          stats.memoryAllocated - heapStats[i].memoryAllocated,
-          stats.memoryUsed - heapStats[i].memoryUsed);
-
-        heapStats[i] = stats;
-      }
-
-      // Periodically clean up unused cached allocations
-      for (uint32_t i = 0; i < m_memTypeCount; i++) {
-        if (m_memTypes[i].sharedCache)
-          m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
-      }
-    }
-
-    // Ensure adapter allocation statistics are consistent
-    // when the deivce is being destroyed
-    for (uint32_t i = 0; i < m_memHeapCount; i++) {
-      m_device->notifyMemoryStats(i,
-        -heapStats[i].memoryAllocated,
-        -heapStats[i].memoryUsed);
+    // Periodically clean up unused cached allocations
+    for (uint32_t i = 0; i < m_memTypeCount; i++) {
+      if (m_memTypes[i].sharedCache)
+        m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
     }
   }
 
