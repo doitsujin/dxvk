@@ -469,7 +469,9 @@ namespace dxvk {
   }
 
 
-  std::vector<DxvkRelocationEntry> DxvkRelocationList::poll(uint32_t count) {
+  std::vector<DxvkRelocationEntry> DxvkRelocationList::poll(
+          uint32_t                    count,
+          VkDeviceSize                size) {
     std::lock_guard lock(m_mutex);
 
     std::vector<DxvkRelocationEntry> result;
@@ -480,10 +482,17 @@ namespace dxvk {
 
     result.reserve(count);
 
+    VkDeviceSize totalSize = 0u;
+
     for (uint32_t i = 0; i < count; i++) {
       auto iter = m_entries.begin();
 
-      result.push_back({ iter->first, iter->second });
+      if (totalSize && totalSize + iter->second.size > size)
+        break;
+
+      totalSize += iter->second.size;
+
+      result.push_back({ iter->first, iter->second.mode });
       m_entries.erase(iter);
     }
 
@@ -493,9 +502,10 @@ namespace dxvk {
 
   void DxvkRelocationList::addResource(
           Rc<DxvkPagedResource>&&     resource,
-          DxvkAllocationModes         mode) {
+          DxvkAllocationModes         mode,
+          VkDeviceSize                size) {
     std::lock_guard lock(m_mutex);
-    m_entries.emplace(std::move(resource), mode);
+    m_entries.emplace(std::move(resource), Entry { mode, size });
   }
 
 
@@ -2110,7 +2120,7 @@ namespace dxvk {
         continue;
 
       // Acquired the resource, add it to the relocation list.
-      m_relocations.addResource(std::move(resource), mode);
+      m_relocations.addResource(std::move(resource), mode, a->m_size);
     }
   }
 

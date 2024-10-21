@@ -998,20 +998,24 @@ namespace dxvk {
      * Removes items from the internally stored list.
      * Any duplicate entries will be removed.
      * \param [in] count Number of entries to return
+     * \param [in] size Maximum total resource size
      * \returns List of resources to move
      */
     std::vector<DxvkRelocationEntry> poll(
-            uint32_t                    count);
+            uint32_t                    count,
+            VkDeviceSize                size);
 
     /**
      * \brief Adds relocation entry to the list
      *
      * \param [in] resource Resource to add
      * \param [in] mode Allocation mode
+     * \param [in] size Allocation size
      */
     void addResource(
             Rc<DxvkPagedResource>&&     resource,
-            DxvkAllocationModes         mode);
+            DxvkAllocationModes         mode,
+            VkDeviceSize                size);
 
     /**
      * \brief Clears list
@@ -1028,9 +1032,14 @@ namespace dxvk {
 
   private:
 
+    struct Entry {
+      DxvkAllocationModes mode = 0u;
+      VkDeviceSize        size = 0u;
+    };
+
     dxvk::mutex                               m_mutex;
     std::unordered_map<Rc<DxvkPagedResource>,
-      DxvkAllocationModes, RcHash>            m_entries;
+      Entry, RcHash>                          m_entries;
 
   };
 
@@ -1243,11 +1252,12 @@ namespace dxvk {
     /**
      * \brief Polls relocation list
      *
-     * \param [in] count Desired entry count
+     * \param [in] count Maximum resource count
+     * \param [in] size Maximum total size
      * \returns Relocation entries
      */
-    auto pollRelocationList(uint32_t count) {
-      return m_relocations.poll(count);
+    auto pollRelocationList(uint32_t count, VkDeviceSize size) {
+      return m_relocations.poll(count, size);
     }
 
   private:

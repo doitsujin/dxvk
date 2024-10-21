@@ -6498,8 +6498,13 @@ namespace dxvk {
 
 
   void DxvkContext::relocateQueuedResources() {
+    // Limit the number and size of resources to process per submission to
+    // something reasonable. We don't know if we are transferring over PCIe.
     constexpr static uint32_t MaxRelocationsPerSubmission = 128u;
-    auto resourceList = m_common->memoryManager().pollRelocationList(MaxRelocationsPerSubmission);
+    constexpr static uint32_t MaxRelocatedMemoryPerSubmission = 16u << 20;
+
+    auto resourceList = m_common->memoryManager().pollRelocationList(
+      MaxRelocationsPerSubmission, MaxRelocatedMemoryPerSubmission);
 
     if (resourceList.empty())
       return;
