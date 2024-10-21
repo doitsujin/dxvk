@@ -2221,7 +2221,7 @@ namespace dxvk {
 
 
   void DxvkMemoryAllocator::performTimedTasks() {
-    static constexpr auto Interval = std::chrono::seconds(1u);
+    static constexpr auto Interval = std::chrono::milliseconds(500u);
 
     // This function shouldn't be called concurrently, so checking and
     // updating the deadline is fine without taking the global lock
