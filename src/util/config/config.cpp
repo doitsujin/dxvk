@@ -979,13 +979,17 @@ namespace dxvk {
     { R"(\\SecretWorldLegends\.exe$)", {{
       { "d3d9.memoryTrackTest",              "True" },
     }} },
-    /* Far Cry 2: Set vendor ID to Nvidia to      *
-     * avoid vegetation artifacts on Intel, and   *
-     * set apitrace mode to True to improve perf  *
-     * on all hardware.                           */
+    /* Far Cry 2: Set vendor ID to Nvidia to       *
+     * avoid vegetation artifacts on Intel, and    *
+     * set apitrace mode to True to improve perf   *
+     * on all hardware.                            */
     { R"(\\(FarCry2|farcry2game)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* Alpha Protocol - Rids unwanted reflections  */
+    { R"(\\APGame\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
 
     /**********************************************/
