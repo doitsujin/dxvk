@@ -124,7 +124,39 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3DBOX box;
-    if (pRect != nullptr) {
+    D3DRESOURCETYPE type = m_texture->GetType();
+
+    if (m_texture->Device()->IsD3D8Compatible() && type != D3DRTYPE_TEXTURE) {
+      // D3D8 LockRect clears any existing content present in
+      // pLockedRect for anything beside D3DRTYPE_TEXTURE surfaces
+      pLockedRect->pBits = nullptr;
+      pLockedRect->Pitch = 0;
+    }
+
+    if (unlikely(pRect != nullptr)) {
+      auto& desc = *(m_texture->Desc());
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(desc.Format);
+
+      // The boundaries of pRect are validated for D3DPOOL_DEFAULT surfaces
+      // with formats which need to be block aligned (mip 0), surfaces created via
+      // CreateImageSurface and D3D8 cube textures outside of D3DPOOL_DEFAULT
+      if ((m_mipLevel == 0 && desc.Pool == D3DPOOL_DEFAULT &&
+           blockSize.Width > 0 && blockSize.Height > 0)
+       || (desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
+       || (m_texture->Device()->IsD3D8Compatible() &&
+           desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
+        // Negative coordinates
+        if (pRect->right  < 0 || pRect->left < 0
+         || pRect->bottom < 0 || pRect->top  < 0
+        // Negative or zero length dimensions
+         || pRect->right  - pRect->left <= 0
+         || pRect->bottom - pRect->top  <= 0
+        // Exceeding surface dimensions
+         || static_cast<UINT>(pRect->right)  > desc.Width
+         || static_cast<UINT>(pRect->bottom) > desc.Height)
+          return D3DERR_INVALIDCALL;
+      }
+
       box.Left   = pRect->left;
       box.Right  = pRect->right;
       box.Top    = pRect->top;
@@ -141,6 +173,8 @@ namespace dxvk {
       &lockedBox,
       pRect != nullptr ? &box : nullptr,
       Flags);
+
+    if (FAILED(hr)) return hr;
 
     pLockedRect->pBits = lockedBox.pBits;
     pLockedRect->Pitch = lockedBox.RowPitch;

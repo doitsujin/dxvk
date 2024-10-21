@@ -101,7 +101,8 @@ namespace dxvk {
         };
 
         if (FAILED(res)) {
-          if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
+          // The struct size needs to be at least equal or larger
+          if (DevInfoStructSize < sizeof(D3DDEVINFO_VCACHE))
             return D3DERR_INVALIDCALL;
 
           memset(pDevInfoStruct, 0, sizeof(D3DDEVINFO_VCACHE));
@@ -306,6 +307,9 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DPOOL             Pool,
           IDirect3DTexture8** ppTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppTexture);
 
     if (unlikely(ppTexture == nullptr))
@@ -341,6 +345,9 @@ namespace dxvk {
           D3DFORMAT                 Format,
           D3DPOOL                   Pool,
           IDirect3DVolumeTexture8** ppVolumeTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppVolumeTexture);
 
     if (unlikely(ppVolumeTexture == nullptr))
@@ -368,6 +375,9 @@ namespace dxvk {
           D3DFORMAT               Format,
           D3DPOOL                 Pool,
           IDirect3DCubeTexture8** ppCubeTexture) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppCubeTexture);
 
     if (unlikely(ppCubeTexture == nullptr))
@@ -441,6 +451,9 @@ namespace dxvk {
           D3DMULTISAMPLE_TYPE MultiSample,
           BOOL                Lockable,
           IDirect3DSurface8** ppSurface) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -469,6 +482,9 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DMULTISAMPLE_TYPE MultiSample,
           IDirect3DSurface8** ppSurface) {
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -496,7 +512,12 @@ namespace dxvk {
           UINT                Height,
           D3DFORMAT           Format,
           IDirect3DSurface8** ppSurface) {
+    // Only CreateImageSurface clears the content of ppSurface
+    // before checking if Format is equal to D3DFMT_UNKNOWN.
     InitReturnPtr(ppSurface);
+
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1074,6 +1095,10 @@ namespace dxvk {
     if (unlikely(pToken == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Applications cannot create a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
@@ -1094,6 +1119,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CaptureStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
+    // Applications cannot capture a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
@@ -1106,6 +1135,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8Device::ApplyStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
+
+    // Applications cannot apply a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
 
     StateChange();
 
@@ -1122,7 +1155,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
-    // "Applications cannot delete a device-state block while another is being recorded"
+    // Applications cannot delete a state block while another is being recorded
     if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
