@@ -6491,10 +6491,13 @@ namespace dxvk {
     // for them based on the mode selected by the allocator. Failures here are
     // not fatal, but may lead to weird behaviour down the line - ignore for now.
     for (const auto& e : resourceList) {
-      auto storage = e.resource->relocateStorage(e.mode);
+      auto relocation = e.resource->relocateStorage(e.mode);
 
-      if (!storage)
+      if (!relocation.storage) {
+        // m_common->memoryManager().setRelocationFeedback(
+        //   e.resource->storage(), relocation.status);
         continue;
+      }
 
       Rc<DxvkImage> image = dynamic_cast<DxvkImage*>(e.resource.ptr());
       Rc<DxvkBuffer> buffer = dynamic_cast<DxvkBuffer*>(e.resource.ptr());
@@ -6502,11 +6505,11 @@ namespace dxvk {
       if (image) {
         auto& e = imageInfos.emplace_back();
         e.image = std::move(image);
-        e.storage = std::move(storage);
+        e.storage = std::move(relocation.storage);
       } else if (buffer) {
         auto& e = bufferInfos.emplace_back();
         e.buffer = std::move(buffer);
-        e.storage = std::move(storage);
+        e.storage = std::move(relocation.storage);
       }
     }
 

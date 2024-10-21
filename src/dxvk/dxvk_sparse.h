@@ -426,6 +426,30 @@ namespace dxvk {
 
 
   /**
+   * \brief Resource relocation status
+   */
+  enum class DxvkRelocationStatus : uint32_t {
+    /// New backing storage allocated successfully 
+    Success = 0,
+    /// Resource cannot be moved
+    Immovable = 1,
+    /// Relocation failed due to memory constraints
+    Failed = 2,
+  };
+
+
+  /**
+   * \brief Resource relocation feedback
+   */
+  struct DxvkRelocationResult {
+    /// Relocation status.
+    DxvkRelocationStatus status = DxvkRelocationStatus::Success;
+    /// Newly allocated storage. May be \c nullptr on error.
+    Rc<DxvkResourceAllocation> storage;
+  };
+
+
+  /**
    * \brief Paged resource
    *
    * Base class for memory-backed resources that may
@@ -556,8 +580,14 @@ namespace dxvk {
      *    was successfully created or is unnecessary. The second
      *    field will contain the new allocation itself.
      */
-    virtual Rc<DxvkResourceAllocation> relocateStorage(
+    virtual DxvkRelocationResult relocateStorage(
             DxvkAllocationModes         mode) = 0;
+
+    /**
+     * \brief Queries current backing storage for resource
+     * \returns Reference to current backing storage
+     */
+    virtual Rc<DxvkResourceAllocation> storage() const = 0;
 
   private:
 

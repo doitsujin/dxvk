@@ -521,7 +521,7 @@ namespace dxvk {
      * \param [in] mode Allocation mode flags
      * \returns Operation status and allocation
      */
-    Rc<DxvkResourceAllocation> relocateStorage(
+    DxvkRelocationResult relocateStorage(
             DxvkAllocationModes         mode);
 
     /**
@@ -571,7 +571,7 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Backing storage for this image
      */
-    Rc<DxvkResourceAllocation> storage() const {
+    Rc<DxvkResourceAllocation> storage() const final {
       return m_storage;
     }
 

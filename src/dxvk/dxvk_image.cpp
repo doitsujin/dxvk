@@ -108,12 +108,17 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::relocateStorage(
+  DxvkRelocationResult DxvkImage::relocateStorage(
           DxvkAllocationModes         mode) {
     if (!canRelocate())
-      return nullptr;
+      return { DxvkRelocationStatus::Immovable };
 
-    return allocateStorageWithUsage(DxvkImageUsageInfo(), mode);
+    auto storage = allocateStorageWithUsage(DxvkImageUsageInfo(), mode);
+
+    if (!storage)
+      return { DxvkRelocationStatus::Failed };
+
+    return { DxvkRelocationStatus::Success, std::move(storage) };
   }
 
 

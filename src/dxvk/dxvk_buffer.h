@@ -350,7 +350,7 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Current buffer allocation
      */
-    Rc<DxvkResourceAllocation> storage() const {
+    Rc<DxvkResourceAllocation> storage() const final {
       return m_storage;
     }
 
@@ -403,7 +403,7 @@ namespace dxvk {
      * \param [in] mode Allocation mode flags
      * \returns Operation status and allocation
      */
-    Rc<DxvkResourceAllocation> relocateStorage(
+    DxvkRelocationResult relocateStorage(
             DxvkAllocationModes         mode);
 
   private:

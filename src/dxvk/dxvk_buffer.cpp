@@ -79,12 +79,12 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkBuffer::relocateStorage(
+  DxvkRelocationResult DxvkBuffer::relocateStorage(
           DxvkAllocationModes         mode) {
     // The resource may become non-relocatable even after we allocate new
     // backing storage, but if it already is then don't waste memory.
     if (!canRelocate())
-      return nullptr;
+      return { DxvkRelocationStatus::Immovable };
 
     DxvkAllocationInfo allocationInfo = { };
     allocationInfo.resourceCookie = cookie();
@@ -97,7 +97,12 @@ namespace dxvk {
     info.size = m_info.size;
     m_sharingMode.fill(info);
 
-    return m_allocator->createBufferResource(info, allocationInfo, nullptr);
+    auto allocation = m_allocator->createBufferResource(info, allocationInfo, nullptr);
+
+    if (!allocation)
+      return { DxvkRelocationStatus::Failed };
+
+    return { DxvkRelocationStatus::Success, std::move(allocation) };
   }
   
 }
