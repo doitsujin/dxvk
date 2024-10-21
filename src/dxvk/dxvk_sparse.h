@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <map>
 
 #include "dxvk_access.h"
@@ -434,7 +435,18 @@ namespace dxvk {
 
   public:
 
+    DxvkPagedResource()
+    : m_cookie(++s_cookie) { }
+
     virtual ~DxvkPagedResource();
+
+    /**
+     * \brief Queries resource cookie
+     * \returns Resource cookie
+     */
+    uint64_t cookie() const {
+      return m_cookie;
+    }
 
     /**
      * \brief Increments reference count
@@ -502,6 +514,28 @@ namespace dxvk {
     }
     
     /**
+     * \brief Tries to acquire reference
+     *
+     * If the reference count is zero at the time this is called,
+     * the method will fail, otherwise the reference count will
+     * be incremented by one. This is useful to safely obtain a
+     * pointer from a look-up table that does not own references.
+     * \returns \c true on success
+     */
+    Rc<DxvkPagedResource> tryAcquire() {
+      uint64_t increment = getIncrement(DxvkAccess::None);
+      uint64_t refCount = m_useCount.load(std::memory_order_acquire);
+
+      do {
+        if (!refCount)
+          return nullptr;
+      } while (!m_useCount.compare_exchange_strong( refCount,
+        refCount + increment, std::memory_order_relaxed));
+
+      return Rc<DxvkPagedResource>::unsafeCreate(this);
+    }
+
+    /**
      * \brief Queries sparse page table
      *
      * Should be removed once storage objects can
@@ -510,13 +544,31 @@ namespace dxvk {
      */
     virtual DxvkSparsePageTable* getSparsePageTable() = 0;
 
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags to control behaviour.
+     *    When relocating the resource to a preferred memory type,
+     *    \c NoFallback should be set, when defragmenting device
+     *    memory then \c NoAllocation should also be set.
+     * \returns \c true in the first field if the operation is
+     *    considered successful, i.e. if an new backing allocation
+     *    was successfully created or is unnecessary. The second
+     *    field will contain the new allocation itself.
+     */
+    virtual Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode) = 0;
+
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };
+    uint64_t              m_cookie = { 0u };
 
     static constexpr uint64_t getIncrement(DxvkAccess access) {
       return uint64_t(1u) << (uint32_t(access) * 20u);
     }
+
+    static std::atomic<uint64_t> s_cookie;
 
   };
 

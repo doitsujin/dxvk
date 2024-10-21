@@ -312,13 +312,17 @@ namespace dxvk {
      * \returns The new buffer slice
      */
     Rc<DxvkResourceAllocation> allocateStorage(DxvkLocalAllocationCache* cache) {
+      DxvkAllocationInfo allocationInfo = { };
+      allocationInfo.resourceCookie = cookie();
+      allocationInfo.properties = m_properties;
+
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
       info.usage = m_info.usage;
       info.size = m_info.size;
       m_sharingMode.fill(info);
 
-      return m_allocator->createBufferResource(info, m_properties, cache);
+      return m_allocator->createBufferResource(info, allocationInfo, cache);
     }
 
     /**
@@ -392,6 +396,15 @@ namespace dxvk {
      * \returns Sparse binding table
      */
     DxvkSparsePageTable* getSparsePageTable();
+
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags
+     * \returns Operation status and allocation
+     */
+    Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode);
 
   private:
 

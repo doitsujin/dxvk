@@ -1122,8 +1122,11 @@ namespace dxvk::hud {
     draw.w = size.x;
     draw.h = size.y;
     draw.pageMask = chunk.pageMaskOffset;
-    draw.pageCount = chunk.pageCount;
+    draw.pageCountAndActiveBit = chunk.pageCount;
     draw.color = color;
+
+    if (chunk.active)
+      draw.pageCountAndActiveBit |= 1u << 15;
   }
 
 

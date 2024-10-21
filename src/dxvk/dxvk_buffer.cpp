@@ -17,6 +17,8 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     // Create and assign actual buffer resource
     assignStorage(allocateStorage());
   }
@@ -33,25 +35,30 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_stableAddress (true) {
+    m_allocator->registerResource(this);
+
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.usage = m_info.usage;
     info.size = m_info.size;
     m_sharingMode.fill(info);
 
-    assignStorage(allocator.importBufferResource(info, importInfo));
+    assignStorage(allocator.importBufferResource(info, allocationInfo, importInfo));
   }
 
 
   DxvkBuffer::~DxvkBuffer() {
-
+    m_allocator->unregisterResource(this);
   }
 
 
   bool DxvkBuffer::canRelocate() const {
     return !m_bufferInfo.mapPtr && !m_stableAddress
-        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT);
   }
 
@@ -69,6 +76,28 @@ namespace dxvk {
 
   DxvkSparsePageTable* DxvkBuffer::getSparsePageTable() {
     return m_storage->getSparsePageTable();
+  }
+
+
+  Rc<DxvkResourceAllocation> DxvkBuffer::relocateStorage(
+          DxvkAllocationModes         mode) {
+    // The resource may become non-relocatable even after we allocate new
+    // backing storage, but if it already is then don't waste memory.
+    if (!canRelocate())
+      return nullptr;
+
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+    allocationInfo.properties = m_properties;
+    allocationInfo.mode = mode;
+
+    VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    info.flags = m_info.flags;
+    info.usage = m_info.usage;
+    info.size = m_info.size;
+    m_sharingMode.fill(info);
+
+    return m_allocator->createBufferResource(info, allocationInfo, nullptr);
   }
   
 }

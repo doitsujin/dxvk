@@ -129,10 +129,10 @@ namespace dxvk {
 
   private:
 
-    VkFence                                m_fence = VK_NULL_HANDLE;
-    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreWaits;
-    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreSignals;
-    std::vector<VkCommandBufferSubmitInfo> m_commandBuffers;
+    VkFence                                     m_fence = VK_NULL_HANDLE;
+    small_vector<VkSemaphoreSubmitInfo, 4>      m_semaphoreWaits;
+    small_vector<VkSemaphoreSubmitInfo, 4>      m_semaphoreSignals;
+    small_vector<VkCommandBufferSubmitInfo, 4>  m_commandBuffers;
 
   };
 
@@ -145,6 +145,7 @@ namespace dxvk {
    */
   struct DxvkCommandSubmissionInfo {
     DxvkCmdBufferFlags  usedFlags   = 0;
+    VkBool32            syncSdma    = VK_FALSE;
     VkCommandBuffer     execBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     initBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     sdmaBuffer  = VK_NULL_HANDLE;
@@ -364,6 +365,17 @@ namespace dxvk {
      */
     void setWsiSemaphores(const PresenterSync& wsiSemaphores) {
       m_wsiSemaphores = wsiSemaphores;
+    }
+
+    /**
+     * \brief Sets flag to stall transfer queue
+     *
+     * If set, the current submission will submit a semaphore
+     * wait to the transfer queue in order to stall subsequent
+     * submissions. Necessary in case of resource relocations.
+     */
+    void setSubmissionBarrier() {
+      m_cmd.syncSdma = VK_TRUE;
     }
 
     /**
@@ -1076,11 +1088,11 @@ namespace dxvk {
 
     DxvkCommandSubmission     m_commandSubmission;
 
-    std::vector<DxvkFenceValuePair> m_waitSemaphores;
-    std::vector<DxvkFenceValuePair> m_signalSemaphores;
+    small_vector<DxvkFenceValuePair, 4> m_waitSemaphores;
+    small_vector<DxvkFenceValuePair, 4> m_signalSemaphores;
 
-    std::vector<DxvkCommandSubmissionInfo> m_cmdSubmissions;
-    std::vector<DxvkSparseBindSubmission>  m_cmdSparseBinds;
+    small_vector<DxvkCommandSubmissionInfo, 4> m_cmdSubmissions;
+    small_vector<DxvkSparseBindSubmission, 4>  m_cmdSparseBinds;
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,

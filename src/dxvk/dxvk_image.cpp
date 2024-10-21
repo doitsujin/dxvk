@@ -14,6 +14,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Always enable depth-stencil attachment usage for depth-stencil
@@ -43,23 +45,28 @@ namespace dxvk {
     m_allocator     (&memAlloc),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_stableAddress (true) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
-    assignStorage(m_allocator->importImageResource(imageInfo, imageHandle));
+    assignStorage(m_allocator->importImageResource(imageInfo, allocationInfo, imageHandle));
   }
 
 
   DxvkImage::~DxvkImage() {
-
+    m_allocator->unregisterResource(this);
   }
 
 
   bool DxvkImage::canRelocate() const {
     return !m_imageInfo.mapPtr && !m_shared && !m_stableAddress
-        && !m_storage->flags().test(DxvkAllocationFlag::Imported)
         && !(m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
 
@@ -101,6 +108,15 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkResourceAllocation> DxvkImage::relocateStorage(
+          DxvkAllocationModes         mode) {
+    if (!canRelocate())
+      return nullptr;
+
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), mode);
+  }
+
+
   Rc<DxvkImageView> DxvkImage::createView(
     const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
@@ -113,11 +129,13 @@ namespace dxvk {
 
 
   Rc<DxvkResourceAllocation> DxvkImage::allocateStorage() {
-    return allocateStorageWithUsage(DxvkImageUsageInfo());
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), 0u);
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(const DxvkImageUsageInfo& usageInfo) {
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(
+    const DxvkImageUsageInfo&         usageInfo,
+          DxvkAllocationModes         mode) {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
     small_vector<VkFormat, 4> localViewFormats;
 
@@ -173,8 +191,13 @@ namespace dxvk {
       sharedImportWin32.handle = m_info.sharing.handle;
     }
 
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+    allocationInfo.properties = m_properties;
+    allocationInfo.mode = mode;
+
     return m_allocator->createImageResource(imageInfo,
-      m_properties, sharedMemoryInfo);
+      allocationInfo, sharedMemoryInfo);
   }
 
 

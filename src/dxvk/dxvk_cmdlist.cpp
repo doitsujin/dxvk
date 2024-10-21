@@ -211,9 +211,9 @@ namespace dxvk {
 
       if (isFirst) {
         // Wait for per-command list semaphores on first submission
-        for (const auto& entry : m_waitSemaphores) {
-          m_commandSubmission.waitSemaphore(entry.fence->handle(),
-            entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+        for (size_t i = 0; i < m_waitSemaphores.size(); i++) {
+          m_commandSubmission.waitSemaphore(m_waitSemaphores[i].fence->handle(),
+            m_waitSemaphores[i].value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
         }
       }
 
@@ -232,7 +232,7 @@ namespace dxvk {
           timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
-      // Submit transfer commands as necessary
+      // Execute transfer command buffer, if any
       if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.sdmaBuffer);
 
@@ -265,9 +265,9 @@ namespace dxvk {
 
       if (isLast) {
         // Signal per-command list semaphores on the final submission
-        for (const auto& entry : m_signalSemaphores) {
-          m_commandSubmission.signalSemaphore(entry.fence->handle(),
-            entry.value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        for (size_t i = 0; i < m_signalSemaphores.size(); i++) {
+          m_commandSubmission.signalSemaphore(m_signalSemaphores[i].fence->handle(),
+            m_signalSemaphores[i].value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         // Signal WSI semaphore on the final submission
@@ -292,6 +292,16 @@ namespace dxvk {
           ++timelines.graphics, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
         if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
+          return status;
+      }
+
+      // Finally, submit semaphore wait on the transfer queue. If this
+      // is not the final iteration, fold the wait into the next one.
+      if (cmd.syncSdma) {
+        m_commandSubmission.waitSemaphore(semaphores.graphics,
+          timelines.graphics, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+
+        if (isLast && (status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
           return status;
       }
     }
@@ -349,7 +359,9 @@ namespace dxvk {
       m_cmd.sdmaBuffer = m_transferPool->getCommandBuffer();
     }
 
+    m_cmd.syncSdma = VK_FALSE;
     m_cmd.usedFlags = 0;
+    m_cmd.sparseBind = VK_FALSE;
   }
 
   
