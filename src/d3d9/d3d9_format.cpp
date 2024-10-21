@@ -440,7 +440,7 @@ namespace dxvk {
   }
 
   // Block size of formats that require some form of alignment
-  D3D9_FORMAT_BLOCK_SIZE GetFormatBlockSize(D3D9Format Format) {
+  D3D9_FORMAT_BLOCK_SIZE GetFormatAlignedBlockSize(D3D9Format Format) {
     switch (Format) {
       case D3D9Format::DXT1:
       case D3D9Format::DXT2:
