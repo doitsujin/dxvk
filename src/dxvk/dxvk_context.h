@@ -32,7 +32,7 @@ namespace dxvk {
 
   public:
     
-    DxvkContext(const Rc<DxvkDevice>& device, DxvkContextType type);
+    DxvkContext(const Rc<DxvkDevice>& device);
     ~DxvkContext();
 
     /**
@@ -1389,7 +1389,6 @@ namespace dxvk {
   private:
     
     Rc<DxvkDevice>          m_device;
-    DxvkContextType         m_type;
     DxvkObjects*            m_common;
     
     Rc<DxvkCommandList>     m_cmd;

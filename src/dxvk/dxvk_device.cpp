@@ -133,8 +133,8 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkContext> DxvkDevice::createContext(DxvkContextType type) {
-    return new DxvkContext(this, type);
+  Rc<DxvkContext> DxvkDevice::createContext() {
+    return new DxvkContext(this);
   }
 
 

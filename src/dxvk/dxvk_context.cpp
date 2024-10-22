@@ -7,9 +7,8 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device, DxvkContextType type)
+  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device      (device),
-    m_type        (type),
     m_common      (&device->m_objects),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
@@ -18,7 +17,7 @@ namespace dxvk {
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
-    m_descriptorManager = new DxvkDescriptorManager(device.ptr(), type);
+    m_descriptorManager = new DxvkDescriptorManager(device.ptr());
 
     // Default destination barriers for graphics pipelines
     m_globalRoGraphicsBarrier.stages = m_device->getShaderPipelineStages()
