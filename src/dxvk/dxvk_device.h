@@ -278,10 +278,9 @@ namespace dxvk {
      * 
      * Creates a context object that can
      * be used to record command buffers.
-     * \param [in] type Context type
      * \returns The context object
      */
-    Rc<DxvkContext> createContext(DxvkContextType type);
+    Rc<DxvkContext> createContext();
 
     /**
      * \brief Creates a GPU event
