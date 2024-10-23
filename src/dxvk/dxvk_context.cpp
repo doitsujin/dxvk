@@ -5126,9 +5126,14 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
             const auto& res = m_rc[binding.resourceBinding];
 
-            if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+            VkImageView viewHandle = VK_NULL_HANDLE;
+
+            if (res.imageView != nullptr)
+              viewHandle = res.imageView->handle(binding.viewType);
+
+            if (viewHandle) {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
-              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
               if (m_rcTracked.set(binding.resourceBinding))
@@ -5143,9 +5148,14 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             const auto& res = m_rc[binding.resourceBinding];
 
-            if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+            VkImageView viewHandle = VK_NULL_HANDLE;
+
+            if (res.imageView != nullptr)
+              viewHandle = res.imageView->handle(binding.viewType);
+
+            if (viewHandle) {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
-              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -5162,10 +5172,14 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
             const auto& res = m_rc[binding.resourceBinding];
 
-            if (res.sampler != nullptr && res.imageView != nullptr
-            && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+            VkImageView viewHandle = VK_NULL_HANDLE;
+
+            if (res.imageView != nullptr && res.sampler != nullptr)
+              viewHandle = res.imageView->handle(binding.viewType);
+
+            if (viewHandle) {
               descriptorInfo.image.sampler = res.sampler->handle();
-              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
