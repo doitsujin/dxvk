@@ -1225,6 +1225,7 @@ namespace dxvk {
     pool.chunks[chunkIndex].memory = chunk;
     pool.chunks[chunkIndex].unusedTime = high_resolution_clock::time_point();
     pool.chunks[chunkIndex].chunkCookie = ++pool.nextChunkCookie;
+    pool.chunks[chunkIndex].canMove = true;
     return true;
   }
 
@@ -1351,6 +1352,9 @@ namespace dxvk {
           }
 
           if (unlikely(pool.free(allocation->m_address, allocation->m_size))) {
+            uint32_t chunkIndex = allocation->m_address >> DxvkPageAllocator::ChunkAddressBits;
+            pool.chunks[chunkIndex].canMove = true;
+
             if (freeEmptyChunksInPool(*allocation->m_type, pool, 0, high_resolution_clock::now()))
               updateMemoryHeapStats(allocation->m_type->properties.heapIndex);
           }
@@ -1969,6 +1973,20 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::lockResourceGpuAddress(
+    const Rc<DxvkResourceAllocation>& allocation) {
+    if (allocation->m_flags.test(DxvkAllocationFlag::CanMove)) {
+      std::lock_guard lock(m_resourceMutex);
+      allocation->m_flags.clr(DxvkAllocationFlag::CanMove);
+
+      if (!allocation->m_flags.test(DxvkAllocationFlag::OwnsMemory) && !allocation->m_mapPtr) {
+        uint32_t chunkIndex = allocation->m_address >> DxvkPageAllocator::ChunkAddressBits;
+        allocation->m_type->devicePool.chunks[chunkIndex].canMove = false;
+      }
+    }
+  }
+
+
   VkDeviceAddress DxvkMemoryAllocator::getBufferDeviceAddress(VkBuffer buffer) const {
     auto vk = m_device->vkd();
 
@@ -2107,9 +2125,6 @@ namespace dxvk {
     std::unique_lock lock(m_resourceMutex);
 
     for (auto a = pool.chunks[chunkIndex].allocationList; a; a = a->m_nextInChunk) {
-      if (!a->m_flags.test(DxvkAllocationFlag::CanMove))
-        continue;
-
       // If we can't find the resource by its cookie, it has probably
       // already been destroyed. This is fine since the allocation will
       // likely get freed soon anyway.
@@ -2174,6 +2189,10 @@ namespace dxvk {
         pool.pageAllocator.killChunk(i);
         continue;
       }
+
+      // Move on if the chunk cannot be relocated anyway
+      if (!pool.chunks[i].canMove)
+        continue;
 
       // If there's a non-empty chunk already marked as dead and we haven't
       // finished moving resources around yet, killing another chunk would

@@ -1420,7 +1420,11 @@ namespace dxvk {
   void DxvkContext::ensureBufferAddress(
     const Rc<DxvkBuffer>&           buffer) {
     // Really nothing else to do here but set the flag
-    buffer->enableStableAddress();
+    if (buffer->canRelocate()) {
+      buffer->enableStableAddress();
+
+      m_common->memoryManager().lockResourceGpuAddress(buffer->storage());
+    }
   }
 
 
@@ -1440,6 +1444,9 @@ namespace dxvk {
     const DxvkImageUsageInfo&       usageInfo) {
     Rc<DxvkResourceAllocation> prevAllocation = image->assignStorageWithUsage(std::move(slice), usageInfo);
     m_cmd->track(std::move(prevAllocation));
+
+    if (usageInfo.stableGpuAddress)
+      m_common->memoryManager().lockResourceGpuAddress(image->storage());
 
     VkImageUsageFlags usage = image->info().usage;
 
@@ -1479,8 +1486,10 @@ namespace dxvk {
     // If everything matches already, no need to do anything. Only ensure
     // that the stable adress bit is respected if set for the first time.
     if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible) {
-      if (usageInfo.stableGpuAddress && image->canRelocate())
+      if (usageInfo.stableGpuAddress && image->canRelocate()) {
         image->assignStorageWithUsage(image->storage(), usageInfo);
+        m_common->memoryManager().lockResourceGpuAddress(image->storage());
+      }
 
       return true;
     }
@@ -1498,6 +1507,9 @@ namespace dxvk {
       VkImageLayout newLayout = usageInfo.layout ? usageInfo.layout : oldLayout;
 
       image->assignStorageWithUsage(image->storage(), usageInfo);
+
+      if (usageInfo.stableGpuAddress)
+        m_common->memoryManager().lockResourceGpuAddress(image->storage());
 
       accessImage(DxvkCmdBuffer::ExecBuffer, *image, image->getAvailableSubresources(),
         oldLayout, image->info().stages, image->info().access,
