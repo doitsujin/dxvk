@@ -144,12 +144,21 @@ namespace dxvk {
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardView(ID3D11View* pResourceView) {
-    DiscardView1(pResourceView, nullptr, 0);
+    DiscardViewBase(pResourceView, nullptr, 0);
   }
 
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardView1(
+          ID3D11View*              pResourceView,
+    const D3D11_RECT*              pRects,
+          UINT                     NumRects) {
+    DiscardViewBase(pResourceView, pRects, NumRects);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardViewBase(
           ID3D11View*              pResourceView,
     const D3D11_RECT*              pRects,
           UINT                     NumRects) {
@@ -207,7 +216,7 @@ namespace dxvk {
           ID3D11Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D11_BOX*                        pSrcBox) {
-    CopySubresourceRegion1(
+    CopySubresourceRegionBase(
       pDstResource, DstSubresource, DstX, DstY, DstZ,
       pSrcResource, SrcSubresource, pSrcBox, 0);
   }
@@ -215,6 +224,23 @@ namespace dxvk {
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegion1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox,
+          UINT                              CopyFlags) {
+    CopySubresourceRegionBase(
+      pDstResource, DstSubresource, DstX, DstY, DstZ,
+      pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegionBase(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
           UINT                              DstX,

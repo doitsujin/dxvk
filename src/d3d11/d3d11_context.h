@@ -104,6 +104,11 @@ namespace dxvk {
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
 
+    void STDMETHODCALLTYPE DiscardViewBase(
+            ID3D11View*                      pResourceView,
+      const D3D11_RECT*                      pRects,
+            UINT                             NumRects);
+
     void STDMETHODCALLTYPE CopySubresourceRegion(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
@@ -115,6 +120,17 @@ namespace dxvk {
       const D3D11_BOX*                        pSrcBox);
 
     void STDMETHODCALLTYPE CopySubresourceRegion1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox,
+            UINT                              CopyFlags);
+
+    void STDMETHODCALLTYPE CopySubresourceRegionBase(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
             UINT                              DstX,
