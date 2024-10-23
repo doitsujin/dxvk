@@ -84,6 +84,9 @@ namespace dxvk {
     DxvkResourceAllocation* allocationList = nullptr;
     /// Chunk cookie
     uint32_t chunkCookie = 0u;
+    /// Whether defragmentation can be performed on this chunk.
+    /// Only relevant for chunks in non-mappable device memory.
+    VkBool32 canMove = true;
 
     void addAllocation(DxvkResourceAllocation* allocation);
     void removeAllocation(DxvkResourceAllocation* allocation);
@@ -1239,6 +1242,15 @@ namespace dxvk {
      */
     void unregisterResource(
             DxvkPagedResource*          resource);
+
+    /**
+     * \brief Locks an allocation in place
+     *
+     * Ensures that the resource is marked as immovable so
+     * that defragmentation won't attempt to relocate it.
+     */
+    void lockResourceGpuAddress(
+      const Rc<DxvkResourceAllocation>& allocation);
 
     /**
      * \brief Performs clean-up tasks
