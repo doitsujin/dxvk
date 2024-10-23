@@ -708,10 +708,6 @@ namespace dxvk {
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Star Wars The Old Republic */
-    { R"(\\swtor\.exe$)", {{
-      { "d3d9.forceSamplerTypeSpecConstants", "True" },
-    }} },
     /* Bionic Commando
        Physics break at high fps               */
     { R"(\\bionic_commando\.exe$)", {{
