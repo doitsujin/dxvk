@@ -29,6 +29,10 @@ namespace dxvk {
            | uint32_t(m_digest[4 * id + 2]) << 16
            | uint32_t(m_digest[4 * id + 3]) << 24;
     }
+
+    Sha1Digest digest() const {
+      return m_digest;
+    }
     
     bool operator == (const Sha1Hash& other) const {
       return !std::memcmp(
