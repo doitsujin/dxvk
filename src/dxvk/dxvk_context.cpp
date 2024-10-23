@@ -5148,8 +5148,10 @@ namespace dxvk {
               descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
-              if (m_rcTracked.set(binding.resourceBinding))
-                m_cmd->track(res.imageView->image(), DxvkAccess::Write);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->track(res.imageView->image(), (binding.access & vk::AccessWriteMask)
+                  ? DxvkAccess::Write : DxvkAccess::Read);
+              }
             } else {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
               descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -5196,8 +5198,10 @@ namespace dxvk {
             if (res.bufferView != nullptr) {
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
-              if (m_rcTracked.set(binding.resourceBinding))
-                m_cmd->track(res.bufferView->buffer(), DxvkAccess::Write);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->track(res.bufferView->buffer(), (binding.access & vk::AccessWriteMask)
+                  ? DxvkAccess::Write : DxvkAccess::Read);
+              }
             } else {
               descriptorInfo.texelBuffer = VK_NULL_HANDLE;
             }
@@ -5224,8 +5228,10 @@ namespace dxvk {
             if (res.bufferSlice.length()) {
               descriptorInfo = res.bufferSlice.getDescriptor();
 
-              if (m_rcTracked.set(binding.resourceBinding))
-                m_cmd->track(res.bufferSlice.buffer(), DxvkAccess::Write);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->track(res.bufferSlice.buffer(), (binding.access & vk::AccessWriteMask)
+                  ? DxvkAccess::Write : DxvkAccess::Read);
+              }
             } else {
               descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
               descriptorInfo.buffer.offset = 0;
