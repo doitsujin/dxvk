@@ -183,7 +183,7 @@ namespace dxvk {
     desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
     ID3D11Texture2D1* texture2D = nullptr;
-    HRESULT hr = CreateTexture2D1(&desc, pInitialData, ppTexture2D ? &texture2D : nullptr);
+    HRESULT hr = CreateTexture2DBase(&desc, pInitialData, ppTexture2D ? &texture2D : nullptr);
 
     if (hr != S_OK)
       return hr;
@@ -202,6 +202,14 @@ namespace dxvk {
     if (!pDesc)
       return E_INVALIDARG;
     
+    return CreateTexture2DBase(pDesc, pInitialData, ppTexture2D);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateTexture2DBase(
+    const D3D11_TEXTURE2D_DESC1*  pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+          ID3D11Texture2D1**      ppTexture2D) {
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
     desc.Height         = pDesc->Height;
@@ -262,7 +270,7 @@ namespace dxvk {
     desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
     ID3D11Texture3D1* texture3D = nullptr;
-    HRESULT hr = CreateTexture3D1(&desc, pInitialData, ppTexture3D ? &texture3D : nullptr);
+    HRESULT hr = CreateTexture3DBase(&desc, pInitialData, ppTexture3D ? &texture3D : nullptr);
 
     if (hr != S_OK)
       return hr;
@@ -280,7 +288,15 @@ namespace dxvk {
 
     if (!pDesc)
       return E_INVALIDARG;
-    
+
+    return CreateTexture3DBase(pDesc, pInitialData, ppTexture3D);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateTexture3DBase(
+    const D3D11_TEXTURE3D_DESC1*  pDesc,
+    const D3D11_SUBRESOURCE_DATA* pInitialData,
+          ID3D11Texture3D1**      ppTexture3D) {
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
     desc.Height         = pDesc->Height;
@@ -325,6 +341,9 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppSRView) {
     InitReturnPtr(ppSRView);
 
+    if (!pResource)
+      return E_INVALIDARG;
+
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
 
     D3D11_SHADER_RESOURCE_VIEW_DESC1 desc = pDesc
@@ -333,7 +352,7 @@ namespace dxvk {
     
     ID3D11ShaderResourceView1* view = nullptr;
 
-    HRESULT hr = CreateShaderResourceView1(pResource,
+    HRESULT hr = CreateShaderResourceViewBase(pResource,
       pDesc    ? &desc : nullptr,
       ppSRView ? &view : nullptr);
     
@@ -353,7 +372,15 @@ namespace dxvk {
 
     if (!pResource)
       return E_INVALIDARG;
-    
+
+    return CreateShaderResourceViewBase(pResource, pDesc, ppSRView);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateShaderResourceViewBase(
+          ID3D11Resource*                   pResource,
+    const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc,
+          ID3D11ShaderResourceView1**       ppSRView) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
     
@@ -402,21 +429,24 @@ namespace dxvk {
           ID3D11UnorderedAccessView**       ppUAView) {
     InitReturnPtr(ppUAView);
 
+    if (!pResource)
+      return E_INVALIDARG;
+
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
 
     D3D11_UNORDERED_ACCESS_VIEW_DESC1 desc = pDesc
       ? D3D11UnorderedAccessView::PromoteDesc(pDesc, plane)
       : D3D11_UNORDERED_ACCESS_VIEW_DESC1();
-    
+
     ID3D11UnorderedAccessView1* view = nullptr;
 
-    HRESULT hr = CreateUnorderedAccessView1(pResource,
+    HRESULT hr = CreateUnorderedAccessViewBase(pResource,
       pDesc    ? &desc : nullptr,
       ppUAView ? &view : nullptr);
-    
+
     if (hr != S_OK)
       return hr;
-    
+
     *ppUAView = view;
     return S_OK;
   }
@@ -430,7 +460,15 @@ namespace dxvk {
     
     if (!pResource)
       return E_INVALIDARG;
-    
+
+    return CreateUnorderedAccessViewBase(pResource, pDesc, ppUAView);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateUnorderedAccessViewBase(
+          ID3D11Resource*                   pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc,
+          ID3D11UnorderedAccessView1**      ppUAView) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -481,6 +519,9 @@ namespace dxvk {
           ID3D11RenderTargetView**          ppRTView) {
     InitReturnPtr(ppRTView);
 
+    if (!pResource)
+      return E_INVALIDARG;
+
     uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
 
     D3D11_RENDER_TARGET_VIEW_DESC1 desc = pDesc
@@ -489,7 +530,7 @@ namespace dxvk {
     
     ID3D11RenderTargetView1* view = nullptr;
 
-    HRESULT hr = CreateRenderTargetView1(pResource,
+    HRESULT hr = CreateRenderTargetViewBase(pResource,
       pDesc    ? &desc : nullptr,
       ppRTView ? &view : nullptr);
     
@@ -509,7 +550,15 @@ namespace dxvk {
 
     if (!pResource)
       return E_INVALIDARG;
-    
+
+    return CreateRenderTargetViewBase(pResource, pDesc, ppRTView);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateRenderTargetViewBase(
+          ID3D11Resource*                   pResource,
+    const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc,
+          ID3D11RenderTargetView1**         ppRTView) {
     // DXVK only supports render target views for image resources
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
@@ -1202,7 +1251,7 @@ namespace dxvk {
     desc.ContextType = D3D11_CONTEXT_TYPE_ALL;
 
     ID3D11Query1* query = nullptr;
-    HRESULT hr = CreateQuery1(&desc, ppQuery ? &query : nullptr);
+    HRESULT hr = CreateQueryBase(&desc, ppQuery ? &query : nullptr);
 
     if (hr != S_OK)
       return hr;
@@ -1219,7 +1268,14 @@ namespace dxvk {
 
     if (!pQueryDesc)
       return E_INVALIDARG;
-    
+
+    return CreateQueryBase(pQueryDesc, ppQuery);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateQueryBase(
+    const D3D11_QUERY_DESC1*          pQueryDesc,
+          ID3D11Query1**              ppQuery) {
     HRESULT hr = D3D11Query::ValidateDesc(pQueryDesc);
 
     if (FAILED(hr))
