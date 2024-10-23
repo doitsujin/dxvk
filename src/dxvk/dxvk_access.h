@@ -94,6 +94,7 @@ namespace dxvk {
 
     template<typename T, typename... Args>
     force_inline void track(Args&&... args) {
+      static_assert(sizeof(T) <= sizeof(DxvkTrackingRefStorage));
       new (m_next->storage[(m_size++) & ListMask].data) T(std::forward<Args>(args)...);
 
       if (unlikely(!(m_size & ListMask)))
