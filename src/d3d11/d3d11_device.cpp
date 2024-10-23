@@ -2022,6 +2022,9 @@ namespace dxvk {
           size_t                  BytecodeLength,
           ID3D11ClassLinkage*     pClassLinkage,
     const DxbcModuleInfo*         pModuleInfo) {
+    if (!BytecodeLength || !pShaderBytecode)
+      return E_INVALIDARG;
+
     if (pClassLinkage != nullptr)
       Logger::warn("D3D11Device::CreateShaderModule: Class linkage not supported");
 
