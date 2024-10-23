@@ -2060,8 +2060,15 @@ namespace dxvk {
     vki->vkGetPhysicalDeviceMemoryProperties2(m_device->adapter()->handle(), &memInfo);
 
     for (uint32_t i = 0; i < m_memHeapCount; i++) {
-      if (memBudget.heapBudget[i])
-        m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i], m_memHeaps[i].properties.size);
+      if (memBudget.heapBudget[i]) {
+        // Deduct driver-internal allocations from the resource budget
+        VkDeviceSize allocated = getMemoryStats(i).memoryAllocated;
+
+        VkDeviceSize internal = std::max(memBudget.heapUsage[i], allocated) - allocated;
+                     internal = std::min(memBudget.heapBudget[i], internal);
+
+        m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i] - internal, m_memHeaps[i].properties.size);
+      }
     }
   }
 
