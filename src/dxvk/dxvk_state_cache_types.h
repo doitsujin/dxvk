@@ -60,7 +60,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 17;
+    uint32_t version    = 18;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
