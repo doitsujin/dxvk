@@ -2283,13 +2283,15 @@ namespace dxvk {
         m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
     }
 
-    // Periodically defragment device-local memory types. We cannot
-    // do anything about mapped allocations since we rely on pointer
-    // stability there.
-    for (uint32_t i = 0; i < m_memTypeCount; i++) {
-      if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-        moveDefragChunk(m_memTypes[i]);
-        pickDefragChunk(m_memTypes[i]);
+    if (m_device->config().enableMemoryDefrag) {
+      // Periodically defragment device-local memory types. We cannot
+      // do anything about mapped allocations since we rely on pointer
+      // stability there.
+      for (uint32_t i = 0; i < m_memTypeCount; i++) {
+        if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+          moveDefragChunk(m_memTypes[i]);
+          pickDefragChunk(m_memTypes[i]);
+        }
       }
     }
   }
