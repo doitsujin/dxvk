@@ -1429,9 +1429,6 @@ namespace dxvk {
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice) {
-    // Ensure image is in the correct layout and not currently tracked
-    prepareImage(image, image->getAvailableSubresources());
-
     invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo());
   }
 
@@ -1440,28 +1437,43 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice,
     const DxvkImageUsageInfo&       usageInfo) {
+    VkImageUsageFlags usage = image->info().usage;
+
+    // Invalidate active image descriptors
+    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT))
+      m_descriptorState.dirtyViews(image->getShaderStages());
+
+    // Ensure that the image is in its default layout before invalidation
+    // and is not being tracked by the render pass layout logic. This does
+    // assume that the new backing storage is also in the default layout.
+    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      bool found = false;
+
+      for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments() && !found; i++)
+        found = m_state.om.framebufferInfo.getAttachment(i).view->image() == image;
+
+      if (found)
+        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+
+      spillRenderPass(true);
+
+      prepareImage(image, image->getAvailableSubresources());
+    }
+
+    // If the image has any pending layout transitions, flush them accordingly.
+    // There might be false positives here, but those do not affect correctness.
+    if (resourceHasAccess(*image, image->getAvailableSubresources(), DxvkAccess::Write)) {
+      spillRenderPass(true);
+
+      flushBarriers();
+    }
+
+    // Actually replace backing storage and make sure to keep the old one alive
     Rc<DxvkResourceAllocation> prevAllocation = image->assignStorageWithUsage(std::move(slice), usageInfo);
     m_cmd->track(std::move(prevAllocation));
 
     if (usageInfo.stableGpuAddress)
       m_common->memoryManager().lockResourceGpuAddress(image->storage());
-
-    VkImageUsageFlags usage = image->info().usage;
-
-    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT))
-      m_descriptorState.dirtyViews(image->getShaderStages());
-
-    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      // Interrupt the current render pass if the image is bound for rendering
-      for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
-        if (m_state.om.framebufferInfo.getAttachment(i).view->image() == image) {
-          this->spillRenderPass(false);
-
-          m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
-          break;
-        }
-      }
-    }
   }
 
 
