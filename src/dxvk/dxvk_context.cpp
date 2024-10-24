@@ -82,6 +82,7 @@ namespace dxvk {
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->endCurrentCommands();
+    this->relocateQueuedResources();
 
     if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
@@ -102,8 +103,6 @@ namespace dxvk {
 
 
   void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
-    relocateQueuedResources();
-
     m_device->submitCommandList(
       this->endRecording(), status);
     
@@ -1430,9 +1429,6 @@ namespace dxvk {
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice) {
-    // Ensure image is in the correct layout and not currently tracked
-    prepareImage(image, image->getAvailableSubresources());
-
     invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo());
   }
 
@@ -1441,28 +1437,43 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice,
     const DxvkImageUsageInfo&       usageInfo) {
+    VkImageUsageFlags usage = image->info().usage;
+
+    // Invalidate active image descriptors
+    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT))
+      m_descriptorState.dirtyViews(image->getShaderStages());
+
+    // Ensure that the image is in its default layout before invalidation
+    // and is not being tracked by the render pass layout logic. This does
+    // assume that the new backing storage is also in the default layout.
+    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      bool found = false;
+
+      for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments() && !found; i++)
+        found = m_state.om.framebufferInfo.getAttachment(i).view->image() == image;
+
+      if (found)
+        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+
+      spillRenderPass(true);
+
+      prepareImage(image, image->getAvailableSubresources());
+    }
+
+    // If the image has any pending layout transitions, flush them accordingly.
+    // There might be false positives here, but those do not affect correctness.
+    if (resourceHasAccess(*image, image->getAvailableSubresources(), DxvkAccess::Write)) {
+      spillRenderPass(true);
+
+      flushBarriers();
+    }
+
+    // Actually replace backing storage and make sure to keep the old one alive
     Rc<DxvkResourceAllocation> prevAllocation = image->assignStorageWithUsage(std::move(slice), usageInfo);
     m_cmd->track(std::move(prevAllocation));
 
     if (usageInfo.stableGpuAddress)
       m_common->memoryManager().lockResourceGpuAddress(image->storage());
-
-    VkImageUsageFlags usage = image->info().usage;
-
-    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT))
-      m_descriptorState.dirtyViews(image->getShaderStages());
-
-    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      // Interrupt the current render pass if the image is bound for rendering
-      for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
-        if (m_state.om.framebufferInfo.getAttachment(i).view->image() == image) {
-          this->spillRenderPass(false);
-
-          m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
-          break;
-        }
-      }
-    }
   }
 
 
@@ -6289,15 +6300,15 @@ namespace dxvk {
 
     small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
 
-    VkMemoryBarrier2 bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    bufferBarrier.dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-    bufferBarrier.dstAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+    VkMemoryBarrier2 memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    memoryBarrier.dstAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
 
     for (size_t i = 0; i < bufferCount; i++) {
       const auto& info = bufferInfos[i];
 
-      bufferBarrier.srcStageMask |= info.buffer->info().stages;
-      bufferBarrier.srcAccessMask |= info.buffer->info().access;
+      memoryBarrier.srcStageMask |= info.buffer->info().stages;
+      memoryBarrier.srcAccessMask |= info.buffer->info().access;
     }
 
     for (size_t i = 0; i < imageCount; i++) {
@@ -6335,6 +6346,8 @@ namespace dxvk {
             dstBarrier.image = info.storage->getImageInfo().image;
             dstBarrier.subresourceRange = subresourceRange;
 
+            imageBarriers.push_back(dstBarrier);
+
             VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
             srcBarrier.srcStageMask = info.image->info().stages;
             srcBarrier.srcAccessMask = info.image->info().access;
@@ -6347,8 +6360,12 @@ namespace dxvk {
             srcBarrier.image = oldStorage->getImageInfo().image;
             srcBarrier.subresourceRange = subresourceRange;
 
-            imageBarriers.push_back(dstBarrier);
-            imageBarriers.push_back(srcBarrier);
+            if (srcBarrier.oldLayout != srcBarrier.newLayout) {
+              imageBarriers.push_back(srcBarrier);
+            } else {
+              memoryBarrier.srcStageMask |= srcBarrier.srcStageMask;
+              memoryBarrier.srcAccessMask |= srcBarrier.srcAccessMask;
+            }
           }
         }
       }
@@ -6357,18 +6374,25 @@ namespace dxvk {
     // Submit all pending barriers in one go
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 
-    if (imageCount) {
+    if (!imageBarriers.empty()) {
       depInfo.imageMemoryBarrierCount = imageBarriers.size();
       depInfo.pImageMemoryBarriers = imageBarriers.data();
     }
 
-    if (bufferCount) {
+    if (memoryBarrier.srcStageMask) {
       depInfo.memoryBarrierCount = 1u;
-      depInfo.pMemoryBarriers = &bufferBarrier;
+      depInfo.pMemoryBarriers = &memoryBarrier;
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+
+    // Set up post-copy barriers
+    depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+    memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    memoryBarrier.srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    memoryBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT;
 
     imageBarriers.clear();
 
@@ -6395,6 +6419,9 @@ namespace dxvk {
       m_cmd->track(info.buffer, DxvkAccess::Write);
 
       invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
+
+      memoryBarrier.dstStageMask |= info.buffer->info().stages;
+      memoryBarrier.dstAccessMask |= info.buffer->info().access;
     }
 
     // Copy and invalidate all images
@@ -6463,9 +6490,14 @@ namespace dxvk {
               dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.image = info.storage->getImageInfo().image;
-              dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource),
+              dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource);
 
-              imageBarriers.push_back(dstBarrier);
+              if (dstBarrier.oldLayout != dstBarrier.newLayout) {
+                imageBarriers.push_back(dstBarrier);
+              } else {
+                memoryBarrier.dstStageMask |= dstBarrier.dstStageMask;
+                memoryBarrier.dstAccessMask |= dstBarrier.dstAccessMask;
+              }
             }
           }
         }
@@ -6485,21 +6517,14 @@ namespace dxvk {
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
     }
 
-    // Submit post-copy barriers
-    bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    bufferBarrier.srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-    bufferBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    for (size_t i = 0; i < bufferCount; i++) {
-      const auto& info = bufferInfos[i];
-
-      bufferBarrier.dstStageMask |= info.buffer->info().stages;
-      bufferBarrier.dstAccessMask |= info.buffer->info().access;
-    }
-
-    if (imageCount) {
+    if (!imageBarriers.empty()) {
       depInfo.imageMemoryBarrierCount = imageBarriers.size();
       depInfo.pImageMemoryBarriers = imageBarriers.data();
+    }
+
+    if (memoryBarrier.dstStageMask) {
+      depInfo.memoryBarrierCount = 1u;
+      depInfo.pMemoryBarriers = &memoryBarrier;
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
@@ -6551,8 +6576,6 @@ namespace dxvk {
     // If there are any resources to relocate, we have to stall the transfer
     // queue so that subsequent resource uploads do not overlap with resource
     // copies on the graphics timeline.
-    this->spillRenderPass(true);
-
     relocateResources(
       bufferInfos.size(), bufferInfos.data(),
       imageInfos.size(), imageInfos.data());
