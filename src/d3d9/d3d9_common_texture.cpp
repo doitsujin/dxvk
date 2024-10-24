@@ -160,7 +160,7 @@ namespace dxvk {
     // Native drivers won't allow the creation of DXT format
     // textures that aren't aligned to block dimensions.
     if (IsDXTFormat(pDesc->Format)) {
-      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatBlockSize(pDesc->Format);
+      D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(pDesc->Format);
 
       if ((blockSize.Width  && (pDesc->Width  & (blockSize.Width  - 1)))
        || (blockSize.Height && (pDesc->Height & (blockSize.Height - 1))))
@@ -182,7 +182,13 @@ namespace dxvk {
     constexpr DWORD incompatibleUsages = D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL;
     if (pDesc->Pool != D3DPOOL_DEFAULT && (pDesc->Usage & incompatibleUsages))
       return D3DERR_INVALIDCALL;
-    
+
+    // Volume textures in D3DPOOL_SCRATCH must not have DYNAMIC usage
+    if (ResourceType == D3DRTYPE_VOLUMETEXTURE
+      && pDesc->Pool == D3DPOOL_SCRATCH
+      && (pDesc->Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid
     const uint32_t maxMipLevelCount = pDesc->MultiSample <= D3DMULTISAMPLE_NONMASKABLE
