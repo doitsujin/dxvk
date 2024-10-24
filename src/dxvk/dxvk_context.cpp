@@ -6326,9 +6326,8 @@ namespace dxvk {
           if (info.image->isInitialized(subresourceRange)) {
             VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
             dstBarrier.srcStageMask = info.image->info().stages;
-            dstBarrier.srcAccessMask = info.image->info().access;
-            dstBarrier.dstStageMask = info.image->info().stages;
-            dstBarrier.dstAccessMask = info.image->info().access;
+            dstBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            dstBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
             dstBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             dstBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
             dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -6339,8 +6338,8 @@ namespace dxvk {
             VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
             srcBarrier.srcStageMask = info.image->info().stages;
             srcBarrier.srcAccessMask = info.image->info().access;
-            srcBarrier.dstStageMask = info.image->info().stages;
-            srcBarrier.dstAccessMask = info.image->info().access;
+            srcBarrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+            srcBarrier.dstAccessMask = VK_ACCESS_2_TRANSFER_READ_BIT;
             srcBarrier.oldLayout = info.image->info().layout;
             srcBarrier.newLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
             srcBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -6455,8 +6454,8 @@ namespace dxvk {
               // entire image in one go as long as all subresources are initialized,
               // but there is usually no reason to do so.
               VkImageMemoryBarrier2 dstBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-              dstBarrier.srcStageMask = info.image->info().stages;
-              dstBarrier.srcAccessMask = info.image->info().access;
+              dstBarrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+              dstBarrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
               dstBarrier.dstStageMask = info.image->info().stages;
               dstBarrier.dstAccessMask = info.image->info().access;
               dstBarrier.oldLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
