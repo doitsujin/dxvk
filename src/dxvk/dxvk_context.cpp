@@ -6289,15 +6289,15 @@ namespace dxvk {
 
     small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
 
-    VkMemoryBarrier2 bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    bufferBarrier.dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-    bufferBarrier.dstAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+    VkMemoryBarrier2 memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    memoryBarrier.dstStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    memoryBarrier.dstAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
 
     for (size_t i = 0; i < bufferCount; i++) {
       const auto& info = bufferInfos[i];
 
-      bufferBarrier.srcStageMask |= info.buffer->info().stages;
-      bufferBarrier.srcAccessMask |= info.buffer->info().access;
+      memoryBarrier.srcStageMask |= info.buffer->info().stages;
+      memoryBarrier.srcAccessMask |= info.buffer->info().access;
     }
 
     for (size_t i = 0; i < imageCount; i++) {
@@ -6335,6 +6335,8 @@ namespace dxvk {
             dstBarrier.image = info.storage->getImageInfo().image;
             dstBarrier.subresourceRange = subresourceRange;
 
+            imageBarriers.push_back(dstBarrier);
+
             VkImageMemoryBarrier2 srcBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
             srcBarrier.srcStageMask = info.image->info().stages;
             srcBarrier.srcAccessMask = info.image->info().access;
@@ -6347,8 +6349,12 @@ namespace dxvk {
             srcBarrier.image = oldStorage->getImageInfo().image;
             srcBarrier.subresourceRange = subresourceRange;
 
-            imageBarriers.push_back(dstBarrier);
-            imageBarriers.push_back(srcBarrier);
+            if (srcBarrier.oldLayout != srcBarrier.newLayout) {
+              imageBarriers.push_back(srcBarrier);
+            } else {
+              memoryBarrier.srcStageMask |= srcBarrier.srcStageMask;
+              memoryBarrier.srcAccessMask |= srcBarrier.srcAccessMask;
+            }
           }
         }
       }
@@ -6357,18 +6363,25 @@ namespace dxvk {
     // Submit all pending barriers in one go
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 
-    if (imageCount) {
+    if (!imageBarriers.empty()) {
       depInfo.imageMemoryBarrierCount = imageBarriers.size();
       depInfo.pImageMemoryBarriers = imageBarriers.data();
     }
 
-    if (bufferCount) {
+    if (memoryBarrier.srcStageMask) {
       depInfo.memoryBarrierCount = 1u;
-      depInfo.pMemoryBarriers = &bufferBarrier;
+      depInfo.pMemoryBarriers = &memoryBarrier;
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+
+    // Set up post-copy barriers
+    depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+    memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    memoryBarrier.srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+    memoryBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT;
 
     imageBarriers.clear();
 
@@ -6395,6 +6408,9 @@ namespace dxvk {
       m_cmd->track(info.buffer, DxvkAccess::Write);
 
       invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
+
+      memoryBarrier.dstStageMask |= info.buffer->info().stages;
+      memoryBarrier.dstAccessMask |= info.buffer->info().access;
     }
 
     // Copy and invalidate all images
@@ -6463,9 +6479,14 @@ namespace dxvk {
               dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.image = info.storage->getImageInfo().image;
-              dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource),
+              dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource);
 
-              imageBarriers.push_back(dstBarrier);
+              if (dstBarrier.oldLayout != dstBarrier.newLayout) {
+                imageBarriers.push_back(dstBarrier);
+              } else {
+                memoryBarrier.dstStageMask |= dstBarrier.dstStageMask;
+                memoryBarrier.dstAccessMask |= dstBarrier.dstAccessMask;
+              }
             }
           }
         }
@@ -6485,21 +6506,14 @@ namespace dxvk {
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
     }
 
-    // Submit post-copy barriers
-    bufferBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    bufferBarrier.srcStageMask |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-    bufferBarrier.srcAccessMask |= VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    for (size_t i = 0; i < bufferCount; i++) {
-      const auto& info = bufferInfos[i];
-
-      bufferBarrier.dstStageMask |= info.buffer->info().stages;
-      bufferBarrier.dstAccessMask |= info.buffer->info().access;
-    }
-
-    if (imageCount) {
+    if (!imageBarriers.empty()) {
       depInfo.imageMemoryBarrierCount = imageBarriers.size();
       depInfo.pImageMemoryBarriers = imageBarriers.data();
+    }
+
+    if (memoryBarrier.dstStageMask) {
+      depInfo.memoryBarrierCount = 1u;
+      depInfo.pMemoryBarriers = &memoryBarrier;
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
