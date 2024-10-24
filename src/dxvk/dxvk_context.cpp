@@ -82,6 +82,7 @@ namespace dxvk {
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->endCurrentCommands();
+    this->relocateQueuedResources();
 
     if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
@@ -102,8 +103,6 @@ namespace dxvk {
 
 
   void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
-    relocateQueuedResources();
-
     m_device->submitCommandList(
       this->endRecording(), status);
     
@@ -6565,8 +6564,6 @@ namespace dxvk {
     // If there are any resources to relocate, we have to stall the transfer
     // queue so that subsequent resource uploads do not overlap with resource
     // copies on the graphics timeline.
-    this->spillRenderPass(true);
-
     relocateResources(
       bufferInfos.size(), bufferInfos.data(),
       imageInfos.size(), imageInfos.data());
