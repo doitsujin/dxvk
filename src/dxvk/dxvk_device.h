@@ -29,13 +29,6 @@ namespace dxvk {
   
   class DxvkInstance;
 
-  /**
-   * \brief Device options
-   */
-  struct DxvkDeviceOptions {
-    uint32_t maxNumDynamicUniformBuffers = 0;
-    uint32_t maxNumDynamicStorageBuffers = 0;
-  };
 
   /**
    * \brief Device performance hints
@@ -252,12 +245,6 @@ namespace dxvk {
      * \returns Supported shader pipeline stages
      */
     VkPipelineStageFlags getShaderPipelineStages() const;
-    
-    /**
-     * \brief Retrieves device options
-     * \returns Device options
-     */
-    DxvkDeviceOptions options() const;
 
     /**
      * \brief Retrieves performance hints
