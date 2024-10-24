@@ -2478,6 +2478,8 @@ namespace dxvk {
     }
   }
 
+  static uint32_t lastDefrag = 0u;
+
 
   void DxvkMemoryAllocator::pickDefragChunk(
           DxvkMemoryType&       type) {
@@ -2485,6 +2487,19 @@ namespace dxvk {
 
     if (pool.chunks.empty())
       return;
+
+    for (uint32_t i = 1; i <= pool.chunks.size(); i++) {
+      auto index = (lastDefrag + i) % pool.chunks.size();
+
+      if (pool.chunks[index].canMove && pool.pageAllocator.pagesUsed(index)) {
+        pool.nextDefragChunk = index;
+        pool.pageAllocator.killChunk(index);
+        lastDefrag = index;
+        return;
+      }
+    }
+
+    return;
 
     // Only engage defragmentation at all if we have a significant
     // amount of memory wasted, or if we're under memory pressure.
@@ -2681,7 +2696,7 @@ namespace dxvk {
 
 
   void DxvkMemoryAllocator::performTimedTasks() {
-    static constexpr auto Interval = std::chrono::milliseconds(500u);
+    static constexpr auto Interval = std::chrono::milliseconds(50u);
 
     // This function shouldn't be called concurrently, so checking and
     // updating the deadline is fine without taking the global lock
