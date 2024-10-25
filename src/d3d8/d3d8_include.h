@@ -181,9 +181,6 @@ namespace d3d9 {
 #define D3DDEVINFOID_VCACHE            4
 #endif
 
-// MinGW headers are broken. Who'dve guessed?
-#ifndef _MSC_VER
-
 // Missing from d3d8types.h
 #ifndef D3DDEVINFOID_RESOURCEMANAGER
 #define D3DDEVINFOID_RESOURCEMANAGER    5
@@ -197,7 +194,7 @@ namespace d3d9 {
 #define D3DPRESENT_RATE_UNLIMITED       0x7FFFFFFF
 #endif
 
-#else // _MSC_VER
+#ifdef _MSC_VER
 
 // These are enum typedefs in the MinGW headers, but not defined by Microsoft
 #define D3DVSDT_TYPE     DWORD
