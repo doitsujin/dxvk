@@ -1578,4 +1578,37 @@ namespace dxvk::hud {
          / (uint32_t(m_tasksTotal - m_offset));
   }
 
+
+
+
+  void HudLatencyControlItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+    m_sleepDuration = std::max(m_sleepDuration, m_latencyControl->getLastSleepDuration());
+
+    if (ticks >= UpdateInterval) {
+      uint64_t duration = m_sleepDuration.count() / 100000;
+
+      m_sleepDurationText = str::format(duration / 10u, ".", duration % 10u, " ms");
+      m_sleepDuration = std::chrono::nanoseconds(0);
+
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudLatencyControlItem::render(
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    position.y += 16;
+    renderer.drawText(16, position, 0xffc0ff00u, "Latency sleep:");
+    renderer.drawText(16, { position.x + 180, position.y }, 0xffffffffu, m_sleepDurationText);
+
+    position.y += 8;
+
+    return position;
+  }
+
 }

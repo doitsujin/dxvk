@@ -682,8 +682,12 @@ namespace dxvk {
   void D3D11SwapChain::CreateHud() {
     m_hud = hud::Hud::createHud(m_device);
 
-    if (m_hud != nullptr)
+    if (m_hud) {
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+
+      if (m_latencyControl)
+        m_hud->addItem<hud::HudLatencyControlItem>("latency", -1, m_latencyControl);
+    }
   }
 
 

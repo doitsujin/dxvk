@@ -1,10 +1,12 @@
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+#include "../../util/util_latency.h"
 #include "../../util/util_time.h"
 
 #include "../dxvk_gpu_query.h"
@@ -716,6 +718,36 @@ namespace dxvk::hud {
     dxvk::high_resolution_clock::time_point m_timeDone = dxvk::high_resolution_clock::now();
 
     uint32_t computePercentage() const;
+
+  };
+
+
+  /**
+   * \brief Latency control item
+   */
+  class HudLatencyControlItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudLatencyControlItem(Rc<DxvkLatencyControl> latencyControl)
+    : m_latencyControl(std::move(latencyControl)) { }
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
+
+  private:
+
+    Rc<DxvkLatencyControl>    m_latencyControl;
+    std::chrono::nanoseconds  m_sleepDuration = { };
+    std::string               m_sleepDurationText;
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate = dxvk::high_resolution_clock::now();
 
   };
 
