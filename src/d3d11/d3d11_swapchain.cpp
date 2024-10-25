@@ -64,7 +64,9 @@ namespace dxvk {
     m_desc(*pDesc),
     m_device(pDevice->GetDXVKDevice()),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
+
     CreateFrameLatencyEvent();
+    CreateFrameLatencyControl();
     CreatePresenter();
     CreateBackBuffers();
     CreateBlitter();
@@ -273,6 +275,8 @@ namespace dxvk {
     if (PresentFlags & DXGI_PRESENT_TEST)
       return hr;
 
+    NotifyLatencyControlCpuPresent();
+
     if (hr != S_OK) {
       SyncFrameLatency();
       return hr;
@@ -293,6 +297,7 @@ namespace dxvk {
     // applications using the semaphore may deadlock. This works because
     // we do not increment the frame ID in those situations.
     SyncFrameLatency();
+    SyncLatencyControl();
     return hr;
   }
 
@@ -378,7 +383,7 @@ namespace dxvk {
     auto immediateContext = m_parent->GetContext();
     auto immediateContextLock = immediateContext->LockContext();
 
-    immediateContext->EndFrame();
+    immediateContext->EndFrame(m_latencyControl, m_frameId + 1u);
     immediateContext->Flush();
 
     SynchronizePresent();
@@ -458,6 +463,7 @@ namespace dxvk {
       RotateBackBuffers(immediateContext);
 
     immediateContext->FlushCsChunk();
+    immediateContext->BeginFrame(m_latencyControl, m_frameId + 1u);
     return S_OK;
   }
 
@@ -529,6 +535,12 @@ namespace dxvk {
 
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
       m_frameLatencyEvent = CreateSemaphore(nullptr, m_frameLatency, DXGI_MAX_SWAP_CHAIN_BUFFERS, nullptr);
+  }
+
+
+  void D3D11SwapChain::CreateFrameLatencyControl() {
+    if (m_frameLatencyCap < 0)
+      m_latencyControl = new DxvkLatencyControl();
   }
 
 
@@ -686,8 +698,12 @@ namespace dxvk {
 
     m_frameLatencySignal->setCallback(m_frameId, [this,
       cFrameId           = m_frameId,
-      cFrameLatencyEvent = m_frameLatencyEvent
+      cFrameLatencyEvent = m_frameLatencyEvent,
+      cLatencyControl    = m_latencyControl
     ] () {
+      if (cLatencyControl)
+        cLatencyControl->setMarker(cFrameId, DxvkLatencyMarker::GpuPresentEnd);
+
       if (cFrameLatencyEvent)
         ReleaseSemaphore(cFrameLatencyEvent, 1, nullptr);
 
@@ -695,6 +711,20 @@ namespace dxvk {
       m_frameStatistics.PresentCount = cFrameId - DXGI_MAX_SWAP_CHAIN_BUFFERS;
       m_frameStatistics.PresentQPCTime = dxvk::high_resolution_clock::get_counter();
     });
+  }
+
+
+  void D3D11SwapChain::SyncLatencyControl() {
+    if (m_latencyControl) {
+      m_latencyControl->sleep(m_frameId, m_targetFrameRate);
+      m_latencyControl->setMarker(m_frameId + 1u, DxvkLatencyMarker::CpuFrameStart);
+    }
+  }
+
+
+  void D3D11SwapChain::NotifyLatencyControlCpuPresent() {
+    if (m_latencyControl)
+      m_latencyControl->setMarker(m_frameId + 1u, DxvkLatencyMarker::CpuPresent);
   }
 
 
@@ -707,8 +737,10 @@ namespace dxvk {
     if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
       m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
 
-    if (m_frameLatencyCap)
-      maxFrameLatency = std::min(maxFrameLatency, m_frameLatencyCap);
+    if (m_frameLatencyCap != 0) {
+      maxFrameLatency = m_frameLatencyCap < 0
+        ? 1u : std::min(maxFrameLatency, uint32_t(m_frameLatencyCap));
+    }
 
     maxFrameLatency = std::min(maxFrameLatency, m_desc.BufferCount);
     return maxFrameLatency;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../util/util_latency.h"
+#include "../util/util_small_vector.h"
 #include "../util/util_time.h"
 
 #include "../util/sync/sync_signal.h"
@@ -133,6 +135,8 @@ namespace dxvk {
 
     Com<D3D11DeviceContextState, false> m_stateObject;
 
+    small_vector<std::pair<Rc<DxvkLatencyControl>, uint64_t>, 1> m_latencyFrames;
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
@@ -168,7 +172,13 @@ namespace dxvk {
 
     void SynchronizeDevice();
 
-    void EndFrame();
+    void BeginFrame(
+            Rc<DxvkLatencyControl>      LatencyControl,
+            uint64_t                    FrameId);
+    
+    void EndFrame(
+            Rc<DxvkLatencyControl>      LatencyControl,
+            uint64_t                    FrameId);
     
     bool WaitForResource(
       const DxvkPagedResource&          Resource,

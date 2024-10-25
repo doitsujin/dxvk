@@ -819,8 +819,27 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::EndFrame() {
+  void D3D11ImmediateContext::BeginFrame(
+          Rc<DxvkLatencyControl>      LatencyControl,
+          uint64_t                    FrameId) {
+    if (LatencyControl)
+      m_latencyFrames.push_back(std::make_pair(std::move(LatencyControl), FrameId));
+  }
+
+
+  void D3D11ImmediateContext::EndFrame(
+          Rc<DxvkLatencyControl>      LatencyControl,
+          uint64_t                    FrameId) {
     D3D10DeviceLock lock = LockContext();
+
+    if (LatencyControl) {
+      m_submissionFence->setCallback(m_submissionId + 1u, [
+        cLatencyControl = std::move(LatencyControl),
+        cFrameId        = FrameId
+      ] {
+        cLatencyControl->setMarker(cFrameId, DxvkLatencyMarker::GpuFrameEnd);
+      });
+    }
 
     EmitCs<false>([] (DxvkContext* ctx) {
       ctx->endFrame();
@@ -944,6 +963,12 @@ namespace dxvk {
     if (!GetPendingCsChunks() && !hEvent)
       return;
 
+    // Notify latency control objects about the submission
+    for (size_t i = 0; i < m_latencyFrames.size(); i++) {
+      const auto& entry = m_latencyFrames[i];
+      entry.first->setMarker(entry.second, DxvkLatencyMarker::CpuFirstSubmit);
+    }
+
     // Signal the submission fence and flush the command list
     uint64_t submissionId = ++m_submissionId;
 
@@ -958,11 +983,23 @@ namespace dxvk {
       cSubmissionId     = submissionId,
       cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr,
       cStagingFence     = m_stagingBufferFence,
-      cStagingMemory    = m_staging.getStatistics().allocatedTotal
-    ] (DxvkContext* ctx) {
+      cStagingMemory    = m_staging.getStatistics().allocatedTotal,
+      cBegunFrames      = std::move(m_latencyFrames)
+    ] (DxvkContext* ctx) mutable {
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingFence, cStagingMemory);
       ctx->flushCommandList(cSubmissionStatus);
+
+      // Use the previous submission ID for the GPU-side frame start markers.
+      // This way we will signal no sooner than the CS thread submitting to the
+      // queue worker when CPU-bound, or the previous submission completing on
+      // the GPU when GPU-bound.
+      for (size_t i = 0; i < cBegunFrames.size(); i++) {
+        cSubmissionFence->setCallback(cSubmissionId - 1u,
+          [cEntry = std::move(cBegunFrames[i])] {
+            cEntry.first->setMarker(cEntry.second, DxvkLatencyMarker::GpuFrameStart);
+          });
+      }
     });
 
     FlushCsChunk();

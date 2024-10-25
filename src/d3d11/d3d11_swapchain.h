@@ -8,6 +8,8 @@
 
 #include "../util/sync/sync_signal.h"
 
+#include "../util/util_latency.h"
+
 namespace dxvk {
   
   class D3D11Device;
@@ -117,9 +119,11 @@ namespace dxvk {
 
     uint64_t                  m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
     uint32_t                  m_frameLatency = DefaultFrameLatency;
-    uint32_t                  m_frameLatencyCap = 0;
+    int32_t                   m_frameLatencyCap = 0;
     HANDLE                    m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence>   m_frameLatencySignal;
+
+    Rc<DxvkLatencyControl>    m_latencyControl;
 
     bool                      m_dirty = true;
 
@@ -145,6 +149,8 @@ namespace dxvk {
 
     void CreateFrameLatencyEvent();
 
+    void CreateFrameLatencyControl();
+
     void CreatePresenter();
 
     VkResult CreateSurface(VkSurfaceKHR* pSurface);
@@ -160,6 +166,10 @@ namespace dxvk {
     void DestroyFrameLatencyEvent();
 
     void SyncFrameLatency();
+
+    void SyncLatencyControl();
+
+    void NotifyLatencyControlCpuPresent();
 
     uint32_t GetActualFrameLatency();
     
