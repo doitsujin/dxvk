@@ -39,12 +39,6 @@ namespace dxvk {
   }
 
 
-  void DxvkCommandSubmission::signalFence(
-          VkFence               fence) {
-    m_fence = fence;
-  }
-
-
   void DxvkCommandSubmission::executeCommandBuffer(
           VkCommandBuffer       commandBuffer) {
     VkCommandBufferSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
@@ -79,7 +73,7 @@ namespace dxvk {
     VkResult vr = VK_SUCCESS;
 
     if (!this->isEmpty())
-      vr = vk->vkQueueSubmit2(queue, 1, &submitInfo, m_fence);
+      vr = vk->vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
 
     this->reset();
     return vr;
@@ -87,7 +81,6 @@ namespace dxvk {
 
 
   void DxvkCommandSubmission::reset() {
-    m_fence = VK_NULL_HANDLE;
     m_semaphoreWaits.clear();
     m_semaphoreSignals.clear();
     m_commandBuffers.clear();
@@ -95,8 +88,7 @@ namespace dxvk {
 
 
   bool DxvkCommandSubmission::isEmpty() const {
-    return m_fence == VK_NULL_HANDLE
-        && m_semaphoreWaits.empty()
+    return m_semaphoreWaits.empty()
         && m_semaphoreSignals.empty()
         && m_commandBuffers.empty();
   }
