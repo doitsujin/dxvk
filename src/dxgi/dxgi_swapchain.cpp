@@ -1003,7 +1003,11 @@ namespace dxvk {
       m_frameRateSyncInterval = SyncInterval;
       m_frameRateRefresh = 0.0f;
 
-      if (SyncInterval > 1 && wsi::isWindow(m_window)) {
+      // Frame latency control can only work on windowed or borderless swap
+      // chains if the presenter is aware of the display refresh rate
+      UINT minSyncInterval = (m_factory->GetOptions()->maxFrameLatency < 0 && !m_is_d3d12) ? 0 : 1;
+
+      if (SyncInterval > minSyncInterval && wsi::isWindow(m_window)) {
         wsi::WsiMode mode = { };
 
         if (wsi::getCurrentDisplayMode(wsi::getWindowMonitor(m_window), &mode)) {

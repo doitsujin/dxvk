@@ -49,6 +49,9 @@ namespace dxvk {
     /// Limit frame rate
     int32_t maxFrameRate;
 
+    /// Control frame latency
+    int32_t maxFrameLatency;
+
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
