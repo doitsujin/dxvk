@@ -58,12 +58,14 @@ namespace dxvk::wsi {
     * 
     * \param [in] hMonitor The monitor
     * \param [in] hWindow The window (may be unused on some platforms)
+    * \param [in] pState The swapchain's window state
     * \param [in] mode The mode
     * \returns \c true on success, \c false on failure
     */
   bool setWindowMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
+          DxvkWindowState* pState,
     const WsiMode&         mode);
 
   /**

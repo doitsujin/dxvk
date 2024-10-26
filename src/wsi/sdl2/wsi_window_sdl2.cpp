@@ -44,6 +44,7 @@ namespace dxvk::wsi {
   bool Sdl2WsiDriver::setWindowMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
+          DxvkWindowState* pState,
     const WsiMode&         pMode) {
     const int32_t displayId    = fromHmonitor(hMonitor);
     SDL_Window* window         = fromHwnd(hWindow);

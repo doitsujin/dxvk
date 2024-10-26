@@ -80,8 +80,9 @@ namespace dxvk::wsi {
   bool setWindowMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
+          DxvkWindowState* pState,
     const WsiMode&         mode) {
-    return s_driver->setWindowMode(hMonitor, hWindow, mode);
+    return s_driver->setWindowMode(hMonitor, hWindow, pState, mode);
   }
 
   bool enterFullscreenMode(

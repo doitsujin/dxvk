@@ -73,6 +73,7 @@ namespace dxvk::wsi {
     virtual bool setWindowMode(
             HMONITOR         hMonitor,
             HWND             hWindow,
+            DxvkWindowState* pState,
       const WsiMode&         mode);
 
     virtual bool enterFullscreenMode(

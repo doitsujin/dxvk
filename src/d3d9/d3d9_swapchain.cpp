@@ -1331,7 +1331,7 @@ namespace dxvk {
     
     HMONITOR monitor = wsi::getDefaultMonitor();
 
-    if (!wsi::setWindowMode(monitor, m_window, wsiMode))
+    if (!wsi::setWindowMode(monitor, m_window, &m_windowState, wsiMode))
       return D3DERR_NOTAVAILABLE;
     
     if (wsi::getCurrentDisplayMode(monitor, &wsiMode))
