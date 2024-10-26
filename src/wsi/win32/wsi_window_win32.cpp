@@ -134,6 +134,7 @@ namespace dxvk::wsi {
   bool Win32WsiDriver::setWindowMode(
           HMONITOR                hMonitor,
           HWND                    hWindow,
+          DxvkWindowState*        pState,
     const WsiMode&                mode) {
     ::MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
