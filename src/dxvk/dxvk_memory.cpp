@@ -2,6 +2,8 @@
 #include <iomanip>
 #include <sstream>
 
+#include "../util/util_bit.h"
+
 #include "dxvk_device.h"
 #include "dxvk_memory.h"
 #include "dxvk_sparse.h"
@@ -1254,8 +1256,16 @@ namespace dxvk {
     allocation->m_address = address;
     allocation->m_size = size;
 
-    if (chunk.memory.mapPtr)
+    if (chunk.memory.mapPtr) {
       allocation->m_mapPtr = reinterpret_cast<char*>(chunk.memory.mapPtr) + offset;
+
+      if (unlikely(m_device->config().zeroMappedMemory)) {
+        // Some games will not write mapped buffers and will break if
+        // there is any stale data stored within. Clear when the allocation is
+        // freed, so that subsequent allocations will receive cleared buffers.
+        allocation->m_flags.set(DxvkAllocationFlag::ClearOnFree);
+      }
+    }
 
     if (chunk.memory.buffer) {
       allocation->m_buffer = chunk.memory.buffer;
@@ -1322,6 +1332,11 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::freeAllocation(
           DxvkResourceAllocation* allocation) {
+    if (allocation->m_flags.test(DxvkAllocationFlag::ClearOnFree)) {
+      if (allocation->m_mapPtr)
+        bit::bclear(allocation->m_mapPtr, allocation->m_size);
+    }
+
     if (allocation->m_flags.test(DxvkAllocationFlag::CanCache)) {
       // Return cacheable allocations to the shared cache
       allocation->destroyBufferViews();
@@ -1522,6 +1537,9 @@ namespace dxvk {
         throw DxvkError(str::format("Failed to map Vulkan memory: ", vr,
           "\n  size: ", memory.size, " bytes"));
       }
+
+      if (m_device->config().zeroMappedMemory)
+        bit::bclear(memory.mapPtr, memory.size);
 
       Logger::debug(str::format("Mapped memory region 0x", std::hex,
         reinterpret_cast<uintptr_t>(memory.mapPtr), " - 0x",

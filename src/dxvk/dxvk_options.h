@@ -42,6 +42,9 @@ namespace dxvk {
     // incorrectly assume monitor layouts.
     bool hideIntegratedGraphics = false;
 
+    /// Clears all mapped memory to zero.
+    bool zeroMappedMemory = false;
+
     // Device name
     std::string deviceFilter;
   };

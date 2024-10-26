@@ -465,12 +465,23 @@ namespace dxvk {
    * \brief Resource allocation flags
    */
   enum class DxvkAllocationFlag : uint32_t {
+    /// Allocation owns the given VkDeviceMemory allocation
+    /// and is not suballocated from an existing chunk.
     OwnsMemory  = 0,
+    /// Allocation owns a dedicated VkBuffer object rather
+    /// than the global buffer for the parent chunk, if any.
     OwnsBuffer  = 1,
+    /// Allocation owns a VkImage object.
     OwnsImage   = 2,
+    /// Allocation can use an allocation cache.
     CanCache    = 3,
+    /// Allocation can be relocated for defragmentation.
     CanMove     = 4,
+    /// Allocation is imported from an external API.
     Imported    = 5,
+    /// Memory must be cleared to zero when the allocation
+    /// is freed. Only used to work around app bugs.
+    ClearOnFree = 6,
   };
 
   using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
