@@ -13,6 +13,7 @@ namespace dxvk {
     hud                   = config.getOption<std::string>("dxvk.hud", "");
     tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::Auto);
     hideIntegratedGraphics = config.getOption<bool>   ("dxvk.hideIntegratedGraphics", false);
+    zeroMappedMemory      = config.getOption<bool>    ("dxvk.zeroMappedMemory",       false);
     deviceFilter          = config.getOption<std::string>("dxvk.deviceFilter",        "");
   }
 
