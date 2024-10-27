@@ -1387,7 +1387,8 @@ namespace dxvk {
     // may be bound to either directly or through views.
     VkBufferUsageFlags usage = buffer->info().usage &
       ~(VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT |
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
     // Fast early-out for plain uniform buffers, very common
     if (likely(usage == VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)) {
