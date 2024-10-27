@@ -6420,7 +6420,6 @@ namespace dxvk {
   }
 
 
-
   void DxvkContext::emitMemoryBarrier(
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,
@@ -6834,14 +6833,6 @@ namespace dxvk {
     return m_device->createSampler(samplerKey);
   }
 
-  bool DxvkContext::checkAsyncCompilationCompat() {
-      bool fbCompat = true;
-      for (uint32_t i = 0; fbCompat && i < m_state.om.framebufferInfo.numAttachments(); i++) {
-          const auto& attachment = m_state.om.framebufferInfo.getAttachment(i);
-          fbCompat &= attachment.view->getRtBindingAsyncCompilationCompat();
-      }
-      return fbCompat;
-  }
 
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {
