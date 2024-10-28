@@ -258,10 +258,16 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           VkClearColorValue     value) {
-    this->spillRenderPass(true);
-    this->invalidateState();
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
-    flushPendingAccesses(*bufferView, DxvkAccess::Write);
+    if (!prepareOutOfOrderTransfer(bufferView, offset, length, DxvkAccess::Write)) {
+      spillRenderPass(true);
+      invalidateState();
+
+      flushPendingAccesses(*bufferView, DxvkAccess::Write);
+
+      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
+    }
 
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
@@ -290,19 +296,20 @@ namespace dxvk {
     VkExtent3D workgroups = util::computeBlockCount(
       pushArgs.extent, pipeInfo.workgroupSize);
 
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdBindDescriptorSet(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdPushConstants(cmdBuffer,
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
-    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *bufferView,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
+    accessBuffer(cmdBuffer, *bufferView,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      VK_ACCESS_2_SHADER_WRITE_BIT);
 
     m_cmd->track(bufferView->buffer(), DxvkAccess::Write);
   }
