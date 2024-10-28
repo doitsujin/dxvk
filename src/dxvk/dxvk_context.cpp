@@ -2834,13 +2834,10 @@ namespace dxvk {
           VkDeviceSize          bufferOffset,
           VkDeviceSize          bufferRowAlignment,
           VkDeviceSize          bufferSliceAlignment) {
-    this->spillRenderPass(true);
-    this->prepareImage(image, vk::makeSubresourceRange(imageSubresource));
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
     VkDeviceSize dataSize = imageSubresource.layerCount * util::computeImageDataSize(
       image->info().format, imageExtent, imageSubresource.aspectMask);
-
-    auto bufferSlice = buffer->getSliceHandle(bufferOffset, dataSize);
 
     // We may copy to only one aspect at a time, but pipeline
     // barriers need to have all available aspect bits set
@@ -2849,8 +2846,18 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(imageSubresource);
     dstSubresourceRange.aspectMask = dstFormatInfo->aspectMask;
 
-    flushPendingAccesses(*image, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*buffer, bufferOffset, dataSize, DxvkAccess::Read);
+    if (!prepareOutOfOrderTransfer(buffer, bufferOffset, dataSize, DxvkAccess::Read)
+     || !prepareOutOfOrderTransfer(image, DxvkAccess::Write)) {
+      spillRenderPass(true);
+      prepareImage(image, vk::makeSubresourceRange(imageSubresource));
+
+      flushPendingAccesses(*image, dstSubresourceRange, DxvkAccess::Write);
+      flushPendingAccesses(*buffer, bufferOffset, dataSize, DxvkAccess::Read);
+
+      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
+    }
+
+    auto bufferSlice = buffer->getSliceHandle(bufferOffset, dataSize);
 
     // Initialize the image if the entire subresource is covered
     VkImageLayout dstImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -2858,17 +2865,16 @@ namespace dxvk {
     addImageLayoutTransition(*image, dstSubresourceRange, dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       image->isFullSubresource(imageSubresource, imageExtent));
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    flushImageLayoutTransitions(cmdBuffer);
 
-    this->copyImageBufferData<true>(DxvkCmdBuffer::ExecBuffer,
+    copyImageBufferData<true>(cmdBuffer,
       image, imageSubresource, imageOffset, imageExtent, dstImageLayoutTransfer,
       bufferSlice, bufferRowAlignment, bufferSliceAlignment);
 
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *image, dstSubresourceRange, dstImageLayoutTransfer,
+    accessImage(cmdBuffer, *image, dstSubresourceRange, dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *buffer, bufferOffset, dataSize,
+    accessBuffer(cmdBuffer, *buffer, bufferOffset, dataSize,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
     m_cmd->track(image, DxvkAccess::Write);
