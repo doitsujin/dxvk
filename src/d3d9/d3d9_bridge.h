@@ -29,13 +29,6 @@ IDxvkD3D8Bridge : public IUnknown {
   virtual void SetAPIName(const char* name) = 0;
 
   /**
-   * \brief Enables or disables D3D9-specific device features and validations
-   * 
-   * \param [in] compatMode Compatibility state
-   */
-  virtual void SetD3D8CompatibilityMode(const bool compatMode) = 0;
-
-  /**
    * \brief Updates a D3D9 surface from a D3D9 buffer
    * 
    * \param [in] pDestSurface Destination surface (typically in VRAM)
@@ -55,6 +48,13 @@ IDxvkD3D8Bridge : public IUnknown {
  */
 MIDL_INTERFACE("D3D9D3D8-A407-773E-18E9-CAFEBEEF3000")
 IDxvkD3D8InterfaceBridge : public IUnknown {
+  /**
+   * \brief Enables or disables D3D9-specific features and validations
+   * 
+   * \param [in] compatMode Compatibility state
+   */
+  virtual void SetD3D8CompatibilityMode(const bool compatMode) = 0;
+
   /**
    * \brief Retrieves the DXVK configuration
    * 
@@ -85,7 +85,6 @@ namespace dxvk {
             void** ppvObject);
 
     void SetAPIName(const char* name);
-    void SetD3D8CompatibilityMode(const bool compatMode);
 
     HRESULT UpdateTextureFromBuffer(
         IDirect3DSurface9*        pDestSurface,
@@ -107,6 +106,8 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void** ppvObject);
+
+    void SetD3D8CompatibilityMode(const bool compatMode);
 
     const Config* GetConfig() const;
 
