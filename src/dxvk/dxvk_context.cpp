@@ -1492,7 +1492,7 @@ namespace dxvk {
     // Check if we need to insert a barrier and update image properties
     bool isAccessAndLayoutCompatible = (image->info().stages & usageInfo.stages) == usageInfo.stages
                                     && (image->info().access & usageInfo.access) == usageInfo.access
-                                    && (usageInfo.layout && image->info().layout == usageInfo.layout);
+                                    && (!usageInfo.layout || image->info().layout == usageInfo.layout);
 
     // If everything matches already, no need to do anything. Only ensure
     // that the stable adress bit is respected if set for the first time.
