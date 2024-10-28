@@ -226,7 +226,7 @@ namespace dxvk {
 
       // Execute transfer command buffer, if any
       if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer))
-        m_commandSubmission.executeCommandBuffer(cmd.sdmaBuffer);
+        m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::SdmaBuffer)]);
 
       // If we had either a transfer command or a semaphore wait, submit to the
       // transfer queue so that all subsequent commands get stalled as necessary.
@@ -250,10 +250,10 @@ namespace dxvk {
 
       // Submit graphics commands
       if (cmd.usedFlags.test(DxvkCmdBuffer::InitBuffer))
-        m_commandSubmission.executeCommandBuffer(cmd.initBuffer);
+        m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::InitBuffer)]);
 
       if (cmd.usedFlags.test(DxvkCmdBuffer::ExecBuffer))
-        m_commandSubmission.executeCommandBuffer(cmd.execBuffer);
+        m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)]);
 
       if (isLast) {
         // Signal per-command list semaphores on the final submission
@@ -306,9 +306,8 @@ namespace dxvk {
     m_cmd = DxvkCommandSubmissionInfo();
 
     // Grab a fresh set of command buffers from the pools
-    m_cmd.execBuffer = m_graphicsPool->getCommandBuffer();
-    m_cmd.initBuffer = m_graphicsPool->getCommandBuffer();
-    m_cmd.sdmaBuffer = m_transferPool->getCommandBuffer();
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++)
+      m_cmd.cmdBuffers[i] = allocateCommandBuffer(DxvkCmdBuffer(i));
   }
   
   
@@ -318,9 +317,8 @@ namespace dxvk {
 
     // For consistency, end all command buffers here,
     // regardless of whether they have been used.
-    this->endCommandBuffer(m_cmd.execBuffer);
-    this->endCommandBuffer(m_cmd.initBuffer);
-    this->endCommandBuffer(m_cmd.sdmaBuffer);
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++)
+      endCommandBuffer(m_cmd.cmdBuffers[i]);
 
     // Reset all command buffer handles
     m_cmd = DxvkCommandSubmissionInfo();
@@ -336,19 +334,11 @@ namespace dxvk {
       m_cmdSubmissions.push_back(m_cmd);
 
     // Only replace used command buffer to save resources
-    if (m_cmd.usedFlags.test(DxvkCmdBuffer::ExecBuffer)) {
-      this->endCommandBuffer(m_cmd.execBuffer);
-      m_cmd.execBuffer = m_graphicsPool->getCommandBuffer();
-    }
-
-    if (m_cmd.usedFlags.test(DxvkCmdBuffer::InitBuffer)) {
-      this->endCommandBuffer(m_cmd.initBuffer);
-      m_cmd.initBuffer = m_graphicsPool->getCommandBuffer();
-    }
-
-    if (m_cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer)) {
-      this->endCommandBuffer(m_cmd.sdmaBuffer);
-      m_cmd.sdmaBuffer = m_transferPool->getCommandBuffer();
+    for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
+      if (m_cmd.usedFlags.test(DxvkCmdBuffer(i))) {
+        endCommandBuffer(m_cmd.cmdBuffers[i]);
+        m_cmd.cmdBuffers[i] = allocateCommandBuffer(DxvkCmdBuffer(i));
+      }
     }
 
     m_cmd.syncSdma = VK_FALSE;
@@ -397,6 +387,13 @@ namespace dxvk {
 
     if (vk->vkEndCommandBuffer(cmdBuffer))
       throw DxvkError("DxvkCommandList: Failed to end command buffer");
+  }
+
+
+  VkCommandBuffer DxvkCommandList::allocateCommandBuffer(DxvkCmdBuffer type) {
+    return type == DxvkCmdBuffer::SdmaBuffer
+      ? m_transferPool->getCommandBuffer()
+      : m_graphicsPool->getCommandBuffer();
   }
 
 }
