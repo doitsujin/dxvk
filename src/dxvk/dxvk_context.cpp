@@ -3447,15 +3447,21 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    this->spillRenderPass(false);
-    this->invalidateState();
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
-    flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
+    if (!prepareOutOfOrderTransfer(imageView->image(), DxvkAccess::Write)) {
+      spillRenderPass(false);
+      invalidateState();
+
+      flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
+
+      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
+    }
 
     addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
       imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    flushImageLayoutTransitions(cmdBuffer);
 
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
@@ -3492,18 +3498,18 @@ namespace dxvk {
     else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
       workgroups.depth = imageView->subresources().layerCount;
     
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdBindDescriptorSet(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
       descriptorSet, 0, nullptr);
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdPushConstants(cmdBuffer,
       pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushArgs), &pushArgs);
-    m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
-    accessImage(DxvkCmdBuffer::ExecBuffer,
+    accessImage(cmdBuffer,
       *imageView->image(), imageView->imageSubresources(),
       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
       VK_ACCESS_2_SHADER_WRITE_BIT);
