@@ -1398,7 +1398,9 @@ namespace dxvk {
     Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorManager> m_descriptorManager;
 
+    DxvkBarrierBatch        m_sdmaAcquires;
     DxvkBarrierBatch        m_sdmaBarriers;
+    DxvkBarrierBatch        m_initAcquires;
     DxvkBarrierBatch        m_initBarriers;
     DxvkBarrierBatch        m_execBarriers;
     DxvkBarrierTracker      m_barrierTracker;

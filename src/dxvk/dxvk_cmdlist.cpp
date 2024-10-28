@@ -225,6 +225,9 @@ namespace dxvk {
       }
 
       // Execute transfer command buffer, if any
+      if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBarriers))
+        m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::SdmaBarriers)]);
+
       if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::SdmaBuffer)]);
 
@@ -249,6 +252,9 @@ namespace dxvk {
       }
 
       // Submit graphics commands
+      if (cmd.usedFlags.test(DxvkCmdBuffer::InitBarriers))
+        m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::InitBarriers)]);
+
       if (cmd.usedFlags.test(DxvkCmdBuffer::InitBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::InitBuffer)]);
 
@@ -391,7 +397,7 @@ namespace dxvk {
 
 
   VkCommandBuffer DxvkCommandList::allocateCommandBuffer(DxvkCmdBuffer type) {
-    return type == DxvkCmdBuffer::SdmaBuffer
+    return type == DxvkCmdBuffer::SdmaBuffer || type == DxvkCmdBuffer::SdmaBarriers
       ? m_transferPool->getCommandBuffer()
       : m_graphicsPool->getCommandBuffer();
   }
