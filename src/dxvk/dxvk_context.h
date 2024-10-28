@@ -29,7 +29,8 @@ namespace dxvk {
    * recorded.
    */
   class DxvkContext : public RcObject {
-
+    constexpr static VkDeviceSize MaxDiscardSizeInRp = 256u << 10u;
+    constexpr static VkDeviceSize MaxDiscardSize     =  16u << 10u;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
@@ -1902,6 +1903,22 @@ namespace dxvk {
 
     DxvkBarrierBatch& getBarrierBatch(
             DxvkCmdBuffer             cmdBuffer);
+
+    bool prepareOutOfOrderTransfer(
+      const Rc<DxvkBuffer>&           buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            DxvkAccess                access);
+
+    bool prepareOutOfOrderTransfer(
+      const Rc<DxvkBufferView>&       bufferView,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            DxvkAccess                access);
+
+    bool prepareOutOfOrderTransfer(
+      const Rc<DxvkImage>&            image,
+            DxvkAccess                access);
 
     template<typename Pred>
     bool checkResourceBarrier(
