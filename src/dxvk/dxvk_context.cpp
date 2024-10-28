@@ -7140,6 +7140,81 @@ namespace dxvk {
   }
 
 
+  bool DxvkContext::prepareOutOfOrderTransfer(
+    const Rc<DxvkBuffer>&           buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          DxvkAccess                access) {
+    // If the resource hasn't been used yet or both uses are reads,
+    // we can use this buffer in the init command buffer
+    if (!buffer->isTracked(m_trackingId, access))
+      return true;
+
+    // Otherwise, our only option is to discard. We can only do that if
+    // we're writing the full buffer. Therefore, the resource being read
+    // should always be checked first to avoid unnecessary discards.
+    if (access != DxvkAccess::Write || size < buffer->info().size || offset)
+      return false;
+
+    // Check if the buffer can actually be discarded at all.
+    if (!buffer->canRelocate())
+      return false;
+
+    // Ignore large buffers to keep memory overhead in check. Use a higher
+    // threshold when a render pass is active to avoid interrupting it.
+    VkDeviceSize threshold = !m_flags.test(DxvkContextFlag::GpRenderPassBound)
+      ? MaxDiscardSizeInRp
+      : MaxDiscardSize;
+
+    if (size > threshold)
+      return false;
+
+    // If the buffer is used for transform feedback in any way, we have to stop
+    // the render pass anyway, but we can at least avoid an extra barrier.
+    if (unlikely(m_flags.test(DxvkContextFlag::GpXfbActive))) {
+      VkBufferUsageFlags xfbUsage = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT
+                                  | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+
+      if (buffer->info().usage & xfbUsage)
+        this->spillRenderPass(true);
+    }
+
+    // Actually allocate and assign new backing storage
+    this->invalidateBuffer(buffer, buffer->allocateStorage());
+    return true;
+  }
+
+
+  bool DxvkContext::prepareOutOfOrderTransfer(
+    const Rc<DxvkBufferView>&       bufferView,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+          DxvkAccess                access) {
+    if (bufferView->info().format) {
+      offset *= bufferView->formatInfo()->elementSize;
+      size *= bufferView->formatInfo()->elementSize;
+    }
+
+    return prepareOutOfOrderTransfer(bufferView->buffer(),
+      offset + bufferView->info().offset, size, access);
+  }
+
+
+  bool DxvkContext::prepareOutOfOrderTransfer(
+    const Rc<DxvkImage>&            image,
+          DxvkAccess                access) {
+    // If the image can be used for rendering, some or all subresources
+    // might be in a non-default layout, and copies to or from render
+    // targets typically depend on rendering operations anyway. Skip.
+    if (image->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      return false;
+
+    // If the image hasn't been used yet or all uses are
+    // reads, we can use it in the init command buffer
+    return !image->isTracked(m_trackingId, access);
+  }
+
+
   bool DxvkContext::formatsAreCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {
