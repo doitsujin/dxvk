@@ -827,8 +827,6 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
   }
   
   
@@ -864,8 +862,6 @@ namespace dxvk {
       
       this->trackDrawBuffer();
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
   }
   
   
@@ -879,8 +875,6 @@ namespace dxvk {
         vertexCount, instanceCount,
         firstVertex, firstInstance);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -896,8 +890,6 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -917,8 +909,6 @@ namespace dxvk {
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -934,8 +924,6 @@ namespace dxvk {
         firstIndex, vertexOffset,
         firstInstance);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -951,8 +939,6 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -972,8 +958,6 @@ namespace dxvk {
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
     }
-    
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -990,8 +974,6 @@ namespace dxvk {
         counterBias,
         counterDivisor);
     }
-
-    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
 
 
@@ -4749,8 +4731,6 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++)
       m_cmd->track(framebufferInfo.getAttachment(i).view->image(), DxvkAccess::Write);
-
-    m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1);
   }
   
   
@@ -6224,7 +6204,6 @@ namespace dxvk {
     depInfo.pMemoryBarriers = &barrier;
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
   }
 
 
@@ -6404,7 +6383,6 @@ namespace dxvk {
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
     // Set up post-copy barriers
     depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
@@ -6547,7 +6525,6 @@ namespace dxvk {
     }
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
   }
 
 
@@ -6671,8 +6648,6 @@ namespace dxvk {
     depInfo.pMemoryBarriers = &barrier;
 
     m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
-
     return m_zeroBuffer;
   }
   
@@ -6772,7 +6747,6 @@ namespace dxvk {
       depInfo.pImageMemoryBarriers = m_imageLayoutTransitions.data();
 
       m_cmd->cmdPipelineBarrier(cmdBuffer, &depInfo);
-      m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1u);
     } else {
       // If we're recording into an out-of-order command buffer, batch
       // layout transitions into a dedicated command buffer in order to
