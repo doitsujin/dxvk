@@ -983,13 +983,6 @@ namespace dxvk {
       return m_isD3D8Compatible;
     }
 
-    void SetD3D8CompatibilityMode(bool compatMode) {
-      if (compatMode)
-        Logger::info("The D3D9 device is now operating in D3D8 compatibility mode.");
-
-      m_isD3D8Compatible = compatMode;
-    }
-
     // Device Lost
     bool IsDeviceLost() const {
       return m_deviceLostState != D3D9DeviceLostState::Ok;
@@ -1421,7 +1414,7 @@ namespace dxvk {
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
 
     bool                            m_isSWVP;
-    bool                            m_isD3D8Compatible = false;
+    bool                            m_isD3D8Compatible;
     bool                            m_amdATOC          = false;
     bool                            m_nvATOC           = false;
     bool                            m_ffZTest          = false;

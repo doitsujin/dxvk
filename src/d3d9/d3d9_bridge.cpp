@@ -32,10 +32,6 @@ namespace dxvk {
     m_device->m_implicitSwapchain->SetApiName(name);
   }
 
-  void DxvkD3D8Bridge::SetD3D8CompatibilityMode(const bool compatMode) {
-    m_device->SetD3D8CompatibilityMode(compatMode);
-  }
-
   HRESULT DxvkD3D8Bridge::UpdateTextureFromBuffer(
         IDirect3DSurface9*  pDestSurface,
         IDirect3DSurface9*  pSrcSurface,
@@ -103,6 +99,10 @@ namespace dxvk {
           REFIID  riid,
           void** ppvObject) {
     return m_interface->QueryInterface(riid, ppvObject);
+  }
+
+  void DxvkD3D8InterfaceBridge::SetD3D8CompatibilityMode(const bool compatMode) {
+    m_interface->SetD3D8CompatibilityMode(compatMode);
   }
 
   const Config* DxvkD3D8InterfaceBridge::GetConfig() const {
