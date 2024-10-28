@@ -1997,18 +1997,17 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    bool replaceBuffer = this->tryInvalidateDeviceLocalBuffer(buffer, size);
-    auto bufferSlice = buffer->getSliceHandle(offset, size);
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
-    if (!replaceBuffer) {
-      this->spillRenderPass(true);
+    if (!prepareOutOfOrderTransfer(buffer, offset, size, DxvkAccess::Write)) {
+      spillRenderPass(true);
 
       flushPendingAccesses(*buffer, offset, size, DxvkAccess::Write);
+
+      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    DxvkCmdBuffer cmdBuffer = replaceBuffer
-      ? DxvkCmdBuffer::InitBuffer
-      : DxvkCmdBuffer::ExecBuffer;
+    auto bufferSlice = buffer->getSliceHandle(offset, size);
 
     m_cmd->cmdUpdateBuffer(cmdBuffer,
       bufferSlice.handle,
