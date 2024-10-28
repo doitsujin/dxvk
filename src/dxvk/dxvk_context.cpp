@@ -388,25 +388,20 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    // When overwriting small buffers, we can allocate a new slice in order to
-    // avoid suspending the current render pass or inserting barriers. The source
-    // buffer must be read-only since otherwise we cannot schedule the copy early.
-    bool srcIsReadOnly = !(srcBuffer->info().access & vk::AccessWriteMask);
-    bool replaceBuffer = srcIsReadOnly && this->tryInvalidateDeviceLocalBuffer(dstBuffer, numBytes);
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
-    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
-    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
-
-    if (!replaceBuffer) {
+    if (!prepareOutOfOrderTransfer(srcBuffer, srcOffset, numBytes, DxvkAccess::Read)
+     || !prepareOutOfOrderTransfer(dstBuffer, dstOffset, numBytes, DxvkAccess::Write)) {
       this->spillRenderPass(true);
 
       flushPendingAccesses(*srcBuffer, srcOffset, numBytes, DxvkAccess::Read);
       flushPendingAccesses(*dstBuffer, dstOffset, numBytes, DxvkAccess::Write);
+
+      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    DxvkCmdBuffer cmdBuffer = replaceBuffer
-      ? DxvkCmdBuffer::InitBuffer
-      : DxvkCmdBuffer::ExecBuffer;
+    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
+    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
 
     VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
     copyRegion.srcOffset = srcSlice.offset;
