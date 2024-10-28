@@ -10,7 +10,9 @@ namespace dxvk {
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device      (device),
     m_common      (&device->m_objects),
+    m_sdmaAcquires(DxvkCmdBuffer::SdmaBarriers),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
+    m_initAcquires(DxvkCmdBuffer::InitBarriers),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()) {
@@ -6737,7 +6739,9 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->flushSharedImages();
 
+    m_sdmaAcquires.finalize(m_cmd);
     m_sdmaBarriers.finalize(m_cmd);
+    m_initAcquires.finalize(m_cmd);
     m_initBarriers.finalize(m_cmd);
     m_execBarriers.finalize(m_cmd);
 
@@ -6762,12 +6766,29 @@ namespace dxvk {
     if (m_imageLayoutTransitions.empty())
       return;
 
-    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-    depInfo.imageMemoryBarrierCount = m_imageLayoutTransitions.size();
-    depInfo.pImageMemoryBarriers = m_imageLayoutTransitions.data();
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+      VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+      depInfo.imageMemoryBarrierCount = m_imageLayoutTransitions.size();
+      depInfo.pImageMemoryBarriers = m_imageLayoutTransitions.data();
 
-    m_cmd->cmdPipelineBarrier(cmdBuffer, &depInfo);
-    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1u);
+      m_cmd->cmdPipelineBarrier(cmdBuffer, &depInfo);
+      m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1u);
+    } else {
+      // If we're recording into an out-of-order command buffer, batch
+      // layout transitions into a dedicated command buffer in order to
+      // avoid pipeline stalls.
+      DxvkCmdBuffer barrierBuffer = cmdBuffer;
+
+      if (cmdBuffer == DxvkCmdBuffer::InitBuffer)
+        barrierBuffer = DxvkCmdBuffer::InitBarriers;
+      if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
+        barrierBuffer = DxvkCmdBuffer::SdmaBarriers;
+
+      auto& batch = getBarrierBatch(barrierBuffer);
+
+      for (const auto& barrier : m_imageLayoutTransitions)
+        batch.addImageBarrier(barrier);
+    }
 
     m_imageLayoutTransitions.clear();
   }
@@ -7143,12 +7164,14 @@ namespace dxvk {
 
   DxvkBarrierBatch& DxvkContext::getBarrierBatch(
           DxvkCmdBuffer             cmdBuffer) {
-    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      return m_execBarriers;
-
-    return cmdBuffer == DxvkCmdBuffer::InitBuffer
-      ? m_initBarriers
-      : m_sdmaBarriers;
+    switch (cmdBuffer) {
+      default:
+      case DxvkCmdBuffer::ExecBuffer: return m_execBarriers;
+      case DxvkCmdBuffer::InitBuffer: return m_initBarriers;
+      case DxvkCmdBuffer::InitBarriers: return m_initAcquires;
+      case DxvkCmdBuffer::SdmaBuffer: return m_sdmaBarriers;
+      case DxvkCmdBuffer::SdmaBarriers: return m_sdmaAcquires;
+    }
   }
 
 

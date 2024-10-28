@@ -47,7 +47,9 @@ namespace dxvk {
   enum class DxvkCmdBuffer : uint32_t {
     ExecBuffer,
     InitBuffer,
+    InitBarriers,
     SdmaBuffer,
+    SdmaBarriers,
 
     Count
   };
