@@ -1383,6 +1383,8 @@ namespace dxvk {
     Rc<DxvkResourceAllocation> prevAllocation = buffer->assignStorage(std::move(slice));
     m_cmd->track(std::move(prevAllocation));
 
+    buffer->resetTracking();
+
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
     VkBufferUsageFlags usage = buffer->info().usage &
@@ -1475,6 +1477,8 @@ namespace dxvk {
 
     if (usageInfo.stableGpuAddress)
       m_common->memoryManager().lockResourceGpuAddress(image->storage());
+
+    image->resetTracking();
   }
 
 
@@ -6712,6 +6716,8 @@ namespace dxvk {
 
     m_state.gp.pipeline = nullptr;
     m_state.cp.pipeline = nullptr;
+
+    m_cmd->setTrackingId(++m_trackingId);
   }
 
 

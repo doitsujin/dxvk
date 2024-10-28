@@ -512,7 +512,7 @@ namespace dxvk {
     force_inline bool isInUse(DxvkAccess access) const {
       return m_useCount.load(std::memory_order_acquire) >= getIncrement(access);
     }
-    
+
     /**
      * \brief Tries to acquire reference
      *
@@ -533,6 +533,43 @@ namespace dxvk {
         refCount + increment, std::memory_order_relaxed));
 
       return Rc<DxvkPagedResource>::unsafeCreate(this);
+    }
+
+    /**
+     * \brief Sets tracked command list ID
+     *
+     * Used to work out if a resource has been used in the current
+     * command list and optimize certain transfer operations.
+     * \param [in] trackingId Tracking ID
+     * \param [in] access Tracked access
+     */
+    void trackId(uint64_t trackingId, DxvkAccess access) {
+      // Encode write access in the least significant bit
+      m_trackId = (trackingId << 1u) + uint64_t(access == DxvkAccess::Write);
+    }
+
+    /**
+     * \brief Checks whether a resource has been tracked
+     *
+     * \param [in] trackingId Current tracking ID
+     * \param [in] access Destination access
+     * \returns \c true if the resource has been used in a way that
+     *    prevents recordering commands with the given resource access.
+     */
+    bool isTracked(uint64_t trackingId, DxvkAccess access) const {
+      // We actually want to check for read access here so that this check only
+      // fails if the resource hasn't been used or if both accesses are read-only.
+      return m_trackId >= (trackingId << 1u) + uint64_t(access != DxvkAccess::Write);
+    }
+
+    /**
+     * \brief Resets tracking
+     *
+     * Marks the resource as unused in the current command list.
+     * Should be done when assigning new backing storage.
+     */
+    void resetTracking() {
+      m_trackId = 0u;
     }
 
     /**
@@ -562,6 +599,7 @@ namespace dxvk {
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };
+    uint64_t              m_trackId = { 0u };
     uint64_t              m_cookie = { 0u };
 
     static constexpr uint64_t getIncrement(DxvkAccess access) {
@@ -585,13 +623,15 @@ namespace dxvk {
   public:
 
     template<typename T>
-    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access)
+    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access, uint64_t trackingId)
     : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkPagedResource*>(object.ptr())) | uintptr_t(access)) {
+      object->trackId(trackingId, access);
       object.unsafeExtract()->convertRef(DxvkAccess::None, access);
     }
 
-    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access)
+    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access, uint64_t trackingId)
     : m_ptr(reinterpret_cast<uintptr_t>(object) | uintptr_t(access)) {
+      object->trackId(trackingId, access);
       object->acquire(access);
     }
 

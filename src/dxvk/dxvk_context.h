@@ -1383,6 +1383,8 @@ namespace dxvk {
     
     Rc<DxvkDevice>          m_device;
     DxvkObjects*            m_common;
+
+    uint64_t                m_trackingId = 0u;
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
