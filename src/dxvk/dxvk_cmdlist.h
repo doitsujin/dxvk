@@ -425,6 +425,7 @@ namespace dxvk {
     void cmdBeginRendering(
       const VkRenderingInfo*        pRenderingInfo) {
       m_cmd.execCommands = true;
+      m_statCounters.addCtr(DxvkStatCounter::CmdRenderPassCount, 1);
 
       m_vkd->vkCmdBeginRendering(getCmdBuffer(), pRenderingInfo);
     }
@@ -633,6 +634,7 @@ namespace dxvk {
             uint32_t                y,
             uint32_t                z) {
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      m_statCounters.addCtr(DxvkStatCounter::CmdDispatchCalls, 1);
 
       m_vkd->vkCmdDispatch(getCmdBuffer(cmdBuffer), x, y, z);
     }
@@ -643,6 +645,7 @@ namespace dxvk {
             VkBuffer                buffer,
             VkDeviceSize            offset) {
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      m_statCounters.addCtr(DxvkStatCounter::CmdDispatchCalls, 1);
 
       m_vkd->vkCmdDispatchIndirect(getCmdBuffer(cmdBuffer), buffer, offset);
     }
@@ -653,6 +656,8 @@ namespace dxvk {
             uint32_t                instanceCount,
             uint32_t                firstVertex,
             uint32_t                firstInstance) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDraw(getCmdBuffer(),
         vertexCount, instanceCount,
         firstVertex, firstInstance);
@@ -664,6 +669,8 @@ namespace dxvk {
             VkDeviceSize            offset,
             uint32_t                drawCount,
             uint32_t                stride) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
     }
@@ -676,6 +683,8 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndirectCount(getCmdBuffer(),
         buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
     }
@@ -687,6 +696,8 @@ namespace dxvk {
             uint32_t                firstIndex,
             int32_t                 vertexOffset,
             uint32_t                firstInstance) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndexed(getCmdBuffer(),
         indexCount, instanceCount,
         firstIndex, vertexOffset,
@@ -699,6 +710,8 @@ namespace dxvk {
             VkDeviceSize            offset,
             uint32_t                drawCount,
             uint32_t                stride) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndexedIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
     }
@@ -711,6 +724,8 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndexedIndirectCount(getCmdBuffer(),
         buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
     }
@@ -723,6 +738,8 @@ namespace dxvk {
             VkDeviceSize            counterBufferOffset,
             uint32_t                counterOffset,
             uint32_t                vertexStride) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+
       m_vkd->vkCmdDrawIndirectByteCountEXT(getCmdBuffer(),
         instanceCount, firstInstance, counterBuffer,
         counterBufferOffset, counterOffset, vertexStride);
@@ -777,6 +794,7 @@ namespace dxvk {
             DxvkCmdBuffer           cmdBuffer,
       const VkDependencyInfo*       dependencyInfo) {
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      m_statCounters.addCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
       m_vkd->vkCmdPipelineBarrier2(getCmdBuffer(cmdBuffer), dependencyInfo);
     }

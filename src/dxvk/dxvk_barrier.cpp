@@ -474,7 +474,6 @@ namespace dxvk {
       return;
 
     list->cmdPipelineBarrier(m_cmdBuffer, &depInfo);
-    list->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1u);
 
     m_memoryBarrier.srcStageMask = 0u;
     m_memoryBarrier.srcAccessMask = 0u;
