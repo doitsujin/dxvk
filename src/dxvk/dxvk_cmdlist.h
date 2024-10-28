@@ -54,8 +54,6 @@ namespace dxvk {
     Count
   };
   
-  using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
-
   /**
    * \brief Queue command submission
    *
@@ -140,9 +138,10 @@ namespace dxvk {
    * mask of command buffers that were actually used.
    */
   struct DxvkCommandSubmissionInfo {
-    DxvkCmdBufferFlags  usedFlags   = 0;
-    VkBool32            syncSdma    = VK_FALSE;
-    VkBool32            sparseBind  = VK_FALSE;
+    bool                execCommands = false;
+    bool                syncSdma    = false;
+    bool                sparseBind  = false;
+    bool                reserved    = false;
     uint32_t            sparseCmd   = 0;
 
     std::array<VkCommandBuffer, uint32_t(DxvkCmdBuffer::Count)> cmdBuffers = { };
@@ -405,7 +404,7 @@ namespace dxvk {
             VkQueryPool             queryPool,
             uint32_t                query,
             VkQueryControlFlags     flags) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdBeginQuery(getCmdBuffer(), queryPool, query, flags);
     }
@@ -416,7 +415,7 @@ namespace dxvk {
             uint32_t                query,
             VkQueryControlFlags     flags,
             uint32_t                index) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdBeginQueryIndexedEXT(getCmdBuffer(),
         queryPool, query, flags, index);
@@ -425,7 +424,7 @@ namespace dxvk {
 
     void cmdBeginRendering(
       const VkRenderingInfo*        pRenderingInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdBeginRendering(getCmdBuffer(), pRenderingInfo);
     }
@@ -521,7 +520,7 @@ namespace dxvk {
     }
     
     void cmdLaunchCuKernel(VkCuLaunchInfoNVX launchInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdCuLaunchKernelNVX(getCmdBuffer(), &launchInfo);
     }
@@ -529,7 +528,7 @@ namespace dxvk {
 
     void cmdBlitImage(
         const VkBlitImageInfo2*     pBlitInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdBlitImage2(getCmdBuffer(), pBlitInfo);
     }
@@ -552,7 +551,7 @@ namespace dxvk {
       const VkClearColorValue*      pColor,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdClearColorImage(getCmdBuffer(cmdBuffer),
         image, imageLayout, pColor,
@@ -567,7 +566,7 @@ namespace dxvk {
       const VkClearDepthStencilValue* pDepthStencil,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdClearDepthStencilImage(getCmdBuffer(cmdBuffer),
         image, imageLayout, pDepthStencil,
@@ -578,7 +577,7 @@ namespace dxvk {
     void cmdCopyBuffer(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyBufferInfo2*      copyInfo) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdCopyBuffer2(getCmdBuffer(cmdBuffer), copyInfo);
     }
@@ -587,7 +586,7 @@ namespace dxvk {
     void cmdCopyBufferToImage(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyBufferToImageInfo2* copyInfo) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdCopyBufferToImage2(getCmdBuffer(cmdBuffer), copyInfo);
     }
@@ -596,7 +595,7 @@ namespace dxvk {
     void cmdCopyImage(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyImageInfo2*       copyInfo) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdCopyImage2(getCmdBuffer(cmdBuffer), copyInfo);
     }
@@ -605,7 +604,7 @@ namespace dxvk {
     void cmdCopyImageToBuffer(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyImageToBufferInfo2* copyInfo) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdCopyImageToBuffer2(getCmdBuffer(cmdBuffer), copyInfo);
     }
@@ -620,7 +619,7 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            stride,
             VkQueryResultFlags      flags) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdCopyQueryPoolResults(getCmdBuffer(cmdBuffer),
         queryPool, firstQuery, queryCount,
@@ -633,7 +632,7 @@ namespace dxvk {
             uint32_t                x,
             uint32_t                y,
             uint32_t                z) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdDispatch(getCmdBuffer(cmdBuffer), x, y, z);
     }
@@ -643,7 +642,7 @@ namespace dxvk {
             DxvkCmdBuffer           cmdBuffer,
             VkBuffer                buffer,
             VkDeviceSize            offset) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdDispatchIndirect(getCmdBuffer(cmdBuffer), buffer, offset);
     }
@@ -767,7 +766,7 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            size,
             uint32_t                data) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdFillBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, size, data);
@@ -777,7 +776,7 @@ namespace dxvk {
     void cmdPipelineBarrier(
             DxvkCmdBuffer           cmdBuffer,
       const VkDependencyInfo*       dependencyInfo) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdPipelineBarrier2(getCmdBuffer(cmdBuffer), dependencyInfo);
     }
@@ -800,7 +799,7 @@ namespace dxvk {
             VkQueryPool             queryPool,
             uint32_t                firstQuery,
             uint32_t                queryCount) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdResetQueryPool(getCmdBuffer(cmdBuffer),
         queryPool, firstQuery, queryCount);
@@ -809,7 +808,7 @@ namespace dxvk {
 
     void cmdResolveImage(
       const VkResolveImageInfo2*    resolveInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdResolveImage2(getCmdBuffer(), resolveInfo);
     }
@@ -821,7 +820,7 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
       const void*                   pData) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdUpdateBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, dataSize, pData);
@@ -903,7 +902,7 @@ namespace dxvk {
     void cmdSetEvent(
             VkEvent                 event,
       const VkDependencyInfo*       dependencyInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vkd->vkCmdSetEvent2(getCmdBuffer(), event, dependencyInfo);
     }
@@ -1001,7 +1000,7 @@ namespace dxvk {
             VkPipelineStageFlagBits2 pipelineStage,
             VkQueryPool             queryPool,
             uint32_t                query) {
-      m_cmd.usedFlags.set(cmdBuffer);
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdWriteTimestamp2(getCmdBuffer(cmdBuffer),
         pipelineStage, queryPool, query);
@@ -1010,14 +1009,14 @@ namespace dxvk {
 
     void cmdBeginDebugUtilsLabel(
             VkDebugUtilsLabelEXT*   pLabelInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vki->vkCmdBeginDebugUtilsLabelEXT(getCmdBuffer(), pLabelInfo);
     }
 
 
     void cmdEndDebugUtilsLabel() {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vki->vkCmdEndDebugUtilsLabelEXT(getCmdBuffer());
     }
@@ -1025,7 +1024,7 @@ namespace dxvk {
 
     void cmdInsertDebugUtilsLabel(
             VkDebugUtilsLabelEXT*   pLabelInfo) {
-      m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
+      m_cmd.execCommands = true;
 
       m_vki->vkCmdInsertDebugUtilsLabelEXT(getCmdBuffer(), pLabelInfo);
     }
@@ -1104,8 +1103,21 @@ namespace dxvk {
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
 
-    force_inline VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::ExecBuffer) const {
-      return m_cmd.cmdBuffers[uint32_t(cmdBuffer)];
+    force_inline VkCommandBuffer getCmdBuffer() const {
+      // Allocation logic will always provide an execution buffer
+      return m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)];
+    }
+
+    force_inline VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) {
+      VkCommandBuffer buffer = m_cmd.cmdBuffers[uint32_t(cmdBuffer)];
+
+      if (likely(cmdBuffer == DxvkCmdBuffer::ExecBuffer || buffer))
+        return buffer;
+
+      // Allocate a new command buffer if necessary
+      buffer = allocateCommandBuffer(cmdBuffer);
+      m_cmd.cmdBuffers[uint32_t(cmdBuffer)] = buffer;
+      return buffer;
     }
 
     DxvkSparseBindSubmission& getSparseBindSubmission() {
