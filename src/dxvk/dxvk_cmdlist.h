@@ -287,17 +287,17 @@ namespace dxvk {
      */
     template<typename T>
     void track(Rc<T>&& object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(std::move(object), access);
+      m_objectTracker.track<DxvkResourceRef>(std::move(object), access, m_trackingId);
     }
 
     template<typename T>
     void track(const Rc<T>& object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(object.ptr(), access);
+      m_objectTracker.track<DxvkResourceRef>(object.ptr(), access, m_trackingId);
     }
 
     template<typename T>
     void track(T* object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(object, access);
+      m_objectTracker.track<DxvkResourceRef>(object, access, m_trackingId);
     }
 
     /**
@@ -1061,6 +1061,11 @@ namespace dxvk {
       m_descriptorPools.push_back({ pool, manager });
     }
 
+
+    void setTrackingId(uint64_t id) {
+      m_trackingId = id;
+    }
+
   private:
     
     DxvkDevice*               m_device;
@@ -1073,6 +1078,7 @@ namespace dxvk {
     DxvkCommandSubmissionInfo m_cmd;
 
     PresenterSync             m_wsiSemaphores = { };
+    uint64_t                  m_trackingId = 0u;
 
     DxvkObjectTracker         m_objectTracker;
     DxvkSignalTracker         m_signalTracker;
