@@ -65,6 +65,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture->GetVkInterop());
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D9VkInteropBuffer)) {
       *ppvObject = ref(m_texture->GetVkBufferInterop());
       return S_OK;
