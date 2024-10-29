@@ -185,7 +185,7 @@ namespace dxvk {
           }
 
           if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
-            util::packImageData(pTexture->GetMappedBuffer(index)->mapPtr(0),
+            util::packImageData(pTexture->GetMapPtr(index, 0),
               pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
               0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
           }
@@ -223,8 +223,8 @@ namespace dxvk {
 
       if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
         for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
-          auto buffer = pTexture->GetMappedBuffer(i);
-          std::memset(buffer->mapPtr(0), 0, buffer->info().size);
+          auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, i);
+          std::memset(pTexture->GetMapPtr(i, layout.Offset), 0, layout.Size);
         }
       }
     }
