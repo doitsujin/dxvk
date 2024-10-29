@@ -5,7 +5,7 @@ namespace dxvk {
   DxvkOptions::DxvkOptions(const Config& config) {
     enableDebugUtils      = config.getOption<bool>    ("dxvk.enableDebugUtils",       false);
     enableStateCache      = config.getOption<bool>    ("dxvk.enableStateCache",       true);
-    enableMemoryDefrag    = config.getOption<bool>    ("dxvk.enableMemoryDefrag",     true);
+    enableMemoryDefrag    = config.getOption<Tristate>("dxvk.enableMemoryDefrag",     Tristate::Auto);
     numCompilerThreads    = config.getOption<int32_t> ("dxvk.numCompilerThreads",     0);
     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);

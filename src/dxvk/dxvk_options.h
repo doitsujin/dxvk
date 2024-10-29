@@ -15,7 +15,7 @@ namespace dxvk {
     bool enableStateCache = true;
 
     /// Enable memory defragmentation
-    bool enableMemoryDefrag = true;
+    Tristate enableMemoryDefrag = Tristate::Auto;
 
     /// Number of compiler threads
     /// when using the state cache
