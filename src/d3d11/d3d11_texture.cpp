@@ -299,6 +299,23 @@ namespace dxvk {
         layout.Size       = vkLayout.size;
         layout.RowPitch   = vkLayout.rowPitch;
         layout.DepthPitch = vkLayout.depthPitch;
+
+        // If the image dimensions allow for it, try to look like a linear
+        // buffer, games may otherwise get confused by an unexpectedly large
+        // row pitch and crash reading out-of-bounds memory. We never use
+        // direct mapping for planar images, so aspects are not a concern.
+        auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
+
+        VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
+        VkExtent3D blockCount = util::computeBlockCount(mipExtent, packedFormatInfo->blockSize);
+
+        if (blockCount.height == 1u)
+          layout.RowPitch = packedFormatInfo->elementSize * blockCount.width;
+
+        if (blockCount.depth == 1u)
+          layout.DepthPitch = layout.RowPitch * blockCount.height;
+
+        layout.Size = layout.DepthPitch * m_desc.Depth;
       } break;
 
       case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
