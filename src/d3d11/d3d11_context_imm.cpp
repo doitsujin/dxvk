@@ -280,23 +280,14 @@ namespace dxvk {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
 
-    HRESULT hr;
-    
     if (likely(resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)) {
-      hr = MapBuffer(
+      return MapBuffer(
         static_cast<D3D11Buffer*>(pResource),
         MapType, MapFlags, pMappedResource);
     } else {
-      hr = MapImage(
-        GetCommonTexture(pResource),
-        Subresource, MapType, MapFlags,
-        pMappedResource);
+      return MapImage(GetCommonTexture(pResource),
+        Subresource, MapType, MapFlags, pMappedResource);
     }
-
-    if (unlikely(FAILED(hr)))
-      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
-
-    return hr;
   }
   
   
@@ -328,6 +319,7 @@ namespace dxvk {
 
     if (unlikely(pResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
+      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
       return E_INVALIDARG;
     }
 
@@ -399,8 +391,10 @@ namespace dxvk {
         pMappedResource->DepthPitch = bufferSize;
         return S_OK;
       } else {
-        if (!WaitForResource(*buffer, sequenceNumber, MapType, MapFlags))
+        if (!WaitForResource(*buffer, sequenceNumber, MapType, MapFlags)) {
+          *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
           return DXGI_ERROR_WAS_STILL_DRAWING;
+        }
 
         pMappedResource->pData      = pResource->GetMapPtr();
         pMappedResource->RowPitch   = bufferSize;
@@ -421,7 +415,10 @@ namespace dxvk {
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
 
     auto mapMode = pResource->GetMapMode();
-    
+
+    if (pMappedResource)
+      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+
     if (unlikely(mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
       return E_INVALIDARG;
