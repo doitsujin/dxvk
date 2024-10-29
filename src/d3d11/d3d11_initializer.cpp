@@ -229,38 +229,47 @@ namespace dxvk {
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     Rc<DxvkImage> image = pTexture->GetImage();
+    auto formatInfo = image->formatInfo();
 
-    for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
-      for (uint32_t level = 0; level < image->info().mipLevels; level++) {
+    for (uint32_t layer = 0; layer < pTexture->Desc()->ArraySize; layer++) {
+      for (uint32_t level = 0; level < pTexture->Desc()->MipLevels; level++) {
+        uint32_t subresourceIndex = D3D11CalcSubresource(level, layer, pTexture->Desc()->MipLevels);
+
         VkImageSubresource subresource;
-        subresource.aspectMask = image->formatInfo()->aspectMask;
+        subresource.aspectMask = formatInfo->aspectMask;
         subresource.mipLevel   = level;
         subresource.arrayLayer = layer;
 
         VkExtent3D blockCount = util::computeBlockCount(
-          image->mipLevelExtent(level),
-          image->formatInfo()->blockSize);
+          image->mipLevelExtent(level), formatInfo->blockSize);
 
-        VkSubresourceLayout layout = image->querySubresourceLayout(subresource);
+        auto layout = pTexture->GetSubresourceLayout(
+          subresource.aspectMask, subresourceIndex);
 
-        auto initialData = pInitialData
-          ? &pInitialData[D3D11CalcSubresource(level, layer, image->info().mipLevels)]
-          : nullptr;
+        if (pInitialData && pInitialData[subresourceIndex].pSysMem) {
+          const auto& initialData = pInitialData[subresourceIndex];
 
-        for (uint32_t z = 0; z < blockCount.depth; z++) {
-          for (uint32_t y = 0; y < blockCount.height; y++) {
-            auto size = blockCount.width * image->formatInfo()->elementSize;
-            auto dst = image->mapPtr(layout.offset + y * layout.rowPitch + z * layout.depthPitch);
+          for (uint32_t z = 0; z < blockCount.depth; z++) {
+            for (uint32_t y = 0; y < blockCount.height; y++) {
+              auto size = blockCount.width * formatInfo->elementSize;
 
-            if (initialData) {
-              auto src = reinterpret_cast<const char*>(initialData->pSysMem)
-                       + y * initialData->SysMemPitch
-                       + z * initialData->SysMemSlicePitch;
+              auto dst = pTexture->GetMapPtr(subresourceIndex, layout.Offset
+                      + y * layout.RowPitch
+                      + z * layout.DepthPitch);
+
+              auto src = reinterpret_cast<const char*>(initialData.pSysMem)
+                      + y * initialData.SysMemPitch
+                      + z * initialData.SysMemSlicePitch;
+
               std::memcpy(dst, src, size);
-            } else {
-              std::memset(dst, 0, size);
+
+              if (size < layout.RowPitch)
+                std::memset(reinterpret_cast<char*>(dst) + size, 0, layout.RowPitch - size);
             }
           }
+        } else {
+          void* dst = pTexture->GetMapPtr(subresourceIndex, layout.Offset);
+          std::memset(dst, 0, layout.Size);
         }
       }
     }
