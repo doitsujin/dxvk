@@ -74,6 +74,33 @@ ID3D9VkInteropTexture : public IUnknown {
           VkImageCreateInfo*    pInfo) = 0;
 };
 
+enum D3D9VkBufferType {
+  D3D9_VK_BUFFER_TYPE_MAPPING,
+  D3D9_VK_BUFFER_TYPE_STAGING,
+  D3D9_VK_BUFFER_TYPE_REAL
+};
+
+/**
+ * \brief D3D9 buffer interface for Vulkan interop
+ *
+ * Provides access to the backing buffer of a D3D9
+ * vertex buffer, index buffer, surface, or volume.
+ */
+MIDL_INTERFACE("6db73b95-ab03-4909-9f4e-5d42a29fe995")
+ID3D9VkInteropBuffer : public IUnknown {
+  /**
+   * \brief Retrieves buffer info
+   *
+   * Retrieves both the buffer handle as well as the buffer's
+   * properties. Any of the given pointers may be \c nullptr.
+   * 
+   * \returns \c S_OK on success, or \c D3DERR_INVALIDCALL
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetBufferInfo(
+          D3D9VkBufferType Type,
+          VkBuffer* pStagingBuffer,
+          VkBufferCreateInfo* pStagingBufferInfo) = 0;
+};
 
 /**
  * \brief D3D9 image description
@@ -264,6 +291,7 @@ ID3D9VkExtSwapchain : public IUnknown {
 #ifndef _MSC_VER
 __CRT_UUID_DECL(ID3D9VkInteropInterface,   0x3461a81b,0xce41,0x485b,0xb6,0xb5,0xfc,0xf0,0x8b,0xa6,0xa6,0xbd);
 __CRT_UUID_DECL(ID3D9VkInteropTexture,     0xd56344f5,0x8d35,0x46fd,0x80,0x6d,0x94,0xc3,0x51,0xb4,0x72,0xc1);
+__CRT_UUID_DECL(ID3D9VkInteropBuffer,      0x6db73b95,0xab03,0x4909,0x9f,0x4e,0x5d,0x42,0xa2,0x9f,0xe9,0x95);
 __CRT_UUID_DECL(ID3D9VkInteropDevice,      0x2eaa4b89,0x0107,0x4bdb,0x87,0xf7,0x0f,0x54,0x1c,0x49,0x3c,0xe0);
 __CRT_UUID_DECL(ID3D9VkExtSwapchain,       0x13776e93,0x4aa9,0x430a,0xa4,0xec,0xfe,0x9e,0x28,0x11,0x81,0xd5);
 #endif

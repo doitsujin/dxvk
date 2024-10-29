@@ -16,7 +16,9 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* pDesc,
           D3DRESOURCETYPE           ResourceType,
           HANDLE*                   pSharedHandle)
-    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_d3d9Interop(pInterface, this) {
+    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType)
+    , m_d3d9Interop(pInterface, this)
+    , m_d3d9BufferInterop(pInterface, this) {
     if (m_desc.Format == D3D9Format::Unknown)
       m_desc.Format = (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
                     ? D3D9Format::D24X8

@@ -487,6 +487,7 @@ namespace dxvk {
     void CreateBuffer(bool Initialize);
 
     ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
+    ID3D9VkInteropBuffer* GetVkBufferInterop() { return &m_d3d9BufferInterop; }
 
   private:
 
@@ -537,6 +538,7 @@ namespace dxvk {
     std::array<D3DBOX, 6>         m_dirtyBoxes;
 
     D3D9VkInteropTexture          m_d3d9Interop;
+    D3D9VkInteropBuffer           m_d3d9BufferInterop;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 

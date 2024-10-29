@@ -15,7 +15,7 @@ namespace dxvk {
             D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc)
     : D3D9Resource<Type...> (pDevice),
-      m_buffer              (pDevice, pDesc) {
+      m_buffer              (this, pDevice, pDesc) {
 
     }
 

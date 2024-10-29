@@ -1,4 +1,5 @@
 #include "d3d9_buffer.h"
+#include "d3d9_interfaces.h"
 
 namespace dxvk {
 
@@ -26,6 +27,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DResource9)
      || riid == __uuidof(IDirect3DVertexBuffer9)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropBuffer)) {
+      *ppvObject = ref(m_buffer.GetVkInterop());
       return S_OK;
     }
 
@@ -86,6 +92,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DResource9)
      || riid == __uuidof(IDirect3DIndexBuffer9)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropBuffer)) {
+      *ppvObject = ref(m_buffer.GetVkInterop());
       return S_OK;
     }
 

@@ -182,6 +182,14 @@ namespace dxvk {
     const DxvkBufferCreateInfo& info() const {
       return m_info;
     }
+
+    /**
+     * \brief Sharing mode info
+     * \returns Sharing mode info
+     */
+    const DxvkSharingModeInfo& sharingModeInfo() const {
+      return m_sharingMode;
+    }
     
     /**
      * \brief Memory type flags

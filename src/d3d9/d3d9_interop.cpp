@@ -1,6 +1,7 @@
 #include "d3d9_interop.h"
 #include "d3d9_interface.h"
 #include "d3d9_common_texture.h"
+#include "d3d9_common_buffer.h"
 #include "d3d9_device.h"
 #include "d3d9_texture.h"
 #include "d3d9_buffer.h"
@@ -112,6 +113,86 @@ namespace dxvk {
       pInfo->sharingMode    = VK_SHARING_MODE_EXCLUSIVE;
       pInfo->queueFamilyIndexCount = 0;
       pInfo->initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    
+    return S_OK;
+  }
+
+  ////////////////////////////////
+  // Buffer Interop
+  ///////////////////////////////
+
+  D3D9VkInteropBuffer::D3D9VkInteropBuffer(
+          IUnknown*             pInterface,
+          D3D9CommonBuffer*     pBuffer)
+    : m_interface(pInterface)
+    , m_buffer  (pBuffer)
+    , m_texture (nullptr) {
+  }
+
+  D3D9VkInteropBuffer::D3D9VkInteropBuffer(
+    IUnknown* pInterface,
+    D3D9CommonTexture* pTexture)
+    : m_interface(pInterface)
+    , m_buffer(nullptr)
+    , m_texture(pTexture) {
+  }
+
+  D3D9VkInteropBuffer::~D3D9VkInteropBuffer() {
+
+  }
+
+  ULONG STDMETHODCALLTYPE D3D9VkInteropBuffer::AddRef() {
+    return m_interface->AddRef();
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkInteropBuffer::Release() {
+    return m_interface->Release();
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropBuffer::QueryInterface(
+          REFIID                riid,
+          void**                ppvObject) {
+    return m_interface->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropBuffer::GetBufferInfo(
+          D3D9VkBufferType       Type,
+          VkBuffer*              pHandle,
+          VkBufferCreateInfo*    pInfo) {
+    Rc<DxvkBuffer> buffer;
+    if (m_buffer) {
+      switch (Type)
+      {
+        case D3D9_VK_BUFFER_TYPE_MAPPING:
+          buffer = m_buffer->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
+          break;
+        case D3D9_VK_BUFFER_TYPE_STAGING:
+          buffer = m_buffer->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
+          break;
+        case D3D9_VK_BUFFER_TYPE_REAL:
+          buffer = m_buffer->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>();
+          break;
+        default:
+          return D3DERR_INVALIDCALL;
+      }
+    } else if (m_texture) {
+      buffer = m_texture->GetBuffer();
+    }
+
+    if (pHandle) {
+      *pHandle = buffer->storage()->getBufferInfo().buffer;
+    }
+
+    if (pInfo) {
+      VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, nullptr };
+      info.flags = buffer->info().flags;
+      info.size  = buffer->info().size;
+      info.usage = buffer->info().usage;
+      info.sharingMode = buffer->sharingModeInfo().sharingMode();
+      info.queueFamilyIndexCount = buffer->sharingModeInfo().queueFamilies.size();
+      info.pQueueFamilyIndices = buffer->sharingModeInfo().queueFamilies.data();
     }
     
     return S_OK;
