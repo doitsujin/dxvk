@@ -33,8 +33,8 @@ ID3D9VkInteropInterface : public IUnknown {
 /**
  * \brief D3D9 texture interface for Vulkan interop
  * 
- * Provides access to the backing resource of a
- * D3D9 texture or surface.
+ * Provides access to the backing image of a
+ * D3D9 texture, surface, or volume.
  */
 MIDL_INTERFACE("d56344f5-8d35-46fd-806d-94c351b472c1")
 ID3D9VkInteropTexture : public IUnknown {
