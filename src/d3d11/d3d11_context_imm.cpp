@@ -319,7 +319,7 @@ namespace dxvk {
 
     if (unlikely(pResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
-      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
 
@@ -392,7 +392,7 @@ namespace dxvk {
         return S_OK;
       } else {
         if (!WaitForResource(*buffer, sequenceNumber, MapType, MapFlags)) {
-          *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+          pMappedResource->pData = nullptr;
           return DXGI_ERROR_WAS_STILL_DRAWING;
         }
 
@@ -417,7 +417,7 @@ namespace dxvk {
     auto mapMode = pResource->GetMapMode();
 
     if (pMappedResource)
-      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+      pMappedResource->pData = nullptr;
 
     if (unlikely(mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
