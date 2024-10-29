@@ -2435,11 +2435,7 @@ namespace dxvk {
       D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = pTexture->GetSubresourceLayout(aspect, Subresource);
 
       // Compute actual map pointer, accounting for the region offset
-      VkDeviceSize mapOffset = pTexture->ComputeMappedOffset(Subresource, i, offset);
-
-      void* mapPtr = pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
-        ? pTexture->GetMappedBuffer(Subresource)->mapPtr(mapOffset)
-        : image->mapPtr(mapOffset);
+      void* mapPtr = pTexture->GetMapPtr(Subresource, pTexture->ComputeMappedOffset(Subresource, i, offset));
 
       if constexpr (std::is_const<Void>::value) {
         // WriteToSubresource

@@ -304,6 +304,31 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries map pointer of the raw image
+     *
+     * If the image is mapped directly, the returned pointer will
+     * point directly to the image, otherwise it will point to a
+     * buffer that contains image data.
+     * \param [in] Subresource Subresource index
+     * \param [in] Offset Offset derived from the subresource layout
+     */
+    void* GetMapPtr(uint32_t Subresource, size_t Offset) const {
+      switch (m_mapMode) {
+        case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT:
+          return reinterpret_cast<char*>(m_mapPtr) + Offset;
+
+        case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
+        case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING:
+          return reinterpret_cast<char*>(m_buffers[Subresource].slice->mapPtr()) + Offset;
+
+        case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
+          return nullptr;
+      }
+
+      return nullptr;
+    }
+
+    /**
      * \brief Adds a dirty region
      *
      * This region will be updated on Unmap.
@@ -503,7 +528,9 @@ namespace dxvk {
     Rc<DxvkImage>                 m_image;
     std::vector<MappedBuffer>     m_buffers;
     std::vector<MappedInfo>       m_mapInfo;
-    
+
+    void*                         m_mapPtr = nullptr;
+
     MappedBuffer CreateMappedBuffer(
             UINT                  MipLevel) const;
     
