@@ -417,9 +417,6 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
-    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
-
     auto mapMode = pResource->GetMapMode();
 
     if (pMappedResource)
@@ -449,9 +446,10 @@ namespace dxvk {
     uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
 
     auto formatInfo = lookupFormatInfo(packedFormat);
-    void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      Rc<DxvkImage> mappedImage = pResource->GetImage();
+
       // Wait for the resource to become available. We do not
       // support image renaming, so stall on DISCARD instead.
       if (MapType == D3D11_MAP_WRITE_DISCARD)
@@ -461,11 +459,9 @@ namespace dxvk {
         if (!WaitForResource(*mappedImage, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
-      
-      // Query the subresource's memory layout and hope that
-      // the application respects the returned pitch values.
-      mapPtr = mappedImage->mapPtr(0);
     } else {
+      Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+
       constexpr uint32_t DoInvalidate = (1u << 0);
       constexpr uint32_t DoPreserve   = (1u << 1);
       constexpr uint32_t DoWait       = (1u << 2);
@@ -536,17 +532,17 @@ namespace dxvk {
         auto dstSlice = pResource->DiscardSlice(Subresource);
 
         auto srcPtr = srcSlice->mapPtr();
-        mapPtr = dstSlice->mapPtr();
+        auto dstPtr = dstSlice->mapPtr();
 
         EmitCs([
-          cImageBuffer      = mappedBuffer,
+          cImageBuffer      = std::move(mappedBuffer),
           cImageBufferSlice = std::move(dstSlice)
         ] (DxvkContext* ctx) mutable {
           ctx->invalidateBuffer(cImageBuffer, std::move(cImageBufferSlice));
         });
 
         if (doFlags & DoPreserve)
-          std::memcpy(mapPtr, srcPtr, bufferSize);
+          std::memcpy(dstPtr, srcPtr, bufferSize);
 
         ThrottleDiscard(bufferSize);
       } else {
@@ -560,8 +556,6 @@ namespace dxvk {
           if (!WaitForResource(*mappedBuffer, sequenceNumber, MapType, MapFlags))
             return DXGI_ERROR_WAS_STILL_DRAWING;
         }
-
-        mapPtr = pResource->GetMappedSlice(Subresource)->mapPtr();
       }
     }
 
@@ -570,7 +564,7 @@ namespace dxvk {
 
     if (pMappedResource) {
       auto layout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
-      pMappedResource->pData      = reinterpret_cast<char*>(mapPtr) + layout.Offset;
+      pMappedResource->pData      = pResource->GetMapPtr(Subresource, layout.Offset);
       pMappedResource->RowPitch   = layout.RowPitch;
       pMappedResource->DepthPitch = layout.DepthPitch;
     }
