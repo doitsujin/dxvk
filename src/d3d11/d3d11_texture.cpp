@@ -567,11 +567,12 @@ namespace dxvk {
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     bool useCached = (m_device->GetOptions()->cachedDynamicResources == ~0u)
-                  || (m_device->GetOptions()->cachedDynamicResources & m_desc.BindFlags);
+                  || (m_device->GetOptions()->cachedDynamicResources & m_desc.BindFlags)
+                  || (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ);
 
     if (m_desc.Usage == D3D11_USAGE_STAGING || useCached)
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    else if (m_desc.Usage == D3D11_USAGE_DEFAULT || m_desc.BindFlags)
+    else if (m_desc.BindFlags)
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     return memoryFlags;
