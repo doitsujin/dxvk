@@ -2316,7 +2316,13 @@ namespace dxvk {
         m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
     }
 
-    if (m_device->config().enableMemoryDefrag) {
+    // For unknown reasons, defragmentation seems to break Genshin Impact and
+    // possibly other games on ANV while working fine on other drivers even in
+    // a stress-test scenario, see https://github.com/doitsujin/dxvk/issues/4395.
+    bool enableDefrag = !m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA);
+    applyTristate(enableDefrag, m_device->config().enableMemoryDefrag);
+
+    if (enableDefrag) {
       // Periodically defragment device-local memory types. We cannot
       // do anything about mapped allocations since we rely on pointer
       // stability there.
