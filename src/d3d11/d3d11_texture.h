@@ -304,6 +304,26 @@ namespace dxvk {
     }
 
     /**
+     * \brief Allocates new backing storage
+     * \returns New backing storage for the image
+     */
+    Rc<DxvkResourceAllocation> AllocStorage() {
+      return m_image->allocateStorage();
+    }
+
+    /**
+     * \brief Discards backing storage
+     *
+     * Also updates the mapped pointer if the image is mapped.
+     * \returns New backing storage for the image
+     */
+    Rc<DxvkResourceAllocation> DiscardStorage() {
+      auto storage = m_image->allocateStorage();
+      m_mapPtr = storage->mapPtr();
+      return storage;
+    }
+
+    /**
      * \brief Queries map pointer of the raw image
      *
      * If the image is mapped directly, the returned pointer will
@@ -315,7 +335,7 @@ namespace dxvk {
     void* GetMapPtr(uint32_t Subresource, size_t Offset) const {
       switch (m_mapMode) {
         case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT:
-          return m_image->mapPtr(Offset);
+          return reinterpret_cast<char*>(m_mapPtr) + Offset;
 
         case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
         case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING:
@@ -519,6 +539,7 @@ namespace dxvk {
     VkFormat                      m_packedFormat;
     
     Rc<DxvkImage>                 m_image;
+    void*                         m_mapPtr = nullptr;
     std::vector<MappedBuffer>     m_buffers;
     std::vector<MappedInfo>       m_mapInfo;
     

@@ -238,6 +238,9 @@ namespace dxvk {
     else
       m_image = m_device->GetDXVKDevice()->importImage(imageInfo, vkImage, memoryProperties);
 
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+      m_mapPtr = m_image->mapPtr(0);
+
     if (imageInfo.sharing.mode == DxvkSharedHandleMode::Export)
       ExportImageInfo();
   }
