@@ -118,18 +118,10 @@ namespace dxvk {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
-
-    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
-      std::memcpy(
-        bufferSlice.mapPtr(0),
-        pInitialData->pSysMem,
-        bufferSlice.length());
-    } else {
-      std::memset(
-        bufferSlice.mapPtr(0), 0,
-        bufferSlice.length());
-    }
+    if (pInitialData && pInitialData->pSysMem)
+      std::memcpy(pBuffer->GetMapPtr(), pInitialData->pSysMem, pBuffer->Desc()->ByteWidth);
+    else
+      std::memset(pBuffer->GetMapPtr(), 0, pBuffer->Desc()->ByteWidth);
   }
 
 
