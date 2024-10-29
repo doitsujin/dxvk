@@ -444,12 +444,18 @@ namespace dxvk {
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       Rc<DxvkImage> mappedImage = pResource->GetImage();
 
-      // Wait for the resource to become available. We do not
-      // support image renaming, so stall on DISCARD instead.
-      if (MapType == D3D11_MAP_WRITE_DISCARD)
-        MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
-
-      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        EmitCs([
+          cImage = std::move(mappedImage),
+          cStorage = pResource->DiscardStorage()
+        ] (DxvkContext* ctx) mutable {
+          // Assign and reinitialize new backing storage
+          ctx->invalidateImage(cImage, std::move(cStorage));
+          ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+        });
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        // Wait until the resource becomes available. For NO_OVERWRITE,
+        // we don't actually have to do anything but return the pointer.
         if (!WaitForResource(*mappedImage, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
