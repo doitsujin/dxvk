@@ -621,14 +621,8 @@ namespace dxvk {
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // If we can't use linear tiling for this image, we have to use a buffer
-    if (!this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
+    if (!CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If supported and requested, create a linear image. Default images
-    // can be used for resolves and other operations regardless of bind
-    // flags, so we need to use a proper image for those.
-    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
 
     // For default images, prefer direct mapping if the image is CPU readable
     // since mapping for reads would have to stall otherwise. If the image is
@@ -639,8 +633,19 @@ namespace dxvk {
         : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     }
 
-    // The overhead of frequently uploading large dynamic images may outweigh
-    // the benefit of linear tiling, so use a linear image in those cases.
+    // If the image has multiple subresources, use a buffer since we
+    // would otherwise be unable to properly discard the image.
+    if (m_desc.ArraySize * m_desc.MipLevels != 1u)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
+    // If the image is essentially linear already, map it directly.
+    auto formatInfo = lookupFormatInfo(m_packedFormat);
+
+    if (m_desc.Height <= formatInfo->blockSize.height && m_desc.Depth <= 1u)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+
+    // For larger images, the overhead of frequently uploading large quantities
+    // of data may outweigh the benefit of optimal tiling, so use a linear image.
     VkDeviceSize threshold = m_device->GetOptions()->maxDynamicImageBufferSize;
     VkDeviceSize size = util::computeImageDataSize(pImageInfo->format, pImageInfo->extent);
 
