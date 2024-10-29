@@ -304,22 +304,44 @@ namespace dxvk {
     VkFormat packedFormat = pTexture->GetPackedFormat();
     
     auto formatInfo = lookupFormatInfo(packedFormat);
-    auto subresource = pTexture->GetSubresourceFromIndex(
-        formatInfo->aspectMask, Subresource);
-    
-    VkExtent3D levelExtent = pTexture->MipLevelExtent(subresource.mipLevel);
-    
     auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
-    auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
-    
-    pMappedResource->RowPitch   = layout.RowPitch;
-    pMappedResource->DepthPitch = layout.DepthPitch;
-    pMappedResource->pData      = dataSlice.mapPtr(0);
 
-    UpdateImage(pTexture, &subresource,
-      VkOffset3D { 0, 0, 0 }, levelExtent,
-      std::move(dataSlice));
-    return S_OK;
+    if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      // Allocate and initialize new backing storage
+      auto storage = pTexture->AllocStorage();
+      auto mapPtr = reinterpret_cast<char*>(storage->mapPtr()) + layout.Offset;
+
+      EmitCs([
+        cImage = pTexture->GetImage(),
+        cStorage = std::move(storage)
+      ] (DxvkContext* ctx) {
+        // Assign and reinitialize new backing storage
+        ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
+        ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+      });
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = mapPtr;
+      return S_OK;
+    } else {
+      // If the image is mapped through a buffer, do a GPU copy, even if we're
+      // essentially copying to another buffer. No real choice here since we
+      // currently cannot rename resources on command list execution.
+      auto subresource = pTexture->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource);
+
+      VkExtent3D levelExtent = pTexture->MipLevelExtent(subresource.mipLevel);
+      auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = dataSlice.mapPtr(0);
+
+      UpdateImage(pTexture, &subresource,
+        VkOffset3D { 0, 0, 0 }, levelExtent,
+        std::move(dataSlice));
+      return S_OK;
+    }
   }
   
   
