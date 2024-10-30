@@ -164,6 +164,22 @@ namespace dxvk {
     }
 
     /**
+     * \brief Updates tracking ID for sampler object
+     *
+     * Used when tracking submissions.
+     * \param [in] trackingID Tracking ID
+     * \returns \c true if the tracking ID has been updated,
+     *    \c false if the sampler was already tracked with this ID.
+     */
+    bool trackId(uint64_t trackingId) {
+      if (trackingId <= m_trackingId)
+        return false;
+
+      m_trackingId = trackingId;
+      return true;
+    }
+
+    /**
      * \brief Sampler handle
      * \returns Sampler handle
      */
@@ -181,7 +197,8 @@ namespace dxvk {
 
   private:
     
-    std::atomic<uint32_t> m_refCount  = { 0u };
+    std::atomic<uint64_t> m_refCount  = { 0u };
+    uint64_t              m_trackingId = 0u;
 
     DxvkSamplerPool*      m_pool      = nullptr;
     DxvkSamplerKey        m_key       = { };

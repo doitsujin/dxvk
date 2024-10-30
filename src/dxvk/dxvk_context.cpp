@@ -1358,7 +1358,7 @@ namespace dxvk {
     }
 
     m_cmd->track(imageView->image(), DxvkAccess::Write);
-    m_cmd->track(sampler);
+    m_cmd->track(std::move(sampler));
   }
   
   
@@ -2662,7 +2662,7 @@ namespace dxvk {
 
     m_cmd->track(dstView->image(), DxvkAccess::Write);
     m_cmd->track(srcView->image(), DxvkAccess::Read);
-    m_cmd->track(sampler);
+    m_cmd->track(std::move(sampler));
   }
 
 

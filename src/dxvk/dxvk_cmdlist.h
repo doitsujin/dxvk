@@ -275,7 +275,26 @@ namespace dxvk {
      */
     template<typename T>
     void track(Rc<T> object) {
+      static_assert(!std::is_same_v<T, DxvkSampler>);
       m_objectTracker.track<DxvkObjectRef<T>>(std::move(object));
+    }
+
+    /**
+     * \brief Tracks a sampler object
+     *
+     * Special code path that uses the tracking ID to ensure samplers
+     * only get tracked once per submission. This is useful since
+     * sampler objects are processed much the same way as resources.
+     * \param [in] sampler Sampler object
+     */
+    void track(const Rc<DxvkSampler>& sampler) {
+      if (sampler->trackId(m_trackingId))
+        m_objectTracker.track<DxvkObjectRef<DxvkSampler>>(sampler.ptr());
+    }
+
+    void track(Rc<DxvkSampler>&& sampler) {
+      if (sampler->trackId(m_trackingId))
+        m_objectTracker.track<DxvkObjectRef<DxvkSampler>>(std::move(sampler));
     }
 
     /**
