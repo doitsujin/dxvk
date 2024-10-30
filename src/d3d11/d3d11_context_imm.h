@@ -117,8 +117,6 @@ namespace dxvk {
 
     uint32_t                m_mappedImageCount = 0u;
 
-    VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
-
     Rc<sync::CallbackFence> m_submissionFence;
     uint64_t                m_submissionId = 0ull;
     DxvkSubmitStatus        m_submitStatus;

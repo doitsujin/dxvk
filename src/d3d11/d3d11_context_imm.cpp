@@ -17,7 +17,6 @@ namespace dxvk {
     const Rc<DxvkDevice>& Device)
   : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext()),
-    m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_submissionFence(new sync::CallbackFence()),
     m_flushTracker(pParent->GetOptions()->reproducibleCommandStream),
     m_stagingBufferFence(new sync::Fence(0)),
