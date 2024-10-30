@@ -177,9 +177,6 @@ namespace dxvk {
     void bindIndexBuffer(
             DxvkBufferSlice&&     buffer,
             VkIndexType           indexType) {
-      if (!m_state.vi.indexBuffer.matchesBuffer(buffer))
-        m_vbTracked.clr(MaxNumVertexBindings);
-
       m_state.vi.indexBuffer = std::move(buffer);
       m_state.vi.indexType   = indexType;
 
@@ -218,11 +215,6 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             DxvkBufferSlice&&     buffer) {
-      bool needsUpdate = !m_rc[slot].bufferSlice.matchesBuffer(buffer);
-
-      if (likely(needsUpdate))
-        m_rcTracked.clr(slot);
-
       m_rc[slot].bufferSlice = std::move(buffer);
 
       m_descriptorState.dirtyBuffers(stages);
@@ -261,7 +253,6 @@ namespace dxvk {
       }
 
       m_rc[slot].imageView = std::move(view);
-      m_rcTracked.clr(slot);
 
       m_descriptorState.dirtyViews(stages);
     }
@@ -288,8 +279,6 @@ namespace dxvk {
         m_rc[slot].bufferView = nullptr;
       }
 
-      m_rcTracked.clr(slot);
-
       m_descriptorState.dirtyViews(stages);
     }
 
@@ -307,7 +296,6 @@ namespace dxvk {
             uint32_t              slot,
             Rc<DxvkSampler>&&     sampler) {
       m_rc[slot].sampler = std::move(sampler);
-      m_rcTracked.clr(slot);
 
       m_descriptorState.dirtyViews(stages);
     }
@@ -371,9 +359,6 @@ namespace dxvk {
             uint32_t              binding,
             DxvkBufferSlice&&     buffer,
             uint32_t              stride) {
-      if (!m_state.vi.vertexBuffers[binding].matchesBuffer(buffer))
-        m_vbTracked.clr(binding);
-
       m_state.vi.vertexBuffers[binding] = std::move(buffer);
       m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
@@ -1412,9 +1397,6 @@ namespace dxvk {
     DxvkGlobalPipelineBarrier m_globalRwGraphicsBarrier;
 
     DxvkRenderTargetLayouts m_rtLayouts = { };
-
-    DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
-    DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
     std::vector<DxvkDeferredClear> m_deferredClears;
 

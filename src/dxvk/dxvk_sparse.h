@@ -542,10 +542,18 @@ namespace dxvk {
      * command list and optimize certain transfer operations.
      * \param [in] trackingId Tracking ID
      * \param [in] access Tracked access
+     * \returns \c true if the tracking ID was updated, or \c false
+     *    if the resource was already tracked with the same ID.
      */
-    void trackId(uint64_t trackingId, DxvkAccess access) {
+    bool trackId(uint64_t trackingId, DxvkAccess access) {
       // Encode write access in the least significant bit
-      m_trackId = std::max(m_trackId, (trackingId << 1u) + uint64_t(access == DxvkAccess::Write));
+      uint64_t trackId = (trackingId << 1u) + uint64_t(access == DxvkAccess::Write);
+
+      if (trackId <= m_trackId)
+        return false;
+
+      m_trackId = trackId;
+      return true;
     }
 
     /**
@@ -623,15 +631,13 @@ namespace dxvk {
   public:
 
     template<typename T>
-    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access, uint64_t trackingId)
+    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access)
     : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkPagedResource*>(object.ptr())) | uintptr_t(access)) {
-      object->trackId(trackingId, access);
       object.unsafeExtract()->convertRef(DxvkAccess::None, access);
     }
 
-    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access, uint64_t trackingId)
+    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access)
     : m_ptr(reinterpret_cast<uintptr_t>(object) | uintptr_t(access)) {
-      object->trackId(trackingId, access);
       object->acquire(access);
     }
 
