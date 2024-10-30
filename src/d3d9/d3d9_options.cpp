@@ -77,6 +77,7 @@ namespace dxvk {
     this->clampNegativeLodBias          = config.getOption<bool>        ("d3d9.clampNegativeLodBias",          false);
     this->countLosableResources         = config.getOption<bool>        ("d3d9.countLosableResources",         true);
     this->reproducibleCommandStream     = config.getOption<bool>        ("d3d9.reproducibleCommandStream",     false);
+    this->lowRefreshRateSupport         = config.getOption<bool>        ("d3d9.lowRefreshRateSupport",         false);
 
     // D3D8 options
     this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);

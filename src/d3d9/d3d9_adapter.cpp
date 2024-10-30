@@ -796,6 +796,7 @@ namespace dxvk {
     uint32_t modeIndex = 0;
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
+    const wsi::WsiRational sixtyHertz = wsi::WsiRational{ 60, 1 };
 
     while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
@@ -807,6 +808,10 @@ namespace dxvk {
         continue;
 
       if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+        continue;
+
+      // Skip modes with refresh rates lower than 60 Hz
+      if (!options.lowRefreshRateSupport && devMode.refreshRate < sixtyHertz)
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);

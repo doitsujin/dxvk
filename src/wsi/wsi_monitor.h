@@ -18,6 +18,11 @@ namespace dxvk::wsi {
     uint32_t denominator;
   };
 
+  inline bool operator < (const WsiRational& left, const WsiRational& right) {
+    return static_cast<uint64_t>(left.numerator)   * right.denominator
+         < static_cast<uint64_t>(left.denominator) * right.numerator;
+  }
+
   /**
    * \brief Display mode
    */

@@ -156,6 +156,9 @@ namespace dxvk {
     /// can negatively affect performance.
     bool reproducibleCommandStream;
 
+    /// List modes with refresh rates lower than 60 Hz.
+    bool lowRefreshRateSupport;
+
     /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
     int32_t drefScaling;
   };
