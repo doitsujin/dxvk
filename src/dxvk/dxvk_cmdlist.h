@@ -289,17 +289,20 @@ namespace dxvk {
      */
     template<typename T>
     void track(Rc<T>&& object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(std::move(object), access, m_trackingId);
+      if (object->trackId(m_trackingId, access))
+        m_objectTracker.track<DxvkResourceRef>(std::move(object), access);
     }
 
     template<typename T>
     void track(const Rc<T>& object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(object.ptr(), access, m_trackingId);
+      if (object->trackId(m_trackingId, access))
+        m_objectTracker.track<DxvkResourceRef>(object.ptr(), access);
     }
 
     template<typename T>
     void track(T* object, DxvkAccess access) {
-      m_objectTracker.track<DxvkResourceRef>(object, access, m_trackingId);
+      if (object->trackId(m_trackingId, access))
+        m_objectTracker.track<DxvkResourceRef>(object, access);
     }
 
     /**
