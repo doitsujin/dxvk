@@ -170,29 +170,11 @@ namespace dxvk {
     // Determine map mode based on our findings
     m_mapMode = DetermineMapMode(&imageInfo);
     
-    // If the image is mapped directly to host memory, we need
-    // to enable linear tiling, and DXVK needs to be aware that
-    // the image can be accessed by the host.
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      imageInfo.tiling        = VK_IMAGE_TILING_LINEAR;
-      imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
-
-      if (pDesc->Usage != D3D11_USAGE_DYNAMIC) {
-        imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-        imageInfo.access |= VK_ACCESS_HOST_READ_BIT;
-
-        if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
-          imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
-      }
-    }
-    
     // If necessary, create the mapped linear buffer
     if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
       for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
         for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
-          if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-            m_buffers.push_back(CreateMappedBuffer(j));
-
+          m_buffers.push_back(CreateMappedBuffer(j));
           m_mapInfo.push_back({ D3D11_MAP(~0u), 0ull });
         }
       }
@@ -223,20 +205,13 @@ namespace dxvk {
         "\n  Flags:   ", std::hex, m_desc.MiscFlags));
     }
     
-    // Create the image on a host-visible memory type
-    // in case it is going to be mapped directly.
-    VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      memoryProperties = GetMemoryFlags();
-    
     if (m_11on12.Resource != nullptr)
       vkImage = VkImage(m_11on12.VulkanHandle);
 
     if (!vkImage)
-      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
+      m_image = m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     else
-      m_image = m_device->GetDXVKDevice()->importImage(imageInfo, vkImage, memoryProperties);
+      m_image = m_device->GetDXVKDevice()->importImage(imageInfo, vkImage, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     if (imageInfo.sharing.mode == DxvkSharedHandleMode::Export)
       ExportImageInfo();
@@ -289,50 +264,36 @@ namespace dxvk {
     VkImageSubresource subresource = GetSubresourceFromIndex(AspectMask, Subresource);
     D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
 
-    switch (m_mapMode) {
-      case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT: {
-        auto vkLayout = m_image->querySubresourceLayout(subresource);
-        layout.Offset     = vkLayout.offset;
-        layout.Size       = vkLayout.size;
-        layout.RowPitch   = vkLayout.rowPitch;
-        layout.DepthPitch = vkLayout.depthPitch;
-      } break;
+    auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
 
-      case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
-      case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
-      case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
-        auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
+    VkImageAspectFlags aspects = packedFormatInfo->aspectMask;
+    VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
 
-        VkImageAspectFlags aspects = packedFormatInfo->aspectMask;
-        VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
+    while (aspects) {
+      auto aspect = vk::getNextAspect(aspects);
+      auto extent = mipExtent;
+      auto elementSize = packedFormatInfo->elementSize;
 
-        while (aspects) {
-          auto aspect = vk::getNextAspect(aspects);
-          auto extent = mipExtent;
-          auto elementSize = packedFormatInfo->elementSize;
+      if (packedFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &packedFormatInfo->planes[vk::getPlaneIndex(aspect)];
+        extent.width  /= plane->blockSize.width;
+        extent.height /= plane->blockSize.height;
+        elementSize = plane->elementSize;
+      }
 
-          if (packedFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-            auto plane = &packedFormatInfo->planes[vk::getPlaneIndex(aspect)];
-            extent.width  /= plane->blockSize.width;
-            extent.height /= plane->blockSize.height;
-            elementSize = plane->elementSize;
-          }
+      auto blockCount = util::computeBlockCount(extent, packedFormatInfo->blockSize);
 
-          auto blockCount = util::computeBlockCount(extent, packedFormatInfo->blockSize);
+      if (!layout.RowPitch) {
+        layout.RowPitch   = elementSize * blockCount.width;
+        layout.DepthPitch = elementSize * blockCount.width * blockCount.height;
+      }
 
-          if (!layout.RowPitch) {
-            layout.RowPitch   = elementSize * blockCount.width;
-            layout.DepthPitch = elementSize * blockCount.width * blockCount.height;
-          }
+      VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
 
-          VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
-
-          if (aspect & AspectMask)
-            layout.Size += size;
-          else if (!layout.Size)
-            layout.Offset += size;
-        }
-      } break;
+      if (aspect & AspectMask)
+        layout.Size += size;
+      else if (!layout.Size)
+        layout.Offset += size;
     }
 
     // D3D wants us to return the total subresource size in some instances
@@ -590,45 +551,8 @@ namespace dxvk {
     if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
       return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
 
-    // Depth-stencil formats in D3D11 can be mapped and follow special
-    // packing rules, so we need to copy that data into a buffer first
-    if (GetPackedDepthStencilFormat(m_desc.Format))
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // Multi-plane images have a special memory layout in D3D11
-    if (lookupFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If we can't use linear tiling for this image, we have to use a buffer
-    if (!this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If supported and requested, create a linear image. Default images
-    // can be used for resolves and other operations regardless of bind
-    // flags, so we need to use a proper image for those.
-    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
-
-    // For default images, prefer direct mapping if the image is CPU readable
-    // since mapping for reads would have to stall otherwise. If the image is
-    // only writable, prefer a write-through buffer.
-    if (m_desc.Usage == D3D11_USAGE_DEFAULT) {
-      return (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)
-        ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
-        : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-    }
-
-    // The overhead of frequently uploading large dynamic images may outweigh
-    // the benefit of linear tiling, so use a linear image in those cases.
-    VkDeviceSize threshold = m_device->GetOptions()->maxDynamicImageBufferSize;
-    VkDeviceSize size = util::computeImageDataSize(pImageInfo->format, pImageInfo->extent);
-
-    if (size > threshold)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
-
-    // Dynamic images that can be sampled by a shader should generally go
-    // through a buffer to allow optimal tiling and to avoid running into
-    // bugs where games ignore the pitch when mapping the image.
+    // Otherwise, we need a proper image, as well as a set of staging
+    // buffers that uploads to said image are going to go through.
     return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   

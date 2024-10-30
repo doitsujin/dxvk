@@ -46,8 +46,6 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     if (pTexture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_TILED)
       InitTiledTexture(pTexture);
-    else if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      InitHostVisibleTexture(pTexture, pInitialData);
     else
       InitDeviceLocalTexture(pTexture, pInitialData);
 
@@ -221,62 +219,6 @@ namespace dxvk {
       }
     }
 
-    ThrottleAllocationLocked();
-  }
-
-
-  void D3D11Initializer::InitHostVisibleTexture(
-          D3D11CommonTexture*         pTexture,
-    const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    Rc<DxvkImage> image = pTexture->GetImage();
-
-    for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
-      for (uint32_t level = 0; level < image->info().mipLevels; level++) {
-        VkImageSubresource subresource;
-        subresource.aspectMask = image->formatInfo()->aspectMask;
-        subresource.mipLevel   = level;
-        subresource.arrayLayer = layer;
-
-        VkExtent3D blockCount = util::computeBlockCount(
-          image->mipLevelExtent(level),
-          image->formatInfo()->blockSize);
-
-        VkSubresourceLayout layout = image->querySubresourceLayout(subresource);
-
-        auto initialData = pInitialData
-          ? &pInitialData[D3D11CalcSubresource(level, layer, image->info().mipLevels)]
-          : nullptr;
-
-        for (uint32_t z = 0; z < blockCount.depth; z++) {
-          for (uint32_t y = 0; y < blockCount.height; y++) {
-            auto size = blockCount.width * image->formatInfo()->elementSize;
-            auto dst = image->mapPtr(layout.offset + y * layout.rowPitch + z * layout.depthPitch);
-
-            if (initialData) {
-              auto src = reinterpret_cast<const char*>(initialData->pSysMem)
-                       + y * initialData->SysMemPitch
-                       + z * initialData->SysMemSlicePitch;
-              std::memcpy(dst, src, size);
-            } else {
-              std::memset(dst, 0, size);
-            }
-          }
-        }
-      }
-    }
-
-    // Initialize the image on the GPU
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-
-    EmitCs([
-      cImage = std::move(image)
-    ] (DxvkContext* ctx) {
-      ctx->initImage(cImage,
-        cImage->getAvailableSubresources(),
-        VK_IMAGE_LAYOUT_PREINITIALIZED);
-    });
-
-    m_transferCommands += 1;
     ThrottleAllocationLocked();
   }
 

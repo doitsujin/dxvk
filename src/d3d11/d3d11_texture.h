@@ -24,7 +24,6 @@ namespace dxvk {
   enum D3D11_COMMON_TEXTURE_MAP_MODE {
     D3D11_COMMON_TEXTURE_MAP_MODE_NONE,     ///< Not mapped
     D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER,   ///< Mapped through buffer
-    D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT,   ///< Directly mapped to host mem
     D3D11_COMMON_TEXTURE_MAP_MODE_STAGING,  ///< Buffer only, no image
   };
   
@@ -313,19 +312,9 @@ namespace dxvk {
      * \param [in] Offset Offset derived from the subresource layout
      */
     void* GetMapPtr(uint32_t Subresource, size_t Offset) const {
-      switch (m_mapMode) {
-        case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT:
-          return m_image->mapPtr(Offset);
-
-        case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
-        case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING:
-          return reinterpret_cast<char*>(m_buffers[Subresource].slice->mapPtr()) + Offset;
-
-        case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
-          return nullptr;
-      }
-
-      return nullptr;
+      return (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
+        ? reinterpret_cast<char*>(m_buffers[Subresource].slice->mapPtr()) + Offset
+        : nullptr;
     }
 
     /**
