@@ -41,7 +41,6 @@ namespace dxvk {
                               | VK_ACCESS_TRANSFER_WRITE_BIT;
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
-    imageInfo.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.shared          = vkImage != VK_NULL_HANDLE;
 
     // Normalise hSharedhandle to INVALID_HANDLE_VALUE to allow passing in nullptr

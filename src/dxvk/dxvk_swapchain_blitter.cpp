@@ -366,7 +366,6 @@ namespace dxvk {
       imageInfo.access = VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
       imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
       m_gammaImage = m_device->createImage(imageInfo,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

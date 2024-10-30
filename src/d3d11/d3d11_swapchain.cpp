@@ -653,11 +653,8 @@ namespace dxvk {
     m_parent->GetContext()->InjectCs([
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
-      for (size_t i = 0; i < cImages.size(); i++) {
-        ctx->initImage(cImages[i],
-          cImages[i]->getAvailableSubresources(),
-          VK_IMAGE_LAYOUT_UNDEFINED);
-      }
+      for (size_t i = 0; i < cImages.size(); i++)
+        ctx->initImage(cImages[i], cImages[i]->getAvailableSubresources());
     });
   }
 

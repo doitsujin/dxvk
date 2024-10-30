@@ -296,7 +296,7 @@ namespace dxvk {
     info.tiling = m_info.tiling;
     info.usage = m_info.usage | usageInfo.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    info.initialLayout = m_info.initialLayout;
+    info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     return info;
   }

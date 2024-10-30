@@ -52,9 +52,6 @@ namespace dxvk {
     /// Common image layout
     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    // Initial image layout
-    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
     // Image is used by multiple contexts so it needs
     // to be in its default layout after each submission
     VkBool32 shared = VK_FALSE;
@@ -585,8 +582,8 @@ namespace dxvk {
     /**
      * \brief Tracks subresource initialization
      *
-     * Initialization happens when transitioning the image
-     * away from \c PREINITIALIZED or \c UNDEFINED layouts.
+     * Initialization happens when transitioning
+     * the image away from \c UNDEFINED layouts.
      * \param [in] subresources Subresource range
      */
     void trackInitialization(

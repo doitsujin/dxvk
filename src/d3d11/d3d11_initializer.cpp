@@ -205,9 +205,7 @@ namespace dxvk {
         EmitCs([
           cImage = std::move(image)
         ] (DxvkContext* ctx) {
-          ctx->initImage(cImage,
-            cImage->getAvailableSubresources(),
-            VK_IMAGE_LAYOUT_UNDEFINED);
+          ctx->initImage(cImage, cImage->getAvailableSubresources());
         });
       }
 

@@ -347,7 +347,6 @@ namespace dxvk::hud {
                            | VK_ACCESS_SHADER_READ_BIT;
     fontTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     fontTextureInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    fontTextureInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     m_fontTexture = m_device->createImage(fontTextureInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 

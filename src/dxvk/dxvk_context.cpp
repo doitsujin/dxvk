@@ -995,97 +995,88 @@ namespace dxvk {
 
   void DxvkContext::initImage(
     const Rc<DxvkImage>&            image,
-    const VkImageSubresourceRange&  subresources,
-          VkImageLayout             initialLayout) {
-    if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-      accessImage(DxvkCmdBuffer::InitBuffer,
-        *image, subresources, initialLayout,
-        VK_PIPELINE_STAGE_2_NONE, 0);
+    const VkImageSubresourceRange&  subresources) {
+    VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-      m_cmd->track(image, DxvkAccess::None);
-    } else {
-      VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    addImageInitTransition(*image, subresources, clearLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    flushImageLayoutTransitions(DxvkCmdBuffer::InitBuffer);
 
-      addImageInitTransition(*image, subresources, clearLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
-      flushImageLayoutTransitions(DxvkCmdBuffer::InitBuffer);
+    auto formatInfo = image->formatInfo();
 
-      auto formatInfo = image->formatInfo();
+    if (formatInfo->flags.any(DxvkFormatFlag::BlockCompressed, DxvkFormatFlag::MultiPlane)) {
+      for (auto aspects = formatInfo->aspectMask; aspects; ) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto extent = image->mipLevelExtent(subresources.baseMipLevel);
+        auto elementSize = formatInfo->elementSize;
 
-      if (formatInfo->flags.any(DxvkFormatFlag::BlockCompressed, DxvkFormatFlag::MultiPlane)) {
-        for (auto aspects = formatInfo->aspectMask; aspects; ) {
-          auto aspect = vk::getNextAspect(aspects);
-          auto extent = image->mipLevelExtent(subresources.baseMipLevel);
-          auto elementSize = formatInfo->elementSize;
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        // Allocate enough staging buffer memory to fit one
+        // single subresource, then dispatch multiple copies
+        VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+        VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
+
+        auto zeroBuffer = createZeroBuffer(dataSize);
+        auto zeroHandle = zeroBuffer->getSliceHandle();
+
+        for (uint32_t level = 0; level < subresources.levelCount; level++) {
+          VkOffset3D offset = VkOffset3D { 0, 0, 0 };
+          VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
 
           if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
             auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
             extent.width  /= plane->blockSize.width;
             extent.height /= plane->blockSize.height;
-            elementSize = plane->elementSize;
           }
 
-          // Allocate enough staging buffer memory to fit one
-          // single subresource, then dispatch multiple copies
-          VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
-          VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
+          for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
+            VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+            copyRegion.bufferOffset = zeroHandle.offset;
+            copyRegion.imageSubresource = vk::makeSubresourceLayers(
+              vk::pickSubresource(subresources, level, layer));
+            copyRegion.imageSubresource.aspectMask = aspect;
+            copyRegion.imageOffset = offset;
+            copyRegion.imageExtent = extent;
 
-          auto zeroBuffer = createZeroBuffer(dataSize);
-          auto zeroHandle = zeroBuffer->getSliceHandle();
+            VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+            copyInfo.srcBuffer = zeroHandle.handle;
+            copyInfo.dstImage = image->handle();
+            copyInfo.dstImageLayout = clearLayout;
+            copyInfo.regionCount = 1;
+            copyInfo.pRegions = &copyRegion;
 
-          for (uint32_t level = 0; level < subresources.levelCount; level++) {
-            VkOffset3D offset = VkOffset3D { 0, 0, 0 };
-            VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
-
-            if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-              auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
-              extent.width  /= plane->blockSize.width;
-              extent.height /= plane->blockSize.height;
-            }
-
-            for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
-              VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
-              copyRegion.bufferOffset = zeroHandle.offset;
-              copyRegion.imageSubresource = vk::makeSubresourceLayers(
-                vk::pickSubresource(subresources, level, layer));
-              copyRegion.imageSubresource.aspectMask = aspect;
-              copyRegion.imageOffset = offset;
-              copyRegion.imageExtent = extent;
-
-              VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-              copyInfo.srcBuffer = zeroHandle.handle;
-              copyInfo.dstImage = image->handle();
-              copyInfo.dstImageLayout = clearLayout;
-              copyInfo.regionCount = 1;
-              copyInfo.pRegions = &copyRegion;
-
-              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &copyInfo);
-            }
+            m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &copyInfo);
           }
-
-          m_cmd->track(zeroBuffer, DxvkAccess::Read);
         }
-      } else {
-        if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          VkClearDepthStencilValue value = { };
 
-          m_cmd->cmdClearDepthStencilImage(DxvkCmdBuffer::InitBuffer,
-            image->handle(), clearLayout, &value, 1, &subresources);
-        } else {
-          VkClearColorValue value = { };
-
-          m_cmd->cmdClearColorImage(DxvkCmdBuffer::InitBuffer,
-            image->handle(), clearLayout, &value, 1, &subresources);
-        }
+        m_cmd->track(zeroBuffer, DxvkAccess::Read);
       }
+    } else {
+      if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        VkClearDepthStencilValue value = { };
 
-      accessImage(DxvkCmdBuffer::InitBuffer,
-        *image, subresources, clearLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-        VK_ACCESS_2_TRANSFER_WRITE_BIT);
+        m_cmd->cmdClearDepthStencilImage(DxvkCmdBuffer::InitBuffer,
+          image->handle(), clearLayout, &value, 1, &subresources);
+      } else {
+        VkClearColorValue value = { };
 
-      m_cmd->track(image, DxvkAccess::Write);
+        m_cmd->cmdClearColorImage(DxvkCmdBuffer::InitBuffer,
+          image->handle(), clearLayout, &value, 1, &subresources);
+      }
     }
+
+    accessImage(DxvkCmdBuffer::InitBuffer,
+      *image, subresources, clearLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+    m_cmd->track(image, DxvkAccess::Write);
   }
   
   
@@ -6761,7 +6752,7 @@ namespace dxvk {
     if (srcLayout == dstLayout && srcStages == dstStages)
       return;
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED)
       image.trackInitialization(subresources);
 
     auto& barrier = m_imageLayoutTransitions.emplace_back();
@@ -6865,7 +6856,7 @@ namespace dxvk {
           VkAccessFlags2            dstAccess) {
     auto& batch = getBarrierBatch(cmdBuffer);
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED)
       image.trackInitialization(subresources);
 
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
