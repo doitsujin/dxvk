@@ -1077,6 +1077,9 @@ namespace dxvk {
     // Assume an alignment of 256 bytes. This is enough to satisfy all
     // buffer use cases, and matches our minimum allocation size.
     constexpr static VkDeviceSize GlobalBufferAlignment = 256u;
+
+    // Minimum number of allocations we want to be able to fit into a heap
+    constexpr static uint32_t MinAllocationsPerHeap = 7u;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
