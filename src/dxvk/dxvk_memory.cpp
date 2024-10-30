@@ -661,16 +661,31 @@ namespace dxvk {
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
       // especially when a multiple such resources are created at once.
-      uint32_t minResourcesPerChunk = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ? 1u : 4u;
+      VkDeviceSize maxChunkSize = selectedPool.maxChunkSize;
+      uint32_t minResourcesPerChunk = 4u;
 
-      // If we're on a mapped memory type and we're about to lose an entire chunk
-      // worth of memory to huge resources causing fragmentation, use dedicated
-      // allocations anyway and hope that the app doesn't do this every frame.
-      if (minResourcesPerChunk == 1u && size > selectedPool.maxChunkSize / 2u
-       && type.stats.memoryAllocated - type.stats.memoryUsed + selectedPool.maxChunkSize - size >= selectedPool.maxChunkSize)
-        minResourcesPerChunk = 2u;
+      if (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        if (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+          // For HVV allocations, it may be beneficial to ignore the chunk size
+          // limit if the resource is large. HVV is usually slow to allocate
+          // from and may be very limited in size, so we should avoid dedicated
+          // allocations as well as fragmentation as much as possible.
+          maxChunkSize = DxvkPageAllocator::MaxChunkSize / (env::is32BitHostPlatform() ? 4u : 1u);
+          maxChunkSize = std::min(maxChunkSize, type.heap->properties.size / MinAllocationsPerHeap);
+          maxChunkSize = std::max(maxChunkSize, selectedPool.maxChunkSize);
 
-      if (size * minResourcesPerChunk > selectedPool.maxChunkSize) {
+          // Unlike on system memory heaps, we want to try and fit in multiple
+          // allocations into one chunk because these tend to get discarded often.
+          minResourcesPerChunk = std::clamp(uint32_t(maxChunkSize / size), 1u, 3u);
+        } else {
+          // System memory allocations tend to be more volatile, just be lenient
+          // here and allow a single resource to fill an entire chunk. We will
+          // generally keep multiple chunks of these types around anyway.
+          minResourcesPerChunk = 1u;
+        }
+      }
+
+      if (size * minResourcesPerChunk > maxChunkSize) {
         DxvkDeviceMemory memory = allocateDeviceMemory(type, requirements.size, nullptr);
 
         if (!memory.memory)
@@ -1686,7 +1701,7 @@ namespace dxvk {
 
     // Ensure that we can at least do 7  allocations to fill
     // the heap. Might be useful on systems with small BAR.
-    while (7u * size > type.heap->properties.size)
+    while (MinAllocationsPerHeap * size > type.heap->properties.size)
       size /= 2u;
 
     // Always use at least the minimum chunk size
