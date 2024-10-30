@@ -545,7 +545,7 @@ namespace dxvk {
      */
     void trackId(uint64_t trackingId, DxvkAccess access) {
       // Encode write access in the least significant bit
-      m_trackId = (trackingId << 1u) + uint64_t(access == DxvkAccess::Write);
+      m_trackId = std::max(m_trackId, (trackingId << 1u) + uint64_t(access == DxvkAccess::Write));
     }
 
     /**
