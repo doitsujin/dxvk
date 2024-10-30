@@ -994,7 +994,7 @@ namespace dxvk {
       // wait for the GPU to go fully idle in case of a large allocation.
       ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
 
-      m_stagingBufferFence->wait(stats.allocatedTotal - stats.allocatedSinceLastReset - D3D11Initializer::MaxMemoryInFlight);
+      m_device->waitForFence(*m_stagingBufferFence, stats.allocatedTotal - stats.allocatedSinceLastReset - D3D11Initializer::MaxMemoryInFlight);
     } else if (stats.allocatedSinceLastReset >= D3D11Initializer::MaxMemoryPerSubmission) {
       // Flush somewhat aggressively if there's a lot of memory in flight
       ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
