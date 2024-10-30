@@ -341,6 +341,11 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, std::move(cBufferSlice));
       });
 
+      // Ignore small buffers here. These are often updated per
+      // draw and won't contribute much to memory waste anyway.
+      if (unlikely(bufferSize > DxvkPageAllocator::PageSize))
+        ThrottleDiscard(bufferSize);
+
       return S_OK;
     } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // Put this on a fast path without any extra checks since it's
@@ -360,7 +365,7 @@ namespace dxvk {
       auto buffer = pResource->GetBuffer();
       auto sequenceNumber = pResource->GetSequenceNumber();
 
-      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= m_maxImplicitDiscardSize) {
+      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= D3D11Initializer::MaxMemoryPerSubmission) {
         SynchronizeCsThread(sequenceNumber);
 
         bool hasWoAccess = buffer->isInUse(DxvkAccess::Write);
@@ -389,6 +394,8 @@ namespace dxvk {
         pMappedResource->pData      = dstPtr;
         pMappedResource->RowPitch   = bufferSize;
         pMappedResource->DepthPitch = bufferSize;
+
+        ThrottleDiscard(bufferSize);
         return S_OK;
       } else {
         if (!WaitForResource(*buffer, sequenceNumber, MapType, MapFlags)) {
@@ -445,14 +452,19 @@ namespace dxvk {
       Rc<DxvkImage> mappedImage = pResource->GetImage();
 
       if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        auto storage = pResource->DiscardStorage();
+        auto storageSize = storage->getMemoryInfo().size;
+
         EmitCs([
           cImage = std::move(mappedImage),
-          cStorage = pResource->DiscardStorage()
+          cStorage = std::move(storage)
         ] (DxvkContext* ctx) mutable {
           // Assign and reinitialize new backing storage
           ctx->invalidateImage(cImage, std::move(cStorage));
           ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
         });
+
+        ThrottleDiscard(storageSize);
       } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
         // Wait until the resource becomes available. For NO_OVERWRITE,
         // we don't actually have to do anything but return the pointer.
@@ -499,11 +511,11 @@ namespace dxvk {
         // Need to synchronize thread to determine pending GPU accesses
         SynchronizeCsThread(sequenceNumber);
 
-        // Don't implicitly discard large buffers or buffers of images with
-        // multiple subresources, as that is likely to cause memory issues.
+        // Don't implicitly discard large very large resources
+        // since that might lead to memory issues.
         VkDeviceSize bufferSize = mappedBuffer->info().size;
 
-        if (bufferSize >= m_maxImplicitDiscardSize || pResource->CountSubresources() > 1) {
+        if (bufferSize > D3D11Initializer::MaxMemoryPerSubmission) {
           // Don't check access flags, WaitForResource will return
           // early anyway if the resource is currently in use
           doFlags = DoWait;
@@ -543,6 +555,8 @@ namespace dxvk {
 
         if (doFlags & DoPreserve)
           std::memcpy(dstPtr, srcPtr, bufferSize);
+
+        ThrottleDiscard(bufferSize);
       } else {
         if (doFlags & DoWait) {
           // We cannot respect DO_NOT_WAIT for buffer-mapped resources since
@@ -955,7 +969,7 @@ namespace dxvk {
       cSubmissionId     = submissionId,
       cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr,
       cStagingFence     = m_stagingBufferFence,
-      cStagingMemory    = m_staging.getStatistics().allocatedTotal
+      cStagingMemory    = GetStagingMemoryStatistics().allocatedTotal
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingFence, cStagingMemory);
@@ -977,6 +991,9 @@ namespace dxvk {
     // end up with a persistent allocation
     ResetStagingBuffer();
 
+    // Reset counter for discarded memory in flight
+    m_discardMemoryOnFlush = m_discardMemoryCounter;
+
     // Notify the device that the context has been flushed,
     // this resets some resource initialization heuristics.
     m_parent->NotifyContextFlush();
@@ -984,7 +1001,7 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::ThrottleAllocation() {
-    DxvkStagingBufferStats stats = m_staging.getStatistics();
+    DxvkStagingBufferStats stats = GetStagingMemoryStatistics();
 
     VkDeviceSize stagingMemoryInFlight = stats.allocatedTotal - m_stagingBufferFence->value();
 
@@ -994,12 +1011,29 @@ namespace dxvk {
       // wait for the GPU to go fully idle in case of a large allocation.
       ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
 
-      m_stagingBufferFence->wait(stats.allocatedTotal - stats.allocatedSinceLastReset - D3D11Initializer::MaxMemoryInFlight);
+      m_device->waitForFence(*m_stagingBufferFence, stats.allocatedTotal -
+        stats.allocatedSinceLastReset - D3D11Initializer::MaxMemoryInFlight);
     } else if (stats.allocatedSinceLastReset >= D3D11Initializer::MaxMemoryPerSubmission) {
       // Flush somewhat aggressively if there's a lot of memory in flight
       ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, false);
     }
   }
 
+
+  void D3D11ImmediateContext::ThrottleDiscard(
+          VkDeviceSize                Size) {
+    m_discardMemoryCounter += Size;
+
+    if (m_discardMemoryCounter - m_discardMemoryOnFlush >= D3D11Initializer::MaxMemoryPerSubmission)
+      ThrottleAllocation();
+  }
+
+
+  DxvkStagingBufferStats D3D11ImmediateContext::GetStagingMemoryStatistics() {
+    DxvkStagingBufferStats stats = m_staging.getStatistics();
+    stats.allocatedTotal += m_discardMemoryCounter;
+    stats.allocatedSinceLastReset += m_discardMemoryCounter - m_discardMemoryOnFlush;
+    return stats;
+  }
 
 }
