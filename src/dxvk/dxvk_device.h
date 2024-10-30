@@ -519,6 +519,17 @@ namespace dxvk {
     VkResult waitForSubmission(DxvkSubmitStatus* status);
 
     /**
+     * \brief Waits for a fence to become signaled
+     *
+     * Treats the fence wait as a GPU sync point, which can
+     * be useful for device statistics. Should only be used
+     * if rendering is stalled because of this wait.
+     * \param [in] fence Fence to wait on
+     * \param [in] value Fence value
+     */
+    void waitForFence(sync::Fence& fence, uint64_t value);
+
+    /**
      * \brief Waits for resource to become idle
      *
      * \param [in] resource Resource to wait for

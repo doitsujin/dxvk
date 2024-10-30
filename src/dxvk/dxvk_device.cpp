@@ -292,6 +292,22 @@ namespace dxvk {
   }
 
 
+  void DxvkDevice::waitForFence(sync::Fence& fence, uint64_t value) {
+    if (fence.value() >= value)
+      return;
+
+    auto t0 = dxvk::high_resolution_clock::now();
+
+    fence.wait(value);
+
+    auto t1 = dxvk::high_resolution_clock::now();
+    auto us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
+
+    m_statCounters.addCtr(DxvkStatCounter::GpuSyncCount, 1);
+    m_statCounters.addCtr(DxvkStatCounter::GpuSyncTicks, us.count());
+  }
+
+
   void DxvkDevice::waitForResource(const DxvkPagedResource& resource, DxvkAccess access) {
     if (resource.isInUse(access)) {
       auto t0 = dxvk::high_resolution_clock::now();
