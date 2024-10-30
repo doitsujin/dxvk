@@ -128,6 +128,9 @@ namespace dxvk {
 
     Rc<sync::Fence>         m_stagingBufferFence;
 
+    VkDeviceSize            m_discardMemoryCounter = 0u;
+    VkDeviceSize            m_discardMemoryOnFlush = 0u;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
@@ -198,6 +201,11 @@ namespace dxvk {
             BOOL                        Synchronize);
 
     void ThrottleAllocation();
+
+    void ThrottleDiscard(
+            VkDeviceSize                Size);
+
+    DxvkStagingBufferStats GetStagingMemoryStatistics();
 
   };
   
