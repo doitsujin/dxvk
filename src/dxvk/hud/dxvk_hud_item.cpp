@@ -1096,7 +1096,7 @@ namespace dxvk::hud {
       }
 
       // Render descriptive text
-      std::string headline = str::format("Mem type ", i, " [", type.properties.heapIndex, "]: ",
+      std::string headline = str::format("Mem type ", (i - 1), " [", type.properties.heapIndex, "]: ",
         type.chunkCount, " chunk", type.chunkCount != 1u ? "s" : "", " (", (stats.memoryAllocated >> 20u), " MB, ",
         ((stats.memoryUsed >= (1u << 20u)) ? stats.memoryUsed >> 20 : stats.memoryUsed >> 10),
         (stats.memoryUsed >= (1u << 20u) ? " MB" : " kB"), " used)");
