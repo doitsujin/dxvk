@@ -36,11 +36,6 @@ namespace dxvk {
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 
-    int32_t maxDynamicImageBufferSize = config.getOption<int32_t>("d3d11.maxDynamicImageBufferSize", -1);
-    this->maxDynamicImageBufferSize = maxDynamicImageBufferSize >= 0
-      ? VkDeviceSize(maxDynamicImageBufferSize) << 10
-      : VkDeviceSize(~0ull);
-
     auto cachedDynamicResources = config.getOption<std::string>("d3d11.cachedDynamicResources", std::string());
 
     if (IsAPITracingDXGI()) {
