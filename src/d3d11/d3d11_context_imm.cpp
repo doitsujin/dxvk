@@ -446,16 +446,22 @@ namespace dxvk {
     uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
 
     auto formatInfo = lookupFormatInfo(packedFormat);
+    auto layout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       Rc<DxvkImage> mappedImage = pResource->GetImage();
 
-      // Wait for the resource to become available. We do not
-      // support image renaming, so stall on DISCARD instead.
-      if (MapType == D3D11_MAP_WRITE_DISCARD)
-        MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        EmitCs([
+          cImage = std::move(mappedImage),
+          cStorage = pResource->DiscardStorage()
+        ] (DxvkContext* ctx) {
+          ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
+          ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+        });
 
-      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        ThrottleDiscard(layout.Size);
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
         if (!WaitForResource(*mappedImage, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
@@ -563,7 +569,6 @@ namespace dxvk {
     pResource->SetMapType(Subresource, MapType);
 
     if (pMappedResource) {
-      auto layout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
       pMappedResource->pData      = pResource->GetMapPtr(Subresource, layout.Offset);
       pMappedResource->RowPitch   = layout.RowPitch;
       pMappedResource->DepthPitch = layout.DepthPitch;
