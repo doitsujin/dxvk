@@ -193,7 +193,13 @@ namespace dxvk {
           if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
             m_buffers.push_back(CreateMappedBuffer(j));
 
-          m_mapInfo.push_back({ D3D11_MAP(~0u), 0ull });
+          VkImageSubresource subresource = { };
+          subresource.aspectMask = formatProperties->aspectMask;
+          subresource.arrayLayer = i;
+          subresource.mipLevel = j;
+
+          auto& mapInfo = m_mapInfo.emplace_back();
+          mapInfo.layout = DetermineSubresourceLayout(&imageInfo, subresource);
         }
       }
     }
@@ -272,73 +278,24 @@ namespace dxvk {
   }
 
 
-  VkImageSubresource D3D11CommonTexture::GetSubresourceFromIndex(
-          VkImageAspectFlags    Aspect,
-          UINT                  Subresource) const {
-    VkImageSubresource result;
-    result.aspectMask     = Aspect;
-    result.mipLevel       = Subresource % m_desc.MipLevels;
-    result.arrayLayer     = Subresource / m_desc.MipLevels;
-    return result;
-  }
-  
-  
   D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT D3D11CommonTexture::GetSubresourceLayout(
           VkImageAspectFlags    AspectMask,
           UINT                  Subresource) const {
+    // Color is mapped directly and depth-stencil are interleaved
+    // in packed formats, so just use the cached subresource layout
+    constexpr VkImageAspectFlags PlaneAspects = VK_IMAGE_ASPECT_PLANE_0_BIT
+      | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT;
+
+    if ((Subresource < m_mapInfo.size()) && !(AspectMask & PlaneAspects))
+      return m_mapInfo[Subresource].layout;
+
+    // Safe-guard against invalid subresource index
+    if (Subresource >= m_desc.ArraySize * m_desc.MipLevels)
+      return D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT();
+
+    // Image info is only needed for direct-mapped images
     VkImageSubresource subresource = GetSubresourceFromIndex(AspectMask, Subresource);
-    D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
-
-    switch (m_mapMode) {
-      case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT: {
-        auto vkLayout = m_image->querySubresourceLayout(subresource);
-        layout.Offset     = vkLayout.offset;
-        layout.Size       = vkLayout.size;
-        layout.RowPitch   = vkLayout.rowPitch;
-        layout.DepthPitch = vkLayout.depthPitch;
-      } break;
-
-      case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
-      case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
-      case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
-        auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
-
-        VkImageAspectFlags aspects = packedFormatInfo->aspectMask;
-        VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
-
-        while (aspects) {
-          auto aspect = vk::getNextAspect(aspects);
-          auto extent = mipExtent;
-          auto elementSize = packedFormatInfo->elementSize;
-
-          if (packedFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-            auto plane = &packedFormatInfo->planes[vk::getPlaneIndex(aspect)];
-            extent.width  /= plane->blockSize.width;
-            extent.height /= plane->blockSize.height;
-            elementSize = plane->elementSize;
-          }
-
-          auto blockCount = util::computeBlockCount(extent, packedFormatInfo->blockSize);
-
-          if (!layout.RowPitch) {
-            layout.RowPitch   = elementSize * blockCount.width;
-            layout.DepthPitch = elementSize * blockCount.width * blockCount.height;
-          }
-
-          VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
-
-          if (aspect & AspectMask)
-            layout.Size += size;
-          else if (!layout.Size)
-            layout.Offset += size;
-        }
-      } break;
-    }
-
-    // D3D wants us to return the total subresource size in some instances
-    if (m_dimension < D3D11_RESOURCE_DIMENSION_TEXTURE2D) layout.RowPitch = layout.Size;
-    if (m_dimension < D3D11_RESOURCE_DIMENSION_TEXTURE3D) layout.DepthPitch = layout.Size;
-    return layout;
+    return DetermineSubresourceLayout(nullptr, subresource);
   }
 
 
@@ -591,6 +548,11 @@ namespace dxvk {
     if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
       return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
 
+    // If the packed format and image format don't match, we need to use
+    // a staging buffer and perform format conversion when mapping.
+    if (m_packedFormat != pImageInfo->format)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
     // Multi-plane and depth-stencil images have a special memory layout
     // in D3D11, so we can't expose those directly to the app
     auto formatInfo = lookupFormatInfo(pImageInfo->format);
@@ -662,6 +624,76 @@ namespace dxvk {
     // tables in some games, which will benefit from faster GPU access.
     return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
+
+
+  D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT D3D11CommonTexture::DetermineSubresourceLayout(
+    const DxvkImageCreateInfo*  pImageInfo,
+    const VkImageSubresource&   subresource) const {
+    auto formatInfo = lookupFormatInfo(m_packedFormat);
+
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      VkSubresourceLayout vkLayout = m_device->GetDXVKDevice()->queryImageSubresourceLayout(*pImageInfo, subresource);
+
+      D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT result = { };
+      result.Offset = vkLayout.offset;
+      result.RowPitch = vkLayout.rowPitch;
+      result.DepthPitch = vkLayout.depthPitch;
+
+      // We will only ever use direct mapping for single-aspect images,
+      // so ignore any sort of multi-plane shenanigans on this path
+      auto mipExtent = MipLevelExtent(subresource.mipLevel);
+      auto blockCount = util::computeBlockCount(mipExtent, formatInfo->blockSize);
+
+      // If the image dimensions support it, try to look as close to a
+      // linear buffer as we can. Some games use the depth pitch as a
+      // subresource size and will crash if it includes any padding.
+      if (blockCount.depth == 1u) {
+        if (blockCount.height == 1u) {
+          result.RowPitch = formatInfo->elementSize * blockCount.width;
+          result.DepthPitch = result.RowPitch;
+        } else {
+          result.DepthPitch = vkLayout.rowPitch * blockCount.height;
+        }
+      }
+
+      result.Size = blockCount.depth * result.DepthPitch;
+      return result;
+    } else {
+      D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT result = { };
+
+      VkImageAspectFlags aspects = formatInfo->aspectMask;
+      VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
+
+      while (aspects) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto extent = mipExtent;
+        auto elementSize = formatInfo->elementSize;
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+
+        if (!result.RowPitch) {
+          result.RowPitch   = elementSize * blockCount.width;
+          result.DepthPitch = elementSize * blockCount.width * blockCount.height;
+        }
+
+        VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
+
+        if (aspect & subresource.aspectMask)
+          result.Size += size;
+        else if (!result.Size)
+          result.Offset += size;
+      }
+
+      return result;
+    }
+  }
   
   
   void D3D11CommonTexture::ExportImageInfo() {
@@ -709,9 +741,13 @@ namespace dxvk {
   D3D11CommonTexture::MappedBuffer D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
-    
+
+    VkImageSubresource subresource = { };
+    subresource.aspectMask = formatInfo->aspectMask;
+    subresource.mipLevel = MipLevel;
+
     DxvkBufferCreateInfo info;
-    info.size   = GetSubresourceLayout(formatInfo->aspectMask, MipLevel).Size;
+    info.size   = DetermineSubresourceLayout(nullptr, subresource).Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT

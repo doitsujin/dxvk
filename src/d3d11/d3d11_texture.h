@@ -390,7 +390,13 @@ namespace dxvk {
      */
     VkImageSubresource GetSubresourceFromIndex(
             VkImageAspectFlags    Aspect,
-            UINT                  Subresource) const;
+            UINT                  Subresource) const {
+      VkImageSubresource result;
+      result.aspectMask     = Aspect;
+      result.mipLevel       = Subresource % m_desc.MipLevels;
+      result.arrayLayer     = Subresource / m_desc.MipLevels;
+      return result;
+    }
 
     /**
      * \brief Computes subresource layout for the given subresource
@@ -480,8 +486,9 @@ namespace dxvk {
     };
 
     struct MappedInfo {
-      D3D11_MAP             mapType;
-      uint64_t              seq;
+      D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
+      D3D11_MAP                   mapType = D3D11_MAP(~0u);
+      uint64_t                    seq     = 0u;
     };
 
     ID3D11Resource*               m_interface;
@@ -513,8 +520,12 @@ namespace dxvk {
     D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode(
       const DxvkImageCreateInfo*  pImageInfo) const;
 
+    D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT DetermineSubresourceLayout(
+      const DxvkImageCreateInfo*  pImageInfo,
+      const VkImageSubresource&   subresource) const;
+
     void ExportImageInfo();
-    
+
     static BOOL IsR32UavCompatibleFormat(
             DXGI_FORMAT           Format);
 
