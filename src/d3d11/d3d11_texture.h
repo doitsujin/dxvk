@@ -304,6 +304,26 @@ namespace dxvk {
     }
 
     /**
+     * \brief Allocates new backing storage
+     * \returns New backing storage for the image
+     */
+    Rc<DxvkResourceAllocation> AllocStorage() {
+      return m_image->allocateStorage();
+    }
+
+    /**
+     * \brief Discards backing storage
+     *
+     * Also updates the mapped pointer if the image is mapped.
+     * \returns New backing storage for the image
+     */
+    Rc<DxvkResourceAllocation> DiscardStorage() {
+      auto storage = m_image->allocateStorage();
+      m_mapPtr = storage->mapPtr();
+      return storage;
+    }
+
+    /**
      * \brief Queries map pointer of the raw image
      *
      * If the image is mapped directly, the returned pointer will
