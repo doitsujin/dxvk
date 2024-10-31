@@ -591,24 +591,16 @@ namespace dxvk {
     if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
       return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
 
-    // Depth-stencil formats in D3D11 can be mapped and follow special
-    // packing rules, so we need to copy that data into a buffer first
-    if (GetPackedDepthStencilFormat(m_desc.Format))
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    // Multi-plane and depth-stencil images have a special memory layout
+    // in D3D11, so we can't expose those directly to the app
+    auto formatInfo = lookupFormatInfo(pImageInfo->format);
 
-    // Multi-plane images have a special memory layout in D3D11
-    if (lookupFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
+    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // If we can't use linear tiling for this image, we have to use a buffer
-    if (!this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
+    if (!CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If supported and requested, create a linear image. Default images
-    // can be used for resolves and other operations regardless of bind
-    // flags, so we need to use a proper image for those.
-    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
 
     // For default images, prefer direct mapping if the image is CPU readable
     // since mapping for reads would have to stall otherwise. If the image is
@@ -619,17 +611,55 @@ namespace dxvk {
         : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     }
 
-    // The overhead of frequently uploading large dynamic images may outweigh
-    // the benefit of linear tiling, so use a linear image in those cases.
-    VkDeviceSize threshold = m_device->GetOptions()->maxDynamicImageBufferSize;
-    VkDeviceSize size = util::computeImageDataSize(pImageInfo->format, pImageInfo->extent);
+    // If there are multiple subresources, go through a buffer because
+    // we can otherwise not really discard individual subresources.
+    if (m_desc.ArraySize > 1u || m_desc.MipLevels != 1u)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
-    if (size > threshold)
+    // If the image is essentially linear already, expose it directly since
+    // there won't be any tangible benefit to using optimal tiling anyway.
+    VkExtent3D blockCount = util::computeBlockCount(pImageInfo->extent, formatInfo->blockSize);
+
+    if (blockCount.height == 1u && blockCount.depth == 1u)
       return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
 
-    // Dynamic images that can be sampled by a shader should generally go
-    // through a buffer to allow optimal tiling and to avoid running into
-    // bugs where games ignore the pitch when mapping the image.
+    // If the image looks like a video, we can generally expect it to get
+    // updated and read once per frame. This is one of the most common use
+    // cases for a mapped image, expose it directly in order to avoid copies.
+    if (blockCount.depth == 1u && blockCount.height >= 160 && formatInfo->elementSize <= 4u) {
+      static const std::array<std::pair<uint32_t, uint32_t>, 3> videoApectRatios = {{
+        {  4, 3 },
+        { 16, 9 },
+        { 21, 9 },
+      }};
+
+      bool isVideoAspectRatio = false;
+
+      for (const auto& a : videoApectRatios) {
+        // Due to codec limitations, video dimensions are often rounded to
+        // a multiple of 8. Account for this when checking the size.
+        isVideoAspectRatio |= blockCount.width > (a.first * (blockCount.height - 8u)) / a.second
+                           && blockCount.width < (a.first * (blockCount.height + 8u)) / a.second;
+      }
+
+      if (isVideoAspectRatio)
+        return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+    }
+
+    // If the image exceeds a certain size, map it directly because the overhead
+    // of potentially copying the whole thing every frame likely outweighs any
+    // benefit we might get from faster memory and tiling. This solves such an
+    // issue in Warhammer III, which discards a 48 MB texture every single frame.
+    constexpr VkDeviceSize MaxImageStagingBufferSize = 1ull << 20;
+
+    VkDeviceSize imageSize = util::flattenImageExtent(blockCount) * formatInfo->elementSize;
+
+    if (imageSize > MaxImageStagingBufferSize)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+
+    // For smaller images, use a staging buffer. There are some common use
+    // cases where the image will only get written once, e.g. SMAA look-up
+    // tables in some games, which will benefit from faster GPU access.
     return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   
