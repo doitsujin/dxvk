@@ -71,17 +71,6 @@ namespace dxvk {
   }
 
 
-  VkSubresourceLayout DxvkImage::querySubresourceLayout(
-    const VkImageSubresource& subresource) const {
-    VkSubresourceLayout result = { };
-
-    m_vkd->vkGetImageSubresourceLayout(m_vkd->device(),
-      m_imageInfo.image, &subresource, &result);
-
-    return result;
-  }
-
-
   HANDLE DxvkImage::sharedHandle() const {
     HANDLE handle = INVALID_HANDLE_VALUE;
 
