@@ -168,7 +168,8 @@ namespace dxvk {
       imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
     
     // Determine map mode based on our findings
-    m_mapMode = DetermineMapMode(&imageInfo);
+    VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    std::tie(m_mapMode, memoryProperties) = DetermineMapMode(&imageInfo);
     
     // If the image is mapped directly to host memory, we need
     // to enable linear tiling, and DXVK needs to be aware that
@@ -228,14 +229,7 @@ namespace dxvk {
         "\n  Usage:   ", std::hex, m_desc.BindFlags,
         "\n  Flags:   ", std::hex, m_desc.MiscFlags));
     }
-    
-    // Create the image on a host-visible memory type
-    // in case it is going to be mapped directly.
-    VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      memoryProperties = GetMemoryFlags();
-    
+
     if (m_11on12.Resource != nullptr)
       vkImage = VkImage(m_11on12.VulkanHandle);
 
@@ -522,7 +516,37 @@ namespace dxvk {
   }
 
   
-  VkMemoryPropertyFlags D3D11CommonTexture::GetMemoryFlags() const {
+  std::pair<D3D11_COMMON_TEXTURE_MAP_MODE, VkMemoryPropertyFlags> D3D11CommonTexture::DetermineMapMode(
+    const DxvkImageCreateInfo*  pImageInfo) const {
+    // Don't map an image unless the application requests it
+    if (!m_desc.CPUAccessFlags)
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_NONE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+
+    // If the resource cannot be used in the actual rendering pipeline, we
+    // do not need to create an actual image and can instead implement copy
+    // functions as buffer-to-image and image-to-buffer copies.
+    if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_STAGING, 0u };
+
+    // If the packed format and image format don't match, we need to use
+    // a staging buffer and perform format conversion when mapping.
+    if (m_packedFormat != pImageInfo->format)
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+
+    // Multi-plane and depth-stencil images have a special memory layout
+    // in D3D11, so we can't expose those directly to the app
+    auto formatInfo = lookupFormatInfo(pImageInfo->format);
+
+    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+
+    // If we can't use linear tiling for this image, we have to use a buffer
+    if (!CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+
+    // Determine memory flags for the actual image if we use direct mapping.
+    // Depending on the concrete use case, we may fall back to different
+    // memory types.
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
@@ -535,58 +559,26 @@ namespace dxvk {
     else if (m_desc.BindFlags)
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    return memoryFlags;
-  }
-
-
-  D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
-    const DxvkImageCreateInfo*  pImageInfo) const {
-    // Don't map an image unless the application requests it
-    if (!m_desc.CPUAccessFlags)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_NONE;
-    
-    // If the resource cannot be used in the actual rendering pipeline, we
-    // do not need to create an actual image and can instead implement copy
-    // functions as buffer-to-image and image-to-buffer copies.
-    if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
-
-    // If the packed format and image format don't match, we need to use
-    // a staging buffer and perform format conversion when mapping.
-    if (m_packedFormat != pImageInfo->format)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // Multi-plane and depth-stencil images have a special memory layout
-    // in D3D11, so we can't expose those directly to the app
-    auto formatInfo = lookupFormatInfo(pImageInfo->format);
-
-    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If we can't use linear tiling for this image, we have to use a buffer
-    if (!CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
     // For default images, prefer direct mapping if the image is CPU readable
     // since mapping for reads would have to stall otherwise. If the image is
     // only writable, prefer a write-through buffer.
     if (m_desc.Usage == D3D11_USAGE_DEFAULT) {
       return (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)
-        ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
-        : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+        ? std::make_pair(D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, memoryFlags)
+        : std::make_pair(D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     }
 
     // If there are multiple subresources, go through a buffer because
     // we can otherwise not really discard individual subresources.
     if (m_desc.ArraySize > 1u || m_desc.MipLevels != 1u)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
 
     // If the image is essentially linear already, expose it directly since
     // there won't be any tangible benefit to using optimal tiling anyway.
     VkExtent3D blockCount = util::computeBlockCount(pImageInfo->extent, formatInfo->blockSize);
 
     if (blockCount.height == 1u && blockCount.depth == 1u)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, memoryFlags };
 
     // If the image looks like a video, we can generally expect it to get
     // updated and read once per frame. This is one of the most common use
@@ -607,8 +599,10 @@ namespace dxvk {
                            && blockCount.width < (a.first * (blockCount.height + 8u)) / a.second;
       }
 
-      if (isVideoAspectRatio)
-        return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+      if (isVideoAspectRatio) {
+        // Keep video images in system memory to not waste precious HVV space
+        return { D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, memoryFlags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
+      }
     }
 
     // If the image exceeds a certain size, map it directly because the overhead
@@ -620,12 +614,12 @@ namespace dxvk {
     VkDeviceSize imageSize = util::flattenImageExtent(blockCount) * formatInfo->elementSize;
 
     if (imageSize > MaxImageStagingBufferSize)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+      return { D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, memoryFlags };
 
     // For smaller images, use a staging buffer. There are some common use
     // cases where the image will only get written once, e.g. SMAA look-up
     // tables in some games, which will benefit from faster GPU access.
-    return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    return { D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT };
   }
 
 
