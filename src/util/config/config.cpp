@@ -291,10 +291,6 @@ namespace dxvk {
     { R"(\\AoE2DE_s\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
-    /* Total War: Warhammer III                   */
-    { R"(\\Warhammer3\.exe$)", {{
-      { "d3d11.maxDynamicImageBufferSize",  "4096" },
-    }} },
     /* Assassin's Creed 3 and 4                   */
     { R"(\\ac(3|4bf)[sm]p\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
