@@ -302,24 +302,41 @@ namespace dxvk {
       return E_INVALIDARG;
     
     VkFormat packedFormat = pTexture->GetPackedFormat();
-    
     auto formatInfo = lookupFormatInfo(packedFormat);
-    auto subresource = pTexture->GetSubresourceFromIndex(
-        formatInfo->aspectMask, Subresource);
-    
-    VkExtent3D levelExtent = pTexture->MipLevelExtent(subresource.mipLevel);
-    
     auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
-    auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
-    
-    pMappedResource->RowPitch   = layout.RowPitch;
-    pMappedResource->DepthPitch = layout.DepthPitch;
-    pMappedResource->pData      = dataSlice.mapPtr(0);
 
-    UpdateImage(pTexture, &subresource,
-      VkOffset3D { 0, 0, 0 }, levelExtent,
-      std::move(dataSlice));
-    return S_OK;
+    if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      auto storage = pTexture->AllocStorage();
+      auto mapPtr = storage->mapPtr();
+
+      EmitCs([
+        cImage = pTexture->GetImage(),
+        cStorage = std::move(storage)
+      ] (DxvkContext* ctx) {
+        ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
+        ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+      });
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = mapPtr;
+      return S_OK;
+    } else {
+      auto dataSlice = AllocStagingBuffer(layout.Size);
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = dataSlice.mapPtr(0);
+
+      auto subresource = pTexture->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource);
+      auto mipExtent = pTexture->MipLevelExtent(subresource.mipLevel);
+
+      UpdateImage(pTexture, &subresource,
+        VkOffset3D { 0, 0, 0 }, mipExtent,
+        std::move(dataSlice));
+
+      return S_OK;
+    }
   }
   
   
