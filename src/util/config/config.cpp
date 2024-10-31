@@ -965,7 +965,7 @@ namespace dxvk {
     }} },
     /* Prince of Persia (2008) - Can get stuck     *
      * during loading at very high fps             */
-    { R"(\\PrinceOfPersia_Launcher\.exe$)", {{
+    { R"(\\Prince( of Persia|OfPersia_Launcher)\.exe$)", {{
       { "d3d9.maxFrameRate",                 "240" },
     }} },
     /* F.E.A.R 1 & expansions                      *
