@@ -493,17 +493,6 @@ namespace dxvk {
     bool canRelocate() const;
 
     /**
-     * \brief Queries memory layout of a subresource
-     *
-     * Can be used to retrieve the exact pointer to a
-     * subresource of a mapped image with linear tiling.
-     * \param [in] subresource The image subresource
-     * \returns Memory layout of that subresource
-     */
-    VkSubresourceLayout querySubresourceLayout(
-      const VkImageSubresource& subresource) const;
-
-    /**
      * \brief Create a new shared handle to dedicated memory backing the image
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
