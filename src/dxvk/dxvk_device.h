@@ -209,6 +209,19 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries mapped image subresource layout
+     *
+     * Assumes that the image tiling is linear even
+     * if not explcitly set in the create info.
+     * \param [in] createInfo Image create info
+     * \param [in] subresource Subresource to query
+     * \returns Subresource layout
+     */
+    VkSubresourceLayout queryImageSubresourceLayout(
+      const DxvkImageCreateInfo&        createInfo,
+      const VkImageSubresource&         subresource);
+
+    /**
      * \brief Checks whether this is a UMA system
      *
      * Basically tests whether all heaps are device-local.
