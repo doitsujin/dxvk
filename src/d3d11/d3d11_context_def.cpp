@@ -206,31 +206,28 @@ namespace dxvk {
     if (unlikely(!pResource || !pMappedResource))
       return E_INVALIDARG;
     
-    if (MapType == D3D11_MAP_WRITE_DISCARD) {
+    if (likely(MapType == D3D11_MAP_WRITE_DISCARD)) {
       D3D11_RESOURCE_DIMENSION resourceDim;
       pResource->GetType(&resourceDim);
 
-      D3D11_MAPPED_SUBRESOURCE mapInfo;
-      HRESULT status = resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
-        ? MapBuffer(pResource,              &mapInfo)
-        : MapImage (pResource, Subresource, &mapInfo);
-      
-      if (unlikely(FAILED(status))) {
-        pMappedResource->pData = nullptr;
-        return status;
-      }
-      
-      AddMapEntry(pResource, Subresource, resourceDim, mapInfo);
-      *pMappedResource = mapInfo;
-      return S_OK;
-    } else if (MapType == D3D11_MAP_WRITE_NO_OVERWRITE) {
+      return likely(resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)
+        ? MapBuffer(pResource, pMappedResource)
+        : MapImage(pResource, Subresource, pMappedResource);
+    } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // The resource must be mapped with D3D11_MAP_WRITE_DISCARD
       // before it can be mapped with D3D11_MAP_WRITE_NO_OVERWRITE.
       auto entry = FindMapEntry(pResource, Subresource);
       
       if (unlikely(!entry)) {
         pMappedResource->pData = nullptr;
-        return D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD;
+
+        // NO_OVERWRITE is only supported on buffers
+        D3D11_RESOURCE_DIMENSION resourceDim;
+        pResource->GetType(&resourceDim);
+
+        return resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
+          ? D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD
+          : E_INVALIDARG;
       }
       
       // Return same memory region as earlier
@@ -268,11 +265,12 @@ namespace dxvk {
 
     if (unlikely(pBuffer->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
 
     auto bufferSlice = pBuffer->AllocSlice(&m_allocationCache);
-    pMappedResource->pData = bufferSlice->mapPtr();
+    pMappedResource->pData        = bufferSlice->mapPtr();
     pMappedResource->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMappedResource->DepthPitch   = pBuffer->Desc()->ByteWidth;
 
@@ -283,6 +281,7 @@ namespace dxvk {
       ctx->invalidateBuffer(cDstBuffer, Rc<DxvkResourceAllocation>(cDstSlice));
     });
 
+    AddMapEntry(pResource, 0, D3D11_RESOURCE_DIMENSION_BUFFER, *pMappedResource);
     return S_OK;
   }
   
@@ -295,11 +294,14 @@ namespace dxvk {
     
     if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
 
-    if (unlikely(Subresource >= pTexture->CountSubresources()))
+    if (unlikely(Subresource >= pTexture->CountSubresources())) {
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
+    }
     
     VkFormat packedFormat = pTexture->GetPackedFormat();
     auto formatInfo = lookupFormatInfo(packedFormat);
