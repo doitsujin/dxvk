@@ -4714,15 +4714,11 @@ namespace dxvk {
     if (desc.Usage & D3DUSAGE_WRITEONLY)
       Flags &= ~D3DLOCK_READONLY;
 
-    const bool readOnly = Flags & D3DLOCK_READONLY;
-    pResource->SetReadOnlyLocked(Subresource, readOnly);
-
-    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
-
     // If we recently wrote to the texture on the gpu,
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
+    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
     bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
 
     // Skip readback if we discard is specified. We can only do this for textures that have an associated Vulkan image.
@@ -4838,6 +4834,7 @@ namespace dxvk {
 
     UnmapTextures();
 
+    const bool readOnly = Flags & D3DLOCK_READONLY;
     const bool noDirtyUpdate = Flags & D3DLOCK_NO_DIRTY_UPDATE;
     if ((desc.Pool == D3DPOOL_DEFAULT || !noDirtyUpdate) && !readOnly) {
       if (pBox && MipLevel != 0) {
