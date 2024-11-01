@@ -861,14 +861,17 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitLoadConstant(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
-    // struct cBuffer_t {
+
+    // SWVP cbuffers:           Member    Binding index
+    // float                    f[8192];  0
+    // int32_t                  i[2048];  1
+    // bool (uint32_t bitmask)  i[[256]]; 2
+
+    // HWVP cbuffer:            Member         Member index
+    // int32_t                  i[16];         0
+    // float                    f[256 or 224]; 1
     //
-    //   Type     Member        Index
-    //
-    //   float    f[256 or 224];       0
-    //   int32_t  i[16];        1
-    //   uint32_t boolBitmask;  2
-    // }
+    // bools as spec constant bitmasks
     DxsoRegisterValue result = { };
 
     switch (reg.id.type) {
