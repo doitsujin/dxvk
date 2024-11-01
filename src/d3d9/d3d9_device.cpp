@@ -4232,33 +4232,7 @@ namespace dxvk {
     DWORD combinedUsage = oldUsage | newUsage;
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
     m_dirtyTextures |= 1u << StateSampler;
-    UpdateActiveTextures(StateSampler, combinedUsage);
-
-    if (newTexture != nullptr) {
-      const bool oldDepth = m_depthTextures & (1u << StateSampler);
-      const bool newDepth = newTexture->IsShadow();
-
-      if (oldDepth != newDepth) {
-        m_depthTextures ^= 1u << StateSampler;
-        m_dirtySamplerStates |= 1u << StateSampler;
-      }
-
-      m_drefClamp &= ~(1u << StateSampler);
-      m_drefClamp |= uint32_t(newTexture->IsUpgradedToD32f()) << StateSampler;
-
-      const bool oldCube = m_cubeTextures & (1u << StateSampler);
-      const bool newCube = newTexture->GetType() == D3DRTYPE_CUBETEXTURE;
-      if (oldCube != newCube) {
-        m_cubeTextures ^= 1u << StateSampler;
-        m_dirtySamplerStates |= 1u << StateSampler;
-      }
-
-      if (unlikely(m_fetch4Enabled & (1u << StateSampler)))
-        UpdateActiveFetch4(StateSampler);
-    } else {
-      if (unlikely(m_fetch4 & (1u << StateSampler)))
-        UpdateActiveFetch4(StateSampler);
-    }
+    UpdateTextureBitmasks(StateSampler, combinedUsage);
 
     return D3D_OK;
   }
@@ -5950,7 +5924,7 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index, DWORD combinedUsage) {
+  inline void D3D9DeviceEx::UpdateTextureBitmasks(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
     m_activeTextureRTs       &= ~bit;
@@ -5974,6 +5948,33 @@ namespace dxvk {
 
       if (unlikely(tex->NeedsMipGen()))
         m_activeTexturesToGen |= bit;
+
+      // Update shadow sampler mask
+      const bool oldDepth = m_depthTextures & bit;
+      const bool newDepth = tex->IsShadow();
+
+      if (oldDepth != newDepth) {
+        m_depthTextures ^= bit;
+        m_dirtySamplerStates |= bit;
+      }
+
+      // Update dref clamp mask
+      m_drefClamp &= ~bit;
+      m_drefClamp |= uint32_t(tex->IsUpgradedToD32f()) << index;
+
+      // Update non-seamless cubemap mask
+      const bool oldCube = m_cubeTextures & bit;
+      const bool newCube = tex->GetType() == D3DRTYPE_CUBETEXTURE;
+      if (oldCube != newCube) {
+        m_cubeTextures ^= bit;
+        m_dirtySamplerStates |= bit;
+      }
+
+      if (unlikely(m_fetch4Enabled & bit))
+        UpdateActiveFetch4(index);
+    } else {
+      if (unlikely(m_fetch4 & bit))
+        UpdateActiveFetch4(index);
     }
 
     if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
