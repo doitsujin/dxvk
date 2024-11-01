@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../util/util_small_vector.h"
+
 #include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
@@ -546,13 +548,13 @@ namespace dxvk {
     VkFormat                      m_packedFormat;
     
     Rc<DxvkImage>                 m_image;
-    std::vector<MappedBuffer>     m_buffers;
-    std::vector<MappedInfo>       m_mapInfo;
+    small_vector<MappedBuffer, 6> m_buffers;
+    small_vector<MappedInfo, 6>   m_mapInfo;
 
     void*                         m_mapPtr = nullptr;
 
-    MappedBuffer CreateMappedBuffer(
-            UINT                  MipLevel) const;
+    void CreateMappedBuffer(
+            UINT                  Subresource);
     
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
