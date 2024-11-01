@@ -337,10 +337,6 @@ namespace dxvk {
 
     void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
-    void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
-
-    bool GetReadOnlyLocked(UINT Subresource) const { return m_readOnly.get(Subresource); }
-
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
     }
@@ -521,8 +517,6 @@ namespace dxvk {
     D3D9ColorView                 m_sampleView;
 
     D3D9SubresourceBitset         m_locked = { };
-
-    D3D9SubresourceBitset         m_readOnly = { };
 
     D3D9SubresourceBitset         m_needsReadback = { };
 
