@@ -80,6 +80,7 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
+      // Disable logic op once and for all.
       DxvkLogicOpState loState;
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
@@ -93,6 +94,8 @@ namespace dxvk {
 
     m_dxsoOptions = DxsoOptions(this, m_d3d9Options);
 
+    // Check if VK_EXT_robustness2 is supported, so we can optimize the number of constants we need to copy.
+    // Also check the required alignments.
     const bool supportsRobustness2 = m_dxvkDevice->features().extRobustness2.robustBufferAccess2;
     bool useRobustConstantAccess = supportsRobustness2;
     if (useRobustConstantAccess) {
@@ -108,8 +111,9 @@ namespace dxvk {
       }
       useRobustConstantAccess &= m_psLayout.totalSize() % m_robustUBOAlignment == 0;
     }
-    
+
     if (!useRobustConstantAccess) {
+      // Disable optimized constant copies, we always have to copy all constants.
       m_vsFloatConstsCount = m_vsLayout.floatCount;
       m_vsIntConstsCount   = m_vsLayout.intCount;
       m_vsBoolConstsCount  = m_vsLayout.boolCount;
@@ -120,13 +124,15 @@ namespace dxvk {
       }
     }
 
+    // Check for VK_EXT_graphics_pipeline_libraries
     m_usingGraphicsPipelines = dxvkDevice->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
+    // Check for VK_EXT_depth_bias_control and set up initial state
     m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
     if (dxvkDevice->features().extDepthBiasControl.depthBiasControl) {
       if (dxvkDevice->features().extDepthBiasControl.depthBiasExact)
         m_depthBiasRepresentation.depthBiasExact = true;
-      
+
       if (dxvkDevice->features().extDepthBiasControl.floatRepresentation) {
         m_depthBiasRepresentation.depthBiasRepresentation = VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT;
         m_depthBiasScale = 1.0f;
@@ -222,7 +228,7 @@ namespace dxvk {
       *ppvObject = ref(this);
       return S_OK;
     }
-    
+
     if (riid == __uuidof(IDxvkD3D8Bridge)) {
       *ppvObject = ref(&m_d3d8Bridge);
       return S_OK;
@@ -490,7 +496,7 @@ namespace dxvk {
       * an application should release any explicit render targets,
       * depth stencil surfaces, additional swap chains, state blocks,
       * and D3DPOOL_DEFAULT resources associated with the device.
-      * 
+      *
       * We have to check after ResetState clears the references held by SetTexture, etc.
       * This matches what Windows D3D9 does.
     */
@@ -628,11 +634,14 @@ namespace dxvk {
     try {
       void* initialData = nullptr;
 
+      // On Windows Vista (so most likely D3D9Ex), pSharedHandle can be used to pass initial data for a texture,
+      // but only for a very specific type of texture.
       if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr) {
         initialData = *(reinterpret_cast<void**>(pSharedHandle));
         pSharedHandle = nullptr;
       }
 
+      // Shared textures have to be in POOL_DEFAULT
       if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
         return D3DERR_INVALIDCALL;
 
@@ -699,7 +708,8 @@ namespace dxvk {
       const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
-      
+
+      // The device cannot be reset if there's any remaining default resources
       if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
@@ -756,7 +766,8 @@ namespace dxvk {
       const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
-      
+
+      // The device cannot be reset if there's any remaining default resources
       if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
@@ -799,6 +810,8 @@ namespace dxvk {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppVertexBuffer = buffer.ref();
+
+      // The device cannot be reset if there's any remaining default resources
       if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
@@ -840,6 +853,8 @@ namespace dxvk {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppIndexBuffer = buffer.ref();
+
+      // The device cannot be reset if there's any remaining default resources
       if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
@@ -963,8 +978,10 @@ namespace dxvk {
                     0u };
     }
 
+    // The source surface must be in D3DPOOL_SYSTEMMEM so we just treat it as just another texture upload except with a different source.
     UpdateTextureFromBuffer(dstTextureInfo, srcTextureInfo, dst->GetSubresource(), src->GetSubresource(), srcOffset, extent, dstOffset);
 
+    // The contents of the mapping no longer match the image.
     dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
@@ -1008,6 +1025,8 @@ namespace dxvk {
     if (srcFirstMipExtent != dstFirstMipExtent) {
       // UpdateTexture can be used with textures that have different mip lengths.
       // It will either match the the top mips or the bottom ones.
+      // If the largest mip maps don't match in size, we try to take the smallest ones
+      // of the source.
 
       srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
       srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
@@ -1018,10 +1037,12 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     for (uint32_t a = 0; a < arraySlices; a++) {
+      // The docs claim that the dirty box is just a performance optimization, however in practice games rely on it.
       const D3DBOX& box = srcTexInfo->GetDirtyBox(a);
       if (box.Left >= box.Right || box.Top >= box.Bottom || box.Front >= box.Back)
         continue;
 
+      // The dirty box is only tracked for mip level 0
       VkExtent3D mip0Extent = {
         uint32_t(box.Right - box.Left),
         uint32_t(box.Bottom - box.Top),
@@ -1030,13 +1051,17 @@ namespace dxvk {
       VkOffset3D mip0Offset = { int32_t(box.Left), int32_t(box.Top), int32_t(box.Front) };
 
       for (uint32_t dstMip = 0; dstMip < mipLevels; dstMip++) {
+        // Scale the dirty box for the respective mip level
         uint32_t srcMip = dstMip + srcMipOffset;
         uint32_t srcSubresource = srcTexInfo->CalcSubresource(a, srcMip);
         uint32_t dstSubresource = dstTexInfo->CalcSubresource(a, dstMip);
         VkExtent3D extent = util::computeMipLevelExtent(mip0Extent, srcMip);
         VkOffset3D offset = util::computeMipLevelOffset(mip0Offset, srcMip);
 
+        // The source surface must be in D3DPOOL_SYSTEMMEM so we just treat it as just another texture upload except with a different source.
         UpdateTextureFromBuffer(dstTexInfo, srcTexInfo, dstSubresource, srcSubresource, offset, extent, offset);
+
+        // The contents of the mapping no longer match the image.
         dstTexInfo->SetNeedsReadback(dstSubresource, true);
       }
     }
@@ -1529,7 +1554,7 @@ namespace dxvk {
       RECT scissorRect;
       scissorRect.left    = 0;
       scissorRect.top     = 0;
-      
+
       if (likely(rt != nullptr)) {
         auto rtSize = rt->GetSurfaceExtent();
         viewport.Width  = rtSize.width;
@@ -1560,15 +1585,18 @@ namespace dxvk {
       return D3D_OK;
 
     // Do a strong flush if the first render target is changed.
-    ConsiderFlush(RenderTargetIndex == 0 
+    ConsiderFlush(RenderTargetIndex == 0
       ? GpuFlushType::ImplicitStrongHint
       : GpuFlushType::ImplicitWeakHint);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     m_state.renderTargets[RenderTargetIndex] = rt;
 
+    // Update feedback loop tracking bitmasks
     UpdateActiveRTs(RenderTargetIndex);
 
+    // Update render target alpha swizzle bitmask if we need to fix up the alpha channel
+    // for XRGB formats
     uint32_t originalAlphaSwizzleRTs = m_alphaSwizzleRTs;
 
     m_alphaSwizzleRTs &= ~(1 << RenderTargetIndex);
@@ -1643,6 +1671,7 @@ namespace dxvk {
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
+    // Update depth bias if necessary
     if (ds != nullptr && m_depthBiasRepresentation.depthBiasRepresentation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT) {
       const int32_t vendorId = m_dxvkDevice->adapter()->deviceProperties().vendorID;
       const bool exact = m_depthBiasRepresentation.depthBiasExact;
@@ -1789,7 +1818,7 @@ namespace dxvk {
       const Rc<DxvkImageView>& imageView,
       VkImageAspectFlags       aspectMask,
       VkClearValue             clearValue) {
-      
+
       VkExtent3D imageExtent = imageView->mipLevelExtent(0);
       extent.width = std::min(imageExtent.width, extent.width);
       extent.height = std::min(imageExtent.height, extent.height);
@@ -3519,6 +3548,9 @@ namespace dxvk {
 
     m_state.indices = buffer;
 
+    // Don't unbind the buffer if the game sets a nullptr here.
+    // Operation Flashpoint Red River breaks if we do that.
+    // EndScene will clean it up if necessary.
     if (buffer != nullptr)
       BindIndices();
 
@@ -4212,17 +4244,24 @@ namespace dxvk {
     // We need to check our ops and disable respective stages.
     // Given we have transition from a null resource to
     // a valid resource or vice versa.
-    if (StateSampler < caps::MaxTexturesPS) {
-      const uint32_t offset = StateSampler * 2;
+    const bool isPSSampler = StateSampler < caps::MaxTexturesPS;
+    if (isPSSampler) {
       const uint32_t textureType = newTexture != nullptr
         ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
         : 0;
+      // There are 4 texture types, so we need 2 bits.
+      const uint32_t offset = StateSampler * 2;
       const uint32_t textureBitMask = 0b11u       << offset;
       const uint32_t textureBits    = textureType << offset;
 
+      // In fixed function shaders and SM < 3 we put the type mask
+      // into a spec constant to select the used sampler type.
       m_textureTypes &= ~textureBitMask;
       m_textureTypes |=  textureBits;
 
+      // If we either bind a new texture or unbind the old one,
+      // we need to update the fixed function shader
+      // because we generate a different shader based on whether each texture is bound.
       if (newTexture == nullptr || oldTexture == nullptr)
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
     }
@@ -4512,7 +4551,7 @@ namespace dxvk {
   }
 
 
-  bool D3D9DeviceEx::ShouldRecord() {
+  inline bool D3D9DeviceEx::ShouldRecord() {
     return m_recorder != nullptr && !m_recorder->IsApplying();
   }
 
@@ -4651,7 +4690,6 @@ namespace dxvk {
     }
 
     auto& formatMapping = pResource->GetFormatMapping();
-
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
       ? lookupFormatInfo(formatMapping.FormatColor) : UnsupportedFormatInfo(pResource->Desc()->Format);
 
@@ -4663,6 +4701,7 @@ namespace dxvk {
 
     bool fullResource = pBox == nullptr;
     if (unlikely(!fullResource)) {
+      // Check whether the box passed as argument matches or exceeds the entire texture.
       VkOffset3D lockOffset;
       VkExtent3D lockExtent;
 
@@ -4677,7 +4716,7 @@ namespace dxvk {
     // If we are not locking the entire image
     // a partial discard is meant to occur.
     // We can't really implement that, so just ignore discard
-    // if we are not locking the full resource
+    // if we are not locking the full resource.
 
     // DISCARD is also ignored for MANAGED and SYSTEMEM.
     // DISCARD is not ignored for non-DYNAMIC unlike what the docs say.
@@ -4700,7 +4739,6 @@ namespace dxvk {
     needsReadback &= pResource->GetImage() != nullptr || !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
 
-
     if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED || needsReadback)) {
       // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
       pResource->CreateBuffer(!needsReadback);
@@ -4710,6 +4748,10 @@ namespace dxvk {
     void* mapPtr = pResource->GetData(Subresource);
 
     if (unlikely(needsReadback)) {
+      // The texture was written to on the GPU.
+      // This can be either the image (for D3DPOOL_DEFAULT)
+      // or the buffer directly (for D3DPOOL_SYSTEMMEM).
+
       DxvkBufferSlice mappedBufferSlice = pResource->GetBufferSlice(Subresource);
       const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer();
 
@@ -4736,6 +4778,9 @@ namespace dxvk {
         // lock MSAA render targets even though
         // that's entirely illegal and they explicitly
         // tell us that they do NOT want to lock them...
+        //
+        // resourceImage is null because the image reference was moved to mappedImage
+        // for images that need to be resolved.
         if (resourceImage != nullptr) {
           EmitCs([
             cMainImage    = resourceImage,
@@ -4763,6 +4808,8 @@ namespace dxvk {
           });
         }
 
+        // if packedFormat is VK_FORMAT_UNDEFINED
+        // DxvkContext::copyImageToBuffer will automatically take the format from the image
         VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
 
         EmitCs([
@@ -4780,6 +4827,7 @@ namespace dxvk {
         TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
       }
 
+      // Wait until the buffer is idle which may include the copy (and resolve) we just issued.
       if (!WaitForResource(*mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
         return D3DERR_WASSTILLDRAWING;
     }
@@ -4787,7 +4835,8 @@ namespace dxvk {
     const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
     // Set up map pointer.
     if (atiHack) {
-      // We need to lie here. The game is expected to use this info and do a workaround.
+      // The API didn't treat this as a block compressed format here.
+      // So we need to lie here. The game is expected to use this info and do a workaround.
       // It's stupid. I know.
       pLockedBox->RowPitch   = align(std::max(desc.Width >> MipLevel, 1u), 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * std::max(desc.Height >> MipLevel, 1u);
@@ -4806,6 +4855,7 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
+    // Make sure the amount of mapped texture memory stays below the threshold.
     UnmapTextures();
 
     const bool readOnly = Flags & D3DLOCK_READONLY;
@@ -4826,6 +4876,7 @@ namespace dxvk {
     }
 
     if (IsPoolManaged(desc.Pool) && !readOnly) {
+      // Managed textures are uploaded at draw time.
       pResource->SetNeedsUpload(Subresource, true);
 
       for (uint32_t i : bit::BitMask(m_activeTextures)) {
@@ -4908,6 +4959,7 @@ namespace dxvk {
 
     const D3DBOX& box = pResource->GetDirtyBox(subresource.arrayLayer);
 
+    // The dirty box is only tracked for mip 0. Scale it for the mip level we're gonna upload.
     VkExtent3D mip0Extent = { box.Right - box.Left, box.Bottom - box.Top, box.Back - box.Front };
     VkExtent3D extent = util::computeMipLevelExtent(mip0Extent, subresource.mipLevel);
     VkOffset3D mip0Offset = { int32_t(box.Left), int32_t(box.Top), int32_t(box.Front) };
@@ -4929,6 +4981,8 @@ namespace dxvk {
     VkOffset3D SrcOffset,
     VkExtent3D SrcExtent,
     VkOffset3D DestOffset) {
+    // Wait until the amount of used staging memory is under a certain threshold to avoid using
+    // too much memory and even more so to avoid using too much address space.
     WaitStagingBuffer();
 
     const Rc<DxvkImage> image = pDestTexture->GetImage();
@@ -4959,6 +5013,9 @@ namespace dxvk {
     }
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
+      // The texture does not use a format that needs to be converted in a compute shader.
+      // So we just need to make sure the passed size and offset are not out of range and properly aligned,
+      // copy the data to a staging buffer and then copy that on the GPU to the actual image.
       VkOffset3D alignedDestOffset = {
         int32_t(alignDown(DestOffset.x, formatInfo->blockSize.width)),
         int32_t(alignDown(DestOffset.y, formatInfo->blockSize.height)),
@@ -4985,6 +5042,8 @@ namespace dxvk {
           + srcOffsetBlockCount.y * pitch
           + srcOffsetBlockCount.x * formatInfo->elementSize;
 
+      // Get the mapping pointer from MapTexture to map the texture and keep track of that
+      // in case it is unmappable.
       const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
       VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
       D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
@@ -5013,8 +5072,10 @@ namespace dxvk {
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
     }
     else {
+      // The texture uses a format which gets converted by a compute shader.
       const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
 
+      // The compute shader does not support only converting a subrect of the texture
       if (unlikely(SrcOffset.x != 0 || SrcOffset.y != 0 || SrcOffset.z != 0
         || DestOffset.x != 0 || DestOffset.y != 0 || DestOffset.z != 0
         || SrcExtent != srcTexLevelExtent)) {
@@ -5039,7 +5100,7 @@ namespace dxvk {
       D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
       VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
 
-      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.FormatColor);      
+      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.FormatColor);
       VkImageSubresourceLayers convertedDstLayers = { convertedFormatInfo->aspectMask, dstSubresource.mipLevel, dstSubresource.arrayLayer, 1 };
 
       util::packImageData(
@@ -5141,14 +5202,17 @@ namespace dxvk {
     const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
     const bool needsReadback = pResource->NeedsReadback();
 
-    Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
-
     uint8_t* data = nullptr;
 
     if ((Flags & D3DLOCK_DISCARD) && (directMapping || needsReadback)) {
+      // If we're not directly mapped and don't need readback,
+      // the buffer is not currently getting used anyway
+      // so there's no reason to waste memory by discarding.
+
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
+      Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
       auto bufferSlice = pResource->DiscardMapSlice();
       data = reinterpret_cast<uint8_t*>(bufferSlice->mapPtr());
 
@@ -5162,17 +5226,21 @@ namespace dxvk {
       pResource->SetNeedsReadback(false);
     }
     else {
+      // The application either didn't specify DISCARD or the buffer is guaranteed to be idle anyway.
+
       // Use map pointer from previous map operation. This
       // way we don't have to synchronize with the CS thread
       // if the map mode is D3DLOCK_NOOVERWRITE.
       data = reinterpret_cast<uint8_t*>(pResource->GetMappedSlice()->mapPtr());
 
-      const bool needsReadback = pResource->NeedsReadback();
       const bool readOnly = Flags & D3DLOCK_READONLY;
       // NOOVERWRITE promises that they will not write in a currently used area.
       const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
       const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
+
+      // If we're not directly mapped, we can rely on needsReadback to tell us if a sync is required.
       const bool skipWait = (!needsReadback && (readOnly || !directMapping)) || noOverwrite;
+
       if (!skipWait) {
         const Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
         if (!WaitForResource(*mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
@@ -5184,7 +5252,6 @@ namespace dxvk {
 
     // The offset/size is not clamped to or affected by the desc size.
     data += OffsetToLock;
-
     *ppbData = reinterpret_cast<void*>(data);
 
     DWORD oldFlags = pResource->GetMapFlags();
@@ -5197,13 +5264,18 @@ namespace dxvk {
     pResource->SetMapFlags(Flags | oldFlags);
     pResource->IncrementLockCount();
 
+    // We just mapped a buffer which may have come with an address space cost.
+    // Unmap textures if the amount of mapped texture memory is exceeding the threshold.
     UnmapTextures();
+
     return D3D_OK;
   }
 
 
   HRESULT D3D9DeviceEx::FlushBuffer(
         D3D9CommonBuffer*       pResource) {
+    // Wait until the amount of used staging memory is under a certain threshold to avoid using
+    // too much memory and even more so to avoid using too much address space.
     WaitStagingBuffer();
 
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
@@ -5245,14 +5317,19 @@ namespace dxvk {
     if (pResource->DecrementLockCount() != 0)
       return D3D_OK;
 
+    // Nothing else to do for directly mapped buffers. Those were already written.
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
+    // There is no part of the buffer that hasn't been uploaded yet.
+    // This shouldn't happen.
     if (pResource->DirtyRange().IsDegenerate())
       return D3D_OK;
 
     pResource->SetMapFlags(0);
 
+    // Only D3DPOOL_DEFAULT buffers get uploaded in UnlockBuffer.
+    // D3DPOOL_SYSTEMMEM and D3DPOOL_MANAGED get uploaded at draw time.
     if (pResource->Desc()->Pool != D3DPOOL_DEFAULT)
       return D3D_OK;
 
@@ -5613,6 +5690,7 @@ namespace dxvk {
         ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
         : sizeof(D3D9FixedFunctionVertexBlendDataHW));
 
+    // Allocate constant buffer for values that would otherwise get passed as spec constants for fast-linked pipelines to use.
     if (m_usingGraphicsPipelines) {
       m_specBuffer = D3D9ConstantBuffer(this,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
@@ -5640,11 +5718,15 @@ namespace dxvk {
 
     uint32_t floatCount = m_vsFloatConstsCount;
     if (constSet.meta.needsConstantCopies) {
+      // If the shader requires us to preserve shader defined constants,
+      // we copy those over. We need to adjust the amount of used floats accordingly.
       auto shader = GetCommonShader(m_state.vertexShader);
       floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
     }
+    // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
     floatCount = std::min(floatCount, constSet.meta.maxConstIndexF);
 
+    // Calculate data sizes for each constant type.
     const uint32_t floatDataSize = floatCount * sizeof(Vector4);
     const uint32_t intDataSize   = std::min(constSet.meta.maxConstIndexI, m_vsIntConstsCount) * sizeof(Vector4i);
     const uint32_t boolDataSize  = divCeil(std::min(constSet.meta.maxConstIndexB, m_vsBoolConstsCount), 32u) * uint32_t(sizeof(uint32_t));
@@ -5655,6 +5737,8 @@ namespace dxvk {
       auto mapPtr = CopySoftwareConstants(constSet.buffer, Src.fConsts, floatDataSize);
 
       if (constSet.meta.needsConstantCopies) {
+        // Copy shader defined constants over so they can be accessed
+        // with relative addressing.
         Vector4* data = reinterpret_cast<Vector4*>(mapPtr);
 
         auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
@@ -5702,14 +5786,19 @@ namespace dxvk {
 
     uint32_t floatCount = ShaderStage == DxsoProgramType::VertexShader ? m_vsFloatConstsCount : m_psFloatConstsCount;
     if (constSet.meta.needsConstantCopies) {
+      // If the shader requires us to preserve shader defined constants,
+      // we copy those over. We need to adjust the amount of used floats accordingly.
       auto shader = GetCommonShader(Shader);
       floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
     }
+    // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
     floatCount = std::min(constSet.meta.maxConstIndexF, floatCount);
 
+    // There are very few int constants, so we put those into the same buffer at the start.
+    // We always allocate memory for all possible int constants to make sure alignment works out.
     const uint32_t intRange = caps::MaxOtherConstants * sizeof(Vector4i);
-    const uint32_t intDataSize = constSet.meta.maxConstIndexI * sizeof(Vector4i);
     uint32_t floatDataSize = floatCount * sizeof(Vector4);
+    // Determine amount of floats and buffer size based on highest used float constant and alignment
     const uint32_t alignment = constSet.buffer.GetAlignment();
     const uint32_t bufferSize = align(std::max(floatDataSize + intRange, alignment), alignment);
     floatDataSize = bufferSize - intRange;
@@ -5717,12 +5806,15 @@ namespace dxvk {
     void* mapPtr = constSet.buffer.Alloc(bufferSize);
     auto* dst = reinterpret_cast<HardwareLayoutType*>(mapPtr);
 
+    const uint32_t intDataSize = constSet.meta.maxConstIndexI * sizeof(Vector4i);
     if (constSet.meta.maxConstIndexI != 0)
       std::memcpy(dst->iConsts, Src.iConsts, intDataSize);
     if (constSet.meta.maxConstIndexF != 0)
       std::memcpy(dst->fConsts, Src.fConsts, floatDataSize);
 
     if (constSet.meta.needsConstantCopies) {
+      // Copy shader defined constants over so they can be accessed
+      // with relative addressing.
       Vector4* data = reinterpret_cast<Vector4*>(dst->fConsts);
 
       auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
@@ -6549,6 +6641,9 @@ namespace dxvk {
         if (i != 0)
           mode.writeMask = cWriteMasks[i - 1];
 
+        // Adjust the blend factor based on the render target alpha swizzle bit mask.
+        // Specific formats such as the XRGB ones require a ONE swizzle for alpha
+        // which cannot be directly applied with the image view of the attachment.
         const bool alphaSwizzle = cAlphaMasks & (1 << i);
 
         auto NormalizeFactor = [alphaSwizzle](VkBlendFactor Factor) {
@@ -6870,7 +6965,7 @@ namespace dxvk {
 
     if (inactiveMask)
       UnbindTextures(inactiveMask);
-  
+
     m_dirtyTextures &= ~usedMask;
   }
 
@@ -8405,6 +8500,7 @@ namespace dxvk {
         ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, cSpecInfo.data[i]);
     });
 
+    // Write spec constants into buffer for fast-linked pipelines to use it.
     if (m_usingGraphicsPipelines) {
       // TODO: Make uploading specialization information less naive.
       auto mapPtr = m_specBuffer.AllocSlice();
