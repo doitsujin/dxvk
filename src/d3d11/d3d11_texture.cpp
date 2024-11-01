@@ -188,21 +188,23 @@ namespace dxvk {
     }
     
     // If necessary, create the mapped linear buffer
+    uint32_t subresourceCount = m_desc.ArraySize * m_desc.MipLevels;
+
     if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
-      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-        for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
-          if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-            m_buffers.push_back(CreateMappedBuffer(j));
+      m_mapInfo.resize(subresourceCount);
 
-          VkImageSubresource subresource = { };
-          subresource.aspectMask = formatProperties->aspectMask;
-          subresource.arrayLayer = i;
-          subresource.mipLevel = j;
-
-          auto& mapInfo = m_mapInfo.emplace_back();
-          mapInfo.layout = DetermineSubresourceLayout(&imageInfo, subresource);
-        }
+      for (uint32_t i = 0; i < subresourceCount; i++) {
+        m_mapInfo[i].layout = DetermineSubresourceLayout(&imageInfo,
+          GetSubresourceFromIndex(formatProperties->aspectMask, i));
       }
+    }
+
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+     || m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      m_buffers.resize(subresourceCount);
+
+      for (uint32_t i = 0; i < subresourceCount; i++)
+        CreateMappedBuffer(i);
     }
 
     // Skip image creation if possible
@@ -735,16 +737,12 @@ namespace dxvk {
   }
 
 
-  D3D11CommonTexture::MappedBuffer D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
+  void D3D11CommonTexture::CreateMappedBuffer(UINT Subresource) {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
 
-    VkImageSubresource subresource = { };
-    subresource.aspectMask = formatInfo->aspectMask;
-    subresource.mipLevel = MipLevel;
-
     DxvkBufferCreateInfo info;
-    info.size   = DetermineSubresourceLayout(nullptr, subresource).Size;
+    info.size   = GetSubresourceLayout(formatInfo->aspectMask, Subresource).Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
@@ -775,11 +773,10 @@ namespace dxvk {
 
     if (m_desc.Usage == D3D11_USAGE_STAGING || useCached)
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    
-    MappedBuffer result;
-    result.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
-    result.slice = result.buffer->storage();
-    return result;
+
+    auto& entry = m_buffers[Subresource];
+    entry.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
+    entry.slice = entry.buffer->storage();
   }
   
   
