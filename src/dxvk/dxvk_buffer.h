@@ -15,26 +15,26 @@ namespace dxvk {
 
   /**
    * \brief Buffer create info
-   * 
+   *
    * The properties of a buffer that are
    * passed to \ref DxvkDevice::createBuffer
    */
   struct DxvkBufferCreateInfo {
-    /// Buffer create flags
-    VkBufferCreateFlags flags = 0;
-
     /// Size of the buffer, in bytes
-    VkDeviceSize size;
-    
+    VkDeviceSize size = 0u;
+
     /// Buffer usage flags
-    VkBufferUsageFlags usage;
-    
+    VkBufferUsageFlags usage = 0u;
+
     /// Pipeline stages that can access
     /// the contents of the buffer.
-    VkPipelineStageFlags stages;
-    
+    VkPipelineStageFlags stages = 0u;
+
     /// Allowed access patterns
-    VkAccessFlags access;
+    VkAccessFlags access = 0u;
+
+    /// Buffer create flags
+    VkBufferCreateFlags flags = 0;
   };
 
 
