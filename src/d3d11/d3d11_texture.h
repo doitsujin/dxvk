@@ -310,17 +310,7 @@ namespace dxvk {
      * \returns \c true if tracking is supported for this resource
      */
     bool HasSequenceNumber() const {
-      if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
-        return false;
-
-      // For buffer-mapped images we only need to track copies to
-      // and from that buffer, so we can safely ignore bind flags
-      if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-        return m_desc.Usage != D3D11_USAGE_DEFAULT;
-
-      // Otherwise we can only do accurate tracking if the
-      // image cannot be used in the rendering pipeline.
-      return m_desc.BindFlags == 0;
+      return m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
     }
 
     /**
