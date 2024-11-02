@@ -216,23 +216,24 @@ namespace dxvk {
     } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // The resource must be mapped with D3D11_MAP_WRITE_DISCARD
       // before it can be mapped with D3D11_MAP_WRITE_NO_OVERWRITE.
-      auto entry = FindMapEntry(pResource, Subresource);
-      
-      if (unlikely(!entry)) {
+      D3D11_RESOURCE_DIMENSION resourceDim;
+      pResource->GetType(&resourceDim);
+
+      if (likely(resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)) {
+        D3D11_MAPPED_SUBRESOURCE sr = FindMapEntry(static_cast<D3D11Buffer*>(pResource)->GetCookie());
+        pMappedResource->pData = sr.pData;
+
+        if (unlikely(!sr.pData))
+          return D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD;
+
+        pMappedResource->RowPitch = sr.RowPitch;
+        pMappedResource->DepthPitch = sr.DepthPitch;
+        return S_OK;
+      } else {
+        // Images cannot be mapped with NO_OVERWRITE
         pMappedResource->pData = nullptr;
-
-        // NO_OVERWRITE is only supported on buffers
-        D3D11_RESOURCE_DIMENSION resourceDim;
-        pResource->GetType(&resourceDim);
-
-        return resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
-          ? D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD
-          : E_INVALIDARG;
+        return E_INVALIDARG;
       }
-      
-      // Return same memory region as earlier
-      *pMappedResource = entry->MapInfo;
-      return S_OK;
     } else {
       // Not allowed on deferred contexts
       pMappedResource->pData = nullptr;
@@ -281,7 +282,7 @@ namespace dxvk {
       ctx->invalidateBuffer(cDstBuffer, Rc<DxvkResourceAllocation>(cDstSlice));
     });
 
-    AddMapEntry(pResource, 0, D3D11_RESOURCE_DIMENSION_BUFFER, *pMappedResource);
+    AddMapEntry(pBuffer->GetCookie(), *pMappedResource);
     return S_OK;
   }
   
@@ -349,19 +350,15 @@ namespace dxvk {
           UINT                          CopyFlags) {
     void* mapPtr = nullptr;
 
-    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE)) {
-      auto entry = FindMapEntry(pDstBuffer, 0);
-
-      if (entry)
-        mapPtr = entry->MapInfo.pData;
-    }
+    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE))
+      mapPtr = FindMapEntry(pDstBuffer->GetCookie()).pData;
 
     if (likely(!mapPtr)) {
       // The caller validates the map mode, so we can
       // safely ignore the MapBuffer return value here
       D3D11_MAPPED_SUBRESOURCE mapInfo;
       MapBuffer(pDstBuffer, &mapInfo);
-      AddMapEntry(pDstBuffer, 0, D3D11_RESOURCE_DIMENSION_BUFFER, mapInfo);
+      AddMapEntry(pDstBuffer->GetCookie(), mapInfo);
       mapPtr = mapInfo.pData;
     }
 
@@ -416,32 +413,27 @@ namespace dxvk {
   }
 
 
-  D3D11DeferredContextMapEntry* D3D11DeferredContext::FindMapEntry(
-          ID3D11Resource*               pResource,
-          UINT                          Subresource) {
+  D3D11_MAPPED_SUBRESOURCE D3D11DeferredContext::FindMapEntry(
+          uint64_t                      Cookie) {
     // Recently mapped resources as well as entries with
     // up-to-date map infos will be located at the end
     // of the resource array, so scan in reverse order.
     size_t size = m_mappedResources.size();
 
     for (size_t i = 1; i <= size; i++) {
-      auto entry = &m_mappedResources[size - i];
+      const auto& entry = m_mappedResources[size - i];
 
-      if (entry->Resource.Get()            == pResource
-       && entry->Resource.GetSubresource() == Subresource)
-        return entry;
+      if (entry.ResourceCookie == Cookie)
+        return entry.MapInfo;
     }
 
-    return nullptr;
+    return D3D11_MAPPED_SUBRESOURCE();
   }
 
   void D3D11DeferredContext::AddMapEntry(
-          ID3D11Resource*               pResource,
-          UINT                          Subresource,
-          D3D11_RESOURCE_DIMENSION      ResourceType,
+          uint64_t                      Cookie,
     const D3D11_MAPPED_SUBRESOURCE&     MapInfo) {
-    m_mappedResources.emplace_back(pResource,
-      Subresource, ResourceType, MapInfo);
+    m_mappedResources.push_back({ Cookie, MapInfo });
   }
 
 
