@@ -292,17 +292,16 @@ namespace dxvk {
           D3D11_MAPPED_SUBRESOURCE*     pMappedResource) {
     D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     
-    if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
-      Logger::err("D3D11: Cannot map a device-local image");
-      pMappedResource->pData = nullptr;
-      return E_INVALIDARG;
-    }
-
     if (unlikely(Subresource >= pTexture->CountSubresources())) {
       pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
-    
+
+    if (unlikely(pTexture->Desc()->Usage != D3D11_USAGE_DYNAMIC)) {
+      pMappedResource->pData = nullptr;
+      return E_INVALIDARG;
+    }
+
     VkFormat packedFormat = pTexture->GetPackedFormat();
     auto formatInfo = lookupFormatInfo(packedFormat);
     auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);

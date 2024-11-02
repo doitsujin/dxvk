@@ -422,14 +422,41 @@ namespace dxvk {
     if (pMappedResource)
       pMappedResource->pData = nullptr;
 
-    if (unlikely(mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
-      Logger::err("D3D11: Cannot map a device-local image");
-      return E_INVALIDARG;
-    }
-
     if (unlikely(Subresource >= pResource->CountSubresources()))
       return E_INVALIDARG;
-    
+
+    switch (MapType) {
+      case D3D11_MAP_READ: {
+        if (!(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_READ))
+          return E_INVALIDARG;
+      } break;
+
+      case D3D11_MAP_READ_WRITE: {
+        if (!(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+         || !(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE))
+          return E_INVALIDARG;
+      } break;
+
+      case D3D11_MAP_WRITE: {
+        if (!(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+         || (pResource->Desc()->Usage == D3D11_USAGE_DYNAMIC))
+          return E_INVALIDARG;
+      } break;
+
+      case D3D11_MAP_WRITE_DISCARD: {
+        if (!(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+         || pResource->Desc()->Usage != D3D11_USAGE_DYNAMIC)
+          return E_INVALIDARG;
+      } break;
+
+      case D3D11_MAP_WRITE_NO_OVERWRITE: {
+        // NO_OVERWRITE is explcitly banned for dynamic images
+        if (!(pResource->Desc()->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+         || (pResource->Desc()->Usage != D3D11_USAGE_DEFAULT))
+          return E_INVALIDARG;
+      } break;
+    }
+
     if (likely(pMappedResource != nullptr)) {
       // Resources with an unknown memory layout cannot return a pointer
       if (pResource->Desc()->Usage         == D3D11_USAGE_DEFAULT
