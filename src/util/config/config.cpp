@@ -1150,7 +1150,7 @@ namespace dxvk {
      * Missing geometry and textures without      *
      * legacy DISCARD behavior                    */
     { R"(\\Rayman3\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
+      { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
   }};
