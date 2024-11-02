@@ -120,22 +120,27 @@ namespace dxvk {
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       seq = ++m_chunksDispatched;
       m_chunksQueued.push_back(std::move(chunk));
+      m_condOnAdd.notify_one();
     }
     
-    m_condOnAdd.notify_one();
     return seq;
   }
 
 
   void DxvkCsThread::injectChunk(DxvkCsChunkRef&& chunk, bool synchronize) {
-    std::unique_lock<dxvk::mutex> lock(m_mutex);
+    uint64_t timeline;
 
-    uint64_t timeline = ++m_chunksInjectedCount;
-    m_chunksInjected.push_back(std::move(chunk));
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
 
-    m_condOnAdd.notify_one();
+      timeline = ++m_chunksInjectedCount;
+      m_chunksInjected.push_back(std::move(chunk));
+
+      m_condOnAdd.notify_one();
+    }
 
     if (synchronize) {
+      std::unique_lock<dxvk::mutex> lock(m_counterMutex);
+
       m_condOnSync.wait(lock, [this, timeline] {
         return m_chunksInjectedComplete.load() >= timeline;
       });
