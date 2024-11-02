@@ -26,6 +26,7 @@ namespace dxvk {
   enum D3D11_COMMON_TEXTURE_MAP_MODE {
     D3D11_COMMON_TEXTURE_MAP_MODE_NONE,     ///< Not mapped
     D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER,   ///< Mapped through buffer
+    D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC,  ///< Mapped through temporary buffer
     D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT,   ///< Directly mapped to host mem
     D3D11_COMMON_TEXTURE_MAP_MODE_STAGING,  ///< Buffer only, no image
   };
@@ -83,7 +84,9 @@ namespace dxvk {
   class D3D11CommonTexture {
     
   public:
-    
+
+    static constexpr D3D11_MAP UnmappedSubresource = D3D11_MAP(-1u);
+
     D3D11CommonTexture(
             ID3D11Resource*             pInterface,
             D3D11Device*                pDevice,
@@ -205,15 +208,40 @@ namespace dxvk {
 
     /**
      * \brief Sets map type for a given subresource
-     * 
+     *
+     * Also ensures taht a staging buffer is created
+     * in case of dynamic mapping.
      * \param [in] Subresource The subresource
      * \param [in] MapType The map type
      */
-    void SetMapType(UINT Subresource, D3D11_MAP MapType) {
-      if (Subresource < m_mapInfo.size())
+    void NotifyMap(UINT Subresource, D3D11_MAP MapType) {
+      if (likely(Subresource < m_mapInfo.size())) {
         m_mapInfo[Subresource].mapType = MapType;
+
+        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC)
+          CreateMappedBuffer(Subresource);
+      }
     }
-    
+
+    /**
+     * \brief Resets map info for a given subresource
+     *
+     * For dynamic mapping, this will also free the
+     * staging buffer.
+     * \param [in] Subresource The subresource
+     */
+    void NotifyUnmap(UINT Subresource) {
+      if (likely(Subresource < m_mapInfo.size())) {
+        m_mapInfo[Subresource].mapType = UnmappedSubresource;
+
+        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC)
+          FreeMappedBuffer(Subresource);
+
+        if (Subresource < m_buffers.size())
+          m_buffers[Subresource].dirtyRegions.clear();
+      }
+    }
+
     /**
      * \brief The DXVK image
      * \returns The DXVK image
@@ -359,6 +387,7 @@ namespace dxvk {
           return reinterpret_cast<char*>(m_mapPtr) + Offset;
 
         case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
+        case D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC:
         case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING:
           return reinterpret_cast<char*>(m_buffers[Subresource].slice->mapPtr()) + Offset;
 
@@ -384,17 +413,6 @@ namespace dxvk {
 
       if (Subresource < m_buffers.size())
         m_buffers[Subresource].dirtyRegions.push_back(region);
-    }
-
-    /**
-     * \brief Clears dirty regions
-     *
-     * Removes all dirty regions from the given subresource.
-     * \param [in] Subresource Subresource index
-     */
-    void ClearDirtyRegions(UINT Subresource) {
-      if (Subresource < m_buffers.size())
-        m_buffers[Subresource].dirtyRegions.clear();
     }
 
     /**
@@ -553,7 +571,7 @@ namespace dxvk {
 
     struct MappedInfo {
       D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
-      D3D11_MAP                   mapType = D3D11_MAP(~0u);
+      D3D11_MAP                   mapType = UnmappedSubresource;
       uint64_t                    seq     = 0u;
     };
 
@@ -573,6 +591,9 @@ namespace dxvk {
     void*                         m_mapPtr = nullptr;
 
     void CreateMappedBuffer(
+            UINT                  Subresource);
+    
+    void FreeMappedBuffer(
             UINT                  Subresource);
     
     BOOL CheckImageSupport(

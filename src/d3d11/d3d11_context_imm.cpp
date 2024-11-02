@@ -465,6 +465,10 @@ namespace dxvk {
         if (!WaitForResource(*mappedImage, sequenceNumber, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
+    } else if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC) {
+      // Nothing else to really do here, NotifyMap will ensure that we
+      // actually get a staging buffer that isn't currently in use.
+      ThrottleDiscard(layout.Size);
     } else {
       Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
 
@@ -565,8 +569,8 @@ namespace dxvk {
       }
     }
 
-    // Mark the given subresource as mapped
-    pResource->SetMapType(Subresource, MapType);
+    // Mark the subresource as successfully mapped
+    pResource->NotifyMap(Subresource, MapType);
 
     if (pMappedResource) {
       pMappedResource->pData      = pResource->GetMapPtr(Subresource, layout.Offset);
@@ -582,28 +586,35 @@ namespace dxvk {
   void D3D11ImmediateContext::UnmapImage(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
-    D3D11_MAP mapType = pResource->GetMapType(Subresource);
-    pResource->SetMapType(Subresource, D3D11_MAP(~0u));
+    auto mapType = pResource->GetMapType(Subresource);
+    auto mapMode = pResource->GetMapMode();
 
-    if (mapType == D3D11_MAP(~0u))
+    if (mapType == D3D11CommonTexture::UnmappedSubresource)
       return;
 
     // Decrement mapped image counter only after making sure
     // the given subresource is actually mapped right now
     m_mappedImageCount -= 1;
 
-    if ((mapType != D3D11_MAP_READ) && (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
+    // If the texture has an image as well as a staging buffer,
+    // upload the written buffer data to the image
+    bool needsUpload = mapType != D3D11_MAP_READ
+      && (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC);
+
+    if (needsUpload) {
       if (pResource->NeedsDirtyRegionTracking()) {
         for (uint32_t i = 0; i < pResource->GetDirtyRegionCount(Subresource); i++) {
           D3D11_COMMON_TEXTURE_REGION region = pResource->GetDirtyRegion(Subresource, i);
           UpdateDirtyImageRegion(pResource, Subresource, &region);
         }
-
-        pResource->ClearDirtyRegions(Subresource);
       } else {
         UpdateDirtyImageRegion(pResource, Subresource, nullptr);
       }
     }
+
+    // Unmap the subresource. This will implicitly destroy the
+    // staging buffer for dynamically mapped images.
+    pResource->NotifyUnmap(Subresource);
   }
   
   

@@ -200,11 +200,14 @@ namespace dxvk {
     }
 
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
-     || m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+     || m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING
+     || m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC) {
       m_buffers.resize(subresourceCount);
 
-      for (uint32_t i = 0; i < subresourceCount; i++)
-        CreateMappedBuffer(i);
+      if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC) {
+        for (uint32_t i = 0; i < subresourceCount; i++)
+          CreateMappedBuffer(i);
+      }
     }
 
     // Skip image creation if possible
@@ -777,6 +780,14 @@ namespace dxvk {
     auto& entry = m_buffers[Subresource];
     entry.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
     entry.slice = entry.buffer->storage();
+  }
+
+
+  void D3D11CommonTexture::FreeMappedBuffer(
+          UINT                  Subresource) {
+    auto& entry = m_buffers[Subresource];
+    entry.buffer = nullptr;
+    entry.slice = nullptr;
   }
   
   
