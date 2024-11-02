@@ -3950,8 +3950,8 @@ namespace dxvk {
 
     // It is possible for any of the given images to be a staging image with
     // no actual image, so we need to account for all possibilities here.
-    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
-    bool srcIsImage = pSrcTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    bool dstIsImage = pDstTexture->HasImage();
+    bool srcIsImage = pSrcTexture->HasImage();
 
     if (dstIsImage && srcIsImage) {
       EmitCs([
@@ -5196,7 +5196,7 @@ namespace dxvk {
           VkOffset3D                        DstOffset,
           VkExtent3D                        DstExtent,
           DxvkBufferSlice                   StagingBuffer) {
-    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    bool dstIsImage = pDstTexture->HasImage();
 
     uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
       pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);

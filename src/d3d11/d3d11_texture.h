@@ -173,6 +173,25 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether this texture has an image
+     *
+     * Staging textures will not use an image, only mapped buffers.
+     * \returns \c true for non-staging textures.
+     */
+    bool HasImage() const {
+      return m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    }
+
+    /**
+     * \brief Checks whether this texture has persistent buffers
+     * \returns \c true for buffer-mapped textures or staging textures.
+     */
+    bool HasPersistentBuffers() const {
+      return m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+          || m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    }
+
+    /**
      * \brief Map type of a given subresource
      * 
      * \param [in] Subresource Subresource index

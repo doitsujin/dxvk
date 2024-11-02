@@ -132,8 +132,6 @@ namespace dxvk {
     
     // Image migt be null if this is a staging resource
     Rc<DxvkImage> image = pTexture->GetImage();
-
-    auto mapMode = pTexture->GetMapMode();
     auto desc = pTexture->Desc();
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(desc->Format, pTexture->GetFormatMode()).Format;
@@ -143,7 +141,7 @@ namespace dxvk {
       // Compute data size for all subresources and allocate staging buffer memory
       DxvkBufferSlice stagingSlice;
 
-      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      if (pTexture->HasImage()) {
         VkDeviceSize dataSize = 0u;
 
         for (uint32_t mip = 0; mip < image->info().mipLevels; mip++) {
@@ -163,7 +161,7 @@ namespace dxvk {
           uint32_t index = D3D11CalcSubresource(mip, layer, desc->MipLevels);
           VkExtent3D mipLevelExtent = pTexture->MipLevelExtent(mip);
 
-          if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+          if (pTexture->HasImage()) {
             VkDeviceSize mipSizePerLayer = util::computeImageDataSize(
               packedFormat, image->mipLevelExtent(mip), formatInfo->aspectMask);
 
@@ -176,7 +174,7 @@ namespace dxvk {
             dataOffset += align(mipSizePerLayer, CACHE_LINE_SIZE);
           }
 
-          if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+          if (pTexture->HasPersistentBuffers()) {
             util::packImageData(pTexture->GetMapPtr(index, 0),
               pInitialData[index].pSysMem, pInitialData[index].SysMemPitch, pInitialData[index].SysMemSlicePitch,
               0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
@@ -185,7 +183,7 @@ namespace dxvk {
       }
 
       // Upload all subresources of the image in one go
-      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      if (pTexture->HasImage()) {
         EmitCs([
           cImage        = std::move(image),
           cStagingSlice = std::move(stagingSlice),
@@ -198,7 +196,7 @@ namespace dxvk {
         });
       }
     } else {
-      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      if (pTexture->HasImage()) {
         m_transferCommands += 1;
         
         // While the Microsoft docs state that resource contents are
@@ -213,7 +211,7 @@ namespace dxvk {
         });
       }
 
-      if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+      if (pTexture->HasPersistentBuffers()) {
         for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
           auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, i);
           std::memset(pTexture->GetMapPtr(i, layout.Offset), 0, layout.Size);
@@ -355,10 +353,7 @@ namespace dxvk {
     // Ensure that initialization commands are submitted and waited on before
     // returning control to the application in order to avoid race conditions
     // in case the texture is used immediately on a secondary device.
-    auto mapMode = pResource->GetMapMode();
-
-    if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
-     || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+    if (pResource->HasImage()) {
       ExecuteFlush();
 
       m_device->waitForResource(*pResource->GetImage(), DxvkAccess::Write);
