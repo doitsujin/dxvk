@@ -1783,7 +1783,8 @@ namespace dxvk {
     }
     
     if (attachmentIndex < 0) {
-      bool hasViewFormatMismatch = imageView->info().format != imageView->image()->info().format;
+      bool useLateClear = m_device->perfHints().renderPassClearFormatBug
+        && imageView->info().format != imageView->image()->info().format;
 
       flushPendingAccesses(*imageView, DxvkAccess::Write);
 
@@ -1818,9 +1819,7 @@ namespace dxvk {
 
         attachmentInfo.loadOp = colorOp.loadOp;
 
-        // We can't use LOAD_OP_CLEAR if the view format does not match the
-        // underlying image format, so just discard here and use clear later.
-        if (hasViewFormatMismatch && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        if (useLateClear && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
           attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
         renderingInfo.colorAttachmentCount = 1;
@@ -1853,9 +1852,9 @@ namespace dxvk {
 
       m_cmd->cmdBeginRendering(&renderingInfo);
 
-      if (hasViewFormatMismatch) {
+      if (useLateClear && clearAspects) {
         VkClearAttachment clearInfo = { };
-        clearInfo.aspectMask = imageView->info().aspects;
+        clearInfo.aspectMask = clearAspects;
         clearInfo.clearValue = clearValue;
 
         VkClearRect clearRect = { };
@@ -4661,9 +4660,8 @@ namespace dxvk {
         if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
           colorInfos[i].clearValue.color = ops.colorOps[i].clearValue;
 
-          // We can't use LOAD_OP_CLEAR if the view format does not match the
-          // underlying image format, so just discard here and use clear later.
-          if (colorTarget.view->info().format != colorTarget.view->image()->info().format) {
+          if (m_device->perfHints().renderPassClearFormatBug
+           && colorTarget.view->info().format != colorTarget.view->image()->info().format) {
             colorInfos[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
             auto& clear = lateClears[lateClearCount++];
