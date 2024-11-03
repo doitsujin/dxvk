@@ -75,6 +75,8 @@ namespace dxvk {
 
   public:
 
+    static constexpr UINT AllLayers = UINT32_MAX;
+
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
             IUnknown*                 pInterface,
@@ -554,8 +556,6 @@ namespace dxvk {
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,
             UINT             Layer);
-
-    static constexpr UINT AllLayers = UINT32_MAX;
 
   };
 

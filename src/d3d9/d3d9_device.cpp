@@ -1445,6 +1445,9 @@ namespace dxvk {
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
+    if (dstTextureInfo->IsNull())
+      return D3D_OK;
+
     if (unlikely(dstTextureInfo->Desc()->Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
@@ -1453,37 +1456,38 @@ namespace dxvk {
     VkOffset3D offset = VkOffset3D{ 0u, 0u, 0u };
     VkExtent3D extent = mipExtent;
 
-    bool isFullExtent = true;
-    if (pRect != nullptr) {
+    if (pRect != nullptr)
       ConvertRect(*pRect, offset, extent);
-
-      isFullExtent = offset == VkOffset3D{ 0u, 0u, 0u }
-                  && extent == mipExtent;
-    }
-
-    Rc<DxvkImageView> rtView = dst->GetRenderTargetView(false);
-
-    if (unlikely(!rtView)) {
-      const D3D9Format format = dstTextureInfo->Desc()->Format;
-
-      if (format != D3D9Format::NULL_FORMAT)
-        Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", format));
-
-      return D3D_OK;
-    }
 
     VkClearValue clearValue = { };
     DecodeD3DCOLOR(Color, clearValue.color.float32);
 
-    if (rtView && rtView->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+    Rc<DxvkImage> image = dstTextureInfo->GetImage();
+
+    if (image->formatInfo()->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
+      return D3DERR_INVALIDCALL;
+
+    VkImageSubresourceLayers subresource = { };
+    subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    subresource.mipLevel = dst->GetMipLevel();
+
+    if (dst->GetFace() == D3D9CommonTexture::AllLayers) {
+      subresource.baseArrayLayer = 0u;
+      subresource.layerCount = image->info().numLayers;
+    } else {
+      subresource.baseArrayLayer = dst->GetFace();
+      subresource.layerCount = 1u;
+    }
+
+    if (image->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
       EmitCs([
-        cImage      = rtView->image(),
-        cViewKey    = rtView->info(),
+        cImage      = std::move(image),
+        cSubresource = subresource,
         cOffset     = offset,
         cExtent     = extent,
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
-        auto formatInfo = lookupFormatInfo(cViewKey.format);
+        auto formatInfo = cImage->formatInfo();
 
         VkFormat blockFormat = formatInfo->elementSize == 16u
           ? VK_FORMAT_R32G32B32A32_UINT
@@ -1500,14 +1504,20 @@ namespace dxvk {
 
         ctx->ensureImageCompatibility(cImage, usage);
 
-        DxvkImageViewKey viewKey = cViewKey;
+        DxvkImageViewKey viewKey = { };
+        viewKey.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         viewKey.format = blockFormat;
         viewKey.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+        viewKey.aspects = cSubresource.aspectMask;
+        viewKey.mipIndex = cSubresource.mipLevel;
+        viewKey.mipCount = 1u;
+        viewKey.layerIndex = cSubresource.baseArrayLayer;
+        viewKey.layerCount = cSubresource.layerCount;
 
         Rc<DxvkImageView> view = cImage->createView(viewKey);
 
         VkClearValue clearBlock = { };
-        clearBlock.color = util::encodeClearBlockValue(cViewKey.format, cClearValue.color);
+        clearBlock.color = util::encodeClearBlockValue(cImage->info().format, cClearValue.color);
 
         VkOffset3D offset = util::computeBlockOffset(cOffset, formatInfo->blockSize);
         VkExtent3D extent = util::computeBlockExtent(cExtent, formatInfo->blockSize);
@@ -1515,28 +1525,37 @@ namespace dxvk {
         ctx->clearImageView(view, offset, extent,
           VK_IMAGE_ASPECT_COLOR_BIT, clearBlock);
       });
-    } else if (isFullExtent) {
-      EmitCs([
-        cImageView  = rtView,
-        cClearValue = clearValue
-      ] (DxvkContext* ctx) {
-        ctx->clearRenderTarget(
-          cImageView,
-          VK_IMAGE_ASPECT_COLOR_BIT,
-          cClearValue);
-      });
     } else {
       EmitCs([
-        cImageView  = rtView,
+        cImage      = std::move(image),
+        cSubresource = subresource,
         cOffset     = offset,
         cExtent     = extent,
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
-        ctx->clearImageView(
-          cImageView,
-          cOffset, cExtent,
-          VK_IMAGE_ASPECT_COLOR_BIT,
-          cClearValue);
+        DxvkImageUsageInfo usage = { };
+        usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        ctx->ensureImageCompatibility(cImage, usage);
+
+        DxvkImageViewKey viewKey = { };
+        viewKey.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewKey.format = cImage->info().format;
+        viewKey.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        viewKey.aspects = cSubresource.aspectMask;
+        viewKey.mipIndex = cSubresource.mipLevel;
+        viewKey.mipCount = 1u;
+        viewKey.layerIndex = cSubresource.baseArrayLayer;
+        viewKey.layerCount = cSubresource.layerCount;
+
+        Rc<DxvkImageView> view = cImage->createView(viewKey);
+
+        if (cOffset == VkOffset3D() && cExtent == cImage->mipLevelExtent(viewKey.mipIndex)) {
+          ctx->clearRenderTarget(view, cSubresource.aspectMask, cClearValue);
+        } else {
+          ctx->clearImageView(view, cOffset, cExtent,
+            cSubresource.aspectMask, cClearValue);
+        }
       });
     }
 
