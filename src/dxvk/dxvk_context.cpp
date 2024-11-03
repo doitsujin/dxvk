@@ -6397,10 +6397,10 @@ namespace dxvk {
       copy.regionCount = 1;
       copy.pRegions = &region;
 
+      invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
+
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copy);
       m_cmd->track(info.buffer, DxvkAccess::Write);
-
-      invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
 
       memoryBarrier.dstStageMask |= info.buffer->info().stages;
       memoryBarrier.dstAccessMask |= info.buffer->info().access;
@@ -6493,10 +6493,10 @@ namespace dxvk {
       copy.regionCount = imageRegions.size();
       copy.pRegions = imageRegions.data();
 
+      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
+
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
       m_cmd->track(info.image, DxvkAccess::Write);
-
-      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
     }
 
     if (!imageBarriers.empty()) {
