@@ -1463,12 +1463,59 @@ namespace dxvk {
 
     Rc<DxvkImageView> rtView = dst->GetRenderTargetView(false);
 
-    VkClearValue clearValue;
+    if (unlikely(!rtView)) {
+      const D3D9Format format = dstTextureInfo->Desc()->Format;
+
+      if (format != D3D9Format::NULL_FORMAT)
+        Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", format));
+
+      return D3D_OK;
+    }
+
+    VkClearValue clearValue = { };
     DecodeD3DCOLOR(Color, clearValue.color.float32);
 
-    // Fast path for games that may use this as an
-    // alternative to Clear on render targets.
-    if (isFullExtent && rtView != nullptr) {
+    if (rtView && rtView->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      EmitCs([
+        cImage      = rtView->image(),
+        cViewKey    = rtView->info(),
+        cOffset     = offset,
+        cExtent     = extent,
+        cClearValue = clearValue
+      ] (DxvkContext* ctx) {
+        auto formatInfo = lookupFormatInfo(cViewKey.format);
+
+        VkFormat blockFormat = formatInfo->elementSize == 16u
+          ? VK_FORMAT_R32G32B32A32_UINT
+          : VK_FORMAT_R32G32_UINT;
+
+        DxvkImageUsageInfo usage = { };
+        usage.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+        usage.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+                    | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT
+                    | VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
+        usage.viewFormatCount = 1;
+        usage.viewFormats = &blockFormat;
+        usage.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+        ctx->ensureImageCompatibility(cImage, usage);
+
+        DxvkImageViewKey viewKey = cViewKey;
+        viewKey.format = blockFormat;
+        viewKey.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+
+        Rc<DxvkImageView> view = cImage->createView(viewKey);
+
+        VkClearValue clearBlock = { };
+        clearBlock.color = util::encodeClearBlockValue(cViewKey.format, cClearValue.color);
+
+        VkOffset3D offset = util::computeBlockOffset(cOffset, formatInfo->blockSize);
+        VkExtent3D extent = util::computeBlockExtent(cExtent, formatInfo->blockSize);
+
+        ctx->clearImageView(view, offset, extent,
+          VK_IMAGE_ASPECT_COLOR_BIT, clearBlock);
+      });
+    } else if (isFullExtent) {
       EmitCs([
         cImageView  = rtView,
         cClearValue = clearValue
@@ -1479,14 +1526,6 @@ namespace dxvk {
           cClearValue);
       });
     } else {
-      if (unlikely(rtView == nullptr)) {
-        const D3D9Format format = dstTextureInfo->Desc()->Format;
-        if (format != D3D9Format::NULL_FORMAT)
-          Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", format));
-
-        return D3D_OK;
-      }
-
       EmitCs([
         cImageView  = rtView,
         cOffset     = offset,
