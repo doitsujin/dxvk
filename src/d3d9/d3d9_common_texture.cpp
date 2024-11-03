@@ -499,8 +499,6 @@ namespace dxvk {
 
 
   VkImageLayout D3D9CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) const {
-    const VkImageUsageFlags usageFlags = Usage;
-    
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
     // Feedback loops are handled by hazard tracking.
@@ -524,8 +522,12 @@ namespace dxvk {
     if (Usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
+    // Fall back to GENERAL if the image is not shader-readable
+    if (!(Usage & VK_IMAGE_USAGE_SAMPLED_BIT))
+      return VK_IMAGE_LAYOUT_GENERAL;
+
     // Otherwise, pick a layout that can be used for reading.
-    return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+    return Usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
       ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
       : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
