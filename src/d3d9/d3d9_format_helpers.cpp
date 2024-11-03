@@ -23,6 +23,9 @@ namespace dxvk {
 
     for (auto& p : m_pipelines)
       vk->vkDestroyPipeline(vk->device(), p, nullptr);
+
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
+    vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
   }
 
 
