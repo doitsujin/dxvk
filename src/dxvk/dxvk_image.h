@@ -66,6 +66,9 @@ namespace dxvk {
 
     // Shared handle info
     DxvkSharedHandleInfo sharing = { };
+
+    /// Debug name
+    const char* debugName = nullptr;
   };
   
   
@@ -625,6 +628,8 @@ namespace dxvk {
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkImageViewKey,
       DxvkImageView, DxvkHash, DxvkEq> m_views;
+
+    std::string                 m_debugName;
 
     VkImageCreateInfo getImageCreateInfo(
       const DxvkImageUsageInfo&         usageInfo) const;

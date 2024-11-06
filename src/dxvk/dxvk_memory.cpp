@@ -1038,6 +1038,16 @@ namespace dxvk {
       }
     }
 
+    // Assign debug name to the image
+    if (allocationInfo.debugName && m_device->isDebugEnabled()) {
+      VkDebugUtilsObjectNameInfoEXT name = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+      name.objectType = VK_OBJECT_TYPE_IMAGE;
+      name.objectHandle = reinterpret_cast<uint64_t>(image);
+      name.pObjectName = allocationInfo.debugName;
+
+      vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &name);
+    }
+
     return allocation;
   }
 
