@@ -115,7 +115,7 @@ namespace dxvk {
   }
 
 
-  VkCommandBuffer DxvkCommandPool::getCommandBuffer() {
+  VkCommandBuffer DxvkCommandPool::getCommandBuffer(DxvkCmdBuffer type) {
     auto vk = m_device->vkd();
 
     if (m_next == m_commandBuffers.size()) {
@@ -143,6 +143,24 @@ namespace dxvk {
     if (vk->vkBeginCommandBuffer(commandBuffer, &info))
       throw DxvkError("DxvkCommandPool: Failed to begin command buffer");
 
+    if (m_device->isDebugEnabled()) {
+      auto vki = m_device->vki();
+
+      VkDebugUtilsLabelEXT label = { };
+
+      switch (type) {
+        case DxvkCmdBuffer::ExecBuffer: label = vk::makeLabel(0xdcc0a2, "Graphics commands"); break;
+        case DxvkCmdBuffer::InitBuffer: label = vk::makeLabel(0xc0dca2, "Init commands"); break;
+        case DxvkCmdBuffer::InitBarriers: label = vk::makeLabel(0xd0e6b8, "Init barriers"); break;
+        case DxvkCmdBuffer::SdmaBuffer: label = vk::makeLabel(0xc0a2dc, "Upload commands"); break;
+        case DxvkCmdBuffer::SdmaBarriers: label = vk::makeLabel(0xd0b8e6, "Upload barriers"); break;
+        default: ;
+      }
+
+      if (label.pLabelName)
+        vki->vkCmdBeginDebugUtilsLabelEXT(commandBuffer, &label);
+    }
+
     return commandBuffer;
   }
 
@@ -162,7 +180,7 @@ namespace dxvk {
   DxvkCommandList::DxvkCommandList(DxvkDevice* device)
   : m_device        (device),
     m_vkd           (device->vkd()),
-    m_vki           (device->instance()->vki()) {
+    m_vki           (device->vki()) {
     const auto& graphicsQueue = m_device->queues().graphics;
     const auto& transferQueue = m_device->queues().transfer;
 
@@ -409,6 +427,9 @@ namespace dxvk {
   void DxvkCommandList::endCommandBuffer(VkCommandBuffer cmdBuffer) {
     auto vk = m_device->vkd();
 
+    if (m_device->isDebugEnabled())
+      m_vki->vkCmdEndDebugUtilsLabelEXT(cmdBuffer);
+
     if (vk->vkEndCommandBuffer(cmdBuffer))
       throw DxvkError("DxvkCommandList: Failed to end command buffer");
   }
@@ -416,8 +437,8 @@ namespace dxvk {
 
   VkCommandBuffer DxvkCommandList::allocateCommandBuffer(DxvkCmdBuffer type) {
     return type == DxvkCmdBuffer::SdmaBuffer || type == DxvkCmdBuffer::SdmaBarriers
-      ? m_transferPool->getCommandBuffer()
-      : m_graphicsPool->getCommandBuffer();
+      ? m_transferPool->getCommandBuffer(type)
+      : m_graphicsPool->getCommandBuffer(type);
   }
 
 }
