@@ -38,7 +38,7 @@ namespace dxvk {
           ContextType*          container,
     const Rc<DxvkDevice>&       dxvkDevice)
   : m_container(container), m_eventDepth(0),
-    m_annotationsEnabled(dxvkDevice->instance()->extensions().extDebugUtils) {
+    m_annotationsEnabled(dxvkDevice->isDebugEnabled()) {
     if (!IsDeferred && m_annotationsEnabled)
       RegisterUserDefinedAnnotation<true>(this);
   }

@@ -70,7 +70,7 @@ namespace dxvk {
     if (canSWVP)
       Logger::info("D3D9DeviceEx: Using extended constant set for software vertex processing.");
 
-    if (m_dxvkDevice->instance()->extensions().extDebugUtils)
+    if (m_dxvkDevice->isDebugEnabled())
       m_annotation = new D3D9UserDefinedAnnotation(this);
 
     m_initializer      = new D3D9Initializer(this);

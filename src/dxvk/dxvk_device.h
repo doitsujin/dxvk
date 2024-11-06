@@ -93,11 +93,27 @@ namespace dxvk {
     }
     
     /**
+     * \brief Vulkan instance functions
+     * \returns Vulkan instance functions
+     */
+    Rc<vk::InstanceFn> vki() const {
+      return m_instance->vki();
+    }
+    
+    /**
      * \brief Logical device handle
      * \returns The device handle
      */
     VkDevice handle() const {
       return m_vkd->device();
+    }
+
+    /**
+     * \brief Checks whether debug functionality is enabled
+     * \returns \c true if debug utils are enabled
+     */
+    bool isDebugEnabled() const {
+      return bool(m_instance->extensions().extDebugUtils);
     }
 
     /**
