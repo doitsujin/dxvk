@@ -2477,25 +2477,21 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
-
-    m_cmd->cmdBeginDebugUtilsLabel(label);
+  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT* label) {
+    if (m_device->isDebugEnabled())
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
   }
+
 
   void DxvkContext::endDebugLabel() {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
-
-    m_cmd->cmdEndDebugUtilsLabel();
+    if (m_device->isDebugEnabled())
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
-  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT *label) {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
 
-    m_cmd->cmdInsertDebugUtilsLabel(label);
+  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT* label) {
+    if (m_device->isDebugEnabled())
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
   }
   
   
