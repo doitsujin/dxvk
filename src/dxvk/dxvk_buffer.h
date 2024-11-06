@@ -35,6 +35,10 @@ namespace dxvk {
 
     /// Buffer create flags
     VkBufferCreateFlags flags = 0;
+
+    /// Buffer debug name. Setting this will result
+    /// in dedicated buffers being created.
+    const char* debugName = nullptr;
   };
 
 
@@ -315,6 +319,7 @@ namespace dxvk {
       DxvkAllocationInfo allocationInfo = { };
       allocationInfo.resourceCookie = cookie();
       allocationInfo.properties = m_properties;
+      allocationInfo.debugName = m_info.debugName;
 
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
@@ -428,6 +433,8 @@ namespace dxvk {
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkBufferViewKey,
       DxvkBufferView, DxvkHash, DxvkEq> m_views;
+
+    std::string                 m_debugName;
 
   };
 

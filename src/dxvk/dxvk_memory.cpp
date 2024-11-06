@@ -742,7 +742,7 @@ namespace dxvk {
           DxvkLocalAllocationCache*   allocationCache) {
     Rc<DxvkResourceAllocation> allocation;
 
-    if (likely(!createInfo.flags)) {
+    if (likely(!createInfo.flags && !allocationInfo.debugName)) {
       VkMemoryRequirements memoryRequirements = { };
       memoryRequirements.size = createInfo.size;
       memoryRequirements.alignment = GlobalBufferAlignment;
@@ -885,6 +885,16 @@ namespace dxvk {
     // Query device address after binding memory, or the address would be invalid
     if (createInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
       allocation->m_bufferAddress = getBufferDeviceAddress(buffer);
+
+    // Assign debug name to the buffer
+    if (allocationInfo.debugName && m_device->isDebugEnabled()) {
+      VkDebugUtilsObjectNameInfoEXT name = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+      name.objectType = VK_OBJECT_TYPE_BUFFER;
+      name.objectHandle = reinterpret_cast<uint64_t>(buffer);
+      name.pObjectName = allocationInfo.debugName;
+
+      vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &name);
+    }
 
     return allocation;
   }

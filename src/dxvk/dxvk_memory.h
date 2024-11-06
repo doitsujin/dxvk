@@ -979,6 +979,8 @@ namespace dxvk {
     VkMemoryPropertyFlags properties = 0u;
     /// Allocation mode flags
     DxvkAllocationModes mode = 0u;
+    /// Resource debug name
+    const char* debugName = nullptr;
   };
 
 

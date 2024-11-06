@@ -17,6 +17,13 @@ namespace dxvk {
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
     m_info          (createInfo) {
+    if (device->isDebugEnabled()) {
+      m_debugName = str::format(createInfo.debugName ? createInfo.debugName : "Buffer", " (", cookie(), ")");
+      m_info.debugName = m_debugName.data();
+    } else {
+      m_info.debugName = nullptr;
+    }
+
     m_allocator->registerResource(this);
 
     // Create and assign actual buffer resource
