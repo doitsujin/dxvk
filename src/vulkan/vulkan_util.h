@@ -211,6 +211,22 @@ namespace dxvk::vk {
     }
   }
 
+  /**
+   * \brief Makes debug label
+   *
+   * \param [in] color Color, as BGR with implied opaque alpha
+   * \param [in] text Label text
+   */
+  inline VkDebugUtilsLabelEXT makeLabel(uint32_t color, const char* text) {
+    VkDebugUtilsLabelEXT label = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+    label.color[0] = ((color >> 16u) & 0xffu) / 255.0f;
+    label.color[1] = ((color >> 8u)  & 0xffu) / 255.0f;
+    label.color[2] = ((color >> 0u)  & 0xffu) / 255.0f;
+    label.color[3] = 1.0f;
+    label.pLabelName = text;
+    return label;
+  }
+
 }
 
 

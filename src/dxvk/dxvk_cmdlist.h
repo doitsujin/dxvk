@@ -172,9 +172,11 @@ namespace dxvk {
 
     /**
      * \brief Retrieves or allocates a command buffer
+     *
+     * \param [in] type Command buffer type
      * \returns New command buffer in begun state
      */
-    VkCommandBuffer getCommandBuffer();
+    VkCommandBuffer getCommandBuffer(DxvkCmdBuffer type);
 
     /**
      * \brief Resets command pool and all command buffers
