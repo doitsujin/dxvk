@@ -8309,9 +8309,12 @@ namespace dxvk {
       "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n",
       "    - Swap effect:        ", pPresentationParameters->SwapEffect, "\n"));
 
-    if (!pPresentationParameters->Windowed &&
-        (pPresentationParameters->BackBufferWidth  == 0
-      || pPresentationParameters->BackBufferHeight == 0)) {
+    // Black Desert creates a device with a NULL hDeviceWindow and
+    // seemingly expects this validation to not prevent a swapchain reset.
+    if (pPresentationParameters->hDeviceWindow != nullptr &&
+       !pPresentationParameters->Windowed &&
+       (pPresentationParameters->BackBufferWidth  == 0
+     || pPresentationParameters->BackBufferHeight == 0)) {
       return D3DERR_INVALIDCALL;
     }
 
