@@ -262,12 +262,13 @@ namespace dxvk::wsi {
 
 
   bool Win32WsiDriver::isOccluded(HWND hWindow) {
-    if (::GetForegroundWindow() == hWindow)
-    {
-      m_lastForegroundTimestamp = GetTickCount64();
-      return false;
-    }
-    return m_lastForegroundTimestamp && GetTickCount64() - m_lastForegroundTimestamp > 100;
+    return false;
+    // if (::GetForegroundWindow() == hWindow)
+    // {
+    //   m_lastForegroundTimestamp = GetTickCount64();
+    //   return false;
+    // }
+    // return m_lastForegroundTimestamp && GetTickCount64() - m_lastForegroundTimestamp > 100;
   }
 
 
