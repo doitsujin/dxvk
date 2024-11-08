@@ -489,12 +489,12 @@ namespace dxvk {
     for (uint32_t i = 0; i < count; i++) {
       auto iter = m_entries.begin();
 
-      if (totalSize && totalSize + iter->second.size > size)
+      if (totalSize && totalSize + iter->first.size > size)
         break;
 
-      totalSize += iter->second.size;
+      totalSize += iter->first.size;
 
-      result.push_back({ iter->first, iter->second.mode });
+      result.push_back(std::move(iter->second));
       m_entries.erase(iter);
     }
 
@@ -504,10 +504,12 @@ namespace dxvk {
 
   void DxvkRelocationList::addResource(
           Rc<DxvkPagedResource>&&     resource,
-          DxvkAllocationModes         mode,
-          VkDeviceSize                size) {
+    const DxvkResourceAllocation*     allocation,
+          DxvkAllocationModes         mode) {
     std::lock_guard lock(m_mutex);
-    m_entries.emplace(std::move(resource), Entry { mode, size });
+    m_entries.emplace(std::piecewise_construct,
+      std::forward_as_tuple(allocation->getMemoryInfo()),
+      std::forward_as_tuple(std::move(resource), mode));
   }
 
 
@@ -2175,7 +2177,7 @@ namespace dxvk {
         continue;
 
       // Acquired the resource, add it to the relocation list.
-      m_relocations.addResource(std::move(resource), mode, a->m_size);
+      m_relocations.addResource(std::move(resource), a, mode);
     }
   }
 

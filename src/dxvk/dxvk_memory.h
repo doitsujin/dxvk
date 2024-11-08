@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <memory>
 
 #include "dxvk_access.h"
@@ -985,6 +986,10 @@ namespace dxvk {
    * \brief Relocation entry
    */
   struct DxvkRelocationEntry {
+    DxvkRelocationEntry() = default;
+    DxvkRelocationEntry(Rc<DxvkPagedResource>&& r, DxvkAllocationModes m)
+    : resource(std::move(r)), mode(m) { }
+
     /// Resource to relocate
     Rc<DxvkPagedResource> resource;
     /// Resource to relocate
@@ -1023,13 +1028,13 @@ namespace dxvk {
      * \brief Adds relocation entry to the list
      *
      * \param [in] resource Resource to add
+     * \param [in] allocation Resource storage
      * \param [in] mode Allocation mode
-     * \param [in] size Allocation size
      */
     void addResource(
             Rc<DxvkPagedResource>&&     resource,
-            DxvkAllocationModes         mode,
-            VkDeviceSize                size);
+      const DxvkResourceAllocation*     allocation,
+            DxvkAllocationModes         mode);
 
     /**
      * \brief Clears list
@@ -1046,14 +1051,22 @@ namespace dxvk {
 
   private:
 
-    struct Entry {
-      DxvkAllocationModes mode = 0u;
-      VkDeviceSize        size = 0u;
+    struct RelocationOrdering {
+      bool operator () (const DxvkResourceMemoryInfo& a, const DxvkResourceMemoryInfo& b) const {
+        // Keep chunks together, then order by offset in order to increase
+        // the likelihood of freeing up a contiguous block of memory.
+        if (a.memory < b.memory) return true;
+        if (a.memory > b.memory) return false;
+        return a.offset > b.offset;
+      }
     };
 
-    dxvk::mutex                               m_mutex;
-    std::unordered_map<Rc<DxvkPagedResource>,
-      Entry, RcHash>                          m_entries;
+    dxvk::mutex                 m_mutex;
+
+    std::map<
+      DxvkResourceMemoryInfo,
+      DxvkRelocationEntry,
+      RelocationOrdering>       m_entries;
 
   };
 
