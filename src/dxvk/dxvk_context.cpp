@@ -1960,6 +1960,12 @@ namespace dxvk {
 
   void DxvkContext::flushClears(
           bool                      useRenderPass) {
+    if (m_deferredClears.empty())
+      return;
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xffd0d0, "Deferred clears"));
+
     for (const auto& clear : m_deferredClears) {
       int32_t attachmentIndex = -1;
 
@@ -1971,6 +1977,9 @@ namespace dxvk {
     }
 
     m_deferredClears.clear();
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
@@ -4441,6 +4450,11 @@ namespace dxvk {
       this->applyRenderTargetLoadLayouts();
       this->flushClears(true);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+          vk::makeLabel(0xffd0a0, str::format("Render pass ", ++m_renderPassIndex).data()));
+      }
+
       // Make sure all graphics state gets reapplied on the next draw
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
@@ -4502,6 +4516,9 @@ namespace dxvk {
         this->transitionRenderTargetLayouts(false);
 
       flushBarriers();
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
