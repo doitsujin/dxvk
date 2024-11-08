@@ -66,6 +66,7 @@ namespace dxvk {
     TrackGraphicsPipeline,
     VariableMultisampleRate,
     IndexBufferRobustness,
+    DebugUtils,
     FeatureCount
   };
 

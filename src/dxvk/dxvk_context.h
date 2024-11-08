@@ -1379,6 +1379,7 @@ namespace dxvk {
     DxvkObjects*            m_common;
 
     uint64_t                m_trackingId = 0u;
+    uint32_t                m_renderPassIndex = 0u;
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
