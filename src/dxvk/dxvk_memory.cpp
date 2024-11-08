@@ -1163,6 +1163,10 @@ namespace dxvk {
         return DxvkDeviceMemory();
     }
 
+    // Technically redundant if EXT_memory_priority is also supported, but this shouldn't hurt
+    if (m_device->features().extPageableDeviceLocalMemory.pageableDeviceLocalMemory)
+      vk->vkSetDeviceMemoryPriorityEXT(vk->device(), result.memory, priorityInfo.priority);
+
     // Create global buffer if the allocation supports it
     if (type.bufferUsage && !next) {
       VkBuffer buffer = VK_NULL_HANDLE;
