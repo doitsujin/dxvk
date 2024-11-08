@@ -63,6 +63,10 @@ namespace dxvk {
     // Maintenance5 introduced a bounded BindIndexBuffer function
     if (m_device->features().khrMaintenance5.maintenance5)
       m_features.set(DxvkContextFeature::IndexBufferRobustness);
+
+    // Add a fast path to query debug utils support
+    if (m_device->isDebugEnabled())
+      m_features.set(DxvkContextFeature::DebugUtils);
   }
   
   
@@ -101,6 +105,8 @@ namespace dxvk {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
     }
+
+    m_renderPassIndex = 0u;
   }
 
 
@@ -2477,20 +2483,20 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT* label) {
-    if (m_device->isDebugEnabled())
+  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils))
       m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
   }
 
 
   void DxvkContext::endDebugLabel() {
-    if (m_device->isDebugEnabled())
+    if (m_features.test(DxvkContextFeature::DebugUtils))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
-  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT* label) {
-    if (m_device->isDebugEnabled())
+  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT *label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils))
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
   }
   
