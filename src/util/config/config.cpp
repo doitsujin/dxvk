@@ -572,12 +572,17 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Tomb Raider: Legend, Anniversary, Underworld  *
+    /* Tomb Raider: Anniversary, Underworld          *
      * Read from a buffer created with:              *
      * D3DPOOL_DEFAULT,                              *
-     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer. *
-     * Legend flickers with next gen content option. */
-    { R"(\\(trl|tra|tru)\.exe$)", {{
+     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer. */
+    { R"(\\(tra|tru)\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* Tomb Raider: Legend also has           *
+     * flickers with next gen content option. */
+    { R"(\\trl\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
       { "d3d9.floatEmulation",              "False" },
