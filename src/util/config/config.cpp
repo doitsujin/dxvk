@@ -580,6 +580,7 @@ namespace dxvk {
     { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
+      { "d3d9.floatEmulation",              "False" },
     }} },
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
