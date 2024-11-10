@@ -1375,7 +1375,7 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitMulOperand(
           DxsoRegisterValue       operand,
           DxsoRegisterValue       other) {
-    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
+    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict || operand.id == other.id)
       return operand;
 
     uint32_t boolId = getVectorTypeId({ DxsoScalarType::Bool, other.type.ccount });
@@ -1419,10 +1419,20 @@ namespace dxvk {
     auto bz = emitMulOperand(b, a);
 
     DxsoRegisterValue dot;
-    dot.type        = a.type;
+    dot.type.ctype  = a.type.ctype;
     dot.type.ccount = 1;
+    dot.id          = 0;
 
-    dot.id = m_module.opDot(getVectorTypeId(dot.type), az.id, bz.id);
+    uint32_t componentType = getVectorTypeId(dot.type);
+
+    for (uint32_t i = 0; i < a.type.ccount; i++) {
+      uint32_t product = m_module.opFMul(componentType,
+        m_module.opCompositeExtract(componentType, az.id, 1, &i),
+        m_module.opCompositeExtract(componentType, bz.id, 1, &i));
+
+      dot.id = dot.id ? m_module.opFAdd(componentType, dot.id, product) : product;
+    }
+
     return dot;
   }
 
@@ -2084,13 +2094,11 @@ namespace dxvk {
         // Nrm is 3D...
         DxsoRegMask srcMask(true, true, true, false);
         auto vec3 = emitRegisterLoad(src[0], srcMask);
+        auto dot = emitDot(vec3, vec3);
 
-        // No need for emitDot, either both arguments or none are zero.
-        // mul_zero has the same result as ieee mul.
-        uint32_t dot = m_module.opDot(scalarTypeId, vec3.id, vec3.id);
         DxsoRegisterValue rcpLength;
         rcpLength.type = scalarType;
-        rcpLength.id = m_module.opInverseSqrt(scalarTypeId, dot);
+        rcpLength.id = m_module.opInverseSqrt(scalarTypeId, dot.id);
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           rcpLength.id = m_module.opNMin(scalarTypeId, rcpLength.id, m_module.constf32(FLT_MAX));
         }
