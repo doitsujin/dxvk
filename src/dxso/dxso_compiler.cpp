@@ -1402,16 +1402,12 @@ namespace dxvk {
   }
 
 
-  DxsoRegisterValue DxsoCompiler::emitFma(
+  DxsoRegisterValue DxsoCompiler::emitMad(
           DxsoRegisterValue       a,
           DxsoRegisterValue       b,
           DxsoRegisterValue       c) {
-    auto az = emitMulOperand(a, b);
-    auto bz = emitMulOperand(b, a);
-
-    DxsoRegisterValue result;
-    result.type = a.type;
-    result.id = m_module.opFFma(getVectorTypeId(result.type), az.id, bz.id, c.id);
+    DxsoRegisterValue result = emitMul(a, b);
+    result.id = m_module.opFAdd(getVectorTypeId(result.type), result.id, c.id);
     return result;
   }
 
@@ -1436,14 +1432,11 @@ namespace dxvk {
             DxsoRegisterValue       a) {
     uint32_t typeId = getVectorTypeId(x.type);
 
-    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
-      return {x.type, m_module.opFMix(typeId, x.id, y.id, a.id)};
-
     DxsoRegisterValue ySubx;
     ySubx.type = x.type;
     ySubx.id   = m_module.opFSub(typeId, y.id, x.id);
 
-    return emitFma(a, ySubx, x);
+    return emitMad(a, ySubx, x);
   }
 
 
@@ -1935,13 +1928,10 @@ namespace dxvk {
           emitRegisterLoad(src[1], mask).id);
         break;
       case DxsoOpcode::Mad:
-        result.id = emitMul(
+        result.id = emitMad(
           emitRegisterLoad(src[0], mask),
-          emitRegisterLoad(src[1], mask)).id;
-
-        result.id = m_module.opFAdd(typeId,
-          result.id,
-          emitRegisterLoad(src[2], mask).id);
+          emitRegisterLoad(src[1], mask),
+          emitRegisterLoad(src[2], mask)).id;
         break;
       case DxsoOpcode::Mul:
         result.id = emitMul(
