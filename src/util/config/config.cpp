@@ -22,9 +22,11 @@ namespace dxvk {
     /**********************************************/
 
     /* Diablo 4 - Will complain about missing  *
-     * GPU unless dxgi Id match actual GPU Id  */
+     * GPU unless dxgi Id match actual GPU Id. *
+     * Bugs out on some multi-gpu systems.     */
     { R"(\\Diablo IV\.exe$)", {{
-      { "dxgi.hideNvidiaGpu",               "False"  },
+      { "dxgi.hideNvidiaGpu",               "False" },
+      { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
     /* Ratchet & Clank: Rift Apart - does not allow
      * enabling ray tracing if it sees an AMD GPU. */
