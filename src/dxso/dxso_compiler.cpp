@@ -1286,11 +1286,11 @@ namespace dxvk {
       case DxsoComparison::Equal:        return m_module.opFOrdEqual           (typeId, a, b); break;
       case DxsoComparison::GreaterEqual: return m_module.opFOrdGreaterThanEqual(typeId, a, b); break;
       case DxsoComparison::LessThan:     return m_module.opFOrdLessThan        (typeId, a, b); break;
-      case DxsoComparison::NotEqual:     return m_module.opFOrdNotEqual        (typeId, a, b); break;
+      case DxsoComparison::NotEqual:     return m_module.opFUnordNotEqual      (typeId, a, b); break;
       case DxsoComparison::LessEqual:    return m_module.opFOrdLessThanEqual   (typeId, a, b); break;
       case DxsoComparison::Always:       return m_module.constbReplicant(true, type.ccount);   break;
     }
-}
+  }
 
 
   DxsoRegisterValue DxsoCompiler::emitValueLoad(

@@ -882,7 +882,7 @@ namespace dxvk {
             uint32_t                vector1,
             uint32_t                vector2);
     
-    uint32_t opFOrdNotEqual(
+    uint32_t opFUnordNotEqual(
             uint32_t                resultType,
             uint32_t                vector1,
             uint32_t                vector2);

@@ -302,7 +302,7 @@ namespace dxvk {
           case VK_COMPARE_OP_EQUAL:            return spvModule.opFOrdEqual           (boolType, alphaId, alphaRefId);
           case VK_COMPARE_OP_LESS_OR_EQUAL:    return spvModule.opFOrdLessThanEqual   (boolType, alphaId, alphaRefId);
           case VK_COMPARE_OP_GREATER:          return spvModule.opFOrdGreaterThan     (boolType, alphaId, alphaRefId);
-          case VK_COMPARE_OP_NOT_EQUAL:        return spvModule.opFOrdNotEqual        (boolType, alphaId, alphaRefId);
+          case VK_COMPARE_OP_NOT_EQUAL:        return spvModule.opFUnordNotEqual      (boolType, alphaId, alphaRefId);
           case VK_COMPARE_OP_GREATER_OR_EQUAL: return spvModule.opFOrdGreaterThanEqual(boolType, alphaId, alphaRefId);
           default:
           case VK_COMPARE_OP_ALWAYS:           return spvModule.constBool(true);
