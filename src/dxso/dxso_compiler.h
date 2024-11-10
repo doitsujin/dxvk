@@ -543,7 +543,7 @@ namespace dxvk {
             DxsoRegisterValue       a,
             DxsoRegisterValue       b);
 
-    DxsoRegisterValue emitFma(
+    DxsoRegisterValue emitMad(
             DxsoRegisterValue       a,
             DxsoRegisterValue       b,
             DxsoRegisterValue       c);
