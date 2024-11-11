@@ -27,4 +27,5 @@ void main() {
 
   o_color.a *= opacity;
   o_color = linear_to_output(o_color);
+  o_color.rgb *= o_color.a;
 }

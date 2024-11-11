@@ -64,4 +64,5 @@ void main() {
   float blendFactor = 0.5f * float(bitsSet) / max(float(bitsTotal), 1.0f);
   o_color = vec4(mix(color.rgb, vec3(1.0f), blendFactor), color.a * opacity);
   o_color = linear_to_output(o_color);
+  o_color.rgb *= o_color.a;
 }
