@@ -81,7 +81,8 @@ void main() {
   float diff = (diff_lo + diff_hi) + y_delta;
   o_color = mix(bg_color, line_color, clamp(diff / y_delta, 0.0f, 1.0f));
 
-  o_color = linear_to_output(o_color);
   o_color.a *= opacity;
   o_color.rgb *= o_color.a;
+
+  o_color = linear_to_output(o_color);
 }
