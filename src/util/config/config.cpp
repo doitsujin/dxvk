@@ -436,9 +436,14 @@ namespace dxvk {
       { "d3d11.enableContextLock",          "True" },
     }} },
     /* Kena: Bridge of Spirits: intel water       * 
-      flickering issues                           */
+     * flickering issues                          */
     { R"(\\Kena-Win64-Shipping\.exe$)", {{
       { "dxgi.hideIntelGpu",                 "True" },
+    }} },
+    /* GTA Definitive Edition trilogy             * 
+     * Static ags crash with HDR support          */
+    { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
+      { "dxgi.hideAmdGpu",                 "True" },
     }} },
 
     /**********************************************/
