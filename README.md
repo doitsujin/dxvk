@@ -16,7 +16,11 @@ In a default Wine prefix that would be as follows:
 export WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
-winecfg
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
 ```
 
 For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `system32` directory:
