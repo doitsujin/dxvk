@@ -19,6 +19,7 @@ compiler_args = [
   '-Wno-missing-field-initializers',
   '-Wno-unused-parameter',
   '-Wno-cast-function-type', # Needed for GetProcAddress.
+  '-mprefer-avx128',
   # clang
   '-Wno-unused-private-field',
   '-Wno-microsoft-exception-spec',
