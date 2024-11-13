@@ -240,7 +240,7 @@ namespace dxvk {
     , mipFilter(D3DTEXTUREFILTERTYPE(state[D3DSAMP_MIPFILTER]))
     , mipLodBias(bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]))
     , maxMipLevel(state[D3DSAMP_MAXMIPLEVEL])
-    , maxAnisotropy(state[D3DSAMP_MAXMIPLEVEL]) { }
+    , maxAnisotropy(state[D3DSAMP_MAXANISOTROPY]) { }
 
     D3DTEXTUREADDRESS addressU;
     D3DTEXTUREADDRESS addressV;
