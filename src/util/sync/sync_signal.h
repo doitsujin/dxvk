@@ -78,6 +78,9 @@ namespace dxvk::sync {
     }
     
     void wait(uint64_t value) {
+      if (value <= m_value.load(std::memory_order_acquire))
+        return;
+
       std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_cond.wait(lock, [this, value] {
         return value <= m_value.load(std::memory_order_acquire);
@@ -129,6 +132,9 @@ namespace dxvk::sync {
     }
 
     void wait(uint64_t value) {
+      if (value <= m_value.load(std::memory_order_acquire))
+        return;
+
       std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_cond.wait(lock, [this, value] {
         return value <= m_value.load(std::memory_order_acquire);

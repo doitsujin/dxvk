@@ -1,4 +1,4 @@
-#version 450
+#version 460
 
 struct font_info_t {
   float size;
@@ -18,15 +18,25 @@ readonly buffer font_buffer_t {
   glyph_info_t glyph_data[];
 };
 
-layout(binding = 1) uniform usamplerBuffer text_buffer;
+struct draw_info_t {
+  uint text_offset;
+  uint text_length_and_size;
+  uint packed_xy;
+  uint color;
+};
+
+layout(binding = 1, std430)
+readonly buffer draw_buffer_t {
+  draw_info_t draw_infos[];
+};
+
+layout(binding = 2) uniform usamplerBuffer text_buffer;
 
 layout(push_constant)
 uniform push_data_t {
-  vec4 text_color;
-  vec2 text_pos;
-  uint text_offset;
-  float text_size;
-  vec2 hud_scale;
+  uvec2 surface_size;
+  float opacity;
+  float scale;
 };
 
 layout(location = 0) out vec2 o_texcoord;
@@ -42,7 +52,8 @@ vec2 unpack_u16(uint v) {
 }
 
 void main() {
-  o_color = text_color;
+  draw_info_t draw_info = draw_infos[gl_DrawID];
+  o_color = unpackUnorm4x8(draw_info.color);
 
   // Compute character index and vertex index for the current
   // character. We'll render two triangles per character.
@@ -50,7 +61,7 @@ void main() {
   uint vtx_idx = gl_VertexIndex - 6 * chr_idx;
 
   // Load glyph info based on vertex index
-  uint glyph_idx = texelFetch(text_buffer, int(text_offset + chr_idx)).x;
+  uint glyph_idx = texelFetch(text_buffer, int(draw_info.text_offset + chr_idx)).x;
   glyph_info_t glyph_info = glyph_data[glyph_idx];
 
   // Compute texture coordinate from glyph data
@@ -64,12 +75,18 @@ void main() {
   // Compute vertex position. We can easily do this here since our
   // font is a monospace font, otherwise we'd need to preprocess
   // the strings to render in a compute shader.
-  float size_factor = text_size / font_data.size;
+  uint text_size = bitfieldExtract(draw_info.text_length_and_size, 16, 16);
+  float size_factor = float(text_size) / font_data.size;
+
+  vec2 surface_size_f = vec2(surface_size) / scale;
+
+  vec2 text_pos = unpack_u16(draw_info.packed_xy);
+  text_pos = mix(text_pos, surface_size_f + text_pos, lessThan(text_pos, vec2(0.0f)));
 
   vec2 local_pos = tex_wh * coord - unpack_u16(glyph_info.packed_origin)
     + vec2(font_data.advance * float(chr_idx), 0.0f);
   vec2 pixel_pos = text_pos + size_factor * local_pos;
-  vec2 scaled_pos = 2.0f * hud_scale * pixel_pos - 1.0f;
+  vec2 scaled_pos = 2.0f * (pixel_pos / surface_size_f) - 1.0f;
 
   gl_Position = vec4(scaled_pos, 0.0f, 1.0f);
 }

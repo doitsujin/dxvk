@@ -7,7 +7,7 @@
 
 #include "dxvk_barrier.h"
 #include "dxvk_cmdlist.h"
-#include "dxvk_resource.h"
+#include "dxvk_image.h"
 
 namespace dxvk {
 
@@ -53,12 +53,11 @@ namespace dxvk {
   /**
    * \brief Meta resolve views for attachment-based resolves
    */
-  class DxvkMetaResolveViews : public DxvkResource {
+  class DxvkMetaResolveViews {
 
   public:
 
     DxvkMetaResolveViews(
-      const Rc<vk::DeviceFn>&         vkd,
       const Rc<DxvkImage>&            dstImage,
       const VkImageSubresourceLayers& dstSubresources,
       const Rc<DxvkImage>&            srcImage,
@@ -67,15 +66,8 @@ namespace dxvk {
 
     ~DxvkMetaResolveViews();
 
-    VkImageView getDstView() const { return m_dstImageView; }
-    VkImageView getSrcView() const { return m_srcImageView; }
-
-  private:
-
-    Rc<vk::DeviceFn> m_vkd;
-
-    VkImageView m_dstImageView = VK_NULL_HANDLE;
-    VkImageView m_srcImageView = VK_NULL_HANDLE;
+    Rc<DxvkImageView> dstView;
+    Rc<DxvkImageView> srcView;
 
   };
 

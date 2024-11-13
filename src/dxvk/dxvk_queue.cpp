@@ -7,7 +7,20 @@ namespace dxvk {
   : m_device(device), m_callback(callback),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
+    auto vk = m_device->vkd();
 
+    VkSemaphoreTypeCreateInfo semaphoreType = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+    semaphoreType.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+    VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &semaphoreType };
+
+    VkResult vrGraphics = vk->vkCreateSemaphore(vk->device(), &semaphoreInfo, nullptr, &m_semaphores.graphics);
+    VkResult vrTransfer = vk->vkCreateSemaphore(vk->device(), &semaphoreInfo, nullptr, &m_semaphores.transfer);
+
+    if (vrGraphics || vrTransfer) {
+      throw DxvkError(str::format("Failed to create timeline semaphores: ",
+        vrGraphics > vrTransfer ? vrGraphics : vrTransfer));
+    }
   }
   
   
@@ -23,6 +36,9 @@ namespace dxvk {
 
     m_submitThread.join();
     m_finishThread.join();
+
+    vk->vkDestroySemaphore(vk->device(), m_semaphores.graphics, nullptr);
+    vk->vkDestroySemaphore(vk->device(), m_semaphores.transfer, nullptr);
   }
   
   
@@ -125,10 +141,12 @@ namespace dxvk {
         if (m_callback)
           m_callback(true);
 
-        if (entry.submit.cmdList != nullptr)
-          entry.result = entry.submit.cmdList->submit();
-        else if (entry.present.presenter != nullptr)
+        if (entry.submit.cmdList != nullptr) {
+          entry.result = entry.submit.cmdList->submit(m_semaphores, m_timelines);
+          entry.timelines = m_timelines;
+        } else if (entry.present.presenter != nullptr) {
           entry.result = entry.present.presenter->presentImage(entry.present.presentMode, entry.present.frameId);
+        }
 
         if (m_callback)
           m_callback(false);
@@ -159,12 +177,18 @@ namespace dxvk {
 
       m_submitQueue.pop();
       m_submitCond.notify_all();
+
+      // Good time to invoke allocator tasks now since we
+      // expect this to get called somewhat periodically.
+      m_device->m_objects.memoryManager().performTimedTasks();
     }
   }
   
   
   void DxvkSubmissionQueue::finishCmdLists() {
     env::setThreadName("dxvk-queue");
+
+    auto vk = m_device->vkd();
 
     while (!m_stopped.load()) {
       std::unique_lock<dxvk::mutex> lock(m_mutex);
@@ -188,10 +212,19 @@ namespace dxvk {
       
       if (entry.submit.cmdList != nullptr) {
         VkResult status = m_lastError.load();
-        
-        if (status != VK_ERROR_DEVICE_LOST)
-          status = entry.submit.cmdList->synchronizeFence();
-        
+
+        if (status != VK_ERROR_DEVICE_LOST) {
+          std::array<VkSemaphore, 2> semaphores = { m_semaphores.graphics, m_semaphores.transfer };
+          std::array<uint64_t, 2> timelines = { entry.timelines.graphics, entry.timelines.transfer };
+
+          VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
+          waitInfo.semaphoreCount = semaphores.size();
+          waitInfo.pSemaphores = semaphores.data();
+          waitInfo.pValues = timelines.data();
+
+          status = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
+        }
+
         if (status != VK_SUCCESS) {
           m_lastError = status;
 

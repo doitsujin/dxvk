@@ -5,7 +5,7 @@
 #include "../../util/util_string.h"
 #include "../../util/util_win32_compat.h"
 
-#include <SDL2/SDL_vulkan.h>
+#include <SDL_vulkan.h>
 
 namespace dxvk::wsi {
 

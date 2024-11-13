@@ -144,12 +144,21 @@ namespace dxvk {
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardView(ID3D11View* pResourceView) {
-    DiscardView1(pResourceView, nullptr, 0);
+    DiscardViewBase(pResourceView, nullptr, 0);
   }
 
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardView1(
+          ID3D11View*              pResourceView,
+    const D3D11_RECT*              pRects,
+          UINT                     NumRects) {
+    DiscardViewBase(pResourceView, pRects, NumRects);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DiscardViewBase(
           ID3D11View*              pResourceView,
     const D3D11_RECT*              pRects,
           UINT                     NumRects) {
@@ -207,7 +216,7 @@ namespace dxvk {
           ID3D11Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D11_BOX*                        pSrcBox) {
-    CopySubresourceRegion1(
+    CopySubresourceRegionBase(
       pDstResource, DstSubresource, DstX, DstY, DstZ,
       pSrcResource, SrcSubresource, pSrcBox, 0);
   }
@@ -215,6 +224,23 @@ namespace dxvk {
 
   template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegion1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox,
+          UINT                              CopyFlags) {
+    CopySubresourceRegionBase(
+      pDstResource, DstSubresource, DstX, DstY, DstZ,
+      pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegionBase(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
           UINT                              DstX,
@@ -484,7 +510,7 @@ namespace dxvk {
       } else {
         // Create a view with an integer format if necessary
         if (uavFormat != rawFormat)  {
-          DxvkBufferViewCreateInfo info = bufferView->info();
+          DxvkBufferViewKey info = bufferView->info();
           info.format = rawFormat;
 
           bufferView = bufferView->buffer()->createView(info);
@@ -508,77 +534,35 @@ namespace dxvk {
       bool isZeroClearValue = !(clearValue.color.uint32[0] | clearValue.color.uint32[1]
                               | clearValue.color.uint32[2] | clearValue.color.uint32[3]);
 
-      // Check if we can create an image view with the given raw format. If not,
-      // we'll have to use a fallback using a texel buffer view and buffer copies.
-      bool isViewCompatible = uavFormat == rawFormat;
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = imageView,
+        cDstFormat  = isZeroClearValue ? uavFormat : rawFormat
+      ] (DxvkContext* ctx) {
+        // Ensure that we can write to the image with the given format
+        DxvkImageUsageInfo imageUsage = { };
+        imageUsage.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+        imageUsage.viewFormatCount = 1;
+        imageUsage.viewFormats = &cDstFormat;
 
-      if (!isViewCompatible && (imageView->image()->info().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
-        uint32_t formatCount = imageView->image()->info().viewFormatCount;
-        isViewCompatible = formatCount == 0;
+        ctx->ensureImageCompatibility(cDstView->image(), imageUsage);
 
-        for (uint32_t i = 0; i < formatCount && !isViewCompatible; i++)
-          isViewCompatible = imageView->image()->info().viewFormats[i] == rawFormat;
-      }
+        // If necessary, recreate the view
+        Rc<DxvkImageView> view = cDstView;
 
-      if (isViewCompatible || isZeroClearValue) {
-        // Create a view with an integer format if necessary
-        if (uavFormat != rawFormat && !isZeroClearValue) {
-          DxvkImageViewCreateInfo info = imageView->info();
-          info.format = rawFormat;
+        if (view->info().format != cDstFormat) {
+          DxvkImageViewKey key = cDstView->info();
+          key.format = cDstFormat;
 
-          imageView = m_device->createImageView(imageView->image(), info);
+          view = cDstView->image()->createView(key);
         }
 
-        EmitCs([
-          cClearValue = clearValue,
-          cDstView    = imageView
-        ] (DxvkContext* ctx) {
-          ctx->clearImageView(cDstView,
-            VkOffset3D { 0, 0, 0 },
-            cDstView->mipLevelExtent(0),
-            VK_IMAGE_ASPECT_COLOR_BIT,
-            cClearValue);
-        });
-      } else {
-        DxvkBufferCreateInfo bufferInfo;
-        bufferInfo.size   = imageView->formatInfo()->elementSize
-                          * imageView->info().numLayers
-                          * util::flattenImageExtent(imageView->mipLevelExtent(0));
-        bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                          | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-        bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                          | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-                          | VK_ACCESS_SHADER_WRITE_BIT;
-
-        Rc<DxvkBuffer> buffer = m_device->createBuffer(bufferInfo,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-        DxvkBufferViewCreateInfo bufferViewInfo;
-        bufferViewInfo.format      = rawFormat;
-        bufferViewInfo.rangeOffset = 0;
-        bufferViewInfo.rangeLength = bufferInfo.size;
-        bufferViewInfo.usage       = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-
-        Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-
-        EmitCs([
-          cDstView    = std::move(imageView),
-          cSrcView    = std::move(bufferView),
-          cClearValue = clearValue.color
-        ] (DxvkContext* ctx) {
-          ctx->clearBufferView(
-            cSrcView, 0,
-            cSrcView->elementCount(),
-            cClearValue);
-
-          ctx->copyBufferToImage(cDstView->image(),
-            vk::pickSubresourceLayers(cDstView->subresources(), 0),
-            VkOffset3D { 0, 0, 0 },
-            cDstView->mipLevelExtent(0),
-            cSrcView->buffer(), 0, 0, 0);
-        });
-      }
+        ctx->clearImageView(view,
+          VkOffset3D { 0, 0, 0 },
+          cDstView->mipLevelExtent(0),
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          cClearValue);
+      });
     }
   }
 
@@ -718,7 +702,7 @@ namespace dxvk {
 
     // 3D views are unsupported
     if (imgView != nullptr
-     && imgView->info().type == VK_IMAGE_VIEW_TYPE_3D)
+     && imgView->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
       return;
 
     // Query the view format. We'll have to convert
@@ -754,7 +738,7 @@ namespace dxvk {
 
       if (bufView != nullptr) {
         VkDeviceSize offset = 0;
-        VkDeviceSize length = bufView->info().rangeLength / formatInfo->elementSize;
+        VkDeviceSize length = bufView->info().size / formatInfo->elementSize;
 
         if (pRect) {
           offset = pRect[i].left;
@@ -3052,6 +3036,9 @@ namespace dxvk {
     CopyTiledResourceData(pDestTiledResource,
       pDestTileRegionStartCoordinate,
       pDestTileRegionSize, slice, Flags);
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
@@ -3143,32 +3130,9 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  DxvkDataSlice D3D11CommonContext<ContextType>::AllocUpdateBufferSlice(size_t Size) {
-    constexpr size_t UpdateBufferSize = 1 * 1024 * 1024;
-    
-    if (Size >= UpdateBufferSize) {
-      Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
-      return buffer->alloc(Size);
-    } else {
-      if (m_updateBuffer == nullptr)
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-      
-      DxvkDataSlice slice = m_updateBuffer->alloc(Size);
-      
-      if (slice.ptr() == nullptr) {
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-        slice = m_updateBuffer->alloc(Size);
-      }
-      
-      return slice;
-    }
-  }
-
-
-  template<typename ContextType>
   DxvkBufferSlice D3D11CommonContext<ContextType>::AllocStagingBuffer(
           VkDeviceSize                      Size) {
-    return m_staging.alloc(256, Size);
+    return m_staging.alloc(Size);
   }
 
 
@@ -3986,8 +3950,8 @@ namespace dxvk {
 
     // It is possible for any of the given images to be a staging image with
     // no actual image, so we need to account for all possibilities here.
-    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
-    bool srcIsImage = pSrcTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    bool dstIsImage = pDstTexture->HasImage();
+    bool srcIsImage = pSrcTexture->HasImage();
 
     if (dstIsImage && srcIsImage) {
       EmitCs([
@@ -4055,25 +4019,16 @@ namespace dxvk {
               cDstLayers  = dstLayer,
               cDstOffset  = DstOffset,
               cDstExtent  = dstExtent,
+              cDstFormat  = pDstTexture->GetPackedFormat(),
               cSrcBuffer  = pSrcTexture->GetMappedBuffer(srcSubresource),
               cSrcLayout  = pSrcTexture->GetSubresourceLayout(srcAspectMask, srcSubresource),
               cSrcOffset  = pSrcTexture->ComputeMappedOffset(srcSubresource, j, SrcOffset),
               cSrcCoord   = SrcOffset,
-              cSrcExtent  = srcMipExtent,
-              cSrcFormat  = pSrcTexture->GetPackedFormat()
+              cSrcExtent  = srcMipExtent
             ] (DxvkContext* ctx) {
-              if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                ctx->copyBufferToImage(cDstImage, cDstLayers, cDstOffset, cDstExtent,
-                  cSrcBuffer, cSrcOffset, cSrcLayout.RowPitch, cSrcLayout.DepthPitch);
-              } else {
-                ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
-                  VkOffset2D { cDstOffset.x,     cDstOffset.y      },
-                  VkExtent2D { cDstExtent.width, cDstExtent.height },
-                  cSrcBuffer, cSrcLayout.Offset,
-                  VkOffset2D { cSrcCoord.x,      cSrcCoord.y       },
-                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
-                  cSrcFormat);
-              }
+              ctx->copyBufferToImage(cDstImage, cDstLayers, cDstOffset, cDstExtent,
+                cSrcBuffer, cSrcOffset, cSrcLayout.RowPitch, cSrcLayout.DepthPitch,
+                cDstFormat);
             });
           } else if (srcIsImage) {
             VkImageSubresourceLayers srcLayer = { srcAspectMask,
@@ -4081,6 +4036,7 @@ namespace dxvk {
 
             EmitCs([
               cSrcImage   = pSrcTexture->GetImage(),
+              cSrcFormat  = pSrcTexture->GetPackedFormat(),
               cSrcLayers  = srcLayer,
               cSrcOffset  = SrcOffset,
               cSrcExtent  = SrcExtent,
@@ -4088,21 +4044,10 @@ namespace dxvk {
               cDstLayout  = pDstTexture->GetSubresourceLayout(dstAspectMask, dstSubresource),
               cDstOffset  = pDstTexture->ComputeMappedOffset(dstSubresource, j, DstOffset),
               cDstCoord   = DstOffset,
-              cDstExtent  = dstMipExtent,
-              cDstFormat  = pDstTexture->GetPackedFormat()
+              cDstExtent  = dstMipExtent
             ] (DxvkContext* ctx) {
-              if (cSrcLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                ctx->copyImageToBuffer(cDstBuffer, cDstOffset, cDstLayout.RowPitch,
-                  cDstLayout.DepthPitch, cSrcImage, cSrcLayers, cSrcOffset, cSrcExtent);
-              } else {
-                ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, cDstLayout.Offset,
-                  VkOffset2D { cDstCoord.x,      cDstCoord.y       },
-                  VkExtent2D { cDstExtent.width, cDstExtent.height },
-                  cSrcImage, cSrcLayers,
-                  VkOffset2D { cSrcOffset.x,     cSrcOffset.y      },
-                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
-                  cDstFormat);
-              }
+              ctx->copyImageToBuffer(cDstBuffer, cDstOffset, cDstLayout.RowPitch,
+                cDstLayout.DepthPitch, cSrcFormat, cSrcImage, cSrcLayers, cSrcOffset, cSrcExtent);
             });
           } else {
             // The backend is not aware of image metadata in this case,
@@ -5143,27 +5088,28 @@ namespace dxvk {
           UINT                              Offset,
           UINT                              Length,
     const void*                             pSrcData) {
+    constexpr uint32_t MaxDirectUpdateSize = 64u;
+
     DxvkBufferSlice bufferSlice = pDstBuffer->GetBufferSlice(Offset, Length);
 
-    if (Length <= 1024 && !(Offset & 0x3) && !(Length & 0x3)) {
+    if (Length <= MaxDirectUpdateSize && !((Offset | Length) & 0x3)) {
       // The backend has special code paths for small buffer updates,
       // however both offset and size must be aligned to four bytes.
-      DxvkDataSlice dataSlice = AllocUpdateBufferSlice(Length);
-      std::memcpy(dataSlice.ptr(), pSrcData, Length);
+      std::array<char, MaxDirectUpdateSize> data;
+      std::memcpy(data.data(), pSrcData, Length);
 
       EmitCs([
-        cDataBuffer   = std::move(dataSlice),
-        cBufferSlice  = std::move(bufferSlice)
+        cBufferData = data,
+        cBufferSlice = std::move(bufferSlice)
       ] (DxvkContext* ctx) {
         ctx->updateBuffer(
           cBufferSlice.buffer(),
           cBufferSlice.offset(),
           cBufferSlice.length(),
-          cDataBuffer.ptr());
+          cBufferData.data());
       });
     } else {
-      // Otherwise, to avoid large data copies on the CS thread,
-      // write directly to a staging buffer and dispatch a copy
+      // Write directly to a staging buffer and dispatch a copy
       DxvkBufferSlice stagingSlice = AllocStagingBuffer(Length);
       std::memcpy(stagingSlice.mapPtr(0), pSrcData, Length);
 
@@ -5182,6 +5128,9 @@ namespace dxvk {
 
     if (pDstBuffer->HasSequenceNumber())
       GetTypedContext()->TrackBufferSequenceNumber(pDstBuffer);
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
@@ -5234,6 +5183,9 @@ namespace dxvk {
 
     UpdateImage(pDstTexture, &subresource,
       offset, extent, std::move(stagingSlice));
+
+    if constexpr (!IsDeferred)
+      static_cast<ContextType*>(this)->ThrottleAllocation();
   }
 
 
@@ -5244,7 +5196,7 @@ namespace dxvk {
           VkOffset3D                        DstOffset,
           VkExtent3D                        DstExtent,
           DxvkBufferSlice                   StagingBuffer) {
-    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    bool dstIsImage = pDstTexture->HasImage();
 
     uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
       pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);
@@ -5258,21 +5210,11 @@ namespace dxvk {
         cStagingSlice     = std::move(StagingBuffer),
         cPackedFormat     = pDstTexture->GetPackedFormat()
       ] (DxvkContext* ctx) {
-        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyBufferToImage(cDstImage,
-            cDstLayers, cDstOffset, cDstExtent,
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(), 0, 0);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
-            VkOffset2D { cDstOffset.x,     cDstOffset.y      },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(),
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cPackedFormat);
-        }
+        ctx->copyBufferToImage(cDstImage,
+          cDstLayers, cDstOffset, cDstExtent,
+          cStagingSlice.buffer(),
+          cStagingSlice.offset(), 0, 0,
+          cPackedFormat);
       });
     } else {
       // If the destination image is backed only by a buffer, we need to use
@@ -5424,8 +5366,8 @@ namespace dxvk {
           // Render target views must all have the same sample count,
           // layer count, and type. The size can mismatch under certain
           // conditions, the D3D11 documentation is wrong here.
-          if (curView->info().type      != refView->info().type
-           || curView->info().numLayers != refView->info().numLayers)
+          if (curView->info().viewType != refView->info().viewType
+           || curView->info().layerCount != refView->info().layerCount)
             return false;
 
           if (curView->image()->info().sampleCount

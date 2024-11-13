@@ -1,7 +1,9 @@
 #pragma once
 
+#include <map>
 #include <memory>
 
+#include "dxvk_access.h"
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
 #include "dxvk_hash.h"
@@ -14,18 +16,8 @@ namespace dxvk {
   class DxvkMemoryChunk;
   class DxvkSparsePageTable;
   class DxvkSharedAllocationCache;
-
-  /**
-   * \brief Resource access flags
-   */
-  enum class DxvkAccess : uint32_t {
-    None    = 0,
-    Read    = 1,
-    Write   = 2,
-  };
-
-  using DxvkAccessFlags = Flags<DxvkAccess>;
-
+  class DxvkResourceAllocation;
+  class DxvkPagedResource;
 
   /**
    * \brief Memory stats
@@ -36,6 +28,7 @@ namespace dxvk {
   struct DxvkMemoryStats {
     VkDeviceSize memoryAllocated = 0;
     VkDeviceSize memoryUsed      = 0;
+    VkDeviceSize memoryBudget    = 0;
   };
 
 
@@ -88,6 +81,16 @@ namespace dxvk {
     /// Time when the chunk has been marked as unused. Must
     /// be set to 0 when allocating memory from the chunk
     high_resolution_clock::time_point unusedTime = { };
+    /// Unordered list of resources suballocated from this chunk.
+    DxvkResourceAllocation* allocationList = nullptr;
+    /// Chunk cookie
+    uint32_t chunkCookie = 0u;
+    /// Whether defragmentation can be performed on this chunk.
+    /// Only relevant for chunks in non-mappable device memory.
+    VkBool32 canMove = true;
+
+    void addAllocation(DxvkResourceAllocation* allocation);
+    void removeAllocation(DxvkResourceAllocation* allocation);
   };
 
   
@@ -112,6 +115,10 @@ namespace dxvk {
     VkDeviceSize nextChunkSize = MinChunkSize;
     /// Maximum chunk size for the memory pool. Hard limit.
     VkDeviceSize maxChunkSize = MaxChunkSize;
+    /// Next chunk cookie, used to order chunks in statistics
+    uint32_t nextChunkCookie = 0u;
+    /// Next chunk to relocate for defragmentation
+    uint32_t nextDefragChunk = ~0u;
 
     force_inline int64_t alloc(uint64_t size, uint64_t align) {
       if (size <= DxvkPoolAllocator::MaxSize)
@@ -138,6 +145,7 @@ namespace dxvk {
   struct DxvkMemoryHeap {
     uint32_t          index         = 0u;
     uint32_t          memoryTypes   = 0u;
+    VkDeviceSize      memoryBudget  = 0u;
     VkMemoryHeap      properties    = { };
   };
 
@@ -198,6 +206,10 @@ namespace dxvk {
     uint16_t pageCount = 0u;
     /// Whether this chunk is mapped
     bool mapped = false;
+    /// Whether this chunk is active
+    bool active = false;
+    /// Chunk cookie
+    uint32_t cookie = 0u;
   };
 
 
@@ -208,6 +220,33 @@ namespace dxvk {
     std::array<DxvkMemoryTypeStats, VK_MAX_MEMORY_TYPES> memoryTypes = { };
     std::vector<DxvkMemoryChunkStats> chunks;
     std::vector<uint32_t> pageMasks;
+  };
+
+
+  /**
+   * \brief Sharing mode info
+   *
+   * Stores available queue families and provides methods
+   * to fill in sharing mode infos for resource creation.
+   */
+  struct DxvkSharingModeInfo {
+    std::array<uint32_t, 2u> queueFamilies = { };
+
+    VkSharingMode sharingMode() const {
+      return queueFamilies[0] != queueFamilies[1]
+        ? VK_SHARING_MODE_CONCURRENT
+        : VK_SHARING_MODE_EXCLUSIVE;
+    }
+
+    template<typename CreateInfo>
+    void fill(CreateInfo& info) const {
+      info.sharingMode = sharingMode();
+
+      if (info.sharingMode == VK_SHARING_MODE_CONCURRENT) {
+        info.queueFamilyIndexCount = queueFamilies.size();
+        info.pQueueFamilyIndices = queueFamilies.data();
+      }
+    }
   };
 
 
@@ -330,6 +369,21 @@ namespace dxvk {
           && layerCount == other.layerCount
           && packedSwizzle == other.packedSwizzle;
     }
+
+    VkComponentMapping unpackSwizzle() const {
+      return VkComponentMapping {
+        VkComponentSwizzle((packedSwizzle >>  0) & 0xf),
+        VkComponentSwizzle((packedSwizzle >>  4) & 0xf),
+        VkComponentSwizzle((packedSwizzle >>  8) & 0xf),
+        VkComponentSwizzle((packedSwizzle >> 12) & 0xf) };
+    }
+
+    static uint16_t packSwizzle(VkComponentMapping mapping) {
+      return (uint16_t(mapping.r) <<  0)
+           | (uint16_t(mapping.g) <<  4)
+           | (uint16_t(mapping.b) <<  8)
+           | (uint16_t(mapping.a) << 12);
+    }
   };
 
 
@@ -412,11 +466,23 @@ namespace dxvk {
    * \brief Resource allocation flags
    */
   enum class DxvkAllocationFlag : uint32_t {
+    /// Allocation owns the given VkDeviceMemory allocation
+    /// and is not suballocated from an existing chunk.
     OwnsMemory  = 0,
+    /// Allocation owns a dedicated VkBuffer object rather
+    /// than the global buffer for the parent chunk, if any.
     OwnsBuffer  = 1,
+    /// Allocation owns a VkImage object.
     OwnsImage   = 2,
-    Cacheable   = 3,
-    Imported    = 4,
+    /// Allocation can use an allocation cache.
+    CanCache    = 3,
+    /// Allocation can be relocated for defragmentation.
+    CanMove     = 4,
+    /// Allocation is imported from an external API.
+    Imported    = 5,
+    /// Memory must be cleared to zero when the allocation
+    /// is freed. Only used to work around app bugs.
+    ClearOnFree = 6,
   };
 
   using DxvkAllocationFlags = Flags<DxvkAllocationFlag>;
@@ -432,6 +498,7 @@ namespace dxvk {
   class alignas(CACHE_LINE_SIZE) DxvkResourceAllocation {
     friend DxvkMemoryAllocator;
 
+    friend struct DxvkMemoryChunk;
     friend class DxvkLocalAllocationCache;
     friend class DxvkSharedAllocationCache;
   public:
@@ -443,58 +510,20 @@ namespace dxvk {
 
     ~DxvkResourceAllocation();
 
-    force_inline void incRef() { acquire(DxvkAccess::None); }
-    force_inline void decRef() { release(DxvkAccess::None); }
-
     /**
-     * \brief Releases allocation
-     *
-     * Increments the use counter of the allocation.
-     * \param [in] access Resource access
+     * \brief Increments reference count
      */
-    force_inline void acquire(DxvkAccess access) {
-      m_useCount.fetch_add(getIncrement(access), std::memory_order_acquire);
+    force_inline void incRef() {
+      m_useCount.fetch_add(1u, std::memory_order_acquire);
     }
 
     /**
-     * \brief Releases allocation
-     *
-     * Decrements the use counter and frees the allocation if necessary.
-     * \param [in] access Resource access
+     * \brief Decrements reference count
+     * Frees allocation if necessary
      */
-    force_inline void release(DxvkAccess access) {
-      uint64_t increment = getIncrement(access);
-      uint64_t remaining = m_useCount.fetch_sub(increment, std::memory_order_release) - increment;
-
-      if (unlikely(!remaining))
+    force_inline void decRef() {
+      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_acquire) == 1u))
         free();
-    }
-
-    /**
-     * \brief Converts reference
-     *
-     * Decrements and increments the use counter according
-     * to the given access types in a single operation.
-     * \param [in] from Previous access type
-     * \param [in] to New access type
-     */
-    force_inline void convertRef(DxvkAccess from, DxvkAccess to) {
-      uint64_t increment = getIncrement(to) - getIncrement(from);
-
-      if (increment)
-        m_useCount.fetch_add(increment, std::memory_order_acq_rel);
-    }
-
-    /**
-     * \brief Checks whether the resource is in use
-     *
-     * Note that when checking for read access, this will also
-     * return \c true if the resource is being written to.
-     * \param [in] access Access to check
-     */
-    force_inline bool isInUse(DxvkAccess access) const {
-      uint64_t cur = m_useCount.load(std::memory_order_acquire);
-      return cur >= getIncrement(access);
     }
 
     /**
@@ -590,10 +619,10 @@ namespace dxvk {
 
   private:
 
-    std::atomic<uint64_t>       m_useCount = { 0u };
-
-    uint32_t                    m_resourceCookie = 0u;
+    std::atomic<uint32_t>       m_useCount = { 0u };
     DxvkAllocationFlags         m_flags = 0u;
+
+    uint64_t                    m_resourceCookie = 0u;
 
     VkDeviceMemory              m_memory = VK_NULL_HANDLE;
     VkDeviceSize                m_address = 0u;
@@ -613,7 +642,10 @@ namespace dxvk {
     DxvkMemoryAllocator*        m_allocator = nullptr;
     DxvkMemoryType*             m_type = nullptr;
 
-    DxvkResourceAllocation*     m_next = nullptr;
+    DxvkResourceAllocation*     m_nextCached = nullptr;
+
+    DxvkResourceAllocation*     m_prevInChunk = nullptr;
+    DxvkResourceAllocation*     m_nextInChunk = nullptr;
 
     void destroyBufferViews();
 
@@ -624,8 +656,6 @@ namespace dxvk {
     }
 
   };
-
-  static_assert(sizeof(DxvkResourceAllocation) == 2u * CACHE_LINE_SIZE);
 
 
   /**
@@ -923,6 +953,125 @@ namespace dxvk {
 
 
   /**
+   * \brief Allocation modes
+   */
+  enum class DxvkAllocationMode : uint32_t {
+    /// If set, the allocation will fail if video memory is
+    /// full rather than falling back to system memory.
+    NoFallback      = 0,
+    /// If set, the allocation will only succeed if it
+    /// can be suballocated from an existing chunk.
+    NoAllocation    = 1,
+
+    eFlagEnum
+  };
+
+  using DxvkAllocationModes = Flags<DxvkAllocationMode>;
+
+
+  /**
+   * \brief Allocation properties
+   */
+  struct DxvkAllocationInfo {
+    /// Virtual resource cookie for the allocation
+    uint64_t resourceCookie = 0u;
+    /// Desired memory property flags
+    VkMemoryPropertyFlags properties = 0u;
+    /// Allocation mode flags
+    DxvkAllocationModes mode = 0u;
+  };
+
+
+  /**
+   * \brief Relocation entry
+   */
+  struct DxvkRelocationEntry {
+    DxvkRelocationEntry() = default;
+    DxvkRelocationEntry(Rc<DxvkPagedResource>&& r, DxvkAllocationModes m)
+    : resource(std::move(r)), mode(m) { }
+
+    /// Resource to relocate
+    Rc<DxvkPagedResource> resource;
+    /// Resource to relocate
+    DxvkAllocationModes mode = 0u;
+  };
+
+
+  /**
+   * \brief Resource relocation helper
+   *
+   * Simple thread-safe data structure used to pass a list of
+   * resources to move from the allocator to the CS thread.
+   */
+  class DxvkRelocationList {
+
+  public:
+
+    DxvkRelocationList();
+
+    ~DxvkRelocationList();
+
+    /**
+     * \brief Retrieves list of resources to move
+     *
+     * Removes items from the internally stored list.
+     * Any duplicate entries will be removed.
+     * \param [in] count Number of entries to return
+     * \param [in] size Maximum total resource size
+     * \returns List of resources to move
+     */
+    std::vector<DxvkRelocationEntry> poll(
+            uint32_t                    count,
+            VkDeviceSize                size);
+
+    /**
+     * \brief Adds relocation entry to the list
+     *
+     * \param [in] resource Resource to add
+     * \param [in] allocation Resource storage
+     * \param [in] mode Allocation mode
+     */
+    void addResource(
+            Rc<DxvkPagedResource>&&     resource,
+      const DxvkResourceAllocation*     allocation,
+            DxvkAllocationModes         mode);
+
+    /**
+     * \brief Clears list
+     */
+    void clear();
+
+    /**
+     * \brief Checks whether resource list is empty
+     * \returns \c true if the list is empty
+     */
+    bool empty() {
+      return m_entries.empty();
+    }
+
+  private:
+
+    struct RelocationOrdering {
+      bool operator () (const DxvkResourceMemoryInfo& a, const DxvkResourceMemoryInfo& b) const {
+        // Keep chunks together, then order by offset in order to increase
+        // the likelihood of freeing up a contiguous block of memory.
+        if (a.memory < b.memory) return true;
+        if (a.memory > b.memory) return false;
+        return a.offset > b.offset;
+      }
+    };
+
+    dxvk::mutex                 m_mutex;
+
+    std::map<
+      DxvkResourceMemoryInfo,
+      DxvkRelocationEntry,
+      RelocationOrdering>       m_entries;
+
+  };
+
+
+  /**
    * \brief Memory allocator
    * 
    * Allocates device memory for Vulkan resources.
@@ -941,6 +1090,9 @@ namespace dxvk {
     // Assume an alignment of 256 bytes. This is enough to satisfy all
     // buffer use cases, and matches our minimum allocation size.
     constexpr static VkDeviceSize GlobalBufferAlignment = 256u;
+
+    // Minimum number of allocations we want to be able to fit into a heap
+    constexpr static uint32_t MinAllocationsPerHeap = 7u;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
@@ -957,27 +1109,27 @@ namespace dxvk {
      * not required. Very large resources may still be placed in
      * a dedicated allocation.
      * \param [in] requirements Memory requirements
+     * \param [in] allocationInfo Allocation info
      * \param [in] properties Memory property flags. Some of
      *    these may be ignored in case of memory pressure.
      * \returns Allocated memory
      */
     Rc<DxvkResourceAllocation> allocateMemory(
       const VkMemoryRequirements&             requirements,
-            VkMemoryPropertyFlags             properties);
+      const DxvkAllocationInfo&               allocationInfo);
 
     /**
      * \brief Allocates memory for a resource
      *
      * Will always create a dedicated allocation.
      * \param [in] requirements Memory requirements
-     * \param [in] properties Memory property flags. Some of
-     *    these may be ignored in case of memory pressure.
+     * \param [in] allocationInfo Allocation info
      * \param [in] next Further memory properties
      * \returns Allocated memory
      */
     Rc<DxvkResourceAllocation> allocateDedicatedMemory(
       const VkMemoryRequirements&             requirements,
-            VkMemoryPropertyFlags             properties,
+      const DxvkAllocationInfo&               allocationInfo,
       const void*                             next);
 
     /**
@@ -986,26 +1138,26 @@ namespace dxvk {
      * Will make use of global buffers whenever possible, but
      * may fall back to creating a dedicated Vulkan buffer.
      * \param [in] createInfo Buffer create info
-     * \param [in] properties Memory property flags
+     * \param [in] allocationInfo Allocation properties
      * \param [in] allocationCache Optional allocation cache
      * \returns Buffer resource
      */
     Rc<DxvkResourceAllocation> createBufferResource(
       const VkBufferCreateInfo&         createInfo,
-            VkMemoryPropertyFlags       properties,
+      const DxvkAllocationInfo&         allocationInfo,
             DxvkLocalAllocationCache*   allocationCache);
 
     /**
      * \brief Creates image resource
      *
      * \param [in] createInfo Image create info
-     * \param [in] properties Memory property flags
+     * \param [in] allocationInfo Allocation properties
      * \param [in] next External memory properties
      * \returns Image resource
      */
     Rc<DxvkResourceAllocation> createImageResource(
       const VkImageCreateInfo&          createInfo,
-            VkMemoryPropertyFlags       properties,
+      const DxvkAllocationInfo&         allocationInfo,
       const void*                       next);
 
     /**
@@ -1036,6 +1188,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> importBufferResource(
       const VkBufferCreateInfo&         createInfo,
+      const DxvkAllocationInfo&         allocationInfo,
       const DxvkBufferImportInfo&       importInfo);
 
     /**
@@ -1047,6 +1200,7 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> importImageResource(
       const VkImageCreateInfo&          createInfo,
+      const DxvkAllocationInfo&         allocationInfo,
             VkImage                     imageHandle);
 
     /**
@@ -1100,12 +1254,58 @@ namespace dxvk {
       const VkImageCreateInfo&      createInfo,
             VkMemoryRequirements2&  memoryRequirements) const;
 
+    /**
+     * \brief Registers a paged resource with cookie
+     *
+     * Useful when the allocator needs to track resources.
+     * \param [in] resource Resource to add
+     */
+    void registerResource(
+            DxvkPagedResource*          resource);
+
+    /**
+     * \brief Unregisters a paged resource
+     * \param [in] resource Resource to remove
+     */
+    void unregisterResource(
+            DxvkPagedResource*          resource);
+
+    /**
+     * \brief Locks an allocation in place
+     *
+     * Ensures that the resource is marked as immovable so
+     * that defragmentation won't attempt to relocate it.
+     */
+    void lockResourceGpuAddress(
+      const Rc<DxvkResourceAllocation>& allocation);
+
+    /**
+     * \brief Performs clean-up tasks
+     *
+     * Intended to be called periodically by a worker thread in order
+     * to initiate defragmentation, clean up the allocation cache and
+     * free unused memory.
+     */
+    void performTimedTasks();
+
+    /**
+     * \brief Polls relocation list
+     *
+     * \param [in] count Maximum resource count
+     * \param [in] size Maximum total size
+     * \returns Relocation entries
+     */
+    auto pollRelocationList(uint32_t count, VkDeviceSize size) {
+      return m_relocations.poll(count, size);
+    }
+
   private:
 
     DxvkDevice* m_device;
 
+    DxvkSharingModeInfo       m_sharingModeInfo;
+
     dxvk::mutex               m_mutex;
-    dxvk::condition_variable  m_cond;
 
     uint32_t m_memTypeCount = 0u;
     uint32_t m_memHeapCount = 0u;
@@ -1122,8 +1322,16 @@ namespace dxvk {
 
     DxvkResourceAllocationPool  m_allocationPool;
 
-    dxvk::thread              m_worker;
-    bool                      m_stopWorker = false;
+    alignas(CACHE_LINE_SIZE)
+    high_resolution_clock::time_point m_taskDeadline = { };
+    std::array<DxvkMemoryStats, VK_MAX_MEMORY_HEAPS> m_adapterHeapStats = { };
+
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex               m_resourceMutex;
+    std::unordered_map<uint64_t, DxvkPagedResource*> m_resourceMap;
+
+    alignas(CACHE_LINE_SIZE)
+    DxvkRelocationList        m_relocations;
 
     DxvkDeviceMemory allocateDeviceMemory(
             DxvkMemoryType&       type,
@@ -1161,7 +1369,7 @@ namespace dxvk {
             VkDeviceSize          allocationSize,
             high_resolution_clock::time_point time);
 
-    void freeEmptyChunksInPool(
+    bool freeEmptyChunksInPool(
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
             VkDeviceSize          allocationSize,
@@ -1180,14 +1388,17 @@ namespace dxvk {
             DxvkMemoryType&       type,
             DxvkMemoryPool&       pool,
             VkDeviceSize          address,
-            VkDeviceSize          size);
+            VkDeviceSize          size,
+      const DxvkAllocationInfo&   allocationInfo);
 
     DxvkResourceAllocation* createAllocation(
             DxvkMemoryType&       type,
-      const DxvkDeviceMemory&     memory);
+      const DxvkDeviceMemory&     memory,
+      const DxvkAllocationInfo&   allocationInfo);
 
     DxvkResourceAllocation* createAllocation(
-            DxvkSparsePageTable*  sparsePageTable);
+            DxvkSparsePageTable*  sparsePageTable,
+      const DxvkAllocationInfo&   allocationInfo);
 
     bool refillAllocationCache(
             DxvkLocalAllocationCache* cache,
@@ -1224,7 +1435,19 @@ namespace dxvk {
     uint32_t findGlobalBufferMemoryTypeMask(
             VkBufferUsageFlags    usage) const;
 
-    void runWorker();
+    void updateMemoryHeapBudgets();
+
+    void updateMemoryHeapStats(
+            uint32_t              heapIndex);
+
+    void moveDefragChunk(
+            DxvkMemoryType&       type);
+
+    void pickDefragChunk(
+            DxvkMemoryType&       type);
+
+    void performTimedTasksLocked(
+            high_resolution_clock::time_point currentTime);
 
   };
   

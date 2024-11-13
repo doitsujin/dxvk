@@ -1,6 +1,12 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <type_traits>
+#include <utility>
+
+#include "util_bit.h"
+#include "util_likely.h"
 
 namespace dxvk {
 
@@ -82,10 +88,10 @@ namespace dxvk {
     }
 
     void reserve(size_t n) {
-      n = pick_capacity(n);
-
-      if (n <= m_capacity)
+      if (likely(n <= m_capacity))
         return;
+
+      n = pick_capacity(n);
 
       storage* data = new storage[n];
 
@@ -127,9 +133,9 @@ namespace dxvk {
     }
 
     template<typename... Args>
-    void emplace_back(Args... args) {
+    T& emplace_back(Args... args) {
       reserve(m_size + 1);
-      new (ptr(m_size++)) T(std::forward<Args>(args)...);
+      return *(new (ptr(m_size++)) T(std::forward<Args>(args)...));
     }
 
     void erase(size_t idx) {
@@ -176,12 +182,8 @@ namespace dxvk {
     } u;
 
     size_t pick_capacity(size_t n) {
-      size_t capacity = m_capacity;
-
-      while (capacity < n)
-        capacity *= 2;
-
-      return capacity;
+      // Pick next largest power of two for the new capacity
+      return size_t(1u) << ((sizeof(n) * 8u) - bit::lzcnt(n - 1));
     }
 
     T* ptr(size_t idx) {

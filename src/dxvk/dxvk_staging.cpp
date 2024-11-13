@@ -16,7 +16,7 @@ namespace dxvk {
   }
 
 
-  DxvkBufferSlice DxvkStagingBuffer::alloc(VkDeviceSize align, VkDeviceSize size) {
+  DxvkBufferSlice DxvkStagingBuffer::alloc(VkDeviceSize size) {
     DxvkBufferCreateInfo info;
     info.size   = size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -28,15 +28,15 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
 
-    VkDeviceSize alignedSize = dxvk::align(size, align);
-    VkDeviceSize alignedOffset = dxvk::align(m_offset, align);
+    VkDeviceSize alignedSize = dxvk::align(size, 256u);
+    m_allocationCounter += alignedSize;
 
     if (2 * alignedSize > m_size) {
       return DxvkBufferSlice(m_device->createBuffer(info,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     }
 
-    if (alignedOffset + alignedSize > m_size || m_buffer == nullptr) {
+    if (m_offset + alignedSize > m_size || m_buffer == nullptr) {
       info.size = m_size;
 
       // Free resources first if possible, in some rare
@@ -44,11 +44,11 @@ namespace dxvk {
       m_buffer = nullptr;
       m_buffer = m_device->createBuffer(info,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-      alignedOffset = 0;
+      m_offset = 0;
     }
 
-    DxvkBufferSlice slice(m_buffer, alignedOffset, size);
-    m_offset = alignedOffset + alignedSize;
+    DxvkBufferSlice slice(m_buffer, m_offset, size);
+    m_offset += alignedSize;
     return slice;
   }
 
@@ -56,6 +56,8 @@ namespace dxvk {
   void DxvkStagingBuffer::reset() {
     m_buffer = nullptr;
     m_offset = 0;
+
+    m_allocationCounterValueOnReset = m_allocationCounter;
   }
   
 }

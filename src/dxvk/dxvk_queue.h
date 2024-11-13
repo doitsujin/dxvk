@@ -56,6 +56,7 @@ namespace dxvk {
     DxvkSubmitStatus*   status;
     DxvkSubmitInfo      submit;
     DxvkPresentInfo     present;
+    DxvkTimelineSemaphoreValues timelines;
   };
 
 
@@ -178,6 +179,9 @@ namespace dxvk {
 
     DxvkDevice*                 m_device;
     DxvkQueueCallback           m_callback;
+
+    DxvkTimelineSemaphores      m_semaphores;
+    DxvkTimelineSemaphoreValues m_timelines;
 
     std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     

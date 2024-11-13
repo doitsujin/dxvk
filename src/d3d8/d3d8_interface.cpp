@@ -15,6 +15,8 @@ namespace dxvk
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
+    m_bridge->SetD3D8CompatibilityMode(true);
+
     m_d3d8Options = D3D8Options(*m_bridge->GetConfig());
 
     m_adapterCount = m_d3d9->GetAdapterCount();
@@ -118,6 +120,13 @@ namespace dxvk
 
     if (unlikely(pPresentationParameters == nullptr ||
                  ppReturnedDeviceInterface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
+    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
+    // RC Cars depends on it not being rejected.
+    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
+              && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;

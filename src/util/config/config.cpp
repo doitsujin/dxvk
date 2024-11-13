@@ -22,9 +22,11 @@ namespace dxvk {
     /**********************************************/
 
     /* Diablo 4 - Will complain about missing  *
-     * GPU unless dxgi Id match actual GPU Id  */
+     * GPU unless dxgi Id match actual GPU Id. *
+     * Bugs out on some multi-gpu systems.     */
     { R"(\\Diablo IV\.exe$)", {{
-      { "dxgi.hideNvidiaGpu",               "False"  },
+      { "dxgi.hideNvidiaGpu",               "False" },
+      { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
     /* Ratchet & Clank: Rift Apart - does not allow
      * enabling ray tracing if it sees an AMD GPU. */
@@ -71,14 +73,6 @@ namespace dxvk {
       { "d3d11.dcSingleUseMode",            "False" },
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
-    /* Far Cry 2: Set vendor ID to Nvidia to avoid
-     * vegetation artifacts on Intel, and set
-     * apitrace mode to True to improve perf on all
-     * hardware.                                  */
-    { R"(\\(FarCry2|farcry2game)\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
-      { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
      * Nvidia. We assume that the Vulkan drivers  *
@@ -109,7 +103,6 @@ namespace dxvk {
      * set of resources multiple times per frame. */
     { R"(\\QuantumBreak\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
-      { "d3d11.maxImplicitDiscardSize",     "-1"   },
     }} },
     /* Anno 2205: Random crashes with state cache */
     { R"(\\anno2205\.exe$)", {{
@@ -300,10 +293,6 @@ namespace dxvk {
     { R"(\\AoE2DE_s\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
-    /* Total War: Warhammer III                   */
-    { R"(\\Warhammer3\.exe$)", {{
-      { "d3d11.maxDynamicImageBufferSize",  "4096" },
-    }} },
     /* Assassin's Creed 3 and 4                   */
     { R"(\\ac(3|4bf)[sm]p\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
@@ -412,9 +401,12 @@ namespace dxvk {
     { R"(\\GRW\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
-    /* Vindictus d3d11 CPU bound perf             */
+    /* Vindictus d3d11 CPU bound perf, and work   *
+     * around the game not properly initializing  *
+     * some of its constant buffers after discard */
     { R"(\\Vindictus(_x64)?\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "cr"   },
+      { "dxvk.zeroMappedMemory",            "True" },
     }} },
     /* Riders Republic - Statically linked AMDAGS */
     { R"(\\RidersRepublic(_BE)?\.exe$)", {{
@@ -444,9 +436,14 @@ namespace dxvk {
       { "d3d11.enableContextLock",          "True" },
     }} },
     /* Kena: Bridge of Spirits: intel water       * 
-      flickering issues                           */
+     * flickering issues                          */
     { R"(\\Kena-Win64-Shipping\.exe$)", {{
       { "dxgi.hideIntelGpu",                 "True" },
+    }} },
+    /* GTA Definitive Edition trilogy             * 
+     * Static ags crash with HDR support          */
+    { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
+      { "dxgi.hideAmdGpu",                 "True" },
     }} },
 
     /**********************************************/
@@ -716,10 +713,6 @@ namespace dxvk {
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Star Wars The Old Republic */
-    { R"(\\swtor\.exe$)", {{
-      { "d3d9.forceSamplerTypeSpecConstants", "True" },
-    }} },
     /* Bionic Commando
        Physics break at high fps               */
     { R"(\\bionic_commando\.exe$)", {{
@@ -974,13 +967,30 @@ namespace dxvk {
     }} },
     /* Prince of Persia (2008) - Can get stuck     *
      * during loading at very high fps             */
-    { R"(\\PrinceOfPersia_Launcher\.exe$)", {{
+    { R"(\\Prince( of Persia|OfPersia_Launcher)\.exe$)", {{
       { "d3d9.maxFrameRate",                 "240" },
     }} },
     /* F.E.A.R 1 & expansions                      *
      * Graphics glitches at very high fps          */
     { R"(\\FEAR(MP|XP|XP2)?\.exe$)", {{
       { "d3d9.maxFrameRate",                 "360" },
+    }} },
+    /* Secret World Legends - d3d9 mode only sees  *
+     * 512MB vram locking higher graphics presets  */
+    { R"(\\SecretWorldLegends\.exe$)", {{
+      { "d3d9.memoryTrackTest",              "True" },
+    }} },
+    /* Far Cry 2: Set vendor ID to Nvidia to       *
+     * avoid vegetation artifacts on Intel, and    *
+     * set apitrace mode to True to improve perf   *
+     * on all hardware.                            */
+    { R"(\\(FarCry2|farcry2game)\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* Alpha Protocol - Rids unwanted reflections  */
+    { R"(\\APGame\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
 
     /**********************************************/
@@ -1143,7 +1153,7 @@ namespace dxvk {
      * Missing geometry and textures without      *
      * legacy DISCARD behavior                    */
     { R"(\\Rayman3\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
+      { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
   }};

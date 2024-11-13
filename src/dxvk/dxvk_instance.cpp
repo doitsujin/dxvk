@@ -1,4 +1,5 @@
 #include <version.h>
+#include <buildenv.h>
 
 #include "dxvk_instance.h"
 #include "dxvk_openvr.h"
@@ -20,6 +21,7 @@ namespace dxvk {
   DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
+    Logger::info(str::format("Build: ", DXVK_TARGET, " ", DXVK_COMPILER, " ", DXVK_COMPILER_VERSION));
 
     wsi::init();
 
@@ -182,7 +184,7 @@ namespace dxvk {
       appInfo.pApplicationName      = appName.c_str();
       appInfo.applicationVersion    = flags.raw();
       appInfo.pEngineName           = "DXVK";
-      appInfo.engineVersion         = VK_MAKE_API_VERSION(0, 2, 4, 1);
+      appInfo.engineVersion         = VK_MAKE_API_VERSION(0, 2, 5, 0);
       appInfo.apiVersion            = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
       VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
@@ -330,7 +332,7 @@ namespace dxvk {
       case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   logLevel = LogLevel::Error; break;
     }
 
-    static const std::array<uint32_t, 8> ignoredIds = {
+    static const std::array<uint32_t, 9> ignoredIds = {
       // Ignore image format features for depth-compare instructions.
       // These errors are expected in D3D9 and some D3D11 apps.
       0x23259a0d,
@@ -344,6 +346,8 @@ namespace dxvk {
       0x151f5e5a,
       0x6c16bfb4,
       0xd6d77e1e,
+      // Ignore spam about OpSampledImage, validation is wrong here.
+      0xa5625282,
     };
 
     for (auto id : ignoredIds) {

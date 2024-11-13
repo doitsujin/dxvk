@@ -7,7 +7,6 @@
 #include "dxvk_format.h"
 #include "dxvk_hash.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 
 namespace dxvk {
@@ -16,50 +15,29 @@ namespace dxvk {
 
   /**
    * \brief Buffer create info
-   * 
+   *
    * The properties of a buffer that are
    * passed to \ref DxvkDevice::createBuffer
    */
   struct DxvkBufferCreateInfo {
-    /// Buffer create flags
-    VkBufferCreateFlags flags = 0;
-
     /// Size of the buffer, in bytes
-    VkDeviceSize size;
-    
+    VkDeviceSize size = 0u;
+
     /// Buffer usage flags
-    VkBufferUsageFlags usage;
-    
+    VkBufferUsageFlags usage = 0u;
+
     /// Pipeline stages that can access
     /// the contents of the buffer.
-    VkPipelineStageFlags stages;
-    
+    VkPipelineStageFlags stages = 0u;
+
     /// Allowed access patterns
-    VkAccessFlags access;
-  };
-  
-  
-  /**
-   * \brief Buffer view create info
-   * 
-   * The properties of a buffer view that
-   * are to \ref DxvkDevice::createBufferView
-   */
-  struct DxvkBufferViewCreateInfo {
-    /// Buffer data format, like image data
-    VkFormat format = VK_FORMAT_UNDEFINED;
-    
-    /// Offset of the buffer region to include in the view
-    VkDeviceSize rangeOffset = 0u;
-    
-    /// Size of the buffer region to include in the view
-    VkDeviceSize rangeLength = 0u;
+    VkAccessFlags access = 0u;
 
-    /// Buffer view usage flags
-    VkBufferUsageFlags usage = 0u;
+    /// Buffer create flags
+    VkBufferCreateFlags flags = 0;
   };
 
-  
+
   /**
    * \brief Buffer slice info
    * 
@@ -134,13 +112,8 @@ namespace dxvk {
      * \brief Buffer view properties
      * \returns Buffer view properties
      */
-    DxvkBufferViewCreateInfo info() const {
-      DxvkBufferViewCreateInfo info = { };
-      info.format = m_key.format;
-      info.rangeOffset = m_key.offset;
-      info.rangeLength = m_key.size;
-      info.usage = m_key.usage;
-      return info;
+    DxvkBufferViewKey info() const {
+      return m_key;
     }
 
     /**
@@ -237,6 +210,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief GPU address
+     *
+     * May be 0 if the device address usage flag is not
+     * enabled for this buffer.
+     */
+    VkDeviceAddress gpuAddress() const {
+      return m_bufferInfo.gpuAddress;
+    }
+
+    /**
      * \brief Queries shader stages that can access this buffer
      *
      * Derived from the pipeline stage mask passed in during creation.
@@ -316,8 +299,8 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new backing resource
      */
-    Rc<DxvkResourceAllocation> allocateSlice() {
-      return allocateSlice(nullptr);
+    Rc<DxvkResourceAllocation> allocateStorage() {
+      return allocateStorage(nullptr);
     }
 
     /**
@@ -328,14 +311,18 @@ namespace dxvk {
      * \param [in] cache Optional allocation cache
      * \returns The new buffer slice
      */
-    Rc<DxvkResourceAllocation> allocateSlice(DxvkLocalAllocationCache* cache) {
+    Rc<DxvkResourceAllocation> allocateStorage(DxvkLocalAllocationCache* cache) {
+      DxvkAllocationInfo allocationInfo = { };
+      allocationInfo.resourceCookie = cookie();
+      allocationInfo.properties = m_properties;
+
       VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
       info.flags = m_info.flags;
       info.usage = m_info.usage;
       info.size = m_info.size;
-      info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+      m_sharingMode.fill(info);
 
-      return m_allocator->createBufferResource(info, m_properties, cache);
+      return m_allocator->createBufferResource(info, allocationInfo, cache);
     }
 
     /**
@@ -348,7 +335,7 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer allocation
      */
-    Rc<DxvkResourceAllocation> assignSlice(Rc<DxvkResourceAllocation>&& slice) {
+    Rc<DxvkResourceAllocation> assignStorage(Rc<DxvkResourceAllocation>&& slice) {
       Rc<DxvkResourceAllocation> result = std::move(m_storage);
 
       m_storage = std::move(slice);
@@ -363,16 +350,36 @@ namespace dxvk {
      * \brief Retrieves current backing storage
      * \returns Current buffer allocation
      */
-    Rc<DxvkResourceAllocation> getAllocation() const {
+    Rc<DxvkResourceAllocation> storage() const {
       return m_storage;
     }
 
     /**
-     * \brief Checks whether the buffer is imported
-     * \returns \c true if the buffer is imported
+     * \brief Retrieves resource ID for barrier tracking
+     * \returns Unique resource ID
      */
-    bool isForeign() const {
-      return m_storage->flags().test(DxvkAllocationFlag::Imported);
+    uint64_t getResourceId() const {
+      constexpr static size_t Align = alignof(DxvkResourceAllocation);
+      return reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align);
+    }
+
+    /**
+     * \brief Checks whether the buffer can be relocated
+     *
+     * Buffers that require a stable GPU or CPU address cannot be
+     * moved, unless it's done explicitly done by the client API.
+     * \returns \c true if the backend can safely relocate the buffer
+     */
+    bool canRelocate() const;
+
+    /**
+     * \brief Enables stable GPU address
+     *
+     * Subsequent calls to \c canRelocate will be \c false, preventing
+     * the buffer from being relocated or invalidated by the backend.
+     */
+    void enableStableAddress() {
+      m_stableAddress = true;
     }
 
     /**
@@ -382,7 +389,7 @@ namespace dxvk {
      * \returns Newly created buffer view
      */
     Rc<DxvkBufferView> createView(
-      const DxvkBufferViewCreateInfo& info);
+      const DxvkBufferViewKey& info);
 
     /**
      * \brief Retrieves sparse binding table
@@ -390,17 +397,29 @@ namespace dxvk {
      */
     DxvkSparsePageTable* getSparsePageTable();
 
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags
+     * \returns Operation status and allocation
+     */
+    Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode);
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
     DxvkMemoryAllocator*        m_allocator     = nullptr;
     VkMemoryPropertyFlags       m_properties    = 0u;
     VkShaderStageFlags          m_shaderStages  = 0u;
+    DxvkSharingModeInfo         m_sharingMode   = { };
 
     DxvkBufferCreateInfo        m_info          = { };
 
     uint32_t                    m_xfbStride     = 0u;
     uint32_t                    m_version       = 0u;
+
+    bool                        m_stableAddress = false;
 
     DxvkResourceBufferInfo      m_bufferInfo    = { };
 
@@ -410,6 +429,17 @@ namespace dxvk {
     std::unordered_map<DxvkBufferViewKey,
       DxvkBufferView, DxvkHash, DxvkEq> m_views;
 
+  };
+
+
+  /**
+   * \brief Buffer relocation info
+   */
+  struct DxvkRelocateBufferInfo {
+    /// Buffer object. Stores metadata.
+    Rc<DxvkBuffer> buffer;
+    /// Backing storage to copy to
+    Rc<DxvkResourceAllocation> storage;
   };
   
   
@@ -435,10 +465,12 @@ namespace dxvk {
       m_length(rangeLength) { }
 
     explicit DxvkBufferSlice(Rc<DxvkBuffer> buffer)
-    : DxvkBufferSlice(std::move(buffer), 0, buffer->info().size) { }
+    : m_buffer(std::move(buffer)),
+      m_offset(0),
+      m_length(m_buffer->info().size) { }
 
     explicit DxvkBufferSlice(const Rc<DxvkBufferView>& view)
-    : DxvkBufferSlice(view->buffer(), view->info().rangeOffset, view->info().rangeLength) { }
+    : DxvkBufferSlice(view->buffer(), view->info().offset, view->info().size) { }
 
     DxvkBufferSlice(const DxvkBufferSlice& ) = default;
     DxvkBufferSlice(      DxvkBufferSlice&&) = default;

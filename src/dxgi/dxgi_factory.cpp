@@ -9,10 +9,10 @@
 
 namespace dxvk {
 
-  Singleton<DxvkInstance> g_dxvkInstance;
+  static Singleton<DxvkInstance>   g_dxvkInstance;
 
-  std::mutex s_globalHDRStateMutex;
-  DXVK_VK_GLOBAL_HDR_STATE s_globalHDRState{};
+  static dxvk::mutex               s_globalHDRStateMutex;
+  static DXVK_VK_GLOBAL_HDR_STATE  s_globalHDRState{};
 
   DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
   : m_factory(pFactory) {

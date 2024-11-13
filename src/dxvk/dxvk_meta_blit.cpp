@@ -11,115 +11,8 @@
 
 namespace dxvk {
   
-  DxvkMetaBlitRenderPass::DxvkMetaBlitRenderPass(
-    const Rc<DxvkDevice>&       device,
-    const Rc<DxvkImage>&        dstImage,
-    const Rc<DxvkImage>&        srcImage,
-    const VkImageBlit&          region,
-    const VkComponentMapping&   mapping)
-  : m_vkd         (device->vkd()),
-    m_dstImage    (dstImage),
-    m_srcImage    (srcImage),
-    m_region      (region),
-    m_dstView     (createDstView()),
-    m_srcView     (createSrcView(mapping)) {
-    
-  }
-
-
-  DxvkMetaBlitRenderPass::~DxvkMetaBlitRenderPass() {
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_dstView, nullptr);
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcView, nullptr);
-  }
-
-
-  VkImageViewType DxvkMetaBlitRenderPass::viewType() const {
-    static const std::array<VkImageViewType, 3> viewTypes = {{
-      VK_IMAGE_VIEW_TYPE_1D_ARRAY,
-      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-      VK_IMAGE_VIEW_TYPE_3D,
-    }};
-
-    return viewTypes.at(uint32_t(m_srcImage->info().type));
-  }
-
-
-  uint32_t DxvkMetaBlitRenderPass::framebufferLayerIndex() const {
-    uint32_t result = m_region.dstSubresource.baseArrayLayer;
-
-    if (m_dstImage->info().type == VK_IMAGE_TYPE_3D)
-      result = std::min(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
-
-    return result;
-  }
-
-
-  uint32_t DxvkMetaBlitRenderPass::framebufferLayerCount() const {
-    uint32_t result = m_region.dstSubresource.layerCount;
-
-    if (m_dstImage->info().type == VK_IMAGE_TYPE_3D) {
-      uint32_t minZ = std::min(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
-      uint32_t maxZ = std::max(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
-      result = maxZ - minZ;
-    }
-
-    return result;
-  }
-
-
-  VkImageView DxvkMetaBlitRenderPass::createDstView() {
-    std::array<VkImageViewType, 3> viewTypes = {{
-      VK_IMAGE_VIEW_TYPE_1D_ARRAY,
-      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
-    }};
-
-    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    usageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    info.image            = m_dstImage->handle();
-    info.viewType         = viewTypes.at(uint32_t(m_dstImage->info().type));
-    info.format           = m_dstImage->info().format;
-    info.components       = VkComponentMapping();
-    info.subresourceRange = vk::makeSubresourceRange(m_region.dstSubresource);
-
-    if (m_dstImage->info().type) {
-      info.subresourceRange.baseArrayLayer = framebufferLayerIndex();
-      info.subresourceRange.layerCount     = framebufferLayerCount();
-    }
-
-    VkImageView result;
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create image view");
-    return result;
-  }
-
-
-  VkImageView DxvkMetaBlitRenderPass::createSrcView(const VkComponentMapping& mapping) {
-    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    usageInfo.usage       = VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    info.image            = m_srcImage->handle();
-    info.viewType         = this->viewType();
-    info.format           = m_srcImage->info().format;
-    info.components       = mapping;
-    info.subresourceRange = vk::makeSubresourceRange(m_region.srcSubresource);
-
-    VkImageView result;
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create image view");
-    return result;
-  }
-
-
-
-
   DxvkMetaBlitObjects::DxvkMetaBlitObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
-    m_samplerCopy (createSampler(VK_FILTER_NEAREST)),
-    m_samplerBlit (createSampler(VK_FILTER_LINEAR)),
     m_shaderFrag1D(createShaderModule(dxvk_blit_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_blit_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_blit_frag_3d)) {
@@ -144,9 +37,6 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFrag1D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
-    
-    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerBlit, nullptr);
-    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerCopy, nullptr);
   }
   
   
@@ -169,32 +59,8 @@ namespace dxvk {
     m_pipelines.insert({ key, pipeline });
     return pipeline;
   }
-  
-  
-  VkSampler DxvkMetaBlitObjects::getSampler(VkFilter filter) {
-    return filter == VK_FILTER_NEAREST
-      ? m_samplerCopy
-      : m_samplerBlit;
-  }
-  
-  
-  VkSampler DxvkMetaBlitObjects::createSampler(VkFilter filter) const {
-    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-    info.magFilter              = filter;
-    info.minFilter              = filter;
-    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    
-    VkSampler result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaBlitObjects: Failed to create sampler");
-    return result;
-  }
-  
-  
+
+
   VkShaderModule DxvkMetaBlitObjects::createShaderModule(const SpirvCodeBuffer& code) const {
     VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize               = code.size();

@@ -77,6 +77,10 @@ namespace dxvk {
       return m_mapMode;
     }
 
+    uint64_t GetCookie() const {
+      return m_cookie;
+    }
+
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
     }
@@ -114,11 +118,11 @@ namespace dxvk {
     }
     
     Rc<DxvkResourceAllocation> AllocSlice(DxvkLocalAllocationCache* cache) {
-      return m_buffer->allocateSlice(cache);
+      return m_buffer->allocateStorage(cache);
     }
     
     Rc<DxvkResourceAllocation> DiscardSlice(DxvkLocalAllocationCache* cache) {
-      auto allocation = m_buffer->allocateSlice(cache);
+      auto allocation = m_buffer->allocateStorage(cache);
       m_mapPtr = allocation->mapPtr();
       return allocation;
     }
@@ -183,6 +187,8 @@ namespace dxvk {
     D3D11_COMMON_BUFFER_MAP_MODE  m_mapMode;
     
     Rc<DxvkBuffer>                m_buffer;
+    uint64_t                      m_cookie = 0u;
+
     Rc<DxvkBuffer>                m_soCounter;
     Rc<DxvkSparsePageAllocator>   m_sparseAllocator;
     uint64_t                      m_seq = 0ull;

@@ -3364,9 +3364,21 @@ namespace dxvk {
       } break;
       
       case DxbcOpcode::EvalSnapped: {
-        const DxbcRegisterValue offset = emitRegisterLoad(
+        // The offset is encoded as a 4-bit fixed point value
+        DxbcRegisterValue offset = emitRegisterLoad(
           ins.src[1], DxbcRegMask(true, true, false, false));
-        
+        offset.id = m_module.opBitFieldSExtract(
+          getVectorTypeId(offset.type), offset.id,
+          m_module.consti32(0), m_module.consti32(4));
+
+        offset.type.ctype = DxbcScalarType::Float32;
+        offset.id = m_module.opConvertStoF(
+          getVectorTypeId(offset.type), offset.id);
+
+        offset.id = m_module.opFMul(
+          getVectorTypeId(offset.type), offset.id,
+          m_module.constvec2f32(1.0f / 16.0f, 1.0f / 16.0f));
+
         result.id = m_module.opInterpolateAtOffset(
           getVectorTypeId(result.type),
           m_vRegs.at(registerId).id,

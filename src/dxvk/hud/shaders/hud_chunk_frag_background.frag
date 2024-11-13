@@ -4,20 +4,28 @@
 
 #include "hud_frag_common.glsl"
 
-layout(location = 0) out vec4 o_color;
-
 layout(push_constant)
 uniform push_data_t {
-  vec2 pos;
-  vec2 size;
-  vec2 scale;
+  uvec2 surface_size;
   float opacity;
-  uint color;
-  uint maskIndex;
-  uint pageCount;
+  float scale;
 };
 
+layout(location = 0) flat in uint v_active;
+
+layout(location = 0) out vec4 o_color;
+
 void main() {
-  vec4 rgba = unpackUnorm4x8(color);
-  o_color = vec4(encodeOutput(rgba.rgb), rgba.a * opacity);
+  o_color = vec4(0.0f, 0.0f, 0.0f, 0.75f);
+
+  if (v_active == 0u) {
+    uvec2 pos = uvec2(gl_FragCoord.xy);
+
+    if (((pos.x + pos.y) & 7u) < 2u)
+      o_color.xyz = vec3(0.25f);
+  }
+
+  o_color.a *= opacity;
+  o_color.rgb *= o_color.a;
+  o_color = linear_to_output(o_color);
 }

@@ -42,31 +42,31 @@ namespace dxvk {
       }
 
       // Fill in buffer view info
-      DxvkBufferViewCreateInfo viewInfo;
+      DxvkBufferViewKey viewInfo;
       viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
 
       if (bufInfo.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
         // Raw buffer view. We'll represent this as a
         // uniform texel buffer with UINT32 elements.
         viewInfo.format = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = sizeof(uint32_t) * bufInfo.FirstElement;
-        viewInfo.rangeLength = sizeof(uint32_t) * bufInfo.NumElements;
+        viewInfo.offset = sizeof(uint32_t) * bufInfo.FirstElement;
+        viewInfo.size = sizeof(uint32_t) * bufInfo.NumElements;
       } else if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
         // Structured buffer view
         viewInfo.format = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = buffer->Desc()->StructureByteStride * bufInfo.FirstElement;
-        viewInfo.rangeLength = buffer->Desc()->StructureByteStride * bufInfo.NumElements;
+        viewInfo.offset = buffer->Desc()->StructureByteStride * bufInfo.FirstElement;
+        viewInfo.size = buffer->Desc()->StructureByteStride * bufInfo.NumElements;
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
         const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
-        viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
-        viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
+        viewInfo.offset = formatInfo->elementSize * bufInfo.FirstElement;
+        viewInfo.size = formatInfo->elementSize * bufInfo.NumElements;
       }
 
       // Populate view info struct
-      m_info.Buffer.Offset = viewInfo.rangeOffset;
-      m_info.Buffer.Length = viewInfo.rangeLength;
+      m_info.Buffer.Offset = viewInfo.offset;
+      m_info.Buffer.Length = viewInfo.size;
 
       // Create underlying buffer view object
       m_bufferView = buffer->GetBuffer()->createView(viewInfo);
@@ -74,91 +74,91 @@ namespace dxvk {
       auto texture = GetCommonTexture(pResource);
       auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
       
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format  = formatInfo.Format;
-      viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
-      viewInfo.usage   = VK_IMAGE_USAGE_SAMPLED_BIT;
+      DxvkImageViewKey viewInfo;
+      viewInfo.format = formatInfo.Format;
+      viewInfo.aspects = formatInfo.Aspect;
+      viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+      viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
 
       // Shaders expect the stencil value in the G component
-      if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-        viewInfo.swizzle = VkComponentMapping {
+      if (viewInfo.aspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+        viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle({
           VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
-          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO });
       }
       
       switch (pDesc->ViewDimension) {
         case D3D11_SRV_DIMENSION_TEXTURE1D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
-          viewInfo.minLevel  = pDesc->Texture1D.MostDetailedMip;
-          viewInfo.numLevels = pDesc->Texture1D.MipLevels;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D;
+          viewInfo.mipIndex   = pDesc->Texture1D.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->Texture1D.MipLevels;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-          viewInfo.minLevel  = pDesc->Texture1DArray.MostDetailedMip;
-          viewInfo.numLevels = pDesc->Texture1DArray.MipLevels;
-          viewInfo.minLayer  = pDesc->Texture1DArray.FirstArraySlice;
-          viewInfo.numLayers = pDesc->Texture1DArray.ArraySize;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.mipIndex   = pDesc->Texture1DArray.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->Texture1DArray.MipLevels;
+          viewInfo.layerIndex = pDesc->Texture1DArray.FirstArraySlice;
+          viewInfo.layerCount = pDesc->Texture1DArray.ArraySize;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
-          viewInfo.minLevel  = pDesc->Texture2D.MostDetailedMip;
-          viewInfo.numLevels = pDesc->Texture2D.MipLevels;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+          viewInfo.mipIndex   = pDesc->Texture2D.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->Texture2D.MipLevels;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-          viewInfo.minLevel  = pDesc->Texture2DArray.MostDetailedMip;
-          viewInfo.numLevels = pDesc->Texture2DArray.MipLevels;
-          viewInfo.minLayer  = pDesc->Texture2DArray.FirstArraySlice;
-          viewInfo.numLayers = pDesc->Texture2DArray.ArraySize;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.mipIndex   = pDesc->Texture2DArray.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->Texture2DArray.MipLevels;
+          viewInfo.layerIndex = pDesc->Texture2DArray.FirstArraySlice;
+          viewInfo.layerCount = pDesc->Texture2DArray.ArraySize;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
-          viewInfo.minLevel  = 0;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+          viewInfo.mipIndex   = 0;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-          viewInfo.minLevel  = 0;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = pDesc->Texture2DMSArray.FirstArraySlice;
-          viewInfo.numLayers = pDesc->Texture2DMSArray.ArraySize;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.mipIndex   = 0;
+          viewInfo.mipCount   = 1;
+          viewInfo.layerIndex = pDesc->Texture2DMSArray.FirstArraySlice;
+          viewInfo.layerCount = pDesc->Texture2DMSArray.ArraySize;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE3D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
-          viewInfo.minLevel  = pDesc->Texture3D.MostDetailedMip;
-          viewInfo.numLevels = pDesc->Texture3D.MipLevels;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_3D;
+          viewInfo.mipIndex   = pDesc->Texture3D.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->Texture3D.MipLevels;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 1;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURECUBE: {
           const bool cubeArraysEnabled = pDevice->GetDXVKDevice()->features().core.features.imageCubeArray;
-          viewInfo.type      = cubeArraysEnabled ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
-          viewInfo.minLevel  = pDesc->TextureCube.MostDetailedMip;
-          viewInfo.numLevels = pDesc->TextureCube.MipLevels;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 6;
+          viewInfo.viewType   = cubeArraysEnabled ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
+          viewInfo.mipIndex   = pDesc->TextureCube.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->TextureCube.MipLevels;
+          viewInfo.layerIndex = 0;
+          viewInfo.layerCount = 6;
         } break;
           
         case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-          viewInfo.minLevel  = pDesc->TextureCubeArray.MostDetailedMip;
-          viewInfo.numLevels = pDesc->TextureCubeArray.MipLevels;
-          viewInfo.minLayer  = pDesc->TextureCubeArray.First2DArrayFace;
-          viewInfo.numLayers = pDesc->TextureCubeArray.NumCubes * 6;
+          viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+          viewInfo.mipIndex   = pDesc->TextureCubeArray.MostDetailedMip;
+          viewInfo.mipCount   = pDesc->TextureCubeArray.MipLevels;
+          viewInfo.layerIndex = pDesc->TextureCubeArray.First2DArrayFace;
+          viewInfo.layerCount = pDesc->TextureCubeArray.NumCubes * 6;
           break;
           
         default:
@@ -166,17 +166,17 @@ namespace dxvk {
       }
       
       if (texture->GetPlaneCount() > 1)
-        viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
+        viewInfo.aspects = vk::getPlaneAspect(GetPlaneSlice(pDesc));
 
       // Populate view info struct
-      m_info.Image.Aspects   = viewInfo.aspect;
-      m_info.Image.MinLevel  = viewInfo.minLevel;
-      m_info.Image.MinLayer  = viewInfo.minLayer;
-      m_info.Image.NumLevels = viewInfo.numLevels;
-      m_info.Image.NumLayers = viewInfo.numLayers;
+      m_info.Image.Aspects   = viewInfo.aspects;
+      m_info.Image.MinLevel  = viewInfo.mipIndex;
+      m_info.Image.MinLayer  = viewInfo.layerIndex;
+      m_info.Image.NumLevels = viewInfo.mipCount;
+      m_info.Image.NumLayers = viewInfo.layerCount;
 
       // Create the underlying image view object
-      m_imageView = pDevice->GetDXVKDevice()->createImageView(texture->GetImage(), viewInfo);
+      m_imageView = texture->GetImage()->createView(viewInfo);
     }
   }
   
@@ -184,6 +184,9 @@ namespace dxvk {
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
+
+    m_imageView = nullptr;
+    m_bufferView = nullptr;
   }
   
   

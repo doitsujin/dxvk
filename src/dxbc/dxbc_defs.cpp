@@ -1035,7 +1035,7 @@ namespace dxvk {
     { 3, DxbcInstClass::Interpolate, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
     } },
     /* EvalSampleIndex                      */
     { 3, DxbcInstClass::Interpolate, {

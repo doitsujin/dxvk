@@ -134,6 +134,7 @@ namespace dxvk::wsi {
   bool Win32WsiDriver::setWindowMode(
           HMONITOR                hMonitor,
           HWND                    hWindow,
+          DxvkWindowState*        pState,
     const WsiMode&                mode) {
     ::MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
@@ -193,6 +194,7 @@ namespace dxvk::wsi {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
+    m_lastForegroundTimestamp = 0;
     return true;
   }
 
@@ -260,7 +262,12 @@ namespace dxvk::wsi {
 
 
   bool Win32WsiDriver::isOccluded(HWND hWindow) {
-    return ::GetForegroundWindow() != hWindow;
+    if (::GetForegroundWindow() == hWindow)
+    {
+      m_lastForegroundTimestamp = GetTickCount64();
+      return false;
+    }
+    return m_lastForegroundTimestamp && GetTickCount64() - m_lastForegroundTimestamp > 100;
   }
 
 

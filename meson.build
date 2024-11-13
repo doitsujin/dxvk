@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.4.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.5.0', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'b_vscrt=static_from_buildtype', 'warning_level=2' ])
 
 pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
@@ -87,8 +87,14 @@ if platform == 'windows'
       ]
     endif
   else
+    # setup file alignment + enable PDB output for MSVC builds
+    # PDBs are useful for Windows consumers of DXVK 
+    compiler_args += [
+      '/Z7'
+    ]
     link_args += [
       '/FILEALIGN:4096',
+      '/DEBUG:FULL'
     ]
   endif
 
@@ -142,16 +148,20 @@ else
     './include/native/directx'
   ]
 
+  lib_sdl3 = dependency('SDL3', required: false)
   lib_sdl2 = dependency('SDL2', required: false)
   lib_glfw = dependency('glfw', required: false)
+  if lib_sdl3.found()
+    compiler_args += ['-DDXVK_WSI_SDL3']
+  endif
   if lib_sdl2.found()
     compiler_args += ['-DDXVK_WSI_SDL2']
   endif
   if lib_glfw.found()
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
-  if (not lib_sdl2.found() and not lib_glfw.found())
-    error('SDL2 or GLFW are required to build dxvk-native')
+  if (not lib_sdl3.found() and not lib_sdl2.found() and not lib_glfw.found())
+    error('SDL3, SDL2, or GLFW are required to build dxvk-native')
   endif
   
   dxvk_name_prefix = 'dxvk_'
@@ -193,6 +203,16 @@ dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
   input:  'version.h.in',
   output: 'version.h',
+)
+
+conf_data = configuration_data()
+conf_data.set('BUILD_COMPILER', cpp.get_id())
+conf_data.set('BUILD_COMPILER_VERSION', cpp.version())
+conf_data.set('BUILD_TARGET', cpu_family)
+dxvk_buildenv = configure_file(
+  configuration : conf_data,
+  input:  'buildenv.h.in',
+  output: 'buildenv.h',
 )
 
 if platform != 'windows'

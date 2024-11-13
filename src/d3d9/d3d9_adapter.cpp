@@ -114,6 +114,9 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
+    if(unlikely(AdapterFormat == D3D9Format::Unknown))
+      return D3DERR_INVALIDCALL;
+
     if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
@@ -186,6 +189,12 @@ namespace dxvk {
     if (pQualityLevels != nullptr)
       *pQualityLevels = 1;
 
+    if (unlikely(MultiSampleType > D3DMULTISAMPLE_16_SAMPLES))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(SurfaceFormat == D3D9Format::Unknown))
+      return D3DERR_INVALIDCALL;
+
     auto dst = ConvertFormatUnfixed(SurfaceFormat);
     if (dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
@@ -194,7 +203,12 @@ namespace dxvk {
      && (SurfaceFormat == D3D9Format::D32_LOCKABLE
       || SurfaceFormat == D3D9Format::D32F_LOCKABLE
       || SurfaceFormat == D3D9Format::D16_LOCKABLE
-      || SurfaceFormat == D3D9Format::INTZ))
+      || SurfaceFormat == D3D9Format::INTZ
+      || SurfaceFormat == D3D9Format::DXT1
+      || SurfaceFormat == D3D9Format::DXT2
+      || SurfaceFormat == D3D9Format::DXT3
+      || SurfaceFormat == D3D9Format::DXT4
+      || SurfaceFormat == D3D9Format::DXT5))
       return D3DERR_NOTAVAILABLE;
 
     uint32_t sampleCount = std::max<uint32_t>(MultiSampleType, 1u);
@@ -806,8 +820,9 @@ namespace dxvk {
         m_modes.push_back(mode);
     }
 
-    // Sort display modes by width, height and refresh rate,
-    // in that order. Some games rely on correct ordering.
+    // Sort display modes by width, height and refresh rate (descending), in that order.
+    // Some games rely on correct ordering, e.g. Prince of Persia (2008) expects the highest
+    // refresh rate to be listed first for a particular resolution.
     std::sort(m_modes.begin(), m_modes.end(),
       [](const D3DDISPLAYMODEEX& a, const D3DDISPLAYMODEEX& b) {
         if (a.Width < b.Width)   return true;
@@ -816,7 +831,7 @@ namespace dxvk {
         if (a.Height < b.Height) return true;
         if (a.Height > b.Height) return false;
         
-        return a.RefreshRate < b.RefreshRate;
+        return b.RefreshRate < a.RefreshRate;
     });
   }
 

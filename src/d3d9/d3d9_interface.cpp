@@ -350,15 +350,20 @@ namespace dxvk {
           IDirect3DDevice9Ex**   ppReturnedDeviceInterface) {
     InitReturnPtr(ppReturnedDeviceInterface);
 
-    if (ppReturnedDeviceInterface == nullptr
-    || pPresentationParameters    == nullptr)
+    if (unlikely(ppReturnedDeviceInterface  == nullptr
+              || pPresentationParameters    == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // creating a device with D3DCREATE_PUREDEVICE only works in conjunction
-    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers
-    if (BehaviorFlags & D3DCREATE_PUREDEVICE &&
-    !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING))
+    // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
+    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
+    if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
+               !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING)))
       return D3DERR_INVALIDCALL;
+
+    HRESULT hr = ValidatePresentationParameters(pPresentationParameters);
+
+    if (unlikely(FAILED(hr)))
+      return hr;
 
     auto* adapter = GetAdapter(Adapter);
 
@@ -378,9 +383,9 @@ namespace dxvk {
         BehaviorFlags,
         dxvkDevice);
 
-      HRESULT hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
+      hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
 
-      if (FAILED(hr))
+      if (unlikely(FAILED(hr)))
         return hr;
 
       *ppReturnedDeviceInterface = ref(device);
@@ -399,6 +404,53 @@ namespace dxvk {
       return adapter->GetAdapterLUID(pLUID);
 
     return D3DERR_INVALIDCALL;
+  }
+
+
+  HRESULT D3D9InterfaceEx::ValidatePresentationParameters(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+    if (m_extended) {
+      // The swap effect value on a D3D9Ex device
+      // can not be higher than D3DSWAPEFFECT_FLIPEX.
+      if (unlikely(pPresentationParameters->SwapEffect > D3DSWAPEFFECT_FLIPEX))
+        return D3DERR_INVALIDCALL;
+    } else {
+      // The swap effect value on a non-Ex D3D9 device
+      // can not be higher than D3DSWAPEFFECT_COPY.
+      if (unlikely(pPresentationParameters->SwapEffect > D3DSWAPEFFECT_COPY))
+        return D3DERR_INVALIDCALL;
+    }
+
+    // The swap effect value can not be 0.
+    // Black Desert sets this to 0 with a NULL hDeviceWindow
+    // and expects device creation to succeed.
+    if (unlikely(pPresentationParameters->hDeviceWindow != nullptr
+              && !pPresentationParameters->SwapEffect))
+      return D3DERR_INVALIDCALL;
+
+    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
+    // Allow D3DSWAPEFFECT_COPY to bypass this restriction in D3D8 compatibility
+    // mode, since it may be a remapping of D3DSWAPEFFECT_COPY_VSYNC and RC Cars
+    // depends on it not being validated.
+    if (unlikely(!IsD3D8Compatible()
+              && pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
+              && pPresentationParameters->BackBufferCount > 1))
+      return D3DERR_INVALIDCALL;
+
+    // 3 is the highest supported back buffer count.
+    if (unlikely(pPresentationParameters->BackBufferCount > 3))
+      return D3DERR_INVALIDCALL;
+
+    // Valid fullscreen presentation intervals must be known values.
+    if (unlikely(!pPresentationParameters->Windowed
+            && !(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_TWO
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_THREE
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_FOUR
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
+      return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
   }
 
 }

@@ -118,6 +118,10 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
+    void SetCursorTexture(UINT Width, UINT Height, uint8_t* pCursorBitmap);
+
+    void SetCursorPosition(int32_t X, int32_t Y, UINT Width, UINT Height);
+
     HRESULT SetDialogBoxMode(bool bEnableDialogs);
 
     D3D9Surface* GetBackBuffer(UINT iBackBuffer);
@@ -145,7 +149,6 @@ namespace dxvk {
     D3DGAMMARAMP              m_ramp;
 
     Rc<DxvkDevice>            m_device;
-    Rc<DxvkContext>           m_context;
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
     std::unordered_map<
@@ -191,8 +194,6 @@ namespace dxvk {
     D3D9VkExtSwapchain m_swapchainExt;
 
     void PresentImage(UINT PresentInterval);
-
-    void SubmitPresent(const PresenterSync& Sync, uint32_t Repeat);
 
     void SynchronizePresent();
 

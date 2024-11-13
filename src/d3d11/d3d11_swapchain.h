@@ -104,17 +104,13 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC1     m_desc;
 
     Rc<DxvkDevice>            m_device;
-    Rc<DxvkContext>           m_context;
-
     Rc<Presenter>             m_presenter;
 
-    Rc<DxvkImage>             m_swapImage;
-    Rc<DxvkImageView>         m_swapImageView;
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
     Rc<hud::Hud>              m_hud;
 
-    Com<D3D11Texture2D, false> m_backBuffer;
+    small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
     DxvkSubmitStatus          m_presentStatus;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
@@ -137,12 +133,11 @@ namespace dxvk {
     dxvk::mutex               m_frameStatisticsLock;
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
+    Rc<DxvkImageView> GetBackBufferView();
+
     HRESULT PresentImage(UINT SyncInterval);
 
-    void SubmitPresent(
-            D3D11ImmediateContext*  pContext,
-      const PresenterSync&          Sync,
-            uint32_t                Repeat);
+    void RotateBackBuffers(D3D11ImmediateContext* ctx);
 
     void SynchronizePresent();
 
@@ -156,7 +151,7 @@ namespace dxvk {
 
     void CreateRenderTargetViews();
 
-    void CreateBackBuffer();
+    void CreateBackBuffers();
 
     void CreateBlitter();
 

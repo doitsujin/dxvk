@@ -72,7 +72,9 @@ namespace dxvk {
     template<typename T> friend class D3D11DeviceContextExt;
     template<typename T> friend class D3D11UserDefinedAnnotation;
 
-    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
+    // Use a local staging buffer to handle tiny uploads, most
+    // of the time we're fine with hitting the global allocator
+    constexpr static VkDeviceSize StagingBufferSize = 256ull << 10;
   public:
     
     D3D11CommonContext(
@@ -102,6 +104,11 @@ namespace dxvk {
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
 
+    void STDMETHODCALLTYPE DiscardViewBase(
+            ID3D11View*                      pResourceView,
+      const D3D11_RECT*                      pRects,
+            UINT                             NumRects);
+
     void STDMETHODCALLTYPE CopySubresourceRegion(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
@@ -113,6 +120,17 @@ namespace dxvk {
       const D3D11_BOX*                        pSrcBox);
 
     void STDMETHODCALLTYPE CopySubresourceRegion1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox,
+            UINT                              CopyFlags);
+
+    void STDMETHODCALLTYPE CopySubresourceRegionBase(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
             UINT                              DstX,
@@ -769,7 +787,6 @@ namespace dxvk {
     UINT                        m_flags;
 
     DxvkStagingBuffer           m_staging;
-    Rc<DxvkDataBuffer>          m_updateBuffer;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
@@ -778,8 +795,6 @@ namespace dxvk {
     DxvkLocalAllocationCache    m_allocationCache;
 
     DxvkCsChunkRef AllocCsChunk();
-    
-    DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     DxvkBufferSlice AllocStagingBuffer(
             VkDeviceSize                      Size);

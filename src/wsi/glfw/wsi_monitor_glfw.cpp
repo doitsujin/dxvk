@@ -2,7 +2,7 @@
 
 #include "../wsi_monitor.h"
 
-#include "wsi/native_wsi.h"
+#include "wsi/native_glfw.h"
 #include "wsi_platform_glfw.h"
 
 #include "../../util/util_string.h"

@@ -190,18 +190,18 @@ namespace dxvk {
 
     VkImageAspectFlags aspectMask = lookupFormatInfo(formatInfo.Format)->aspectMask;
 
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format  = formatInfo.Format;
-    viewInfo.swizzle = formatInfo.Swizzle;
-    viewInfo.usage   = VK_IMAGE_USAGE_SAMPLED_BIT;
+    DxvkImageViewKey viewInfo;
+    viewInfo.format = formatInfo.Format;
+    viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
 
     switch (m_desc.ViewDimension) {
       case D3D11_VPIV_DIMENSION_TEXTURE2D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = m_desc.Texture2D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
 
       case D3D11_VPIV_DIMENSION_UNKNOWN:
@@ -209,17 +209,17 @@ namespace dxvk {
     }
 
     m_subresources.aspectMask = aspectMask;
-    m_subresources.baseArrayLayer = viewInfo.minLayer;
-    m_subresources.layerCount = viewInfo.numLayers;
-    m_subresources.mipLevel = viewInfo.minLevel;
+    m_subresources.baseArrayLayer = viewInfo.layerIndex;
+    m_subresources.layerCount = viewInfo.layerCount;
+    m_subresources.mipLevel = viewInfo.mipIndex;
 
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
-      viewInfo.aspect = vk::getNextAspect(aspectMask);
+      viewInfo.aspects = vk::getNextAspect(aspectMask);
 
-      if (viewInfo.aspect != VK_IMAGE_ASPECT_COLOR_BIT)
+      if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = pDevice->GetDXVKDevice()->createImageView(dxvkImage, viewInfo);
+      m_views[i] = dxvkImage->createView(viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
@@ -287,35 +287,34 @@ namespace dxvk {
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
       resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
 
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.swizzle = formatInfo.Swizzle;
-    viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    DxvkImageViewKey viewInfo;
+    viewInfo.format = formatInfo.Format;
+    viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
+    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     switch (m_desc.ViewDimension) {
       case D3D11_VPOV_DIMENSION_TEXTURE2D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = m_desc.Texture2D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
         break;
 
       case D3D11_VPOV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = m_desc.Texture2DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = m_desc.Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = m_desc.Texture2DArray.ArraySize;
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = m_desc.Texture2DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = m_desc.Texture2DArray.FirstArraySlice;
+        viewInfo.layerCount = m_desc.Texture2DArray.ArraySize;
         break;
 
       case D3D11_VPOV_DIMENSION_UNKNOWN:
         throw DxvkError("Invalid view dimension");
     }
 
-    m_view = pDevice->GetDXVKDevice()->createImageView(
-      GetCommonTexture(pResource)->GetImage(), viewInfo);
+    m_view = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
   }
 
 
@@ -1296,7 +1295,7 @@ namespace dxvk {
         uboData.yMax = 0.9215686f;
       }
 
-      Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateSlice();
+      Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateStorage();
       memcpy(uboSlice->mapPtr(), &uboData, sizeof(uboData));
 
       ctx->invalidateBuffer(m_ubo, std::move(uboSlice));

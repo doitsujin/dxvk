@@ -14,13 +14,24 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
+    // Always enable depth-stencil attachment usage for depth-stencil
+    // formats since some internal operations rely on it. Read-only
+    // versions of these make little sense to begin with.
+    if (lookupFormatInfo(createInfo.format)->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      m_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
     // Determine whether the image is shareable before creating the resource
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
+    VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
-    assignResource(createResource());
+    if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
+      m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
+
+    assignStorage(allocateStorage());
   }
 
 
@@ -34,28 +45,29 @@ namespace dxvk {
     m_allocator     (&memAlloc),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_stableAddress (true) {
+    m_allocator->registerResource(this);
+
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Create backing storage for existing image resource
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
-    assignResource(m_allocator->importImageResource(imageInfo, imageHandle));
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+
+    VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
+    assignStorage(m_allocator->importImageResource(imageInfo, allocationInfo, imageHandle));
   }
 
 
   DxvkImage::~DxvkImage() {
-
+    m_allocator->unregisterResource(this);
   }
 
 
-  VkSubresourceLayout DxvkImage::querySubresourceLayout(
-    const VkImageSubresource& subresource) const {
-    VkSubresourceLayout result = { };
-
-    m_vkd->vkGetImageSubresourceLayout(m_vkd->device(),
-      m_imageInfo.image, &subresource, &result);
-
-    return result;
+  bool DxvkImage::canRelocate() const {
+    return !m_imageInfo.mapPtr && !m_shared && !m_stableAddress
+        && !(m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
 
 
@@ -85,44 +97,59 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkImageView> DxvkImage::createView(
-    const DxvkImageViewCreateInfo& info) {
-    DxvkImageViewKey key = { };
-    key.viewType = info.type;
-    key.format = info.format;
-    key.usage = info.usage;
-    key.aspects = info.aspect;
-    key.mipIndex = info.minLevel;
-    key.mipCount = info.numLevels;
-    key.layerIndex = info.minLayer;
-    key.layerCount = info.numLayers;
-    key.packedSwizzle =
-      (uint16_t(info.swizzle.r) <<  0) |
-      (uint16_t(info.swizzle.g) <<  4) |
-      (uint16_t(info.swizzle.b) <<  8) |
-      (uint16_t(info.swizzle.a) << 12);
+  Rc<DxvkResourceAllocation> DxvkImage::relocateStorage(
+          DxvkAllocationModes         mode) {
+    if (!canRelocate())
+      return nullptr;
 
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), mode);
+  }
+
+
+  Rc<DxvkImageView> DxvkImage::createView(
+    const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
 
     auto entry = m_views.emplace(std::piecewise_construct,
-      std::make_tuple(key), std::make_tuple(this, key));
+      std::make_tuple(info), std::make_tuple(this, info));
 
     return &entry.first->second;
   }
 
 
-  Rc<DxvkResourceAllocation> DxvkImage::createResource() {
-    const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorage() {
+    return allocateStorageWithUsage(DxvkImageUsageInfo(), 0u);
+  }
 
-    VkImageCreateInfo imageInfo = getImageCreateInfo();
+
+  Rc<DxvkResourceAllocation> DxvkImage::allocateStorageWithUsage(
+    const DxvkImageUsageInfo&         usageInfo,
+          DxvkAllocationModes         mode) {
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(m_info.format);
+    small_vector<VkFormat, 4> localViewFormats;
+
+    VkImageCreateInfo imageInfo = getImageCreateInfo(usageInfo);
 
     // Set up view format list so that drivers can better enable
     // compression. Skip for planar formats due to validation errors.
     VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
 
     if (!(formatInfo->aspectMask & VK_IMAGE_ASPECT_PLANE_0_BIT)) {
-      formatList.viewFormatCount = m_info.viewFormatCount;
-      formatList.pViewFormats    = m_info.viewFormats;
+      if (usageInfo.viewFormatCount) {
+        for (uint32_t i = 0; i < m_viewFormats.size(); i++)
+          localViewFormats.push_back(m_viewFormats[i]);
+
+        for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+          if (!isViewCompatible(usageInfo.viewFormats[i]))
+            localViewFormats.push_back(usageInfo.viewFormats[i]);
+        }
+
+        formatList.viewFormatCount = localViewFormats.size();
+        formatList.pViewFormats = localViewFormats.data();
+      } else {
+        formatList.viewFormatCount = m_viewFormats.size();
+        formatList.pViewFormats = m_viewFormats.data();
+      }
     }
 
     if ((m_info.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) && formatList.viewFormatCount)
@@ -140,7 +167,7 @@ namespace dxvk {
     void* sharedMemoryInfo = nullptr;
 
     VkExportMemoryAllocateInfo sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
-    VkImportMemoryWin32HandleInfoKHR sharedImportWin32= { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+    VkImportMemoryWin32HandleInfoKHR sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
 
     if (m_shared && m_info.sharing.mode == DxvkSharedHandleMode::Export) {
       sharedExport.pNext = std::exchange(sharedMemoryInfo, &sharedExport);
@@ -153,13 +180,113 @@ namespace dxvk {
       sharedImportWin32.handle = m_info.sharing.handle;
     }
 
-    return m_allocator->createImageResource(imageInfo, m_properties, sharedMemoryInfo);
+    DxvkAllocationInfo allocationInfo = { };
+    allocationInfo.resourceCookie = cookie();
+    allocationInfo.properties = m_properties;
+    allocationInfo.mode = mode;
+
+    return m_allocator->createImageResource(imageInfo,
+      allocationInfo, sharedMemoryInfo);
   }
 
 
-  VkImageCreateInfo DxvkImage::getImageCreateInfo() const {
+  Rc<DxvkResourceAllocation> DxvkImage::assignStorage(
+          Rc<DxvkResourceAllocation>&& resource) {
+    return assignStorageWithUsage(std::move(resource), DxvkImageUsageInfo());
+  }
+
+
+  Rc<DxvkResourceAllocation> DxvkImage::assignStorageWithUsage(
+          Rc<DxvkResourceAllocation>&& resource,
+    const DxvkImageUsageInfo&         usageInfo) {
+    Rc<DxvkResourceAllocation> old = std::move(m_storage);
+
+    // Self-assignment is possible here if we
+    // just update the image properties
+    m_storage = std::move(resource);
+
+    if (m_storage != old) {
+      m_imageInfo = m_storage->getImageInfo();
+      m_version += 1u;
+    }
+
+    m_info.flags |= usageInfo.flags;
+    m_info.usage |= usageInfo.usage;
+    m_info.stages |= usageInfo.stages;
+    m_info.access |= usageInfo.access;
+
+    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED)
+      m_info.layout = usageInfo.layout;
+
+    for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
+      if (!isViewCompatible(usageInfo.viewFormats[i]))
+        m_viewFormats.push_back(usageInfo.viewFormats[i]);
+    }
+
+    if (!m_viewFormats.empty()) {
+      m_info.viewFormatCount = m_viewFormats.size();
+      m_info.viewFormats = m_viewFormats.data();
+    }
+
+    m_stableAddress |= usageInfo.stableGpuAddress;
+    return old;
+  }
+
+
+  void DxvkImage::trackInitialization(
+    const VkImageSubresourceRange& subresources) {
+    if (!m_uninitializedSubresourceCount)
+      return;
+
+    if (subresources.levelCount == m_info.mipLevels && subresources.layerCount == m_info.numLayers) {
+      // Trivial case, everything gets initialized at once
+      m_uninitializedSubresourceCount = 0u;
+      m_uninitializedMipsPerLayer.clear();
+    } else {
+      // Partial initialization. Track each layer individually.
+      if (m_uninitializedMipsPerLayer.empty()) {
+        m_uninitializedMipsPerLayer.resize(m_info.numLayers);
+
+        for (uint32_t i = 0; i < m_info.numLayers; i++)
+          m_uninitializedMipsPerLayer[i] = uint16_t(1u << m_info.mipLevels) - 1u;
+      }
+
+      uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+
+      for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
+        m_uninitializedSubresourceCount -= bit::popcnt(m_uninitializedMipsPerLayer[i] & mipMask);
+        m_uninitializedMipsPerLayer[i] &= ~mipMask;
+      }
+
+      if (!m_uninitializedSubresourceCount)
+        m_uninitializedMipsPerLayer.clear();
+    }
+  }
+
+
+  bool DxvkImage::isInitialized(
+    const VkImageSubresourceRange& subresources) const {
+    if (likely(!m_uninitializedSubresourceCount))
+      return true;
+
+    if (m_uninitializedMipsPerLayer.empty())
+      return false;
+
+    uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+
+    for (uint32_t i = 0; i < subresources.layerCount; i++) {
+      if (m_uninitializedMipsPerLayer[subresources.baseArrayLayer + i] & mipMask)
+        return false;
+    }
+
+    return true;
+  }
+
+
+  VkImageCreateInfo DxvkImage::getImageCreateInfo(
+    const DxvkImageUsageInfo&         usageInfo) const {
     VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
-    info.flags = m_info.flags;
+    info.flags = m_info.flags | usageInfo.flags;
     info.imageType = m_info.type;
     info.format = m_info.format;
     info.extent = m_info.extent;
@@ -167,7 +294,7 @@ namespace dxvk {
     info.arrayLayers = m_info.numLayers;
     info.samples = m_info.sampleCount;
     info.tiling = m_info.tiling;
-    info.usage = m_info.usage;
+    info.usage = m_info.usage | usageInfo.usage;
     info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout = m_info.initialLayout;
 
@@ -242,8 +369,20 @@ namespace dxvk {
 
 
   VkImageView DxvkImageView::createView(VkImageViewType type) const {
+    constexpr VkImageUsageFlags ViewUsage =
+      VK_IMAGE_USAGE_SAMPLED_BIT |
+      VK_IMAGE_USAGE_STORAGE_BIT |
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    // Legalize view usage. We allow creating transfer-only view
+    // objects so that some internal APIs can be more consistent.
     DxvkImageViewKey key = m_key;
     key.viewType = type;
+    key.usage &= ViewUsage;
+
+    if (!key.usage)
+      return VK_NULL_HANDLE;
 
     // Only use one layer for non-arrayed view types
     if (type == VK_IMAGE_VIEW_TYPE_1D || type == VK_IMAGE_VIEW_TYPE_2D)

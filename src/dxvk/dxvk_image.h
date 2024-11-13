@@ -3,7 +3,6 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 #include "dxvk_sparse.h"
 #include "dxvk_util.h"
 
@@ -71,39 +70,31 @@ namespace dxvk {
   
   
   /**
-   * \brief Image create info
-   * 
-   * The properties of an image view that are
-   * passed to \ref DxvkDevice::createImageView
+   * \brief Extra image usage info
+   *
+   * Useful when recreating an image with different usage flags.
    */
-  struct DxvkImageViewCreateInfo {
-    /// Image view dimension
-    VkImageViewType type = VK_IMAGE_VIEW_TYPE_2D;
-    
-    /// Pixel format
-    VkFormat format = VK_FORMAT_UNDEFINED;
-
-    /// Image view usage flags
-    VkImageUsageFlags usage = 0;
-    
-    /// Subresources to use in the view
-    VkImageAspectFlags aspect = 0;
-    
-    uint32_t minLevel  = 0;
-    uint32_t numLevels = 0;
-    uint32_t minLayer  = 0;
-    uint32_t numLayers = 0;
-    
-    /// Component mapping. Defaults to identity.
-    VkComponentMapping swizzle = {
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY,
-    };
+  struct DxvkImageUsageInfo {
+    // New image flags to add.
+    VkImageCreateFlags flags = 0u;
+    // Usage flags to add to the image
+    VkImageUsageFlags usage = 0u;
+    // Stage flags to add to the image
+    VkPipelineStageFlags stages = 0u;
+    // Access flags to add to the image
+    VkAccessFlags access = 0u;
+    // New image layout. If undefined, the
+    // default layout will not be changed.
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // Number of new view formats to add
+    uint32_t viewFormatCount = 0u;
+    // View formats to add to the compatibility list
+    const VkFormat* viewFormats = nullptr;
+    // Requtes the image to not be relocated in the future
+    VkBool32 stableGpuAddress = VK_FALSE;
   };
-  
-  
+
+
   /**
    * \brief Virtual image view
    *
@@ -160,21 +151,8 @@ namespace dxvk {
      * \brief Image view properties
      * \returns Image view properties
      */
-    DxvkImageViewCreateInfo info() const {
-      DxvkImageViewCreateInfo info = { };
-      info.type = m_key.viewType;
-      info.format = m_key.format;
-      info.usage = m_key.usage;
-      info.aspect = m_key.aspects;
-      info.minLevel = m_key.mipIndex;
-      info.numLevels = m_key.mipCount;
-      info.minLayer = m_key.layerIndex;
-      info.numLayers = m_key.layerCount;
-      info.swizzle.r = VkComponentSwizzle((m_key.packedSwizzle >>  0) & 0xf);
-      info.swizzle.g = VkComponentSwizzle((m_key.packedSwizzle >>  4) & 0xf);
-      info.swizzle.b = VkComponentSwizzle((m_key.packedSwizzle >>  8) & 0xf);
-      info.swizzle.a = VkComponentSwizzle((m_key.packedSwizzle >> 12) & 0xf);
-      return info;
+    DxvkImageViewKey info() const {
+      return m_key;
     }
 
     /**
@@ -262,10 +240,10 @@ namespace dxvk {
       if (this == view.ptr())
         return true;
 
-      return this->image()        == view->image()
-          && this->subresources() == view->subresources()
-          && this->info().type    == view->info().type
-          && this->info().format  == view->info().format;
+      return this->image()         == view->image()
+          && this->subresources()  == view->subresources()
+          && this->info().viewType == view->info().viewType
+          && this->info().format   == view->info().format;
     }
 
     /**
@@ -506,15 +484,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries memory layout of a subresource
+     * \brief Checks whether the image can be relocated
      *
-     * Can be used to retrieve the exact pointer to a
-     * subresource of a mapped image with linear tiling.
-     * \param [in] subresource The image subresource
-     * \returns Memory layout of that subresource
+     * Images that are shared, imported from a different API
+     * or mapped to host address space cannot be relocated.
+     * \returns \c true if the image can be relocated
      */
-    VkSubresourceLayout querySubresourceLayout(
-      const VkImageSubresource& subresource) const;
+    bool canRelocate() const;
 
     /**
      * \brief Create a new shared handle to dedicated memory backing the image
@@ -529,12 +505,34 @@ namespace dxvk {
     DxvkSparsePageTable* getSparsePageTable();
 
     /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags
+     * \returns Operation status and allocation
+     */
+    Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode);
+
+    /**
      * \brief Creates image resource
      *
      * The returned image can be used as backing storage.
      * \returns New underlying image resource
      */
-    Rc<DxvkResourceAllocation> createResource();
+    Rc<DxvkResourceAllocation> allocateStorage();
+
+    /**
+     * \brief Creates image resource with extra usage
+     *
+     * Creates new backing storage with additional usage flags
+     * enabled. Useful to expand on usage flags after creation.
+     * \param [in] usage Usage flags to add
+     * \param [in] mode Allocation constraints
+     * \returns New underlying image resource
+     */
+    Rc<DxvkResourceAllocation> allocateStorageWithUsage(
+      const DxvkImageUsageInfo&         usage,
+            DxvkAllocationModes         mode);
 
     /**
      * \brief Assigns backing storage to the image
@@ -543,22 +541,36 @@ namespace dxvk {
      * \param [in] resource New backing storage
      * \returns Previous backing storage
      */
-    Rc<DxvkResourceAllocation> assignResource(Rc<DxvkResourceAllocation>&& resource) {
-      Rc<DxvkResourceAllocation> old = std::move(m_storage);
+    Rc<DxvkResourceAllocation> assignStorage(
+            Rc<DxvkResourceAllocation>&& resource);
 
-      m_storage = std::move(resource);
-      m_imageInfo = m_storage->getImageInfo();
-
-      m_version += 1u;
-      return old;
-    }
+    /**
+     * \brief Assigns backing storage to the image with extra usage
+     *
+     * Implicitly invalidates all image views.
+     * \param [in] resource New backing storage
+     * \param [in] usageInfo Added usage info
+     * \returns Previous backing storage
+     */
+    Rc<DxvkResourceAllocation> assignStorageWithUsage(
+            Rc<DxvkResourceAllocation>&& resource,
+      const DxvkImageUsageInfo&         usageInfo);
 
     /**
      * \brief Retrieves current backing storage
      * \returns Backing storage for this image
      */
-    Rc<DxvkResourceAllocation> getAllocation() const {
+    Rc<DxvkResourceAllocation> storage() const {
       return m_storage;
+    }
+
+    /**
+     * \brief Retrieves resource ID for barrier tracking
+     * \returns Unique resource ID
+     */
+    uint64_t getResourceId() const {
+      constexpr static size_t Align = alignof(DxvkResourceAllocation);
+      return reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align);
     }
 
     /**
@@ -568,7 +580,26 @@ namespace dxvk {
      * \returns Newly created image view
      */
     Rc<DxvkImageView> createView(
-      const DxvkImageViewCreateInfo& info);
+      const DxvkImageViewKey& info);
+
+    /**
+     * \brief Tracks subresource initialization
+     *
+     * Initialization happens when transitioning the image
+     * away from \c PREINITIALIZED or \c UNDEFINED layouts.
+     * \param [in] subresources Subresource range
+     */
+    void trackInitialization(
+      const VkImageSubresourceRange& subresources);
+
+    /**
+     * \brief Checks whether subresources are initialized
+     *
+     * \param [in] subresources Subresource range
+     * \returns \c true if the subresources are initialized
+     */
+    bool isInitialized(
+      const VkImageSubresourceRange& subresources) const;
 
   private:
 
@@ -581,18 +612,22 @@ namespace dxvk {
 
     uint32_t                    m_version     = 0u;
     VkBool32                    m_shared      = VK_FALSE;
+    VkBool32                    m_stableAddress = VK_FALSE;
 
     DxvkResourceImageInfo       m_imageInfo   = { };
 
     Rc<DxvkResourceAllocation>  m_storage     = nullptr;
 
     small_vector<VkFormat, 4>   m_viewFormats;
+    small_vector<uint16_t, 8>   m_uninitializedMipsPerLayer = { };
+    uint32_t                    m_uninitializedSubresourceCount = 0u;
 
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkImageViewKey,
       DxvkImageView, DxvkHash, DxvkEq> m_views;
 
-    VkImageCreateInfo getImageCreateInfo() const;
+    VkImageCreateInfo getImageCreateInfo(
+      const DxvkImageUsageInfo&         usageInfo) const;
 
     void copyFormatList(
             uint32_t              formatCount,
@@ -603,6 +638,19 @@ namespace dxvk {
       const VkImageCreateInfo&    createInfo,
       const DxvkSharedHandleInfo& sharingInfo) const;
 
+  };
+
+
+  /**
+   * \brief Image relocation info
+   */
+  struct DxvkRelocateImageInfo {
+    /// Buffer object. Stores metadata.
+    Rc<DxvkImage> image;
+    /// Backing storage to copy to
+    Rc<DxvkResourceAllocation> storage;
+    /// Additional image usage
+    DxvkImageUsageInfo usageInfo;
   };
 
 

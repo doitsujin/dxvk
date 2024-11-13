@@ -97,14 +97,25 @@ namespace dxvk {
       return m_multithread.AcquireLock();
     }
 
+    void InjectCsChunk(
+            DxvkCsChunkRef&&            Chunk,
+            bool                        Synchronize);
+
+    template<typename Fn>
+    void InjectCs(
+            Fn&&                        Command) {
+      auto chunk = AllocCsChunk();
+      chunk->push(std::move(Command));
+
+      InjectCsChunk(std::move(chunk), false);
+    }
+
   private:
     
     DxvkCsThread            m_csThread;
     uint64_t                m_csSeqNum = 0ull;
 
     uint32_t                m_mappedImageCount = 0u;
-
-    VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
 
     Rc<sync::CallbackFence> m_submissionFence;
     uint64_t                m_submissionId = 0ull;
@@ -113,11 +124,16 @@ namespace dxvk {
     uint64_t                m_flushSeqNum = 0ull;
     GpuFlushTracker         m_flushTracker;
 
+    Rc<sync::Fence>         m_stagingBufferFence;
+
+    VkDeviceSize            m_discardMemoryCounter = 0u;
+    VkDeviceSize            m_discardMemoryOnFlush = 0u;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
     Com<D3D11DeviceContextState, false> m_stateObject;
-    
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
@@ -156,7 +172,7 @@ namespace dxvk {
     void EndFrame();
     
     bool WaitForResource(
-      const Rc<DxvkResource>&           Resource,
+      const DxvkPagedResource&          Resource,
             uint64_t                    SequenceNumber,
             D3D11_MAP                   MapType,
             UINT                        MapFlags);
@@ -181,6 +197,13 @@ namespace dxvk {
             GpuFlushType                FlushType,
             HANDLE                      hEvent,
             BOOL                        Synchronize);
+
+    void ThrottleAllocation();
+
+    void ThrottleDiscard(
+            VkDeviceSize                Size);
+
+    DxvkStagingBufferStats GetStagingMemoryStatistics();
 
   };
   

@@ -12,6 +12,10 @@ namespace dxvk {
           HANDLE*                   pSharedHandle)
     : D3D9Texture2DBase( pDevice, pDesc, D3DRTYPE_TEXTURE, pSharedHandle ) { }
 
+  D3D9Texture2D::D3D9Texture2D(
+          D3D9DeviceEx*             pDevice,
+    const D3D9_COMMON_TEXTURE_DESC* pDesc)
+    : D3D9Texture2D( pDevice, pDesc, nullptr ) { }
 
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)

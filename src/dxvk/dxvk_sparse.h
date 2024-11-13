@@ -1,9 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <map>
 
+#include "dxvk_access.h"
 #include "dxvk_memory.h"
-#include "dxvk_resource.h"
 
 namespace dxvk {
 
@@ -427,12 +428,157 @@ namespace dxvk {
   /**
    * \brief Paged resource
    *
-   * Base class for any resource that can
-   * hold a sparse page table.
+   * Base class for memory-backed resources that may
+   * or may not also have a sparse page table.
    */
-  class DxvkPagedResource : public DxvkResource {
+  class DxvkPagedResource {
 
   public:
+
+    DxvkPagedResource()
+    : m_cookie(++s_cookie) { }
+
+    virtual ~DxvkPagedResource();
+
+    /**
+     * \brief Queries resource cookie
+     * \returns Resource cookie
+     */
+    uint64_t cookie() const {
+      return m_cookie;
+    }
+
+    /**
+     * \brief Increments reference count
+     */
+    force_inline void incRef() {
+      acquire(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Decrements reference count
+     */
+    force_inline void decRef() {
+      release(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Acquires resource with given access
+     *
+     * Atomically increments both the reference count
+     * as well as the use count for the given access.
+     */
+    force_inline void acquire(DxvkAccess access) {
+      m_useCount.fetch_add(getIncrement(access), std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Releases resource with given access
+     *
+     * Atomically decrements both the reference count
+     * as well as the use count for the given access.
+     */
+    force_inline void release(DxvkAccess access) {
+      uint64_t increment = getIncrement(access);
+      uint64_t remaining = m_useCount.fetch_sub(increment, std::memory_order_release);
+
+      if (unlikely(remaining == increment))
+        delete this;
+    }
+
+    /**
+     * \brief Converts reference type
+     *
+     * \param [in] from Old access type
+     * \param [in] to New access type
+     */
+    force_inline void convertRef(DxvkAccess from, DxvkAccess to) {
+      uint64_t increment = getIncrement(to) - getIncrement(from);
+
+      if (increment)
+        m_useCount.fetch_add(increment, std::memory_order_acq_rel);
+    }
+
+    /**
+     * \brief Checks whether resource is in use
+     * 
+     * Returns \c true if there are pending accesses to
+     * the resource by the GPU matching the given access
+     * type. Note that checking for reads will also return
+     * \c true if the resource is being written to.
+     * \param [in] access Access type to check for
+     * \returns \c true if the resource is in use
+     */
+    force_inline bool isInUse(DxvkAccess access) const {
+      return m_useCount.load(std::memory_order_acquire) >= getIncrement(access);
+    }
+
+    /**
+     * \brief Tries to acquire reference
+     *
+     * If the reference count is zero at the time this is called,
+     * the method will fail, otherwise the reference count will
+     * be incremented by one. This is useful to safely obtain a
+     * pointer from a look-up table that does not own references.
+     * \returns \c true on success
+     */
+    Rc<DxvkPagedResource> tryAcquire() {
+      uint64_t increment = getIncrement(DxvkAccess::None);
+      uint64_t refCount = m_useCount.load(std::memory_order_acquire);
+
+      do {
+        if (!refCount)
+          return nullptr;
+      } while (!m_useCount.compare_exchange_strong( refCount,
+        refCount + increment, std::memory_order_relaxed));
+
+      return Rc<DxvkPagedResource>::unsafeCreate(this);
+    }
+
+    /**
+     * \brief Sets tracked command list ID
+     *
+     * Used to work out if a resource has been used in the current
+     * command list and optimize certain transfer operations.
+     * \param [in] trackingId Tracking ID
+     * \param [in] access Tracked access
+     * \returns \c true if the tracking ID was updated, or \c false
+     *    if the resource was already tracked with the same ID.
+     */
+    bool trackId(uint64_t trackingId, DxvkAccess access) {
+      // Encode write access in the least significant bit
+      uint64_t trackId = (trackingId << 1u) + uint64_t(access == DxvkAccess::Write);
+
+      if (trackId <= m_trackId)
+        return false;
+
+      m_trackId = trackId;
+      return true;
+    }
+
+    /**
+     * \brief Checks whether a resource has been tracked
+     *
+     * \param [in] trackingId Current tracking ID
+     * \param [in] access Destination access
+     * \returns \c true if the resource has been used in a way that
+     *    prevents recordering commands with the given resource access.
+     */
+    bool isTracked(uint64_t trackingId, DxvkAccess access) const {
+      // We actually want to check for read access here so that this check only
+      // fails if the resource hasn't been used or if both accesses are read-only.
+      return m_trackId >= (trackingId << 1u) + uint64_t(access != DxvkAccess::Write);
+    }
+
+    /**
+     * \brief Resets tracking
+     *
+     * Marks the resource as unused in the current command list.
+     * Should be done when assigning new backing storage.
+     */
+    void resetTracking() {
+      m_trackId = 0u;
+    }
 
     /**
      * \brief Queries sparse page table
@@ -442,6 +588,64 @@ namespace dxvk {
      * \returns Sparse page table, if defined
      */
     virtual DxvkSparsePageTable* getSparsePageTable() = 0;
+
+    /**
+     * \brief Allocates new backing storage with constraints
+     *
+     * \param [in] mode Allocation mode flags to control behaviour.
+     *    When relocating the resource to a preferred memory type,
+     *    \c NoFallback should be set, when defragmenting device
+     *    memory then \c NoAllocation should also be set.
+     * \returns \c true in the first field if the operation is
+     *    considered successful, i.e. if an new backing allocation
+     *    was successfully created or is unnecessary. The second
+     *    field will contain the new allocation itself.
+     */
+    virtual Rc<DxvkResourceAllocation> relocateStorage(
+            DxvkAllocationModes         mode) = 0;
+
+  private:
+
+    std::atomic<uint64_t> m_useCount = { 0u };
+    uint64_t              m_trackId = { 0u };
+    uint64_t              m_cookie = { 0u };
+
+    static constexpr uint64_t getIncrement(DxvkAccess access) {
+      return uint64_t(1u) << (uint32_t(access) * 20u);
+    }
+
+    static std::atomic<uint64_t> s_cookie;
+
+  };
+
+
+  /**
+   * \brief Typed tracking reference for resources
+   *
+   * Does not provide any access information.
+   */
+  class DxvkResourceRef : public DxvkTrackingRef {
+    constexpr static uintptr_t AccessMask = 0x3u;
+
+    static_assert(alignof(DxvkPagedResource) > AccessMask);
+  public:
+
+    template<typename T>
+    explicit DxvkResourceRef(Rc<T>&& object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(static_cast<DxvkPagedResource*>(object.ptr())) | uintptr_t(access)) {
+      object.unsafeExtract()->convertRef(DxvkAccess::None, access);
+    }
+
+    explicit DxvkResourceRef(DxvkPagedResource* object, DxvkAccess access)
+    : m_ptr(reinterpret_cast<uintptr_t>(object) | uintptr_t(access)) {
+      object->acquire(access);
+    }
+
+    ~DxvkResourceRef();
+
+  private:
+
+    uintptr_t m_ptr = 0u;
 
   };
 

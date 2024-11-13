@@ -23,12 +23,7 @@ namespace dxvk {
   };
 
   static constexpr D3D9ShaderMasks FixedFunctionMask =
-    { 0b1111111, 0b1 };
-
-  struct D3D9MipFilter {
-    bool                MipsEnabled;
-    VkSamplerMipmapMode MipFilter;
-  };
+    { 0b11111111, 0b1 };
 
   struct D3D9BlendState {
     D3DBLEND   Src;
@@ -146,13 +141,26 @@ namespace dxvk {
 
   VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp);
 
-  VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter);
+  inline VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter) {
+    return Filter > D3DTEXF_POINT ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+  }
 
-  D3D9MipFilter DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
+  inline VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter) {
+    return Filter > D3DTEXF_POINT ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+  }
 
-  bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter);
+  inline VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode) {
+    constexpr uint32_t Lut =
+      (uint32_t(VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT)      << (3 * D3DTADDRESS_MIRROR)) |
+      (uint32_t(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE)        << (3 * D3DTADDRESS_CLAMP)) |
+      (uint32_t(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)      << (3 * D3DTADDRESS_BORDER)) |
+      (uint32_t(VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE) << (3 * D3DTADDRESS_MIRRORONCE));
 
-  VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
+    // VK_SAMPLER_ADDRESS_MODE_REPEAT has a value of 0, so we
+    // get it for free if the app passes an unsupported value
+    uint32_t shift = std::min(uint32_t(Mode) * 3u, 31u);
+    return VkSamplerAddressMode((uint32_t(Lut) >> shift) & 0x7u);
+  }
 
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);
 

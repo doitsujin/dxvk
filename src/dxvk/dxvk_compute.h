@@ -7,7 +7,6 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_graphics_state.h"
 #include "dxvk_pipelayout.h"
-#include "dxvk_resource.h"
 #include "dxvk_shader.h"
 #include "dxvk_stats.h"
 

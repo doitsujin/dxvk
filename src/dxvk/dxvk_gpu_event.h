@@ -1,8 +1,9 @@
 #pragma once
 
+#include <atomic>
 #include <vector>
 
-#include "dxvk_resource.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
 
@@ -29,9 +30,50 @@ namespace dxvk {
    * as a pointer to the pool that the event
    * was allocated from.
    */
-  struct DxvkGpuEventHandle {
-    DxvkGpuEventPool* pool  = nullptr;
-    VkEvent           event = VK_NULL_HANDLE;
+  class DxvkGpuEvent {
+
+  public:
+
+    explicit DxvkGpuEvent(
+            DxvkGpuEventPool*           parent);
+
+    ~DxvkGpuEvent();
+
+    /**
+     * \brief Increments ref count
+     */
+    void incRef() {
+      m_refs.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Decrements ref count
+     *
+     * Returns event to the pool if no further
+     * references exist for this event.
+     */
+    void decRef() {
+      if (m_refs.fetch_sub(1u, std::memory_order_release) == 1u)
+        free();
+    }
+
+    /**
+     * \brief Queries event handle
+     * \returns Event handle
+     */
+    VkEvent handle() const {
+      return m_event;
+    }
+
+  private:
+
+    DxvkGpuEventPool*     m_pool  = nullptr;
+    VkEvent               m_event = VK_NULL_HANDLE;
+
+    std::atomic<uint32_t> m_refs  = { 0u };
+
+    void free();
+
   };
 
 
@@ -42,12 +84,28 @@ namespace dxvk {
    * the application to check whether a specific
    * command has completed execution.
    */
-  class DxvkGpuEvent : public DxvkResource {
-
+  class DxvkEvent {
+    friend class DxvkContext;
   public:
 
-    DxvkGpuEvent(const Rc<vk::DeviceFn>& vkd);
-    ~DxvkGpuEvent();
+    DxvkEvent(const Rc<DxvkDevice>& device);
+    ~DxvkEvent();
+
+    /**
+     * \brief Increments reference count
+     */
+    force_inline void incRef() {
+      m_refCount.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Decrements reference count
+     * Frees the event as necessary.
+     */
+    force_inline void decRef() {
+      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+        delete this;
+    }
 
     /**
      * \brief Retrieves event status
@@ -56,24 +114,20 @@ namespace dxvk {
      * recorded intro a command buffer.
      * \returns Event status
      */
-    DxvkGpuEventStatus test() const;
-
-    /**
-     * \brief Resets event
-     * 
-     * Assigns a new Vulkan event to this event
-     * object and replaces the old one. The old
-     * event should be freed as soon as the GPU
-     * stops using it.
-     * \param [in] handle New GPU event handle
-     * \returns Old GPU event handle
-     */
-    DxvkGpuEventHandle reset(DxvkGpuEventHandle handle);
+    DxvkGpuEventStatus test();
 
   private:
 
-    Rc<vk::DeviceFn>   m_vkd;
-    DxvkGpuEventHandle m_handle;
+    std::atomic<uint32_t> m_refCount = { 0u };
+
+    sync::Spinlock    m_mutex;
+    VkResult          m_status = VK_NOT_READY;
+
+    Rc<DxvkDevice>    m_device;
+    Rc<DxvkGpuEvent>  m_gpuEvent;
+
+    void assignGpuEvent(
+            Rc<DxvkGpuEvent>            event);
 
   };
 
@@ -85,7 +139,7 @@ namespace dxvk {
    * a way to create and recycle Vulkan events.
    */
   class DxvkGpuEventPool {
-  
+    friend class DxvkGpuEvent;
   public:
 
     DxvkGpuEventPool(const DxvkDevice* device);
@@ -99,55 +153,21 @@ namespace dxvk {
      * state of the event is undefined.
      * \returns An event handle
      */
-    DxvkGpuEventHandle allocEvent();
+    Rc<DxvkGpuEvent> allocEvent();
 
     /**
      * \brief Recycles an event
      * 
-     * \param [in] handle Event to free
+     * \param [in] event Event object to free
      */
-    void freeEvent(VkEvent event);
+    void freeEvent(DxvkGpuEvent* event);
 
   private:
 
-    Rc<vk::DeviceFn>     m_vkd;
-    dxvk::mutex          m_mutex;
-    std::vector<VkEvent> m_events;
+    Rc<vk::DeviceFn>            m_vkd;
 
-  };
-
-
-  /**
-   * \brief GPU event tracker
-   * 
-   * Stores events currently accessed by the
-   * GPU, and returns them to the event pool
-   * once they are no longer in use.
-   */
-  class DxvkGpuEventTracker {
-
-  public:
-
-    DxvkGpuEventTracker();
-    ~DxvkGpuEventTracker();
-
-    /**
-     * \brief Tracks an event
-     * \param [in] handle Event to track
-     */
-    void trackEvent(DxvkGpuEventHandle handle);
-
-    /**
-     * \brief Resets event tracker
-     * 
-     * Releases all tracked events back
-     * to the respective event pool
-     */
-    void reset();
-
-  private:
-
-    std::vector<DxvkGpuEventHandle> m_handles;
+    dxvk::mutex                 m_mutex;
+    std::vector<DxvkGpuEvent*>  m_freeEvents;
 
   };
 

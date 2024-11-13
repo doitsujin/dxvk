@@ -18,110 +18,104 @@ namespace dxvk {
     /// This can substantially speed up some games, but may
     /// cause issues if the game submits command lists more
     /// than once.
-    bool dcSingleUseMode;
+    bool dcSingleUseMode = false;
 
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize
     /// TGSM in compute shaders before reading it.
-    bool zeroInitWorkgroupMemory;
+    bool zeroInitWorkgroupMemory = false;
 
     /// Force thread-group shared memory accesses to be volatile
     ///
     /// Workaround for compute shaders that read and
     /// write from the same shared memory location
     /// without explicit synchronization.
-    bool forceVolatileTgsmAccess;
+    bool forceVolatileTgsmAccess = false;
 
     /// Use relaxed memory barriers
     ///
     /// May improve performance in some games,
     /// but might also cause rendering issues.
-    bool relaxedBarriers;
+    bool relaxedBarriers = false;
 
     /// Ignore graphics barriers
     ///
     /// May improve performance in some games,
     /// but might also cause rendering issues.
-    bool ignoreGraphicsBarriers;
+    bool ignoreGraphicsBarriers = false;
 
     /// Maximum tessellation factor.
     ///
     /// Limits tessellation factors in tessellation
     /// control shaders. Values from 8 to 64 are
     /// supported, other values will be ignored.
-    int32_t maxTessFactor;
+    int32_t maxTessFactor = 0;
 
     /// Anisotropic filter override
     ///
     /// Enforces anisotropic filtering with the
     /// given anisotropy value for all samplers.
-    int32_t samplerAnisotropy;
+    int32_t samplerAnisotropy = -1;
 
     /// Mipmap LOD bias
     ///
     /// Enforces the given LOD bias for all samplers.
-    float samplerLodBias;
+    float samplerLodBias = 0.0f;
 
     /// Clamps negative LOD bias
-    bool clampNegativeLodBias;
+    bool clampNegativeLodBias = false;
 
     /// Declare vertex positions in shaders as invariant
-    bool invariantPosition;
+    bool invariantPosition = true;
 
     /// Enable float control bits
-    bool floatControls;
+    bool floatControls = true;
 
     /// Back buffer count for the Vulkan swap chain.
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
-    int32_t numBackBuffers;
+    int32_t numBackBuffers = 0;
 
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
-    int32_t maxFrameLatency;
-
-    /// Limit discardable resource size
-    VkDeviceSize maxImplicitDiscardSize;
-
-    /// Limit size of buffer-mapped images
-    VkDeviceSize maxDynamicImageBufferSize;
+    int32_t maxFrameLatency = 0;
 
     /// Defer surface creation until first present call. This
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
-    bool deferSurfaceCreation;
+    bool deferSurfaceCreation = false;
 
     /// Enables sample rate shading by interpolating fragment shader
     /// inputs at the sample location rather than pixel center,
     /// unless otherwise specified by the application.
-    bool forceSampleRateShading;
+    bool forceSampleRateShading = false;
 
     /// Forces the sample count of all textures to be 1, and
     /// performs the required shader and resolve fixups.
-    bool disableMsaa;
+    bool disableMsaa = false;
 
     /// Dynamic resources with the given bind flags will be allocated
     /// in cached system memory. Enabled automatically when recording
     /// an api trace.
-    uint32_t cachedDynamicResources;
+    uint32_t cachedDynamicResources = 0;
 
     /// Always lock immediate context on every API call. May be
     /// useful for debugging purposes or when applications have
     /// race conditions.
-    bool enableContextLock;
+    bool enableContextLock = false;
 
     /// Whether to expose the driver command list feature. Enabled by
     /// default and generally beneficial, but some games may assume that
     /// this is not supported when running on an AMD GPU.
-    bool exposeDriverCommandLists;
-
-    /// Shader dump path
-    std::string shaderDumpPath;
+    bool exposeDriverCommandLists = true;
 
     /// Ensure that for the same D3D commands the output VK commands
     /// don't change between runs. Useful for comparative benchmarking,
     /// can negatively affect performance.
-    bool reproducibleCommandStream;
+    bool reproducibleCommandStream = false;
+
+    /// Shader dump path
+    std::string shaderDumpPath;
   };
   
 }

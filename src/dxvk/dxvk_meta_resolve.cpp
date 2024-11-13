@@ -15,38 +15,36 @@
 namespace dxvk {
   
   DxvkMetaResolveViews::DxvkMetaResolveViews(
-    const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            dstImage,
     const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources,
-          VkFormat                  format)
-  : m_vkd(vkd) {
-    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    usageInfo.usage = (lookupFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+          VkFormat                  format) {
+    DxvkImageViewKey viewInfo;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    viewInfo.format = format;
+    viewInfo.aspects = dstSubresources.aspectMask;
+    viewInfo.mipIndex = dstSubresources.mipLevel;
+    viewInfo.mipCount = 1u;
+    viewInfo.layerIndex = dstSubresources.baseArrayLayer;
+    viewInfo.layerCount = dstSubresources.layerCount;
+    viewInfo.usage = (lookupFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
       ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
-    info.image = dstImage->handle();
-    info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    info.format = format;
-    info.subresourceRange = vk::makeSubresourceRange(dstSubresources);
+    dstView = dstImage->createView(viewInfo);
 
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_dstImageView))
-      throw DxvkError("DxvkMetaResolveViews: Failed to create destination view");
+    viewInfo.aspects = srcSubresources.aspectMask;
+    viewInfo.mipIndex = srcSubresources.mipLevel;
+    viewInfo.layerIndex = srcSubresources.baseArrayLayer;
+    viewInfo.layerCount = srcSubresources.layerCount;
 
-    info.image = srcImage->handle();
-    info.subresourceRange = vk::makeSubresourceRange(srcSubresources);
-
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_srcImageView))
-      throw DxvkError("DxvkMetaResolveViews: Failed to create source view");
+    srcView = srcImage->createView(viewInfo);
   }
 
 
   DxvkMetaResolveViews::~DxvkMetaResolveViews() {
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcImageView, nullptr);
-    m_vkd->vkDestroyImageView(m_vkd->device(), m_dstImageView, nullptr);
+
   }
 
 

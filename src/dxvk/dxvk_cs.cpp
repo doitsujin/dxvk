@@ -120,10 +120,31 @@ namespace dxvk {
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       seq = ++m_chunksDispatched;
       m_chunksQueued.push_back(std::move(chunk));
+      m_condOnAdd.notify_one();
     }
     
-    m_condOnAdd.notify_one();
     return seq;
+  }
+
+
+  void DxvkCsThread::injectChunk(DxvkCsChunkRef&& chunk, bool synchronize) {
+    uint64_t timeline;
+
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
+
+      timeline = ++m_chunksInjectedCount;
+      m_chunksInjected.push_back(std::move(chunk));
+
+      m_condOnAdd.notify_one();
+    }
+
+    if (synchronize) {
+      std::unique_lock<dxvk::mutex> lock(m_counterMutex);
+
+      m_condOnSync.wait(lock, [this, timeline] {
+        return m_chunksInjectedComplete.load() >= timeline;
+      });
+    }
   }
   
   
@@ -163,14 +184,18 @@ namespace dxvk {
 
     try {
       while (!m_stopped.load()) {
+        bool injected = false;
+
         { std::unique_lock<dxvk::mutex> lock(m_mutex);
 
           m_condOnAdd.wait(lock, [this] {
             return (!m_chunksQueued.empty())
+                || (!m_chunksInjected.empty())
                 || (m_stopped.load());
           });
 
-          std::swap(chunks, m_chunksQueued);
+          injected = !m_chunksInjected.empty();
+          std::swap(chunks, injected ? m_chunksInjected : m_chunksQueued);
         }
 
         for (auto& chunk : chunks) {
@@ -182,7 +207,7 @@ namespace dxvk {
           // will only ever be contested if synchronization is
           // actually necessary.
           { std::unique_lock<dxvk::mutex> lock(m_counterMutex);
-            m_chunksExecuted += 1;
+            (injected ? m_chunksInjectedComplete : m_chunksExecuted) += 1u;
             m_condOnSync.notify_one();
           }
 

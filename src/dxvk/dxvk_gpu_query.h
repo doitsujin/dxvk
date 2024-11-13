@@ -2,14 +2,16 @@
 
 #include <atomic>
 #include <mutex>
+#include <list>
 #include <vector>
 
 #include "../util/util_small_vector.h"
 
-#include "dxvk_resource.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
 
+  class DxvkDevice;
   class DxvkCommandList;
 
   class DxvkGpuQueryPool;
@@ -103,30 +105,82 @@ namespace dxvk {
    * query pools have to be reset on the GPU,
    * this also comes with a reset event.
    */
-  struct DxvkGpuQueryHandle {
-    DxvkGpuQueryAllocator* allocator  = nullptr;
-    VkQueryPool            queryPool  = VK_NULL_HANDLE;
-    uint32_t               queryId    = 0;
+  class DxvkGpuQuery {
+    friend class DxvkGpuQueryAllocator;
+  public:
+
+    /**
+     * \brief Increments query reference count
+     */
+    force_inline void incRef() {
+      m_refCount.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Decrements query reference count
+     * Returns the query to its allocator if necessary.
+     */
+    force_inline void decRef() {
+      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+        free();
+    }
+
+    /**
+     * \brief Retrieves query pool and index
+     * \returns Query pool handle and query index
+     */
+    std::pair<VkQueryPool, uint32_t> getQuery() const {
+      return std::make_pair(m_pool, m_index);
+    }
+
+  private:
+
+    DxvkGpuQueryAllocator*  m_allocator = nullptr;
+    DxvkGpuQuery*           m_next      = nullptr;
+
+    VkQueryPool             m_pool      = VK_NULL_HANDLE;
+    uint32_t                m_index     = 0u;
+
+    std::atomic<uint32_t>   m_refCount  = { 0u };
+
+    void free();
+
   };
 
 
   /**
-   * \brief Query object
-   * 
-   * Manages Vulkan queries that are sub-allocated
-   * from larger query pools 
+   * \brief Virtual query object
+   *
+   * References an arbitrary number of Vulkan queries to
+   * get feedback from the GPU. Vulkan queries can be used
+   * by multiple virtual queries in case of overlap.
    */
-  class DxvkGpuQuery : public DxvkResource {
-
+  class DxvkQuery {
+    friend class DxvkGpuQueryManager;
   public:
 
-    DxvkGpuQuery(
-      const Rc<vk::DeviceFn>&   vkd,
-            VkQueryType         type,
-            VkQueryControlFlags flags,
-            uint32_t            index);
+    DxvkQuery(
+      const Rc<DxvkDevice>&             device,
+            VkQueryType                 type,
+            VkQueryControlFlags         flags,
+            uint32_t                    index);
     
-    ~DxvkGpuQuery();
+    ~DxvkQuery();
+
+    /**
+     * \brief Increments reference count
+     */
+    force_inline void incRef() {
+      m_refCount.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    /**
+     * \brief Decrements reference count
+     */
+    force_inline void decRef() {
+      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+        delete this;
+    }
 
     /**
      * \brief Query type
@@ -145,20 +199,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves current handle
-     * 
-     * Note that the query handle will change
-     * when calling \ref addQueryHandle.
-     * \returns Current query handle
-     */
-    DxvkGpuQueryHandle handle() const {
-      if (m_handles.empty())
-        return DxvkGpuQueryHandle();
-
-      return m_handles.back();
-    }
-
-    /**
      * \brief Query index
      * 
      * Only valid for indexed query types.
@@ -169,12 +209,6 @@ namespace dxvk {
     uint32_t index() const {
       return m_index;
     }
-
-    /**
-     * \brief Checks whether query is indexed
-     * \returns \c true for indexed query types
-     */
-    bool isIndexed() const;
 
     /**
      * \brief Retrieves query data
@@ -192,52 +226,42 @@ namespace dxvk {
 
     /**
      * \brief Begins query
-     * 
-     * Moves all current query handles to the given
-     * command list and sets the query into active
-     * state. No data can be retrieved while the
-     * query is active.
-     * \param [in] cmd Command list
+     *
+     * Invalidates previously retrieved data.
      */
-    void begin(
-      const Rc<DxvkCommandList>& cmd);
+    void begin();
 
     /**
      * \brief Ends query
-     * 
+     *
      * Sets query into pending state. Calling
      * \c getData is legal after calling this.
      */
     void end();
 
-    /**
-     * \brief Adds a query handle to the query
-     * 
-     * The given query handle shall be used when
-     * retrieving query data. A query can have
-     * multiple handles attached.
-     * \param [in] handle The query handle
-     */
-    void addQueryHandle(
-      const DxvkGpuQueryHandle& handle);
-
   private:
 
-    Rc<vk::DeviceFn>    m_vkd;
+    std::atomic<uint32_t> m_refCount = { 0u };
 
-    VkQueryType         m_type;
-    VkQueryControlFlags m_flags;
-    uint32_t            m_index;
-    std::atomic<bool>   m_ended;
+    Rc<DxvkDevice>      m_device;
 
+    VkQueryType         m_type  = VK_QUERY_TYPE_MAX_ENUM;
+    VkQueryControlFlags m_flags = 0u;
+    uint32_t            m_index = 0u;
+    bool                m_ended = false;
+
+    sync::Spinlock      m_mutex;
     DxvkQueryData       m_queryData = { };
 
-    small_vector<DxvkGpuQueryHandle, 8> m_handles;
-    
-    DxvkGpuQueryStatus accumulateQueryDataForHandle(
-      const DxvkGpuQueryHandle& handle);
+    small_vector<Rc<DxvkGpuQuery>, 8> m_queries;
 
-    DxvkGpuQueryStatus accumulateQueryData();
+    DxvkGpuQueryStatus accumulateQueryDataForGpuQueryLocked(
+      const Rc<DxvkGpuQuery>&           query);
+
+    DxvkGpuQueryStatus accumulateQueryDataLocked();
+
+    void addGpuQuery(
+            Rc<DxvkGpuQuery>            query);
 
   };
 
@@ -253,42 +277,46 @@ namespace dxvk {
   public:
 
     DxvkGpuQueryAllocator(
-            DxvkDevice*         device,
-            VkQueryType         queryType,
-            uint32_t            queryPoolSize);
-    
+            DxvkDevice*                 device,
+            VkQueryType                 queryType,
+            uint32_t                    queryPoolSize);
+
     ~DxvkGpuQueryAllocator();
 
     /**
      * \brief Allocates a query
      * 
-     * If possible, this returns a free query
-     * from an existing query pool. Otherwise,
-     * a new query pool will be created.
+     * If possible, this returns a free query from an existing
+     * query pool. Otherwise, a new query pool will be created.
      * \returns Query handle
      */
-    DxvkGpuQueryHandle allocQuery();
+    Rc<DxvkGpuQuery> allocQuery();
 
     /**
      * \brief Recycles a query
      * 
-     * Returns a query back to the allocator
-     * so that it can be reused. The query
-     * must not be in pending state.
-     * \param [in] handle Query to reset
+     * Returns a query back to the allocator so that it can be
+     * reused. The query must not be in pending state.
+     * \param [in] query Query object to recycle
      */
-    void freeQuery(DxvkGpuQueryHandle handle);
+    void freeQuery(
+            DxvkGpuQuery*               query);
 
   private:
 
-    DxvkDevice*       m_device;
-    Rc<vk::DeviceFn>  m_vkd;
-    VkQueryType       m_queryType;
-    uint32_t          m_queryPoolSize;
-    
-    dxvk::mutex                     m_mutex;
-    std::vector<DxvkGpuQueryHandle> m_handles;
-    std::vector<VkQueryPool>        m_pools;
+    struct Pool {
+      VkQueryPool   pool    = VK_NULL_HANDLE;
+      DxvkGpuQuery* queries = nullptr;
+    };
+
+    DxvkDevice*       m_device        = nullptr;
+    VkQueryType       m_queryType     = VK_QUERY_TYPE_MAX_ENUM;
+    uint32_t          m_queryPoolSize = 0u;
+
+    dxvk::mutex       m_mutex;
+    std::list<Pool>   m_pools;
+
+    DxvkGpuQuery*     m_free = nullptr;
 
     void createQueryPool();
 
@@ -315,7 +343,7 @@ namespace dxvk {
      * \param [in] type Query type
      * \returns Handle to the allocated query
      */
-    DxvkGpuQueryHandle allocQuery(VkQueryType type);
+    Rc<DxvkGpuQuery> allocQuery(VkQueryType type);
 
   private:
 
@@ -334,7 +362,7 @@ namespace dxvk {
    * and assigns Vulkan queries to them as needed.
    */
   class DxvkGpuQueryManager {
-
+    constexpr static uint32_t MaxQueryTypes = 6u;
   public:
 
     DxvkGpuQueryManager(DxvkGpuQueryPool& pool);
@@ -351,7 +379,7 @@ namespace dxvk {
      */
     void enableQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
     
     /**
      * \brief Disables a query
@@ -363,7 +391,7 @@ namespace dxvk {
      */
     void disableQuery(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
     
     /**
      * \brief Signals a time stamp query
@@ -374,7 +402,7 @@ namespace dxvk {
      */
     void writeTimestamp(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+      const Rc<DxvkQuery>&        query);
 
     /**
      * \brief Begins queries of a given type
@@ -402,54 +430,28 @@ namespace dxvk {
 
   private:
 
-    DxvkGpuQueryPool*             m_pool;
-    uint32_t                      m_activeTypes;
-    std::vector<Rc<DxvkGpuQuery>> m_activeQueries;
+    struct QuerySet {
+      Rc<DxvkGpuQuery>            gpuQuery;
+      std::vector<Rc<DxvkQuery>>  queries;
+    };
 
-    void beginSingleQuery(
-      const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
+    DxvkGpuQueryPool*             m_pool        = nullptr;
+    uint32_t                      m_activeTypes = 0u;
 
-    void endSingleQuery(
+    std::array<QuerySet, MaxQueryTypes> m_activeQueries = { };
+
+    void restartQueries(
       const Rc<DxvkCommandList>&  cmd,
-      const Rc<DxvkGpuQuery>&     query);
-    
+            VkQueryType           type,
+            uint32_t              index);
+
     static uint32_t getQueryTypeBit(
             VkQueryType           type);
 
-  };
-
-
-  /**
-   * \brief Query tracker
-   * 
-   * Returns queries to their allocators after
-   * the command buffer has finished executing.
-   */
-  class DxvkGpuQueryTracker {
-
-  public:
-
-    DxvkGpuQueryTracker();
-    ~DxvkGpuQueryTracker();
-    
-    /**
-     * \param Tracks a query
-     * \param [in] handle Query handle
-     */
-    void trackQuery(DxvkGpuQueryHandle handle);
-
-    /**
-     * \brief Recycles all tracked handles
-     * 
-     * Releases all tracked query handles
-     * to their respective query allocator.
-     */
-    void reset();
-
-  private:
-
-    std::vector<DxvkGpuQueryHandle> m_handles;
+    static uint32_t getQueryTypeIndex(
+            VkQueryType           type,
+            uint32_t              index);
 
   };
+
 }

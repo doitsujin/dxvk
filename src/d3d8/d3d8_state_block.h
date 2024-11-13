@@ -16,6 +16,7 @@ namespace dxvk {
     bool swvp     : 1;
 
     bit::bitset<d8caps::MAX_TEXTURE_STAGES> textures;
+    bit::bitset<d8caps::MAX_STREAMS>        streams;
 
     D3D8StateCapture()
       : vs(false)
@@ -24,6 +25,7 @@ namespace dxvk {
       , swvp(false) {
       // Ensure all bits are initialized to false
       textures.clearAll();
+      streams.clearAll();
     }
   };
 
@@ -54,9 +56,11 @@ namespace dxvk {
         m_capture.indices = true;
         m_capture.swvp    = true;
         m_capture.textures.setAll();
+        m_capture.streams.setAll();
       }
 
       m_textures.fill(nullptr);
+      m_streams.fill(D3D8VBOP());
     }
 
     ~D3D8StateBlock() {}
@@ -71,7 +75,7 @@ namespace dxvk {
       if (likely(m_stateBlock == nullptr)) {
         m_stateBlock = std::move(pStateBlock);
       } else {
-        Logger::err("D3D8StateBlock::SetD3D9 called when m_stateBlock has already been initialized");
+        Logger::err("D3D8StateBlock::SetD3D9: m_stateBlock has already been initialized");
       }
     }
 
@@ -97,6 +101,15 @@ namespace dxvk {
       return D3D_OK;
     }
 
+    inline HRESULT SetStreamSource(UINT StreamNumber, IDirect3DVertexBuffer8* pStreamData, UINT Stride) {
+      m_streams[StreamNumber].buffer = pStreamData;
+      // The previous stride is preserved if pStreamData is NULL
+      if (likely(pStreamData != nullptr))
+        m_streams[StreamNumber].stride = Stride;
+      m_capture.streams.set(StreamNumber, true);
+      return D3D_OK;
+    }
+
     inline HRESULT SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
       m_indices         = pIndexData;
       m_baseVertexIndex = BaseVertexIndex;
@@ -115,6 +128,11 @@ namespace dxvk {
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
     D3DSTATEBLOCKTYPE               m_type;
 
+    struct D3D8VBOP {
+      IDirect3DVertexBuffer8*       buffer = nullptr;
+      UINT                          stride = 0;
+    };
+
   private: // State Data //
 
     D3D8StateCapture m_capture;
@@ -123,6 +141,7 @@ namespace dxvk {
     DWORD m_pixelShader;  // ps
 
     std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures; // textures
+    std::array<D3D8VBOP, d8caps::MAX_STREAMS>                       m_streams; // stream data
 
     IDirect3DIndexBuffer8*  m_indices = nullptr;  // indices
     UINT                    m_baseVertexIndex;    // indices

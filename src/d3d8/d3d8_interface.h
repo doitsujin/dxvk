@@ -63,12 +63,15 @@ namespace dxvk {
         D3DFORMAT   AdapterFormat,
         D3DFORMAT   BackBufferFormat,
         BOOL        bWindowed) {
+      // Ignore the bWindowed parameter when querying D3D9. D3D8 does
+      // identical validations between windowed and fullscreen modes, adhering
+      // to the stricter fullscreen adapter and back buffer format validations.
       return m_d3d9->CheckDeviceType(
           Adapter,
           (d3d9::D3DDEVTYPE)DevType,
           (d3d9::D3DFORMAT)AdapterFormat,
           (d3d9::D3DFORMAT)BackBufferFormat,
-          bWindowed
+          FALSE
       );
     }
 

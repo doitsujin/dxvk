@@ -8,17 +8,8 @@
 namespace dxvk {
   
   struct D3D11DeferredContextMapEntry {
-    D3D11DeferredContextMapEntry() { }
-    D3D11DeferredContextMapEntry(
-            ID3D11Resource*           pResource,
-            UINT                      Subresource,
-            D3D11_RESOURCE_DIMENSION  ResourceType,
-      const D3D11_MAPPED_SUBRESOURCE& MappedResource)
-    : Resource(pResource, Subresource, ResourceType),
-      MapInfo(MappedResource) { }
-
-    D3D11ResourceRef          Resource;
-    D3D11_MAPPED_SUBRESOURCE  MapInfo;
+    uint64_t                  ResourceCookie = 0u;
+    D3D11_MAPPED_SUBRESOURCE  MapInfo = { };
   };
   
   class D3D11DeferredContext : public D3D11CommonContext<D3D11DeferredContext> {
@@ -130,14 +121,11 @@ namespace dxvk {
     void TrackBufferSequenceNumber(
             D3D11Buffer*                  pResource);
 
-    D3D11DeferredContextMapEntry* FindMapEntry(
-            ID3D11Resource*               pResource,
-            UINT                          Subresource);
+    D3D11_MAPPED_SUBRESOURCE FindMapEntry(
+            uint64_t                      Coookie);
 
     void AddMapEntry(
-            ID3D11Resource*               pResource,
-            UINT                          Subresource,
-            D3D11_RESOURCE_DIMENSION      ResourceType,
+            uint64_t                      Cookie,
       const D3D11_MAPPED_SUBRESOURCE&     MapInfo);
 
     static DxvkCsChunkFlags GetCsChunkFlags(

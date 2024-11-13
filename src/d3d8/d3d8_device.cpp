@@ -18,7 +18,7 @@ namespace dxvk {
 
   static constexpr DWORD getShaderIndex(DWORD Handle) {
     if ((Handle & D3DFVF_RESERVED0) != 0) {
-      return (Handle & ~(D3DFVF_RESERVED0)) >> 1;
+      return ((Handle & ~(D3DFVF_RESERVED0)) >> 1) - 1;
     } else {
       return Handle;
     }
@@ -52,7 +52,6 @@ namespace dxvk {
     }
 
     m_bridge->SetAPIName("D3D8");
-    m_bridge->SetD3D8CompatibilityMode(true);
 
     ResetState();
     RecreateBackBuffersAndAutoDepthStencil();
@@ -98,7 +97,8 @@ namespace dxvk {
         };
 
         if (FAILED(res)) {
-          if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
+          // The struct size needs to be at least equal or larger
+          if (DevInfoStructSize < sizeof(D3DDEVINFO_VCACHE))
             return D3DERR_INVALIDCALL;
 
           memset(pDevInfoStruct, 0, sizeof(D3DDEVINFO_VCACHE));
@@ -106,11 +106,12 @@ namespace dxvk {
         }
 
         break;
-      case D3DDEVINFOID_RESOURCEMANAGER:
-        // May not be implemented by D9VK.
+
+      case D3DDEVINFOID_RESOURCEMANAGER: // Not yet implemented by D9VK.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_RESOURCEMANAGER, &pQuery);
         break;
-      case D3DDEVINFOID_VERTEXSTATS:
+
+      case D3DDEVINFOID_VERTEXSTATS: // Not yet implemented by D9VK.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VERTEXSTATS, &pQuery);
         break;
 
@@ -119,26 +120,20 @@ namespace dxvk {
         return E_FAIL;
     }
 
-    if (unlikely(FAILED(res)))
-      goto done;
-    
-    // Immediately issue the query.
-    // D3D9 will begin it automatically before ending.
-    res = pQuery->Issue(D3DISSUE_END);
-    if (unlikely(FAILED(res))) {
-      goto done;
-    }
-
-    // TODO: Will immediately issuing the query without doing any API calls
-    // actually yield meaingful results? And should we flush or let it mellow?
-    res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
-
-  done:
-    if (unlikely(FAILED(res))) {
+    if (FAILED(res)) {
       if (res == D3DERR_NOTAVAILABLE) // unsupported
         return E_FAIL;
       else // any unknown error
         return S_FALSE;
+    }
+
+    if (pQuery != nullptr) {
+      // Immediately issue the query. D3D9 will begin it automatically before ending.
+      pQuery->Issue(D3DISSUE_END);
+      // TODO: Will immediately issuing the query actually yield meaingful results?
+      // Only relevant once RESOURCEMANAGER or VERTEXSTATS are implemented by D9VK,
+      // since VCACHE queries will immediately return data during this call.
+      res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
     }
 
     return res;
@@ -221,7 +216,7 @@ namespace dxvk {
     );
 
     if (likely(SUCCEEDED(res)))
-      *ppSwapChain = ref(new D3D8SwapChain(this, std::move(pSwapChain9)));
+      *ppSwapChain = ref(new D3D8SwapChain(this, pPresentationParameters, std::move(pSwapChain9)));
 
     return res;
   }
@@ -232,6 +227,13 @@ namespace dxvk {
     StateChange();
 
     if (unlikely(pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
+    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
+    // RC Cars depends on it not being rejected.
+    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
+              && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;
 
     m_presentParams = *pPresentationParameters;
@@ -308,6 +310,11 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DPOOL             Pool,
           IDirect3DTexture8** ppTexture) {
+    // D3D8 returns D3DERR_INVALIDCALL for D3DFMT_UNKNOWN
+    // before clearing the content of ppTexture.
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppTexture);
 
     if (unlikely(ppTexture == nullptr))
@@ -343,6 +350,11 @@ namespace dxvk {
           D3DFORMAT                 Format,
           D3DPOOL                   Pool,
           IDirect3DVolumeTexture8** ppVolumeTexture) {
+    // D3D8 returns D3DERR_INVALIDCALL for D3DFMT_UNKNOWN
+    // before clearing the content of ppVolumeTexture.
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppVolumeTexture);
 
     if (unlikely(ppVolumeTexture == nullptr))
@@ -370,6 +382,11 @@ namespace dxvk {
           D3DFORMAT               Format,
           D3DPOOL                 Pool,
           IDirect3DCubeTexture8** ppCubeTexture) {
+    // D3D8 returns D3DERR_INVALIDCALL for D3DFMT_UNKNOWN
+    // before clearing the content of ppCubeTexture.
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppCubeTexture);
 
     if (unlikely(ppCubeTexture == nullptr))
@@ -443,6 +460,11 @@ namespace dxvk {
           D3DMULTISAMPLE_TYPE MultiSample,
           BOOL                Lockable,
           IDirect3DSurface8** ppSurface) {
+    // D3D8 returns D3DERR_INVALIDCALL for D3DFMT_UNKNOWN
+    // before clearing the content of ppSurface.
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -471,6 +493,11 @@ namespace dxvk {
           D3DFORMAT           Format,
           D3DMULTISAMPLE_TYPE MultiSample,
           IDirect3DSurface8** ppSurface) {
+    // D3D8 returns D3DERR_INVALIDCALL for D3DFMT_UNKNOWN
+    // before clearing the content of ppSurface.
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
@@ -498,7 +525,12 @@ namespace dxvk {
           UINT                Height,
           D3DFORMAT           Format,
           IDirect3DSurface8** ppSurface) {
+    // Only D3D8 CreateImageSurface clears the content of ppSurface
+    // before checking if Format is equal to D3DFMT_UNKNOWN.
     InitReturnPtr(ppSurface);
+
+    if (unlikely(Format == D3DFMT_UNKNOWN))
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
@@ -532,10 +564,6 @@ namespace dxvk {
       const RECT&                   dstRect) {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
-
-    // CopyRects cannot perform format conversions.
-    if (srcDesc.Format != dstDesc.Format)
-      return D3DERR_INVALIDCALL;
 
     bool compressed = isDXT(srcDesc.Format);
 
@@ -652,10 +680,8 @@ namespace dxvk {
 
     // This method cannot be applied to surfaces whose formats
     // are classified as depth stencil formats.
-    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format)) ||
-                 isDepthStencilFormat(D3DFORMAT(dstDesc.Format)))) {
+    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format))))
       return D3DERR_INVALIDCALL;
-    }
 
     StateChange();
 
@@ -704,7 +730,7 @@ namespace dxvk {
       POINT dstPt = { dstRect.left, dstRect.top };
 
       auto unhandled = [&] {
-        Logger::warn(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+        Logger::warn(str::format("D3D8Device::CopyRects: Unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
         return D3DERR_INVALIDCALL;
       };
 
@@ -712,7 +738,7 @@ namespace dxvk {
         if (FAILED(res)) {
           // Only a debug message because some games mess up CopyRects every frame in a way
           // that fails on native too but are perfectly fine with it.
-          Logger::debug(str::format("CopyRects: FAILED to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+          Logger::debug(str::format("D3D8Device::CopyRects: Failed to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
         }
         return res;
       };
@@ -895,14 +921,15 @@ namespace dxvk {
     if (pRenderTarget != nullptr) {
       D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
 
-      if (likely(m_renderTarget != surf)) {
-        StateChange();
-        res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf));
+      // This will always be a state change and needs to be forwarded to
+      // D3D9, even when the same render target is set, as the viewport
+      // needs to be readjusted and reset.
+      StateChange();
+      res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf));
 
-        if (unlikely(FAILED(res))) return res;
+      if (unlikely(FAILED(res))) return res;
 
-        m_renderTarget = surf;
-      }
+      m_renderTarget = surf;
     }
 
     // SetDepthStencilSurface is a separate call
@@ -1021,7 +1048,7 @@ namespace dxvk {
         bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
 
         if (m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller)) {
-          Logger::debug("Viewport exceeds render target dimensions by one pixel");
+          Logger::debug("D3D8Device::SetViewport: Viewport exceeds render target dimensions by one pixel");
         } else {
           return D3DERR_INVALIDCALL;
         }
@@ -1081,15 +1108,22 @@ namespace dxvk {
     if (unlikely(pToken == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Applications cannot create a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
     if (likely(SUCCEEDED(res))) {
       m_token++;
-      m_stateBlocks.emplace(std::piecewise_construct,
-                            std::forward_as_tuple(m_token),
-                            std::forward_as_tuple(this, Type, pStateBlock9.ref()));
+      auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
+                                                      std::forward_as_tuple(m_token),
+                                                      std::forward_as_tuple(this, Type, pStateBlock9.ref()));
       *pToken = m_token;
+
+      // D3D8 state blocks automatically capture state on creation.
+      stateBlockIterPair.first->second.Capture();
     }
 
     return res;
@@ -1098,11 +1132,15 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CaptureStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
+    // Applications cannot capture a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to CaptureStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::CaptureStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     return stateBlockIter->second.Capture();
@@ -1111,13 +1149,17 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::ApplyStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
+    // Applications cannot apply a state block while another is being recorded
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     StateChange();
 
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to ApplyStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::ApplyStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     return stateBlockIter->second.Apply();
@@ -1126,15 +1168,15 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteStateBlock(DWORD Token) {
     D3D8DeviceLock lock = LockDevice();
 
-    // "Applications cannot delete a device-state block while another is being recorded"
+    // Applications cannot delete a state block while another is being recorded
     if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
     auto stateBlockIter = m_stateBlocks.find(Token);
 
     if (unlikely(stateBlockIter == m_stateBlocks.end())) {
-      Logger::err("Invalid token passed to DeleteStateBlock");
-      return D3DERR_INVALIDCALL;
+      Logger::warn(str::format("D3D8Device::DeleteStateBlock: Invalid token: ", std::hex, Token));
+      return D3D_OK;
     }
 
     m_stateBlocks.erase(stateBlockIter);
@@ -1397,6 +1439,9 @@ namespace dxvk {
     if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStreamSource(StreamNumber, pStreamData, Stride);
+
     D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
     HRESULT res = GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
 
@@ -1404,7 +1449,10 @@ namespace dxvk {
       if (ShouldBatch())
         m_batcher->SetStream(StreamNumber, buffer, Stride);
 
-      m_streams[StreamNumber] = D3D8VBO {buffer, Stride};
+      m_streams[StreamNumber].buffer = buffer;
+      // The previous stride is preserved if pStreamData is NULL
+      if (likely(buffer != nullptr))
+        m_streams[StreamNumber].stride = Stride;
     }
 
     return res;
@@ -1442,7 +1490,7 @@ namespace dxvk {
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
     if (unlikely(BaseVertexIndex > INT_MAX))
-      Logger::warn("BaseVertexIndex exceeds INT_MAX and will be clamped on use.");
+      Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
     // used by DrawIndexedPrimitive
     m_baseVertexIndex = BaseVertexIndex;
@@ -1659,7 +1707,7 @@ namespace dxvk {
 
     if (likely(SUCCEEDED(res))) {
       // Set bit to indicate this is not an FVF
-      *pHandle = getShaderHandle(m_vertexShaders.size() - 1);
+      *pHandle = getShaderHandle(m_vertexShaders.size());
     }
 
     return res;
@@ -1670,14 +1718,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
-      Logger::debug(str::format("getVertexShaderInfo: Invalid vertex shader index ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Invalid vertex shader index ", std::hex, Handle));
       return nullptr;
     }
 
     D3D8VertexShaderInfo& info = device->m_vertexShaders[Handle];
 
     if (unlikely(info.pVertexDecl == nullptr && info.pVertexShader == nullptr)) {
-      Logger::debug(str::format("getVertexShaderInfo: Application provided deleted vertex shader ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Application provided deleted vertex shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -1860,7 +1908,7 @@ namespace dxvk {
     if (likely(SUCCEEDED(res))) {
       m_pixelShaders.push_back(pPixelShader);
       // Still set the shader bit, to prevent conflicts with NULL.
-      *pHandle = getShaderHandle(m_pixelShaders.size() - 1);
+      *pHandle = getShaderHandle(m_pixelShaders.size());
     }
 
     return res;
@@ -1871,14 +1919,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
-      Logger::debug(str::format("getPixelShaderPtr: Invalid pixel shader index ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Invalid pixel shader index ", std::hex, Handle));
       return nullptr;
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle].ptr();
 
     if (unlikely(pPixelShader == nullptr)) {
-      Logger::debug(str::format("getPixelShaderPtr: Application provided deleted pixel shader ", std::hex, Handle));
+      Logger::debug(str::format("D3D8: Application provided deleted pixel shader ", std::hex, Handle));
       return nullptr;
     }
 

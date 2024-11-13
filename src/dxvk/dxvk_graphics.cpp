@@ -401,16 +401,20 @@ namespace dxvk {
     uint32_t dynamicStateCount = 0;
     std::array<VkDynamicState, 4> dynamicStates = { };
 
-    if (m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
-     && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask
-     && state.msInfo.sampleShadingEnable) {
+    bool hasDynamicMultisampleState = state.msInfo.sampleShadingEnable
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
+
+    bool hasDynamicAlphaToCoverage = hasDynamicMultisampleState && state.cbUseDynamicAlphaToCoverage
+      && device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
+
+    if (hasDynamicMultisampleState) {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
-
-      if (device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable
-       && state.cbUseDynamicAlphaToCoverage)
-        dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
     }
+
+    if (hasDynamicAlphaToCoverage)
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
 
     if (state.cbUseDynamicBlendConstants)
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
@@ -429,6 +433,20 @@ namespace dxvk {
     if (state.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
       flags |= VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 
+    // Fix up multisample state based on dynamic state. Needed to
+    // silence validation errors in case we hit the full EDS3 path.
+    VkPipelineMultisampleStateCreateInfo msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    msInfo.sampleShadingEnable = state.msInfo.sampleShadingEnable;
+    msInfo.minSampleShading = state.msInfo.minSampleShading;
+
+    if (!hasDynamicMultisampleState) {
+      msInfo.rasterizationSamples = state.msInfo.rasterizationSamples;
+      msInfo.pSampleMask = state.msInfo.pSampleMask;
+    }
+
+    if (!hasDynamicAlphaToCoverage)
+      msInfo.alphaToCoverageEnable = state.msInfo.alphaToCoverageEnable;
+
     // pNext is non-const for some reason, but this is only an input
     // structure, so we should be able to safely use const_cast.
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
@@ -438,7 +456,7 @@ namespace dxvk {
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.flags                = flags;
     info.pColorBlendState     = &state.cbInfo;
-    info.pMultisampleState    = &state.msInfo;
+    info.pMultisampleState    = &msInfo;
     info.pDynamicState        = &dyInfo;
     info.basePipelineIndex    = -1;
 

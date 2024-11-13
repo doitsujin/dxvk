@@ -4,6 +4,7 @@
 #include "d3d9_device.h"
 #include "d3d9_texture.h"
 #include "d3d9_buffer.h"
+#include "d3d9_initializer.h"
 
 namespace dxvk {
 
@@ -219,7 +220,7 @@ namespace dxvk {
     m_lock = D3D9DeviceLock();
   }
 
-  static Rc<DxvkResource> GetDxvkResource(IDirect3DResource9 *pResource) {
+  static Rc<DxvkPagedResource> GetDxvkResource(IDirect3DResource9 *pResource) {
     switch (pResource->GetType()) {
       case D3DRTYPE_SURFACE:       return static_cast<D3D9Surface*>     (pResource)->GetCommonTexture()->GetImage();
       // Does not inherit from IDirect3DResource9... lol.
@@ -236,7 +237,106 @@ namespace dxvk {
   bool STDMETHODCALLTYPE D3D9VkInteropDevice::WaitForResource(
           IDirect3DResource9*  pResource,
           DWORD                MapFlags) {
-    return m_device->WaitForResource(GetDxvkResource(pResource), DxvkCsThread::SynchronizeAll, MapFlags);
+    return m_device->WaitForResource(*GetDxvkResource(pResource), DxvkCsThread::SynchronizeAll, MapFlags);
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::CreateImage(
+          const D3D9VkExtImageDesc* params,
+          IDirect3DResource9**      ppResult) {
+    InitReturnPtr(ppResult);
+
+    if (unlikely(ppResult == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(params == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    /////////////////////////////
+    // Image desc validation
+
+    // Cannot create a volume by itself, use D3DRTYPE_VOLUMETEXTURE
+    if (unlikely(params->Type == D3DRTYPE_VOLUME))
+      return D3DERR_INVALIDCALL;
+
+    // Only allowed: SURFACE, TEXTURE, CUBETEXTURE, VOLUMETEXTURE
+    if (unlikely(params->Type < D3DRTYPE_SURFACE || params->Type > D3DRTYPE_CUBETEXTURE))
+      return D3DERR_INVALIDCALL;
+
+    // Only volume textures can have depth > 1
+    if (unlikely(params->Type != D3DRTYPE_VOLUMETEXTURE && params->Depth > 1))
+      return D3DERR_INVALIDCALL;
+
+    if (params->Type == D3DRTYPE_SURFACE) {
+      // Surfaces can only have 1 mip level
+      if (unlikely(params->MipLevels > 1))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(params->MultiSample > D3DMULTISAMPLE_16_SAMPLES))
+        return D3DERR_INVALIDCALL;
+    } else {
+      // Textures can't be multisampled
+      if (unlikely(params->MultiSample != D3DMULTISAMPLE_NONE))
+        return D3DERR_INVALIDCALL;
+    }
+
+    D3D9_COMMON_TEXTURE_DESC desc;
+    desc.Width              = params->Width;
+    desc.Height             = params->Height;
+    desc.Depth              = params->Depth;
+    desc.ArraySize          = params->Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
+    desc.MipLevels          = params->MipLevels;
+    desc.Usage              = params->Usage;
+    desc.Format             = EnumerateFormat(params->Format);
+    desc.Pool               = params->Pool;
+    desc.Discard            = params->Discard;
+    desc.MultiSample        = params->MultiSample;
+    desc.MultisampleQuality = params->MultiSampleQuality;
+    desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = params->IsAttachmentOnly;
+    desc.IsLockable         = params->IsLockable;
+    desc.ImageUsage         = params->ImageUsage;
+    
+    D3DRESOURCETYPE textureType = params->Type == D3DRTYPE_SURFACE ? D3DRTYPE_TEXTURE : params->Type;
+
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(m_device, textureType, &desc)))
+      return D3DERR_INVALIDCALL;
+
+    switch (params->Type) {
+      case D3DRTYPE_SURFACE:
+        return CreateTextureResource<D3D9Surface>(desc, ppResult);
+
+      case D3DRTYPE_TEXTURE:
+        return CreateTextureResource<D3D9Texture2D>(desc, ppResult);
+
+      case D3DRTYPE_VOLUMETEXTURE:
+        return CreateTextureResource<D3D9Texture3D>(desc, ppResult);
+
+      case D3DRTYPE_CUBETEXTURE:
+        return CreateTextureResource<D3D9TextureCube>(desc, ppResult);
+
+      default:
+        return D3DERR_INVALIDCALL;
+    }
+  }
+
+  template <typename ResourceType>
+  HRESULT D3D9VkInteropDevice::CreateTextureResource(
+          const D3D9_COMMON_TEXTURE_DESC& desc,
+          IDirect3DResource9**            ppResult) {
+    try {
+      const Com<ResourceType> texture = new ResourceType(m_device, &desc);
+      m_device->m_initializer->InitTexture(texture->GetCommonTexture());
+      *ppResult = texture.ref();
+
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_device->m_losableResourceCounter++;
+
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_OUTOFVIDEOMEMORY;
+    }
   }
 
 }

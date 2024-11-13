@@ -17,8 +17,11 @@ namespace dxvk::hud {
     void update(dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
-            HudRenderer&      renderer,
-            HudPos            position);
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
 
   private:
 
@@ -28,80 +31,92 @@ namespace dxvk::hud {
 
   };
 
-    /**
-     * \brief HUD item to display unmappable memory
-     */
-    class HudTextureMemory : public HudItem {
-      constexpr static int64_t UpdateInterval = 500'000;
+  /**
+   * \brief HUD item to display unmappable memory
+   */
+  class HudTextureMemory : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
 
-    public:
+    HudTextureMemory(D3D9DeviceEx* device);
 
-        HudTextureMemory(D3D9DeviceEx* device);
+    void update(dxvk::high_resolution_clock::time_point time);
 
-        void update(dxvk::high_resolution_clock::time_point time);
+    HudPos render(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
 
-        HudPos render(
-                HudRenderer&      renderer,
-                HudPos            position);
+  private:
 
-    private:
+    D3D9DeviceEx* m_device;
 
-        D3D9DeviceEx* m_device;
+    uint32_t m_maxAllocated = 0;
+    uint32_t m_maxUsed      = 0;
+    uint32_t m_maxMapped    = 0;
 
-        uint32_t m_maxAllocated = 0;
-        uint32_t m_maxUsed      = 0;
-        uint32_t m_maxMapped    = 0;
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
 
-        dxvk::high_resolution_clock::time_point m_lastUpdate
-          = dxvk::high_resolution_clock::now();
+    std::string m_allocatedString;
+    std::string m_mappedString;
 
-        std::string m_allocatedString;
-        std::string m_mappedString;
+  };
 
-    };
 
-    /**
-     * \brief HUD item to display amount of generated fixed function shaders
-     */
-    class HudFixedFunctionShaders : public HudItem {
-    public:
+  /**
+   * \brief HUD item to display amount of generated fixed function shaders
+   */
+  class HudFixedFunctionShaders : public HudItem {
 
-        HudFixedFunctionShaders(D3D9DeviceEx* device);
+  public:
 
-        void update(dxvk::high_resolution_clock::time_point time);
+    HudFixedFunctionShaders(D3D9DeviceEx* device);
 
-        HudPos render(
-                HudRenderer&      renderer,
-                HudPos            position);
+    void update(dxvk::high_resolution_clock::time_point time);
 
-    private:
+    HudPos render(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
 
-        D3D9DeviceEx* m_device;
+  private:
 
-        std::string m_ffShaderCount;
+    D3D9DeviceEx* m_device;
 
-    };
+    std::string m_ffShaderCount;
 
-    /**
-     * \brief HUD item to whether or not we're in SWVP mode
-     */
-    class HudSWVPState : public HudItem {
-    public:
+  };
 
-        HudSWVPState(D3D9DeviceEx* device);
 
-        void update(dxvk::high_resolution_clock::time_point time);
+  /**
+   * \brief HUD item to whether or not we're in SWVP mode
+   */
+  class HudSWVPState : public HudItem {
 
-        HudPos render(
-                HudRenderer&      renderer,
-                HudPos            position);
+  public:
 
-    private:
+    HudSWVPState(D3D9DeviceEx* device);
 
-        D3D9DeviceEx* m_device;
+    void update(dxvk::high_resolution_clock::time_point time);
 
-        std::string m_isSWVPText;
+    HudPos render(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
 
-    };
+  private:
+
+    D3D9DeviceEx* m_device;
+
+    std::string m_isSWVPText;
+
+  };
 
 }

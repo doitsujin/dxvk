@@ -206,39 +206,37 @@ namespace dxvk {
     if (unlikely(!pResource || !pMappedResource))
       return E_INVALIDARG;
     
-    if (MapType == D3D11_MAP_WRITE_DISCARD) {
+    if (likely(MapType == D3D11_MAP_WRITE_DISCARD)) {
       D3D11_RESOURCE_DIMENSION resourceDim;
       pResource->GetType(&resourceDim);
 
-      D3D11_MAPPED_SUBRESOURCE mapInfo;
-      HRESULT status = resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
-        ? MapBuffer(pResource,              &mapInfo)
-        : MapImage (pResource, Subresource, &mapInfo);
-      
-      if (unlikely(FAILED(status))) {
-        *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
-        return status;
-      }
-      
-      AddMapEntry(pResource, Subresource, resourceDim, mapInfo);
-      *pMappedResource = mapInfo;
-      return S_OK;
-    } else if (MapType == D3D11_MAP_WRITE_NO_OVERWRITE) {
+      return likely(resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)
+        ? MapBuffer(pResource, pMappedResource)
+        : MapImage(pResource, Subresource, pMappedResource);
+    } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
       // The resource must be mapped with D3D11_MAP_WRITE_DISCARD
       // before it can be mapped with D3D11_MAP_WRITE_NO_OVERWRITE.
-      auto entry = FindMapEntry(pResource, Subresource);
-      
-      if (unlikely(!entry)) {
-        *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+      D3D11_RESOURCE_DIMENSION resourceDim;
+      pResource->GetType(&resourceDim);
+
+      if (likely(resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)) {
+        D3D11_MAPPED_SUBRESOURCE sr = FindMapEntry(static_cast<D3D11Buffer*>(pResource)->GetCookie());
+        pMappedResource->pData = sr.pData;
+
+        if (unlikely(!sr.pData))
+          return D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD;
+
+        pMappedResource->RowPitch = sr.RowPitch;
+        pMappedResource->DepthPitch = sr.DepthPitch;
+        return S_OK;
+      } else {
+        // Images cannot be mapped with NO_OVERWRITE
+        pMappedResource->pData = nullptr;
         return E_INVALIDARG;
       }
-      
-      // Return same memory region as earlier
-      *pMappedResource = entry->MapInfo;
-      return S_OK;
     } else {
       // Not allowed on deferred contexts
-      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
   }
@@ -268,11 +266,12 @@ namespace dxvk {
 
     if (unlikely(pBuffer->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
 
     auto bufferSlice = pBuffer->AllocSlice(&m_allocationCache);
-    pMappedResource->pData = bufferSlice->mapPtr();
+    pMappedResource->pData        = bufferSlice->mapPtr();
     pMappedResource->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMappedResource->DepthPitch   = pBuffer->Desc()->ByteWidth;
 
@@ -283,6 +282,7 @@ namespace dxvk {
       ctx->invalidateBuffer(cDstBuffer, Rc<DxvkResourceAllocation>(cDstSlice));
     });
 
+    AddMapEntry(pBuffer->GetCookie(), *pMappedResource);
     return S_OK;
   }
   
@@ -293,33 +293,52 @@ namespace dxvk {
           D3D11_MAPPED_SUBRESOURCE*     pMappedResource) {
     D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     
-    if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
-      Logger::err("D3D11: Cannot map a device-local image");
+    if (unlikely(Subresource >= pTexture->CountSubresources())) {
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
     }
 
-    if (unlikely(Subresource >= pTexture->CountSubresources()))
+    if (unlikely(pTexture->Desc()->Usage != D3D11_USAGE_DYNAMIC)) {
+      pMappedResource->pData = nullptr;
       return E_INVALIDARG;
-    
-    VkFormat packedFormat = pTexture->GetPackedFormat();
-    
-    auto formatInfo = lookupFormatInfo(packedFormat);
-    auto subresource = pTexture->GetSubresourceFromIndex(
-        formatInfo->aspectMask, Subresource);
-    
-    VkExtent3D levelExtent = pTexture->MipLevelExtent(subresource.mipLevel);
-    
-    auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
-    auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
-    
-    pMappedResource->RowPitch   = layout.RowPitch;
-    pMappedResource->DepthPitch = layout.DepthPitch;
-    pMappedResource->pData      = dataSlice.mapPtr(0);
+    }
 
-    UpdateImage(pTexture, &subresource,
-      VkOffset3D { 0, 0, 0 }, levelExtent,
-      std::move(dataSlice));
-    return S_OK;
+    VkFormat packedFormat = pTexture->GetPackedFormat();
+    auto formatInfo = lookupFormatInfo(packedFormat);
+    auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+
+    if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      auto storage = pTexture->AllocStorage();
+      auto mapPtr = storage->mapPtr();
+
+      EmitCs([
+        cImage = pTexture->GetImage(),
+        cStorage = std::move(storage)
+      ] (DxvkContext* ctx) {
+        ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
+        ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+      });
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = mapPtr;
+      return S_OK;
+    } else {
+      auto dataSlice = AllocStagingBuffer(layout.Size);
+
+      pMappedResource->RowPitch   = layout.RowPitch;
+      pMappedResource->DepthPitch = layout.DepthPitch;
+      pMappedResource->pData      = dataSlice.mapPtr(0);
+
+      auto subresource = pTexture->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource);
+      auto mipExtent = pTexture->MipLevelExtent(subresource.mipLevel);
+
+      UpdateImage(pTexture, &subresource,
+        VkOffset3D { 0, 0, 0 }, mipExtent,
+        std::move(dataSlice));
+
+      return S_OK;
+    }
   }
   
   
@@ -331,19 +350,15 @@ namespace dxvk {
           UINT                          CopyFlags) {
     void* mapPtr = nullptr;
 
-    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE)) {
-      auto entry = FindMapEntry(pDstBuffer, 0);
-
-      if (entry)
-        mapPtr = entry->MapInfo.pData;
-    }
+    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE))
+      mapPtr = FindMapEntry(pDstBuffer->GetCookie()).pData;
 
     if (likely(!mapPtr)) {
       // The caller validates the map mode, so we can
       // safely ignore the MapBuffer return value here
       D3D11_MAPPED_SUBRESOURCE mapInfo;
       MapBuffer(pDstBuffer, &mapInfo);
-      AddMapEntry(pDstBuffer, 0, D3D11_RESOURCE_DIMENSION_BUFFER, mapInfo);
+      AddMapEntry(pDstBuffer->GetCookie(), mapInfo);
       mapPtr = mapInfo.pData;
     }
 
@@ -398,32 +413,27 @@ namespace dxvk {
   }
 
 
-  D3D11DeferredContextMapEntry* D3D11DeferredContext::FindMapEntry(
-          ID3D11Resource*               pResource,
-          UINT                          Subresource) {
+  D3D11_MAPPED_SUBRESOURCE D3D11DeferredContext::FindMapEntry(
+          uint64_t                      Cookie) {
     // Recently mapped resources as well as entries with
     // up-to-date map infos will be located at the end
     // of the resource array, so scan in reverse order.
     size_t size = m_mappedResources.size();
 
     for (size_t i = 1; i <= size; i++) {
-      auto entry = &m_mappedResources[size - i];
+      const auto& entry = m_mappedResources[size - i];
 
-      if (entry->Resource.Get()            == pResource
-       && entry->Resource.GetSubresource() == Subresource)
-        return entry;
+      if (entry.ResourceCookie == Cookie)
+        return entry.MapInfo;
     }
 
-    return nullptr;
+    return D3D11_MAPPED_SUBRESOURCE();
   }
 
   void D3D11DeferredContext::AddMapEntry(
-          ID3D11Resource*               pResource,
-          UINT                          Subresource,
-          D3D11_RESOURCE_DIMENSION      ResourceType,
+          uint64_t                      Cookie,
     const D3D11_MAPPED_SUBRESOURCE&     MapInfo) {
-    m_mappedResources.emplace_back(pResource,
-      Subresource, ResourceType, MapInfo);
+    m_mappedResources.push_back({ Cookie, MapInfo });
   }
 
 

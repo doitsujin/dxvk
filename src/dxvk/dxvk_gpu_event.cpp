@@ -3,34 +3,76 @@
 
 namespace dxvk {
 
-  DxvkGpuEvent::DxvkGpuEvent(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) { }
+  DxvkGpuEvent::DxvkGpuEvent(
+          DxvkGpuEventPool*           parent)
+  : m_pool(parent) {
+    auto vk = m_pool->m_vkd;
 
+    VkEventCreateInfo info = { VK_STRUCTURE_TYPE_EVENT_CREATE_INFO };
+    VkResult vr = vk->vkCreateEvent(vk->device(), &info, nullptr, &m_event);
 
-  DxvkGpuEvent::~DxvkGpuEvent() {
-    if (m_handle.pool && m_handle.event)
-      m_handle.pool->freeEvent(m_handle.event);
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create event: ", vr));
   }
 
 
-  DxvkGpuEventStatus DxvkGpuEvent::test() const {
-    if (!m_handle.event)
+  DxvkGpuEvent::~DxvkGpuEvent() {
+    auto vk = m_pool->m_vkd;
+    vk->vkDestroyEvent(vk->device(), m_event, nullptr);
+  }
+
+
+  void DxvkGpuEvent::free() {
+    m_pool->freeEvent(this);
+  }
+
+
+
+  DxvkEvent::DxvkEvent(const Rc<DxvkDevice>& device)
+  : m_device(device) { }
+
+
+  DxvkEvent::~DxvkEvent() {
+
+  }
+
+
+  DxvkGpuEventStatus DxvkEvent::test() {
+    std::lock_guard lock(m_mutex);
+
+    if (m_status == VK_EVENT_SET)
+      return DxvkGpuEventStatus::Signaled;
+
+    if (!m_gpuEvent)
       return DxvkGpuEventStatus::Invalid;
-    
-    VkResult status = m_vkd->vkGetEventStatus(
-      m_vkd->device(), m_handle.event);
-    
-    switch (status) {
-      case VK_EVENT_SET:    return DxvkGpuEventStatus::Signaled;
-      case VK_EVENT_RESET:  return DxvkGpuEventStatus::Pending;
-      default:              return DxvkGpuEventStatus::Invalid;
+
+    // Query current event status and recycle
+    // it as soon as a signal is observed.
+    auto vk = m_device->vkd();
+
+    m_status = vk->vkGetEventStatus(
+      vk->device(), m_gpuEvent->handle());
+
+    switch (m_status) {
+      case VK_EVENT_SET:
+        m_gpuEvent = nullptr;
+        return DxvkGpuEventStatus::Signaled;
+
+      case VK_EVENT_RESET:
+        return DxvkGpuEventStatus::Pending;
+
+      default:
+        return DxvkGpuEventStatus::Invalid;
     }
   }
 
 
-  DxvkGpuEventHandle DxvkGpuEvent::reset(DxvkGpuEventHandle handle) {
-    m_vkd->vkResetEvent(m_vkd->device(), handle.event);
-    return std::exchange(m_handle, handle);
+  void DxvkEvent::assignGpuEvent(
+          Rc<DxvkGpuEvent>             event) {
+    std::lock_guard lock(m_mutex);
+
+    m_gpuEvent = std::move(event);
+    m_status = VK_NOT_READY;
   }
 
 
@@ -41,61 +83,31 @@ namespace dxvk {
 
 
   DxvkGpuEventPool::~DxvkGpuEventPool() {
-    for (VkEvent ev : m_events)
-      m_vkd->vkDestroyEvent(m_vkd->device(), ev, nullptr);
+    for (auto e : m_freeEvents)
+      delete e;
   }
 
   
-  DxvkGpuEventHandle DxvkGpuEventPool::allocEvent() {
-    VkEvent event = VK_NULL_HANDLE;
+  Rc<DxvkGpuEvent> DxvkGpuEventPool::allocEvent() {
+    std::lock_guard lock(m_mutex);
 
-    { std::lock_guard<dxvk::mutex> lock(m_mutex);
-      
-      if (m_events.size() > 0) {
-        event = m_events.back();
-        m_events.pop_back();
-      }
+    Rc<DxvkGpuEvent> event;
+
+    if (m_freeEvents.empty()) {
+      event = new DxvkGpuEvent(this);
+    } else {
+      event = m_freeEvents.back();
+      m_freeEvents.pop_back();
     }
 
-    if (!event) {
-      VkEventCreateInfo info = { VK_STRUCTURE_TYPE_EVENT_CREATE_INFO };
-
-      VkResult status = m_vkd->vkCreateEvent(
-        m_vkd->device(), &info, nullptr, &event);
-      
-      if (status != VK_SUCCESS) {
-        Logger::err("DXVK: Failed to create GPU event");
-        return DxvkGpuEventHandle();
-      }
-    }
-
-    return { this, event };
+    m_vkd->vkResetEvent(m_vkd->device(), event->handle());
+    return event;
   }
 
 
-  void DxvkGpuEventPool::freeEvent(VkEvent event) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-    m_events.push_back(event);
-  }
-
-
-
-
-  DxvkGpuEventTracker::DxvkGpuEventTracker() { }
-  DxvkGpuEventTracker::~DxvkGpuEventTracker() { }
-
-
-  void DxvkGpuEventTracker::trackEvent(DxvkGpuEventHandle handle) {
-    if (handle.pool && handle.event)
-      m_handles.push_back(handle);
-  }
-
-
-  void DxvkGpuEventTracker::reset() {
-    for (const auto& h : m_handles)
-      h.pool->freeEvent(h.event);
-    
-    m_handles.clear();
+  void DxvkGpuEventPool::freeEvent(DxvkGpuEvent* event) {
+    std::lock_guard lock(m_mutex);
+    m_freeEvents.push_back(event);
   }
 
 }

@@ -45,6 +45,7 @@ namespace dxvk::wsi {
   bool GlfwWsiDriver::setWindowMode(
       HMONITOR hMonitor,
       HWND hWindow,
+      DxvkWindowState* pState,
       const WsiMode& pMode) {
     const int32_t displayId = fromHmonitor(hMonitor);
     GLFWwindow* window = fromHwnd(hWindow);

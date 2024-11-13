@@ -87,12 +87,22 @@ namespace dxvk {
       const D3D11_SUBRESOURCE_DATA* pInitialData,
             ID3D11Texture2D1**      ppTexture2D);
     
+    HRESULT STDMETHODCALLTYPE CreateTexture2DBase(
+      const D3D11_TEXTURE2D_DESC1*  pDesc,
+      const D3D11_SUBRESOURCE_DATA* pInitialData,
+            ID3D11Texture2D1**      ppTexture2D);
+    
     HRESULT STDMETHODCALLTYPE CreateTexture3D(
       const D3D11_TEXTURE3D_DESC*   pDesc,
       const D3D11_SUBRESOURCE_DATA* pInitialData,
             ID3D11Texture3D**       ppTexture3D);
     
     HRESULT STDMETHODCALLTYPE CreateTexture3D1(
+      const D3D11_TEXTURE3D_DESC1*  pDesc,
+      const D3D11_SUBRESOURCE_DATA* pInitialData,
+            ID3D11Texture3D1**      ppTexture3D);
+    
+    HRESULT STDMETHODCALLTYPE CreateTexture3DBase(
       const D3D11_TEXTURE3D_DESC1*  pDesc,
       const D3D11_SUBRESOURCE_DATA* pInitialData,
             ID3D11Texture3D1**      ppTexture3D);
@@ -107,6 +117,11 @@ namespace dxvk {
       const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc,
             ID3D11ShaderResourceView1**       ppSRView);
     
+    HRESULT STDMETHODCALLTYPE CreateShaderResourceViewBase(
+            ID3D11Resource*                   pResource,
+      const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc,
+            ID3D11ShaderResourceView1**       ppSRView);
+    
     HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
             ID3D11Resource*                   pResource,
       const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
@@ -117,12 +132,22 @@ namespace dxvk {
       const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc,
             ID3D11UnorderedAccessView1**      ppUAView);
     
+    HRESULT STDMETHODCALLTYPE CreateUnorderedAccessViewBase(
+            ID3D11Resource*                   pResource,
+      const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc,
+            ID3D11UnorderedAccessView1**      ppUAView);
+    
     HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
             ID3D11Resource*                   pResource,
       const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
             ID3D11RenderTargetView**          ppRTView);
     
     HRESULT STDMETHODCALLTYPE CreateRenderTargetView1(
+            ID3D11Resource*                   pResource,
+      const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc,
+            ID3D11RenderTargetView1**         ppRTView);
+    
+    HRESULT STDMETHODCALLTYPE CreateRenderTargetViewBase(
             ID3D11Resource*                   pResource,
       const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc,
             ID3D11RenderTargetView1**         ppRTView);
@@ -222,6 +247,10 @@ namespace dxvk {
             ID3D11Query**               ppQuery);
     
     HRESULT STDMETHODCALLTYPE CreateQuery1(
+      const D3D11_QUERY_DESC1*          pQueryDesc,
+            ID3D11Query1**              ppQuery);
+    
+    HRESULT STDMETHODCALLTYPE CreateQueryBase(
       const D3D11_QUERY_DESC1*          pQueryDesc,
             ID3D11Query1**              ppQuery);
     
@@ -391,7 +420,13 @@ namespace dxvk {
       return m_dxvkDevice;
     }
     
-    void FlushInitContext();
+    void FlushInitCommands() {
+      m_initializer->FlushCsChunk();
+    }
+
+    void NotifyContextFlush() {
+      m_initializer->NotifyContextFlush();
+    }
     
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
@@ -592,7 +627,14 @@ namespace dxvk {
 
     ID3D11ShaderResourceView* HandleToSrvNVX(
             uint32_t                  Handle);
-    
+
+    bool LockImage(
+      const Rc<DxvkImage>&            Image,
+            VkImageUsageFlags         Usage);
+
+    void LockBuffer(
+      const Rc<DxvkBuffer>&           Buffer);
+
     dxvk::mutex m_mapLock;
     std::unordered_map<uint32_t, ID3D11SamplerState*> m_samplerHandleToPtr;
     std::unordered_map<uint32_t, ID3D11ShaderResourceView*> m_srvHandleToPtr;

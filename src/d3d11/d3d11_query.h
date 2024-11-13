@@ -103,8 +103,8 @@ namespace dxvk {
 
     D3D11_VK_QUERY_STATE m_state;
     
-    std::array<Rc<DxvkGpuQuery>, MaxGpuQueries> m_query;
-    std::array<Rc<DxvkGpuEvent>, MaxGpuEvents>  m_event;
+    std::array<Rc<DxvkQuery>, MaxGpuQueries> m_query;
+    std::array<Rc<DxvkEvent>, MaxGpuEvents>  m_event;
 
     D3D10Query m_d3d10;
 

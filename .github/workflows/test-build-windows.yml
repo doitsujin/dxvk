@@ -4,7 +4,7 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   build-set-windows:
-    runs-on: windows-2022
+    runs-on: windows-latest
 
     steps:
     - name: Checkout code
@@ -12,6 +12,7 @@ jobs:
       uses: actions/checkout@v4
       with:
         submodules: recursive
+        fetch-depth: 0
 
     - name: Setup glslangValidator
       shell: pwsh
@@ -38,6 +39,12 @@ jobs:
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8.h -OutFile include/d3d8.h
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8types.h -OutFile include/d3d8types.h
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8caps.h -OutFile include/d3d8caps.h
+        
+    - name: Get version
+      id: get-version
+      shell: bash
+      run: |
+        echo "VERSION_NAME=${GITHUB_REF##*/}-${GITHUB_SHA##*/}" >> $GITHUB_ENV
 
     - name: Build MSVC x86
       shell: pwsh
@@ -56,3 +63,19 @@ jobs:
           | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
         meson --buildtype release --backend vs2022 build-msvc-x64
         msbuild -m build-msvc-x64/dxvk.sln
+
+    - name: Prepare artifacts
+      shell: pwsh
+      run: |
+        mkdir artifacts\x32
+        ls -Path build-msvc-x86\src -Include *.dll,*.pdb -Recurse
+          | cp -Destination (Join-Path -Path (pwd) -ChildPath artifacts\x32)
+        mkdir artifacts\x64
+        ls -Path build-msvc-x64\src -Include *.dll,*.pdb -Recurse
+          | cp -Destination (Join-Path -Path (pwd) -ChildPath artifacts\x64)
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dxvk-${{ env.VERSION_NAME }}-msvc-output
+        path: artifacts\*

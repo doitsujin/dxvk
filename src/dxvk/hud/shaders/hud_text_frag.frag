@@ -4,7 +4,14 @@
 
 #include "hud_frag_common.glsl"
 
-layout(binding = 2) uniform sampler2D s_font;
+layout(binding = 3) uniform sampler2D s_font;
+
+layout(push_constant)
+uniform push_data_t {
+  uvec2 surface_size;
+  float opacity;
+  float scale;
+};
 
 layout(location = 0) in vec2 v_texcoord;
 layout(location = 1) in vec4 v_color;
@@ -25,8 +32,8 @@ void main() {
   vec3 r_shadow = vec3(0.0f, 0.0f, 0.0f);
 
   o_color.rgb = mix(r_shadow, r_center, r_alpha_center);
-  o_color.a = r_alpha_shadow * v_color.a;
+  o_color.a = r_alpha_shadow * v_color.a * opacity;
   o_color.rgb *= o_color.a;
 
-  o_color.rgb = encodeOutput(o_color.rgb);
+  o_color = linear_to_output(o_color);
 }

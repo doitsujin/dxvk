@@ -24,19 +24,11 @@
 #include "dxvk_sparse.h"
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
-#include "dxvk_marker.h"
 
 namespace dxvk {
   
   class DxvkInstance;
 
-  /**
-   * \brief Device options
-   */
-  struct DxvkDeviceOptions {
-    uint32_t maxNumDynamicUniformBuffers = 0;
-    uint32_t maxNumDynamicStorageBuffers = 0;
-  };
 
   /**
    * \brief Device performance hints
@@ -44,6 +36,7 @@ namespace dxvk {
   struct DxvkDevicePerfHints {
     VkBool32 preferFbDepthStencilCopy : 1;
     VkBool32 preferFbResolve          : 1;
+    VkBool32 renderPassClearFormatBug : 1;
   };
   
   /**
@@ -134,7 +127,18 @@ namespace dxvk {
       return m_queues.transfer.queueHandle
           != m_queues.graphics.queueHandle;
     }
-    
+
+    /**
+     * \brief Queries sharing mode info
+     * \returns Sharing mode info
+     */
+    DxvkSharingModeInfo getSharingMode() const {
+      DxvkSharingModeInfo result = { };
+      result.queueFamilies[0] = m_queues.graphics.queueFamily;
+      result.queueFamilies[1] = m_queues.transfer.queueFamily;
+      return result;
+    }
+
     /**
      * \brief The instance
      * 
@@ -205,6 +209,19 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries mapped image subresource layout
+     *
+     * Assumes that the image tiling is linear even
+     * if not explcitly set in the create info.
+     * \param [in] createInfo Image create info
+     * \param [in] subresource Subresource to query
+     * \returns Subresource layout
+     */
+    VkSubresourceLayout queryImageSubresourceLayout(
+      const DxvkImageCreateInfo&        createInfo,
+      const VkImageSubresource&         subresource);
+
+    /**
      * \brief Checks whether this is a UMA system
      *
      * Basically tests whether all heaps are device-local.
@@ -242,12 +259,6 @@ namespace dxvk {
      * \returns Supported shader pipeline stages
      */
     VkPipelineStageFlags getShaderPipelineStages() const;
-    
-    /**
-     * \brief Retrieves device options
-     * \returns Device options
-     */
-    DxvkDeviceOptions options() const;
 
     /**
      * \brief Retrieves performance hints
@@ -268,16 +279,15 @@ namespace dxvk {
      * 
      * Creates a context object that can
      * be used to record command buffers.
-     * \param [in] type Context type
      * \returns The context object
      */
-    Rc<DxvkContext> createContext(DxvkContextType type);
+    Rc<DxvkContext> createContext();
 
     /**
      * \brief Creates a GPU event
      * \returns New GPU event
      */
-    Rc<DxvkGpuEvent> createGpuEvent();
+    Rc<DxvkEvent> createGpuEvent();
 
     /**
      * \brief Creates a query
@@ -287,11 +297,20 @@ namespace dxvk {
      * \param [in] index Query index
      * \returns New query
      */
-    Rc<DxvkGpuQuery> createGpuQuery(
+    Rc<DxvkQuery> createGpuQuery(
             VkQueryType           type,
             VkQueryControlFlags   flags,
             uint32_t              index);
-    
+
+    /**
+     * \brief Creates a raw GPU query
+     *
+     * \param [in] type Query type
+     * \returns New query
+     */
+    Rc<DxvkGpuQuery> createRawQuery(
+            VkQueryType           type);
+
     /**
      * \brief Creates new fence
      *
@@ -322,17 +341,6 @@ namespace dxvk {
     Rc<DxvkImage> createImage(
       const DxvkImageCreateInfo&  createInfo,
             VkMemoryPropertyFlags memoryType);
-
-    /**
-     * \brief Creates an image view
-     * 
-     * \param [in] image The image to create a view for
-     * \param [in] createInfo Image view create info
-     * \returns The image view
-     */
-    Rc<DxvkImageView> createImageView(
-      const Rc<DxvkImage>&            image,
-      const DxvkImageViewCreateInfo&  createInfo);
     
     /**
      * \brief Creates a sampler object
@@ -341,7 +349,7 @@ namespace dxvk {
      * \returns Newly created sampler object
      */
     Rc<DxvkSampler> createSampler(
-      const DxvkSamplerCreateInfo&  createInfo);
+      const DxvkSamplerKey&         createInfo);
 
     /**
      * \brief Creates local allocation cache
@@ -411,6 +419,14 @@ namespace dxvk {
      * \returns Shared allocation cache stats
      */
     DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
+
+    /**
+     * \brief Queries sampler statistics
+     * \returns Sampler stats
+     */
+    DxvkSamplerStats getSamplerStats() {
+      return m_objects.samplerPool().getStats();
+    }
 
     /**
      * \brief Retreves current frame ID
@@ -517,12 +533,23 @@ namespace dxvk {
     VkResult waitForSubmission(DxvkSubmitStatus* status);
 
     /**
+     * \brief Waits for a fence to become signaled
+     *
+     * Treats the fence wait as a GPU sync point, which can
+     * be useful for device statistics. Should only be used
+     * if rendering is stalled because of this wait.
+     * \param [in] fence Fence to wait on
+     * \param [in] value Fence value
+     */
+    void waitForFence(sync::Fence& fence, uint64_t value);
+
+    /**
      * \brief Waits for resource to become idle
      *
      * \param [in] resource Resource to wait for
      * \param [in] access Access mode to check
      */
-    void waitForResource(const Rc<DxvkResource>& resource, DxvkAccess access);
+    void waitForResource(const DxvkPagedResource& resource, DxvkAccess access);
     
     /**
      * \brief Waits until the device becomes idle
@@ -542,6 +569,8 @@ namespace dxvk {
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
 
+    DxvkDeviceQueueSet          m_queues;
+
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
     
@@ -550,8 +579,6 @@ namespace dxvk {
 
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
-    
-    DxvkDeviceQueueSet          m_queues;
     
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     

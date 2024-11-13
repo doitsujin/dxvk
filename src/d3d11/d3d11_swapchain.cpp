@@ -63,11 +63,10 @@ namespace dxvk {
     m_surfaceFactory(pSurfaceFactory),
     m_desc(*pDesc),
     m_device(pDevice->GetDXVKDevice()),
-    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
     CreatePresenter();
-    CreateBackBuffer();
+    CreateBackBuffers();
     CreateBlitter();
     CreateHud();
 
@@ -141,12 +140,12 @@ namespace dxvk {
           void**                    ppBuffer) {
     InitReturnPtr(ppBuffer);
 
-    if (BufferId > 0) {
-      Logger::err("D3D11: GetImage: BufferId > 0 not supported");
+    if (BufferId >= m_backBuffers.size()) {
+      Logger::err("D3D11: GetImage: Invalid buffer ID");
       return DXGI_ERROR_UNSUPPORTED;
     }
 
-    return m_backBuffer->QueryInterface(riid, ppBuffer);
+    return m_backBuffers[BufferId]->QueryInterface(riid, ppBuffer);
   }
 
 
@@ -185,7 +184,7 @@ namespace dxvk {
             || m_desc.Flags       != pDesc->Flags;
 
     m_desc = *pDesc;
-    CreateBackBuffer();
+    CreateBackBuffers();
     return S_OK;
   }
 
@@ -357,96 +356,128 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
-    // Flush pending rendering commands before
-    auto immediateContext = m_parent->GetContext();
-    immediateContext->EndFrame();
-    immediateContext->Flush();
+  Rc<DxvkImageView> D3D11SwapChain::GetBackBufferView() {
+    Rc<DxvkImage> image = GetCommonTexture(m_backBuffers[0].ptr())->GetImage();
 
-    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
-      SynchronizePresent();
+    DxvkImageViewKey key;
+    key.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    key.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    key.format = image->info().format;
+    key.aspects = VK_IMAGE_ASPECT_COLOR_BIT;
+    key.mipIndex = 0u;
+    key.mipCount = 1u;
+    key.layerIndex = 0u;
+    key.layerCount = 1u;
 
-      if (!m_presenter->hasSwapChain())
-        return i ? S_OK : DXGI_STATUS_OCCLUDED;
-
-      // Presentation semaphores and WSI swap chain image
-      PresenterInfo info = m_presenter->info();
-      PresenterSync sync;
-
-      uint32_t imageIndex = 0;
-
-      VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
-
-      while (status != VK_SUCCESS) {
-        RecreateSwapChain();
-
-        if (!m_presenter->hasSwapChain())
-          return i ? S_OK : DXGI_STATUS_OCCLUDED;
-        
-        info = m_presenter->info();
-        status = m_presenter->acquireNextImage(sync, imageIndex);
-
-        if (status == VK_SUBOPTIMAL_KHR)
-          break;
-      }
-
-      if (m_hdrMetadata && m_dirtyHdrMetadata) {
-        m_presenter->setHdrMetadata(*m_hdrMetadata);
-        m_dirtyHdrMetadata = false;
-      }
-
-      m_context->beginRecording(
-        m_device->createCommandList());
-      
-      m_blitter->presentImage(m_context.ptr(),
-        m_imageViews.at(imageIndex), VkRect2D(),
-        m_swapImageView, VkRect2D());
-
-      if (m_hud != nullptr)
-        m_hud->render(m_context, info.format, info.imageExtent);
-      
-      SubmitPresent(immediateContext, sync, i);
-    }
-
-    return S_OK;
+    return image->createView(key);
   }
 
 
-  void D3D11SwapChain::SubmitPresent(
-          D3D11ImmediateContext*  pContext,
-    const PresenterSync&          Sync,
-          uint32_t                Repeat) {
-    auto lock = pContext->LockContext();
+  HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
+    // Flush pending rendering commands before
+    auto immediateContext = m_parent->GetContext();
+    auto immediateContextLock = immediateContext->LockContext();
 
-    // Bump frame ID as necessary
-    if (!Repeat)
-      m_frameId += 1;
+    immediateContext->EndFrame();
+    immediateContext->Flush();
+
+    SynchronizePresent();
+
+    if (!m_presenter->hasSwapChain())
+      return DXGI_STATUS_OCCLUDED;
+
+    // Presentation semaphores and WSI swap chain image
+    PresenterInfo info = m_presenter->info();
+    PresenterSync sync;
+
+    uint32_t imageIndex = 0;
+
+    VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
+
+    while (status != VK_SUCCESS) {
+      RecreateSwapChain();
+
+      if (!m_presenter->hasSwapChain())
+        return DXGI_STATUS_OCCLUDED;
+      
+      info = m_presenter->info();
+      status = m_presenter->acquireNextImage(sync, imageIndex);
+
+      if (status == VK_SUBOPTIMAL_KHR)
+        break;
+    }
+
+    if (m_hdrMetadata && m_dirtyHdrMetadata) {
+      m_presenter->setHdrMetadata(*m_hdrMetadata);
+      m_dirtyHdrMetadata = false;
+    }
+
+    m_frameId += 1;
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
-    pContext->EmitCs([this,
-      cRepeat      = Repeat,
-      cSync        = Sync,
-      cHud         = m_hud,
-      cPresentMode = m_presenter->info().presentMode,
-      cFrameId     = m_frameId,
-      cCommandList = m_context->endRecording()
+    immediateContext->EmitCs([
+      cPresentStatus  = &m_presentStatus,
+      cDevice         = m_device,
+      cBlitter        = m_blitter,
+      cBackBuffer     = m_imageViews.at(imageIndex),
+      cSwapImage      = GetBackBufferView(),
+      cSync           = sync,
+      cHud            = m_hud,
+      cPresenter      = m_presenter,
+      cColorSpace     = m_colorspace,
+      cFrameId        = m_frameId
     ] (DxvkContext* ctx) {
-      cCommandList->setWsiSemaphores(cSync);
-      m_device->submitCommandList(cCommandList, nullptr);
+      // Blit the D3D back buffer onto the actual Vulkan
+      // swap chain and render the HUD if we have one.
+      auto contextObjects = ctx->beginExternalRendering();
 
-      if (cHud != nullptr && !cRepeat)
+      cBlitter->beginPresent(contextObjects,
+        cBackBuffer, cColorSpace, VkRect2D(),
+        cSwapImage, cColorSpace, VkRect2D());
+
+      if (cHud != nullptr) {
         cHud->update();
+        cHud->render(contextObjects, cBackBuffer, cColorSpace);
+      }
 
-      uint64_t frameId = cRepeat ? 0 : cFrameId;
+      cBlitter->endPresent(contextObjects, cBackBuffer, cColorSpace);
 
-      m_device->presentImage(m_presenter,
-        cPresentMode, frameId, &m_presentStatus);
+      // Submit current command list and present
+      ctx->synchronizeWsi(cSync);
+      ctx->flushCommandList(nullptr);
+
+      cDevice->presentImage(cPresenter,
+        cPresenter->info().presentMode,
+        cFrameId, cPresentStatus);
     });
 
-    pContext->FlushCsChunk();
+    if (m_backBuffers.size() > 1u)
+      RotateBackBuffers(immediateContext);
+
+    immediateContext->FlushCsChunk();
+    return S_OK;
+  }
+
+
+  void D3D11SwapChain::RotateBackBuffers(D3D11ImmediateContext* ctx) {
+    small_vector<Rc<DxvkImage>, 4> images;
+
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
+      images.push_back(GetCommonTexture(m_backBuffers[i].ptr())->GetImage());
+
+    ctx->EmitCs([
+      cImages = std::move(images)
+    ] (DxvkContext* ctx) {
+      auto allocation = cImages[0]->storage();
+
+      for (size_t i = 0u; i + 1 < cImages.size(); i++)
+        ctx->invalidateImage(cImages[i], cImages[i + 1]->storage());
+
+      ctx->invalidateImage(cImages[cImages.size() - 1u], std::move(allocation));
+    });
   }
 
 
@@ -543,15 +574,15 @@ namespace dxvk {
     imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     imageInfo.shared      = VK_TRUE;
 
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
+    DxvkImageViewKey viewInfo;
+    viewInfo.viewType     = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format       = info.format.format;
     viewInfo.usage        = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.minLevel     = 0;
-    viewInfo.numLevels    = 1;
-    viewInfo.minLayer     = 0;
-    viewInfo.numLayers    = 1;
+    viewInfo.aspects      = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.mipIndex     = 0;
+    viewInfo.mipCount     = 1;
+    viewInfo.layerIndex   = 0;
+    viewInfo.layerCount   = 1;
 
     for (uint32_t i = 0; i < info.imageCount; i++) {
       VkImage imageHandle = m_presenter->getImage(i).image;
@@ -563,12 +594,14 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::CreateBackBuffer() {
+  void D3D11SwapChain::CreateBackBuffers() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    m_swapImage         = nullptr;
-    m_swapImageView     = nullptr;
-    m_backBuffer        = nullptr;
+    m_backBuffers.clear();
+
+    bool sequential = m_desc.SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL ||
+                      m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    uint32_t backBufferCount = sequential ? m_desc.BufferCount : 1u;
 
     // Create new back buffer
     D3D11_COMMON_TEXTURE_DESC desc;
@@ -599,44 +632,33 @@ namespace dxvk {
     
     DXGI_USAGE dxgiUsage = DXGI_USAGE_BACK_BUFFER;
 
-    if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
-     || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
-      dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
+    for (uint32_t i = 0; i < backBufferCount; i++) {
+      if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
+       || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
+         dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
-    m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
+      m_backBuffers.push_back(new D3D11Texture2D(
+        m_parent, this, &desc, dxgiUsage));
 
-    // Create an image view that allows the
-    // image to be bound as a shader resource.
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format     = m_swapImage->info().format;
-    viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-    viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.minLevel   = 0;
-    viewInfo.numLevels  = 1;
-    viewInfo.minLayer   = 0;
-    viewInfo.numLayers  = 1;
-    m_swapImageView = m_device->createImageView(m_swapImage, viewInfo);
-    
-    // Initialize the image so that we can use it. Clearing
+      dxgiUsage |= DXGI_USAGE_READ_ONLY;
+    }
+
+    small_vector<Rc<DxvkImage>, 4> images;
+
+    for (uint32_t i = 0; i < backBufferCount; i++)
+      images.push_back(GetCommonTexture(m_backBuffers[i].ptr())->GetImage());
+
+    // Initialize images so that we can use them. Clearing
     // to black prevents garbled output for the first frame.
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = 1;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = 1;
-
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    m_context->initImage(m_swapImage,
-      subresources, VK_IMAGE_LAYOUT_UNDEFINED);
-
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr);
+    m_parent->GetContext()->InjectCs([
+      cImages = std::move(images)
+    ] (DxvkContext* ctx) {
+      for (size_t i = 0; i < cImages.size(); i++) {
+        ctx->initImage(cImages[i],
+          cImages[i]->getAvailableSubresources(),
+          VK_IMAGE_LAYOUT_UNDEFINED);
+      }
+    });
   }
 
 

@@ -10,33 +10,29 @@ namespace dxvk::hud {
 
 
   void HudSamplerCount::update(dxvk::high_resolution_clock::time_point time) {
-    m_samplerCount = str::format(m_device->GetSamplerCount());
+    DxvkSamplerStats stats = m_device->GetDXVKDevice()->getSamplerStats();
+    m_samplerCount = str::format(stats.totalCount);
   }
 
 
   HudPos HudSamplerCount::render(
-          HudRenderer&      renderer,
-          HudPos            position) {
-    position.y += 16.0f;
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    position.y += 16;
+    renderer.drawText(16, position, 0xffc0ff00u, "Samplers:");
+    renderer.drawText(16, { position.x + 120, position.y }, 0xffffffffu, m_samplerCount);
 
-    renderer.drawText(16.0f,
-      { position.x, position.y },
-      { 0.0f, 1.0f, 0.75f, 1.0f },
-      "Samplers:");
-
-    renderer.drawText(16.0f,
-      { position.x + 120.0f, position.y },
-      { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_samplerCount);
-
-    position.y += 8.0f;
+    position.y += 8;
     return position;
   }
 
   HudTextureMemory::HudTextureMemory(D3D9DeviceEx* device)
-          : m_device          (device)
-          , m_allocatedString ("")
-          , m_mappedString    ("") {}
+  : m_device          (device)
+  , m_allocatedString ("")
+  , m_mappedString    ("") { }
 
 
   void HudTextureMemory::update(dxvk::high_resolution_clock::time_point time) {
@@ -61,40 +57,26 @@ namespace dxvk::hud {
 
 
   HudPos HudTextureMemory::render(
-          HudRenderer&      renderer,
-          HudPos            position) {
-    position.y += 16.0f;
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    position.y += 16;
+    renderer.drawText(16, position, 0xffc0ff00u, "Mappable:");
+    renderer.drawText(16, { position.x + 120, position.y }, 0xffffffffu, m_allocatedString);
 
-    renderer.drawText(16.0f,
-                      { position.x, position.y },
-                      { 0.0f, 1.0f, 0.75f, 1.0f },
-                      "Mappable:");
+    position.y += 20;
+    renderer.drawText(16, position, 0xffc0ff00u, "Mapped:");
+    renderer.drawText(16, { position.x + 120, position.y }, 0xffffffffu, m_mappedString);
 
-    renderer.drawText(16.0f,
-                      { position.x + 120.0f, position.y },
-                      { 1.0f, 1.0f, 1.0f, 1.0f },
-                      m_allocatedString);
-
-    position.y += 24.0f;
-
-    renderer.drawText(16.0f,
-                      { position.x, position.y },
-                      { 0.0f, 1.0f, 0.75f, 1.0f },
-                      "Mapped:");
-
-    renderer.drawText(16.0f,
-                      { position.x + 120.0f, position.y },
-                      { 1.0f, 1.0f, 1.0f, 1.0f },
-                      m_mappedString);
-
-    position.y += 8.0f;
-
+    position.y += 8;
     return position;
   }
 
   HudFixedFunctionShaders::HudFixedFunctionShaders(D3D9DeviceEx* device)
-          : m_device          (device)
-          , m_ffShaderCount ("") {}
+  : m_device        (device)
+  , m_ffShaderCount ("") {}
 
 
   void HudFixedFunctionShaders::update(dxvk::high_resolution_clock::time_point time) {
@@ -107,27 +89,24 @@ namespace dxvk::hud {
 
 
   HudPos HudFixedFunctionShaders::render(
-          HudRenderer&      renderer,
-          HudPos            position) {
-    position.y += 16.0f;
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    position.y += 16;
+    renderer.drawText(16, position, 0xffc0ff00u, "FF Shaders:");
+    renderer.drawText(16, { position.x + 155, position.y }, 0xffffffffu, m_ffShaderCount);
 
-    renderer.drawText(16.0f,
-      { position.x, position.y },
-      { 0.0f, 1.0f, 0.75f, 1.0f },
-      "FF Shaders:");
-
-    renderer.drawText(16.0f,
-      { position.x + 155.0f, position.y },
-      { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_ffShaderCount);
-
-    position.y += 8.0f;
+    position.y += 8;
     return position;
   }
+
 
   HudSWVPState::HudSWVPState(D3D9DeviceEx* device)
           : m_device          (device)
           , m_isSWVPText ("") {}
+
 
 
   void HudSWVPState::update(dxvk::high_resolution_clock::time_point time) {
@@ -148,21 +127,16 @@ namespace dxvk::hud {
 
 
   HudPos HudSWVPState::render(
-          HudRenderer&      renderer,
-          HudPos            position) {
-    position.y += 16.0f;
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    position.y += 16;
+    renderer.drawText(16, position, 0xffc0ff00u, "Vertex Processing:");
+    renderer.drawText(16, { position.x + 240, position.y }, 0xffffffffu, m_isSWVPText);
 
-    renderer.drawText(16.0f,
-      { position.x, position.y },
-      { 0.0f, 1.0f, 0.75f, 1.0f },
-      "Vertex Processing:");
-
-    renderer.drawText(16.0f,
-      { position.x + 240.0f, position.y },
-      { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_isSWVPText);
-
-    position.y += 8.0f;
+    position.y += 8;
     return position;
   }
 
