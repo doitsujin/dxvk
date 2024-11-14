@@ -32,9 +32,29 @@ winecfg
 
 Verify that your application uses DXVK instead of wined3d by enabling the HUD (see notes below).
 
-In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
-
 Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatically handle setup of dxvk on their own when enabled.
+
+### Uninstall
+In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run wineboot -u to restore the original DLL files.
+```
+export WINEPREFIX=/path/to/wineprefix
+rm $WINEPREFIX/drive_c/windows/system32/d3d8.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d9.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d10core.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d11.dll
+rm $WINEPREFIX/drive_c/windows/system32/dxgi.dll
+rm $WINEPREFIX/drive_c/windows/syswow64/d3d8.dll
+rm $WINEPREFIX/drive_c/windows/syswow64/d3d9.dll
+rm $WINEPREFIX/drive_c/windows/syswow64/d3d10core.dll
+rm $WINEPREFIX/drive_c/windows/syswow64/d3d11.dll
+rm $WINEPREFIX/drive_c/windows/syswow64/dxgi.dll
+wine wineboot -u
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
+```
 
 #### DLL dependencies 
 Listed below are the DLL requirements for using DXVK with any single API.
