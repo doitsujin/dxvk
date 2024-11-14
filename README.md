@@ -56,7 +56,7 @@ wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d nat
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
 ```
 
-#### DLL dependencies 
+### DLL dependencies 
 Listed below are the DLL requirements for using DXVK with any single API.
 
 - d3d8: `d3d8.dll` and `d3d9.dll`
