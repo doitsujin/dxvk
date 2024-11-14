@@ -164,11 +164,14 @@ namespace dxvk {
 
 
   VkResult Presenter::recreateSwapChain(const PresenterDesc& desc) {
+    Logger::err(str::format("Presenter::recreateSwapChain 1"));
     if (m_swapchain)
       destroySwapchain();
 
-    if (!m_surface)
+    if (!m_surface) {
+      Logger::err(str::format("Presenter::recreateSwapChain early out"));
       return VK_ERROR_SURFACE_LOST_KHR;
+    }
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenExclusiveInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenExclusiveInfo.fullScreenExclusive = desc.fullScreenExclusive;
@@ -190,18 +193,23 @@ namespace dxvk {
     VkResult status;
 
     if (m_device->features().extFullScreenExclusive) {
+      Logger::err(str::format("Presenter::recreateSwapChain 3"));
       status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
         m_device->adapter()->handle(), &surfaceInfo, &caps);
     } else {
+      Logger::err(str::format("Presenter::recreateSwapChain 4"));
       status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
         m_device->adapter()->handle(), m_surface, &caps.surfaceCapabilities);
     }
 
-    if (status)
+    if (status) {
+      Logger::err(str::format("Presenter::recreateSwapChain early out"));
       return status;
+    }
 
     // Select image extent based on current surface capabilities, and return
     // immediately if we cannot create an actual swap chain.
+    Logger::err(str::format("Presenter::recreateSwapChain 5"));
     m_info.imageExtent = pickImageExtent(caps.surfaceCapabilities, desc.imageExtent);
 
     if (!m_info.imageExtent.width || !m_info.imageExtent.height) {
@@ -211,19 +219,26 @@ namespace dxvk {
     }
 
     // Select format based on swap chain properties
+    Logger::err(str::format("Presenter::recreateSwapChain 6"));
     if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
       return status;
 
+    Logger::err(str::format("Presenter::recreateSwapChain 7"));
     m_info.format = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
 
     // Select a present mode for the current sync interval
-    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive)))
+    Logger::err(str::format("Presenter::recreateSwapChain 8"));
+    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive))) {
+      Logger::err(str::format("Presenter::recreateSwapChain early out"));
       return status;
+    }
 
+    Logger::err(str::format("Presenter::recreateSwapChain 9"));
     m_info.presentMode = pickPresentMode(modes.size(), modes.data(), m_info.syncInterval);
 
     // Check whether we can change present modes dynamically. This may
     // influence the image count as well as further swap chain creation.
+    Logger::err(str::format("Presenter::recreateSwapChain 10"));
     std::vector<VkPresentModeKHR> dynamicModes = {{
       pickPresentMode(modes.size(), modes.data(), 0),
       pickPresentMode(modes.size(), modes.data(), 1),
@@ -237,6 +252,7 @@ namespace dxvk {
     uint32_t maxImageCount = caps.surfaceCapabilities.maxImageCount;
 
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+      Logger::err(str::format("Presenter::recreateSwapChain 11"));
       VkSurfacePresentModeCompatibilityEXT compatibleModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT };
 
       VkSurfacePresentModeEXT presentModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT };
@@ -252,12 +268,14 @@ namespace dxvk {
       compatibleModes.resize(compatibleModeInfo.presentModeCount);
       compatibleModeInfo.pPresentModes = compatibleModes.data();
 
+      Logger::err(str::format("Presenter::recreateSwapChain 12"));
       if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
           m_device->adapter()->handle(), &surfaceInfo, &caps)))
         return status;
 
       // Remove modes we don't need for the purpose of finding the minimum
       // image count, as well as for swap chain creation later.
+      Logger::err(str::format("Presenter::recreateSwapChain 13"));
       compatibleModes.erase(std::remove_if(compatibleModes.begin(), compatibleModes.end(),
         [&dynamicModes] (VkPresentModeKHR mode) {
           return std::find(dynamicModes.begin(), dynamicModes.end(), mode) == dynamicModes.end();
@@ -266,6 +284,7 @@ namespace dxvk {
       minImageCount = 0;
       caps.pNext = nullptr;
 
+      Logger::err(str::format("Presenter::recreateSwapChain 14"));
       for (auto mode : compatibleModes) {
         presentModeInfo.presentMode = mode;
 
@@ -284,6 +303,7 @@ namespace dxvk {
 
       // If any required mode is not supported for dynamic present
       // mode switching, clear the dynamic mode array.
+      Logger::err(str::format("Presenter::recreateSwapChain 15"));
       for (auto mode : dynamicModes) {
         if (std::find(compatibleModes.begin(), compatibleModes.end(), mode) == compatibleModes.end()) {
           dynamicModes.clear();
@@ -291,12 +311,14 @@ namespace dxvk {
         }
       }
     } else if (dynamicModes[0] != dynamicModes[1]) {
+      Logger::err(str::format("Presenter::recreateSwapChain 16"));
       // If we can't switch modes dynamically, clear the
       // array so that setSyncInterval errors out properly.
       dynamicModes.clear();
     }
 
     // Compute swap chain image count based on available info
+    Logger::err(str::format("Presenter::recreateSwapChain 17"));
     m_info.imageCount = pickImageCount(minImageCount, maxImageCount, desc.imageCount);
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
@@ -336,17 +358,24 @@ namespace dxvk {
       "\n  Image count:  ", m_info.imageCount,
       "\n  Exclusive FS: ", desc.fullScreenExclusive));
     
+    Logger::err(str::format("Presenter::recreateSwapChain 18"));
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(),
-        &swapInfo, nullptr, &m_swapchain)))
+        &swapInfo, nullptr, &m_swapchain))) {
+      Logger::err(str::format("Presenter::recreateSwapChain early out"));
       return status;
+    }
     
     // Acquire images and create views
     std::vector<VkImage> images;
 
-    if ((status = getSwapImages(images)))
+    Logger::err(str::format("Presenter::recreateSwapChain 19"));
+    if ((status = getSwapImages(images))) {
+      Logger::err(str::format("Presenter::recreateSwapChain early out"));
       return status;
+    }
     
     // Update actual image count
+    Logger::err(str::format("Presenter::recreateSwapChain 20"));
     m_info.imageCount = images.size();
     m_images.resize(m_info.imageCount);
 
@@ -373,6 +402,7 @@ namespace dxvk {
     // that we use to ensure that semaphores are safe to access.
     uint32_t semaphoreCount = m_info.imageCount;
 
+    Logger::err(str::format("Presenter::recreateSwapChain 21"));
     if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
       // Without support for present fences, just give up and allocate extra
       // semaphores. We have no real guarantees when they are safe to access.
@@ -381,22 +411,29 @@ namespace dxvk {
 
     m_semaphores.resize(semaphoreCount);
 
+    Logger::err(str::format("Presenter::recreateSwapChain 22"));
     for (uint32_t i = 0; i < semaphoreCount; i++) {
       VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].acquire)))
+          &semInfo, nullptr, &m_semaphores[i].acquire))) {
+        Logger::err(str::format("Presenter::recreateSwapChain semaphore error"));
         return status;
+      }
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].present)))
+          &semInfo, nullptr, &m_semaphores[i].present))) {
+        Logger::err(str::format("Presenter::recreateSwapChain semaphore error"));
         return status;
+      }
 
       VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateFence(m_vkd->device(),
-          &fenceInfo, nullptr, &m_semaphores[i].fence)))
+          &fenceInfo, nullptr, &m_semaphores[i].fence))) {
+        Logger::err(str::format("Presenter::recreateSwapChain fence error"));
         return status;
+      }
     }
     
     // Invalidate indices
@@ -405,6 +442,7 @@ namespace dxvk {
     m_acquireStatus = VK_NOT_READY;
 
     m_dynamicModes = std::move(dynamicModes);
+    Logger::err(str::format("Presenter::recreateSwapChain end"));
     return VK_SUCCESS;
   }
 
@@ -648,28 +686,37 @@ namespace dxvk {
 
 
   void Presenter::destroySwapchain() {
+    Logger::err(str::format("Presenter::destroySwapchain 1"));
     if (m_signal != nullptr)
       m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
 
+    Logger::err(str::format("Presenter::destroySwapchain 2"));
     for (auto& sem : m_semaphores)
       waitForSwapchainFence(sem);
 
+    Logger::err(str::format("Presenter::destroySwapchain 3"));
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
+    Logger::err(str::format("Presenter::destroySwapchain 4"));
     for (const auto& sem : m_semaphores) {
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);
       m_vkd->vkDestroyFence(m_vkd->device(), sem.fence, nullptr);
     }
 
+    Logger::err(str::format("Presenter::destroySwapchain 5"));
     m_vkd->vkDestroySwapchainKHR(m_vkd->device(), m_swapchain, nullptr);
 
+    Logger::err(str::format("Presenter::destroySwapchain 6"));
     m_images.clear();
+    Logger::err(str::format("Presenter::destroySwapchain 7"));
     m_semaphores.clear();
+    Logger::err(str::format("Presenter::destroySwapchain 8"));
     m_dynamicModes.clear();
 
     m_swapchain = VK_NULL_HANDLE;
+    Logger::err(str::format("Presenter::destroySwapchain end"));
   }
 
 
