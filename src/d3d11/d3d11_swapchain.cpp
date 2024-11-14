@@ -375,16 +375,24 @@ namespace dxvk {
 
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Flush pending rendering commands before
+    Logger::err(str::format("PresentImage 1"));
     auto immediateContext = m_parent->GetContext();
+    Logger::err(str::format("PresentImage 2"));
     auto immediateContextLock = immediateContext->LockContext();
 
+    Logger::err(str::format("PresentImage 3"));
     immediateContext->EndFrame();
+    Logger::err(str::format("PresentImage 4"));
     immediateContext->Flush();
 
+    Logger::err(str::format("PresentImage 5"));
     SynchronizePresent();
 
-    if (!m_presenter->hasSwapChain())
+    Logger::err(str::format("PresentImage 6"));
+    if (!m_presenter->hasSwapChain()) {
+      Logger::err(str::format("PresentImage early out"));
       return DXGI_STATUS_OCCLUDED;
+    }
 
     // Presentation semaphores and WSI swap chain image
     PresenterInfo info = m_presenter->info();
@@ -392,21 +400,28 @@ namespace dxvk {
 
     uint32_t imageIndex = 0;
 
+    Logger::err(str::format("PresentImage 7"));
     VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
 
     while (status != VK_SUCCESS) {
+      Logger::err(str::format("PresentImage 8"));
       RecreateSwapChain();
 
-      if (!m_presenter->hasSwapChain())
+      Logger::err(str::format("PresentImage 9"));
+      if (!m_presenter->hasSwapChain()) {
+        Logger::err(str::format("PresentImage early out"));
         return DXGI_STATUS_OCCLUDED;
+      }
       
       info = m_presenter->info();
+      Logger::err(str::format("PresentImage 10"));
       status = m_presenter->acquireNextImage(sync, imageIndex);
 
       if (status == VK_SUBOPTIMAL_KHR)
         break;
     }
 
+    Logger::err(str::format("PresentImage 11"));
     if (m_hdrMetadata && m_dirtyHdrMetadata) {
       m_presenter->setHdrMetadata(*m_hdrMetadata);
       m_dirtyHdrMetadata = false;
@@ -418,6 +433,7 @@ namespace dxvk {
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
+    Logger::err(str::format("PresentImage 12"));
     immediateContext->EmitCs([
       cPresentStatus  = &m_presentStatus,
       cDevice         = m_device,
@@ -454,10 +470,13 @@ namespace dxvk {
         cFrameId, cPresentStatus);
     });
 
+    Logger::err(str::format("PresentImage 13"));
     if (m_backBuffers.size() > 1u)
       RotateBackBuffers(immediateContext);
 
+    Logger::err(str::format("PresentImage 14"));
     immediateContext->FlushCsChunk();
+    Logger::err(str::format("PresentImage end"));
     return S_OK;
   }
 
@@ -491,22 +510,27 @@ namespace dxvk {
 
 
   void D3D11SwapChain::RecreateSwapChain() {
+Logger::err("RecreateSwapChain 1");
     // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
+Logger::err("RecreateSwapChain 2");
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
     m_dirtyHdrMetadata = true;
 
+Logger::err("RecreateSwapChain 3");
     PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
+Logger::err("RecreateSwapChain 4");
     VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
 
     if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+Logger::err("RecreateSwapChain 5");
       vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
         return CreateSurface(surface);
       });
@@ -514,13 +538,18 @@ namespace dxvk {
       if (vr)
         throw DxvkError(str::format("D3D11SwapChain: Failed to recreate surface: ", vr));
 
+Logger::err("RecreateSwapChain 6");
       vr = m_presenter->recreateSwapChain(presenterDesc);
     }
+
+Logger::err("RecreateSwapChain 7");
 
     if (vr)
       throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
     
+Logger::err("RecreateSwapChain 8");
     CreateRenderTargetViews();
+Logger::err("RecreateSwapChain end");
   }
 
 
@@ -533,14 +562,18 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreatePresenter() {
+Logger::err("CreatePresenter 1");
     PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
+Logger::err("CreatePresenter 2");
     m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
+Logger::err("CreatePresenter 3");
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
+Logger::err("CreatePresenter end");
   }
 
 
@@ -597,6 +630,7 @@ namespace dxvk {
   void D3D11SwapChain::CreateBackBuffers() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
+    Logger::err("CreateBackBuffers 1");
     m_backBuffers.clear();
 
     bool sequential = m_desc.SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL ||
@@ -632,6 +666,7 @@ namespace dxvk {
     
     DXGI_USAGE dxgiUsage = DXGI_USAGE_BACK_BUFFER;
 
+    Logger::err("CreateBackBuffers 2");
     for (uint32_t i = 0; i < backBufferCount; i++) {
       if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
        || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
@@ -643,6 +678,7 @@ namespace dxvk {
       dxgiUsage |= DXGI_USAGE_READ_ONLY;
     }
 
+    Logger::err("CreateBackBuffers 3");
     small_vector<Rc<DxvkImage>, 4> images;
 
     for (uint32_t i = 0; i < backBufferCount; i++)
@@ -650,6 +686,7 @@ namespace dxvk {
 
     // Initialize images so that we can use them. Clearing
     // to black prevents garbled output for the first frame.
+    Logger::err("CreateBackBuffers 4");
     m_parent->GetContext()->InjectCs([
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
@@ -659,6 +696,8 @@ namespace dxvk {
           VK_IMAGE_LAYOUT_UNDEFINED);
       }
     });
+
+    Logger::err("CreateBackBuffers end");
   }
 
 
