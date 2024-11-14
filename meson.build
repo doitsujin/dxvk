@@ -14,12 +14,12 @@ compiler_args = [
   '-msse2',
   '-msse3',
   '-mfpmath=sse',
+  '-mprefer-avx128',
   '-Wimplicit-fallthrough',
   # gcc
   '-Wno-missing-field-initializers',
   '-Wno-unused-parameter',
   '-Wno-cast-function-type', # Needed for GetProcAddress.
-  '-mprefer-avx128',
   # clang
   '-Wno-unused-private-field',
   '-Wno-microsoft-exception-spec',
