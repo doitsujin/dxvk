@@ -13,7 +13,7 @@
 namespace dxvk {
   
   class DxvkMemoryAllocator;
-  class DxvkMemoryChunk;
+  struct DxvkMemoryChunk;
   class DxvkSparsePageTable;
   class DxvkSharedAllocationCache;
   class DxvkResourceAllocation;

@@ -227,7 +227,7 @@ namespace dxvk::wsi {
     // Get the device name of the monitor.
     MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
-    if (!::GetMonitorInfoW(hMonitor, &monInfo)) {
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("getMonitorDevicePath: Failed to get monitor info.");
       return {};
     }

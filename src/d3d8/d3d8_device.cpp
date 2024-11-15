@@ -1007,21 +1007,21 @@ namespace dxvk {
           float    Z,
           DWORD    Stencil) {
     StateChange();
-    return GetD3D9()->Clear(Count, pRects, Flags, Color, Z, Stencil);
+    return GetD3D9()->Clear(Count, reinterpret_cast<const d3d9::D3DRECT *>(pRects), Flags, Color, Z, Stencil);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
     StateChange();
-    return GetD3D9()->SetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), pMatrix);
+    return GetD3D9()->SetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), reinterpret_cast<const d3d9::D3DMATRIX *>(pMatrix));
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
-    return GetD3D9()->GetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), pMatrix);
+    return GetD3D9()->GetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), reinterpret_cast<d3d9::D3DMATRIX *>(pMatrix));
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
     StateChange();
-    return GetD3D9()->MultiplyTransform(d3d9::D3DTRANSFORMSTATETYPE(TransformState), pMatrix);
+    return GetD3D9()->MultiplyTransform(d3d9::D3DTRANSFORMSTATETYPE(TransformState), reinterpret_cast<const d3d9::D3DMATRIX *>(pMatrix));
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetViewport(const D3DVIEWPORT8* pViewport) {
