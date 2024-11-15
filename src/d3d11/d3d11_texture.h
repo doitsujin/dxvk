@@ -85,7 +85,7 @@ namespace dxvk {
     
   public:
 
-    static constexpr D3D11_MAP UnmappedSubresource = D3D11_MAP(-1u);
+    static const D3D11_MAP UnmappedSubresource = D3D11_MAP(-1u);
 
     D3D11CommonTexture(
             ID3D11Resource*             pInterface,
