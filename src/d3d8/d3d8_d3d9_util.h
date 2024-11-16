@@ -158,7 +158,7 @@ namespace dxvk {
   }
 
   // If this D3DTEXTURESTAGESTATETYPE has been remapped to a d3d9::D3DSAMPLERSTATETYPE
-  // it will be returned, otherwise returns -1
+  // it will be returned, otherwise returns -1u
   inline d3d9::D3DSAMPLERSTATETYPE GetSamplerStateType9(const D3DTEXTURESTAGESTATETYPE StageType) {
     switch (StageType) {
       // 13-21:
@@ -169,11 +169,11 @@ namespace dxvk {
       case D3DTSS_MINFILTER:      return d3d9::D3DSAMP_MINFILTER;
       case D3DTSS_MIPFILTER:      return d3d9::D3DSAMP_MIPFILTER;
       case D3DTSS_MIPMAPLODBIAS:  return d3d9::D3DSAMP_MIPMAPLODBIAS;
-      case D3DTSS_MAXMIPLEVEL:    return d3d9::D3DSAMP_MIPFILTER;
+      case D3DTSS_MAXMIPLEVEL:    return d3d9::D3DSAMP_MAXMIPLEVEL;
       case D3DTSS_MAXANISOTROPY:  return d3d9::D3DSAMP_MAXANISOTROPY;
       // 25:
       case D3DTSS_ADDRESSW:       return d3d9::D3DSAMP_ADDRESSW;
-      default:                    return d3d9::D3DSAMPLERSTATETYPE(-1);
+      default:                    return d3d9::D3DSAMPLERSTATETYPE(-1u);
     }
   }
 }
