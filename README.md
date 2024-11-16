@@ -27,7 +27,11 @@ For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `s
 ```
 export WINEPREFIX=/path/to/wineprefix
 cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
-winecfg
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
 ```
 
 Verify that your application uses DXVK instead of wined3d by enabling the HUD (see notes below).
@@ -36,6 +40,8 @@ Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatical
 
 ### Uninstall
 In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run wineboot -u to restore the original DLL files.
+
+In a default Wine prefix that would be as follows:
 ```
 export WINEPREFIX=/path/to/wineprefix
 rm $WINEPREFIX/drive_c/windows/system32/d3d8.dll
@@ -48,6 +54,22 @@ rm $WINEPREFIX/drive_c/windows/syswow64/d3d9.dll
 rm $WINEPREFIX/drive_c/windows/syswow64/d3d10core.dll
 rm $WINEPREFIX/drive_c/windows/syswow64/d3d11.dll
 rm $WINEPREFIX/drive_c/windows/syswow64/dxgi.dll
+wine wineboot -u
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
+```
+
+For a pure 32-bit Wine prefix (non default) that would be as follows:
+```
+export WINEPREFIX=/path/to/wineprefix
+rm $WINEPREFIX/drive_c/windows/system32/d3d8.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d9.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d10core.dll
+rm $WINEPREFIX/drive_c/windows/system32/d3d11.dll
+rm $WINEPREFIX/drive_c/windows/system32/dxgi.dll
 wine wineboot -u
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
