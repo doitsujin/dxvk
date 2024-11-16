@@ -47,7 +47,7 @@ namespace dxvk {
   }
 
 
-  static bool isHDRDisallowed() {
+  static bool isHDRDisallowed(bool enableUe4Workarounds) {
 #ifdef _WIN32
     // Unreal Engine 4 titles use AGS/NVAPI to try and enable
     // HDR globally.
@@ -70,7 +70,7 @@ namespace dxvk {
     // Luckily for us, they only load d3d12.dll on the D3D12 render path
     // so we can key off that to force disable HDR only in D3D11.
     std::string exeName = env::getExeName();
-    bool isUE4 = exeName.find("-Win64-Shipping") != std::string::npos;
+    bool isUE4 = enableUe4Workarounds || exeName.find("-Win64-Shipping") != std::string::npos;
     bool hasD3D12 = GetModuleHandleA("d3d12") != nullptr;
 
     if (isUE4 && !hasD3D12 && !isNvapiEnabled())
@@ -115,7 +115,10 @@ namespace dxvk {
     }
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
-    if (this->enableHDR && isHDRDisallowed()) {
+
+    bool enableUe4Workarounds = config.getOption<bool>("dxgi.enableUe4Workarounds", false);
+
+    if (this->enableHDR && isHDRDisallowed(enableUe4Workarounds)) {
       Logger::info("HDR was configured to be enabled, but has been force disabled as a UE4 DX11 game was detected.");
       this->enableHDR = false;
     }
