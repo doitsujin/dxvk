@@ -28,6 +28,19 @@ namespace dxvk {
     return id;
   }
 
+  static bool isExclusiveFullscreenAllowed() {
+    // KiriKiri Z games rely on GDI for top menu bar
+    // If exclusive FS enabled, display or hide menu will result black flicker
+    // So we disable exclusive FS for KiriKiri Z games
+    //
+    // We check KAGParserEX.dll which is used in most krkrz games
+    // If it exists, we disable exclusive FS
+    if(GetModuleHandleA("KAGParserEX") != nullptr){
+      Logger::info("KiriKiri Z game detected, disabling exclusive fullscreen");
+      return false;
+    }
+    return true;
+  }
 
   D3D9Options::D3D9Options(const Rc<DxvkDevice>& device, const Config& config) {
     const Rc<DxvkAdapter> adapter = device != nullptr ? device->adapter() : nullptr;
@@ -61,7 +74,7 @@ namespace dxvk {
     this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             true);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
     this->supportVCache                 = config.getOption<bool>        ("d3d9.supportVCache",                 vendorId == uint32_t(DxvkGpuVendor::Nvidia));
-    this->enableDialogMode              = config.getOption<bool>        ("d3d9.enableDialogMode",              false);
+    this->enableDialogMode              = config.getOption<bool>        ("d3d9.enableDialogMode",              !isExclusiveFullscreenAllowed());
     this->forceSamplerTypeSpecConstants = config.getOption<bool>        ("d3d9.forceSamplerTypeSpecConstants", false);
     this->forceSwapchainMSAA            = config.getOption<int32_t>     ("d3d9.forceSwapchainMSAA",            -1);
     this->forceSampleRateShading        = config.getOption<bool>        ("d3d9.forceSampleRateShading",        false);
