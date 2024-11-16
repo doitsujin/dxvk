@@ -468,6 +468,28 @@ namespace dxvk {
     { R"(\\Borderlands\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* CatSystem2 Games based on Steamdb list from
+        https://steamdb.info/tech/Engine/CatSystem2/
+        which includes:
+        NEKOPARA Vol. 3,
+        ISLAND,
+        Love's Sweet Garnish 1&2,
+        The Fruit of Grisaia,
+        The Afterglow of Grisaia,
+        The Leisure of Grisaia,
+        The Eden of Grisaia,
+        The Melody of Grisaia,
+        The Labyrinth of Grisaia,
+        Newton and the Apple Tree,
+        Cyanotype Daydream -The Girl Who Dreamed the World-,
+        Himawari - The Sunflower -,
+        Idol Magical Girl Chiru Chiru Michiru Part 1&2,
+        Witch's Garden,
+        Yukikoi Melt,
+        Hatsumira -from the future undying-        */    
+   { R"(\\(cs2|NEKOPARAvol3|ISLAND|KoiniKanmiwoSoete(2)?|Grisaia(2|3|Ano1|Ano2|Ano3|Ex)?|Newton and the Apple Tree|Himawari|YukikoiMelt|Hatsumira)\.exe$)", {{
+      { "d3d9.enableDialogMode",            "True"   },
+    }} },
     /* Gothic 3                                   */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
       { "d3d9.supportDFFormats",            "False" },
