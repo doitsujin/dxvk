@@ -29,6 +29,7 @@ namespace dxvk {
   }
 
   static bool isExclusiveFullscreenAllowed() {
+  #ifdef _WIN32
     // KiriKiri Z games rely on GDI for top menu bar
     // If exclusive FS enabled, display or hide menu will result black flicker
     // So we disable exclusive FS for KiriKiri Z games
@@ -39,6 +40,7 @@ namespace dxvk {
       Logger::info("KiriKiri Z game detected, disabling exclusive fullscreen");
       return false;
     }
+  #endif
     return true;
   }
 
