@@ -443,7 +443,7 @@ namespace dxvk {
     /* GTA Definitive Edition trilogy             * 
      * Static ags crash with HDR support          */
     { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
-      { "dxgi.hideAmdGpu",                 "True" },
+      { "dxgi.enableUe4Workarounds",        "True" },
     }} },
 
     /**********************************************/
