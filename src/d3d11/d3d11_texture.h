@@ -85,7 +85,7 @@ namespace dxvk {
     
   public:
 
-    static constexpr D3D11_MAP UnmappedSubresource = D3D11_MAP(-1u);
+    static constexpr uint32_t UnmappedSubresource = ~0u;
 
     D3D11CommonTexture(
             ID3D11Resource*             pInterface,
@@ -200,10 +200,10 @@ namespace dxvk {
      * \param [in] Subresource Subresource index
      * \returns Current map mode of that subresource
      */
-    D3D11_MAP GetMapType(UINT Subresource) const {
+    uint32_t GetMapType(UINT Subresource) const {
       return Subresource < m_mapInfo.size()
-        ? D3D11_MAP(m_mapInfo[Subresource].mapType)
-        : D3D11_MAP(~0u);
+        ? m_mapInfo[Subresource].mapType
+        : UnmappedSubresource;
     }
 
     /**
@@ -216,7 +216,7 @@ namespace dxvk {
      */
     void NotifyMap(UINT Subresource, D3D11_MAP MapType) {
       if (likely(Subresource < m_mapInfo.size())) {
-        m_mapInfo[Subresource].mapType = MapType;
+        m_mapInfo[Subresource].mapType = uint32_t(MapType);
 
         if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC)
           CreateMappedBuffer(Subresource);
@@ -561,7 +561,7 @@ namespace dxvk {
 
     struct MappedInfo {
       D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
-      D3D11_MAP                   mapType = UnmappedSubresource;
+      uint32_t                    mapType = UnmappedSubresource;
       uint64_t                    seq     = 0u;
     };
 
