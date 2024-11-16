@@ -1282,7 +1282,7 @@ namespace dxvk {
           DWORD*                   pValue) {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
-    if (stateType != -1) {
+    if (stateType != -1u) {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->GetSamplerState(Stage, stateType, pValue);
     }
@@ -1298,7 +1298,7 @@ namespace dxvk {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
     StateChange();
-    if (stateType != -1) {
+    if (stateType != -1u) {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->SetSamplerState(Stage, stateType, Value);
     } else {
