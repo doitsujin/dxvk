@@ -1452,10 +1452,10 @@ namespace dxvk {
      || texture->CountSubresources() <= SrcSubresource)
       return;
 
-    D3D11_MAP map = texture->GetMapType(SrcSubresource);
+    uint32_t map = texture->GetMapType(SrcSubresource);
 
-    if (map != D3D11_MAP_READ
-     && map != D3D11_MAP_READ_WRITE)
+    if (map != uint32_t(D3D11_MAP_READ)
+     && map != uint32_t(D3D11_MAP_READ_WRITE))
       return;
 
     CopySubresourceData(
@@ -1481,11 +1481,11 @@ namespace dxvk {
      || texture->CountSubresources() <= DstSubresource)
       return;
 
-    D3D11_MAP map = texture->GetMapType(DstSubresource);
+    uint32_t map = texture->GetMapType(DstSubresource);
 
-    if (map != D3D11_MAP_WRITE
-     && map != D3D11_MAP_WRITE_NO_OVERWRITE
-     && map != D3D11_MAP_READ_WRITE)
+    if (map != uint32_t(D3D11_MAP_WRITE)
+     && map != uint32_t(D3D11_MAP_WRITE_NO_OVERWRITE)
+     && map != uint32_t(D3D11_MAP_READ_WRITE))
       return;
 
     CopySubresourceData(

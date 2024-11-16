@@ -625,7 +625,7 @@ namespace dxvk {
 
     // If the texture has an image as well as a staging buffer,
     // upload the written buffer data to the image
-    bool needsUpload = mapType != D3D11_MAP_READ
+    bool needsUpload = mapType != uint32_t(D3D11_MAP_READ)
       && (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DYNAMIC);
 
     if (needsUpload) {
