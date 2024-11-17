@@ -452,7 +452,7 @@ namespace dxvk {
     }} },
     /* Warcraft 3 Reforged                         *
      * Bugs out on some multi-gpu systems.         */
-    { R"(\\Warcraft III\.exe$)", {{
+    { R"(\\x86_64\\Warcraft III\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
 
