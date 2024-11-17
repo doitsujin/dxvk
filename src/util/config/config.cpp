@@ -38,6 +38,11 @@ namespace dxvk {
     { R"(\\P3R\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
     }} },
+    /* World of Warcraft                           *
+     * Bugs out on some multi-gpu systems.         */
+    { R"(\\Wow(Classic)?\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -444,6 +449,11 @@ namespace dxvk {
      * Static ags crash with HDR support          */
     { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
       { "dxgi.enableUe4Workarounds",        "True" },
+    }} },
+    /* Warcraft 3 Reforged                         *
+     * Bugs out on some multi-gpu systems.         */
+    { R"(\\Warcraft III\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
 
     /**********************************************/
