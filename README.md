@@ -44,16 +44,7 @@ In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and ru
 In a default Wine prefix that would be as follows:
 ```
 export WINEPREFIX=/path/to/wineprefix
-rm $WINEPREFIX/drive_c/windows/system32/d3d8.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d9.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d10core.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d11.dll
-rm $WINEPREFIX/drive_c/windows/system32/dxgi.dll
-rm $WINEPREFIX/drive_c/windows/syswow64/d3d8.dll
-rm $WINEPREFIX/drive_c/windows/syswow64/d3d9.dll
-rm $WINEPREFIX/drive_c/windows/syswow64/d3d10core.dll
-rm $WINEPREFIX/drive_c/windows/syswow64/d3d11.dll
-rm $WINEPREFIX/drive_c/windows/syswow64/dxgi.dll
+rm -f $WINEPREFIX/drive_c/windows/{system32,syswow64}/d{3d8,3d9,3d10core,3d11,xgi}.dll
 wine wineboot -u
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
@@ -65,11 +56,7 @@ wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d nati
 For a pure 32-bit Wine prefix (non default) that would be as follows:
 ```
 export WINEPREFIX=/path/to/wineprefix
-rm $WINEPREFIX/drive_c/windows/system32/d3d8.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d9.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d10core.dll
-rm $WINEPREFIX/drive_c/windows/system32/d3d11.dll
-rm $WINEPREFIX/drive_c/windows/system32/dxgi.dll
+rm -f $WINEPREFIX/drive_c/windows/system32/d{3d8,3d9,3d10core,3d11,xgi}.dll
 wine wineboot -u
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
 wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
