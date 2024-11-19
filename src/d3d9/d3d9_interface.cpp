@@ -360,10 +360,15 @@ namespace dxvk {
                !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING)))
       return D3DERR_INVALIDCALL;
 
-    HRESULT hr = ValidatePresentationParameters(pPresentationParameters);
+    HRESULT hr;
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects it be created despite passing invalid parameters.
+    if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
+      hr = ValidatePresentationParameters(pPresentationParameters);
 
-    if (unlikely(FAILED(hr)))
-      return hr;
+      if (unlikely(FAILED(hr)))
+        return hr;
+    }
 
     auto* adapter = GetAdapter(Adapter);
 
@@ -421,10 +426,7 @@ namespace dxvk {
     }
 
     // The swap effect value can not be 0.
-    // Black Desert sets this to 0 with a NULL hDeviceWindow
-    // and expects device creation to succeed.
-    if (unlikely(pPresentationParameters->hDeviceWindow != nullptr
-              && !pPresentationParameters->SwapEffect))
+    if (unlikely(!pPresentationParameters->SwapEffect))
       return D3DERR_INVALIDCALL;
 
     // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
