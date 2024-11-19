@@ -1683,13 +1683,15 @@ namespace dxvk {
     D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
 
     // Store D3D8 bytecodes in the shader info
-    if (pDeclaration != nullptr)
-      for (UINT i = 0; pDeclaration[i+1] != D3DVSD_END(); i++)
-        info.declaration.push_back(pDeclaration[i]);
+    for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
+      info.declaration.push_back(pDeclaration[i]);
+    info.declaration.push_back(D3DVSD_END());
 
-    if (pFunction != nullptr)
-      for (UINT i = 0; pFunction[i+1] != D3DVS_END(); i++)
+    if (pFunction != nullptr) {
+      for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
         info.function.push_back(pFunction[i]);
+      info.function.push_back(D3DVS_END());
+    }
     
     D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
 
@@ -1829,6 +1831,9 @@ namespace dxvk {
 
       info->declaration.clear();
       info->function.clear();
+
+      if (m_currentVertexShader == Handle)
+        m_currentVertexShader = 0;
     }
 
     return D3D_OK;
@@ -1854,8 +1859,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     memcpy(pData, pInfo->declaration.data(), ActualSize);
@@ -1882,8 +1889,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     memcpy(pData, pInfo->function.data(), ActualSize);
@@ -1986,6 +1995,9 @@ namespace dxvk {
 
     m_pixelShaders[getShaderIndex(Handle)] = nullptr;
 
+    if (m_currentPixelShader == Handle)
+      m_currentPixelShader = 0;
+
     return D3D_OK;
   }
 
@@ -2010,8 +2022,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     return pPixelShader->GetFunction(pData, &SizeOfData);
