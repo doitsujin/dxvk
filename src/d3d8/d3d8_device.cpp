@@ -935,14 +935,30 @@ namespace dxvk {
     // SetDepthStencilSurface is a separate call
     D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
 
-    if (likely(m_depthStencil != zStencil)) {
-      StateChange();
-      res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
+    // Depth stencil dimensions can not be lower than
+    // those of the currently set render target.
+    if (m_renderTarget != nullptr && zStencil != nullptr) {
+      D3DSURFACE_DESC rtDesc;
+      res = m_renderTarget->GetDesc(&rtDesc);
 
       if (unlikely(FAILED(res))) return res;
 
-      m_depthStencil = zStencil;
+      D3DSURFACE_DESC dsDesc;
+      res = zStencil->GetDesc(&dsDesc);
+
+      if (unlikely(FAILED(res))) return res;
+
+      if (unlikely(dsDesc.Width  < rtDesc.Width
+                || dsDesc.Height < rtDesc.Height))
+        return D3DERR_INVALIDCALL;
     }
+
+    StateChange();
+    res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
+
+    if (unlikely(FAILED(res))) return res;
+
+    m_depthStencil = zStencil;
 
     return D3D_OK;
   }
