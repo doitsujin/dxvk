@@ -103,12 +103,6 @@ if platform == 'windows'
   lib_dxgi    = cpp.find_library('dxgi')
 
   if dxvk_is_msvc
-    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
-  else
-    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47')
-  endif
-
-  if dxvk_is_msvc
     res_ext = '.res'
     wrc = find_program('rc')
     wrc_generator = generator(wrc,
