@@ -178,9 +178,38 @@ namespace dxvk {
     if (pDesc->Usage & D3DUSAGE_WRITEONLY)
       return D3DERR_INVALIDCALL;
 
+    constexpr DWORD usageRTOrDS = D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL;
+
     // RENDERTARGET and DEPTHSTENCIL must be default pool
-    constexpr DWORD incompatibleUsages = D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL;
-    if (pDesc->Pool != D3DPOOL_DEFAULT && (pDesc->Usage & incompatibleUsages))
+    if (pDesc->Pool != D3DPOOL_DEFAULT && (pDesc->Usage & usageRTOrDS))
+      return D3DERR_INVALIDCALL;
+
+    // RENDERTARGET and DEPTHSTENCIL in D3DPOOL_DEFAULT
+    // can not also have DYNAMIC usage
+    if (pDesc->Pool == D3DPOOL_DEFAULT &&
+        (pDesc->Usage & usageRTOrDS) &&
+        (pDesc->Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
+    const bool isPlainSurface = ResourceType == D3DRTYPE_SURFACE && !(pDesc->Usage & usageRTOrDS);
+    const bool isDepthStencilFormat = IsDepthStencilFormat(pDesc->Format);
+
+    // With the exception of image surfaces (d3d8)
+    // or plain offscreen surfaces (d3d9), depth stencil
+    // formats can only be used in D3DPOOL_DEFAULT
+    if (!isPlainSurface && pDesc->Pool != D3DPOOL_DEFAULT && isDepthStencilFormat)
+      return D3DERR_INVALIDCALL;
+
+    // Depth stencil formats can not have RENDERTARGET
+    // usage, and nothing except depth stencil formats
+    // can have DEPTHSTENCIL usage
+    if (( isDepthStencilFormat && (pDesc->Usage & D3DUSAGE_RENDERTARGET)) ||
+        (!isDepthStencilFormat && (pDesc->Usage & D3DUSAGE_DEPTHSTENCIL)))
+      return D3DERR_INVALIDCALL;
+
+    // Volume textures can not be used as render targets
+    if (ResourceType == D3DRTYPE_VOLUMETEXTURE &&
+        (pDesc->Usage & D3DUSAGE_RENDERTARGET))
       return D3DERR_INVALIDCALL;
 
     // Volume textures in D3DPOOL_SCRATCH must not have DYNAMIC usage
@@ -202,13 +231,13 @@ namespace dxvk {
       pDesc->MipLevels = maxMipLevelCount;
 
     if (unlikely(pDesc->Discard)) {
-      if (!IsDepthStencilFormat(pDesc->Format))
+      if (!isDepthStencilFormat)
         return D3DERR_INVALIDCALL;
 
       if (pDesc->Format == D3D9Format::D32_LOCKABLE
-        || pDesc->Format == D3D9Format::D32F_LOCKABLE
-        || pDesc->Format == D3D9Format::D16_LOCKABLE
-        || pDesc->Format == D3D9Format::S8_LOCKABLE)
+       || pDesc->Format == D3D9Format::D32F_LOCKABLE
+       || pDesc->Format == D3D9Format::D16_LOCKABLE
+       || pDesc->Format == D3D9Format::S8_LOCKABLE)
         return D3DERR_INVALIDCALL;
     }
 
