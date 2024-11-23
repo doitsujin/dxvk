@@ -952,7 +952,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
 
@@ -985,7 +984,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
   }
@@ -1403,13 +1401,6 @@ namespace dxvk {
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
     return m_swapchainExtent;
-  }
-
-
-  VkFullScreenExclusiveEXT D3D9SwapChainEx::PickFullscreenMode() {
-    return m_dialog
-      ? VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT
-      : VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
   }
 
 
