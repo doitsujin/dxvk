@@ -174,8 +174,19 @@ namespace dxvk {
 
     m_lastDialog = m_dialog;
 
+    if (!SwapWithFrontBuffer()) {
+      // We never actually rotate in the front buffer.
+      // Just blit to it for GetFrontBufferData.
+
+      const auto& backbuffer = m_backBuffers[0];
+      const auto& frontbuffer = GetFrontBuffer();
+      if (FAILED(m_parent->StretchRect(backbuffer.ptr(), nullptr, frontbuffer.ptr(), nullptr, D3DTEXF_NONE))) {
+        Logger::err("Failed to blit to front buffer");
+      }
+    }
+
 #ifdef _WIN32
-    const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
+    const bool useGDIFallback = m_partialCopy && !SwapWithFrontBuffer();
     if (useGDIFallback)
       return PresentImageGDI(m_window);
 #endif
@@ -926,7 +937,13 @@ namespace dxvk {
 
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
-    for (uint32_t i = 1; i < m_backBuffers.size(); i++)
+    uint32_t rotatingBufferCount = m_backBuffers.size();
+    if (!SwapWithFrontBuffer()) {
+      // The front buffer only exists for GetFrontBufferData
+      // and the application cannot obserse buffer swapping in GetBackBuffer()
+      rotatingBufferCount -= 1;
+    }
+    for (uint32_t i = 1; i < rotatingBufferCount; i++)
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -1072,8 +1089,7 @@ namespace dxvk {
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int NumFrontBuffer = HasFrontBuffer() ? 1 : 0;
-    const uint32_t NumBuffers = NumBackBuffers + NumFrontBuffer;
+    const uint32_t NumBuffers = NumBackBuffers + 1; // 1 additional front buffer
 
     m_backBuffers.reserve(NumBuffers);
 
