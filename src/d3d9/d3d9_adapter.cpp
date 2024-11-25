@@ -412,9 +412,13 @@ namespace dxvk {
                                     | D3DPBLENDCAPS_SRCALPHASAT
                                     | D3DPBLENDCAPS_BOTHSRCALPHA
                                     | D3DPBLENDCAPS_BOTHINVSRCALPHA
-                                    | D3DPBLENDCAPS_BLENDFACTOR
-                                    | D3DPBLENDCAPS_INVSRCCOLOR2
-                                    | D3DPBLENDCAPS_SRCCOLOR2;
+                                    | D3DPBLENDCAPS_BLENDFACTOR;
+
+    // Only 9Ex devices advertise D3DPBLENDCAPS_SRCCOLOR2 and D3DPBLENDCAPS_INVSRCCOLOR2
+    if (m_parent->IsExtended())
+      pCaps->SrcBlendCaps          |= D3DPBLENDCAPS_SRCCOLOR2
+                                    | D3DPBLENDCAPS_INVSRCCOLOR2;
+
     // Destination Blend Caps
     pCaps->DestBlendCaps            = pCaps->SrcBlendCaps;
     // Alpha Comparison Caps

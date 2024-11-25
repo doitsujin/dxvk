@@ -49,13 +49,9 @@ namespace dxvk {
                                    & ~D3DPRASTERCAPS_DEPTHBIAS
                                    & ~D3DPRASTERCAPS_MULTISAMPLE_TOGGLE;
 
-    pCaps8->SrcBlendCaps          &= ~D3DPBLENDCAPS_BLENDFACTOR
-                                   & ~D3DPBLENDCAPS_INVSRCCOLOR2
-                                   & ~D3DPBLENDCAPS_SRCCOLOR2;
+    pCaps8->SrcBlendCaps          &= ~D3DPBLENDCAPS_BLENDFACTOR;
 
-    pCaps8->DestBlendCaps         &= ~D3DPBLENDCAPS_BLENDFACTOR
-                                   & ~D3DPBLENDCAPS_INVSRCCOLOR2
-                                   & ~D3DPBLENDCAPS_SRCCOLOR2;
+    pCaps8->DestBlendCaps         &= ~D3DPBLENDCAPS_BLENDFACTOR;
 
     pCaps8->LineCaps              &= ~D3DLINECAPS_ANTIALIAS;
 
