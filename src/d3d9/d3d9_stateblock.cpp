@@ -243,15 +243,6 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9StateBlock::MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
-    m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
-
-    m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
-    m_captures.transforms.set(idx, true);
-    return D3D_OK;
-  }
-
-
   HRESULT D3D9StateBlock::SetViewport(const D3DVIEWPORT9* pViewport) {
     m_state.viewport = *pViewport;
 
