@@ -2025,10 +2025,6 @@ namespace dxvk {
 
     const uint32_t idx = GetTransformIndex(TransformState);
 
-    // D3D8 state blocks ignore capturing calls to MultiplyTransform().
-    if (unlikely(!m_isD3D8Compatible && ShouldRecord()))
-      return m_recorder->MultiplyStateTransform(idx, pMatrix);
-
     m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
 
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);

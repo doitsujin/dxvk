@@ -141,8 +141,6 @@ namespace dxvk {
             D3D9TextureStageStateTypes Type,
             DWORD                      Value);
 
-    HRESULT MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
-
     HRESULT SetViewport(const D3DVIEWPORT9* pViewport);
 
     HRESULT SetScissorRect(const RECT* pRect);
