@@ -469,17 +469,22 @@ namespace dxvk {
     { R"(\\anarchyonline\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
-    /* Borderlands 2 and The Pre Sequel!          * 
-     * Missing lava in Vault of the Warrior       *
-     * without Strict floats                      */
-    { R"(\\Borderlands(2|PreSequel)\.exe$)", {{
+    /* Borderlands                                */
+    { R"(\\Borderlands\.exe$)", {{
+      { "d3d9.lenientClear",                "True" },
+    }} },
+    /* Borderlands 2                               *
+     * Missing lava in Vault of the Warrior        *
+     * without Strict floats                       */
+    { R"(\\Borderlands2\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
       { "d3d9.supportDFFormats",            "False" },
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Borderlands                                */
-    { R"(\\Borderlands\.exe$)", {{
+    /* Borderlands: The Pre-Sequel                  */
+    { R"(\\BorderlandsPreSequel\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
+      { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Gothic 3                                   */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
