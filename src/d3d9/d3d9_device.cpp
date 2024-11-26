@@ -2187,8 +2187,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipPlane(DWORD Index, const float* pPlane) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
+    if (unlikely(!pPlane))
       return D3DERR_INVALIDCALL;
+
+    // Higher indexes will be capped to the last valid index
+    if (unlikely(Index >= caps::MaxClipPlanes))
+      Index = caps::MaxClipPlanes - 1;
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetClipPlane(Index, pPlane);
@@ -2213,8 +2217,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipPlane(DWORD Index, float* pPlane) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
+    if (unlikely(!pPlane))
       return D3DERR_INVALIDCALL;
+
+    // Higher indexes will be capped to the last valid index
+    if (unlikely(Index >= caps::MaxClipPlanes))
+      Index = caps::MaxClipPlanes - 1;
 
     for (uint32_t i = 0; i < 4; i++)
       pPlane[i] = m_state.clipPlanes[Index].coeff[i];
