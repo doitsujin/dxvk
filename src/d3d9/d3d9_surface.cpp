@@ -71,7 +71,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::QueryInterface(REFIID riid, void** ppvObject) {
-    if (ppvObject == nullptr)
+    if (unlikely(ppvObject == nullptr))
       return E_POINTER;
 
     *ppvObject = nullptr;
@@ -101,7 +101,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::GetDesc(D3DSURFACE_DESC *pDesc) {
-    if (pDesc == nullptr)
+    if (unlikely(pDesc == nullptr))
       return D3DERR_INVALIDCALL;
 
     auto& desc = *(m_texture->Desc());
@@ -190,10 +190,13 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::GetDC(HDC *phDC) {
-    if (phDC == nullptr)
+    if (unlikely(phDC == nullptr))
       return D3DERR_INVALIDCALL;
 
     const D3D9_COMMON_TEXTURE_DESC& desc = *m_texture->Desc();
+
+    if (unlikely(!IsSurfaceGetDCCompatibleFormat(desc.Format)))
+      return D3DERR_INVALIDCALL;
 
     D3DLOCKED_RECT lockedRect;
     HRESULT hr = LockRect(&lockedRect, nullptr, 0);
@@ -228,7 +231,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::ReleaseDC(HDC hDC) {
-    if (m_dcDesc.hDC == nullptr || m_dcDesc.hDC != hDC)
+    if (unlikely(m_dcDesc.hDC == nullptr || m_dcDesc.hDC != hDC))
       return D3DERR_INVALIDCALL;
 
     D3DKMTDestroyDCFromMemory(&m_dcDesc);
