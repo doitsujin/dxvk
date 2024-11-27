@@ -1020,6 +1020,13 @@ namespace dxvk {
      */
     void RemoveMappedTexture(D3D9CommonTexture* pTexture);
 
+    /**
+     * \brief Returns whether the device is currently recording a StateBlock
+     */
+    bool ShouldRecord() const {
+      return m_recorder != nullptr;
+    }
+
     bool IsD3D8Compatible() const {
       return m_isD3D8Compatible;
     }
@@ -1159,11 +1166,6 @@ namespace dxvk {
      * \brief Waits until the amount of used staging memory is below a certain threshold.
      */
     void WaitStagingBuffer();
-
-    /**
-     * \brief Returns whether the device is currently recording a StateBlock
-     */
-    inline bool ShouldRecord();
 
     HRESULT               CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
