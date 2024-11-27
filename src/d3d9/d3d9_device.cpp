@@ -2591,6 +2591,10 @@ namespace dxvk {
           IDirect3DStateBlock9** ppSB) {
     D3D9DeviceLock lock = LockDevice();
 
+    // A state block can not be created while another is being recorded.
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSB);
 
     if (unlikely(ppSB == nullptr))
@@ -2614,7 +2618,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::BeginStateBlock() {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(m_recorder != nullptr))
+    // Only one state block can be recorded at a given time.
+    if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
     m_recorder = new D3D9StateBlock(this, D3D9StateBlockType::None);
@@ -2626,10 +2631,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndStateBlock(IDirect3DStateBlock9** ppSB) {
     D3D9DeviceLock lock = LockDevice();
 
-    InitReturnPtr(ppSB);
-
-    if (unlikely(ppSB == nullptr || m_recorder == nullptr))
+    // Recording a state block can't end if recording hasn't been started.
+    if (unlikely(ppSB == nullptr || !ShouldRecord()))
       return D3DERR_INVALIDCALL;
+
+    InitReturnPtr(ppSB);
 
     *ppSB = m_recorder.ref();
     if (!m_isD3D8Compatible)
@@ -4631,20 +4637,17 @@ namespace dxvk {
   }
 
 
-  inline bool D3D9DeviceEx::ShouldRecord() {
-    return m_recorder != nullptr && !m_recorder->IsApplying();
-  }
-
-
   D3D9_VK_FORMAT_MAPPING D3D9DeviceEx::LookupFormat(
     D3D9Format            Format) const {
     return m_adapter->GetFormatMapping(Format);
   }
 
+
   const DxvkFormatInfo* D3D9DeviceEx::UnsupportedFormatInfo(
     D3D9Format            Format) const {
     return m_adapter->GetUnsupportedFormatInfo(Format);
   }
+
 
   bool D3D9DeviceEx::WaitForResource(
     const DxvkPagedResource&                Resource,

@@ -46,6 +46,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Capture() {
+    // A state block can't capture state while another is being recorded.
+    if (unlikely(m_parent->ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
       SetVertexDeclaration(m_deviceState->vertexDecl.ptr());
 
@@ -56,13 +60,14 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Apply() {
-    m_applying = true;
+    // A state block can't be applied while another is being recorded.
+    if (unlikely(m_parent->ShouldRecord()))
+      return D3DERR_INVALIDCALL;
 
     if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl) && m_state.vertexDecl != nullptr)
       m_parent->SetVertexDeclaration(m_state.vertexDecl.ptr());
 
     ApplyOrCapture<D3D9StateFunction::Apply, false>();
-    m_applying = false;
 
     return D3D_OK;
   }
