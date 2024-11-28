@@ -413,10 +413,18 @@ namespace dxvk {
       // can not be higher than D3DSWAPEFFECT_FLIPEX.
       if (unlikely(pPresentationParameters->SwapEffect > D3DSWAPEFFECT_FLIPEX))
         return D3DERR_INVALIDCALL;
+
+      // 30 is the highest supported back buffer count for Ex devices.
+      if (unlikely(pPresentationParameters->BackBufferCount > D3DPRESENT_BACK_BUFFERS_MAX_EX))
+        return D3DERR_INVALIDCALL;
     } else {
       // The swap effect value on a non-Ex D3D9 device
       // can not be higher than D3DSWAPEFFECT_COPY.
       if (unlikely(pPresentationParameters->SwapEffect > D3DSWAPEFFECT_COPY))
+        return D3DERR_INVALIDCALL;
+
+      // 3 is the highest supported back buffer count for non-Ex devices.
+      if (unlikely(pPresentationParameters->BackBufferCount > D3DPRESENT_BACK_BUFFERS_MAX))
         return D3DERR_INVALIDCALL;
     }
 
@@ -434,10 +442,6 @@ namespace dxvk {
     if (unlikely(!IsD3D8Compatible()
               && pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
               && pPresentationParameters->BackBufferCount > 1))
-      return D3DERR_INVALIDCALL;
-
-    // 3 is the highest supported back buffer count.
-    if (unlikely(pPresentationParameters->BackBufferCount > 3))
       return D3DERR_INVALIDCALL;
 
     // Valid fullscreen presentation intervals must be known values.
