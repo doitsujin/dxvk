@@ -272,16 +272,19 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDevice> DxvkAdapter::createDevice(
-    const Rc<DxvkInstance>&   instance,
-          DxvkDeviceFeatures  enabledFeatures) {
-    DxvkDeviceExtensions devExtensions;
+  bool DxvkAdapter::getDeviceCreateInfo(
+    const Rc<DxvkInstance>&       instance,
+          DxvkDeviceFeatures      enabledFeatures,
+          bool                    logDeviceInfo,
+          DxvkDeviceCreateInfo&   createInfo) const {
+    auto& [info, queueFamilies, extensionsEnabled, devExtensions, enableCudaInterop] = createInfo;
+
     auto devExtensionList = getExtensionList(devExtensions);
 
     // Only enable Cuda interop extensions in 64-bit builds in
     // order to avoid potential driver or address space issues.
     // VK_KHR_buffer_device_address is expensive on some drivers.
-    bool enableCudaInterop = !env::is32BitHostPlatform() &&
+    enableCudaInterop = !env::is32BitHostPlatform() &&
       m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
       m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
       m_deviceFeatures.vk12.bufferDeviceAddress;
@@ -298,13 +301,11 @@ namespace dxvk {
     if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
       devExtensions.amdMemoryOverallocationBehaviour.setMode(DxvkExtMode::Optional);
 
-    DxvkNameSet extensionsEnabled;
-
     if (!m_deviceExtensions.enableExtensions(
           devExtensionList.size(),
           devExtensionList.data(),
           &extensionsEnabled))
-      throw DxvkError("DxvkAdapter: Failed to create device");
+      return false;
     
     // Enable additional extensions if necessary
     extensionsEnabled.merge(m_extraExtensions);
@@ -443,14 +444,16 @@ namespace dxvk {
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
 
-    // Log feature support info an extension list
-    Logger::info(str::format("Device properties:"
-      "\n  Device : ", m_deviceInfo.core.properties.deviceName,
-      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ", m_deviceInfo.driverVersion.toString()));
+    if (logDeviceInfo) {
+      // Log feature support info an extension list
+      Logger::info(str::format("Device properties:"
+        "\n  Device : ", m_deviceInfo.core.properties.deviceName,
+        "\n  Driver : ", m_deviceInfo.vk12.driverName, " ", m_deviceInfo.driverVersion.toString()));
 
-    Logger::info("Enabled device extensions:");
-    this->logNameList(extensionNameList);
-    this->logFeatures(enabledFeatures);
+      Logger::info("Enabled device extensions:");
+      this->logNameList(extensionNameList);
+      this->logFeatures(enabledFeatures);
+    }
 
     // Report the desired overallocation behaviour to the driver
     VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo = { VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD };
@@ -462,14 +465,15 @@ namespace dxvk {
 
     std::unordered_set<uint32_t> queueFamiliySet;
 
-    DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
+    queueFamilies = findQueueFamilies();
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
 
     if (queueFamilies.sparse != VK_QUEUE_FAMILY_IGNORED)
       queueFamiliySet.insert(queueFamilies.sparse);
 
-    this->logQueueFamilies(queueFamilies);
+    if (logDeviceInfo)
+      this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
       VkDeviceQueueCreateInfo graphicsQueue = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
@@ -479,7 +483,8 @@ namespace dxvk {
       queueInfos.push_back(graphicsQueue);
     }
 
-    VkDeviceCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, enabledFeatures.core.pNext };
+    info.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    info.pNext                      = enabledFeatures.core.pNext;
     info.queueCreateInfoCount       = queueInfos.size();
     info.pQueueCreateInfos          = queueInfos.data();
     info.enabledExtensionCount      = extensionNameList.count();
@@ -488,7 +493,19 @@ namespace dxvk {
 
     if (devExtensions.amdMemoryOverallocationBehaviour)
       overallocInfo.pNext = std::exchange(info.pNext, &overallocInfo);
-    
+
+    return true;
+   }
+
+  Rc<DxvkDevice> DxvkAdapter::createDevice(
+    const Rc<DxvkInstance>      &instance,
+          DxvkDeviceFeatures    enabledFeatures) {
+    DxvkDeviceCreateInfo  createInfo;
+    if (!getDeviceCreateInfo(instance, enabledFeatures, true, createInfo))
+      throw DxvkError("DxvkAdapter: Failed to create device");
+
+    auto& [info, queueFamilies, extensionsEnabled, devExtensions, enableCudaInterop] = createInfo;
+
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
 
@@ -503,7 +520,7 @@ namespace dxvk {
 
       enabledFeatures.vk12.bufferDeviceAddress = VK_FALSE;
 
-      extensionNameList = extensionsEnabled.toNameList();
+      DxvkNameList extensionNameList  = extensionsEnabled.toNameList();
       info.enabledExtensionCount      = extensionNameList.count();
       info.ppEnabledExtensionNames    = extensionNameList.names();
 
@@ -992,7 +1009,7 @@ namespace dxvk {
 
 
   std::vector<DxvkExt*> DxvkAdapter::getExtensionList(
-          DxvkDeviceExtensions&   devExtensions) {
+          DxvkDeviceExtensions&   devExtensions) const {
     return {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,

@@ -69,6 +69,16 @@ namespace dxvk {
     std::atomic<uint64_t> used = { 0u };
   };
 
+  /**
+   * \brief Device create info
+   */
+  struct DxvkDeviceCreateInfo {
+    VkDeviceCreateInfo      info;
+    DxvkAdapterQueueIndices queueFamilies;
+    DxvkNameSet             extensionsEnabled;
+    DxvkDeviceExtensions    devExtensions;
+    bool                    enableCudaInterop;
+  };
 
   /**
    * \brief Device import info
@@ -213,6 +223,21 @@ namespace dxvk {
       const DxvkNameSet&        extensions);
     
     /**
+     * \brief Gets device create info
+     *
+     * \param [in] instance Parent instance
+     * \param [in] enabledFeatures Device features
+     * \param [in] logDeviceInfo If true, prints device info
+     * \param [out] info Device create info
+     * \returns true if succeeded
+     */
+    bool getDeviceCreateInfo(
+      const Rc<DxvkInstance>&       instance,
+            DxvkDeviceFeatures      enabledFeatures,
+            bool                    logDeviceInfo,
+            DxvkDeviceCreateInfo&   createInfo) const;
+
+    /**
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
@@ -343,7 +368,7 @@ namespace dxvk {
             VkQueueFlags          flags) const;
     
     std::vector<DxvkExt*> getExtensionList(
-            DxvkDeviceExtensions&   devExtensions);
+            DxvkDeviceExtensions&   devExtensions) const;
 
     static void initFeatureChain(
             DxvkDeviceFeatures&   enabledFeatures,
