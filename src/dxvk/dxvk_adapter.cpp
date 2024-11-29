@@ -678,10 +678,16 @@ namespace dxvk {
     // Create device loader
     Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, false, args.device);
 
-    // We only support one queue when importing devices, and no sparse.
+    // By default, we only use one queue when importing devices, and no sparse.
     DxvkDeviceQueueSet queues = { };
     queues.graphics = { args.queue, args.queueFamily };
     queues.transfer = queues.graphics;
+
+    if (args.transferQueue != VK_NULL_HANDLE && args.transferQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+      queues.transfer = { args.transferQueue, args.transferQueueFamily };
+
+    if (args.sparseQueue != VK_NULL_HANDLE && args.sparseQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+      queues.sparse = { args.sparseQueue, args.sparseQueueFamily };
 
     return new DxvkDevice(instance, this, vkd, enabledFeatures, queues, args.queueCallback);
   }

@@ -84,13 +84,19 @@ namespace dxvk {
    * \brief Device import info
    */
   struct DxvkDeviceImportInfo {
-    VkDevice device;
-    VkQueue queue;
-    uint32_t queueFamily;
-    uint32_t extensionCount;
-    const char** extensionNames;
-    const VkPhysicalDeviceFeatures2* features;
-    DxvkQueueCallback queueCallback;
+    VkDevice                          device;
+    VkQueue                           queue;
+    uint32_t                          queueFamily;
+    uint32_t                          extensionCount;
+    const char**                      extensionNames;
+    const VkPhysicalDeviceFeatures2*  features;
+    DxvkQueueCallback                 queueCallback;
+
+    // Optional additional queues
+    VkQueue                           transferQueue       = VK_NULL_HANDLE;
+    uint32_t                          transferQueueFamily = VK_QUEUE_FAMILY_IGNORED;
+    VkQueue                           sparseQueue         = VK_NULL_HANDLE;
+    uint32_t                          sparseQueueFamily   = VK_QUEUE_FAMILY_IGNORED;
   };
 
   /**
