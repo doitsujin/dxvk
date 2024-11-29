@@ -274,10 +274,12 @@ namespace dxvk {
 
   bool DxvkAdapter::getDeviceCreateInfo(
     const Rc<DxvkInstance>&       instance,
-          DxvkDeviceFeatures      enabledFeatures,
+          DxvkDeviceFeatures      baseEnabledFeatures,
           bool                    logDeviceInfo,
           DxvkDeviceCreateInfo&   createInfo) const {
-    auto& [info, queueFamilies, extensionsEnabled, devExtensions, enableCudaInterop] = createInfo;
+    auto& [info, queueFamilies, extensionsEnabled, extensionNameList, devExtensions, enableCudaInterop, queueInfos, enabledFeatures] = createInfo;
+
+    enabledFeatures = baseEnabledFeatures;
 
     auto devExtensionList = getExtensionList(devExtensions);
 
@@ -309,7 +311,7 @@ namespace dxvk {
     
     // Enable additional extensions if necessary
     extensionsEnabled.merge(m_extraExtensions);
-    DxvkNameList extensionNameList = extensionsEnabled.toNameList();
+    extensionNameList = extensionsEnabled.toNameList();
 
     // Always enable robust buffer access
     enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
@@ -461,8 +463,6 @@ namespace dxvk {
 
     // Create the requested queues
     float queuePriority = 1.0f;
-    std::vector<VkDeviceQueueCreateInfo> queueInfos;
-
     std::unordered_set<uint32_t> queueFamiliySet;
 
     queueFamilies = findQueueFamilies();
@@ -504,7 +504,7 @@ namespace dxvk {
     if (!getDeviceCreateInfo(instance, enabledFeatures, true, createInfo))
       throw DxvkError("DxvkAdapter: Failed to create device");
 
-    auto& [info, queueFamilies, extensionsEnabled, devExtensions, enableCudaInterop] = createInfo;
+    auto& [info, queueFamilies, extensionsEnabled, extensionNameList, devExtensions, enableCudaInterop, queueInfos, features] = createInfo;
 
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
@@ -518,9 +518,8 @@ namespace dxvk {
       extensionsEnabled.disableExtension(devExtensions.nvxBinaryImport);
       extensionsEnabled.disableExtension(devExtensions.nvxImageViewHandle);
 
-      enabledFeatures.vk12.bufferDeviceAddress = VK_FALSE;
+      features.vk12.bufferDeviceAddress = VK_FALSE;
 
-      DxvkNameList extensionNameList  = extensionsEnabled.toNameList();
       info.enabledExtensionCount      = extensionNameList.count();
       info.ppEnabledExtensionNames    = extensionNameList.names();
 
@@ -537,7 +536,7 @@ namespace dxvk {
     queues.transfer = getDeviceQueue(vkd, queueFamilies.transfer, 0);
     queues.sparse = getDeviceQueue(vkd, queueFamilies.sparse, 0);
 
-    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues, DxvkQueueCallback());
+    return new DxvkDevice(instance, this, vkd, features, queues, DxvkQueueCallback());
   }
 
 

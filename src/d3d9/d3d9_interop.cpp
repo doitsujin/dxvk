@@ -52,10 +52,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::GetDeviceCreateInfo(
-        UINT                   Adapter,
-        VkDeviceCreateInfo*    pCreateInfo,
-        D3D9VkQueueFamilies*   pQueueFamilies) {
-    if (unlikely(pCreateInfo == nullptr && pQueueFamilies == nullptr))
+        UINT                        Adapter,
+        D3D9VkDeviceCreateInfo*     pCreateInfo) {
+    if (unlikely(pCreateInfo == nullptr))
       return D3DERR_INVALIDCALL;
 
     auto* adapter = m_interface->GetAdapter(Adapter);
@@ -65,18 +64,18 @@ namespace dxvk {
 
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
-    DxvkDeviceCreateInfo createInfo;
+    DxvkDeviceCreateInfo& createInfo = m_deviceCreateInfos[Adapter];
     if (!dxvkAdapter->getDeviceCreateInfo(m_interface->GetInstance(), D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter), false, createInfo))
       return D3DERR_INVALIDCALL;
 
-    if (pCreateInfo != nullptr)
-      *pCreateInfo = createInfo.info;
+    createInfo.info.enabledLayerCount   = 0;
+    createInfo.info.ppEnabledLayerNames = nullptr;
 
-    if (pQueueFamilies != nullptr) {
-      pQueueFamilies->graphics = createInfo.queueFamilies.graphics;
-      pQueueFamilies->transfer = createInfo.queueFamilies.transfer;
-      pQueueFamilies->sparse   = createInfo.queueFamilies.sparse;
-    }
+    pCreateInfo->info     = &createInfo.info;
+    pCreateInfo->features = &createInfo.features.core;
+    pCreateInfo->graphics = createInfo.queueFamilies.graphics;
+    pCreateInfo->transfer = createInfo.queueFamilies.transfer;
+    pCreateInfo->sparse   = createInfo.queueFamilies.sparse;
 
     return D3D_OK;
   }

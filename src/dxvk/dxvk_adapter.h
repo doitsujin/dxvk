@@ -73,11 +73,14 @@ namespace dxvk {
    * \brief Device create info
    */
   struct DxvkDeviceCreateInfo {
-    VkDeviceCreateInfo      info;
-    DxvkAdapterQueueIndices queueFamilies;
-    DxvkNameSet             extensionsEnabled;
-    DxvkDeviceExtensions    devExtensions;
-    bool                    enableCudaInterop;
+    VkDeviceCreateInfo                    info;
+    DxvkAdapterQueueIndices               queueFamilies;
+    DxvkNameSet                           extensionsEnabled;
+    DxvkNameList                          extensionNameList;
+    DxvkDeviceExtensions                  devExtensions;
+    bool                                  enableCudaInterop;
+    std::vector<VkDeviceQueueCreateInfo>  queueInfos;
+    DxvkDeviceFeatures                    features;
   };
 
   /**

@@ -2,6 +2,7 @@
 
 #include "d3d9_interfaces.h"
 #include "d3d9_multithread.h"
+#include "../dxvk/dxvk_adapter.h"
 
 namespace dxvk {
 
@@ -35,9 +36,8 @@ namespace dxvk {
             VkPhysicalDevice*     pPhysicalDevice);
 
     HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
-            UINT                   Adapter,
-            VkDeviceCreateInfo*    pCreateInfo,
-            D3D9VkQueueFamilies*   pQueueFamilies);
+            UINT                        Adapter,
+            D3D9VkDeviceCreateInfo*     pCreateInfo);
 
     HRESULT STDMETHODCALLTYPE ImportDevice(
             UINT                        Adapter,
@@ -52,6 +52,7 @@ namespace dxvk {
   private:
 
     D3D9InterfaceEx* m_interface;
+    std::unordered_map<UINT, DxvkDeviceCreateInfo> m_deviceCreateInfos;
 
   };
 

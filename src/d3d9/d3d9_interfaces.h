@@ -6,12 +6,14 @@
 using D3D9VkQueueLockCallback = void(bool);
 
 /**
- * \brief Device queue info
+ * \brief Device create info
  */
-struct D3D9VkQueueFamilies {
-  uint32_t graphics;
-  uint32_t transfer;
-  uint32_t sparse;
+struct D3D9VkDeviceCreateInfo {
+  VkDeviceCreateInfo*         info;
+  VkPhysicalDeviceFeatures2*  features;
+  uint32_t                    graphics;
+  uint32_t                    transfer;
+  uint32_t                    sparse;
 };
 
 /**
@@ -62,14 +64,15 @@ ID3D9VkInteropInterface : public IUnknown {
   /**
    * \brief Gets the VkDeviceCreateInfo for a D3D9 adapter
    *
+   * Pointers returned are guaranteed to be valid until
+   * the next call to GetDeviceCreateInfo or Release.
+   * 
    * \param [in] Adapter Adapter ordinal
    * \param [out] pCreateInfo The Vulkan device create info
-   * \param [out] pQueueFamilies The required queue families
    */
   virtual HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
-          UINT                   Adapter,
-          VkDeviceCreateInfo*    pCreateInfo,
-          D3D9VkQueueFamilies*   pQueueFamilies) = 0;
+          UINT                        Adapter,
+          D3D9VkDeviceCreateInfo*     pCreateInfo) = 0;
 
   /**
    * \brief Create a D3D9 device for an existing Vulkan device
