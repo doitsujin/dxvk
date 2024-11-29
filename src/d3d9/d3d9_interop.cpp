@@ -51,6 +51,102 @@ namespace dxvk {
     }
   }
 
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::GetDeviceCreateInfo(
+        UINT                   Adapter,
+        VkDeviceCreateInfo*    pCreateInfo) {
+    if (unlikely(pCreateInfo == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+
+    if (adapter == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+
+    DxvkDeviceCreateInfo createInfo;
+    if (!dxvkAdapter->getDeviceCreateInfo(m_interface->GetInstance(), D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter), false, createInfo))
+      return D3DERR_INVALIDCALL;
+
+    *pCreateInfo = createInfo.info;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::ImportDevice(
+          UINT                        Adapter,
+          D3DDEVTYPE                  DeviceType,
+          HWND                        hFocusWindow,
+          DWORD                       BehaviorFlags,
+          D3DPRESENT_PARAMETERS*      pPresentationParameters,
+          D3DDISPLAYMODEEX*           pFullscreenDisplayMode,
+          D3D9VkDeviceImportInfo*     pInfo,
+          IDirect3DDevice9Ex**        ppReturnedDevice) {
+    InitReturnPtr(ppReturnedDevice);
+
+    if (unlikely(ppReturnedDevice        == nullptr
+              || pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
+    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
+    if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
+               !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING)))
+      return D3DERR_INVALIDCALL;
+
+    HRESULT hr;
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects it be created despite passing invalid parameters.
+    if (likely(DeviceType != D3DDEVTYPE_NULLREF)) {
+      hr = m_interface->ValidatePresentationParameters(pPresentationParameters);
+
+      if (unlikely(FAILED(hr)))
+        return hr;
+    }
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+
+    if (adapter == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+
+    DxvkDeviceImportInfo info;
+    info.device         = pInfo->device;
+    info.queue          = pInfo->graphicsQueue;
+    info.queueFamily    = pInfo->graphicsQueueFamily;
+    info.extensionCount = pInfo->extensionCount;
+    info.extensionNames = pInfo->extensionNames;
+    info.features       = pInfo->features;
+    info.queueCallback  = pInfo->queueLockCallback;
+
+    try {
+      auto dxvkDevice = dxvkAdapter->importDevice(m_interface->GetInstance(), info);
+
+      auto* device = new D3D9DeviceEx(
+        m_interface,
+        adapter,
+        DeviceType,
+        hFocusWindow,
+        BehaviorFlags,
+        dxvkDevice);
+
+      hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
+
+      if (unlikely(FAILED(hr)))
+        return hr;
+
+      *ppReturnedDevice = ref(device);
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_NOTAVAILABLE;
+    }
+
+    return D3D_OK;
+  }
+
+
   ////////////////////////////////
   // Texture Interop
   ///////////////////////////////

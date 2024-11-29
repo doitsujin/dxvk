@@ -3,6 +3,27 @@
 #include "d3d9_include.h"
 #include "../vulkan/vulkan_loader.h"
 
+using D3D9VkQueueLockCallback = void(bool);
+
+/**
+ * \brief Device import info
+ */
+struct D3D9VkDeviceImportInfo {
+  VkDevice                          device;
+  D3DDEVTYPE                        deviceType;
+  VkQueue                           graphicsQueue;
+  uint32_t                          graphicsQueueFamily;
+  VkQueue                           transferQueue;
+  uint32_t                          transferQueueFamily;
+  VkQueue                           sparseQueue;
+  uint32_t                          sparseQueueFamily;
+  uint32_t                          extensionCount;
+  const char**                      extensionNames;
+  const VkPhysicalDeviceFeatures2*  features;
+  D3D9VkQueueLockCallback*          queueLockCallback;
+};
+
+
 /**
  * \brief D3D9 interface for Vulkan interop
  *
@@ -28,6 +49,39 @@ ID3D9VkInteropInterface : public IUnknown {
   virtual void STDMETHODCALLTYPE GetPhysicalDeviceHandle(
           UINT                  Adapter,
           VkPhysicalDevice*     pPhysicalDevice) = 0;
+
+  /**
+   * \brief Gets the VkDeviceCreateInfo for a D3D9 adapter
+   *
+   * \param [in] Adapter Adapter ordinal
+   * \param [out] pCreateInfo The Vulkan device create info
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
+          UINT                   Adapter,
+          VkDeviceCreateInfo*    pCreateInfo) = 0;
+
+  /**
+   * \brief Create a D3D9 device for an existing Vulkan device
+   * 
+   * It is suggested to create the device with the
+   * VkDeviceCreateInfo returned by GetDeviceCreateInfo,
+   * which will specify everything the device needs for
+   * DXVK to function.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in] ... Arguments to IDirect3D9Ex::CreateDeviceEx
+   * \param [in] pInfo Info about the created device
+   * \param [out] ppReturnedDevice The D3D9 device
+   */
+  virtual HRESULT STDMETHODCALLTYPE ImportDevice(
+          UINT                        Adapter,
+          D3DDEVTYPE                  DeviceType,
+          HWND                        hFocusWindow,
+          DWORD                       BehaviorFlags,
+          D3DPRESENT_PARAMETERS*      pPresentationParameters,
+          D3DDISPLAYMODEEX*           pFullscreenDisplayMode,
+          D3D9VkDeviceImportInfo*     pInfo,
+          IDirect3DDevice9Ex**        ppReturnedDevice) = 0;
 };
 
 /**
