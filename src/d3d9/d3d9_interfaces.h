@@ -6,6 +6,15 @@
 using D3D9VkQueueLockCallback = void(bool);
 
 /**
+ * \brief Device queue info
+ */
+struct D3D9VkQueueFamilies {
+  uint32_t graphics;
+  uint32_t transfer;
+  uint32_t sparse;
+};
+
+/**
  * \brief Device import info
  */
 struct D3D9VkDeviceImportInfo {
@@ -55,10 +64,12 @@ ID3D9VkInteropInterface : public IUnknown {
    *
    * \param [in] Adapter Adapter ordinal
    * \param [out] pCreateInfo The Vulkan device create info
+   * \param [out] pQueueFamilies The required queue families
    */
   virtual HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
           UINT                   Adapter,
-          VkDeviceCreateInfo*    pCreateInfo) = 0;
+          VkDeviceCreateInfo*    pCreateInfo,
+          D3D9VkQueueFamilies*   pQueueFamilies) = 0;
 
   /**
    * \brief Create a D3D9 device for an existing Vulkan device

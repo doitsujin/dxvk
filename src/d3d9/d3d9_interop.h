@@ -36,7 +36,8 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
             UINT                   Adapter,
-            VkDeviceCreateInfo*    pCreateInfo);
+            VkDeviceCreateInfo*    pCreateInfo,
+            D3D9VkQueueFamilies*   pQueueFamilies);
 
     HRESULT STDMETHODCALLTYPE ImportDevice(
             UINT                        Adapter,

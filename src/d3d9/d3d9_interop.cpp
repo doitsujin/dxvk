@@ -53,8 +53,9 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::GetDeviceCreateInfo(
         UINT                   Adapter,
-        VkDeviceCreateInfo*    pCreateInfo) {
-    if (unlikely(pCreateInfo == nullptr))
+        VkDeviceCreateInfo*    pCreateInfo,
+        D3D9VkQueueFamilies*   pQueueFamilies) {
+    if (unlikely(pCreateInfo == nullptr && pQueueFamilies == nullptr))
       return D3DERR_INVALIDCALL;
 
     auto* adapter = m_interface->GetAdapter(Adapter);
@@ -68,7 +69,14 @@ namespace dxvk {
     if (!dxvkAdapter->getDeviceCreateInfo(m_interface->GetInstance(), D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter), false, createInfo))
       return D3DERR_INVALIDCALL;
 
-    *pCreateInfo = createInfo.info;
+    if (pCreateInfo != nullptr)
+      *pCreateInfo = createInfo.info;
+
+    if (pQueueFamilies != nullptr) {
+      pQueueFamilies->graphics = createInfo.queueFamilies.graphics;
+      pQueueFamilies->transfer = createInfo.queueFamilies.transfer;
+      pQueueFamilies->sparse   = createInfo.queueFamilies.sparse;
+    }
 
     return D3D_OK;
   }
