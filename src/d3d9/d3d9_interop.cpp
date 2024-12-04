@@ -50,6 +50,74 @@ namespace dxvk {
       *pPhysicalDevice = adapter ? adapter->GetDXVKAdapter()->handle() : nullptr;
     }
   }
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::GetDeviceCreateInfo(
+        UINT                        Adapter,
+        D3D9VkDeviceCreateInfo**    ppCreateInfo) {
+    if (unlikely(ppCreateInfo == nullptr))
+      return D3DERR_INVALIDCALL;
+    InitReturnPtr(ppCreateInfo);
+
+    D3D9VkDeviceCreateInfo* pCreateInfo = new D3D9VkDeviceCreateInfo;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+
+    pCreateInfo->features = D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter);
+
+    DxvkDeviceCreateExtInfo extInfo;
+    DxvkDeviceCreateQueueInfo queueInfo;
+    bool success = dxvkAdapter->getDeviceCreateInfo(
+      m_interface->GetInstance(),
+      pCreateInfo->info,
+      pCreateInfo->features,
+      extInfo,
+      queueInfo);
+
+    if (!success) {
+      delete pCreateInfo;
+      return D3DERR_INVALIDCALL;
+    }
+
+    // Queue family indices
+    pCreateInfo->graphicsQueueFamily = queueInfo.queueFamilies.graphics;
+    pCreateInfo->transferQueueFamily = queueInfo.queueFamilies.transfer;
+    pCreateInfo->sparseQueueFamily   = queueInfo.queueFamilies.sparse;
+
+    // Queue create infos
+    const size_t queueCount = queueInfo.queueInfos.size();
+    pCreateInfo->pQueueCreateInfos = queueCount ? new VkDeviceQueueCreateInfo[queueCount] : nullptr;
+    for (int i = 0; i < queueCount; i++) {
+      pCreateInfo->pQueueCreateInfos[i] = queueInfo.queueInfos[i];
+    }
+    pCreateInfo->info.pQueueCreateInfos     = pCreateInfo->pQueueCreateInfos;
+    pCreateInfo->info.queueCreateInfoCount  = queueCount;
+
+    // Extension names
+    const uint32_t extCount = extInfo.extensionNameList.count();
+    pCreateInfo->ppEnabledExtensionNames = extCount > 0 ? new const char*[extCount] : nullptr;
+    for (uint32_t i = 0; i < extCount; i++) {
+      pCreateInfo->ppEnabledExtensionNames[i] = extInfo.extensionNameList.name(i);
+    }
+    pCreateInfo->info.ppEnabledExtensionNames = pCreateInfo->ppEnabledExtensionNames;
+    pCreateInfo->info.enabledExtensionCount   = extCount;
+
+    *ppCreateInfo = pCreateInfo;
+    return D3D_OK;
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropInterface::FreeDeviceCreateInfo(
+          D3D9VkDeviceCreateInfo* pCreateInfo) {
+    if (!pCreateInfo)
+      return;
+    if (pCreateInfo->ppEnabledExtensionNames != nullptr)
+      delete[] pCreateInfo->ppEnabledExtensionNames;
+    if (pCreateInfo->pQueueCreateInfos != nullptr)
+      delete[] pCreateInfo->pQueueCreateInfos;
+    delete pCreateInfo;
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::ImportDevice(
           UINT                        Adapter,

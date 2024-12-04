@@ -3,7 +3,22 @@
 #include "d3d9_include.h"
 #include "../vulkan/vulkan_loader.h"
 
+#include "../dxvk/dxvk_device_info.h"
+
 using D3D9VkQueueLockCallback = void(bool);
+
+/**
+ * \brief Device create info
+ */
+struct D3D9VkDeviceCreateInfo {
+  VkDeviceCreateInfo        info;
+  dxvk::DxvkDeviceFeatures  features;
+  uint32_t                  graphicsQueueFamily;
+  uint32_t                  transferQueueFamily;
+  uint32_t                  sparseQueueFamily;
+  VkDeviceQueueCreateInfo*  pQueueCreateInfos;
+  const char**              ppEnabledExtensionNames;
+};
 
 /**
  * \brief Device import info
@@ -49,6 +64,26 @@ ID3D9VkInteropInterface : public IUnknown {
   virtual void STDMETHODCALLTYPE GetPhysicalDeviceHandle(
           UINT                  Adapter,
           VkPhysicalDevice*     pPhysicalDevice) = 0;
+
+  /**
+   * \brief Gets the device creation info for a D3D9 adapter
+   * 
+   * When done using the info, call FreeDeviceCreateInfo to release it.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [out] ppCreateInfo Device create info
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
+          UINT                        Adapter,
+          D3D9VkDeviceCreateInfo**    ppCreateInfo) = 0;
+
+  /**
+   * \brief Releases device creation info returned by GetDeviceCreateInfo
+   *
+   * \param [out] pCreateInfo Device create info
+   */
+  virtual void STDMETHODCALLTYPE FreeDeviceCreateInfo(
+          D3D9VkDeviceCreateInfo*     pCreateInfo) = 0;
 
   /**
    * \brief Create a D3D9 device for an existing Vulkan device

@@ -34,6 +34,13 @@ namespace dxvk {
             UINT                  Adapter,
             VkPhysicalDevice*     pPhysicalDevice);
 
+    HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
+            UINT                      Adapter,
+            D3D9VkDeviceCreateInfo**  ppCreateInfo);
+
+    void STDMETHODCALLTYPE FreeDeviceCreateInfo(
+            D3D9VkDeviceCreateInfo*   pCreateInfo);
+
     HRESULT STDMETHODCALLTYPE ImportDevice(
             UINT                        Adapter,
             D3DDEVTYPE                  DeviceType,
