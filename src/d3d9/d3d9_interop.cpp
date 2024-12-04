@@ -89,7 +89,7 @@ namespace dxvk {
     // Queue create infos
     const size_t queueCount = queueInfo.queueInfos.size();
     pCreateInfo->pQueueCreateInfos = queueCount ? new VkDeviceQueueCreateInfo[queueCount] : nullptr;
-    for (int i = 0; i < queueCount; i++) {
+    for (size_t i = 0; i < queueCount; i++) {
       pCreateInfo->pQueueCreateInfos[i] = queueInfo.queueInfos[i];
     }
     pCreateInfo->info.pQueueCreateInfos     = pCreateInfo->pQueueCreateInfos;
