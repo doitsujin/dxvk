@@ -5933,17 +5933,21 @@ namespace dxvk {
     auto mapPtr = m_vsClipPlanes.AllocSlice();
     auto dst = reinterpret_cast<D3D9ClipPlane*>(mapPtr);
 
-    uint32_t clipPlaneMask = 0u;
+    uint32_t clipPlaneCount = 0u;
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
-      dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
+      D3D9ClipPlane clipPlane = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
         ? m_state.clipPlanes[i]
         : D3D9ClipPlane();
 
-      if (dst[i] != D3D9ClipPlane())
-        clipPlaneMask |= 1u << i;
+      if (clipPlane != D3D9ClipPlane())
+        dst[clipPlaneCount++] = clipPlane;
     }
 
-    if (m_specInfo.set<SpecClipPlaneMask>(clipPlaneMask))
+    // Write the rest to 0 for GPL.
+    for (uint32_t i = clipPlaneCount; i < caps::MaxClipPlanes; i++)
+      dst[i] = D3D9ClipPlane();
+
+    if (m_specInfo.set<SpecClipPlaneCount>(clipPlaneCount))
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
   }
 
