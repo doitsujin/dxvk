@@ -3537,6 +3537,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegisterValue position;
     position.type = { DxsoScalarType::Float32, 4 };
     position.id = m_module.opLoad(vec4Type, positionPtr);
+
+    // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
+    uint32_t clipPlaneCount = m_spec.get(m_module, m_specUbo, SpecClipPlaneCount, 0, 32, m_module.constu32(caps::MaxClipPlanes));
     
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
@@ -3552,9 +3555,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       DxsoRegisterValue dist = emitDot(position, plane);
 
-      // Always consider clip planes enabled when doing GPL by forcing a mask of 0xffffffff for the quick value.
-      uint32_t clipPlaneEnabledBit = m_spec.get(m_module, m_specUbo, SpecClipPlaneMask, i, 1, m_module.constu32(0xffffffff));
-      uint32_t clipPlaneEnabled = m_module.opINotEqual(boolType, clipPlaneEnabledBit, m_module.constu32(0));
+      uint32_t clipPlaneEnabled = m_module.opULessThan(boolType, m_module.constu32(i), clipPlaneCount);
 
       uint32_t value = m_module.opSelect(floatType, clipPlaneEnabled, dist.id, m_module.constf32(0.0f));
 

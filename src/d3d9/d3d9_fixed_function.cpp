@@ -2407,6 +2407,9 @@ namespace dxvk {
 
     m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
 
+    // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
+    uint32_t clipPlaneCount = m_spec.get(m_module, m_specUbo, SpecClipPlaneCount, 0, 32, m_module.constu32(caps::MaxClipPlanes));
+
     // Compute clip distances
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
@@ -2421,9 +2424,7 @@ namespace dxvk {
       
       uint32_t distId = m_module.opDot(floatType, worldPos, planeId);
 
-      // Always consider clip planes enabled when doing GPL by forcing a mask of 0xffffffff for the quick value.
-      uint32_t clipPlaneEnabledBit = m_spec.get(m_module, m_specUbo, SpecClipPlaneMask, i, 1, m_module.constu32(0xffffffff));
-      uint32_t clipPlaneEnabled = m_module.opINotEqual(boolType, clipPlaneEnabledBit, m_module.constu32(0));
+      uint32_t clipPlaneEnabled = m_module.opULessThan(boolType, m_module.constu32(i), clipPlaneCount);
 
       uint32_t value = m_module.opSelect(floatType, clipPlaneEnabled, distId, m_module.constf32(0.0f));
       
