@@ -18,6 +18,7 @@ compiler_args = [
   # gcc
   '-Wno-missing-field-initializers',
   '-Wno-unused-parameter',
+  '-Wno-misleading-indentation',
   '-Wno-cast-function-type', # Needed for GetProcAddress.
   # clang
   '-Wno-unused-private-field',
