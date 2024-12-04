@@ -2366,6 +2366,7 @@ namespace dxvk {
     
     uint32_t floatType = m_module.defFloatType(32);
     uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
+    uint32_t boolType  = m_module.defBoolType();
     
     // Declare uniform buffer containing clip planes
     uint32_t clipPlaneArray  = m_module.defArrayTypeUnique(vec4Type, clipPlaneCountId);
@@ -2419,12 +2420,16 @@ namespace dxvk {
           clipPlaneBlock, blockMembers.size(), blockMembers.data()));
       
       uint32_t distId = m_module.opDot(floatType, worldPos, planeId);
+
+      // Always consider clip planes enabled when doing GPL by forcing a mask of 0xffffffff for the quick value.
+      uint32_t clipPlaneEnabledBit = m_spec.get(m_module, m_specUbo, SpecClipPlaneMask, i, 1, m_module.constu32(0xffffffff));
+      uint32_t clipPlaneEnabled = m_module.opINotEqual(boolType, clipPlaneEnabledBit, m_module.constu32(0));
+
+      uint32_t value = m_module.opSelect(floatType, clipPlaneEnabled, distId, m_module.constf32(0.0f));
       
-      m_module.opStore(
-        m_module.opAccessChain(
-          m_module.defPointerType(floatType, spv::StorageClassOutput),
-          clipDistArray, 1, &blockMembers[1]),
-        distId);
+      m_module.opStore(m_module.opAccessChain(
+        m_module.defPointerType(floatType, spv::StorageClassOutput),
+        clipDistArray, 1, &blockMembers[1]), value);
     }
   }
 

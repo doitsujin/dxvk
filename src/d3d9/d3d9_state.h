@@ -28,6 +28,14 @@ namespace dxvk {
   
   struct D3D9ClipPlane {
     float coeff[4] = {};
+
+    bool operator == (const D3D9ClipPlane& other) {
+      return std::memcmp(this, &other, sizeof(D3D9ClipPlane)) == 0;
+    }
+
+    bool operator != (const D3D9ClipPlane& other) {
+      return !this->operator == (other);
+    }
   };
 
   struct D3D9RenderStateInfo {
