@@ -99,7 +99,12 @@ namespace dxvk {
     const uint32_t extCount = extInfo.extensionNameList.count();
     pCreateInfo->ppEnabledExtensionNames = extCount > 0 ? new const char*[extCount] : nullptr;
     for (uint32_t i = 0; i < extCount; i++) {
-      pCreateInfo->ppEnabledExtensionNames[i] = extInfo.extensionNameList.name(i);
+      const char* nameStr = extInfo.extensionNameList.name(i);
+      size_t nameLen = std::strlen(nameStr);
+      char* name = new char[nameLen + 1];
+			std::strncpy(name, nameStr, nameLen);
+      name[nameLen] = '\0';
+      pCreateInfo->ppEnabledExtensionNames[i] = name;
     }
     pCreateInfo->info.ppEnabledExtensionNames = pCreateInfo->ppEnabledExtensionNames;
     pCreateInfo->info.enabledExtensionCount   = extCount;
@@ -112,8 +117,15 @@ namespace dxvk {
           D3D9VkDeviceCreateInfo* pCreateInfo) {
     if (!pCreateInfo)
       return;
-    if (pCreateInfo->ppEnabledExtensionNames != nullptr)
+
+    if (pCreateInfo->ppEnabledExtensionNames != nullptr) {
+      for (uint32_t i = 0; i < pCreateInfo->info.enabledExtensionCount; i++) {
+        delete pCreateInfo->ppEnabledExtensionNames[i];
+      }
+      
       delete[] pCreateInfo->ppEnabledExtensionNames;
+    }
+
     if (pCreateInfo->pQueueCreateInfos != nullptr)
       delete[] pCreateInfo->pQueueCreateInfos;
     delete pCreateInfo;
