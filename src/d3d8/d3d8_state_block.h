@@ -5,6 +5,8 @@
 #include "d3d8_device.h"
 #include "d3d8_device_child.h"
 
+#include "../util/util_bit.h"
+
 #include <array>
 
 namespace dxvk {
