@@ -512,21 +512,6 @@ namespace dxvk {
   }
 
 
-  VkImageViewType D3D9CommonTexture::GetImageViewTypeFromResourceType(
-          D3DRESOURCETYPE  Dimension,
-          UINT             Layer) {
-    switch (Dimension) {
-      case D3DRTYPE_SURFACE:
-      case D3DRTYPE_TEXTURE:       return VK_IMAGE_VIEW_TYPE_2D;
-      case D3DRTYPE_VOLUMETEXTURE: return VK_IMAGE_VIEW_TYPE_3D;
-      case D3DRTYPE_CUBETEXTURE:   return Layer == AllLayers
-                                        ? VK_IMAGE_VIEW_TYPE_CUBE
-                                        : VK_IMAGE_VIEW_TYPE_2D;
-      default: throw DxvkError("D3D9CommonTexture: Unhandled resource type");
-    }
-  }
-
-
   VkImageLayout D3D9CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) const {
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
