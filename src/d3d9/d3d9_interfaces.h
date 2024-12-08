@@ -31,6 +31,26 @@ ID3D9VkInteropInterface : public IUnknown {
 };
 
 /**
+ * \brief D3D9 interface for Vulkan interop - extended
+ *
+ * Provides access to the instance extension lists
+ * and everything provided by ID3D9VkInteropInterface
+ */
+MIDL_INTERFACE("d6589ed4-7a37-4096-bac2-223b25ae31d2")
+ID3D9VkInteropInterface1 : public ID3D9VkInteropInterface {
+  /**
+   * \brief Gets a list of enabled instance extensions
+   * 
+   * \param [out] pExtensionCount Number of extensions
+   * \param [out] ppExtensions List of extension names
+   * \returns D3DERR_MOREDATA if the list was truncated
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetInstanceExtensions(
+          UINT*                       pExtensionCount,
+    const char**                      ppExtensions) = 0;
+};
+
+/**
  * \brief D3D9 texture interface for Vulkan interop
  * 
  * Provides access to the backing image of a
@@ -263,6 +283,7 @@ ID3D9VkExtSwapchain : public IUnknown {
 
 #ifndef _MSC_VER
 __CRT_UUID_DECL(ID3D9VkInteropInterface,   0x3461a81b,0xce41,0x485b,0xb6,0xb5,0xfc,0xf0,0x8b,0xa6,0xa6,0xbd);
+__CRT_UUID_DECL(ID3D9VkInteropInterface1,  0xd6589ed4,0x7a37,0x4096,0xba,0xc2,0x22,0x3b,0x25,0xae,0x31,0xd2);
 __CRT_UUID_DECL(ID3D9VkInteropTexture,     0xd56344f5,0x8d35,0x46fd,0x80,0x6d,0x94,0xc3,0x51,0xb4,0x72,0xc1);
 __CRT_UUID_DECL(ID3D9VkInteropDevice,      0x2eaa4b89,0x0107,0x4bdb,0x87,0xf7,0x0f,0x54,0x1c,0x49,0x3c,0xe0);
 __CRT_UUID_DECL(ID3D9VkExtSwapchain,       0x13776e93,0x4aa9,0x430a,0xa4,0xec,0xfe,0x9e,0x28,0x11,0x81,0xd5);

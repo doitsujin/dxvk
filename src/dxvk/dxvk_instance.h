@@ -144,6 +144,18 @@ namespace dxvk {
     const DxvkInstanceExtensions& extensions() const {
       return m_extensions;
     }
+
+   /**
+    * \brief Instance extension name list
+    * 
+    * Returns the list of extensions that the
+    * instance was created with, provided by
+    * both DXVK and any extension providers.
+    * \returns Instance extension name list
+    */
+    const DxvkNameList& extensionNameList() const {
+      return m_extensionNames;
+    }
     
   private:
 
@@ -153,6 +165,7 @@ namespace dxvk {
     Rc<vk::LibraryFn>       m_vkl;
     Rc<vk::InstanceFn>      m_vki;
     DxvkInstanceExtensions  m_extensions;
+    DxvkNameList            m_extensionNames;
 
     VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
 

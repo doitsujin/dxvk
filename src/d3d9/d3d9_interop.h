@@ -10,7 +10,7 @@ namespace dxvk {
   class D3D9DeviceEx;
   struct D3D9_COMMON_TEXTURE_DESC;
 
-  class D3D9VkInteropInterface final : public ID3D9VkInteropInterface {
+  class D3D9VkInteropInterface final : public ID3D9VkInteropInterface1 {
 
   public:
 
@@ -33,6 +33,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetPhysicalDeviceHandle(
             UINT                  Adapter,
             VkPhysicalDevice*     pPhysicalDevice);
+
+    HRESULT STDMETHODCALLTYPE GetInstanceExtensions(
+            UINT*                 pExtensionCount,
+      const char**                ppExtensions);
 
   private:
 
