@@ -3372,9 +3372,16 @@ namespace dxvk {
 
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
       m_vsShaderMasks = newShader->GetShaderMask();
+
+      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, caps::MaxTexturesPS + 1);
     }
-    else
+    else {
       m_vsShaderMasks = D3D9ShaderMasks();
+
+      // Fixed function vertex shaders don't support sampling textures.
+      m_dirtyTextures = m_vsShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~m_vsShaderMasks.samplerMask;
+    }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -3730,6 +3737,8 @@ namespace dxvk {
 
       BindShader<DxsoProgramTypes::PixelShader>(newShader);
       newShaderMasks = newShader->GetShaderMask();
+
+      UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
     }
     else {
       // TODO: What fixed function textures are in use?
@@ -3737,6 +3746,10 @@ namespace dxvk {
 
       // The RT output is always 0 for fixed function.
       newShaderMasks = FixedFunctionMask;
+
+      // Fixed function always uses spec constants to decide the texture type.
+      m_dirtyTextures = newShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~newShaderMasks.samplerMask;
     }
 
     // If we have any RTs we would have bound to the the FB
@@ -4341,12 +4354,12 @@ namespace dxvk {
       const uint32_t textureType = newTexture != nullptr
         ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
         : 0;
-      // There are 4 texture types, so we need 2 bits.
+      // There are 3 texture types, so we need 2 bits.
       const uint32_t offset = StateSampler * 2;
       const uint32_t textureBitMask = 0b11u       << offset;
       const uint32_t textureBits    = textureType << offset;
 
-      // In fixed function shaders and SM < 3 we put the type mask
+      // In fixed function shaders and SM < 2 we put the type mask
       // into a spec constant to select the used sampler type.
       m_textureTypes &= ~textureBitMask;
       m_textureTypes |=  textureBits;
@@ -6123,11 +6136,12 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateTextureBitmasks(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
-    m_activeTextureRTs       &= ~bit;
-    m_activeTextureDSs       &= ~bit;
-    m_activeTextures         &= ~bit;
-    m_activeTexturesToUpload &= ~bit;
-    m_activeTexturesToGen    &= ~bit;
+    m_activeTextureRTs        &= ~bit;
+    m_activeTextureDSs        &= ~bit;
+    m_activeTextures          &= ~bit;
+    m_activeTexturesToUpload  &= ~bit;
+    m_activeTexturesToGen     &= ~bit;
+    m_mismatchingTextureTypes &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
     if (tex != nullptr) {
@@ -6168,6 +6182,8 @@ namespace dxvk {
 
       if (unlikely(m_fetch4Enabled & bit))
         UpdateActiveFetch4(index);
+
+      UpdateTextureTypeMismatchesForTexture(index);
     } else {
       if (unlikely(m_fetch4 & bit))
         UpdateActiveFetch4(index);
@@ -6319,6 +6335,66 @@ namespace dxvk {
       UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]));
 
     m_activeTexturesToUpload &= ~mask;
+  }
+
+
+  void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
+    if (unlikely(shader->GetInfo().majorVersion() < 2)) {
+      // SM 1 shaders don't define the texture type in the shader.
+      // We always use spec constants for those.
+      m_dirtyTextures = shaderSamplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~shaderSamplerMask;
+      return;
+    }
+
+    for (uint32_t i : bit::BitMask(shaderSamplerMask)) {
+      const D3D9CommonTexture* texture = GetCommonTexture(m_state.textures[i]);
+      if (unlikely(texture == nullptr)) {
+        // Unbound textures are not mismatching texture types
+        m_dirtyTextures |= m_mismatchingTextureTypes & (1 << i);
+        m_mismatchingTextureTypes &= ~(1 << i);
+        continue;
+      }
+
+      VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(texture->GetType(), D3D9CommonTexture::AllLayers);
+      VkImageViewType shaderViewType = shader->GetImageViewType(i - shaderSamplerOffset);
+      if (unlikely(boundViewType != shaderViewType)) {
+        m_dirtyTextures |= 1 << i;
+        m_mismatchingTextureTypes |= 1 << i;
+      } else {
+        // The texture type is no longer mismatching, make sure we bind the texture now.
+        m_dirtyTextures |= m_mismatchingTextureTypes & (1 << i);
+        m_mismatchingTextureTypes &= ~(1 << i);
+      }
+    }
+  }
+
+
+  void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
+    uint32_t shaderTextureIndex;
+    const D3D9CommonShader* shader;
+    if (unlikely(stateSampler > caps::MaxTexturesPS + 1)) {
+      shader = GetCommonShader(m_state.vertexShader);
+      shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
+    } else {
+      shader = GetCommonShader(m_state.pixelShader);
+      shaderTextureIndex = stateSampler;
+    }
+
+    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2)) {
+      return;
+    }
+
+    const D3D9CommonTexture* tex = GetCommonTexture(m_state.textures[stateSampler]);
+    VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(tex->GetType(), D3D9CommonTexture::AllLayers);
+    VkImageViewType shaderViewType = shader->GetImageViewType(shaderTextureIndex);
+    // D3D9 does not have 1D textures. The value of VIEW_TYPE_1D is 0
+    // which is the default when there is no declaration for the type.
+    bool shaderUsesTexture = shaderViewType != VkImageViewType(0);
+    if (unlikely(boundViewType != shaderViewType && shaderUsesTexture)) {
+      const uint32_t samplerBit = 1u << stateSampler;
+      m_mismatchingTextureTypes |= 1 << samplerBit;
+    }
   }
 
 
@@ -7056,8 +7132,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtyTextures(uint32_t usedMask) {
-    const uint32_t activeMask   = usedMask &  m_activeTextures;
-    const uint32_t inactiveMask = usedMask & ~m_activeTextures;
+    const uint32_t activeMask   = usedMask &  (m_activeTextures & ~m_mismatchingTextureTypes);
+    const uint32_t inactiveMask = usedMask & (~m_activeTextures | m_mismatchingTextureTypes);
 
     for (uint32_t i : bit::BitMask(activeMask))
       BindTexture(i);
