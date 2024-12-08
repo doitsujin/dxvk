@@ -41,6 +41,7 @@ namespace dxvk {
 
     m_usedSamplers = 0;
     m_usedRTs      = 0;
+    m_textureTypes = 0;
     m_rRegs.reserve(DxsoMaxTempRegs);
 
     for (uint32_t i = 0; i < m_rRegs.size(); i++)
@@ -762,6 +763,10 @@ namespace dxvk {
         // We could also be depth compared!
         DclSampler(idx, binding, samplerType, true, implicit);
       }
+
+      const uint32_t offset = idx * 2;
+      uint32_t textureBits = uint32_t(viewType);
+      m_textureTypes |= textureBits << offset;
     }
     else {
       // Could be any of these!

@@ -319,7 +319,7 @@ namespace dxvk {
       return std::exchange(m_transitionedToHazardLayout, true);
     }
 
-    D3DRESOURCETYPE GetType() {
+    D3DRESOURCETYPE GetType() const {
       return m_type;
     }
 
@@ -441,6 +441,10 @@ namespace dxvk {
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
+    static VkImageViewType GetImageViewTypeFromResourceType(
+            D3DRESOURCETYPE  Dimension,
+            UINT             Layer);
+
      /**
      * \brief Tracks sequence number for a given subresource
      *
@@ -552,10 +556,6 @@ namespace dxvk {
             VkImageUsageFlags         Usage) const;
 
     void ExportImageInfo();
-
-    static VkImageViewType GetImageViewTypeFromResourceType(
-            D3DRESOURCETYPE  Dimension,
-            UINT             Layer);
 
   };
 

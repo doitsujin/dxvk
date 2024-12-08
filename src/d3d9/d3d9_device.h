@@ -817,6 +817,10 @@ namespace dxvk {
 
     void UpdateActiveFetch4(uint32_t stateSampler);
 
+    void UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset);
+
+    void UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler);
+
     void UploadManagedTexture(D3D9CommonTexture* pResource);
 
     void UploadManagedTextures(uint32_t mask);
@@ -1461,6 +1465,7 @@ namespace dxvk {
     uint32_t                        m_drefClamp = 0;
     uint32_t                        m_cubeTextures = 0;
     uint32_t                        m_textureTypes = 0;
+    uint32_t                        m_mismatchingTextureTypes = 0;
     uint32_t                        m_projectionBitfield  = 0;
 
     uint32_t                        m_dirtySamplerStates = 0;

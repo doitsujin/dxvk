@@ -38,6 +38,7 @@ namespace dxvk {
     m_constants       = compiler->constants();
     m_maxDefinedConst = compiler->maxDefinedConstant();
     m_usedSamplers    = compiler->usedSamplers();
+    m_textureTypes    = compiler->textureTypes();
 
     compiler->finalize();
 
