@@ -1840,6 +1840,12 @@ namespace dxvk {
 
     D3D9DeviceLock lock = LockDevice();
 
+    // D3DCLEAR_ZBUFFER and D3DCLEAR_STENCIL are invalid flags
+    // if there is no currently bound DS (which can be the autoDS)
+    if (unlikely(m_state.depthStencil == nullptr
+            && (Flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL))))
+      return D3DERR_INVALIDCALL;
+
     const auto& vp = m_state.viewport;
     const auto& sc = m_state.scissorRect;
 
