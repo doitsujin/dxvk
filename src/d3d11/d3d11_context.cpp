@@ -730,9 +730,9 @@ namespace dxvk {
 
     // Clear all the rectangles that are specified
     for (uint32_t i = 0; i < NumRects || i < 1; i++) {
-      if (pRect) {
+      if (NumRects) {
         if (pRect[i].left >= pRect[i].right
-        || pRect[i].top >= pRect[i].bottom)
+         || pRect[i].top >= pRect[i].bottom)
           continue;
       }
 
@@ -740,7 +740,7 @@ namespace dxvk {
         VkDeviceSize offset = 0;
         VkDeviceSize length = bufView->info().size / formatInfo->elementSize;
 
-        if (pRect) {
+        if (NumRects) {
           offset = pRect[i].left;
           length = pRect[i].right - pRect[i].left;
         }
@@ -763,7 +763,7 @@ namespace dxvk {
         VkOffset3D offset = { 0, 0, 0 };
         VkExtent3D extent = imgView->mipLevelExtent(0);
 
-        if (pRect) {
+        if (NumRects) {
           offset = { pRect[i].left, pRect[i].top, 0 };
           extent = {
             uint32_t(pRect[i].right - pRect[i].left),
