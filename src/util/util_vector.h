@@ -152,11 +152,11 @@ namespace dxvk {
 
   inline Vector4 replaceNaN(Vector4 a) {
     #ifdef DXVK_ARCH_X86
-    alignas(16) Vector4 result;
+    Vector4 result;
     __m128 value = _mm_loadu_ps(a.data);
     __m128 mask  = _mm_cmpeq_ps(value, value);
            value = _mm_and_ps(value, mask);
-    _mm_store_ps(result.data, value);
+    _mm_storeu_ps(result.data, value);
     return result;
     #else
     for (int i = 0; i < 4; i++)
