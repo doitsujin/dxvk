@@ -319,7 +319,7 @@ namespace dxvk {
       return std::exchange(m_transitionedToHazardLayout, true);
     }
 
-    D3DRESOURCETYPE GetType() {
+    D3DRESOURCETYPE GetType() const {
       return m_type;
     }
 
@@ -441,6 +441,20 @@ namespace dxvk {
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
+    inline static VkImageViewType GetImageViewTypeFromResourceType(
+            D3DRESOURCETYPE  Dimension,
+            UINT             Layer) {
+    switch (Dimension) {
+      case D3DRTYPE_SURFACE:
+      case D3DRTYPE_TEXTURE:       return VK_IMAGE_VIEW_TYPE_2D;
+      case D3DRTYPE_VOLUMETEXTURE: return VK_IMAGE_VIEW_TYPE_3D;
+      case D3DRTYPE_CUBETEXTURE:   return Layer == AllLayers
+                                        ? VK_IMAGE_VIEW_TYPE_CUBE
+                                        : VK_IMAGE_VIEW_TYPE_2D;
+      default: throw DxvkError("D3D9CommonTexture: Unhandled resource type");
+    }
+  }
+
      /**
      * \brief Tracks sequence number for a given subresource
      *
@@ -552,10 +566,6 @@ namespace dxvk {
             VkImageUsageFlags         Usage) const;
 
     void ExportImageInfo();
-
-    static VkImageViewType GetImageViewTypeFromResourceType(
-            D3DRESOURCETYPE  Dimension,
-            UINT             Layer);
 
   };
 

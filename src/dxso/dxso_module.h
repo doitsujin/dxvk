@@ -61,6 +61,8 @@ namespace dxvk {
 
     uint32_t maxDefinedConstant() { return m_maxDefinedConst; }
 
+    uint32_t textureTypes() { return m_textureTypes; }
+
   private:
 
     void runCompiler(
@@ -77,6 +79,7 @@ namespace dxvk {
     DxsoIsgn        m_isgn;
     uint32_t        m_usedSamplers;
     uint32_t        m_usedRTs;
+    uint32_t        m_textureTypes;
 
     DxsoShaderMetaInfo   m_meta;
     uint32_t             m_maxDefinedConst;
