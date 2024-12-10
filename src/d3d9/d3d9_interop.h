@@ -38,6 +38,23 @@ namespace dxvk {
             UINT*                 pExtensionCount,
       const char**                ppExtensions);
 
+    HRESULT STDMETHODCALLTYPE GetDeviceCreateInfo(
+            UINT                      Adapter,
+            D3D9VkDeviceCreateInfo**  ppCreateInfo);
+
+    void STDMETHODCALLTYPE FreeDeviceCreateInfo(
+            D3D9VkDeviceCreateInfo*   pCreateInfo);
+
+    HRESULT STDMETHODCALLTYPE ImportDevice(
+            UINT                        Adapter,
+            D3DDEVTYPE                  DeviceType,
+            HWND                        hFocusWindow,
+            DWORD                       BehaviorFlags,
+            D3DPRESENT_PARAMETERS*      pPresentationParameters,
+            D3DDISPLAYMODEEX*           pFullscreenDisplayMode,
+            D3D9VkDeviceImportInfo*     pInfo,
+            IDirect3DDevice9Ex**        ppReturnedDevice);
+
   private:
 
     D3D9InterfaceEx* m_interface;

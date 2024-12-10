@@ -71,16 +71,40 @@ namespace dxvk {
 
 
   /**
+   * \brief Device creation extension info
+   */
+  struct DxvkDeviceCreateExtInfo {
+    DxvkDeviceExtensions  deviceExtensions;
+    DxvkNameSet           extensionsEnabled;
+    DxvkNameList          extensionNameList;
+    bool                  enableCudaInterop;
+  };
+
+  /**
+   * \brief Device creation queue info
+   */
+  struct DxvkDeviceCreateQueueInfo {
+    DxvkAdapterQueueIndices               queueFamilies;
+    std::vector<VkDeviceQueueCreateInfo>  queueInfos;
+  };
+
+  /**
    * \brief Device import info
    */
   struct DxvkDeviceImportInfo {
-    VkDevice device;
-    VkQueue queue;
-    uint32_t queueFamily;
-    uint32_t extensionCount;
-    const char** extensionNames;
-    const VkPhysicalDeviceFeatures2* features;
-    DxvkQueueCallback queueCallback;
+    VkDevice                          device;
+    VkQueue                           queue;
+    uint32_t                          queueFamily;
+    uint32_t                          extensionCount;
+    const char**                      extensionNames;
+    const VkPhysicalDeviceFeatures2*  features;
+    DxvkQueueCallback                 queueCallback;
+
+    // Optional additional queues
+    VkQueue                           transferQueue       = VK_NULL_HANDLE;
+    uint32_t                          transferQueueFamily = VK_QUEUE_FAMILY_IGNORED;
+    VkQueue                           sparseQueue         = VK_NULL_HANDLE;
+    uint32_t                          sparseQueueFamily   = VK_QUEUE_FAMILY_IGNORED;
   };
 
   /**
@@ -213,11 +237,31 @@ namespace dxvk {
       const DxvkNameSet&        extensions);
     
     /**
+     * \brief Gets DXVK device creation info
+     * 
+     * Gets device creation info required for DXVK
+     * to function based on enabledFeatures
+     * 
+     * \param [in] instance Parent instance
+     * \param [out] info Device create info
+     * \param [in,out] enabledFeatures Device features
+     * \param [out] extInfo Device extension list
+     * \param [out] queueInfo Device queue list
+     * \returns true if succeeded
+     */
+    bool getDeviceCreateInfo(
+      const Rc<DxvkInstance>&           instance,
+            VkDeviceCreateInfo&         info,
+            DxvkDeviceFeatures&         enabledFeatures,
+            DxvkDeviceCreateExtInfo&    extInfo,
+            DxvkDeviceCreateQueueInfo&  queueInfo) const;
+
+    /**
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
      * \param [in] instance Parent instance
-     * \param [in] enabledFeatures Device features
+     * \param [in] requestedFeatures Device features
      * \returns Device handle
      */
     Rc<DxvkDevice> createDevice(
@@ -343,7 +387,7 @@ namespace dxvk {
             VkQueueFlags          flags) const;
     
     std::vector<DxvkExt*> getExtensionList(
-            DxvkDeviceExtensions&   devExtensions);
+            DxvkDeviceExtensions&   devExtensions) const;
 
     static void initFeatureChain(
             DxvkDeviceFeatures&   enabledFeatures,
