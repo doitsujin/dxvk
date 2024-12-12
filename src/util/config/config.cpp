@@ -1010,6 +1010,10 @@ namespace dxvk {
     { R"(\\APGame\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
+    /* Dark Sector - Crashes in places             */
+    { R"(\\DS\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
