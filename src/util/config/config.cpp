@@ -1007,10 +1007,6 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Alpha Protocol - Rids unwanted reflections  */
-    { R"(\\APGame\.exe$)", {{
-      { "d3d9.forceSamplerTypeSpecConstants", "True" },
-    }} },
     /* Dark Sector - Crashes in places             */
     { R"(\\DS\.exe$)", {{
       { "d3d9.textureMemory",                "0" },
