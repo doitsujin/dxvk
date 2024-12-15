@@ -1501,6 +1501,8 @@ namespace dxvk {
     }
 
     if (!confLine.empty()) {
+      ctx.active = true;
+
       // Inform the user that we parsing config from environment, might
       // help when debugging configuration issues
       Logger::info(str::format("Found config env: ", confLine));
