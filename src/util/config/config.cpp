@@ -455,6 +455,11 @@ namespace dxvk {
     { R"(\\x86_64\\Warcraft III\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* Earth Defense Force 5 */
+    { R"(\\EDF5\.exe$)", {{
+      { "dxgi.tearFree",                    "False" },
+      { "dxgi.syncInterval",                "1"     },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -652,11 +657,6 @@ namespace dxvk {
     /* Far Cry 1 has worse water rendering when it detects AMD GPUs */
     { R"(\\FarCry\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-    }} },
-    /* Earth Defense Force 5 */
-    { R"(\\EDF5\.exe$)", {{
-      { "dxgi.tearFree",                    "False" },
-      { "dxgi.syncInterval",                "1"     },
     }} },
     /* Sine Mora EX */
     { R"(\\SineMoraEX\.exe$)", {{
