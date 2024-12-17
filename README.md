@@ -9,30 +9,63 @@ The most recent development builds can be found [here](https://github.com/doitsu
 Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add `native` DLL overrides for `d3d8`, `d3d9`, `d3d10core`, `d3d11` and `dxgi` under the Libraries tab.
+In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows.
 
 In a default Wine prefix that would be as follows:
 ```
 export WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
-winecfg
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
 ```
 
 For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `system32` directory:
 ```
 export WINEPREFIX=/path/to/wineprefix
 cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
-winecfg
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
 ```
 
 Verify that your application uses DXVK instead of wined3d by enabling the HUD (see notes below).
 
-In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
-
 Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatically handle setup of dxvk on their own when enabled.
 
-#### DLL dependencies 
+### Uninstall
+In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run wineboot -u to restore the original DLL files.
+
+In a default Wine prefix that would be as follows:
+```
+export WINEPREFIX=/path/to/wineprefix
+rm -f $WINEPREFIX/drive_c/windows/{system32,syswow64}/d{3d8,3d9,3d10core,3d11,xgi}.dll
+wine wineboot -u
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
+```
+
+For a pure 32-bit Wine prefix (non default) that would be as follows:
+```
+export WINEPREFIX=/path/to/wineprefix
+rm -f $WINEPREFIX/drive_c/windows/system32/d{3d8,3d9,3d10core,3d11,xgi}.dll
+wine wineboot -u
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d8" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d9" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d10core" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "d3d11" /d native,builtin /f >/dev/null 2>&1
+wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "dxgi" /d native,builtin /f >/dev/null 2>&1
+```
+
+### DLL dependencies 
 Listed below are the DLL requirements for using DXVK with any single API.
 
 - d3d8: `d3d8.dll` and `d3d9.dll`
