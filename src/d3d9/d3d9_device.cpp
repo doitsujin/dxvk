@@ -3379,7 +3379,7 @@ namespace dxvk {
       m_vsShaderMasks = D3D9ShaderMasks();
 
       // Fixed function vertex shaders don't support sampling textures.
-      m_dirtyTextures = m_vsShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_dirtyTextures |= m_vsShaderMasks.samplerMask & m_mismatchingTextureTypes;
       m_mismatchingTextureTypes &= ~m_vsShaderMasks.samplerMask;
     }
 
@@ -3748,7 +3748,7 @@ namespace dxvk {
       newShaderMasks = FixedFunctionMask;
 
       // Fixed function always uses spec constants to decide the texture type.
-      m_dirtyTextures = newShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_dirtyTextures |= newShaderMasks.samplerMask & m_mismatchingTextureTypes;
       m_mismatchingTextureTypes &= ~newShaderMasks.samplerMask;
     }
 
@@ -6342,7 +6342,7 @@ namespace dxvk {
     if (unlikely(shader->GetInfo().majorVersion() < 2)) {
       // SM 1 shaders don't define the texture type in the shader.
       // We always use spec constants for those.
-      m_dirtyTextures = shaderSamplerMask & m_mismatchingTextureTypes;
+      m_dirtyTextures |= shaderSamplerMask & m_mismatchingTextureTypes;
       m_mismatchingTextureTypes &= ~shaderSamplerMask;
       return;
     }
