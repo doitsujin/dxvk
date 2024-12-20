@@ -30,6 +30,8 @@ namespace dxvk {
     SpecDrefClamp,          // 1 bit for 16 PS samplers       | Bits: 16
     SpecFetch4,             // 1 bit for 16 PS samplers       | Bits: 16
 
+    SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
+
     SpecConstantCount,
   };
 
@@ -44,7 +46,10 @@ namespace dxvk {
   };
 
   struct D3D9SpecializationInfo {
-    static constexpr uint32_t MaxSpecDwords = 5;
+    static constexpr uint32_t MaxSpecDwords = 6;
+
+    static constexpr uint32_t MaxUBODwords  = 5;
+    static constexpr size_t UBOSize = MaxUBODwords * sizeof(uint32_t);
 
     static constexpr std::array<BitfieldPosition, SpecConstantCount> Layout{{
       { 0, 0, 32 },  // SamplerType
@@ -65,6 +70,8 @@ namespace dxvk {
 
       { 4, 0,  16 }, // DrefClamp
       { 4, 16, 16 }, // Fetch4
+
+      { 5, 0, 3 },   // ClipPlaneCount
     }};
 
     template <D3D9SpecConstantId Id, typename T>
@@ -97,13 +104,13 @@ namespace dxvk {
       return get(module, specUbo, id, 0, 32);
     }
 
-    uint32_t get(SpirvModule &module, uint32_t specUbo, D3D9SpecConstantId id, uint32_t bitOffset, uint32_t bitCount) {
+    uint32_t get(SpirvModule &module, uint32_t specUbo, D3D9SpecConstantId id, uint32_t bitOffset, uint32_t bitCount, uint32_t uboOverride = 0) {
       const auto &layout = D3D9SpecializationInfo::Layout[id];
 
       uint32_t uintType = module.defIntType(32, 0);
       uint32_t optimized = getOptimizedBool(module);
 
-      uint32_t quickValue     = getSpecUBODword(module, specUbo, layout.dwordOffset);
+      uint32_t quickValue     = uboOverride ? uboOverride : getSpecUBODword(module, specUbo, layout.dwordOffset);
       uint32_t optimizedValue = getSpecConstDword(module, layout.dwordOffset);
 
       uint32_t val = module.opSelect(uintType, optimized, optimizedValue, quickValue);

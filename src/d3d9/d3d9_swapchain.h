@@ -171,8 +171,6 @@ namespace dxvk {
     uint32_t                  m_frameLatencyCap = 0;
 
     bool                      m_dirty    = true;
-    bool                      m_dialog   = false;
-    bool                      m_lastDialog = false;
 
     HWND                      m_window   = nullptr;
     HMONITOR                  m_monitor  = nullptr;
@@ -246,8 +244,6 @@ namespace dxvk {
     bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
 
     VkExtent2D GetPresentExtent();
-
-    VkFullScreenExclusiveEXT PickFullscreenMode();
 
     std::string GetApiName();
 

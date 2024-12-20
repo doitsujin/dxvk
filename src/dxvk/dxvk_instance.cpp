@@ -115,15 +115,14 @@ namespace dxvk {
 
   void DxvkInstance::createInstanceLoader(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     DxvkNameList layerList;
-    DxvkNameList extensionList;
     DxvkNameSet extensionSet;
 
     bool enablePerfEvents = false;
     bool enableValidation = false;
 
     if (args.instance) {
-      extensionList = DxvkNameList(args.extensionCount, args.extensionNames);
-      extensionSet = getExtensionSet(extensionList);
+      m_extensionNames = DxvkNameList(args.extensionCount, args.extensionNames);
+      extensionSet = getExtensionSet(m_extensionNames);
 
       auto extensionInfos = getExtensionList(m_extensions, true);
 
@@ -168,11 +167,11 @@ namespace dxvk {
         extensionSet.merge(provider->getInstanceExtensions());
 
       // Generate list of extensions to enable
-      extensionList = extensionSet.toNameList();
+      m_extensionNames = extensionSet.toNameList();
     }
 
     Logger::info("Enabled instance extensions:");
-    this->logNameList(extensionList);
+    this->logNameList(m_extensionNames);
 
     // If necessary, create a new Vulkan instance
     VkInstance instance = args.instance;
@@ -184,15 +183,15 @@ namespace dxvk {
       appInfo.pApplicationName      = appName.c_str();
       appInfo.applicationVersion    = flags.raw();
       appInfo.pEngineName           = "DXVK";
-      appInfo.engineVersion         = VK_MAKE_API_VERSION(0, 2, 5, 0);
+      appInfo.engineVersion         = VK_MAKE_API_VERSION(0, 2, 5, 2);
       appInfo.apiVersion            = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
       VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
       info.pApplicationInfo         = &appInfo;
       info.enabledLayerCount        = layerList.count();
       info.ppEnabledLayerNames      = layerList.names();
-      info.enabledExtensionCount    = extensionList.count();
-      info.ppEnabledExtensionNames  = extensionList.names();
+      info.enabledExtensionCount    = m_extensionNames.count();
+      info.ppEnabledExtensionNames  = m_extensionNames.names();
 
       VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &instance);
 

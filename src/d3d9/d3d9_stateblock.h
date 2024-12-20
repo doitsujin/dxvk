@@ -141,8 +141,6 @@ namespace dxvk {
             D3D9TextureStageStateTypes Type,
             DWORD                      Value);
 
-    HRESULT MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
-
     HRESULT SetViewport(const D3DVIEWPORT9* pViewport);
 
     HRESULT SetScissorRect(const RECT* pRect);
@@ -390,10 +388,6 @@ namespace dxvk {
     HRESULT SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits);
     HRESULT SetPixelBoolBitfield (uint32_t idx, uint32_t mask, uint32_t bits);
 
-    inline bool IsApplying() {
-      return m_applying;
-    }
-
   private:
 
     void CapturePixelRenderStates();
@@ -409,9 +403,7 @@ namespace dxvk {
     D3D9CapturableState  m_state;
     D3D9StateCaptures    m_captures;
 
-    D3D9DeviceState* m_deviceState;
-
-    bool                 m_applying = false;
+    D3D9DeviceState*     m_deviceState;
 
   };
 

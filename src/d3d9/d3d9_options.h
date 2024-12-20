@@ -103,9 +103,6 @@ namespace dxvk {
     /// Forced aspect ratio, disable other modes
     std::string forceAspectRatio;
 
-    /// Enable dialog mode (ie. no exclusive fullscreen)
-    bool enableDialogMode;
-
     /// Always use a spec constant to determine sampler type (instead of just in PS 1.x)
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;

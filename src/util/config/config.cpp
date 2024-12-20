@@ -38,6 +38,11 @@ namespace dxvk {
     { R"(\\P3R\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
     }} },
+    /* World of Warcraft                           *
+     * Bugs out on some multi-gpu systems.         */
+    { R"(\\Wow(Classic)?\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -443,7 +448,17 @@ namespace dxvk {
     /* GTA Definitive Edition trilogy             * 
      * Static ags crash with HDR support          */
     { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
-      { "dxgi.hideAmdGpu",                 "True" },
+      { "dxgi.enableUe4Workarounds",        "True" },
+    }} },
+    /* Warcraft 3 Reforged                         *
+     * Bugs out on some multi-gpu systems.         */
+    { R"(\\x86_64\\Warcraft III\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
+    }} },
+    /* Earth Defense Force 5 */
+    { R"(\\EDF5\.exe$)", {{
+      { "dxgi.tearFree",                    "False" },
+      { "dxgi.syncInterval",                "1"     },
     }} },
 
     /**********************************************/
@@ -459,14 +474,22 @@ namespace dxvk {
     { R"(\\anarchyonline\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
-    /* Borderlands 2 and The Pre Sequel!           */
-    { R"(\\Borderlands(2|PreSequel)\.exe$)", {{
-      { "d3d9.lenientClear",                "True" },
-      { "d3d9.supportDFFormats",            "False" },
-    }} },
     /* Borderlands                                */
     { R"(\\Borderlands\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
+    }} },
+    /* Borderlands 2                               *
+     * Missing lava in Vault of the Warrior        *
+     * without Strict floats                       */
+    { R"(\\Borderlands2\.exe$)", {{
+      { "d3d9.lenientClear",                "True" },
+      { "d3d9.supportDFFormats",            "False" },
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Borderlands: The Pre-Sequel                  */
+    { R"(\\BorderlandsPreSequel\.exe$)", {{
+      { "d3d9.lenientClear",                "True" },
+      { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Gothic 3                                   */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
@@ -482,7 +505,8 @@ namespace dxvk {
        The Sims Life Stories,
        The Sims Pet Stories,
        and The Sims Castaway Stories             */
-    { R"(\\(Sims2.*|TS2BodyShop|SimsLS|SimsPS|SimsCS)\.exe$)", {{
+    { R"(\\(Sims2.*|TS2BodyShop|SimsLS|SimsPS|SimsCS)"
+      R"(|The Sims 2 Content Manager|TS2HomeCrafterPlus)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "0091" },
       { "d3d9.customDeviceDesc",            "GeForce 7800 GTX" },
@@ -633,11 +657,6 @@ namespace dxvk {
     /* Far Cry 1 has worse water rendering when it detects AMD GPUs */
     { R"(\\FarCry\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-    }} },
-    /* Earth Defense Force 5 */
-    { R"(\\EDF5\.exe$)", {{
-      { "dxgi.tearFree",                    "False" },
-      { "dxgi.syncInterval",                "1"     },
     }} },
     /* Sine Mora EX */
     { R"(\\SineMoraEX\.exe$)", {{
@@ -809,8 +828,8 @@ namespace dxvk {
      * Main menu won't render after intros     *
      * and CPU bound performance               */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
-      { "d3d9.enableDialogMode",            "True"   },
-      { "d3d9.cachedDynamicBuffers",        "True"   },
+      { "d3d9.deferSurfaceCreation",        "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
@@ -988,9 +1007,9 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Alpha Protocol - Rids unwanted reflections  */
-    { R"(\\APGame\.exe$)", {{
-      { "d3d9.forceSamplerTypeSpecConstants", "True" },
+    /* Dark Sector - Crashes in places             */
+    { R"(\\DS\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
     }} },
 
     /**********************************************/
@@ -1000,11 +1019,6 @@ namespace dxvk {
     /* Duke Nukem Forever (2001)                  */
     { R"(\\DukeForever\.exe$)", {{
       { "d3d9.maxFrameRate",                "60"   },
-    }} },
-    /* Indiana Jones and the Emperor's Tomb      *
-     * Fixes intro window being stuck on screen  */
-    { R"(\\indy\.exe$)", {{
-      { "d3d9.enableDialogMode",            "True" },
     }} },
     /* Anito: Defend a Land Enraged              */
     { R"(\\Anito\.exe$)", {{
@@ -1042,7 +1056,6 @@ namespace dxvk {
     /* Need for Speed III: Hot Pursuit           *
        (with the "Modern Patch")                 */
     { R"(\\nfs3\.exe$)", {{
-      { "d3d9.enableDialogMode",            "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d8.batching",                    "True" },
     }} },
@@ -1051,7 +1064,6 @@ namespace dxvk {
        Won't actually render anything in game     *
        without a memory limit in place            */
     { R"(\\nfs4\.exe$)", {{
-      { "d3d9.enableDialogMode",            "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",           "256" },
@@ -1485,6 +1497,8 @@ namespace dxvk {
     }
 
     if (!confLine.empty()) {
+      ctx.active = true;
+
       // Inform the user that we parsing config from environment, might
       // help when debugging configuration issues
       Logger::info(str::format("Found config env: ", confLine));

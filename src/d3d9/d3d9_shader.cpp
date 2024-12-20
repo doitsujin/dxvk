@@ -57,6 +57,7 @@ namespace dxvk {
     m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
+    m_textureTypes = pModule->textureTypes();
 
     // Shift up these sampler bits so we can just
     // do an or per-draw in the device.

@@ -27,7 +27,6 @@ namespace dxvk {
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
-    , m_dialog           (pDevice->GetOptions()->enableDialogMode)
     , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
@@ -160,7 +159,6 @@ namespace dxvk {
 
     bool recreate = false;
     recreate   |= m_wctx->presenter == nullptr;
-    recreate   |= m_dialog != m_lastDialog;
     if (options->deferSurfaceCreation)
       recreate |= m_parent->IsDeviceReset();
 
@@ -171,8 +169,6 @@ namespace dxvk {
 
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
-
-    m_lastDialog = m_dialog;
 
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
@@ -775,15 +771,10 @@ namespace dxvk {
 
 
   HRESULT D3D9SwapChainEx::SetDialogBoxMode(bool bEnableDialogs) {
-    D3D9DeviceLock lock = m_parent->LockDevice();
-
     // https://docs.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-setdialogboxmode
     // The MSDN documentation says this will error out under many weird conditions.
     // However it doesn't appear to error at all in any of my tests of these
     // cases described in the documentation.
-
-    m_dialog = bEnableDialogs;
-
     return D3D_OK;
   }
 
@@ -952,7 +943,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
 
@@ -985,7 +975,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
   }
@@ -1403,13 +1392,6 @@ namespace dxvk {
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
     return m_swapchainExtent;
-  }
-
-
-  VkFullScreenExclusiveEXT D3D9SwapChainEx::PickFullscreenMode() {
-    return m_dialog
-      ? VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT
-      : VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
   }
 
 

@@ -935,14 +935,30 @@ namespace dxvk {
     // SetDepthStencilSurface is a separate call
     D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
 
-    if (likely(m_depthStencil != zStencil)) {
-      StateChange();
-      res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
+    // Depth stencil dimensions can not be lower than
+    // those of the currently set render target.
+    if (m_renderTarget != nullptr && zStencil != nullptr) {
+      D3DSURFACE_DESC rtDesc;
+      res = m_renderTarget->GetDesc(&rtDesc);
 
       if (unlikely(FAILED(res))) return res;
 
-      m_depthStencil = zStencil;
+      D3DSURFACE_DESC dsDesc;
+      res = zStencil->GetDesc(&dsDesc);
+
+      if (unlikely(FAILED(res))) return res;
+
+      if (unlikely(dsDesc.Width  < rtDesc.Width
+                || dsDesc.Height < rtDesc.Height))
+        return D3DERR_INVALIDCALL;
     }
+
+    StateChange();
+    res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
+
+    if (unlikely(FAILED(res))) return res;
+
+    m_depthStencil = zStencil;
 
     return D3D_OK;
   }
@@ -1282,7 +1298,7 @@ namespace dxvk {
           DWORD*                   pValue) {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
-    if (stateType != -1) {
+    if (stateType != -1u) {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->GetSamplerState(Stage, stateType, pValue);
     }
@@ -1298,7 +1314,7 @@ namespace dxvk {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
     StateChange();
-    if (stateType != -1) {
+    if (stateType != -1u) {
       // if the type has been remapped to a sampler state type:
       return GetD3D9()->SetSamplerState(Stage, stateType, Value);
     } else {
@@ -1680,16 +1696,29 @@ namespace dxvk {
     if (unlikely(pDeclaration == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Validate VS version for non-FF shaders
+    if (pFunction != nullptr) {
+      uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+      uint32_t minorVersion = pFunction[0] & 0xff;
+
+      if (unlikely(majorVersion != 1 || minorVersion > 1)) {
+        Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
+        return D3DERR_INVALIDCALL;
+      }
+    }
+
     D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
 
     // Store D3D8 bytecodes in the shader info
-    if (pDeclaration != nullptr)
-      for (UINT i = 0; pDeclaration[i+1] != D3DVSD_END(); i++)
-        info.declaration.push_back(pDeclaration[i]);
+    for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
+      info.declaration.push_back(pDeclaration[i]);
+    info.declaration.push_back(D3DVSD_END());
 
-    if (pFunction != nullptr)
-      for (UINT i = 0; pFunction[i+1] != D3DVS_END(); i++)
+    if (pFunction != nullptr) {
+      for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
         info.function.push_back(pFunction[i]);
+      info.function.push_back(D3DVS_END());
+    }
     
     D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
 
@@ -1829,6 +1858,9 @@ namespace dxvk {
 
       info->declaration.clear();
       info->function.clear();
+
+      if (m_currentVertexShader == Handle)
+        m_currentVertexShader = 0;
     }
 
     return D3D_OK;
@@ -1854,8 +1886,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     memcpy(pData, pInfo->declaration.data(), ActualSize);
@@ -1882,8 +1916,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     memcpy(pData, pInfo->function.data(), ActualSize);
@@ -1900,6 +1936,14 @@ namespace dxvk {
 
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
+
+    uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+    uint32_t minorVersion = pFunction[0] & 0xff;
+
+    if (unlikely(majorVersion != 1 || minorVersion > 4)) {
+      Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
+      return D3DERR_INVALIDCALL;
+    }
 
     d3d9::IDirect3DPixelShader9* pPixelShader;
     
@@ -1986,6 +2030,9 @@ namespace dxvk {
 
     m_pixelShaders[getShaderIndex(Handle)] = nullptr;
 
+    if (m_currentPixelShader == Handle)
+      m_currentPixelShader = 0;
+
     return D3D_OK;
   }
 
@@ -2010,8 +2057,10 @@ namespace dxvk {
 
     // D3D8-specific behavior
     if (SizeOfData < ActualSize) {
-      *pSizeOfData = ActualSize;
-      return D3DERR_MOREDATA;
+      // D3DERR_MOREDATA should be returned according to the D3D8 documentation,
+      // along with a correction to the ActualSize, however tests have shown that
+      // D3DERR_INVALIDCALL is returned and no size correction is performed.
+      return D3DERR_INVALIDCALL;
     }
 
     return pPixelShader->GetFunction(pData, &SizeOfData);

@@ -476,10 +476,15 @@ namespace dxvk {
     Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
-    HRESULT hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
+    HRESULT hr;
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects reset to work despite passing invalid parameters.
+    if (likely(m_deviceType != D3DDEVTYPE_NULLREF)) {
+      hr = m_parent->ValidatePresentationParameters(pPresentationParameters);
 
-    if (unlikely(FAILED(hr)))
-      return hr;
+      if (unlikely(FAILED(hr)))
+        return hr;
+    }
 
     if (!IsExtended()) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
@@ -509,7 +514,8 @@ namespace dxvk {
     if (unlikely(m_losableResourceCounter.load() != 0 && !IsExtended() && m_d3d9Options.countLosableResources)) {
       Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
-      return D3DERR_DEVICELOST;
+      // D3D8 returns D3DERR_DEVICELOST here, whereas D3D9 returns D3DERR_INVALIDCALL.
+      return m_isD3D8Compatible ? D3DERR_DEVICELOST : D3DERR_INVALIDCALL;
     }
 
     hr = ResetSwapChain(pPresentationParameters, nullptr);
@@ -1587,7 +1593,12 @@ namespace dxvk {
           IDirect3DSurface9* pRenderTarget) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely((pRenderTarget == nullptr && RenderTargetIndex == 0)))
+    if (unlikely(pRenderTarget == nullptr && RenderTargetIndex == 0))
+      return D3DERR_INVALIDCALL;
+
+    // We need to make sure the render target was created using this device.
+    D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
+    if (unlikely(rt != nullptr && rt->GetDevice() != this))
       return D3DERR_INVALIDCALL;
 
     return SetRenderTargetInternal(RenderTargetIndex, pRenderTarget);
@@ -1829,6 +1840,12 @@ namespace dxvk {
 
     D3D9DeviceLock lock = LockDevice();
 
+    // D3DCLEAR_ZBUFFER and D3DCLEAR_STENCIL are invalid flags
+    // if there is no currently bound DS (which can be the autoDS)
+    if (unlikely(m_state.depthStencil == nullptr
+            && (Flags & (D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL))))
+      return D3DERR_INVALIDCALL;
+
     const auto& vp = m_state.viewport;
     const auto& sc = m_state.scissorRect;
 
@@ -2015,10 +2032,6 @@ namespace dxvk {
 
     const uint32_t idx = GetTransformIndex(TransformState);
 
-    // D3D8 state blocks ignore capturing calls to MultiplyTransform().
-    if (unlikely(!m_isD3D8Compatible && ShouldRecord()))
-      return m_recorder->MultiplyStateTransform(idx, pMatrix);
-
     m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
 
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
@@ -2181,8 +2194,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipPlane(DWORD Index, const float* pPlane) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
+    if (unlikely(!pPlane))
       return D3DERR_INVALIDCALL;
+
+    // Higher indexes will be capped to the last valid index
+    if (unlikely(Index >= caps::MaxClipPlanes))
+      Index = caps::MaxClipPlanes - 1;
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetClipPlane(Index, pPlane);
@@ -2207,8 +2224,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipPlane(DWORD Index, float* pPlane) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
+    if (unlikely(!pPlane))
       return D3DERR_INVALIDCALL;
+
+    // Higher indexes will be capped to the last valid index
+    if (unlikely(Index >= caps::MaxClipPlanes))
+      Index = caps::MaxClipPlanes - 1;
 
     for (uint32_t i = 0; i < 4; i++)
       pPlane[i] = m_state.clipPlanes[Index].coeff[i];
@@ -2576,6 +2597,10 @@ namespace dxvk {
           IDirect3DStateBlock9** ppSB) {
     D3D9DeviceLock lock = LockDevice();
 
+    // A state block can not be created while another is being recorded.
+    if (unlikely(ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     InitReturnPtr(ppSB);
 
     if (unlikely(ppSB == nullptr))
@@ -2599,7 +2624,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::BeginStateBlock() {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(m_recorder != nullptr))
+    // Only one state block can be recorded at a given time.
+    if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
     m_recorder = new D3D9StateBlock(this, D3D9StateBlockType::None);
@@ -2611,10 +2637,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndStateBlock(IDirect3DStateBlock9** ppSB) {
     D3D9DeviceLock lock = LockDevice();
 
-    InitReturnPtr(ppSB);
-
-    if (unlikely(ppSB == nullptr || m_recorder == nullptr))
+    // Recording a state block can't end if recording hasn't been started.
+    if (unlikely(ppSB == nullptr || !ShouldRecord()))
       return D3DERR_INVALIDCALL;
+
+    InitReturnPtr(ppSB);
 
     *ppSB = m_recorder.ref();
     if (!m_isD3D8Compatible)
@@ -3345,9 +3372,16 @@ namespace dxvk {
 
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
       m_vsShaderMasks = newShader->GetShaderMask();
+
+      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, caps::MaxTexturesPS + 1);
     }
-    else
+    else {
       m_vsShaderMasks = D3D9ShaderMasks();
+
+      // Fixed function vertex shaders don't support sampling textures.
+      m_dirtyTextures = m_vsShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~m_vsShaderMasks.samplerMask;
+    }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -3703,6 +3737,8 @@ namespace dxvk {
 
       BindShader<DxsoProgramTypes::PixelShader>(newShader);
       newShaderMasks = newShader->GetShaderMask();
+
+      UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
     }
     else {
       // TODO: What fixed function textures are in use?
@@ -3710,6 +3746,10 @@ namespace dxvk {
 
       // The RT output is always 0 for fixed function.
       newShaderMasks = FixedFunctionMask;
+
+      // Fixed function always uses spec constants to decide the texture type.
+      m_dirtyTextures = newShaderMasks.samplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~newShaderMasks.samplerMask;
     }
 
     // If we have any RTs we would have bound to the the FB
@@ -4060,7 +4100,7 @@ namespace dxvk {
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = Lockable;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -4108,7 +4148,7 @@ namespace dxvk {
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
     if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
@@ -4162,7 +4202,7 @@ namespace dxvk {
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -4314,12 +4354,12 @@ namespace dxvk {
       const uint32_t textureType = newTexture != nullptr
         ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
         : 0;
-      // There are 4 texture types, so we need 2 bits.
+      // There are 3 texture types, so we need 2 bits.
       const uint32_t offset = StateSampler * 2;
       const uint32_t textureBitMask = 0b11u       << offset;
       const uint32_t textureBits    = textureType << offset;
 
-      // In fixed function shaders and SM < 3 we put the type mask
+      // In fixed function shaders and SM < 2 we put the type mask
       // into a spec constant to select the used sampler type.
       m_textureTypes &= ~textureBitMask;
       m_textureTypes |=  textureBits;
@@ -4616,20 +4656,17 @@ namespace dxvk {
   }
 
 
-  inline bool D3D9DeviceEx::ShouldRecord() {
-    return m_recorder != nullptr && !m_recorder->IsApplying();
-  }
-
-
   D3D9_VK_FORMAT_MAPPING D3D9DeviceEx::LookupFormat(
     D3D9Format            Format) const {
     return m_adapter->GetFormatMapping(Format);
   }
 
+
   const DxvkFormatInfo* D3D9DeviceEx::UnsupportedFormatInfo(
     D3D9Format            Format) const {
     return m_adapter->GetUnsupportedFormatInfo(Format);
   }
+
 
   bool D3D9DeviceEx::WaitForResource(
     const DxvkPagedResource&                Resource,
@@ -4975,9 +5012,13 @@ namespace dxvk {
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
-    // We weren't locked anyway!
-    if (unlikely(!pResource->GetLocked(Subresource)))
-      return D3D_OK;
+    // Don't allow multiple unlockings, except for D3DRTYPE_TEXTURE
+    if (unlikely(!pResource->GetLocked(Subresource))) {
+      if (pResource->GetType() == D3DRTYPE_TEXTURE)
+        return D3D_OK;
+      else
+        return D3DERR_INVALIDCALL;
+    }
 
     MapTexture(pResource, Subresource); // Add it to the list of mapped resources
     pResource->SetLocked(Subresource, false);
@@ -5761,7 +5802,7 @@ namespace dxvk {
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         getSpecConstantBufferSlot(),
-        sizeof(D3D9SpecializationInfo));
+        D3D9SpecializationInfo::UBOSize);
     }
   }
 
@@ -5911,11 +5952,22 @@ namespace dxvk {
     auto mapPtr = m_vsClipPlanes.AllocSlice();
     auto dst = reinterpret_cast<D3D9ClipPlane*>(mapPtr);
 
+    uint32_t clipPlaneCount = 0u;
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
-      dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
+      D3D9ClipPlane clipPlane = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
         ? m_state.clipPlanes[i]
         : D3D9ClipPlane();
+
+      if (clipPlane != D3D9ClipPlane())
+        dst[clipPlaneCount++] = clipPlane;
     }
+
+    // Write the rest to 0 for GPL.
+    for (uint32_t i = clipPlaneCount; i < caps::MaxClipPlanes; i++)
+      dst[i] = D3D9ClipPlane();
+
+    if (m_specInfo.set<SpecClipPlaneCount>(clipPlaneCount))
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
   }
 
 
@@ -6084,11 +6136,12 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateTextureBitmasks(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
-    m_activeTextureRTs       &= ~bit;
-    m_activeTextureDSs       &= ~bit;
-    m_activeTextures         &= ~bit;
-    m_activeTexturesToUpload &= ~bit;
-    m_activeTexturesToGen    &= ~bit;
+    m_activeTextureRTs        &= ~bit;
+    m_activeTextureDSs        &= ~bit;
+    m_activeTextures          &= ~bit;
+    m_activeTexturesToUpload  &= ~bit;
+    m_activeTexturesToGen     &= ~bit;
+    m_mismatchingTextureTypes &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
     if (tex != nullptr) {
@@ -6129,6 +6182,8 @@ namespace dxvk {
 
       if (unlikely(m_fetch4Enabled & bit))
         UpdateActiveFetch4(index);
+
+      UpdateTextureTypeMismatchesForTexture(index);
     } else {
       if (unlikely(m_fetch4 & bit))
         UpdateActiveFetch4(index);
@@ -6280,6 +6335,66 @@ namespace dxvk {
       UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]));
 
     m_activeTexturesToUpload &= ~mask;
+  }
+
+
+  void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
+    if (unlikely(shader->GetInfo().majorVersion() < 2)) {
+      // SM 1 shaders don't define the texture type in the shader.
+      // We always use spec constants for those.
+      m_dirtyTextures = shaderSamplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~shaderSamplerMask;
+      return;
+    }
+
+    for (uint32_t i : bit::BitMask(shaderSamplerMask)) {
+      const D3D9CommonTexture* texture = GetCommonTexture(m_state.textures[i]);
+      if (unlikely(texture == nullptr)) {
+        // Unbound textures are not mismatching texture types
+        m_dirtyTextures |= m_mismatchingTextureTypes & (1 << i);
+        m_mismatchingTextureTypes &= ~(1 << i);
+        continue;
+      }
+
+      VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(texture->GetType(), D3D9CommonTexture::AllLayers);
+      VkImageViewType shaderViewType = shader->GetImageViewType(i - shaderSamplerOffset);
+      if (unlikely(boundViewType != shaderViewType)) {
+        m_dirtyTextures |= 1 << i;
+        m_mismatchingTextureTypes |= 1 << i;
+      } else {
+        // The texture type is no longer mismatching, make sure we bind the texture now.
+        m_dirtyTextures |= m_mismatchingTextureTypes & (1 << i);
+        m_mismatchingTextureTypes &= ~(1 << i);
+      }
+    }
+  }
+
+
+  void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
+    uint32_t shaderTextureIndex;
+    const D3D9CommonShader* shader;
+    if (unlikely(stateSampler > caps::MaxTexturesPS + 1)) {
+      shader = GetCommonShader(m_state.vertexShader);
+      shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
+    } else {
+      shader = GetCommonShader(m_state.pixelShader);
+      shaderTextureIndex = stateSampler;
+    }
+
+    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2)) {
+      return;
+    }
+
+    const D3D9CommonTexture* tex = GetCommonTexture(m_state.textures[stateSampler]);
+    VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(tex->GetType(), D3D9CommonTexture::AllLayers);
+    VkImageViewType shaderViewType = shader->GetImageViewType(shaderTextureIndex);
+    // D3D9 does not have 1D textures. The value of VIEW_TYPE_1D is 0
+    // which is the default when there is no declaration for the type.
+    bool shaderUsesTexture = shaderViewType != VkImageViewType(0);
+    if (unlikely(boundViewType != shaderViewType && shaderUsesTexture)) {
+      const uint32_t samplerBit = 1u << stateSampler;
+      m_mismatchingTextureTypes |= 1 << samplerBit;
+    }
   }
 
 
@@ -6571,12 +6686,7 @@ namespace dxvk {
     const D3DVIEWPORT9& vp = m_state.viewport;
 
     // Correctness Factor for 1/2 texel offset
-    // We need to bias this slightly to make
-    // imprecision in games happy.
-    // Originally we did this only for powers of two
-    // resolutions but since NEAREST filtering fixed to
-    // truncate, we need to do this all the time now.
-    constexpr float cf = 0.5f - (1.0f / 128.0f);
+    constexpr float cf = 0.5f;
 
     // How much to bias MinZ by to avoid a depth
     // degenerate viewport.
@@ -7022,8 +7132,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtyTextures(uint32_t usedMask) {
-    const uint32_t activeMask   = usedMask &  m_activeTextures;
-    const uint32_t inactiveMask = usedMask & ~m_activeTextures;
+    const uint32_t activeMask   = usedMask &  (m_activeTextures & ~m_mismatchingTextureTypes);
+    const uint32_t inactiveMask = usedMask & (~m_activeTextures | m_mismatchingTextureTypes);
 
     for (uint32_t i : bit::BitMask(activeMask))
       BindTexture(i);
@@ -8309,12 +8419,12 @@ namespace dxvk {
       "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n",
       "    - Swap effect:        ", pPresentationParameters->SwapEffect, "\n"));
 
-    // Black Desert creates a device with a NULL hDeviceWindow and
-    // seemingly expects this validation to not prevent a swapchain reset.
-    if (pPresentationParameters->hDeviceWindow != nullptr &&
-       !pPresentationParameters->Windowed &&
-       (pPresentationParameters->BackBufferWidth  == 0
-     || pPresentationParameters->BackBufferHeight == 0)) {
+    // Black Desert creates a D3DDEVTYPE_NULLREF device and
+    // expects this validation to not prevent a swapchain reset.
+    if (likely(m_deviceType != D3DDEVTYPE_NULLREF) &&
+        unlikely(!pPresentationParameters->Windowed &&
+                 (pPresentationParameters->BackBufferWidth  == 0
+               || pPresentationParameters->BackBufferHeight == 0))) {
       return D3DERR_INVALIDCALL;
     }
 
@@ -8353,7 +8463,7 @@ namespace dxvk {
       desc.IsAttachmentOnly   = TRUE;
       desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
-      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
+      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
         return D3DERR_NOTAVAILABLE;
 
       m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr, nullptr);
@@ -8572,8 +8682,7 @@ namespace dxvk {
     if (m_usingGraphicsPipelines) {
       // TODO: Make uploading specialization information less naive.
       auto mapPtr = m_specBuffer.AllocSlice();
-      auto dst = reinterpret_cast<D3D9SpecializationInfo*>(mapPtr);
-      *dst = m_specInfo;
+      memcpy(mapPtr, m_specInfo.data.data(), D3D9SpecializationInfo::UBOSize);
     }
 
     m_flags.clr(D3D9DeviceFlag::DirtySpecializationEntries);

@@ -46,6 +46,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Capture() {
+    // A state block can't capture state while another is being recorded.
+    if (unlikely(m_parent->ShouldRecord()))
+      return D3DERR_INVALIDCALL;
+
     if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
       SetVertexDeclaration(m_deviceState->vertexDecl.ptr());
 
@@ -56,13 +60,14 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Apply() {
-    m_applying = true;
+    // A state block can't be applied while another is being recorded.
+    if (unlikely(m_parent->ShouldRecord()))
+      return D3DERR_INVALIDCALL;
 
     if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl) && m_state.vertexDecl != nullptr)
       m_parent->SetVertexDeclaration(m_state.vertexDecl.ptr());
 
     ApplyOrCapture<D3D9StateFunction::Apply, false>();
-    m_applying = false;
 
     return D3D_OK;
   }
@@ -239,15 +244,6 @@ namespace dxvk {
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
     m_captures.textureStages.set(Stage, true);
     m_captures.textureStageStates[Stage].set(Type, true);
-    return D3D_OK;
-  }
-
-
-  HRESULT D3D9StateBlock::MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
-    m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
-
-    m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
-    m_captures.transforms.set(idx, true);
     return D3D_OK;
   }
 

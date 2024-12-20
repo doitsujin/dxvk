@@ -248,6 +248,7 @@ namespace dxvk {
     uint32_t usedSamplers() const { return m_usedSamplers; }
     uint32_t usedRTs() const { return m_usedRTs; }
     uint32_t maxDefinedConstant() const { return m_maxDefinedConstant; }
+    uint32_t textureTypes() const { return m_textureTypes; }
 
   private:
 
@@ -357,6 +358,8 @@ namespace dxvk {
     // and render targets for hazard tracking
     uint32_t m_usedSamplers;
     uint32_t m_usedRTs;
+
+    uint32_t m_textureTypes;
 
     uint32_t m_specUbo = 0;
 
