@@ -153,6 +153,9 @@ namespace dxvk {
     /// can negatively affect performance.
     bool reproducibleCommandStream;
 
+    // Validate input register index for PS 3.0 in D3D9ShaderValidator
+    bool validateInputRegisterIndex;
+
     /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
     int32_t drefScaling;
   };

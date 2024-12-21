@@ -1021,6 +1021,11 @@ namespace dxvk {
     { R"(\\(AH3LM|AALib)\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* The Void - Crashes in several locations     *
+     * without input register index validations    */
+    { R"(\\The Void\\bin\\win32\\Game\.exe$)", {{
+      { "d3d9.validateInputRegisterIndex",  "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */

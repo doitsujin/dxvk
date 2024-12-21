@@ -77,7 +77,7 @@ namespace dxvk {
     }*/
 
     // a maximum of 10 inputs are supported with PS 3.0 (validation required by The Void)
-    if (m_isPixelShader && m_majorVersion == 3) {
+    if (s_validateInputRegisterIndex && m_isPixelShader && m_majorVersion == 3) {
       switch (instContext.instruction.opcode) {
         case DxsoOpcode::Comment:
         case DxsoOpcode::Def:
@@ -193,13 +193,16 @@ namespace dxvk {
     if (m_callback)
         m_callback(pFile, Line, Unknown, MessageID, Message.c_str(), m_userData);
 
-    // TODO: Consider switching this to debug, once we're
-    // confident the implementation doesn't cause any issues
     Logger::warn(Message);
 
     m_state = D3D9ShaderValidatorState::Error;
 
     return E_FAIL;
   }
+
+
+  // s_validateInputRegisterIndex will be parsed and set appropriately based
+  // on config options whenever a D3D9InterfaceEx type object is created
+  bool D3D9ShaderValidator::s_validateInputRegisterIndex = false;
 
 }

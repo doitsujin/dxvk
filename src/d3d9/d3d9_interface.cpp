@@ -4,6 +4,7 @@
 #include "d3d9_caps.h"
 #include "d3d9_device.h"
 #include "d3d9_bridge.h"
+#include "d3d9_shader_validator.h"
 
 #include "../util/util_singleton.h"
 
@@ -67,6 +68,8 @@ namespace dxvk {
       SetProcessDPIAware();
     }
 #endif
+
+    D3D9ShaderValidator::SetValidateInputRegisterIndex(m_d3d9Options.validateInputRegisterIndex);
   }
 
 

@@ -76,6 +76,10 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE End();
 
+    static void SetValidateInputRegisterIndex (bool value) {
+      s_validateInputRegisterIndex = value;
+    }
+
   private:
 
     HRESULT ValidateHeader(const char* pFile, UINT Line, const DWORD* pdwInst, DWORD cdw);
@@ -88,6 +92,8 @@ namespace dxvk {
               DWORD                      Unknown,
               D3D9ShaderValidatorMessage MessageID,
         const std::string&               Message);
+
+    static bool                 s_validateInputRegisterIndex;
 
     bool                        m_isPixelShader = false;
     uint32_t                    m_majorVersion  = 0;
