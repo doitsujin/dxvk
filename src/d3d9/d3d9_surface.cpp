@@ -124,17 +124,19 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3DBOX box;
+    auto& desc = *(m_texture->Desc());
     D3DRESOURCETYPE type = m_texture->GetType();
 
-    if (m_texture->Device()->IsD3D8Compatible() && type != D3DRTYPE_TEXTURE) {
-      // D3D8 LockRect clears any existing content present in
-      // pLockedRect for anything beside D3DRTYPE_TEXTURE surfaces
+    // LockRect clears any existing content present in pLockedRect,
+    // for surfaces in D3DPOOL_DEFAULT. D3D8 additionally clears the content
+    // for non-D3DPOOL_DEFAULT surfaces if their type is not D3DRTYPE_TEXTURE.
+    if (desc.Pool == D3DPOOL_DEFAULT
+     || (m_texture->Device()->IsD3D8Compatible() && type != D3DRTYPE_TEXTURE)) {
       pLockedRect->pBits = nullptr;
       pLockedRect->Pitch = 0;
     }
 
     if (unlikely(pRect != nullptr)) {
-      auto& desc = *(m_texture->Desc());
       D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(desc.Format);
 
       bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;

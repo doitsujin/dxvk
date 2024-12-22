@@ -102,12 +102,10 @@ namespace dxvk {
     if (unlikely(pLockedBox == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (m_texture->Device()->IsD3D8Compatible()) {
-      // D3D8 LockBox clears any existing content present in pLockedBox
-      pLockedBox->pBits = nullptr;
-      pLockedBox->RowPitch = 0;
-      pLockedBox->SlicePitch = 0;
-    }
+    // LockBox clears any existing content present in pLockedBox
+    pLockedBox->pBits = nullptr;
+    pLockedBox->RowPitch = 0;
+    pLockedBox->SlicePitch = 0;
 
     if (unlikely(pBox != nullptr)) {
       auto& desc = *(m_texture->Desc());
