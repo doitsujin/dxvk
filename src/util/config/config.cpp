@@ -1011,6 +1011,11 @@ namespace dxvk {
     { R"(\\DS\.exe$)", {{
       { "d3d9.textureMemory",                "0" },
     }} },
+    /* The Void - Crashes in several locations     *
+     * without shader input count validations      */
+    { R"(\\The Void\\bin\\win32\\Game\.exe$)", {{
+      { "d3d9.validateShaderInputCount",    "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
