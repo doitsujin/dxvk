@@ -455,10 +455,15 @@ namespace dxvk {
     { R"(\\x86_64\\Warcraft III\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
-    /* Earth Defense Force 5 */
+    /* Earth Defense Force 5                       */
     { R"(\\EDF5\.exe$)", {{
       { "dxgi.tearFree",                    "False" },
       { "dxgi.syncInterval",                "1"     },
+    }} },
+    /* The Hurricane of the Varstray               *
+     * Too fast above 60fps                        */
+    { R"(\\Varstray_steam(_demo)?\.exe$)", {{
+      { "dxgi.maxFrameRate",                "60" },
     }} },
 
     /**********************************************/
