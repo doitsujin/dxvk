@@ -1011,14 +1011,9 @@ namespace dxvk {
     { R"(\\DS\.exe$)", {{
       { "d3d9.textureMemory",                "0" },
     }} },
-    /* Arcana Heart 3 Love Max!!!!!                *
+    /* Arcana Heart 3 Love Max + Xtend version     *
      * Game speed is too fast above 60 fps         */
-    { R"(\\AH3LM\.exe$)", {{
-      { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Arcana Heart 3 Love Max Six Stars!!!!!! Xtend *
-     * Game speed is too fast above 60 fps (window)  */
-    { R"(\\AALib\.exe$)", {{
+    { R"(\\(AH3LM|AALib)\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
 
