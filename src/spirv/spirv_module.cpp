@@ -3892,15 +3892,15 @@ namespace dxvk {
       
       if (op.flags & spv::ImageOperandsLodMask)
         m_code.putWord(op.sLod);
-      
-      if (op.flags & spv::ImageOperandsConstOffsetMask)
-        m_code.putWord(op.sConstOffset);
-      
+
       if (op.flags & spv::ImageOperandsGradMask) {
         m_code.putWord(op.sGradX);
         m_code.putWord(op.sGradY);
       }
-      
+
+      if (op.flags & spv::ImageOperandsConstOffsetMask)
+        m_code.putWord(op.sConstOffset);
+
       if (op.flags & spv::ImageOperandsOffsetMask)
         m_code.putWord(op.gOffset);
       
