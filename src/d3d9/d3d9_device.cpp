@@ -6339,7 +6339,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
-    if (unlikely(shader->GetInfo().majorVersion() < 2)) {
+    if (unlikely(shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
       // SM 1 shaders don't define the texture type in the shader.
       // We always use spec constants for those.
       m_dirtyTextures |= shaderSamplerMask & m_mismatchingTextureTypes;
@@ -6381,7 +6381,9 @@ namespace dxvk {
       shaderTextureIndex = stateSampler;
     }
 
-    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2)) {
+    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
+      // This function only gets called by UpdateTextureBitmasks
+      // which clears the dirty and mismatching bits for the texture before anyway.
       return;
     }
 
