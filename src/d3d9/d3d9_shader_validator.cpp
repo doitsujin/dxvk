@@ -93,12 +93,11 @@ namespace dxvk {
             DWORD regIndex = pdwInst[instNum] & D3DSP_REGNUM_MASK;
 
             if (unlikely(regType == static_cast<DWORD>(DxsoRegisterType::Input) && regIndex >= 10)) {
-              Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: Found register index ", regIndex));
               return ErrorCallback(pFile, Line, 0x2, pdwInst, cdw,
                 instContext.instruction.opcode == DxsoOpcode::Dcl ?
                   D3D9ShaderValidatorMessage::BadInputRegisterDeclaration :
                   D3D9ShaderValidatorMessage::BadInputRegister,
-                "IDirect3DShaderValidator9::Instruction: Invalid number of PS input registers specified. Aborting validation.");
+                str::format("IDirect3DShaderValidator9::Instruction: PS input registers index #", regIndex, " not valid for operand ", instNum, "."));
             }
           }
       }
