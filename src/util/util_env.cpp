@@ -35,6 +35,13 @@ namespace dxvk::env {
 #endif
   }
 
+  void setEnvVar(const char* name, const char* value) {
+#ifdef _WIN32
+      ::SetEnvironmentVariableA(name, value);
+#else
+      std::setenv(name, value);
+#endif
+  }
 
   size_t matchFileExtension(const std::string& name, const char* ext) {
     auto pos = name.find_last_of('.');
