@@ -181,4 +181,20 @@ namespace dxvk {
 
     return sharedHandle;
   }
+
+  void DxvkFence::setDebugName(
+      const char* name) {
+      if (!m_vkd->vkSetDebugUtilsObjectNameEXT)
+          return;
+
+      VkDebugUtilsObjectNameInfoEXT nameInfo{};
+      nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+      nameInfo.pNext = nullptr;
+      nameInfo.objectType = VK_OBJECT_TYPE_FENCE;
+      nameInfo.objectHandle = (uint64_t)m_semaphore;
+      nameInfo.pObjectName = name;
+
+      m_vkd->vkSetDebugUtilsObjectNameEXT(m_vkd->device(), &nameInfo);
+  }
+
 }

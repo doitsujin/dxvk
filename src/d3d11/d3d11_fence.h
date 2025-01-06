@@ -40,7 +40,12 @@ namespace dxvk {
     }
     
   private:
-    
+
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_fence)
+        m_fence->setDebugName(name);
+    }
+
     Rc<DxvkFence> m_fence;
     D3D11_FENCE_FLAG m_flags;
 

@@ -78,6 +78,15 @@ namespace dxvk {
 
   private:
     
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_bufferView)
+        m_bufferView->setDebugName(name);
+      if (m_imageView)
+        m_imageView->setDebugName(name);
+      if (m_counterView)
+        m_counterView->setDebugName(name);
+    }
+
     ID3D11Resource*                   m_resource;
     D3D11_UNORDERED_ACCESS_VIEW_DESC1 m_desc;
     D3D11_VK_VIEW_INFO                m_info;

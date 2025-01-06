@@ -263,6 +263,13 @@ namespace dxvk {
         view->imageSubresources());
     }
 
+    /**
+     * \brief Sets debug name for this resources when markers are enabled
+     *
+     * \params[in] name Name of the resource to set
+     */
+    void setDebugName(const char* name);
+
   private:
 
     DxvkImage*              m_image     = nullptr;
@@ -600,6 +607,13 @@ namespace dxvk {
      */
     bool isInitialized(
       const VkImageSubresourceRange& subresources) const;
+
+    /**
+     * \brief Sets debug name for this resources when markers are enabled
+     *
+     * \params[in] name Name of the resource to set
+     */
+    void setDebugName(const char* name);
 
   private:
 

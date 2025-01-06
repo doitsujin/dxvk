@@ -91,6 +91,11 @@ namespace dxvk {
     
   private:
     
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_view)
+        m_view->setDebugName(name);
+    }
+
     ID3D11Resource*                   m_resource;
     D3D11_DEPTH_STENCIL_VIEW_DESC     m_desc;
     D3D11_VK_VIEW_INFO                m_info;

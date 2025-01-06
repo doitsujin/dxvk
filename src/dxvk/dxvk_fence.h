@@ -97,6 +97,13 @@ namespace dxvk {
     */
     void wait(uint64_t value);
 
+    /**
+     * \brief Sets debug name for this resources when markers are enabled
+     *
+     * \params[in] name Name of the resource to set
+     */
+    void setDebugName(const char* name);
+
   private:
 
     struct QueueItem {

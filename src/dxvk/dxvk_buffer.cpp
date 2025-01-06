@@ -99,5 +99,37 @@ namespace dxvk {
 
     return m_allocator->createBufferResource(info, allocationInfo, nullptr);
   }
-  
+
+
+  void DxvkBuffer::setDebugName(
+      const char* name) {
+      if (!m_vkd->vkSetDebugUtilsObjectNameEXT)
+          return;
+
+      VkDebugUtilsObjectNameInfoEXT nameInfo{};
+      nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+      nameInfo.pNext = nullptr;
+      nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+      nameInfo.objectHandle = (uint64_t)storage()->getBufferInfo().buffer;
+      nameInfo.pObjectName = name;
+
+      m_vkd->vkSetDebugUtilsObjectNameEXT(m_vkd->device(), &nameInfo);
+  }
+
+
+  void DxvkBufferView::setDebugName(
+      const char* name) {
+      if (!m_buffer->m_vkd->vkSetDebugUtilsObjectNameEXT)
+          return;
+
+      VkDebugUtilsObjectNameInfoEXT nameInfo{};
+      nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+      nameInfo.pNext = nullptr;
+      nameInfo.objectType = VK_OBJECT_TYPE_BUFFER_VIEW;
+      nameInfo.objectHandle = (uint64_t)handle();
+      nameInfo.pObjectName = name;
+
+      m_buffer->m_vkd->vkSetDebugUtilsObjectNameEXT(m_buffer->m_vkd->device(), &nameInfo);
+  }
+
 }

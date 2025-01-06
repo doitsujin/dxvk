@@ -132,6 +132,13 @@ namespace dxvk {
       return lookupFormatInfo(m_key.format);
     }
 
+    /**
+     * \brief Sets debug name for this resources when markers are enabled
+     *
+     * \params[in] name Name of the resource to set
+     */
+    void setDebugName(const char* name);
+
   private:
 
     DxvkBuffer*       m_buffer  = nullptr;
@@ -405,6 +412,13 @@ namespace dxvk {
      */
     Rc<DxvkResourceAllocation> relocateStorage(
             DxvkAllocationModes         mode);
+
+    /**
+     * \brief Sets debug name for this resources when markers are enabled
+     *
+     * \params[in] name Name of the resource to set
+     */
+    void setDebugName(const char* name);
 
   private:
 

@@ -769,6 +769,11 @@ namespace dxvk {
     
   private:
     
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_texture.GetImage())
+        m_texture.GetImage()->setDebugName(name);
+    }
+
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
     D3D11DXGISurface      m_surface;
@@ -834,6 +839,11 @@ namespace dxvk {
     }
 
   private:
+
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_texture.GetImage())
+        m_texture.GetImage()->setDebugName(name);
+    }
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
@@ -884,6 +894,11 @@ namespace dxvk {
     }
 
   private:
+
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_texture.GetImage())
+        m_texture.GetImage()->setDebugName(name);
+    }
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;

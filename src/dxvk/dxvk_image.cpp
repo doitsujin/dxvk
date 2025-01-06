@@ -283,6 +283,22 @@ namespace dxvk {
   }
 
 
+  void DxvkImage::setDebugName(
+    const char* name) {
+    if (!m_vkd->vkSetDebugUtilsObjectNameEXT)
+        return;
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo{};
+    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    nameInfo.pNext = nullptr;
+    nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+    nameInfo.objectHandle = (uint64_t)storage()->getImageInfo().image;
+    nameInfo.pObjectName = name;
+
+    m_vkd->vkSetDebugUtilsObjectNameEXT(m_vkd->device(), &nameInfo);
+  }
+
+
   VkImageCreateInfo DxvkImage::getImageCreateInfo(
     const DxvkImageUsageInfo&         usageInfo) const {
     VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
@@ -452,5 +468,20 @@ namespace dxvk {
 
     m_version = m_image->m_version;
   }
-  
+
+  void DxvkImageView::setDebugName(
+      const char* name) {
+      if (!m_image->m_vkd->vkSetDebugUtilsObjectNameEXT)
+          return;
+
+      VkDebugUtilsObjectNameInfoEXT nameInfo{};
+      nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+      nameInfo.pNext = nullptr;
+      nameInfo.objectType = VK_OBJECT_TYPE_IMAGE_VIEW;
+      nameInfo.objectHandle = (uint64_t)handle();
+      nameInfo.pObjectName = name;
+
+      m_image->m_vkd->vkSetDebugUtilsObjectNameEXT(m_image->m_vkd->device(), &nameInfo);
+  }
+
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <initguid.h>
 #include "d3d11_include.h"
 
 #include "../util/com/com_private_data.h"
@@ -30,6 +31,8 @@ namespace dxvk {
             REFGUID guid,
             UINT    DataSize,
       const void    *pData) final {
+      if (guid == WKPDID_D3DDebugObjectName)
+          SetD3DDebugObjectName((const char*)pData);
       return m_privateData.setData(
         guid, DataSize, pData);
     }
@@ -55,6 +58,8 @@ namespace dxvk {
     }
 
     D3D11Device* const m_parent;
+
+    virtual void SetD3DDebugObjectName(const char* name) {}
     
   private:
     

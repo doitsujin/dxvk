@@ -181,7 +181,12 @@ namespace dxvk {
             D3D11_BUFFER_DESC*      pBufferDesc);
 
   private:
-    
+
+    virtual void SetD3DDebugObjectName(const char* name) {
+      if (m_buffer)
+        m_buffer->setDebugName(name);
+    }
+
     D3D11_BUFFER_DESC             m_desc;
     D3D11_ON_12_RESOURCE_INFO     m_11on12;
     D3D11_COMMON_BUFFER_MAP_MODE  m_mapMode;
