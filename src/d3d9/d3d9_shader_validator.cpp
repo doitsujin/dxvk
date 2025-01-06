@@ -15,7 +15,7 @@ namespace dxvk {
       void*                       pUserData,
       DWORD                       Unknown) {
     if (unlikely(m_state != D3D9ShaderValidatorState::Begin)) {
-      return ErrorCallback(nullptr, -1, 0,
+      return ErrorCallback(nullptr, -1, 0, nullptr, 0,
         D3D9ShaderValidatorMessage::BeginOutOfOrder,
         "IDirect3DShaderValidator9::Begin called out of order. ::End must be called first.");
     }
@@ -34,17 +34,17 @@ namespace dxvk {
       const DWORD* pdwInst,
             DWORD  cdw) {
     if (unlikely(pdwInst == nullptr || !cdw)) {
-      return ErrorCallback(pFile, Line, 0,
+      return ErrorCallback(pFile, Line, 0, pdwInst, cdw,
         D3D9ShaderValidatorMessage::InstructionNullArgs,
         "IDirect3DShaderValidator9::Instruction called with NULL == pdwInst or 0 == cdw.");
     }
 
     if (unlikely(m_state == D3D9ShaderValidatorState::Begin)) {
-      return ErrorCallback(pFile, Line, 0,
+      return ErrorCallback(pFile, Line, 0, pdwInst, cdw,
         D3D9ShaderValidatorMessage::InstructionOutOfOrder,
         "IDirect3DShaderValidator9::Instruction called out of order. ::Begin must be called first.");
     } else if (unlikely(m_state == D3D9ShaderValidatorState::EndOfShader)) {
-      return ErrorCallback(pFile, Line, 0,
+      return ErrorCallback(pFile, Line, 0, pdwInst, cdw,
         D3D9ShaderValidatorMessage::InstructionEndOfShader,
         "IDirect3DShaderValidator9::Instruction called out of order. After end token there should be no more instructions. Call ::End next.");
     } else if (unlikely(m_state == D3D9ShaderValidatorState::Error)) {
@@ -94,7 +94,7 @@ namespace dxvk {
 
             if (unlikely(regType == static_cast<DWORD>(DxsoRegisterType::Input) && regIndex >= 10)) {
               Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: Found register index ", regIndex));
-              return ErrorCallback(pFile, Line, 0x2,
+              return ErrorCallback(pFile, Line, 0x2, pdwInst, cdw,
                 instContext.instruction.opcode == DxsoOpcode::Dcl ?
                   D3D9ShaderValidatorMessage::BadInputRegisterDeclaration :
                   D3D9ShaderValidatorMessage::BadInputRegister,
@@ -112,11 +112,11 @@ namespace dxvk {
     if (unlikely(m_state == D3D9ShaderValidatorState::Error)) {
       return E_FAIL;
     } else if (unlikely(m_state == D3D9ShaderValidatorState::Begin)) {
-      return ErrorCallback(nullptr, 0, 0,
+      return ErrorCallback(nullptr, 0, 0, nullptr, 0,
         D3D9ShaderValidatorMessage::EndOutOfOrder,
         "IDirect3DShaderValidator9::End called out of order. Call to ::Begin, followed by calls to ::Instruction must occur first.");
     } else if (unlikely(m_state != D3D9ShaderValidatorState::EndOfShader)) {
-      return ErrorCallback(nullptr, 0, 0,
+      return ErrorCallback(nullptr, 0, 0, nullptr, 0,
         D3D9ShaderValidatorMessage::MissingEndToken,
         "IDirect3DShaderValidator9::End: Shader missing end token.");
     }
@@ -135,7 +135,7 @@ namespace dxvk {
 
   HRESULT D3D9ShaderValidator::ValidateHeader(const char* pFile, UINT Line, const DWORD* pdwInst, DWORD cdw) {
     if (unlikely(cdw != 1)) {
-      return ErrorCallback(pFile, Line, 0x6,
+      return ErrorCallback(pFile, Line, 0x6, pdwInst, cdw,
         D3D9ShaderValidatorMessage::BadVersionTokenLength,
         "IDirect3DShaderValidator9::Instruction: Bad version token. DWORD count > 1 given. Expected DWORD count to be 1 for version token.");
     }
@@ -152,7 +152,7 @@ namespace dxvk {
       programType = DxsoProgramTypes::VertexShader;
       m_isPixelShader = false;
     } else {
-      return ErrorCallback(pFile, Line, 0x6,
+      return ErrorCallback(pFile, Line, 0x6, pdwInst, cdw,
         D3D9ShaderValidatorMessage::BadVersionTokenType,
         "IDirect3DShaderValidator9::Instruction: Bad version token. It indicates neither a pixel shader nor a vertex shader.");
     }
@@ -173,7 +173,7 @@ namespace dxvk {
   HRESULT D3D9ShaderValidator::ValidateEndToken(const char* pFile, UINT Line, const DWORD* pdwInst, DWORD cdw) {
     // Reached the end token.
     if (unlikely(cdw != 1)) {
-      return ErrorCallback(pFile, Line, 0x6,
+      return ErrorCallback(pFile, Line, 0x6, pdwInst, cdw,
         D3D9ShaderValidatorMessage::BadEndToken,
         "IDirect3DShaderValidator9::Instruction: Bad end token. DWORD count > 1 given. Expected DWORD count to be 1 for end token.");
     }
@@ -188,17 +188,31 @@ namespace dxvk {
       const char*                      pFile,
             UINT                       Line,
             DWORD                      Unknown,
+      const DWORD*                     pInstr,
+            DWORD                      InstrLength,
             D3D9ShaderValidatorMessage MessageID,
-      const std::string&               Message) {
+            std::string                Message) {
     if (m_callback)
-        m_callback(pFile, Line, Unknown, MessageID, Message.c_str(), m_userData);
+      m_callback(pFile, Line, Unknown, MessageID, Message.c_str(), m_userData);
 
     // TODO: Consider switching this to debug, once we're
     // confident the implementation doesn't cause any issues
     Logger::warn(Message);
 
-    m_state = D3D9ShaderValidatorState::Error;
+    // Log instruction that caused the error as raw bytecode
+    if (Logger::logLevel() <= LogLevel::Debug && pInstr && InstrLength) {
+      std::stringstream instMsg;
 
+      for (uint32_t i = 0; i < InstrLength; i++) {
+        instMsg << (i ? "," : " [");
+        instMsg << std::hex << std::setfill('0') << std::setw(8) << pInstr[i];
+        instMsg << (i + 1 == InstrLength ? "]" : "");
+      }
+
+      Logger::debug(instMsg.str());
+    }
+
+    m_state = D3D9ShaderValidatorState::Error;
     return E_FAIL;
   }
 
