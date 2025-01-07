@@ -445,6 +445,7 @@ namespace dxvk::hud {
                       | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
                       | VK_ACCESS_SHADER_READ_BIT
                       | VK_ACCESS_SHADER_WRITE_BIT;
+    bufferInfo.debugName = "HUD frame time data";
 
     m_gpuBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
 
@@ -1203,6 +1204,7 @@ namespace dxvk::hud {
       bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
       bufferInfo.access = VK_ACCESS_SHADER_READ_BIT;
       bufferInfo.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      bufferInfo.debugName = "HUD memory data";
 
       m_dataBuffer = m_device->createBuffer(bufferInfo,
         VK_MEMORY_HEAP_DEVICE_LOCAL_BIT |
