@@ -950,6 +950,7 @@ namespace dxvk {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
     m_specConstantMask = this->computeSpecConstantMask();
+    gplAsyncCache = m_device->config().gplAsyncCache;
 
     if (m_shaders.gs != nullptr) {
       if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
@@ -998,7 +999,8 @@ namespace dxvk {
 
 
   std::pair<VkPipeline, DxvkGraphicsPipelineType> DxvkGraphicsPipeline::getPipelineHandle(
-    const DxvkGraphicsPipelineStateInfo& state) {
+    const DxvkGraphicsPipelineStateInfo& state,
+          bool                           async) {
     DxvkGraphicsPipelineInstance* instance = this->findInstance(state);
 
     if (unlikely(!instance)) {
@@ -1006,11 +1008,22 @@ namespace dxvk {
       if (!this->validatePipelineState(state, true))
         return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
 
-      // Prevent other threads from adding new instances and check again
-      std::unique_lock<dxvk::mutex> lock(m_mutex);
-      instance = this->findInstance(state);
+    bool useAsync = m_device->config().enableAsync && async;
 
-      if (!instance) {
+    // Prevent other threads from adding new instances and check again
+    std::unique_lock<dxvk::mutex> lock(useAsync ? m_asyncMutex : m_mutex);
+    instance = this->findInstance(state);
+
+    if (!instance) {
+      if (useAsync) {
+        m_async = true;
+        lock.unlock();
+
+        m_workers->compileGraphicsPipeline(this, state, DxvkPipelinePriority::High);
+
+        return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
+      } else {
+
         // Keep pipeline object locked, at worst we're going to stall
         // a state cache worker and the current thread needs priority.
         bool canCreateBasePipeline = this->canCreateBasePipeline(state);
@@ -1030,6 +1043,7 @@ namespace dxvk {
           this->writePipelineStateToCache(state);
       }
     }
+  }
 
     // Find a pipeline handle to use. If no optimized pipeline has
     // been compiled yet, use the slower base pipeline instead.
@@ -1057,7 +1071,7 @@ namespace dxvk {
 
       // Do not compile if this pipeline can be fast linked. This essentially
       // disables the state cache for pipelines that do not benefit from it.
-      if (this->canCreateBasePipeline(state))
+      if (!gplAsyncCache && !m_async && this->canCreateBasePipeline(state))
         return;
 
       // Prevent other threads from adding new instances and check again
@@ -1078,8 +1092,14 @@ namespace dxvk {
     instance->fastHandle.store(pipeline, std::memory_order_release);
 
     // Log pipeline state on error
-    if (!pipeline)
+    if (!pipeline) {
       this->logPipelineState(LogLevel::Error, state);
+      return;
+    }
+
+    //Write pipeline to state cache
+    if (gplAsyncCache)
+      this->writePipelineStateToCache(state);
   }
 
 
@@ -1306,6 +1326,8 @@ namespace dxvk {
 
     if (handle)
       m_fastPipelines.insert({ key, handle });
+    
+    m_async = false;
 
     return handle;
   }
