@@ -604,6 +604,18 @@ namespace dxvk {
     virtual Rc<DxvkResourceAllocation> relocateStorage(
             DxvkAllocationModes         mode) = 0;
 
+    /**
+     * \brief Sets debug name for the backing resource
+     *
+     * The caller \e must ensure that the backing resource
+     * is not being swapped out at the same time. This may
+     * also be ignored for certain types of resources for
+     * performance reasons, and has no effect if the device
+     * does not have debug layers enabled.
+     * \param [in] name New debug name
+     */
+    virtual void setDebugName(const char* name) = 0;
+
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };

@@ -1365,6 +1365,14 @@ namespace dxvk {
         m_cmd->addStatCtr(counter, value);
     }
 
+    /**
+     * \brief Sets new debug name for a resource
+     *
+     * \param [in] buffer Buffer object
+     * \param [in] name New debug name, or \c nullptr
+     */
+    void setDebugName(const Rc<DxvkPagedResource>& resource, const char* name);
+
   private:
     
     Rc<DxvkDevice>          m_device;

@@ -2493,6 +2493,14 @@ namespace dxvk {
     if (m_device->isDebugEnabled())
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
   }
+
+
+  void DxvkContext::setDebugName(const Rc<DxvkPagedResource>& resource, const char* name) {
+    if (!m_device->isDebugEnabled())
+      return;
+
+    resource->setDebugName(name);
+  }
   
   
   void DxvkContext::blitImageFb(

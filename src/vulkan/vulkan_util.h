@@ -211,6 +211,22 @@ namespace dxvk::vk {
     }
   }
 
+
+  inline uint64_t getObjectHandle(uint64_t handle) {
+    return handle;
+  }
+
+
+  template<typename T>
+  uint64_t getObjectHandle(T* object) {
+    return reinterpret_cast<uintptr_t>(object);
+  }
+
+
+  inline bool isValidDebugName(const char* name) {
+    return name && name[0];
+  }
+
 }
 
 

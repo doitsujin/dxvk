@@ -19,6 +19,14 @@ namespace dxvk {
     m_info          (createInfo) {
     m_allocator->registerResource(this);
 
+    // Assign debug name to buffer
+    if (device->isDebugEnabled()) {
+      m_debugName = createDebugName(createInfo.debugName);
+      m_info.debugName = m_debugName.c_str();
+    } else {
+      m_info.debugName = nullptr;
+    }
+
     // Create and assign actual buffer resource
     assignStorage(allocateStorage());
   }
@@ -99,5 +107,33 @@ namespace dxvk {
 
     return m_allocator->createBufferResource(info, allocationInfo, nullptr);
   }
-  
+
+
+  void DxvkBuffer::setDebugName(const char* name) {
+    if (likely(!m_info.debugName))
+      return;
+
+    m_debugName = createDebugName(name);
+    m_info.debugName = m_debugName.c_str();
+
+    updateDebugName();
+  }
+
+
+  void DxvkBuffer::updateDebugName() {
+    if (m_storage->flags().test(DxvkAllocationFlag::OwnsBuffer)) {
+      VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+      nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+      nameInfo.objectHandle = vk::getObjectHandle(m_bufferInfo.buffer);
+      nameInfo.pObjectName = m_info.debugName;
+
+      m_vkd->vkSetDebugUtilsObjectNameEXT(m_vkd->device(), &nameInfo);
+    }
+  }
+
+
+  std::string DxvkBuffer::createDebugName(const char* name) const {
+    return str::format(vk::isValidDebugName(name) ? name : "Buffer", " (", cookie(), ")");
+  }
+
 }
