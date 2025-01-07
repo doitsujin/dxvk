@@ -1,5 +1,6 @@
 #include "d3d11_buffer.h"
 #include "d3d11_context.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 
 namespace dxvk {
@@ -208,6 +209,18 @@ namespace dxvk {
     VkFormatFeatureFlags2 features = GetBufferFormatFeatures(BindFlags);
 
     return CheckFormatFeatureSupport(viewFormat.Format, features);
+  }
+
+
+  void D3D11Buffer::SetDebugName(const char* pName) {
+    if (m_buffer) {
+      m_parent->GetContext()->InjectCs([
+        cBuffer = m_buffer,
+        cName   = std::string(pName ? pName : "")
+      ] (DxvkContext* ctx) {
+        ctx->setDebugName(cBuffer, cName.c_str());
+      });
+    }
   }
 
 

@@ -61,6 +61,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     
+    void STDMETHODCALLTYPE SetDebugName(const char* pName) final;
+
     bool CheckViewCompatibility(
             UINT                BindFlags,
             DXGI_FORMAT         Format) const;
