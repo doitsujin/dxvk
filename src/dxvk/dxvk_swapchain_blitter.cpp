@@ -212,6 +212,7 @@ namespace dxvk {
                        | VK_ACCESS_SHADER_READ_BIT;
       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
       imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageInfo.debugName = "Swapchain cursor";
 
       m_cursorImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -367,6 +368,7 @@ namespace dxvk {
       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
       imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      imageInfo.debugName = "Swapchain gamma ramp";
 
       m_gammaImage = m_device->createImage(imageInfo,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
