@@ -87,7 +87,7 @@ namespace dxvk {
 
         default:
           // Iterate over register tokens. Bit 31 of register tokens is always 1.
-          for (uint32_t instNum = 1; pdwInst[instNum] & 0x80000000; instNum++) {
+          for (uint32_t instNum = 1; instNum < cdw && (pdwInst[instNum] >> 31); instNum++) {
             DWORD regType  = ((pdwInst[instNum] & D3DSP_REGTYPE_MASK)  >> D3DSP_REGTYPE_SHIFT)
                             | ((pdwInst[instNum] & D3DSP_REGTYPE_MASK2) >> D3DSP_REGTYPE_SHIFT2);
             DWORD regIndex = pdwInst[instNum] & D3DSP_REGNUM_MASK;
