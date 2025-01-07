@@ -35,6 +35,9 @@ namespace dxvk {
 
     /// Buffer create flags
     VkBufferCreateFlags flags = 0;
+
+    /// Debug name.
+    const char* debugName = nullptr;
   };
 
 
@@ -341,6 +344,9 @@ namespace dxvk {
       m_storage = std::move(slice);
       m_bufferInfo = m_storage->getBufferInfo();
 
+      if (unlikely(m_info.debugName))
+        updateDebugName();
+
       // Implicitly invalidate views
       m_version += 1u;
       return result;
@@ -406,6 +412,12 @@ namespace dxvk {
     Rc<DxvkResourceAllocation> relocateStorage(
             DxvkAllocationModes         mode);
 
+    /**
+     * \brief Sets debug name for the backing resource
+     * \param [in] name New debug name
+     */
+    void setDebugName(const char* name);
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
@@ -428,6 +440,12 @@ namespace dxvk {
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkBufferViewKey,
       DxvkBufferView, DxvkHash, DxvkEq> m_views;
+
+    std::string                 m_debugName;
+
+    void updateDebugName();
+
+    std::string createDebugName(const char* name) const;
 
   };
 

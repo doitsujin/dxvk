@@ -66,6 +66,9 @@ namespace dxvk {
 
     // Shared handle info
     DxvkSharedHandleInfo sharing = { };
+
+    // Debug name
+    const char* debugName = nullptr;
   };
   
   
@@ -601,6 +604,12 @@ namespace dxvk {
     bool isInitialized(
       const VkImageSubresourceRange& subresources) const;
 
+    /**
+     * \brief Sets debug name for the backing resource
+     * \param [in] name New debug name
+     */
+    void setDebugName(const char* name);
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
@@ -625,6 +634,12 @@ namespace dxvk {
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkImageViewKey,
       DxvkImageView, DxvkHash, DxvkEq> m_views;
+
+    std::string                 m_debugName;
+
+    void updateDebugName();
+
+    std::string createDebugName(const char* name) const;
 
     VkImageCreateInfo getImageCreateInfo(
       const DxvkImageUsageInfo&         usageInfo) const;
