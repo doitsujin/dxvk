@@ -252,6 +252,11 @@ namespace dxvk {
           VkColorSpaceKHR     srcColorSpace,
           VkRect2D            srcRect,
           VkBool32            enableBlending) {
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xdcc0f0, "Swapchain blit"));
+    }
+
     VkExtent3D dstExtent = dstView->mipLevelExtent(0);
 
     VkOffset2D coordA = dstRect.offset;
