@@ -1234,6 +1234,13 @@ namespace dxvk {
 
     flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = imageView->image()->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xe6dcf0,
+        str::format("Mip gen (", dstName ? dstName : "unknown", ")").c_str()));
+    }
+
     // Create image views, etc.
     DxvkMetaMipGenViews mipGenerator(imageView);
     
@@ -1366,6 +1373,9 @@ namespace dxvk {
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
     }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     m_cmd->track(imageView->image(), DxvkAccess::Write);
     m_cmd->track(std::move(sampler));
