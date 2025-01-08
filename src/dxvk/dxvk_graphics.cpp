@@ -945,7 +945,8 @@ namespace dxvk {
     m_bindings      (layout),
     m_barrier       (layout->getGlobalBarrier()),
     m_vsLibrary     (vsLibrary),
-    m_fsLibrary     (fsLibrary) {
+    m_fsLibrary     (fsLibrary),
+    m_debugName     (createDebugName()) {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
     m_specConstantMask = this->computeSpecConstantMask();
@@ -1672,6 +1673,29 @@ namespace dxvk {
     }
 
     Logger::log(level, sstr.str());
+  }
+
+
+  std::string DxvkGraphicsPipeline::createDebugName() const {
+    std::stringstream name;
+
+    std::array<Rc<DxvkShader>, 5> shaders = {{
+      m_shaders.vs,
+      m_shaders.tcs,
+      m_shaders.tes,
+      m_shaders.gs,
+      m_shaders.fs,
+    }};
+
+    for (const auto& shader : shaders) {
+      if (shader) {
+        std::string shaderName = shader->debugName();
+        size_t len = std::min(shaderName.size(), size_t(10));
+        name << "[" << shaderName.substr(0, len) << "] ";
+      }
+    }
+
+    return name.str();
   }
   
 }
