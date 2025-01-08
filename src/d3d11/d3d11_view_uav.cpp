@@ -450,6 +450,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
+    info.debugName = "UAV counter";
 
     Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 

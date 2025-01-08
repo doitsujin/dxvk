@@ -754,6 +754,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT;
+    info.debugName = "Image buffer";
 
     // We may read mapped buffers even if it is
     // marked as CPU write-only on the D3D11 side.
