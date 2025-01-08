@@ -59,6 +59,11 @@ namespace dxvk::hud {
     const Rc<DxvkImageView>&  dstView,
           VkColorSpaceKHR     dstColorSpace,
     const HudOptions&         options) {
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0c0dc, "HUD"));
+    }
+
     if (!m_fontTextureView) {
       createFontResources();
       uploadFontResources(ctx);

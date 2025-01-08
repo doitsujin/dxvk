@@ -277,6 +277,11 @@ namespace dxvk::hud {
           uint32_t            dataPoint,
           HudPos              minPos,
           HudPos              maxPos) {
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
+        vk::makeLabel(0xf0c0dc, "HUD frame time processing"));
+    }
+
     // Write current time stamp to the buffer
     DxvkBufferSliceHandle sliceHandle = m_gpuBuffer->getSliceHandle();
     std::pair<VkQueryPool, uint32_t> query = m_query->getQuery();
@@ -371,6 +376,9 @@ namespace dxvk::hud {
 
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
       drawInfoBuffer, textBufferView, 2u);
+
+    if (unlikely(m_device->isDebugEnabled()))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
 
     // Make sure GPU resources are being kept alive as necessary
     ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
