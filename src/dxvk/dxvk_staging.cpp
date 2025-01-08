@@ -27,6 +27,7 @@ namespace dxvk {
                 | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
+    info.debugName = "Staging buffer";
 
     VkDeviceSize alignedSize = dxvk::align(size, 256u);
     m_allocationCounter += alignedSize;

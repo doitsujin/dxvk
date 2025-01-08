@@ -456,6 +456,7 @@ namespace dxvk {
       bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
       bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
                       | VK_ACCESS_TRANSFER_READ_BIT;
+      bufInfo.debugName = "Temp buffer";
 
       auto tmpBuffer = m_device->createBuffer(
         bufInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -567,6 +568,7 @@ namespace dxvk {
                             | VK_ACCESS_TRANSFER_READ_BIT;
       imgInfo.tiling        = dstImage->info().tiling;
       imgInfo.layout        = VK_IMAGE_LAYOUT_GENERAL;
+      imgInfo.debugName     = "Temp image";
 
       auto tmpImage = m_device->createImage(
         imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -679,6 +681,8 @@ namespace dxvk {
                         | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
       bufferInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
                         | VK_ACCESS_SHADER_READ_BIT;
+      bufferInfo.debugName = "Temp buffer";
+
       Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       auto tmpBufferSlice = tmpBuffer->getSliceHandle();
@@ -6615,6 +6619,7 @@ namespace dxvk {
     bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
     bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
                     | VK_ACCESS_TRANSFER_READ_BIT;
+    bufInfo.debugName = "Zero buffer";
 
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
