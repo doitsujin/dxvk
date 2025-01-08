@@ -1328,12 +1328,12 @@ namespace dxvk {
 
     /**
      * \brief Begins a debug label region
-     * \param [in] label The debug label
      *
      * Marks the start of a debug label region. Used by debugging/profiling
      * tools to mark different workloads within a frame.
+     * \param [in] label The debug label
      */
-    void beginDebugLabel(VkDebugUtilsLabelEXT *label);
+    void beginDebugLabel(const VkDebugUtilsLabelEXT& label);
 
     /**
      * \brief Ends a debug label region
@@ -1345,12 +1345,12 @@ namespace dxvk {
 
     /**
      * \brief Inserts a debug label
-     * \param [in] label The debug label
      *
      * Inserts an instantaneous debug label. Used by debugging/profiling
      * tools to mark different workloads within a frame.
+     * \param [in] label The debug label
      */
-    void insertDebugLabel(VkDebugUtilsLabelEXT *label);
+    void insertDebugLabel(const VkDebugUtilsLabelEXT& label);
 
     /**
      * \brief Increments a given stat counter
@@ -1417,6 +1417,9 @@ namespace dxvk {
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
     std::vector<VkImageMemoryBarrier2> m_imageLayoutTransitions;
+
+    std::vector<util::DxvkDebugLabel> m_debugLabelStack;
+    bool                              m_debugLabelInternalActive = false;
 
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
@@ -1934,6 +1937,15 @@ namespace dxvk {
       // Check whether there are any pending reads.
       return pred(DxvkAccess::Read);
     }
+
+    void beginInternalDebugRegion(
+      const VkDebugUtilsLabelEXT&       label);
+
+    void endInternalDebugRegion();
+
+    void beginActiveDebugRegions();
+
+    void endActiveDebugRegions();
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,

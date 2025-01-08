@@ -2487,21 +2487,29 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
-    if (m_features.test(DxvkContextFeature::DebugUtils))
-      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
+  void DxvkContext::beginDebugLabel(const VkDebugUtilsLabelEXT& label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      endInternalDebugRegion();
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+      m_debugLabelStack.emplace_back(label);
+    }
   }
 
 
   void DxvkContext::endDebugLabel() {
-    if (m_features.test(DxvkContextFeature::DebugUtils))
-      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      if (!m_debugLabelStack.empty()) {
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+        m_debugLabelStack.pop_back();
+      }
+    }
   }
 
 
-  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT *label) {
+  void DxvkContext::insertDebugLabel(const VkDebugUtilsLabelEXT& label) {
     if (m_features.test(DxvkContextFeature::DebugUtils))
-      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *label);
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
   }
 
 
@@ -6665,6 +6673,8 @@ namespace dxvk {
 
 
   void DxvkContext::beginCurrentCommands() {
+    beginActiveDebugRegions();
+
     // The current state of the internal command buffer is
     // undefined, so we have to bind and set up everything
     // before any draw or dispatch command is recorded.
@@ -6713,6 +6723,8 @@ namespace dxvk {
     m_execBarriers.finalize(m_cmd);
 
     m_barrierTracker.clear();
+
+    endActiveDebugRegions();
   }
 
 
@@ -7254,6 +7266,38 @@ namespace dxvk {
       default:
         return VK_FORMAT_UNDEFINED;
     }
+  }
+
+
+  void DxvkContext::beginInternalDebugRegion(const VkDebugUtilsLabelEXT& label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      // If the app provides us with debug regions, don't add any
+      // internal ones to avoid potential issues with scoping.
+      if (m_debugLabelStack.empty()) {
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+        m_debugLabelInternalActive = true;
+      }
+    }
+  }
+
+
+  void DxvkContext::endInternalDebugRegion() {
+    if (m_debugLabelInternalActive) {
+      m_debugLabelInternalActive = false;
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+    }
+  }
+
+
+  void DxvkContext::beginActiveDebugRegions() {
+    for (const auto& region : m_debugLabelStack)
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, region.get());
+  }
+
+
+  void DxvkContext::endActiveDebugRegions() {
+    for (size_t i = 0; i < m_debugLabelStack.size(); i++)
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 }
