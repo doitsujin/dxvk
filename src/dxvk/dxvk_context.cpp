@@ -6612,6 +6612,11 @@ namespace dxvk {
     if (resourceList.empty())
       return;
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xc0a2f0, "Memory defrag"));
+    }
+
     std::vector<DxvkRelocateBufferInfo> bufferInfos;
     std::vector<DxvkRelocateImageInfo> imageInfos;
 
@@ -6649,6 +6654,9 @@ namespace dxvk {
       imageInfos.size(), imageInfos.data());
 
     m_cmd->setSubmissionBarrier();
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
