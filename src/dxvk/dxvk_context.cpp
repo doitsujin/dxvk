@@ -1798,6 +1798,12 @@ namespace dxvk {
 
       flushPendingAccesses(*imageView, DxvkAccess::Write);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+        const char* imageName = imageView->image()->info().debugName;
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+          vk::makeLabel(0xe6f0dc, str::format("Clear render target (", imageName ? imageName : "unknown", ")").c_str()));
+      }
+
       // Set up a temporary render pass to execute the clear
       VkImageLayout imageLayout = ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT)
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -1882,6 +1888,9 @@ namespace dxvk {
         imageLayout, clearStages, clearAccess, storeLayout,
         imageView->image()->info().stages,
         imageView->image()->info().access);
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
       m_cmd->track(imageView->image(), DxvkAccess::Write);
     } else {
