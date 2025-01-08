@@ -67,6 +67,7 @@ namespace dxvk {
     VkDeviceSize          size    = 0u;
     void*                 mapPtr  = nullptr;
     VkDeviceAddress       gpuVa   = 0u;
+    uint64_t              cookie  = 0u;
   };
 
 
@@ -83,8 +84,6 @@ namespace dxvk {
     high_resolution_clock::time_point unusedTime = { };
     /// Unordered list of resources suballocated from this chunk.
     DxvkResourceAllocation* allocationList = nullptr;
-    /// Chunk cookie
-    uint32_t chunkCookie = 0u;
     /// Whether defragmentation can be performed on this chunk.
     /// Only relevant for chunks in non-mappable device memory.
     VkBool32 canMove = true;
@@ -115,8 +114,6 @@ namespace dxvk {
     VkDeviceSize nextChunkSize = MinChunkSize;
     /// Maximum chunk size for the memory pool. Hard limit.
     VkDeviceSize maxChunkSize = MaxChunkSize;
-    /// Next chunk cookie, used to order chunks in statistics
-    uint32_t nextChunkCookie = 0u;
     /// Next chunk to relocate for defragmentation
     uint32_t nextDefragChunk = ~0u;
 
@@ -1322,6 +1319,8 @@ namespace dxvk {
 
     DxvkResourceAllocationPool  m_allocationPool;
 
+    uint64_t            m_nextCookie = 0u;
+
     alignas(CACHE_LINE_SIZE)
     high_resolution_clock::time_point m_taskDeadline = { };
     std::array<DxvkMemoryStats, VK_MAX_MEMORY_HEAPS> m_adapterHeapStats = { };
@@ -1337,6 +1336,10 @@ namespace dxvk {
             DxvkMemoryType&       type,
             VkDeviceSize          size,
       const void*                 next);
+
+    void assignMemoryDebugName(
+      const DxvkDeviceMemory&     memory,
+      const DxvkMemoryType&       type);
 
     bool allocateChunkInPool(
             DxvkMemoryType&       type,
