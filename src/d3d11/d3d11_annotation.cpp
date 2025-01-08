@@ -87,7 +87,7 @@ namespace dxvk {
       label.pLabelName = labelName.c_str();
       DecodeD3DCOLOR(color, label.color);
 
-      ctx->beginDebugLabel(&label);
+      ctx->beginDebugLabel(label);
     });
 
     return m_eventDepth++;
@@ -125,7 +125,7 @@ namespace dxvk {
       label.pLabelName = labelName.c_str();
       DecodeD3DCOLOR(color, label.color);
 
-      ctx->insertDebugLabel(&label);
+      ctx->insertDebugLabel(label);
     });
   }
 
