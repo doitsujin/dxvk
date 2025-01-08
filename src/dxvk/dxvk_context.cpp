@@ -2487,6 +2487,52 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::beginRenderPassDebugRegion() {
+    bool hasColorAttachments = false;
+    bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+      hasColorAttachments |= m_state.om.renderTargets.color[i].view != nullptr;
+
+    std::stringstream label;
+
+    if (hasColorAttachments)
+      label << "Color";
+    else if (hasDepthAttachment)
+      label << "Depth";
+    else
+      label << "Render";
+
+    label << " pass " << uint32_t(++m_renderPassIndex) << " (";
+
+    hasColorAttachments = false;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_state.om.renderTargets.color[i].view) {
+        const char* imageName = m_state.om.renderTargets.color[i].view->image()->info().debugName;
+        label << (hasColorAttachments ? ", " : "") << i << ": " << (imageName ? imageName : "unknown");
+
+        hasColorAttachments = true;
+      }
+    }
+
+    if (m_state.om.renderTargets.depth.view) {
+      if (hasColorAttachments)
+        label << ", ";
+
+      const char* imageName = m_state.om.renderTargets.depth.view->image()->info().debugName;
+      label << "DS:" << (imageName ? imageName : "unknown");
+    }
+
+    if (!hasColorAttachments && !hasDepthAttachment)
+      label << "No attachments";
+
+    label << ")";
+
+    beginInternalDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()));
+  }
+
+
   void DxvkContext::beginDebugLabel(const VkDebugUtilsLabelEXT& label) {
     if (m_features.test(DxvkContextFeature::DebugUtils)) {
       endInternalDebugRegion();
@@ -4483,6 +4529,9 @@ namespace dxvk {
         DxvkContextFlag::GpRenderPassSuspended,
         DxvkContextFlag::GpIndependentSets);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        beginRenderPassDebugRegion();
+
       this->renderPassBindFramebuffer(
         m_state.om.framebufferInfo,
         m_state.om.renderPassOps);
@@ -4520,6 +4569,7 @@ namespace dxvk {
         this->transitionRenderTargetLayouts(false);
 
       flushBarriers();
+      endInternalDebugRegion();
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {

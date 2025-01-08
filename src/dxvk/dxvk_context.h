@@ -1938,6 +1938,8 @@ namespace dxvk {
       return pred(DxvkAccess::Read);
     }
 
+    void beginRenderPassDebugRegion();
+
     void beginInternalDebugRegion(
       const VkDebugUtilsLabelEXT&       label);
 
