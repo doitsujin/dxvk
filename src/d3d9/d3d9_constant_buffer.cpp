@@ -101,6 +101,7 @@ namespace dxvk {
     bufferInfo.usage  = m_usage;
     bufferInfo.access = 0;
     bufferInfo.stages = util::pipelineStages(m_stages);
+    bufferInfo.debugName = "Constant buffer";
 
     if (m_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
       bufferInfo.access |= VK_ACCESS_UNIFORM_READ_BIT;

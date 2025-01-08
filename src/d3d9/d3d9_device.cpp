@@ -4576,6 +4576,7 @@ namespace dxvk {
       info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
                   | VK_ACCESS_INDEX_READ_BIT;
       info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.debugName = "UP buffer";
 
       Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
       void* mapPtr = buffer->mapPtr(0);
