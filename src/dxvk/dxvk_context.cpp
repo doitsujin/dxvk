@@ -4940,6 +4940,11 @@ namespace dxvk {
     if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dca2, newPipeline->debugName()));
+    }
+
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
     return true;
   }
@@ -5106,6 +5111,11 @@ namespace dxvk {
       accessMemory(DxvkCmdBuffer::ExecBuffer,
         srcBarrier.stages, srcBarrier.access,
         dstBarrier.stages, dstBarrier.access);
+    }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xa2dcf0, m_state.gp.pipeline->debugName()));
     }
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
