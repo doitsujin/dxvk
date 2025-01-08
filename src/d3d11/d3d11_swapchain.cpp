@@ -571,6 +571,7 @@ namespace dxvk {
     imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     imageInfo.shared      = VK_TRUE;
+    imageInfo.debugName   = "Swap image";
 
     DxvkImageViewKey viewInfo;
     viewInfo.viewType     = VK_IMAGE_VIEW_TYPE_2D;
@@ -652,6 +653,8 @@ namespace dxvk {
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
       for (size_t i = 0; i < cImages.size(); i++) {
+        ctx->setDebugName(cImages[i], str::format("Back buffer ", i).c_str());
+
         ctx->initImage(cImages[i],
           cImages[i]->getAvailableSubresources(),
           VK_IMAGE_LAYOUT_UNDEFINED);
