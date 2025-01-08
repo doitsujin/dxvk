@@ -1217,8 +1217,52 @@ namespace dxvk {
       }
     }
 
+    result.cookie = ++m_nextCookie;
+
+    if (unlikely(m_device->isDebugEnabled()))
+      assignMemoryDebugName(result, type);
+
     type.stats.memoryAllocated += size;
     return result;
+  }
+
+
+  void DxvkMemoryAllocator::assignMemoryDebugName(
+    const DxvkDeviceMemory&     memory,
+    const DxvkMemoryType&       type) {
+    auto vk = m_device->vkd();
+
+    const char* memoryType = "Unspecified memory";
+
+    if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+        memoryType = "Cached system memory";
+      else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        memoryType = "Mapped video memory";
+      else
+        memoryType = "Write-combined system memory";
+    } else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+      memoryType = "Video memory";
+    }
+
+    std::string memoryName = str::format(memoryType, " (", memory.cookie, ")");
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+    nameInfo.objectType = VK_OBJECT_TYPE_DEVICE_MEMORY;
+    nameInfo.objectHandle = vk::getObjectHandle(memory.memory);
+    nameInfo.pObjectName = memoryName.c_str();
+
+    vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &nameInfo);
+
+    if (memory.buffer) {
+      std::string bufferName = str::format("Global buffer (", memory.cookie, ")");
+
+      nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+      nameInfo.objectHandle = vk::getObjectHandle(memory.buffer);
+      nameInfo.pObjectName = bufferName.c_str();
+
+      vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &nameInfo);
+    }
   }
 
 
@@ -1255,7 +1299,6 @@ namespace dxvk {
     pool.chunks.resize(std::max<size_t>(pool.chunks.size(), chunkIndex + 1u));
     pool.chunks[chunkIndex].memory = chunk;
     pool.chunks[chunkIndex].unusedTime = high_resolution_clock::time_point();
-    pool.chunks[chunkIndex].chunkCookie = ++pool.nextChunkCookie;
     pool.chunks[chunkIndex].canMove = true;
     return true;
   }
@@ -1687,7 +1730,7 @@ namespace dxvk {
       chunkStats.pageCount = pool.pageAllocator.pageCount(i);
       chunkStats.mapped = &pool == &type.mappedPool;
       chunkStats.active = pool.pageAllocator.chunkIsAvailable(i);
-      chunkStats.cookie = pool.chunks[i].chunkCookie;
+      chunkStats.cookie = pool.chunks[i].memory.cookie;
 
       size_t maskCount = (chunkStats.pageCount + 31u) / 32u;
       stats.pageMasks.resize(chunkStats.pageMaskOffset + maskCount);
