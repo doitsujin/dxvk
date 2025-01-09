@@ -56,6 +56,7 @@ namespace dxvk {
   protected:
 
     IDirect3DBaseTexture8*  m_container;
+
   };
 
 }

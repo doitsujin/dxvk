@@ -5,8 +5,8 @@
 
 #include <cstring>
 
-namespace dxvk
-{
+namespace dxvk {
+
   D3D8Interface::D3D8Interface() {
     m_d3d9 = d3d9::Direct3DCreate9(D3D_SDK_VERSION);
 
@@ -89,7 +89,7 @@ namespace dxvk
 
       pIdentifier->WHQLLevel = identifier9.WHQLLevel;
     }
-    
+
     return res;
   }
 

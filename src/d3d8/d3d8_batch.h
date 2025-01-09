@@ -16,7 +16,9 @@ namespace dxvk {
   // Vertex buffer that can handle many tiny locks while
   // still maintaing the lock ordering of direct-mapped buffers.
   class D3D8BatchBuffer final : public D3D8VertexBuffer {
+
   public:
+
     D3D8BatchBuffer(
         D3D8Device*                         pDevice,
         D3DPOOL                             Pool,
@@ -67,11 +69,13 @@ namespace dxvk {
     }
 
   private:
+
     std::vector<BYTE> m_data;
     DWORD             m_fvf;
+
   };
 
-  
+
   // Main handler for batching D3D8 draw calls.
   class D3D8Batcher {
 
@@ -86,6 +90,7 @@ namespace dxvk {
     };
 
   public:
+
     D3D8Batcher(D3D8Device* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
       : m_device8(pDevice8)
       , m_device(std::move(pDevice9)) {
@@ -115,10 +120,10 @@ namespace dxvk {
           d3d9::D3DFMT_INDEX16,
           m_stream->GetPtr(draw.MinVertex * m_stride),
           m_stride);
-        
+
         m_device->SetStreamSource(0, D3D8VertexBuffer::GetD3D9Nullable(m_stream), 0, m_stride);
         m_device->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(m_indices));
-        
+
         draw.PrimitiveType = D3DPRIMITIVETYPE(0);
         draw.Offset = 0;
         draw.MinVertex = UINT_MAX;
@@ -231,6 +236,7 @@ namespace dxvk {
     }
 
   private:
+
     D3D8Device*                     m_device8;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
@@ -239,5 +245,7 @@ namespace dxvk {
     D3D8IndexBuffer*                m_indices = nullptr;
     INT                             m_baseVertexIndex = 0;
     std::array<Batch, D3DPT_COUNT>  m_batches;
+
   };
+
 }

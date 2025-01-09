@@ -1,10 +1,10 @@
-#pragma once 
+#pragma once
 
 /** Implements IDirect3DResource8
-* 
+*
 * - SetPrivateData, GetPrivateData, FreePrivateData
 * - SetPriority, GetPriority
-* 
+*
 * - Subclasses provide: PreLoad, GetType
 */
 
@@ -12,7 +12,7 @@
 #include "../util/com/com_private_data.h"
 
 namespace dxvk {
-  
+
   template <typename D3D9, typename D3D8>
   class D3D8Resource : public D3D8DeviceChild<D3D9, D3D8> {
 
@@ -93,7 +93,7 @@ namespace dxvk {
     } catch (HRESULT err) {
       if (riid == __uuidof(IDirect3DResource8))
         return this;
-      
+
       throw err;
     }
 
@@ -106,6 +106,5 @@ namespace dxvk {
     ComPrivateData m_privateData;
 
   };
-
 
 }

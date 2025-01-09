@@ -4,7 +4,7 @@
 #include "d3d8_surface.h"
 
 namespace dxvk {
-  
+
   using D3D8SwapChainBase = D3D8DeviceChild<d3d9::IDirect3DSwapChain9, IDirect3DSwapChain8>;
   class D3D8SwapChain final : public D3D8SwapChainBase {
 

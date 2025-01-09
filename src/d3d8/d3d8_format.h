@@ -3,6 +3,7 @@
 #include "d3d8_include.h"
 
 namespace dxvk {
+
   constexpr bool isDXT(D3DFORMAT fmt) {
     return fmt == D3DFMT_DXT1
         || fmt == D3DFMT_DXT2
@@ -207,7 +208,6 @@ namespace dxvk {
 
     return size;
   }
-
 
   constexpr UINT getSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
     if (isDXT(Format)) {

@@ -3,14 +3,14 @@
 
 namespace dxvk {
 
-    D3D8StateBlock::D3D8StateBlock(
-            D3D8Device*                       pDevice,
-            D3DSTATEBLOCKTYPE                 Type,
-            Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
-      : m_device(pDevice)
-      , m_stateBlock(std::move(pStateBlock))
-      , m_type(Type)
-      , m_isSWVP(pDevice->GetD3D9()->GetSoftwareVertexProcessing()) {
+  D3D8StateBlock::D3D8StateBlock(
+          D3D8Device*                       pDevice,
+          D3DSTATEBLOCKTYPE                 Type,
+          Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
+    : m_device(pDevice)
+    , m_stateBlock(std::move(pStateBlock))
+    , m_type(Type)
+    , m_isSWVP(pDevice->GetD3D9()->GetSoftwareVertexProcessing()) {
     if (Type == D3DSBT_VERTEXSTATE || Type == D3DSBT_ALL) {
       // Lights, D3DTSS_TEXCOORDINDEX and D3DTSS_TEXTURETRANSFORMFLAGS,
       // vertex shader, VS constants, and various render states.

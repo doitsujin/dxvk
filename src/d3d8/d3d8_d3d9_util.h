@@ -103,7 +103,7 @@ namespace dxvk {
       // In fullscreen, D3DPRESENT_INTERVAL_IMMEDIATE is meaningless.
       if (pParams->Windowed || (PresentationInterval & D3DPRESENT_INTERVAL_IMMEDIATE) != 0) {
         PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-        // TODO: what does dx8 do if multiple D3DPRESENT_INTERVAL flags are set? 
+        // TODO: what does dx8 do if multiple D3DPRESENT_INTERVAL flags are set?
       }
     }
 
@@ -172,5 +172,5 @@ namespace dxvk {
       default:                    return d3d9::D3DSAMPLERSTATETYPE(-1u);
     }
   }
-}
 
+}
