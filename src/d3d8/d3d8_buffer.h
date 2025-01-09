@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d8_include.h"
+#include "d3d8_options.h"
 #include "d3d8_resource.h"
 
 namespace dxvk {
