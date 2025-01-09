@@ -39,47 +39,13 @@ namespace dxvk {
     D3D8StateBlock(
             D3D8Device*                       pDevice,
             D3DSTATEBLOCKTYPE                 Type,
-            Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
-      : m_device(pDevice)
-      , m_stateBlock(std::move(pStateBlock))
-      , m_type(Type) {
-      if (Type == D3DSBT_VERTEXSTATE || Type == D3DSBT_ALL) {
-        // Lights, D3DTSS_TEXCOORDINDEX and D3DTSS_TEXTURETRANSFORMFLAGS,
-        // vertex shader, VS constants, and various render states.
-        m_capture.vs = true;
-      }
+            Com<d3d9::IDirect3DStateBlock9>&& pStateBlock);
 
-      if (Type == D3DSBT_PIXELSTATE || Type == D3DSBT_ALL) {
-        // Pixel shader, PS constants, and various RS/TSS states.
-        m_capture.ps = true;
-      }
+    D3D8StateBlock(D3D8Device* pDevice);
 
-      if (Type == D3DSBT_ALL) {
-        m_capture.indices = true;
-        m_capture.swvp    = true;
-        m_capture.textures.setAll();
-        m_capture.streams.setAll();
-      }
+    ~D3D8StateBlock();
 
-      m_textures.fill(nullptr);
-      m_streams.fill(D3D8VBOP());
-    }
-
-    ~D3D8StateBlock() {}
-
-    // Construct a state block without a D3D9 object
-    D3D8StateBlock(D3D8Device* pDevice)
-      : D3D8StateBlock(pDevice, D3DSTATEBLOCKTYPE(0), nullptr) {
-    }
-
-    // Attach a D3D9 object to a state block that doesn't have one yet
-    void SetD3D9(Com<d3d9::IDirect3DStateBlock9>&& pStateBlock) {
-      if (likely(m_stateBlock == nullptr)) {
-        m_stateBlock = std::move(pStateBlock);
-      } else {
-        Logger::err("D3D8StateBlock::SetD3D9: m_stateBlock has already been initialized");
-      }
-    }
+    void SetD3D9(Com<d3d9::IDirect3DStateBlock9>&& pStateBlock);
 
     HRESULT Capture();
 
@@ -126,6 +92,7 @@ namespace dxvk {
     }
 
   private:
+
     D3D8Device*                     m_device;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
     D3DSTATEBLOCKTYPE               m_type;
@@ -135,21 +102,21 @@ namespace dxvk {
       UINT                          stride = 0;
     };
 
-  private: // State Data //
+    // State Data //
 
     D3D8StateCapture m_capture;
 
-    DWORD m_vertexShader; // vs
-    DWORD m_pixelShader;  // ps
+    DWORD m_vertexShader = 0;
+    DWORD m_pixelShader  = 0;
 
-    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures; // textures
-    std::array<D3D8VBOP, d8caps::MAX_STREAMS>                       m_streams; // stream data
+    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures;
+    std::array<D3D8VBOP, d8caps::MAX_STREAMS>                       m_streams;
 
-    IDirect3DIndexBuffer8*  m_indices = nullptr;  // indices
-    UINT                    m_baseVertexIndex;    // indices
+    IDirect3DIndexBuffer8*  m_indices         = nullptr;
+    UINT                    m_baseVertexIndex = 0;
 
     bool m_isSWVP;  // D3DRS_SOFTWAREVERTEXPROCESSING
-  };
 
+  };
 
 }
