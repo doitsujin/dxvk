@@ -1,14 +1,15 @@
 d3d8_res = wrc_generator.process('version.rc')
 
 d3d8_src = [
-  'd3d8_main.cpp',
-  'd3d8_interface.cpp',
   'd3d8_device.cpp',
+  'd3d8_interface.cpp',
+  'd3d8_main.cpp',
   'd3d8_multithread.cpp',
   'd3d8_options.cpp',
-  'd3d8_surface.cpp',
+  'd3d8_shader.cpp',
   'd3d8_state_block.cpp',
-  'd3d8_shader.cpp'
+  'd3d8_surface.cpp',
+  'd3d8_swapchain.cpp'
 ]
 
 d3d8_ld_args      = []
