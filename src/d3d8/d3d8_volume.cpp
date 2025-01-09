@@ -8,7 +8,7 @@ namespace dxvk {
           D3D8Device*                   pDevice,
           IDirect3DVolumeTexture8*      pTexture,
           Com<d3d9::IDirect3DVolume9>&& pVolume)
-    : D3D8VolumeBase(pDevice, std::move(pVolume), pTexture) {    
+    : D3D8VolumeBase(pDevice, std::move(pVolume), pTexture) {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Volume::GetDesc(D3DVOLUME_DESC* pDesc) {

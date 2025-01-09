@@ -38,7 +38,7 @@ namespace dxvk {
     } catch (HRESULT err) {
       if (riid == __uuidof(IDirect3DBaseTexture8))
         return this;
-      
+
       throw err;
     }
 
@@ -68,7 +68,7 @@ namespace dxvk {
 
       if (unlikely(Index >= m_subresources.size()))
         return D3DERR_INVALIDCALL;
-      
+
       if (m_subresources[Index] == nullptr) {
         try {
           Com<SubresourceType9> subresource = LookupSubresource(Index);
@@ -90,7 +90,7 @@ namespace dxvk {
       Com<SubresourceType9> ptr = nullptr;
       HRESULT res = D3DERR_INVALIDCALL;
       if constexpr (std::is_same_v<D3D8, IDirect3DTexture8>) {
-        res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr); 
+        res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr);
       } else if constexpr (std::is_same_v<D3D8, IDirect3DVolumeTexture8>) {
         res = this->GetD3D9()->GetVolumeLevel(Index, &ptr);
       } else if constexpr (std::is_same_v<D3D8, IDirect3DCubeTexture8>) {

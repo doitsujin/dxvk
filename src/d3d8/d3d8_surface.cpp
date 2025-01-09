@@ -55,7 +55,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Surface::ReleaseDC(HDC hDC) {
     return GetD3D9()->ReleaseDC(hDC);
   }
-  
+
   // TODO: Consider creating only one texture to
   // encompass all surface levels of a texture.
   Com<d3d9::IDirect3DSurface9> D3D8Surface::GetBlitImage() {
@@ -78,11 +78,11 @@ namespace dxvk {
       d3d9::D3DMULTISAMPLE_NONE, 0,
       FALSE,
       &image,
-      NULL);      
-    
+      NULL);
+
     if (FAILED(res))
       throw new DxvkError("D3D8: Failed to create blit image");
-    
+
     return image;
   }
 

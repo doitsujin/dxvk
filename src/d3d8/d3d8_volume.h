@@ -3,7 +3,7 @@
 #include "d3d8_subresource.h"
 
 namespace dxvk {
-  
+
   using D3D8VolumeBase = D3D8Subresource<d3d9::IDirect3DVolume9, IDirect3DVolume8>;
   class D3D8Volume final : public D3D8VolumeBase {
 

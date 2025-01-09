@@ -1,6 +1,7 @@
 #include "d3d8_interface.h"
 
 namespace dxvk {
+
   Logger Logger::s_instance("d3d8.log");
 
   HRESULT CreateD3D8(IDirect3D8** ppDirect3D8) {
@@ -10,6 +11,7 @@ namespace dxvk {
     *ppDirect3D8 = ref(new D3D8Interface());
     return D3D_OK;
   }
+
 }
 
 extern "C" {

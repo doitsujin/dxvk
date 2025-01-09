@@ -29,7 +29,7 @@ namespace dxvk {
 
       return refCount + 1;
     }
-    
+
     ULONG STDMETHODCALLTYPE Release() {
       // ignore Release calls on objects with 0 refCount
       if(unlikely(!this->m_refCount))
