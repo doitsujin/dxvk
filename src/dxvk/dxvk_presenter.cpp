@@ -14,6 +14,13 @@ namespace dxvk {
   : m_device(device), m_signal(signal),
     m_vki(device->instance()->vki()),
     m_vkd(device->vkd()) {
+    // Only enable FSE if the user explicitly opts in. On Windows, FSE
+    // is required to support VRR or HDR, but blocks alt-tabbing or
+    // overlapping windows, which breaks a number of games.
+    m_fullscreenMode = m_device->config().allowFse
+      ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT
+      : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+
     // If a frame signal was provided, launch thread that synchronizes
     // with present operations and periodically signals the event
     if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
@@ -171,7 +178,7 @@ namespace dxvk {
       return VK_ERROR_SURFACE_LOST_KHR;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenExclusiveInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenExclusiveInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    fullScreenExclusiveInfo.fullScreenExclusive = m_fullscreenMode;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
     surfaceInfo.surface = m_surface;
@@ -300,7 +307,7 @@ namespace dxvk {
     m_info.imageCount = pickImageCount(minImageCount, maxImageCount, desc.imageCount);
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
     VkSwapchainPresentModesCreateInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT };
     modeInfo.presentModeCount       = compatibleModes.size();
@@ -457,7 +464,7 @@ namespace dxvk {
     uint32_t numFormats = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
@@ -499,7 +506,7 @@ namespace dxvk {
     uint32_t numModes = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
