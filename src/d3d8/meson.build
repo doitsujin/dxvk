@@ -9,7 +9,8 @@ d3d8_src = [
   'd3d8_shader.cpp',
   'd3d8_state_block.cpp',
   'd3d8_surface.cpp',
-  'd3d8_swapchain.cpp'
+  'd3d8_swapchain.cpp',
+  'd3d8_texture.cpp'
 ]
 
 d3d8_ld_args      = []
