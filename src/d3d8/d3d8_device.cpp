@@ -131,6 +131,7 @@ namespace dxvk {
       // Immediately issue the query. D3D9 will begin it automatically before ending.
       pQuery->Issue(D3DISSUE_END);
       // TODO: Will immediately issuing the query actually yield meaingful results?
+      //
       // Only relevant once RESOURCEMANAGER or VERTEXSTATS are implemented by D9VK,
       // since VCACHE queries will immediately return data during this call.
       res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
@@ -596,9 +597,8 @@ namespace dxvk {
       auto amplitude = cols * bpp;
 
       // Handle DXT compressed textures.
-      // TODO: Are rects always 4x4 aligned?
       if (compressed) {
-        // Assume that DXT blocks are 4x4 pixels.
+        // DXT blocks are always 4x4 pixels.
         constexpr UINT blockWidth  = 4;
         constexpr UINT blockHeight = 4;
 
@@ -786,9 +786,8 @@ namespace dxvk {
         // Dest: MANAGED
         case d3d9::D3DPOOL_MANAGED:
           switch (srcDesc.Pool) {
+            // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
             case d3d9::D3DPOOL_DEFAULT: {
-              // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
-
               // Get temporary off-screen surface for stretching.
               Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
 
@@ -1598,7 +1597,7 @@ namespace dxvk {
       case D3DRS_ZVISIBLE:
         return D3D_OK;
 
-      // TODO: Not implemented by D9VK. Try anyway.
+      // TODO: Implement D3DRS_ANTIALIASEDLINEENABLE in D9VK.
       case D3DRS_EDGEANTIALIAS:
         State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
         break;
