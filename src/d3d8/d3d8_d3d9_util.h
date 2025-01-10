@@ -75,7 +75,8 @@ namespace dxvk {
     params.BackBufferCount = pParams->BackBufferCount;
 
     params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
-    params.MultiSampleQuality = 0; // (D3D8: no MultiSampleQuality), TODO: get a value for this
+    // MultiSampleQuality is only used with D3DMULTISAMPLE_NONMASKABLE, which is not available in D3D8
+    params.MultiSampleQuality = 0;
 
     UINT PresentationInterval = pParams->FullScreen_PresentationInterval;
 
