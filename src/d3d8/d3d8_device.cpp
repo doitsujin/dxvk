@@ -1588,12 +1588,11 @@ namespace dxvk {
       default:
         break;
 
-      // TODO: D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
-      case D3DRS_LINEPATTERN: {
-        [[maybe_unused]]
-        D3DLINEPATTERN pattern = bit::cast<D3DLINEPATTERN>(Value);
-        stateChange = false;
-      } break;
+      // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
+      case D3DRS_LINEPATTERN:
+        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
+        m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
+        return D3D_OK;
 
       // Not supported by D3D8.
       case D3DRS_ZVISIBLE:
@@ -1653,9 +1652,9 @@ namespace dxvk {
       default:
         break;
 
-      // TODO: D3DRS_LINEPATTERN
       case D3DRS_LINEPATTERN:
-        break;
+        *pValue = bit::cast<DWORD>(m_linePattern);
+        return D3D_OK;
 
       // Not supported by D3D8.
       case D3DRS_ZVISIBLE:
