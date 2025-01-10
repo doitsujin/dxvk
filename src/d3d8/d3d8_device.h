@@ -426,6 +426,8 @@ namespace dxvk {
 
     D3DPRESENT_PARAMETERS m_presentParams;
 
+    D3DLINEPATTERN        m_linePattern = {};
+
     D3D8StateBlock*                            m_recorder = nullptr;
     DWORD                                      m_recorderToken = 0;
     DWORD                                      m_token    = 0;
