@@ -1596,8 +1596,7 @@ namespace dxvk {
 
       // Not supported by D3D8.
       case D3DRS_ZVISIBLE:
-        stateChange = false;
-        break;
+        return D3D_OK;
 
       // TODO: Not implemented by D9VK. Try anyway.
       case D3DRS_EDGEANTIALIAS:
@@ -1659,7 +1658,8 @@ namespace dxvk {
 
       // Not supported by D3D8.
       case D3DRS_ZVISIBLE:
-        break;
+        *pValue = 0;
+        return D3D_OK;
 
       case D3DRS_EDGEANTIALIAS:
         State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
