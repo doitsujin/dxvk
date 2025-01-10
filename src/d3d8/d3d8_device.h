@@ -383,8 +383,6 @@ namespace dxvk {
       m_presentParams.BackBufferCount = std::max(m_presentParams.BackBufferCount, 1u);
 
       // Purge cached objects
-      // TODO: Some functions may need to be called here (e.g. SetTexture, etc.)
-      // in case Reset can be recorded by state blocks and other things.
       m_textures.fill(nullptr);
       m_streams.fill(D3D8VBO());
       m_indices = nullptr;
@@ -442,14 +440,12 @@ namespace dxvk {
       UINT                           stride = 0;
     };
 
-    // Remember to fill() these in the constructor!
     std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
 
     Com<D3D8IndexBuffer, false>        m_indices;
     UINT                               m_baseVertexIndex = 0;
 
-    // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
     Com<D3D8Surface, false>              m_autoDepthStencil;
 
