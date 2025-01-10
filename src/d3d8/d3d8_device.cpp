@@ -476,7 +476,7 @@ namespace dxvk {
       Height,
       d3d9::D3DFORMAT(Format),
       d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
-      0,    // TODO: CreateRenderTarget MultisampleQuality
+      0,
       Lockable,
       &pSurf9,
       NULL);
@@ -509,7 +509,7 @@ namespace dxvk {
       Height,
       d3d9::D3DFORMAT(Format),
       d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
-      0,    // TODO: CreateDepthStencilSurface MultisampleQuality
+      0,
       true, // TODO: CreateDepthStencilSurface Discard
       &pSurf9,
       NULL);
