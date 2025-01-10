@@ -1620,10 +1620,11 @@ namespace dxvk {
 
         return GetD3D9()->SetSoftwareVertexProcessing(Value);
 
-      // TODO: D3DRS_PATCHSEGMENTS
+      // TODO: Implement D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
-        stateChange = false;
-        break;
+        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
+        m_patchSegments = bit::cast<float>(Value);
+        return D3D_OK;
     }
 
     if (stateChange) {
@@ -1674,9 +1675,9 @@ namespace dxvk {
       case D3DRS_SOFTWAREVERTEXPROCESSING:
         return GetD3D9()->GetSoftwareVertexProcessing();
 
-      // TODO: D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
-        break;
+        *pValue = bit::cast<DWORD>(m_patchSegments);
+        return D3D_OK;
     }
 
     // This call will never fail

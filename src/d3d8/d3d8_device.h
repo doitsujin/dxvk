@@ -425,8 +425,11 @@ namespace dxvk {
     Com<D3D8Interface>    m_parent;
 
     D3DPRESENT_PARAMETERS m_presentParams;
-
-    D3DLINEPATTERN        m_linePattern = {};
+    
+    // Value of D3DRS_LINEPATTERN
+    D3DLINEPATTERN        m_linePattern   = {};
+    // Value of D3DRS_PATCHSEGMENTS
+    float                 m_patchSegments = 1.0f;
 
     D3D8StateBlock*                            m_recorder = nullptr;
     DWORD                                      m_recorderToken = 0;
