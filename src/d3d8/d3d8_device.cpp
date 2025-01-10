@@ -510,7 +510,7 @@ namespace dxvk {
       d3d9::D3DFORMAT(Format),
       d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
       0,
-      true, // TODO: CreateDepthStencilSurface Discard
+      FALSE, // z-buffer discarding is not used in D3D8
       &pSurf9,
       NULL);
 
