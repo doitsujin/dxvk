@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <utility>
 #include <vector>
 
 #include "../spirv/spirv_module.h"
@@ -135,6 +136,13 @@ namespace dxvk {
     uint32_t    component = 0;
   };
   
+
+  struct DxbcIndexRange {
+    DxbcOperandType type;
+    uint32_t start;
+    uint32_t length;
+  };
+
   
   /**
    * \brief Vertex shader-specific structure
@@ -445,6 +453,10 @@ namespace dxvk {
     // xfb output registers for geometry shaders
     std::vector<DxbcXfbVar> m_xfbVars;
     
+    /////////////////////////////////////////////
+    // Dynamically indexed input and output regs
+    std::vector<DxbcIndexRange> m_indexRanges = { };
+
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
     // constant buffers, samplers, textures, and UAVs.
@@ -473,7 +485,7 @@ namespace dxvk {
     uint32_t m_vArrayLengthId = 0;
 
     uint32_t m_vArray = 0;
-    
+
     ////////////////////////////////////////////////////
     // Per-vertex input and output blocks. Depending on
     // the shader stage, these may be declared as arrays.
@@ -546,6 +558,9 @@ namespace dxvk {
     void emitDclGlobalFlags(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclIndexRange(
+      const DxbcShaderInstruction&  ins);
+
     void emitDclTemps(
       const DxbcShaderInstruction&  ins);
     
