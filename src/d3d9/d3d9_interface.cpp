@@ -457,6 +457,13 @@ namespace dxvk {
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
       return D3DERR_INVALIDCALL;
 
+    // In windowed mode, only a subset of the presentation interval flags can be used.
+    if (unlikely(pPresentationParameters->Windowed
+            && !(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
+      return D3DERR_INVALIDCALL;
+
     return D3D_OK;
   }
 

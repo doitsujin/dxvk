@@ -237,6 +237,12 @@ namespace dxvk {
               && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;
 
+    // In D3D8 nothing except D3DPRESENT_INTERVAL_DEFAULT can be used
+    // as a flag for windowed presentation.
+    if (unlikely(pPresentationParameters->Windowed
+              && pPresentationParameters->FullScreen_PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
     m_presentParams = *pPresentationParameters;
     ResetState();
 

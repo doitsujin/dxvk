@@ -78,33 +78,25 @@ namespace dxvk {
     // MultiSampleQuality is only used with D3DMULTISAMPLE_NONMASKABLE, which is not available in D3D8
     params.MultiSampleQuality = 0;
 
+    // If an application passes multiple D3DPRESENT_INTERVAL flags, this will be
+    // validated appropriately by D3D9. Simply copy the values here.
     UINT PresentationInterval = pParams->FullScreen_PresentationInterval;
 
     if (pParams->Windowed) {
-
-      if (unlikely(PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT)) {
-        // TODO: what does dx8 do if windowed app sets FullScreen_PresentationInterval?
-        Logger::warn(str::format(
-          "D3D8: Application is windowed yet requested FullScreen_PresentationInterval ", PresentationInterval,
-          " (should be D3DPRESENT_INTERVAL_DEFAULT). This will be ignored."));
-      }
-
       // D3D8: For windowed swap chain, the back buffer is copied to the window immediately.
       PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     }
 
     D3DSWAPEFFECT SwapEffect = pParams->SwapEffect;
 
-    // D3DSWAPEFFECT_COPY_VSYNC has been removed
     if (SwapEffect == D3DSWAPEFFECT_COPY_VSYNC) {
-
+      // D3DSWAPEFFECT_COPY_VSYNC has been removed from D3D9, use D3DSWAPEFFECT_COPY
       SwapEffect = D3DSWAPEFFECT_COPY;
 
       // D3D8: In windowed mode, D3DSWAPEFFECT_COPY_VSYNC enables VSYNC.
       // In fullscreen, D3DPRESENT_INTERVAL_IMMEDIATE is meaningless.
-      if (pParams->Windowed || (PresentationInterval & D3DPRESENT_INTERVAL_IMMEDIATE) != 0) {
+      if (pParams->Windowed || PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) {
         PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-        // TODO: what does dx8 do if multiple D3DPRESENT_INTERVAL flags are set?
       }
     }
 
