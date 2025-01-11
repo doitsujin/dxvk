@@ -43,6 +43,11 @@ namespace dxvk {
     { R"(\\Wow(Classic)?\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* Bright Memory - Will choose other vendors   *
+     * over Intel even if Intel is the only dGPU   */
+    { R"(\\BrightMemory_EP1-Win64-Shipping\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
