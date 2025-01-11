@@ -465,6 +465,11 @@ namespace dxvk {
     { R"(\\Varstray_steam(_demo)?\.exe$)", {{
       { "dxgi.maxFrameRate",                "60" },
     }} },
+    /* Far Cry 5 and New Dawn                      *
+     * Invisible terrain on Intel                  */
+    { R"(\\FarCry(5|NewDawn)\.exe$)", {{
+      { "d3d11.zeroInitWorkgroupMemory",    "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
