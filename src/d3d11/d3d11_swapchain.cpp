@@ -69,9 +69,6 @@ namespace dxvk {
     CreateBackBuffers();
     CreateBlitter();
     CreateHud();
-
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
-      RecreateSwapChain();
   }
 
 
@@ -531,6 +528,7 @@ namespace dxvk {
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
+    presenterDesc.deferSurfaceCreation = m_parent->GetOptions()->deferSurfaceCreation;
 
     m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc, [
       cAdapter  = m_device->adapter(),
