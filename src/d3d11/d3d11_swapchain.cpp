@@ -421,6 +421,14 @@ namespace dxvk {
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId
     ] (DxvkContext* ctx) {
+      // Update back buffer color space as necessary
+      if (cSwapImage->image()->info().colorSpace != cColorSpace) {
+        DxvkImageUsageInfo usage = { };
+        usage.colorSpace = cColorSpace;
+
+        ctx->ensureImageCompatibility(cSwapImage->image(), usage);
+      }
+
       // Blit the D3D back buffer onto the actual Vulkan
       // swap chain and render the HUD if we have one.
       auto contextObjects = ctx->beginExternalRendering();
