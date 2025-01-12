@@ -1517,7 +1517,12 @@ namespace dxvk {
     // If everything matches already, no need to do anything. Only ensure
     // that the stable adress bit is respected if set for the first time.
     if (isUsageAndFormatCompatible && isAccessAndLayoutCompatible) {
-      if (usageInfo.stableGpuAddress && image->canRelocate()) {
+      bool needsUpdate = (usageInfo.stableGpuAddress && image->canRelocate());
+
+      if (usageInfo.colorSpace != VK_COLOR_SPACE_MAX_ENUM_KHR)
+        needsUpdate |= (usageInfo.colorSpace != image->info().colorSpace);
+
+      if (needsUpdate) {
         image->assignStorageWithUsage(image->storage(), usageInfo);
         m_common->memoryManager().lockResourceGpuAddress(image->storage());
       }
