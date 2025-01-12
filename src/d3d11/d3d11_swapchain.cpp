@@ -387,12 +387,11 @@ namespace dxvk {
       return DXGI_STATUS_OCCLUDED;
 
     // Presentation semaphores and WSI swap chain image
-    PresenterInfo info = m_presenter->info();
     PresenterSync sync;
 
-    uint32_t imageIndex = 0;
+    Rc<DxvkImage> backBuffer;
 
-    VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
+    VkResult status = m_presenter->acquireNextImage(sync, backBuffer);
 
     while (status != VK_SUCCESS) {
       RecreateSwapChain();
@@ -400,8 +399,7 @@ namespace dxvk {
       if (!m_presenter->hasSwapChain())
         return DXGI_STATUS_OCCLUDED;
       
-      info = m_presenter->info();
-      status = m_presenter->acquireNextImage(sync, imageIndex);
+      status = m_presenter->acquireNextImage(sync, backBuffer);
 
       if (status == VK_SUBOPTIMAL_KHR)
         break;
@@ -418,11 +416,21 @@ namespace dxvk {
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
+    DxvkImageViewKey viewInfo = { };
+    viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    viewInfo.format     = backBuffer->info().format;
+    viewInfo.aspects    = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.mipIndex   = 0u;
+    viewInfo.mipCount   = 1u;
+    viewInfo.layerIndex = 0u;
+    viewInfo.layerCount = 1u;
+
     immediateContext->EmitCs([
       cPresentStatus  = &m_presentStatus,
       cDevice         = m_device,
       cBlitter        = m_blitter,
-      cBackBuffer     = m_imageViews.at(imageIndex),
+      cBackBuffer     = backBuffer->createView(viewInfo),
       cSwapImage      = GetBackBufferView(),
       cSync           = sync,
       cHud            = m_hud,
@@ -507,8 +515,6 @@ namespace dxvk {
 
     if (vr)
       throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
-    
-    CreateRenderTargetViews();
   }
 
 
@@ -536,48 +542,6 @@ namespace dxvk {
     });
 
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
-  }
-
-
-  void D3D11SwapChain::CreateRenderTargetViews() {
-    PresenterInfo info = m_presenter->info();
-
-    m_imageViews.clear();
-    m_imageViews.resize(info.imageCount);
-
-    DxvkImageCreateInfo imageInfo;
-    imageInfo.type        = VK_IMAGE_TYPE_2D;
-    imageInfo.format      = info.format.format;
-    imageInfo.flags       = 0;
-    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.extent      = { info.imageExtent.width, info.imageExtent.height, 1 };
-    imageInfo.numLayers   = 1;
-    imageInfo.mipLevels   = 1;
-    imageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    imageInfo.stages      = 0;
-    imageInfo.access      = 0;
-    imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    imageInfo.shared      = VK_TRUE;
-    imageInfo.debugName   = "Swap image";
-
-    DxvkImageViewKey viewInfo;
-    viewInfo.viewType     = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format       = info.format.format;
-    viewInfo.usage        = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    viewInfo.aspects      = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.mipIndex     = 0;
-    viewInfo.mipCount     = 1;
-    viewInfo.layerIndex   = 0;
-    viewInfo.layerCount   = 1;
-
-    for (uint32_t i = 0; i < info.imageCount; i++) {
-      VkImage imageHandle = m_presenter->getImage(i).image;
-      
-      Rc<DxvkImage> image = m_device->importImage(imageInfo,
-        imageHandle, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-      m_imageViews[i] = image->createView(viewInfo);
-    }
   }
 
 

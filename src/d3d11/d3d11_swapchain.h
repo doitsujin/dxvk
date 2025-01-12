@@ -113,8 +113,6 @@ namespace dxvk {
     small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
     DxvkSubmitStatus          m_presentStatus;
 
-    std::vector<Rc<DxvkImageView>> m_imageViews;
-
     uint64_t                  m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
     uint32_t                  m_frameLatency = DefaultFrameLatency;
     uint32_t                  m_frameLatencyCap = 0;
@@ -146,8 +144,6 @@ namespace dxvk {
     void CreateFrameLatencyEvent();
 
     void CreatePresenter();
-
-    void CreateRenderTargetViews();
 
     void CreateBackBuffers();
 
