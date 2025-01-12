@@ -153,18 +153,16 @@ namespace dxvk {
 
     UpdateWindowCtx();
 
-    bool recreate = false;
-    recreate   |= m_wctx->presenter == nullptr;
+    bool recreate = !m_wctx->presenter;
+
     if (options->deferSurfaceCreation)
       recreate |= m_parent->IsDeviceReset();
 
-    if (m_wctx->presenter != nullptr) {
-      m_dirty  |= m_wctx->presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
-      m_dirty  |= !m_wctx->presenter->hasSwapChain();
-    }
+    if (m_wctx->presenter)
+      m_wctx->presenter->setSyncInterval(presentInterval);
 
-    m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
-    m_dirty    |= recreate;
+    UpdatePresentRegion(pSourceRect, pDestRect);
+    UpdatePresentParameters();
 
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
@@ -174,17 +172,11 @@ namespace dxvk {
 
     try {
       if (recreate)
-        CreatePresenter();
-
-      if (std::exchange(m_dirty, false))
-        RecreateSwapChain();
+        RecreateSurface();
 
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
-      if (!m_wctx->presenter->hasSwapChain())
-        return D3D_OK;
-
       UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
@@ -606,9 +598,6 @@ namespace dxvk {
     this->SynchronizePresent();
     this->NormalizePresentParameters(pPresentParams);
 
-    m_dirty    |= m_presentParams.BackBufferFormat   != pPresentParams->BackBufferFormat
-               || m_presentParams.BackBufferCount    != pPresentParams->BackBufferCount;
-
     bool changeFullscreen = m_presentParams.Windowed != pPresentParams->Windowed;
 
     if (pPresentParams->Windowed) {
@@ -639,6 +628,8 @@ namespace dxvk {
 
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
+
+    UpdatePresentParameters();
 
     hr = CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags);
     if (FAILED(hr))
@@ -826,27 +817,13 @@ namespace dxvk {
       SynchronizePresent();
 
       // Presentation semaphores and WSI swap chain image
-      PresenterInfo info = m_wctx->presenter->info();
       PresenterSync sync = { };
-
       Rc<DxvkImage> backBuffer;
 
       VkResult status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
 
-      while (status != VK_SUCCESS) {
-        RecreateSwapChain();
-        
-        info = m_wctx->presenter->info();
-        status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
-
-        if (status == VK_SUBOPTIMAL_KHR)
-          break;
-      }
-
-      if (m_hdrMetadata && m_dirtyHdrMetadata) {
-        m_wctx->presenter->setHdrMetadata(*m_hdrMetadata);
-        m_dirtyHdrMetadata = false;
-      }
+      if (status < 0 || status == VK_NOT_READY)
+        break;
 
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
@@ -912,7 +889,6 @@ namespace dxvk {
         uint64_t frameId = cRepeat ? 0 : cFrameId;
 
         cDevice->presentImage(cPresenter,
-          cPresenter->info().presentMode,
           frameId, cPresentStatus);
       });
 
@@ -931,29 +907,15 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::SynchronizePresent() {
-    // Recreate swap chain if the previous present call failed
-    VkResult status = m_device->waitForSubmission(&m_presentStatus);
-
-    if (status != VK_SUCCESS)
-      RecreateSwapChain();
+    m_device->waitForSubmission(&m_presentStatus);
   }
 
-  void D3D9SwapChainEx::RecreateSwapChain() {
-    // Ensure that we can safely destroy the swap chain
-    m_device->waitForSubmission(&m_presentStatus);
-    m_device->waitForIdle();
 
-    m_presentStatus.result = VK_SUCCESS;
-
-    PresenterDesc presenterDesc;
-    presenterDesc.imageExtent     = GetPresentExtent();
-    presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
-    presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-
-    VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
-
-    if (vr)
-      throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate swap chain: ", vr));
+  void D3D9SwapChainEx::RecreateSurface() {
+    if (m_wctx->presenter)
+      m_wctx->presenter->invalidateSurface();
+    else
+      CreatePresenter();
   }
 
 
@@ -965,9 +927,6 @@ namespace dxvk {
     m_presentStatus.result = VK_SUCCESS;
 
     PresenterDesc presenterDesc;
-    presenterDesc.imageExtent     = GetPresentExtent();
-    presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
-    presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.deferSurfaceCreation = m_parent->GetOptions()->deferSurfaceCreation;
 
     m_wctx->presenter = new Presenter(m_device,
@@ -982,6 +941,12 @@ namespace dxvk {
         vki->instance(),
         surface);
     });
+
+    m_wctx->presenter->setSurfaceExtent(m_swapchainExtent);
+    m_wctx->presenter->setSurfaceFormat(GetSurfaceFormat());
+
+    if (m_hdrMetadata)
+      m_wctx->presenter->setHdrMetadata(*m_hdrMetadata);
   }
 
 
@@ -1138,60 +1103,44 @@ namespace dxvk {
   }
 
 
-  uint32_t D3D9SwapChainEx::PickFormats(
-          D3D9Format                Format,
-          VkSurfaceFormatKHR*       pDstFormats) {
-    uint32_t n = 0;
+  VkSurfaceFormatKHR D3D9SwapChainEx::GetSurfaceFormat() {
+    D3D9Format format = EnumerateFormat(m_presentParams.BackBufferFormat);
 
-    switch (Format) {
+    switch (format) {
       default:
-        Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));      
-     [[fallthrough]];
+        Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", format));
+        [[fallthrough]];
 
       case D3D9Format::A8R8G8B8:
       case D3D9Format::X8R8G8B8:
+        return { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
+
       case D3D9Format::A8B8G8R8:
-      case D3D9Format::X8B8G8R8: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
-      } break;
+      case D3D9Format::X8B8G8R8:
+        return { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
 
       case D3D9Format::A2R10G10B10:
-      case D3D9Format::A2B10G10R10: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
-      } break;
+        return { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
+
+      case D3D9Format::A2B10G10R10:
+        return { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
 
       case D3D9Format::X1R5G5B5:
-      case D3D9Format::A1R5G5B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, m_colorspace };
-      } break;
+      case D3D9Format::A1R5G5B5:
+        return { VK_FORMAT_B5G5R5A1_UNORM_PACK16, m_colorspace };
 
-      case D3D9Format::R5G6B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, m_colorspace };
-      } break;
+      case D3D9Format::R5G6B5:
+        return { VK_FORMAT_B5G6R5_UNORM_PACK16, m_colorspace };
 
       case D3D9Format::A16B16G16R16F: {
-        if (m_unlockAdditionalFormats) {
-          pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
-        } else {
-          Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));      
+        if (!m_unlockAdditionalFormats) {
+          Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", format));
+          return VkSurfaceFormatKHR { };
         }
-        break;
+
+        return { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
       }
     }
-
-    return n;
-  }
-
-
-  uint32_t D3D9SwapChainEx::PickImageCount(
-          UINT                      Preferred) {
-    int32_t option = m_parent->GetOptions()->numBackBuffers;
-    return option > 0 ? uint32_t(option) : uint32_t(Preferred);
   }
 
 
@@ -1297,7 +1246,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
+  void D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
     const bool isWindowed = m_presentParams.Windowed;
 
     // Tests show that present regions are ignored in fullscreen
@@ -1333,15 +1282,15 @@ namespace dxvk {
     || dstRect.right  - dstRect.left != LONG(width)
     || dstRect.bottom - dstRect.top  != LONG(height);
 
-    bool recreate = m_wctx != nullptr
-      && (m_wctx->presenter == nullptr
-      || m_wctx->presenter->info().imageExtent.width  != width
-      || m_wctx->presenter->info().imageExtent.height != height);
-
     m_swapchainExtent = { width, height };
     m_dstRect = dstRect;
+  }
 
-    return recreate;
+  void D3D9SwapChainEx::UpdatePresentParameters() {
+    if (m_wctx && m_wctx->presenter) {
+      m_wctx->presenter->setSurfaceExtent(m_swapchainExtent);
+      m_wctx->presenter->setSurfaceFormat(GetSurfaceFormat());
+    }
   }
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
@@ -1386,8 +1335,10 @@ namespace dxvk {
     if (!CheckColorSpaceSupport(ColorSpace))
       return D3DERR_INVALIDCALL;
     
-    m_swapchain->m_dirty |= ColorSpace != m_swapchain->m_colorspace;
     m_swapchain->m_colorspace = ColorSpace;
+
+    if (m_swapchain->m_wctx && m_swapchain->m_wctx->presenter)
+      m_swapchain->m_wctx->presenter->setSurfaceFormat(m_swapchain->GetSurfaceFormat());
 
     return S_OK;
   }
@@ -1397,8 +1348,10 @@ namespace dxvk {
     if (!pHDRMetadata)
       return D3DERR_INVALIDCALL;
 
-    m_swapchain->m_hdrMetadata      = *pHDRMetadata;
-    m_swapchain->m_dirtyHdrMetadata = true;
+    m_swapchain->m_hdrMetadata = *pHDRMetadata;
+
+    if (m_swapchain->m_wctx && m_swapchain->m_wctx->presenter)
+      m_swapchain->m_wctx->presenter->setHdrMetadata(*pHDRMetadata);
 
     return S_OK;
   }

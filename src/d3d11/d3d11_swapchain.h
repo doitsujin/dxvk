@@ -119,9 +119,7 @@ namespace dxvk {
     HANDLE                    m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence>   m_frameLatencySignal;
 
-    bool                      m_dirty = true;
-
-    VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkColorSpaceKHR           m_colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     double                    m_targetFrameRate = 0.0;
 
@@ -135,8 +133,6 @@ namespace dxvk {
     void RotateBackBuffers(D3D11ImmediateContext* ctx);
 
     void SynchronizePresent();
-
-    void RecreateSwapChain();
 
     void CreateFrameLatencyEvent();
 
@@ -154,12 +150,7 @@ namespace dxvk {
 
     uint32_t GetActualFrameLatency();
     
-    uint32_t PickFormats(
-            DXGI_FORMAT               Format,
-            VkSurfaceFormatKHR*       pDstFormats);
-    
-    uint32_t PickImageCount(
-            UINT                      Preferred);
+    VkSurfaceFormatKHR GetSurfaceFormat(DXGI_FORMAT Format);
     
     std::string GetApiName() const;
 

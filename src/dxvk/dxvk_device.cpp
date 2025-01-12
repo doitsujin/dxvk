@@ -307,14 +307,12 @@ namespace dxvk {
 
   void DxvkDevice::presentImage(
     const Rc<Presenter>&            presenter,
-          VkPresentModeKHR          presentMode,
           uint64_t                  frameId,
           DxvkSubmitStatus*         status) {
     status->result = VK_NOT_READY;
 
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
-    presentInfo.presentMode = presentMode;
     presentInfo.frameId = frameId;
     m_submissionQueue.present(presentInfo, status);
     

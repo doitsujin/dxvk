@@ -174,11 +174,11 @@ namespace dxvk {
     const DXGI_SWAP_CHAIN_DESC1*    pDesc,
     const UINT*                     pNodeMasks,
           IUnknown* const*          ppPresentQueues) {
-    m_dirty |= m_desc.Format      != pDesc->Format
-            || m_desc.Width       != pDesc->Width
-            || m_desc.Height      != pDesc->Height
-            || m_desc.BufferCount != pDesc->BufferCount
-            || m_desc.Flags       != pDesc->Flags;
+    if (m_desc.Format != pDesc->Format)
+      m_presenter->setSurfaceFormat(GetSurfaceFormat(pDesc->Format));
+
+    if (m_desc.Width != pDesc->Width || m_desc.Height != pDesc->Height)
+      m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
 
     m_desc = *pDesc;
     CreateBackBuffers();
@@ -251,32 +251,31 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
-    if (!(PresentFlags & DXGI_PRESENT_TEST))
-      m_dirty |= m_presenter->setSyncInterval(SyncInterval) != VK_SUCCESS;
-
     HRESULT hr = S_OK;
-
-    if (!m_presenter->hasSwapChain()) {
-      RecreateSwapChain();
-      m_dirty = false;
-    }
-
-    if (!m_presenter->hasSwapChain())
-      hr = DXGI_STATUS_OCCLUDED;
 
     if (m_device->getDeviceStatus() != VK_SUCCESS)
       hr = DXGI_ERROR_DEVICE_RESET;
 
-    if (PresentFlags & DXGI_PRESENT_TEST)
-      return hr;
+    if (PresentFlags & DXGI_PRESENT_TEST) {
+      if (hr != S_OK)
+        return hr;
+
+      // If the current present status is NOT_READY, we have a present
+      // in flight, which means that we can most likely present again.
+      // This avoids an expensive sync point.
+      VkResult status = m_presentStatus.result.load();
+
+      if (status == VK_NOT_READY)
+        return S_OK;
+
+      status = m_presenter->checkSwapChainStatus();
+      return status == VK_SUCCESS ? S_OK : DXGI_STATUS_OCCLUDED;
+    }
 
     if (hr != S_OK) {
       SyncFrameLatency();
       return hr;
     }
-
-    if (std::exchange(m_dirty, false))
-      RecreateSwapChain();
 
     try {
       hr = PresentImage(SyncInterval);
@@ -298,7 +297,8 @@ namespace dxvk {
           DXGI_COLOR_SPACE_TYPE     ColorSpace) {
     UINT supportFlags = 0;
 
-    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+
     if (m_presenter->supportsColorSpace(vkColorSpace))
       supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
 
@@ -308,13 +308,14 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetColorSpace(
           DXGI_COLOR_SPACE_TYPE     ColorSpace) {
-    if (!(CheckColorSpaceSupport(ColorSpace) & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
+    VkColorSpaceKHR colorSpace = ConvertColorSpace(ColorSpace);
+
+    if (!m_presenter->supportsColorSpace(colorSpace))
       return E_INVALIDARG;
 
-    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
-    m_dirty |= vkColorSpace != m_colorspace;
-    m_colorspace = vkColorSpace;
+    m_colorSpace = colorSpace;
 
+    m_presenter->setSurfaceFormat(GetSurfaceFormat(m_desc.Format));
     return S_OK;
   }
 
@@ -378,27 +379,19 @@ namespace dxvk {
 
     SynchronizePresent();
 
-    if (!m_presenter->hasSwapChain())
-      return DXGI_STATUS_OCCLUDED;
+    m_presenter->setSyncInterval(SyncInterval);
 
     // Presentation semaphores and WSI swap chain image
     PresenterSync sync;
-
     Rc<DxvkImage> backBuffer;
 
     VkResult status = m_presenter->acquireNextImage(sync, backBuffer);
 
-    while (status != VK_SUCCESS) {
-      RecreateSwapChain();
+    if (status < 0)
+      return E_FAIL;
 
-      if (!m_presenter->hasSwapChain())
-        return DXGI_STATUS_OCCLUDED;
-      
-      status = m_presenter->acquireNextImage(sync, backBuffer);
-
-      if (status == VK_SUBOPTIMAL_KHR)
-        break;
-    }
+    if (status == VK_NOT_READY)
+      return DXGI_STATUS_OCCLUDED;
 
     m_frameId += 1;
 
@@ -425,7 +418,7 @@ namespace dxvk {
       cSync           = sync,
       cHud            = m_hud,
       cPresenter      = m_presenter,
-      cColorSpace     = m_colorspace,
+      cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId
     ] (DxvkContext* ctx) {
       // Blit the D3D back buffer onto the actual Vulkan
@@ -448,7 +441,6 @@ namespace dxvk {
       ctx->flushCommandList(nullptr);
 
       cDevice->presentImage(cPresenter,
-        cPresenter->info().presentMode,
         cFrameId, cPresentStatus);
     });
 
@@ -480,30 +472,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::SynchronizePresent() {
-    // Recreate swap chain if the previous present call failed
-    VkResult status = m_device->waitForSubmission(&m_presentStatus);
-    
-    if (status != VK_SUCCESS)
-      RecreateSwapChain();
-  }
-
-
-  void D3D11SwapChain::RecreateSwapChain() {
-    // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
-    m_device->waitForIdle();
-
-    m_presentStatus.result = VK_SUCCESS;
-
-    PresenterDesc presenterDesc;
-    presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
-    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
-    presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
-
-    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
-
-    if (vr)
-      throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
   }
 
 
@@ -516,10 +485,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreatePresenter() {
-    PresenterDesc presenterDesc;
-    presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
-    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
-    presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
+    PresenterDesc presenterDesc = { };
     presenterDesc.deferSurfaceCreation = m_parent->GetOptions()->deferSurfaceCreation;
 
     m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc, [
@@ -531,6 +497,8 @@ namespace dxvk {
         cAdapter->handle(), surface);
     });
 
+    m_presenter->setSurfaceFormat(GetSurfaceFormat(m_desc.Format));
+    m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
   }
 
@@ -658,46 +626,26 @@ namespace dxvk {
   }
 
 
-  uint32_t D3D11SwapChain::PickFormats(
-          DXGI_FORMAT               Format,
-          VkSurfaceFormatKHR*       pDstFormats) {
-    uint32_t n = 0;
-
+  VkSurfaceFormatKHR D3D11SwapChain::GetSurfaceFormat(DXGI_FORMAT Format) {
     switch (Format) {
       default:
         Logger::warn(str::format("D3D11SwapChain: Unexpected format: ", m_desc.Format));
-      [[fallthrough]];
-      
+        [[fallthrough]];
+
       case DXGI_FORMAT_R8G8B8A8_UNORM:
-      case DXGI_FORMAT_B8G8R8A8_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
-      } break;
-      
+      case DXGI_FORMAT_B8G8R8A8_UNORM:
+        return { VK_FORMAT_R8G8B8A8_UNORM, m_colorSpace };
+
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
-      case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, m_colorspace };
-      } break;
-      
-      case DXGI_FORMAT_R10G10B10A2_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
-      } break;
-      
-      case DXGI_FORMAT_R16G16B16A16_FLOAT: {
-        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
-      } break;
+      case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB:
+        return { VK_FORMAT_R8G8B8A8_SRGB, m_colorSpace };
+
+      case DXGI_FORMAT_R10G10B10A2_UNORM:
+        return { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorSpace };
+
+      case DXGI_FORMAT_R16G16B16A16_FLOAT:
+        return { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorSpace };
     }
-
-    return n;
-  }
-
-
-  uint32_t D3D11SwapChain::PickImageCount(
-          UINT                      Preferred) {
-    int32_t option = m_parent->GetOptions()->numBackBuffers;
-    return option > 0 ? uint32_t(option) : uint32_t(Preferred);
   }
 
 

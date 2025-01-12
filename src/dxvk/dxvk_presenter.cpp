@@ -52,26 +52,51 @@ namespace dxvk {
   }
 
 
-  PresenterInfo Presenter::info() const {
-    return m_info;
+  VkResult Presenter::checkSwapChainStatus() {
+    std::lock_guard lock(m_surfaceMutex);
+
+    if (!m_swapchain)
+      return recreateSwapChain();
+
+    return VK_SUCCESS;
   }
 
 
   VkResult Presenter::acquireNextImage(PresenterSync& sync, Rc<DxvkImage>& image) {
-    PresenterSync& semaphores = m_semaphores.at(m_frameIndex);
-    sync = semaphores;
+    std::lock_guard lock(m_surfaceMutex);
+
+    // Ensure that the swap chain gets recreated if it is dirty
+    updateSwapChain();
 
     // Don't acquire more than one image at a time
-    if (m_acquireStatus == VK_NOT_READY) {
-      waitForSwapchainFence(semaphores);
+    if (m_acquireStatus == VK_NOT_READY && m_swapchain) {
+      PresenterSync sync = m_semaphores.at(m_frameIndex);
+
+      waitForSwapchainFence(sync);
 
       m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
         m_swapchain, std::numeric_limits<uint64_t>::max(),
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
     }
 
-    if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
-      return m_acquireStatus;
+    // If the swap chain is out of date, recreate it and retry. It
+    // is possible that we do not get a new swap chain here, e.g.
+    // because the window is minimized.
+    if (m_acquireStatus != VK_SUCCESS || !m_swapchain) {
+      VkResult vr = recreateSwapChain();
+
+      if (vr != VK_SUCCESS)
+        return vr;
+
+      PresenterSync sync = m_semaphores.at(m_frameIndex);
+
+      m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
+        m_swapchain, std::numeric_limits<uint64_t>::max(),
+        sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+
+      if (m_acquireStatus < 0)
+        return m_acquireStatus;
+    }
 
     // Update HDR metadata after a successful acquire. We know
     // that there won't be a present in flight at this point.
@@ -84,14 +109,19 @@ namespace dxvk {
       }
     }
 
+    // Set dynamic present mode for the next frame if possible
+    if (!m_dynamicModes.empty())
+      m_presentMode = m_dynamicModes.at(m_preferredSyncInterval ? 1u : 0u); 
+
+    // Return relevant Vulkan objects for the acquired image
+    sync = m_semaphores.at(m_frameIndex);
     image = m_images.at(m_imageIndex);
+
     return m_acquireStatus;
   }
 
 
-  VkResult Presenter::presentImage(
-          VkPresentModeKHR  mode,
-          uint64_t          frameId) {
+  VkResult Presenter::presentImage(uint64_t frameId) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
@@ -104,7 +134,7 @@ namespace dxvk {
 
     VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
     modeInfo.swapchainCount = 1;
-    modeInfo.pPresentModes  = &mode;
+    modeInfo.pPresentModes  = &m_presentMode;
 
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
@@ -146,10 +176,7 @@ namespace dxvk {
   }
 
 
-  void Presenter::signalFrame(
-          VkResult          result,
-          VkPresentModeKHR  mode,
-          uint64_t          frameId) {
+  void Presenter::signalFrame(VkResult result, uint64_t frameId) {
     if (m_signal == nullptr || !frameId)
       return;
 
@@ -158,7 +185,7 @@ namespace dxvk {
 
       PresenterFrame frame = { };
       frame.result = result;
-      frame.mode = mode;
+      frame.mode = m_presentMode;
       frame.frameId = frameId;
 
       m_frameQueue.push(frame);
@@ -172,14 +199,102 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::recreateSwapChain(const PresenterDesc& desc) {
+  bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
+    std::lock_guard lock(m_surfaceMutex);
+
+    if (!m_surface) {
+      VkResult vr = createSurface();
+
+      if (vr != VK_SUCCESS)
+        return false;
+    }
+
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+    getSupportedFormats(surfaceFormats);
+
+    for (const auto& surfaceFormat : surfaceFormats) {
+      if (surfaceFormat.colorSpace == colorspace)
+        return true;
+    }
+
+    return false;
+  }
+
+
+  void Presenter::invalidateSurface() {
+    std::lock_guard lock(m_surfaceMutex);
+
+    m_dirtySurface = true;
+  }
+
+
+  void Presenter::setSyncInterval(uint32_t syncInterval) {
+    std::lock_guard lock(m_surfaceMutex);
+
+    // Normalize sync interval for present modes. We currently
+    // cannot support anything other than 1 natively anyway.
+    syncInterval = std::min(syncInterval, 1u);
+
+    if (m_preferredSyncInterval != syncInterval) {
+      m_preferredSyncInterval = syncInterval;
+
+      if (m_dynamicModes.empty())
+        m_dirtySwapchain = true;
+    }
+  }
+
+
+  void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
+    m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
+  }
+
+
+  void Presenter::setSurfaceFormat(VkSurfaceFormatKHR format) {
+    std::lock_guard lock(m_surfaceMutex);
+
+    if (m_preferredFormat.format != format.format || m_preferredFormat.colorSpace != format.colorSpace) {
+      m_preferredFormat = format;
+      m_dirtySwapchain = true;
+    }
+  }
+
+
+  void Presenter::setSurfaceExtent(VkExtent2D extent) {
+    std::lock_guard lock(m_surfaceMutex);
+
+    if (m_preferredExtent != extent) {
+      m_preferredExtent = extent;
+      m_dirtySwapchain = true;
+    }
+  }
+
+
+  void Presenter::setHdrMetadata(VkHdrMetadataEXT hdrMetadata) {
+    std::lock_guard lock(m_surfaceMutex);
+
+    if (m_hdrMetadata->sType != VK_STRUCTURE_TYPE_HDR_METADATA_EXT) {
+      m_hdrMetadata = std::nullopt;
+      return;
+    }
+
+    if (hdrMetadata.pNext)
+      Logger::warn("HDR metadata extensions not currently supported.");
+
+    m_hdrMetadata = hdrMetadata;
+    m_hdrMetadata->pNext = nullptr;
+
+    m_hdrMetadataDirty = true;
+  }
+
+
+  VkResult Presenter::recreateSwapChain() {
     VkResult vr;
 
     if (m_swapchain)
       destroySwapchain();
 
     if (m_surface) {
-      vr = createSwapChain(desc);
+      vr = createSwapChain();
 
       if (vr == VK_ERROR_SURFACE_LOST_KHR)
         destroySurface();
@@ -189,14 +304,27 @@ namespace dxvk {
       vr = createSurface();
 
       if (vr == VK_SUCCESS)
-        vr = createSwapChain(desc);
+        vr = createSwapChain();
     }
 
     return vr;
   }
 
 
-  VkResult Presenter::createSwapChain(const PresenterDesc& desc) {
+  void Presenter::updateSwapChain() {
+    if (m_dirtySurface || m_dirtySwapchain) {
+      destroySwapchain();
+      m_dirtySwapchain = false;
+    }
+
+    if (m_dirtySurface) {
+      destroySurface();
+      m_dirtySurface = false;
+    }
+  }
+
+
+  VkResult Presenter::createSwapChain() {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenExclusiveInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenExclusiveInfo.fullScreenExclusive = m_fullscreenMode;
 
@@ -229,25 +357,22 @@ namespace dxvk {
 
     // Select image extent based on current surface capabilities, and return
     // immediately if we cannot create an actual swap chain.
-    m_info.imageExtent = pickImageExtent(caps.surfaceCapabilities, desc.imageExtent);
+    VkExtent2D imageExtent = pickImageExtent(caps.surfaceCapabilities, m_preferredExtent);
 
-    if (!m_info.imageExtent.width || !m_info.imageExtent.height) {
-      m_info.imageCount = 0;
-      m_info.format     = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-      return VK_SUCCESS;
-    }
+    if (!imageExtent.width || !imageExtent.height)
+      return VK_NOT_READY;
 
     // Select format based on swap chain properties
     if ((status = getSupportedFormats(formats)))
       return status;
 
-    m_info.format = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
+    VkSurfaceFormatKHR surfaceFormat = pickSurfaceFormat(formats.size(), formats.data(), m_preferredFormat);
 
     // Select a present mode for the current sync interval
     if ((status = getSupportedPresentModes(modes)))
       return status;
 
-    m_info.presentMode = pickPresentMode(modes.size(), modes.data(), m_info.syncInterval);
+    m_presentMode = pickPresentMode(modes.size(), modes.data(), m_preferredSyncInterval);
 
     // Check whether we can change present modes dynamically. This may
     // influence the image count as well as further swap chain creation.
@@ -268,7 +393,7 @@ namespace dxvk {
 
       VkSurfacePresentModeEXT presentModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT };
       presentModeInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &presentModeInfo));
-      presentModeInfo.presentMode = m_info.presentMode;
+      presentModeInfo.presentMode = m_presentMode;
 
       caps.pNext = &compatibleModeInfo;
 
@@ -324,8 +449,6 @@ namespace dxvk {
     }
 
     // Compute swap chain image count based on available info
-    m_info.imageCount = pickImageCount(minImageCount, maxImageCount, desc.imageCount);
-
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
@@ -335,17 +458,17 @@ namespace dxvk {
 
     VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
-    swapInfo.minImageCount          = m_info.imageCount;
-    swapInfo.imageFormat            = m_info.format.format;
-    swapInfo.imageColorSpace        = m_info.format.colorSpace;
-    swapInfo.imageExtent            = m_info.imageExtent;
+    swapInfo.minImageCount          = pickImageCount(minImageCount, maxImageCount);
+    swapInfo.imageFormat            = surfaceFormat.format;
+    swapInfo.imageColorSpace        = surfaceFormat.colorSpace;
+    swapInfo.imageExtent            = imageExtent;
     swapInfo.imageArrayLayers       = 1;
     swapInfo.imageUsage             = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapInfo.imageSharingMode       = VK_SHARING_MODE_EXCLUSIVE;
     swapInfo.preTransform           = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     swapInfo.compositeAlpha         = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapInfo.presentMode            = m_info.presentMode;
+    swapInfo.presentMode            = m_presentMode;
     swapInfo.clipped                = VK_TRUE;
 
     if (m_device->features().extFullScreenExclusive)
@@ -356,26 +479,23 @@ namespace dxvk {
 
     Logger::info(str::format(
       "Presenter: Actual swap chain properties:"
-      "\n  Format:       ", m_info.format.format,
-      "\n  Color space:  ", m_info.format.colorSpace,
-      "\n  Present mode: ", m_info.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
-      "\n  Buffer size:  ", m_info.imageExtent.width, "x", m_info.imageExtent.height,
-      "\n  Image count:  ", m_info.imageCount));
+      "\n  Format:       ", swapInfo.imageFormat,
+      "\n  Color space:  ", swapInfo.imageColorSpace,
+      "\n  Present mode: ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
+      "\n  Buffer size:  ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
+      "\n  Image count:  ", swapInfo.minImageCount));
     
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(),
         &swapInfo, nullptr, &m_swapchain)))
       return status;
     
-    // Acquire images and create views
+    // Import actual swap chain images
     std::vector<VkImage> images;
 
     if ((status = getSwapImages(images)))
       return status;
     
-    // Update actual image count
-    m_info.imageCount = images.size();
-
-    for (uint32_t i = 0; i < m_info.imageCount; i++) {
+    for (uint32_t i = 0; i < images.size(); i++) {
       std::string debugName = str::format("Vulkan swap image ", i);
 
       DxvkImageCreateInfo imageInfo = { };
@@ -397,7 +517,7 @@ namespace dxvk {
 
     // Create one set of semaphores per swap image, as well as a fence
     // that we use to ensure that semaphores are safe to access.
-    uint32_t semaphoreCount = m_info.imageCount;
+    uint32_t semaphoreCount = images.size();
 
     if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
       // Without support for present fences, just give up and allocate extra
@@ -434,61 +554,6 @@ namespace dxvk {
 
     m_dynamicModes = std::move(dynamicModes);
     return VK_SUCCESS;
-  }
-
-
-  bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
-    if (!m_surface)
-      return false;
-
-    std::vector<VkSurfaceFormatKHR> surfaceFormats;
-    getSupportedFormats(surfaceFormats);
-
-    for (const auto& surfaceFormat : surfaceFormats) {
-      if (surfaceFormat.colorSpace == colorspace)
-        return true;
-    }
-
-    return false;
-  }
-
-
-  VkResult Presenter::setSyncInterval(uint32_t syncInterval) {
-    // Normalize sync interval for present modes. We currently
-    // cannot support anything other than 1 natively anyway.
-    syncInterval = std::min(syncInterval, 1u);
-
-    if (syncInterval == m_info.syncInterval)
-      return VK_SUCCESS;
-
-    m_info.syncInterval = syncInterval;
-
-    if (syncInterval >= m_dynamicModes.size())
-      return VK_ERROR_OUT_OF_DATE_KHR;
-
-    m_info.presentMode = m_dynamicModes[syncInterval];
-    return VK_SUCCESS;
-  }
-
-
-  void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
-    m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
-  }
-
-
-  void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
-    if (m_hdrMetadata->sType != VK_STRUCTURE_TYPE_HDR_METADATA_EXT) {
-      m_hdrMetadata = std::nullopt;
-      return;
-    }
-
-    if (hdrMetadata.pNext)
-      Logger::warn("HDR metadata extensions not currently supported.");
-
-    m_hdrMetadata = hdrMetadata;
-    m_hdrMetadata->pNext = nullptr;
-
-    m_hdrMetadataDirty = true;
   }
 
 
@@ -586,42 +651,148 @@ namespace dxvk {
   }
 
 
-  VkSurfaceFormatKHR Presenter::pickFormat(
+  VkSurfaceFormatKHR Presenter::pickSurfaceFormat(
           uint32_t                  numSupported,
     const VkSurfaceFormatKHR*       pSupported,
-          uint32_t                  numDesired,
-    const VkSurfaceFormatKHR*       pDesired) {
-    if (numDesired > 0) {
-      // If the implementation allows us to freely choose
-      // the format, we'll just use the preferred format.
-      if (numSupported == 1 && pSupported[0].format == VK_FORMAT_UNDEFINED)
-        return pDesired[0];
-      
-      // If the preferred format is explicitly listed in
-      // the array of supported surface formats, use it
-      for (uint32_t i = 0; i < numDesired; i++) {
-        for (uint32_t j = 0; j < numSupported; j++) {
-          if (pSupported[j].format     == pDesired[i].format
-           && pSupported[j].colorSpace == pDesired[i].colorSpace)
-            return pSupported[j];
-        }
-      }
+    const VkSurfaceFormatKHR&       desired) {
+    VkSurfaceFormatKHR result = { };
+    result.colorSpace = pickColorSpace(numSupported, pSupported, desired.colorSpace);
+    result.format = pickFormat(numSupported, pSupported, result.colorSpace, desired.format);
+    return result;
+  }
 
-      // If that didn't work, we'll fall back to a format
-      // which has similar properties to the preferred one
-      DxvkFormatFlags prefFlags = lookupFormatInfo(pDesired[0].format)->flags;
 
-      for (uint32_t j = 0; j < numSupported; j++) {
-        auto currFlags = lookupFormatInfo(pSupported[j].format)->flags;
+  VkColorSpaceKHR Presenter::pickColorSpace(
+          uint32_t                  numSupported,
+    const VkSurfaceFormatKHR*       pSupported,
+          VkColorSpaceKHR           desired) {
+    static const std::array<std::pair<VkColorSpaceKHR, VkColorSpaceKHR>, 2> fallbacks = {{
+      { VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT, VK_COLOR_SPACE_HDR10_ST2084_EXT },
 
-        if ((currFlags & DxvkFormatFlag::ColorSpaceSrgb)
-         == (prefFlags & DxvkFormatFlag::ColorSpaceSrgb))
-          return pSupported[j];
+      { VK_COLOR_SPACE_HDR10_ST2084_EXT, VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT },
+    }};
+
+    for (uint32_t i = 0; i < numSupported; i++) {
+      if (pSupported[i].colorSpace == desired)
+        return desired;
+    }
+
+    for (const auto& f : fallbacks) {
+      if (f.first != desired)
+        continue;
+
+      for (uint32_t i = 0; i < numSupported; i++) {
+        if (pSupported[i].colorSpace == f.second)
+          return f.second;
       }
     }
-    
-    // Otherwise, fall back to the first supported format
-    return pSupported[0];
+
+    Logger::warn(str::format("No fallback color space found for ", desired, ", using ", pSupported[0].colorSpace));
+    return pSupported[0].colorSpace;
+  }
+
+
+  VkFormat Presenter::pickFormat(
+          uint32_t                  numSupported,
+    const VkSurfaceFormatKHR*       pSupported,
+          VkColorSpaceKHR           colorSpace,
+          VkFormat                  format) {
+    static const std::array<VkFormat, 15> srgbFormatList = {
+      VK_FORMAT_B5G5R5A1_UNORM_PACK16,
+      VK_FORMAT_R5G5B5A1_UNORM_PACK16,
+      VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR,
+      VK_FORMAT_R5G6B5_UNORM_PACK16,
+      VK_FORMAT_B5G6R5_UNORM_PACK16,
+      VK_FORMAT_R8G8B8A8_SRGB,
+      VK_FORMAT_B8G8R8A8_SRGB,
+      VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+      VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+      VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_R16G16B16A16_UNORM,
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+    };
+
+    static const std::array<VkFormat, 5> hdr10FormatList = {
+      VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_R16G16B16A16_UNORM,
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
+    };
+
+    static const std::array<VkFormat, 1> scRGBFormatList = {
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+    };
+
+    static const std::array<PresenterFormatList, 3> compatLists = {{
+      { VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+        srgbFormatList.size(), srgbFormatList.data() },
+      { VK_COLOR_SPACE_HDR10_ST2084_EXT,
+        hdr10FormatList.size(), hdr10FormatList.data() },
+      { VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
+        scRGBFormatList.size(), scRGBFormatList.data() },
+    }};
+
+    // If the desired format is supported natively, use it
+    VkFormat fallback = VK_FORMAT_UNDEFINED;
+
+    for (uint32_t i = 0; i < numSupported; i++) {
+      if (pSupported[i].colorSpace == colorSpace) {
+        if (pSupported[i].format == format)
+          return pSupported[i].format;
+
+        if (!fallback)
+          fallback = pSupported[i].format;
+      }
+    }
+
+    // Otherwise, find a supported format for the color space
+    const PresenterFormatList* compatList = nullptr;
+
+    for (const auto& l : compatLists) {
+      if (l.colorSpace == colorSpace)
+        compatList = &l;
+    }
+
+    if (!compatList)
+      return fallback;
+
+    // If the desired format is linear, ignore sRGB formats. We can do
+    // this because sRGB and linear formats must be supported in pairs.
+    // sRGB to linear fallbacks need to be allowed though in order to
+    // be able to select a format with a higher bit depth than requested.
+    bool desiredIsSrgb = lookupFormatInfo(format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+    bool desiredFound = false;
+
+    for (uint32_t i = 0; i < compatList->formatCount; i++) {
+      bool formatIsSrgb = lookupFormatInfo(compatList->formats[i])->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+
+      if (!desiredIsSrgb && formatIsSrgb)
+        continue;
+
+      bool isSupported = false;
+
+      if (compatList->formats[i] == format)
+        desiredFound = true;
+
+      for (uint32_t j = 0; j < numSupported && !isSupported; j++)
+        isSupported = pSupported[j].colorSpace == colorSpace && pSupported[j].format == compatList->formats[i];
+
+      if (isSupported) {
+        fallback = compatList->formats[i];
+
+        if (desiredFound)
+          break;
+      }
+    }
+
+    if (!desiredFound)
+      Logger::warn(str::format("Desired format ", format, " not in compatibility list for ", colorSpace, ", using ", fallback));
+
+    return fallback;
   }
 
 
@@ -671,16 +842,12 @@ namespace dxvk {
 
   uint32_t Presenter::pickImageCount(
           uint32_t                  minImageCount,
-          uint32_t                  maxImageCount,
-          uint32_t                  desired) {
+          uint32_t                  maxImageCount) {
     uint32_t count = minImageCount + 1;
-    
-    if (count < desired)
-      count = desired;
-    
+
     if (count > maxImageCount && maxImageCount != 0)
       count = maxImageCount;
-    
+
     return count;
   }
 
