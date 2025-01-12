@@ -35,12 +35,10 @@ namespace dxvk::hud {
      * Renders the HUD to the given context.
      * \param [in] ctx Context objects for rendering
      * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Color space
      */
     void render(
       const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace);
+      const Rc<DxvkImageView>&  dstView);
 
     /**
      * \brief Adds a HUD item if enabled
