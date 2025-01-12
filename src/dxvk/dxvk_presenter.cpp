@@ -7,6 +7,13 @@
 
 namespace dxvk {
 
+  const std::array<std::pair<VkColorSpaceKHR, VkColorSpaceKHR>, 2> Presenter::s_colorSpaceFallbacks = {{
+    { VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT, VK_COLOR_SPACE_HDR10_ST2084_EXT },
+
+    { VK_COLOR_SPACE_HDR10_ST2084_EXT, VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT },
+  }};
+
+
   Presenter::Presenter(
     const Rc<DxvkDevice>&   device,
     const Rc<sync::Signal>& signal,
@@ -215,6 +222,11 @@ namespace dxvk {
     for (const auto& surfaceFormat : surfaceFormats) {
       if (surfaceFormat.colorSpace == colorspace)
         return true;
+
+      for (const auto& fallback : s_colorSpaceFallbacks) {
+        if (fallback.first == colorspace && fallback.second == surfaceFormat.colorSpace)
+          return true;
+      }
     }
 
     return false;
@@ -658,7 +670,8 @@ namespace dxvk {
     const VkSurfaceFormatKHR&       desired) {
     VkSurfaceFormatKHR result = { };
     result.colorSpace = pickColorSpace(numSupported, pSupported, desired.colorSpace);
-    result.format = pickFormat(numSupported, pSupported, result.colorSpace, desired.format);
+    result.format = pickFormat(numSupported, pSupported, result.colorSpace,
+      result.colorSpace == desired.colorSpace ? desired.format : VK_FORMAT_UNDEFINED);
     return result;
   }
 
@@ -667,18 +680,17 @@ namespace dxvk {
           uint32_t                  numSupported,
     const VkSurfaceFormatKHR*       pSupported,
           VkColorSpaceKHR           desired) {
-    static const std::array<std::pair<VkColorSpaceKHR, VkColorSpaceKHR>, 2> fallbacks = {{
-      { VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT, VK_COLOR_SPACE_HDR10_ST2084_EXT },
-
-      { VK_COLOR_SPACE_HDR10_ST2084_EXT, VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT },
-    }};
+    VkColorSpaceKHR fallback = pSupported[0].colorSpace;
 
     for (uint32_t i = 0; i < numSupported; i++) {
       if (pSupported[i].colorSpace == desired)
         return desired;
+
+      if (pSupported[i].colorSpace == VK_COLORSPACE_SRGB_NONLINEAR_KHR)
+        fallback = pSupported[i].colorSpace;
     }
 
-    for (const auto& f : fallbacks) {
+    for (const auto& f : s_colorSpaceFallbacks) {
       if (f.first != desired)
         continue;
 
@@ -688,8 +700,8 @@ namespace dxvk {
       }
     }
 
-    Logger::warn(str::format("No fallback color space found for ", desired, ", using ", pSupported[0].colorSpace));
-    return pSupported[0].colorSpace;
+    Logger::warn(str::format("No fallback color space found for ", desired, ", using ", fallback));
+    return fallback;
   }
 
 
@@ -790,7 +802,7 @@ namespace dxvk {
       }
     }
 
-    if (!desiredFound)
+    if (!desiredFound && format)
       Logger::warn(str::format("Desired format ", format, " not in compatibility list for ", colorSpace, ", using ", fallback));
 
     return fallback;
