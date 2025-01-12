@@ -55,6 +55,10 @@ namespace dxvk {
     // Initial image layout
     VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+    // Color space to interpret image data with. This
+    // is only meaningful for swap chain back buffers.
+    VkColorSpaceKHR colorSpace = VK_COLOR_SPACE_MAX_ENUM_KHR;
+
     // Image is used by multiple contexts so it needs
     // to be in its default layout after each submission
     VkBool32 shared = VK_FALSE;
@@ -89,6 +93,8 @@ namespace dxvk {
     // New image layout. If undefined, the
     // default layout will not be changed.
     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+    // Color space to interpret the image in
+    VkColorSpaceKHR colorSpace = VK_COLOR_SPACE_MAX_ENUM_KHR;
     // Number of new view formats to add
     uint32_t viewFormatCount = 0u;
     // View formats to add to the compatibility list

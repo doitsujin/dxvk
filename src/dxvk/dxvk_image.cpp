@@ -226,6 +226,9 @@ namespace dxvk {
     if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED)
       m_info.layout = usageInfo.layout;
 
+    if (usageInfo.colorSpace != VK_COLOR_SPACE_MAX_ENUM_KHR)
+      m_info.colorSpace = usageInfo.colorSpace;
+
     for (uint32_t i = 0; i < usageInfo.viewFormatCount; i++) {
       if (!isViewCompatible(usageInfo.viewFormats[i]))
         m_viewFormats.push_back(usageInfo.viewFormats[i]);
