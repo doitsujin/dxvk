@@ -322,10 +322,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetHDRMetaData(
     const DXGI_VK_HDR_METADATA*     pMetaData) {
     // For some reason this call always seems to succeed on Windows
-    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10) {
-      m_hdrMetadata = ConvertHDRMetadata(pMetaData->HDR10);
-      m_dirtyHdrMetadata = true;
-    }
+    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10)
+      m_presenter->setHdrMetadata(ConvertHDRMetadata(pMetaData->HDR10));
 
     return S_OK;
   }
@@ -400,11 +398,6 @@ namespace dxvk {
 
       if (status == VK_SUBOPTIMAL_KHR)
         break;
-    }
-
-    if (m_hdrMetadata && m_dirtyHdrMetadata) {
-      m_presenter->setHdrMetadata(*m_hdrMetadata);
-      m_dirtyHdrMetadata = false;
     }
 
     m_frameId += 1;
@@ -501,7 +494,6 @@ namespace dxvk {
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
-    m_dirtyHdrMetadata = true;
 
     PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
