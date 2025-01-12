@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <queue>
 #include <vector>
 
 #include "../util/log/log.h"
@@ -17,6 +18,8 @@
 #include "dxvk_format.h"
 
 namespace dxvk {
+
+  using PresenterSurfaceProc = std::function<VkResult (VkSurfaceKHR*)>;
 
   class DxvkDevice;
 
@@ -94,7 +97,8 @@ namespace dxvk {
     Presenter(
       const Rc<DxvkDevice>&   device,
       const Rc<sync::Signal>& signal,
-      const PresenterDesc&    desc);
+      const PresenterDesc&    desc,
+            PresenterSurfaceProc&& proc);
     
     ~Presenter();
 
@@ -161,15 +165,6 @@ namespace dxvk {
             uint64_t          frameId);
 
     /**
-     * \brief Changes and takes ownership of surface
-     *
-     * The presenter will destroy the surface as necessary.
-     * \param [in] fn Surface create function
-     */
-    VkResult recreateSurface(
-      const std::function<VkResult (VkSurfaceKHR*)>& fn);
-
-    /**
      * \brief Changes presenter properties
      * 
      * Recreates the swap chain immediately. Note that
@@ -227,13 +222,14 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkDevice>    m_device;
-    Rc<sync::Signal>  m_signal;
+    Rc<DxvkDevice>        m_device;
+    Rc<sync::Signal>      m_signal;
 
-    Rc<vk::InstanceFn> m_vki;
-    Rc<vk::DeviceFn>  m_vkd;
+    Rc<vk::InstanceFn>    m_vki;
+    Rc<vk::DeviceFn>      m_vkd;
 
-    PresenterInfo     m_info        = { };
+    PresenterInfo         m_info = { };
+    PresenterSurfaceProc  m_surfaceProc;
 
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
@@ -259,7 +255,7 @@ namespace dxvk {
 
     std::atomic<uint64_t>       m_lastFrameId = { 0ull };
 
-    VkResult recreateSwapChainInternal(
+    VkResult createSwapChain(
       const PresenterDesc&  desc);
 
     VkResult getSupportedFormats(
@@ -290,6 +286,8 @@ namespace dxvk {
             uint32_t                  minImageCount,
             uint32_t                  maxImageCount,
             uint32_t                  desired);
+
+    VkResult createSurface();
 
     void destroySwapchain();
 
