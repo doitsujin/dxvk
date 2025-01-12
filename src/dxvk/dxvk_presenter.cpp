@@ -508,6 +508,7 @@ namespace dxvk {
       imageInfo.usage       = swapInfo.imageUsage;
       imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
       imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+      imageInfo.colorSpace  = swapInfo.imageColorSpace;
       imageInfo.shared      = VK_TRUE;
       imageInfo.debugName   = debugName.c_str();
 
