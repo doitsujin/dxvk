@@ -249,6 +249,8 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
 
+    static const std::array<std::pair<VkColorSpaceKHR, VkColorSpaceKHR>, 2> s_colorSpaceFallbacks;
+
     void updateSwapChain();
 
     VkResult recreateSwapChain();
