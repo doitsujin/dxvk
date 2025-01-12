@@ -1678,7 +1678,8 @@ namespace dxvk {
       } break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
-        return GetD3D9()->GetSoftwareVertexProcessing();
+        *pValue = GetD3D9()->GetSoftwareVertexProcessing();
+        return D3D_OK;
 
       case D3DRS_PATCHSEGMENTS:
         *pValue = bit::cast<DWORD>(m_patchSegments);
