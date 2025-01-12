@@ -216,6 +216,9 @@ namespace dxvk {
     if (m_storage != old) {
       m_imageInfo = m_storage->getImageInfo();
       m_version += 1u;
+
+      if (unlikely(m_info.debugName))
+        updateDebugName();
     }
 
     m_info.flags |= usageInfo.flags;
@@ -238,9 +241,6 @@ namespace dxvk {
       m_info.viewFormatCount = m_viewFormats.size();
       m_info.viewFormats = m_viewFormats.data();
     }
-
-    if (unlikely(m_info.debugName))
-      updateDebugName();
 
     m_stableAddress |= usageInfo.stableGpuAddress;
     return old;
