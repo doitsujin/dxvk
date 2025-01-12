@@ -10,10 +10,12 @@ namespace dxvk {
   Presenter::Presenter(
     const Rc<DxvkDevice>&   device,
     const Rc<sync::Signal>& signal,
-    const PresenterDesc&    desc)
+    const PresenterDesc&    desc,
+          PresenterSurfaceProc&& proc)
   : m_device(device), m_signal(signal),
     m_vki(device->instance()->vki()),
-    m_vkd(device->vkd()) {
+    m_vkd(device->vkd()),
+    m_surfaceProc(std::move(proc)) {
     // Only enable FSE if the user explicitly opts in. On Windows, FSE
     // is required to support VRR or HDR, but blocks alt-tabbing or
     // overlapping windows, which breaks a number of games.
@@ -158,25 +160,31 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::recreateSurface(
-    const std::function<VkResult (VkSurfaceKHR*)>& fn) {
+  VkResult Presenter::recreateSwapChain(const PresenterDesc& desc) {
+    VkResult vr;
+
     if (m_swapchain)
       destroySwapchain();
 
-    if (m_surface)
-      destroySurface();
+    if (m_surface) {
+      vr = createSwapChain(desc);
 
-    return fn(&m_surface);
+      if (vr == VK_ERROR_SURFACE_LOST_KHR)
+        destroySurface();
+    }
+
+    if (!m_surface) {
+      vr = createSurface();
+
+      if (vr == VK_SUCCESS)
+        vr = createSwapChain(desc);
+    }
+
+    return vr;
   }
 
 
-  VkResult Presenter::recreateSwapChain(const PresenterDesc& desc) {
-    if (m_swapchain)
-      destroySwapchain();
-
-    if (!m_surface)
-      return VK_ERROR_SURFACE_LOST_KHR;
-
+  VkResult Presenter::createSwapChain(const PresenterDesc& desc) {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenExclusiveInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenExclusiveInfo.fullScreenExclusive = m_fullscreenMode;
 
@@ -650,6 +658,16 @@ namespace dxvk {
       count = maxImageCount;
     
     return count;
+  }
+
+
+  VkResult Presenter::createSurface() {
+    VkResult vr = m_surfaceProc(&m_surface);
+
+    if (vr != VK_SUCCESS)
+      Logger::err(str::format("Failed to create Vulkan surface: ", vr));
+
+    return vr;
   }
 
 

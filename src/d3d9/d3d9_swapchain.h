@@ -199,8 +199,6 @@ namespace dxvk {
 
     void CreatePresenter();
 
-    VkResult CreateSurface(VkSurfaceKHR* pSurface);
-
     void CreateRenderTargetViews();
 
     HRESULT CreateBackBuffers(

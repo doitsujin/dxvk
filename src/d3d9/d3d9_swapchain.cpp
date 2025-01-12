@@ -946,17 +946,6 @@ namespace dxvk {
 
     VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
 
-    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
-      vr = m_wctx->presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
-        return CreateSurface(surface);
-      });
-
-      if (vr)
-        throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate surface: ", vr));
-
-      vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
-    }
-
     if (vr)
       throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate swap chain: ", vr));
     
@@ -976,17 +965,18 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
 
-    m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
-  }
+    m_wctx->presenter = new Presenter(m_device,
+      m_wctx->frameLatencySignal, presenterDesc, [
+      cDevice = m_device,
+      cWindow = m_window
+    ] (VkSurfaceKHR* surface) {
+      auto vki = cDevice->adapter()->vki();
 
-
-  VkResult D3D9SwapChainEx::CreateSurface(VkSurfaceKHR* pSurface) {
-    auto vki = m_device->adapter()->vki();
-
-    return wsi::createSurface(m_window,
-      vki->getLoaderProc(),
-      vki->instance(),
-      pSurface);
+      return wsi::createSurface(cWindow,
+        vki->getLoaderProc(),
+        vki->instance(),
+        surface);
+    });
   }
 
 

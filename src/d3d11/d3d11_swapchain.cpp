@@ -505,17 +505,6 @@ namespace dxvk {
 
     VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
 
-    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
-      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
-        return CreateSurface(surface);
-      });
-
-      if (vr)
-        throw DxvkError(str::format("D3D11SwapChain: Failed to recreate surface: ", vr));
-
-      vr = m_presenter->recreateSwapChain(presenterDesc);
-    }
-
     if (vr)
       throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
     
@@ -537,17 +526,16 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
 
-    m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
+    m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc, [
+      cAdapter  = m_device->adapter(),
+      cFactory  = m_surfaceFactory
+    ] (VkSurfaceKHR* surface) {
+      return cFactory->CreateSurface(
+        cAdapter->vki()->instance(),
+        cAdapter->handle(), surface);
+    });
+
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
-  }
-
-
-  VkResult D3D11SwapChain::CreateSurface(VkSurfaceKHR* pSurface) {
-    Rc<DxvkAdapter> adapter = m_device->adapter();
-
-    return m_surfaceFactory->CreateSurface(
-      adapter->vki()->instance(),
-      adapter->handle(), pSurface);
   }
 
 
