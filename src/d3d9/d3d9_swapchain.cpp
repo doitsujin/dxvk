@@ -878,17 +878,16 @@ namespace dxvk {
         auto contextObjects = ctx->beginExternalRendering();
 
         cBlitter->beginPresent(contextObjects,
-          cDstView, cColorSpace, cDstRect,
-          cSrcView, cColorSpace, cSrcRect);
+          cDstView, cDstRect, cSrcView, cSrcRect);
 
         if (cHud) {
           if (!cRepeat)
             cHud->update();
 
-          cHud->render(contextObjects, cDstView, cColorSpace);
+          cHud->render(contextObjects, cDstView);
         }
 
-        cBlitter->endPresent(contextObjects, cDstView, cColorSpace);
+        cBlitter->endPresent(contextObjects, cDstView);
 
         // Submit command list and present
         ctx->synchronizeWsi(cSync);

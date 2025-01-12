@@ -38,10 +38,8 @@ namespace dxvk {
   void DxvkSwapchainBlitter::beginPresent(
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
-          VkColorSpaceKHR     srcColorSpace,
           VkRect2D            srcRect) {
     std::unique_lock lock(m_mutex);
 
@@ -102,17 +100,14 @@ namespace dxvk {
 
     ctx.cmd->cmdBeginRendering(&renderInfo);
 
-    performDraw(ctx,
-      dstView, dstColorSpace, dstRect,
-      srcView, srcColorSpace, srcRect,
-      VK_FALSE);
+    performDraw(ctx, dstView, dstRect,
+      srcView, srcRect, VK_FALSE);
   }
 
 
   void DxvkSwapchainBlitter::endPresent(
     const DxvkContextObjects& ctx,
-    const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace) {
+    const Rc<DxvkImageView>&  dstView) {
     std::unique_lock lock(m_mutex);
 
     if (m_cursorView) {
@@ -120,9 +115,8 @@ namespace dxvk {
       cursorArea.extent.width = m_cursorImage->info().extent.width;
       cursorArea.extent.height = m_cursorImage->info().extent.height;
 
-      performDraw(ctx, dstView, dstColorSpace, m_cursorRect,
-        m_cursorView, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, cursorArea,
-        VK_TRUE);
+      performDraw(ctx, dstView, m_cursorRect,
+        m_cursorView, cursorArea, VK_TRUE);
     }
 
     ctx.cmd->cmdEndRendering();
@@ -212,6 +206,7 @@ namespace dxvk {
                        | VK_ACCESS_SHADER_READ_BIT;
       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
       imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      imageInfo.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
       imageInfo.debugName = "Swapchain cursor";
 
       m_cursorImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -246,12 +241,13 @@ namespace dxvk {
   void DxvkSwapchainBlitter::performDraw(
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
-          VkColorSpaceKHR     srcColorSpace,
           VkRect2D            srcRect,
           VkBool32            enableBlending) {
+    VkColorSpaceKHR dstColorSpace = dstView->image()->info().colorSpace;
+    VkColorSpaceKHR srcColorSpace = srcView->image()->info().colorSpace;
+
     if (unlikely(m_device->isDebugEnabled())) {
       ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Swapchain blit"));

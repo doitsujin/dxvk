@@ -93,7 +93,6 @@ namespace dxvk {
      * The swap chain image will remain bound for rendering.
      * \param [in] ctx Context objects
      * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Swap chain color space
      * \param [in] dstRect Destination rectangle
      * \param [in] srcView Image to present
      * \param [in] srcColorSpace Image color space
@@ -102,10 +101,8 @@ namespace dxvk {
     void beginPresent(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace,
             VkRect2D            dstRect,
       const Rc<DxvkImageView>&  srcView,
-            VkColorSpaceKHR     srcColorSpace,
             VkRect2D            srcRect);
 
     /**
@@ -114,12 +111,10 @@ namespace dxvk {
      * Finishes rendering and prepares the image for presentation.
      * \param [in] ctx Context objects
      * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Swap chain color space
      */
     void endPresent(
       const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace);
+      const Rc<DxvkImageView>&  dstView);
 
     /**
      * \brief Sets gamma ramp
@@ -211,10 +206,8 @@ namespace dxvk {
     void performDraw(
       const DxvkContextObjects&         ctx,
       const Rc<DxvkImageView>&          dstView,
-            VkColorSpaceKHR             dstColorSpace,
             VkRect2D                    dstRect,
       const Rc<DxvkImageView>&          srcView,
-            VkColorSpaceKHR             srcColorSpace,
             VkRect2D                    srcRect,
             VkBool32                    enableBlending);
 

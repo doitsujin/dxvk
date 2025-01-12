@@ -434,15 +434,15 @@ namespace dxvk {
       auto contextObjects = ctx->beginExternalRendering();
 
       cBlitter->beginPresent(contextObjects,
-        cBackBuffer, cColorSpace, VkRect2D(),
-        cSwapImage, cColorSpace, VkRect2D());
+        cBackBuffer, VkRect2D(),
+        cSwapImage, VkRect2D());
 
       if (cHud != nullptr) {
         cHud->update();
-        cHud->render(contextObjects, cBackBuffer, cColorSpace);
+        cHud->render(contextObjects, cBackBuffer);
       }
 
-      cBlitter->endPresent(contextObjects, cBackBuffer, cColorSpace);
+      cBlitter->endPresent(contextObjects, cBackBuffer);
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
