@@ -32,10 +32,11 @@ namespace dxvk {
    * an input during swap chain creation.
    */
   struct PresenterDesc {
-    VkExtent2D          imageExtent;
-    uint32_t            imageCount;
-    uint32_t            numFormats;
-    VkSurfaceFormatKHR  formats[4];
+    VkExtent2D          imageExtent = { };
+    uint32_t            imageCount = 0u;
+    uint32_t            numFormats = 0u;
+    VkSurfaceFormatKHR  formats[4] = { };
+    bool                deferSurfaceCreation = false;
   };
 
   /**

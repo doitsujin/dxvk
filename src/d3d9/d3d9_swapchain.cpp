@@ -36,12 +36,8 @@ namespace dxvk {
 
     UpdatePresentRegion(nullptr, nullptr);
 
-    if (m_window) {
+    if (m_window)
       CreatePresenter();
-
-      if (!pDevice->GetOptions()->deferSurfaceCreation)
-        RecreateSwapChain();
-    }
 
     if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags)))
       throw DxvkError("D3D9: Failed to create swapchain backbuffers");
@@ -972,6 +968,7 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
+    presenterDesc.deferSurfaceCreation = m_parent->GetOptions()->deferSurfaceCreation;
 
     m_wctx->presenter = new Presenter(m_device,
       m_wctx->frameLatencySignal, presenterDesc, [

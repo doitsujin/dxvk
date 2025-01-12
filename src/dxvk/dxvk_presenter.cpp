@@ -27,6 +27,12 @@ namespace dxvk {
     // with present operations and periodically signals the event
     if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
+
+    // Create Vulkan surface immediately if possible, but ignore
+    // failures since the app window may still be in use in some
+    // way at this point, e.g. by a different device.
+    if (!desc.deferSurfaceCreation)
+      createSurface();
   }
 
   
