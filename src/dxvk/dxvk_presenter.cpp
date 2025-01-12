@@ -51,12 +51,7 @@ namespace dxvk {
   }
 
 
-  PresenterImage Presenter::getImage(uint32_t index) const {
-    return m_images.at(index);
-  }
-
-
-  VkResult Presenter::acquireNextImage(PresenterSync& sync, uint32_t& index) {
+  VkResult Presenter::acquireNextImage(PresenterSync& sync, Rc<DxvkImage>& image) {
     PresenterSync& semaphores = m_semaphores.at(m_frameIndex);
     sync = semaphores;
 
@@ -72,7 +67,7 @@ namespace dxvk {
     if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
       return m_acquireStatus;
     
-    index = m_imageIndex;
+    image = m_images.at(m_imageIndex);
     return m_acquireStatus;
   }
 
@@ -362,25 +357,25 @@ namespace dxvk {
     
     // Update actual image count
     m_info.imageCount = images.size();
-    m_images.resize(m_info.imageCount);
 
     for (uint32_t i = 0; i < m_info.imageCount; i++) {
-      m_images[i].image = images[i];
+      std::string debugName = str::format("Vulkan swap image ", i);
 
-      VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
-      viewInfo.image    = images[i];
-      viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      viewInfo.format   = m_info.format.format;
-      viewInfo.components = VkComponentMapping {
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-      viewInfo.subresourceRange = {
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        0, 1, 0, 1 };
-      
-      if ((status = m_vkd->vkCreateImageView(m_vkd->device(),
-          &viewInfo, nullptr, &m_images[i].view)))
-        return status;
+      DxvkImageCreateInfo imageInfo = { };
+      imageInfo.type        = VK_IMAGE_TYPE_2D;
+      imageInfo.format      = swapInfo.imageFormat;
+      imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+      imageInfo.extent      = { swapInfo.imageExtent.width, swapInfo.imageExtent.height, 1u };
+      imageInfo.numLayers   = swapInfo.imageArrayLayers;
+      imageInfo.mipLevels   = 1u;
+      imageInfo.usage       = swapInfo.imageUsage;
+      imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+      imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+      imageInfo.shared      = VK_TRUE;
+      imageInfo.debugName   = debugName.c_str();
+
+      m_images.push_back(m_device->importImage(imageInfo, images[i],
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
     }
 
     // Create one set of semaphores per swap image, as well as a fence
@@ -678,9 +673,6 @@ namespace dxvk {
     for (auto& sem : m_semaphores)
       waitForSwapchainFence(sem);
 
-    for (const auto& img : m_images)
-      m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
-    
     for (const auto& sem : m_semaphores) {
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);

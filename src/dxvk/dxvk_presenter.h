@@ -16,6 +16,7 @@
 #include "../vulkan/vulkan_loader.h"
 
 #include "dxvk_format.h"
+#include "dxvk_image.h"
 
 namespace dxvk {
 
@@ -49,14 +50,6 @@ namespace dxvk {
     VkExtent2D          imageExtent;
     uint32_t            imageCount;
     uint32_t            syncInterval;
-  };
-
-  /**
-   * \brief Swap image and view
-   */
-  struct PresenterImage {
-    VkImage     image = VK_NULL_HANDLE;
-    VkImageView view  = VK_NULL_HANDLE;
   };
 
   /**
@@ -109,16 +102,6 @@ namespace dxvk {
     PresenterInfo info() const;
 
     /**
-     * \brief Retrieves image by index
-     * 
-     * Can be used to create per-image objects.
-     * \param [in] index Image index
-     * \returns Image handle
-     */
-    PresenterImage getImage(
-            uint32_t        index) const;
-
-    /**
      * \brief Acquires next image
      * 
      * Potentially blocks the calling thread.
@@ -126,12 +109,12 @@ namespace dxvk {
      * must be recreated and a new image must
      * be acquired before proceeding.
      * \param [out] sync Synchronization semaphores
-     * \param [out] index Acquired image index
+     * \param [out] image Acquired swap chain image
      * \returns Status of the operation
      */
     VkResult acquireNextImage(
             PresenterSync&  sync,
-            uint32_t&       index);
+            Rc<DxvkImage>&  image);
     
     /**
      * \brief Presents current image
@@ -222,38 +205,40 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkDevice>        m_device;
-    Rc<sync::Signal>      m_signal;
+    Rc<DxvkDevice>              m_device;
+    Rc<sync::Signal>            m_signal;
 
-    Rc<vk::InstanceFn>    m_vki;
-    Rc<vk::DeviceFn>      m_vkd;
+    Rc<vk::InstanceFn>          m_vki;
+    Rc<vk::DeviceFn>            m_vkd;
 
-    PresenterInfo         m_info = { };
-    PresenterSurfaceProc  m_surfaceProc;
+    PresenterInfo               m_info = { };
+    PresenterSurfaceProc        m_surfaceProc;
 
-    VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
-    VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
+    VkSurfaceKHR                m_surface     = VK_NULL_HANDLE;
+    VkSwapchainKHR              m_swapchain   = VK_NULL_HANDLE;
 
-    VkFullScreenExclusiveEXT m_fullscreenMode = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+    VkFullScreenExclusiveEXT    m_fullscreenMode = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
 
-    std::vector<PresenterImage> m_images;
+    std::vector<Rc<DxvkImage>>  m_images;
     std::vector<PresenterSync>  m_semaphores;
 
     std::vector<VkPresentModeKHR> m_dynamicModes;
 
-    uint32_t          m_imageIndex = 0;
-    uint32_t          m_frameIndex = 0;
+    uint32_t                    m_imageIndex = 0;
+    uint32_t                    m_frameIndex = 0;
 
-    VkResult          m_acquireStatus = VK_NOT_READY;
+    VkResult                    m_acquireStatus = VK_NOT_READY;
 
-    FpsLimiter        m_fpsLimiter;
-
+    alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_frameMutex;
     dxvk::condition_variable    m_frameCond;
     dxvk::thread                m_frameThread;
     std::queue<PresenterFrame>  m_frameQueue;
 
     std::atomic<uint64_t>       m_lastFrameId = { 0ull };
+
+    alignas(CACHE_LINE_SIZE)
+    FpsLimiter                  m_fpsLimiter;
 
     VkResult createSwapChain(
       const PresenterDesc&  desc);

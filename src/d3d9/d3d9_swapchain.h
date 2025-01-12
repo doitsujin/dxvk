@@ -52,7 +52,6 @@ namespace dxvk {
 
   struct D3D9WindowContext {
     Rc<Presenter>                  presenter;
-    std::vector<Rc<DxvkImageView>> imageViews;
 
     uint64_t                       frameId = D3D9DeviceEx::MaxFrameLatency;
     Rc<sync::Fence>                frameLatencySignal;
@@ -198,8 +197,6 @@ namespace dxvk {
     void RecreateSwapChain();
 
     void CreatePresenter();
-
-    void CreateRenderTargetViews();
 
     HRESULT CreateBackBuffers(
             uint32_t            NumBackBuffers,
