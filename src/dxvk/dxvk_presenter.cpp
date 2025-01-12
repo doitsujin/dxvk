@@ -72,7 +72,18 @@ namespace dxvk {
 
     if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
       return m_acquireStatus;
-    
+
+    // Update HDR metadata after a successful acquire. We know
+    // that there won't be a present in flight at this point.
+    if (m_hdrMetadataDirty && m_hdrMetadata) {
+      m_hdrMetadataDirty = false;
+
+      if (m_device->features().extHdrMetadata) {
+        m_vkd->vkSetHdrMetadataEXT(m_vkd->device(),
+          1, &m_swapchain, &(*m_hdrMetadata));
+      }
+    }
+
     image = m_images.at(m_imageIndex);
     return m_acquireStatus;
   }
@@ -415,6 +426,8 @@ namespace dxvk {
     }
     
     // Invalidate indices
+    m_hdrMetadataDirty = true;
+
     m_imageIndex = 0;
     m_frameIndex = 0;
     m_acquireStatus = VK_NOT_READY;
@@ -464,8 +477,18 @@ namespace dxvk {
 
 
   void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
-    if (m_device->features().extHdrMetadata)
-      m_vkd->vkSetHdrMetadataEXT(m_vkd->device(), 1, &m_swapchain, &hdrMetadata);
+    if (m_hdrMetadata->sType != VK_STRUCTURE_TYPE_HDR_METADATA_EXT) {
+      m_hdrMetadata = std::nullopt;
+      return;
+    }
+
+    if (hdrMetadata.pNext)
+      Logger::warn("HDR metadata extensions not currently supported.");
+
+    m_hdrMetadata = hdrMetadata;
+    m_hdrMetadata->pNext = nullptr;
+
+    m_hdrMetadataDirty = true;
   }
 
 

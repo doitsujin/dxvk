@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <optional>
 #include <queue>
 #include <vector>
 
@@ -190,16 +191,17 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks if a presenter supports the colorspace
+     * \brief Checks support for a Vulkan color space
      *
-     * \param [in] colorspace The colorspace to test
-     * * \returns \c true if the presenter supports the colorspace
+     * \param [in] colorspace The color space to test
+     * \returns \c true if the Vulkan surface supports the colorspace
      */
     bool supportsColorSpace(VkColorSpaceKHR colorspace);
 
     /**
      * \brief Sets HDR metadata
      *
+     * Updated HDR metadata will be applied on the next \c acquire.
      * \param [in] hdrMetadata HDR Metadata
      */
     void setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata);
@@ -229,6 +231,9 @@ namespace dxvk {
     uint32_t                    m_frameIndex = 0;
 
     VkResult                    m_acquireStatus = VK_NOT_READY;
+
+    std::optional<VkHdrMetadataEXT> m_hdrMetadata;
+    bool                        m_hdrMetadataDirty = false;
 
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_frameMutex;
