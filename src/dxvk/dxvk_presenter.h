@@ -33,25 +33,7 @@ namespace dxvk {
    * an input during swap chain creation.
    */
   struct PresenterDesc {
-    VkExtent2D          imageExtent = { };
-    uint32_t            imageCount = 0u;
-    uint32_t            numFormats = 0u;
-    VkSurfaceFormatKHR  formats[4] = { };
-    bool                deferSurfaceCreation = false;
-  };
-
-  /**
-   * \brief Presenter properties
-   * 
-   * Contains the actual properties
-   * of the underlying swap chain.
-   */
-  struct PresenterInfo {
-    VkSurfaceFormatKHR  format;
-    VkPresentModeKHR    presentMode;
-    VkExtent2D          imageExtent;
-    uint32_t            imageCount;
-    uint32_t            syncInterval;
+    bool deferSurfaceCreation = false;
   };
 
   /**
@@ -79,6 +61,15 @@ namespace dxvk {
   };
 
   /**
+   * \brief Format compatibility list
+   */
+  struct PresenterFormatList {
+    VkColorSpaceKHR colorSpace;
+    size_t formatCount;
+    const VkFormat* formats;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -98,21 +89,29 @@ namespace dxvk {
     ~Presenter();
 
     /**
-     * \brief Actual presenter info
-     * \returns Swap chain properties
+     * \brief Tests swap chain status
+     *
+     * If no swapchain currently exists, this method may create
+     * one so that presentation can subsequently be performed.
+     * \returns One of the following return codes:
+     *  - \c VK_SUCCESS if a valid swapchain exists
+     *  - \c VK_NOT_READY if no swap chain can be created
+     *  - Any other error code if swap chain creation failed.
      */
-    PresenterInfo info() const;
+    VkResult checkSwapChainStatus();
 
     /**
      * \brief Acquires next image
-     * 
-     * Potentially blocks the calling thread.
-     * If this returns an error, the swap chain
-     * must be recreated and a new image must
-     * be acquired before proceeding.
+     *
+     * Tries to acquire an image from the underlying Vulkan
+     * swapchain. May recreate the swapchain if any surface
+     * properties or user-specified parameters have changed.
+     * Potentially blocks the calling thread, and must not be
+     * called if any present call is currently in flight.
      * \param [out] sync Synchronization semaphores
      * \param [out] image Acquired swap chain image
-     * \returns Status of the operation
+     * \returns Status of the operation. May return
+     *    \c VK_NOT_READY if no swap chain exists.
      */
     VkResult acquireNextImage(
             PresenterSync&  sync,
@@ -121,17 +120,12 @@ namespace dxvk {
     /**
      * \brief Presents current image
      * 
-     * Presents the current image. If this returns
-     * an error, the swap chain must be recreated,
-     * but do not present before acquiring an image.
-     * \param [in] mode Present mode
+     * Presents the last successfuly acquired image.
      * \param [in] frameId Frame number.
      *    Must increase monotonically.
      * \returns Status of the operation
      */
-    VkResult presentImage(
-            VkPresentModeKHR  mode,
-            uint64_t          frameId);
+    VkResult presentImage(uint64_t frameId);
 
     /**
      * \brief Signals a given frame
@@ -141,34 +135,17 @@ namespace dxvk {
      * called before GPU work prior to the present submission has
      * completed in order to maintain consistency.
      * \param [in] result Presentation result
-     * \param [in] mode Present mode
      * \param [in] frameId Frame number
      */
-    void signalFrame(
-            VkResult          result,
-            VkPresentModeKHR  mode,
-            uint64_t          frameId);
-
-    /**
-     * \brief Changes presenter properties
-     * 
-     * Recreates the swap chain immediately. Note that
-     * no swap chain resources must be in use by the
-     * GPU at the time this is called.
-     * \param [in] desc Swap chain description
-     * \param [in] surface New Vulkan surface
-     */
-    VkResult recreateSwapChain(
-      const PresenterDesc&  desc);
+    void signalFrame(VkResult result, uint64_t frameId);
 
     /**
      * \brief Changes sync interval
      *
-     * If this returns an error, the swap chain must
-     * be recreated.
+     * Changes the Vulkan present mode as necessary.
      * \param [in] syncInterval New sync interval
      */
-    VkResult setSyncInterval(uint32_t syncInterval);
+    void setSyncInterval(uint32_t syncInterval);
 
     /**
      * \brief Changes maximum frame rate
@@ -179,16 +156,32 @@ namespace dxvk {
     void setFrameRateLimit(double frameRate, uint32_t maxLatency);
 
     /**
-     * \brief Checks whether a Vulkan swap chain exists
+     * \brief Sets preferred color space and format
      *
-     * On Windows, there are situations where we cannot create
-     * a swap chain as the surface size can reach zero, and no
-     * presentation can be performed.
-     * \returns \c true if the presenter has a swap chain.
+     * If the Vulkan surface does not natively support the given
+     * parameter combo, it will try to select a format and color
+     * space with similar properties.
+     * \param [in] format Preferred surface format
      */
-    bool hasSwapChain() const {
-      return m_swapchain;
-    }
+    void setSurfaceFormat(VkSurfaceFormatKHR format);
+
+    /**
+     * \brief Sets preferred surface extent
+     *
+     * The preferred surface extent is only relevant if the Vulkan
+     * surface itself does not have a fixed size. Should match the
+     * back buffer size of the application.
+     * \param [in] extent Preferred surface extent
+     */
+    void setSurfaceExtent(VkExtent2D extent);
+
+    /**
+     * \brief Sets HDR metadata
+     *
+     * Updated HDR metadata will be applied on the next \c acquire.
+     * \param [in] hdrMetadata HDR Metadata
+     */
+    void setHdrMetadata(VkHdrMetadataEXT hdrMetadata);
 
     /**
      * \brief Checks support for a Vulkan color space
@@ -199,12 +192,13 @@ namespace dxvk {
     bool supportsColorSpace(VkColorSpaceKHR colorspace);
 
     /**
-     * \brief Sets HDR metadata
+     * \brief Invalidates Vulkan surface
      *
-     * Updated HDR metadata will be applied on the next \c acquire.
-     * \param [in] hdrMetadata HDR Metadata
+     * This will cause the Vulkan surface to be destroyed and
+     * recreated on the next \c acquire call. This is a hacky
+     * workaround to support windows with multiple surfaces.
      */
-    void setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata);
+    void invalidateSurface();
 
   private:
 
@@ -214,7 +208,7 @@ namespace dxvk {
     Rc<vk::InstanceFn>          m_vki;
     Rc<vk::DeviceFn>            m_vkd;
 
-    PresenterInfo               m_info = { };
+    dxvk::mutex                 m_surfaceMutex;
     PresenterSurfaceProc        m_surfaceProc;
 
     VkSurfaceKHR                m_surface     = VK_NULL_HANDLE;
@@ -226,6 +220,15 @@ namespace dxvk {
     std::vector<PresenterSync>  m_semaphores;
 
     std::vector<VkPresentModeKHR> m_dynamicModes;
+
+    VkExtent2D                  m_preferredExtent = { };
+    VkSurfaceFormatKHR          m_preferredFormat = { };
+    uint32_t                    m_preferredSyncInterval = 1u;
+
+    bool                        m_dirtySwapchain = false;
+    bool                        m_dirtySurface = false;
+
+    VkPresentModeKHR            m_presentMode = VK_PRESENT_MODE_FIFO_KHR;
 
     uint32_t                    m_imageIndex = 0;
     uint32_t                    m_frameIndex = 0;
@@ -246,8 +249,11 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
 
-    VkResult createSwapChain(
-      const PresenterDesc&  desc);
+    void updateSwapChain();
+
+    VkResult recreateSwapChain();
+
+    VkResult createSwapChain();
 
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats) const;
@@ -258,11 +264,21 @@ namespace dxvk {
     VkResult getSwapImages(
             std::vector<VkImage>&     images);
     
-    VkSurfaceFormatKHR pickFormat(
+    VkSurfaceFormatKHR pickSurfaceFormat(
             uint32_t                  numSupported,
       const VkSurfaceFormatKHR*       pSupported,
-            uint32_t                  numDesired,
-      const VkSurfaceFormatKHR*       pDesired);
+      const VkSurfaceFormatKHR&       desired);
+
+    VkColorSpaceKHR pickColorSpace(
+            uint32_t                  numSupported,
+      const VkSurfaceFormatKHR*       pSupported,
+            VkColorSpaceKHR           desired);
+
+    VkFormat pickFormat(
+            uint32_t                  numSupported,
+      const VkSurfaceFormatKHR*       pSupported,
+            VkColorSpaceKHR           colorSpace,
+            VkFormat                  format);
 
     VkPresentModeKHR pickPresentMode(
             uint32_t                  numSupported,
@@ -275,8 +291,7 @@ namespace dxvk {
 
     uint32_t pickImageCount(
             uint32_t                  minImageCount,
-            uint32_t                  maxImageCount,
-            uint32_t                  desired);
+            uint32_t                  maxImageCount);
 
     VkResult createSurface();
 

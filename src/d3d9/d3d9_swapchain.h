@@ -169,8 +169,6 @@ namespace dxvk {
 
     uint32_t                  m_frameLatencyCap = 0;
 
-    bool                      m_dirty    = true;
-
     HWND                      m_window   = nullptr;
     HMONITOR                  m_monitor  = nullptr;
 
@@ -185,7 +183,6 @@ namespace dxvk {
     VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
-    bool m_dirtyHdrMetadata = true;
     bool m_unlockAdditionalFormats = false;
 
     D3D9VkExtSwapchain m_swapchainExt;
@@ -194,7 +191,7 @@ namespace dxvk {
 
     void SynchronizePresent();
 
-    void RecreateSwapChain();
+    void RecreateSurface();
 
     void CreatePresenter();
 
@@ -212,13 +209,8 @@ namespace dxvk {
 
     uint32_t GetActualFrameLatency();
 
-    uint32_t PickFormats(
-            D3D9Format                Format,
-            VkSurfaceFormatKHR*       pDstFormats);
+    VkSurfaceFormatKHR GetSurfaceFormat();
     
-    uint32_t PickImageCount(
-            UINT                      Preferred);
-
     void NormalizePresentParameters(D3DPRESENT_PARAMETERS* pPresentParams);
 
     void NotifyDisplayRefreshRate(
@@ -236,7 +228,9 @@ namespace dxvk {
     
     HRESULT RestoreDisplayMode(HMONITOR hMonitor);
 
-    bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
+    void UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
+
+    void UpdatePresentParameters();
 
     VkExtent2D GetPresentExtent();
 

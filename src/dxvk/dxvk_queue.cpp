@@ -145,7 +145,7 @@ namespace dxvk {
           entry.result = entry.submit.cmdList->submit(m_semaphores, m_timelines);
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
-          entry.result = entry.present.presenter->presentImage(entry.present.presentMode, entry.present.frameId);
+          entry.result = entry.present.presenter->presentImage(entry.present.frameId);
         }
 
         if (m_callback)
@@ -235,8 +235,7 @@ namespace dxvk {
         // Signal the frame and then immediately destroy the reference.
         // This is necessary since the front-end may want to explicitly
         // destroy the presenter object. 
-        entry.present.presenter->signalFrame(entry.result,
-          entry.present.presentMode, entry.present.frameId);
+        entry.present.presenter->signalFrame(entry.result, entry.present.frameId);
         entry.present.presenter = nullptr;
       }
 
