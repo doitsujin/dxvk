@@ -20,7 +20,7 @@ namespace dxvk::hud {
     Hud(const Rc<DxvkDevice>& device);
     
     ~Hud();
-    
+
     /**
      * \brief Update HUD
      * 
@@ -39,6 +39,14 @@ namespace dxvk::hud {
     void render(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView);
+
+    /**
+     * \brief Checks whether the HUD is empty
+     * \returns \c true if the HUD is empty
+     */
+    bool empty() const {
+      return m_hudItems.empty();
+    }
 
     /**
      * \brief Adds a HUD item if enabled
