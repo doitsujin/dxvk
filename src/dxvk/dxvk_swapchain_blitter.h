@@ -47,6 +47,10 @@ namespace dxvk {
     VkBool32 needsGamma = VK_FALSE;
     /// Bit indicating whether alpha blending is required
     VkBool32 needsBlending = VK_FALSE;
+    /// Bit indicating whether the HUD needs to be composited
+    VkBool32 compositeHud = VK_FALSE;
+    /// Bit indicating whether the software cursor needs to be composited
+    VkBool32 compositeCursor = VK_FALSE;
 
     size_t hash() const {
       DxvkHashState hash;
@@ -58,6 +62,8 @@ namespace dxvk {
       hash.add(uint32_t(needsBlit));
       hash.add(uint32_t(needsGamma));
       hash.add(uint32_t(needsBlending));
+      hash.add(uint32_t(compositeHud));
+      hash.add(uint32_t(compositeCursor));
       return hash;
     }
 
@@ -69,7 +75,9 @@ namespace dxvk {
           && dstFormat == other.dstFormat
           && needsBlit == other.needsBlit
           && needsGamma == other.needsGamma
-          && needsBlending == other.needsBlending;
+          && needsBlending == other.needsBlending
+          && compositeHud == other.compositeHud
+          && compositeCursor == other.compositeCursor;
     }
   };
 
@@ -155,12 +163,16 @@ namespace dxvk {
       VkBool32 srcIsSrgb;
       VkColorSpaceKHR dstSpace;
       VkBool32 dstIsSrgb;
+      VkBool32 compositeHud;
+      VkBool32 compositeCursor;
     };
 
     struct PushConstants {
       VkOffset2D srcOffset;
       VkExtent2D srcExtent;
       VkOffset2D dstOffset;
+      VkOffset2D cursorOffset;
+      VkExtent2D cursorExtent;
     };
 
     struct ShaderModule {
@@ -190,6 +202,11 @@ namespace dxvk {
 
     Rc<DxvkSampler>     m_samplerPresent;
     Rc<DxvkSampler>     m_samplerGamma;
+    Rc<DxvkSampler>     m_samplerCursorLinear;
+    Rc<DxvkSampler>     m_samplerCursorNearest;
+
+    Rc<DxvkImage>       m_hudImage;
+    Rc<DxvkImageView>   m_hudView;
 
     VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
     VkPipelineLayout    m_pipelineLayout = VK_NULL_HANDLE;
