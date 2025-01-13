@@ -24,7 +24,8 @@ namespace dxvk {
     m_library       (library),
     m_libraryHandle (VK_NULL_HANDLE),
     m_shaders       (std::move(shaders)),
-    m_bindings      (layout) {
+    m_bindings      (layout),
+    m_debugName     (createDebugName()) {
 
   }
   
@@ -155,6 +156,14 @@ namespace dxvk {
     }
 
     Logger::log(level, sstr.str());
+  }
+
+
+  std::string DxvkComputePipeline::createDebugName() const {
+    std::string shaderName = m_shaders.cs->debugName();
+    size_t len = std::min(shaderName.size(), size_t(10));
+
+    return str::format("[", shaderName.substr(0, len), "]");
   }
 
 }

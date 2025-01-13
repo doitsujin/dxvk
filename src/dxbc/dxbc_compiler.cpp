@@ -281,7 +281,7 @@ namespace dxvk {
         return this->emitDclGlobalFlags(ins);
         
       case DxbcOpcode::DclIndexRange:
-        return;  // not needed for anything
+        return this->emitDclIndexRange(ins);
         
       case DxbcOpcode::DclTemps:
         return this->emitDclTemps(ins);
@@ -375,6 +375,21 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitDclIndexRange(const DxbcShaderInstruction& ins) {
+    // dcl_index_range has one operand:
+    //    (0) Range start, either an input or output register
+    //    (1) Range end
+    uint32_t index = ins.dst[0].idxDim - 1u;
+
+    DxbcIndexRange range = { };
+    range.type = ins.dst[0].type;
+    range.start = ins.dst[0].idx[index].offset;
+    range.length = ins.imm[0].u32;
+
+    m_indexRanges.push_back(range);
+  }
+
+
   void DxbcCompiler::emitDclTemps(const DxbcShaderInstruction& ins) {
     // dcl_temps has one operand:
     //    (imm0) Number of temp registers
@@ -5737,14 +5752,37 @@ namespace dxvk {
 
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
-    if (reg.type == DxbcOperandType::IndexableTemp) {
-      bool doBoundsCheck = reg.idx[1].relReg != nullptr;
-      DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
+    // Try to find index range for the given register
+    const DxbcIndexRange* indexRange = nullptr;
+
+    if (reg.idxDim && reg.idx[reg.idxDim - 1u].relReg) {
+      uint32_t offset = reg.idx[reg.idxDim - 1u].offset;
+
+      for (const auto& range : m_indexRanges) {
+        if (reg.type == range.type && offset >= range.start && offset < range.start + range.length)
+          indexRange = &range;
+      }
+    }
+
+    if (reg.type == DxbcOperandType::IndexableTemp || indexRange) {
+      bool doBoundsCheck = reg.idx[reg.idxDim - 1u].relReg != nullptr;
 
       if (doBoundsCheck) {
-        uint32_t boundsCheck = m_module.opULessThan(
-          m_module.defBoolType(), vectorId.id,
-          m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+        DxbcRegisterValue indexId = emitIndexLoad(reg.idx[reg.idxDim - 1u]);
+        uint32_t boundsCheck = 0u;
+
+        if (reg.type == DxbcOperandType::IndexableTemp) {
+          boundsCheck = m_module.opULessThan(
+            m_module.defBoolType(), indexId.id,
+            m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+        } else {
+          uint32_t adjustedId = m_module.opISub(getVectorTypeId(indexId.type),
+            indexId.id, m_module.consti32(indexRange->start));
+
+          boundsCheck = m_module.opULessThan(
+            m_module.defBoolType(), adjustedId,
+            m_module.constu32(indexRange->length));
+        }
 
         // Kind of ugly to have an empty else block here but there's no
         // way for us to know the current block ID for the phi below
@@ -6109,7 +6147,7 @@ namespace dxvk {
 
       DxbcRegisterValue value = emitValueLoad(ptr);
 
-      value.id = m_module.opFClamp(
+      value.id = m_module.opNClamp(
         getVectorTypeId(ptr.type),
         value.id,
         m_module.constf32(0.0f),
@@ -6155,13 +6193,11 @@ namespace dxvk {
 
       uint32_t threadId = m_module.opLoad(
         intTypeId, m_cs.builtinLocalInvocationIndex);
-      
-      uint32_t strideId = m_module.constu32(numThreads);
-      uint32_t zeroId   = m_module.constu32(0);
+      uint32_t zeroId = m_module.constu32(0);
 
       for (uint32_t e = 0; e < numElementsPerThread; e++) {
         uint32_t ofsId = m_module.opIAdd(intTypeId, threadId,
-          m_module.opIMul(intTypeId, strideId, m_module.constu32(e)));
+          m_module.constu32(numThreads * e));
         
         uint32_t ptrId = m_module.opAccessChain(
           ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
@@ -6183,9 +6219,8 @@ namespace dxvk {
 
         m_module.opLabel(cond.labelIf);
 
-        uint32_t ofsId = m_module.opIAdd(intTypeId,
-          m_module.constu32(numThreads * numElementsPerThread),
-          threadId);
+        uint32_t ofsId = m_module.opIAdd(intTypeId, threadId,
+          m_module.constu32(numThreads * numElementsPerThread));
         
         uint32_t ptrId = m_module.opAccessChain(
           ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
@@ -6566,7 +6601,7 @@ namespace dxvk {
       }
 
       DxbcRegisterValue tessValue = emitRegisterExtract(value, mask);
-      tessValue.id = m_module.opFClamp(getVectorTypeId(tessValue.type),
+      tessValue.id = m_module.opNClamp(getVectorTypeId(tessValue.type),
         tessValue.id, m_module.constf32(0.0f),
         m_module.constf32(maxTessFactor));
       

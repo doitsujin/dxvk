@@ -4,8 +4,6 @@
 #include "d3d8_surface.h"
 #include "d3d8_volume.h"
 
-#include "d3d8_d3d9_util.h"
-
 #include <vector>
 #include <new>
 
@@ -40,7 +38,7 @@ namespace dxvk {
     } catch (HRESULT err) {
       if (riid == __uuidof(IDirect3DBaseTexture8))
         return this;
-      
+
       throw err;
     }
 
@@ -70,7 +68,7 @@ namespace dxvk {
 
       if (unlikely(Index >= m_subresources.size()))
         return D3DERR_INVALIDCALL;
-      
+
       if (m_subresources[Index] == nullptr) {
         try {
           Com<SubresourceType9> subresource = LookupSubresource(Index);
@@ -92,7 +90,7 @@ namespace dxvk {
       Com<SubresourceType9> ptr = nullptr;
       HRESULT res = D3DERR_INVALIDCALL;
       if constexpr (std::is_same_v<D3D8, IDirect3DTexture8>) {
-        res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr); 
+        res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr);
       } else if constexpr (std::is_same_v<D3D8, IDirect3DVolumeTexture8>) {
         res = this->GetD3D9()->GetVolumeLevel(Index, &ptr);
       } else if constexpr (std::is_same_v<D3D8, IDirect3DCubeTexture8>) {
@@ -114,40 +112,23 @@ namespace dxvk {
 
     D3D8Texture2D(
             D3D8Device*                    pDevice,
-            Com<d3d9::IDirect3DTexture9>&& pTexture)
-      : D3D8Texture2DBase(pDevice, std::move(pTexture), pTexture->GetLevelCount()) {
-    }
+            Com<d3d9::IDirect3DTexture9>&& pTexture);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_TEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
-    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
-      if (unlikely(pDesc == nullptr))
-        return D3DERR_INVALIDCALL;
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc);
 
-      d3d9::D3DSURFACE_DESC surf;
-      HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
+    HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel);
 
-      if (likely(SUCCEEDED(res)))
-        ConvertSurfaceDesc8(&surf, pDesc);
+    HRESULT STDMETHODCALLTYPE LockRect(
+        UINT            Level,
+        D3DLOCKED_RECT* pLockedRect,
+        CONST RECT*     pRect,
+        DWORD           Flags);
 
-      return res;
-    }
+    HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level);
 
-    HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
-      return GetSubresource(Level, ppSurfaceLevel);
-    }
-
-    HRESULT STDMETHODCALLTYPE LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-      return GetD3D9()->LockRect(Level, reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect), pRect, Flags);
-    }
-
-    HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level) {
-      return GetD3D9()->UnlockRect(Level);
-    }
-
-    HRESULT STDMETHODCALLTYPE AddDirtyRect(CONST RECT* pDirtyRect) {
-      return GetD3D9()->AddDirtyRect(pDirtyRect);
-    }
+    HRESULT STDMETHODCALLTYPE AddDirtyRect(CONST RECT* pDirtyRect);
 
   };
 
@@ -157,45 +138,24 @@ namespace dxvk {
   public:
 
     D3D8Texture3D(
-          D3D8Device*                           pDevice,
-          Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture)
-      : D3D8Texture3DBase(pDevice, std::move(pVolumeTexture), pVolumeTexture->GetLevelCount()) {}
+            D3D8Device*                           pDevice,
+            Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VOLUMETEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
-    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc) {
-      if (unlikely(pDesc == nullptr))
-        return D3DERR_INVALIDCALL;
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc);
 
-      d3d9::D3DVOLUME_DESC vol;
-      HRESULT res = GetD3D9()->GetLevelDesc(Level, &vol);
+    HRESULT STDMETHODCALLTYPE GetVolumeLevel(UINT Level, IDirect3DVolume8** ppVolumeLevel);
 
-      if (likely(SUCCEEDED(res)))
-        ConvertVolumeDesc8(&vol, pDesc);
+    HRESULT STDMETHODCALLTYPE LockBox(
+        UINT           Level,
+        D3DLOCKED_BOX* pLockedBox,
+        CONST D3DBOX*  pBox,
+        DWORD          Flags);
 
-      return res;
-    }
+    HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level);
 
-    HRESULT STDMETHODCALLTYPE GetVolumeLevel(UINT Level, IDirect3DVolume8** ppVolumeLevel) {
-      return GetSubresource(Level, ppVolumeLevel);
-    }
-
-    HRESULT STDMETHODCALLTYPE LockBox(UINT Level, D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
-      return GetD3D9()->LockBox(
-        Level,
-        reinterpret_cast<d3d9::D3DLOCKED_BOX*>(pLockedBox),
-        reinterpret_cast<const d3d9::D3DBOX*>(pBox),
-        Flags
-      );
-    }
-
-    HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level) {
-      return GetD3D9()->UnlockBox(Level);
-    }
-
-    HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox) {
-      return GetD3D9()->AddDirtyBox(reinterpret_cast<const d3d9::D3DBOX*>(pDirtyBox));
-    }
+    HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox);
 
   };
 
@@ -206,49 +166,28 @@ namespace dxvk {
 
     D3D8TextureCube(
             D3D8Device*                         pDevice,
-            Com<d3d9::IDirect3DCubeTexture9>&&  pTexture)
-      : D3D8TextureCubeBase(pDevice, std::move(pTexture), pTexture->GetLevelCount() * CUBE_FACES) {
-    }
+            Com<d3d9::IDirect3DCubeTexture9>&&  pTexture);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_CUBETEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
-    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
-      if (unlikely(pDesc == nullptr))
-        return D3DERR_INVALIDCALL;
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc);
 
-      d3d9::D3DSURFACE_DESC surf;
-      HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
-
-      if (likely(SUCCEEDED(res)))
-        ConvertSurfaceDesc8(&surf, pDesc);
-
-      return res;
-    }
-
-    HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
-      return GetSubresource((Level * CUBE_FACES) + Face, ppSurfaceLevel);
-    }
+    HRESULT STDMETHODCALLTYPE GetCubeMapSurface(
+        D3DCUBEMAP_FACES    Face,
+        UINT                Level,
+        IDirect3DSurface8** ppSurfaceLevel);
 
     HRESULT STDMETHODCALLTYPE LockRect(
-            D3DCUBEMAP_FACES Face,
-            UINT Level,
-            D3DLOCKED_RECT* pLockedRect,
-            const RECT* pRect,
-            DWORD Flags) {
-      return GetD3D9()->LockRect(
-        d3d9::D3DCUBEMAP_FACES(Face),
-        Level,
-        reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect),
-        pRect,
-        Flags);
-    }
+        D3DCUBEMAP_FACES Face,
+        UINT Level,
+        D3DLOCKED_RECT* pLockedRect,
+        const RECT* pRect,
+        DWORD Flags);
 
-    HRESULT STDMETHODCALLTYPE UnlockRect(D3DCUBEMAP_FACES Face, UINT Level) {
-      return GetD3D9()->UnlockRect(d3d9::D3DCUBEMAP_FACES(Face), Level);
-    }
+    HRESULT STDMETHODCALLTYPE UnlockRect(D3DCUBEMAP_FACES Face, UINT Level);
 
-    HRESULT STDMETHODCALLTYPE AddDirtyRect(D3DCUBEMAP_FACES Face, const RECT* pDirtyRect) {
-      return GetD3D9()->AddDirtyRect(d3d9::D3DCUBEMAP_FACES(Face), pDirtyRect);
-    }
+    HRESULT STDMETHODCALLTYPE AddDirtyRect(D3DCUBEMAP_FACES Face, const RECT* pDirtyRect);
+
   };
+
 }

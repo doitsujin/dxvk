@@ -526,6 +526,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Sets debug name for texture
+     *
+     * Passes the given name to the backing image or buffer.
+     * \param [in] name Debug name
+     */
+    void SetDebugName(const char* pName);
+
+    /**
      * \brief Normalizes and validates texture description
      * 
      * Fills in undefined values and validates the texture
@@ -759,6 +767,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE1D_DESC *pDesc) final;
     
+    void STDMETHODCALLTYPE SetDebugName(const char* pName) final;
+
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;
     }
@@ -825,6 +835,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_TEXTURE2D_DESC1* pDesc) final;
     
+    void STDMETHODCALLTYPE SetDebugName(const char* pName) final;
+
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;
     }
@@ -875,6 +887,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_TEXTURE3D_DESC1* pDesc) final;
     
+    void STDMETHODCALLTYPE SetDebugName(const char* pName) final;
+
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;
     }

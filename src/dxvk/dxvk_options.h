@@ -45,6 +45,9 @@ namespace dxvk {
     /// Clears all mapped memory to zero.
     bool zeroMappedMemory = false;
 
+    /// Allows full-screen exclusive mode on Windows
+    bool allowFse = false;
+
     // Device name
     std::string deviceFilter;
   };

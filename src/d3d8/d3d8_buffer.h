@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d8_include.h"
+#include "d3d8_options.h"
 #include "d3d8_resource.h"
 
 namespace dxvk {
@@ -49,9 +50,11 @@ namespace dxvk {
     }
 
   protected:
+
     const D3D8Options* m_options;
     const D3DPOOL      m_pool;
     const DWORD        m_usage;
+
   };
 
 
@@ -61,18 +64,14 @@ namespace dxvk {
   public:
 
     D3D8VertexBuffer(
-        D3D8Device*                         pDevice,
-        Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer,
-        D3DPOOL                             Pool,
-        DWORD                               Usage)
-      : D3D8VertexBufferBase(pDevice, std::move(pBuffer), Pool, Usage) {
-    }
+            D3D8Device*                         pDevice,
+            Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer,
+            D3DPOOL                             Pool,
+            DWORD                               Usage);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
-    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
-      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
-    }
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc);
 
   };
 
@@ -82,18 +81,15 @@ namespace dxvk {
   public:
 
     D3D8IndexBuffer(
-        D3D8Device*                        pDevice,
-        Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer,
-        D3DPOOL                            Pool,
-        DWORD                              Usage)
-      : D3D8IndexBufferBase(pDevice, std::move(pBuffer), Pool, Usage) {
-    }
+            D3D8Device*                        pDevice,
+            Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer,
+            D3DPOOL                            Pool,
+            DWORD                              Usage);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
-    HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final {
-      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
-    }
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final;
 
   };
+
 }

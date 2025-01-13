@@ -333,4 +333,5 @@ namespace dxvk {
 
     return result;
   }
+
 }

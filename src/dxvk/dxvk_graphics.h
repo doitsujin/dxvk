@@ -561,6 +561,17 @@ namespace dxvk {
      */
     void releasePipeline();
 
+    /**
+     * \brief Queries debug name for the pipeline
+     *
+     * The pipeline debug name contains the debug name of
+     * each shader included in the pipeline.
+     * \returns Pipeline debug name
+     */
+    const char* debugName() const {
+      return m_debugName.c_str();
+    }
+
   private:
 
     DxvkDevice*                 m_device;    
@@ -582,6 +593,8 @@ namespace dxvk {
 
     uint32_t m_specConstantMask = 0;
 
+    std::string m_debugName;
+
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_mutex;
     sync::List<DxvkGraphicsPipelineInstance>      m_pipelines;
@@ -596,7 +609,7 @@ namespace dxvk {
     std::unordered_map<
       DxvkGraphicsPipelineFastInstanceKey,
       VkPipeline, DxvkHash, DxvkEq>               m_fastPipelines;
-    
+
     DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state,
             bool                           doCreateBasePipeline);
@@ -642,6 +655,8 @@ namespace dxvk {
     void logPipelineState(
             LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;
+
+    std::string createDebugName() const;
 
   };
   

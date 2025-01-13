@@ -63,6 +63,10 @@ namespace dxvk {
     // Maintenance5 introduced a bounded BindIndexBuffer function
     if (m_device->features().khrMaintenance5.maintenance5)
       m_features.set(DxvkContextFeature::IndexBufferRobustness);
+
+    // Add a fast path to query debug utils support
+    if (m_device->isDebugEnabled())
+      m_features.set(DxvkContextFeature::DebugUtils);
   }
   
   
@@ -101,6 +105,8 @@ namespace dxvk {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
     }
+
+    m_renderPassIndex = 0u;
   }
 
 
@@ -271,6 +277,14 @@ namespace dxvk {
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = bufferView->buffer()->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(cmdBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Clear view (",
+          dstName ? dstName : "unknown", ")").c_str()));
+    }
+
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
       lookupFormatInfo(bufferView->info().format)->flags);
@@ -312,6 +326,9 @@ namespace dxvk {
     accessBuffer(cmdBuffer, *bufferView,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
       VK_ACCESS_2_SHADER_WRITE_BIT);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
 
     m_cmd->track(bufferView->buffer(), DxvkAccess::Write);
   }
@@ -456,6 +473,7 @@ namespace dxvk {
       bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
       bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
                       | VK_ACCESS_TRANSFER_READ_BIT;
+      bufInfo.debugName = "Temp buffer";
 
       auto tmpBuffer = m_device->createBuffer(
         bufInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -567,6 +585,7 @@ namespace dxvk {
                             | VK_ACCESS_TRANSFER_READ_BIT;
       imgInfo.tiling        = dstImage->info().tiling;
       imgInfo.layout        = VK_IMAGE_LAYOUT_GENERAL;
+      imgInfo.debugName     = "Temp image";
 
       auto tmpImage = m_device->createImage(
         imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -679,6 +698,8 @@ namespace dxvk {
                         | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
       bufferInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
                         | VK_ACCESS_SHADER_READ_BIT;
+      bufferInfo.debugName = "Temp buffer";
+
       Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       auto tmpBufferSlice = tmpBuffer->getSliceHandle();
@@ -1224,6 +1245,13 @@ namespace dxvk {
 
     flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = imageView->image()->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xe6dcf0,
+        str::format("Mip gen (", dstName ? dstName : "unknown", ")").c_str()));
+    }
+
     // Create image views, etc.
     DxvkMetaMipGenViews mipGenerator(imageView);
     
@@ -1356,6 +1384,9 @@ namespace dxvk {
         VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
         VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT);
     }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     m_cmd->track(imageView->image(), DxvkAccess::Write);
     m_cmd->track(std::move(sampler));
@@ -1788,6 +1819,12 @@ namespace dxvk {
 
       flushPendingAccesses(*imageView, DxvkAccess::Write);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+        const char* imageName = imageView->image()->info().debugName;
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+          vk::makeLabel(0xe6f0dc, str::format("Clear render target (", imageName ? imageName : "unknown", ")").c_str()));
+      }
+
       // Set up a temporary render pass to execute the clear
       VkImageLayout imageLayout = ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT)
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -1872,6 +1909,9 @@ namespace dxvk {
         imageLayout, clearStages, clearAccess, storeLayout,
         imageView->image()->info().stages,
         imageView->image()->info().access);
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
       m_cmd->track(imageView->image(), DxvkAccess::Write);
     } else {
@@ -2477,25 +2517,81 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
+  void DxvkContext::beginRenderPassDebugRegion() {
+    bool hasColorAttachments = false;
+    bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
 
-    m_cmd->cmdBeginDebugUtilsLabel(label);
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+      hasColorAttachments |= m_state.om.renderTargets.color[i].view != nullptr;
+
+    std::stringstream label;
+
+    if (hasColorAttachments)
+      label << "Color";
+    else if (hasDepthAttachment)
+      label << "Depth";
+    else
+      label << "Render";
+
+    label << " pass " << uint32_t(++m_renderPassIndex) << " (";
+
+    hasColorAttachments = false;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_state.om.renderTargets.color[i].view) {
+        const char* imageName = m_state.om.renderTargets.color[i].view->image()->info().debugName;
+        label << (hasColorAttachments ? ", " : "") << i << ": " << (imageName ? imageName : "unknown");
+
+        hasColorAttachments = true;
+      }
+    }
+
+    if (m_state.om.renderTargets.depth.view) {
+      if (hasColorAttachments)
+        label << ", ";
+
+      const char* imageName = m_state.om.renderTargets.depth.view->image()->info().debugName;
+      label << "DS:" << (imageName ? imageName : "unknown");
+    }
+
+    if (!hasColorAttachments && !hasDepthAttachment)
+      label << "No attachments";
+
+    label << ")";
+
+    beginInternalDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()));
   }
+
+
+  void DxvkContext::beginDebugLabel(const VkDebugUtilsLabelEXT& label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      endInternalDebugRegion();
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+      m_debugLabelStack.emplace_back(label);
+    }
+  }
+
 
   void DxvkContext::endDebugLabel() {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
-
-    m_cmd->cmdEndDebugUtilsLabel();
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      if (!m_debugLabelStack.empty()) {
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+        m_debugLabelStack.pop_back();
+      }
+    }
   }
 
-  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT *label) {
-    if (!m_device->instance()->extensions().extDebugUtils)
-      return;
 
-    m_cmd->cmdInsertDebugUtilsLabel(label);
+  void DxvkContext::insertDebugLabel(const VkDebugUtilsLabelEXT& label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils))
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+  }
+
+
+  void DxvkContext::setDebugName(const Rc<DxvkPagedResource>& resource, const char* name) {
+    if (m_features.test(DxvkContextFeature::DebugUtils))
+      resource->setDebugName(name);
   }
   
   
@@ -2522,6 +2618,16 @@ namespace dxvk {
 
     flushPendingAccesses(*dstView, DxvkAccess::Write);
     flushPendingAccesses(*srcView, DxvkAccess::Read);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = dstView->image()->info().debugName;
+      const char* srcName = srcView->image()->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Blit (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
 
     VkImageLayout srcLayout = srcView->image()->pickLayout(srcIsDepthStencil
       ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
@@ -2658,6 +2764,9 @@ namespace dxvk {
       *srcView->image(), srcView->imageSubresources(), srcLayout,
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
       VK_ACCESS_2_SHADER_READ_BIT);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     m_cmd->track(dstView->image(), DxvkAccess::Write);
     m_cmd->track(srcView->image(), DxvkAccess::Read);
@@ -2889,6 +2998,16 @@ namespace dxvk {
 
     flushPendingAccesses(*image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Write);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = image->info().debugName;
+      const char* srcName = buffer->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Upload image (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
+
     auto formatInfo = lookupFormatInfo(bufferFormat);
 
     if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
@@ -3097,6 +3216,9 @@ namespace dxvk {
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
       VK_ACCESS_2_SHADER_READ_BIT);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
     m_cmd->track(image, DxvkAccess::Write);
     m_cmd->track(buffer, DxvkAccess::Read);
   }
@@ -3174,6 +3296,16 @@ namespace dxvk {
     ensureImageCompatibility(image, imageUsage);
 
     flushPendingAccesses(*image, vk::makeSubresourceRange(imageSubresource), DxvkAccess::Read);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = buffer->info().debugName;
+      const char* srcName = image->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Readback image (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
 
     auto formatInfo = lookupFormatInfo(bufferFormat);
 
@@ -3312,6 +3444,9 @@ namespace dxvk {
       vk::makeSubresourceRange(imageSubresource), imageLayout,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
     m_cmd->track(buffer, DxvkAccess::Write);
     m_cmd->track(image, DxvkAccess::Read);
   }
@@ -3343,6 +3478,13 @@ namespace dxvk {
       this->spillRenderPass(false);
 
       flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+        const char* dstName = imageView->image()->info().debugName;
+
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xf0dcdc,
+          str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
+      }
 
       clearLayout = (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT)
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
@@ -3420,6 +3562,9 @@ namespace dxvk {
         *imageView->image(), imageView->imageSubresources(),
         clearLayout, clearStages, clearAccess);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
       m_cmd->track(imageView->image(), DxvkAccess::Write);
     }
   }
@@ -3439,6 +3584,13 @@ namespace dxvk {
       flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
+    }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = imageView->image()->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(cmdBuffer, vk::makeLabel(0xf0dcdc,
+        str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
     }
 
     addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
@@ -3496,6 +3648,9 @@ namespace dxvk {
       *imageView->image(), imageView->imageSubresources(),
       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
       VK_ACCESS_2_SHADER_WRITE_BIT);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
 
     m_cmd->track(imageView->image(), DxvkAccess::Write);
   }
@@ -3608,6 +3763,16 @@ namespace dxvk {
     }
 
     this->invalidateState();
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = dstImage->info().debugName;
+      const char* srcName = srcImage->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Copy image (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
 
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
@@ -3760,6 +3925,9 @@ namespace dxvk {
     accessImage(DxvkCmdBuffer::ExecBuffer,
       *dstImage, dstSubresourceRange,
       dstLayout, dstStages, dstAccess);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     m_cmd->track(dstImage, DxvkAccess::Write);
     m_cmd->track(srcImage, DxvkAccess::Read);
@@ -4068,6 +4236,16 @@ namespace dxvk {
     flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
     flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = dstImage->info().debugName;
+      const char* srcName = srcImage->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Resolve DS (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
+
     // Transition both images to usable layouts if necessary. For the source image we
     // can be fairly leniet since writable layouts are allowed for resolve attachments.
     VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -4130,6 +4308,9 @@ namespace dxvk {
       VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
       VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
     m_cmd->track(dstImage, DxvkAccess::Write);
     m_cmd->track(srcImage, DxvkAccess::Read);
   }
@@ -4176,6 +4357,16 @@ namespace dxvk {
 
     flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
     flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = dstImage->info().debugName;
+      const char* srcName = srcImage->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Resolve (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
 
     // Discard the destination image if we're fully writing it,
     // and transition the image layout if necessary
@@ -4331,6 +4522,9 @@ namespace dxvk {
       *dstImage, dstSubresourceRange,
       dstLayout, dstStages, dstAccess);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
     m_cmd->track(dstImage, DxvkAccess::Write);
     m_cmd->track(srcImage, DxvkAccess::Read);
   }
@@ -4463,6 +4657,9 @@ namespace dxvk {
         DxvkContextFlag::GpRenderPassSuspended,
         DxvkContextFlag::GpIndependentSets);
 
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        beginRenderPassDebugRegion();
+
       this->renderPassBindFramebuffer(
         m_state.om.framebufferInfo,
         m_state.om.renderPassOps);
@@ -4500,6 +4697,7 @@ namespace dxvk {
         this->transitionRenderTargetLayouts(false);
 
       flushBarriers();
+      endInternalDebugRegion();
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
@@ -4861,6 +5059,11 @@ namespace dxvk {
     if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dca2, newPipeline->debugName()));
+    }
+
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
     return true;
   }
@@ -5027,6 +5230,11 @@ namespace dxvk {
       accessMemory(DxvkCmdBuffer::ExecBuffer,
         srcBarrier.stages, srcBarrier.access,
         dstBarrier.stages, dstBarrier.access);
+    }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xa2dcf0, m_state.gp.pipeline->debugName()));
     }
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
@@ -6523,6 +6731,11 @@ namespace dxvk {
     if (resourceList.empty())
       return;
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xc0a2f0, "Memory defrag"));
+    }
+
     std::vector<DxvkRelocateBufferInfo> bufferInfos;
     std::vector<DxvkRelocateImageInfo> imageInfos;
 
@@ -6560,6 +6773,9 @@ namespace dxvk {
       imageInfos.size(), imageInfos.data());
 
     m_cmd->setSubmissionBarrier();
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
@@ -6611,6 +6827,7 @@ namespace dxvk {
     bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
     bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
                     | VK_ACCESS_TRANSFER_READ_BIT;
+    bufInfo.debugName = "Zero buffer";
 
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -6652,6 +6869,8 @@ namespace dxvk {
 
 
   void DxvkContext::beginCurrentCommands() {
+    beginActiveDebugRegions();
+
     // The current state of the internal command buffer is
     // undefined, so we have to bind and set up everything
     // before any draw or dispatch command is recorded.
@@ -6700,6 +6919,8 @@ namespace dxvk {
     m_execBarriers.finalize(m_cmd);
 
     m_barrierTracker.clear();
+
+    endActiveDebugRegions();
   }
 
 
@@ -7241,6 +7462,38 @@ namespace dxvk {
       default:
         return VK_FORMAT_UNDEFINED;
     }
+  }
+
+
+  void DxvkContext::beginInternalDebugRegion(const VkDebugUtilsLabelEXT& label) {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      // If the app provides us with debug regions, don't add any
+      // internal ones to avoid potential issues with scoping.
+      if (m_debugLabelStack.empty()) {
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+        m_debugLabelInternalActive = true;
+      }
+    }
+  }
+
+
+  void DxvkContext::endInternalDebugRegion() {
+    if (m_debugLabelInternalActive) {
+      m_debugLabelInternalActive = false;
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+    }
+  }
+
+
+  void DxvkContext::beginActiveDebugRegions() {
+    for (const auto& region : m_debugLabelStack)
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, region.get());
+  }
+
+
+  void DxvkContext::endActiveDebugRegions() {
+    for (size_t i = 0; i < m_debugLabelStack.size(); i++)
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 }

@@ -1,5 +1,6 @@
 #include "d3d11_buffer.h"
 #include "d3d11_context.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 
 namespace dxvk {
@@ -211,6 +212,18 @@ namespace dxvk {
   }
 
 
+  void D3D11Buffer::SetDebugName(const char* pName) {
+    if (m_buffer) {
+      m_parent->GetContext()->InjectCs([
+        cBuffer = m_buffer,
+        cName   = std::string(pName ? pName : "")
+      ] (DxvkContext* ctx) {
+        ctx->setDebugName(cBuffer, cName.c_str());
+      });
+    }
+  }
+
+
   HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc) {
     // Zero-sized buffers are illegal
     if (!pDesc->ByteWidth && !(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
@@ -370,6 +383,8 @@ namespace dxvk {
                 | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+    info.debugName = "SO counter";
+
     return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 

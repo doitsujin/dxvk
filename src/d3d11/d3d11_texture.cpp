@@ -1,4 +1,5 @@
 #include "d3d11_device.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_gdi.h"
 #include "d3d11_texture.h"
 
@@ -372,8 +373,31 @@ namespace dxvk {
       return viewFormat.Format == baseFormat.Format && planeCount == 1;
     }
   }
-  
-  
+
+
+  void D3D11CommonTexture::SetDebugName(const char* pName) {
+    if (m_image) {
+      m_device->GetContext()->InjectCs([
+        cImage  = m_image,
+        cName   = std::string(pName ? pName : "")
+      ] (DxvkContext* ctx) {
+        ctx->setDebugName(cImage, cName.c_str());
+      });
+    }
+
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      for (uint32_t i = 0; i < m_buffers.size(); i++) {
+        m_device->GetContext()->InjectCs([
+          cBuffer = m_buffers[i].buffer,
+          cName   = std::string(pName ? pName : "")
+        ] (DxvkContext* ctx) {
+          ctx->setDebugName(cBuffer, cName.c_str());
+        });
+      }
+    }
+  }
+
+
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0 || pDesc->ArraySize == 0)
       return E_INVALIDARG;
@@ -754,6 +778,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT;
+    info.debugName = "Image buffer";
 
     // We may read mapped buffers even if it is
     // marked as CPU write-only on the D3D11 side.
@@ -1193,8 +1218,13 @@ namespace dxvk {
     pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
     pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
   }
-  
-  
+
+
+  void STDMETHODCALLTYPE D3D11Texture1D::SetDebugName(const char* pName) {
+    m_texture.SetDebugName(pName);
+  }
+
+
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 2 D
   D3D11Texture2D::D3D11Texture2D(
@@ -1376,6 +1406,11 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11Texture2D::SetDebugName(const char* pName) {
+    m_texture.SetDebugName(pName);
+  }
+
+
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 3 D
   D3D11Texture3D::D3D11Texture3D(
@@ -1487,6 +1522,11 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11Texture3D::SetDebugName(const char* pName) {
+    m_texture.SetDebugName(pName);
+  }
+
+
   D3D11CommonTexture* GetCommonTexture(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&dimension);

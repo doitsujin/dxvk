@@ -19,24 +19,28 @@ namespace dxvk {
     }
     
     HRESULT STDMETHODCALLTYPE GetPrivateData(
-            REFGUID guid,
-            UINT    *pDataSize,
-            void    *pData) final {
+            REFGUID               guid,
+            UINT*                 pDataSize,
+            void*                 pData) final {
       return m_privateData.getData(
         guid, pDataSize, pData);
     }
     
     HRESULT STDMETHODCALLTYPE SetPrivateData(
-            REFGUID guid,
-            UINT    DataSize,
-      const void    *pData) final {
+            REFGUID               guid,
+            UINT                  DataSize,
+      const void*                 pData) final {
+      // WKPDID_D3DDebugObjectName, can't use directly due to MSVC link errors
+      if (guid == GUID{0x429b8c22,0x9188,0x4b0c,0x87,0x42,0xac,0xb0,0xbf,0x85,0xc2,0x00})
+        SetDebugName(static_cast<const char*>(pData));
+
       return m_privateData.setData(
         guid, DataSize, pData);
     }
     
     HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
-            REFGUID  guid,
-      const IUnknown *pUnknown) final {
+            REFGUID               guid,
+      const IUnknown*             pUnknown) final {
       return m_privateData.setInterface(
         guid, pUnknown);
     }
@@ -44,6 +48,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDevice(
             ID3D11Device**        ppDevice) final {
       *ppDevice = ref(GetParentInterface());
+    }
+
+    virtual void STDMETHODCALLTYPE SetDebugName(const char* pName) {
+      // No-op by default
     }
 
   protected:

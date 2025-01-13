@@ -172,9 +172,11 @@ namespace dxvk {
 
     /**
      * \brief Retrieves or allocates a command buffer
+     *
+     * \param [in] type Command buffer type
      * \returns New command buffer in begun state
      */
-    VkCommandBuffer getCommandBuffer();
+    VkCommandBuffer getCommandBuffer(DxvkCmdBuffer type);
 
     /**
      * \brief Resets command pool and all command buffers
@@ -1048,25 +1050,28 @@ namespace dxvk {
     
 
     void cmdBeginDebugUtilsLabel(
-            VkDebugUtilsLabelEXT*   pLabelInfo) {
+            DxvkCmdBuffer           cmdBuffer,
+      const VkDebugUtilsLabelEXT&   labelInfo) {
       m_cmd.execCommands = true;
 
-      m_vki->vkCmdBeginDebugUtilsLabelEXT(getCmdBuffer(), pLabelInfo);
+      m_vki->vkCmdBeginDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer), &labelInfo);
     }
 
 
-    void cmdEndDebugUtilsLabel() {
+    void cmdEndDebugUtilsLabel(
+            DxvkCmdBuffer           cmdBuffer) {
       m_cmd.execCommands = true;
 
-      m_vki->vkCmdEndDebugUtilsLabelEXT(getCmdBuffer());
+      m_vki->vkCmdEndDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer));
     }
 
 
     void cmdInsertDebugUtilsLabel(
-            VkDebugUtilsLabelEXT*   pLabelInfo) {
+            DxvkCmdBuffer           cmdBuffer,
+      const VkDebugUtilsLabelEXT&   labelInfo) {
       m_cmd.execCommands = true;
 
-      m_vki->vkCmdInsertDebugUtilsLabelEXT(getCmdBuffer(), pLabelInfo);
+      m_vki->vkCmdInsertDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer), &labelInfo);
     }
 
 

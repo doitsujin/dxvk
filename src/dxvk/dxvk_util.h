@@ -3,7 +3,41 @@
 #include "dxvk_include.h"
 
 namespace dxvk::util {
-  
+
+  /**
+   * \brief Debug label wrapper
+   *
+   * Wrapper around a Vulkan debug label that
+   * persistently stores the string in question.
+   */
+  class DxvkDebugLabel {
+
+  public:
+
+    DxvkDebugLabel() = default;
+
+    DxvkDebugLabel(const VkDebugUtilsLabelEXT& label)
+    : m_text(label.pLabelName ? label.pLabelName : "") {
+      for (uint32_t i = 0; i < m_color.size(); i++)
+        m_color[i] = label.color[i];
+    }
+
+    VkDebugUtilsLabelEXT get() const {
+      VkDebugUtilsLabelEXT label = { VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT };
+      label.pLabelName = m_text.c_str();
+      for (uint32_t i = 0; i < m_color.size(); i++)
+        label.color[i] = m_color[i];
+      return label;
+    }
+
+  private:
+
+    std::string           m_text;
+    std::array<float, 4>  m_color = { };
+
+  };
+
+
   /**
    * \brief Gets pipeline stage flags for shader stages
    * 

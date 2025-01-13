@@ -76,7 +76,7 @@ namespace dxvk {
 
     if (dstTextureInfo->IsAutomaticMip())
       m_device->MarkTextureMipsDirty(dstTextureInfo);
-    
+
     return D3D_OK;
   }
 
@@ -108,4 +108,5 @@ namespace dxvk {
   const Config* DxvkD3D8InterfaceBridge::GetConfig() const {
     return &m_interface->GetInstance()->config();
   }
+
 }

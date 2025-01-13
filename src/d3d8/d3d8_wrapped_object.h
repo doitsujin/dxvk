@@ -38,7 +38,7 @@ namespace dxvk {
         return this;
       if (riid == __uuidof(D3D8))
         return this;
-      
+
       throw E_NOINTERFACE;
     }
 
@@ -57,7 +57,6 @@ namespace dxvk {
         return err;
       }
     }
-
 
   private:
 

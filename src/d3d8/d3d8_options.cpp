@@ -1,4 +1,5 @@
 #include "d3d8_options.h"
+
 #include "../d3d9/d3d9_bridge.h"
 #include "../util/config/config.h"
 #include "../util/util_string.h"
@@ -6,6 +7,7 @@
 #include <charconv>
 
 namespace dxvk {
+
   static inline uint32_t parseDword(std::string_view str) {
     uint32_t value = UINT32_MAX;
     std::from_chars(str.data(), str.data() + str.size(), value);
@@ -50,6 +52,6 @@ namespace dxvk {
 
       forceVsDecl.emplace_back(D3DVSDE_REGISTER(reg), D3DVSDT_TYPE(type));
     }
-
   }
+
 }

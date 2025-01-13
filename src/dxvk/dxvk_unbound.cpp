@@ -83,6 +83,7 @@ namespace dxvk {
     info.access     = VK_ACCESS_UNIFORM_READ_BIT
                     | VK_ACCESS_SHADER_READ_BIT
                     | VK_ACCESS_SHADER_WRITE_BIT;
+    info.debugName  = "Null buffer";
     
     Rc<DxvkBuffer> buffer = m_device->createBuffer(info,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |

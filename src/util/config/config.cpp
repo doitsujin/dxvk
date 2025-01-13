@@ -43,6 +43,11 @@ namespace dxvk {
     { R"(\\Wow(Classic)?\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* Bright Memory - Will choose other vendors   *
+     * over Intel even if Intel is the only dGPU   */
+    { R"(\\BrightMemory_EP1-Win64-Shipping\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True"  },
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -455,10 +460,20 @@ namespace dxvk {
     { R"(\\x86_64\\Warcraft III\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
-    /* Earth Defense Force 5 */
+    /* Earth Defense Force 5                       */
     { R"(\\EDF5\.exe$)", {{
       { "dxgi.tearFree",                    "False" },
       { "dxgi.syncInterval",                "1"     },
+    }} },
+    /* The Hurricane of the Varstray               *
+     * Too fast above 60fps                        */
+    { R"(\\Varstray_steam(_demo)?\.exe$)", {{
+      { "dxgi.maxFrameRate",                "60" },
+    }} },
+    /* Far Cry 5 and New Dawn                      *
+     * Invisible terrain on Intel                  */
+    { R"(\\FarCry(5|NewDawn)\.exe$)", {{
+      { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
 
     /**********************************************/
@@ -1010,6 +1025,16 @@ namespace dxvk {
     /* Dark Sector - Crashes in places             */
     { R"(\\DS\.exe$)", {{
       { "d3d9.textureMemory",                "0" },
+    }} },
+    /* Arcana Heart 3 Love Max + Xtend version     *
+     * Game speed is too fast above 60 fps         */
+    { R"(\\(AH3LM|AALib)\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* May Payne 3 - Visual issues on some drivers *
+     * such as ANV (and amdvlk when set to True)   */
+    { R"(\\MaxPayne3\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
     }} },
 
     /**********************************************/

@@ -277,6 +277,11 @@ namespace dxvk::hud {
           uint32_t            dataPoint,
           HudPos              minPos,
           HudPos              maxPos) {
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
+        vk::makeLabel(0xf0c0dc, "HUD frame time processing"));
+    }
+
     // Write current time stamp to the buffer
     DxvkBufferSliceHandle sliceHandle = m_gpuBuffer->getSliceHandle();
     std::pair<VkQueryPool, uint32_t> query = m_query->getQuery();
@@ -372,6 +377,9 @@ namespace dxvk::hud {
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
       drawInfoBuffer, textBufferView, 2u);
 
+    if (unlikely(m_device->isDebugEnabled()))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
+
     // Make sure GPU resources are being kept alive as necessary
     ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
     ctx.cmd->track(m_query);
@@ -445,6 +453,7 @@ namespace dxvk::hud {
                       | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
                       | VK_ACCESS_SHADER_READ_BIT
                       | VK_ACCESS_SHADER_WRITE_BIT;
+    bufferInfo.debugName = "HUD frame time data";
 
     m_gpuBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
 
@@ -1203,6 +1212,7 @@ namespace dxvk::hud {
       bufferInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
       bufferInfo.access = VK_ACCESS_SHADER_READ_BIT;
       bufferInfo.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      bufferInfo.debugName = "HUD memory data";
 
       m_dataBuffer = m_device->createBuffer(bufferInfo,
         VK_MEMORY_HEAP_DEVICE_LOCAL_BIT |

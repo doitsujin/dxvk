@@ -70,7 +70,7 @@ namespace dxvk {
     if (canSWVP)
       Logger::info("D3D9DeviceEx: Using extended constant set for software vertex processing.");
 
-    if (m_dxvkDevice->instance()->extensions().extDebugUtils)
+    if (m_dxvkDevice->isDebugEnabled())
       m_annotation = new D3D9UserDefinedAnnotation(this);
 
     m_initializer      = new D3D9Initializer(this);
@@ -4576,6 +4576,7 @@ namespace dxvk {
       info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
                   | VK_ACCESS_INDEX_READ_BIT;
       info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.debugName = "UP buffer";
 
       Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
       void* mapPtr = buffer->mapPtr(0);
@@ -6339,7 +6340,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
-    if (unlikely(shader->GetInfo().majorVersion() < 2)) {
+    if (unlikely(shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
       // SM 1 shaders don't define the texture type in the shader.
       // We always use spec constants for those.
       m_dirtyTextures |= shaderSamplerMask & m_mismatchingTextureTypes;
@@ -6381,7 +6382,9 @@ namespace dxvk {
       shaderTextureIndex = stateSampler;
     }
 
-    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2)) {
+    if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
+      // This function only gets called by UpdateTextureBitmasks
+      // which clears the dirty and mismatching bits for the texture before anyway.
       return;
     }
 

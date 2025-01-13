@@ -32,12 +32,12 @@ namespace dxvk {
   };
 
   D3D8Device::D3D8Device(
-    D3D8Interface*                pParent,
-    Com<d3d9::IDirect3DDevice9>&& pDevice,
-    D3DDEVTYPE                    DeviceType,
-    HWND                          hFocusWindow,
-    DWORD                         BehaviorFlags,
-    D3DPRESENT_PARAMETERS*        pParams)
+        D3D8Interface*                pParent,
+        Com<d3d9::IDirect3DDevice9>&& pDevice,
+        D3DDEVTYPE                    DeviceType,
+        HWND                          hFocusWindow,
+        DWORD                         BehaviorFlags,
+        D3DPRESENT_PARAMETERS*        pParams)
     : D3D8DeviceBase(std::move(pDevice))
     , m_d3d8Options(pParent->GetOptions())
     , m_parent(pParent)
@@ -55,7 +55,7 @@ namespace dxvk {
 
     ResetState();
     RecreateBackBuffersAndAutoDepthStencil();
-    
+
     if (m_d3d8Options.batching)
       m_batcher = new D3D8Batcher(this, GetD3D9());
   }
@@ -73,7 +73,7 @@ namespace dxvk {
 
     HRESULT res;
     Com<d3d9::IDirect3DQuery9> pQuery;
-    
+
     switch (DevInfoID) {
       // pre-D3D8 queries
       case 0:
@@ -81,7 +81,7 @@ namespace dxvk {
       case D3DDEVINFOID_D3DTEXTUREMANAGER:
       case D3DDEVINFOID_TEXTURING:
         return E_FAIL;
-      
+
       case D3DDEVINFOID_VCACHE:
         // The query will return D3D_OK on Nvidia and D3DERR_NOTAVAILABLE on AMD/Intel
         // in D3D9, however in the case of the latter we'll need to return a
@@ -148,7 +148,7 @@ namespace dxvk {
     return GetD3D9()->GetAvailableTextureMem();
   }
 
-  HRESULT STDMETHODCALLTYPE D3D8Device::ResourceManagerDiscardBytes(DWORD bytes) { 
+  HRESULT STDMETHODCALLTYPE D3D8Device::ResourceManagerDiscardBytes(DWORD bytes) {
     return GetD3D9()->EvictManagedResources();
   }
 
@@ -165,7 +165,7 @@ namespace dxvk {
     HRESULT res = GetD3D9()->GetDeviceCaps(&caps9);
 
     if (likely(SUCCEEDED(res)))
-      dxvk::ConvertCaps8(caps9, pCaps);
+      ConvertCaps8(caps9, pCaps);
 
     return res;
   }
@@ -207,7 +207,7 @@ namespace dxvk {
 
     if (unlikely(pPresentationParameters == nullptr || ppSwapChain == nullptr))
       return D3DERR_INVALIDCALL;
-    
+
     Com<d3d9::IDirect3DSwapChain9> pSwapChain9;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     HRESULT res = GetD3D9()->CreateAdditionalSwapChain(
@@ -429,7 +429,7 @@ namespace dxvk {
 
     if (likely(SUCCEEDED(res)))
       *ppVertexBuffer = ref(new D3D8VertexBuffer(this, std::move(pVertexBuffer9), Pool, Usage));
-  
+
     return res;
   }
 
@@ -446,10 +446,10 @@ namespace dxvk {
 
     Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9 = nullptr;
     HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
-    
+
     if (likely(SUCCEEDED(res)))
       *ppIndexBuffer = ref(new D3D8IndexBuffer(this, std::move(pIndexBuffer9), Pool, Usage));
-    
+
     return res;
   }
 
@@ -570,7 +570,7 @@ namespace dxvk {
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (FAILED(res))
       return res;
-    
+
     res = dst->LockRect(&dstLocked, &dstRect, 0);
     if (FAILED(res)) {
       src->UnlockRect();
@@ -1012,7 +1012,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::BeginScene() { return GetD3D9()->BeginScene(); }
-  
+
   HRESULT STDMETHODCALLTYPE D3D8Device::EndScene() { StateChange(); return GetD3D9()->EndScene(); }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::Clear(
@@ -1115,7 +1115,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::GetClipPlane(DWORD Index, float* pPlane) {
     return GetD3D9()->GetClipPlane(Index, pPlane);
   }
-  
+
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateStateBlock(
           D3DSTATEBLOCKTYPE     Type,
           DWORD*                pToken) {
@@ -1404,7 +1404,7 @@ namespace dxvk {
     m_streams[0] = D3D8VBO {nullptr, 0};
     m_indices = nullptr;
     m_baseVertexIndex = 0;
-    
+
     return GetD3D9()->DrawIndexedPrimitiveUP(
       d3d9::D3DPRIMITIVETYPE(PrimitiveType),
       MinVertexIndex,
@@ -1490,12 +1490,12 @@ namespace dxvk {
 
     if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
       return D3DERR_INVALIDCALL;
-    
+
     const D3D8VBO& vbo = m_streams[StreamNumber];
 
     *ppStreamData = vbo.buffer.ref();
     *pStride      = vbo.stride;
-    
+
     return D3D_OK;
   }
 
@@ -1719,7 +1719,7 @@ namespace dxvk {
         info.function.push_back(pFunction[i]);
       info.function.push_back(D3DVS_END());
     }
-    
+
     D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
 
     // Create vertex declaration
@@ -1821,7 +1821,7 @@ namespace dxvk {
 
     /*
     // Slow path. Use to debug cached shader validation. //
-    
+
     d3d9::IDirect3DVertexShader9* pVertexShader;
     HRESULT res = GetD3D9()->GetVertexShader(&pVertexShader);
 
@@ -1873,12 +1873,12 @@ namespace dxvk {
 
     if (unlikely(!pInfo))
       return D3DERR_INVALIDCALL;
-    
+
     UINT SizeOfData = *pSizeOfData;
-    
+
     // Get actual size
     UINT ActualSize = pInfo->declaration.size() * sizeof(DWORD);
-    
+
     if (pData == nullptr) {
       *pSizeOfData = ActualSize;
       return D3D_OK;
@@ -1903,12 +1903,12 @@ namespace dxvk {
 
     if (unlikely(!pInfo))
       return D3DERR_INVALIDCALL;
-    
+
     UINT SizeOfData = *pSizeOfData;
-    
+
     // Get actual size
     UINT ActualSize = pInfo->function.size() * sizeof(DWORD);
-    
+
     if (pData == nullptr) {
       *pSizeOfData = ActualSize;
       return D3D_OK;
@@ -1946,7 +1946,7 @@ namespace dxvk {
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader;
-    
+
     HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
 
     if (likely(SUCCEEDED(res))) {
@@ -1959,7 +1959,7 @@ namespace dxvk {
   }
 
   inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle) {
-    
+
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
@@ -2045,11 +2045,11 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     UINT SizeOfData = *pSizeOfData;
-    
+
     // Get actual size
     UINT ActualSize = 0;
     pPixelShader->GetFunction(nullptr, &ActualSize);
-    
+
     if (pData == nullptr) {
       *pSizeOfData = ActualSize;
       return D3D_OK;

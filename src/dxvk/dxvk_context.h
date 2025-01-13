@@ -1328,12 +1328,12 @@ namespace dxvk {
 
     /**
      * \brief Begins a debug label region
-     * \param [in] label The debug label
      *
      * Marks the start of a debug label region. Used by debugging/profiling
      * tools to mark different workloads within a frame.
+     * \param [in] label The debug label
      */
-    void beginDebugLabel(VkDebugUtilsLabelEXT *label);
+    void beginDebugLabel(const VkDebugUtilsLabelEXT& label);
 
     /**
      * \brief Ends a debug label region
@@ -1345,12 +1345,12 @@ namespace dxvk {
 
     /**
      * \brief Inserts a debug label
-     * \param [in] label The debug label
      *
      * Inserts an instantaneous debug label. Used by debugging/profiling
      * tools to mark different workloads within a frame.
+     * \param [in] label The debug label
      */
-    void insertDebugLabel(VkDebugUtilsLabelEXT *label);
+    void insertDebugLabel(const VkDebugUtilsLabelEXT& label);
 
     /**
      * \brief Increments a given stat counter
@@ -1365,12 +1365,21 @@ namespace dxvk {
         m_cmd->addStatCtr(counter, value);
     }
 
+    /**
+     * \brief Sets new debug name for a resource
+     *
+     * \param [in] buffer Buffer object
+     * \param [in] name New debug name, or \c nullptr
+     */
+    void setDebugName(const Rc<DxvkPagedResource>& resource, const char* name);
+
   private:
     
     Rc<DxvkDevice>          m_device;
     DxvkObjects*            m_common;
 
     uint64_t                m_trackingId = 0u;
+    uint32_t                m_renderPassIndex = 0u;
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
@@ -1408,6 +1417,9 @@ namespace dxvk {
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
     std::vector<VkImageMemoryBarrier2> m_imageLayoutTransitions;
+
+    std::vector<util::DxvkDebugLabel> m_debugLabelStack;
+    bool                              m_debugLabelInternalActive = false;
 
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
@@ -1925,6 +1937,17 @@ namespace dxvk {
       // Check whether there are any pending reads.
       return pred(DxvkAccess::Read);
     }
+
+    void beginRenderPassDebugRegion();
+
+    void beginInternalDebugRegion(
+      const VkDebugUtilsLabelEXT&       label);
+
+    void endInternalDebugRegion();
+
+    void beginActiveDebugRegions();
+
+    void endActiveDebugRegions();
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,

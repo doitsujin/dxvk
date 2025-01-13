@@ -27,18 +27,19 @@ namespace dxvk {
   class D3D8Device final : public D3D8DeviceBase {
 
     friend class D3D8StateBlock;
+
   public:
 
     D3D8Device(
-      D3D8Interface*                pParent,
-      Com<d3d9::IDirect3DDevice9>&& pDevice,
-      D3DDEVTYPE                    DeviceType,
-      HWND                          hFocusWindow,
-      DWORD                         BehaviorFlags,
-      D3DPRESENT_PARAMETERS*        pParams);
+            D3D8Interface*                pParent,
+            Com<d3d9::IDirect3DDevice9>&& pDevice,
+            D3DDEVTYPE                    DeviceType,
+            HWND                          hFocusWindow,
+            DWORD                         BehaviorFlags,
+            D3DPRESENT_PARAMETERS*        pParams);
 
     ~D3D8Device();
-      
+
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel();
 
     UINT    STDMETHODCALLTYPE GetAvailableTextureMem();
@@ -206,7 +207,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
 
     HRESULT STDMETHODCALLTYPE GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue);
-    
+
     HRESULT STDMETHODCALLTYPE CreateStateBlock(
             D3DSTATEBLOCKTYPE     Type,
             DWORD*                pToken);
@@ -306,7 +307,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount);
 
     HRESULT STDMETHODCALLTYPE GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData);
-    
+
     HRESULT STDMETHODCALLTYPE GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
 
     HRESULT STDMETHODCALLTYPE SetStreamSource(
@@ -326,7 +327,7 @@ namespace dxvk {
             UINT* pBaseVertexIndex);
 
     HRESULT STDMETHODCALLTYPE CreatePixelShader(
-      const DWORD* pFunction, 
+      const DWORD* pFunction,
             DWORD* pHandle);
 
     HRESULT STDMETHODCALLTYPE SetPixelShader(DWORD Handle);
@@ -355,8 +356,6 @@ namespace dxvk {
       const D3DTRIPATCH_INFO* pTriPatchInfo);
 
     HRESULT STDMETHODCALLTYPE DeletePatch(UINT Handle);
-
-  public: // Internal Methods //
 
     const D3D8Options* GetOptions() const {
       return &m_d3d8Options;
@@ -394,7 +393,7 @@ namespace dxvk {
 
       m_backBuffers.clear();
       m_backBuffers.resize(m_presentParams.BackBufferCount);
-      
+
       m_autoDepthStencil = nullptr;
     }
 
@@ -437,7 +436,7 @@ namespace dxvk {
       Com<D3D8VertexBuffer, false>   buffer = nullptr;
       UINT                           stride = 0;
     };
-    
+
     // Remember to fill() these in the constructor!
     std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;

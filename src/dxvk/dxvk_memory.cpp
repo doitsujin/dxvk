@@ -752,6 +752,8 @@ namespace dxvk {
         memoryRequirements.memoryTypeBits = findGlobalBufferMemoryTypeMask(createInfo.usage);
 
       if (likely(memoryRequirements.memoryTypeBits)) {
+        bool allowSuballocation = true;
+
         // If the given allocation cache supports the memory types and usage
         // flags that we need, try to use it to service this allocation.
         // Only use the allocation cache for mappable allocations since those
@@ -769,44 +771,50 @@ namespace dxvk {
           // for any relevant memory pools as necessary.
           if (refillAllocationCache(allocationCache, memoryRequirements, allocationInfo.properties))
             return allocationCache->allocateFromCache(createInfo.size);
+        } else {
+          // Do not suballocate buffers if debug mode is enabled in order
+          // to allow the application to set meaningful debug names.
+          allowSuballocation = !m_device->isDebugEnabled();
         }
 
         // If there is at least one memory type that supports the required
         // buffer usage flags and requested memory properties, suballocate
         // from a global buffer.
-        allocation = allocateMemory(memoryRequirements, allocationInfo);
-
-        if (likely(allocation && allocation->m_buffer))
-          return allocation;
-
-        if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-         && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
-          DxvkAllocationInfo fallbackInfo = allocationInfo;
-          fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-          allocation = allocateMemory(memoryRequirements, fallbackInfo);
+        if (likely(allowSuballocation)) {
+          allocation = allocateMemory(memoryRequirements, allocationInfo);
 
           if (likely(allocation && allocation->m_buffer))
             return allocation;
-        }
 
-        // If we can't get an allocation for a global buffer, there's no
-        // real point in retrying with a dedicated buffer since the result
-        // will most likely be the same.
-        if (!allocation) {
-          if (allocationInfo.mode.isClear()) {
-            logMemoryError(memoryRequirements);
-            logMemoryStats();
+          if (!allocation && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+          && !allocationInfo.mode.test(DxvkAllocationMode::NoFallback)) {
+            DxvkAllocationInfo fallbackInfo = allocationInfo;
+            fallbackInfo.properties &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+            allocation = allocateMemory(memoryRequirements, fallbackInfo);
+
+            if (likely(allocation && allocation->m_buffer))
+              return allocation;
           }
 
-          return nullptr;
-        }
+          // If we can't get an allocation for a global buffer, there's no
+          // real point in retrying with a dedicated buffer since the result
+          // will most likely be the same.
+          if (!allocation) {
+            if (allocationInfo.mode.isClear()) {
+              logMemoryError(memoryRequirements);
+              logMemoryStats();
+            }
 
-        // If we end up here with an allocation but no buffer, something
-        // is weird, but we can keep the allocation around for now.
-        if (!allocation->m_buffer) {
-          Logger::err(str::format("Got allocation from memory type ",
-            allocation->m_type->index, " without global buffer"));
+            return nullptr;
+          }
+
+          // If we end up here with an allocation but no buffer, something
+          // is weird, but we can keep the allocation around for now.
+          if (!allocation->m_buffer) {
+            Logger::err(str::format("Got allocation from memory type ",
+              allocation->m_type->index, " without global buffer"));
+          }
         }
       }
     }
@@ -1209,8 +1217,52 @@ namespace dxvk {
       }
     }
 
+    result.cookie = ++m_nextCookie;
+
+    if (unlikely(m_device->isDebugEnabled()))
+      assignMemoryDebugName(result, type);
+
     type.stats.memoryAllocated += size;
     return result;
+  }
+
+
+  void DxvkMemoryAllocator::assignMemoryDebugName(
+    const DxvkDeviceMemory&     memory,
+    const DxvkMemoryType&       type) {
+    auto vk = m_device->vkd();
+
+    const char* memoryType = "Unspecified memory";
+
+    if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+        memoryType = "Cached system memory";
+      else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        memoryType = "Mapped video memory";
+      else
+        memoryType = "Write-combined system memory";
+    } else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+      memoryType = "Video memory";
+    }
+
+    std::string memoryName = str::format(memoryType, " (", memory.cookie, ")");
+
+    VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+    nameInfo.objectType = VK_OBJECT_TYPE_DEVICE_MEMORY;
+    nameInfo.objectHandle = vk::getObjectHandle(memory.memory);
+    nameInfo.pObjectName = memoryName.c_str();
+
+    vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &nameInfo);
+
+    if (memory.buffer) {
+      std::string bufferName = str::format("Global buffer (", memory.cookie, ")");
+
+      nameInfo.objectType = VK_OBJECT_TYPE_BUFFER;
+      nameInfo.objectHandle = vk::getObjectHandle(memory.buffer);
+      nameInfo.pObjectName = bufferName.c_str();
+
+      vk->vkSetDebugUtilsObjectNameEXT(vk->device(), &nameInfo);
+    }
   }
 
 
@@ -1247,7 +1299,6 @@ namespace dxvk {
     pool.chunks.resize(std::max<size_t>(pool.chunks.size(), chunkIndex + 1u));
     pool.chunks[chunkIndex].memory = chunk;
     pool.chunks[chunkIndex].unusedTime = high_resolution_clock::time_point();
-    pool.chunks[chunkIndex].chunkCookie = ++pool.nextChunkCookie;
     pool.chunks[chunkIndex].canMove = true;
     return true;
   }
@@ -1679,7 +1730,7 @@ namespace dxvk {
       chunkStats.pageCount = pool.pageAllocator.pageCount(i);
       chunkStats.mapped = &pool == &type.mappedPool;
       chunkStats.active = pool.pageAllocator.chunkIsAvailable(i);
-      chunkStats.cookie = pool.chunks[i].chunkCookie;
+      chunkStats.cookie = pool.chunks[i].memory.cookie;
 
       size_t maskCount = (chunkStats.pageCount + 31u) / 32u;
       stats.pageMasks.resize(chunkStats.pageMaskOffset + maskCount);

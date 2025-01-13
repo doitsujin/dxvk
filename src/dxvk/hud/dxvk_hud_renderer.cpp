@@ -59,6 +59,11 @@ namespace dxvk::hud {
     const Rc<DxvkImageView>&  dstView,
           VkColorSpaceKHR     dstColorSpace,
     const HudOptions&         options) {
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0c0dc, "HUD"));
+    }
+
     if (!m_fontTextureView) {
       createFontResources();
       uploadFontResources(ctx);
@@ -140,6 +145,7 @@ namespace dxvk::hud {
                             | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
       textBufferInfo.access = VK_ACCESS_SHADER_READ_BIT
                             | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+      textBufferInfo.debugName = "HUD text buffer";
 
       m_textBuffer = m_device->createBuffer(textBufferInfo,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
@@ -327,6 +333,7 @@ namespace dxvk::hud {
     fontBufferInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
                           | VK_ACCESS_TRANSFER_READ_BIT
                           | VK_ACCESS_SHADER_READ_BIT;
+    fontBufferInfo.debugName = "HUD font metadata";
 
     m_fontBuffer = m_device->createBuffer(fontBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -348,6 +355,7 @@ namespace dxvk::hud {
     fontTextureInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     fontTextureInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     fontTextureInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    fontTextureInfo.debugName = "HUD font texture";
 
     m_fontTexture = m_device->createImage(fontTextureInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
