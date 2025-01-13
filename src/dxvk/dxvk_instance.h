@@ -165,6 +165,7 @@ namespace dxvk {
     Rc<vk::LibraryFn>       m_vkl;
     Rc<vk::InstanceFn>      m_vki;
     DxvkInstanceExtensions  m_extensions;
+    DxvkNameSet             m_extensionSet;
     DxvkNameList            m_extensionNames;
 
     VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;

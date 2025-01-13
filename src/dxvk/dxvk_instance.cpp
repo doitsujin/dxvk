@@ -115,18 +115,18 @@ namespace dxvk {
 
   void DxvkInstance::createInstanceLoader(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     DxvkNameList layerList;
-    DxvkNameSet extensionSet;
+    m_extensionSet = DxvkNameSet();
 
     bool enablePerfEvents = false;
     bool enableValidation = false;
 
     if (args.instance) {
       m_extensionNames = DxvkNameList(args.extensionCount, args.extensionNames);
-      extensionSet = getExtensionSet(m_extensionNames);
+      m_extensionSet = getExtensionSet(m_extensionNames);
 
       auto extensionInfos = getExtensionList(m_extensions, true);
 
-      if (!extensionSet.enableExtensions(extensionInfos.size(), extensionInfos.data(), nullptr))
+      if (!m_extensionSet.enableExtensions(extensionInfos.size(), extensionInfos.data(), nullptr))
         throw DxvkError("DxvkInstance: Required instance extensions not enabled");
     } else {
       // Hide VK_EXT_debug_utils behind an environment variable.
@@ -160,14 +160,14 @@ namespace dxvk {
       auto extensionInfos = getExtensionList(m_extensions, enableDebug);
       DxvkNameSet extensionsAvailable = DxvkNameSet::enumInstanceExtensions(m_vkl);
 
-      if (!extensionsAvailable.enableExtensions(extensionInfos.size(), extensionInfos.data(), &extensionSet))
+      if (!extensionsAvailable.enableExtensions(extensionInfos.size(), extensionInfos.data(), &m_extensionSet))
         throw DxvkError("DxvkInstance: Required instance extensions not supported");
 
       for (const auto& provider : m_extProviders)
-        extensionSet.merge(provider->getInstanceExtensions());
+        m_extensionSet.merge(provider->getInstanceExtensions());
 
       // Generate list of extensions to enable
-      m_extensionNames = extensionSet.toNameList();
+      m_extensionNames = m_extensionSet.toNameList();
     }
 
     Logger::info("Enabled instance extensions:");
