@@ -28,6 +28,9 @@ dxvk_shaders = files([
   'shaders/dxvk_copy_depth_stencil_2d.frag',
   'shaders/dxvk_copy_depth_stencil_ms.frag',
 
+  'shaders/dxvk_cursor_vert.vert',
+  'shaders/dxvk_cursor_frag.frag',
+
   'shaders/dxvk_dummy_frag.frag',
 
   'shaders/dxvk_fullscreen_geom.geom',

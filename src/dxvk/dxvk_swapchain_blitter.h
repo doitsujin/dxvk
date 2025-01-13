@@ -45,8 +45,6 @@ namespace dxvk {
     VkBool32 needsBlit = VK_FALSE;
     /// Bit indicating whether a gamma curve is to be applied.
     VkBool32 needsGamma = VK_FALSE;
-    /// Bit indicating whether alpha blending is required
-    VkBool32 needsBlending = VK_FALSE;
     /// Bit indicating whether the HUD needs to be composited
     VkBool32 compositeHud = VK_FALSE;
     /// Bit indicating whether the software cursor needs to be composited
@@ -61,7 +59,6 @@ namespace dxvk {
       hash.add(uint32_t(dstFormat));
       hash.add(uint32_t(needsBlit));
       hash.add(uint32_t(needsGamma));
-      hash.add(uint32_t(needsBlending));
       hash.add(uint32_t(compositeHud));
       hash.add(uint32_t(compositeCursor));
       return hash;
@@ -75,9 +72,32 @@ namespace dxvk {
           && dstFormat == other.dstFormat
           && needsBlit == other.needsBlit
           && needsGamma == other.needsGamma
-          && needsBlending == other.needsBlending
           && compositeHud == other.compositeHud
           && compositeCursor == other.compositeCursor;
+    }
+  };
+
+
+  /**
+   * \brief Swap chain cursor pipeline key
+   */
+  struct DxvkCursorPipelineKey {
+    /// Output color space.
+    VkColorSpaceKHR dstSpace = VK_COLOR_SPACE_MAX_ENUM_KHR;
+    /// Output image format. Used as pipeline state, but also to
+    /// determine the sRGB-ness of the format.
+    VkFormat dstFormat = VK_FORMAT_UNDEFINED;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(dstSpace));
+      hash.add(uint32_t(dstFormat));
+      return hash;
+    }
+
+    bool eq(const DxvkCursorPipelineKey& other) const {
+      return dstSpace == other.dstSpace
+          && dstFormat == other.dstFormat;
     }
   };
 
@@ -175,6 +195,17 @@ namespace dxvk {
       VkExtent2D cursorExtent;
     };
 
+    struct CursorSpecConstants {
+      VkColorSpaceKHR dstSpace;
+      VkBool32 dstIsSrgb;
+    };
+
+    struct CursorPushConstants {
+      VkExtent2D dstExtent;
+      VkOffset2D cursorOffset;
+      VkExtent2D cursorExtent;
+    };
+
     struct ShaderModule {
       VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
       VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
@@ -188,6 +219,9 @@ namespace dxvk {
     ShaderModule        m_shaderFsBlit;
     ShaderModule        m_shaderFsMsResolve;
     ShaderModule        m_shaderFsMsBlit;
+
+    ShaderModule        m_shaderVsCursor;
+    ShaderModule        m_shaderFsCursor;
 
     dxvk::mutex         m_mutex;
     Rc<DxvkBuffer>      m_gammaBuffer;
@@ -209,10 +243,16 @@ namespace dxvk {
     Rc<DxvkImageView>   m_hudView;
 
     VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
-    VkPipelineLayout    m_pipelineLayout = VK_NULL_HANDLE;
+    VkPipelineLayout      m_pipelineLayout = VK_NULL_HANDLE;
+
+    VkDescriptorSetLayout m_cursorSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout      m_cursorPipelineLayout = VK_NULL_HANDLE;
 
     std::unordered_map<DxvkSwapchainPipelineKey,
       VkPipeline, DxvkHash, DxvkEq> m_pipelines;
+
+    std::unordered_map<DxvkCursorPipelineKey,
+      VkPipeline, DxvkHash, DxvkEq> m_cursorPipelines;
 
     void performDraw(
       const DxvkContextObjects&         ctx,
@@ -220,7 +260,20 @@ namespace dxvk {
             VkRect2D                    dstRect,
       const Rc<DxvkImageView>&          srcView,
             VkRect2D                    srcRect,
-            VkBool32                    enableBlending);
+            VkBool32                    composite);
+
+    void renderHudImage(
+      const DxvkContextObjects&         ctx,
+            VkExtent3D                  extent);
+
+    void createHudImage(
+            VkExtent3D                  extent);
+
+    void destroyHudImage();
+
+    void renderCursor(
+      const DxvkContextObjects&         ctx,
+      const Rc<DxvkImageView>&          dstView);
 
     void uploadGammaImage(
       const DxvkContextObjects&         ctx);
@@ -245,13 +298,26 @@ namespace dxvk {
 
     VkDescriptorSetLayout createSetLayout();
 
+    VkDescriptorSetLayout createCursorSetLayout();
+
     VkPipelineLayout createPipelineLayout();
 
+    VkPipelineLayout createCursorPipelineLayout();
+
     VkPipeline createPipeline(
-      const DxvkSwapchainPipelineKey& key);
+      const DxvkSwapchainPipelineKey&   key);
 
     VkPipeline getPipeline(
-      const DxvkSwapchainPipelineKey& key);
+      const DxvkSwapchainPipelineKey&   key);
+
+    VkPipeline createCursorPipeline(
+      const DxvkCursorPipelineKey&      key);
+
+    VkPipeline getCursorPipeline(
+      const DxvkCursorPipelineKey&      key);
+
+    static bool needsComposition(
+      const Rc<DxvkImageView>&          dstView);
 
   };
   

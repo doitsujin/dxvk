@@ -1,5 +1,7 @@
 #include "dxvk_swapchain_blitter.h"
 
+#include <dxvk_cursor_frag.h>
+#include <dxvk_cursor_vert.h>
 #include <dxvk_present_frag.h>
 #include <dxvk_present_frag_blit.h>
 #include <dxvk_present_frag_ms.h>
@@ -14,7 +16,9 @@ namespace dxvk {
     const Rc<hud::Hud>&   hud)
   : m_device(device), m_hud(hud),
     m_setLayout(createSetLayout()),
-    m_pipelineLayout(createPipelineLayout()) {
+    m_pipelineLayout(createPipelineLayout()),
+    m_cursorSetLayout(createCursorSetLayout()),
+    m_cursorPipelineLayout(createCursorPipelineLayout()) {
     this->createSampler();
     this->createShaders();
   }
@@ -26,14 +30,23 @@ namespace dxvk {
     for (const auto& p : m_pipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
 
+    for (const auto& p : m_cursorPipelines)
+      vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
+
     vk->vkDestroyShaderModule(vk->device(), m_shaderVsBlit.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_shaderFsBlit.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_shaderFsCopy.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsBlit.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsResolve.stageInfo.module, nullptr);
 
+    vk->vkDestroyShaderModule(vk->device(), m_shaderVsCursor.stageInfo.module, nullptr);
+    vk->vkDestroyShaderModule(vk->device(), m_shaderFsCursor.stageInfo.module, nullptr);
+
     vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
     vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
+
+    vk->vkDestroyPipelineLayout(vk->device(), m_cursorPipelineLayout, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_cursorSetLayout, nullptr);
   }
 
 
@@ -69,6 +82,14 @@ namespace dxvk {
 
     if (m_cursorBuffer)
       uploadCursorImage(ctx);
+
+    // If we can't do proper blending, render the HUD into a separate image
+    bool composite = needsComposition(dstView);
+
+    if (m_hud && composite)
+      renderHudImage(ctx, dstView->mipLevelExtent(0));
+    else
+      destroyHudImage();
 
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -107,18 +128,14 @@ namespace dxvk {
     ctx.cmd->cmdBeginRendering(&renderInfo);
 
     performDraw(ctx, dstView, dstRect,
-      srcView, srcRect, VK_FALSE);
+      srcView, srcRect, composite);
 
-    if (m_hud)
-      m_hud->render(ctx, dstView);
+    if (!composite) {
+      if (m_hud)
+        m_hud->render(ctx, dstView);
 
-    if (m_cursorView) {
-      VkRect2D cursorArea = { };
-      cursorArea.extent.width = m_cursorImage->info().extent.width;
-      cursorArea.extent.height = m_cursorImage->info().extent.height;
-
-      performDraw(ctx, dstView, m_cursorRect,
-        m_cursorView, cursorArea, VK_TRUE);
+      if (m_cursorView)
+        renderCursor(ctx, dstView);
     }
 
     ctx.cmd->cmdEndRendering();
@@ -246,12 +263,12 @@ namespace dxvk {
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
           VkRect2D            srcRect,
-          VkBool32            enableBlending) {
+          VkBool32            composite) {
     VkColorSpaceKHR dstColorSpace = dstView->image()->info().colorSpace;
     VkColorSpaceKHR srcColorSpace = srcView->image()->info().colorSpace;
 
     if (unlikely(m_device->isDebugEnabled())) {
-      ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Swapchain blit"));
     }
 
@@ -296,7 +313,8 @@ namespace dxvk {
     key.dstFormat = dstView->info().format;
     key.needsGamma = m_gammaView != nullptr;
     key.needsBlit = dstRect.extent != srcRect.extent;
-    key.needsBlending = enableBlending;
+    key.compositeHud = composite && m_hudView;
+    key.compositeCursor = composite && m_cursorView;
 
     VkPipeline pipeline = getPipeline(key);
 
@@ -361,12 +379,17 @@ namespace dxvk {
     args.srcOffset = srcRect.offset;
     args.srcExtent = srcRect.extent;
     args.dstOffset = dstRect.offset;
+    args.cursorOffset = m_cursorRect.offset;
+    args.cursorExtent = m_cursorRect.extent;
 
     ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(args), &args);
 
     ctx.cmd->cmdDraw(3, 1, 0, 0);
+
+    if (unlikely(m_device->isDebugEnabled()))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     // Make sure to keep used resources alive
     ctx.cmd->track(srcView->image(), DxvkAccess::Read);
@@ -375,8 +398,213 @@ namespace dxvk {
     if (m_gammaImage)
       ctx.cmd->track(m_gammaImage, DxvkAccess::Read);
 
+    if (m_hudImage)
+      ctx.cmd->track(m_hudImage, DxvkAccess::Read);
+
+    if (m_cursorImage)
+      ctx.cmd->track(m_cursorImage, DxvkAccess::Read);
+
     ctx.cmd->track(m_samplerGamma);
     ctx.cmd->track(m_samplerPresent);
+    ctx.cmd->track(m_samplerCursorLinear);
+    ctx.cmd->track(m_samplerCursorNearest);
+  }
+
+
+  void DxvkSwapchainBlitter::renderHudImage(
+    const DxvkContextObjects&         ctx,
+          VkExtent3D                  extent) {
+    if (m_hud->empty())
+      return;
+
+    if (!m_hudImage || m_hudImage->info().extent != extent)
+      createHudImage(extent);
+
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xdcc0f0, "HUD render"));
+    }
+
+    // Reset image
+    VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = m_hudImage->handle();
+    barrier.subresourceRange = m_hudView->imageSubresources();
+
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.imageMemoryBarrierCount = 1;
+    depInfo.pImageMemoryBarriers = &barrier;
+
+    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    m_hudImage->trackInitialization(barrier.subresourceRange);
+
+    // Render actual HUD image
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    attachmentInfo.imageView = m_hudView->handle();
+    attachmentInfo.imageLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingInfo renderInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    renderInfo.renderArea.offset = { 0u, 0u };
+    renderInfo.renderArea.extent = { extent.width, extent.height };
+    renderInfo.layerCount = 1u;
+    renderInfo.colorAttachmentCount = 1;
+    renderInfo.pColorAttachments = &attachmentInfo;
+
+    ctx.cmd->cmdBeginRendering(&renderInfo);
+
+    m_hud->render(ctx, m_hudView);
+
+    ctx.cmd->cmdEndRendering();
+
+    // Make image shader-readable
+    barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
+    barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
+    barrier.oldLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.newLayout = m_hudImage->info().layout;
+
+    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+
+    if (unlikely(m_device->isDebugEnabled()))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
+    ctx.cmd->track(m_hudImage, DxvkAccess::Write);
+  }
+
+
+  void DxvkSwapchainBlitter::createHudImage(
+          VkExtent3D                  extent) {
+    DxvkImageCreateInfo imageInfo = { };
+    imageInfo.type          = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent        = extent;
+    imageInfo.mipLevels     = 1;
+    imageInfo.numLayers     = 1;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.stages        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                            | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                            | VK_ACCESS_SHADER_READ_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.colorSpace    = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    imageInfo.debugName     = "HUD composition";
+
+    m_hudImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    DxvkImageViewKey viewInfo = { };
+    viewInfo.viewType       = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.usage          = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT;
+    viewInfo.format         = imageInfo.format;
+    viewInfo.aspects        = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.mipIndex       = 0u;
+    viewInfo.mipCount       = 1u;
+    viewInfo.layerIndex     = 0u;
+    viewInfo.layerCount     = 1u;
+
+    m_hudView = m_hudImage->createView(viewInfo);
+  }
+
+
+  void DxvkSwapchainBlitter::destroyHudImage() {
+    m_hudImage = nullptr;
+    m_hudView = nullptr;
+  }
+
+
+  void DxvkSwapchainBlitter::renderCursor(
+    const DxvkContextObjects&         ctx,
+    const Rc<DxvkImageView>&          dstView) {
+    if (!m_cursorRect.extent.width || !m_cursorRect.extent.height)
+      return;
+
+    if (unlikely(m_device->isDebugEnabled())) {
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xdcc0f0, "Software cursor"));
+    }
+
+    VkExtent3D dstExtent = dstView->mipLevelExtent(0u);
+
+    VkViewport viewport = { };
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = float(dstExtent.width);
+    viewport.height = float(dstExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 0.0f;
+
+    ctx.cmd->cmdSetViewport(1, &viewport);
+
+    VkRect2D scissor = { };
+    scissor.extent.width = dstExtent.width;
+    scissor.extent.height = dstExtent.height;
+
+    ctx.cmd->cmdSetScissor(1, &scissor);
+
+    DxvkCursorPipelineKey key = { };
+    key.dstFormat = dstView->info().format;
+    key.dstSpace = dstView->image()->info().colorSpace;
+
+    VkPipeline pipeline = getCursorPipeline(key);
+
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    VkDescriptorSet set = ctx.descriptorPool->alloc(m_cursorSetLayout);
+
+    VkExtent3D cursorExtent = m_cursorImage->info().extent;
+
+    bool filterLinear = m_cursorRect.extent.width != cursorExtent.width
+                     || m_cursorRect.extent.height != cursorExtent.height;
+
+    VkDescriptorImageInfo imageDescriptor = { };
+    imageDescriptor.sampler = filterLinear
+      ? m_samplerCursorLinear->handle()
+      : m_samplerCursorNearest->handle();
+    imageDescriptor.imageView = m_cursorView->handle();
+    imageDescriptor.imageLayout = m_cursorImage->info().layout;
+
+    std::array<VkWriteDescriptorSet, 1> descriptorWrites = {{
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
+    }};
+
+    ctx.cmd->updateDescriptorSets(
+      descriptorWrites.size(), descriptorWrites.data());
+
+    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, m_cursorPipelineLayout,
+      set, 0, nullptr);
+
+    CursorPushConstants args = { };
+    args.dstExtent = { dstExtent.width, dstExtent.height };
+    args.cursorOffset = m_cursorRect.offset;
+    args.cursorExtent = m_cursorRect.extent;
+
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+      m_cursorPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
+      0, sizeof(args), &args);
+
+    ctx.cmd->cmdDraw(4, 1, 0, 0);
+
+    if (unlikely(m_device->isDebugEnabled()))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
+    ctx.cmd->track(m_cursorImage, DxvkAccess::Write);
   }
 
 
@@ -531,6 +759,11 @@ namespace dxvk {
       createShaderModule(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(dxvk_present_frag_ms), dxvk_present_frag_ms);
     }
+
+    createShaderModule(m_shaderVsCursor, VK_SHADER_STAGE_VERTEX_BIT,
+      sizeof(dxvk_cursor_vert), dxvk_cursor_vert);
+    createShaderModule(m_shaderFsCursor, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(dxvk_cursor_frag), dxvk_cursor_frag);
   }
 
 
@@ -585,6 +818,27 @@ namespace dxvk {
   }
 
 
+  VkDescriptorSetLayout DxvkSwapchainBlitter::createCursorSetLayout() {
+    auto vk = m_device->vkd();
+
+    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {{
+      { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+    }};
+
+    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    info.bindingCount = bindings.size();
+    info.pBindings = bindings.data();
+
+    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create swap chain cursor descriptor set layout: ", vr));
+
+    return layout;
+  }
+
+
   VkPipelineLayout DxvkSwapchainBlitter::createPipelineLayout() {
     auto vk = m_device->vkd();
 
@@ -608,8 +862,31 @@ namespace dxvk {
   }
 
 
+  VkPipelineLayout DxvkSwapchainBlitter::createCursorPipelineLayout() {
+    auto vk = m_device->vkd();
+
+    VkPushConstantRange pushConst = { };
+    pushConst.size = sizeof(CursorPushConstants);
+    pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    info.setLayoutCount = 1;
+    info.pSetLayouts = &m_cursorSetLayout;
+    info.pushConstantRangeCount = 1;
+    info.pPushConstantRanges = &pushConst;
+
+    VkPipelineLayout layout = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create swap chain cursor pipeline layout: ", vr));
+
+    return layout;
+  }
+
+
   VkPipeline DxvkSwapchainBlitter::createPipeline(
-    const DxvkSwapchainPipelineKey& key) {
+    const DxvkSwapchainPipelineKey&   key) {
     auto vk = m_device->vkd();
 
     static const std::array<VkSpecializationMapEntry, 8> specMap = {{
@@ -635,7 +912,8 @@ namespace dxvk {
 
     // Avoid redundant color space conversions if color spaces
     // and images properties match and we don't do a resolve
-    if (specConstants.srcSpace == specConstants.dstSpace && key.srcSamples == VK_SAMPLE_COUNT_1_BIT) {
+    if (key.srcSpace == key.dstSpace && key.srcSamples == VK_SAMPLE_COUNT_1_BIT
+     && !key.compositeCursor && !key.compositeHud) {
       specConstants.srcSpace = VK_COLOR_SPACE_PASS_THROUGH_EXT;
       specConstants.dstSpace = VK_COLOR_SPACE_PASS_THROUGH_EXT;
     }
@@ -684,16 +962,6 @@ namespace dxvk {
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    if (key.needsBlending) {
-      cbAttachment.blendEnable = VK_TRUE;
-      cbAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-      cbAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-      cbAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-      cbAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
-      cbAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-      cbAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    }
-
     VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     cbState.attachmentCount = 1;
     cbState.pAttachments = &cbAttachment;
@@ -732,7 +1000,7 @@ namespace dxvk {
 
 
   VkPipeline DxvkSwapchainBlitter::getPipeline(
-    const DxvkSwapchainPipelineKey& key) {
+    const DxvkSwapchainPipelineKey&   key) {
     auto entry = m_pipelines.find(key);
 
     if (entry != m_pipelines.end())
@@ -741,6 +1009,132 @@ namespace dxvk {
     VkPipeline pipeline = createPipeline(key);
     m_pipelines.insert({ key, pipeline });
     return pipeline;
+  }
+
+
+  VkPipeline DxvkSwapchainBlitter::createCursorPipeline(
+    const DxvkCursorPipelineKey&      key) {
+    auto vk = m_device->vkd();
+
+    static const std::array<VkSpecializationMapEntry, 2> specMap = {{
+      { 0, offsetof(CursorSpecConstants, dstSpace),  sizeof(VkColorSpaceKHR) },
+      { 1, offsetof(CursorSpecConstants, dstIsSrgb), sizeof(VkBool32) },
+    }};
+
+    CursorSpecConstants specConstants = { };
+    specConstants.dstSpace = key.dstSpace;
+    specConstants.dstIsSrgb = lookupFormatInfo(key.dstFormat)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+
+    VkSpecializationInfo specInfo = { };
+    specInfo.mapEntryCount = specMap.size();
+    specInfo.pMapEntries = specMap.data();
+    specInfo.dataSize = sizeof(specConstants);
+    specInfo.pData = &specConstants;
+
+    std::array<VkPipelineShaderStageCreateInfo, 2> stages = { };
+    stages[0] = m_shaderVsCursor.stageInfo;
+    stages[1] = m_shaderFsCursor.stageInfo;
+    stages[1].pSpecializationInfo = &specInfo;
+
+    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    rtInfo.colorAttachmentCount = 1;
+    rtInfo.pColorAttachmentFormats = &key.dstFormat;
+
+    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+
+    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+
+    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+
+    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rsState.cullMode = VK_CULL_MODE_NONE;
+    rsState.polygonMode = VK_POLYGON_MODE_FILL;
+    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rsState.lineWidth = 1.0f;
+
+    constexpr uint32_t sampleMask = 0x1;
+
+    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msState.pSampleMask = &sampleMask;
+
+    VkPipelineColorBlendAttachmentState cbAttachment = { };
+    cbAttachment.blendEnable = VK_TRUE;
+    cbAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    cbAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cbAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    cbAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    cbAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    cbAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+    cbAttachment.colorWriteMask =
+      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    cbState.attachmentCount = 1;
+    cbState.pAttachments = &cbAttachment;
+
+    static const std::array<VkDynamicState, 2> dynStates = {
+      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
+    };
+
+    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dynState.dynamicStateCount = dynStates.size();
+    dynState.pDynamicStates = dynStates.data();
+
+    VkGraphicsPipelineCreateInfo blitInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
+    blitInfo.stageCount = stages.size();
+    blitInfo.pStages = stages.data();
+    blitInfo.pVertexInputState = &viState;
+    blitInfo.pInputAssemblyState = &iaState;
+    blitInfo.pViewportState = &vpState;
+    blitInfo.pRasterizationState = &rsState;
+    blitInfo.pMultisampleState = &msState;
+    blitInfo.pColorBlendState = &cbState;
+    blitInfo.pDynamicState = &dynState;
+    blitInfo.layout = m_cursorPipelineLayout;
+    blitInfo.basePipelineIndex = -1;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
+      1, &blitInfo, nullptr, &pipeline);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create swap chain blit pipeline: ", vr));
+
+    return pipeline;
+  }
+
+
+  VkPipeline DxvkSwapchainBlitter::getCursorPipeline(
+    const DxvkCursorPipelineKey&      key) {
+    auto entry = m_cursorPipelines.find(key);
+
+    if (entry != m_cursorPipelines.end())
+      return entry->second;
+
+    VkPipeline pipeline = createCursorPipeline(key);
+    m_cursorPipelines.insert({ key, pipeline });
+    return pipeline;
+  }
+
+
+  bool DxvkSwapchainBlitter::needsComposition(
+    const Rc<DxvkImageView>&          dstView) {
+    VkColorSpaceKHR colorSpace = dstView->image()->info().colorSpace;
+
+    switch (colorSpace) {
+      case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+        return !dstView->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+
+      case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
+        return false;
+
+      default:
+        return true;
+    }
   }
 
 }
