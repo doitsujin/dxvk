@@ -710,7 +710,13 @@ namespace dxvk {
     const VkSurfaceFormatKHR*       pSupported,
           VkColorSpaceKHR           colorSpace,
           VkFormat                  format) {
-    static const std::array<VkFormat, 15> srgbFormatList = {
+    static const std::array<std::pair<VkFormat, VkFormat>, 3> srgbFormatMap = {{
+      { VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+      { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB },
+      { VK_FORMAT_A8B8G8R8_UNORM_PACK32, VK_FORMAT_A8B8G8R8_SRGB_PACK32 },
+    }};
+
+    static const std::array<VkFormat, 13> srgbFormatList = {
       VK_FORMAT_B5G5R5A1_UNORM_PACK16,
       VK_FORMAT_R5G5B5A1_UNORM_PACK16,
       VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR,
@@ -719,11 +725,9 @@ namespace dxvk {
       VK_FORMAT_R8G8B8A8_SRGB,
       VK_FORMAT_B8G8R8A8_SRGB,
       VK_FORMAT_A8B8G8R8_SRGB_PACK32,
-      VK_FORMAT_R8G8B8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_A8B8G8R8_UNORM_PACK32,
       VK_FORMAT_A2R10G10B10_UNORM_PACK32,
       VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
       VK_FORMAT_R16G16B16A16_UNORM,
       VK_FORMAT_R16G16B16A16_SFLOAT,
     };
@@ -731,9 +735,9 @@ namespace dxvk {
     static const std::array<VkFormat, 5> hdr10FormatList = {
       VK_FORMAT_A2R10G10B10_UNORM_PACK32,
       VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
       VK_FORMAT_R16G16B16A16_UNORM,
       VK_FORMAT_R16G16B16A16_SFLOAT,
-      VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
     };
 
     static const std::array<VkFormat, 1> scRGBFormatList = {
@@ -748,6 +752,15 @@ namespace dxvk {
       { VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT,
         scRGBFormatList.size(), scRGBFormatList.data() },
     }};
+
+    // For the sRGB color space, always prefer an actual sRGB
+    // format so that the blitter can use alpha blending.
+    if (colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+      for (const auto& e : srgbFormatMap) {
+        if (format == e.first)
+          format = e.second;
+      }
+    }
 
     // If the desired format is supported natively, use it
     VkFormat fallback = VK_FORMAT_UNDEFINED;
