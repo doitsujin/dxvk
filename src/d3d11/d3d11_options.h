@@ -72,10 +72,6 @@ namespace dxvk {
     /// Enable float control bits
     bool floatControls = true;
 
-    /// Back buffer count for the Vulkan swap chain.
-    /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
-    int32_t numBackBuffers = 0;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency = 0;

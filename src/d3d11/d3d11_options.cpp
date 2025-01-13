@@ -28,7 +28,6 @@ namespace dxvk {
     this->disableMsaa           = config.getOption<bool>("d3d11.disableMsaa", false);
     this->enableContextLock     = config.getOption<bool>("d3d11.enableContextLock", false);
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);
-    this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
     this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
