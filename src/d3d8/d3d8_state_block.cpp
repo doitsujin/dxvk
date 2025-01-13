@@ -38,8 +38,6 @@ namespace dxvk {
     : D3D8StateBlock(pDevice, D3DSTATEBLOCKTYPE(0), nullptr) {
   }
 
-  D3D8StateBlock::~D3D8StateBlock() {}
-
   // Attach a D3D9 object to a state block that doesn't have one yet
   void D3D8StateBlock::SetD3D9(Com<d3d9::IDirect3DStateBlock9>&& pStateBlock) {
     if (likely(m_stateBlock == nullptr)) {
