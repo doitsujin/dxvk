@@ -1031,6 +1031,11 @@ namespace dxvk {
     { R"(\\(AH3LM|AALib)\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* May Payne 3 - Visual issues on some drivers *
+     * such as ANV (and amdvlk when set to True)   */
+    { R"(\\MaxPayne3\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
