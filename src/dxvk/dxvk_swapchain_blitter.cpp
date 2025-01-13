@@ -318,11 +318,36 @@ namespace dxvk {
       gammaDescriptor.imageLayout = m_gammaView->image()->info().layout;
     }
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
+    VkDescriptorImageInfo hudDescriptor = { };
+
+    if (m_hudView) {
+      hudDescriptor.imageView = m_hudView->handle();
+      hudDescriptor.imageLayout = m_hudImage->info().layout;
+    }
+
+    VkDescriptorImageInfo cursorDescriptor = { };
+    cursorDescriptor.sampler = m_samplerCursorNearest->handle();
+
+    if (m_cursorView) {
+      VkExtent3D extent = m_cursorImage->info().extent;
+
+      if (m_cursorRect.extent.width != extent.width
+       || m_cursorRect.extent.height != extent.height)
+        cursorDescriptor.sampler = m_samplerCursorLinear->handle();
+
+      cursorDescriptor.imageLayout = m_cursorImage->info().layout;
+      cursorDescriptor.imageView = m_cursorView->handle();
+    }
+
+    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
         set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
         set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, &hudDescriptor },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &cursorDescriptor },
     }};
 
     ctx.cmd->updateDescriptorSets(
@@ -474,6 +499,18 @@ namespace dxvk {
     samplerInfo.setUsePixelCoordinates(false);
  
     m_samplerGamma = m_device->createSampler(samplerInfo);
+
+    samplerInfo.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
+
+    m_samplerCursorLinear = m_device->createSampler(samplerInfo);
+
+    samplerInfo.setFilter(VK_FILTER_NEAREST, VK_FILTER_NEAREST,
+      VK_SAMPLER_MIPMAP_MODE_NEAREST);
+
+    m_samplerCursorNearest = m_device->createSampler(samplerInfo);
   }
 
 
@@ -527,10 +564,11 @@ namespace dxvk {
   VkDescriptorSetLayout DxvkSwapchainBlitter::createSetLayout() {
     auto vk = m_device->vkd();
 
-    std::array<VkDescriptorSetLayoutBinding, 3> bindings = {{
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
       { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
       { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { 2, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
     VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -574,13 +612,15 @@ namespace dxvk {
     const DxvkSwapchainPipelineKey& key) {
     auto vk = m_device->vkd();
 
-    static const std::array<VkSpecializationMapEntry, 6> specMap = {{
-      { 0, offsetof(SpecConstants, sampleCount),  sizeof(VkSampleCountFlagBits) },
-      { 1, offsetof(SpecConstants, gammaBound),   sizeof(VkBool32) },
-      { 2, offsetof(SpecConstants, srcSpace),     sizeof(VkColorSpaceKHR) },
-      { 3, offsetof(SpecConstants, srcIsSrgb),    sizeof(VkBool32) },
-      { 4, offsetof(SpecConstants, dstSpace),     sizeof(VkColorSpaceKHR) },
-      { 5, offsetof(SpecConstants, dstIsSrgb),    sizeof(VkBool32) },
+    static const std::array<VkSpecializationMapEntry, 8> specMap = {{
+      { 0, offsetof(SpecConstants, sampleCount),    sizeof(VkSampleCountFlagBits) },
+      { 1, offsetof(SpecConstants, gammaBound),     sizeof(VkBool32) },
+      { 2, offsetof(SpecConstants, srcSpace),       sizeof(VkColorSpaceKHR) },
+      { 3, offsetof(SpecConstants, srcIsSrgb),      sizeof(VkBool32) },
+      { 4, offsetof(SpecConstants, dstSpace),       sizeof(VkColorSpaceKHR) },
+      { 5, offsetof(SpecConstants, dstIsSrgb),      sizeof(VkBool32) },
+      { 6, offsetof(SpecConstants, compositeHud),   sizeof(VkBool32) },
+      { 7, offsetof(SpecConstants, compositeCursor),sizeof(VkBool32) },
     }};
 
     SpecConstants specConstants = { };
@@ -590,6 +630,8 @@ namespace dxvk {
     specConstants.srcIsSrgb = key.srcIsSrgb;
     specConstants.dstSpace = key.dstSpace;
     specConstants.dstIsSrgb = lookupFormatInfo(key.dstFormat)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+    specConstants.compositeCursor = key.compositeCursor;
+    specConstants.compositeHud = key.compositeHud;
 
     // Avoid redundant color space conversions if color spaces
     // and images properties match and we don't do a resolve
