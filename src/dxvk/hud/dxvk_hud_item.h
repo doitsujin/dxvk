@@ -163,6 +163,8 @@ namespace dxvk::hud {
 
     ~HudClientApiItem();
 
+    void setApiName(std::string api);
+
     HudPos render(
       const DxvkContextObjects& ctx,
       const HudPipelineKey&     key,
@@ -172,7 +174,8 @@ namespace dxvk::hud {
 
   private:
 
-    std::string m_api;
+    sync::Spinlock  m_mutex;
+    std::string     m_api;
 
   };
 
