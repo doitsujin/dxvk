@@ -4,6 +4,8 @@
 #include <thread>
 #include <unordered_map>
 
+#include "./hud/dxvk_hud.h"
+
 #include "../util/thread.h"
 
 #include "../dxvk/dxvk_device.h"
@@ -82,7 +84,9 @@ namespace dxvk {
     
   public:
 
-    DxvkSwapchainBlitter(const Rc<DxvkDevice>& device);
+    DxvkSwapchainBlitter(
+      const Rc<DxvkDevice>& device,
+      const Rc<hud::Hud>&   hud);
     ~DxvkSwapchainBlitter();
 
     /**
@@ -98,23 +102,12 @@ namespace dxvk {
      * \param [in] srcColorSpace Image color space
      * \param [in] srcRect Source rectangle to present
      */
-    void beginPresent(
+    void present(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView,
             VkRect2D            dstRect,
       const Rc<DxvkImageView>&  srcView,
             VkRect2D            srcRect);
-
-    /**
-     * \brief Finalizes presentation commands
-     *
-     * Finishes rendering and prepares the image for presentation.
-     * \param [in] ctx Context objects
-     * \param [in] dstView Swap chain image view
-     */
-    void endPresent(
-      const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView);
 
     /**
      * \brief Sets gamma ramp
@@ -176,6 +169,7 @@ namespace dxvk {
     };
 
     Rc<DxvkDevice>      m_device;
+    Rc<hud::Hud>        m_hud;
 
     ShaderModule        m_shaderVsBlit;
     ShaderModule        m_shaderFsCopy;

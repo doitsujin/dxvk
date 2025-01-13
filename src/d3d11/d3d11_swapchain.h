@@ -108,8 +108,6 @@ namespace dxvk {
 
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
-    Rc<hud::Hud>              m_hud;
-
     small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
     DxvkSubmitStatus          m_presentStatus;
 
@@ -141,8 +139,6 @@ namespace dxvk {
     void CreateBackBuffers();
 
     void CreateBlitter();
-
-    void CreateHud();
 
     void DestroyFrameLatencyEvent();
 

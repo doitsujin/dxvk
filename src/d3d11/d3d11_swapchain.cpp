@@ -68,7 +68,6 @@ namespace dxvk {
     CreatePresenter();
     CreateBackBuffers();
     CreateBlitter();
-    CreateHud();
   }
 
 
@@ -416,7 +415,6 @@ namespace dxvk {
       cBackBuffer     = backBuffer->createView(viewInfo),
       cSwapImage      = GetBackBufferView(),
       cSync           = sync,
-      cHud            = m_hud,
       cPresenter      = m_presenter,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId
@@ -433,16 +431,9 @@ namespace dxvk {
       // swap chain and render the HUD if we have one.
       auto contextObjects = ctx->beginExternalRendering();
 
-      cBlitter->beginPresent(contextObjects,
+      cBlitter->present(contextObjects,
         cBackBuffer, VkRect2D(),
         cSwapImage, VkRect2D());
-
-      if (cHud != nullptr) {
-        cHud->update();
-        cHud->render(contextObjects, cBackBuffer);
-      }
-
-      cBlitter->endPresent(contextObjects, cBackBuffer);
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
@@ -582,15 +573,12 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateBlitter() {
-    m_blitter = new DxvkSwapchainBlitter(m_device);    
-  }
+    Rc<hud::Hud> hud = hud::Hud::createHud(m_device);
 
+    if (hud)
+      hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
-  void D3D11SwapChain::CreateHud() {
-    m_hud = hud::Hud::createHud(m_device);
-
-    if (m_hud != nullptr)
-      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+    m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
   }
 
 
