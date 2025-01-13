@@ -105,6 +105,9 @@ namespace dxvk::hud {
       const Rc<DxvkImageView>&  dstView,
       const HudOptions&         options);
 
+    void endFrame(
+      const DxvkContextObjects& ctx);
+
     void drawText(
             uint32_t            size,
             HudPos              pos,
