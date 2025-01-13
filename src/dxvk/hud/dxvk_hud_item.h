@@ -91,7 +91,7 @@ namespace dxvk::hud {
      * \param [in] args Constructor arguments
      */
     template<typename T, typename... Args>
-    void add(const char* name, int32_t at, Args... args) {
+    Rc<T> add(const char* name, int32_t at, Args... args) {
       bool enable = m_enableFull;
 
       if (!enable) {
@@ -102,10 +102,14 @@ namespace dxvk::hud {
       if (at < 0 || at > int32_t(m_items.size()))
         at = m_items.size();
 
+      Rc<T> item;
+
       if (enable) {
-        m_items.insert(m_items.begin() + at,
-          new T(std::forward<Args>(args)...));
+        item = new T(std::forward<Args>(args)...);
+        m_items.insert(m_items.begin() + at, item);
       }
+
+      return item;
     }
 
     template<typename T>
