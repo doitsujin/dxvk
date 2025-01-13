@@ -48,8 +48,8 @@ namespace dxvk::hud {
      * \param [in] args Constructor arguments
      */
     template<typename T, typename... Args>
-    void addItem(const char* name, int32_t at, Args... args) {
-      m_hudItems.add<T>(name, at, std::forward<Args>(args)...);
+    Rc<T> addItem(const char* name, int32_t at, Args... args) {
+      return m_hudItems.add<T>(name, at, std::forward<Args>(args)...);
     }
     
     /**
