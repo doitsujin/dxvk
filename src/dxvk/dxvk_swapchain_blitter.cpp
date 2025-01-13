@@ -9,8 +9,10 @@
 
 namespace dxvk {
   
-  DxvkSwapchainBlitter::DxvkSwapchainBlitter(const Rc<DxvkDevice>& device)
-  : m_device(device),
+  DxvkSwapchainBlitter::DxvkSwapchainBlitter(
+    const Rc<DxvkDevice>& device,
+    const Rc<hud::Hud>&   hud)
+  : m_device(device), m_hud(hud),
     m_setLayout(createSetLayout()),
     m_pipelineLayout(createPipelineLayout()) {
     this->createSampler();
@@ -35,13 +37,17 @@ namespace dxvk {
   }
 
 
-  void DxvkSwapchainBlitter::beginPresent(
+  void DxvkSwapchainBlitter::present(
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
           VkRect2D            srcRect) {
     std::unique_lock lock(m_mutex);
+
+    // Update HUD, if we have one
+    if (m_hud)
+      m_hud->update();
 
     // Fix up default present areas if necessary
     if (!dstRect.extent.width || !dstRect.extent.height) {
@@ -102,13 +108,9 @@ namespace dxvk {
 
     performDraw(ctx, dstView, dstRect,
       srcView, srcRect, VK_FALSE);
-  }
 
-
-  void DxvkSwapchainBlitter::endPresent(
-    const DxvkContextObjects& ctx,
-    const Rc<DxvkImageView>&  dstView) {
-    std::unique_lock lock(m_mutex);
+    if (m_hud)
+      m_hud->render(ctx, dstView);
 
     if (m_cursorView) {
       VkRect2D cursorArea = { };
@@ -121,7 +123,7 @@ namespace dxvk {
 
     ctx.cmd->cmdEndRendering();
 
-    VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+    barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
@@ -133,7 +135,7 @@ namespace dxvk {
     barrier.image = dstView->image()->handle();
     barrier.subresourceRange = dstView->imageSubresources();
 
-    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 

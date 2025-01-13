@@ -156,8 +156,6 @@ namespace dxvk {
 
     D3D9WindowContext*        m_wctx = nullptr;
 
-    Rc<hud::Hud>              m_hud;
-
     std::vector<Com<D3D9Surface, false>> m_backBuffers;
     
     RECT                      m_srcRect;
@@ -176,11 +174,11 @@ namespace dxvk {
 
     double                    m_displayRefreshRate = 0.0;
 
-    const char*               m_apiName  = nullptr;
-
     bool                      m_warnedAboutGDIFallback = false;
 
     VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+    Rc<hud::HudClientApiItem> m_apiHud;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool m_unlockAdditionalFormats = false;
@@ -200,8 +198,6 @@ namespace dxvk {
             DWORD               Flags);
 
     void CreateBlitter();
-
-    void CreateHud();
 
     void InitRamp();
 

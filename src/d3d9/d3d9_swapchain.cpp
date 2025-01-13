@@ -43,7 +43,6 @@ namespace dxvk {
       throw DxvkError("D3D9: Failed to create swapchain backbuffers");
 
     CreateBlitter();
-    CreateHud();
 
     InitRamp();
 
@@ -863,7 +862,6 @@ namespace dxvk {
         cDstRect        = dstRect,
         cRepeat         = i,
         cSync           = sync,
-        cHud            = m_hud,
         cFrameId        = m_wctx->frameId
       ] (DxvkContext* ctx) {
         // Update back buffer color space as necessary
@@ -877,17 +875,8 @@ namespace dxvk {
         // Blit back buffer onto Vulkan swap chain
         auto contextObjects = ctx->beginExternalRendering();
 
-        cBlitter->beginPresent(contextObjects,
+        cBlitter->present(contextObjects,
           cDstView, cDstRect, cSrcView, cSrcRect);
-
-        if (cHud) {
-          if (!cRepeat)
-            cHud->update();
-
-          cHud->render(contextObjects, cDstView);
-        }
-
-        cBlitter->endPresent(contextObjects, cDstView);
 
         // Submit command list and present
         ctx->synchronizeWsi(cSync);
@@ -1047,23 +1036,20 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::CreateBlitter() {
-    m_blitter = new DxvkSwapchainBlitter(m_device);
-  }
+    Rc<hud::Hud> hud = hud::Hud::createHud(m_device);
 
-
-  void D3D9SwapChainEx::CreateHud() {
-    m_hud = hud::Hud::createHud(m_device);
-
-    if (m_hud != nullptr) {
-      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
-      m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
-      m_hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
-      m_hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
+    if (hud) {
+      m_apiHud = hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+      hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
+      hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
+      hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 
 #ifdef D3D9_ALLOW_UNMAPPING
-      m_hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
+      hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
 #endif
     }
+
+    m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
   }
 
 
@@ -1095,8 +1081,8 @@ namespace dxvk {
   }
 
   void D3D9SwapChainEx::SetApiName(const char* name) {
-    m_apiName = name;
-    CreateHud();
+    if (m_apiHud && name)
+      m_apiHud->setApiName(name);
   }
 
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
@@ -1306,11 +1292,7 @@ namespace dxvk {
 
 
   std::string D3D9SwapChainEx::GetApiName() {
-    if (m_apiName == nullptr) {
-      return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
-    } else {
-      return m_apiName;
-    }
+    return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }
 
   D3D9VkExtSwapchain::D3D9VkExtSwapchain(D3D9SwapChainEx *pSwapChain)
