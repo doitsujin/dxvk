@@ -83,6 +83,14 @@ namespace dxvk::hud {
             HudRenderer&        renderer);
 
     /**
+     * \brief Checks whether the item set is empty
+     * \returns \c true if there are no items
+     */
+    bool empty() const {
+      return m_items.empty();
+    }
+
+    /**
      * \brief Creates a HUD item if enabled
      *
      * \tparam T The HUD item type
