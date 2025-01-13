@@ -112,7 +112,7 @@ namespace dxvk::hud {
 
 
   HudClientApiItem::HudClientApiItem(std::string api)
-  : m_api(api) {
+  : m_api(std::move(api)) {
 
   }
 
@@ -122,12 +122,20 @@ namespace dxvk::hud {
   }
 
 
+  void HudClientApiItem::setApiName(std::string api) {
+    std::lock_guard lock(m_mutex);
+    m_api = std::move(api);
+  }
+
+
   HudPos HudClientApiItem::render(
     const DxvkContextObjects& ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
+    std::lock_guard lock(m_mutex);
+
     position.y += 16;
     renderer.drawText(16, position, 0xffffffffu, m_api);
 
