@@ -173,17 +173,30 @@ namespace dxvk {
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
 
+    // Maintain valid state if presentation succeeded, even
+    // if we want to recreate the swapchain.
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
       currSync.fenceSignaled = status >= 0;
 
-    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR)
+    if (status >= 0) {
+      m_acquireStatus = VK_NOT_READY;
+
+      m_frameIndex += 1;
+      m_frameIndex %= m_semaphores.size();
+    }
+
+    // Recreate the swapchain on the next acquire, even if we get suboptimal.
+    // There is no guarantee that suboptimal state is returned by both functions.
+    if (status != VK_SUCCESS) {
+      Logger::info(str::format("Presenter: Got ", status, ", recreating swapchain"));
+
+      std::lock_guard lock(m_surfaceMutex);
+      m_dirtySwapchain = true;
       return status;
+    }
 
-    // Try to acquire next image already, in order to hide
-    // potential delays from the application thread.
-    m_frameIndex += 1;
-    m_frameIndex %= m_semaphores.size();
-
+    // On a successful present, try to acquire next image already, in
+    // order to hide potential delays from the application thread.
     PresenterSync& nextSync = m_semaphores.at(m_frameIndex);
     waitForSwapchainFence(nextSync);
 
@@ -590,7 +603,6 @@ namespace dxvk {
 
     m_imageIndex = 0;
     m_frameIndex = 0;
-    m_acquireStatus = VK_NOT_READY;
 
     m_dynamicModes = std::move(dynamicModes);
     return VK_SUCCESS;
@@ -952,6 +964,7 @@ namespace dxvk {
     m_dynamicModes.clear();
 
     m_swapchain = VK_NULL_HANDLE;
+    m_acquireStatus = VK_NOT_READY;
   }
 
 
