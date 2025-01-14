@@ -73,6 +73,8 @@ namespace dxvk {
     std::lock_guard lock(m_surfaceMutex);
 
     // Ensure that the swap chain gets recreated if it is dirty
+    bool hasSwapchain = m_swapchain != VK_NULL_HANDLE;
+
     updateSwapChain();
 
     // Don't acquire more than one image at a time
@@ -86,11 +88,19 @@ namespace dxvk {
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
     }
 
+    // This is a normal occurence, but may be useful for
+    // debugging purposes in case WSI goes wrong somehow.
+    if (m_acquireStatus != VK_SUCCESS && m_swapchain)
+      Logger::info(str::format("Presenter: Got ", m_acquireStatus, ", recreating swapchain"));
+
     // If the swap chain is out of date, recreate it and retry. It
     // is possible that we do not get a new swap chain here, e.g.
     // because the window is minimized.
     if (m_acquireStatus != VK_SUCCESS || !m_swapchain) {
       VkResult vr = recreateSwapChain();
+
+      if (vr == VK_NOT_READY && hasSwapchain)
+        Logger::info("Presenter: Surface does not allow swapchain creation.");
 
       if (vr != VK_SUCCESS)
         return softError(vr);
@@ -101,8 +111,10 @@ namespace dxvk {
         m_swapchain, std::numeric_limits<uint64_t>::max(),
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
-      if (m_acquireStatus < 0)
+      if (m_acquireStatus < 0) {
+        Logger::info(str::format("Presenter: Got ", m_acquireStatus, " from fresh swapchain"));
         return softError(m_acquireStatus);
+      }
     }
 
     // Update HDR metadata after a successful acquire. We know
@@ -290,7 +302,7 @@ namespace dxvk {
     }
 
     if (hdrMetadata.pNext)
-      Logger::warn("HDR metadata extensions not currently supported.");
+      Logger::warn("Presenter: HDR metadata extensions not currently supported.");
 
     m_hdrMetadata = hdrMetadata;
     m_hdrMetadata->pNext = nullptr;
@@ -364,8 +376,10 @@ namespace dxvk {
         m_device->adapter()->handle(), m_surface, &caps.surfaceCapabilities);
     }
 
-    if (status)
+    if (status) {
+      Logger::err(str::format("Presenter: Failed to get surface capabilities: ", status));
       return status;
+    }
 
     // Select image extent based on current surface capabilities, and return
     // immediately if we cannot create an actual swap chain.
@@ -410,15 +424,19 @@ namespace dxvk {
       caps.pNext = &compatibleModeInfo;
 
       if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
-          m_device->adapter()->handle(), &surfaceInfo, &caps)))
+          m_device->adapter()->handle(), &surfaceInfo, &caps))) {
+        Logger::err(str::format("Presenter: Failed to get surface capabilities: ", status));
         return status;
+      }
 
       compatibleModes.resize(compatibleModeInfo.presentModeCount);
       compatibleModeInfo.pPresentModes = compatibleModes.data();
 
       if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
-          m_device->adapter()->handle(), &surfaceInfo, &caps)))
+          m_device->adapter()->handle(), &surfaceInfo, &caps))) {
+        Logger::err(str::format("Presenter: Failed to get surface capabilities: ", status));
         return status;
+      }
 
       // Remove modes we don't need for the purpose of finding the minimum
       // image count, as well as for swap chain creation later.
@@ -434,8 +452,10 @@ namespace dxvk {
         presentModeInfo.presentMode = mode;
 
         if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
-            m_device->adapter()->handle(), &surfaceInfo, &caps)))
+            m_device->adapter()->handle(), &surfaceInfo, &caps))) {
+          Logger::err(str::format("Presenter: Failed to get surface capabilities: ", status));
           return status;
+        }
 
         minImageCount = std::max(minImageCount, caps.surfaceCapabilities.minImageCount);
 
@@ -490,16 +510,17 @@ namespace dxvk {
       modeInfo.pNext = std::exchange(swapInfo.pNext, &modeInfo);
 
     Logger::info(str::format(
-      "Presenter: Actual swap chain properties:"
+      "Presenter: Actual swapchain properties:"
       "\n  Format:       ", swapInfo.imageFormat,
       "\n  Color space:  ", swapInfo.imageColorSpace,
       "\n  Present mode: ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
       "\n  Buffer size:  ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
       "\n  Image count:  ", swapInfo.minImageCount));
     
-    if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(),
-        &swapInfo, nullptr, &m_swapchain)))
+    if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_swapchain))) {
+      Logger::err(str::format("Presenter: Failed to create Vulkan swapchain: ", status));
       return status;
+    }
     
     // Import actual swap chain images
     std::vector<VkImage> images;
@@ -544,18 +565,24 @@ namespace dxvk {
       VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].acquire)))
+          &semInfo, nullptr, &m_semaphores[i].acquire))) {
+        Logger::err(str::format("Presenter: Failed to create semaphore: ", status));
         return status;
+      }
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].present)))
+          &semInfo, nullptr, &m_semaphores[i].present))) {
+        Logger::err(str::format("Presenter: Failed to create semaphore: ", status));
         return status;
+      }
 
       VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateFence(m_vkd->device(),
-          &fenceInfo, nullptr, &m_semaphores[i].fence)))
+          &fenceInfo, nullptr, &m_semaphores[i].fence))) {
+        Logger::err(str::format("Presenter: Failed to create fence: ", status));
         return status;
+      }
     }
     
     // Invalidate indices
@@ -589,8 +616,10 @@ namespace dxvk {
         m_device->adapter()->handle(), m_surface, &numFormats, nullptr);
     }
 
-    if (status != VK_SUCCESS)
+    if (status != VK_SUCCESS) {
+      Logger::err(str::format("Presenter: Failed to query surface formats: ", status));
       return status;
+    }
     
     formats.resize(numFormats);
 
@@ -607,6 +636,9 @@ namespace dxvk {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
         m_device->adapter()->handle(), m_surface, &numFormats, formats.data());
     }
+
+    if (status != VK_SUCCESS)
+      Logger::err(str::format("Presenter: Failed to query surface formats: ", status));
 
     return status;
   }
@@ -631,8 +663,10 @@ namespace dxvk {
         m_device->adapter()->handle(), m_surface, &numModes, nullptr);
     }
 
-    if (status != VK_SUCCESS)
+    if (status != VK_SUCCESS) {
+      Logger::err(str::format("Presenter: Failed to query present modes: ", status));
       return status;
+    }
     
     modes.resize(numModes);
 
@@ -644,6 +678,9 @@ namespace dxvk {
         m_device->adapter()->handle(), m_surface, &numModes, modes.data());
     }
 
+    if (status != VK_SUCCESS)
+      Logger::err(str::format("Presenter: Failed to query present modes: ", status));
+
     return status;
   }
 
@@ -654,13 +691,20 @@ namespace dxvk {
     VkResult status = m_vkd->vkGetSwapchainImagesKHR(
       m_vkd->device(), m_swapchain, &imageCount, nullptr);
     
-    if (status != VK_SUCCESS)
+    if (status != VK_SUCCESS) {
+      Logger::err(str::format("Presenter: Failed to query swapchain images: ", status));
       return status;
+    }
     
     images.resize(imageCount);
 
-    return m_vkd->vkGetSwapchainImagesKHR(
+    status = m_vkd->vkGetSwapchainImagesKHR(
       m_vkd->device(), m_swapchain, &imageCount, images.data());
+
+    if (status != VK_SUCCESS)
+      Logger::err(str::format("Presenter: Failed to query swapchain images: ", status));
+
+    return status;
   }
 
 
@@ -882,7 +926,7 @@ namespace dxvk {
     VkResult vr = m_surfaceProc(&m_surface);
 
     if (vr != VK_SUCCESS)
-      Logger::err(str::format("Failed to create Vulkan surface: ", vr));
+      Logger::err(str::format("Presenter: Failed to create Vulkan surface: ", vr));
 
     return vr;
   }
@@ -927,10 +971,10 @@ namespace dxvk {
       1, &sync.fence, VK_TRUE, ~0ull);
 
     if (vr)
-      Logger::err(str::format("Failed to wait for WSI fence: ", vr));
+      Logger::err(str::format("Presenter: Failed to wait for WSI fence: ", vr));
 
     if ((vr = m_vkd->vkResetFences(m_vkd->device(), 1, &sync.fence)))
-      Logger::err(str::format("Failed to reset WSI fence: ", vr));
+      Logger::err(str::format("Presenter: Failed to reset WSI fence: ", vr));
 
     sync.fenceSignaled = VK_FALSE;
   }
