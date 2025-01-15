@@ -36,9 +36,6 @@ namespace dxvk {
 
     UpdatePresentRegion(nullptr, nullptr);
 
-    if (m_window)
-      CreatePresenter();
-
     if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags)))
       throw DxvkError("D3D9: Failed to create swapchain backbuffers");
 
@@ -73,8 +70,12 @@ namespace dxvk {
     ResetWindowProc(m_window);
     RestoreDisplayMode(m_monitor);
 
-    m_device->waitForSubmission(&m_presentStatus);
-    m_device->waitForIdle();
+    for (auto& p : m_presenters) {
+      if (p.second.presenter) {
+        p.second.presenter->destroyResources();
+        p.second.presenter = nullptr;
+      }
+    }
 
     m_parent->DecrementLosableCounter();
   }
@@ -147,18 +148,13 @@ namespace dxvk {
     if (hDestWindowOverride != nullptr)
       m_window = hDestWindowOverride;
 
-    if (m_window == nullptr)
+    if (!UpdateWindowCtx())
       return D3D_OK;
 
-    UpdateWindowCtx();
+    if (options->deferSurfaceCreation && m_parent->IsDeviceReset())
+      m_wctx->presenter->invalidateSurface();
 
-    bool recreate = !m_wctx->presenter;
-
-    if (options->deferSurfaceCreation)
-      recreate |= m_parent->IsDeviceReset();
-
-    if (m_wctx->presenter)
-      m_wctx->presenter->setSyncInterval(presentInterval);
+    m_wctx->presenter->setSyncInterval(presentInterval);
 
     UpdatePresentRegion(pSourceRect, pDestRect);
     UpdatePresentParameters();
@@ -170,9 +166,6 @@ namespace dxvk {
 #endif
 
     try {
-      if (recreate)
-        RecreateSurface();
-
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
@@ -716,16 +709,21 @@ namespace dxvk {
 
 
   void    D3D9SwapChainEx::Invalidate(HWND hWindow) {
-    if (hWindow == nullptr)
+    if (!hWindow)
       hWindow = m_parent->GetWindow();
 
-    if (m_presenters.count(hWindow)) {
-      if (m_wctx == &m_presenters[hWindow])
-        m_wctx = nullptr;
-      m_presenters.erase(hWindow);
+    auto entry = m_presenters.find(hWindow);
 
-      m_device->waitForSubmission(&m_presentStatus);
-      m_device->waitForIdle();
+    if (entry != m_presenters.end()) {
+      if (entry->second.presenter) {
+        entry->second.presenter->destroyResources();
+        entry->second.presenter = nullptr;
+      }
+
+      if (m_wctx == &entry->second)
+        m_wctx = nullptr;
+
+      m_presenters.erase(entry);
     }
   }
 
@@ -907,28 +905,13 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::RecreateSurface() {
-    if (m_wctx->presenter)
-      m_wctx->presenter->invalidateSurface();
-    else
-      CreatePresenter();
-  }
-
-
-  void D3D9SwapChainEx::CreatePresenter() {
-    // Ensure that we can safely destroy the swap chain
-    m_device->waitForSubmission(&m_presentStatus);
-    m_device->waitForIdle();
-
-    m_presentStatus.result = VK_SUCCESS;
-
+  Rc<Presenter> D3D9SwapChainEx::CreatePresenter(HWND Window, Rc<sync::Signal> Signal) {
     PresenterDesc presenterDesc;
     presenterDesc.deferSurfaceCreation = m_parent->GetOptions()->deferSurfaceCreation;
 
-    m_wctx->presenter = new Presenter(m_device,
-      m_wctx->frameLatencySignal, presenterDesc, [
+    Rc<Presenter> presenter = new Presenter(m_device, Signal, presenterDesc, [
       cDevice = m_device,
-      cWindow = m_window
+      cWindow = Window
     ] (VkSurfaceKHR* surface) {
       auto vki = cDevice->adapter()->vki();
 
@@ -938,11 +921,13 @@ namespace dxvk {
         surface);
     });
 
-    m_wctx->presenter->setSurfaceExtent(m_swapchainExtent);
-    m_wctx->presenter->setSurfaceFormat(GetSurfaceFormat());
+    presenter->setSurfaceExtent(m_swapchainExtent);
+    presenter->setSurfaceFormat(GetSurfaceFormat());
 
     if (m_hdrMetadata)
-      m_wctx->presenter->setHdrMetadata(*m_hdrMetadata);
+      presenter->setHdrMetadata(*m_hdrMetadata);
+
+    return presenter;
   }
 
 
@@ -954,20 +939,24 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::UpdateWindowCtx() {
-    if (m_window == nullptr)
-      return;
+  bool D3D9SwapChainEx::UpdateWindowCtx() {
+    if (!m_window)
+      return false;
 
-    if (!m_presenters.count(m_window)) {
-      auto res = m_presenters.emplace(
+    auto entry = m_presenters.find(m_window);
+
+    if (entry == m_presenters.end()) {
+      entry = m_presenters.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(m_window),
-        std::forward_as_tuple());
+        std::forward_as_tuple()).first;
 
-      auto& wctx = res.first->second;
-      wctx.frameLatencySignal = new sync::Fence(wctx.frameId);
+      entry->second.frameLatencySignal = new sync::Fence(entry->second.frameId);
+      entry->second.presenter = CreatePresenter(m_window, entry->second.frameLatencySignal);
     }
-    m_wctx = &m_presenters[m_window];
+
+    m_wctx = &entry->second;
+    return true;
   }
 
 
@@ -1280,7 +1269,7 @@ namespace dxvk {
   }
 
   void D3D9SwapChainEx::UpdatePresentParameters() {
-    if (m_wctx && m_wctx->presenter) {
+    if (m_wctx) {
       m_wctx->presenter->setSurfaceExtent(m_swapchainExtent);
       m_wctx->presenter->setSurfaceFormat(GetSurfaceFormat());
     }
@@ -1326,7 +1315,7 @@ namespace dxvk {
     
     m_swapchain->m_colorspace = ColorSpace;
 
-    if (m_swapchain->m_wctx && m_swapchain->m_wctx->presenter)
+    if (m_swapchain->m_wctx)
       m_swapchain->m_wctx->presenter->setSurfaceFormat(m_swapchain->GetSurfaceFormat());
 
     return S_OK;
@@ -1339,7 +1328,7 @@ namespace dxvk {
 
     m_swapchain->m_hdrMetadata = *pHDRMetadata;
 
-    if (m_swapchain->m_wctx && m_swapchain->m_wctx->presenter)
+    if (m_swapchain->m_wctx)
       m_swapchain->m_wctx->presenter->setHdrMetadata(*pHDRMetadata);
 
     return S_OK;
