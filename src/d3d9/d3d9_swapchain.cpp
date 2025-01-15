@@ -587,7 +587,6 @@ namespace dxvk {
 
     HRESULT hr = D3D_OK;
 
-    this->SynchronizePresent();
     this->NormalizePresentParameters(pPresentParams);
 
     bool changeFullscreen = m_presentParams.Windowed != pPresentParams->Windowed;
@@ -811,8 +810,6 @@ namespace dxvk {
     Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
-      SynchronizePresent();
-
       // Presentation semaphores and WSI swap chain image
       PresenterSync sync = { };
       Rc<DxvkImage> backBuffer;
@@ -836,8 +833,6 @@ namespace dxvk {
 
       // Present from CS thread so that we don't
       // have to synchronize with it first.
-      m_presentStatus.result = VK_NOT_READY;
-
       DxvkImageViewKey viewInfo;
       viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
       viewInfo.usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -849,7 +844,6 @@ namespace dxvk {
       viewInfo.layerCount = 1u;
 
       m_parent->EmitCs([
-        cPresentStatus  = &m_presentStatus,
         cDevice         = m_device,
         cPresenter      = m_wctx->presenter,
         cBlitter        = m_blitter,
@@ -882,8 +876,7 @@ namespace dxvk {
 
         uint64_t frameId = cRepeat ? 0 : cFrameId;
 
-        cDevice->presentImage(cPresenter,
-          frameId, cPresentStatus);
+        cDevice->presentImage(cPresenter, frameId, nullptr);
       });
 
       m_parent->FlushCsChunk();
@@ -897,11 +890,6 @@ namespace dxvk {
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-  }
-
-
-  void D3D9SwapChainEx::SynchronizePresent() {
-    m_device->waitForSubmission(&m_presentStatus);
   }
 
 

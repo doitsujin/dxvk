@@ -163,8 +163,6 @@ namespace dxvk {
     VkExtent2D                m_swapchainExtent = { 0u, 0u };
     bool                      m_partialCopy = false;
 
-    DxvkSubmitStatus          m_presentStatus;
-
     uint32_t                  m_frameLatencyCap = 0;
 
     HWND                      m_window   = nullptr;
@@ -186,8 +184,6 @@ namespace dxvk {
     D3D9VkExtSwapchain m_swapchainExt;
 
     void PresentImage(UINT PresentInterval);
-
-    void SynchronizePresent();
 
     Rc<Presenter> CreatePresenter(
             HWND                Window,
