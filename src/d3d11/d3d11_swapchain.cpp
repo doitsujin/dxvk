@@ -77,8 +77,7 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
-    m_device->waitForSubmission(&m_presentStatus);
-    m_device->waitForIdle();
+    m_presenter->destroyResources();
     
     DestroyFrameLatencyEvent();
   }
@@ -259,15 +258,7 @@ namespace dxvk {
       if (hr != S_OK)
         return hr;
 
-      // If the current present status is NOT_READY, we have a present
-      // in flight, which means that we can most likely present again.
-      // This avoids an expensive sync point.
-      VkResult status = m_presentStatus.result.load();
-
-      if (status == VK_NOT_READY)
-        return S_OK;
-
-      status = m_presenter->checkSwapChainStatus();
+      VkResult status = m_presenter->checkSwapChainStatus();
       return status == VK_SUCCESS ? S_OK : DXGI_STATUS_OCCLUDED;
     }
 
@@ -376,8 +367,6 @@ namespace dxvk {
     immediateContext->EndFrame();
     immediateContext->Flush();
 
-    SynchronizePresent();
-
     m_presenter->setSyncInterval(SyncInterval);
 
     // Presentation semaphores and WSI swap chain image
@@ -396,8 +385,6 @@ namespace dxvk {
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
-    m_presentStatus.result = VK_NOT_READY;
-
     DxvkImageViewKey viewInfo = { };
     viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.usage      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -409,7 +396,6 @@ namespace dxvk {
     viewInfo.layerCount = 1u;
 
     immediateContext->EmitCs([
-      cPresentStatus  = &m_presentStatus,
       cDevice         = m_device,
       cBlitter        = m_blitter,
       cBackBuffer     = backBuffer->createView(viewInfo),
@@ -439,8 +425,7 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr);
 
-      cDevice->presentImage(cPresenter,
-        cFrameId, cPresentStatus);
+      cDevice->presentImage(cPresenter, cFrameId, nullptr);
     });
 
     if (m_backBuffers.size() > 1u)
@@ -467,11 +452,6 @@ namespace dxvk {
 
       ctx->invalidateImage(cImages[cImages.size() - 1u], std::move(allocation));
     });
-  }
-
-
-  void D3D11SwapChain::SynchronizePresent() {
-    m_device->waitForSubmission(&m_presentStatus);
   }
 
 

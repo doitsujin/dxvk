@@ -109,7 +109,6 @@ namespace dxvk {
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
     small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
-    DxvkSubmitStatus          m_presentStatus;
 
     uint64_t                  m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
     uint32_t                  m_frameLatency = DefaultFrameLatency;
@@ -129,8 +128,6 @@ namespace dxvk {
     HRESULT PresentImage(UINT SyncInterval);
 
     void RotateBackBuffers(D3D11ImmediateContext* ctx);
-
-    void SynchronizePresent();
 
     void CreateFrameLatencyEvent();
 
