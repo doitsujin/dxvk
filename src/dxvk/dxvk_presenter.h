@@ -200,6 +200,17 @@ namespace dxvk {
      */
     void invalidateSurface();
 
+    /**
+     * \brief Destroys resources immediately
+     *
+     * Blocks calling thread until pending swapchain operations
+     * have completed, and guarantees that the Vulkan swapchain
+     * and surface get destroyed before the function returns.
+     * This is useful to ensure that the application window can
+     * be reused, even if the presenter object is kept alive.
+     */
+    void destroyResources();
+
   private:
 
     Rc<DxvkDevice>              m_device;
@@ -208,8 +219,10 @@ namespace dxvk {
     Rc<vk::InstanceFn>          m_vki;
     Rc<vk::DeviceFn>            m_vkd;
 
-    dxvk::mutex                 m_surfaceMutex;
     PresenterSurfaceProc        m_surfaceProc;
+
+    dxvk::mutex                 m_surfaceMutex;
+    dxvk::condition_variable    m_surfaceCond;
 
     VkSurfaceKHR                m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR              m_swapchain   = VK_NULL_HANDLE;
@@ -234,6 +247,7 @@ namespace dxvk {
     uint32_t                    m_frameIndex = 0;
 
     VkResult                    m_acquireStatus = VK_NOT_READY;
+    bool                        m_presentPending = false;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool                        m_hdrMetadataDirty = false;

@@ -70,14 +70,25 @@ namespace dxvk {
 
 
   VkResult Presenter::acquireNextImage(PresenterSync& sync, Rc<DxvkImage>& image) {
-    std::lock_guard lock(m_surfaceMutex);
+    std::unique_lock lock(m_surfaceMutex);
+
+    // Don't acquire more than one image at a time
+    VkResult status = VK_SUCCESS;
+
+    m_surfaceCond.wait(lock, [this, &status] {
+      status = m_device->getDeviceStatus();
+      return !m_presentPending || status < 0;
+    });
+
+    if (status < 0)
+      return status;
 
     // Ensure that the swap chain gets recreated if it is dirty
     bool hasSwapchain = m_swapchain != VK_NULL_HANDLE;
 
     updateSwapChain();
 
-    // Don't acquire more than one image at a time
+    // Don't acquire if we already did so after present
     if (m_acquireStatus == VK_NOT_READY && m_swapchain) {
       PresenterSync sync = m_semaphores.at(m_frameIndex);
 
@@ -136,6 +147,7 @@ namespace dxvk {
     sync = m_semaphores.at(m_frameIndex);
     image = m_images.at(m_imageIndex);
 
+    m_presentPending = true;
     return m_acquireStatus;
   }
 
@@ -185,25 +197,29 @@ namespace dxvk {
       m_frameIndex %= m_semaphores.size();
     }
 
+    // On a successful present, try to acquire next image already, in
+    // order to hide potential delays from the application thread.
+    if (status == VK_SUCCESS) {
+      PresenterSync& nextSync = m_semaphores.at(m_frameIndex);
+      waitForSwapchainFence(nextSync);
+
+      m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
+        m_swapchain, std::numeric_limits<uint64_t>::max(),
+        nextSync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+    }
+
     // Recreate the swapchain on the next acquire, even if we get suboptimal.
     // There is no guarantee that suboptimal state is returned by both functions.
+    std::lock_guard lock(m_surfaceMutex);
+
     if (status != VK_SUCCESS) {
       Logger::info(str::format("Presenter: Got ", status, ", recreating swapchain"));
 
-      std::lock_guard lock(m_surfaceMutex);
       m_dirtySwapchain = true;
-      return status;
     }
 
-    // On a successful present, try to acquire next image already, in
-    // order to hide potential delays from the application thread.
-    PresenterSync& nextSync = m_semaphores.at(m_frameIndex);
-    waitForSwapchainFence(nextSync);
-
-    m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
-      m_swapchain, std::numeric_limits<uint64_t>::max(),
-      nextSync.acquire, VK_NULL_HANDLE, &m_imageIndex);
-
+    m_presentPending = false;
+    m_surfaceCond.notify_one();
     return status;
   }
 
@@ -262,6 +278,19 @@ namespace dxvk {
     std::lock_guard lock(m_surfaceMutex);
 
     m_dirtySurface = true;
+  }
+
+
+  void Presenter::destroyResources() {
+    std::unique_lock lock(m_surfaceMutex);
+
+    m_surfaceCond.wait(lock, [this] {
+      VkResult status = m_device->getDeviceStatus();
+      return !m_presentPending || status < 0;
+    });
+
+    destroySwapchain();
+    destroySurface();
   }
 
 
@@ -965,6 +994,8 @@ namespace dxvk {
 
     m_swapchain = VK_NULL_HANDLE;
     m_acquireStatus = VK_NOT_READY;
+
+    m_presentPending = false;
   }
 
 
