@@ -309,8 +309,6 @@ namespace dxvk {
     const Rc<Presenter>&            presenter,
           uint64_t                  frameId,
           DxvkSubmitStatus*         status) {
-    status->result = VK_NOT_READY;
-
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
     presentInfo.frameId = frameId;
