@@ -55,6 +55,8 @@ namespace dxvk {
 
     uint64_t                       frameId = D3D9DeviceEx::MaxFrameLatency;
     Rc<sync::Fence>                frameLatencySignal;
+
+    uint32_t                       deviceResetCounter = 0u;
   };
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
@@ -227,6 +229,8 @@ namespace dxvk {
     VkExtent2D GetPresentExtent();
 
     std::string GetApiName();
+
+    bool IsDeviceReset(D3D9WindowContext* wctx);
 
     const Com<D3D9Surface, false>& GetFrontBuffer() const {
       return m_backBuffers.back();

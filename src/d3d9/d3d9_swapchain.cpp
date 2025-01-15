@@ -151,7 +151,7 @@ namespace dxvk {
     if (!UpdateWindowCtx())
       return D3D_OK;
 
-    if (options->deferSurfaceCreation && m_parent->IsDeviceReset())
+    if (options->deferSurfaceCreation && IsDeviceReset(m_wctx))
       m_wctx->presenter->invalidateSurface();
 
     m_wctx->presenter->setSyncInterval(presentInterval);
@@ -1271,6 +1271,18 @@ namespace dxvk {
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }
+
+
+  bool D3D9SwapChainEx::IsDeviceReset(D3D9WindowContext* wctx) {
+    uint32_t counter = m_parent->GetResetCounter();
+
+    if (counter == wctx->deviceResetCounter)
+      return false;
+
+    wctx->deviceResetCounter = counter;
+    return true;
+  }
+
 
   D3D9VkExtSwapchain::D3D9VkExtSwapchain(D3D9SwapChainEx *pSwapChain)
     : m_swapchain(pSwapChain) {

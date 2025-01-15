@@ -1143,12 +1143,12 @@ namespace dxvk {
     }
 
     /**
-     * \brief Returns whether the device has been reset and marks it as true.
+     * \brief Queries current reset counter
      * Used for the deferred surface creation workaround.
      * (Device Reset detection for D3D9SwapChainEx::Present)
      */
-    bool IsDeviceReset() {
-      return std::exchange(m_deviceHasBeenReset, false);
+    uint32_t GetResetCounter() {
+      return m_resetCtr;
     }
 
     template <bool Synchronize9On12>
@@ -1513,7 +1513,7 @@ namespace dxvk {
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     bool                            m_usingGraphicsPipelines = false;
-    bool                            m_deviceHasBeenReset = false;
+    uint32_t                        m_resetCtr = 0u;
 
     DxvkDepthBiasRepresentation     m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
     float                           m_depthBiasScale  = 0.0f;
