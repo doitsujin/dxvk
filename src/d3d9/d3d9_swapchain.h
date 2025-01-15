@@ -135,7 +135,7 @@ namespace dxvk {
 
     void SetApiName(const char* name);
 
-    void UpdateWindowCtx();
+    bool UpdateWindowCtx();
 
   private:
 
@@ -189,9 +189,9 @@ namespace dxvk {
 
     void SynchronizePresent();
 
-    void RecreateSurface();
-
-    void CreatePresenter();
+    Rc<Presenter> CreatePresenter(
+            HWND                Window,
+            Rc<sync::Signal>    Signal);
 
     HRESULT CreateBackBuffers(
             uint32_t            NumBackBuffers,
