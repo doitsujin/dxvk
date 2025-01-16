@@ -338,7 +338,7 @@ namespace dxvk {
   void Presenter::setHdrMetadata(VkHdrMetadataEXT hdrMetadata) {
     std::lock_guard lock(m_surfaceMutex);
 
-    if (m_hdrMetadata->sType != VK_STRUCTURE_TYPE_HDR_METADATA_EXT) {
+    if (hdrMetadata.sType != VK_STRUCTURE_TYPE_HDR_METADATA_EXT) {
       m_hdrMetadata = std::nullopt;
       return;
     }
