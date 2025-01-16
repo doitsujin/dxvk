@@ -100,6 +100,9 @@ namespace dxvk {
     /// race conditions.
     bool enableContextLock = false;
 
+    /// Enable or disable Nvidia Reflex interop.
+    bool enableReflex = false;
+
     /// Whether to expose the driver command list feature. Enabled by
     /// default and generally beneficial, but some games may assume that
     /// this is not supported when running on an AMD GPU.

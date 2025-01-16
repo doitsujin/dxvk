@@ -27,6 +27,7 @@ namespace dxvk {
     this->forceSampleRateShading = config.getOption<bool>("d3d11.forceSampleRateShading", false);
     this->disableMsaa           = config.getOption<bool>("d3d11.disableMsaa", false);
     this->enableContextLock     = config.getOption<bool>("d3d11.enableContextLock", false);
+    this->enableReflex          = config.getOption<bool>("d3d11.enableReflex", false);
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
