@@ -732,7 +732,7 @@ namespace dxvk {
 
       m_blitter->setCursorTexture(
         cursorSize,
-        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
         (void *) pCursorBitmap);
   }
 
