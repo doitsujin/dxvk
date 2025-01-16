@@ -304,6 +304,9 @@ namespace dxvk {
 
     void runFrameThread();
 
+    static VkResult softError(
+            VkResult                  vr);
+
   };
 
 }

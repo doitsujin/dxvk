@@ -86,7 +86,7 @@ namespace dxvk {
       VkResult vr = recreateSwapChain();
 
       if (vr != VK_SUCCESS)
-        return vr;
+        return softError(vr);
 
       PresenterSync sync = m_semaphores.at(m_frameIndex);
 
@@ -95,7 +95,7 @@ namespace dxvk {
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
       if (m_acquireStatus < 0)
-        return m_acquireStatus;
+        return softError(m_acquireStatus);
     }
 
     // Update HDR metadata after a successful acquire. We know
@@ -949,6 +949,20 @@ namespace dxvk {
       // are transparent to the front-end.
       m_signal->signal(frame.frameId);
     }
+  }
+
+
+  VkResult Presenter::softError(
+          VkResult                  vr) {
+    // Don't return these as an error state to the caller. The app can't
+    // do much anyway, so just pretend that we don't have a valid swap
+    // chain and move on. An alternative would be to handle errors in a
+    // loop, however this may also not be desireable since it could stall
+    // the app indefinitely in case the surface is in a weird state.
+    if (vr == VK_ERROR_SURFACE_LOST_KHR || vr == VK_ERROR_OUT_OF_DATE_KHR)
+      return VK_NOT_READY;
+
+    return vr;
   }
 
 }
