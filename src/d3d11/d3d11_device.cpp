@@ -3058,6 +3058,70 @@ namespace dxvk {
 
 
 
+  D3D11ReflexDevice::D3D11ReflexDevice(
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
+
+  }
+
+
+  D3D11ReflexDevice::~D3D11ReflexDevice() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11ReflexDevice::AddRef() {
+    return m_container->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11ReflexDevice::Release() {
+    return m_container->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ReflexDevice::QueryInterface(
+          REFIID                        riid,
+          void**                        ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  BOOL STDMETHODCALLTYPE D3D11ReflexDevice::SupportsLowLatency() {
+    return FALSE;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ReflexDevice::LatencySleep() {
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ReflexDevice::SetLatencySleepMode(
+          BOOL                          LowLatencyEnable,
+          BOOL                          LowLatencyBoost,
+          UINT32                        MinIntervalUs) {
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ReflexDevice::SetLatencyMarker(
+          UINT64                        FrameId,
+          UINT32                        MarkerType) {
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ReflexDevice::GetLatencyInfo(
+          D3D_LOW_LATENCY_RESULTS*      pLowLatencyResults) {
+    *pLowLatencyResults = D3D_LOW_LATENCY_RESULTS();
+    return E_NOTIMPL;
+  }
+
+
+
+
   DXGIVkSwapChainFactory::DXGIVkSwapChainFactory(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
@@ -3159,6 +3223,7 @@ namespace dxvk {
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
     m_d3d11Video    (this, &m_d3d11Device),
+    m_d3d11Reflex   (this, &m_d3d11Device),
     m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
     m_metaDevice    (this),
     m_dxvkFactory   (this, &m_d3d11Device) {
@@ -3228,6 +3293,11 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D11VideoDevice)) {
       *ppvObject = ref(&m_d3d11Video);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DLowLatencyDevice)) {
+      *ppvObject = ref(&m_d3d11Reflex);
       return S_OK;
     }
 

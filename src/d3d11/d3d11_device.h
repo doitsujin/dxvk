@@ -752,6 +752,51 @@ namespace dxvk {
 
 
   /**
+   * \brief Nvidia Reflex interop
+   */
+  class D3D11ReflexDevice : public ID3DLowLatencyDevice {
+
+  public:
+
+    D3D11ReflexDevice(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+
+    ~D3D11ReflexDevice();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                        riid,
+            void**                        ppvObject);
+
+    BOOL STDMETHODCALLTYPE SupportsLowLatency();
+
+    HRESULT STDMETHODCALLTYPE LatencySleep();
+
+    HRESULT STDMETHODCALLTYPE SetLatencySleepMode(
+            BOOL                          LowLatencyEnable,
+            BOOL                          LowLatencyBoost,
+            UINT32                        MinIntervalUs);
+
+    HRESULT STDMETHODCALLTYPE SetLatencyMarker(
+            UINT64                        FrameId,
+            UINT32                        MarkerType);
+
+    HRESULT STDMETHODCALLTYPE GetLatencyInfo(
+            D3D_LOW_LATENCY_RESULTS*      pLowLatencyResults);
+
+  private:
+
+    D3D11DXGIDevice*  m_container;
+    D3D11Device*      m_device;
+
+  };
+
+
+  /**
    * \brief DXVK swap chain factory
    */
   class DXGIVkSwapChainFactory : public IDXGIVkSwapChainFactory {
@@ -914,6 +959,7 @@ namespace dxvk {
     D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
     D3D11VideoDevice    m_d3d11Video;
+    D3D11ReflexDevice   m_d3d11Reflex;
     D3D11on12Device     m_d3d11on12;
     DXGIDXVKDevice      m_metaDevice;
     
