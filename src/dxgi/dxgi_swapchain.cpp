@@ -997,13 +997,14 @@ namespace dxvk {
     if (m_presenter2 == nullptr)
       return;
 
-    // Engage the frame limiter with large sync intervals even in windowed
-    // mode since we want to avoid double-presenting to the swap chain.
+    // Windowed mode is annoying because different displays might run at
+    // different refresh rates. Still need to engage limiter to handle
+    // latency sleep and to correctly deal with large sync intervals.
     if (SyncInterval != m_frameRateSyncInterval && m_descFs.Windowed) {
       m_frameRateSyncInterval = SyncInterval;
       m_frameRateRefresh = 0.0f;
 
-      if (SyncInterval > 1 && wsi::isWindow(m_window)) {
+      if (SyncInterval && wsi::isWindow(m_window)) {
         wsi::WsiMode mode = { };
 
         if (wsi::getCurrentDisplayMode(wsi::getWindowMonitor(m_window), &mode)) {
