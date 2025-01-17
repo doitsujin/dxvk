@@ -7,6 +7,7 @@
 #include "../util/thread.h"
 
 #include "dxvk_cmdlist.h"
+#include "dxvk_latency.h"
 #include "dxvk_presenter.h"
 
 namespace dxvk {
@@ -48,6 +49,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Latency info
+   *
+   * Optionally stores a latency tracker
+   * and the associated frame ID.
+   */
+  struct DxvkLatencyInfo {
+    Rc<DxvkLatencyTracker>  tracker;
+    uint64_t                frameId = 0;
+  };
+
+
+  /**
    * \brief Submission queue entry
    */
   struct DxvkSubmitEntry {
@@ -55,6 +68,7 @@ namespace dxvk {
     DxvkSubmitStatus*   status;
     DxvkSubmitInfo      submit;
     DxvkPresentInfo     present;
+    DxvkLatencyInfo     latency;
     DxvkTimelineSemaphoreValues timelines;
   };
 
@@ -102,10 +116,12 @@ namespace dxvk {
      * dedicated submission thread. Use this to take
      * the submission overhead off the calling thread.
      * \param [in] submitInfo Submission parameters
+     * \param [in] latencyInfo Latency tracker info
      * \param [out] status Submission feedback
      */
     void submit(
             DxvkSubmitInfo      submitInfo,
+            DxvkLatencyInfo     latencyInfo,
             DxvkSubmitStatus*   status);
     
     /**
@@ -115,10 +131,12 @@ namespace dxvk {
      * and then presents the current swap chain image
      * of the presenter. May stall the calling thread.
      * \param [in] present Present parameters
+     * \param [in] latencyInfo Latency tracker info
      * \param [out] status Submission feedback
      */
     void present(
             DxvkPresentInfo     presentInfo,
+            DxvkLatencyInfo     latencyInfo,
             DxvkSubmitStatus*   status);
     
     /**
