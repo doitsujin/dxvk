@@ -69,7 +69,8 @@ namespace dxvk {
     D3D9SwapChainEx(
             D3D9DeviceEx*          pDevice,
             D3DPRESENT_PARAMETERS* pPresentParams,
-      const D3DDISPLAYMODEEX*      pFullscreenDisplayMode);
+      const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
+            bool                   EnableLatencyTracking);
 
     ~D3D9SwapChainEx();
 
@@ -173,12 +174,17 @@ namespace dxvk {
     wsi::DxvkWindowState      m_windowState;
 
     double                    m_displayRefreshRate = 0.0;
+    double                    m_targetFrameRate = 0.0;
 
     bool                      m_warnedAboutGDIFallback = false;
 
     VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
+    bool                      m_latencyTracking = false;
+    Rc<DxvkLatencyTracker>    m_latencyTracker = nullptr;
+
     Rc<hud::HudClientApiItem> m_apiHud;
+    Rc<hud::HudLatencyItem>   m_latencyHud;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool m_unlockAdditionalFormats = false;
@@ -196,6 +202,8 @@ namespace dxvk {
             DWORD               Flags);
 
     void CreateBlitter();
+
+    void DestroyLatencyTracker();
 
     void InitRamp();
 

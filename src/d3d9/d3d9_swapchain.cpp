@@ -23,10 +23,12 @@ namespace dxvk {
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
-    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode)
+    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
+          bool                   EnableLatencyTracking)
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
+    , m_latencyTracking  (EnableLatencyTracking)
     , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
@@ -186,7 +188,7 @@ namespace dxvk {
   #define DCX_USESTYLE 0x00010000
 
   HRESULT D3D9SwapChainEx::PresentImageGDI(HWND Window) {
-    m_parent->EndFrame();
+    m_parent->EndFrame(nullptr);
     m_parent->Flush();
 
     if (!std::exchange(m_warnedAboutGDIFallback, true))
@@ -717,6 +719,9 @@ namespace dxvk {
       if (entry->second.presenter) {
         entry->second.presenter->destroyResources();
         entry->second.presenter = nullptr;
+
+        if (m_presentParams.hDeviceWindow == hWindow)
+          DestroyLatencyTracker();
       }
 
       if (m_wctx == &entry->second)
@@ -802,10 +807,15 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
-    m_parent->EndFrame();
+    m_parent->EndFrame(m_latencyTracker);
     m_parent->Flush();
 
+    if (m_latencyTracker)
+      m_latencyTracker->notifyCpuPresentBegin(m_wctx->frameId + 1u);
+
     // Retrieve the image and image view to present
+    VkResult status = VK_SUCCESS;
+
     Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
@@ -814,10 +824,12 @@ namespace dxvk {
       PresenterSync sync = { };
       Rc<DxvkImage> backBuffer;
 
-      VkResult status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
+      status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
 
-      if (status < 0 || status == VK_NOT_READY)
+      if (status < 0 || status == VK_NOT_READY) {
+        status = i ? VK_SUCCESS : status;
         break;
+      }
 
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
@@ -854,7 +866,8 @@ namespace dxvk {
         cDstRect        = dstRect,
         cRepeat         = i,
         cSync           = sync,
-        cFrameId        = m_wctx->frameId
+        cFrameId        = m_wctx->frameId,
+        cLatency        = m_latencyTracker
       ] (DxvkContext* ctx) {
         // Update back buffer color space as necessary
         if (cSrcView->image()->info().colorSpace != cColorSpace) {
@@ -876,13 +889,34 @@ namespace dxvk {
 
         uint64_t frameId = cRepeat ? 0 : cFrameId;
 
-        cDevice->presentImage(cPresenter, frameId, nullptr, 0, nullptr);
+        cDevice->presentImage(cPresenter, frameId, cLatency, frameId, nullptr);
       });
 
       m_parent->FlushCsChunk();
     }
 
+    if (m_latencyTracker) {
+      if (status == VK_SUCCESS) {
+        m_latencyTracker->notifyCpuPresentEnd(m_wctx->frameId);
+        m_parent->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+      } else {
+        m_latencyTracker->discardTimings();
+      }
+    }
+
     SyncFrameLatency();
+
+    DxvkLatencyStats latencyStats = { };
+
+    if (m_latencyTracker && status == VK_SUCCESS) {
+      latencyStats = m_latencyTracker->getStatistics(m_wctx->frameId);
+      m_latencyTracker->sleepAndBeginFrame(m_wctx->frameId + 1, std::abs(m_targetFrameRate));
+
+      m_parent->BeginFrame(m_latencyTracker, m_wctx->frameId + 1u);
+    }
+
+    if (m_latencyHud)
+      m_latencyHud->accumulateStats(latencyStats);
 
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
@@ -941,6 +975,9 @@ namespace dxvk {
 
       entry->second.frameLatencySignal = new sync::Fence(entry->second.frameId);
       entry->second.presenter = CreatePresenter(m_window, entry->second.frameLatencySignal);
+
+      if (m_presentParams.hDeviceWindow == m_window && m_latencyTracking)
+        m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter);
     }
 
     m_wctx = &entry->second;
@@ -1017,6 +1054,10 @@ namespace dxvk {
 
     if (hud) {
       m_apiHud = hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+
+      if (m_latencyTracking)
+        m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+
       hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
       hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
       hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
@@ -1041,6 +1082,18 @@ namespace dxvk {
   }
 
 
+  void D3D9SwapChainEx::DestroyLatencyTracker() {
+    if (!m_latencyTracker)
+      return;
+
+    m_parent->InjectCs([
+      cTracker = std::move(m_latencyTracker)
+    ] (DxvkContext* ctx) {
+      ctx->endLatencyTracking(cTracker);
+    });
+  }
+
+
   void D3D9SwapChainEx::UpdateTargetFrameRate(uint32_t SyncInterval) {
     double frameRateOption = double(m_parent->GetOptions()->maxFrameRate);
     double frameRate = std::max(frameRateOption, 0.0);
@@ -1049,6 +1102,7 @@ namespace dxvk {
       frameRate = -m_displayRefreshRate / double(SyncInterval);
 
     m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
+    m_targetFrameRate = frameRate;
   }
 
 
