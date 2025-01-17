@@ -10,6 +10,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_instance.h"
+#include "dxvk_latency.h"
 #include "dxvk_memory.h"
 #include "dxvk_meta_clear.h"
 #include "dxvk_objects.h"
@@ -477,6 +478,16 @@ namespace dxvk {
      */
     void requestCompileShader(
       const Rc<DxvkShader>&         shader);
+
+    /**
+     * \brief Creates latency tracker for a presenter
+     *
+     * The specicfic implementation and parameters used
+     * depend on user configuration.
+     * \param [in] presenter Presenter instance
+     */
+    Rc<DxvkLatencyTracker> createLatencyTracker(
+      const Rc<Presenter>&            presenter);
 
     /**
      * \brief Presents a swap chain image
