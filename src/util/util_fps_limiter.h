@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <optional>
 
 #include "thread.h"
 #include "util_time.h"
@@ -38,6 +39,12 @@ namespace dxvk {
      * shorter than the target interval.
      */
     void delay();
+
+    /**
+     * \brief Queries environment override
+     * \returns Frame rate given by environment override
+     */
+    static std::optional<double> getEnvironmentOverride();
 
   private:
 
