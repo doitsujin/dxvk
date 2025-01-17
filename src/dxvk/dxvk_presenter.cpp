@@ -228,7 +228,10 @@ namespace dxvk {
   }
 
 
-  void Presenter::signalFrame(VkResult result, uint64_t frameId) {
+  void Presenter::signalFrame(
+          VkResult                result,
+          uint64_t                frameId,
+    const Rc<DxvkLatencyTracker>& tracker) {
     if (m_signal == nullptr || !frameId)
       return;
 
@@ -236,15 +239,19 @@ namespace dxvk {
       std::lock_guard<dxvk::mutex> lock(m_frameMutex);
 
       PresenterFrame frame = { };
-      frame.result = result;
-      frame.mode = m_presentMode;
-      frame.frameId = frameId;
+      frame.frameId   = frameId;
+      frame.tracker   = tracker;
+      frame.mode      = m_presentMode;
+      frame.result    = result;
 
       m_frameQueue.push(frame);
       m_frameCond.notify_one();
     } else {
       m_fpsLimiter.delay();
       m_signal->signal(frameId);
+
+      if (tracker)
+        tracker->notifyGpuPresentEnd(frameId);
     }
 
     m_lastFrameId.store(frameId, std::memory_order_release);
@@ -1056,6 +1063,13 @@ namespace dxvk {
 
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
+      }
+
+      // Signal latency tracker right away to get more accurate
+      // measurements if the frame rate limiter is enabled.
+      if (frame.tracker) {
+        frame.tracker->notifyGpuPresentEnd(frame.frameId);
+        frame.tracker = nullptr;
       }
 
       // Apply FPS limtier here to align it as closely with scanout as we can,

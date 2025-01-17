@@ -260,7 +260,8 @@ namespace dxvk {
         // Signal the frame and then immediately destroy the reference.
         // This is necessary since the front-end may want to explicitly
         // destroy the presenter object. 
-        entry.present.presenter->signalFrame(entry.result, entry.present.frameId);
+        entry.present.presenter->signalFrame(entry.result,
+          entry.present.frameId, entry.latency.tracker);
         entry.present.presenter = nullptr;
       }
 
