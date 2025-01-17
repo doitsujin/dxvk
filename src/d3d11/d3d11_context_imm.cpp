@@ -861,11 +861,17 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::EndFrame() {
+  void D3D11ImmediateContext::EndFrame(
+          Rc<DxvkLatencyTracker>      LatencyTracker) {
     D3D10DeviceLock lock = LockContext();
 
-    EmitCs<false>([] (DxvkContext* ctx) {
+    EmitCs<false>([
+      cTracker = std::move(LatencyTracker)
+    ] (DxvkContext* ctx) {
       ctx->endFrame();
+
+      if (cTracker && cTracker->needsAutoMarkers())
+        ctx->endLatencyTracking(cTracker);
     });
   }
 

@@ -169,7 +169,8 @@ namespace dxvk {
 
     void SynchronizeDevice();
 
-    void EndFrame();
+    void EndFrame(
+            Rc<DxvkLatencyTracker>      LatencyTracker);
     
     bool WaitForResource(
       const DxvkPagedResource&          Resource,
