@@ -2,6 +2,8 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
+#include "../dxvk/dxvk_latency_builtin.h"
+
 #include "../util/util_win32_compat.h"
 
 namespace dxvk {
@@ -80,6 +82,7 @@ namespace dxvk {
     m_presenter->destroyResources();
     
     DestroyFrameLatencyEvent();
+    DestroyLatencyTracker();
   }
 
 
@@ -279,6 +282,18 @@ namespace dxvk {
     // applications using the semaphore may deadlock. This works because
     // we do not increment the frame ID in those situations.
     SyncFrameLatency();
+
+    // Ignore latency stuff if presentation failed
+    DxvkLatencyStats latencyStats = { };
+
+    if (hr == S_OK && m_latency) {
+      latencyStats = m_latency->getStatistics(m_frameId);
+      m_latency->sleepAndBeginFrame(m_frameId + 1, std::abs(m_targetFrameRate));
+    }
+
+    if (m_latencyHud)
+      m_latencyHud->accumulateStats(latencyStats);
+
     return hr;
   }
 
@@ -364,16 +379,22 @@ namespace dxvk {
     auto immediateContext = m_parent->GetContext();
     auto immediateContextLock = immediateContext->LockContext();
 
-    immediateContext->EndFrame();
+    immediateContext->EndFrame(m_latency);
     immediateContext->Flush();
 
     m_presenter->setSyncInterval(SyncInterval);
 
     // Presentation semaphores and WSI swap chain image
+    if (m_latency)
+      m_latency->notifyCpuPresentBegin(m_frameId + 1u);
+
     PresenterSync sync;
     Rc<DxvkImage> backBuffer;
 
     VkResult status = m_presenter->acquireNextImage(sync, backBuffer);
+
+    if (status != VK_SUCCESS && m_latency)
+      m_latency->discardTimings();
 
     if (status < 0)
       return E_FAIL;
@@ -402,6 +423,7 @@ namespace dxvk {
       cSwapImage      = GetBackBufferView(),
       cSync           = sync,
       cPresenter      = m_presenter,
+      cLatency        = m_latency,
       cColorSpace     = m_colorSpace,
       cFrameId        = m_frameId
     ] (DxvkContext* ctx) {
@@ -425,13 +447,25 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr);
 
-      cDevice->presentImage(cPresenter, nullptr, cFrameId, nullptr);
+      cDevice->presentImage(cPresenter, cLatency, cFrameId, nullptr);
     });
 
     if (m_backBuffers.size() > 1u)
       RotateBackBuffers(immediateContext);
 
     immediateContext->FlushCsChunk();
+
+    if (m_latency) {
+      m_latency->notifyCpuPresentEnd(m_frameId);
+
+      immediateContext->EmitCs([
+        cLatency = m_latency,
+        cFrameId = m_frameId
+      ] (DxvkContext* ctx) {
+        ctx->beginLatencyTracking(cLatency, cFrameId + 1u);
+      });
+    }
+
     return S_OK;
   }
 
@@ -479,6 +513,8 @@ namespace dxvk {
     m_presenter->setSurfaceFormat(GetSurfaceFormat(m_desc.Format));
     m_presenter->setSurfaceExtent({ m_desc.Width, m_desc.Height });
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
+
+    m_latency = m_device->createLatencyTracker(m_presenter);
   }
 
 
@@ -555,8 +591,12 @@ namespace dxvk {
   void D3D11SwapChain::CreateBlitter() {
     Rc<hud::Hud> hud = hud::Hud::createHud(m_device);
 
-    if (hud)
+    if (hud) {
       hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+
+      if (m_latency)
+        m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+    }
 
     m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));
   }
@@ -564,6 +604,17 @@ namespace dxvk {
 
   void D3D11SwapChain::DestroyFrameLatencyEvent() {
     CloseHandle(m_frameLatencyEvent);
+  }
+
+
+  void D3D11SwapChain::DestroyLatencyTracker() {
+    // Need to make sure the context stops using
+    // the tracker for submissions
+    m_parent->GetContext()->InjectCs([
+      cLatency = m_latency
+    ] (DxvkContext* ctx) {
+      ctx->endLatencyTracking(cLatency);
+    });
   }
 
 
