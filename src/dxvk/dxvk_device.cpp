@@ -1,5 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
+#include "dxvk_latency_builtin.h"
 
 namespace dxvk {
   
@@ -302,6 +303,16 @@ namespace dxvk {
   void DxvkDevice::requestCompileShader(
     const Rc<DxvkShader>&           shader) {
     m_objects.pipelineManager().requestCompileShader(shader);
+  }
+
+
+  Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
+    const Rc<Presenter>&            presenter) {
+    if (m_options.latencySleep != Tristate::True)
+      return nullptr;
+
+    return new DxvkBuiltInLatencyTracker(
+      m_options.latencyTolerance);
   }
 
 
