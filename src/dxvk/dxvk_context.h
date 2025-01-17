@@ -4,6 +4,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_latency.h"
 #include "dxvk_objects.h"
 #include "dxvk_queue.h"
 #include "dxvk_util.h"
@@ -67,6 +68,30 @@ namespace dxvk {
      * final call to \ref endRecording.
      */
     void endFrame();
+
+    /**
+     * \brief Begins latency tracking
+     *
+     * Notifies the beginning of a frame on the CS timeline
+     * an ensures that subsequent submissions are associated
+     * with the correct frame ID. Only one tracker can be
+     * active at any given time.
+     * \param [in] tracker Latency tracker object
+     * \param [in] frameId Current frame ID
+     */
+    void beginLatencyTracking(
+      const Rc<DxvkLatencyTracker>&     tracker,
+            uint64_t                    frameId);
+
+    /**
+     * \brief Ends latency tracking
+     *
+     * Notifies the end of the frame. Ignored if the
+     * tracker is not currently active.
+     * \param [in] tracker Latency tracker object
+     */
+    void endLatencyTracking(
+      const Rc<DxvkLatencyTracker>&     tracker);
 
     /**
      * \brief Flushes command buffer
@@ -1420,6 +1445,10 @@ namespace dxvk {
 
     std::vector<util::DxvkDebugLabel> m_debugLabelStack;
     bool                              m_debugLabelInternalActive = false;
+
+    Rc<DxvkLatencyTracker>  m_latencyTracker;
+    uint64_t                m_latencyFrameId = 0u;
+    bool                    m_endLatencyTracking = false;
 
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
