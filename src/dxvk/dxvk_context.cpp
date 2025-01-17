@@ -110,9 +110,45 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::beginLatencyTracking(
+    const Rc<DxvkLatencyTracker>&     tracker,
+          uint64_t                    frameId) {
+    if (tracker && !m_latencyTracker) {
+      tracker->notifyCsRenderBegin(frameId);
+
+      m_latencyTracker = tracker;
+      m_latencyFrameId = frameId;
+
+      m_endLatencyTracking = false;
+    }
+  }
+
+
+  void DxvkContext::endLatencyTracking(
+    const Rc<DxvkLatencyTracker>&     tracker) {
+    if (tracker && tracker == m_latencyTracker)
+      m_endLatencyTracking = true;
+  }
+
+
   void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
+    // Need to call this before submitting so that the last GPU
+    // submission does not happen before the render end signal.
+    if (m_endLatencyTracking && m_latencyTracker)
+      m_latencyTracker->notifyCsRenderEnd(m_latencyFrameId);
+
     m_device->submitCommandList(this->endRecording(),
-      nullptr, 0, status);
+      m_latencyTracker, m_latencyFrameId, status);
+
+    // Ensure that subsequent submissions do not see the tracker.
+    // It is important to hide certain internal submissions in
+    // case the application is CPU-bound.
+    if (m_endLatencyTracking) {
+      m_latencyTracker = nullptr;
+      m_latencyFrameId = 0u;
+
+      m_endLatencyTracking = false;
+    }
 
     this->beginRecording(
       m_device->createCommandList());
