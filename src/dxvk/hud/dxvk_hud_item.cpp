@@ -1596,4 +1596,84 @@ namespace dxvk::hud {
          / (uint32_t(m_tasksTotal - m_offset));
   }
 
+
+
+  HudLatencyItem::HudLatencyItem() {
+
+  }
+
+
+  HudLatencyItem::~HudLatencyItem() {
+
+  }
+
+
+  void HudLatencyItem::accumulateStats(const DxvkLatencyStats& stats) {
+    std::lock_guard lock(m_mutex);
+
+    if (stats.frameLatency.count()) {
+      m_accumStats.frameLatency += stats.frameLatency;
+      m_accumStats.sleepDuration += stats.sleepDuration;
+
+      m_accumFrames += 1u;
+    } else {
+      m_accumStats = { };
+      m_accumFrames = 0u;
+    }
+  }
+
+
+  void HudLatencyItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      std::lock_guard lock(m_mutex);
+
+      if (m_accumFrames) {
+        uint32_t latency = (m_accumStats.frameLatency / m_accumFrames).count() / 100u;
+        uint32_t sleep = (m_accumStats.sleepDuration / m_accumFrames).count() / 100u;
+
+        m_latencyString = str::format(latency / 10, ".", latency % 10, " ms");
+        m_sleepString = str::format(sleep / 10, ".", sleep % 10, " ms");
+
+        m_accumStats = { };
+        m_accumFrames = 0u;
+
+        m_invalidUpdates = 0u;
+      } else {
+        m_latencyString = "--";
+        m_sleepString = "--";
+
+        if (m_invalidUpdates < MaxInvalidUpdates)
+          m_invalidUpdates += 1u;
+      }
+
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudLatencyItem::render(
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    if (m_invalidUpdates >= MaxInvalidUpdates)
+      return position;
+
+    position.y += 16;
+
+    renderer.drawText(16, position, 0xffff60a0u, "Latency: ");
+    renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_latencyString);
+
+    position.y += 20;
+
+    renderer.drawText(16, position, 0xffff60a0u, "Sleep: ");
+    renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_sleepString);
+
+    position.y += 8;
+    return position;
+  }
+
 }
