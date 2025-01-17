@@ -13,15 +13,11 @@ using namespace std::chrono_literals;
 namespace dxvk {
   
   FpsLimiter::FpsLimiter() {
-    std::string env = env::getEnvVar("DXVK_FRAME_RATE");
+    auto override = getEnvironmentOverride();
 
-    if (!env.empty()) {
-      try {
-        setTargetFrameRate(std::stod(env), 0);
-        m_envOverride = true;
-      } catch (const std::invalid_argument&) {
-        // no-op
-      }
+    if (override) {
+      setTargetFrameRate(*override, 0);
+      m_envOverride = true;
     }
   }
 
@@ -126,6 +122,21 @@ namespace dxvk {
 
     m_heuristicFrameCount += 1;
     return false;
+  }
+
+
+  std::optional<double> FpsLimiter::getEnvironmentOverride() {
+    std::string env = env::getEnvVar("DXVK_FRAME_RATE");
+
+    if (!env.empty()) {
+      try {
+        return std::stod(env);
+      } catch (const std::invalid_argument&) {
+        // no op
+      }
+    }
+
+    return std::nullopt;
   }
 
 }
