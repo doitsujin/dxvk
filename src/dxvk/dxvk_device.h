@@ -496,11 +496,13 @@ namespace dxvk {
      * the submission thread. The status of this operation
      * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
-     * \param [in] frameId Optional frame ID
+     * \param [in] tracker Latency tracker
+     * \param [in] frameId Frame ID
      * \param [out] status Present status
      */
     void presentImage(
       const Rc<Presenter>&            presenter,
+      const Rc<DxvkLatencyTracker>&   tracker,
             uint64_t                  frameId,
             DxvkSubmitStatus*         status);
     
@@ -510,10 +512,14 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
+     * \param [in] tracker Latency tracker
+     * \param [in] frameId Frame ID
      * \param [out] status Submission feedback
      */
     void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
+      const Rc<DxvkLatencyTracker>&   tracker,
+            uint64_t                  frameId,
             DxvkSubmitStatus*         status);
 
     /**
