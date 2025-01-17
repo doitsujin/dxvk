@@ -42,7 +42,10 @@ namespace dxvk {
   }
   
   
-  void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo, DxvkSubmitStatus* status) {
+  void DxvkSubmissionQueue::submit(
+          DxvkSubmitInfo            submitInfo,
+          DxvkLatencyInfo           latencyInfo,
+          DxvkSubmitStatus*         status) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {
@@ -52,18 +55,23 @@ namespace dxvk {
     DxvkSubmitEntry entry = { };
     entry.status = status;
     entry.submit = std::move(submitInfo);
+    entry.latency = std::move(latencyInfo);
 
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
   }
 
 
-  void DxvkSubmissionQueue::present(DxvkPresentInfo presentInfo, DxvkSubmitStatus* status) {
+  void DxvkSubmissionQueue::present(
+          DxvkPresentInfo           presentInfo,
+          DxvkLatencyInfo           latencyInfo,
+          DxvkSubmitStatus*         status) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     DxvkSubmitEntry entry = { };
     entry.status  = status;
     entry.present = std::move(presentInfo);
+    entry.latency = std::move(latencyInfo);
 
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
@@ -142,10 +150,21 @@ namespace dxvk {
           m_callback(true);
 
         if (entry.submit.cmdList != nullptr) {
+          if (entry.latency.tracker)
+            entry.latency.tracker->notifyQueueSubmit(entry.latency.trackedId);
+
           entry.result = entry.submit.cmdList->submit(m_semaphores, m_timelines);
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
+          if (entry.latency.tracker)
+            entry.latency.tracker->notifyQueuePresentBegin(entry.latency.trackedId);
+
           entry.result = entry.present.presenter->presentImage(entry.present.frameId);
+
+          if (entry.latency.tracker) {
+            entry.latency.tracker->notifyQueuePresentEnd(
+              entry.latency.trackedId, entry.result);
+          }
         }
 
         if (m_callback)
@@ -217,12 +236,18 @@ namespace dxvk {
           std::array<VkSemaphore, 2> semaphores = { m_semaphores.graphics, m_semaphores.transfer };
           std::array<uint64_t, 2> timelines = { entry.timelines.graphics, entry.timelines.transfer };
 
+          if (entry.latency.tracker)
+            entry.latency.tracker->notifyGpuExecutionBegin(entry.latency.trackedId);
+
           VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
           waitInfo.semaphoreCount = semaphores.size();
           waitInfo.pSemaphores = semaphores.data();
           waitInfo.pValues = timelines.data();
 
           status = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
+
+          if (entry.latency.tracker && status == VK_SUCCESS)
+            entry.latency.tracker->notifyGpuExecutionEnd(entry.latency.trackedId);
         }
 
         if (status != VK_SUCCESS) {

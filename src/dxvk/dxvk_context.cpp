@@ -111,9 +111,9 @@ namespace dxvk {
 
 
   void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
-    m_device->submitCommandList(
-      this->endRecording(), status);
-    
+    m_device->submitCommandList(this->endRecording(),
+      nullptr, 0, status);
+
     this->beginRecording(
       m_device->createCommandList());
   }

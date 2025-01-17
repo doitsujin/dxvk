@@ -319,11 +319,18 @@ namespace dxvk {
   void DxvkDevice::presentImage(
     const Rc<Presenter>&            presenter,
           uint64_t                  frameId,
+    const Rc<DxvkLatencyTracker>&   tracker,
+          uint64_t                  trackedId,
           DxvkSubmitStatus*         status) {
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
     presentInfo.frameId = frameId;
-    m_submissionQueue.present(presentInfo, status);
+
+    DxvkLatencyInfo latencyInfo;
+    latencyInfo.tracker = tracker;
+    latencyInfo.trackedId = trackedId;
+
+    m_submissionQueue.present(presentInfo, latencyInfo, status);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
@@ -332,10 +339,17 @@ namespace dxvk {
 
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
+    const Rc<DxvkLatencyTracker>&   tracker,
+          uint64_t                  trackedId,
           DxvkSubmitStatus*         status) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
-    m_submissionQueue.submit(submitInfo, status);
+
+    DxvkLatencyInfo latencyInfo;
+    latencyInfo.tracker = tracker;
+    latencyInfo.trackedId = trackedId;
+
+    m_submissionQueue.submit(submitInfo, latencyInfo, status);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());

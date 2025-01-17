@@ -876,7 +876,7 @@ namespace dxvk {
 
         uint64_t frameId = cRepeat ? 0 : cFrameId;
 
-        cDevice->presentImage(cPresenter, frameId, nullptr);
+        cDevice->presentImage(cPresenter, frameId, nullptr, 0, nullptr);
       });
 
       m_parent->FlushCsChunk();

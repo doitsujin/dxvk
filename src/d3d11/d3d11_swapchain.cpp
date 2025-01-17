@@ -425,7 +425,7 @@ namespace dxvk {
       ctx->synchronizeWsi(cSync);
       ctx->flushCommandList(nullptr);
 
-      cDevice->presentImage(cPresenter, cFrameId, nullptr);
+      cDevice->presentImage(cPresenter, cFrameId, nullptr, 0, nullptr);
     });
 
     if (m_backBuffers.size() > 1u)
