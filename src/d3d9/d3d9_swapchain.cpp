@@ -171,6 +171,7 @@ namespace dxvk {
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
+      UpdateDisplayRefreshRate();
       UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
@@ -980,7 +981,11 @@ namespace dxvk {
         m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter);
     }
 
-    m_wctx = &entry->second;
+    if (m_wctx != &entry->second) {
+      m_wctx = &entry->second;
+      m_displayRefreshRateDirty = true;
+    }
+
     return true;
   }
 
@@ -1168,9 +1173,35 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::NotifyDisplayRefreshRate(
-          double                  RefreshRate) {
-    m_displayRefreshRate = RefreshRate;
+  void D3D9SwapChainEx::UpdateDisplayRefreshRate() {
+    if (!m_displayRefreshRateDirty)
+      return;
+
+    m_displayRefreshRateDirty = false;
+
+    if (!m_monitor && m_window != m_presentParams.hDeviceWindow) {
+      m_displayRefreshRate = 0.0;
+      return;
+    }
+
+    HMONITOR monitor = m_monitor;
+
+    if (!monitor)
+      monitor = wsi::getWindowMonitor(m_window);
+
+    if (!monitor) {
+      m_displayRefreshRate = 0.0;
+      return;
+    }
+
+    wsi::WsiMode wsiMode = { };
+
+    if (wsi::getCurrentDisplayMode(monitor, &wsiMode)) {
+      m_displayRefreshRate = double(wsiMode.refreshRate.numerator)
+                           / double(wsiMode.refreshRate.denominator);
+    } else {
+      m_displayRefreshRate = 0.0;
+    }
   }
 
 
@@ -1250,11 +1281,7 @@ namespace dxvk {
     if (!wsi::setWindowMode(monitor, m_window, &m_windowState, wsiMode))
       return D3DERR_NOTAVAILABLE;
     
-    if (wsi::getCurrentDisplayMode(monitor, &wsiMode))
-      NotifyDisplayRefreshRate(double(wsiMode.refreshRate.numerator) / double(wsiMode.refreshRate.denominator));
-    else
-      NotifyDisplayRefreshRate(0.0);
-
+    m_displayRefreshRateDirty = true;
     return D3D_OK;
   }
   
@@ -1266,7 +1293,7 @@ namespace dxvk {
     if (!wsi::restoreDisplayMode())
       return D3DERR_NOTAVAILABLE;
 
-    NotifyDisplayRefreshRate(0.0);
+    m_displayRefreshRateDirty = true;
     return D3D_OK;
   }
 
