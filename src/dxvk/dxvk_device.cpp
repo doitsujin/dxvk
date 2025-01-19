@@ -1,6 +1,7 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
 #include "dxvk_latency_builtin.h"
+#include "dxvk_latency_builtin_nv.h"
 
 namespace dxvk {
   
@@ -310,6 +311,9 @@ namespace dxvk {
     const Rc<Presenter>&            presenter) {
     if (m_options.latencySleep != Tristate::True)
       return nullptr;
+
+    if (m_features.nvLowLatency2)
+      return new DxvkBuiltInLatencyTrackerNv(presenter);
 
     return new DxvkBuiltInLatencyTracker(
       m_options.latencyTolerance);
