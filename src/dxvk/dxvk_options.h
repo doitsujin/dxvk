@@ -43,6 +43,9 @@ namespace dxvk {
     /// Latency tolerance, in microseconds
     int32_t latencyTolerance = 0u;
 
+    /// Disable VK_NV_low_latency2
+    bool disableNvLowLatency2 = false;
+
     // Hides integrated GPUs if dedicated GPUs are
     // present. May be necessary for some games that
     // incorrectly assume monitor layouts.

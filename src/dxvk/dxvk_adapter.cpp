@@ -293,6 +293,10 @@ namespace dxvk {
       enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
     }
 
+    // Disable NV_low_latency2 if allowed via config
+    if (instance->options().disableNvLowLatency2)
+      devExtensions.nvLowLatency2.setMode(DxvkExtMode::Disabled);
+
     // If we don't have pageable device memory support, at least use
     // the legacy AMD extension to ensure we can oversubscribe VRAM
     if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
