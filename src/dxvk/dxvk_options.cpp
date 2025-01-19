@@ -14,6 +14,7 @@ namespace dxvk {
     tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::Auto);
     latencySleep          = config.getOption<Tristate>("dxvk.latencySleep",           Tristate::Auto);
     latencyTolerance      = config.getOption<int32_t> ("dxvk.latencyTolerance",       1000);
+    disableNvLowLatency2  = config.getOption<bool>    ("dxvk.disableNvLowLatency2",   false);
     hideIntegratedGraphics = config.getOption<bool>   ("dxvk.hideIntegratedGraphics", false);
     zeroMappedMemory      = config.getOption<bool>    ("dxvk.zeroMappedMemory",       false);
     allowFse              = config.getOption<bool>    ("dxvk.allowFse",               false);
