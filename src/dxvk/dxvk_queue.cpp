@@ -131,6 +131,9 @@ namespace dxvk {
 
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
+    uint64_t trackedSubmitId = 0u;
+    uint64_t trackedPresentId = 0u;
+
     while (!m_stopped.load()) {
       m_appendCond.wait(lock, [this] {
         return m_stopped.load() || !m_submitQueue.empty();
@@ -150,10 +153,15 @@ namespace dxvk {
           m_callback(true);
 
         if (entry.submit.cmdList != nullptr) {
-          if (entry.latency.tracker)
+          if (entry.latency.tracker) {
             entry.latency.tracker->notifyQueueSubmit(entry.latency.trackedId);
 
-          entry.result = entry.submit.cmdList->submit(m_semaphores, m_timelines);
+            if (!trackedSubmitId && entry.latency.trackedId > trackedPresentId)
+              trackedSubmitId = entry.latency.trackedId;
+          }
+
+          entry.result = entry.submit.cmdList->submit(
+            m_semaphores, m_timelines, trackedSubmitId);
           entry.timelines = m_timelines;
         } else if (entry.present.presenter != nullptr) {
           if (entry.latency.tracker)
@@ -165,6 +173,9 @@ namespace dxvk {
           if (entry.latency.tracker) {
             entry.latency.tracker->notifyQueuePresentEnd(
               entry.latency.trackedId, entry.result);
+
+            trackedPresentId = entry.latency.trackedId;
+            trackedSubmitId = 0u;
           }
         }
 
