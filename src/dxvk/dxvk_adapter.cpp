@@ -293,6 +293,14 @@ namespace dxvk {
       enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
     }
 
+    // Disable NV_low_latency2 on 32-bit due to buggy latency sleep
+    // behaviour, or if explicitly set via the onfig file.
+    bool disableNvLowLatency2 = env::is32BitHostPlatform();
+    applyTristate(disableNvLowLatency2, instance->options().disableNvLowLatency2);
+
+    if (disableNvLowLatency2)
+      devExtensions.nvLowLatency2.setMode(DxvkExtMode::Disabled);
+
     // If we don't have pageable device memory support, at least use
     // the legacy AMD extension to ensure we can oversubscribe VRAM
     if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
