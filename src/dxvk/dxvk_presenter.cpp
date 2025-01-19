@@ -46,6 +46,7 @@ namespace dxvk {
   Presenter::~Presenter() {
     destroySwapchain();
     destroySurface();
+    destroyLatencySemaphore();
 
     if (m_frameThread.joinable()) {
       { std::lock_guard<dxvk::mutex> lock(m_frameMutex);
@@ -139,6 +140,16 @@ namespace dxvk {
       }
     }
 
+    // Apply latency sleep mode if the swapchain supports it
+    if (m_latencySleepModeDirty && m_latencySleepMode) {
+      m_latencySleepModeDirty = false;
+
+      if (m_latencySleepSupported) {
+        m_vkd->vkSetLatencySleepModeNV(m_vkd->device(),
+          m_swapchain, &(*m_latencySleepMode));
+      }
+    }
+
     // Set dynamic present mode for the next frame if possible
     if (!m_dynamicModes.empty())
       m_presentMode = m_dynamicModes.at(m_preferredSyncInterval ? 1u : 0u); 
@@ -152,12 +163,15 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::presentImage(uint64_t frameId) {
+  VkResult Presenter::presentImage(uint64_t frameId, uint64_t trackedId) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
     presentId.swapchainCount = 1;
     presentId.pPresentIds   = &frameId;
+
+    if (m_latencySleepSupported)
+      presentId.pPresentIds = &trackedId;
 
     VkSwapchainPresentFenceInfoEXT fenceInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT };
     fenceInfo.swapchainCount = 1;
@@ -218,6 +232,9 @@ namespace dxvk {
       m_dirtySwapchain = true;
     }
 
+    if (m_latencySleepSupported)
+      m_latencyMaxTrackedId = trackedId;
+
     m_presentPending = false;
     m_surfaceCond.notify_one();
     return status;
@@ -241,6 +258,7 @@ namespace dxvk {
       frame.trackedId = trackedId;
       frame.mode      = m_presentMode;
       frame.result    = result;
+      frame.ll2Mode   = m_latencySleepSupported;
 
       m_frameQueue.push(frame);
       m_frameCond.notify_one();
@@ -300,6 +318,83 @@ namespace dxvk {
 
     destroySwapchain();
     destroySurface();
+  }
+
+
+  void Presenter::setLatencySleepModeNv(
+    const VkLatencySleepModeInfoNV& sleepMode) {
+    std::unique_lock lock(m_surfaceMutex);
+
+    if (sleepMode.sType != VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV)
+      return;
+
+    if (sleepMode.pNext)
+      Logger::warn("Presenter: Extended sleep mode info not supported");
+
+    if (m_latencySleepMode) {
+      m_latencySleepModeDirty |=
+        m_latencySleepMode->lowLatencyMode != sleepMode.lowLatencyMode ||
+        m_latencySleepMode->lowLatencyBoost != sleepMode.lowLatencyBoost ||
+        m_latencySleepMode->minimumIntervalUs != sleepMode.minimumIntervalUs;
+    } else {
+      m_dirtySwapchain = true;
+
+      m_latencySleepModeDirty = true;
+    }
+
+    m_latencySleepMode = sleepMode;
+    m_latencySleepMode->pNext = nullptr;
+  }
+
+
+  void Presenter::setLatencyMarkerNv(
+          uint64_t                trackedId,
+          VkLatencyMarkerNV       marker) {
+    std::unique_lock lock(m_surfaceMutex);
+
+    if (!m_latencySleepSupported)
+      return;
+
+    VkSetLatencyMarkerInfoNV info = { VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV };
+    info.presentID = trackedId;
+    info.marker = marker;
+
+    m_vkd->vkSetLatencyMarkerNV(m_vkd->device(), m_swapchain, &info);
+  }
+
+
+  void Presenter::latencySleepNv(
+          uint64_t                trackedId) {
+    std::unique_lock lock(m_surfaceMutex);
+
+    if (!m_latencySleepSupported)
+      return;
+
+    if (trackedId > m_latencyMaxTrackedId) {
+      Logger::warn(str::format("Presenter: Tracked frame ID ", trackedId,
+        " greater than last presented ID ", m_latencyMaxTrackedId, ", skipping sleep"));
+      return;
+    }
+
+    if (!m_latencySemaphore) {
+      if (createLatencySemaphore() != VK_SUCCESS)
+        return;
+    }
+
+    VkLatencySleepInfoNV info = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV };
+    info.signalSemaphore = m_latencySemaphore;
+    info.value = trackedId;
+
+    m_vkd->vkLatencySleepNV(m_vkd->device(), m_swapchain, &info);
+
+    lock.unlock();
+
+    VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
+    waitInfo.semaphoreCount = 1;
+    waitInfo.pSemaphores = &m_latencySemaphore;
+    waitInfo.pValues = &trackedId;
+
+    m_vkd->vkWaitSemaphores(m_vkd->device(), &waitInfo, ~0ull);
   }
 
 
@@ -539,6 +634,9 @@ namespace dxvk {
     modeInfo.presentModeCount       = compatibleModes.size();
     modeInfo.pPresentModes          = compatibleModes.data();
 
+    VkSwapchainLatencyCreateInfoNV latencyInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV };
+    latencyInfo.latencyModeEnable   = m_latencySleepMode.has_value();
+
     VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
     swapInfo.minImageCount          = pickImageCount(minImageCount, maxImageCount);
@@ -559,6 +657,9 @@ namespace dxvk {
 
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
       modeInfo.pNext = std::exchange(swapInfo.pNext, &modeInfo);
+
+    if (m_device->features().nvLowLatency2)
+      latencyInfo.pNext = std::exchange(swapInfo.pNext, &latencyInfo);
 
     Logger::info(str::format(
       "Presenter: Actual swapchain properties:"
@@ -637,7 +738,7 @@ namespace dxvk {
     }
     
     // Invalidate indices
-    m_hdrMetadataDirty = true;
+    m_latencySleepSupported = m_device->features().nvLowLatency2 && latencyInfo.latencyModeEnable;
 
     m_imageIndex = 0;
     m_frameIndex = 0;
@@ -982,6 +1083,20 @@ namespace dxvk {
   }
 
 
+  VkResult Presenter::createLatencySemaphore() {
+    VkSemaphoreTypeCreateInfo typeInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+    typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+    VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
+    VkResult vr = m_vkd->vkCreateSemaphore(m_vkd->device(), &info, nullptr, &m_latencySemaphore);
+
+    if (vr != VK_SUCCESS)
+      Logger::err(str::format("Presenter: Failed to create latency semaphore: ", vr));
+
+    return vr;
+  }
+
+
   void Presenter::destroySwapchain() {
     if (m_signal != nullptr)
       m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
@@ -1005,6 +1120,11 @@ namespace dxvk {
     m_acquireStatus = VK_NOT_READY;
 
     m_presentPending = false;
+
+    m_hdrMetadataDirty = true;
+
+    m_latencySleepModeDirty = true;
+    m_latencySleepSupported = false;
   }
 
 
@@ -1012,6 +1132,13 @@ namespace dxvk {
     m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
 
     m_surface = VK_NULL_HANDLE;
+  }
+
+
+  void Presenter::destroyLatencySemaphore() {
+    m_vkd->vkDestroySemaphore(m_vkd->device(), m_latencySemaphore, nullptr);
+
+    m_latencySemaphore = VK_NULL_HANDLE;
   }
 
 
@@ -1056,8 +1183,10 @@ namespace dxvk {
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
       if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)) {
+        uint64_t frameId = frame.ll2Mode ? frame.trackedId : frame.frameId;
+
         VkResult vr = m_vkd->vkWaitForPresentKHR(m_vkd->device(),
-          m_swapchain, frame.frameId, std::numeric_limits<uint64_t>::max());
+          m_swapchain, frameId, std::numeric_limits<uint64_t>::max());
 
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
