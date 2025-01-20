@@ -1036,6 +1036,15 @@ namespace dxvk {
     { R"(\\MaxPayne3\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
+    /* Star Wars Empire at War & expansion         *
+     * On Intel the Water & Shader Detail option   *
+     * can't be modified. In base game the AA      *
+     * option dissapears at 2075MB vram and above  */
+    { R"(\\(StarWarsG|sweaw|swfoc)\.exe$)", {{
+      { "d3d9.customVendorId",              "1002" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
