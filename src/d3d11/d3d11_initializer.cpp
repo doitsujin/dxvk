@@ -371,7 +371,7 @@ namespace dxvk {
 
 
   void D3D11Initializer::FlushCsChunkLocked() {
-    m_parent->GetContext()->InjectCsChunk(std::move(m_csChunk), false);
+    m_parent->GetContext()->InjectCsChunk(DxvkCsQueue::HighPriority, std::move(m_csChunk), false);
     m_csChunk = m_parent->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
   }
 
