@@ -9,6 +9,7 @@
 #include "../dxgi/dxgi_interfaces.h"
 
 #include "../dxvk/dxvk_cs.h"
+#include "../dxvk/dxvk_latency_reflex.h"
 
 #include "../d3d10/d3d10_device.h"
 
@@ -788,11 +789,26 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetLatencyInfo(
             D3D_LOW_LATENCY_RESULTS*      pLowLatencyResults);
 
+    void RegisterLatencyTracker(
+            Rc<DxvkLatencyTracker>          Tracker);
+
+    void UnregisterLatencyTracker(
+            Rc<DxvkLatencyTracker>          Tracker);
+
   private:
 
     D3D11DXGIDevice*  m_container;
     D3D11Device*      m_device;
 
+    bool              m_reflexEnabled = false;
+
+    dxvk::mutex       m_mutex;
+
+    bool              m_enableLowLatency  = false;
+    bool              m_enableBoost       = false;
+    uint64_t          m_minIntervalUs     = 0u;
+
+    Rc<DxvkReflexLatencyTrackerNv>  m_tracker;
   };
 
 
