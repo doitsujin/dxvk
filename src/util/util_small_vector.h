@@ -19,6 +19,10 @@ namespace dxvk {
 
     small_vector() { }
 
+    small_vector(size_t size) {
+      resize(size);
+    }
+
     small_vector(const small_vector& other) {
       reserve(other.m_size);
       for (size_t i = 0; i < other.m_size; i++) {
