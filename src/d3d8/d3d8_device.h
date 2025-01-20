@@ -426,6 +426,9 @@ namespace dxvk {
 
     D3DPRESENT_PARAMETERS m_presentParams;
 
+    // Controls fixed-function exclusive mode (no PS support)
+    bool                  m_isFixedFunctionOnly = false;
+
     D3D8StateBlock*                            m_recorder = nullptr;
     DWORD                                      m_recorderToken = 0;
     DWORD                                      m_token    = 0;

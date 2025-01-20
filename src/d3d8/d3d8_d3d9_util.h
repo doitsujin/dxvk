@@ -19,7 +19,10 @@ namespace dxvk {
 
     // Max supported shader model is PS 1.4 and VS 1.1
     pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 1);
-    pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
+    // Late fixed-function capable hardware will advertise VS 1.1
+    // support, but will not advertise any support for PS
+    if (likely(caps9.PixelShaderVersion != D3DPS_VERSION(0, 0)))
+      pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
 
     // This was removed by D3D9. We can probably render windowed.
     pCaps8->Caps2       |= D3DCAPS2_CANRENDERWINDOWED;

@@ -26,8 +26,8 @@ extern "C" {
     if (unlikely(pPixelShader == nullptr)) {
       errorMessage = "D3D8: ValidatePixelShader: Null pPixelShader";
     } else {
-      uint32_t majorVersion = (pPixelShader[0] >> 8) & 0xff;
-      uint32_t minorVersion = pPixelShader[0] & 0xff;
+      const uint32_t majorVersion = (pPixelShader[0] >> 8) & 0xff;
+      const uint32_t minorVersion = pPixelShader[0] & 0xff;
 
       if (unlikely(majorVersion != 1 || minorVersion > 4)) {
         errorMessage = dxvk::str::format("D3D8: ValidatePixelShader: Unsupported PS version ",
@@ -69,8 +69,8 @@ extern "C" {
     if (unlikely(pVertexShader == nullptr)) {
       errorMessage = "D3D8: ValidateVertexShader: Null pVertexShader";
     } else {
-      uint32_t majorVersion = (pVertexShader[0] >> 8) & 0xff;
-      uint32_t minorVersion = pVertexShader[0] & 0xff;
+      const uint32_t majorVersion = (pVertexShader[0] >> 8) & 0xff;
+      const uint32_t minorVersion = pVertexShader[0] & 0xff;
 
       if (unlikely(majorVersion != 1 || minorVersion > 1)) {
         errorMessage = dxvk::str::format("D3D8: ValidateVertexShader: Unsupported VS version ",

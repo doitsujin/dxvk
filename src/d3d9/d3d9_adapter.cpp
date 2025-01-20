@@ -573,17 +573,22 @@ namespace dxvk {
     // Max Stream Stride
     pCaps->MaxStreamStride           = 508; // bytes
 
-    const uint32_t majorVersion = options.shaderModel;
-    const uint32_t minorVersion = options.shaderModel != 1 ? 0 : 4;
+    // Late fixed-function capable cards, such as the GeForce 4 MX series,
+    // expose support for VS 1.1, while not advertising any PS support
+    const uint32_t majorVersionVS = options.shaderModel == 0 ? 1 : options.shaderModel;
+    const uint32_t majorVersionPS = options.shaderModel;
+    // Max supported SM1 is VS 1.1 and PS 1.4
+    const uint32_t minorVersionVS = majorVersionVS != 1 ? 0 : 1;
+    const uint32_t minorVersionPS = majorVersionPS != 1 ? 0 : 4;
 
     // Shader Versions
-    pCaps->VertexShaderVersion = D3DVS_VERSION(majorVersion, minorVersion);
-    pCaps->PixelShaderVersion  = D3DPS_VERSION(majorVersion, minorVersion);
+    pCaps->VertexShaderVersion = D3DVS_VERSION(majorVersionVS, minorVersionVS);
+    pCaps->PixelShaderVersion  = D3DPS_VERSION(majorVersionPS, minorVersionPS);
 
     // Max Vertex Shader Const
     pCaps->MaxVertexShaderConst       = MaxFloatConstantsVS;
     // Max PS1 Value
-    pCaps->PixelShader1xMaxValue      = FLT_MAX;
+    pCaps->PixelShader1xMaxValue      = options.shaderModel > 0 ? FLT_MAX : 0.0f;
     // Dev Caps 2
     pCaps->DevCaps2                   = D3DDEVCAPS2_STREAMOFFSET
                                    /* | D3DDEVCAPS2_DMAPNPATCH */
@@ -646,8 +651,8 @@ namespace dxvk {
     pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? 512 : 256;
 
     pCaps->VertexTextureFilterCaps           = 50332416;
-    pCaps->MaxVShaderInstructionsExecuted    = 4294967295;
-    pCaps->MaxPShaderInstructionsExecuted    = 4294967295;
+    pCaps->MaxVShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
+    pCaps->MaxPShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
 
     pCaps->MaxVertexShader30InstructionSlots = options.shaderModel == 3 ? 32768 : 0;
     pCaps->MaxPixelShader30InstructionSlots  = options.shaderModel == 3 ? 32768 : 0;

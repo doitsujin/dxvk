@@ -12,7 +12,7 @@ namespace dxvk {
 
     // Get the bridge interface to D3D9.
     if (FAILED(m_d3d9->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
-      throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
+      throw DxvkError("D3D8Interface: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
     m_bridge->SetD3D8CompatibilityMode(true);
