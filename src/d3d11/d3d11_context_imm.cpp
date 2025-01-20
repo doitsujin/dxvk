@@ -924,7 +924,7 @@ namespace dxvk {
           bool                        Synchronize) {
     // Do not update the sequence number when emitting a chunk
     // from an external source since that would break tracking
-    m_csThread.injectChunk(std::move(Chunk), Synchronize);
+    m_csThread.injectChunk(DxvkCsQueue::HighPriority, std::move(Chunk), Synchronize);
   }
 
 
