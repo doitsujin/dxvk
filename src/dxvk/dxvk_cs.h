@@ -378,6 +378,36 @@ namespace dxvk {
 
 
   /**
+   * \brief Queue type
+   */
+  enum class DxvkCsQueue : uint32_t {
+    Ordered       = 0,  /// Normal queue with ordering guarantees
+    HighPriority  = 1,  /// High-priority queue
+  };
+
+
+  /**
+   * \brief Queued chunk entry
+   */
+  struct DxvkCsQueuedChunk {
+    DxvkCsChunkRef  chunk;
+    uint64_t        seq;
+  };
+
+
+  /**
+   * \brief Chunk queue
+   *
+   * Stores queued chunks as well as the sequence
+   * counters for synchronization.
+   */
+  struct DxvkCsChunkQueue {
+    std::vector<DxvkCsQueuedChunk> queue;
+    uint64_t                       seqDispatch = 0u;
+  };
+
+
+  /**
    * \brief Command stream thread
    * 
    * Spawns a thread that will execute
@@ -412,10 +442,14 @@ namespace dxvk {
      * commands. The context can still be safely accessed, but chunks
      * will not be executed in any particular oder. These chunks also
      * do not contribute to the main timeline.
+     * \param [in] queue Which queue to add the chunk to
      * \param [in] chunk The chunk to dispatch
      * \param [in] synchronize Whether to wait for execution to complete
      */
-    void injectChunk(DxvkCsChunkRef&& chunk, bool synchronize);
+    void injectChunk(
+            DxvkCsQueue       queue,
+            DxvkCsChunkRef&&  chunk,
+            bool              synchronize);
 
     /**
      * \brief Synchronizes with the thread
@@ -435,29 +469,43 @@ namespace dxvk {
      * \returns Sequence number of last executed chunk
      */
     uint64_t lastSequenceNumber() const {
-      return m_chunksExecuted.load();
+      return m_seqOrdered.load(std::memory_order_acquire);
     }
 
   private:
-    
+
     Rc<DxvkDevice>              m_device;
     Rc<DxvkContext>             m_context;
 
+    alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_counterMutex;
-    std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
-    std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
 
-    std::atomic<uint64_t>       m_chunksInjectedCount     = { 0ull };
-    std::atomic<uint64_t>       m_chunksInjectedComplete  = { 0ull };
-    
-    std::atomic<bool>           m_stopped = { false };
+    std::atomic<uint64_t>       m_seqHighPrio = { 0u };
+    std::atomic<uint64_t>       m_seqOrdered  = { 0u };
+
+    std::atomic<bool>           m_stopped     = { false };
+    std::atomic<bool>           m_hasHighPrio = { false };
+
+    alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_mutex;
     dxvk::condition_variable    m_condOnAdd;
     dxvk::condition_variable    m_condOnSync;
-    std::vector<DxvkCsChunkRef> m_chunksQueued;
-    std::vector<DxvkCsChunkRef> m_chunksInjected;
+
+    DxvkCsChunkQueue            m_queueOrdered;
+    DxvkCsChunkQueue            m_queueHighPrio;
+
     dxvk::thread                m_thread;
-    
+
+    auto& getQueue(DxvkCsQueue which) {
+      return which == DxvkCsQueue::Ordered
+        ? m_queueOrdered : m_queueHighPrio;
+    }
+
+    auto& getCounter(DxvkCsQueue which) {
+      return which == DxvkCsQueue::Ordered
+        ? m_seqOrdered : m_seqHighPrio;
+    }
+
     void threadFunc();
     
   };

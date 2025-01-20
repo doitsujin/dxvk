@@ -5649,7 +5649,7 @@ namespace dxvk {
   void D3D9DeviceEx::InjectCsChunk(
           DxvkCsChunkRef&&            Chunk,
           bool                        Synchronize) {
-    m_csThread.injectChunk(std::move(Chunk), Synchronize);
+    m_csThread.injectChunk(DxvkCsQueue::HighPriority, std::move(Chunk), Synchronize);
   }
 
 
