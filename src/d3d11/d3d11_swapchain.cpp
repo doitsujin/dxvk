@@ -517,6 +517,9 @@ namespace dxvk {
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
 
     m_latency = m_device->createLatencyTracker(m_presenter);
+
+    Com<D3D11ReflexDevice> reflex = GetReflexDevice();
+    reflex->RegisterLatencyTracker(m_latency);
   }
 
 
@@ -617,6 +620,9 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->endLatencyTracking(cLatency);
     });
+
+    Com<D3D11ReflexDevice> reflex = GetReflexDevice();
+    reflex->UnregisterLatencyTracker(m_latency);
   }
 
 
@@ -675,6 +681,14 @@ namespace dxvk {
       case DXGI_FORMAT_R16G16B16A16_FLOAT:
         return { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorSpace };
     }
+  }
+
+
+  Com<D3D11ReflexDevice> D3D11SwapChain::GetReflexDevice() {
+    Com<ID3DLowLatencyDevice> llDevice;
+    m_parent->QueryInterface(__uuidof(ID3DLowLatencyDevice), reinterpret_cast<void**>(&llDevice));
+
+    return static_cast<D3D11ReflexDevice*>(llDevice.ptr());
   }
 
 

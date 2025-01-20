@@ -148,9 +148,11 @@ namespace dxvk {
     void SyncFrameLatency();
 
     uint32_t GetActualFrameLatency();
-    
+
     VkSurfaceFormatKHR GetSurfaceFormat(DXGI_FORMAT Format);
-    
+
+    Com<D3D11ReflexDevice> GetReflexDevice();
+
     std::string GetApiName() const;
 
   };
