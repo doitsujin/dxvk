@@ -312,7 +312,9 @@ namespace dxvk {
     if (m_options.latencySleep != Tristate::True)
       return nullptr;
 
-    if (m_features.nvLowLatency2)
+    // Latency sleep seems to be completely broken on 32-bit Nvidia
+    // drivers as of 565.77, let's use our built-in implementation
+    if (m_features.nvLowLatency2 && !env::is32BitHostPlatform())
       return new DxvkBuiltInLatencyTrackerNv(presenter);
 
     return new DxvkBuiltInLatencyTracker(
