@@ -173,8 +173,10 @@ namespace dxvk {
 
     wsi::DxvkWindowState      m_windowState;
 
-    double                    m_displayRefreshRate = 0.0;
     double                    m_targetFrameRate = 0.0;
+
+    double                    m_displayRefreshRate = 0.0;
+    bool                      m_displayRefreshRateDirty = true;
 
     bool                      m_warnedAboutGDIFallback = false;
 
@@ -215,8 +217,7 @@ namespace dxvk {
     
     void NormalizePresentParameters(D3DPRESENT_PARAMETERS* pPresentParams);
 
-    void NotifyDisplayRefreshRate(
-            double                  RefreshRate);
+    void UpdateWindowedRefreshRate();
 
     HRESULT EnterFullscreenMode(
             D3DPRESENT_PARAMETERS*  pPresentParams,
