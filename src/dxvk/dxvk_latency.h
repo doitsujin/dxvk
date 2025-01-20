@@ -23,6 +23,36 @@ namespace dxvk {
 
 
   /**
+   * \brief Timings for a single tracked frame
+   */
+  struct DxvkLatencyFrameData {
+    using time_point = dxvk::high_resolution_clock::time_point;
+    using duration = dxvk::high_resolution_clock::duration;
+
+    uint64_t    frameId         = 0u;
+    uint64_t    appFrameId      = 0u;
+    time_point  frameStart      = time_point();
+    time_point  frameEnd        = time_point();
+    time_point  cpuInputSample  = time_point();
+    time_point  cpuSimBegin     = time_point();
+    time_point  cpuSimEnd       = time_point();
+    time_point  cpuRenderBegin  = time_point();
+    time_point  cpuRenderEnd    = time_point();
+    time_point  cpuPresentBegin = time_point();
+    time_point  cpuPresentEnd   = time_point();
+    time_point  queueSubmit     = time_point();
+    time_point  queuePresent    = time_point();
+    time_point  gpuExecStart    = time_point();
+    time_point  gpuExecEnd      = time_point();
+    time_point  gpuIdleStart    = time_point();
+    time_point  gpuIdleEnd      = time_point();
+    duration    gpuIdleTime     = duration(0u);
+    duration    sleepDuration   = duration(0u);
+    VkResult    presentStatus   = VK_NOT_READY;
+  };
+
+
+  /**
    * \brief Latency tracker
    *
    * Accumulates time stamps of certain parts of a frame.
