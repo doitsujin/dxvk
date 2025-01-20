@@ -146,9 +146,15 @@ namespace dxvk {
     if (options->presentInterval >= 0)
       presentInterval = options->presentInterval;
 
-    m_window = m_presentParams.hDeviceWindow;
+    HWND window = m_presentParams.hDeviceWindow;
+
     if (hDestWindowOverride != nullptr)
-      m_window = hDestWindowOverride;
+      window = hDestWindowOverride;
+
+    if (m_window != window) {
+      m_window = window;
+      m_displayRefreshRateDirty = true;
+    }
 
     if (!UpdateWindowCtx())
       return D3D_OK;
@@ -171,6 +177,7 @@ namespace dxvk {
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
+      UpdateWindowedRefreshRate();
       UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
@@ -1096,8 +1103,13 @@ namespace dxvk {
     double frameRateOption = double(m_parent->GetOptions()->maxFrameRate);
     double frameRate = std::max(frameRateOption, 0.0);
 
-    if (SyncInterval && frameRateOption == 0.0)
-      frameRate = -m_displayRefreshRate / double(SyncInterval);
+    if (frameRateOption == 0.0 && SyncInterval) {
+      bool engageLimiter = SyncInterval > 1u || m_monitor ||
+        m_device->config().latencySleep == Tristate::True;
+
+      if (engageLimiter)
+        frameRate = -m_displayRefreshRate / double(SyncInterval);
+    }
 
     m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
     m_targetFrameRate = frameRate;
@@ -1166,9 +1178,29 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::NotifyDisplayRefreshRate(
-          double                  RefreshRate) {
-    m_displayRefreshRate = RefreshRate;
+  void D3D9SwapChainEx::UpdateWindowedRefreshRate() {
+    // Ignore call if we are in fullscreen mode and
+    // know the active display mode already anyway
+    if (!m_displayRefreshRateDirty || m_monitor)
+      return;
+
+    m_displayRefreshRate = 0.0;
+    m_displayRefreshRateDirty = false;
+
+    HMONITOR monitor = wsi::getWindowMonitor(m_window);
+
+    if (!monitor)
+      return;
+
+    wsi::WsiMode mode = { };
+
+    if (!wsi::getCurrentDisplayMode(monitor, &mode))
+      return;
+
+    if (mode.refreshRate.denominator) {
+      m_displayRefreshRate = double(mode.refreshRate.numerator)
+                           / double(mode.refreshRate.denominator);
+    }
   }
 
 
@@ -1247,12 +1279,15 @@ namespace dxvk {
 
     if (!wsi::setWindowMode(monitor, m_window, &m_windowState, wsiMode))
       return D3DERR_NOTAVAILABLE;
-    
-    if (wsi::getCurrentDisplayMode(monitor, &wsiMode))
-      NotifyDisplayRefreshRate(double(wsiMode.refreshRate.numerator) / double(wsiMode.refreshRate.denominator));
-    else
-      NotifyDisplayRefreshRate(0.0);
 
+    m_displayRefreshRate = 0.0;
+
+    if (wsi::getCurrentDisplayMode(monitor, &wsiMode)) {
+      m_displayRefreshRate = double(wsiMode.refreshRate.numerator)
+                           / double(wsiMode.refreshRate.denominator);
+    }
+
+    m_displayRefreshRateDirty = false;
     return D3D_OK;
   }
   
@@ -1264,7 +1299,7 @@ namespace dxvk {
     if (!wsi::restoreDisplayMode())
       return D3DERR_NOTAVAILABLE;
 
-    NotifyDisplayRefreshRate(0.0);
+    m_displayRefreshRateDirty = true;
     return D3D_OK;
   }
 
