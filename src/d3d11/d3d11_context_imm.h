@@ -98,16 +98,18 @@ namespace dxvk {
     }
 
     void InjectCsChunk(
+            DxvkCsQueue                 Queue,
             DxvkCsChunkRef&&            Chunk,
             bool                        Synchronize);
 
     template<typename Fn>
     void InjectCs(
+            DxvkCsQueue                 Queue,
             Fn&&                        Command) {
       auto chunk = AllocCsChunk();
       chunk->push(std::move(Command));
 
-      InjectCsChunk(std::move(chunk), false);
+      InjectCsChunk(Queue, std::move(chunk), false);
     }
 
   private:

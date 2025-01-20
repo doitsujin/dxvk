@@ -920,11 +920,12 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::InjectCsChunk(
+          DxvkCsQueue                 Queue,
           DxvkCsChunkRef&&            Chunk,
           bool                        Synchronize) {
     // Do not update the sequence number when emitting a chunk
     // from an external source since that would break tracking
-    m_csThread.injectChunk(DxvkCsQueue::HighPriority, std::move(Chunk), Synchronize);
+    m_csThread.injectChunk(Queue, std::move(Chunk), Synchronize);
   }
 
 

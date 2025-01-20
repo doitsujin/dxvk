@@ -576,7 +576,7 @@ namespace dxvk {
 
     // Initialize images so that we can use them. Clearing
     // to black prevents garbled output for the first frame.
-    m_parent->GetContext()->InjectCs([
+    m_parent->GetContext()->InjectCs(DxvkCsQueue::HighPriority, [
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
       for (size_t i = 0; i < cImages.size(); i++) {
@@ -612,7 +612,7 @@ namespace dxvk {
   void D3D11SwapChain::DestroyLatencyTracker() {
     // Need to make sure the context stops using
     // the tracker for submissions
-    m_parent->GetContext()->InjectCs([
+    m_parent->GetContext()->InjectCs(DxvkCsQueue::Ordered, [
       cLatency = m_latency
     ] (DxvkContext* ctx) {
       ctx->endLatencyTracking(cLatency);

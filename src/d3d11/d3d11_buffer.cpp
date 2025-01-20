@@ -214,7 +214,7 @@ namespace dxvk {
 
   void D3D11Buffer::SetDebugName(const char* pName) {
     if (m_buffer) {
-      m_parent->GetContext()->InjectCs([
+      m_parent->GetContext()->InjectCs(DxvkCsQueue::HighPriority, [
         cBuffer = m_buffer,
         cName   = std::string(pName ? pName : "")
       ] (DxvkContext* ctx) {
