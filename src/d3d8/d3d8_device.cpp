@@ -58,6 +58,12 @@ namespace dxvk {
 
     if (m_d3d8Options.batching)
       m_batcher = new D3D8Batcher(this, GetD3D9());
+
+    d3d9::D3DCAPS9 caps9;
+    HRESULT res = GetD3D9()->GetDeviceCaps(&caps9);
+
+    if (unlikely(SUCCEEDED(res) && caps9.PixelShaderVersion == D3DPS_VERSION(0, 0)))
+      m_isFixedFunctionOnly = true;
   }
 
   D3D8Device::~D3D8Device() {
@@ -1784,8 +1790,8 @@ namespace dxvk {
 
     // Validate VS version for non-FF shaders
     if (pFunction != nullptr) {
-      uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-      uint32_t minorVersion = pFunction[0] & 0xff;
+      const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+      const uint32_t minorVersion = pFunction[0] & 0xff;
 
       if (unlikely(majorVersion != 1 || minorVersion > 1)) {
         Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
@@ -2023,10 +2029,10 @@ namespace dxvk {
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-    uint32_t minorVersion = pFunction[0] & 0xff;
+    const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+    const uint32_t minorVersion = pFunction[0] & 0xff;
 
-    if (unlikely(majorVersion != 1 || minorVersion > 4)) {
+    if (unlikely(m_isFixedFunctionOnly || majorVersion != 1 || minorVersion > 4)) {
       Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
       return D3DERR_INVALIDCALL;
     }

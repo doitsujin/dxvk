@@ -3314,6 +3314,19 @@ namespace dxvk {
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
+    const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+    const uint32_t minorVersion = pFunction[0] & 0xff;
+
+    // Late fixed-function capable hardware exposed support for VS 1.1
+    const uint32_t shaderModelVS = m_d3d9Options.shaderModel == 0 ? 1 : m_d3d9Options.shaderModel;
+
+    if (unlikely(majorVersion > shaderModelVS
+             || (majorVersion == 1 && minorVersion > 1)
+             || (majorVersion > 1  && minorVersion != 0))) {
+      Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
+      return D3DERR_INVALIDCALL;
+    }
+
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
 
@@ -3677,6 +3690,16 @@ namespace dxvk {
 
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
+
+    const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
+    const uint32_t minorVersion = pFunction[0] & 0xff;
+
+    if (unlikely(majorVersion > m_d3d9Options.shaderModel
+             || (majorVersion == 1 && minorVersion > 4)
+             || (majorVersion > 1  && minorVersion != 0))) {
+      Logger::err(str::format("D3D9DeviceEx::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
+      return D3DERR_INVALIDCALL;
+    }
 
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
