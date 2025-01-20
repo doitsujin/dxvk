@@ -55,7 +55,7 @@ namespace dxvk {
    * \param [in] b Second view to check
    * \returns \c true if the views overlap
    */
-  inline bool CheckViewOverlap(const D3D11_VK_VIEW_INFO& a, const D3D11_VK_VIEW_INFO b) {
+  inline bool CheckViewOverlap(const D3D11_VK_VIEW_INFO& a, const D3D11_VK_VIEW_INFO& b) {
     if (likely(a.pResource != b.pResource))
       return false;
     
