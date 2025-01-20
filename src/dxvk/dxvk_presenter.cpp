@@ -30,16 +30,20 @@ namespace dxvk {
       ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT
       : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
 
+    // Create Vulkan surface immediately if possible, but ignore
+    // certain errors since the app window may still be in use in
+    // some way at this point, e.g. by a different device.
+    if (!desc.deferSurfaceCreation) {
+      VkResult vr = createSurface();
+
+      if (vr != VK_SUCCESS && vr != VK_ERROR_NATIVE_WINDOW_IN_USE_KHR)
+        throw DxvkError(str::format("Failed to create Vulkan surface, ", vr));
+    }
+
     // If a frame signal was provided, launch thread that synchronizes
     // with present operations and periodically signals the event
     if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
-
-    // Create Vulkan surface immediately if possible, but ignore
-    // failures since the app window may still be in use in some
-    // way at this point, e.g. by a different device.
-    if (!desc.deferSurfaceCreation)
-      createSurface();
   }
 
   
