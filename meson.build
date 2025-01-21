@@ -80,11 +80,15 @@ if platform == 'windows'
       ]
     endif
 
-    # Enable stdcall fixup on 32-bit
     if cpu_family == 'x86'
+      # Enable stdcall fixup on 32-bit
       link_args += [
         '-Wl,--enable-stdcall-fixup',
         '-Wl,--kill-at',
+      ]
+      # Fix stack alignment issues with mingw on 32-bit
+      compiler_args += [
+        '-mpreferred-stack-boundary=2'
       ]
     endif
   else
