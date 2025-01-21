@@ -10,10 +10,16 @@
 namespace dxvk {
 
   DxvkBuiltInLatencyTracker::DxvkBuiltInLatencyTracker(
-          int32_t                   toleranceUs)
-  : m_tolerance(std::chrono::duration_cast<duration>(
-      std::chrono::microseconds(std::max(toleranceUs, 0)))) {
-    Logger::info("Latency control enabled, using built-in algorithm");
+          Rc<Presenter>             presenter,
+          int32_t                   toleranceUs,
+          bool                      useNvLowLatency2)
+  : m_presenter(std::move(presenter)),
+    m_tolerance(std::chrono::duration_cast<duration>(
+      std::chrono::microseconds(std::max(toleranceUs, 0)))),
+    m_useNvLowLatency2(useNvLowLatency2) {
+    Logger::info(str::format("Latency control enabled, using ",
+      useNvLowLatency2 ? "VK_NV_low_latency2" : "built-in algorithm"));
+
     auto limit = FpsLimiter::getEnvironmentOverride();
 
     if (limit)
@@ -53,13 +59,23 @@ namespace dxvk {
 
   void DxvkBuiltInLatencyTracker::notifyCsRenderBegin(
           uint64_t                  frameId) {
-    // Not interesting here
+    std::unique_lock lock(m_mutex);
+    auto frame = findFrame(frameId);
+
+    if (frame && m_useNvLowLatency2) {
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_SIMULATION_END_NV);
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
+    }
   }
 
 
   void DxvkBuiltInLatencyTracker::notifyCsRenderEnd(
           uint64_t                  frameId) {
-    // Not interesting here
+    std::unique_lock lock(m_mutex);
+    auto frame = findFrame(frameId);
+
+    if (frame && m_useNvLowLatency2)
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
   }
 
 
@@ -75,7 +91,11 @@ namespace dxvk {
 
   void DxvkBuiltInLatencyTracker::notifyQueuePresentBegin(
           uint64_t                  frameId) {
-    // Not overly interesting
+    std::unique_lock lock(m_mutex);
+    auto frame = findFrame(frameId);
+
+    if (frame && m_useNvLowLatency2)
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_START_NV);
   }
 
 
@@ -88,6 +108,9 @@ namespace dxvk {
     if (frame) {
       frame->presentStatus = status;
       frame->queuePresent = dxvk::high_resolution_clock::now();
+
+      if (m_useNvLowLatency2)
+        m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);
     }
 
     m_cond.notify_one();
@@ -142,13 +165,20 @@ namespace dxvk {
   void DxvkBuiltInLatencyTracker::sleepAndBeginFrame(
           uint64_t                  frameId,
           double                    maxFrameRate) {
-    auto duration = sleep(frameId, maxFrameRate);
+    auto duration = m_useNvLowLatency2
+      ? sleepNv(frameId, maxFrameRate)
+      : sleepBuiltin(frameId, maxFrameRate);
 
     std::unique_lock lock(m_mutex);
 
     auto next = initFrame(frameId);
     next->frameStart = dxvk::high_resolution_clock::now();
     next->sleepDuration = duration;
+
+    if (m_useNvLowLatency2) {
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_SIMULATION_START_NV);
+      m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_INPUT_SAMPLE_NV);
+    }
   }
 
 
@@ -178,7 +208,48 @@ namespace dxvk {
   }
 
 
-  DxvkBuiltInLatencyTracker::duration DxvkBuiltInLatencyTracker::sleep(
+  DxvkBuiltInLatencyTracker::duration DxvkBuiltInLatencyTracker::sleepNv(
+          uint64_t                  frameId,
+          double                    maxFrameRate) {
+    bool presentSuccessful = false;
+
+    { std::unique_lock lock(m_mutex);
+
+      // Set up low latency mode for subsequent frames
+      VkLatencySleepModeInfoNV latencyMode = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV };
+      latencyMode.lowLatencyMode = VK_TRUE;
+      latencyMode.lowLatencyBoost = VK_TRUE;
+      latencyMode.minimumIntervalUs = 0;
+
+      if (m_envFpsLimit > 0.0)
+        maxFrameRate = m_envFpsLimit;
+
+      if (maxFrameRate > 0.0)
+        latencyMode.minimumIntervalUs = uint64_t(1'000'000.0 / maxFrameRate);
+
+      m_presenter->setLatencySleepModeNv(latencyMode);
+
+      // Wait for previous present call to complete in order to
+      // avoid potential issues with oscillating frame times
+      auto curr = findFrame(frameId - 1u);
+
+      if (curr && curr->cpuPresentEnd != time_point()) {
+        m_cond.wait(lock, [curr] {
+          return curr->presentStatus != VK_NOT_READY;
+        });
+
+        presentSuccessful = curr->presentStatus >= 0;
+      }
+    }
+
+    if (!presentSuccessful)
+      return duration(0u);
+
+    return m_presenter->latencySleepNv();
+  }
+
+
+  DxvkBuiltInLatencyTracker::duration DxvkBuiltInLatencyTracker::sleepBuiltin(
           uint64_t                  frameId,
           double                    maxFrameRate) {
     // Wait for all relevant timings to become available. This should
