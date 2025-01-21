@@ -3,6 +3,7 @@
 #include <array>
 
 #include "dxvk_latency.h"
+#include "dxvk_presenter.h"
 
 #include "../util/thread.h"
 
@@ -53,7 +54,9 @@ namespace dxvk {
   public:
 
     DxvkBuiltInLatencyTracker(
-            int32_t                   toleranceUs);
+            Rc<Presenter>             presenter,
+            int32_t                   toleranceUs,
+            bool                      useNvLowLatency2);
 
     ~DxvkBuiltInLatencyTracker();
 
@@ -101,19 +104,26 @@ namespace dxvk {
 
   private:
 
+    Rc<Presenter>             m_presenter;
+
     dxvk::mutex               m_mutex;
     dxvk::condition_variable  m_cond;
 
     duration                  m_tolerance;
 
     double                    m_envFpsLimit = 0.0;
+    bool                      m_useNvLowLatency2 = false;
 
     std::array<DxvkLatencyFrameData, FrameCount> m_frames = { };
 
     uint64_t m_validRangeBegin = 0u;
     uint64_t m_validRangeEnd = 0u;
 
-    duration sleep(
+    duration sleepNv(
+            uint64_t                  frameId,
+            double                    maxFrameRate);
+
+    duration sleepBuiltin(
             uint64_t                  frameId,
             double                    maxFrameRate);
 

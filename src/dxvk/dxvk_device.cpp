@@ -311,8 +311,8 @@ namespace dxvk {
     if (m_options.latencySleep != Tristate::True)
       return nullptr;
 
-    return new DxvkBuiltInLatencyTracker(
-      m_options.latencyTolerance);
+    return new DxvkBuiltInLatencyTracker(presenter,
+      m_options.latencyTolerance, m_features.nvLowLatency2);
   }
 
 
