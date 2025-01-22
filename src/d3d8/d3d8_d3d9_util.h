@@ -21,14 +21,8 @@ namespace dxvk {
     pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 1);
     pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
 
-    // This was removed by D3D9. We can probably render windowed.
-    pCaps8->Caps2       |= D3DCAPS2_CANRENDERWINDOWED;
-
-    // Replaced by D3DPRASTERCAPS_DEPTHBIAS in D3D9
-    pCaps8->RasterCaps  |= D3DPRASTERCAPS_ZBIAS;
-
-
     // Remove D3D9-specific caps:
+
     pCaps8->Caps2                 &= ~D3DCAPS2_CANAUTOGENMIPMAP;
 
     pCaps8->Caps3                 &= ~D3DCAPS3_LINEAR_TO_SRGB_PRESENTATION
@@ -58,6 +52,34 @@ namespace dxvk {
     pCaps8->StencilCaps           &= ~D3DSTENCILCAPS_TWOSIDED;
 
     pCaps8->VertexProcessingCaps  &= ~D3DVTXPCAPS_TEXGEN_SPHEREMAP;
+
+    // Add D3D8-specific caps:
+
+    // Removed in D3D9, since it can always render windowed
+    pCaps8->Caps2                     |= D3DCAPS2_CANRENDERWINDOWED;
+    // A remnant from a bygone age of ddraw interop most likely
+    //                                 | D3DCAPS2_NO2DDURING3DSCENE;
+
+    // Used in conjunction with D3DPRASTERCAPS_PAT, but generally unadvertised
+    //pCaps8->PrimitiveMiscCaps       |= D3DPMISCCAPS_LINEPATTERNREP;
+
+    // Replaced by D3DPRASTERCAPS_DEPTHBIAS in D3D9
+    pCaps8->RasterCaps                |= D3DPRASTERCAPS_ZBIAS;
+    // Advertised on Nvidia cards by modern drivers, but not on AMD or Intel
+    //                                 | D3DPRASTERCAPS_ANTIALIASEDGES
+    // Advertised on Nvidia cards, but not on AMD or Intel
+    //                                 | D3DPRASTERCAPS_STRETCHBLTMULTISAMPLE
+    // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
+    //                                 | D3DPRASTERCAPS_PAT;
+
+    // MAG only filter caps, generally unsupported
+    //pCaps8->TextureFilterCaps       |= D3DPTFILTERCAPS_MAGFAFLATCUBIC
+    //                                 | D3DPTFILTERCAPS_MAGFGAUSSIANCUBIC;
+    //pCaps8->CubeTextureFilterCaps    = pCaps8->TextureFilterCaps;
+    //pCaps8->VolumeTextureFilterCaps  = pCaps8->TextureFilterCaps;
+
+    // Not advertised on any modern hardware
+    //pCaps8->VertexProcessingCaps    |= D3DVTXPCAPS_NO_VSDT_UBYTE4;
   }
 
   // (9<-8) D3DD3DPRESENT_PARAMETERS: Returns D3D9's params given an input for D3D8
