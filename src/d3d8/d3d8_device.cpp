@@ -1673,6 +1673,7 @@ namespace dxvk {
         break;
 
       // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
+      // and advertise support with D3DPRASTERCAPS_PAT once that is done
       case D3DRS_LINEPATTERN:
         Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
