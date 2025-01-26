@@ -635,22 +635,23 @@ namespace dxvk {
                                    /* | D3DPTFILTERCAPS_MAGFPYRAMIDALQUAD */
                                    /* | D3DPTFILTERCAPS_MAGFGAUSSIANQUAD */;
 
-    // Not too bothered about doing these longhand
-    // We should match whatever my AMD hardware reports here
-    // methinks for the best chance of stuff working.
-    pCaps->VS20Caps.Caps                     = 1;
-    pCaps->VS20Caps.DynamicFlowControlDepth  = 24;
-    pCaps->VS20Caps.NumTemps                 = 32;
-    pCaps->VS20Caps.StaticFlowControlDepth   = 4;
+    pCaps->VS20Caps.Caps                     = options.shaderModel >= 2 ? D3DVS20CAPS_PREDICATION : 0;
+    pCaps->VS20Caps.DynamicFlowControlDepth  = options.shaderModel >= 2 ? D3DVS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
+    pCaps->VS20Caps.NumTemps                 = options.shaderModel >= 2 ? D3DVS20_MAX_NUMTEMPS : 0;
+    pCaps->VS20Caps.StaticFlowControlDepth   = options.shaderModel >= 2 ? D3DVS20_MAX_STATICFLOWCONTROLDEPTH : 0;
 
-    pCaps->PS20Caps.Caps                     = 31;
-    pCaps->PS20Caps.DynamicFlowControlDepth  = 24;
-    pCaps->PS20Caps.NumTemps                 = 32;
-    pCaps->PS20Caps.StaticFlowControlDepth   = 4;
+    pCaps->PS20Caps.Caps                     = options.shaderModel >= 2 ? D3DPS20CAPS_ARBITRARYSWIZZLE
+                                                                        | D3DPS20CAPS_GRADIENTINSTRUCTIONS
+                                                                        | D3DPS20CAPS_PREDICATION
+                                                                        | D3DPS20CAPS_NODEPENDENTREADLIMIT
+                                                                        | D3DPS20CAPS_NOTEXINSTRUCTIONLIMIT : 0;
+    pCaps->PS20Caps.DynamicFlowControlDepth  = options.shaderModel >= 2 ? D3DPS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
+    pCaps->PS20Caps.NumTemps                 = options.shaderModel >= 2 ? D3DPS20_MAX_NUMTEMPS : 0;
+    pCaps->PS20Caps.StaticFlowControlDepth   = options.shaderModel >= 2 ? D3DPS20_MAX_STATICFLOWCONTROLDEPTH : 0;
+    pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? D3DPS20_MAX_NUMINSTRUCTIONSLOTS : 0;
 
-    pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? 512 : 256;
+    pCaps->VertexTextureFilterCaps           = pCaps->TextureFilterCaps;
 
-    pCaps->VertexTextureFilterCaps           = 50332416;
     pCaps->MaxVShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
     pCaps->MaxPShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
 
