@@ -3322,7 +3322,8 @@ namespace dxvk {
 
     if (unlikely(majorVersion > shaderModelVS
              || (majorVersion == 1 && minorVersion > 1)
-             || (majorVersion > 1  && minorVersion != 0))) {
+             // Skip checking the SM2 minor version, as it has a 2_x mode apparently
+             || (majorVersion == 3 && minorVersion != 0))) {
       Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
       return D3DERR_INVALIDCALL;
     }
@@ -3696,7 +3697,8 @@ namespace dxvk {
 
     if (unlikely(majorVersion > m_d3d9Options.shaderModel
              || (majorVersion == 1 && minorVersion > 4)
-             || (majorVersion > 1  && minorVersion != 0))) {
+             // Skip checking the SM2 minor version, as it has a 2_x mode apparently
+             || (majorVersion == 3 && minorVersion != 0))) {
       Logger::err(str::format("D3D9DeviceEx::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
       return D3DERR_INVALIDCALL;
     }
