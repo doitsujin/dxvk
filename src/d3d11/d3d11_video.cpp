@@ -200,7 +200,7 @@ namespace dxvk {
         viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
         viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = 0;
+        viewInfo.layerIndex = m_desc.Texture2D.ArraySlice;
         viewInfo.layerCount = 1;
         break;
 
