@@ -1788,8 +1788,8 @@ namespace dxvk {
 
     // Validate VS version for non-FF shaders
     if (pFunction != nullptr) {
-      const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-      const uint32_t minorVersion = pFunction[0] & 0xff;
+      const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+      const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
 
       if (unlikely(majorVersion != 1 || minorVersion > 1)) {
         Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
@@ -2027,8 +2027,8 @@ namespace dxvk {
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-    const uint32_t minorVersion = pFunction[0] & 0xff;
+    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
 
     if (unlikely(m_isFixedFunctionOnly || majorVersion != 1 || minorVersion > 4)) {
       Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
