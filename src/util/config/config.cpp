@@ -936,12 +936,7 @@ namespace dxvk {
     /* Delta Force: Xtreme 1 & 2                 *
      * Black screen on Alt-Tab and performance   */
     { R"(\\(DFX|dfx2)\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* The Sims 3 - Black screen on alt-tab      */
-    { R"(\\TS3(W)?\.exe$)", {{ 
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Prototype                                 *
      * Incorrect shadows on AMD & Intel          */
@@ -963,11 +958,6 @@ namespace dxvk {
     { R"(\\Dragonshard\.exe$)", {{ 
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Guild Wars 1 - Alt-tab black screen when  *
-     * fullscreen with non native resolution     */
-    { R"(\\Gw\.exe$)", {{ 
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
-    }} },
     /* Battle for Middle-earth 2 and expansion   *
      * Slowdowns in certain scenarios            */
     { R"(\\(The Battle for Middle-earth( \(tm\))? II( Demo)?)"
@@ -981,7 +971,6 @@ namespace dxvk {
     /* Splinter Cell Conviction - Alt-tab black  *
      * screen and unsupported GPU complaint      */
     { R"(\\conviction_game\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "dxgi.customVendorId",              "10de" },
       { "dxgi.customDeviceId",              "05e0" },
       { "dxgi.customDeviceDesc",            "GeForce GTX 295" },
@@ -1159,10 +1148,6 @@ namespace dxvk {
     { R"(\\Fellowship\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.placeP8InScratch",            "True" },
-    }} },
-    /* Rise of Nations + Expansion - alt-tab crash*/
-    { R"(\\(nations|patriots)\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Inquisitor (2009)                          *
      * Leaks a resource when alt-tabbing          */
