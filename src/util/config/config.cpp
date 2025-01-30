@@ -1202,6 +1202,12 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
+    /* Tom Clancy's Splinter Cell                 *
+     * Fixes shadow buffers and alt-tab           */
+    { R"(\\splintercell\.exe$)", {{
+      { "d3d8.scaleDref",                     "24" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
   }};
 
 
