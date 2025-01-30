@@ -1194,6 +1194,11 @@ namespace dxvk {
       { "d3d8.scaleDref",                     "24" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Trainz v1.3 (2001)                         *
+     * Fixes black screen after alt-tab           */
+    { R"(\\bin\\trainz\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
   }};
 
 
