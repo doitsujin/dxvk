@@ -1189,6 +1189,7 @@ namespace dxvk {
      * Broken inputs and physics above 60 FPS     */
     { R"(\\SplinterCell2\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
+      { "d3d8.scaleDref",                     "24" },
     }} },
     /* Chrome: Gold Edition                       *
      * Broken character model motion at high FPS  */
