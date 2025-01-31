@@ -1199,6 +1199,7 @@ namespace dxvk {
      * Fixes shadow buffers and alt-tab           */
     { R"(\\splintercell\.exe$)", {{
       { "d3d8.scaleDref",                     "24" },
+      { "d3d8.shadowPerspectiveDivide",     "True" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Trainz v1.3 (2001)                         *
