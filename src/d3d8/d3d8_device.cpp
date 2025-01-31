@@ -1370,6 +1370,27 @@ namespace dxvk {
 
     D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
 
+    // Splinter Cell: Force perspective divide when a shadow map is bound to slot 0
+    if (unlikely(m_d3d8Options.shadowPerspectiveDivide && Stage == 0)) {
+      if (tex) {
+        D3DSURFACE_DESC surf;
+        tex->GetLevelDesc(0, &surf);
+        if (isDepthStencilFormat(surf.Format)) {
+          // If we bound a depth texture to stage 0 then we need to set the projected flag for stage 0 and 1
+          // Stage 1 is a non-depth light cookie texture but still requires perspective divide to work
+          GetD3D9()->SetTextureStageState(0, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
+          GetD3D9()->SetTextureStageState(1, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
+          m_shadowPerspectiveDivide = true;
+        } else if (m_shadowPerspectiveDivide) {
+          // Non-depth texture bound. Game will reset the transform flags to 0 on its own
+          m_shadowPerspectiveDivide = false;
+        }
+      } else if (m_shadowPerspectiveDivide) {
+        // Texture unbound. Game will reset the transform flags to 0 on its own
+        m_shadowPerspectiveDivide = false;
+      }
+    }
+
     if (unlikely(m_textures[Stage] == tex))
       return D3D_OK;
 
@@ -1402,6 +1423,13 @@ namespace dxvk {
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD                    Value) {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
+
+    if (unlikely(m_d3d8Options.shadowPerspectiveDivide && Type == D3DTSS_TEXTURETRANSFORMFLAGS)) {
+      // Splinter Cell: Ignore requests to change texture transform flags
+      // to 0 while shadow mapping perspective divide mode is enabled
+      if (m_shadowPerspectiveDivide && (Stage == 0 || Stage == 1))
+        return D3D_OK;
+    }
 
     StateChange();
     if (stateType != -1u) {

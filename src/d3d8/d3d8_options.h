@@ -42,13 +42,19 @@ namespace dxvk {
     /// it was brought in line with standard D3D9 behavior.
     bool forceLegacyDiscard = false;
 
+    /// Splinter Cell expects shadow map texture coordinates to be perspective divided
+    /// even though D3DTTFF_PROJECTED is never set for any texture coordinates. This flag
+    /// forces that flag for the necessary stages when a depth texture is bound to slot 0
+    bool shadowPerspectiveDivide = false;
+
     D3D8Options() {}
 
     D3D8Options(const Config& config) {
-      auto forceVsDeclStr     = config.getOption<std::string>("d3d8.forceVsDecl",            "");
-      batching                = config.getOption<bool>       ("d3d8.batching",               batching);
-      placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",       placeP8InScratch);
-      forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",     forceLegacyDiscard);
+      auto forceVsDeclStr     = config.getOption<std::string>("d3d8.forceVsDecl",             "");
+      batching                = config.getOption<bool>       ("d3d8.batching",                batching);
+      placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",        placeP8InScratch);
+      forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",      forceLegacyDiscard);
+      shadowPerspectiveDivide = config.getOption<bool>       ("d3d8.shadowPerspectiveDivide", shadowPerspectiveDivide);
 
       parseVsDecl(forceVsDeclStr);
     }
