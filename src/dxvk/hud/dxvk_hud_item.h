@@ -171,8 +171,6 @@ namespace dxvk::hud {
 
     ~HudClientApiItem();
 
-    void setApiName(std::string api);
-
     HudPos render(
       const DxvkContextObjects& ctx,
       const HudPipelineKey&     key,

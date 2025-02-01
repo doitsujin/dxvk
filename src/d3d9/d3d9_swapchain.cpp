@@ -1121,11 +1121,6 @@ namespace dxvk {
     m_wctx->frameLatencySignal->wait(m_wctx->frameId - GetActualFrameLatency());
   }
 
-  void D3D9SwapChainEx::SetApiName(const char* name) {
-    if (m_apiHud && name)
-      m_apiHud->setApiName(name);
-  }
-
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
     uint32_t maxFrameLatency = m_parent->GetFrameLatency();
 
@@ -1356,7 +1351,8 @@ namespace dxvk {
 
 
   std::string D3D9SwapChainEx::GetApiName() {
-    return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+    return this->GetParent()->IsD3D8Compatible() ? "D3D8" :
+           this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }
 
 

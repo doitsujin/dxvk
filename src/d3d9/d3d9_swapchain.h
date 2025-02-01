@@ -136,8 +136,6 @@ namespace dxvk {
 
     void DestroyBackBuffers();
 
-    void SetApiName(const char* name);
-
     bool UpdateWindowCtx();
 
   private:
