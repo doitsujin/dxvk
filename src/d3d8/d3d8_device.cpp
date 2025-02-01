@@ -51,8 +51,6 @@ namespace dxvk {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
-    m_bridge->SetAPIName("D3D8");
-
     ResetState();
     RecreateBackBuffersAndAutoDepthStencil();
 
