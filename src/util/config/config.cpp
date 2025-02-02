@@ -1214,8 +1214,16 @@ namespace dxvk {
   const Config* findProfile(const ProfileList& profiles, const std::string& appName) {
     auto appConfig = std::find_if(profiles.begin(), profiles.end(),
       [&appName] (const std::pair<const char*, Config>& pair) {
-        std::regex expr(pair.first, std::regex::extended | std::regex::icase);
-        return std::regex_search(appName, expr);
+        // With certain locales, regex parsing will simply crash. Using regex::imbue
+        // does not resolve this; only the global locale seems to matter here. Catch
+        // bad_alloc errors to work around this for now.
+        try {
+          std::regex expr(pair.first, std::regex::extended | std::regex::icase);
+          return std::regex_search(appName, expr);
+        } catch (const std::bad_alloc& e) {
+          Logger::err(str::format("Failed to parse regular expression: ", pair.first));
+          return false;
+        }
       });
 
     return appConfig != profiles.end()
