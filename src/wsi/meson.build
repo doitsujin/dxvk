@@ -17,7 +17,10 @@ wsi_src = [
 
 wsi_deps = [ dep_displayinfo ]
 
-if platform != 'windows'
+if platform == 'windows'
+  lib_setupapi = cpp.find_library('setupapi')
+  wsi_deps += [ lib_setupapi ]
+else
   wsi_deps += [
     lib_sdl3.partial_dependency(compile_args: true, includes: true),
     lib_sdl2.partial_dependency(compile_args: true, includes: true),
