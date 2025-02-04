@@ -29,20 +29,20 @@ namespace dxvk {
 
 
   void D3D9Cursor::UpdateCursor(int X, int Y) {
+    // SetCursorPosition is used to directly update the position of software cursors,
+    // but keep track of the cursor position even when using hardware cursors, in order
+    // to ensure a smooth transition/overlap from one type to the other.
+    m_sCursor.X = X;
+    m_sCursor.Y = Y;
+
+    if (unlikely(m_sCursor.Width > 0 && m_sCursor.Height > 0))
+      return;
+
     POINT currentPos = { };
     if (::GetCursorPos(&currentPos) && currentPos == POINT{ X, Y })
         return;
 
     ::SetCursorPos(X, Y);
-  }
-
-
-  void D3D9Cursor::RefreshSoftwareCursorPosition() {
-    POINT currentPos = { };
-    ::GetCursorPos(&currentPos);
-
-    m_sCursor.X = static_cast<int32_t>(currentPos.x) - m_sCursor.XHotSpot;
-    m_sCursor.Y = static_cast<int32_t>(currentPos.y) - m_sCursor.YHotSpot;
   }
 
 
@@ -124,11 +124,6 @@ namespace dxvk {
 
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     Logger::warn("D3D9Cursor::UpdateCursor: Not supported on current platform.");
-  }
-
-
-  void D3D9Cursor::RefreshSoftwareCursorPosition() {
-    Logger::warn("D3D9Cursor::RefreshSoftwareCursorPosition: Not supported on current platform.");
   }
 
 

@@ -4052,14 +4052,13 @@ namespace dxvk {
           DWORD dwFlags) {
 
     if (m_cursor.IsSoftwareCursor()) {
-      m_cursor.RefreshSoftwareCursorPosition();
-
       D3D9_SOFTWARE_CURSOR* pSoftwareCursor = m_cursor.GetSoftwareCursor();
 
       UINT cursorWidth  = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Width : 0;
       UINT cursorHeight = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Height : 0;
 
-      m_implicitSwapchain->SetCursorPosition(pSoftwareCursor->X, pSoftwareCursor->Y,
+      m_implicitSwapchain->SetCursorPosition(pSoftwareCursor->X - pSoftwareCursor->XHotSpot,
+                                             pSoftwareCursor->Y - pSoftwareCursor->YHotSpot,
                                              cursorWidth, cursorHeight);
 
       // Once a hardware cursor has been set or the device has been reset,
@@ -4070,8 +4069,6 @@ namespace dxvk {
         pSoftwareCursor->Height = 0;
         pSoftwareCursor->XHotSpot = 0;
         pSoftwareCursor->YHotSpot = 0;
-        pSoftwareCursor->X = 0;
-        pSoftwareCursor->Y = 0;
         pSoftwareCursor->ResetCursor = false;
       }
     }
