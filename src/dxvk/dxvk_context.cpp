@@ -1538,12 +1538,13 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments() && !found; i++)
         found = m_state.om.framebufferInfo.getAttachment(i).view->image() == image;
 
-      if (found)
+      if (found) {
         m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
 
-      spillRenderPass(true);
+        spillRenderPass(true);
 
-      prepareImage(image, image->getAvailableSubresources());
+        prepareImage(image, image->getAvailableSubresources());
+      }
     }
 
     // If the image has any pending layout transitions, flush them accordingly.
