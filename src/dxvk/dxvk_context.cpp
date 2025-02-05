@@ -4912,28 +4912,37 @@ namespace dxvk {
     this->renderPassEmitInitBarriers(framebufferInfo, ops);
     this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
+    VkCommandBufferInheritanceRenderingInfo renderingInheritance = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO };
+    VkCommandBufferInheritanceInfo inheritance = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO, &renderingInheritance };
+
     uint32_t colorInfoCount = 0;
     uint32_t lateClearCount = 0;
 
-    std::array<VkRenderingAttachmentInfo, MaxNumRenderTargets> colorInfos;
-    std::array<VkClearAttachment, MaxNumRenderTargets> lateClears;
+    std::array<VkFormat, MaxNumRenderTargets> colorFormats = { };
+    std::array<VkClearAttachment, MaxNumRenderTargets> lateClears = { };
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
-      colorInfos[i] = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+
+      auto& colorInfo = m_state.om.renderingInfo.color[i];
+      colorInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
       if (colorTarget.view != nullptr) {
-        colorInfos[i].imageView = colorTarget.view->handle();
-        colorInfos[i].imageLayout = colorTarget.layout;
-        colorInfos[i].loadOp = ops.colorOps[i].loadOp;
-        colorInfos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+        colorFormats[i] = colorTarget.view->info().format;
+
+        colorInfo.imageView = colorTarget.view->handle();
+        colorInfo.imageLayout = colorTarget.layout;
+        colorInfo.loadOp = ops.colorOps[i].loadOp;
+        colorInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        renderingInheritance.rasterizationSamples = colorTarget.view->image()->info().sampleCount;
 
         if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-          colorInfos[i].clearValue.color = ops.colorOps[i].clearValue;
+          colorInfo.clearValue.color = ops.colorOps[i].clearValue;
 
           if (m_device->perfHints().renderPassClearFormatBug
            && colorTarget.view->info().format != colorTarget.view->image()->info().format) {
-            colorInfos[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+            colorInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
             auto& clear = lateClears[lateClearCount++];
             clear.colorAttachment = i;
@@ -4946,11 +4955,15 @@ namespace dxvk {
       }
     }
 
-    VkRenderingAttachmentInfo depthInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    VkFormat depthStencilFormat = VK_FORMAT_UNDEFINED;
     VkImageAspectFlags depthStencilAspects = 0;
+
+    auto& depthInfo = m_state.om.renderingInfo.depth;
+    depthInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
     if (framebufferInfo.getDepthTarget().view != nullptr) {
       const auto& depthTarget = framebufferInfo.getDepthTarget();
+      depthStencilFormat = depthTarget.view->info().format;
       depthStencilAspects = depthTarget.view->info().aspects;
       depthInfo.imageView = depthTarget.view->handle();
       depthInfo.imageLayout = depthTarget.layout;
@@ -4959,9 +4972,12 @@ namespace dxvk {
 
       if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR)
         depthInfo.clearValue.depthStencil.depth = ops.depthOps.clearValue.depth;
+
+      renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
     }
     
-    VkRenderingAttachmentInfo stencilInfo = depthInfo;
+    auto& stencilInfo = m_state.om.renderingInfo.stencil;
+    stencilInfo = depthInfo;
 
     if (framebufferInfo.getDepthTarget().view != nullptr) {
       stencilInfo.loadOp = ops.depthOps.loadOpS;
@@ -4971,24 +4987,40 @@ namespace dxvk {
         stencilInfo.clearValue.depthStencil.stencil = ops.depthOps.clearValue.stencil;
     }
 
-    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    auto& renderingInfo = m_state.om.renderingInfo.rendering;
+    renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
     renderingInfo.renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
     renderingInfo.layerCount = fbSize.layers;
 
     if (colorInfoCount) {
       renderingInfo.colorAttachmentCount = colorInfoCount;
-      renderingInfo.pColorAttachments = colorInfos.data();
+      renderingInfo.pColorAttachments = m_state.om.renderingInfo.color.data();
+      renderingInheritance.colorAttachmentCount = colorInfoCount;
+      renderingInheritance.pColorAttachmentFormats = colorFormats.data();
     }
 
-    if (depthStencilAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+    if (depthStencilAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
       renderingInfo.pDepthAttachment = &depthInfo;
+      renderingInheritance.depthAttachmentFormat = depthStencilFormat;
+    }
 
-    if (depthStencilAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+    if (depthStencilAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       renderingInfo.pStencilAttachment = &stencilInfo;
+      renderingInheritance.stencilAttachmentFormat = depthStencilFormat;
+    }
 
-    m_cmd->cmdBeginRendering(&renderingInfo);
-    
+    if (m_device->perfHints().preferRenderPassOps) {
+      // Begin secondary command buffer on tiling GPUs so that subsequent
+      // resolve, discard and clear commands can modify render pass ops.
+      renderingInfo.flags = VK_RENDERING_CONTENTS_SECONDARY_COMMAND_BUFFERS_BIT;
+
+      m_cmd->beginSecondaryCommandBuffer(inheritance);
+    } else {
+      // Begin rendering right away on regular GPUs
+      m_cmd->cmdBeginRendering(&renderingInfo);
+    }
+
     if (lateClearCount) {
       VkClearRect clearRect = { };
       clearRect.rect.extent.width   = fbSize.width;
@@ -5004,6 +5036,17 @@ namespace dxvk {
   
   
   void DxvkContext::renderPassUnbindFramebuffer() {
+    if (m_device->perfHints().preferRenderPassOps) {
+      VkCommandBuffer cmdBuffer = m_cmd->endSecondaryCommandBuffer();
+
+      // Record scoped rendering commands with potentially
+      // modified store or resolve ops here
+      auto& renderingInfo = m_state.om.renderingInfo.rendering;
+      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdExecuteCommands(1, &cmdBuffer);
+    }
+
+    // End actual rendering command
     m_cmd->cmdEndRendering();
 
     // If there are pending layout transitions, execute them immediately

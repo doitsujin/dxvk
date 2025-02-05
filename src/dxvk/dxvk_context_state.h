@@ -111,6 +111,7 @@ namespace dxvk {
 
 
   struct DxvkOutputMergerState {
+    DxvkRenderingInfo   renderingInfo;
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     DxvkFramebufferInfo framebufferInfo;
