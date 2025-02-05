@@ -167,7 +167,8 @@ namespace dxvk {
           if (entry.latency.tracker)
             entry.latency.tracker->notifyQueuePresentBegin(entry.latency.frameId);
 
-          entry.result = entry.present.presenter->presentImage(entry.present.frameId);
+          entry.result = entry.present.presenter->presentImage(
+            entry.present.frameId, entry.latency.tracker);
 
           if (entry.latency.tracker) {
             entry.latency.tracker->notifyQueuePresentEnd(
@@ -271,8 +272,7 @@ namespace dxvk {
         // Signal the frame and then immediately destroy the reference.
         // This is necessary since the front-end may want to explicitly
         // destroy the presenter object. 
-        entry.present.presenter->signalFrame(entry.result,
-          entry.present.frameId, entry.latency.tracker);
+        entry.present.presenter->signalFrame(entry.present.frameId, entry.latency.tracker);
         entry.present.presenter = nullptr;
       }
 

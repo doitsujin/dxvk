@@ -124,10 +124,12 @@ namespace dxvk {
      * 
      * Presents the last successfuly acquired image.
      * \param [in] frameId Frame number.
+     * \param [in] tracker Latency tracker
      * \returns Status of the operation
      */
     VkResult presentImage(
-            uint64_t        frameId);
+            uint64_t                frameId,
+      const Rc<DxvkLatencyTracker>& tracker);
 
     /**
      * \brief Signals a given frame
@@ -136,12 +138,10 @@ namespace dxvk {
      * the presenter signal with the given frame ID. Must not be
      * called before GPU work prior to the present submission has
      * completed in order to maintain consistency.
-     * \param [in] result Presentation result
      * \param [in] frameId Frame ID
      * \param [in] tracker Latency tracker
      */
     void signalFrame(
-            VkResult                result,
             uint64_t                frameId,
       const Rc<DxvkLatencyTracker>& tracker);
 
@@ -310,10 +310,11 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                 m_frameMutex;
     dxvk::condition_variable    m_frameCond;
+    dxvk::condition_variable    m_frameDrain;
     dxvk::thread                m_frameThread;
     std::queue<PresenterFrame>  m_frameQueue;
 
-    std::atomic<uint64_t>       m_lastFrameId = { 0ull };
+    uint64_t                    m_lastSignaled = 0u;
 
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
