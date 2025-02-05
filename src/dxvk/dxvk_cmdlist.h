@@ -441,6 +441,25 @@ namespace dxvk {
     }
 
 
+    void beginSecondaryCommandBuffer(
+      const VkCommandBufferInheritanceInfo& inheritanceInfo) {
+      m_execBuffer = std::exchange(m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)],
+        m_graphicsPool->getSecondaryCommandBuffer(inheritanceInfo));
+    }
+
+
+    VkCommandBuffer endSecondaryCommandBuffer() {
+      VkCommandBuffer cmd = getCmdBuffer();
+
+      if (m_vkd->vkEndCommandBuffer(cmd))
+        throw DxvkError("DxvkCommandList: Failed to end secondary command buffer");
+
+      m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = m_execBuffer;
+      m_execBuffer = VK_NULL_HANDLE;
+      return cmd;
+    }
+
+
     void cmdBeginQuery(
             VkQueryPool             queryPool,
             uint32_t                query,
@@ -471,7 +490,7 @@ namespace dxvk {
       m_vkd->vkCmdBeginRendering(getCmdBuffer(), pRenderingInfo);
     }
 
-    
+
     void cmdBeginTransformFeedback(
             uint32_t                  firstBuffer,
             uint32_t                  bufferCount,
@@ -818,6 +837,15 @@ namespace dxvk {
     }
 
 
+    void cmdExecuteCommands(
+            uint32_t                count,
+            VkCommandBuffer*        commandBuffers) {
+      m_cmd.execCommands = true;
+
+      m_vkd->vkCmdExecuteCommands(getCmdBuffer(), count, commandBuffers);
+    }
+
+
     void cmdFillBuffer(
             DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
@@ -1143,6 +1171,7 @@ namespace dxvk {
     Rc<DxvkCommandPool>       m_transferPool;
 
     DxvkCommandSubmissionInfo m_cmd;
+    VkCommandBuffer           m_execBuffer = VK_NULL_HANDLE;
 
     PresenterSync             m_wsiSemaphores = { };
     uint64_t                  m_trackingId = 0u;
