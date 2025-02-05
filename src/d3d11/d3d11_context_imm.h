@@ -208,6 +208,10 @@ namespace dxvk {
 
     DxvkStagingBufferStats GetStagingMemoryStatistics();
 
+    static GpuFlushType GetMaxFlushType(
+            D3D11Device*    pParent,
+      const Rc<DxvkDevice>& Device);
+
   };
   
 }

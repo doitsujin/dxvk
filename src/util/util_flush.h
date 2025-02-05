@@ -34,7 +34,7 @@ namespace dxvk {
 
   public:
 
-    GpuFlushTracker(bool ensureReproducibleHeuristic);
+    GpuFlushTracker(GpuFlushType maxAllowed);
 
     /**
      * \brief Checks whether a context flush should be performed
@@ -63,8 +63,7 @@ namespace dxvk {
 
   private:
 
-    bool          m_ensureReproducibleHeuristic;
-
+    GpuFlushType  m_maxType               = GpuFlushType::ImplicitWeakHint;
     GpuFlushType  m_lastMissedType        = GpuFlushType::ImplicitWeakHint;
 
     uint64_t      m_lastFlushChunkId      = 0ull;

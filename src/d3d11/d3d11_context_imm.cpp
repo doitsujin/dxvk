@@ -18,7 +18,7 @@ namespace dxvk {
   : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext()),
     m_submissionFence(new sync::CallbackFence()),
-    m_flushTracker(pParent->GetOptions()->reproducibleCommandStream),
+    m_flushTracker(GetMaxFlushType(pParent, Device)),
     m_stagingBufferFence(new sync::Fence(0)),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
@@ -1072,6 +1072,18 @@ namespace dxvk {
     stats.allocatedTotal += m_discardMemoryCounter;
     stats.allocatedSinceLastReset += m_discardMemoryCounter - m_discardMemoryOnFlush;
     return stats;
+  }
+
+
+  GpuFlushType D3D11ImmediateContext::GetMaxFlushType(
+          D3D11Device*    pParent,
+    const Rc<DxvkDevice>& Device) {
+    if (pParent->GetOptions()->reproducibleCommandStream)
+      return GpuFlushType::ExplicitFlush;
+    else if (Device->perfHints().preferRenderPassOps)
+      return GpuFlushType::ImplicitStrongHint;
+    else
+      return GpuFlushType::ImplicitWeakHint;
   }
 
 }

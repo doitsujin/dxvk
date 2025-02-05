@@ -1397,6 +1397,8 @@ namespace dxvk {
         && !m_state.renderTargets[Index]->IsNull();
     }
 
+    GpuFlushType GetMaxFlushType() const;
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
