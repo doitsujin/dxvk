@@ -54,6 +54,17 @@ namespace dxvk {
 
 
   /**
+   * \brief Rendering info
+   */
+  struct DxvkRenderingInfo {
+    std::array<VkRenderingAttachmentInfo, MaxNumRenderTargets> color = { };
+    VkRenderingAttachmentInfo depth = { };
+    VkRenderingAttachmentInfo stencil = { };
+    VkRenderingInfo rendering = { };
+  };
+
+
+  /**
    * \brief Framebuffer key
    */
   struct DxvkFramebufferKey {
