@@ -434,7 +434,9 @@ namespace dxvk {
     hints.renderPassClearFormatBug = m_adapter->matchesDriver(
       VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(), Version(560, 28, 3));
     // On tilers we need to respect render passes some more
-    hints.preferRenderPassOps = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_TURNIP);
+    bool tilerMode = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_TURNIP);
+    applyTristate(tilerMode, m_options.tilerMode);
+    hints.preferRenderPassOps = tilerMode;
     return hints;
   }
 
