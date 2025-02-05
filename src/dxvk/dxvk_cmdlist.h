@@ -181,6 +181,15 @@ namespace dxvk {
     VkCommandBuffer getCommandBuffer(DxvkCmdBuffer type);
 
     /**
+     * \brief Retrieves or allocates secondary command buffer
+     *
+     * \param [in] inheritanceInfo Inheritance info
+     * \returns New command buffer in begun state
+     */
+    VkCommandBuffer getSecondaryCommandBuffer(
+      const VkCommandBufferInheritanceInfo& inheritanceInfo);
+
+    /**
      * \brief Resets command pool and all command buffers
      */
     void reset();
@@ -190,8 +199,12 @@ namespace dxvk {
     DxvkDevice*                   m_device;
 
     VkCommandPool                 m_commandPool = VK_NULL_HANDLE;
-    std::vector<VkCommandBuffer>  m_commandBuffers;
-    size_t                        m_next        = 0;
+
+    std::vector<VkCommandBuffer>  m_primaryBuffers;
+    std::vector<VkCommandBuffer>  m_secondaryBuffers;
+
+    size_t                        m_nextPrimary   = 0u;
+    size_t                        m_nextSecondary = 0u;
 
   };
 
