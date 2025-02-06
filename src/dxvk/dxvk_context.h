@@ -1601,14 +1601,6 @@ namespace dxvk {
             VkResolveModeFlagBits     depthMode,
             VkResolveModeFlagBits     stencilMode);
 
-    bool resolveImageInline(
-      const Rc<DxvkImage>&            dstImage,
-      const Rc<DxvkImage>&            srcImage,
-      const VkImageResolve&           region,
-            VkFormat                  format,
-            VkResolveModeFlagBits     depthMode,
-            VkResolveModeFlagBits     stencilMode);
-
     void uploadImageFb(
       const Rc<DxvkImage>&            image,
       const Rc<DxvkBuffer>&           source,
