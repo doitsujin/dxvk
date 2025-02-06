@@ -1885,6 +1885,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
       bufferInfo.usage = m_memTypes[i].bufferUsage;
 
+      if (!bufferInfo.usage)
+        continue;
+
       if (!getBufferMemoryRequirements(bufferInfo, requirements)
        || !(requirements.memoryRequirements.memoryTypeBits & (1u << i))) {
         m_memTypes[i].bufferUsage &= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
