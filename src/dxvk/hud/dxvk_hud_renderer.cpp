@@ -194,11 +194,11 @@ namespace dxvk::hud {
     std::memset(m_textBuffer->mapPtr(drawArgOffset + drawArgWriteSize), 0, drawArgsSize - drawArgWriteSize);
 
     // Draw the actual text
-    VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
-    VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    VkDescriptorBufferInfo drawArgsDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    VkDescriptorBufferInfo drawInfosDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
 
     drawTextIndirect(ctx, getPipelineKey(dstView),
-      drawBufferDescriptor, textBufferDescriptor,
+      drawArgsDescriptor, drawInfosDescriptor,
       m_textBufferView->handle(), m_textDraws.size());
 
     // Ensure all used resources are kept alive
