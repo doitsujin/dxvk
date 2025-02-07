@@ -700,7 +700,7 @@ namespace dxvk {
     
     /**
      * \brief Discards contents of an image view
-     * 
+     *
      * Discards the current contents of the image
      * and performs a fast layout transition. This
      * may improve performance in some cases.
@@ -710,6 +710,14 @@ namespace dxvk {
     void discardImageView(
       const Rc<DxvkImageView>&      imageView,
             VkImageAspectFlags      discardAspects);
+
+    /**
+     * \brief Discards contents of an image
+     *
+     * \param [in] image Image to discard
+     */
+    void discardImage(
+      const Rc<DxvkImage>&          image);
 
     /**
      * \brief Starts compute jobs
@@ -1807,6 +1815,10 @@ namespace dxvk {
     void endCurrentCommands();
 
     void splitCommands();
+
+    void discardRenderTarget(
+      const DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources);
 
     void flushImageLayoutTransitions(
             DxvkCmdBuffer             cmdBuffer);
