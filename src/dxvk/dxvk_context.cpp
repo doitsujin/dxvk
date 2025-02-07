@@ -1912,6 +1912,11 @@ namespace dxvk {
       attachmentIndex = -1;
     }
 
+    // Completely ignore pure discards here if we can't fold them into the next
+    // render pass, since all we'd do is add an extra barrier for no reason.
+    if (attachmentIndex < 0 && !clearAspects)
+      return;
+
     bool is3D = imageView->image()->info().type == VK_IMAGE_TYPE_3D;
 
     if ((clearAspects | discardAspects) == imageView->info().aspects && !is3D) {
@@ -1995,7 +2000,7 @@ namespace dxvk {
 
       m_cmd->cmdBeginRendering(&renderingInfo);
 
-      if (useLateClear && clearAspects) {
+      if (useLateClear) {
         VkClearAttachment clearInfo = { };
         clearInfo.aspectMask = clearAspects;
         clearInfo.clearValue = clearValue;
