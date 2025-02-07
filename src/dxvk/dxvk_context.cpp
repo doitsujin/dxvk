@@ -858,13 +858,39 @@ namespace dxvk {
           VkImageAspectFlags      discardAspects) {
     VkImageUsageFlags viewUsage = imageView->info().usage;
 
-    // Ignore non-render target views since there's likely no good use case for
-    // discarding those. Also, force reinitialization even if the image is bound
-    // as a render target, which may have niche use cases for depth buffers.
-    if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      this->spillRenderPass(true);
-      this->deferDiscard(imageView, discardAspects);
+    if (!(viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
+      return;
+
+    // Perform store op optimization on bound render targets
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      VkImageSubresourceRange subresource = imageView->imageSubresources();
+      subresource.aspectMask &= discardAspects;
+
+      discardRenderTarget(*imageView->image(), subresource);
     }
+
+    // Perform load op optimization on subsequent render passes
+    deferDiscard(imageView, discardAspects);
+  }
+
+
+  void DxvkContext::discardImage(
+    const Rc<DxvkImage>&          image) {
+    VkImageUsageFlags imageUsage = image->info().usage;
+
+    if (!(imageUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
+      return;
+
+    // Perform store op optimization on bound render targets
+    VkImageSubresourceRange subresource = { };
+    subresource.aspectMask = image->formatInfo()->aspectMask;
+    subresource.layerCount = image->info().numLayers;
+    subresource.levelCount = image->info().mipLevels;
+
+    discardRenderTarget(*image, subresource);
+
+    // We don't really have a good way to queue up discards for
+    // subsequent render passes here without a view, so don't.
   }
 
 
@@ -7263,6 +7289,43 @@ namespace dxvk {
     m_cmd->next();
 
     this->beginCurrentCommands();
+  }
+
+
+  void DxvkContext::discardRenderTarget(
+    const DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources) {
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
+     || !m_device->perfHints().preferRenderPassOps)
+      return;
+
+    for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+      auto& view = m_state.om.framebufferInfo.getAttachment(i).view;
+
+      if (view->image() != &image)
+        continue;
+
+      // If the given subresource range fully contains any bound render target,
+      // retroactively change the corresponding store op to DONT_CARE.
+      auto viewSubresources = view->imageSubresources();
+
+      if (vk::checkSubresourceRangeSuperset(subresources, viewSubresources)) {
+        if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          if ((subresources.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) && m_state.om.renderingInfo.depth.imageView)
+            m_state.om.renderingInfo.depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+          if ((subresources.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && m_state.om.renderingInfo.stencil.imageView)
+            m_state.om.renderingInfo.stencil.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        } else {
+          uint32_t index = m_state.om.framebufferInfo.getColorAttachmentIndex(i);
+
+          if (index < m_state.om.renderingInfo.rendering.colorAttachmentCount)
+            m_state.om.renderingInfo.color[i].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        }
+
+        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+      }
+    }
   }
 
 
