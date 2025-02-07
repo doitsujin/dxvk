@@ -923,6 +923,9 @@ namespace dxvk {
 
         ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
       });
+
+      if constexpr (!IsDeferred)
+        GetTypedContext()->m_ignoreNextExplicitFlush = false;
     }
 
     if (dstTextureInfo->HasSequenceNumber())
@@ -4895,6 +4898,7 @@ namespace dxvk {
       return;
 
     bool needsUpdate = false;
+    bool isMultisampled = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -4915,6 +4919,9 @@ namespace dxvk {
           if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
             ResolveOmUavHazards(rtv);
         }
+
+        if (rtv && rtv->GetSampleCount() > 1u)
+          isMultisampled = true;
       }
 
       auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
@@ -4966,6 +4973,7 @@ namespace dxvk {
 
       if constexpr (!IsDeferred) {
         // Doing this makes it less likely to flush during render passes
+        GetTypedContext()->m_ignoreNextExplicitFlush |= isMultisampled;
         GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
       }
     }

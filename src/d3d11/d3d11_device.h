@@ -464,6 +464,10 @@ namespace dxvk {
 
     bool Is11on12Device() const;
 
+    bool HasSharedResources() const {
+      return m_hasSharedResources.load();
+    }
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
@@ -511,6 +515,8 @@ namespace dxvk {
 
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11DeviceFeatures             m_deviceFeatures;
+
+    std::atomic<bool>               m_hasSharedResources = { false };
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,

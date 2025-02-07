@@ -1893,8 +1893,8 @@ namespace dxvk {
   bool D3D11Device::Is11on12Device() const {
     return m_container->Is11on12Device();
   }
-  
-  
+
+
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
     const Rc<DxvkInstance>& Instance,
     const Rc<DxvkAdapter>&  Adapter) {
@@ -2369,6 +2369,7 @@ namespace dxvk {
     try {
       const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, nullptr, hResource);
       texture->QueryInterface(ReturnedInterface, ppResource);
+      m_hasSharedResources.store(true);
       return S_OK;
     }
     catch (const DxvkError& e) {

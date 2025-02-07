@@ -156,7 +156,13 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     D3D10DeviceLock lock = LockContext();
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+    // Don't flush in tiler mode if we're waiting for a multisample resolve
+    bool needsFlush = !m_device->perfHints().preferRenderPassOps
+      || m_parent->Is11on12Device()
+      || m_parent->HasSharedResources();
+
+    if (needsFlush || !m_ignoreNextExplicitFlush)
+      ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
 
@@ -873,6 +879,8 @@ namespace dxvk {
       if (cTracker && cTracker->needsAutoMarkers())
         ctx->endLatencyTracking(cTracker);
     });
+
+    m_ignoreNextExplicitFlush = false;
   }
 
 

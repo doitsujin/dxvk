@@ -136,6 +136,8 @@ namespace dxvk {
 
     Com<D3D11DeviceContextState, false> m_stateObject;
 
+    bool                    m_ignoreNextExplicitFlush = false;
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
