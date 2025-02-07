@@ -127,7 +127,6 @@ namespace dxvk {
     if (!pResource)
       return;
 
-    // We don't support the Discard API for images
     D3D11_RESOURCE_DIMENSION resType = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resType);
 
@@ -135,9 +134,16 @@ namespace dxvk {
       DiscardBuffer(pResource);
     } else {
       auto texture = GetCommonTexture(pResource);
+      auto image = texture->GetImage();
 
       for (uint32_t i = 0; i < texture->CountSubresources(); i++)
         DiscardTexture(pResource, i);
+
+      if (image) {
+        EmitCs([cImage = std::move(image)] (DxvkContext* ctx) {
+          ctx->discardImage(cImage);
+        });
+      }
     }
   }
 
