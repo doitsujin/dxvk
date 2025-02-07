@@ -64,6 +64,7 @@ dxvk_shaders = files([
   'hud/shaders/hud_graph_frag.frag',
   'hud/shaders/hud_graph_vert.vert',
 
+  'hud/shaders/hud_text_comp.comp',
   'hud/shaders/hud_text_frag.frag',
   'hud/shaders/hud_text_vert.vert',
 ])

@@ -1,5 +1,6 @@
 #include "dxvk_hud_renderer.h"
 
+#include <hud_text_comp.h>
 #include <hud_text_frag.h>
 #include <hud_text_vert.h>
 
@@ -12,16 +13,21 @@ namespace dxvk::hud {
     int16_t h;
     int16_t originX;
     int16_t originY;
+    int16_t advance;
+    int16_t padding[1];
   };
 
 
   struct HudFontGpuData {
     float size;
-    float advance;
-    uint32_t padding[2];
+    uint32_t padding[3];
     HudGlyphGpuData glyphs[256];
   };
 
+
+  struct ComputePushConstants {
+    uint32_t drawCount;
+  };
 
 
   static const std::array<VkSpecializationMapEntry, 2> HudSpecConstantMap = {{
@@ -32,9 +38,12 @@ namespace dxvk::hud {
 
 
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
-  : m_device              (device),
-    m_textSetLayout       (createSetLayout()),
-    m_textPipelineLayout  (createPipelineLayout()) {
+  : m_device               (device),
+    m_textGfxSetLayout     (createGfxSetLayout()),
+    m_textPipelineLayout   (createPipelineLayout()) {
+    createComputePipeline();
+
+    // createShaderModule(m_textCs, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(hud_text_comp), hud_text_comp);
     createShaderModule(m_textVs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_text_vert), hud_text_vert);
     createShaderModule(m_textFs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_text_frag), hud_text_frag);
   }
@@ -46,11 +55,16 @@ namespace dxvk::hud {
     for (const auto& p : m_textPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
 
+    // vk->vkDestroyShaderModule(vk->device(), m_textCs.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_textVs.stageInfo.module, nullptr);
     vk->vkDestroyShaderModule(vk->device(), m_textFs.stageInfo.module, nullptr);
+    
+    vk->vkDestroyPipeline(vk->device(), m_computePipeline, nullptr);
+    vk->vkDestroyPipelineLayout(vk->device(), m_computePipelineLayout, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_textComputeSetLayout, nullptr);
 
     vk->vkDestroyPipelineLayout(vk->device(), m_textPipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_textSetLayout, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_textGfxSetLayout, nullptr);
   }
   
   
@@ -134,20 +148,26 @@ namespace dxvk::hud {
 
     // We'll use indirect draws and then just use aligned subsections
     // of the data buffer to write our draw parameters
+    size_t charInfoSize = align(m_textData.size() * sizeof(HudCharInfo), 256u);
     size_t drawInfoSize = align(m_textDraws.size() * sizeof(HudTextDrawInfo), 256u);
     size_t drawArgsSize = align(m_textDraws.size() * sizeof(VkDrawIndirectCommand), 256u);
+    
+    // m_textBuffer will be our buffer where we put everything that the shaders will need:
+    // text data | character x-coordinates | draw infos | draw args
 
     // Align buffer size to something large so we don't recreate it all the time
-    size_t bufferSize = align(textSizeAligned + drawInfoSize + drawArgsSize, 2048u);
+    size_t bufferSize = align(textSizeAligned + charInfoSize + drawInfoSize + drawArgsSize, 2048u);
 
     if (!m_textBuffer || m_textBuffer->info().size < bufferSize) {
       DxvkBufferCreateInfo textBufferInfo = { };
       textBufferInfo.size = bufferSize;
       textBufferInfo.usage = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                           | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+                           | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+                           | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
       textBufferInfo.stages = VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+                            | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                            | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
       textBufferInfo.access = VK_ACCESS_SHADER_READ_BIT
                             | VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
       textBufferInfo.debugName = "HUD text buffer";
@@ -172,20 +192,23 @@ namespace dxvk::hud {
 
     // Upload aligned text data in such a way that we write full cache lines
     std::memcpy(m_textBuffer->mapPtr(0), m_textData.data(), textSizeAligned);
+    
+    // Upload zeroes to character info to initialize
+    std::memset(m_textBuffer->mapPtr(textSizeAligned), 65, charInfoSize);
 
     // Upload draw parameters and pad aligned region with zeroes
     size_t drawInfoCopySize = m_textDraws.size() * sizeof(HudTextDrawInfo);
-    std::memcpy(m_textBuffer->mapPtr(textSizeAligned), m_textDraws.data(), drawInfoCopySize);
-    std::memset(m_textBuffer->mapPtr(textSizeAligned + drawInfoCopySize), 0, drawInfoSize - drawInfoCopySize);
+    std::memcpy(m_textBuffer->mapPtr(textSizeAligned + charInfoSize), m_textDraws.data(), drawInfoCopySize);
+    std::memset(m_textBuffer->mapPtr(textSizeAligned + charInfoSize + drawInfoCopySize), 0, drawInfoSize - drawInfoCopySize);
 
     // Emit indirect draw parameters
     size_t drawArgWriteSize = m_textDraws.size() * sizeof(VkDrawIndirectCommand);
-    size_t drawArgOffset = textSizeAligned + drawInfoSize;
+    size_t drawArgOffset = textSizeAligned + charInfoSize + drawInfoSize;
 
     auto drawArgs = reinterpret_cast<VkDrawIndirectCommand*>(m_textBuffer->mapPtr(drawArgOffset));
 
     for (size_t i = 0; i < m_textDraws.size(); i++) {
-      drawArgs[i].vertexCount = 6u * m_textDraws[i].textLength;
+      drawArgs[i].vertexCount = 12u * m_textDraws[i].textLength;
       drawArgs[i].instanceCount = 1u;
       drawArgs[i].firstVertex = 0u;
       drawArgs[i].firstInstance = 0u;
@@ -194,11 +217,12 @@ namespace dxvk::hud {
     std::memset(m_textBuffer->mapPtr(drawArgOffset + drawArgWriteSize), 0, drawArgsSize - drawArgWriteSize);
 
     // Draw the actual text
-    VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
-    VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    VkDescriptorBufferInfo charInfosDescriptor = m_textBuffer->getDescriptor(textSizeAligned, charInfoSize).buffer;
+    VkDescriptorBufferInfo drawInfosDescriptor = m_textBuffer->getDescriptor(textSizeAligned + charInfoSize, drawInfoSize).buffer;
+    VkDescriptorBufferInfo drawArgsDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
 
-    drawTextIndirect(ctx, getPipelineKey(dstView),
-      drawBufferDescriptor, textBufferDescriptor,
+    drawTextIndirect(ctx, getPipelineKey(dstView), charInfosDescriptor,
+      drawArgsDescriptor, drawInfosDescriptor,
       m_textBufferView->handle(), m_textDraws.size());
 
     // Ensure all used resources are kept alive
@@ -216,18 +240,12 @@ namespace dxvk::hud {
   void HudRenderer::drawTextIndirect(
     const DxvkContextObjects& ctx,
     const HudPipelineKey&     key,
+    const VkDescriptorBufferInfo& charInfos,
     const VkDescriptorBufferInfo& drawArgs,
     const VkDescriptorBufferInfo& drawInfos,
           VkBufferView        text,
           uint32_t            drawCount) {
-    // Bind the correct pipeline for the swap chain
-    VkPipeline pipeline = getPipeline(key);
-
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    // Bind resources
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_textSetLayout);
+    // Prepare font buffer, needed by both compute and gfx.
 
     VkDescriptorBufferInfo fontBufferDescriptor = m_fontBuffer->getDescriptor(0, m_fontBuffer->info().size).buffer;
 
@@ -235,25 +253,87 @@ namespace dxvk::hud {
     fontTextureDescriptor.sampler = m_fontSampler->handle();
     fontTextureDescriptor.imageView = m_fontTextureView->handle();
     fontTextureDescriptor.imageLayout = m_fontTexture->info().layout;
-
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
+    
+    // -- Compute part
+    
+    VkDescriptorSet computeSet = ctx.descriptorPool->alloc(m_textComputeSetLayout);
+    
+    std::array<VkWriteDescriptorSet, 4> computeDescriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
+        computeSet, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
+        computeSet, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &charInfos },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
+        computeSet, 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &fontTextureDescriptor },
+        computeSet, 3, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
     }};
 
     ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
+      computeDescriptorWrites.size(),
+      computeDescriptorWrites.data());
+    
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::InitBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline);
+
+    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::InitBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipelineLayout,
+      computeSet, 0, nullptr);
+
+    ComputePushConstants pushConstants = { };
+    pushConstants.drawCount = drawCount;
+
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::InitBuffer,
+      m_computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(pushConstants), &pushConstants);
+
+    static const int textComputeWorkgroupSize = 256;
+    ctx.cmd->cmdDispatch(DxvkCmdBuffer::InitBuffer,
+      (drawCount + textComputeWorkgroupSize - 1) / textComputeWorkgroupSize, 1, 1);
+    
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+    barrier.srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+    
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.memoryBarrierCount = 1u;
+    depInfo.pMemoryBarriers = &barrier;
+    
+    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    
+    // -- Graphics part
+    
+    // Bind the correct pipeline for the swap chain
+    VkPipeline pipeline = getPipeline(key);
+
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    // Bind resources
+    VkDescriptorSet gfxSet = ctx.descriptorPool->alloc(m_textGfxSetLayout);
+
+    std::array<VkWriteDescriptorSet, 5> gfxDescriptorWrites = {{
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        gfxSet, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        gfxSet, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &charInfos },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        gfxSet, 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        gfxSet, 3, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        gfxSet, 4, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &fontTextureDescriptor },
+    }};
+
+    ctx.cmd->updateDescriptorSets(
+      gfxDescriptorWrites.size(),
+      gfxDescriptorWrites.data());
 
     ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout,
-      set, 0, nullptr);
+      gfxSet, 0, nullptr);
 
     ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, m_textPipelineLayout,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -404,7 +484,6 @@ namespace dxvk::hud {
 
     HudFontGpuData glyphData = { };
     glyphData.size = float(g_hudFont.size);
-    glyphData.advance = float(g_hudFont.advance);
 
     for (size_t i = 0; i < g_hudFont.charCount; i++) {
       auto& src = g_hudFont.glyphs[i];
@@ -416,6 +495,7 @@ namespace dxvk::hud {
       dst.h = src.h;
       dst.originX = src.originX;
       dst.originY = src.originY;
+      dst.advance = src.advance;
     }
 
     std::memcpy(uploadBuffer->mapPtr(0), &glyphData, bufferDataSize);
@@ -501,14 +581,70 @@ namespace dxvk::hud {
   }
 
 
-  VkDescriptorSetLayout HudRenderer::createSetLayout() {
+  void HudRenderer::createComputePipeline() {
     auto vk = m_device->vkd();
 
     static const std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
+      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { 3, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1, VK_SHADER_STAGE_COMPUTE_BIT },
+    }};
+    
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    setLayoutInfo.bindingCount = bindings.size();
+    setLayoutInfo.pBindings = bindings.data();
+
+    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(),
+      &setLayoutInfo, nullptr, &m_textComputeSetLayout);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create HUD text compute set layout: ", vr));
+    
+    VkPushConstantRange pushConstantRange = { };
+    pushConstantRange.offset = 0u;
+    pushConstantRange.size = sizeof(ComputePushConstants);
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    pipelineLayoutInfo.setLayoutCount = 1u;
+    pipelineLayoutInfo.pSetLayouts = &m_textComputeSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+
+    vr = vk->vkCreatePipelineLayout(vk->device(),
+      &pipelineLayoutInfo, nullptr, &m_computePipelineLayout);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create HUD compute pipeline layout: ", vr));
+    
+    HudShaderModule shader = { };
+    createShaderModule(shader, VK_SHADER_STAGE_COMPUTE_BIT, sizeof(hud_text_comp), hud_text_comp);
+
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    info.stage = shader.stageInfo;
+    info.layout = m_computePipelineLayout;
+    info.basePipelineIndex = -1;
+
+    vr = vk->vkCreateComputePipelines(vk->device(),
+      VK_NULL_HANDLE, 1, &info, nullptr, &m_computePipeline);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError(str::format("Failed to create HUD compute pipeline: ", vr));
+
+    vk->vkDestroyShaderModule(vk->device(), shader.stageInfo.module, nullptr);
+  }
+
+
+  VkDescriptorSetLayout HudRenderer::createGfxSetLayout() {
+    auto vk = m_device->vkd();
+
+    static const std::array<VkDescriptorSetLayoutBinding, 5> bindings = {{
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
       { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 2, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { 3, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { 4, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
     VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -535,7 +671,7 @@ namespace dxvk::hud {
 
     VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     info.setLayoutCount = 1;
-    info.pSetLayouts = &m_textSetLayout;
+    info.pSetLayouts = &m_textGfxSetLayout;
     info.pushConstantRangeCount = 1;
     info.pPushConstantRanges = &pushConstantRange;
 

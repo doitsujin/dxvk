@@ -1,0 +1,73 @@
+#version 460
+
+struct font_info_t {
+  float size;
+  float padding1;
+  uvec2 padding2;
+};
+
+struct glyph_info_t {
+  uint packed_xy;
+  uint packed_wh;
+  uint packed_origin;
+  uint packed_advance_padding;
+};
+
+layout(binding = 0, std430)
+readonly buffer font_buffer_t {
+  font_info_t font_data;
+  glyph_info_t glyph_data[];
+};
+
+struct char_info_t {
+  float x;
+};
+
+layout(binding = 1, std430)
+writeonly buffer char_info_buffer_t {
+  char_info_t char_infos[];
+};
+
+struct draw_info_t {
+  uint text_offset;
+  uint text_length_and_size;
+  uint packed_xy;
+  uint color;
+};
+
+layout(binding = 2, std430)
+readonly buffer draw_buffer_t {
+  draw_info_t draw_infos[];
+};
+
+layout(binding = 3) uniform usamplerBuffer text_buffer;
+
+layout(push_constant)
+uniform push_data_t {
+  uint draw_count;
+};
+
+layout(local_size_x = 256) in;
+
+void main() {
+  uint draw_index = gl_GlobalInvocationID.x;
+  
+  if (draw_index < draw_count) {
+    draw_info_t draw_info = draw_infos[draw_index];
+
+    uint text_length = bitfieldExtract(draw_info.text_length_and_size, 0, 16);
+    uint text_size = bitfieldExtract(draw_info.text_length_and_size, 16, 16);
+    float size_factor = float(text_size) / font_data.size;
+
+    float total_x = 0.0f;
+    for (uint i = 0; i < text_length; ++i) {
+      uint glyph_idx = texelFetch(text_buffer, int(draw_info.text_offset + i)).x;
+      glyph_info_t glyph_info = glyph_data[glyph_idx];
+      
+      char_infos[draw_info.text_offset + i].x = total_x;
+      
+      uint advance = bitfieldExtract(glyph_info.packed_advance_padding, 0, 16);
+      total_x += advance;
+    }
+  }
+}

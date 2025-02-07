@@ -287,6 +287,8 @@ namespace dxvk::hud {
 
     struct BufferLayout {
       size_t timestampSize;
+      size_t charInfoOffset;
+      size_t charInfoSize;
       size_t drawInfoOffset;
       size_t drawInfoSize;
       size_t drawParamOffset;

@@ -31,17 +31,17 @@ workgroupcoherent buffer timestamp_buffer_t {
   float frame_time_max_ms;
 };
 
-layout(binding = 1, std430)
+layout(binding = 2, std430)
 writeonly buffer draw_param_buffer_t {
   draw_param_t draw_params[];
 };
 
-layout(binding = 2, std430)
+layout(binding = 3, std430)
 writeonly buffer draw_info_buffer_t {
   draw_info_t draw_infos[];
 };
 
-layout(binding = 3)
+layout(binding = 4)
 uniform writeonly uimageBuffer text_buffer;
 
 layout(push_constant)
@@ -170,7 +170,7 @@ void main() {
     draw_infos[tid].color = 0xffffffffu;
 
     // Emit indirect draw parameters
-    draw_params[tid].vertex_count = 6u * len;
+    draw_params[tid].vertex_count = 12u * len;
     draw_params[tid].instance_count = 1u;
     draw_params[tid].first_vertex = 0u;
     draw_params[tid].first_instance = 0u;

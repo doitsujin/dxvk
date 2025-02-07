@@ -320,6 +320,9 @@ namespace dxvk::hud {
     VkDescriptorBufferInfo frameTimeBuffer = m_gpuBuffer->getDescriptor(
       0, bufferLayout.timestampSize).buffer;
 
+    VkDescriptorBufferInfo charInfoBuffer = m_gpuBuffer->getDescriptor(
+      bufferLayout.charInfoOffset, bufferLayout.charInfoSize).buffer;
+
     VkDescriptorBufferInfo drawInfoBuffer = m_gpuBuffer->getDescriptor(
       bufferLayout.drawInfoOffset, bufferLayout.drawInfoSize).buffer;
 
@@ -328,15 +331,17 @@ namespace dxvk::hud {
 
     VkBufferView textBufferView = m_textView->handle();
 
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
+    std::array<VkWriteDescriptorSet, 5> descriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
         set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &frameTimeBuffer },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawParamBuffer },
+        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &charInfoBuffer },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfoBuffer },
+        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawParamBuffer },
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, nullptr, nullptr, &textBufferView },
+        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfoBuffer },
+      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
+        set, 4, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, nullptr, nullptr, &textBufferView },
     }};
 
     ctx.cmd->updateDescriptorSets(
@@ -376,8 +381,8 @@ namespace dxvk::hud {
     renderer.drawText(12, minPos, 0xff4040ff, "min:");
     renderer.drawText(12, maxPos, 0xff4040ff, "max:");
 
-    renderer.drawTextIndirect(ctx, key, drawParamBuffer,
-      drawInfoBuffer, textBufferView, 2u);
+    renderer.drawTextIndirect(ctx, key, charInfoBuffer, 
+      drawParamBuffer, drawInfoBuffer, textBufferView, 2u);
 
     if (unlikely(m_device->isDebugEnabled()))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
@@ -494,11 +499,12 @@ namespace dxvk::hud {
           HudRenderer&        renderer) {
     auto vk = m_device->vkd();
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
+    std::array<VkDescriptorSetLayoutBinding, 5> bindings = {{
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
       { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
       { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { 3, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { 3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { 4, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
     VkDescriptorSetLayoutCreateInfo setLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -704,7 +710,9 @@ namespace dxvk::hud {
 
     BufferLayout result = { };
     result.timestampSize = align(sizeof(ComputeTimestampBuffer), 256u);
-    result.drawInfoOffset = result.timestampSize;
+    result.charInfoOffset = result.timestampSize;
+    result.charInfoSize = align(sizeof(HudCharInfo) * 256u, 256u);
+    result.drawInfoOffset = result.charInfoOffset + result.charInfoSize;
     result.drawInfoSize = align(sizeof(HudTextDrawInfo) * NumTextDraws, 256u);
     result.drawParamOffset = result.drawInfoOffset + result.drawInfoSize;
     result.drawParamSize = align(sizeof(VkDrawIndirectCommand) * NumTextDraws, 256u);

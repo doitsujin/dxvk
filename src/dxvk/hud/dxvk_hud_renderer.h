@@ -40,6 +40,11 @@ namespace dxvk::hud {
   };
 
 
+  struct HudCharInfo {
+    float x;
+  };
+
+
   struct HudPushConstants {
     VkExtent2D surfaceSize;
     float opacity;
@@ -117,6 +122,7 @@ namespace dxvk::hud {
     void drawTextIndirect(
       const DxvkContextObjects& ctx,
       const HudPipelineKey&     key,
+      const VkDescriptorBufferInfo& charInfos,
       const VkDescriptorBufferInfo& drawArgs,
       const VkDescriptorBufferInfo& drawInfos,
             VkBufferView        text,
@@ -159,10 +165,15 @@ namespace dxvk::hud {
     std::vector<HudTextDrawInfo>  m_textDraws;
     std::vector<char>             m_textData;
 
+    // HudShaderModule         m_textCs;
     HudShaderModule         m_textVs;
     HudShaderModule         m_textFs;
+    
+    VkDescriptorSetLayout   m_textComputeSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout        m_computePipelineLayout = VK_NULL_HANDLE;
+    VkPipeline              m_computePipeline = VK_NULL_HANDLE;
 
-    VkDescriptorSetLayout   m_textSetLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout   m_textGfxSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout        m_textPipelineLayout = VK_NULL_HANDLE;
 
     HudPushConstants        m_pushConstants = { };
@@ -174,8 +185,10 @@ namespace dxvk::hud {
 
     void uploadFontResources(
       const DxvkContextObjects& ctx);
+    
+    void createComputePipeline();
 
-    VkDescriptorSetLayout createSetLayout();
+    VkDescriptorSetLayout createGfxSetLayout();
 
     VkPipelineLayout createPipelineLayout();
 
