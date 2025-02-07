@@ -475,6 +475,11 @@ namespace dxvk {
     { R"(\\FarCry(5|NewDawn)\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
+    /* Cardfight!! Vanguard Dear Days 2 - Broken   *
+     * effects and Invisible cards in battles      */
+    { R"(\\VGDD2\.exe$)", {{
+      { "d3d11.dcSingleUseMode",            "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
