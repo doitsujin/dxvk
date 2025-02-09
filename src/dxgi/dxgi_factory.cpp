@@ -327,15 +327,39 @@ namespace dxvk {
   }
   
   
+  LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+    switch (message) {
+      case WM_CLOSE:
+        PostQuitMessage(0);
+        return 0;
+    }
+
+    return DefWindowProcW(hWnd, message, wParam, lParam);
+  }
+
+
   HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForComposition(
           IUnknown*             pDevice,
     const DXGI_SWAP_CHAIN_DESC1* pDesc,
           IDXGIOutput*          pRestrictToOutput,
           IDXGISwapChain1**     ppSwapChain) {
     InitReturnPtr(ppSwapChain);
-    
-    Logger::err("DxgiFactory::CreateSwapChainForComposition: Not implemented");
-    return E_NOTIMPL;
+
+    WNDCLASSEXW wc = { };
+    wc.cbSize = sizeof(wc);
+    wc.style = CS_HREDRAW | CS_VREDRAW;
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = GetModuleHandle(NULL);
+    wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wc.hbrBackground = HBRUSH(COLOR_WINDOW);
+    wc.lpszClassName = L"WindowClass";
+    RegisterClassExW(&wc);
+
+    HWND hWnd = CreateWindowExW(0, L"WindowClass", L"D3D11 triangle",
+      WS_OVERLAPPEDWINDOW, 300, 300, 1024, 600,
+      nullptr, nullptr, wc.hInstance, nullptr);
+
+    return CreateSwapChainForHwndBase(pDevice, hWnd, pDesc, nullptr, pRestrictToOutput, ppSwapChain);
   }
   
   
