@@ -1661,7 +1661,7 @@ namespace dxvk {
 
   // Render States //
 
-  // ZBIAS can be an integer from 0 to 1 and needs to be remapped to float
+  // ZBIAS can be an integer from 0 to 16 and needs to be remapped to float
   static constexpr float ZBIAS_SCALE     = -0.000005f;
   static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
 
@@ -1694,7 +1694,7 @@ namespace dxvk {
 
       case D3DRS_ZBIAS:
         State9 = d3d9::D3DRS_DEPTHBIAS;
-        Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+        Value  = bit::cast<DWORD>(static_cast<float>(Value) * ZBIAS_SCALE);
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
@@ -1755,9 +1755,9 @@ namespace dxvk {
         break;
 
       case D3DRS_ZBIAS: {
-        float bias  = 0;
-        HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, (DWORD*)&bias);
-        *pValue     = bit::cast<DWORD>(bias * ZBIAS_SCALE_INV);
+        DWORD bias  = 0;
+        HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, &bias);
+        *pValue     = static_cast<DWORD>(bit::cast<float>(bias) * ZBIAS_SCALE_INV);
         return res;
       } break;
 
