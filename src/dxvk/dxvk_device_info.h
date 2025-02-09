@@ -38,6 +38,9 @@ namespace dxvk {
    * Stores core features and extension-specific features.
    * If the respective extensions are not available, the
    * extended features will be marked as unsupported.
+   * 
+   * NOTE: This struct is exposed by interop interfaces, please add
+   * new fields at the end of the struct to maintain compatibility.
    */
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2                                 core;
@@ -78,6 +81,7 @@ namespace dxvk {
     VkBool32                                                  nvxBinaryImport;
     VkBool32                                                  nvxImageViewHandle;
     VkBool32                                                  khrWin32KeyedMutex;
+    VkDeviceMemoryOverallocationCreateInfoAMD                 amdOverallocation;
   };
 
 }

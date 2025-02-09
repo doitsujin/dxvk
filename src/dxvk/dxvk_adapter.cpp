@@ -272,16 +272,21 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDevice> DxvkAdapter::createDevice(
-    const Rc<DxvkInstance>&   instance,
-          DxvkDeviceFeatures  enabledFeatures) {
-    DxvkDeviceExtensions devExtensions;
+  bool DxvkAdapter::getDeviceCreateInfo(
+      const Rc<DxvkInstance>&           instance,
+            VkDeviceCreateInfo&         info,
+            DxvkDeviceFeatures&         enabledFeatures,
+            DxvkDeviceCreateExtInfo&    extInfo,
+            DxvkDeviceCreateQueueInfo&  queueInfo) const {
+    auto& [devExtensions, extensionsEnabled, extensionNameList, enableCudaInterop] = extInfo;
+    auto& [queueFamilies, queueInfos] = queueInfo;
+
     auto devExtensionList = getExtensionList(devExtensions);
 
     // Only enable Cuda interop extensions in 64-bit builds in
     // order to avoid potential driver or address space issues.
     // VK_KHR_buffer_device_address is expensive on some drivers.
-    bool enableCudaInterop = !env::is32BitHostPlatform() &&
+    enableCudaInterop = !env::is32BitHostPlatform() &&
       m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
       m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
       m_deviceFeatures.vk12.bufferDeviceAddress;
@@ -306,17 +311,15 @@ namespace dxvk {
     if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
       devExtensions.amdMemoryOverallocationBehaviour.setMode(DxvkExtMode::Optional);
 
-    DxvkNameSet extensionsEnabled;
-
     if (!m_deviceExtensions.enableExtensions(
           devExtensionList.size(),
           devExtensionList.data(),
           &extensionsEnabled))
-      throw DxvkError("DxvkAdapter: Failed to create device");
+      return false;
     
     // Enable additional extensions if necessary
     extensionsEnabled.merge(m_extraExtensions);
-    DxvkNameList extensionNameList = extensionsEnabled.toNameList();
+    extensionNameList = extensionsEnabled.toNameList();
 
     // Always enable robust buffer access
     enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
@@ -451,34 +454,22 @@ namespace dxvk {
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
 
-    // Log feature support info an extension list
-    Logger::info(str::format("Device properties:"
-      "\n  Device : ", m_deviceInfo.core.properties.deviceName,
-      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ", m_deviceInfo.driverVersion.toString()));
-
-    Logger::info("Enabled device extensions:");
-    this->logNameList(extensionNameList);
-    this->logFeatures(enabledFeatures);
-
     // Report the desired overallocation behaviour to the driver
-    VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo = { VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD };
-    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
+    enabledFeatures.amdOverallocation = { VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD };
+    enabledFeatures.amdOverallocation.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
 
     // Create the requested queues
-    float queuePriority = 1.0f;
-    std::vector<VkDeviceQueueCreateInfo> queueInfos;
+    static const float queuePriority = 1.0f;
 
     std::unordered_set<uint32_t> queueFamiliySet;
 
-    DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
+    queueFamilies = findQueueFamilies();
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
 
     if (queueFamilies.sparse != VK_QUEUE_FAMILY_IGNORED)
       queueFamiliySet.insert(queueFamilies.sparse);
 
-    this->logQueueFamilies(queueFamilies);
-    
     for (uint32_t family : queueFamiliySet) {
       VkDeviceQueueCreateInfo graphicsQueue = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
       graphicsQueue.queueFamilyIndex  = family;
@@ -487,7 +478,9 @@ namespace dxvk {
       queueInfos.push_back(graphicsQueue);
     }
 
-    VkDeviceCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, enabledFeatures.core.pNext };
+    info.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+    info.pNext                      = enabledFeatures.core.pNext;
+    info.flags                      = 0;
     info.queueCreateInfoCount       = queueInfos.size();
     info.pQueueCreateInfos          = queueInfos.data();
     info.enabledExtensionCount      = extensionNameList.count();
@@ -495,8 +488,36 @@ namespace dxvk {
     info.pEnabledFeatures           = &enabledFeatures.core.features;
 
     if (devExtensions.amdMemoryOverallocationBehaviour)
-      overallocInfo.pNext = std::exchange(info.pNext, &overallocInfo);
+      enabledFeatures.amdOverallocation.pNext = std::exchange(info.pNext, &enabledFeatures.amdOverallocation);
     
+    return true;
+  }
+
+  Rc<DxvkDevice> DxvkAdapter::createDevice(
+  const Rc<DxvkInstance>&   instance,
+        DxvkDeviceFeatures  enabledFeatures) {
+    VkDeviceCreateInfo info;
+    DxvkDeviceCreateExtInfo extInfo;
+    DxvkDeviceCreateQueueInfo queueInfo;
+
+    // Get device creation info
+    if (!getDeviceCreateInfo(instance, info, enabledFeatures, extInfo, queueInfo))
+      throw DxvkError("DxvkAdapter: Failed to create device");
+
+    auto& [devExtensions, extensionsEnabled, extensionNameList, enableCudaInterop] = extInfo;
+    auto& [queueFamilies, queueInfos] = queueInfo;
+
+    // Log feature support info, extension list, and queue families
+    Logger::info(str::format("Device properties:"
+      "\n  Device : ", m_deviceInfo.core.properties.deviceName,
+      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ", m_deviceInfo.driverVersion.toString()));
+
+    Logger::info("Enabled device extensions:");
+    this->logNameList(extensionNameList);
+    this->logFeatures(enabledFeatures);
+    this->logQueueFamilies(queueFamilies);
+
+    // Create device!
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
 
@@ -669,10 +690,16 @@ namespace dxvk {
     // Create device loader
     Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, false, args.device);
 
-    // We only support one queue when importing devices, and no sparse.
+    // By default, we only use one queue when importing devices, and no sparse.
     DxvkDeviceQueueSet queues = { };
     queues.graphics = { args.queue, args.queueFamily };
     queues.transfer = queues.graphics;
+
+    if (args.transferQueue != VK_NULL_HANDLE && args.transferQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+      queues.transfer = { args.transferQueue, args.transferQueueFamily };
+
+    if (args.sparseQueue != VK_NULL_HANDLE && args.sparseQueueFamily != VK_QUEUE_FAMILY_IGNORED)
+      queues.sparse = { args.sparseQueue, args.sparseQueueFamily };
 
     return new DxvkDevice(instance, this, vkd, enabledFeatures, queues, args.queueCallback);
   }
@@ -1000,7 +1027,7 @@ namespace dxvk {
 
 
   std::vector<DxvkExt*> DxvkAdapter::getExtensionList(
-          DxvkDeviceExtensions&   devExtensions) {
+          DxvkDeviceExtensions&   devExtensions) const {
     return {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
