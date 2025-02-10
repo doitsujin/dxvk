@@ -18,9 +18,12 @@ namespace dxvk {
     /** GPU command that applications are likely to synchronize
      *  with soon has been recorded into the command list */
     ImplicitStrongHint      = 2,
+    /** A render pass boundary is likely to occur and a flush
+     *  should be recorded if the command list is large enough. */
+    ImplicitMediumHint      = 3,
     /** GPU commands have been recorded and a flush should be
      *  performed if the current command list is large enough. */
-    ImplicitWeakHint        = 3,
+    ImplicitWeakHint        = 4,
   };
 
 
