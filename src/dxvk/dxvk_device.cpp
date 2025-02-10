@@ -446,6 +446,11 @@ namespace dxvk {
 
     applyTristate(tilerMode, m_options.tilerMode);
     hints.preferRenderPassOps = tilerMode;
+
+    // Be less aggressive on secondary command buffer usage on
+    // drivers that do not natively support them
+    hints.preferPrimaryCmdBufs = !hints.preferRenderPassOps
+      || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP);
     return hints;
   }
 
