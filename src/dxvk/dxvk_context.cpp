@@ -5250,7 +5250,15 @@ namespace dxvk {
       renderingInheritance.stencilAttachmentFormat = depthStencilFormat;
     }
 
-    if (m_device->perfHints().preferRenderPassOps) {
+    // On drivers that don't natively support secondary command buffers, only
+    // use them to enable MSAA resolve attachments. Also ignore color-only
+    // render passes here since we almost certainly need the output anyway.
+    bool useSecondaryCmdBuffer = m_device->perfHints().preferRenderPassOps;
+
+    if (useSecondaryCmdBuffer && (m_device->perfHints().preferPrimaryCmdBufs || !depthStencilAspects))
+      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
+
+    if (useSecondaryCmdBuffer) {
       // Begin secondary command buffer on tiling GPUs so that subsequent
       // resolve, discard and clear commands can modify render pass ops.
       m_flags.set(DxvkContextFlag::GpRenderPassSecondaryCmd);
