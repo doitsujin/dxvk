@@ -156,7 +156,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     D3D10DeviceLock lock = LockContext();
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+    if (!IgnoreExplicitFlush())
+      ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
 
@@ -165,7 +166,8 @@ namespace dxvk {
           HANDLE                      hEvent) {
     D3D10DeviceLock lock = LockContext();
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
+    if (!IgnoreExplicitFlush())
+      ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
   
   
@@ -1075,6 +1077,22 @@ namespace dxvk {
     stats.allocatedTotal += m_discardMemoryCounter;
     stats.allocatedSinceLastReset += m_discardMemoryCounter - m_discardMemoryOnFlush;
     return stats;
+  }
+
+
+  bool D3D11ImmediateContext::IgnoreExplicitFlush() {
+    // This is sketchy in general since not respecting an explicit flush can
+    // keep resources alive indefinitely when they shouldn't be. Only do this
+    // in tiler mode if flushing would prevent resolve optimizations, and if
+    // we don't break submission order w.r.t. other D3D devices.
+    if (!m_device->perfHints().preferRenderPassOps)
+      return false;
+
+    if (m_parent->Is11on12Device()
+     || m_parent->HasSharedResources())
+      return false;
+
+    return m_hasPendingMsaaResolve;
   }
 
 

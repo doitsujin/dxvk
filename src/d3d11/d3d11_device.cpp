@@ -2375,6 +2375,8 @@ namespace dxvk {
       Logger::err(e.message());
       return E_INVALIDARG;
     }
+
+    m_hasSharedResources.store(true, std::memory_order_release);
 #else
     Logger::warn("D3D11Device::OpenSharedResourceGeneric: Not supported on this platform.");
     return E_INVALIDARG;
