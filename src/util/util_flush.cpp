@@ -45,6 +45,7 @@ namespace dxvk {
         return chunkCount >= minChunkCount;
       }
 
+      case GpuFlushType::ImplicitMediumHint:
       case GpuFlushType::ImplicitWeakHint: {
         // Aim for a higher number of chunks per submission with
         // a weak hint in order to avoid submitting too often.
