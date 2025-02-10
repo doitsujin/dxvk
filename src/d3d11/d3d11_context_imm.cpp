@@ -1035,6 +1035,9 @@ namespace dxvk {
     // Notify the device that the context has been flushed,
     // this resets some resource initialization heuristics.
     m_parent->NotifyContextFlush();
+
+    // No point in tracking this across submissions
+    m_hasPendingMsaaResolve = false;
   }
 
 
@@ -1081,7 +1084,7 @@ namespace dxvk {
     if (pParent->GetOptions()->reproducibleCommandStream)
       return GpuFlushType::ExplicitFlush;
     else if (Device->perfHints().preferRenderPassOps)
-      return GpuFlushType::ImplicitStrongHint;
+      return GpuFlushType::ImplicitMediumHint;
     else
       return GpuFlushType::ImplicitWeakHint;
   }

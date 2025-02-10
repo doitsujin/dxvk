@@ -131,6 +131,8 @@ namespace dxvk {
     VkDeviceSize            m_discardMemoryCounter = 0u;
     VkDeviceSize            m_discardMemoryOnFlush = 0u;
 
+    bool                    m_hasPendingMsaaResolve = false;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
