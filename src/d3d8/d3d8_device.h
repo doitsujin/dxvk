@@ -393,6 +393,8 @@ namespace dxvk {
       m_backBuffers.resize(m_presentParams.BackBufferCount);
 
       m_autoDepthStencil = nullptr;
+
+      m_shadowPerspectiveDivide = false;
     }
 
     inline void RecreateBackBuffersAndAutoDepthStencil() {
@@ -433,6 +435,8 @@ namespace dxvk {
 
     // Controls fixed-function exclusive mode (no PS support)
     bool                  m_isFixedFunctionOnly = false;
+
+    bool                  m_shadowPerspectiveDivide = false;
 
     D3D8StateBlock*                            m_recorder = nullptr;
     DWORD                                      m_recorderToken = 0;
