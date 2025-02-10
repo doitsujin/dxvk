@@ -1683,8 +1683,9 @@ namespace dxvk {
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
-      // Not supported by D3D8.
+      // Not supported by D3D8, but its value is stored.
       case D3DRS_ZVISIBLE:
+        m_zVisible = Value;
         return D3D_OK;
 
       // TODO: Implement D3DRS_ANTIALIASEDLINEENABLE in D9VK.
@@ -1745,9 +1746,9 @@ namespace dxvk {
         *pValue = bit::cast<DWORD>(m_linePattern);
         return D3D_OK;
 
-      // Not supported by D3D8.
+      // Not supported by D3D8, but its value is stored.
       case D3DRS_ZVISIBLE:
-        *pValue = 0;
+        *pValue = m_zVisible;
         return D3D_OK;
 
       case D3DRS_EDGEANTIALIAS:

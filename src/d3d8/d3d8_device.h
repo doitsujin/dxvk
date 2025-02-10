@@ -426,6 +426,8 @@ namespace dxvk {
     
     // Value of D3DRS_LINEPATTERN
     D3DLINEPATTERN        m_linePattern   = {};
+    // Value of D3DRS_ZVISIBLE (although the RS is not supported, its value is stored)
+    DWORD                 m_zVisible      = 0;
     // Value of D3DRS_PATCHSEGMENTS
     float                 m_patchSegments = 1.0f;
 
