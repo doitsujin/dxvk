@@ -4831,7 +4831,7 @@ namespace dxvk {
 
       if (stencilMode) {
         auto& stencil = m_state.om.renderingInfo.stencil;
-        stencil.resolveMode = depthMode;
+        stencil.resolveMode = stencilMode;
         stencil.resolveImageView = dstView->handle();
         stencil.resolveImageLayout = newLayout;
       }
