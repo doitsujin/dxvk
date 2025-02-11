@@ -1219,7 +1219,9 @@ namespace dxvk {
 
 
   const static ProfileList g_hashedProfiles = {
-    /* Nothing to see here */
+    { "27fb4433abea6d1d68f678cbfa8c5e0a0fdc0803", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
   };
 
 
