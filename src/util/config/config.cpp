@@ -11,12 +11,14 @@
 
 #include "../util_env.h"
 
+#include "../sha1/sha1_util.h"
+
 namespace dxvk {
 
   using ProfileList = std::vector<std::pair<const char*, Config>>;
 
 
-  const static ProfileList g_profiles = {{
+  const static ProfileList g_profiles = {
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
     /**********************************************/
@@ -1204,16 +1206,21 @@ namespace dxvk {
     { R"(\\bin\\trainz\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
-  }};
+  };
 
 
-  const static ProfileList g_deckProfiles = {{
+  const static ProfileList g_deckProfiles = {
     /* Fallout 4: Defaults to 45 FPS on OLED, but also breaks above 60 FPS */
     { R"(\\Fallout4\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
       { "dxgi.maxFrameRate",                "60" },
     }} },
-  }};
+  };
+
+
+  const static ProfileList g_hashedProfiles = {
+    /* Nothing to see here */
+  };
 
 
   const Config* findProfile(const ProfileList& profiles, const std::string& appName) {
@@ -1229,6 +1236,30 @@ namespace dxvk {
           Logger::err(str::format("Failed to parse regular expression: ", pair.first));
           return false;
         }
+      });
+
+    return appConfig != profiles.end()
+      ? &appConfig->second
+      : nullptr;
+  }
+
+
+  const Config* findHashedProfile(const ProfileList& profiles, const std::string& appName) {
+    // Don't bother hashing exe names if we don't have
+    // any top-secret app profiles to begin with
+    if (profiles.empty())
+      return nullptr;
+
+    auto n = appName.find_last_of('\\') + 1u;
+
+    if (n >= appName.size())
+      return nullptr;
+
+    auto hash = Sha1Hash::compute(&appName[n], appName.size() - n).toString();
+
+    auto appConfig = std::find_if(profiles.begin(), profiles.end(),
+      [&hash] (const std::pair<const char*, Config>& pair) {
+        return hash == pair.first;
       });
 
     return appConfig != profiles.end()
@@ -1493,6 +1524,9 @@ namespace dxvk {
 
     if (!config)
       config = findProfile(g_profiles, appName);
+
+    if (!config)
+      config = findHashedProfile(g_hashedProfiles, appName);
 
     if (config) {
       // Inform the user that we loaded a default config
