@@ -259,9 +259,16 @@ namespace dxvk {
       return;
 
     if (m_device->features().khrPresentWait.presentWait) {
-      std::lock_guard lock(m_frameMutex);
-      m_lastSignaled = frameId;
-      m_frameCond.notify_one();
+      bool canSignal = false;
+
+      { std::unique_lock lock(m_frameMutex);
+
+        m_lastSignaled = frameId;
+        canSignal = m_lastCompleted >= frameId;
+      }
+
+      if (canSignal)
+        m_signal->signal(frameId);
     } else {
       m_fpsLimiter.delay();
       m_signal->signal(frameId);
@@ -1203,24 +1210,25 @@ namespace dxvk {
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
-    std::unique_lock lock(m_frameMutex);
-
     while (true) {
+      PresenterFrame frame = { };
+
       // Wait for all GPU work for this frame to complete in order to maintain
       // ordering guarantees of the frame signal w.r.t. objects being released
-      m_frameCond.wait(lock, [this] {
-        return !m_frameQueue.empty() && m_frameQueue.front().frameId <= m_lastSignaled;
-      });
+      { std::unique_lock lock(m_frameMutex);
 
-      // Use a frame ID of 0 as an exit condition
-      PresenterFrame frame = m_frameQueue.front();
+        m_frameCond.wait(lock, [this] {
+          return !m_frameQueue.empty();
+        });
 
-      if (!frame.frameId) {
-        m_frameQueue.pop();
-        return;
+        // Use a frame ID of 0 as an exit condition
+        frame = m_frameQueue.front();
+
+        if (!frame.frameId) {
+          m_frameQueue.pop();
+          return;
+        }
       }
-
-      lock.unlock();
 
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
@@ -1240,20 +1248,27 @@ namespace dxvk {
         frame.tracker = nullptr;
       }
 
-      // Apply FPS limtier here to align it as closely with scanout as we can,
+      // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
       m_fpsLimiter.delay();
 
+      // Wake up any thread that may be waiting for the queue to become empty
+      bool canSignal = false;
+
+      { std::unique_lock lock(m_frameMutex);
+
+        m_frameQueue.pop();
+        m_frameDrain.notify_one();
+
+        m_lastCompleted = frame.frameId;
+        canSignal = m_lastSignaled >= frame.frameId;
+      }
+
       // Always signal even on error, since failures here
       // are transparent to the front-end.
-      m_signal->signal(frame.frameId);
-
-      // Wake up any thread that may be waiting for the queue to become empty
-      lock.lock();
-
-      m_frameQueue.pop();
-      m_frameDrain.notify_one();
+      if (canSignal)
+        m_signal->signal(frame.frameId);
     }
   }
 

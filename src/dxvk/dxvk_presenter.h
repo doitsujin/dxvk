@@ -315,6 +315,7 @@ namespace dxvk {
     std::queue<PresenterFrame>  m_frameQueue;
 
     uint64_t                    m_lastSignaled = 0u;
+    uint64_t                    m_lastCompleted = 0u;
 
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
