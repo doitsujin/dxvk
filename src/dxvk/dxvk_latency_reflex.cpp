@@ -82,20 +82,30 @@ namespace dxvk {
 
   void DxvkReflexLatencyTrackerNv::notifyCsRenderBegin(
           uint64_t                  frameId) {
-    std::lock_guard lock(m_mutex);
-    auto& frame = getFrameData(frameId);
+    bool setMarker = false;
 
-    if (frame.appFrameId && frameId >= m_nextValidFrameId)
+    { std::lock_guard lock(m_mutex);
+
+      auto& frame = getFrameData(frameId);
+      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+    }
+
+    if (setMarker)
       m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_START_NV);
   }
 
 
   void DxvkReflexLatencyTrackerNv::notifyCsRenderEnd(
           uint64_t                  frameId) {
-    std::lock_guard lock(m_mutex);
-    auto& frame = getFrameData(frameId);
+    bool setMarker = false;
 
-    if (frame.appFrameId && frameId >= m_nextValidFrameId)
+    { std::lock_guard lock(m_mutex);
+
+      auto& frame = getFrameData(frameId);
+      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+    }
+
+    if (setMarker)
       m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_RENDERSUBMIT_END_NV);
   }
 
@@ -112,10 +122,15 @@ namespace dxvk {
 
   void DxvkReflexLatencyTrackerNv::notifyQueuePresentBegin(
           uint64_t                  frameId) {
-    std::lock_guard lock(m_mutex);
-    auto& frame = getFrameData(frameId);
+    bool setMarker = false;
 
-    if (frame.appFrameId && frameId >= m_nextValidFrameId)
+    { std::lock_guard lock(m_mutex);
+
+      auto& frame = getFrameData(frameId);
+      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+    }
+
+    if (setMarker)
       m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_START_NV);
   }
 
@@ -123,17 +138,29 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::notifyQueuePresentEnd(
           uint64_t                  frameId,
           VkResult                  status) {
-    std::lock_guard lock(m_mutex);
-    auto& frame = getFrameData(frameId);
+    bool setMarker = false;
 
-    if (frame.appFrameId && frameId >= m_nextValidFrameId) {
-      frame.queuePresent = m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);
+    { std::lock_guard lock(m_mutex);
+
+      auto& frame = getFrameData(frameId);
+      setMarker = frame.appFrameId && frameId >= m_nextValidFrameId;
+    }
+
+    time_point cpuTime = time_point();
+
+    if (setMarker)
+      cpuTime = m_presenter->setLatencyMarkerNv(frameId, VK_LATENCY_MARKER_PRESENT_END_NV);
+
+    std::lock_guard lock(m_mutex);
+
+    if (setMarker) {
+      auto& frame = getFrameData(frameId);
       frame.presentStatus = status;
+      frame.queuePresent = cpuTime;
     }
 
     // Ignore errors or we might never wake up a waiting thread
     m_lastPresentComplete = frameId;
-
     m_cond.notify_all();
   }
 
@@ -141,7 +168,6 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::notifyGpuExecutionBegin(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
-
     auto now = dxvk::high_resolution_clock::now();
 
     auto& frame = getFrameData(frameId);
@@ -158,7 +184,6 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::notifyGpuExecutionEnd(
           uint64_t                  frameId) {
     std::lock_guard lock(m_mutex);
-
     auto now = dxvk::high_resolution_clock::now();
 
     auto& frame = getFrameData(frameId);
@@ -248,7 +273,7 @@ namespace dxvk {
   void DxvkReflexLatencyTrackerNv::setLatencyMarker(
           uint64_t                  appFrameId,
           VkLatencyMarkerNV         marker) {
-    std::lock_guard lock(m_mutex);
+    std::unique_lock lock(m_mutex);
 
     // Find frame ID. If this is the first marker in a new frame,
     // try to map it to a new internal frame ID.
@@ -274,38 +299,52 @@ namespace dxvk {
     if (frameId < m_nextValidFrameId)
       return;
 
+    // Need to unlock here so we don't deadlock with the presenter
+    auto cpuTime = dxvk::high_resolution_clock::now();
+
+    if (marker == VK_LATENCY_MARKER_INPUT_SAMPLE_NV
+     || marker == VK_LATENCY_MARKER_SIMULATION_START_NV
+     || marker == VK_LATENCY_MARKER_SIMULATION_END_NV) {
+      lock.unlock();
+
+      cpuTime = m_presenter->setLatencyMarkerNv(frameId, marker);
+
+      lock.lock();
+    }
+
+    // Store CPU timestamp to correlate times
     auto& frame = getFrameData(frameId);
 
     switch (marker) {
       case VK_LATENCY_MARKER_INPUT_SAMPLE_NV:
-        frame.cpuInputSample = m_presenter->setLatencyMarkerNv(frameId, marker);
+        frame.cpuInputSample = cpuTime;
         break;
 
       case VK_LATENCY_MARKER_SIMULATION_START_NV:
-        frame.cpuSimBegin = m_presenter->setLatencyMarkerNv(frameId, marker);
+        frame.cpuSimBegin = cpuTime;
 
         if (m_lastSleepDuration != duration(0u))
           frame.sleepDuration = std::exchange(m_lastSleepDuration, duration(0u));
         break;
 
       case VK_LATENCY_MARKER_SIMULATION_END_NV:
-        frame.cpuSimEnd = m_presenter->setLatencyMarkerNv(frameId, marker);
+        frame.cpuSimEnd = cpuTime;
         break;
 
       case VK_LATENCY_MARKER_RENDERSUBMIT_START_NV:
-        frame.cpuRenderBegin = dxvk::high_resolution_clock::now();
+        frame.cpuRenderBegin = cpuTime;
         break;
 
       case VK_LATENCY_MARKER_RENDERSUBMIT_END_NV:
-        frame.cpuRenderEnd = dxvk::high_resolution_clock::now();
+        frame.cpuRenderEnd = cpuTime;
         break;
 
       case VK_LATENCY_MARKER_PRESENT_START_NV:
-        frame.cpuPresentBegin = dxvk::high_resolution_clock::now();
+        frame.cpuPresentBegin = cpuTime;
         break;
 
       case VK_LATENCY_MARKER_PRESENT_END_NV:
-        frame.cpuPresentEnd = dxvk::high_resolution_clock::now();
+        frame.cpuPresentEnd = cpuTime;
         break;
 
       default:
@@ -346,8 +385,6 @@ namespace dxvk {
   uint32_t DxvkReflexLatencyTrackerNv::getFrameReports(
           uint32_t                  maxCount,
           DxvkReflexFrameReport*    reports) {
-    std::lock_guard lock(m_mutex);
-
     small_vector<VkLatencyTimingsFrameReportNV, 64> nvReports(maxCount);
 
     for (uint32_t i = 0; i < maxCount; i++)
@@ -356,6 +393,9 @@ namespace dxvk {
     // Adjust some statistics so that we actually return the
     // correct timestamps for the application-defined markers
     uint32_t count = m_presenter->getLatencyTimingsNv(maxCount, nvReports.data());
+
+    // Only lock after calling into the presenter to avoid deadlocks
+    std::lock_guard lock(m_mutex);
 
     for (uint32_t i = 0; i < count; i++) {
       auto& report = nvReports[i];
