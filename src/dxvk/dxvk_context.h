@@ -1731,6 +1731,10 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources,
             bool                    flushClears = true);
 
+    DxvkDeferredClear* findDeferredClear(
+      const Rc<DxvkImage>&          image,
+      const VkImageSubresourceRange& subresources);
+
     bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
 

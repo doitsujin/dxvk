@@ -4244,18 +4244,7 @@ namespace dxvk {
       return false;
 
     // Find a pending clear that overlaps with the source image
-    const DxvkDeferredClear* clear = nullptr;
-
-    for (const auto& entry : m_deferredClears) {
-      // Entries in the deferred clear array cannot overlap, so
-      // if we find an entry covering all source subresources,
-      // it's the only one in the list that does.
-      if ((entry.imageView->image() == srcImage) && ((srcSubresource.aspectMask & entry.clearAspects) == srcSubresource.aspectMask)
-       && (vk::checkSubresourceRangeSuperset(entry.imageView->subresources(), vk::makeSubresourceRange(srcSubresource)))) {
-        clear = &entry;
-        break;
-      }
-    }
+    const DxvkDeferredClear* clear = findDeferredClear(srcImage, vk::makeSubresourceRange(srcSubresource));
 
     if (!clear)
       return false;
@@ -6184,6 +6173,19 @@ namespace dxvk {
         m_rtLayouts.depth = image->info().layout;
       }
     }
+  }
+
+
+  DxvkDeferredClear* DxvkContext::findDeferredClear(
+    const Rc<DxvkImage>&          image,
+    const VkImageSubresourceRange& subresources) {
+    for (auto& entry : m_deferredClears) {
+      if ((entry.imageView->image() == image) && ((subresources.aspectMask & entry.clearAspects) == subresources.aspectMask)
+       && (vk::checkSubresourceRangeSuperset(entry.imageView->imageSubresources(), subresources)))
+        return &entry;
+    }
+
+    return nullptr;
   }
 
 
