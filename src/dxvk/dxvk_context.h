@@ -1610,6 +1610,12 @@ namespace dxvk {
             VkResolveModeFlagBits     depthMode,
             VkResolveModeFlagBits     stencilMode);
 
+    bool resolveImageClear(
+      const Rc<DxvkImage>&            dstImage,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageResolve&           region,
+            VkFormat                  format);
+
     bool resolveImageInline(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,

@@ -4805,6 +4805,64 @@ namespace dxvk {
   }
 
 
+  bool DxvkContext::resolveImageClear(
+    const Rc<DxvkImage>&            dstImage,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageResolve&           region,
+          VkFormat                  format) {
+    // Can't have pending clears if we're already inside a render pass
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      return false;
+
+    // If the destination image is only partially written, ignore
+    if (dstImage->mipLevelExtent(region.dstSubresource.mipLevel, region.dstSubresource.aspectMask) != region.extent)
+      return false;
+
+    // Find a pending clear that overlaps with the source image
+    const DxvkDeferredClear* clear = findDeferredClear(srcImage, vk::makeSubresourceRange(region.srcSubresource));
+
+    if (!clear)
+      return false;
+
+    // The clear format must match the resolve format, or
+    // otherwise we cannot reuse the clear value
+    if (clear->imageView->info().format != format)
+      return false;
+
+    // Ensure that we can actually clear the image as intended. We can be
+    // aggressive here since we know the destination image has a format
+    // that can be used for rendering.
+    bool isDepthStencil = region.dstSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+
+    DxvkImageUsageInfo usage = { };
+    usage.usage = isDepthStencil
+      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    usage.viewFormatCount = 1;
+    usage.viewFormats = &format;
+
+    if (!ensureImageCompatibility(dstImage, usage))
+      return false;
+
+    // Create an image view that we can use to perform the clear
+    DxvkImageViewKey key = { };
+    key.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    key.usage = usage.usage;
+    key.format = format;
+    key.aspects = region.dstSubresource.aspectMask;
+    key.layerIndex = region.dstSubresource.baseArrayLayer;
+    key.layerCount = region.dstSubresource.layerCount;
+    key.mipIndex = region.dstSubresource.mipLevel;
+    key.mipCount = 1u;
+
+    if (isDepthStencil)
+      key.aspects = dstImage->formatInfo()->aspectMask;
+
+    deferClear(dstImage->createView(key), region.dstSubresource.aspectMask, clear->clearValue);
+    return true;
+  }
+
+
   bool DxvkContext::resolveImageInline(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
@@ -4812,6 +4870,27 @@ namespace dxvk {
           VkFormat                  format,
           VkResolveModeFlagBits     depthMode,
           VkResolveModeFlagBits     stencilMode) {
+    // Ignore any non-2D images due to the added complexity, and the
+    // source image is going to be a multisampled 2D image anyway.
+    if (dstImage->info().type != VK_IMAGE_TYPE_2D)
+      return false;
+
+    // Check if we can implement the resolve as a clear first
+    VkImageResolve clearRegion = region;
+
+    if (!depthMode) {
+      clearRegion.dstSubresource.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+      clearRegion.srcSubresource.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
+    if (!stencilMode) {
+      clearRegion.dstSubresource.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+      clearRegion.srcSubresource.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
+    if (resolveImageClear(dstImage, srcImage, clearRegion, format))
+      return true;
+
     // Need an active render pass with secondary command buffers to
     // fold resolve operations into it
     if (!m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd))
