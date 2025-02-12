@@ -4766,14 +4766,26 @@ namespace dxvk {
         return false;
     }
 
-    // If necessary, allocate a new backing image
+    // If the application may have used the destination image as shader input in
+    // any way, we need to preserve its contents throughout the render pass and
+    // allocate new backing storage for the resolve attachment itself.
     VkImageLayout oldLayout = dstImage->info().layout;
 
     VkImageLayout newLayout = dstImage->pickLayout((usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
       ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
       : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-    if (dstImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+    VkPipelineStageFlags graphicsStages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                                        | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                                        | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+                                        | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+                                        | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+
+    if (dstImage->info().stages & graphicsStages) {
+      // We can only support this if we're resolving the entire resource
+      if (dstImage->info().numLayers != region.dstSubresource.layerCount)
+        return false;
+
       DxvkImageUsageInfo usageInfo = { };
       usageInfo.usage = usage;
       usageInfo.viewFormatCount = 1;
