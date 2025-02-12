@@ -4267,7 +4267,7 @@ namespace dxvk {
 
     // Ignore mismatched size for now, needs more testing since we'd
     // need to prepare the image first and then call clearImageViewFb
-    if (dstImage->mipLevelExtent(dstSubresource.mipLevel) != dstExtent)
+    if (dstImage->mipLevelExtent(dstSubresource.mipLevel, dstSubresource.aspectMask) != dstExtent)
       return false;
 
     auto view = dstImage->createView(viewInfo);
