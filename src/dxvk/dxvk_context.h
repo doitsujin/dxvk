@@ -1441,6 +1441,7 @@ namespace dxvk {
     DxvkRenderTargetLayouts m_rtLayouts = { };
 
     std::vector<DxvkDeferredClear> m_deferredClears;
+    std::array<DxvkDeferredResolve, MaxNumRenderTargets + 1u> m_deferredResolves = { };
 
     std::vector<VkWriteDescriptorSet> m_descriptorWrites;
     std::vector<DxvkDescriptorInfo>   m_descriptors;
@@ -1650,6 +1651,10 @@ namespace dxvk {
             bool                      useRenderPass);
 
     void flushSharedImages();
+
+    void flushRenderPassResolves();
+
+    void flushResolves();
 
     void startRenderPass();
     void spillRenderPass(bool suspend);

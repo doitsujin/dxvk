@@ -177,6 +177,14 @@ namespace dxvk {
   };
   
   
+  struct DxvkDeferredResolve {
+    Rc<DxvkImageView> imageView;
+    uint32_t layerMask;
+    VkResolveModeFlagBits depthMode;
+    VkResolveModeFlagBits stencilMode;
+  };
+
+
   /**
    * \brief Pipeline state
    * 
