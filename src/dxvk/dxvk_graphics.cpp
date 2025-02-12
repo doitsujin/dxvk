@@ -1176,6 +1176,17 @@ namespace dxvk {
      && !state.rs.depthClipEnable())
       return false;
 
+    // If the vertex shader uses any input locations not provided by
+    // the input layout, we need to patch the shader.
+    uint32_t vsInputMask = m_shaders.vs->info().inputMask;
+    uint32_t ilAttributeMask = 0u;
+
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++)
+      ilAttributeMask |= 1u << state.ilAttributes[i].location();
+
+    if ((vsInputMask & ilAttributeMask) != vsInputMask)
+      return false;
+
     if (m_shaders.tcs != nullptr) {
       // If tessellation shaders are present, the input patch
       // vertex count must match the shader's definition.
