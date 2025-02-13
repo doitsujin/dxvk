@@ -287,7 +287,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
       if (likely(SUCCEEDED(res))) {
-        m_backBuffers[iBackBuffer] = new D3D8Surface(this, std::move(pSurface9));
+        m_backBuffers[iBackBuffer] = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurface9));
         *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
       }
 
@@ -347,7 +347,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppTexture = ref(new D3D8Texture2D(this, std::move(pTex9)));
+      *ppTexture = ref(new D3D8Texture2D(this, Pool, std::move(pTex9)));
 
     return res;
   }
@@ -381,7 +381,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppVolumeTexture = ref(new D3D8Texture3D(this, std::move(pVolume9)));
+      *ppVolumeTexture = ref(new D3D8Texture3D(this, Pool, std::move(pVolume9)));
 
     return res;
   }
@@ -414,7 +414,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppCubeTexture = ref(new D3D8TextureCube(this, std::move(pCube9)));
+      *ppCubeTexture = ref(new D3D8TextureCube(this, Pool, std::move(pCube9)));
 
     return res;
   }
@@ -493,7 +493,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+      *ppSurface = ref(new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurf9)));
 
     return res;
   }
@@ -526,7 +526,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+      *ppSurface = ref(new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurf9)));
 
     return res;
   }
@@ -558,7 +558,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf)));
+      *ppSurface = ref(new D3D8Surface(this, pool, std::move(pSurf)));
 
     return res;
   }
@@ -1064,7 +1064,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
 
       if (likely(SUCCEEDED(res))) {
-        m_renderTarget = new D3D8Surface(this, std::move(pRT9));
+        m_renderTarget = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pRT9));
         *ppRenderTarget = m_renderTarget.ref();
       }
 
@@ -1088,7 +1088,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
 
       if (likely(SUCCEEDED(res))) {
-        m_depthStencil = new D3D8Surface(this, std::move(pStencil9));
+        m_depthStencil = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pStencil9));
         *ppZStencilSurface = m_depthStencil.ref();
       }
 
