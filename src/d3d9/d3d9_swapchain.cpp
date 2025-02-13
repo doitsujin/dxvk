@@ -1022,7 +1022,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D9Surface* surface;
       try {
-        surface = new D3D9Surface(m_parent, &desc, this, nullptr);
+        surface = new D3D9Surface(m_parent, &desc, m_parent->IsExtended(), this, nullptr);
         m_parent->IncrementLosableCounter();
       } catch (const DxvkError& e) {
         DestroyBackBuffers();

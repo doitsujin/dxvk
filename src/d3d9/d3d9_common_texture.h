@@ -325,6 +325,8 @@ namespace dxvk {
 
     uint32_t GetPlaneCount() const;
 
+    D3DPOOL GetPool() const { return m_desc.Pool; }
+
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
     void SetLocked(UINT Subresource, bool value) { m_locked.set(Subresource, value); }

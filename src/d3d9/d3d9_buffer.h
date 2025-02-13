@@ -13,8 +13,9 @@ namespace dxvk {
 
     D3D9Buffer(
             D3D9DeviceEx*      pDevice,
-      const D3D9_BUFFER_DESC*  pDesc)
-    : D3D9Resource<Type...> (pDevice),
+      const D3D9_BUFFER_DESC*  pDesc,
+      const bool               Extended)
+    : D3D9Resource<Type...> (pDevice, pDesc->Pool, Extended ),
       m_buffer              (pDevice, pDesc) {
 
     }
@@ -57,7 +58,8 @@ namespace dxvk {
 
     D3D9VertexBuffer(
             D3D9DeviceEx*      pDevice,
-      const D3D9_BUFFER_DESC*  pDesc);
+      const D3D9_BUFFER_DESC*  pDesc,
+      const bool               Extended);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
@@ -76,7 +78,8 @@ namespace dxvk {
 
     D3D9IndexBuffer(
             D3D9DeviceEx*      pDevice,
-      const D3D9_BUFFER_DESC*  pDesc);
+      const D3D9_BUFFER_DESC*  pDesc,
+      const bool               Extended);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,

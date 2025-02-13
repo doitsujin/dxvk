@@ -11,9 +11,11 @@ namespace dxvk {
 
   public:
 
-    D3D9Resource(D3D9DeviceEx* pDevice)
+    D3D9Resource(D3D9DeviceEx* pDevice, D3DPOOL Pool, bool Extended)
       : D3D9DeviceChild<Type...>(pDevice)
-      , m_priority              ( 0 ) { }
+      , m_pool                  ( Pool )
+      , m_priority              ( 0 )
+      , m_isExtended            ( Extended ) { }
 
     HRESULT STDMETHODCALLTYPE SetPrivateData(
             REFGUID     refguid,
@@ -72,9 +74,16 @@ namespace dxvk {
     }
 
     DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) {
-      DWORD oldPriority = m_priority;
-      m_priority = PriorityNew;
-      return oldPriority;
+      // Priority can only be set for D3DPOOL_MANAGED resources on
+      // D3D9 interfaces, and for D3DPOOL_DEFAULT on D3D9Ex interfaces
+      if (likely((m_pool == D3DPOOL_MANAGED && !m_isExtended)
+              || (m_pool == D3DPOOL_DEFAULT &&  m_isExtended))) {
+        DWORD oldPriority = m_priority;
+        m_priority = PriorityNew;
+        return oldPriority;
+      }
+
+      return m_priority;
     }
 
     DWORD STDMETHODCALLTYPE GetPriority() {
@@ -84,11 +93,13 @@ namespace dxvk {
 
   protected:
 
-    DWORD m_priority;
+    const D3DPOOL        m_pool;
+          DWORD          m_priority;
 
   private:
 
-    ComPrivateData m_privateData;
+    const bool           m_isExtended;
+          ComPrivateData m_privateData;
 
   };
 
