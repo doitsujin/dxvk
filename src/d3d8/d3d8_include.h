@@ -63,21 +63,21 @@ interface DECLSPEC_UUID("4B8AAAFA-140F-42BA-9131-597EAFAA2EAD") IDirect3DVolumeT
 #endif
 
 #ifdef __MINGW32__
-#define __CRT_UUID_DECL(type,l,w1,w2,b1,b2,b3,b4,b5,b6,b7,b8)         \
-}                                                                     \
+#define __CRT_UUID_DECL(type,l,w1,w2,b1,b2,b3,b4,b5,b6,b7,b8)                                                                               \
+}                                                                                                                                           \
   extern "C++" template<> struct __mingw_uuidof_s<d3d9::type> { static constexpr IID __uuid_inst = {l,w1,w2, {b1,b2,b3,b4,b5,b6,b7,b8}}; }; \
   extern "C++" template<> constexpr const GUID &__mingw_uuidof<d3d9::type>() { return __mingw_uuidof_s<d3d9::type>::__uuid_inst; }          \
   extern "C++" template<> constexpr const GUID &__mingw_uuidof<d3d9::type*>() { return __mingw_uuidof_s<d3d9::type>::__uuid_inst; }         \
 namespace d3d9 {
 
 #elif defined(__GNUC__)
-#define __CRT_UUID_DECL(type, a, b, c, d, e, f, g, h, i, j, k) \
-}                                                                                                                               \
-  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type>() { return GUID{a,b,c,{d,e,f,g,h,i,j,k}}; } }           \
-  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } }          \
-  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } }    \
-  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } }          \
-  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } }    \
+#define __CRT_UUID_DECL(type, a, b, c, d, e, f, g, h, i, j, k)                                                               \
+}                                                                                                                            \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type>() { return GUID{a,b,c,{d,e,f,g,h,i,j,k}}; } }        \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } }       \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } } \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } }       \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } } \
 namespace d3d9 {
 #endif
 
@@ -126,27 +126,27 @@ namespace d3d9 {
 // Missed definitions in Wine/MinGW.
 
 #ifndef D3DPRESENT_BACK_BUFFERS_MAX_EX
-#define D3DPRESENT_BACK_BUFFERS_MAX_EX 30
+#define D3DPRESENT_BACK_BUFFERS_MAX_EX    30
 #endif
 
 #ifndef D3DSI_OPCODE_MASK
-#define D3DSI_OPCODE_MASK 0x0000FFFF
+#define D3DSI_OPCODE_MASK                 0x0000FFFF
 #endif
 
 #ifndef D3DSP_TEXTURETYPE_MASK
-#define D3DSP_TEXTURETYPE_MASK 0x78000000
+#define D3DSP_TEXTURETYPE_MASK            0x78000000
 #endif
 
 #ifndef D3DUSAGE_AUTOGENMIPMAP
-#define D3DUSAGE_AUTOGENMIPMAP 0x00000400L
+#define D3DUSAGE_AUTOGENMIPMAP            0x00000400L
 #endif
 
 #ifndef D3DSP_DCL_USAGE_MASK
-#define D3DSP_DCL_USAGE_MASK 0x0000000f
+#define D3DSP_DCL_USAGE_MASK              0x0000000f
 #endif
 
 #ifndef D3DSP_OPCODESPECIFICCONTROL_MASK
-#define D3DSP_OPCODESPECIFICCONTROL_MASK 0x00ff0000
+#define D3DSP_OPCODESPECIFICCONTROL_MASK  0x00ff0000
 #endif
 
 #ifndef D3DSP_OPCODESPECIFICCONTROL_SHIFT
@@ -154,31 +154,31 @@ namespace d3d9 {
 #endif
 
 #ifndef D3DCURSOR_IMMEDIATE_UPDATE
-#define D3DCURSOR_IMMEDIATE_UPDATE             0x00000001L
+#define D3DCURSOR_IMMEDIATE_UPDATE        0x00000001L
 #endif
 
 #ifndef D3DPRESENT_FORCEIMMEDIATE
-#define D3DPRESENT_FORCEIMMEDIATE              0x00000100L
+#define D3DPRESENT_FORCEIMMEDIATE         0x00000100L
 #endif
 
 // From d3dtypes.h
 
 #ifndef D3DDEVINFOID_TEXTUREMANAGER
-#define D3DDEVINFOID_TEXTUREMANAGER    1
+#define D3DDEVINFOID_TEXTUREMANAGER       1
 #endif
 
 #ifndef D3DDEVINFOID_D3DTEXTUREMANAGER
-#define D3DDEVINFOID_D3DTEXTUREMANAGER 2
+#define D3DDEVINFOID_D3DTEXTUREMANAGER    2
 #endif
 
 #ifndef D3DDEVINFOID_TEXTURING
-#define D3DDEVINFOID_TEXTURING         3
+#define D3DDEVINFOID_TEXTURING            3
 #endif
 
 // From d3dhal.h
 
 #ifndef D3DDEVINFOID_VCACHE
-#define D3DDEVINFOID_VCACHE            4
+#define D3DDEVINFOID_VCACHE               4
 #endif
 
 // MinGW headers are broken. Who'dve guessed?
@@ -186,21 +186,21 @@ namespace d3d9 {
 
 // Missing from d3d8types.h
 #ifndef D3DDEVINFOID_RESOURCEMANAGER
-#define D3DDEVINFOID_RESOURCEMANAGER    5
+#define D3DDEVINFOID_RESOURCEMANAGER      5
 #endif
 
 #ifndef D3DDEVINFOID_VERTEXSTATS
-#define D3DDEVINFOID_VERTEXSTATS        6   // Aka D3DDEVINFOID_D3DVERTEXSTATS
+#define D3DDEVINFOID_VERTEXSTATS          6 // Aka D3DDEVINFOID_D3DVERTEXSTATS
 #endif
 
 #ifndef D3DPRESENT_RATE_UNLIMITED
-#define D3DPRESENT_RATE_UNLIMITED       0x7FFFFFFF
+#define D3DPRESENT_RATE_UNLIMITED         0x7FFFFFFF
 #endif
 
 #else // _MSC_VER
 
 // These are enum typedefs in the MinGW headers, but not defined by Microsoft
-#define D3DVSDT_TYPE     DWORD
-#define D3DVSDE_REGISTER DWORD
+#define D3DVSDT_TYPE                      DWORD
+#define D3DVSDE_REGISTER                  DWORD
 
 #endif
