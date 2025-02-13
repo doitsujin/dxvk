@@ -1,4 +1,3 @@
-
 #include "d3d8_surface.h"
 #include "d3d8_device.h"
 

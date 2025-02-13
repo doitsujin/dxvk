@@ -1,4 +1,3 @@
-
 #include "d3d8_shader.h"
 
 #define VSD_SHIFT_MASK(token, field) ((token & field ## MASK) >> field ## SHIFT)
