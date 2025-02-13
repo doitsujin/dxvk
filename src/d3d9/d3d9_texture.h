@@ -23,9 +23,10 @@ namespace dxvk {
     D3D9BaseTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
+      const bool                      Extended,
             D3DRESOURCETYPE           ResourceType,
             HANDLE*                   pSharedHandle)
-      : D3D9Resource<Base...> ( pDevice )
+      : D3D9Resource<Base...> ( pDevice, pDesc->Pool, Extended )
       , m_texture             ( pDevice, this, pDesc, ResourceType, pSharedHandle )
       , m_lod                 ( 0 ) {
       const uint32_t arraySlices = m_texture.Desc()->ArraySize;
@@ -41,6 +42,7 @@ namespace dxvk {
 
           new (subObj) SubresourceType(
             pDevice,
+            Extended,
             &m_texture,
             i, j,
             this);
@@ -132,11 +134,13 @@ namespace dxvk {
     D3D9Texture2D(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
+      const bool                      Extended,
             HANDLE*                   pSharedHandle);
 
     D3D9Texture2D(
             D3D9DeviceEx*             pDevice,
-      const D3D9_COMMON_TEXTURE_DESC* pDesc);
+      const D3D9_COMMON_TEXTURE_DESC* pDesc,
+      const bool                      Extended);
 
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -162,7 +166,8 @@ namespace dxvk {
 
     D3D9Texture3D(
             D3D9DeviceEx*             pDevice,
-      const D3D9_COMMON_TEXTURE_DESC* pDesc);
+      const D3D9_COMMON_TEXTURE_DESC* pDesc,
+      const bool                      Extended);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -187,7 +192,8 @@ namespace dxvk {
 
     D3D9TextureCube(
             D3D9DeviceEx*             pDevice,
-      const D3D9_COMMON_TEXTURE_DESC* pDesc);
+      const D3D9_COMMON_TEXTURE_DESC* pDesc,
+      const bool                      Extended);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
