@@ -11,6 +11,7 @@ namespace dxvk {
 
     D3D8Volume(
             D3D8Device*                   pDevice,
+      const D3DPOOL                       Pool,
             IDirect3DVolumeTexture8*      pTexture,
             Com<d3d9::IDirect3DVolume9>&& pVolume);
 

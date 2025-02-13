@@ -21,9 +21,10 @@ namespace dxvk {
 
     D3D8BaseTexture(
             D3D8Device*                         pDevice,
+      const D3DPOOL                             Pool,
             Com<D3D9>&&                         pBaseTexture,
             UINT                                SubresourceCount)
-        : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
+        : D3D8Resource<D3D9, D3D8> ( pDevice, Pool, std::move(pBaseTexture) ) {
       m_subresources.resize(SubresourceCount, nullptr);
     }
 
@@ -74,7 +75,7 @@ namespace dxvk {
           Com<SubresourceType9> subresource = LookupSubresource(Index);
 
           // Cache the subresource
-          m_subresources[Index] = new SubresourceType(this->m_parent, this, std::move(subresource));
+          m_subresources[Index] = new SubresourceType(this->m_parent, this->m_pool, this, std::move(subresource));
         } catch (HRESULT res) {
           return res;
         }
@@ -112,6 +113,7 @@ namespace dxvk {
 
     D3D8Texture2D(
             D3D8Device*                    pDevice,
+      const D3DPOOL                        Pool,
             Com<d3d9::IDirect3DTexture9>&& pTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
@@ -139,6 +141,7 @@ namespace dxvk {
 
     D3D8Texture3D(
             D3D8Device*                           pDevice,
+      const D3DPOOL                               Pool,
             Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
@@ -166,6 +169,7 @@ namespace dxvk {
 
     D3D8TextureCube(
             D3D8Device*                         pDevice,
+      const D3DPOOL                             Pool,
             Com<d3d9::IDirect3DCubeTexture9>&&  pTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
