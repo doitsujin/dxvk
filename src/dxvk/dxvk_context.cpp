@@ -899,9 +899,6 @@ namespace dxvk {
           uint32_t y,
           uint32_t z) {
     if (this->commitComputeState()) {
-      this->commitComputeBarriers<false>();
-      this->commitComputeBarriers<true>();
-
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
@@ -924,9 +921,6 @@ namespace dxvk {
       sizeof(VkDispatchIndirectCommand), DxvkAccess::Read);
 
     if (this->commitComputeState()) {
-      this->commitComputeBarriers<false>();
-      this->commitComputeBarriers<true>();
-
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
@@ -5918,6 +5912,9 @@ namespace dxvk {
               descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access);
+
               m_cmd->track(res.imageView->image(), DxvkAccess::Read);
             } else {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
@@ -5938,6 +5935,9 @@ namespace dxvk {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
               descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->image()->hasGfxStores())
+                accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access);
 
               m_cmd->track(res.imageView->image(), (binding.access & vk::AccessWriteMask)
                 ? DxvkAccess::Write : DxvkAccess::Read);
@@ -5961,6 +5961,9 @@ namespace dxvk {
               descriptorInfo.image.imageView = viewHandle;
               descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access);
+
               m_cmd->track(res.sampler);
               m_cmd->track(res.imageView->image(), DxvkAccess::Read);
             } else {
@@ -5976,6 +5979,9 @@ namespace dxvk {
             if (res.bufferView != nullptr) {
               descriptorInfo.texelBuffer = res.bufferView->handle();
 
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores()))
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView, util::pipelineStages(binding.stage), binding.access);
+
               m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
             } else {
               descriptorInfo.texelBuffer = VK_NULL_HANDLE;
@@ -5987,6 +5993,9 @@ namespace dxvk {
 
             if (res.bufferView != nullptr) {
               descriptorInfo.texelBuffer = res.bufferView->handle();
+
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores())
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView, util::pipelineStages(binding.stage), binding.access);
 
               m_cmd->track(res.bufferView->buffer(), (binding.access & vk::AccessWriteMask)
                 ? DxvkAccess::Write : DxvkAccess::Read);
@@ -6001,6 +6010,9 @@ namespace dxvk {
             if (res.bufferSlice.length()) {
               descriptorInfo = res.bufferSlice.getDescriptor();
 
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferSlice.buffer()->hasGfxStores()))
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, res.bufferSlice, util::pipelineStages(binding.stage), binding.access);
+
               m_cmd->track(res.bufferSlice.buffer(), DxvkAccess::Read);
             } else {
               descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
@@ -6014,6 +6026,9 @@ namespace dxvk {
 
             if (res.bufferSlice.length()) {
               descriptorInfo = res.bufferSlice.getDescriptor();
+
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferSlice.buffer()->hasGfxStores()))
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, res.bufferSlice, util::pipelineStages(binding.stage), binding.access);
 
               m_cmd->track(res.bufferSlice.buffer(), (binding.access & vk::AccessWriteMask)
                 ? DxvkAccess::Write : DxvkAccess::Read);
@@ -6606,7 +6621,9 @@ namespace dxvk {
       if (unlikely(!this->updateComputePipelineState()))
         return false;
     }
-    
+
+    this->commitComputeBarriers<false>();
+
     if (m_descriptorState.hasDirtyComputeSets())
       this->updateComputeShaderResources();
 
