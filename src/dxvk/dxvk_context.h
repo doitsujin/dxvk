@@ -1762,8 +1762,7 @@ namespace dxvk {
       const DxvkBindingLayout&        layout,
             uint32_t                  setMask);
 
-    template<bool DoEmit>
-    void commitComputeBarriers();
+    bool checkComputeHazards();
 
     template<bool Indexed, bool Indirect>
     bool checkGraphicsHazards();

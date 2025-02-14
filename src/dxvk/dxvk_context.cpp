@@ -6610,7 +6610,13 @@ namespace dxvk {
         return false;
     }
 
-    this->commitComputeBarriers<false>();
+    if (this->checkComputeHazards()) {
+      this->flushBarriers();
+
+      // Dirty descriptors if this hasn't happened yet for
+      // whatever reason in order to re-emit barriers
+      m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
+    }
 
     if (m_descriptorState.hasDirtyComputeSets())
       this->updateComputeShaderResources();
@@ -6705,63 +6711,6 @@ namespace dxvk {
   }
   
   
-  template<bool DoEmit>
-  void DxvkContext::commitComputeBarriers() {
-    const auto& layout = m_state.cp.pipeline->getBindings()->layout();
-
-    // Exit early if we're only checking for hazards and
-    // if the barrier set is empty, to avoid some overhead.
-    if (!DoEmit && m_barrierTracker.empty())
-      return;
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::CsSetCount; i++) {
-      uint32_t bindingCount = layout.getBindingCount(i);
-
-      for (uint32_t j = 0; j < bindingCount; j++) {
-        const DxvkBindingInfo& binding = layout.getBinding(i, j);
-        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
-
-        bool requiresBarrier = false;
-
-        switch (binding.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            if (likely(slot.bufferSlice.length())) {
-              requiresBarrier = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
-            }
-            break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            if (likely(slot.bufferView != nullptr)) {
-              requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
-            }
-            break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            if (likely(slot.imageView != nullptr)) {
-              requiresBarrier = this->checkImageViewBarrier<DoEmit>(slot.imageView,
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
-            }
-            break;
-
-          default:
-            /* nothing to do */;
-        }
-
-        if (requiresBarrier) {
-          flushBarriers();
-          return;
-        }
-      }
-    }
-  }
-
-
   template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkResourceHazards(
     const DxvkBindingLayout&        layout,
@@ -6841,6 +6790,17 @@ namespace dxvk {
     return requiresBarrier;
   }
   
+
+  bool DxvkContext::checkComputeHazards() {
+    // Exit early if we know that there cannot be any hazards to avoid
+    // some overhead after barriers are flushed. This is common.
+    if (m_barrierTracker.empty())
+      return false;
+
+    const auto& layout = m_state.cp.pipeline->getBindings()->layout();
+    return checkResourceHazards<VK_PIPELINE_BIND_POINT_COMPUTE>(layout, layout.getSetMask());
+  }
+
 
   template<bool Indexed, bool Indirect>
   bool DxvkContext::checkGraphicsHazards() {
