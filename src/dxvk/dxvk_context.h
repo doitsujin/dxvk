@@ -1767,26 +1767,34 @@ namespace dxvk {
     template<bool Indexed, bool Indirect>
     bool checkGraphicsHazards();
 
-    template<bool DoEmit>
+    template<VkPipelineBindPoint BindPoint>
     bool checkBufferBarrier(
       const DxvkBufferSlice&          bufferSlice,
-            VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
-    template<bool DoEmit>
+    template<VkPipelineBindPoint BindPoint>
     bool checkBufferViewBarrier(
       const Rc<DxvkBufferView>&       bufferView,
-            VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
-    template<bool DoEmit>
+    template<VkPipelineBindPoint BindPoint>
     bool checkImageViewBarrier(
       const Rc<DxvkImageView>&        imageView,
-            VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
-    bool canIgnoreWawHazards(
-            VkPipelineStageFlags      stages);
+    template<VkPipelineBindPoint BindPoint>
+    bool canIgnoreWawHazards() {
+      if (!m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
+        return false;
+
+      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+        VkPipelineStageFlags2 stageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
+                                        | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
+        return !m_execBarriers.hasPendingStages(~stageMask);
+      }
+
+      return true;
+    }
 
     void emitMemoryBarrier(
             VkPipelineStageFlags      srcStages,
@@ -2011,10 +2019,9 @@ namespace dxvk {
       const Rc<DxvkImage>&            image,
             DxvkAccess                access);
 
-    template<typename Pred>
+    template<VkPipelineBindPoint BindPoint, typename Pred>
     bool checkResourceBarrier(
       const Pred&                     pred,
-            VkPipelineStageFlags      stages,
             VkAccessFlags             access) {
       // Check for read-after-write first, this is common
       bool hasPendingWrite = pred(DxvkAccess::Write);
@@ -2024,7 +2031,7 @@ namespace dxvk {
 
       // Check for a write-after-write hazard, but
       // ignore it if there are no reads involved.
-      bool ignoreWaW = canIgnoreWawHazards(stages);
+      bool ignoreWaW = canIgnoreWawHazards<BindPoint>();
 
       if (hasPendingWrite && !ignoreWaW)
         return true;

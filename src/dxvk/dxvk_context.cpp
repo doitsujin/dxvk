@@ -6737,7 +6737,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
             if (slot.bufferView) {
               if (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())
-                requiresBarrier |= checkBufferViewBarrier<false>(slot.bufferView, util::pipelineStages(binding.stage), binding.access);
+                requiresBarrier |= checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.access);
               else if (binding.access & vk::AccessWriteMask)
                 requiresBarrier |= !slot.bufferView->buffer()->trackGfxStores();
             }
@@ -6745,18 +6745,18 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
             if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores()))
-              requiresBarrier |= checkBufferViewBarrier<false>(slot.bufferView, util::pipelineStages(binding.stage), binding.access);
+              requiresBarrier |= checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.access);
           } break;
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             if (slot.bufferSlice.length() && (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores()))
-              requiresBarrier |= checkBufferBarrier<false>(slot.bufferSlice, util::pipelineStages(binding.stage), binding.access);
+              requiresBarrier |= checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.access);
           } break;
 
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
             if (slot.bufferSlice.length()) {
               if (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores())
-                requiresBarrier |= checkBufferBarrier<false>(slot.bufferSlice, util::pipelineStages(binding.stage), binding.access);
+                requiresBarrier |= checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.access);
               else if (binding.access & vk::AccessWriteMask)
                 requiresBarrier |= !slot.bufferSlice.buffer()->trackGfxStores();
             }
@@ -6765,7 +6765,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             if (slot.imageView) {
               if (!IsGraphics || slot.imageView->image()->hasGfxStores())
-                requiresBarrier |= checkImageViewBarrier<false>(slot.imageView, util::pipelineStages(binding.stage), binding.access);
+                requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access);
               else if (binding.access & vk::AccessWriteMask)
                 requiresBarrier |= !slot.imageView->image()->trackGfxStores();
             }
@@ -6774,7 +6774,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
             if (slot.imageView && (!IsGraphics || slot.imageView->image()->hasGfxStores()))
-              requiresBarrier |= checkImageViewBarrier<false>(slot.imageView, util::pipelineStages(binding.stage), binding.access);
+              requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access);
           } break;
 
           default:
@@ -6829,14 +6829,12 @@ namespace dxvk {
 
         if (xfbBufferSlice.length()) {
           requiresBarrier |= !xfbBufferSlice.buffer()->trackGfxStores();
-          requiresBarrier |= checkBufferBarrier<false>(xfbBufferSlice,
-              VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-              VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT);
+          requiresBarrier |= checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(
+            xfbBufferSlice, VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT);
 
           if (xfbCounterSlice.length()) {
             requiresBarrier |= !xfbCounterSlice.buffer()->trackGfxStores();
-            requiresBarrier |= checkBufferBarrier<false>(xfbCounterSlice,
-              VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+            requiresBarrier |= checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(xfbCounterSlice,
               VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
               VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT);
           }
@@ -6858,7 +6856,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < slices.size(); i++) {
         if (slices[i]->length() && slices[i]->buffer()->hasGfxStores()) {
-          if (checkBufferBarrier<false>(*slices[i], VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT))
+          if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(*slices[i], VK_ACCESS_INDIRECT_COMMAND_READ_BIT))
             return true;
         }
       }
@@ -6870,7 +6868,7 @@ namespace dxvk {
       const auto& indexBufferSlice = m_state.vi.indexBuffer;
 
       if (indexBufferSlice.length() && indexBufferSlice.buffer()->hasGfxStores()) {
-        if (checkBufferBarrier<false>(indexBufferSlice, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT))
+        if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(indexBufferSlice, VK_ACCESS_INDEX_READ_BIT))
           return true;
       }
     }
@@ -6884,7 +6882,7 @@ namespace dxvk {
         const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
 
         if (vertexBufferSlice.length() && vertexBufferSlice.buffer()->hasGfxStores()) {
-          if (checkBufferBarrier<false>(vertexBufferSlice, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT))
+          if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(vertexBufferSlice, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT))
             return true;
         }
       }
@@ -6894,73 +6892,34 @@ namespace dxvk {
   }
 
 
-  template<bool DoEmit>
+  template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkBufferBarrier(
     const DxvkBufferSlice&          bufferSlice,
-          VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
-    if constexpr (DoEmit) {
-      accessBuffer(DxvkCmdBuffer::ExecBuffer,
-        *bufferSlice.buffer(), bufferSlice.offset(),
-        bufferSlice.length(), stages, access);
-      return false;
-    } else {
-      return checkResourceBarrier([this, &bufferSlice] (DxvkAccess access) {
-        return resourceHasAccess(*bufferSlice.buffer(),
-          bufferSlice.offset(), bufferSlice.length(), access);
-      }, stages, access);
-    }
+    return checkResourceBarrier<BindPoint>([this, &bufferSlice] (DxvkAccess access) {
+      return resourceHasAccess(*bufferSlice.buffer(),
+        bufferSlice.offset(), bufferSlice.length(), access);
+    }, access);
   }
 
 
-  template<bool DoEmit>
+  template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkBufferViewBarrier(
     const Rc<DxvkBufferView>&       bufferView,
-          VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
-    if constexpr (DoEmit) {
-      accessBuffer(DxvkCmdBuffer::ExecBuffer,
-        *bufferView, stages, access);
-      return false;
-    } else {
-      return checkResourceBarrier([this, &bufferView] (DxvkAccess access) {
-        return resourceHasAccess(*bufferView, access);
-      }, stages, access);
-    }
+    return checkResourceBarrier<BindPoint>([this, &bufferView] (DxvkAccess access) {
+      return resourceHasAccess(*bufferView, access);
+    }, access);
   }
 
 
-  template<bool DoEmit>
+  template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkImageViewBarrier(
     const Rc<DxvkImageView>&        imageView,
-          VkPipelineStageFlags      stages,
           VkAccessFlags             access) {
-    if constexpr (DoEmit) {
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *imageView->image(),
-        imageView->imageSubresources(),
-        imageView->image()->info().layout,
-        stages, access);
-      return false;
-    } else {
-      return checkResourceBarrier([this, &imageView] (DxvkAccess access) {
-        return resourceHasAccess(*imageView, access);
-      }, stages, access);
-    }
-  }
-
-
-  bool DxvkContext::canIgnoreWawHazards(VkPipelineStageFlags stages) {
-    if (!m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
-      return false;
-
-    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
-      VkPipelineStageFlags2 stageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
-                                      | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
-      return !m_execBarriers.hasPendingStages(~stageMask);
-    }
-
-    return true;
+    return checkResourceBarrier<BindPoint>([this, &imageView] (DxvkAccess access) {
+      return resourceHasAccess(*imageView, access);
+    }, access);
   }
 
 
