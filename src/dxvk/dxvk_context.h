@@ -1693,6 +1693,8 @@ namespace dxvk {
     bool updateGraphicsPipeline();
     bool updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier);
 
+    uint32_t getGraphicsPipelineDebugColor() const;
+
     template<VkPipelineBindPoint BindPoint>
     void resetSpecConstants(
             uint32_t                newMask);
