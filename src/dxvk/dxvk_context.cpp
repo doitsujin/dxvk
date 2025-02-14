@@ -6310,6 +6310,11 @@ namespace dxvk {
         m_state.vi.indexType);
     }
 
+    if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
+      accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
+        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT);
+    }
+
     m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
     return true;
   }
