@@ -5530,8 +5530,14 @@ namespace dxvk {
         ctrBuffers[i] = physSlice.handle;
         ctrOffsets[i] = physSlice.offset;
 
-        if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->track(m_state.xfb.activeCounters[i].buffer(), DxvkAccess::Read);
+        if (physSlice.handle) {
+          accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.xfb.activeCounters[i],
+            VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT,
+            VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
+            VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT);
+
+          m_cmd->track(m_state.xfb.activeCounters[i].buffer(), DxvkAccess::Write);
+        }
       }
       
       m_cmd->cmdBeginTransformFeedback(
@@ -5555,9 +5561,6 @@ namespace dxvk {
 
         ctrBuffers[i] = physSlice.handle;
         ctrOffsets[i] = physSlice.offset;
-
-        if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->track(m_state.xfb.activeCounters[i].buffer(), DxvkAccess::Write);
 
         m_state.xfb.activeCounters[i] = DxvkBufferSlice();
       }
@@ -6407,14 +6410,18 @@ namespace dxvk {
       xfbOffsets[i] = physSlice.offset;
       xfbLengths[i] = physSlice.length;
 
-      if (physSlice.handle == VK_NULL_HANDLE)
+      if (!physSlice.handle)
         xfbBuffers[i] = m_common->dummyResources().bufferHandle();
-      
-      if (physSlice.handle != VK_NULL_HANDLE) {
-        const Rc<DxvkBuffer>& buffer = m_state.xfb.buffers[i].buffer();
+
+      if (physSlice.handle) {
+        Rc<DxvkBuffer> buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsInfo.xfbStrides[i]);
-        
-        m_cmd->track(buffer, DxvkAccess::Write);
+
+        accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.xfb.buffers[i],
+          VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT,
+          VK_ACCESS_2_TRANSFORM_FEEDBACK_WRITE_BIT_EXT);
+
+        m_cmd->track(std::move(buffer), DxvkAccess::Write);
       }
     }
 
