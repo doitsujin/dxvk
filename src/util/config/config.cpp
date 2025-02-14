@@ -291,12 +291,11 @@ namespace dxvk {
     /* Final Fantasy XV: VXAO does thousands of   *
      * draw calls with the same UAV bound         */
     { R"(\\ffxv_s\.exe$)", {{
-      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.relaxedGraphicsBarriers",    "True" },
     }} },
     /* God of War - relies on NVAPI/AMDAGS for    *
      * barrier stuff, needs nvapi for DLSS        */
     { R"(\\GoW\.exe$)", {{
-      { "d3d11.ignoreGraphicsBarriers",     "True" },
       { "d3d11.relaxedBarriers",            "True" },
       { "dxgi.hideNvidiaGpu",               "False" },
       { "dxgi.maxFrameLatency",             "1"    },
@@ -334,7 +333,7 @@ namespace dxvk {
      * presumably for culling, which doesn't play *
      * nicely with D3D11 without vendor libraries */
     { R"(\\Stray-Win64-Shipping\.exe$)", {{
-      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.relaxedGraphicsBarriers",    "True" },
     }} },
     /* Metal Gear Solid V: Ground Zeroes          *
      * Texture quality can break at high vram     */
@@ -433,7 +432,7 @@ namespace dxvk {
      * and assumes that AMD GPUs do not expose    *
      * native command lists for AGS usage         */
     { R"(\\granblue_fantasy_relink\.exe$)", {{
-      { "d3d11.ignoreGraphicsBarriers",     "True"  },
+      { "d3d11.relaxedGraphicsBarriers",    "True"  },
       { "d3d11.exposeDriverCommandLists",   "False" },
       { "dxgi.hideNvidiaGpu",               "False" },
     }} },

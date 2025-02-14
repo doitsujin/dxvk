@@ -86,8 +86,8 @@ namespace dxvk {
    * synchronize implicitly.
    */
   enum class DxvkBarrierControl : uint32_t {
-    IgnoreWriteAfterWrite       = 1,
-    IgnoreGraphicsBarriers      = 2,
+    IgnoreComputeWriteAfterWrite  = 0,
+    IgnoreGraphicsWriteAfterWrite = 1,
   };
 
   using DxvkBarrierControlFlags  = Flags<DxvkBarrierControl>;

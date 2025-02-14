@@ -6817,9 +6817,6 @@ namespace dxvk {
 
   template<bool Indexed, bool Indirect>
   bool DxvkContext::checkGraphicsHazards() {
-    if (m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
-      return false;
-
     // Check shader resources on every draw to handle WAW hazards, and to make
     // sure that writes are handled properly. If the pipeline does not have any
     // storage descriptors, we only need to check dirty resources.
