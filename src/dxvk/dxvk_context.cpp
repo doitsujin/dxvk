@@ -5769,12 +5769,25 @@ namespace dxvk {
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      uint32_t color = getGraphicsPipelineDebugColor();
+
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
-        vk::makeLabel(0xa2dcf0, m_state.gp.pipeline->debugName()));
+        vk::makeLabel(color, m_state.gp.pipeline->debugName()));
     }
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
+  }
+
+
+  uint32_t DxvkContext::getGraphicsPipelineDebugColor() const {
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+      return 0xf0a2dc;
+
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
+      return 0xa2f0dc;
+
+    return 0xa2dcf0;
   }
 
 
