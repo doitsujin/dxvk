@@ -936,13 +936,8 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
-      accessBuffer(DxvkCmdBuffer::ExecBuffer,
-        *m_state.id.argBuffer.buffer(),
-        m_state.id.argBuffer.offset() + offset,
-        sizeof(VkDispatchIndirectCommand),
-        VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
-        VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT);
-      
+      accessDrawBuffer(offset, 1, 0, sizeof(VkDispatchIndirectCommand));
+
       this->trackDrawBuffer();
     }
   }
@@ -7661,6 +7656,18 @@ namespace dxvk {
 
   void DxvkContext::accessImage(
           DxvkCmdBuffer             cmdBuffer,
+    const DxvkImageView&            imageView,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessImage(cmdBuffer, *imageView.image(),
+      imageView.imageSubresources(),
+      imageView.image()->info().layout,
+      srcStages, srcAccess);
+  }
+
+
+  void DxvkContext::accessImage(
+          DxvkCmdBuffer             cmdBuffer,
           DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             srcLayout,
@@ -7775,6 +7782,35 @@ namespace dxvk {
 
   void DxvkContext::accessBuffer(
           DxvkCmdBuffer             cmdBuffer,
+    const DxvkBufferSlice&          bufferSlice,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessBuffer(cmdBuffer,
+      *bufferSlice.buffer(),
+      bufferSlice.offset(),
+      bufferSlice.length(),
+      srcStages, srcAccess);
+  }
+
+
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
+    const DxvkBufferSlice&          bufferSlice,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    accessBuffer(cmdBuffer,
+      *bufferSlice.buffer(),
+      bufferSlice.offset(),
+      bufferSlice.length(),
+      srcStages, srcAccess,
+      dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::accessBuffer(
+          DxvkCmdBuffer             cmdBuffer,
           DxvkBufferView&           bufferView,
           VkPipelineStageFlags2     srcStages,
           VkAccessFlags2            srcAccess) {
@@ -7799,6 +7835,31 @@ namespace dxvk {
       bufferView.info().size,
       srcStages, srcAccess,
       dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::accessDrawBuffer(
+          VkDeviceSize              offset,
+          uint32_t                  count,
+          uint32_t                  stride,
+          uint32_t                  size) {
+    uint32_t dataSize = count ? (count - 1u) * stride + size : 0u;
+
+    accessBuffer(DxvkCmdBuffer::ExecBuffer,
+      *m_state.id.argBuffer.buffer(),
+      m_state.id.argBuffer.offset() + offset, dataSize,
+      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+      VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR);
+  }
+
+
+  void DxvkContext::accessDrawCountBuffer(
+          VkDeviceSize              offset) {
+    accessBuffer(DxvkCmdBuffer::ExecBuffer,
+      *m_state.id.cntBuffer.buffer(),
+      m_state.id.cntBuffer.offset() + offset, sizeof(uint32_t),
+      VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
+      VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR);
   }
 
 

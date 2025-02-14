@@ -1880,6 +1880,12 @@ namespace dxvk {
 
     void accessImage(
             DxvkCmdBuffer             cmdBuffer,
+      const DxvkImageView&            imageView,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void accessImage(
+            DxvkCmdBuffer             cmdBuffer,
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             srcLayout,
@@ -1909,6 +1915,20 @@ namespace dxvk {
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
+      const DxvkBufferSlice&          bufferSlice,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
+      const DxvkBufferSlice&          bufferSlice,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void accessBuffer(
+            DxvkCmdBuffer             cmdBuffer,
             DxvkBufferView&           bufferView,
             VkPipelineStageFlags2     srcStages,
             VkAccessFlags2            srcAccess);
@@ -1920,6 +1940,15 @@ namespace dxvk {
             VkAccessFlags2            srcAccess,
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
+
+    void accessDrawBuffer(
+            VkDeviceSize              offset,
+            uint32_t                  count,
+            uint32_t                  stride,
+            uint32_t                  size);
+
+    void accessDrawCountBuffer(
+            VkDeviceSize              offset);
 
     void flushPendingAccesses(
             DxvkBuffer&               buffer,
