@@ -2025,20 +2025,33 @@ namespace dxvk {
     bool checkResourceBarrier(
       const Pred&                     pred,
             VkAccessFlags             access) {
-      // Check for read-after-write first, this is common
+      // If we're only reading the resource, only pending
+      // writes matter for synchronization purposes.
       bool hasPendingWrite = pred(DxvkAccess::Write);
 
-      if (access & vk::AccessReadMask)
+      if (!(access & vk::AccessWriteMask))
         return hasPendingWrite;
 
-      // Check for a write-after-write hazard, but
-      // ignore it if there are no reads involved.
-      bool ignoreWaW = canIgnoreWawHazards<BindPoint>();
+      if (hasPendingWrite) {
+        // If there is a write-after-write hazard and synchronization
+        // for those is not explicitly disabled, insert a barrier.
+        if (!canIgnoreWawHazards<BindPoint>())
+          return true;
 
-      if (hasPendingWrite && !ignoreWaW)
-        return true;
+        // If write-after-write checking is disabled and we're on graphics,
+        // be aggressive about avoiding barriers and ignore any reads if we
+        // do find a write-after-write hazard. This essentially assumes that
+        // back-to-back read-modify-write operations are safe, but will still
+        // consider read-only or transform feedback operations as unsafe.
+        if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+          return !(access & VK_ACCESS_SHADER_WRITE_BIT);
 
-      // Check whether there are any pending reads.
+        // On compute, if we are reading the resource, add a barrier.
+        if (access & vk::AccessReadMask)
+          return true;
+      }
+
+      // Check if there are any pending reads to avoid write-after-read issues.
       return pred(DxvkAccess::Read);
     }
 
