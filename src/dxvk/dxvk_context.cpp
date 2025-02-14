@@ -967,6 +967,9 @@ namespace dxvk {
         descriptor.buffer.buffer,
         descriptor.buffer.offset + offset,
         count, stride);
+
+      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+        accessDrawBuffer(offset, count, stride, sizeof(VkDrawIndirectCommand));
     }
   }
   
@@ -986,6 +989,12 @@ namespace dxvk {
         cntDescriptor.buffer.buffer,
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
+
+      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+        accessDrawBuffer(offset, maxCount, stride, sizeof(VkDrawIndirectCommand));
+
+      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+        accessDrawCountBuffer(countOffset);
     }
   }
   
@@ -1016,6 +1025,9 @@ namespace dxvk {
         descriptor.buffer.buffer,
         descriptor.buffer.offset + offset,
         count, stride);
+
+      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+        accessDrawBuffer(offset, count, stride, sizeof(VkDrawIndexedIndirectCommand));
     }
   }
   
@@ -1035,6 +1047,12 @@ namespace dxvk {
         cntDescriptor.buffer.buffer,
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
+
+      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+        accessDrawBuffer(offset, maxCount, stride, sizeof(VkDrawIndexedIndirectCommand));
+
+      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+        accessDrawCountBuffer(countOffset);
     }
   }
   
