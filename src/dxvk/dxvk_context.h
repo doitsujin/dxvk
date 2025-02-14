@@ -1786,7 +1786,11 @@ namespace dxvk {
 
     template<VkPipelineBindPoint BindPoint>
     bool canIgnoreWawHazards() {
-      if (!m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
+      constexpr auto controlFlag = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkBarrierControl::IgnoreGraphicsWriteAfterWrite
+        : DxvkBarrierControl::IgnoreComputeWriteAfterWrite;
+
+      if (!m_barrierControl.test(controlFlag))
         return false;
 
       if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {

@@ -475,10 +475,10 @@ namespace dxvk {
       DxvkBarrierControlFlags barrierControl;
 
       if (m_d3d11Options.relaxedBarriers)
-        barrierControl.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
+        barrierControl.set(DxvkBarrierControl::IgnoreComputeWriteAfterWrite);
 
-      if (m_d3d11Options.ignoreGraphicsBarriers)
-        barrierControl.set(DxvkBarrierControl::IgnoreGraphicsBarriers);
+      if (m_d3d11Options.relaxedBarriers || m_d3d11Options.relaxedGraphicsBarriers)
+        barrierControl.set(DxvkBarrierControl::IgnoreGraphicsWriteAfterWrite);
 
       return barrierControl;
     }
