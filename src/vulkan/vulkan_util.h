@@ -40,6 +40,11 @@ namespace dxvk::vk {
     = VK_ACCESS_HOST_READ_BIT
     | VK_ACCESS_HOST_WRITE_BIT;
 
+  constexpr static VkAccessFlags AccessGfxSideEffectMask
+    = VK_ACCESS_SHADER_WRITE_BIT
+    | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
+    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+
   constexpr static VkPipelineStageFlags StageDeviceMask
     = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
     | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT

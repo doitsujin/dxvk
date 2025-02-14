@@ -5170,7 +5170,8 @@ namespace dxvk {
   
   void DxvkContext::spillRenderPass(bool suspend) {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      m_flags.clr(DxvkContextFlag::GpRenderPassBound);
+      m_flags.clr(DxvkContextFlag::GpRenderPassBound,
+                  DxvkContextFlag::GpRenderPassSideEffects);
 
       this->pauseTransformFeedback();
       
@@ -5659,24 +5660,11 @@ namespace dxvk {
     DxvkGraphicsPipelineFlags newFlags = newPipeline->flags();
     DxvkGraphicsPipelineFlags diffFlags = oldFlags ^ newFlags;
 
-    DxvkGraphicsPipelineFlags hazardMask(
-      DxvkGraphicsPipelineFlag::HasTransformFeedback,
-      DxvkGraphicsPipelineFlag::HasStorageDescriptors);
-
     m_state.gp.flags = newFlags;
 
-    if ((diffFlags & hazardMask) != 0) {
-      // Force-update vertex/index buffers for hazard checks
-      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
-                  DxvkContextFlag::GpDirtyVertexBuffers,
-                  DxvkContextFlag::GpDirtyXfbBuffers,
-                  DxvkContextFlag::DirtyDrawBuffer);
-
-      // This is necessary because we'll only do hazard
-      // tracking if the active pipeline has side effects
-      if (!m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
-        this->spillRenderPass(true);
-    }
+    if (newFlags.any(DxvkGraphicsPipelineFlag::HasTransformFeedback,
+                     DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+      m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
 
     if (diffFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
       m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
@@ -6644,31 +6632,32 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->startRenderPass();
-    
-    if (m_state.gp.flags.any(
-          DxvkGraphicsPipelineFlag::HasStorageDescriptors,
-          DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
-      this->commitGraphicsBarriers<Indexed, Indirect, false>();
-
+    if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
       // If transform feedback is active and there is a chance that we might
       // need to rebind the pipeline, we need to end transform feedback and
       // issue a barrier. End the render pass to do that. Ignore dirty vertex
       // buffers here since non-dynamic vertex strides are such an extreme
       // edge case that it's likely irrelevant in practice.
-      if (m_flags.test(DxvkContextFlag::GpXfbActive)
-       && m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
-                      DxvkContextFlag::GpDirtySpecConstants))
+      if (m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
+                      DxvkContextFlag::GpDirtySpecConstants,
+                      DxvkContextFlag::GpDirtyXfbBuffers))
         this->spillRenderPass(true);
-
-      // This can only happen if the render pass was active before,
-      // so we'll never begin the render pass twice in one draw
-      if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
-        this->startRenderPass();
-
-      this->commitGraphicsBarriers<Indexed, Indirect, true>();
     }
+
+    if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)) {
+      // If either the current pipeline has side effects or if there are pending
+      // writes from previous draws, check for hazards. This also tracks any
+      // resources written for the first time, but does not emit any barriers
+      // on its own so calling this outside a render pass is safe. This also
+      // implicitly dirties all state for which we need to track resource access.
+      if (this->checkGraphicsHazards<Indexed, Indirect>())
+        this->spillRenderPass(true);
+    }
+
+    // Start the render pass. This must happen before any render state
+    // is set up so that we can safely use secondary command buffers.
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      this->startRenderPass();
 
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
       if (unlikely(!this->updateIndexBufferBinding()))
@@ -6771,81 +6760,122 @@ namespace dxvk {
       }
     }
   }
+
+
+  template<VkPipelineBindPoint BindPoint>
+  bool DxvkContext::checkResourceHazards(
+    const DxvkBindingLayout&        layout,
+          uint32_t                  setMask) {
+    constexpr bool IsGraphics = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+    // For graphics, if we are not currently inside a render pass, we'll issue
+    // a barrier anyway so checking hazards is not meaningful. Avoid some overhead
+    // and only track written resources in that case.
+    bool requiresBarrier = IsGraphics && !m_flags.test(DxvkContextFlag::GpRenderPassBound);
+
+    for (auto setIndex : bit::BitMask(setMask)) {
+      uint32_t bindingCount = layout.getBindingCount(setIndex);
+
+      for (uint32_t j = 0; j < bindingCount; j++) {
+        const DxvkBindingInfo& binding = layout.getBinding(setIndex, j);
+        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
+
+        // Skip read-only bindings if we already know that we need a barrier
+        if (requiresBarrier && !(binding.access & vk::AccessWriteMask))
+          continue;
+
+        switch (binding.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            if (slot.bufferView) {
+              if (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())
+                requiresBarrier |= checkBufferViewBarrier<false>(slot.bufferView, util::pipelineStages(binding.stage), binding.access);
+              else if (binding.access & vk::AccessWriteMask)
+                requiresBarrier |= !slot.bufferView->buffer()->trackGfxStores();
+            }
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+            if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores()))
+              requiresBarrier |= checkBufferViewBarrier<false>(slot.bufferView, util::pipelineStages(binding.stage), binding.access);
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+            if (slot.bufferSlice.length() && (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores()))
+              requiresBarrier |= checkBufferBarrier<false>(slot.bufferSlice, util::pipelineStages(binding.stage), binding.access);
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+            if (slot.bufferSlice.length()) {
+              if (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores())
+                requiresBarrier |= checkBufferBarrier<false>(slot.bufferSlice, util::pipelineStages(binding.stage), binding.access);
+              else if (binding.access & vk::AccessWriteMask)
+                requiresBarrier |= !slot.bufferSlice.buffer()->trackGfxStores();
+            }
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+            if (slot.imageView) {
+              if (!IsGraphics || slot.imageView->image()->hasGfxStores())
+                requiresBarrier |= checkImageViewBarrier<false>(slot.imageView, util::pipelineStages(binding.stage), binding.access);
+              else if (binding.access & vk::AccessWriteMask)
+                requiresBarrier |= !slot.imageView->image()->trackGfxStores();
+            }
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            if (slot.imageView && (!IsGraphics || slot.imageView->image()->hasGfxStores()))
+              requiresBarrier |= checkImageViewBarrier<false>(slot.imageView, util::pipelineStages(binding.stage), binding.access);
+          } break;
+
+          default:
+            /* nothing to do */;
+        }
+
+        // We don't need to do any extra tracking for compute here, exit early
+        if (requiresBarrier && !IsGraphics)
+          return true;
+      }
+    }
+
+    return requiresBarrier;
+  }
   
 
-  template<bool Indexed, bool Indirect, bool DoEmit>
-  void DxvkContext::commitGraphicsBarriers() {
+  template<bool Indexed, bool Indirect>
+  bool DxvkContext::checkGraphicsHazards() {
     if (m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
-      return;
+      return false;
 
-    constexpr auto storageBufferAccess = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
-    constexpr auto storageImageAccess  = VK_ACCESS_SHADER_WRITE_BIT;
+    // Check shader resources on every draw to handle WAW hazards, and to make
+    // sure that writes are handled properly. If the pipeline does not have any
+    // storage descriptors, we only need to check dirty resources.
+    const auto& layout = m_state.gp.pipeline->getBindings()->layout();
 
-    bool requiresBarrier = false;
+    uint32_t setMask = layout.getSetMask();
 
-    // Check the draw buffer for indirect draw calls
-    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect) {
-      std::array<DxvkBufferSlice*, 2> slices = {{
-        &m_state.id.argBuffer,
-        &m_state.id.cntBuffer,
-      }};
+    if (!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+      setMask &= m_descriptorState.getDirtyGraphicsSets();
 
-      for (uint32_t i = 0; i < slices.size() && !requiresBarrier; i++) {
-        if ((slices[i]->length())
-         && (slices[i]->buffer()->info().access & storageBufferAccess)) {
-          requiresBarrier = this->checkBufferBarrier<DoEmit>(*slices[i],
-            VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-            VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
-        }
-      }
-    }
+    bool requiresBarrier = checkResourceHazards<VK_PIPELINE_BIND_POINT_GRAPHICS>(layout, setMask);
 
-    // Read-only stage, so we only have to check this if
-    // the bindngs have actually changed between draws
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && !requiresBarrier && Indexed) {
-      const auto& indexBufferSlice = m_state.vi.indexBuffer;
-
-      if ((indexBufferSlice.length())
-       && (indexBufferSlice.bufferInfo().access & storageBufferAccess)) {
-        requiresBarrier = this->checkBufferBarrier<DoEmit>(indexBufferSlice,
-          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-          VK_ACCESS_INDEX_READ_BIT);
-      }
-    }
-
-    // Same here, also ignore unused vertex bindings
-    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
-      uint32_t bindingCount = m_state.gp.state.il.bindingCount();
-
-      for (uint32_t i = 0; i < bindingCount && !requiresBarrier; i++) {
-        uint32_t binding = m_state.gp.state.ilBindings[i].binding();
-        const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
-
-        if ((vertexBufferSlice.length())
-         && (vertexBufferSlice.bufferInfo().access & storageBufferAccess)) {
-          requiresBarrier = this->checkBufferBarrier<DoEmit>(vertexBufferSlice,
-            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-            VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
-        }
-      }
-    }
-
-    // Transform feedback buffer writes won't overlap, so we
-    // also only need to check those when they are rebound
+    // Transform feedback buffer writes won't overlap, so we also only need to
+    // check those if dirty.
     if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)
      && m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
-      for (uint32_t i = 0; i < MaxNumXfbBuffers && !requiresBarrier; i++) {
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
         const auto& xfbBufferSlice = m_state.xfb.buffers[i];
         const auto& xfbCounterSlice = m_state.xfb.activeCounters[i];
 
         if (xfbBufferSlice.length()) {
-          requiresBarrier = this->checkBufferBarrier<DoEmit>(xfbBufferSlice,
-            VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-            VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT);
+          requiresBarrier |= !xfbBufferSlice.buffer()->trackGfxStores();
+          requiresBarrier |= checkBufferBarrier<false>(xfbBufferSlice,
+              VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+              VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT);
 
           if (xfbCounterSlice.length()) {
-            requiresBarrier |= this->checkBufferBarrier<DoEmit>(xfbCounterSlice,
-              VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+            requiresBarrier |= !xfbCounterSlice.buffer()->trackGfxStores();
+            requiresBarrier |= checkBufferBarrier<false>(xfbCounterSlice,
               VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
               VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
               VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT);
@@ -6854,56 +6884,53 @@ namespace dxvk {
       }
     }
 
-    // Check shader resources on every draw to handle WAW hazards
-    auto layout = m_state.gp.pipeline->getBindings()->layout();
+    // From now on, we only have read-only resources to check and can
+    // exit early if we find a hazard.
+    if (requiresBarrier)
+      return true;
 
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount && !requiresBarrier; i++) {
-      uint32_t bindingCount = layout.getBindingCount(i);
+    // Check the draw buffer for indirect draw calls
+    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect) {
+      std::array<DxvkBufferSlice*, 2> slices = {{
+        &m_state.id.argBuffer,
+        &m_state.id.cntBuffer,
+      }};
 
-      for (uint32_t j = 0; j < bindingCount && !requiresBarrier; j++) {
-        const DxvkBindingInfo& binding = layout.getBinding(i, j);
-        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
-
-        switch (binding.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            if ((slot.bufferSlice.length())
-             && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
-              requiresBarrier = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
-                util::pipelineStages(binding.stage), binding.access);
-            }
-            break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            if ((slot.bufferView != nullptr)
-             && (slot.bufferView->buffer()->info().access & storageBufferAccess)) {
-              requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
-                util::pipelineStages(binding.stage), binding.access);
-            }
-            break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            if ((slot.imageView != nullptr)
-             && (slot.imageView->image()->info().access & storageImageAccess)) {
-              requiresBarrier = this->checkImageViewBarrier<DoEmit>(slot.imageView,
-                util::pipelineStages(binding.stage), binding.access);
-            }
-            break;
-
-          default:
-            /* nothing to do */;
+      for (uint32_t i = 0; i < slices.size(); i++) {
+        if (slices[i]->length() && slices[i]->buffer()->hasGfxStores()) {
+          if (checkBufferBarrier<false>(*slices[i], VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, VK_ACCESS_INDIRECT_COMMAND_READ_BIT))
+            return true;
         }
       }
     }
 
-    // External subpass dependencies serve as full memory
-    // and execution barriers, so we can use this to allow
-    // inter-stage synchronization.
-    if (requiresBarrier)
-      this->spillRenderPass(true);
+    // Read-only stage, so we only have to check this if
+    // the bindngs have actually changed between draws
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
+      const auto& indexBufferSlice = m_state.vi.indexBuffer;
+
+      if (indexBufferSlice.length() && indexBufferSlice.buffer()->hasGfxStores()) {
+        if (checkBufferBarrier<false>(indexBufferSlice, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT))
+          return true;
+      }
+    }
+
+    // Same here, also ignore unused vertex bindings
+    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
+      uint32_t bindingCount = m_state.gp.state.il.bindingCount();
+
+      for (uint32_t i = 0; i < bindingCount; i++) {
+        uint32_t binding = m_state.gp.state.ilBindings[i].binding();
+        const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
+
+        if (vertexBufferSlice.length() && vertexBufferSlice.buffer()->hasGfxStores()) {
+          if (checkBufferBarrier<false>(vertexBufferSlice, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT))
+            return true;
+        }
+      }
+    }
+
+    return false;
   }
 
 

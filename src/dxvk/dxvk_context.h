@@ -1757,13 +1757,16 @@ namespace dxvk {
     template<bool Indexed, bool Indirect>
     bool commitGraphicsState();
     
+    template<VkPipelineBindPoint BindPoint>
+    bool checkResourceHazards(
+      const DxvkBindingLayout&        layout,
+            uint32_t                  setMask);
+
     template<bool DoEmit>
     void commitComputeBarriers();
 
-    void commitComputePostBarriers();
-    
-    template<bool Indexed, bool Indirect, bool DoEmit>
-    void commitGraphicsBarriers();
+    template<bool Indexed, bool Indirect>
+    bool checkGraphicsHazards();
 
     template<bool DoEmit>
     bool checkBufferBarrier(
