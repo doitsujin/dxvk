@@ -1771,17 +1771,20 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint>
     bool checkBufferBarrier(
       const DxvkBufferSlice&          bufferSlice,
-            VkAccessFlags             access);
+            VkAccessFlags             access,
+            DxvkAccessOp              accessOp);
 
     template<VkPipelineBindPoint BindPoint>
     bool checkBufferViewBarrier(
       const Rc<DxvkBufferView>&       bufferView,
-            VkAccessFlags             access);
+            VkAccessFlags             access,
+            DxvkAccessOp              accessOp);
 
     template<VkPipelineBindPoint BindPoint>
     bool checkImageViewBarrier(
       const Rc<DxvkImageView>&        imageView,
-            VkAccessFlags             access);
+            VkAccessFlags             access,
+            DxvkAccessOp              accessOp);
 
     template<VkPipelineBindPoint BindPoint>
     DxvkAccessFlags getAllowedStorageHazards() {
@@ -1901,13 +1904,15 @@ namespace dxvk {
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             srcLayout,
             VkPipelineStageFlags2     srcStages,
-            VkAccessFlags2            srcAccess);
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
 
     void accessImage(
             DxvkCmdBuffer             cmdBuffer,
       const DxvkImageView&            imageView,
             VkPipelineStageFlags2     srcStages,
-            VkAccessFlags2            srcAccess);
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
 
     void accessImage(
             DxvkCmdBuffer             cmdBuffer,
@@ -1918,7 +1923,8 @@ namespace dxvk {
             VkAccessFlags2            srcAccess,
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
-            VkAccessFlags2            dstAccess);
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
@@ -1926,7 +1932,8 @@ namespace dxvk {
             VkDeviceSize              offset,
             VkDeviceSize              size,
             VkPipelineStageFlags2     srcStages,
-            VkAccessFlags2            srcAccess);
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
@@ -1936,13 +1943,15 @@ namespace dxvk {
             VkPipelineStageFlags2     srcStages,
             VkAccessFlags2            srcAccess,
             VkPipelineStageFlags2     dstStages,
-            VkAccessFlags2            dstAccess);
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
       const DxvkBufferSlice&          bufferSlice,
             VkPipelineStageFlags2     srcStages,
-            VkAccessFlags2            srcAccess);
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
@@ -1950,13 +1959,15 @@ namespace dxvk {
             VkPipelineStageFlags2     srcStages,
             VkAccessFlags2            srcAccess,
             VkPipelineStageFlags2     dstStages,
-            VkAccessFlags2            dstAccess);
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
             DxvkBufferView&           bufferView,
             VkPipelineStageFlags2     srcStages,
-            VkAccessFlags2            srcAccess);
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
 
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
@@ -1964,7 +1975,8 @@ namespace dxvk {
             VkPipelineStageFlags2     srcStages,
             VkAccessFlags2            srcAccess,
             VkPipelineStageFlags2     dstStages,
-            VkAccessFlags2            dstAccess);
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
 
     void accessDrawBuffer(
             VkDeviceSize              offset,
@@ -2000,20 +2012,24 @@ namespace dxvk {
             DxvkBuffer&               buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
-            DxvkAccess                access);
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
 
     bool resourceHasAccess(
             DxvkBufferView&           bufferView,
-            DxvkAccess                access);
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
 
     bool resourceHasAccess(
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
-            DxvkAccess                access);
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
 
     bool resourceHasAccess(
             DxvkImageView&            imageView,
-            DxvkAccess                access);
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
 
     DxvkBarrierBatch& getBarrierBatch(
             DxvkCmdBuffer             cmdBuffer);
