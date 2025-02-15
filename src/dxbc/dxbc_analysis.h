@@ -17,9 +17,11 @@ namespace dxvk {
    * will be used to generate image types.
    */
   struct DxbcUavInfo {
-    bool accessTypedLoad = false;
-    bool accessAtomicOp  = false;
-    bool sparseFeedback  = false;
+    bool accessTypedLoad    = false;
+    bool accessAtomicOp     = false;
+    bool sparseFeedback     = false;
+    bool nonInvariantAccess = false;
+    DxvkAccessOp atomicStore = DxvkAccessOp::None;
     VkAccessFlags accessFlags = 0;
   };
   
