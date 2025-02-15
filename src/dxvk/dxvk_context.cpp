@@ -7796,9 +7796,9 @@ namespace dxvk {
                        + (subresources.baseArrayLayer + subresources.layerCount - 1u);
 
         if (hasWrite)
-          m_barrierTracker.insertRange(range, DxvkAccess::Write);
+          m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
         if (hasRead)
-          m_barrierTracker.insertRange(range, DxvkAccess::Read);
+          m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
       } else {
         DxvkAddressRange range;
         range.resource = image.getResourceId();
@@ -7808,9 +7808,9 @@ namespace dxvk {
           range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
 
           if (hasWrite)
-            m_barrierTracker.insertRange(range, DxvkAccess::Write);
+            m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
           if (hasRead)
-            m_barrierTracker.insertRange(range, DxvkAccess::Read);
+            m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
         }
       }
     }
@@ -7863,9 +7863,9 @@ namespace dxvk {
       range.rangeEnd = offset + size - 1;
 
       if (srcAccess & vk::AccessWriteMask)
-        m_barrierTracker.insertRange(range, DxvkAccess::Write);
+        m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
       if (srcAccess & vk::AccessReadMask)
-        m_barrierTracker.insertRange(range, DxvkAccess::Read);
+        m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
     }
   }
 
@@ -8037,7 +8037,7 @@ namespace dxvk {
     range.rangeStart = offset;
     range.rangeEnd = offset + size - 1;
 
-    return m_barrierTracker.findRange(range, access);
+    return m_barrierTracker.findRange(range, access, accessOp);
   }
 
 
@@ -8071,7 +8071,7 @@ namespace dxvk {
     // Probe all subresources first, only check individual mip levels
     // if there are overlaps and if we are checking a subset of array
     // layers of multiple mips.
-    bool dirty = m_barrierTracker.findRange(range, access);
+    bool dirty = m_barrierTracker.findRange(range, access, accessOp);
 
     if (!dirty || subresources.levelCount == 1u || subresources.layerCount == layerCount)
       return dirty;
@@ -8080,7 +8080,7 @@ namespace dxvk {
       range.rangeStart = i * layerCount + subresources.baseArrayLayer;
       range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
 
-      dirty = m_barrierTracker.findRange(range, access);
+      dirty = m_barrierTracker.findRange(range, access, accessOp);
     }
 
     return dirty;

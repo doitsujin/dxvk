@@ -29,6 +29,9 @@ namespace dxvk {
     UMax  = 8,
   };
 
+  using DxvkAccessOps = Flags<DxvkAccessOp>;
+
+
   /**
    * \brief Descriptor set indices
    */
