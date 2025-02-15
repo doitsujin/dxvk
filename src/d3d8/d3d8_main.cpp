@@ -19,12 +19,15 @@ extern "C" {
   DLLEXPORT HRESULT __stdcall ValidatePixelShader(
       const DWORD*     pPixelShader,
       const D3DCAPS8*  pCaps,
-      BOOL             errorReturn,
+      BOOL             ErrorReturn,
       char**           pErrorString) {
+    HRESULT res = S_OK;
     std::string errorMessage = "";
 
+    // ValidatePixelShader returns immediately in case of a NULL pPixelShader
     if (unlikely(pPixelShader == nullptr)) {
-      errorMessage = "D3D8: ValidatePixelShader: Null pPixelShader";
+      dxvk::Logger::warn("D3D8: ValidatePixelShader: Null pPixelShader");
+      return E_FAIL;
     } else {
       const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pPixelShader[0]);
       const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pPixelShader[0]);
@@ -32,16 +35,24 @@ extern "C" {
       if (unlikely(majorVersion != 1 || minorVersion > 4)) {
         errorMessage = dxvk::str::format("D3D8: ValidatePixelShader: Unsupported PS version ",
                                           majorVersion, ".", minorVersion);
+        res = E_FAIL;
       } else if (unlikely(pCaps && pPixelShader[0] > pCaps->PixelShaderVersion)) {
         errorMessage = dxvk::str::format("D3D8: ValidatePixelShader: Caps: Unsupported PS version ",
                                           majorVersion, ".", minorVersion);
+        res = E_FAIL;
       }
     }
 
-    const size_t errorMessageSize = errorMessage.size() + 1;
+    if (unlikely(res != S_OK)) {
+      dxvk::Logger::warn(errorMessage);
+
+      if (!ErrorReturn)
+        errorMessage = "";
+    }
 
 #ifdef _WIN32
-    if (pErrorString != nullptr && errorReturn) {
+    if (pErrorString != nullptr) {
+      const size_t errorMessageSize = errorMessage.size() + 1;
       // Wine tests call HeapFree() on the returned error string,
       // so the expectation is for it to be allocated on the heap.
       *pErrorString = (char*) HeapAlloc(GetProcessHeap(), 0, errorMessageSize);
@@ -50,24 +61,21 @@ extern "C" {
     }
 #endif
 
-    if (errorMessageSize > 1) {
-      dxvk::Logger::warn(errorMessage);
-      return E_FAIL;
-    }
-
-    return S_OK;
+    return res;
   }
 
   DLLEXPORT HRESULT __stdcall ValidateVertexShader(
       const DWORD*     pVertexShader,
       const DWORD*     pVertexDecl,
       const D3DCAPS8*  pCaps,
-      BOOL             errorReturn,
+      BOOL             ErrorReturn,
       char**           pErrorString) {
+    HRESULT res = S_OK;
     std::string errorMessage = "";
 
     if (unlikely(pVertexShader == nullptr)) {
       errorMessage = "D3D8: ValidateVertexShader: Null pVertexShader";
+      res = E_FAIL;
     } else {
       const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pVertexShader[0]);
       const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pVertexShader[0]);
@@ -75,16 +83,24 @@ extern "C" {
       if (unlikely(majorVersion != 1 || minorVersion > 1)) {
         errorMessage = dxvk::str::format("D3D8: ValidateVertexShader: Unsupported VS version ",
                                           majorVersion, ".", minorVersion);
+        res = E_FAIL;
       } else if (unlikely(pCaps && pVertexShader[0] > pCaps->VertexShaderVersion)) {
         errorMessage = dxvk::str::format("D3D8: ValidateVertexShader: Caps: Unsupported VS version ",
                                           majorVersion, ".", minorVersion);
+        res = E_FAIL;
       }
     }
 
-    const size_t errorMessageSize = errorMessage.size() + 1;
+    if (unlikely(res != S_OK)) {
+      dxvk::Logger::warn(errorMessage);
+
+      if (!ErrorReturn)
+        errorMessage = "";
+    }
 
 #ifdef _WIN32
-    if (pErrorString != nullptr && errorReturn) {
+    if (pErrorString != nullptr) {
+      const size_t errorMessageSize = errorMessage.size() + 1;
       // Wine tests call HeapFree() on the returned error string,
       // so the expectation is for it to be allocated on the heap.
       *pErrorString = (char*) HeapAlloc(GetProcessHeap(), 0, errorMessageSize);
@@ -93,12 +109,7 @@ extern "C" {
     }
 #endif
 
-    if (errorMessageSize > 1) {
-      dxvk::Logger::warn(errorMessage);
-      return E_FAIL;
-    }
-
-    return S_OK;
+    return res;
   }
 
   DLLEXPORT void __stdcall DebugSetMute() {}
