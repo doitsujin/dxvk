@@ -1453,7 +1453,7 @@ namespace dxvk {
 
     return GetD3D9()->DrawIndexedPrimitive(
       d3d9::D3DPRIMITIVETYPE(PrimitiveType),
-      static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(INT_MAX))), // set by SetIndices
+      static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(std::numeric_limits<int32_t>::max()))), // set by SetIndices
       MinVertexIndex,
       NumVertices,
       StartIndex,
@@ -1593,7 +1593,7 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
-    if (unlikely(BaseVertexIndex > INT_MAX))
+    if (unlikely(BaseVertexIndex > std::numeric_limits<int32_t>::max()))
       Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
     // used by DrawIndexedPrimitive
