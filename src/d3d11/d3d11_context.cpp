@@ -1009,10 +1009,22 @@ namespace dxvk {
     if (!ctrBuf.defined())
       return;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->drawIndirectXfb(ctrBuf,
+    // We bind the SO counter as an indirect count buffer,
+    // so reset any tracking we may have been doing here.
+    m_state.id.reset();
+
+    EmitCs([=] (DxvkContext* ctx) mutable {
+      ctx->bindDrawBuffers(DxvkBufferSlice(),
+        Forwarder::move(ctrBuf));
+
+      ctx->drawIndirectXfb(0u,
         vtxBuf.buffer()->getXfbVertexStride(),
         vtxBuf.offset());
+
+      // Reset draw buffer right away so we don't
+      // keep the SO counter alive indefinitely
+      ctx->bindDrawBuffers(DxvkBufferSlice(),
+        DxvkBufferSlice());
     });
   }
 

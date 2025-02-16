@@ -832,14 +832,14 @@ namespace dxvk {
             uint32_t          stride);
     
     /**
-     * \brief Transform feddback draw call
-
-     * \param [in] counterBuffer Xfb counter buffer
+     * \brief Transform feedback draw call
+     *
+     * \param [in] counterOffset Draw count offset
      * \param [in] counterDivisor Vertex stride
      * \param [in] counterBias Counter bias
      */
     void drawIndirectXfb(
-      const DxvkBufferSlice&  counterBuffer,
+            VkDeviceSize      counterOffset,
             uint32_t          counterDivisor,
             uint32_t          counterBias);
     
