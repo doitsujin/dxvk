@@ -146,8 +146,10 @@ namespace dxvk {
     D3D11Device* parent = static_cast<D3D11Device*>(m_ctx->GetParentInterface());
     DxvkBarrierControlFlags flags = parent->GetOptionsBarrierControlFlags();
 
-    if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE)
-      flags.set(DxvkBarrierControl::IgnoreComputeWriteAfterWrite, DxvkBarrierControl::IgnoreGraphicsWriteAfterWrite);
+    if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE) {
+      flags.set(DxvkBarrierControl::ComputeAllowReadWriteOverlap,
+                DxvkBarrierControl::GraphicsAllowReadWriteOverlap);
+    }
 
     m_ctx->EmitCs([cFlags = flags] (DxvkContext* ctx) {
       ctx->setBarrierControl(cFlags);

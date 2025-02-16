@@ -57,6 +57,8 @@ namespace dxvk {
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed
 
+    ForceWriteAfterWriteSync,   ///< Ignores barrier control flags for write-after-write hazards
+
     Count
   };
 
@@ -86,8 +88,11 @@ namespace dxvk {
    * synchronize implicitly.
    */
   enum class DxvkBarrierControl : uint32_t {
-    IgnoreComputeWriteAfterWrite  = 0,
-    IgnoreGraphicsWriteAfterWrite = 1,
+    // Ignores write-after-write hazard
+    ComputeAllowWriteOnlyOverlap  = 0,
+    ComputeAllowReadWriteOverlap  = 1,
+
+    GraphicsAllowReadWriteOverlap = 2,
   };
 
   using DxvkBarrierControlFlags  = Flags<DxvkBarrierControl>;
