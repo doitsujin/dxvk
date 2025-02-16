@@ -10,6 +10,7 @@ namespace dxvk::util {
   enum class DxvkDebugLabelType : uint32_t {
     External,               ///< App-provided scope
     InternalRenderPass,     ///< Internal render pass markers
+    InternalBarrierControl, ///< Barrier control markers
   };
 
   /**

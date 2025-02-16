@@ -2634,13 +2634,17 @@ namespace dxvk {
       : DxvkBarrierControlFlags(DxvkBarrierControl::ComputeAllowReadWriteOverlap,
                                 DxvkBarrierControl::ComputeAllowWriteOnlyOverlap);
 
-    if (!((m_barrierControl ^ control) & mask).isClear())
+    if (!((m_barrierControl ^ control) & mask).isClear()) {
       m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
+    }
 
     m_barrierControl = control;
   }
-  
-  
+
+
   void DxvkContext::updatePageTable(
     const DxvkSparseBindInfo&   bindInfo,
           DxvkSparseBindFlags   flags) {
@@ -2871,6 +2875,30 @@ namespace dxvk {
 
     pushDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()),
       util::DxvkDebugLabelType::InternalRenderPass);
+  }
+
+
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::beginBarrierControlDebugRegion() {
+    if (hasDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl))
+      return;
+
+    const char* label = nullptr;
+
+    if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+      if (m_barrierControl.test(DxvkBarrierControl::ComputeAllowReadWriteOverlap))
+        label = "Relaxed sync";
+      else if (m_barrierControl.test(DxvkBarrierControl::ComputeAllowWriteOnlyOverlap))
+        label = "Relaxed sync (write-only)";
+    } else {
+      if (m_barrierControl.test(DxvkBarrierControl::GraphicsAllowReadWriteOverlap))
+        label = "Relaxed sync";
+    }
+
+    if (label) {
+      pushDebugRegion(vk::makeLabel(0x9bded9, label),
+        util::DxvkDebugLabelType::InternalBarrierControl);
+    }
   }
 
 
@@ -5132,6 +5160,9 @@ namespace dxvk {
 
   void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
+
       this->applyRenderTargetLoadLayouts();
       this->flushClears(true);
 
@@ -5192,6 +5223,9 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
+
       this->renderPassUnbindFramebuffer();
 
       if (suspend)
@@ -6651,6 +6685,9 @@ namespace dxvk {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
     }
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      this->beginBarrierControlDebugRegion<VK_PIPELINE_BIND_POINT_COMPUTE>();
+
     if (m_descriptorState.hasDirtyComputeSets())
       this->updateComputeShaderResources();
 
@@ -6697,6 +6734,13 @@ namespace dxvk {
     // is set up so that we can safely use secondary command buffers.
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
+
+    if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)) {
+      // Make sure that the debug label for barrier control
+      // always starts within an active render pass
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        this->beginBarrierControlDebugRegion<VK_PIPELINE_BIND_POINT_GRAPHICS>();
+    }
 
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
       if (unlikely(!this->updateIndexBufferBinding()))
@@ -8193,6 +8237,14 @@ namespace dxvk {
     }
 
     m_debugLabelStack.pop_back();
+  }
+
+
+  bool DxvkContext::hasDebugRegion(
+          util::DxvkDebugLabelType    type) {
+    auto e = std::find_if(m_debugLabelStack.crbegin(), m_debugLabelStack.crend(),
+      [type] (const util::DxvkDebugLabel& label) { return label.type() == type; });
+    return e != m_debugLabelStack.crend();
   }
 
 
