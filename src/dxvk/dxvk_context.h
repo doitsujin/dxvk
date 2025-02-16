@@ -1785,22 +1785,32 @@ namespace dxvk {
             VkAccessFlags             access);
 
     template<VkPipelineBindPoint BindPoint>
-    bool canIgnoreWawHazards() {
-      constexpr auto controlFlag = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? DxvkBarrierControl::IgnoreGraphicsWriteAfterWrite
-        : DxvkBarrierControl::IgnoreComputeWriteAfterWrite;
+    DxvkAccessFlags getAllowedStorageHazards() {
+      if (m_barrierControl.isClear() || m_flags.test(DxvkContextFlag::ForceWriteAfterWriteSync))
+        return DxvkAccessFlags();
 
-      if (!m_barrierControl.test(controlFlag))
-        return false;
-
-      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+      if constexpr (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+        // If there are any pending accesses that are not directly related
+        // to shader dispatches, always insert a barrier if there is a hazard.
         VkPipelineStageFlags2 stageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT
                                         | VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT;
-        return !m_execBarriers.hasPendingStages(~stageMask);
+
+        if (!m_execBarriers.hasPendingStages(~stageMask)) {
+          if (m_barrierControl.test(DxvkBarrierControl::ComputeAllowReadWriteOverlap))
+            return DxvkAccessFlags(DxvkAccess::Write, DxvkAccess::Read);
+          else if (m_barrierControl.test(DxvkBarrierControl::ComputeAllowWriteOnlyOverlap))
+            return DxvkAccessFlags(DxvkAccess::Write);
+        }
+      } else {
+        // For graphics, the only type of unrelated access we have to worry about
+        // is transform feedback writes, in which case inserting a barrier is fine.
+        if (m_barrierControl.test(DxvkBarrierControl::GraphicsAllowReadWriteOverlap))
+          return DxvkAccessFlags(DxvkAccess::Write, DxvkAccess::Read);
       }
 
-      return true;
+      return DxvkAccessFlags();
     }
+
 
     void emitMemoryBarrier(
             VkPipelineStageFlags      srcStages,
@@ -2039,18 +2049,17 @@ namespace dxvk {
       if (hasPendingWrite) {
         // If there is a write-after-write hazard and synchronization
         // for those is not explicitly disabled, insert a barrier.
-        if (!canIgnoreWawHazards<BindPoint>())
+        DxvkAccessFlags allowedHazards = getAllowedStorageHazards<BindPoint>();
+
+        if (!allowedHazards.test(DxvkAccess::Write))
           return true;
 
-        // If write-after-write checking is disabled and we're on graphics,
-        // be aggressive about avoiding barriers and ignore any reads if we
-        // do find a write-after-write hazard. This essentially assumes that
-        // back-to-back read-modify-write operations are safe, but will still
-        // consider read-only or transform feedback operations as unsafe.
-        if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
-          return !(access & VK_ACCESS_SHADER_WRITE_BIT);
+        // Skip barrier if overlapping read-modify-write ops are allowed.
+        // This includes shader atomics, but also non-atomic load-stores.
+        if (allowedHazards.test(DxvkAccess::Read))
+          return false;
 
-        // On compute, if we are reading the resource, add a barrier.
+        // Otherwise, check if there is a read-after-write hazard.
         if (access & vk::AccessReadMask)
           return true;
       }
@@ -2058,6 +2067,8 @@ namespace dxvk {
       // Check if there are any pending reads to avoid write-after-read issues.
       return pred(DxvkAccess::Read);
     }
+
+    void invalidateWriteAfterWriteTracking();
 
     void beginRenderPassDebugRegion();
 

@@ -2623,6 +2623,20 @@ namespace dxvk {
 
 
   void DxvkContext::setBarrierControl(DxvkBarrierControlFlags control) {
+    // If any currently relevant control flags change, play it safe and force
+    // a barrier the next time we encounter a write-after-write hazard, even
+    // if the same set of flags is restored by that time. Only check graphics
+    // flags inside a render pass to avoid performance regressions when an
+    // application uses this feature but we already have an app profile.
+    // Barriers get flushed when beginning or ending a render pass anyway.
+    DxvkBarrierControlFlags mask = m_flags.test(DxvkContextFlag::GpRenderPassBound)
+      ? DxvkBarrierControlFlags(DxvkBarrierControl::GraphicsAllowReadWriteOverlap)
+      : DxvkBarrierControlFlags(DxvkBarrierControl::ComputeAllowReadWriteOverlap,
+                                DxvkBarrierControl::ComputeAllowWriteOnlyOverlap);
+
+    if (!((m_barrierControl ^ control) & mask).isClear())
+      m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
+
     m_barrierControl = control;
   }
   
@@ -3740,12 +3754,14 @@ namespace dxvk {
       vk::makeSubresourceRange(imageSubresource), imageLayout,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
 
+    m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
+
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     m_cmd->track(buffer, DxvkAccess::Write);
     m_cmd->track(image, DxvkAccess::Read);
-  }
+}
 
 
   void DxvkContext::clearImageViewFb(
@@ -3950,6 +3966,9 @@ namespace dxvk {
       *imageView->image(), imageView->imageSubresources(),
       VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
       VK_ACCESS_2_SHADER_WRITE_BIT);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
@@ -5528,6 +5547,10 @@ namespace dxvk {
         ctrOffsets[i] = physSlice.offset;
 
         if (physSlice.handle) {
+          // Just in case someone is mad enough to write to a
+          // transform feedback buffer from a shader as well
+          m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
+
           accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.xfb.activeCounters[i],
             VK_PIPELINE_STAGE_2_TRANSFORM_FEEDBACK_BIT_EXT,
             VK_ACCESS_2_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
@@ -7923,6 +7946,8 @@ namespace dxvk {
   void DxvkContext::flushBarriers() {
     m_execBarriers.flush(m_cmd);
     m_barrierTracker.clear();
+
+    m_flags.clr(DxvkContextFlag::ForceWriteAfterWriteSync);
   }
 
 
