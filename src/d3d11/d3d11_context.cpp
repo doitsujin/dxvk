@@ -4644,10 +4644,6 @@ namespace dxvk {
     ApplyRasterizerSampleCount();
     ApplyViewportState();
 
-    BindDrawBuffers(
-      m_state.id.argBuffer.ptr(),
-      m_state.id.cntBuffer.ptr());
-
     BindIndexBuffer(
       m_state.ia.indexBuffer.buffer.ptr(),
       m_state.ia.indexBuffer.offset,
@@ -4686,6 +4682,11 @@ namespace dxvk {
     RestoreSamplers<DxbcProgramType::GeometryShader>();
     RestoreSamplers<DxbcProgramType::PixelShader>();
     RestoreSamplers<DxbcProgramType::ComputeShader>();
+
+    // Draw buffer bindings aren't persistent at the API level, and
+    // we can't meaningfully track them. Just reset this state here
+    // and reapply on the next indirect draw.
+    SetDrawBuffers(nullptr, nullptr);
   }
 
 
@@ -5012,10 +5013,13 @@ namespace dxvk {
     auto argBuffer = static_cast<D3D11Buffer*>(pBufferForArgs);
     auto cntBuffer = static_cast<D3D11Buffer*>(pBufferForCount);
 
-    if (m_state.id.argBuffer != argBuffer
-     || m_state.id.cntBuffer != cntBuffer) {
-      m_state.id.argBuffer = argBuffer;
-      m_state.id.cntBuffer = cntBuffer;
+    auto argBufferCookie = argBuffer ? argBuffer->GetCookie() : 0u;
+    auto cntBufferCookie = cntBuffer ? cntBuffer->GetCookie() : 0u;
+
+    if (m_state.id.argBufferCookie != argBufferCookie
+     || m_state.id.cntBufferCookie != cntBufferCookie) {
+      m_state.id.argBufferCookie = argBufferCookie;
+      m_state.id.cntBufferCookie = cntBufferCookie;
 
       BindDrawBuffers(argBuffer, cntBuffer);
     }
