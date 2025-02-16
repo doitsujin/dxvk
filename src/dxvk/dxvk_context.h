@@ -2071,11 +2071,17 @@ namespace dxvk {
 
     void beginRenderPassDebugRegion();
 
+    template<VkPipelineBindPoint BindPoint>
+    void beginBarrierControlDebugRegion();
+
     void pushDebugRegion(
       const VkDebugUtilsLabelEXT&       label,
             util::DxvkDebugLabelType    type);
 
     void popDebugRegion(
+            util::DxvkDebugLabelType    type);
+
+    bool hasDebugRegion(
             util::DxvkDebugLabelType    type);
 
     void beginActiveDebugRegions();
