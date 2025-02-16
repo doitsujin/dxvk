@@ -1453,7 +1453,6 @@ namespace dxvk {
     std::vector<VkImageMemoryBarrier2> m_imageLayoutTransitions;
 
     std::vector<util::DxvkDebugLabel> m_debugLabelStack;
-    bool                              m_debugLabelInternalActive = false;
 
     Rc<DxvkLatencyTracker>  m_latencyTracker;
     uint64_t                m_latencyFrameId = 0u;
@@ -2072,10 +2071,12 @@ namespace dxvk {
 
     void beginRenderPassDebugRegion();
 
-    void beginInternalDebugRegion(
-      const VkDebugUtilsLabelEXT&       label);
+    void pushDebugRegion(
+      const VkDebugUtilsLabelEXT&       label,
+            util::DxvkDebugLabelType    type);
 
-    void endInternalDebugRegion();
+    void popDebugRegion(
+            util::DxvkDebugLabelType    type);
 
     void beginActiveDebugRegions();
 

@@ -2869,27 +2869,20 @@ namespace dxvk {
 
     label << ")";
 
-    beginInternalDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()));
+    pushDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()),
+      util::DxvkDebugLabelType::InternalRenderPass);
   }
 
 
   void DxvkContext::beginDebugLabel(const VkDebugUtilsLabelEXT& label) {
-    if (m_features.test(DxvkContextFeature::DebugUtils)) {
-      endInternalDebugRegion();
-
-      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
-      m_debugLabelStack.emplace_back(label);
-    }
+    if (m_features.test(DxvkContextFeature::DebugUtils))
+      pushDebugRegion(label, util::DxvkDebugLabelType::External);
   }
 
 
   void DxvkContext::endDebugLabel() {
-    if (m_features.test(DxvkContextFeature::DebugUtils)) {
-      if (!m_debugLabelStack.empty()) {
-        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-        m_debugLabelStack.pop_back();
-      }
-    }
+    if (m_features.test(DxvkContextFeature::DebugUtils))
+      popDebugRegion(util::DxvkDebugLabelType::External);
   }
 
 
@@ -5208,7 +5201,9 @@ namespace dxvk {
 
       flushBarriers();
       flushResolves();
-      endInternalDebugRegion();
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        popDebugRegion(util::DxvkDebugLabelType::InternalRenderPass);
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
@@ -8170,23 +8165,34 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::beginInternalDebugRegion(const VkDebugUtilsLabelEXT& label) {
-    if (m_features.test(DxvkContextFeature::DebugUtils)) {
-      // If the app provides us with debug regions, don't add any
-      // internal ones to avoid potential issues with scoping.
-      if (m_debugLabelStack.empty()) {
-        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
-        m_debugLabelInternalActive = true;
-      }
-    }
+  void DxvkContext::pushDebugRegion(const VkDebugUtilsLabelEXT& label, util::DxvkDebugLabelType type) {
+    m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, label);
+    m_debugLabelStack.emplace_back(label, type);
   }
 
 
-  void DxvkContext::endInternalDebugRegion() {
-    if (m_debugLabelInternalActive) {
-      m_debugLabelInternalActive = false;
+  void DxvkContext::popDebugRegion(util::DxvkDebugLabelType type) {
+    // Find last active region of the given type
+    size_t index = m_debugLabelStack.size();
+
+    while (index && m_debugLabelStack[index - 1u].type() != type)
+      index -= 1u;
+
+    if (!index)
+      return;
+
+    // End all debug regions inside the scope we want to end, as
+    // well as the debug region of the requested type itself
+    for (size_t i = index; i <= m_debugLabelStack.size(); i++)
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+
+    // Re-emit nested debug regions and erase the region we ended
+    for (size_t i = index; i < m_debugLabelStack.size(); i++) {
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, m_debugLabelStack[i].get());
+      m_debugLabelStack[i - 1u] = m_debugLabelStack[i];
     }
+
+    m_debugLabelStack.pop_back();
   }
 
 
