@@ -6380,15 +6380,16 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
+    const uint32_t stageCorrectedShaderSamplerMask = shaderSamplerMask << shaderSamplerOffset;
     if (unlikely(shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
       // SM 1 shaders don't define the texture type in the shader.
       // We always use spec constants for those.
-      m_dirtyTextures |= shaderSamplerMask & m_mismatchingTextureTypes;
-      m_mismatchingTextureTypes &= ~shaderSamplerMask;
+      m_dirtyTextures |= stageCorrectedShaderSamplerMask & m_mismatchingTextureTypes;
+      m_mismatchingTextureTypes &= ~stageCorrectedShaderSamplerMask;
       return;
     }
 
-    for (uint32_t i : bit::BitMask(shaderSamplerMask)) {
+    for (const uint32_t i : bit::BitMask(stageCorrectedShaderSamplerMask)) {
       const D3D9CommonTexture* texture = GetCommonTexture(m_state.textures[i]);
       if (unlikely(texture == nullptr)) {
         // Unbound textures are not mismatching texture types
@@ -6436,7 +6437,7 @@ namespace dxvk {
     bool shaderUsesTexture = shaderViewType != VkImageViewType(0);
     if (unlikely(boundViewType != shaderViewType && shaderUsesTexture)) {
       const uint32_t samplerBit = 1u << stateSampler;
-      m_mismatchingTextureTypes |= 1 << samplerBit;
+      m_mismatchingTextureTypes |= samplerBit;
     }
   }
 
