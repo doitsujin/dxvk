@@ -1052,17 +1052,19 @@ namespace dxvk {
   
   
   void DxvkContext::drawIndirectXfb(
-    const DxvkBufferSlice&  counterBuffer,
+          VkDeviceSize      counterOffset,
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
-    if (this->commitGraphicsState<false, false>()) {
-      auto physSlice = counterBuffer.getSliceHandle();
+    if (this->commitGraphicsState<false, true>()) {
+      auto physSlice = m_state.id.cntBuffer.getSliceHandle();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
-        physSlice.handle,
-        physSlice.offset,
-        counterBias,
-        counterDivisor);
+        physSlice.handle, physSlice.offset + counterOffset,
+        counterBias, counterDivisor);
+
+      // The count will generally be written from streamout
+      if (likely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+        accessDrawCountBuffer(counterOffset);
     }
   }
 
