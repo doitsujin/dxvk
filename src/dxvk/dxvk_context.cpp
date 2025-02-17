@@ -1846,8 +1846,9 @@ namespace dxvk {
           VkImageLayout             srcLayout,
           VkImageLayout             dstLayout) {
     this->spillRenderPass(false);
-    
+
     if (srcLayout != dstLayout) {
+      prepareImage(dstImage, dstSubresources);
       flushPendingAccesses(*dstImage, dstSubresources, DxvkAccess::Write);
 
       accessImage(DxvkCmdBuffer::ExecBuffer,
@@ -3763,7 +3764,8 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass(false);
 
-      flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
+      this->prepareImage(imageView->image(), imageView->subresources());
+      this->flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
         const char* dstName = imageView->image()->info().debugName;
@@ -3867,6 +3869,7 @@ namespace dxvk {
       spillRenderPass(false);
       invalidateState();
 
+      prepareImage(imageView->image(), imageView->subresources());
       flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
