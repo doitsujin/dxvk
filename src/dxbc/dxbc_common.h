@@ -17,7 +17,11 @@ namespace dxvk {
     HullShader      = 3,
     DomainShader    = 4,
     ComputeShader   = 5,
+
+    Count
   };
+
+  using DxbcProgramTypeFlags = Flags<DxbcProgramType>;
   
   
   /**
