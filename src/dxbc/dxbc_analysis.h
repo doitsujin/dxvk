@@ -53,6 +53,8 @@ namespace dxvk {
     
     DxbcClipCullInfo clipCullIn;
     DxbcClipCullInfo clipCullOut;
+
+    DxbcBindingMask bindings = { };
     
     bool usesDerivatives  = false;
     bool usesKill         = false;

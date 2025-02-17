@@ -34,6 +34,43 @@ namespace dxvk {
 
   
   /**
+   * \brief Shader binding mask
+   *
+   * Stores a bit masks of resource bindings
+   * that are accessed by any given shader.
+   */
+  struct DxbcBindingMask {
+    uint32_t cbvMask      = 0u;
+    uint32_t samplerMask  = 0u;
+    uint64_t uavMask      = 0u;
+    std::array<uint64_t, 2> srvMask = { };
+
+    void reset() {
+      cbvMask = 0u;
+      samplerMask = 0u;
+      uavMask = 0u;
+      srvMask = { };
+    }
+
+    bool empty() const {
+      uint64_t mask = (uint64_t(cbvMask) | uint64_t(samplerMask) << 32u)
+                    | (uavMask | srvMask[0] | srvMask[1]);
+      return !mask;
+    }
+
+    DxbcBindingMask operator & (const DxbcBindingMask& other) const {
+      DxbcBindingMask result = *this;
+      result.cbvMask      &= other.cbvMask;
+      result.samplerMask  &= other.samplerMask;
+      result.uavMask      &= other.uavMask;
+      result.srvMask[0]   &= other.srvMask[0];
+      result.srvMask[1]   &= other.srvMask[1];
+      return result;
+    }
+  };
+
+
+  /**
    * \brief Computes first binding index for a given stage
    *
    * \param [in] stage The shader stage
