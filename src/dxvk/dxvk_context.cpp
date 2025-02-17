@@ -21,32 +21,17 @@ namespace dxvk {
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
     m_descriptorManager = new DxvkDescriptorManager(device.ptr());
 
-    // Default destination barriers for graphics pipelines
-    m_globalRoGraphicsBarrier.stages = m_device->getShaderPipelineStages()
-                                     | VK_PIPELINE_STAGE_TRANSFER_BIT
-                                     | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                                     | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                                     | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    m_globalRoGraphicsBarrier.access = 0;
+    // Global barrier for graphics pipelines. This is only used to
+    // avoid write-after-read hazards after a render pass, so the
+    // access mask here can be zero.
+    m_renderPassBarrierDst.stages = m_device->getShaderPipelineStages()
+                                  | VK_PIPELINE_STAGE_TRANSFER_BIT
+                                  | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                  | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                                  | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
     if (m_device->features().extTransformFeedback.transformFeedback)
-      m_globalRoGraphicsBarrier.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
-
-    m_globalRwGraphicsBarrier = m_globalRoGraphicsBarrier;
-    m_globalRwGraphicsBarrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                                     |  VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-    m_globalRwGraphicsBarrier.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT
-                                     |  VK_ACCESS_INDEX_READ_BIT
-                                     |  VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                                     |  VK_ACCESS_UNIFORM_READ_BIT
-                                     |  VK_ACCESS_SHADER_READ_BIT
-                                     |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                                     |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                                     |  VK_ACCESS_TRANSFER_READ_BIT;
-
-    if (m_device->features().extTransformFeedback.transformFeedback)
-      m_globalRwGraphicsBarrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
+      m_renderPassBarrierDst.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
 
     // Store the lifetime tracking bit as a context feature so
     // that we don't have to scan device features at draw time
@@ -5230,6 +5215,14 @@ namespace dxvk {
       else
         this->transitionRenderTargetLayouts(false);
 
+      if (m_renderPassBarrierSrc.stages) {
+        accessMemory(DxvkCmdBuffer::ExecBuffer,
+          m_renderPassBarrierSrc.stages, m_renderPassBarrierSrc.access,
+          m_renderPassBarrierDst.stages, m_renderPassBarrierDst.access);
+
+        m_renderPassBarrierSrc = DxvkGlobalPipelineBarrier();
+      }
+
       flushBarriers();
       flushResolves();
 
@@ -5733,7 +5726,7 @@ namespace dxvk {
   }
   
   
-  bool DxvkContext::updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier) {
+  bool DxvkContext::updateGraphicsPipelineState() {
     bool oldIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
 
     // Check which dynamic states need to be active. States that
@@ -5808,19 +5801,9 @@ namespace dxvk {
 
     // Emit barrier based on pipeline properties, in order to avoid
     // accidental write-after-read hazards after the render pass.
-    DxvkGlobalPipelineBarrier pipelineBarrier = m_state.gp.pipeline->getGlobalBarrier(m_state.gp.state);
-    srcBarrier.stages |= pipelineBarrier.stages;
-    srcBarrier.access |= pipelineBarrier.access;
-
-    if (srcBarrier.stages) {
-      DxvkGlobalPipelineBarrier dstBarrier = (srcBarrier.access & vk::AccessWriteMask)
-        ? m_globalRwGraphicsBarrier
-        : m_globalRoGraphicsBarrier;
-
-      accessMemory(DxvkCmdBuffer::ExecBuffer,
-        srcBarrier.stages, srcBarrier.access,
-        dstBarrier.stages, dstBarrier.access);
-    }
+    DxvkGlobalPipelineBarrier srcBarrier = m_state.gp.pipeline->getGlobalBarrier(m_state.gp.state);
+    m_renderPassBarrierSrc.stages |= srcBarrier.stages;
+    m_renderPassBarrierSrc.access |= srcBarrier.access;
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       uint32_t color = getGraphicsPipelineDebugColor();
@@ -6392,6 +6375,9 @@ namespace dxvk {
         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT, DxvkAccessOp::None);
     }
 
+    m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    m_renderPassBarrierSrc.access |= VK_ACCESS_INDEX_READ_BIT;
+
     m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
     return true;
   }
@@ -6758,19 +6744,7 @@ namespace dxvk {
       this->updateSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
 
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
-      DxvkGlobalPipelineBarrier barrier = { };
-
-      if (Indexed) {
-        barrier.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-        barrier.access |= VK_ACCESS_INDEX_READ_BIT;
-      }
-
-      if (Indirect) {
-        barrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-        barrier.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-      }
-
-      if (unlikely(!this->updateGraphicsPipelineState(barrier)))
+      if (unlikely(!this->updateGraphicsPipelineState()))
         return false;
     }
     
@@ -7030,6 +7004,9 @@ namespace dxvk {
   void DxvkContext::trackDrawBuffer() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
+
+      m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      m_renderPassBarrierSrc.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
 
       if (m_state.id.argBuffer.length())
         m_cmd->track(m_state.id.argBuffer.buffer(), DxvkAccess::Read);
