@@ -3879,10 +3879,14 @@ namespace dxvk {
         str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
     }
 
-    addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
-      VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-      imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
-    flushImageLayoutTransitions(cmdBuffer);
+    // Avoid inserting useless barriers if the image is already in the correct layout
+    if (imageView->image()->info().layout != VK_IMAGE_LAYOUT_GENERAL
+     || !imageView->image()->isInitialized(imageView->imageSubresources())) {
+      addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
+        VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
+      flushImageLayoutTransitions(cmdBuffer);
+    }
 
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
