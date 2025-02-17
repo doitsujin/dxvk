@@ -1434,9 +1434,9 @@ namespace dxvk {
     DxvkBarrierControlFlags m_barrierControl;
 
     DxvkGpuQueryManager     m_queryManager;
-    
-    DxvkGlobalPipelineBarrier m_globalRoGraphicsBarrier;
-    DxvkGlobalPipelineBarrier m_globalRwGraphicsBarrier;
+
+    DxvkGlobalPipelineBarrier m_renderPassBarrierSrc = { };
+    DxvkGlobalPipelineBarrier m_renderPassBarrierDst = { };
 
     DxvkRenderTargetLayouts m_rtLayouts = { };
 
@@ -1690,7 +1690,7 @@ namespace dxvk {
     
     void unbindGraphicsPipeline();
     bool updateGraphicsPipeline();
-    bool updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier);
+    bool updateGraphicsPipelineState();
 
     uint32_t getGraphicsPipelineDebugColor() const;
 
