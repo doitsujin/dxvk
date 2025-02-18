@@ -3423,6 +3423,17 @@ namespace dxvk {
       if (unlikely(shader->needsLibraryCompile()))
         m_device->requestCompileShader(shader);
 
+      // If this shader activates any bindings that have not yet been applied,
+      // mark the shader stage as dirty so it gets applied on the next draw.
+      // Don't apply it right away since any dirty bindings are likely redundant.
+      m_state.lazy.shadersUsed.set(ShaderStage);
+      m_state.lazy.bindingsUsed[ShaderStage] = pShaderModule->GetBindingMask();
+
+      if (!m_state.lazy.shadersDirty.test(ShaderStage)) {
+        if (!(m_state.lazy.bindingsDirty[ShaderStage] & m_state.lazy.bindingsUsed[ShaderStage]).empty())
+          m_state.lazy.shadersDirty.set(ShaderStage);
+      }
+
       EmitCs([
         cBuffer = std::move(buffer),
         cShader = std::move(shader)
@@ -3438,6 +3449,15 @@ namespace dxvk {
           Forwarder::move(cBuffer));
       });
     } else {
+      // Mark shader stage as inactive and clean since we'll have no active
+      // bindings. This works because if the app changes any binding at all
+      // for this stage, it will get flagged as dirty, and if another shader
+      // gets bound, it will check for any dirty bindings again.
+      m_state.lazy.shadersUsed.clr(ShaderStage);
+      m_state.lazy.shadersDirty.clr(ShaderStage);
+
+      m_state.lazy.bindingsUsed[ShaderStage].reset();
+
       EmitCs([] (DxvkContext* ctx) {
         constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
 
@@ -4516,6 +4536,9 @@ namespace dxvk {
     m_state.srv.reset();
     m_state.uav.reset();
     m_state.samplers.reset();
+
+    // Reset dirty tracking
+    m_state.lazy.reset();
   }
 
 
@@ -4619,6 +4642,36 @@ namespace dxvk {
           uavSlotId + i, nullptr,
           ctrSlotId + i, ~0u);
       }
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::RestoreUsedBindings() {
+    // Mark all bindings used since the last reset as dirty so that subsequent draws
+    // and dispatches will reapply them as necessary. Marking null bindings here may
+    // lead to some redundant CS thread traffic, but is otherwise harmless.
+    auto maxBindings = GetMaxUsedBindings();
+
+    for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
+      auto stage = DxbcProgramType(i);
+      auto stageInfo = maxBindings.stages[i];
+
+      m_state.lazy.bindingsDirty[stage].cbvMask |= (1u << stageInfo.cbvCount) - 1u;
+      m_state.lazy.bindingsDirty[stage].samplerMask |= (1u << stageInfo.samplerCount) - 1u;
+
+      if (stageInfo.uavCount)
+        m_state.lazy.bindingsDirty[stage].uavMask |= uint64_t(-1) >> (64u - stageInfo.uavCount);
+
+      if (stageInfo.srvCount > 64u) {
+        m_state.lazy.bindingsDirty[stage].srvMask[0] |= uint64_t(-1);
+        m_state.lazy.bindingsDirty[stage].srvMask[1] |= uint64_t(-1) >> (128u - stageInfo.srvCount);
+      } else if (stageInfo.srvCount) {
+        m_state.lazy.bindingsDirty[stage].srvMask[0] |= uint64_t(-1) >> (64u - stageInfo.srvCount);
+      }
+
+      if (m_state.lazy.shadersUsed.test(stage) && !m_state.lazy.bindingsDirty[stage].empty())
+        m_state.lazy.shadersDirty.set(stage);
     }
   }
 

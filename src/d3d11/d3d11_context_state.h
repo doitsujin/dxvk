@@ -302,6 +302,30 @@ namespace dxvk {
       predicateValue = false;
     }
   };
+
+
+  /**
+   * \brief Lazy binding state
+   *
+   * Keeps track of what state needs to be
+   * re-applied to the context.
+   */
+  struct D3D11LazyBindings {
+    DxbcProgramTypeFlags shadersUsed = 0u;
+    DxbcProgramTypeFlags shadersDirty = 0u;
+
+    D3D11ShaderStageState<DxbcBindingMask> bindingsUsed;
+    D3D11ShaderStageState<DxbcBindingMask> bindingsDirty;
+
+    void reset() {
+      shadersUsed = 0u;
+      shadersDirty = 0u;
+
+      bindingsUsed.reset();
+      bindingsDirty.reset();
+    }
+  };
+
   
   /**
    * \brief Context state
@@ -325,6 +349,8 @@ namespace dxvk {
     D3D11SrvBindings    srv;
     D3D11UavBindings    uav;
     D3D11SamplerBindings samplers;
+
+    D3D11LazyBindings   lazy;
   };
 
   /**
@@ -342,7 +368,7 @@ namespace dxvk {
    * \brief Maximum used binding numbers for all context state
    */
   struct D3D11MaxUsedBindings {
-    std::array<D3D11MaxUsedStageBindings, 6> stages;
+    std::array<D3D11MaxUsedStageBindings, uint32_t(DxbcProgramType::Count)> stages;
     uint32_t  vbCount;
     uint32_t  soCount;
   };
