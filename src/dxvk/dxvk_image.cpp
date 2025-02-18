@@ -268,7 +268,7 @@ namespace dxvk {
       uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
 
       for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
-        m_uninitializedSubresourceCount -= bit::popcnt(m_uninitializedMipsPerLayer[i] & mipMask);
+        m_uninitializedSubresourceCount -= bit::popcnt(uint16_t(m_uninitializedMipsPerLayer[i] & mipMask));
         m_uninitializedMipsPerLayer[i] &= ~mipMask;
       }
 
