@@ -19,14 +19,14 @@ namespace dxvk {
    * that can be recorded into a command list.
    */
   class DxvkCsCmd {
-    
+
   public:
-    
+
     virtual ~DxvkCsCmd() { }
-    
+
     /**
      * \brief Retrieves next command in a command chain
-     * 
+     *
      * This can be used to quickly iterate
      * over commands within a chunk.
      * \returns Pointer the next command
@@ -34,25 +34,27 @@ namespace dxvk {
     DxvkCsCmd* next() const {
       return m_next;
     }
-    
+
     /**
-     * \brief Sets next command in a command chain
-     * \param [in] next Next command
+     * \brief Retrieves pointer to next chain
+     *
+     * Used to chain commands.
+     * \returns Pointer the next command
      */
-    void setNext(DxvkCsCmd* next) {
-      m_next = next;
+    DxvkCsCmd** chain() {
+      return &m_next;
     }
-    
+
     /**
      * \brief Executes embedded commands
      * \param [in] ctx The target context
      */
     virtual void exec(DxvkContext* ctx) = 0;
-    
+
   private:
-    
+
     DxvkCsCmd* m_next = nullptr;
-    
+
   };
   
   
@@ -63,7 +65,7 @@ namespace dxvk {
    * used to execute an embedded command.
    */
   template<typename T>
-  class alignas(16) DxvkCsTypedCmd : public DxvkCsCmd {
+  class DxvkCsTypedCmd : public DxvkCsCmd {
     
   public:
     
@@ -92,7 +94,7 @@ namespace dxvk {
    * submitting the command to a cs chunk.
    */
   template<typename T, typename M>
-  class alignas(16) DxvkCsDataCmd : public DxvkCsCmd {
+  class DxvkCsDataCmd : public DxvkCsCmd {
 
   public:
 
@@ -165,21 +167,13 @@ namespace dxvk {
     template<typename T>
     bool push(T& command) {
       using FuncType = DxvkCsTypedCmd<T>;
-      
-      if (unlikely(m_commandOffset > MaxBlockSize - sizeof(FuncType)))
+      void* ptr = alloc<FuncType>();
+
+      if (unlikely(!ptr))
         return false;
-      
-      DxvkCsCmd* tail = m_tail;
-      
-      m_tail = new (m_data + m_commandOffset)
-        FuncType(std::move(command));
-      
-      if (likely(tail != nullptr))
-        tail->setNext(m_tail);
-      else
-        m_head = m_tail;
-      
-      m_commandOffset += sizeof(FuncType);
+
+      auto next = new (ptr) FuncType(std::move(command));
+      append(next);
       return true;
     }
 
@@ -198,21 +192,15 @@ namespace dxvk {
     template<typename M, typename T, typename... Args>
     M* pushCmd(T& command, Args&&... args) {
       using FuncType = DxvkCsDataCmd<T, M>;
-      
-      if (unlikely(m_commandOffset > MaxBlockSize - sizeof(FuncType)))
-        return nullptr;
-      
-      FuncType* func = new (m_data + m_commandOffset)
-        FuncType(std::move(command), std::forward<Args>(args)...);
-      
-      if (likely(m_tail != nullptr))
-        m_tail->setNext(func);
-      else
-        m_head = func;
-      m_tail = func;
+      void* ptr = alloc<FuncType>();
 
-      m_commandOffset += sizeof(FuncType);
-      return func->data();
+      if (unlikely(!ptr))
+        return nullptr;
+
+      auto next = new (ptr) FuncType(std::move(command), std::forward<Args>(args)...);
+      append(next);
+
+      return next->data();
     }
     
     /**
@@ -243,13 +231,31 @@ namespace dxvk {
     
     size_t m_commandOffset = 0;
     
-    DxvkCsCmd* m_head = nullptr;
-    DxvkCsCmd* m_tail = nullptr;
+    DxvkCsCmd*  m_head = nullptr;
+    DxvkCsCmd** m_next = &m_head;
 
     DxvkCsChunkFlags m_flags;
     
     alignas(64)
     char m_data[MaxBlockSize];
+
+    template<typename T>
+    void* alloc() {
+      if (alignof(T) > alignof(DxvkCsCmd))
+        m_commandOffset = dxvk::align(m_commandOffset, alignof(T));
+
+      if (unlikely(m_commandOffset + sizeof(T) > MaxBlockSize))
+        return nullptr;
+
+      void* result = &m_data[m_commandOffset];
+      m_commandOffset += sizeof(T);
+      return result;
+    }
+
+    void append(DxvkCsCmd* cmd) {
+      *m_next = cmd;
+      m_next = cmd->chain();
+    }
     
   };
   

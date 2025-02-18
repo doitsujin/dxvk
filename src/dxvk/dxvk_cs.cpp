@@ -31,7 +31,7 @@ namespace dxvk {
       }
 
       m_head = nullptr;
-      m_tail = nullptr;
+      m_next = &m_head;
     } else {
       while (cmd != nullptr) {
         cmd->exec(ctx);
@@ -51,7 +51,7 @@ namespace dxvk {
     }
     
     m_head = nullptr;
-    m_tail = nullptr;
+    m_next = &m_head;
 
     m_commandOffset = 0;
   }
