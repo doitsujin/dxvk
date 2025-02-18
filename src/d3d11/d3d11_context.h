@@ -1085,7 +1085,7 @@ namespace dxvk {
             DxvkMultisampleState*             pMsState,
             UINT                              SampleMask);
 
-    template<bool AllowFlush = !IsDeferred, typename Cmd>
+    template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
       m_cmdData = nullptr;
 
@@ -1093,14 +1093,14 @@ namespace dxvk {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
 
-        if constexpr (AllowFlush)
+        if constexpr (!IsDeferred && AllowFlush)
           GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         m_csChunk->push(command);
       }
     }
 
-    template<typename M, bool AllowFlush = !IsDeferred, typename Cmd, typename... Args>
+    template<typename M, bool AllowFlush = true, typename Cmd, typename... Args>
     M* EmitCsCmd(Cmd&& command, Args&&... args) {
       M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
         command, std::forward<Args>(args)...);
@@ -1109,7 +1109,7 @@ namespace dxvk {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
 
-        if constexpr (AllowFlush)
+        if constexpr (!IsDeferred && AllowFlush)
           GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         // We must record this command after the potential
