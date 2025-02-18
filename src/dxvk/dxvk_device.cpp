@@ -429,10 +429,28 @@ namespace dxvk {
     hints.preferFbResolve = m_features.amdShaderFragmentMask
       && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
+
     // Older Nvidia drivers sometimes use the wrong format
     // to interpret the clear color in render pass clears.
     hints.renderPassClearFormatBug = m_adapter->matchesDriver(
       VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(), Version(560, 28, 3));
+
+    // On tilers we need to respect render passes some more.
+    // Deliberately ignore proprietary mobile drivers here,
+    // DXVK probably doesn't run on those at all anyway
+    bool tilerMode = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_TURNIP)
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_PANVK)
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_V3DV)
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA);
+
+    applyTristate(tilerMode, m_options.tilerMode);
+    hints.preferRenderPassOps = tilerMode;
+
+    // Be less aggressive on secondary command buffer usage on
+    // drivers that do not natively support them
+    hints.preferPrimaryCmdBufs = !hints.preferRenderPassOps
+      || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP);
     return hints;
   }
 

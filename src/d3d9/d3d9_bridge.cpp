@@ -28,10 +28,6 @@ namespace dxvk {
     return m_device->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8Bridge::SetAPIName(const char* name) {
-    m_device->m_implicitSwapchain->SetApiName(name);
-  }
-
   HRESULT DxvkD3D8Bridge::UpdateTextureFromBuffer(
         IDirect3DSurface9*  pDestSurface,
         IDirect3DSurface9*  pSrcSurface,

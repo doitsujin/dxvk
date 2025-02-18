@@ -53,7 +53,7 @@ namespace dxvk {
     destroyLatencySemaphore();
 
     if (m_frameThread.joinable()) {
-      { std::lock_guard<dxvk::mutex> lock(m_frameMutex);
+      { std::lock_guard lock(m_frameMutex);
 
         m_frameQueue.push(PresenterFrame());
         m_frameCond.notify_one();
@@ -167,7 +167,7 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::presentImage(uint64_t frameId) {
+  VkResult Presenter::presentImage(uint64_t frameId, const Rc<DxvkLatencyTracker>& tracker) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
@@ -212,6 +212,19 @@ namespace dxvk {
       m_frameIndex %= m_semaphores.size();
     }
 
+    // Add frame to waiter queue with current properties
+    if (m_device->features().khrPresentWait.presentWait) {
+      std::lock_guard lock(m_frameMutex);
+
+      auto& frame = m_frameQueue.emplace();
+      frame.frameId = frameId;
+      frame.tracker = tracker;
+      frame.mode = m_presentMode;
+      frame.result = status;
+
+      m_frameCond.notify_one();
+    }
+
     // On a successful present, try to acquire next image already, in
     // order to hide potential delays from the application thread.
     if (status == VK_SUCCESS) {
@@ -240,23 +253,22 @@ namespace dxvk {
 
 
   void Presenter::signalFrame(
-          VkResult                result,
           uint64_t                frameId,
     const Rc<DxvkLatencyTracker>& tracker) {
     if (m_signal == nullptr || !frameId)
       return;
 
     if (m_device->features().khrPresentWait.presentWait) {
-      std::lock_guard<dxvk::mutex> lock(m_frameMutex);
+      bool canSignal = false;
 
-      PresenterFrame frame = { };
-      frame.frameId   = frameId;
-      frame.tracker   = tracker;
-      frame.mode      = m_presentMode;
-      frame.result    = result;
+      { std::unique_lock lock(m_frameMutex);
 
-      m_frameQueue.push(frame);
-      m_frameCond.notify_one();
+        m_lastSignaled = frameId;
+        canSignal = m_lastCompleted >= frameId;
+      }
+
+      if (canSignal)
+        m_signal->signal(frameId);
     } else {
       m_fpsLimiter.delay();
       m_signal->signal(frameId);
@@ -264,8 +276,6 @@ namespace dxvk {
       if (tracker)
         tracker->notifyGpuPresentEnd(frameId);
     }
-
-    m_lastFrameId.store(frameId, std::memory_order_release);
   }
 
 
@@ -1130,8 +1140,13 @@ namespace dxvk {
 
 
   void Presenter::destroySwapchain() {
-    if (m_signal != nullptr)
-      m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
+    // Wait for the presentWait worker to finish using
+    // the swapchain before destroying it.
+    std::unique_lock lock(m_frameMutex);
+
+    m_frameDrain.wait(lock, [this] {
+      return m_frameQueue.empty();
+    });
 
     for (auto& sem : m_semaphores)
       waitForSwapchainFence(sem);
@@ -1196,20 +1211,24 @@ namespace dxvk {
     env::setThreadName("dxvk-frame");
 
     while (true) {
-      std::unique_lock<dxvk::mutex> lock(m_frameMutex);
+      PresenterFrame frame = { };
 
-      m_frameCond.wait(lock, [this] {
-        return !m_frameQueue.empty();
-      });
+      // Wait for all GPU work for this frame to complete in order to maintain
+      // ordering guarantees of the frame signal w.r.t. objects being released
+      { std::unique_lock lock(m_frameMutex);
 
-      PresenterFrame frame = m_frameQueue.front();
-      m_frameQueue.pop();
+        m_frameCond.wait(lock, [this] {
+          return !m_frameQueue.empty();
+        });
 
-      lock.unlock();
+        // Use a frame ID of 0 as an exit condition
+        frame = m_frameQueue.front();
 
-      // Use a frame ID of 0 as an exit condition
-      if (!frame.frameId)
-        return;
+        if (!frame.frameId) {
+          m_frameQueue.pop();
+          return;
+        }
+      }
 
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
@@ -1229,14 +1248,27 @@ namespace dxvk {
         frame.tracker = nullptr;
       }
 
-      // Apply FPS limtier here to align it as closely with scanout as we can,
+      // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
       m_fpsLimiter.delay();
 
+      // Wake up any thread that may be waiting for the queue to become empty
+      bool canSignal = false;
+
+      { std::unique_lock lock(m_frameMutex);
+
+        m_frameQueue.pop();
+        m_frameDrain.notify_one();
+
+        m_lastCompleted = frame.frameId;
+        canSignal = m_lastSignaled >= frame.frameId;
+      }
+
       // Always signal even on error, since failures here
       // are transparent to the front-end.
-      m_signal->signal(frame.frameId);
+      if (canSignal)
+        m_signal->signal(frame.frameId);
     }
   }
 

@@ -64,6 +64,9 @@ namespace dxvk {
     /// Allows full-screen exclusive mode on Windows
     bool allowFse = false;
 
+    /// Whether to enable tiler optimizations
+    Tristate tilerMode = Tristate::Auto;
+
     // Device name
     std::string deviceFilter;
   };

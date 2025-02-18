@@ -1,4 +1,3 @@
-
 #include "d3d8_surface.h"
 #include "d3d8_device.h"
 
@@ -8,16 +7,18 @@ namespace dxvk {
 
   D3D8Surface::D3D8Surface(
           D3D8Device*                     pDevice,
+    const D3DPOOL                         Pool,
           IDirect3DBaseTexture8*          pTexture,
           Com<d3d9::IDirect3DSurface9>&&  pSurface)
-    : D3D8SurfaceBase (pDevice, std::move(pSurface), pTexture) {
+    : D3D8SurfaceBase (pDevice, Pool, std::move(pSurface), pTexture) {
   }
 
   // A surface does not need to be attached to a texture
   D3D8Surface::D3D8Surface(
           D3D8Device*                     pDevice,
+    const D3DPOOL                         Pool,
           Com<d3d9::IDirect3DSurface9>&&  pSurface)
-    : D3D8Surface (pDevice, nullptr, std::move(pSurface)) {
+    : D3D8Surface (pDevice, Pool, nullptr, std::move(pSurface)) {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Surface::GetDesc(D3DSURFACE_DESC* pDesc) {

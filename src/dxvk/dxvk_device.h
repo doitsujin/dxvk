@@ -38,6 +38,8 @@ namespace dxvk {
     VkBool32 preferFbDepthStencilCopy : 1;
     VkBool32 preferFbResolve          : 1;
     VkBool32 renderPassClearFormatBug : 1;
+    VkBool32 preferRenderPassOps      : 1;
+    VkBool32 preferPrimaryCmdBufs     : 1;
   };
   
   /**

@@ -650,7 +650,20 @@ namespace dxvk {
     pCaps->PS20Caps.StaticFlowControlDepth   = options.shaderModel >= 2 ? D3DPS20_MAX_STATICFLOWCONTROLDEPTH : 0;
     pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? D3DPS20_MAX_NUMINSTRUCTIONSLOTS : 0;
 
-    pCaps->VertexTextureFilterCaps           = pCaps->TextureFilterCaps;
+    // Vertex texture samplers are only available as part of SM3, the caps are 0 otherwise.
+    pCaps->VertexTextureFilterCaps           = options.shaderModel == 3 ? D3DPTFILTERCAPS_MINFPOINT
+                                                                        | D3DPTFILTERCAPS_MINFLINEAR
+                                                                     /* | D3DPTFILTERCAPS_MINFANISOTROPIC */
+                                                                     /* | D3DPTFILTERCAPS_MINFPYRAMIDALQUAD */
+                                                                     /* | D3DPTFILTERCAPS_MINFGAUSSIANQUAD */
+                                                                     /* | D3DPTFILTERCAPS_MIPFPOINT */
+                                                                     /* | D3DPTFILTERCAPS_MIPFLINEAR */
+                                                                     /* | D3DPTFILTERCAPS_CONVOLUTIONMONO */
+                                                                        | D3DPTFILTERCAPS_MAGFPOINT
+                                                                        | D3DPTFILTERCAPS_MAGFLINEAR
+                                                                     /* | D3DPTFILTERCAPS_MAGFANISOTROPIC */
+                                                                     /* | D3DPTFILTERCAPS_MAGFPYRAMIDALQUAD */
+                                                                     /* | D3DPTFILTERCAPS_MAGFGAUSSIANQUAD */ : 0;
 
     pCaps->MaxVShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
     pCaps->MaxPShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;

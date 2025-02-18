@@ -380,7 +380,7 @@ namespace dxvk {
     auto immediateContextLock = immediateContext->LockContext();
 
     immediateContext->EndFrame(m_latency);
-    immediateContext->Flush();
+    immediateContext->ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
 
     m_presenter->setSyncInterval(SyncInterval);
 

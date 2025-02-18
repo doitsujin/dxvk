@@ -27,7 +27,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
       if (likely(SUCCEEDED(res))) {
-        m_backBuffers[BackBuffer] = new D3D8Surface(GetParent(), std::move(pSurface9));
+        m_backBuffers[BackBuffer] = new D3D8Surface(GetParent(), D3DPOOL_DEFAULT, std::move(pSurface9));
         *ppBackBuffer = m_backBuffers[BackBuffer].ref();
       }
 

@@ -127,7 +127,6 @@ namespace dxvk {
     if (!pResource)
       return;
 
-    // We don't support the Discard API for images
     D3D11_RESOURCE_DIMENSION resType = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resType);
 
@@ -135,9 +134,16 @@ namespace dxvk {
       DiscardBuffer(pResource);
     } else {
       auto texture = GetCommonTexture(pResource);
+      auto image = texture->GetImage();
 
       for (uint32_t i = 0; i < texture->CountSubresources(); i++)
         DiscardTexture(pResource, i);
+
+      if (image) {
+        EmitCs([cImage = std::move(image)] (DxvkContext* ctx) {
+          ctx->discardImage(cImage);
+        });
+      }
     }
   }
 
@@ -923,6 +929,9 @@ namespace dxvk {
 
         ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
       });
+
+      if constexpr (!IsDeferred)
+        GetTypedContext()->m_hasPendingMsaaResolve = false;
     }
 
     if (dstTextureInfo->HasSequenceNumber())
@@ -4895,6 +4904,7 @@ namespace dxvk {
       return;
 
     bool needsUpdate = false;
+    bool isMultisampled = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -4914,6 +4924,9 @@ namespace dxvk {
 
           if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
             ResolveOmUavHazards(rtv);
+
+          if (rtv && rtv->GetSampleCount() > 1u)
+            isMultisampled = true;
         }
       }
 
@@ -4923,6 +4936,9 @@ namespace dxvk {
         m_state.om.dsv = dsv;
         needsUpdate = true;
         ResolveOmSrvHazards(dsv);
+
+        if (dsv && dsv->GetSampleCount() > 1u)
+          isMultisampled = true;
       }
 
       m_state.om.maxRtv = NumRTVs;
@@ -4966,7 +4982,12 @@ namespace dxvk {
 
       if constexpr (!IsDeferred) {
         // Doing this makes it less likely to flush during render passes
-        GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+        auto imm = GetTypedContext();
+
+        if (!imm->m_hasPendingMsaaResolve || !m_device->perfHints().preferRenderPassOps)
+          imm->ConsiderFlush(GpuFlushType::ImplicitMediumHint);
+
+        imm->m_hasPendingMsaaResolve |= isMultisampled;
       }
     }
   }

@@ -131,6 +131,8 @@ namespace dxvk {
     VkDeviceSize            m_discardMemoryCounter = 0u;
     VkDeviceSize            m_discardMemoryOnFlush = 0u;
 
+    bool                    m_hasPendingMsaaResolve = false;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
@@ -207,6 +209,10 @@ namespace dxvk {
             VkDeviceSize                Size);
 
     DxvkStagingBufferStats GetStagingMemoryStatistics();
+
+    static GpuFlushType GetMaxFlushType(
+            D3D11Device*    pParent,
+      const Rc<DxvkDevice>& Device);
 
   };
   

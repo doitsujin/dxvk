@@ -11,12 +11,14 @@
 
 #include "../util_env.h"
 
+#include "../sha1/sha1_util.h"
+
 namespace dxvk {
 
   using ProfileList = std::vector<std::pair<const char*, Config>>;
 
 
-  const static ProfileList g_profiles = {{
+  const static ProfileList g_profiles = {
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
     /**********************************************/
@@ -474,6 +476,11 @@ namespace dxvk {
      * Invisible terrain on Intel                  */
     { R"(\\FarCry(5|NewDawn)\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
+    }} },
+    /* Cardfight!! Vanguard Dear Days 2 - Broken   *
+     * effects and Invisible cards in battles      */
+    { R"(\\VGDD2\.exe$)", {{
+      { "d3d11.dcSingleUseMode",            "False" },
     }} },
 
     /**********************************************/
@@ -936,12 +943,7 @@ namespace dxvk {
     /* Delta Force: Xtreme 1 & 2                 *
      * Black screen on Alt-Tab and performance   */
     { R"(\\(DFX|dfx2)\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* The Sims 3 - Black screen on alt-tab      */
-    { R"(\\TS3(W)?\.exe$)", {{ 
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Prototype                                 *
      * Incorrect shadows on AMD & Intel          */
@@ -963,11 +965,6 @@ namespace dxvk {
     { R"(\\Dragonshard\.exe$)", {{ 
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Guild Wars 1 - Alt-tab black screen when  *
-     * fullscreen with non native resolution     */
-    { R"(\\Gw\.exe$)", {{ 
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
-    }} },
     /* Battle for Middle-earth 2 and expansion   *
      * Slowdowns in certain scenarios            */
     { R"(\\(The Battle for Middle-earth( \(tm\))? II( Demo)?)"
@@ -981,7 +978,6 @@ namespace dxvk {
     /* Splinter Cell Conviction - Alt-tab black  *
      * screen and unsupported GPU complaint      */
     { R"(\\conviction_game\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "dxgi.customVendorId",              "10de" },
       { "dxgi.customDeviceId",              "05e0" },
       { "dxgi.customDeviceDesc",            "GeForce GTX 295" },
@@ -1160,10 +1156,6 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.placeP8InScratch",            "True" },
     }} },
-    /* Rise of Nations + Expansion - alt-tab crash*/
-    { R"(\\(nations|patriots)\.exe$)", {{
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
-    }} },
     /* Inquisitor (2009)                          *
      * Leaks a resource when alt-tabbing          */
     { R"(\\Inquisitor\.exe$)", {{
@@ -1189,6 +1181,7 @@ namespace dxvk {
      * Broken inputs and physics above 60 FPS     */
     { R"(\\SplinterCell2\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
+      { "d3d8.scaleDref",                     "24" },
     }} },
     /* Chrome: Gold Edition                       *
      * Broken character model motion at high FPS  */
@@ -1202,23 +1195,74 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
-  }};
+    /* Tom Clancy's Splinter Cell                 *
+     * Fixes shadow buffers and alt-tab           */
+    { R"(\\splintercell\.exe$)", {{
+      { "d3d8.scaleDref",                     "24" },
+      { "d3d8.shadowPerspectiveDivide",     "True" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+    /* Trainz v1.3 (2001)                         *
+     * Fixes black screen after alt-tab           */
+    { R"(\\bin\\trainz\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+  };
 
 
-  const static ProfileList g_deckProfiles = {{
+  const static ProfileList g_deckProfiles = {
     /* Fallout 4: Defaults to 45 FPS on OLED, but also breaks above 60 FPS */
     { R"(\\Fallout4\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
       { "dxgi.maxFrameRate",                "60" },
     }} },
-  }};
+  };
+
+
+  const static ProfileList g_hashedProfiles = {
+    { "27fb4433abea6d1d68f678cbfa8c5e0a0fdc0803", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
+  };
 
 
   const Config* findProfile(const ProfileList& profiles, const std::string& appName) {
     auto appConfig = std::find_if(profiles.begin(), profiles.end(),
       [&appName] (const std::pair<const char*, Config>& pair) {
-        std::regex expr(pair.first, std::regex::extended | std::regex::icase);
-        return std::regex_search(appName, expr);
+        // With certain locales, regex parsing will simply crash. Using regex::imbue
+        // does not resolve this; only the global locale seems to matter here. Catch
+        // bad_alloc errors to work around this for now.
+        try {
+          std::regex expr(pair.first, std::regex::extended | std::regex::icase);
+          return std::regex_search(appName, expr);
+        } catch (const std::bad_alloc& e) {
+          Logger::err(str::format("Failed to parse regular expression: ", pair.first));
+          return false;
+        }
+      });
+
+    return appConfig != profiles.end()
+      ? &appConfig->second
+      : nullptr;
+  }
+
+
+  const Config* findHashedProfile(const ProfileList& profiles, const std::string& appName) {
+    // Don't bother hashing exe names if we don't have
+    // any top-secret app profiles to begin with
+    if (profiles.empty())
+      return nullptr;
+
+    auto n = appName.find_last_of('\\') + 1u;
+
+    if (n >= appName.size())
+      return nullptr;
+
+    auto hash = Sha1Hash::compute(&appName[n], appName.size() - n).toString();
+
+    auto appConfig = std::find_if(profiles.begin(), profiles.end(),
+      [&hash] (const std::pair<const char*, Config>& pair) {
+        return hash == pair.first;
       });
 
     return appConfig != profiles.end()
@@ -1483,6 +1527,9 @@ namespace dxvk {
 
     if (!config)
       config = findProfile(g_profiles, appName);
+
+    if (!config)
+      config = findHashedProfile(g_hashedProfiles, appName);
 
     if (config) {
       // Inform the user that we loaded a default config

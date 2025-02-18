@@ -23,6 +23,7 @@ namespace dxvk {
   enum class DxvkContextFlag : uint32_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
     GpRenderPassSuspended,      ///< Render pass is currently suspended
+    GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
@@ -48,14 +49,18 @@ namespace dxvk {
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
-    
+
     CpDirtyPipelineState,       ///< Compute pipeline is out of date
     CpDirtySpecConstants,       ///< Compute spec constants are out of date
-    
+
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed
+
+    Count
   };
-  
+
+  static_assert(uint32_t(DxvkContextFlag::Count) <= 32u);
+
   using DxvkContextFlags = Flags<DxvkContextFlag>;
 
 
@@ -111,6 +116,7 @@ namespace dxvk {
 
 
   struct DxvkOutputMergerState {
+    DxvkRenderingInfo   renderingInfo;
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     DxvkFramebufferInfo framebufferInfo;
@@ -171,6 +177,14 @@ namespace dxvk {
   };
   
   
+  struct DxvkDeferredResolve {
+    Rc<DxvkImageView> imageView;
+    uint32_t layerMask;
+    VkResolveModeFlagBits depthMode;
+    VkResolveModeFlagBits stencilMode;
+  };
+
+
   /**
    * \brief Pipeline state
    * 

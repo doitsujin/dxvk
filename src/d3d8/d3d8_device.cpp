@@ -51,8 +51,6 @@ namespace dxvk {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
-    m_bridge->SetAPIName("D3D8");
-
     ResetState();
     RecreateBackBuffersAndAutoDepthStencil();
 
@@ -289,7 +287,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
       if (likely(SUCCEEDED(res))) {
-        m_backBuffers[iBackBuffer] = new D3D8Surface(this, std::move(pSurface9));
+        m_backBuffers[iBackBuffer] = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurface9));
         *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
       }
 
@@ -349,7 +347,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppTexture = ref(new D3D8Texture2D(this, std::move(pTex9)));
+      *ppTexture = ref(new D3D8Texture2D(this, Pool, std::move(pTex9)));
 
     return res;
   }
@@ -383,7 +381,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppVolumeTexture = ref(new D3D8Texture3D(this, std::move(pVolume9)));
+      *ppVolumeTexture = ref(new D3D8Texture3D(this, Pool, std::move(pVolume9)));
 
     return res;
   }
@@ -416,7 +414,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppCubeTexture = ref(new D3D8TextureCube(this, std::move(pCube9)));
+      *ppCubeTexture = ref(new D3D8TextureCube(this, Pool, std::move(pCube9)));
 
     return res;
   }
@@ -495,7 +493,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+      *ppSurface = ref(new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurf9)));
 
     return res;
   }
@@ -528,7 +526,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+      *ppSurface = ref(new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurf9)));
 
     return res;
   }
@@ -560,7 +558,7 @@ namespace dxvk {
       NULL);
 
     if (likely(SUCCEEDED(res)))
-      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf)));
+      *ppSurface = ref(new D3D8Surface(this, pool, std::move(pSurf)));
 
     return res;
   }
@@ -1066,7 +1064,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
 
       if (likely(SUCCEEDED(res))) {
-        m_renderTarget = new D3D8Surface(this, std::move(pRT9));
+        m_renderTarget = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pRT9));
         *ppRenderTarget = m_renderTarget.ref();
       }
 
@@ -1090,7 +1088,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
 
       if (likely(SUCCEEDED(res))) {
-        m_depthStencil = new D3D8Surface(this, std::move(pStencil9));
+        m_depthStencil = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pStencil9));
         *ppZStencilSurface = m_depthStencil.ref();
       }
 
@@ -1370,6 +1368,27 @@ namespace dxvk {
 
     D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
 
+    // Splinter Cell: Force perspective divide when a shadow map is bound to slot 0
+    if (unlikely(m_d3d8Options.shadowPerspectiveDivide && Stage == 0)) {
+      if (tex) {
+        D3DSURFACE_DESC surf;
+        tex->GetLevelDesc(0, &surf);
+        if (isDepthStencilFormat(surf.Format)) {
+          // If we bound a depth texture to stage 0 then we need to set the projected flag for stage 0 and 1
+          // Stage 1 is a non-depth light cookie texture but still requires perspective divide to work
+          GetD3D9()->SetTextureStageState(0, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
+          GetD3D9()->SetTextureStageState(1, d3d9::D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_PROJECTED);
+          m_shadowPerspectiveDivide = true;
+        } else if (m_shadowPerspectiveDivide) {
+          // Non-depth texture bound. Game will reset the transform flags to 0 on its own
+          m_shadowPerspectiveDivide = false;
+        }
+      } else if (m_shadowPerspectiveDivide) {
+        // Texture unbound. Game will reset the transform flags to 0 on its own
+        m_shadowPerspectiveDivide = false;
+      }
+    }
+
     if (unlikely(m_textures[Stage] == tex))
       return D3D_OK;
 
@@ -1402,6 +1421,13 @@ namespace dxvk {
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD                    Value) {
     d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
+
+    if (unlikely(m_d3d8Options.shadowPerspectiveDivide && Type == D3DTSS_TEXTURETRANSFORMFLAGS)) {
+      // Splinter Cell: Ignore requests to change texture transform flags
+      // to 0 while shadow mapping perspective divide mode is enabled
+      if (m_shadowPerspectiveDivide && (Stage == 0 || Stage == 1))
+        return D3D_OK;
+    }
 
     StateChange();
     if (stateType != -1u) {
@@ -1455,7 +1481,7 @@ namespace dxvk {
 
     return GetD3D9()->DrawIndexedPrimitive(
       d3d9::D3DPRIMITIVETYPE(PrimitiveType),
-      static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(INT_MAX))), // set by SetIndices
+      static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(std::numeric_limits<int32_t>::max()))), // set by SetIndices
       MinVertexIndex,
       NumVertices,
       StartIndex,
@@ -1595,7 +1621,7 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
-    if (unlikely(BaseVertexIndex > INT_MAX))
+    if (unlikely(BaseVertexIndex > std::numeric_limits<int32_t>::max()))
       Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
     // used by DrawIndexedPrimitive
@@ -1663,7 +1689,7 @@ namespace dxvk {
 
   // Render States //
 
-  // ZBIAS can be an integer from 0 to 1 and needs to be remapped to float
+  // ZBIAS can be an integer from 0 to 16 and needs to be remapped to float
   static constexpr float ZBIAS_SCALE     = -0.000005f;
   static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
 
@@ -1685,8 +1711,9 @@ namespace dxvk {
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
-      // Not supported by D3D8.
+      // Not supported by D3D8, but its value is stored.
       case D3DRS_ZVISIBLE:
+        m_zVisible = Value;
         return D3D_OK;
 
       // TODO: Implement D3DRS_ANTIALIASEDLINEENABLE in D9VK.
@@ -1696,7 +1723,7 @@ namespace dxvk {
 
       case D3DRS_ZBIAS:
         State9 = d3d9::D3DRS_DEPTHBIAS;
-        Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+        Value  = bit::cast<DWORD>(static_cast<float>(Value) * ZBIAS_SCALE);
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
@@ -1747,9 +1774,9 @@ namespace dxvk {
         *pValue = bit::cast<DWORD>(m_linePattern);
         return D3D_OK;
 
-      // Not supported by D3D8.
+      // Not supported by D3D8, but its value is stored.
       case D3DRS_ZVISIBLE:
-        *pValue = 0;
+        *pValue = m_zVisible;
         return D3D_OK;
 
       case D3DRS_EDGEANTIALIAS:
@@ -1757,9 +1784,9 @@ namespace dxvk {
         break;
 
       case D3DRS_ZBIAS: {
-        float bias  = 0;
-        HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, (DWORD*)&bias);
-        *pValue     = bit::cast<DWORD>(bias * ZBIAS_SCALE_INV);
+        DWORD bias  = 0;
+        HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, &bias);
+        *pValue     = static_cast<DWORD>(bit::cast<float>(bias) * ZBIAS_SCALE_INV);
         return res;
       } break;
 
@@ -1790,8 +1817,8 @@ namespace dxvk {
 
     // Validate VS version for non-FF shaders
     if (pFunction != nullptr) {
-      const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-      const uint32_t minorVersion = pFunction[0] & 0xff;
+      const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+      const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
 
       if (unlikely(majorVersion != 1 || minorVersion > 1)) {
         Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
@@ -2029,8 +2056,8 @@ namespace dxvk {
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    const uint32_t majorVersion = (pFunction[0] >> 8) & 0xff;
-    const uint32_t minorVersion = pFunction[0] & 0xff;
+    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
 
     if (unlikely(m_isFixedFunctionOnly || majorVersion != 1 || minorVersion > 4)) {
       Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));

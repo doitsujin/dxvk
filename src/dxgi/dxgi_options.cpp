@@ -93,6 +93,9 @@ namespace dxvk {
     this->maxFrameRate = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->syncInterval = config.getOption<int32_t>("dxgi.syncInterval", -1);
 
+    // We don't support dcomp swapchains and some games may rely on them failing on creation
+    this->enableDummyCompositionSwapchain = config.getOption<bool>("dxgi.enableDummyCompositionSwapchain", false);
+
     // Expose Nvidia GPUs properly if NvAPI is enabled in environment
     this->hideNvidiaGpu = !isNvapiEnabled();
     applyTristate(this->hideNvidiaGpu, config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto));

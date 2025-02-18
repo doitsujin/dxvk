@@ -109,6 +109,9 @@ namespace dxvk {
     DxvkLatencyFrameData* findFrame(
             uint64_t                  frameId);
 
+    bool forwardLatencyMarkerNv(
+            uint64_t                  frameId);
+
     duration computeFrameInterval(
             double                    maxFrameRate);
 

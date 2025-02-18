@@ -1022,7 +1022,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D9Surface* surface;
       try {
-        surface = new D3D9Surface(m_parent, &desc, this, nullptr);
+        surface = new D3D9Surface(m_parent, &desc, m_parent->IsExtended(), this, nullptr);
         m_parent->IncrementLosableCounter();
       } catch (const DxvkError& e) {
         DestroyBackBuffers();
@@ -1119,11 +1119,6 @@ namespace dxvk {
   void D3D9SwapChainEx::SyncFrameLatency() {
     // Wait for the sync event so that we respect the maximum frame latency
     m_wctx->frameLatencySignal->wait(m_wctx->frameId - GetActualFrameLatency());
-  }
-
-  void D3D9SwapChainEx::SetApiName(const char* name) {
-    if (m_apiHud && name)
-      m_apiHud->setApiName(name);
   }
 
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
@@ -1356,7 +1351,8 @@ namespace dxvk {
 
 
   std::string D3D9SwapChainEx::GetApiName() {
-    return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+    return this->GetParent()->IsD3D8Compatible() ? "D3D8" :
+           this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }
 
 

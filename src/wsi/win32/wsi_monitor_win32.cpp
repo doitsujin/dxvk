@@ -312,15 +312,6 @@ namespace dxvk::wsi {
 
   WsiEdidData Win32WsiDriver::getMonitorEdid(HMONITOR hMonitor) {
     static constexpr GUID GUID_DEVINTERFACE_MONITOR = { 0xe6f07b5f, 0xee97, 0x4a90, 0xb0, 0x76, 0x33, 0xf5, 0x7b, 0xf4, 0xea, 0xa7 };
-    static auto pfnSetupDiGetClassDevsW             = reinterpret_cast<decltype(SetupDiGetClassDevsW)*>            (::GetProcAddress(::GetModuleHandleW(L"setupapi.dll"), "SetupDiGetClassDevsW"));
-    static auto pfnSetupDiEnumDeviceInterfaces      = reinterpret_cast<decltype(SetupDiEnumDeviceInterfaces)*>     (::GetProcAddress(::GetModuleHandleW(L"setupapi.dll"), "SetupDiEnumDeviceInterfaces"));
-    static auto pfnSetupDiGetDeviceInterfaceDetailW = reinterpret_cast<decltype(SetupDiGetDeviceInterfaceDetailW)*>(::GetProcAddress(::GetModuleHandleW(L"setupapi.dll"), "SetupDiGetDeviceInterfaceDetailW"));
-    static auto pfnSetupDiOpenDevRegKey             = reinterpret_cast<decltype(SetupDiOpenDevRegKey)*>            (::GetProcAddress(::GetModuleHandleW(L"setupapi.dll"), "SetupDiOpenDevRegKey"));
-    static auto pfnSetupDiGetDeviceInstanceIdW      = reinterpret_cast<decltype(SetupDiGetDeviceInstanceIdW)*>     (::GetProcAddress(::GetModuleHandleW(L"setupapi.dll"), "SetupDiGetDeviceInstanceIdW"));
-    if (!pfnSetupDiGetClassDevsW || !pfnSetupDiEnumDeviceInterfaces || !pfnSetupDiGetDeviceInterfaceDetailW || !pfnSetupDiOpenDevRegKey || !pfnSetupDiGetDeviceInstanceIdW) {
-      Logger::err("getMonitorEdid: Failed to load functions from setupapi.");
-      return {};
-    }
 
     std::wstring monitorDevicePath = getMonitorDevicePath(hMonitor);
     if (monitorDevicePath.empty()) {
@@ -328,13 +319,13 @@ namespace dxvk::wsi {
       return {};
     }
 
-    const HDEVINFO devInfo = pfnSetupDiGetClassDevsW(&GUID_DEVINTERFACE_MONITOR, nullptr, nullptr, DIGCF_DEVICEINTERFACE);
+    const HDEVINFO devInfo = ::SetupDiGetClassDevsW(&GUID_DEVINTERFACE_MONITOR, nullptr, nullptr, DIGCF_DEVICEINTERFACE);
 
     SP_DEVICE_INTERFACE_DATA interfaceData;
     memset(&interfaceData, 0, sizeof(interfaceData));
     interfaceData.cbSize = sizeof(interfaceData);
 
-    for (DWORD monitorIdx = 0; pfnSetupDiEnumDeviceInterfaces(devInfo, nullptr, &GUID_DEVINTERFACE_MONITOR, monitorIdx, &interfaceData); monitorIdx++) {
+    for (DWORD monitorIdx = 0; ::SetupDiEnumDeviceInterfaces(devInfo, nullptr, &GUID_DEVINTERFACE_MONITOR, monitorIdx, &interfaceData); monitorIdx++) {
       DxvkDeviceInterfaceDetail detailData;
       // Josh: I'm taking no chances here. I don't trust this API at all.
       memset(&detailData, 0, sizeof(detailData));
@@ -344,7 +335,7 @@ namespace dxvk::wsi {
       memset(&devInfoData, 0, sizeof(devInfoData));
       devInfoData.cbSize = sizeof(devInfoData);
 
-      if (!pfnSetupDiGetDeviceInterfaceDetailW(devInfo, &interfaceData, &detailData.base, sizeof(detailData), nullptr, &devInfoData))
+      if (!::SetupDiGetDeviceInterfaceDetailW(devInfo, &interfaceData, &detailData.base, sizeof(detailData), nullptr, &devInfoData))
         continue;
 
       // Check that this monitor matches the same one we are looking for.
@@ -354,7 +345,7 @@ namespace dxvk::wsi {
       if (_wcsicmp(monitorDevicePath.c_str(), detailData.base.DevicePath) != 0)
         continue;
 
-      HKEY deviceRegKey = pfnSetupDiOpenDevRegKey(devInfo, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
+      HKEY deviceRegKey = ::SetupDiOpenDevRegKey(devInfo, &devInfoData, DICS_FLAG_GLOBAL, 0, DIREG_DEV, KEY_READ);
       if (deviceRegKey == INVALID_HANDLE_VALUE) {
         Logger::err("getMonitorEdid: Failed to open monitor device registry key.");
         return {};

@@ -54,19 +54,15 @@ namespace dxvk::bit {
     return (value >> fst) & ~(~T(0) << (lst - fst + 1));
   }
 
-  inline uint32_t popcntStep(uint32_t n, uint32_t mask, uint32_t shift) {
-    return (n & mask) + ((n & ~mask) >> shift);
+  template<typename T>
+  T popcnt(T n) {
+    n -= ((n >> 1u) & T(0x5555555555555555ull));
+    n = (n & T(0x3333333333333333ull)) + ((n >> 2u) & T(0x3333333333333333ull));
+    n = (n + (n >> 4u)) & T(0x0f0f0f0f0f0f0f0full);
+    n *= T(0x0101010101010101ull);
+    return n >> (8u * (sizeof(T) - 1u));
   }
-  
-  inline uint32_t popcnt(uint32_t n) {
-    n = popcntStep(n, 0x55555555, 1);
-    n = popcntStep(n, 0x33333333, 2);
-    n = popcntStep(n, 0x0F0F0F0F, 4);
-    n = popcntStep(n, 0x00FF00FF, 8);
-    n = popcntStep(n, 0x0000FFFF, 16);
-    return n;
-  }
-  
+
   inline uint32_t tzcnt(uint32_t n) {
     #if defined(_MSC_VER) && !defined(__clang__)
     return _tzcnt_u32(n);

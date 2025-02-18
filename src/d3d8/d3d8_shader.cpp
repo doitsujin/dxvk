@@ -1,4 +1,3 @@
-
 #include "d3d8_shader.h"
 
 #define VSD_SHIFT_MASK(token, field) ((token & field ## MASK) >> field ## SHIFT)
@@ -313,8 +312,10 @@ namespace dxvk {
         // Instructions
         if ((token & VS_BIT_PARAM) == 0) {
 
-          // RSQ swizzle fixup
-          if (opcode == D3DSIO_RSQ) {
+          // Swizzle fixup for opcodes that require explicit use of a replicate swizzle.
+          if (opcode == D3DSIO_RSQ  || opcode == D3DSIO_RCP
+           || opcode == D3DSIO_EXP  || opcode == D3DSIO_LOG
+           || opcode == D3DSIO_EXPP || opcode == D3DSIO_LOGP) {
             tokens.push_back(token);                            // instr
             tokens.push_back(token = pFunction[i++]);           // dest
             token = pFunction[i++];                             // src0

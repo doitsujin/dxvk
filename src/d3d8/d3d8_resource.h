@@ -18,8 +18,9 @@ namespace dxvk {
 
   public:
 
-    D3D8Resource(D3D8Device* pDevice, Com<D3D9>&& Object)
+    D3D8Resource(D3D8Device* pDevice, D3DPOOL Pool, Com<D3D9>&& Object)
       : D3D8DeviceChild<D3D9, D3D8>(pDevice, std::move(Object))
+      , m_pool                     ( Pool )
       , m_priority                 ( 0 ) { }
 
     HRESULT STDMETHODCALLTYPE SetPrivateData(
@@ -79,9 +80,14 @@ namespace dxvk {
     }
 
     DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) {
-      DWORD oldPriority = m_priority;
-      m_priority = PriorityNew;
-      return oldPriority;
+      // Priority can only be set for D3DPOOL_MANAGED resources
+      if (likely(m_pool == D3DPOOL_MANAGED)) {
+        DWORD oldPriority = m_priority;
+        m_priority = PriorityNew;
+        return oldPriority;
+      }
+
+      return m_priority;
     }
 
     DWORD STDMETHODCALLTYPE GetPriority() {
@@ -99,7 +105,8 @@ namespace dxvk {
 
   protected:
 
-    DWORD m_priority;
+    const D3DPOOL        m_pool;
+          DWORD          m_priority;
 
   private:
 
