@@ -967,6 +967,8 @@ namespace dxvk {
     void ResolveOmUavHazards(
             D3D11RenderTargetView*            pView);
 
+    void RestoreUsedBindings();
+
     void RestoreCommandListState();
     
     template<DxbcProgramType Stage>
