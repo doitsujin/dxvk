@@ -295,6 +295,9 @@ namespace dxvk {
     if (m_latencyHud)
       m_latencyHud->accumulateStats(latencyStats);
 
+    if (m_renderLatencyHud)
+      m_renderLatencyHud->updateLatencyTracker(m_latency);
+
     return hr;
   }
 
@@ -604,8 +607,14 @@ namespace dxvk {
     if (hud) {
       hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
-      if (m_latency)
+      if (m_latency) {
         m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+        FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latency.ptr());
+        if (framePacer) {
+          int32_t fpsItemPos = hud->getItemPos<hud::HudFpsItem>();
+          m_renderLatencyHud = hud->addItem<hud::HudRenderLatencyItem>("renderlatency", fpsItemPos+1);
+        }
+      }
     }
 
     m_blitter = new DxvkSwapchainBlitter(m_device, std::move(hud));

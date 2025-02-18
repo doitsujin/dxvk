@@ -925,6 +925,9 @@ namespace dxvk {
     if (m_latencyHud)
       m_latencyHud->accumulateStats(latencyStats);
 
+    if (m_renderLatencyHud)
+      m_renderLatencyHud->updateLatencyTracker(m_latencyTracker);
+
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
@@ -1062,8 +1065,14 @@ namespace dxvk {
     if (hud) {
       m_apiHud = hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
-      if (m_latencyTracking)
+      if (m_latencyTracking) {
         m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+        FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+        if (framePacer) {
+          int32_t fpsItemPos = hud->getItemPos<hud::HudFpsItem>();
+          m_renderLatencyHud = hud->addItem<hud::HudRenderLatencyItem>("renderlatency", fpsItemPos+1);
+        }
+      }
 
       hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
       hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
