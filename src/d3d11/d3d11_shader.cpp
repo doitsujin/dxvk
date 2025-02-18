@@ -79,6 +79,12 @@ namespace dxvk {
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
+
+    // Write back binding mask
+    auto bindings = module.bindings();
+
+    if (bindings)
+      m_bindings = *bindings;
   }
 
   
