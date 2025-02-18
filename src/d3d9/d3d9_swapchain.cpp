@@ -5,6 +5,8 @@
 #include "d3d9_hud.h"
 #include "d3d9_window.h"
 
+#include "../dxvk/framepacer/dxvk_framepacer.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -1112,6 +1114,9 @@ namespace dxvk {
     }
 
     m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
+    FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+    if (framePacer != nullptr)
+      framePacer->setTargetFrameRate(frameRate);
     m_targetFrameRate = frameRate;
   }
 

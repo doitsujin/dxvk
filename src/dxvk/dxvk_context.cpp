@@ -113,7 +113,7 @@ namespace dxvk {
   void DxvkContext::beginLatencyTracking(
     const Rc<DxvkLatencyTracker>&     tracker,
           uint64_t                    frameId) {
-    if (tracker && (!m_latencyTracker || m_latencyTracker == tracker)) {
+    if (tracker && m_latencyTracker != tracker) {
       tracker->notifyCsRenderBegin(frameId);
 
       m_latencyTracker = tracker;

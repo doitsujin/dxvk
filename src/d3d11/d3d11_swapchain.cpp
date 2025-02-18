@@ -3,6 +3,7 @@
 #include "d3d11_swapchain.h"
 
 #include "../dxvk/dxvk_latency_builtin.h"
+#include "../dxvk/framepacer/dxvk_framepacer.h"
 
 #include "../util/util_win32_compat.h"
 
@@ -354,6 +355,10 @@ namespace dxvk {
 
     if (m_presenter != nullptr)
       m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
+
+    FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latency.ptr());
+    if (framePacer != nullptr)
+      framePacer->setTargetFrameRate(FrameRate);
   }
 
 

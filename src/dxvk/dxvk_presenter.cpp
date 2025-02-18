@@ -270,7 +270,7 @@ namespace dxvk {
       if (canSignal)
         m_signal->signal(frameId);
     } else {
-      m_fpsLimiter.delay();
+      m_fpsLimiter.delay(tracker);
       m_signal->signal(frameId);
 
       if (tracker)
@@ -1243,15 +1243,14 @@ namespace dxvk {
 
       // Signal latency tracker right away to get more accurate
       // measurements if the frame rate limiter is enabled.
-      if (frame.tracker) {
+      if (frame.tracker)
         frame.tracker->notifyGpuPresentEnd(frame.frameId);
-        frame.tracker = nullptr;
-      }
 
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      m_fpsLimiter.delay();
+      m_fpsLimiter.delay(frame.tracker);
+      frame.tracker = nullptr;
 
       // Wake up any thread that may be waiting for the queue to become empty
       bool canSignal = false;
