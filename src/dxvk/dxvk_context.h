@@ -763,11 +763,14 @@ namespace dxvk {
      * \param [in] offset Draw buffer offset
      * \param [in] count Number of draws
      * \param [in] stride Stride between dispatch calls
+     * \param [in] unroll Whether to unroll multiple draws if
+     *    there are any potential data dependencies between them.
      */
     void drawIndirect(
             VkDeviceSize      offset,
             uint32_t          count,
-            uint32_t          stride);
+            uint32_t          stride,
+            bool              unroll);
     
     /**
      * \brief Indirect draw call
@@ -809,12 +812,15 @@ namespace dxvk {
      * \param [in] offset Draw buffer offset
      * \param [in] count Number of draws
      * \param [in] stride Stride between dispatch calls
+     * \param [in] unroll Whether to unroll multiple draws if
+     *    there are any potential data dependencies between them.
      */
     void drawIndexedIndirect(
             VkDeviceSize      offset,
             uint32_t          count,
-            uint32_t          stride);
-    
+            uint32_t          stride,
+            bool              unroll);
+
     /**
      * \brief Indirect indexed draw call
      * 
@@ -1588,6 +1594,13 @@ namespace dxvk {
       const uint32_t*             pages,
       const Rc<DxvkBuffer>&       buffer,
             VkDeviceSize          offset);
+
+    template<bool Indexed>
+    void drawIndirectGeneric(
+            VkDeviceSize          offset,
+            uint32_t              count,
+            uint32_t              stride,
+            bool                  unroll);
 
     void resolveImageHw(
       const Rc<DxvkImage>&            dstImage,
