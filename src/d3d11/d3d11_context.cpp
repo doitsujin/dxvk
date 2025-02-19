@@ -1009,6 +1009,9 @@ namespace dxvk {
     if (!ctrBuf.defined())
       return;
 
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
+
     // We bind the SO counter as an indirect count buffer,
     // so reset any tracking we may have been doing here.
     m_state.id.reset();
@@ -1035,6 +1038,9 @@ namespace dxvk {
           UINT            StartVertexLocation) {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
+
     EmitCs([=] (DxvkContext* ctx) {
       ctx->draw(
         VertexCount, 1,
@@ -1049,6 +1055,9 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
 
     EmitCs([=] (DxvkContext* ctx) {
       ctx->drawIndexed(
@@ -1066,6 +1075,9 @@ namespace dxvk {
           UINT            StartVertexLocation,
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
 
     EmitCs([=] (DxvkContext* ctx) {
       ctx->draw(
@@ -1085,6 +1097,9 @@ namespace dxvk {
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
 
     EmitCs([=] (DxvkContext* ctx) {
       ctx->drawIndexed(
@@ -1106,6 +1121,9 @@ namespace dxvk {
 
     if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDrawIndexedIndirectCommand)))
       return;
+
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
 
     // If possible, batch up multiple indirect draw calls of
     // the same type into one single multiDrawIndirect call
@@ -1142,6 +1160,9 @@ namespace dxvk {
     if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDrawIndirectCommand)))
       return;
 
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
+
     // If possible, batch up multiple indirect draw calls of
     // the same type into one single multiDrawIndirect call
     auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
@@ -1174,6 +1195,9 @@ namespace dxvk {
           UINT            ThreadGroupCountZ) {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(HasDirtyComputeBindings()))
+      ApplyDirtyComputeBindings();
+
     EmitCs([=] (DxvkContext* ctx) {
       ctx->dispatch(
         ThreadGroupCountX,
@@ -1192,6 +1216,9 @@ namespace dxvk {
 
     if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDispatchIndirectCommand)))
       return;
+
+    if (unlikely(HasDirtyComputeBindings()))
+      ApplyDirtyComputeBindings();
 
     EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
@@ -3158,6 +3185,59 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtyConstantBuffers(
+          DxbcProgramType                   Stage,
+    const DxbcBindingMask&                  BoundMask,
+          DxbcBindingMask&                  DirtyMask) {
+    uint32_t bindMask = BoundMask.cbvMask & DirtyMask.cbvMask;
+
+    if (!bindMask)
+      return;
+
+    const auto& state = m_state.cbv[Stage];
+    DirtyMask.cbvMask -= bindMask;
+
+    for (uint32_t slot : bit::BitMask(bindMask)) {
+      const auto& cbv = state.buffers[slot];
+
+      BindConstantBuffer(Stage, slot, cbv.buffer.ptr(),
+        cbv.constantOffset, cbv.constantBound);
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtyGraphicsBindings() {
+    auto dirtyMask = m_state.lazy.shadersDirty & m_state.lazy.shadersUsed;
+    dirtyMask.clr(DxbcProgramType::ComputeShader);
+
+    for (uint32_t stageIndex : bit::BitMask(uint32_t(dirtyMask.raw()))) {
+      DxbcProgramType stage = DxbcProgramType(stageIndex);
+
+      auto& boundMask = m_state.lazy.bindingsUsed[stage];
+      auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
+
+      ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
+
+      m_state.lazy.shadersDirty.clr(stage);
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtyComputeBindings() {
+    DxbcProgramType stage = DxbcProgramType::ComputeShader;
+
+    auto& boundMask = m_state.lazy.bindingsUsed[stage];
+    auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
+
+    ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
+
+    m_state.lazy.shadersDirty.clr(stage);
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyInputLayout() {
     auto inputLayout = m_state.ia.inputLayout.prvRef();
 
@@ -3686,45 +3766,49 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindConstantBuffer(
+          DxbcProgramType                   ShaderStage,
           UINT                              Slot,
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           UINT                              Length) {
+    uint32_t slotId = computeConstantBufferBinding(ShaderStage, Slot);
+
     if (pBuffer) {
       EmitCs([
-        cSlotId      = Slot,
+        cSlotId      = slotId,
+        cStage       = GetShaderStage(ShaderStage),
         cBufferSlice = pBuffer->GetBufferSlice(16 * Offset, 16 * Length)
       ] (DxvkContext* ctx) mutable {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindUniformBuffer(stage, cSlotId,
+        ctx->bindUniformBuffer(cStage, cSlotId,
           Forwarder::move(cBufferSlice));
       });
     } else {
       EmitCs([
-        cSlotId      = Slot
+        cSlotId      = slotId,
+        cStage       = GetShaderStage(ShaderStage)
       ] (DxvkContext* ctx) {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindUniformBuffer(stage, cSlotId, DxvkBufferSlice());
+        ctx->bindUniformBuffer(cStage, cSlotId, DxvkBufferSlice());
       });
     }
   }
   
   
   template<typename ContextType>
-  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindConstantBufferRange(
+          DxbcProgramType                   ShaderStage,
           UINT                              Slot,
           UINT                              Offset,
           UINT                              Length) {
+    uint32_t slotId = computeConstantBufferBinding(ShaderStage, Slot);
+
     EmitCs([
-      cSlotId       = Slot,
-      cOffset       = 16 * Offset,
-      cLength       = 16 * Length
+      cSlotId = slotId,
+      cStage  = GetShaderStage(ShaderStage),
+      cOffset = 16u * Offset,
+      cLength = 16u * Length
     ] (DxvkContext* ctx) {
-      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindUniformBufferRange(stage, cSlotId, cOffset, cLength);
+      ctx->bindUniformBufferRange(cStage, cSlotId, cOffset, cLength);
     });
   }
 
@@ -4237,6 +4321,48 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<typename T>
+  bool D3D11CommonContext<ContextType>::DirtyBindingGeneric(
+          DxbcProgramType                   ShaderStage,
+          T                                 BoundMask,
+          T&                                DirtyMask,
+          T                                 DirtyBit,
+          bool                              IsNull) {
+    if ((BoundMask & ~DirtyMask) & DirtyBit) {
+      // If we're binding a non-null resource to an active slot that has not been
+      // marked for lazy binding yet, forward the call immediately in order to
+      // avoid tracking overhead. This is by far the most common case.
+      if (likely(!IsNull))
+        return false;
+
+      // If we are binding a null resource to an active slot, the app will likely
+      // either bind something else or bind a shader that does not use this slot.
+      // In that case, avoid likely redundant CS traffic and apply the binding on
+      // the next draw.
+      m_state.lazy.shadersDirty.set(ShaderStage);
+    }
+
+    // Binding is either inactive or already dirty. In the inactive case, there
+    // is no need to mark the shader stage as dirty since binding a shader that
+    // activates the binding will implicitly do so.
+    DirtyMask |= DirtyBit;
+    return true;
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::DirtyConstantBuffer(
+          DxbcProgramType                   ShaderStage,
+          uint32_t                          Slot,
+          bool                              IsNull) {
+    return DirtyBindingGeneric(ShaderStage,
+      m_state.lazy.bindingsUsed[ShaderStage].cbvMask,
+      m_state.lazy.bindingsDirty[ShaderStage].cbvMask,
+      1u << Slot, IsNull);
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::DiscardBuffer(
           ID3D11Resource*                   pResource) {
     auto buffer = static_cast<D3D11Buffer*>(pResource);
@@ -4395,6 +4521,21 @@ namespace dxvk {
     result.vbCount = m_state.ia.maxVbCount;
     result.soCount = D3D11_SO_BUFFER_SLOT_COUNT;
     return result;
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::HasDirtyComputeBindings() {
+    return m_state.lazy.shadersDirty.test(DxbcProgramType::ComputeShader);
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::HasDirtyGraphicsBindings() {
+    return (m_state.lazy.shadersDirty & m_state.lazy.shadersUsed).any(
+      DxbcProgramType::VertexShader, DxbcProgramType::GeometryShader,
+      DxbcProgramType::HullShader,   DxbcProgramType::DomainShader,
+      DxbcProgramType::PixelShader);
   }
 
 
@@ -4647,36 +4788,6 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::RestoreUsedBindings() {
-    // Mark all bindings used since the last reset as dirty so that subsequent draws
-    // and dispatches will reapply them as necessary. Marking null bindings here may
-    // lead to some redundant CS thread traffic, but is otherwise harmless.
-    auto maxBindings = GetMaxUsedBindings();
-
-    for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
-      auto stage = DxbcProgramType(i);
-      auto stageInfo = maxBindings.stages[i];
-
-      m_state.lazy.bindingsDirty[stage].cbvMask |= (1u << stageInfo.cbvCount) - 1u;
-      m_state.lazy.bindingsDirty[stage].samplerMask |= (1u << stageInfo.samplerCount) - 1u;
-
-      if (stageInfo.uavCount)
-        m_state.lazy.bindingsDirty[stage].uavMask |= uint64_t(-1) >> (64u - stageInfo.uavCount);
-
-      if (stageInfo.srvCount > 64u) {
-        m_state.lazy.bindingsDirty[stage].srvMask[0] |= uint64_t(-1);
-        m_state.lazy.bindingsDirty[stage].srvMask[1] |= uint64_t(-1) >> (128u - stageInfo.srvCount);
-      } else if (stageInfo.srvCount) {
-        m_state.lazy.bindingsDirty[stage].srvMask[0] |= uint64_t(-1) >> (64u - stageInfo.srvCount);
-      }
-
-      if (m_state.lazy.shadersUsed.test(stage) && !m_state.lazy.bindingsDirty[stage].empty())
-        m_state.lazy.shadersDirty.set(stage);
-    }
-  }
-
-
-  template<typename ContextType>
   void D3D11CommonContext<ContextType>::RestoreCommandListState() {
     BindFramebuffer();
 
@@ -4747,10 +4858,8 @@ namespace dxvk {
   template<DxbcProgramType Stage>
   void D3D11CommonContext<ContextType>::RestoreConstantBuffers() {
     const auto& bindings = m_state.cbv[Stage];
-    uint32_t slotId = computeConstantBufferBinding(Stage, 0);
-
     for (uint32_t i = 0; i < bindings.maxCount; i++) {
-      BindConstantBuffer<Stage>(slotId + i, bindings.buffers[i].buffer.ptr(),
+      BindConstantBuffer(Stage, i, bindings.buffers[i].buffer.ptr(),
         bindings.buffers[i].constantOffset, bindings.buffers[i].constantBound);
     }
   }
@@ -4807,7 +4916,6 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
     auto& bindings = m_state.cbv[ShaderStage];
-    uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
@@ -4824,7 +4932,8 @@ namespace dxvk {
         bindings.buffers[StartSlot + i].constantCount  = constantCount;
         bindings.buffers[StartSlot + i].constantBound  = constantCount;
 
-        BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, 0, constantCount);
+        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
+          BindConstantBuffer(ShaderStage, StartSlot + i, newBuffer, 0, constantCount);
       }
     }
 
@@ -4842,8 +4951,6 @@ namespace dxvk {
     const UINT*                             pFirstConstant,
     const UINT*                             pNumConstants) {
     auto& bindings = m_state.cbv[ShaderStage];
-
-    uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
@@ -4883,14 +4990,16 @@ namespace dxvk {
         bindings.buffers[StartSlot + i].constantCount  = constantCount;
         bindings.buffers[StartSlot + i].constantBound  = constantBound;
 
-        BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, constantOffset, constantBound);
+        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
+          BindConstantBuffer(ShaderStage, StartSlot + i, newBuffer, constantOffset, constantBound);
       } else if (bindings.buffers[StartSlot + i].constantOffset != constantOffset
               || bindings.buffers[StartSlot + i].constantCount  != constantCount) {
         bindings.buffers[StartSlot + i].constantOffset = constantOffset;
         bindings.buffers[StartSlot + i].constantCount  = constantCount;
         bindings.buffers[StartSlot + i].constantBound  = constantBound;
 
-        BindConstantBufferRange<ShaderStage>(slotId + i, constantOffset, constantBound);
+        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
+          BindConstantBufferRange(ShaderStage, StartSlot + i, constantOffset, constantBound);
       }
     }
 

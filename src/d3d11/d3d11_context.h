@@ -799,6 +799,15 @@ namespace dxvk {
     DxvkBufferSlice AllocStagingBuffer(
             VkDeviceSize                      Size);
 
+    void ApplyDirtyConstantBuffers(
+            DxbcProgramType                   Stage,
+      const DxbcBindingMask&                  BoundMask,
+            DxbcBindingMask&                  DirtyMask);
+
+    void ApplyDirtyGraphicsBindings();
+
+    void ApplyDirtyComputeBindings();
+
     void ApplyInputLayout();
     
     void ApplyPrimitiveTopology();
@@ -854,15 +863,15 @@ namespace dxvk {
             D3D11Buffer*                      pBuffer,
             UINT                              Offset);
 
-    template<DxbcProgramType ShaderStage>
     void BindConstantBuffer(
+            DxbcProgramType                   ShaderStage,
             UINT                              Slot,
             D3D11Buffer*                      pBuffer,
             UINT                              Offset,
             UINT                              Length);
 
-    template<DxbcProgramType ShaderStage>
     void BindConstantBufferRange(
+            DxbcProgramType                   ShaderStage,
             UINT                              Slot,
             UINT                              Offset,
             UINT                              Length);
@@ -911,6 +920,19 @@ namespace dxvk {
             DxvkBufferSlice                   BufferSlice,
             UINT                              Flags);
 
+    template<typename T>
+    bool DirtyBindingGeneric(
+            DxbcProgramType                   ShaderStage,
+            T                                 BoundMask,
+            T&                                DirtyMask,
+            T                                 DirtyBit,
+            bool                              IsNull);
+
+    bool DirtyConstantBuffer(
+            DxbcProgramType                   ShaderStage,
+            uint32_t                          Slot,
+            bool                              IsNull);
+
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
 
@@ -943,6 +965,10 @@ namespace dxvk {
 
     D3D11MaxUsedBindings GetMaxUsedBindings();
 
+    bool HasDirtyComputeBindings();
+
+    bool HasDirtyGraphicsBindings();
+
     void ResetCommandListState();
 
     void ResetContextState();
@@ -966,8 +992,6 @@ namespace dxvk {
 
     void ResolveOmUavHazards(
             D3D11RenderTargetView*            pView);
-
-    void RestoreUsedBindings();
 
     void RestoreCommandListState();
     
