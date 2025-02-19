@@ -31,16 +31,28 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE Release() {
-      // ignore Release calls on objects with 0 refCount
-      if(unlikely(!this->m_refCount))
-        return this->m_refCount;
+      uint32_t oldRefCount, refCount;
 
-      uint32_t refCount = --this->m_refCount;
+      do {
+        oldRefCount = this->m_refCount.load(std::memory_order_acquire);
+
+        // clamp value to 0 to prevent underruns
+        if (unlikely(!oldRefCount))
+          return 0;
+
+        refCount = oldRefCount - 1;
+
+      } while (!this->m_refCount.compare_exchange_weak(oldRefCount,
+                                                       refCount,
+                                                       std::memory_order_release,
+                                                       std::memory_order_acquire));
+
       if (unlikely(!refCount)) {
         auto* pDevice = GetDevice();
         this->ReleasePrivate();
         pDevice->Release();
       }
+
       return refCount;
     }
 
