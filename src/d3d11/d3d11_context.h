@@ -804,6 +804,11 @@ namespace dxvk {
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
+    void ApplyDirtyShaderResources(
+            DxbcProgramType                   Stage,
+      const DxbcBindingMask&                  BoundMask,
+            DxbcBindingMask&                  DirtyMask);
+
     void ApplyDirtyGraphicsBindings();
 
     void ApplyDirtyComputeBindings();
@@ -881,8 +886,8 @@ namespace dxvk {
             UINT                              Slot,
             D3D11SamplerState*                pSampler);
 
-    template<DxbcProgramType ShaderStage>
     void BindShaderResource(
+            DxbcProgramType                   ShaderStage,
             UINT                              Slot,
             D3D11ShaderResourceView*          pResource);
 
@@ -929,6 +934,11 @@ namespace dxvk {
             bool                              IsNull);
 
     bool DirtyConstantBuffer(
+            DxbcProgramType                   ShaderStage,
+            uint32_t                          Slot,
+            bool                              IsNull);
+
+    bool DirtyShaderResource(
             DxbcProgramType                   ShaderStage,
             uint32_t                          Slot,
             bool                              IsNull);

@@ -3207,6 +3207,28 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtyShaderResources(
+          DxbcProgramType                   Stage,
+    const DxbcBindingMask&                  BoundMask,
+          DxbcBindingMask&                  DirtyMask) {
+    const auto& state = m_state.srv[Stage];
+
+    for (uint32_t i = 0; i < state.maxCount; i += 64u) {
+      uint32_t maskIndex = i / 64u;
+      uint64_t bindMask = BoundMask.srvMask[maskIndex] & DirtyMask.srvMask[maskIndex];
+
+      if (!bindMask)
+        continue;
+
+      DirtyMask.srvMask[maskIndex] -= bindMask;
+
+      for (uint32_t slot : bit::BitMask(bindMask))
+        BindShaderResource(Stage, slot + i, state.views[slot + i].ptr());
+    }
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyGraphicsBindings() {
     auto dirtyMask = m_state.lazy.shadersDirty & m_state.lazy.shadersUsed;
     dirtyMask.clr(DxbcProgramType::ComputeShader);
@@ -3218,6 +3240,7 @@ namespace dxvk {
       auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
 
       ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
+      ApplyDirtyShaderResources(stage, boundMask, dirtyMask);
 
       m_state.lazy.shadersDirty.clr(stage);
     }
@@ -3232,6 +3255,7 @@ namespace dxvk {
     auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
 
     ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
+    ApplyDirtyShaderResources(stage, boundMask, dirtyMask);
 
     m_state.lazy.shadersDirty.clr(stage);
   }
@@ -3839,36 +3863,38 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindShaderResource(
+          DxbcProgramType                   ShaderStage,
           UINT                              Slot,
           D3D11ShaderResourceView*          pResource) {
+    uint32_t slotId = computeSrvBinding(ShaderStage, Slot);
+
     if (pResource) {
       if (pResource->GetViewInfo().Dimension != D3D11_RESOURCE_DIMENSION_BUFFER) {
         EmitCs([
-          cSlotId = Slot,
+          cSlotId = slotId,
+          cStage  = GetShaderStage(ShaderStage),
           cView   = pResource->GetImageView()
         ] (DxvkContext* ctx) mutable {
-          VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-          ctx->bindResourceImageView(stage, cSlotId,
+          ctx->bindResourceImageView(cStage, cSlotId,
             Forwarder::move(cView));
         });
       } else {
         EmitCs([
-          cSlotId = Slot,
+          cSlotId = slotId,
+          cStage  = GetShaderStage(ShaderStage),
           cView   = pResource->GetBufferView()
         ] (DxvkContext* ctx) mutable {
-          VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-          ctx->bindResourceBufferView(stage, cSlotId,
+          ctx->bindResourceBufferView(cStage, cSlotId,
             Forwarder::move(cView));
         });
       }
     } else {
       EmitCs([
-        cSlotId = Slot
+        cSlotId = slotId,
+        cStage  = GetShaderStage(ShaderStage)
       ] (DxvkContext* ctx) {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceImageView(stage, cSlotId, nullptr);
+        ctx->bindResourceImageView(cStage, cSlotId, nullptr);
       });
     }
   }
@@ -4363,6 +4389,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::DirtyShaderResource(
+          DxbcProgramType                   ShaderStage,
+          uint32_t                          Slot,
+          bool                              IsNull) {
+    uint32_t idx = Slot / 64u;
+
+    return DirtyBindingGeneric(ShaderStage,
+      m_state.lazy.bindingsUsed[ShaderStage].srvMask[idx],
+      m_state.lazy.bindingsDirty[ShaderStage].srvMask[idx],
+      uint64_t(1u) << Slot, IsNull);
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::DiscardBuffer(
           ID3D11Resource*                   pResource) {
     auto buffer = static_cast<D3D11Buffer*>(pResource);
@@ -4694,8 +4734,6 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ResolveSrvHazards(
           T*                                pView) {
     auto& bindings = m_state.srv[ShaderStage];
-
-    uint32_t slotId = computeSrvBinding(ShaderStage, 0);
     int32_t srvId = bindings.hazardous.findNext(0);
 
     while (srvId >= 0) {
@@ -4708,7 +4746,8 @@ namespace dxvk {
           bindings.views[srvId] = nullptr;
           bindings.hazardous.clr(srvId);
 
-          BindShaderResource<ShaderStage>(slotId + srvId, nullptr);
+          if (!DirtyShaderResource(ShaderStage, srvId, true))
+            BindShaderResource(ShaderStage, srvId, nullptr);
         }
       } else {
         // Avoid further redundant iterations
@@ -4880,10 +4919,8 @@ namespace dxvk {
   template<DxbcProgramType Stage>
   void D3D11CommonContext<ContextType>::RestoreShaderResources() {
     const auto& bindings = m_state.srv[Stage];
-    uint32_t slotId = computeSrvBinding(Stage, 0);
-
     for (uint32_t i = 0; i < bindings.maxCount; i++)
-      BindShaderResource<Stage>(slotId + i, bindings.views[i].ptr());
+      BindShaderResource(Stage, i, bindings.views[i].ptr());
   }
 
 
@@ -5015,7 +5052,6 @@ namespace dxvk {
           UINT                              NumResources,
           ID3D11ShaderResourceView* const*  ppResources) {
     auto& bindings = m_state.srv[ShaderStage];
-    uint32_t slotId = computeSrvBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumResources; i++) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
@@ -5034,7 +5070,9 @@ namespace dxvk {
         }
 
         bindings.views[StartSlot + i] = resView;
-        BindShaderResource<ShaderStage>(slotId + i, resView);
+
+        if (!DirtyShaderResource(ShaderStage, StartSlot + i, !resView))
+          BindShaderResource(ShaderStage, StartSlot + i, resView);
       }
     }
 
