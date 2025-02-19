@@ -3548,7 +3548,7 @@ namespace dxvk {
       m_state.lazy.shadersUsed.set(ShaderStage);
       m_state.lazy.bindingsUsed[ShaderStage] = pShaderModule->GetBindingMask();
 
-      if (!m_state.lazy.shadersDirty.test(ShaderStage)) {
+      if (!m_state.lazy.shadersDirty.test(ShaderStage) && (DebugLazyBinding != Tristate::False)) {
         if (!(m_state.lazy.bindingsDirty[ShaderStage] & m_state.lazy.bindingsUsed[ShaderStage]).empty())
           m_state.lazy.shadersDirty.set(ShaderStage);
       }
@@ -4368,11 +4368,15 @@ namespace dxvk {
           T&                                DirtyMask,
           T                                 DirtyBit,
           bool                              IsNull) {
+    // Forward immediately if lazy binding is forced off
+    if (DebugLazyBinding == Tristate::False)
+      return false;
+
     if ((BoundMask & ~DirtyMask) & DirtyBit) {
       // If we're binding a non-null resource to an active slot that has not been
       // marked for lazy binding yet, forward the call immediately in order to
       // avoid tracking overhead. This is by far the most common case.
-      if (likely(!IsNull))
+      if (likely(!IsNull && DebugLazyBinding != Tristate::True))
         return false;
 
       // If we are binding a null resource to an active slot, the app will likely
