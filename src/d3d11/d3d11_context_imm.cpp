@@ -754,7 +754,11 @@ namespace dxvk {
     if (!pState)
       return;
 
-    // Reset all state affected by the current context state
+    // Clear dirty tracking here since all context state will be
+    // re-applied anyway when the context state is swapped in again.
+    ResetDirtyTracking();
+
+    // Reset all state affected by the current context state.
     ResetCommandListState();
 
     Com<D3D11DeviceContextState, false> oldState = std::move(m_stateObject);

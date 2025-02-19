@@ -4747,6 +4747,15 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ResetDirtyTracking() {
+    // Must only be called when all bindings are guaranteed to get applied
+    // to the DXVK context before the next draw or dispatch command.
+    m_state.lazy.bindingsDirty.reset();
+    m_state.lazy.shadersDirty = 0u;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ResetStagingBuffer() {
     m_staging.reset();
   }
@@ -4879,6 +4888,8 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
       BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
+
+    ResetDirtyTracking();
 
     for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
       auto stage = DxbcProgramType(i);
