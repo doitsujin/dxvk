@@ -896,11 +896,10 @@ namespace dxvk {
             UINT                              Slot,
             D3D11ShaderResourceView*          pResource);
 
-    template<DxbcProgramType ShaderStage>
     void BindUnorderedAccessView(
-            UINT                              UavSlot,
+            DxbcProgramType                   ShaderStage,
+            UINT                              Slot,
             D3D11UnorderedAccessView*         pUav,
-            UINT                              CtrSlot,
             UINT                              Counter);
 
     VkClearValue ConvertColorValue(
