@@ -10,7 +10,7 @@ namespace dxvk {
         streamFreq[i] = 1;
 
       for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
-        enabledLightIndices[i] = UINT32_MAX;
+        enabledLightIndices[i] = std::numeric_limits<uint32_t>::max();
     }
 
 

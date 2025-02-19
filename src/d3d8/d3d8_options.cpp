@@ -9,7 +9,7 @@
 namespace dxvk {
 
   static inline uint32_t parseDword(std::string_view str) {
-    uint32_t value = UINT32_MAX;
+    uint32_t value = std::numeric_limits<uint32_t>::max();
     std::from_chars(str.data(), str.data() + str.size(), value);
     return value;
   }
