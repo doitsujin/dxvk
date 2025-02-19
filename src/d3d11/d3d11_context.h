@@ -992,6 +992,8 @@ namespace dxvk {
 
     void ResetContextState();
 
+    void ResetDirtyTracking();
+
     void ResetStagingBuffer();
 
     template<DxbcProgramType ShaderStage, typename T>
