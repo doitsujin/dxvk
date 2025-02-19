@@ -2158,9 +2158,6 @@ namespace dxvk {
       return;
 
     // Unbind previously bound conflicting UAVs
-    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, 0);
-    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, 0);
-
     int32_t uavId = m_state.uav.mask.findNext(0);
 
     while (uavId >= 0) {
@@ -2172,9 +2169,7 @@ namespace dxvk {
             m_state.uav.views[uavId] = nullptr;
             m_state.uav.mask.clr(uavId);
 
-            BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
-              uavSlotId + uavId, nullptr,
-              ctrSlotId + uavId, ~0u);
+            BindUnorderedAccessView(DxbcProgramType::ComputeShader, uavId, nullptr, ~0u);
           }
         }
 
@@ -2193,10 +2188,7 @@ namespace dxvk {
         m_state.uav.views[StartSlot + i] = uav;
         m_state.uav.mask.set(StartSlot + i, uav != nullptr);
 
-        BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
-          uavSlotId + StartSlot + i, uav,
-          ctrSlotId + StartSlot + i, ctr);
-
+        BindUnorderedAccessView(DxbcProgramType::ComputeShader, StartSlot + i, uav, ctr);
         ResolveCsSrvHazards(uav);
       }
     }
@@ -3923,25 +3915,28 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindUnorderedAccessView(
-          UINT                              UavSlot,
+          DxbcProgramType                   ShaderStage,
+          UINT                              Slot,
           D3D11UnorderedAccessView*         pUav,
-          UINT                              CtrSlot,
           UINT                              Counter) {
+    uint32_t uavSlotId = computeUavBinding(ShaderStage, Slot);
+    uint32_t ctrSlotId = computeUavCounterBinding(ShaderStage, Slot);
+
+    VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
+      ? VK_SHADER_STAGE_COMPUTE_BIT
+      : VK_SHADER_STAGE_ALL_GRAPHICS;
+
     if (pUav) {
       if (pUav->GetViewInfo().Dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
         EmitCs([
-          cUavSlotId    = UavSlot,
-          cCtrSlotId    = CtrSlot,
+          cUavSlotId    = uavSlotId,
+          cCtrSlotId    = ctrSlotId,
+          cStages       = stages,
           cBufferView   = pUav->GetBufferView(),
           cCounterView  = pUav->GetCounterView(),
           cCounterValue = Counter
         ] (DxvkContext* ctx) mutable {
-          VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
-            ? VK_SHADER_STAGE_COMPUTE_BIT
-            : VK_SHADER_STAGE_ALL_GRAPHICS;
-
           if (cCounterView != nullptr && cCounterValue != ~0u) {
             DxvkBufferSlice counterSlice(cCounterView);
 
@@ -3952,37 +3947,31 @@ namespace dxvk {
               &cCounterValue);
           }
 
-          ctx->bindResourceBufferView(stages, cUavSlotId,
+          ctx->bindResourceBufferView(cStages, cUavSlotId,
             Forwarder::move(cBufferView));
-          ctx->bindResourceBufferView(stages, cCtrSlotId,
+          ctx->bindResourceBufferView(cStages, cCtrSlotId,
             Forwarder::move(cCounterView));
         });
       } else {
         EmitCs([
-          cUavSlotId    = UavSlot,
-          cCtrSlotId    = CtrSlot,
+          cUavSlotId    = uavSlotId,
+          cCtrSlotId    = ctrSlotId,
+          cStages       = stages,
           cImageView    = pUav->GetImageView()
         ] (DxvkContext* ctx) mutable {
-          VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
-            ? VK_SHADER_STAGE_COMPUTE_BIT
-            : VK_SHADER_STAGE_ALL_GRAPHICS;
-
-          ctx->bindResourceImageView(stages, cUavSlotId,
+          ctx->bindResourceImageView(cStages, cUavSlotId,
             Forwarder::move(cImageView));
-          ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
+          ctx->bindResourceBufferView(cStages, cCtrSlotId, nullptr);
         });
       }
     } else {
       EmitCs([
-        cUavSlotId    = UavSlot,
-        cCtrSlotId    = CtrSlot
+        cUavSlotId    = uavSlotId,
+        cCtrSlotId    = ctrSlotId,
+        cStages       = stages
       ] (DxvkContext* ctx) {
-        VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
-          ? VK_SHADER_STAGE_COMPUTE_BIT
-          : VK_SHADER_STAGE_ALL_GRAPHICS;
-
-        ctx->bindResourceImageView(stages, cUavSlotId, nullptr);
-        ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
+        ctx->bindResourceImageView(cStages, cUavSlotId, nullptr);
+        ctx->bindResourceBufferView(cStages, cCtrSlotId, nullptr);
       });
     }
   }
@@ -4845,16 +4834,11 @@ namespace dxvk {
     if (!pView || !pView->HasBindFlag(D3D11_BIND_UNORDERED_ACCESS))
       return;
 
-    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
-    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
-
     for (uint32_t i = 0; i < m_state.om.maxUav; i++) {
       if (CheckViewOverlap(pView, m_state.om.uavs[i].ptr())) {
         m_state.om.uavs[i] = nullptr;
 
-        BindUnorderedAccessView<DxbcProgramType::PixelShader>(
-          uavSlotId + i, nullptr,
-          ctrSlotId + i, ~0u);
+        BindUnorderedAccessView(DxbcProgramType::PixelShader, i, nullptr, ~0u);
       }
     }
   }
@@ -4967,14 +4951,8 @@ namespace dxvk {
       ? m_state.uav.maxCount
       : m_state.om.maxUav;
 
-    uint32_t uavSlotId = computeUavBinding(Stage, 0);
-    uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
-
-    for (uint32_t i = 0; i < maxCount; i++) {
-      BindUnorderedAccessView<Stage>(
-        uavSlotId + i, views[i].ptr(),
-        ctrSlotId + i, ~0u);
-    }
+    for (uint32_t i = 0; i < maxCount; i++)
+      BindUnorderedAccessView(Stage, i, views[i].ptr(), ~0u);
   }
 
 
@@ -5191,9 +5169,6 @@ namespace dxvk {
     }
 
     if (unlikely(NumUAVs || m_state.om.maxUav)) {
-      uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
-      uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
-
       if (likely(NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
         uint32_t newMaxUav = NumUAVs ? UAVStartSlot + NumUAVs : 0;
         uint32_t oldMaxUav = std::exchange(m_state.om.maxUav, newMaxUav);
@@ -5210,10 +5185,7 @@ namespace dxvk {
           if (m_state.om.uavs[i] != uav || ctr != ~0u) {
             m_state.om.uavs[i] = uav;
 
-            BindUnorderedAccessView<DxbcProgramType::PixelShader>(
-              uavSlotId + i, uav,
-              ctrSlotId + i, ctr);
-
+            BindUnorderedAccessView(DxbcProgramType::PixelShader, i, uav, ctr);
             ResolveOmSrvHazards(uav);
 
             if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
