@@ -4880,29 +4880,16 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
       BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
 
-    RestoreConstantBuffers<DxbcProgramType::VertexShader>();
-    RestoreConstantBuffers<DxbcProgramType::HullShader>();
-    RestoreConstantBuffers<DxbcProgramType::DomainShader>();
-    RestoreConstantBuffers<DxbcProgramType::GeometryShader>();
-    RestoreConstantBuffers<DxbcProgramType::PixelShader>();
-    RestoreConstantBuffers<DxbcProgramType::ComputeShader>();
+    for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
+      auto stage = DxbcProgramType(i);
 
-    RestoreShaderResources<DxbcProgramType::VertexShader>();
-    RestoreShaderResources<DxbcProgramType::HullShader>();
-    RestoreShaderResources<DxbcProgramType::DomainShader>();
-    RestoreShaderResources<DxbcProgramType::GeometryShader>();
-    RestoreShaderResources<DxbcProgramType::PixelShader>();
-    RestoreShaderResources<DxbcProgramType::ComputeShader>();
+      RestoreConstantBuffers(stage);
+      RestoreShaderResources(stage);
+      RestoreSamplers(stage);
+    }
 
-    RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>();
-    RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader>();
-
-    RestoreSamplers<DxbcProgramType::VertexShader>();
-    RestoreSamplers<DxbcProgramType::HullShader>();
-    RestoreSamplers<DxbcProgramType::DomainShader>();
-    RestoreSamplers<DxbcProgramType::GeometryShader>();
-    RestoreSamplers<DxbcProgramType::PixelShader>();
-    RestoreSamplers<DxbcProgramType::ComputeShader>();
+    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader);
+    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader);
 
     // Draw buffer bindings aren't persistent at the API level, and
     // we can't meaningfully track them. Just reset this state here
@@ -4912,9 +4899,10 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreConstantBuffers() {
+  void D3D11CommonContext<ContextType>::RestoreConstantBuffers(
+          DxbcProgramType                   Stage) {
     const auto& bindings = m_state.cbv[Stage];
+
     for (uint32_t i = 0; i < bindings.maxCount; i++) {
       BindConstantBuffer(Stage, i, bindings.buffers[i].buffer.ptr(),
         bindings.buffers[i].constantOffset, bindings.buffers[i].constantBound);
@@ -4923,26 +4911,28 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreSamplers() {
+  void D3D11CommonContext<ContextType>::RestoreSamplers(
+          DxbcProgramType                   Stage) {
     const auto& bindings = m_state.samplers[Stage];
+
     for (uint32_t i = 0; i < bindings.maxCount; i++)
       BindSampler(Stage, i, bindings.samplers[i]);
   }
 
 
   template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreShaderResources() {
+  void D3D11CommonContext<ContextType>::RestoreShaderResources(
+          DxbcProgramType                   Stage) {
     const auto& bindings = m_state.srv[Stage];
+
     for (uint32_t i = 0; i < bindings.maxCount; i++)
       BindShaderResource(Stage, i, bindings.views[i].ptr());
   }
 
 
   template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews() {
+  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews(
+          DxbcProgramType                   Stage) {
     const auto& views = Stage == DxbcProgramType::ComputeShader
       ? m_state.uav.views
       : m_state.om.uavs;
