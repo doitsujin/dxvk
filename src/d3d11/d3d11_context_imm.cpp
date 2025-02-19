@@ -1053,6 +1053,10 @@ namespace dxvk {
 
   void D3D11ImmediateContext::ConsiderFlush(
           GpuFlushType                FlushType) {
+    // In stress test mode, behave as if this would always flush
+    if (DebugLazyBinding == Tristate::True)
+      ApplyDirtyNullBindings();
+
     uint64_t chunkId = GetCurrentSequenceNumber();
     uint64_t submissionId = m_submissionFence->value();
 
