@@ -948,23 +948,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    if (this->commitGraphicsState<false, true>()) {
-      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
-      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
-      
-      m_cmd->cmdDrawIndirectCount(
-        argDescriptor.buffer.buffer,
-        argDescriptor.buffer.offset + offset,
-        cntDescriptor.buffer.buffer,
-        cntDescriptor.buffer.offset + countOffset,
-        maxCount, stride);
-
-      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
-        accessDrawBuffer(offset, maxCount, stride, sizeof(VkDrawIndirectCommand));
-
-      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
-        accessDrawCountBuffer(countOffset);
-    }
+    drawIndirectCountGeneric<false>(offset, countOffset, maxCount, stride);
   }
   
   
@@ -997,26 +981,10 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    if (this->commitGraphicsState<true, true>()) {
-      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
-      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
-      
-      m_cmd->cmdDrawIndexedIndirectCount(
-        argDescriptor.buffer.buffer,
-        argDescriptor.buffer.offset + offset,
-        cntDescriptor.buffer.buffer,
-        cntDescriptor.buffer.offset + countOffset,
-        maxCount, stride);
-
-      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
-        accessDrawBuffer(offset, maxCount, stride, sizeof(VkDrawIndexedIndirectCommand));
-
-      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
-        accessDrawCountBuffer(countOffset);
-    }
+    drawIndirectCountGeneric<true>(offset, countOffset, maxCount, stride);
   }
-  
-  
+
+
   void DxvkContext::drawIndirectXfb(
           VkDeviceSize      counterOffset,
           uint32_t          counterDivisor,
@@ -1763,6 +1731,44 @@ namespace dxvk {
 
         offset += step * stride;
       }
+    }
+  }
+
+
+  template<bool Indexed>
+  void DxvkContext::drawIndirectCountGeneric(
+          VkDeviceSize          offset,
+          VkDeviceSize          countOffset,
+          uint32_t              maxCount,
+          uint32_t              stride) {
+    if (this->commitGraphicsState<Indexed, true>()) {
+      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
+      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
+
+      if (Indexed) {
+        m_cmd->cmdDrawIndexedIndirectCount(
+          argDescriptor.buffer.buffer,
+          argDescriptor.buffer.offset + offset,
+          cntDescriptor.buffer.buffer,
+          cntDescriptor.buffer.offset + countOffset,
+          maxCount, stride);
+      } else {
+        m_cmd->cmdDrawIndirectCount(
+          argDescriptor.buffer.buffer,
+          argDescriptor.buffer.offset + offset,
+          cntDescriptor.buffer.buffer,
+          cntDescriptor.buffer.offset + countOffset,
+          maxCount, stride);
+      }
+
+      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
+        accessDrawBuffer(offset, maxCount, stride, Indexed
+          ? sizeof(VkDrawIndexedIndirectCommand)
+          : sizeof(VkDrawIndirectCommand));
+      }
+
+      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+        accessDrawCountBuffer(countOffset);
     }
   }
 
