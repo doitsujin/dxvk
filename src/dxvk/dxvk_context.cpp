@@ -937,18 +937,9 @@ namespace dxvk {
   void DxvkContext::drawIndirect(
           VkDeviceSize      offset,
           uint32_t          count,
-          uint32_t          stride) {
-    if (this->commitGraphicsState<false, true>()) {
-      auto descriptor = m_state.id.argBuffer.getDescriptor();
-      
-      m_cmd->cmdDrawIndirect(
-        descriptor.buffer.buffer,
-        descriptor.buffer.offset + offset,
-        count, stride);
-
-      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
-        accessDrawBuffer(offset, count, stride, sizeof(VkDrawIndirectCommand));
-    }
+          uint32_t          stride,
+          bool              unroll) {
+    drawIndirectGeneric<false>(offset, count, stride, unroll);
   }
   
   
@@ -995,18 +986,9 @@ namespace dxvk {
   void DxvkContext::drawIndexedIndirect(
           VkDeviceSize      offset,
           uint32_t          count,
-          uint32_t          stride) {
-    if (this->commitGraphicsState<true, true>()) {
-      auto descriptor = m_state.id.argBuffer.getDescriptor();
-      
-      m_cmd->cmdDrawIndexedIndirect(
-        descriptor.buffer.buffer,
-        descriptor.buffer.offset + offset,
-        count, stride);
-
-      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
-        accessDrawBuffer(offset, count, stride, sizeof(VkDrawIndexedIndirectCommand));
-    }
+          uint32_t          stride,
+          bool              unroll) {
+    drawIndirectGeneric<true>(offset, count, stride, unroll);
   }
   
   
@@ -1736,6 +1718,52 @@ namespace dxvk {
 
     relocateResources(0, nullptr, 1, &relocateInfo);
     return true;
+  }
+
+
+  template<bool Indexed>
+  void DxvkContext::drawIndirectGeneric(
+          VkDeviceSize              offset,
+          uint32_t                  count,
+          uint32_t                  stride,
+          bool                      unroll) {
+    if (this->commitGraphicsState<Indexed, true>()) {
+      auto descriptor = m_state.id.argBuffer.getDescriptor();
+
+      if (unroll) {
+        // Need to do this check after initially setting up the pipeline
+        unroll = m_state.gp.flags.test(DxvkGraphicsPipelineFlag::UnrollMergedDraws)
+              && !m_barrierControl.test(DxvkBarrierControl::GraphicsAllowReadWriteOverlap);
+      }
+
+      // If draws are merged but the pipeline has order-dependent stores, submit
+      // one draw at a time as well as barriers in between. Otherwise, keep the
+      // draws merged.
+      uint32_t step = unroll ? 1u : count;
+
+      for (uint32_t i = 0; i < count; i += step) {
+        if (unlikely(i)) {
+          // Insert barrier after the first iteration
+          this->commitGraphicsState<Indexed, true>();
+        }
+
+        if (Indexed) {
+          m_cmd->cmdDrawIndexedIndirect(descriptor.buffer.buffer,
+            descriptor.buffer.offset + offset, step, stride);
+        } else {
+          m_cmd->cmdDrawIndirect(descriptor.buffer.buffer,
+            descriptor.buffer.offset + offset, step, stride);
+        }
+
+        if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
+          accessDrawBuffer(offset, step, stride, Indexed
+            ? sizeof(VkDrawIndexedIndirectCommand)
+            : sizeof(VkDrawIndirectCommand));
+        }
+
+        offset += step * stride;
+      }
+    }
   }
 
 

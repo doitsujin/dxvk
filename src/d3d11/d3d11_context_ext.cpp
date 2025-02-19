@@ -53,7 +53,7 @@ namespace dxvk {
       cOffset = ByteOffsetForArgs,
       cStride = ByteStrideForArgs
     ] (DxvkContext* ctx) {
-      ctx->drawIndirect(cOffset, cCount, cStride);
+      ctx->drawIndirect(cOffset, cCount, cStride, false);
     });
   }
   
@@ -72,7 +72,7 @@ namespace dxvk {
       cOffset = ByteOffsetForArgs,
       cStride = ByteStrideForArgs
     ] (DxvkContext* ctx) {
-      ctx->drawIndexedIndirect(cOffset, cCount, cStride);
+      ctx->drawIndexedIndirect(cOffset, cCount, cStride, false);
     });
   }
   
