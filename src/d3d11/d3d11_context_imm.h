@@ -195,6 +195,8 @@ namespace dxvk {
 
     uint64_t GetPendingCsChunks();
 
+    void ApplyDirtyNullBindings();
+
     void ConsiderFlush(
             GpuFlushType                FlushType);
 

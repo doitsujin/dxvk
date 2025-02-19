@@ -218,7 +218,12 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
-    
+
+    // Reset dirty binding tracking before submitting any CS chunks.
+    // This is needed so that any submission that might occur during
+    // this call does not disrupt bindings set by the deferred context.
+    ResetDirtyTracking();
+
     // Clear state so that the command list can't observe any
     // current context state. The command list itself will clean
     // up after execution to ensure that no state changes done
@@ -979,6 +984,73 @@ namespace dxvk {
   }
 
 
+  void D3D11ImmediateContext::ApplyDirtyNullBindings() {
+    // At the end of a submission, set all bindings that have not been applied yet
+    // to null on the DXVK context. This way, we avoid keeping resources alive that
+    // are bound to the DXVK context but not to the immediate context.
+    //
+    // Note: This requires that all methods that may modify dirty bindings on the
+    // DXVK context also reset the corresponding dirty bits *before* performing the
+    // bind operation, or otherwise an implicit flush can potentially override them.
+    auto& dirtyState = m_state.lazy.bindingsDirty;
+
+    EmitCs<false>([
+      cDirtyState = dirtyState
+    ] (DxvkContext* ctx) {
+      for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
+        auto dxStage = DxbcProgramType(i);
+        auto vkStage = GetShaderStage(dxStage);
+
+        // Unbind all dirty constant buffers
+        auto cbvSlot = computeConstantBufferBinding(dxStage, 0);
+
+        for (uint32_t index : bit::BitMask(cDirtyState[dxStage].cbvMask))
+          ctx->bindUniformBuffer(vkStage, cbvSlot + index, DxvkBufferSlice());
+
+        // Unbind all dirty samplers
+        auto samplerSlot = computeSamplerBinding(dxStage, 0);
+
+        for (uint32_t index : bit::BitMask(cDirtyState[dxStage].samplerMask))
+          ctx->bindResourceSampler(vkStage, samplerSlot + index, nullptr);
+
+        // Unbind all dirty shader resource views
+        auto srvSlot = computeSrvBinding(dxStage, 0);
+
+        for (uint32_t m = 0; m < cDirtyState[dxStage].srvMask.size(); m++) {
+          for (uint32_t index : bit::BitMask(cDirtyState[dxStage].srvMask[m]))
+            ctx->bindResourceImageView(vkStage, srvSlot + index + m * 64u, nullptr);
+        }
+      }
+    });
+
+    // Since we set the DXVK context bindings to null, any bindings that are null
+    // on the D3D context are no longer dirty, so we can clear the respective bits.
+    for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
+      auto stage = DxbcProgramType(i);
+
+      for (uint32_t index : bit::BitMask(dirtyState[stage].cbvMask)) {
+        if (!m_state.cbv[stage].buffers[index].buffer.ptr())
+          dirtyState[stage].cbvMask &= ~(1u << index);
+      }
+
+      for (uint32_t index : bit::BitMask(dirtyState[stage].samplerMask)) {
+        if (!m_state.samplers[stage].samplers[index])
+          dirtyState[stage].samplerMask &= ~(1u << index);
+      }
+
+      for (uint32_t m = 0; m < dirtyState[stage].srvMask.size(); m++) {
+        for (uint32_t index : bit::BitMask(dirtyState[stage].srvMask[m])) {
+          if (!m_state.srv[stage].views[index + m * 64u].ptr())
+            dirtyState[stage].srvMask[m] &= ~(uint64_t(1u) << index);
+        }
+      }
+
+      if (dirtyState[stage].empty())
+        m_state.lazy.shadersDirty.clr(stage);
+    }
+  }
+
+
   void D3D11ImmediateContext::ConsiderFlush(
           GpuFlushType                FlushType) {
     uint64_t chunkId = GetCurrentSequenceNumber();
@@ -1001,6 +1073,9 @@ namespace dxvk {
     // Exit early if there's nothing to do
     if (!GetPendingCsChunks() && !hEvent)
       return;
+
+    // Unbind unused resources
+    ApplyDirtyNullBindings();
 
     // Signal the submission fence and flush the command list
     uint64_t submissionId = ++m_submissionId;

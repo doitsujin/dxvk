@@ -3186,6 +3186,7 @@ namespace dxvk {
     if (!bindMask)
       return;
 
+    // Need to clear dirty bits before binding
     const auto& state = m_state.cbv[Stage];
     DirtyMask.cbvMask -= bindMask;
 
@@ -3208,6 +3209,7 @@ namespace dxvk {
     if (!bindMask)
       return;
 
+    // Need to clear dirty bits before binding
     const auto& state = m_state.samplers[Stage];
     DirtyMask.samplerMask -= bindMask;
 
@@ -3230,6 +3232,7 @@ namespace dxvk {
       if (!bindMask)
         continue;
 
+    // Need to clear dirty bits before binding
       DirtyMask.srvMask[maskIndex] -= bindMask;
 
       for (uint32_t slot : bit::BitMask(bindMask))
@@ -4889,6 +4892,8 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
       BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
 
+    // Reset dirty binding and shader masks before applying
+    // bindings to avoid implicit null binding overrids.
     ResetDirtyTracking();
 
     for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
