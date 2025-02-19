@@ -965,8 +965,12 @@ namespace dxvk {
         m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
-    if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
+    if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT) {
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
+
+      if (layout->layout().getHazardousSetMask())
+        m_flags.set(DxvkGraphicsPipelineFlag::UnrollMergedDraws);
+    }
 
     if (m_shaders.fs != nullptr) {
       if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading))

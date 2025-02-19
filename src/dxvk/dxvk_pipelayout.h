@@ -338,6 +338,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries hazardous sets
+     *
+     * \returns Mask of sets with storage descriptors
+     *    that are not accessed in an order-invariant way.
+     */
+    uint32_t getHazardousSetMask() const {
+      return m_hazards;
+    }
+
+    /**
      * \brief Queries defined descriptor set layouts
      *
      * Any set layout not included in this must be null.
@@ -394,6 +404,7 @@ namespace dxvk {
     VkPushConstantRange                                       m_pushConst;
     VkShaderStageFlags                                        m_pushConstStages;
     VkShaderStageFlags                                        m_stages;
+    uint32_t                                                  m_hazards;
 
   };
 

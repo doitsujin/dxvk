@@ -31,6 +31,7 @@ namespace dxvk {
     HasStorageDescriptors,
     HasSampleRateShading,
     HasSampleMaskExport,
+    UnrollMergedDraws,
   };
 
   using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
