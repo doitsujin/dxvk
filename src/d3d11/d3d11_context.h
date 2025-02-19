@@ -1014,18 +1014,18 @@ namespace dxvk {
 
     void RestoreCommandListState();
     
-    template<DxbcProgramType Stage>
-    void RestoreConstantBuffers();
+    void RestoreConstantBuffers(
+            DxbcProgramType                   Stage);
     
-    template<DxbcProgramType Stage>
-    void RestoreSamplers();
-    
-    template<DxbcProgramType Stage>
-    void RestoreShaderResources();
-    
-    template<DxbcProgramType Stage>
-    void RestoreUnorderedAccessViews();
-    
+    void RestoreSamplers(
+            DxbcProgramType                   Stage);
+
+    void RestoreShaderResources(
+            DxbcProgramType                   Stage);
+
+    void RestoreUnorderedAccessViews(
+            DxbcProgramType                   Stage);
+
     template<DxbcProgramType ShaderStage>
     void SetConstantBuffers(
             UINT                              StartSlot,
