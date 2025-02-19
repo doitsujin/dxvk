@@ -804,6 +804,11 @@ namespace dxvk {
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
+    void ApplyDirtySamplers(
+            DxbcProgramType                   Stage,
+      const DxbcBindingMask&                  BoundMask,
+            DxbcBindingMask&                  DirtyMask);
+
     void ApplyDirtyShaderResources(
             DxbcProgramType                   Stage,
       const DxbcBindingMask&                  BoundMask,
@@ -881,8 +886,8 @@ namespace dxvk {
             UINT                              Offset,
             UINT                              Length);
 
-    template<DxbcProgramType ShaderStage>
     void BindSampler(
+            DxbcProgramType                   ShaderStage,
             UINT                              Slot,
             D3D11SamplerState*                pSampler);
 
@@ -934,6 +939,11 @@ namespace dxvk {
             bool                              IsNull);
 
     bool DirtyConstantBuffer(
+            DxbcProgramType                   ShaderStage,
+            uint32_t                          Slot,
+            bool                              IsNull);
+
+    bool DirtySampler(
             DxbcProgramType                   ShaderStage,
             uint32_t                          Slot,
             bool                              IsNull);

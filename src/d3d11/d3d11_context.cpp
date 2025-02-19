@@ -3207,6 +3207,24 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtySamplers(
+          DxbcProgramType                   Stage,
+    const DxbcBindingMask&                  BoundMask,
+          DxbcBindingMask&                  DirtyMask) {
+    uint32_t bindMask = BoundMask.samplerMask & DirtyMask.samplerMask;
+
+    if (!bindMask)
+      return;
+
+    const auto& state = m_state.samplers[Stage];
+    DirtyMask.samplerMask -= bindMask;
+
+    for (uint32_t slot : bit::BitMask(bindMask))
+      BindSampler(Stage, slot, state.samplers[slot]);
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyShaderResources(
           DxbcProgramType                   Stage,
     const DxbcBindingMask&                  BoundMask,
@@ -3239,6 +3257,7 @@ namespace dxvk {
       auto& boundMask = m_state.lazy.bindingsUsed[stage];
       auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
 
+      ApplyDirtySamplers(stage, boundMask, dirtyMask);
       ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
       ApplyDirtyShaderResources(stage, boundMask, dirtyMask);
 
@@ -3254,6 +3273,7 @@ namespace dxvk {
     auto& boundMask = m_state.lazy.bindingsUsed[stage];
     auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
 
+    ApplyDirtySamplers(stage, boundMask, dirtyMask);
     ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
     ApplyDirtyShaderResources(stage, boundMask, dirtyMask);
 
@@ -3838,25 +3858,27 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindSampler(
+          DxbcProgramType                   ShaderStage,
           UINT                              Slot,
           D3D11SamplerState*                pSampler) {
+    uint32_t slotId = computeSamplerBinding(ShaderStage, Slot);
+
     if (pSampler) {
       EmitCs([
-        cSlotId   = Slot,
+        cSlotId   = slotId,
+        cStage    = GetShaderStage(ShaderStage),
         cSampler  = pSampler->GetDXVKSampler()
       ] (DxvkContext* ctx) mutable {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceSampler(stage, cSlotId,
+        ctx->bindResourceSampler(cStage, cSlotId,
           Forwarder::move(cSampler));
       });
     } else {
       EmitCs([
-        cSlotId   = Slot
+        cSlotId   = slotId,
+        cStage    = GetShaderStage(ShaderStage)
       ] (DxvkContext* ctx) {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceSampler(stage, cSlotId, nullptr);
+        ctx->bindResourceSampler(cStage, cSlotId, nullptr);
       });
     }
   }
@@ -4389,6 +4411,18 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::DirtySampler(
+          DxbcProgramType                   ShaderStage,
+          uint32_t                          Slot,
+          bool                              IsNull) {
+    return DirtyBindingGeneric(ShaderStage,
+      m_state.lazy.bindingsUsed[ShaderStage].samplerMask,
+      m_state.lazy.bindingsDirty[ShaderStage].samplerMask,
+      1u << Slot, IsNull);
+  }
+
+
+  template<typename ContextType>
   bool D3D11CommonContext<ContextType>::DirtyShaderResource(
           DxbcProgramType                   ShaderStage,
           uint32_t                          Slot,
@@ -4908,10 +4942,8 @@ namespace dxvk {
   template<DxbcProgramType Stage>
   void D3D11CommonContext<ContextType>::RestoreSamplers() {
     const auto& bindings = m_state.samplers[Stage];
-    uint32_t slotId = computeSamplerBinding(Stage, 0);
-
     for (uint32_t i = 0; i < bindings.maxCount; i++)
-      BindSampler<Stage>(slotId + i, bindings.samplers[i]);
+      BindSampler(Stage, i, bindings.samplers[i]);
   }
 
 
@@ -5088,14 +5120,15 @@ namespace dxvk {
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
     auto& bindings = m_state.samplers[ShaderStage];
-    uint32_t slotId = computeSamplerBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumSamplers; i++) {
       auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
 
       if (bindings.samplers[StartSlot + i] != sampler) {
         bindings.samplers[StartSlot + i] = sampler;
-        BindSampler<ShaderStage>(slotId + i, sampler);
+
+        if (!DirtySampler(ShaderStage, StartSlot + i, !sampler))
+          BindSampler(ShaderStage, StartSlot + i, sampler);
       }
     }
 
