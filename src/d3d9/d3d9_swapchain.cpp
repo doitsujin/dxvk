@@ -650,17 +650,17 @@ namespace dxvk {
 
   static bool validateGammaRamp(const WORD (&ramp)[256]) {
     if (ramp[0] >= ramp[std::size(ramp) - 1]) {
-      Logger::err("validateGammaRamp: ramp inverted or flat");
+      Logger::warn("validateGammaRamp: ramp inverted or flat");
       return false;
     }
 
     for (size_t i = 1; i < std::size(ramp); i++) {
       if (ramp[i] < ramp[i - 1]) {
-        Logger::err("validateGammaRamp: ramp not monotonically increasing");
+        Logger::warn("validateGammaRamp: ramp not monotonically increasing");
         return false;
       }
       if (ramp[i] - ramp[i - 1] >= UINT16_MAX / 2) {
-        Logger::err("validateGammaRamp: huuuge jump");
+        Logger::warn("validateGammaRamp: huuuge jump");
         return false;
       }
     }
