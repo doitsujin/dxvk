@@ -1602,6 +1602,13 @@ namespace dxvk {
             uint32_t              stride,
             bool                  unroll);
 
+    template<bool Indexed>
+    void drawIndirectCountGeneric(
+            VkDeviceSize          offset,
+            VkDeviceSize          countOffset,
+            uint32_t              maxCount,
+            uint32_t              stride);
+
     void resolveImageHw(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
