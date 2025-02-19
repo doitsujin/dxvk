@@ -86,7 +86,7 @@ namespace dxvk {
       case DxsoOpcode::SetP: return 3;
       case DxsoOpcode::TexLdl: return 3;
       case DxsoOpcode::BreakP: return 2;
-      default: Logger::warn("DxsoGetDefaultOpcodeLength: unknown opcode to get default length for."); return UINT32_MAX;
+      default: Logger::warn("DxsoGetDefaultOpcodeLength: unknown opcode to get default length for."); return std::numeric_limits<uint32_t>::max();
     }
   }
 
