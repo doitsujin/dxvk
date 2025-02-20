@@ -819,6 +819,11 @@ namespace dxvk {
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
+    void ApplyDirtyUnorderedAccessViews(
+            DxbcProgramType                   Stage,
+      const DxbcBindingMask&                  BoundMask,
+            DxbcBindingMask&                  DirtyMask);
+
     void ApplyDirtyGraphicsBindings();
 
     void ApplyDirtyComputeBindings();
@@ -904,8 +909,7 @@ namespace dxvk {
     void BindUnorderedAccessView(
             DxbcProgramType                   ShaderStage,
             UINT                              Slot,
-            D3D11UnorderedAccessView*         pUav,
-            UINT                              Counter);
+            D3D11UnorderedAccessView*         pUav);
 
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
@@ -954,6 +958,10 @@ namespace dxvk {
 
     bool DirtyShaderResource(
             DxbcProgramType                   ShaderStage,
+            uint32_t                          Slot,
+            bool                              IsNull);
+
+    bool DirtyComputeUnorderedAccessView(
             uint32_t                          Slot,
             bool                              IsNull);
 
@@ -1114,6 +1122,10 @@ namespace dxvk {
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
+
+    void UpdateUnorderedAccessViewCounter(
+            D3D11UnorderedAccessView*         pUav,
+            uint32_t                          CounterValue);
 
     bool ValidateRenderTargets(
             UINT                              NumViews,

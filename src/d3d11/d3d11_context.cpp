@@ -2169,7 +2169,8 @@ namespace dxvk {
             m_state.uav.views[uavId] = nullptr;
             m_state.uav.mask.clr(uavId);
 
-            BindUnorderedAccessView(DxbcProgramType::ComputeShader, uavId, nullptr, ~0u);
+            if (!DirtyComputeUnorderedAccessView(uavId, true))
+              BindUnorderedAccessView(DxbcProgramType::ComputeShader, uavId, nullptr);
           }
         }
 
@@ -2184,11 +2185,16 @@ namespace dxvk {
       auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
       auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
 
-      if (m_state.uav.views[StartSlot + i] != uav || ctr != ~0u) {
+      if (ctr != ~0u && uav && uav->HasCounter())
+        UpdateUnorderedAccessViewCounter(uav, ctr);
+
+      if (m_state.uav.views[StartSlot + i] != uav) {
         m_state.uav.views[StartSlot + i] = uav;
         m_state.uav.mask.set(StartSlot + i, uav != nullptr);
 
-        BindUnorderedAccessView(DxbcProgramType::ComputeShader, StartSlot + i, uav, ctr);
+        if (!DirtyComputeUnorderedAccessView(StartSlot + i, !uav))
+          BindUnorderedAccessView(DxbcProgramType::ComputeShader, StartSlot + i, uav);
+
         ResolveCsSrvHazards(uav);
       }
     }
@@ -3242,6 +3248,28 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDirtyUnorderedAccessViews(
+          DxbcProgramType                   Stage,
+    const DxbcBindingMask&                  BoundMask,
+          DxbcBindingMask&                  DirtyMask) {
+    uint64_t bindMask = BoundMask.uavMask & DirtyMask.uavMask;
+
+    if (!bindMask)
+      return;
+
+    const auto& views = Stage == DxbcProgramType::ComputeShader
+      ? m_state.uav.views
+      : m_state.om.uavs;
+
+    // Need to clear dirty bits before binding
+    DirtyMask.uavMask -= bindMask;
+
+    for (uint32_t slot : bit::BitMask(bindMask))
+      BindUnorderedAccessView(Stage, slot, views[slot].ptr());
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyGraphicsBindings() {
     auto dirtyMask = m_state.lazy.shadersDirty & m_state.lazy.shadersUsed;
     dirtyMask.clr(DxbcProgramType::ComputeShader);
@@ -3271,6 +3299,7 @@ namespace dxvk {
     ApplyDirtySamplers(stage, boundMask, dirtyMask);
     ApplyDirtyConstantBuffers(stage, boundMask, dirtyMask);
     ApplyDirtyShaderResources(stage, boundMask, dirtyMask);
+    ApplyDirtyUnorderedAccessViews(stage, boundMask, dirtyMask);
 
     m_state.lazy.shadersDirty.clr(stage);
   }
@@ -3921,8 +3950,7 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::BindUnorderedAccessView(
           DxbcProgramType                   ShaderStage,
           UINT                              Slot,
-          D3D11UnorderedAccessView*         pUav,
-          UINT                              Counter) {
+          D3D11UnorderedAccessView*         pUav) {
     uint32_t uavSlotId = computeUavBinding(ShaderStage, Slot);
     uint32_t ctrSlotId = computeUavCounterBinding(ShaderStage, Slot);
 
@@ -3937,19 +3965,8 @@ namespace dxvk {
           cCtrSlotId    = ctrSlotId,
           cStages       = stages,
           cBufferView   = pUav->GetBufferView(),
-          cCounterView  = pUav->GetCounterView(),
-          cCounterValue = Counter
+          cCounterView  = pUav->GetCounterView()
         ] (DxvkContext* ctx) mutable {
-          if (cCounterView != nullptr && cCounterValue != ~0u) {
-            DxvkBufferSlice counterSlice(cCounterView);
-
-            ctx->updateBuffer(
-              counterSlice.buffer(),
-              counterSlice.offset(),
-              sizeof(uint32_t),
-              &cCounterValue);
-          }
-
           ctx->bindResourceBufferView(cStages, cUavSlotId,
             Forwarder::move(cBufferView));
           ctx->bindResourceBufferView(cStages, cCtrSlotId,
@@ -4433,6 +4450,19 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::DirtyComputeUnorderedAccessView(
+          uint32_t                          Slot,
+          bool                              IsNull) {
+    constexpr DxbcProgramType ShaderStage = DxbcProgramType::ComputeShader;
+
+    return DirtyBindingGeneric(ShaderStage,
+      m_state.lazy.bindingsUsed[ShaderStage].uavMask,
+      m_state.lazy.bindingsDirty[ShaderStage].uavMask,
+      uint64_t(1u) << Slot, IsNull);
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::DiscardBuffer(
           ID3D11Resource*                   pResource) {
     auto buffer = static_cast<D3D11Buffer*>(pResource);
@@ -4854,7 +4884,7 @@ namespace dxvk {
       if (CheckViewOverlap(pView, m_state.om.uavs[i].ptr())) {
         m_state.om.uavs[i] = nullptr;
 
-        BindUnorderedAccessView(DxbcProgramType::PixelShader, i, nullptr, ~0u);
+        BindUnorderedAccessView(DxbcProgramType::PixelShader, i, nullptr);
       }
     }
   }
@@ -4962,7 +4992,7 @@ namespace dxvk {
       : m_state.om.maxUav;
 
     for (uint32_t i = 0; i < maxCount; i++)
-      BindUnorderedAccessView(Stage, i, views[i].ptr(), ~0u);
+      BindUnorderedAccessView(Stage, i, views[i].ptr());
   }
 
 
@@ -5192,10 +5222,13 @@ namespace dxvk {
             ctr = pUAVInitialCounts ? pUAVInitialCounts[i - UAVStartSlot] : ~0u;
           }
 
-          if (m_state.om.uavs[i] != uav || ctr != ~0u) {
+          if (ctr != ~0u && uav && uav->HasCounter())
+            UpdateUnorderedAccessViewCounter(uav, ctr);
+
+          if (m_state.om.uavs[i] != uav) {
             m_state.om.uavs[i] = uav;
 
-            BindUnorderedAccessView(DxbcProgramType::PixelShader, i, uav, ctr);
+            BindUnorderedAccessView(DxbcProgramType::PixelShader, i, uav);
             ResolveOmSrvHazards(uav);
 
             if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
@@ -5587,6 +5620,20 @@ namespace dxvk {
       context->UpdateTexture(textureResource,
         DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
     }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::UpdateUnorderedAccessViewCounter(
+          D3D11UnorderedAccessView*         pUav,
+          uint32_t                          CounterValue) {
+    EmitCs([
+      cView    = pUav->GetCounterView(),
+      cCounter = CounterValue
+    ] (DxvkContext* ctx) {
+      ctx->updateBuffer(cView->buffer(),
+        cView->info().offset, sizeof(cCounter), &cCounter);
+    });
   }
 
 

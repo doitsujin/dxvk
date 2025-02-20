@@ -1020,6 +1020,18 @@ namespace dxvk {
           for (uint32_t index : bit::BitMask(cDirtyState[dxStage].srvMask[m]))
             ctx->bindResourceImageView(vkStage, srvSlot + index + m * 64u, nullptr);
         }
+
+        // Unbind all dirty unordered access views. Only consider compute
+        // here since we don't actually lazy-bind graphics UAVs.
+        if (dxStage == DxbcProgramType::ComputeShader) {
+          auto uavSlot = computeUavBinding(dxStage, 0);
+          auto ctrSlot = computeUavCounterBinding(dxStage, 0);
+
+          for (uint32_t index : bit::BitMask(cDirtyState[dxStage].uavMask)) {
+            ctx->bindResourceImageView(vkStage, uavSlot + index, nullptr);
+            ctx->bindResourceBufferView(vkStage, ctrSlot + index, nullptr);
+          }
+        }
       }
     });
 
@@ -1042,6 +1054,13 @@ namespace dxvk {
         for (uint32_t index : bit::BitMask(dirtyState[stage].srvMask[m])) {
           if (!m_state.srv[stage].views[index + m * 64u].ptr())
             dirtyState[stage].srvMask[m] &= ~(uint64_t(1u) << index);
+        }
+      }
+
+      if (stage == DxbcProgramType::ComputeShader) {
+        for (uint32_t index : bit::BitMask(dirtyState[stage].uavMask)) {
+          if (!m_state.uav.views[index].ptr())
+            dirtyState[stage].uavMask &= ~(uint64_t(1u) << index);
         }
       }
 
