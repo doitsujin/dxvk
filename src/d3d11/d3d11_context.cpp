@@ -5275,10 +5275,14 @@ namespace dxvk {
 
     if (unlikely(NumUAVs || m_state.om.maxUav)) {
       if (likely(NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
-        uint32_t newMaxUav = NumUAVs ? UAVStartSlot + NumUAVs : 0;
+        uint32_t newMinUav = NumUAVs ? UAVStartSlot : D3D11_1_UAV_SLOT_COUNT;
+        uint32_t newMaxUav = NumUAVs ? UAVStartSlot + NumUAVs : 0u;
+
+        uint32_t oldMinUav = std::exchange(m_state.om.minUav, newMinUav);
         uint32_t oldMaxUav = std::exchange(m_state.om.maxUav, newMaxUav);
 
-        for (uint32_t i = 0; i < std::max(oldMaxUav, newMaxUav); i++) {
+        for (uint32_t i = std::min(oldMinUav, newMinUav);
+                      i < std::max(oldMaxUav, newMaxUav); i++) {
           D3D11UnorderedAccessView* uav = nullptr;
           uint32_t                  ctr = ~0u;
 

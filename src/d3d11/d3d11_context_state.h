@@ -199,6 +199,7 @@ namespace dxvk {
     UINT  stencilRef     = D3D11_DEFAULT_STENCIL_REFERENCE;
 
     UINT  maxRtv         = 0u;
+    UINT  minUav         = 0u;
     UINT  maxUav         = 0u;
 
     void reset() {
