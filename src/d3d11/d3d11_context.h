@@ -965,6 +965,9 @@ namespace dxvk {
             uint32_t                          Slot,
             bool                              IsNull);
 
+    bool DirtyGraphicsUnorderedAccessView(
+            uint32_t                          Slot);
+
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
 

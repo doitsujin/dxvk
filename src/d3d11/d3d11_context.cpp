@@ -3274,6 +3274,15 @@ namespace dxvk {
     auto dirtyMask = m_state.lazy.shadersDirty & m_state.lazy.shadersUsed;
     dirtyMask.clr(DxbcProgramType::ComputeShader);
 
+    if (unlikely(!(dirtyMask & m_state.lazy.graphicsUavShaders).isClear())) {
+      DxbcProgramType stage = DxbcProgramType::PixelShader;
+
+      auto& boundMask = m_state.lazy.bindingsUsed[stage];
+      auto& dirtyMask = m_state.lazy.bindingsDirty[stage];
+
+      ApplyDirtyUnorderedAccessViews(stage, boundMask, dirtyMask);
+    }
+
     for (uint32_t stageIndex : bit::BitMask(uint32_t(dirtyMask.raw()))) {
       DxbcProgramType stage = DxbcProgramType(stageIndex);
 
@@ -3564,6 +3573,8 @@ namespace dxvk {
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindShader(
     const D3D11CommonShader*    pShaderModule) {
+    uint64_t oldUavMask = m_state.lazy.bindingsUsed[ShaderStage].uavMask;
+
     if (pShaderModule) {
       auto buffer = pShaderModule->GetIcb();
       auto shader = pShaderModule->GetShader();
@@ -3615,6 +3626,33 @@ namespace dxvk {
         ctx->bindShader<stage>(nullptr);
         ctx->bindUniformBuffer(stage, slotId, DxvkBufferSlice());
       });
+    }
+
+    // On graphics, UAVs are available to all stages, but we treat them as part
+    // of the pixel shader binding set. Re-compute the active UAV mask. We don't
+    // need to set the PS as active or dirty here though since the UAV update
+    // code will mark all other stages that access UAVs as dirty, too.
+    uint64_t newUavMask = m_state.lazy.bindingsUsed[ShaderStage].uavMask;
+
+    if (ShaderStage != DxbcProgramType::ComputeShader && oldUavMask != newUavMask) {
+      constexpr DxbcProgramType ps = DxbcProgramType::PixelShader;
+
+      // Since dirty UAVs are only tracked on the PS mask, we need to mark the
+      // stage as dirty if any of the used UAVs overlap with the dirty PS mask.
+      if (m_state.lazy.bindingsDirty[ps].uavMask & newUavMask)
+        m_state.lazy.shadersDirty.set(ShaderStage);
+
+      // Accumulate graphics UAV mask and write it back to the pixel shader mask.
+      m_state.lazy.graphicsUavShaders.clr(ShaderStage);
+
+      for (uint32_t stageIndex : bit::BitMask(uint32_t(m_state.lazy.graphicsUavShaders.raw())))
+        newUavMask |= m_state.lazy.bindingsUsed[DxbcProgramType(stageIndex)].uavMask;
+
+      m_state.lazy.bindingsUsed[ps].uavMask = newUavMask;
+
+      // Update bit mask of shaders actively accessing graphics UAVs
+      if (newUavMask)
+        m_state.lazy.graphicsUavShaders.set(ShaderStage);
     }
   }
 
@@ -4463,6 +4501,32 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::DirtyGraphicsUnorderedAccessView(
+          uint32_t                          Slot) {
+    constexpr DxbcProgramType ShaderStage = DxbcProgramType::PixelShader;
+
+    if (DebugLazyBinding == Tristate::False)
+      return false;
+
+    // Use different logic here and always use lazy binding for graphics UAVs.
+    // Since graphics UAVs are generally bound together with render targets,
+    // looking at the active binding mask doesn't really help us here.
+    uint64_t dirtyBit = uint64_t(1u) << Slot;
+
+    if (m_state.lazy.bindingsUsed[ShaderStage].uavMask & dirtyBit) {
+      // Need to mark all graphics stages that use UAVs as dirty here to
+      // make sure that bindings actually get reapplied properly. There
+      // may be no pixel shader bound in this case, even though we do
+      // all the tracking on the pixel shader bit mask.
+      m_state.lazy.shadersDirty.set(m_state.lazy.graphicsUavShaders);
+    }
+
+    m_state.lazy.bindingsDirty[ShaderStage].uavMask |= dirtyBit;
+    return true;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::DiscardBuffer(
           ID3D11Resource*                   pResource) {
     auto buffer = static_cast<D3D11Buffer*>(pResource);
@@ -4884,7 +4948,8 @@ namespace dxvk {
       if (CheckViewOverlap(pView, m_state.om.uavs[i].ptr())) {
         m_state.om.uavs[i] = nullptr;
 
-        BindUnorderedAccessView(DxbcProgramType::PixelShader, i, nullptr);
+        if (!DirtyGraphicsUnorderedAccessView(i))
+          BindUnorderedAccessView(DxbcProgramType::PixelShader, i, nullptr);
       }
     }
   }
@@ -5228,7 +5293,9 @@ namespace dxvk {
           if (m_state.om.uavs[i] != uav) {
             m_state.om.uavs[i] = uav;
 
-            BindUnorderedAccessView(DxbcProgramType::PixelShader, i, uav);
+            if (!DirtyGraphicsUnorderedAccessView(i))
+              BindUnorderedAccessView(DxbcProgramType::PixelShader, i, uav);
+
             ResolveOmSrvHazards(uav);
 
             if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
