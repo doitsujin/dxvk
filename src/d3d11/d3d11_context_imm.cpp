@@ -1021,9 +1021,15 @@ namespace dxvk {
             ctx->bindResourceImageView(vkStage, srvSlot + index + m * 64u, nullptr);
         }
 
-        // Unbind all dirty unordered access views. Only consider compute
-        // here since we don't actually lazy-bind graphics UAVs.
-        if (dxStage == DxbcProgramType::ComputeShader) {
+        // Unbind all dirty unordered access views
+        VkShaderStageFlags uavStages = 0u;
+
+        if (dxStage == DxbcProgramType::ComputeShader)
+          uavStages = VK_SHADER_STAGE_COMPUTE_BIT;
+        else if (dxStage == DxbcProgramType::PixelShader)
+          uavStages = VK_SHADER_STAGE_ALL_GRAPHICS;
+
+        if (uavStages) {
           auto uavSlot = computeUavBinding(dxStage, 0);
           auto ctrSlot = computeUavCounterBinding(dxStage, 0);
 
@@ -1057,9 +1063,11 @@ namespace dxvk {
         }
       }
 
-      if (stage == DxbcProgramType::ComputeShader) {
+      if (stage == DxbcProgramType::ComputeShader || stage == DxbcProgramType::PixelShader) {
+        auto& uavs = stage == DxbcProgramType::ComputeShader ? m_state.uav.views : m_state.om.uavs;
+
         for (uint32_t index : bit::BitMask(dirtyState[stage].uavMask)) {
-          if (!m_state.uav.views[index].ptr())
+          if (!uavs[index].ptr())
             dirtyState[stage].uavMask &= ~(uint64_t(1u) << index);
         }
       }

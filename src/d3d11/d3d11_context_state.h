@@ -313,6 +313,7 @@ namespace dxvk {
   struct D3D11LazyBindings {
     DxbcProgramTypeFlags shadersUsed = 0u;
     DxbcProgramTypeFlags shadersDirty = 0u;
+    DxbcProgramTypeFlags graphicsUavShaders = 0u;
 
     D3D11ShaderStageState<DxbcBindingMask> bindingsUsed;
     D3D11ShaderStageState<DxbcBindingMask> bindingsDirty;
@@ -320,6 +321,7 @@ namespace dxvk {
     void reset() {
       shadersUsed = 0u;
       shadersDirty = 0u;
+      graphicsUavShaders = 0u;
 
       bindingsUsed.reset();
       bindingsDirty.reset();
