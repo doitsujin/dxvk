@@ -308,6 +308,7 @@ namespace dxvk {
     DxvkExt extLineRasterization              = { VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extMemoryBudget                   = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                      DxvkExtMode::Passive  };
     DxvkExt extMemoryPriority                 = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
+    DxvkExt extMultiDraw                      = { VK_EXT_MULTI_DRAW_EXTENSION_NAME,                         DxvkExtMode::Optional };
     DxvkExt extNonSeamlessCubeMap             = { VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt extPageableDeviceLocalMemory      = { VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME,       DxvkExtMode::Optional };
     DxvkExt extRobustness2                    = { VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,                       DxvkExtMode::Required };
