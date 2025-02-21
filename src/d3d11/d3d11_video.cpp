@@ -1312,7 +1312,11 @@ namespace dxvk {
       for (uint32_t i = 0; i < cViews.size(); i++)
         ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 1 + i, Rc<DxvkImageView>(cViews[i]));
 
-      ctx->draw(3, 1, 0, 0);
+      VkDrawIndirectCommand draw = { };
+      draw.vertexCount   = 3u;
+      draw.instanceCount = 1u;
+
+      ctx->draw(1, &draw);
 
       for (uint32_t i = 0; i < cViews.size(); i++)
         ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 1 + i, nullptr);

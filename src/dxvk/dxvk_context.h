@@ -32,6 +32,8 @@ namespace dxvk {
   class DxvkContext : public RcObject {
     constexpr static VkDeviceSize MaxDiscardSizeInRp = 256u << 10u;
     constexpr static VkDeviceSize MaxDiscardSize     =  16u << 10u;
+
+    constexpr static uint32_t DirectMultiDrawBatchSize = 256u;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
@@ -744,17 +746,13 @@ namespace dxvk {
     /**
      * \brief Draws primitive without using an index buffer
      * 
-     * \param [in] vertexCount Number of vertices to draw
-     * \param [in] instanceCount Number of instances to render
-     * \param [in] firstVertex First vertex in vertex buffer
-     * \param [in] firstInstance First instance ID
+     * \param [in] count Number of draws
+     * \param [in] draws Draw parameters
      */
     void draw(
-            uint32_t          vertexCount,
-            uint32_t          instanceCount,
-            uint32_t          firstVertex,
-            uint32_t          firstInstance);
-    
+            uint32_t          count,
+      const VkDrawIndirectCommand* draws);
+
     /**
      * \brief Indirect draw call
      * 
@@ -791,19 +789,13 @@ namespace dxvk {
     /**
      * \brief Draws primitives using an index buffer
      * 
-     * \param [in] indexCount Number of indices to draw
-     * \param [in] instanceCount Number of instances to render
-     * \param [in] firstIndex First index within the index buffer
-     * \param [in] vertexOffset Vertex ID that corresponds to index 0
-     * \param [in] firstInstance First instance ID
+     * \param [in] count Number of draws
+     * \param [in] draws Draw parameters
      */
     void drawIndexed(
-            uint32_t indexCount,
-            uint32_t instanceCount,
-            uint32_t firstIndex,
-            int32_t  vertexOffset,
-            uint32_t firstInstance);
-    
+            uint32_t          count,
+      const VkDrawIndexedIndirectCommand* draws);
+
     /**
      * \brief Indirect indexed draw call
      * 
@@ -1595,6 +1587,11 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       buffer,
             VkDeviceSize          offset);
 
+    template<bool Indexed, typename T>
+    void drawGeneric(
+            uint32_t              count,
+      const T*                    draws);
+
     template<bool Indexed>
     void drawIndirectGeneric(
             VkDeviceSize          offset,
@@ -2103,7 +2100,7 @@ namespace dxvk {
       return pred(DxvkAccess::Read);
     }
 
-    void invalidateWriteAfterWriteTracking();
+    bool needsDrawBarriers();
 
     void beginRenderPassDebugRegion();
 

@@ -49,6 +49,11 @@ namespace dxvk {
     if (m_device->features().khrMaintenance5.maintenance5)
       m_features.set(DxvkContextFeature::IndexBufferRobustness);
 
+    // Check whether we can batch direct draws
+    if (m_device->features().extMultiDraw.multiDraw
+     && m_device->properties().extMultiDraw.maxMultiDrawCount >= DirectMultiDrawBatchSize)
+      m_features.set(DxvkContextFeature::DirectMultiDraw);
+
     // Add a fast path to query debug utils support
     if (m_device->isDebugEnabled())
       m_features.set(DxvkContextFeature::DebugUtils);
@@ -922,15 +927,9 @@ namespace dxvk {
   
   
   void DxvkContext::draw(
-          uint32_t vertexCount,
-          uint32_t instanceCount,
-          uint32_t firstVertex,
-          uint32_t firstInstance) {
-    if (this->commitGraphicsState<false, false>()) {
-      m_cmd->cmdDraw(
-        vertexCount, instanceCount,
-        firstVertex, firstInstance);
-    }
+          uint32_t          count,
+    const VkDrawIndirectCommand* draws) {
+    drawGeneric<false>(count, draws);
   }
   
   
@@ -953,20 +952,12 @@ namespace dxvk {
   
   
   void DxvkContext::drawIndexed(
-          uint32_t indexCount,
-          uint32_t instanceCount,
-          uint32_t firstIndex,
-          int32_t  vertexOffset,
-          uint32_t firstInstance) {
-    if (this->commitGraphicsState<true, false>()) {
-      m_cmd->cmdDrawIndexed(
-        indexCount, instanceCount,
-        firstIndex, vertexOffset,
-        firstInstance);
-    }
+          uint32_t          count,
+    const VkDrawIndexedIndirectCommand* draws) {
+    drawGeneric<true>(count, draws);
   }
-  
-  
+
+
   void DxvkContext::drawIndexedIndirect(
           VkDeviceSize      offset,
           uint32_t          count,
@@ -1689,6 +1680,116 @@ namespace dxvk {
   }
 
 
+  template<bool Indexed, typename T>
+  void DxvkContext::drawGeneric(
+          uint32_t                  count,
+    const T*                        draws) {
+    if (this->commitGraphicsState<Indexed, false>()) {
+      if (count == 1u) {
+        // Most common case, just emit a single draw
+        if constexpr (Indexed) {
+          m_cmd->cmdDrawIndexed(draws->indexCount, draws->instanceCount,
+            draws->firstIndex, draws->vertexOffset, draws->firstInstance);
+        } else {
+          m_cmd->cmdDraw(draws->vertexCount, draws->instanceCount,
+            draws->firstVertex, draws->firstInstance);
+        }
+      } else if (unlikely(needsDrawBarriers())) {
+        // If the current pipeline has storage resource hazards,
+        // unroll draws and insert a barrier after each one.
+        for (uint32_t i = 0; i < count; i++) {
+          if (i)
+            this->commitGraphicsState<Indexed, false>();
+
+          if constexpr (Indexed) {
+            m_cmd->cmdDrawIndexed(draws[i].indexCount, draws[i].instanceCount,
+              draws[i].firstIndex, draws[i].vertexOffset, draws[i].firstInstance);
+          } else {
+            m_cmd->cmdDraw(draws[i].vertexCount, draws[i].instanceCount,
+              draws[i].firstVertex, draws[i].firstInstance);
+          }
+        }
+      } else {
+        using MultiDrawInfo = std::conditional_t<Indexed,
+          VkMultiDrawIndexedInfoEXT, VkMultiDrawInfoEXT>;
+
+        // Intentially don't initialize this; we'll probably not use
+        // the full batch size anyway, so doing so would be wasteful.
+        std::array<MultiDrawInfo, DirectMultiDrawBatchSize> batch;
+
+        uint32_t instanceCount = 0u;
+        uint32_t instanceIndex = 0u;
+
+        uint32_t batchSize = 0u;
+
+        for (uint32_t i = 0; i < count; i++) {
+          if (!batchSize) {
+            instanceCount = draws[i].instanceCount;
+            instanceIndex = draws[i].firstInstance;
+          }
+
+          if constexpr (Indexed) {
+            auto& drawInfo = batch[batchSize++];
+            drawInfo.firstIndex = draws[i].firstIndex;
+            drawInfo.indexCount = draws[i].indexCount;
+            drawInfo.vertexOffset = draws[i].vertexOffset;
+          } else {
+            auto& drawInfo = batch[batchSize++];
+            drawInfo.firstVertex = draws[i].firstVertex;
+            drawInfo.vertexCount = draws[i].vertexCount;
+          }
+
+          bool emitDraw = i + 1u == count || batchSize == DirectMultiDrawBatchSize;
+
+          if (!emitDraw) {
+            const auto& next = draws[i + 1u];
+
+            emitDraw = instanceCount != next.instanceCount
+                    || instanceIndex != next.firstInstance;
+          }
+
+          if (emitDraw) {
+            if (m_features.test(DxvkContextFeature::DirectMultiDraw)) {
+              if constexpr (Indexed) {
+                m_cmd->cmdDrawMultiIndexed(batchSize, batch.data(),
+                  instanceCount, instanceIndex);
+              } else {
+                m_cmd->cmdDrawMulti(batchSize, batch.data(),
+                  instanceCount, instanceIndex);
+              }
+            } else {
+              // This path only really exists for consistency reasons; all drivers
+              // we care about support MultiDraw natively, but debug tools may not.
+              if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+                const char* procName = Indexed ? "vkCmdDrawMultiIndexedEXT" : "vkCmdDrawMultiEXT";
+                m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+                  vk::makeLabel(0u, str::format(procName, "(", batchSize, ")").c_str()));
+              }
+
+              for (uint32_t i = 0; i < batchSize; i++) {
+                const auto& entry = batch[i];
+
+                if constexpr (Indexed) {
+                  m_cmd->cmdDrawIndexed(entry.indexCount, instanceCount,
+                    entry.firstIndex, entry.vertexOffset, instanceIndex);
+                } else {
+                  m_cmd->cmdDraw(entry.vertexCount, instanceCount,
+                    entry.firstVertex, instanceIndex);
+                }
+              }
+
+              if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+                m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+            }
+
+            batchSize = 0u;
+          }
+        }
+      }
+    }
+  }
+
+
   template<bool Indexed>
   void DxvkContext::drawIndirectGeneric(
           VkDeviceSize              offset,
@@ -1698,11 +1799,8 @@ namespace dxvk {
     if (this->commitGraphicsState<Indexed, true>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
 
-      if (unroll) {
-        // Need to do this check after initially setting up the pipeline
-        unroll = m_state.gp.flags.test(DxvkGraphicsPipelineFlag::UnrollMergedDraws)
-              && !m_barrierControl.test(DxvkBarrierControl::GraphicsAllowReadWriteOverlap);
-      }
+      if (unroll)
+        unroll = needsDrawBarriers();
 
       // If draws are merged but the pipeline has order-dependent stores, submit
       // one draw at a time as well as barriers in between. Otherwise, keep the
@@ -2851,6 +2949,12 @@ namespace dxvk {
 
   void DxvkContext::signalFence(const Rc<DxvkFence>& fence, uint64_t value) {
     m_cmd->signalFence(fence, value);
+  }
+
+
+  bool DxvkContext::needsDrawBarriers() {
+    return m_state.gp.flags.test(DxvkGraphicsPipelineFlag::UnrollMergedDraws)
+      && !m_barrierControl.test(DxvkBarrierControl::GraphicsAllowReadWriteOverlap);
   }
 
 
