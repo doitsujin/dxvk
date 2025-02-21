@@ -422,10 +422,11 @@ namespace dxvk::hud {
 
     DxvkStatCounters  m_prevCounters;
 
-    uint64_t          m_gpCount = 0;
-    uint64_t          m_cpCount = 0;
-    uint64_t          m_rpCount = 0;
-    uint64_t          m_pbCount = 0;
+    uint64_t          m_drawCallCount   = 0;
+    uint64_t          m_drawCount       = 0;
+    uint64_t          m_dispatchCount   = 0;
+    uint64_t          m_renderPassCount = 0;
+    uint64_t          m_barrierCount    = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
