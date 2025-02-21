@@ -1037,7 +1037,9 @@ namespace dxvk {
         continue;
 
       if (!hasStreamsEnabled) {
+        m_ctx->ResetDirtyTracking();
         m_ctx->ResetCommandListState();
+
         BindOutputView(pOutputView);
         hasStreamsEnabled = true;
       }
@@ -1047,6 +1049,7 @@ namespace dxvk {
 
     if (hasStreamsEnabled) {
       UnbindResources();
+
       m_ctx->RestoreCommandListState();
     }
 

@@ -108,6 +108,47 @@ namespace dxvk {
         m_analysis->uavInfos[registerId].nonInvariantAccess = true;
       } break;
 
+      case DxbcInstClass::Declaration: {
+        switch (ins.op) {
+          case DxbcOpcode::DclConstantBuffer: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcConstBufBindingCount)
+              m_analysis->bindings.cbvMask |= 1u << registerId;
+          } break;
+
+          case DxbcOpcode::DclSampler: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcSamplerBindingCount)
+              m_analysis->bindings.samplerMask |= 1u << registerId;
+          } break;
+
+          case DxbcOpcode::DclResource:
+          case DxbcOpcode::DclResourceRaw:
+          case DxbcOpcode::DclResourceStructured: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            uint32_t idx = registerId / 64u;
+            uint32_t bit = registerId % 64u;
+
+            if (registerId < DxbcResourceBindingCount)
+              m_analysis->bindings.srvMask[idx] |= uint64_t(1u) << bit;
+          } break;
+
+          case DxbcOpcode::DclUavTyped:
+          case DxbcOpcode::DclUavRaw:
+          case DxbcOpcode::DclUavStructured: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcUavBindingCount)
+              m_analysis->bindings.uavMask |= uint64_t(1u) << registerId;
+          } break;
+
+          default: ;
+        }
+      } break;
+
       default:
         break;
     }

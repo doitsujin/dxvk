@@ -18,7 +18,7 @@
 namespace dxvk {
   
   class D3D11Device;
-  
+
   /**
    * \brief Common shader object
    * 
@@ -52,12 +52,18 @@ namespace dxvk {
     std::string GetName() const {
       return m_shader->debugName();
     }
-    
+
+    DxbcBindingMask GetBindingMask() const {
+      return m_bindings;
+    }
+
   private:
-    
+
     Rc<DxvkShader> m_shader;
     Rc<DxvkBuffer> m_buffer;
-    
+
+    DxbcBindingMask m_bindings = { };
+
   };
 
 
