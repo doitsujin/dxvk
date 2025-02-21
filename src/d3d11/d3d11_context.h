@@ -848,6 +848,12 @@ namespace dxvk {
 
     void ApplyViewportState();
 
+    void BatchDraw(
+      const VkDrawIndirectCommand&            draw);
+
+    void BatchDrawIndexed(
+      const VkDrawIndexedIndirectCommand&     draw);
+
     template<DxbcProgramType ShaderStage>
     void BindShader(
       const D3D11CommonShader*                pShaderModule);
