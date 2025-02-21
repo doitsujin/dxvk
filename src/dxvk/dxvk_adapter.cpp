@@ -400,6 +400,10 @@ namespace dxvk {
         m_deviceFeatures.extLineRasterization.smoothLines;
     }
 
+    // Enable multi-draw for draw batching
+    enabledFeatures.extMultiDraw.multiDraw =
+      m_deviceFeatures.extMultiDraw.multiDraw;
+
     // Enable memory priority and pageable memory if supported
     // to improve driver-side memory management
     enabledFeatures.extMemoryPriority.memoryPriority =
@@ -600,6 +604,10 @@ namespace dxvk {
           enabledFeatures.extMemoryPriority = *reinterpret_cast<const VkPhysicalDeviceMemoryPriorityFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT:
+          enabledFeatures.extMultiDraw = *reinterpret_cast<const VkPhysicalDeviceMultiDrawFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT:
           enabledFeatures.extNonSeamlessCubeMap = *reinterpret_cast<const VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*>(f);
           break;
@@ -791,6 +799,11 @@ namespace dxvk {
       m_deviceInfo.extLineRasterization.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extLineRasterization);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_MULTI_DRAW_EXTENSION_NAME)) {
+      m_deviceInfo.extMultiDraw.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT;
+      m_deviceInfo.extMultiDraw.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extMultiDraw);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
       m_deviceInfo.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
       m_deviceInfo.extRobustness2.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extRobustness2);
@@ -889,6 +902,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
       m_deviceFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       m_deviceFeatures.extMemoryPriority.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMemoryPriority);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_MULTI_DRAW_EXTENSION_NAME)) {
+      m_deviceFeatures.extMultiDraw.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
+      m_deviceFeatures.extMultiDraw.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMultiDraw);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME)) {
@@ -1017,6 +1035,7 @@ namespace dxvk {
       &devExtensions.extLineRasterization,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
+      &devExtensions.extMultiDraw,
       &devExtensions.extNonSeamlessCubeMap,
       &devExtensions.extPageableDeviceLocalMemory,
       &devExtensions.extRobustness2,
@@ -1114,6 +1133,11 @@ namespace dxvk {
     if (devExtensions.extMemoryPriority) {
       enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       enabledFeatures.extMemoryPriority.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMemoryPriority);
+    }
+
+    if (devExtensions.extMultiDraw) {
+      enabledFeatures.extMultiDraw.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT;
+      enabledFeatures.extMultiDraw.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMultiDraw);
     }
 
     if (devExtensions.extNonSeamlessCubeMap) {
@@ -1308,6 +1332,8 @@ namespace dxvk {
       "\n  extension supported                    : ", features.extMemoryBudget ? "1" : "0",
       "\n", VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
       "\n  memoryPriority                         : ", features.extMemoryPriority.memoryPriority ? "1" : "0",
+      "\n", VK_EXT_MULTI_DRAW_EXTENSION_NAME,
+      "\n  multiDraw                              : ", features.extMultiDraw.multiDraw ? "1" : "0",
       "\n", VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,
       "\n  nonSeamlessCubeMap                     : ", features.extNonSeamlessCubeMap.nonSeamlessCubeMap ? "1" : "0",
       "\n", VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME,
