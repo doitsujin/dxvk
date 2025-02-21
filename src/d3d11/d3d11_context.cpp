@@ -19,8 +19,7 @@ namespace dxvk {
     m_flags     (ContextFlags),
     m_staging   (Device, StagingBufferSize),
     m_csFlags   (CsFlags),
-    m_csChunk   (AllocCsChunk()),
-    m_cmdData   (nullptr) {
+    m_csChunk   (AllocCsChunk()) {
     // Create local allocation cache with the same properties
     // that we will use for common dynamic buffer types
     uint32_t cachedDynamic = pParent->GetOptions()->cachedDynamicResources;
@@ -1125,28 +1124,28 @@ namespace dxvk {
     if (unlikely(HasDirtyGraphicsBindings()))
       ApplyDirtyGraphicsBindings();
 
-    // If possible, batch up multiple indirect draw calls of
-    // the same type into one single multiDrawIndirect call
-    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
-    auto stride = 0u;
+    // If possible, batch multiple indirect draw calls into one single multidraw call
+    if (m_csDataType == D3D11CmdType::DrawIndirectIndexed) {
+      auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_csData->first());
+      auto stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndexedIndirectCommand));
 
-    if (cmdData && cmdData->type == D3D11CmdType::DrawIndirectIndexed)
-      stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndexedIndirectCommand));
-
-    if (stride) {
-      cmdData->count += 1;
-      cmdData->stride = stride;
-    } else {
-      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
-        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndexedIndirect(data->offset, data->count, data->stride, true);
-        });
-
-      cmdData->type   = D3D11CmdType::DrawIndirectIndexed;
-      cmdData->offset = AlignedByteOffsetForArgs;
-      cmdData->count  = 1;
-      cmdData->stride = 0;
+      if (stride) {
+        cmdData->count += 1;
+        cmdData->stride = stride;
+        return;
+      }
     }
+
+    // Need to start a new draw sequence
+    EmitCsCmd<D3D11CmdDrawIndirectData>(D3D11CmdType::DrawIndirectIndexed, 1u,
+      [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data, size_t) {
+        ctx->drawIndexedIndirect(data->offset, data->count, data->stride, true);
+      });
+
+    auto cmdData = new (m_csData->first()) D3D11CmdDrawIndirectData();
+    cmdData->offset = AlignedByteOffsetForArgs;
+    cmdData->count  = 1;
+    cmdData->stride = 0;
   }
 
 
@@ -1163,28 +1162,28 @@ namespace dxvk {
     if (unlikely(HasDirtyGraphicsBindings()))
       ApplyDirtyGraphicsBindings();
 
-    // If possible, batch up multiple indirect draw calls of
-    // the same type into one single multiDrawIndirect call
-    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
-    auto stride = 0u;
+    // If possible, batch multiple indirect draw calls into one single multidraw call
+    if (m_csDataType == D3D11CmdType::DrawIndirect) {
+      auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_csData->first());
+      auto stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndirectCommand));
 
-    if (cmdData && cmdData->type == D3D11CmdType::DrawIndirect)
-      stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndirectCommand));
-
-    if (stride) {
-      cmdData->count += 1;
-      cmdData->stride = stride;
-    } else {
-      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
-        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndirect(data->offset, data->count, data->stride, true);
-        });
-
-      cmdData->type   = D3D11CmdType::DrawIndirect;
-      cmdData->offset = AlignedByteOffsetForArgs;
-      cmdData->count  = 1;
-      cmdData->stride = 0;
+      if (stride) {
+        cmdData->count += 1;
+        cmdData->stride = stride;
+        return;
+      }
     }
+
+    // Need to start a new draw sequence
+    EmitCsCmd<D3D11CmdDrawIndirectData>(D3D11CmdType::DrawIndirect, 1u,
+      [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data, size_t) {
+        ctx->drawIndirect(data->offset, data->count, data->stride, true);
+      });
+
+    auto cmdData = new (m_csData->first()) D3D11CmdDrawIndirectData();
+    cmdData->offset = AlignedByteOffsetForArgs;
+    cmdData->count  = 1;
+    cmdData->stride = 0;
   }
 
 

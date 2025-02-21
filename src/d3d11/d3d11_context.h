@@ -793,9 +793,11 @@ namespace dxvk {
 
     DxvkStagingBuffer           m_staging;
 
+    D3D11CmdType                m_csDataType = D3D11CmdType::None;
+
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
-    D3D11CmdData*               m_cmdData;
+    DxvkCsDataBlock*            m_csData = nullptr;
 
     DxvkLocalAllocationCache    m_allocationCache;
 
@@ -1152,7 +1154,10 @@ namespace dxvk {
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
-      m_cmdData = nullptr;
+      if (unlikely(m_csDataType != D3D11CmdType::None)) {
+        m_csData = nullptr;
+        m_csDataType = D3D11CmdType::None;
+      }
 
       if (unlikely(!m_csChunk->push(command))) {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
@@ -1165,12 +1170,12 @@ namespace dxvk {
       }
     }
 
-    template<typename M, bool AllowFlush = true, typename Cmd, typename... Args>
-    M* EmitCsCmd(Cmd&& command, Args&&... args) {
-      M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
-        command, std::forward<Args>(args)...);
+    template<typename M, bool AllowFlush = true, typename Cmd>
+    void EmitCsCmd(D3D11CmdType type, size_t count, Cmd&& command) {
+      m_csDataType = type;
+      m_csData = m_csChunk->pushCmd<M, Cmd>(command, count);
 
-      if (unlikely(!data)) {
+      if (unlikely(!m_csData)) {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
 
@@ -1179,19 +1184,17 @@ namespace dxvk {
 
         // We must record this command after the potential
         // flush since the caller may still access the data
-        data = m_csChunk->pushCmd<M, Cmd, Args...>(
-          command, std::forward<Args>(args)...);
+        m_csData = m_csChunk->pushCmd<M, Cmd>(command, count);
       }
-
-      m_cmdData = data;
-      return data;
     }
 
     void FlushCsChunk() {
       if (likely(!m_csChunk->empty())) {
+        m_csData = nullptr;
+        m_csDataType = D3D11CmdType::None;
+
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
-        m_cmdData = nullptr;
       }
     }
 
