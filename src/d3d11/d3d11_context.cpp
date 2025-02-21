@@ -1037,14 +1037,13 @@ namespace dxvk {
           UINT            StartVertexLocation) {
     D3D10DeviceLock lock = LockContext();
 
-    if (unlikely(HasDirtyGraphicsBindings()))
-      ApplyDirtyGraphicsBindings();
+    VkDrawIndirectCommand draw = { };
+    draw.vertexCount   = VertexCount;
+    draw.instanceCount = 1u;
+    draw.firstVertex   = StartVertexLocation;
+    draw.firstInstance = 0u;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->draw(
-        VertexCount, 1,
-        StartVertexLocation, 0);
-    });
+    BatchDraw(draw);
   }
 
 
@@ -1055,15 +1054,14 @@ namespace dxvk {
           INT             BaseVertexLocation) {
     D3D10DeviceLock lock = LockContext();
 
-    if (unlikely(HasDirtyGraphicsBindings()))
-      ApplyDirtyGraphicsBindings();
+    VkDrawIndexedIndirectCommand draw = { };
+    draw.indexCount    = IndexCount;
+    draw.instanceCount = 1u;
+    draw.firstIndex    = StartIndexLocation;
+    draw.vertexOffset  = BaseVertexLocation;
+    draw.firstInstance = 0u;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->drawIndexed(
-        IndexCount, 1,
-        StartIndexLocation,
-        BaseVertexLocation, 0);
-    });
+    BatchDrawIndexed(draw);
   }
 
 
@@ -1075,16 +1073,13 @@ namespace dxvk {
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
 
-    if (unlikely(HasDirtyGraphicsBindings()))
-      ApplyDirtyGraphicsBindings();
+    VkDrawIndirectCommand draw = { };
+    draw.vertexCount   = VertexCountPerInstance;
+    draw.instanceCount = InstanceCount;
+    draw.firstVertex   = StartVertexLocation;
+    draw.firstInstance = StartInstanceLocation;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->draw(
-        VertexCountPerInstance,
-        InstanceCount,
-        StartVertexLocation,
-        StartInstanceLocation);
-    });
+    BatchDraw(draw);
   }
 
 
@@ -1097,17 +1092,14 @@ namespace dxvk {
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
 
-    if (unlikely(HasDirtyGraphicsBindings()))
-      ApplyDirtyGraphicsBindings();
+    VkDrawIndexedIndirectCommand draw = { };
+    draw.indexCount    = IndexCountPerInstance;
+    draw.instanceCount = InstanceCount;
+    draw.firstIndex    = StartIndexLocation;
+    draw.vertexOffset  = BaseVertexLocation;
+    draw.firstInstance = StartInstanceLocation;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->drawIndexed(
-        IndexCountPerInstance,
-        InstanceCount,
-        StartIndexLocation,
-        BaseVertexLocation,
-        StartInstanceLocation);
-    });
+    BatchDrawIndexed(draw);
   }
 
 
@@ -3565,6 +3557,67 @@ namespace dxvk {
           cScissors.data());
       });
     }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BatchDraw(
+    const VkDrawIndirectCommand&            draw) {
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
+
+    // Batch consecutive draws if there are no state changes
+    if (m_csDataType == D3D11CmdType::Draw) {
+      auto* drawInfo = m_csChunk->pushData(m_csData, 1u);
+
+      if (likely(drawInfo)) {
+        new (drawInfo) VkDrawIndirectCommand(draw);
+        return;
+      }
+    }
+
+    EmitCsCmd<VkDrawIndirectCommand>(D3D11CmdType::Draw, 1u,
+      [] (DxvkContext* ctx, const VkDrawIndirectCommand* draws, size_t count) {
+        for (size_t i = 0; i < count; i++) {
+          ctx->draw(draws[i].vertexCount,
+                    draws[i].instanceCount,
+                    draws[i].firstVertex,
+                    draws[i].firstInstance);
+        }
+      });
+
+    new (m_csData->first()) VkDrawIndirectCommand(draw);
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BatchDrawIndexed(
+    const VkDrawIndexedIndirectCommand&     draw) {
+    if (unlikely(HasDirtyGraphicsBindings()))
+      ApplyDirtyGraphicsBindings();
+
+    // Batch consecutive draws if there are no state changes
+    if (m_csDataType == D3D11CmdType::DrawIndexed) {
+      auto* drawInfo = m_csChunk->pushData(m_csData, 1u);
+
+      if (likely(drawInfo)) {
+        new (drawInfo) VkDrawIndexedIndirectCommand(draw);
+        return;
+      }
+    }
+
+    EmitCsCmd<VkDrawIndexedIndirectCommand>(D3D11CmdType::DrawIndexed, 1u,
+      [] (DxvkContext* ctx, const VkDrawIndexedIndirectCommand* draws, size_t count) {
+        for (size_t i = 0; i < count; i++) {
+          ctx->drawIndexed(draws[i].indexCount,
+                           draws[i].instanceCount,
+                           draws[i].firstIndex,
+                           draws[i].vertexOffset,
+                           draws[i].firstInstance);
+        }
+      });
+
+    new (m_csData->first()) VkDrawIndexedIndirectCommand(draw);
   }
 
 

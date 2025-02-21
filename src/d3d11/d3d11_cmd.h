@@ -14,6 +14,8 @@ namespace dxvk {
     None,
     DrawIndirect,
     DrawIndirectIndexed,
+    Draw,
+    DrawIndexed,
   };
 
 
