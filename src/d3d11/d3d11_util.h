@@ -52,15 +52,15 @@ namespace dxvk {
    * \returns Corresponding Vulkan shader stage
    */
   constexpr VkShaderStageFlagBits GetShaderStage(DxbcProgramType ProgramType) {
-    switch (ProgramType) {
-      case DxbcProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
-      case DxbcProgramType::HullShader:     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-      case DxbcProgramType::DomainShader:   return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-      case DxbcProgramType::GeometryShader: return VK_SHADER_STAGE_GEOMETRY_BIT;
-      case DxbcProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
-      case DxbcProgramType::ComputeShader:  return VK_SHADER_STAGE_COMPUTE_BIT;
-      default:                              return VkShaderStageFlagBits(0);
-    }
+    constexpr uint64_t lut
+      = (uint64_t(VK_SHADER_STAGE_VERTEX_BIT)                   << (8u * uint32_t(DxbcProgramType::VertexShader)))
+      | (uint64_t(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)     << (8u * uint32_t(DxbcProgramType::HullShader)))
+      | (uint64_t(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)  << (8u * uint32_t(DxbcProgramType::DomainShader)))
+      | (uint64_t(VK_SHADER_STAGE_GEOMETRY_BIT)                 << (8u * uint32_t(DxbcProgramType::GeometryShader)))
+      | (uint64_t(VK_SHADER_STAGE_FRAGMENT_BIT)                 << (8u * uint32_t(DxbcProgramType::PixelShader)))
+      | (uint64_t(VK_SHADER_STAGE_COMPUTE_BIT)                  << (8u * uint32_t(DxbcProgramType::ComputeShader)));
+
+    return VkShaderStageFlagBits((lut >> (8u * uint32_t(ProgramType))) & 0xff);
   }
 
 }

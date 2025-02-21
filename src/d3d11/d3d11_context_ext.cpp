@@ -48,6 +48,9 @@ namespace dxvk {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
     
+    if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
+      m_ctx->ApplyDirtyGraphicsBindings();
+
     m_ctx->EmitCs([
       cCount  = DrawCount,
       cOffset = ByteOffsetForArgs,
@@ -67,6 +70,9 @@ namespace dxvk {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
     
+    if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
+      m_ctx->ApplyDirtyGraphicsBindings();
+
     m_ctx->EmitCs([
       cCount  = DrawCount,
       cOffset = ByteOffsetForArgs,
@@ -87,6 +93,9 @@ namespace dxvk {
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
+
+    if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
+      m_ctx->ApplyDirtyGraphicsBindings();
 
     m_ctx->EmitCs([
       cMaxCount  = MaxDrawCount,
@@ -109,6 +118,9 @@ namespace dxvk {
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
+
+    if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
+      m_ctx->ApplyDirtyGraphicsBindings();
 
     m_ctx->EmitCs([
       cMaxCount  = MaxDrawCount,

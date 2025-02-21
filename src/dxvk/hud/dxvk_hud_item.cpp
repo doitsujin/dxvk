@@ -800,10 +800,11 @@ namespace dxvk::hud {
     auto diffCounters = counters.diff(m_prevCounters);
 
     if (elapsed.count() >= UpdateInterval) {
-      m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
-      m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
-      m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
-      m_pbCount = diffCounters.getCtr(DxvkStatCounter::CmdBarrierCount);
+      m_drawCallCount   = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
+      m_drawCount       = diffCounters.getCtr(DxvkStatCounter::CmdDrawsMerged) + m_drawCallCount;
+      m_dispatchCount   = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
+      m_renderPassCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
+      m_barrierCount    = diffCounters.getCtr(DxvkStatCounter::CmdBarrierCount);
 
       m_lastUpdate = time;
     }
@@ -818,21 +819,25 @@ namespace dxvk::hud {
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
+    std::string drawCount = m_drawCount > m_drawCallCount
+      ? str::format(m_drawCallCount, " (", m_drawCount, ")")
+      : str::format(m_drawCallCount);
+
     position.y += 16;
     renderer.drawText(16, position, 0xffff8040, "Draw calls:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_gpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, drawCount);
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Dispatch calls:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_cpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_dispatchCount));
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Render passes:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_rpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_renderPassCount));
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Barriers:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_pbCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_barrierCount));
     
     position.y += 8;
     return position;

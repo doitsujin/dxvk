@@ -722,6 +722,19 @@ namespace dxvk {
         vertexCount, instanceCount,
         firstVertex, firstInstance);
     }
+
+
+    void cmdDrawMulti(
+            uint32_t                drawCount,
+      const VkMultiDrawInfoEXT*     drawInfos,
+            uint32_t                instanceCount,
+            uint32_t                firstInstance) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1u);
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawsMerged, drawCount - 1u);
+
+      m_vkd->vkCmdDrawMultiEXT(getCmdBuffer(),
+        drawCount, drawInfos, instanceCount, firstInstance, sizeof(*drawInfos));
+    }
     
     
     void cmdDrawIndirect(
@@ -730,6 +743,7 @@ namespace dxvk {
             uint32_t                drawCount,
             uint32_t                stride) {
       m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawsMerged, drawCount - 1u);
 
       m_vkd->vkCmdDrawIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
@@ -745,8 +759,8 @@ namespace dxvk {
             uint32_t                stride) {
       m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
 
-      m_vkd->vkCmdDrawIndirectCount(getCmdBuffer(),
-        buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
+      m_vkd->vkCmdDrawIndirectCount(getCmdBuffer(), buffer,
+        offset, countBuffer, countOffset, maxDrawCount, stride);
     }
     
     
@@ -765,12 +779,26 @@ namespace dxvk {
     }
     
     
+    void cmdDrawMultiIndexed(
+            uint32_t                drawCount,
+      const VkMultiDrawIndexedInfoEXT* drawInfos,
+            uint32_t                instanceCount,
+            uint32_t                firstInstance) {
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawsMerged, drawCount - 1u);
+
+      m_vkd->vkCmdDrawMultiIndexedEXT(getCmdBuffer(), drawCount,
+        drawInfos, instanceCount, firstInstance, sizeof(*drawInfos), nullptr);
+    }
+
+
     void cmdDrawIndexedIndirect(
             VkBuffer                buffer,
             VkDeviceSize            offset,
             uint32_t                drawCount,
             uint32_t                stride) {
       m_statCounters.addCtr(DxvkStatCounter::CmdDrawCalls, 1);
+      m_statCounters.addCtr(DxvkStatCounter::CmdDrawsMerged, drawCount - 1u);
 
       m_vkd->vkCmdDrawIndexedIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
