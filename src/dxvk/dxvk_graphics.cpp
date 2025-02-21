@@ -955,8 +955,7 @@ namespace dxvk {
       if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
         m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
 
-        m_barrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                         |  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+        m_barrier.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
         m_barrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
                          |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
                          |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
@@ -966,8 +965,12 @@ namespace dxvk {
         m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
-    if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
+    if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT) {
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
+
+      if (layout->layout().getHazardousSetMask())
+        m_flags.set(DxvkGraphicsPipelineFlag::UnrollMergedDraws);
+    }
 
     if (m_shaders.fs != nullptr) {
       if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading))

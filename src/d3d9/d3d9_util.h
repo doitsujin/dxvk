@@ -44,6 +44,11 @@ namespace dxvk {
     }
   }
 
+  /**
+   * @brief Returns whether or not the sampler index is valid
+   *
+   * @param Sampler Sampler index (according to the API)
+   */
   inline bool InvalidSampler(DWORD Sampler) {
     if (Sampler >= caps::MaxTexturesPS && Sampler < D3DDMAPSAMPLER)
       return true;
@@ -54,6 +59,19 @@ namespace dxvk {
     return false;
   }
 
+  /**
+   * @brief The first sampler that belongs to the vertex shader according to our internal way of storing samplers
+   */
+  constexpr uint32_t FirstVSSamplerSlot = caps::MaxTexturesPS + 1;
+
+  /**
+   * @brief Remaps a sampler index by the API to an internal one
+   *
+   * Remaps the sampler index according to the way the API counts them to how we count and store them internally.
+   *
+   * @param Sampler Sampler index (according to API)
+   * @return DWORD Sampler index (according to our internal way of storing samplers)
+   */
   inline DWORD RemapSamplerState(DWORD Sampler) {
     if (Sampler >= D3DDMAPSAMPLER)
       Sampler = caps::MaxTexturesPS + (Sampler - D3DDMAPSAMPLER);
@@ -61,13 +79,62 @@ namespace dxvk {
     return Sampler;
   }
 
+  /**
+   * @brief Remaps the sampler from an index applying to the entire pipeline to one relative to the shader stage and returns the shader type
+   *
+   * The displacement map sampler will be treated as a 17th pixel shader sampler.
+   *
+   * @param Sampler Sampler index (according to our internal way of storing samplers)
+   * @return std::pair<DxsoProgramType, DWORD> Shader stage that it belongs to and the relative sampler index
+   */
   inline std::pair<DxsoProgramType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
-    if (Sampler >= caps::MaxTexturesPS + 1)
-      return std::make_pair(DxsoProgramTypes::VertexShader, Sampler - caps::MaxTexturesPS - 1);
+    if (Sampler >= FirstVSSamplerSlot)
+      return std::make_pair(DxsoProgramTypes::VertexShader, Sampler - FirstVSSamplerSlot);
 
     return std::make_pair(DxsoProgramTypes::PixelShader, Sampler);
   }
 
+  /**
+   * @brief Returns whether the sampler belongs to the vertex shader.
+   *
+   * The displacement map sampler is part of a fixed function feature,
+   * so it does not belong to the vertex shader.
+   * Use IsDMAPSampler to check for that.
+   *
+   * @param Sampler Sampler index (according to our internal way of storing samplers)
+   */
+  inline bool IsVSSampler(uint32_t Sampler) {
+    return Sampler >= FirstVSSamplerSlot;
+  }
+
+  /**
+   * @brief Returns whether the sampler belongs to the pixel shader.
+   *
+   * The displacement map sampler is part of a fixed function feature,
+   * so (unlike in RemapStateSamplerShader) it does not belong to the pixel shader.
+   * Use IsDMAPSampler to check for that.
+   *
+   * @param Sampler Sampler index (according to our internal way of storing samplers)
+   */
+  inline bool IsPSSampler(uint32_t Sampler) {
+    return Sampler <= caps::MaxTexturesPS;
+  }
+
+  /**
+   * @brief Returns whether the sampler is the displacement map sampler
+   *
+   * @param Sampler Sampler index (according to our internal way of storing samplers)
+   */
+  inline bool IsDMAPSampler(uint32_t Sampler) {
+    return Sampler > caps::MaxTexturesPS;
+  }
+
+  /**
+   * @brief Remaps the sampler from an index (counted according to the API) to one relative to the shader stage and returns the shader type
+   *
+   * @param Sampler Sampler index (according to the API)
+   * @return std::pair<DxsoProgramType, DWORD> Shader stage that it belongs to and the relative sampler index
+   */
   inline std::pair<DxsoProgramType, DWORD> RemapSamplerShader(DWORD Sampler) {
     Sampler = RemapSamplerState(Sampler);
 
@@ -243,6 +310,9 @@ namespace dxvk {
            uint32_t(offsets[1].y) > extent.height;
   }
 
+  /**
+   * @brief Mirrors D3DTEXTURESTAGESTATETYPE but starts at 0
+   */
   enum D3D9TextureStageStateTypes : uint32_t
   {
       DXVK_TSS_COLOROP        =  0,
@@ -272,6 +342,12 @@ namespace dxvk {
   constexpr uint32_t DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR   = 0x00030000;
   constexpr uint32_t DXVK_TSS_TCI_SPHEREMAP                     = 0x00040000;
 
+  /**
+   * @brief Remaps a texture stage type by the API to an internal one
+   *
+   * @param Type Texture stage type according to the API
+   * @return D3D9TextureStageStateTypes Texture stage type according to our internal way of storing them
+   */
   inline D3D9TextureStageStateTypes RemapTextureStageStateType(D3DTEXTURESTAGESTATETYPE Type) {
     return D3D9TextureStageStateTypes(Type - 1);
   }

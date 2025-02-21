@@ -205,7 +205,7 @@ namespace dxvk {
 
 
   DxvkBindingLayout::DxvkBindingLayout(VkShaderStageFlags stages)
-  : m_pushConst { 0, 0, 0 }, m_pushConstStages(0), m_stages(stages) {
+  : m_pushConst { 0, 0, 0 }, m_pushConstStages(0), m_stages(stages), m_hazards(0u) {
 
   }
 
@@ -236,6 +236,9 @@ namespace dxvk {
   void DxvkBindingLayout::addBinding(const DxvkBindingInfo& binding) {
     uint32_t set = binding.computeSetIndex();
     m_bindings[set].addBinding(binding);
+
+    if ((binding.access & VK_ACCESS_2_SHADER_WRITE_BIT) && binding.accessOp == DxvkAccessOp::None)
+      m_hazards |= 1u << set;
   }
 
 
@@ -260,6 +263,8 @@ namespace dxvk {
 
     addPushConstantRange(layout.m_pushConst);
     m_pushConstStages |= layout.m_pushConstStages;
+
+    m_hazards |= layout.m_hazards;
   }
 
 
