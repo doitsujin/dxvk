@@ -405,6 +405,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkSetDeviceMemoryPriorityEXT);
     #endif
 
+    #ifdef VK_EXT_multi_draw
+    VULKAN_FN(vkCmdDrawMultiEXT);
+    VULKAN_FN(vkCmdDrawMultiIndexedEXT);
+    #endif
+
     #ifdef VK_EXT_shader_module_identifier
     VULKAN_FN(vkGetShaderModuleCreateInfoIdentifierEXT);
     VULKAN_FN(vkGetShaderModuleIdentifierEXT);
