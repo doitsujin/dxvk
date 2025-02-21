@@ -3387,7 +3387,7 @@ namespace dxvk {
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
       m_vsShaderMasks = newShader->GetShaderMask();
 
-      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, caps::MaxTexturesPS + 1);
+      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, FirstVSSamplerSlot);
     }
     else {
       m_vsShaderMasks = D3D9ShaderMasks();
@@ -6415,10 +6415,10 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
     uint32_t shaderTextureIndex;
     const D3D9CommonShader* shader;
-    if (likely(stateSampler <= caps::MaxTexturesPS)) {
+    if (likely(IsPSSampler(stateSampler))) {
       shader = GetCommonShader(m_state.pixelShader);
       shaderTextureIndex = stateSampler;
-    } else if (unlikely(stateSampler >= caps::MaxTexturesPS + 1)) {
+    } else if (unlikely(IsVSSampler(stateSampler))) {
       shader = GetCommonShader(m_state.vertexShader);
       shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
     } else {
