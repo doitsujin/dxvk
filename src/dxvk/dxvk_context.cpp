@@ -892,7 +892,8 @@ namespace dxvk {
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer, x, y, z);
-      
+      m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1u);
+
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
     }
@@ -912,10 +913,11 @@ namespace dxvk {
     if (this->commitComputeState()) {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
+
       m_cmd->cmdDispatchIndirect(DxvkCmdBuffer::ExecBuffer,
         bufferSlice.handle, bufferSlice.offset);
-      
+      m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1u);
+
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
@@ -986,6 +988,7 @@ namespace dxvk {
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
         physSlice.handle, physSlice.offset + counterOffset,
         counterBias, counterDivisor);
+      m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
       // The count will generally be written from streamout
       if (likely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
@@ -1694,6 +1697,8 @@ namespace dxvk {
           m_cmd->cmdDraw(draws->vertexCount, draws->instanceCount,
             draws->firstVertex, draws->firstInstance);
         }
+
+        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
       } else if (unlikely(needsDrawBarriers())) {
         // If the current pipeline has storage resource hazards,
         // unroll draws and insert a barrier after each one.
@@ -1709,6 +1714,8 @@ namespace dxvk {
               draws[i].firstVertex, draws[i].firstInstance);
           }
         }
+
+        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, count);
       } else {
         using MultiDrawInfo = std::conditional_t<Indexed,
           VkMultiDrawIndexedInfoEXT, VkMultiDrawInfoEXT>;
@@ -1782,6 +1789,9 @@ namespace dxvk {
                 m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
             }
 
+            m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
+            m_cmd->addStatCtr(DxvkStatCounter::CmdDrawsMerged, batchSize - 1u);
+
             batchSize = 0u;
           }
         }
@@ -1821,6 +1831,9 @@ namespace dxvk {
             descriptor.buffer.offset + offset, step, stride);
         }
 
+        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
+        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawsMerged, step - 1u);
+
         if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
           accessDrawBuffer(offset, step, stride, Indexed
             ? sizeof(VkDrawIndexedIndirectCommand)
@@ -1858,6 +1871,10 @@ namespace dxvk {
           cntDescriptor.buffer.offset + countOffset,
           maxCount, stride);
       }
+
+      // Can't meaningfully estimate the draw count here since the
+      // maximum draw count may be based on the draw buffer size
+      m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
       if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
         accessDrawBuffer(offset, maxCount, stride, Indexed
@@ -5639,6 +5656,8 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++)
       m_cmd->track(framebufferInfo.getAttachment(i).view->image(), DxvkAccess::Write);
+
+    m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1u);
   }
   
   
