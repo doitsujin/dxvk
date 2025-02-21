@@ -3578,12 +3578,7 @@ namespace dxvk {
 
     EmitCsCmd<VkDrawIndirectCommand>(D3D11CmdType::Draw, 1u,
       [] (DxvkContext* ctx, const VkDrawIndirectCommand* draws, size_t count) {
-        for (size_t i = 0; i < count; i++) {
-          ctx->draw(draws[i].vertexCount,
-                    draws[i].instanceCount,
-                    draws[i].firstVertex,
-                    draws[i].firstInstance);
-        }
+        ctx->draw(count, draws);
       });
 
     new (m_csData->first()) VkDrawIndirectCommand(draw);
@@ -3608,13 +3603,7 @@ namespace dxvk {
 
     EmitCsCmd<VkDrawIndexedIndirectCommand>(D3D11CmdType::DrawIndexed, 1u,
       [] (DxvkContext* ctx, const VkDrawIndexedIndirectCommand* draws, size_t count) {
-        for (size_t i = 0; i < count; i++) {
-          ctx->drawIndexed(draws[i].indexCount,
-                           draws[i].instanceCount,
-                           draws[i].firstIndex,
-                           draws[i].vertexOffset,
-                           draws[i].firstInstance);
-        }
+        ctx->drawIndexed(count, draws);
       });
 
     new (m_csData->first()) VkDrawIndexedIndirectCommand(draw);

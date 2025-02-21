@@ -244,7 +244,7 @@ namespace dxvk::vk {
     label.color[0] = ((color >> 16u) & 0xffu) / 255.0f;
     label.color[1] = ((color >> 8u)  & 0xffu) / 255.0f;
     label.color[2] = ((color >> 0u)  & 0xffu) / 255.0f;
-    label.color[3] = 1.0f;
+    label.color[3] = color ? 1.0f : 0.0f;
     label.pLabelName = text;
     return label;
   }
