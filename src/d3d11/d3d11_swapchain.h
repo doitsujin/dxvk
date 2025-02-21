@@ -125,7 +125,8 @@ namespace dxvk {
     dxvk::mutex               m_frameStatisticsLock;
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
-    Rc<hud::HudLatencyItem>   m_latencyHud;
+    Rc<hud::HudLatencyItem>       m_latencyHud;
+    Rc<hud::HudRenderLatencyItem> m_renderLatencyHud;
 
     Rc<DxvkImageView> GetBackBufferView();
 

@@ -2,6 +2,7 @@
 #include "dxvk_instance.h"
 #include "dxvk_latency_builtin.h"
 #include "dxvk_latency_reflex.h"
+#include "framepacer/dxvk_framepacer.h"
 
 namespace dxvk {
   
@@ -310,13 +311,13 @@ namespace dxvk {
   Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
     const Rc<Presenter>&            presenter) {
     if (m_options.latencySleep == Tristate::False)
-      return nullptr;
+      return new FramePacer(m_options);
 
     if (m_options.latencySleep == Tristate::Auto) {
       if (m_features.nvLowLatency2)
         return new DxvkReflexLatencyTrackerNv(presenter);
       else
-        return nullptr;
+        return new FramePacer(m_options);
     }
 
     return new DxvkBuiltInLatencyTracker(presenter,
