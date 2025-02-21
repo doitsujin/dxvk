@@ -6415,12 +6415,15 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
     uint32_t shaderTextureIndex;
     const D3D9CommonShader* shader;
-    if (unlikely(stateSampler > caps::MaxTexturesPS + 1)) {
+    if (likely(stateSampler <= caps::MaxTexturesPS)) {
+      shader = GetCommonShader(m_state.pixelShader);
+      shaderTextureIndex = stateSampler;
+    } else if (unlikely(stateSampler >= caps::MaxTexturesPS + 1)) {
       shader = GetCommonShader(m_state.vertexShader);
       shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
     } else {
-      shader = GetCommonShader(m_state.pixelShader);
-      shaderTextureIndex = stateSampler;
+      // Do not type check the fixed function displacement map texture.
+      return;
     }
 
     if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
