@@ -87,7 +87,13 @@ namespace dxvk {
         m->start + microseconds(m->gpuStart+getGpuStartToFinishPrediction()) - now).count();
 
       int32_t targetGpuSync = gpuReadyPrediction + props.gpuSync;
-      int32_t delay = targetGpuSync - props.cpuUntilGpuSync + m_lowLatencyOffset;
+      int32_t gpuDelay = targetGpuSync - props.cpuUntilGpuSync;
+
+      int32_t cpuReadyPrediction = duration_cast<microseconds>(
+        m->start + microseconds(props.csFinished) - now).count();
+      int32_t cpuDelay = cpuReadyPrediction - props.csStart;
+
+      int32_t delay = std::max(gpuDelay, cpuDelay) + m_lowLatencyOffset;
 
       m_lastStart = sleepFor( now, delay );
 
@@ -143,6 +149,8 @@ namespace dxvk {
       props.gpuSync = gpuRun[numLoop-1];
       props.cpuUntilGpuSync = offset + duration_cast<microseconds>( m->gpuSubmit[numLoop-1] - m->start ).count();
       props.optimizedGpuTime = optimizedGpuTime;
+      props.csStart = m->csStart;
+      props.csFinished = m->csFinished;
       props.isOutlier = isOutlier(frameId);
 
       m_propsFinished.store( frameId );
@@ -171,6 +179,8 @@ namespace dxvk {
       int32_t optimizedGpuTime;   // gpu executing packed submits in one go
       int32_t gpuSync;            // us after gpuStart
       int32_t cpuUntilGpuSync;
+      int32_t csStart;
+      int32_t csFinished;
       bool    isOutlier;
     };
 
