@@ -1760,7 +1760,7 @@ namespace dxvk {
 
     m_state.depthStencil = ds;
 
-    UpdateActiveHazardsDS(UINT32_MAX);
+    UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
 
     return D3D_OK;
   }
@@ -2157,7 +2157,7 @@ namespace dxvk {
     if (m_state.IsLightEnabled(Index) == !!Enable)
       return D3D_OK;
 
-    uint32_t searchIndex = UINT32_MAX;
+    uint32_t searchIndex = std::numeric_limits<uint32_t>::max();
     uint32_t setIndex    = Index;
 
     if (!Enable)
@@ -2384,7 +2384,7 @@ namespace dxvk {
 
         case D3DRS_ZWRITEENABLE:
           if (likely(!old != !Value))
-            UpdateActiveHazardsDS(UINT32_MAX);
+            UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
         [[fallthrough]];
         case D3DRS_STENCILENABLE:
         case D3DRS_ZENABLE:
@@ -3387,7 +3387,7 @@ namespace dxvk {
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
       m_vsShaderMasks = newShader->GetShaderMask();
 
-      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, caps::MaxTexturesPS + 1);
+      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, FirstVSSamplerSlot);
     }
     else {
       m_vsShaderMasks = D3D9ShaderMasks();
@@ -3795,8 +3795,8 @@ namespace dxvk {
     if (m_psShaderMasks.samplerMask != newShaderMasks.samplerMask ||
         m_psShaderMasks.rtMask != newShaderMasks.rtMask) {
       m_psShaderMasks = newShaderMasks;
-      UpdateActiveHazardsRT(UINT32_MAX);
-      UpdateActiveHazardsDS(UINT32_MAX);
+      UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
+      UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
     }
 
     return D3D_OK;
@@ -6415,12 +6415,15 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
     uint32_t shaderTextureIndex;
     const D3D9CommonShader* shader;
-    if (unlikely(stateSampler > caps::MaxTexturesPS + 1)) {
+    if (likely(IsPSSampler(stateSampler))) {
+      shader = GetCommonShader(m_state.pixelShader);
+      shaderTextureIndex = stateSampler;
+    } else if (unlikely(IsVSSampler(stateSampler))) {
       shader = GetCommonShader(m_state.vertexShader);
       shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
     } else {
-      shader = GetCommonShader(m_state.pixelShader);
-      shaderTextureIndex = stateSampler;
+      // Do not type check the fixed function displacement map texture.
+      return;
     }
 
     if (unlikely(shader == nullptr || shader->GetInfo().majorVersion() < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
@@ -7815,7 +7818,7 @@ namespace dxvk {
 
       if (key.Data.Contents.UseLighting) {
         for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
-          if (m_state.enabledLightIndices[i] != UINT32_MAX)
+          if (m_state.enabledLightIndices[i] != std::numeric_limits<uint32_t>::max())
             lightCount++;
         }
       }
@@ -7912,7 +7915,7 @@ namespace dxvk {
       uint32_t lightIdx = 0;
       for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
         auto idx = m_state.enabledLightIndices[i];
-        if (idx == UINT32_MAX)
+        if (idx == std::numeric_limits<uint32_t>::max())
           continue;
 
         data->Lights[lightIdx++] = D3D9Light(m_state.lights[idx].value(), m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);

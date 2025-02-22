@@ -20,10 +20,11 @@ namespace dxvk {
    * of the graphics and compute pipelines
    * has changed and/or needs to be updated.
    */
-  enum class DxvkContextFlag : uint32_t  {
+  enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
     GpRenderPassSuspended,      ///< Render pass is currently suspended
     GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
+    GpRenderPassSideEffects,    ///< Render pass has side effects
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
@@ -56,10 +57,12 @@ namespace dxvk {
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed
 
+    ForceWriteAfterWriteSync,   ///< Ignores barrier control flags for write-after-write hazards
+
     Count
   };
 
-  static_assert(uint32_t(DxvkContextFlag::Count) <= 32u);
+  static_assert(uint32_t(DxvkContextFlag::Count) <= 64u);
 
   using DxvkContextFlags = Flags<DxvkContextFlag>;
 
@@ -85,8 +88,11 @@ namespace dxvk {
    * synchronize implicitly.
    */
   enum class DxvkBarrierControl : uint32_t {
-    IgnoreWriteAfterWrite       = 1,
-    IgnoreGraphicsBarriers      = 2,
+    // Ignores write-after-write hazard
+    ComputeAllowWriteOnlyOverlap  = 0,
+    ComputeAllowReadWriteOverlap  = 1,
+
+    GraphicsAllowReadWriteOverlap = 2,
   };
 
   using DxvkBarrierControlFlags  = Flags<DxvkBarrierControl>;

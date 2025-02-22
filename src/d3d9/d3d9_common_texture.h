@@ -75,7 +75,7 @@ namespace dxvk {
 
   public:
 
-    static constexpr UINT AllLayers = UINT32_MAX;
+    static constexpr UINT AllLayers = std::numeric_limits<uint32_t>::max();
 
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
