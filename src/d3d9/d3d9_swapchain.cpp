@@ -987,7 +987,7 @@ namespace dxvk {
       entry->second.presenter = CreatePresenter(m_window, entry->second.frameLatencySignal);
 
       if (m_presentParams.hDeviceWindow == m_window && m_latencyTracking)
-        m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter);
+        m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter, entry->second.frameId+1);
     }
 
     m_wctx = &entry->second;

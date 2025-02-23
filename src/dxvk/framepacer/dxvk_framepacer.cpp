@@ -8,7 +8,7 @@
 namespace dxvk {
 
 
-  FramePacer::FramePacer( const DxvkOptions& options ) {
+  FramePacer::FramePacer( const DxvkOptions& options, uint64_t firstFrameId ) {
     // we'll default to LOW_LATENCY in the draft-PR for now, for demonstration purposes,
     // highlighting the generally much better input lag and medium-term time consistency.
     // although MAX_FRAME_LATENCY has advantages in many games and is likely the better default,
@@ -53,11 +53,19 @@ namespace dxvk {
       gpuStart.store(0);
     }
 
-    // be consistent that every frame has a gpuReady event from the previous frame
-    uint64_t firstFrameId = DXGI_MAX_SWAP_CHAIN_BUFFERS+1;
-    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(firstFrameId);
-    m->gpuReady.push_back(high_resolution_clock::now());
+    // be consistent that every frame has a gpuReady event from finishing the previous frame
+    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers( firstFrameId );
+    m->gpuReady.push_back( high_resolution_clock::now() );
     m_gpuStarts[ firstFrameId % m_gpuStarts.size() ] = gpuReadyBit;
+
+    LatencyMarkersTimeline& timeline = m_latencyMarkersStorage.m_timeline;
+    timeline.cpuFinished.store   ( firstFrameId-1 );
+    timeline.gpuStart.store      ( firstFrameId-1 );
+    timeline.gpuFinished.store   ( firstFrameId-1 );
+    timeline.frameFinished.store ( firstFrameId-1 );
+
+    m_mode->signalGpuStart       ( firstFrameId-1 );
+    m_mode->signalRenderFinished ( firstFrameId-1 );
   }
 
 

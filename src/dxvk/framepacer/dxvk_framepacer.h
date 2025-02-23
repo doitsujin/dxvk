@@ -23,7 +23,7 @@ namespace dxvk {
     using microseconds = std::chrono::microseconds;
   public:
 
-    FramePacer( const DxvkOptions& options );
+    FramePacer( const DxvkOptions& options, uint64_t firstFrameId );
     ~FramePacer();
 
     void sleepAndBeginFrame(
