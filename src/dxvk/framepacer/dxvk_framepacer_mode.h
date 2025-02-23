@@ -44,9 +44,6 @@ namespace dxvk {
     void signalGpuStart( uint64_t frameId ) {
       if (m_mode) m_fenceGpuStart.signal(frameId); }
 
-    void signalCsFinished( uint64_t frameId ) {
-      if (m_mode) m_fenceCsFinished.signal(frameId); }
-
     void setTargetFrameRate( double frameRate ) {
       if (!m_fpsLimitEnvOverride && frameRate > 1.0)
         m_fpsLimitFrametime.store( 1'000'000/frameRate );
@@ -68,7 +65,6 @@ namespace dxvk {
 
     sync::Fence m_fenceGpuStart    = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS) };
     sync::Fence m_fenceGpuFinished = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS) };
-    sync::Fence m_fenceCsFinished  = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS+50) };
 
   };
 

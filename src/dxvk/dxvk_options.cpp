@@ -20,8 +20,6 @@ namespace dxvk {
     allowFse              = config.getOption<bool>    ("dxvk.allowFse",               false);
     framePace             = config.getOption<std::string>("dxvk.framePace",           "");
     lowLatencyOffset      = config.getOption<int32_t> ("dxvk.lowLatencyOffset",       0);
-    lowLatencyAllowCpuFramesOverlap
-                          = config.getOption<bool>    ("dxvk.lowLatencyAllowCpuFramesOverlap", true);
     deviceFilter          = config.getOption<std::string>("dxvk.deviceFilter",        "");
     tilerMode             = config.getOption<Tristate>("dxvk.tilerMode",              Tristate::Auto);
   }
