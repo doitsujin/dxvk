@@ -199,11 +199,11 @@ namespace dxvk {
     UINT  stencilRef     = D3D11_DEFAULT_STENCIL_REFERENCE;
 
     UINT  maxRtv         = 0u;
-    UINT  minUav         = 0u;
+    UINT  minUav         = D3D11_1_UAV_SLOT_COUNT;
     UINT  maxUav         = 0u;
 
     void reset() {
-      for (uint32_t i = 0; i < maxUav; i++)
+      for (uint32_t i = minUav; i < maxUav; i++)
         uavs[i] = nullptr;
 
       for (uint32_t i = 0; i < maxRtv; i++)
@@ -221,8 +221,9 @@ namespace dxvk {
       sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
       stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
 
-      maxRtv = 0;
-      maxUav = 0;
+      maxRtv = 0u;
+      minUav = D3D11_1_UAV_SLOT_COUNT;
+      maxUav = 0u;
     }
   };
   
