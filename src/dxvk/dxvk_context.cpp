@@ -1806,41 +1806,54 @@ namespace dxvk {
           uint32_t                  count,
           uint32_t                  stride,
           bool                      unroll) {
+    constexpr VkDeviceSize elementSize = Indexed
+      ? sizeof(VkDrawIndexedIndirectCommand)
+      : sizeof(VkDrawIndirectCommand);
+
     if (this->commitGraphicsState<Indexed, true>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
 
-      if (unroll)
-        unroll = needsDrawBarriers();
-
-      // If draws are merged but the pipeline has order-dependent stores, submit
-      // one draw at a time as well as barriers in between. Otherwise, keep the
-      // draws merged.
-      uint32_t step = unroll ? 1u : count;
-
-      for (uint32_t i = 0; i < count; i += step) {
-        if (unlikely(i)) {
-          // Insert barrier after the first iteration
-          this->commitGraphicsState<Indexed, true>();
-        }
-
+      if (likely(count == 1u || !unroll || !needsDrawBarriers())) {
         if (Indexed) {
           m_cmd->cmdDrawIndexedIndirect(descriptor.buffer.buffer,
-            descriptor.buffer.offset + offset, step, stride);
+            descriptor.buffer.offset + offset, count, stride);
         } else {
           m_cmd->cmdDrawIndirect(descriptor.buffer.buffer,
-            descriptor.buffer.offset + offset, step, stride);
+            descriptor.buffer.offset + offset, count, stride);
         }
 
         m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
-        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawsMerged, step - 1u);
 
-        if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
-          accessDrawBuffer(offset, step, stride, Indexed
-            ? sizeof(VkDrawIndexedIndirectCommand)
-            : sizeof(VkDrawIndirectCommand));
+        if (unroll) {
+          // Assume this is an automatically merged draw, if the app
+          // explicitly uses multidraw then don't count it as merged.
+          m_cmd->addStatCtr(DxvkStatCounter::CmdDrawsMerged, count - 1u);
         }
 
-        offset += step * stride;
+        if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+          accessDrawBuffer(offset, count, stride, elementSize);
+      } else {
+        // If the pipeline has order-sensitive stores, submit one
+        // draw at a time and insert barriers in between.
+        for (uint32_t i = 0; i < count; i++) {
+          if (i)
+            this->commitGraphicsState<Indexed, true>();
+
+          if (Indexed) {
+            m_cmd->cmdDrawIndexedIndirect(descriptor.buffer.buffer,
+              descriptor.buffer.offset + offset, 1u, 0u);
+          } else {
+            m_cmd->cmdDrawIndirect(descriptor.buffer.buffer,
+              descriptor.buffer.offset + offset, 1u, 0u);
+          }
+
+          if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+            accessDrawBuffer(offset, 1u, stride, elementSize);
+
+          offset += stride;
+        }
+
+        m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, count);
       }
     }
   }
@@ -1872,8 +1885,6 @@ namespace dxvk {
           maxCount, stride);
       }
 
-      // Can't meaningfully estimate the draw count here since the
-      // maximum draw count may be based on the draw buffer size
       m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
       if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
