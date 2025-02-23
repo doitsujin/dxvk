@@ -54,8 +54,10 @@ namespace dxvk {
     }
 
     // be consistent that every frame has a gpuReady event from the previous frame
-    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(DXGI_MAX_SWAP_CHAIN_BUFFERS+1);
+    uint64_t firstFrameId = DXGI_MAX_SWAP_CHAIN_BUFFERS+1;
+    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(firstFrameId);
     m->gpuReady.push_back(high_resolution_clock::now());
+    m_gpuStarts[ firstFrameId % m_gpuStarts.size() ] = gpuReadyBit;
   }
 
 
