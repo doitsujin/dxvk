@@ -164,7 +164,8 @@ namespace dxvk {
       int32_t frametime = std::chrono::duration_cast<microseconds>( t - m_lastStart ).count();
       int32_t frametimeDiff = std::max( 0, m_fpsLimitFrametime.load() - frametime );
       delay = std::max( delay, frametimeDiff );
-      delay = std::max( 0, std::min( delay, 20000 ) );
+      int32_t maxDelay = std::max( m_fpsLimitFrametime.load(), 20000 );
+      delay = std::max( 0, std::min( delay, maxDelay ) );
 
       Sleep::TimePoint nextStart = t + microseconds(delay);
       Sleep::sleepUntil( t, nextStart );
