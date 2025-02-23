@@ -48,7 +48,7 @@ namespace dxvk {
           DxvkLatencyInfo           latencyInfo,
           DxvkSubmitStatus*         status) {
     if (latencyInfo.tracker)
-      latencyInfo.tracker->notifySubmit();
+      latencyInfo.tracker->notifySubmit(latencyInfo.frameId);
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {

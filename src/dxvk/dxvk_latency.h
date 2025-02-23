@@ -128,7 +128,8 @@ namespace dxvk {
     virtual void notifyCpuPresentEnd(
             uint64_t                  frameId) = 0;
 
-    virtual void notifySubmit() { }
+    virtual void notifySubmit(
+            uint64_t                  frameId) { }
     virtual void notifyPresent(
             uint64_t                  frameId) { }
 

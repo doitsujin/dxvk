@@ -55,8 +55,8 @@ namespace dxvk {
       m->csFinished = std::chrono::duration_cast<microseconds>(now - m->start).count();
     }
 
-    void notifySubmit() override {
-      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(m_lastSubmitFrameId+1);
+    void notifySubmit( uint64_t frameId ) override {
+      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuSubmit.push_back(high_resolution_clock::now());
     }
 
@@ -64,7 +64,6 @@ namespace dxvk {
       // dx to vk translation is finished
       if (frameId != 0) {
         auto now = high_resolution_clock::now();
-        m_lastSubmitFrameId = frameId;
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
         LatencyMarkers* next = m_latencyMarkersStorage.getMarkers(frameId+1);
         m->gpuSubmit.push_back(now);
@@ -76,7 +75,6 @@ namespace dxvk {
     }
 
     void notifyQueueSubmit( uint64_t frameId ) override {
-      assert( frameId == m_lastQueueSubmitFrameId + 1 );
       auto now = high_resolution_clock::now();
       LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuQueueSubmit.push_back(now);
@@ -86,7 +84,6 @@ namespace dxvk {
     void notifyQueuePresentBegin( uint64_t frameId ) override {
       if (frameId != 0) {
         auto now = high_resolution_clock::now();
-        m_lastQueueSubmitFrameId = frameId;
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
         LatencyMarkers* next = m_latencyMarkersStorage.getMarkers(frameId+1);
         m->gpuQueueSubmit.push_back(now);
@@ -97,14 +94,13 @@ namespace dxvk {
 
     void notifyGpuExecutionEnd( uint64_t frameId ) override {
       auto now = high_resolution_clock::now();
-      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(m_lastFinishedFrameId+1);
+      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuReady.push_back(now);
     }
 
     virtual void notifyGpuPresentBegin( uint64_t frameId ) override {
       // we get frameId == 0 for repeated presents (SyncInterval)
       if (frameId != 0) {
-        m_lastFinishedFrameId = frameId;
         auto now = high_resolution_clock::now();
 
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
@@ -171,10 +167,6 @@ namespace dxvk {
     }
 
     std::unique_ptr<FramePacerMode> m_mode;
-
-    uint64_t m_lastSubmitFrameId      = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
-    uint64_t m_lastQueueSubmitFrameId = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
-    uint64_t m_lastFinishedFrameId    = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
 
     std::array< std::atomic< uint16_t >, 8 > m_gpuStarts = { };
     static constexpr uint16_t queueSubmitBit = 1;
