@@ -129,6 +129,32 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t bsf(uint32_t n) {
+    #if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
+    uint32_t res;
+    asm ("tzcnt %1,%0"
+    : "=r" (res)
+    : "r" (n)
+    : "cc");
+    return res;
+    #else
+    return tzcnt(n);
+    #endif
+  }
+
+  inline uint32_t bsf(uint64_t n) {
+    #if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86_64)
+    uint64_t res;
+    asm ("tzcnt %1,%0"
+    : "=r" (res)
+    : "r" (n)
+    : "cc");
+    return res;
+    #else
+    return tzcnt(n);
+    #endif
+  }
+
   inline uint32_t lzcnt(uint32_t n) {
     #if (defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__)
     return _lzcnt_u32(n);
@@ -490,6 +516,7 @@ namespace dxvk::bit {
 
   };
 
+  template<typename T>
   class BitMask {
 
   public:
@@ -497,12 +524,12 @@ namespace dxvk::bit {
     class iterator {
     public:
       using iterator_category = std::input_iterator_tag;
-      using value_type = uint32_t;
-      using difference_type = uint32_t;
-      using pointer = const uint32_t*;
-      using reference = uint32_t;
+      using value_type = T;
+      using difference_type = T;
+      using pointer = const T*;
+      using reference = T;
 
-      explicit iterator(uint32_t flags)
+      explicit iterator(T flags)
         : m_mask(flags) { }
 
       iterator& operator ++ () {
@@ -516,17 +543,8 @@ namespace dxvk::bit {
         return retval;
       }
 
-      uint32_t operator * () const {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
-        uint32_t res;
-        asm ("tzcnt %1,%0"
-        : "=r" (res)
-        : "r" (m_mask)
-        : "cc");
-        return res;
-#else
-        return tzcnt(m_mask);
-#endif
+      T operator * () const {
+        return bsf(m_mask);
       }
 
       bool operator == (iterator other) const { return m_mask == other.m_mask; }
@@ -534,14 +552,14 @@ namespace dxvk::bit {
 
     private:
 
-      uint32_t m_mask;
+      T m_mask;
 
     };
 
     BitMask()
       : m_mask(0) { }
 
-    BitMask(uint32_t n)
+    explicit BitMask(T n)
       : m_mask(n) { }
 
     iterator begin() {
@@ -554,7 +572,7 @@ namespace dxvk::bit {
 
   private:
 
-    uint32_t m_mask;
+    T m_mask;
 
   };
 

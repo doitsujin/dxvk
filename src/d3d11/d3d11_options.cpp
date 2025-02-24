@@ -13,7 +13,6 @@ namespace dxvk {
   }
 
   D3D11Options::D3D11Options(const Config& config) {
-    this->dcSingleUseMode       = config.getOption<bool>("d3d11.dcSingleUseMode", true);
     this->zeroInitWorkgroupMemory  = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
     this->forceVolatileTgsmAccess = config.getOption<bool>("d3d11.forceVolatileTgsmAccess", false);
     this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);

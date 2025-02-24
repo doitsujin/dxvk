@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
-  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, GetCsChunkFlags(pParent)),
+  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, 0u),
     m_commandList (CreateCommandList()) {
     ResetContextState();
   }
@@ -434,14 +434,6 @@ namespace dxvk {
           uint64_t                      Cookie,
     const D3D11_MAPPED_SUBRESOURCE&     MapInfo) {
     m_mappedResources.push_back({ Cookie, MapInfo });
-  }
-
-
-  DxvkCsChunkFlags D3D11DeferredContext::GetCsChunkFlags(
-          D3D11Device*                  pDevice) {
-    return pDevice->GetOptions()->dcSingleUseMode
-      ? DxvkCsChunkFlags(DxvkCsChunkFlag::SingleUse)
-      : DxvkCsChunkFlags();
   }
 
 }

@@ -82,7 +82,6 @@ namespace dxvk {
     /* The Evil Within: Submits command lists     *
      * multiple times                             */
     { R"(\\EvilWithin(Demo)?\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
@@ -160,10 +159,6 @@ namespace dxvk {
     /* NieR Replicant                             */
     { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
       { "d3d11.cachedDynamicResources",     "vi"   },
-    }} },
-    /* SteamVR performance test                   */
-    { R"(\\vr\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* Hitman 2 - requires AGS library      */
     { R"(\\HITMAN2\.exe$)", {{
@@ -350,11 +345,6 @@ namespace dxvk {
     { R"(\\MSFC\.exe$)", {{
       { "dxgi.maxFrameRate",                "60" },
     }} },
-    /* Cardfight!! Vanguard Dear Days:            *
-     * Submits command lists multiple times       */
-    { R"(\\VG2\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
-    }} },
     /* Battlefield: Bad Company 2                 *
      * Gets rid of black flickering               */
     { R"(\\BFBC2Game\.exe$)", {{
@@ -383,10 +373,6 @@ namespace dxvk {
     { R"(\\CrashBandicootNSaneTrilogy\.exe$)", {{
       { "dxgi.syncInterval",                "1"   },
     }} },
-    /* SnowRunner                                 */
-    { R"(\\SnowRunner\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
-    }} },
     /* Fallout 76
      * Game tries to be too "smart" and changes sync
      * interval based on performance (in fullscreen)
@@ -407,10 +393,6 @@ namespace dxvk {
      * the tavern area                            */
     { R"(\\BLADESTORM Nightmare\\Launch_(EA|JP)\.exe$)", {{
       { "dxgi.maxFrameRate",                "60"  },
-    }} },
-    /* Ghost Recon Wildlands                      */
-    { R"(\\GRW\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* Vindictus d3d11 CPU bound perf, and work   *
      * around the game not properly initializing  *
@@ -475,11 +457,6 @@ namespace dxvk {
      * Invisible terrain on Intel                  */
     { R"(\\FarCry(5|NewDawn)\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
-    }} },
-    /* Cardfight!! Vanguard Dear Days 2 - Broken   *
-     * effects and Invisible cards in battles      */
-    { R"(\\VGDD2\.exe$)", {{
-      { "d3d11.dcSingleUseMode",            "False" },
     }} },
 
     /**********************************************/

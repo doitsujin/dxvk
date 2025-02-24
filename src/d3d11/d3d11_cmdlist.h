@@ -55,14 +55,9 @@ namespace dxvk {
     std::vector<Com<D3D11Query, false>> m_queries;
     std::vector<TrackedResource>        m_resources;
 
-    std::atomic<bool> m_submitted = { false };
-    std::atomic<bool> m_warned    = { false };
-
     void TrackResourceSequenceNumber(
       const D3D11ResourceRef&   Resource,
             uint64_t            Seq);
-
-    void MarkSubmitted();
     
   };
   
