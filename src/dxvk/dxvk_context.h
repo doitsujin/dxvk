@@ -59,9 +59,11 @@ namespace dxvk {
      * 
      * This will not change any context state
      * other than the active command list.
+     * \param [in] reason Optional debug label describing the reason
      * \returns Active command list
      */
-    Rc<DxvkCommandList> endRecording();
+    Rc<DxvkCommandList> endRecording(
+      const VkDebugUtilsLabelEXT*       reason);
 
     /**
      * \brief Ends frame
@@ -100,9 +102,12 @@ namespace dxvk {
      * 
      * Transparently submits the current command
      * buffer and allocates a new one.
+     * \param [in] reason Optional debug label describing the reason
      * \param [out] status Submission feedback
      */
-    void flushCommandList(DxvkSubmitStatus* status);
+    void flushCommandList(
+      const VkDebugUtilsLabelEXT*       reason,
+            DxvkSubmitStatus*           status);
 
     /**
      * \brief Synchronizes command list with WSI

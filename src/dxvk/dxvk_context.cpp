@@ -76,13 +76,20 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkCommandList> DxvkContext::endRecording() {
+  Rc<DxvkCommandList> DxvkContext::endRecording(
+    const VkDebugUtilsLabelEXT*       reason) {
     this->endCurrentCommands();
     this->relocateQueuedResources();
 
     if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
+    }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      // Make sure to emit the submission reason always at the very end
+      if (reason && reason->pLabelName && reason->pLabelName[0])
+        m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, *reason);
     }
 
     m_cmd->finalize();
@@ -121,13 +128,15 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
+  void DxvkContext::flushCommandList(
+    const VkDebugUtilsLabelEXT*       reason,
+          DxvkSubmitStatus*           status) {
     // Need to call this before submitting so that the last GPU
     // submission does not happen before the render end signal.
     if (m_endLatencyTracking && m_latencyTracker)
       m_latencyTracker->notifyCsRenderEnd(m_latencyFrameId);
 
-    m_device->submitCommandList(this->endRecording(),
+    m_device->submitCommandList(this->endRecording(reason),
       m_latencyTracker, m_latencyFrameId, status);
 
     // Ensure that subsequent submissions do not see the tracker.

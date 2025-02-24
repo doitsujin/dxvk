@@ -892,7 +892,7 @@ namespace dxvk {
 
         // Submit command list and present
         ctx->synchronizeWsi(cSync);
-        ctx->flushCommandList(nullptr);
+        ctx->flushCommandList(nullptr, nullptr);
 
         uint64_t frameId = cRepeat ? 0 : cFrameId;
 

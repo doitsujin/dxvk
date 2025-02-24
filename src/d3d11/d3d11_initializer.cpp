@@ -337,7 +337,7 @@ namespace dxvk {
       cSignalValue  = stats.allocatedTotal
     ] (DxvkContext* ctx) {
       ctx->signal(cSignal, cSignalValue);
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(nullptr, nullptr);
     });
 
     FlushCsChunk();

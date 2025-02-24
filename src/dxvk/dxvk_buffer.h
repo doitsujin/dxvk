@@ -418,6 +418,14 @@ namespace dxvk {
      */
     void setDebugName(const char* name);
 
+    /**
+     * \brief Retrieves debug name
+     * \returns Debug name
+     */
+    const char* getDebugName() const {
+      return m_debugName.c_str();
+    }
+
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
