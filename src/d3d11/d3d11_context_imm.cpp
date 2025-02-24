@@ -1105,6 +1105,9 @@ namespace dxvk {
     if (!GetPendingCsChunks() && !hEvent)
       return;
 
+    // Make writes to mapped buffers available
+    bit::sfence();
+
     // Unbind unused resources
     ApplyDirtyNullBindings();
 

@@ -163,6 +163,9 @@ namespace dxvk {
           ID3D11CommandList   **ppCommandList) {
     D3D10DeviceLock lock = LockContext();
 
+    // Make writes to mapped buffers available
+    bit::sfence();
+
     // End all queries that were left active by the app
     FinalizeQueries();
 
