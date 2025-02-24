@@ -598,6 +598,11 @@ namespace dxvk {
     const DxvkAllocationInfo&               allocationInfo) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
+    Logger::err(str::format("Allocating ", requirements.size, " bytes from types ",
+      std::hex, requirements.memoryTypeBits, ", properties: ",
+      std::hex, allocationInfo.properties, ", desired types: ",
+      std::hex, getMemoryTypeMask(allocationInfo.properties)));
+
     // Ensure the allocation size is also aligned
     VkDeviceSize size = align(requirements.size, requirements.alignment);
 
@@ -688,6 +693,7 @@ namespace dxvk {
       }
 
       if (size * minResourcesPerChunk > maxChunkSize) {
+        Logger::err(str::format("Creating dedicated allocation on type ", typeIndex));
         DxvkDeviceMemory memory = allocateDeviceMemory(type, requirements.size, nullptr);
 
         if (!memory.memory)
@@ -704,12 +710,15 @@ namespace dxvk {
       while (desiredSize < size * minResourcesPerChunk)
         desiredSize *= 2u;
 
+      Logger::err(str::format("Creating new chunk on type ", typeIndex, " (", desiredSize >> 20, " MiB)"));
+
       if (allocateChunkInPool(type, selectedPool, allocationInfo.properties, size, desiredSize)) {
         address = selectedPool.alloc(size, requirements.alignment);
         return createAllocation(type, selectedPool, address, size, allocationInfo);
       }
     }
 
+    Logger::err("Memory allocation failed");
     return nullptr;
   }
 
@@ -719,6 +728,11 @@ namespace dxvk {
     const DxvkAllocationInfo&               allocationInfo,
     const void*                             next) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    Logger::err(str::format("Allocating ", requirements.size, " bytes from types ",
+      std::hex, requirements.memoryTypeBits, ", properties: ",
+      std::hex, allocationInfo.properties, ", desired types: ",
+      std::hex, getMemoryTypeMask(allocationInfo.properties)));
 
     DxvkDeviceMemory memory = { };
 
@@ -732,6 +746,7 @@ namespace dxvk {
       }
     }
 
+    Logger::err("Memory allocation failed");
     return nullptr;
   }
 
@@ -741,6 +756,11 @@ namespace dxvk {
     const DxvkAllocationInfo&         allocationInfo,
           DxvkLocalAllocationCache*   allocationCache) {
     Rc<DxvkResourceAllocation> allocation;
+
+    Logger::err(str::format("Creating buffer: ",
+      "\n  size:    ", createInfo.size,
+      "\n  usage:   ", std::hex, createInfo.usage,
+      "\n  flags:   ", std::hex, createInfo.flags));
 
     if (likely(!createInfo.flags)) {
       VkMemoryRequirements memoryRequirements = { };
@@ -903,6 +923,14 @@ namespace dxvk {
     const DxvkAllocationInfo&         allocationInfo,
     const void*                       next) {
     auto vk = m_device->vkd();
+
+    Logger::err(str::format("Creating image: ",
+      "\n  type:    ", createInfo.imageType,
+      "\n  format:  ", createInfo.format,
+      "\n  extent:  ", createInfo.extent.width, "x", createInfo.extent.height, "x", createInfo.extent.depth,
+      "\n  layers:  ", createInfo.arrayLayers,
+      "\n  mips:    ", createInfo.mipLevels,
+      "\n  samples: ", createInfo.samples));
 
     VkImage image = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateImage(vk->device(), &createInfo, nullptr, &image);
@@ -1164,11 +1192,17 @@ namespace dxvk {
     DxvkDeviceMemory result = { };
     result.size = size;
 
-    if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory)) {
+    VkResult vr = VK_SUCCESS;
+
+    Logger::err(str::format("Allocaing device memory on type ", type.index, " (", size >> 20, " MiB)"));
+
+    if ((vr = vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory))) {
       freeEmptyChunksInHeap(*type.heap, VkDeviceSize(-1), high_resolution_clock::time_point());
 
-      if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory))
+      if ((vr = vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memory))) {
+        Logger::err(str::format("vkAllocateMemory FAILED: ", vr));
         return DxvkDeviceMemory();
+      }
     }
 
     // Technically redundant if EXT_memory_priority is also supported, but this shouldn't hurt
