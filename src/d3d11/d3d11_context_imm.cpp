@@ -97,6 +97,10 @@ namespace dxvk {
       // Ignore the DONOTFLUSH flag here as some games will spin
       // on queries without ever flushing the context otherwise.
       D3D10DeviceLock lock = LockContext();
+
+      if (unlikely(m_device->isDebugEnabled()))
+        m_flushReason = "Query read-back";
+
       ConsiderFlush(GpuFlushType::ImplicitSynchronization);
     }
     
@@ -156,6 +160,9 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(m_device->isDebugEnabled()))
+      m_flushReason = "Explicit Flush";
+
     ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
@@ -164,6 +171,9 @@ namespace dxvk {
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(m_device->isDebugEnabled()))
+      m_flushReason = "Explicit Flush";
 
     ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
@@ -185,6 +195,9 @@ namespace dxvk {
       ctx->signalFence(cFence, cValue);
     });
 
+    if (unlikely(m_device->isDebugEnabled()))
+      m_flushReason = "Fence signal";
+
     ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
     return S_OK;
   }
@@ -198,6 +211,9 @@ namespace dxvk {
 
     if (!fence)
       return E_INVALIDARG;
+
+    if (unlikely(m_device->isDebugEnabled()))
+      m_flushReason = "Fence wait";
 
     ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
 
@@ -903,36 +919,37 @@ namespace dxvk {
     // Wait for any CS chunk using the resource to execute, since
     // otherwise we cannot accurately determine if the resource is
     // actually being used by the GPU right now.
-    bool isInUse = Resource.isInUse(access);
-
-    if (!isInUse) {
+    if (!Resource.isInUse(access)) {
       SynchronizeCsThread(SequenceNumber);
-      isInUse = Resource.isInUse(access);
+
+      if (!Resource.isInUse(access))
+        return true;
+    }
+
+    if (unlikely(m_device->isDebugEnabled())) {
+      m_flushReason = str::format("Map ", Resource.getDebugName(), " (MAP",
+        MapType != D3D11_MAP_WRITE ? "_READ" : "",
+        MapType != D3D11_MAP_READ ? "_WRITE" : "", ")");
     }
 
     if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
-      if (isInUse) {
-        // We don't have to wait, but misbehaving games may
-        // still try to spin on `Map` until the resource is
-        // idle, so we should flush pending commands
-        ConsiderFlush(GpuFlushType::ImplicitSynchronization);
-        return false;
-      }
+      // We don't have to wait, but misbehaving games may
+      // still try to spin on `Map` until the resource is
+      // idle, so we should flush pending commands
+      ConsiderFlush(GpuFlushType::ImplicitSynchronization);
+      return false;
     } else {
-      if (isInUse) {
-        // Make sure pending commands using the resource get
-        // executed on the the GPU if we have to wait for it
-        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
-        SynchronizeCsThread(SequenceNumber);
+      // Make sure pending commands using the resource get
+      // executed on the the GPU if we have to wait for it
+      ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
+      SynchronizeCsThread(SequenceNumber);
 
-        m_device->waitForResource(Resource, access);
-      }
+      m_device->waitForResource(Resource, access);
+      return true;
     }
-
-    return true;
   }
-  
-  
+
+
   void D3D11ImmediateContext::InjectCsChunk(
           DxvkCsQueue                 Queue,
           DxvkCsChunkRef&&            Chunk,
@@ -1122,11 +1139,14 @@ namespace dxvk {
       cSubmissionId     = submissionId,
       cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr,
       cStagingFence     = m_stagingBufferFence,
-      cStagingMemory    = GetStagingMemoryStatistics().allocatedTotal
+      cStagingMemory    = GetStagingMemoryStatistics().allocatedTotal,
+      cFlushReason      = std::exchange(m_flushReason, std::string())
     ] (DxvkContext* ctx) {
+      auto debugLabel = vk::makeLabel(0xc0a2f0, cFlushReason.c_str());
+
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingFence, cStagingMemory);
-      ctx->flushCommandList(nullptr, cSubmissionStatus);
+      ctx->flushCommandList(&debugLabel, cSubmissionStatus);
     });
 
     FlushCsChunk();
