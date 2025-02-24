@@ -6086,6 +6086,9 @@ namespace dxvk {
     if constexpr (Synchronize9On12)
       m_submitStatus.result = VK_NOT_READY;
 
+    // Make writes to mapped buffers available
+    bit::sfence();
+
     // Update signaled staging buffer counter and signal the fence
     m_stagingMemorySignaled = m_stagingBuffer.getStatistics().allocatedTotal;
 
