@@ -1911,7 +1911,9 @@ namespace dxvk {
     // flags. This lets us avoid iterating over unsupported memory types
     for (uint32_t i = 0; i < m_memTypesByPropertyFlags.size(); i++) {
       VkMemoryPropertyFlags flags = VkMemoryPropertyFlags(i);
-      uint32_t mask = 0u;
+
+      uint32_t vidmemMask = 0u;
+      uint32_t sysmemMask = 0u;
 
       for (uint32_t j = 0; j < m_memTypeCount; j++) {
         VkMemoryPropertyFlags typeFlags = m_memTypes[j].properties.propertyFlags;
@@ -1919,16 +1921,16 @@ namespace dxvk {
         if ((typeFlags & flags) != flags)
           continue;
 
-        // Do not include device-local memory types if a non-device
-        // local one exists with the same required propery flags.
-        if (mask && !(flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-         && (typeFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-          continue;
-
-        mask |= 1u << j;
+        if (typeFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+          vidmemMask |= 1u << j;
+        else
+          sysmemMask |= 1u << j;
       }
 
-      m_memTypesByPropertyFlags[i] = mask;
+      // If a system memory type exists with the given properties, do not
+      // include any device-local memory types. This way we won't ever pick
+      // host-visible vram when explicitly trying to allocate system memory.
+      m_memTypesByPropertyFlags[i] = sysmemMask ? sysmemMask : vidmemMask;
     }
 
     // If there is no cached coherent memory type, reuse the uncached
