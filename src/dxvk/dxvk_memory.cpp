@@ -1405,8 +1405,10 @@ namespace dxvk {
   void DxvkMemoryAllocator::freeAllocation(
           DxvkResourceAllocation* allocation) {
     if (allocation->m_flags.test(DxvkAllocationFlag::ClearOnFree)) {
-      if (allocation->m_mapPtr)
+      if (allocation->m_mapPtr) {
         bit::bclear(allocation->m_mapPtr, allocation->m_size);
+        bit::sfence();
+      }
     }
 
     if (allocation->m_flags.test(DxvkAllocationFlag::CanCache)) {
@@ -1610,8 +1612,10 @@ namespace dxvk {
           "\n  size: ", memory.size, " bytes"));
       }
 
-      if (m_device->config().zeroMappedMemory)
+      if (m_device->config().zeroMappedMemory) {
         bit::bclear(memory.mapPtr, memory.size);
+        bit::sfence();
+      }
 
       Logger::debug(str::format("Mapped memory region 0x", std::hex,
         reinterpret_cast<uintptr_t>(memory.mapPtr), " - 0x",
