@@ -306,6 +306,11 @@ namespace dxvk {
     if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
       devExtensions.amdMemoryOverallocationBehaviour.setMode(DxvkExtMode::Optional);
 
+    // Proprietary qcom is broken and will fail device creation if we
+    // enable EXT_multi_draw, despite advertizing it as supported.
+    if (m_deviceInfo.vk12.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY)
+      devExtensions.extMultiDraw.setMode(DxvkExtMode::Disabled);
+
     DxvkNameSet extensionsEnabled;
 
     if (!m_deviceExtensions.enableExtensions(
