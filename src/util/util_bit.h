@@ -632,4 +632,17 @@ namespace dxvk::bit {
     return float(n) / float(1u << F);
   }
 
+
+  /**
+   * \brief Flush pending stores, if any
+   *
+   * Needed on x86 after writing to mapped memory or using non-temporal
+   * stores in order to flush write-combined buffers.
+   */
+  inline void sfence() {
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+    _mm_sfence();
+    #endif
+  }
+
 }
