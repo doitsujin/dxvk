@@ -38,6 +38,7 @@ namespace dxvk {
     disableMsaa              = options.disableMsaa;
     forceSampleRateShading   = options.forceSampleRateShading;
     enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
+    supportsTightIcbPacking  = device->features().vk12.uniformBufferStandardLayout;
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {

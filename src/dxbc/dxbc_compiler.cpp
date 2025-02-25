@@ -241,8 +241,8 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.uniformSize = m_icbData.size();
-    info.uniformData = m_icbData.data();
+    info.uniformSize = m_icbData.size() * sizeof(uint32_t);
+    info.uniformData = reinterpret_cast<const char*>(m_icbData.data());
     info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
     info.pushConstSize = sizeof(DxbcPushConstants);
     info.outputTopology = m_outputTopology;
@@ -817,7 +817,7 @@ namespace dxvk {
     if (ins.controls.accessType() == DxbcConstantBufferAccessType::DynamicallyIndexed)
       elementCount = 4096;
 
-    this->emitDclConstantBufferVar(bufferId, elementCount,
+    this->emitDclConstantBufferVar(bufferId, elementCount, 4u,
       str::format("cb", bufferId).c_str());
   }
   
@@ -825,13 +825,14 @@ namespace dxvk {
   void DxbcCompiler::emitDclConstantBufferVar(
           uint32_t                regIdx,
           uint32_t                numConstants,
+          uint32_t                numComponents,
     const char*                   name) {
     // Uniform buffer data is stored as a fixed-size array
     // of 4x32-bit vectors. SPIR-V requires explicit strides.
     const uint32_t arrayType = m_module.defArrayTypeUnique(
-      getVectorTypeId({ DxbcScalarType::Float32, 4 }),
+      getVectorTypeId({ DxbcScalarType::Float32, numComponents }),
       m_module.constu32(numConstants));
-    m_module.decorateArrayStride(arrayType, 16);
+    m_module.decorateArrayStride(arrayType, sizeof(uint32_t) * numComponents);
     
     // SPIR-V requires us to put that array into a
     // struct and decorate that struct as a block.
@@ -1586,13 +1587,27 @@ namespace dxvk {
           uint32_t                dwordCount,
     const uint32_t*               dwordArray,
           uint32_t                componentCount) {
-    this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb");
+    uint32_t vectorCount = dwordCount / 4u;
 
-    m_icbData.resize(dwordCount * sizeof(uint32_t));
-    std::memcpy(m_icbData.data(), dwordArray, m_icbData.size());
+    // Tightly pack vec2 or scalar arrays if possible. Don't bother with
+    // vec3 since we'd rather have properly vectorized loads in that case.
+    if (m_moduleInfo.options.supportsTightIcbPacking && componentCount <= 2u)
+      m_icbComponents = componentCount;
+    else
+      m_icbComponents = 4u;
 
-    m_icbComponents = 4u;
-    m_icbSize = dwordCount / 4u;
+    // Immediate constant buffer can be read out of bounds, declare
+    // it with the maximum possible size and rely on robustness.
+    this->emitDclConstantBufferVar(Icb_BindingSlotId, 4096u, m_icbComponents, "icb");
+
+    m_icbData.reserve(vectorCount * componentCount);
+
+    for (uint32_t i = 0; i < dwordCount; i += 4u) {
+      for (uint32_t c = 0; c < m_icbComponents; c++)
+        m_icbData.push_back(dwordArray[i + c]);
+    }
+
+    m_icbSize = vectorCount;
   }
 
 

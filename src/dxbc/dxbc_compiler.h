@@ -504,7 +504,7 @@ namespace dxvk {
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
     uint32_t          m_icbArray = 0;
-    std::vector<char> m_icbData;
+    std::vector<uint32_t> m_icbData;
 
     uint32_t          m_icbComponents = 0u;
     uint32_t          m_icbSize = 0u;
@@ -593,6 +593,7 @@ namespace dxvk {
     void emitDclConstantBufferVar(
             uint32_t                regIdx,
             uint32_t                numConstants,
+            uint32_t                numComponents,
       const char*                   name);
     
     void emitDclSampler(

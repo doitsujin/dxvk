@@ -49,6 +49,10 @@ namespace dxvk {
     // Enable per-sample interlock if supported
     bool enableSampleShadingInterlock = false;
 
+    /// Use tightly packed arrays for immediate
+    /// constant buffers if possible
+    bool supportsTightIcbPacking = false;
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 
