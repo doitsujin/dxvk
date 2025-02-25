@@ -406,8 +406,10 @@ namespace dxvk {
     }
 
     // Enable multi-draw for draw batching
-    enabledFeatures.extMultiDraw.multiDraw =
-      m_deviceFeatures.extMultiDraw.multiDraw;
+    if (devExtensions.extMultiDraw) {
+      enabledFeatures.extMultiDraw.multiDraw =
+        m_deviceFeatures.extMultiDraw.multiDraw;
+    }
 
     // Enable memory priority and pageable memory if supported
     // to improve driver-side memory management
