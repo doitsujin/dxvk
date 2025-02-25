@@ -47,7 +47,6 @@ namespace dxvk {
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
   : m_info(info), m_code(spirv), m_bindings(info.stage) {
-    m_info.uniformData = nullptr;
     m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
@@ -64,13 +63,6 @@ namespace dxvk {
       pushConst.size = info.pushConstSize;
 
       m_bindings.addPushConstantRange(pushConst);
-    }
-
-    // Copy uniform buffer data
-    if (info.uniformSize) {
-      m_uniformData.resize(info.uniformSize);
-      std::memcpy(m_uniformData.data(), info.uniformData, info.uniformSize);
-      m_info.uniformData = m_uniformData.data();
     }
 
     // Run an analysis pass over the SPIR-V code to gather some
