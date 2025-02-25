@@ -353,6 +353,10 @@ namespace dxvk {
     // Required for proper GPU synchronization
     enabledFeatures.vk12.timelineSemaphore = VK_TRUE;
 
+    // Used for better constant array packing in some cases
+    enabledFeatures.vk12.uniformBufferStandardLayout =
+      m_deviceFeatures.vk12.uniformBufferStandardLayout;
+
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
     enabledFeatures.vk13.robustImageAccess =
