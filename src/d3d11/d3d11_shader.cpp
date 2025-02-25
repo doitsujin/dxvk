@@ -59,13 +59,13 @@ namespace dxvk {
     }
     
     // Create shader constant buffer if necessary
-    const DxvkShaderCreateInfo& shaderInfo = m_shader->info();
+    auto icb = module.icbInfo();
 
-    if (shaderInfo.uniformSize) {
-      DxvkBufferCreateInfo info;
-      info.size   = shaderInfo.uniformSize;
+    if (icb.size) {
+      DxvkBufferCreateInfo info = { };
+      info.size   = align(icb.size, 256u);
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages = util::pipelineStages(shaderInfo.stage);
+      info.stages = util::pipelineStages(m_shader->info().stage);
       info.access = VK_ACCESS_UNIFORM_READ_BIT;
       info.debugName = "Icb";
       
@@ -75,7 +75,8 @@ namespace dxvk {
         | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
       
       m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, memFlags);
-      std::memcpy(m_buffer->mapPtr(0), shaderInfo.uniformData, shaderInfo.uniformSize);
+      std::memcpy(m_buffer->mapPtr(0), icb.data, icb.size);
+      std::memset(m_buffer->mapPtr(icb.size), 0, info.size - icb.size);
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
