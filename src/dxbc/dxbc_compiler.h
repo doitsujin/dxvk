@@ -503,8 +503,11 @@ namespace dxvk {
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
-    uint32_t m_immConstBuf = 0;
-    std::vector<char> m_immConstData;
+    uint32_t          m_icbArray = 0;
+    std::vector<char> m_icbData;
+
+    uint32_t          m_icbComponents = 0u;
+    uint32_t          m_icbSize = 0u;
     
     ///////////////////////////////////////////////////
     // Sample pos array. If defined, this iis an array
@@ -650,11 +653,13 @@ namespace dxvk {
     
     void emitDclImmediateConstantBufferBaked(
             uint32_t                dwordCount,
-      const uint32_t*               dwordArray);
+      const uint32_t*               dwordArray,
+            uint32_t                componentCount);
     
     void emitDclImmediateConstantBufferUbo(
             uint32_t                dwordCount,
-      const uint32_t*               dwordArray);
+      const uint32_t*               dwordArray,
+            uint32_t                componentCount);
     
     void emitCustomData(
       const DxbcShaderInstruction&  ins);
