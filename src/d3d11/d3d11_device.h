@@ -429,6 +429,13 @@ namespace dxvk {
       m_initializer->NotifyContextFlush();
     }
     
+    void InitShaderIcb(
+            D3D11CommonShader*          pShader,
+            size_t                      IcbSize,
+      const void*                       pIcbData) {
+      return m_initializer->InitShaderIcb(pShader, IcbSize, pIcbData);
+    }
+
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
     }

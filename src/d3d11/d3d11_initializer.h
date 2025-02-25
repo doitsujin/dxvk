@@ -3,7 +3,9 @@
 #include "../dxvk/dxvk_staging.h"
 
 #include "d3d11_buffer.h"
+#include "d3d11_shader.h"
 #include "d3d11_texture.h"
+#include "d3d11_view_uav.h"
 
 namespace dxvk {
 
@@ -57,6 +59,11 @@ namespace dxvk {
     void InitUavCounter(
             D3D11UnorderedAccessView*   pUav);
     
+    void InitShaderIcb(
+            D3D11CommonShader*          pShader,
+            size_t                      IcbSize,
+      const void*                       pIcbData);
+
   private:
 
     dxvk::mutex       m_mutex;
