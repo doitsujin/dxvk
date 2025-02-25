@@ -64,19 +64,17 @@ namespace dxvk {
     if (icb.size) {
       DxvkBufferCreateInfo info = { };
       info.size   = align(icb.size, 256u);
-      info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+      info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                  | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
       info.stages = util::pipelineStages(m_shader->info().stage);
-      info.access = VK_ACCESS_UNIFORM_READ_BIT;
+      info.access = VK_ACCESS_UNIFORM_READ_BIT
+                  | VK_ACCESS_TRANSFER_WRITE_BIT;
       info.debugName = "Icb";
       
-      VkMemoryPropertyFlags memFlags
-        = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-      
-      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, memFlags);
-      std::memcpy(m_buffer->mapPtr(0), icb.data, icb.size);
-      std::memset(m_buffer->mapPtr(icb.size), 0, info.size - icb.size);
+      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      // Upload immediate constant buffer to VRAM
+      pDevice->InitShaderIcb(this, icb.size, icb.data);
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
