@@ -54,9 +54,6 @@ namespace dxvk {
     /// Push constant range
     VkShaderStageFlags pushConstStages = 0;
     uint32_t pushConstSize = 0;
-    /// Uniform buffer data
-    uint32_t uniformSize = 0;
-    const char* uniformData = nullptr;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
@@ -266,7 +263,6 @@ namespace dxvk {
     uint32_t                      m_specConstantMask = 0;
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
-    std::vector<char>             m_uniformData;
     std::vector<BindingOffsets>   m_bindingOffsets;
 
     DxvkBindingLayout             m_bindings;
