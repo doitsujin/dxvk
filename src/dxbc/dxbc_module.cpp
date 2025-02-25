@@ -65,6 +65,8 @@ namespace dxvk {
     
     this->runCompiler(compiler, m_shexChunk->slice());
 
+    m_icb = compiler.getIcbData();
+
     return compiler.finalize();
   }
   

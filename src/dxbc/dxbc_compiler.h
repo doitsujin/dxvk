@@ -173,8 +173,8 @@ namespace dxvk {
 
     bool needsOutputSetup = false;
   };
-  
-  
+
+
   /**
    * \brief Pixel shader-specific structure
    */
@@ -404,6 +404,17 @@ namespace dxvk {
      * \returns The final shader object
      */
     Rc<DxvkShader> finalize();
+
+    /**
+     * \brief Extracts immediate constant buffer data
+     *
+     * Only defined if the ICB needs to be backed by a
+     * uniform buffer.
+     * \returns Immediate constant buffer data
+     */
+    std::vector<uint32_t> getIcbData() const {
+      return std::move(m_icbData);
+    }
     
   private:
     

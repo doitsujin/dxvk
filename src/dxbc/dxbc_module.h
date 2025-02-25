@@ -19,6 +19,15 @@ namespace dxvk {
   class DxbcCompiler;
   
   /**
+   * \brief Immediate constant buffer properties
+   */
+  struct DxbcIcbInfo {
+    size_t      size = 0u;
+    const void* data = nullptr;
+  };
+
+
+  /**
    * \brief DXBC shader module
    * 
    * Reads the DXBC byte code and extracts information
@@ -50,6 +59,19 @@ namespace dxvk {
      */
     std::optional<DxbcBindingMask> bindings() const {
       return m_bindings;
+    }
+
+    /**
+     * \brief Retrieves immediate constant buffer info
+     *
+     * Only valid after successfully compiling the shader.
+     * \returns Immediate constant buffer data
+     */
+    DxbcIcbInfo icbInfo() const {
+      DxbcIcbInfo result = { };
+      result.size = m_icb.size() * sizeof(uint32_t);
+      result.data = m_icb.data();
+      return result;
     }
 
     /**
@@ -86,7 +108,7 @@ namespace dxvk {
     Rc<DxvkShader> compilePassthroughShader(
       const DxbcModuleInfo& moduleInfo,
       const std::string&    fileName) const;
-    
+
   private:
     
     DxbcHeader   m_header;
@@ -95,6 +117,8 @@ namespace dxvk {
     Rc<DxbcIsgn> m_osgnChunk;
     Rc<DxbcIsgn> m_psgnChunk;
     Rc<DxbcShex> m_shexChunk;
+
+    std::vector<uint32_t> m_icb;
 
     std::optional<DxbcBindingMask> m_bindings;
     

@@ -241,8 +241,6 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.uniformSize = m_icbData.size() * sizeof(uint32_t);
-    info.uniformData = reinterpret_cast<const char*>(m_icbData.data());
     info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
     info.pushConstSize = sizeof(DxbcPushConstants);
     info.outputTopology = m_outputTopology;
