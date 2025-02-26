@@ -74,6 +74,7 @@ namespace dxvk {
     bool      fsDualSrcBlend  = false;
     bool      fsFlatShading   = false;
     uint32_t  undefinedInputs = 0;
+    VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 
@@ -281,6 +282,10 @@ namespace dxvk {
     static void emitFlatShadingDeclarations(
             SpirvCodeBuffer&          code,
             uint32_t                  inputMask);
+
+    static void patchInputTopology(
+            SpirvCodeBuffer&          code,
+            VkPrimitiveTopology       topology);
 
   };
   
