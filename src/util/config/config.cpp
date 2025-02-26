@@ -458,6 +458,11 @@ namespace dxvk {
     { R"(\\FarCry(5|NewDawn)\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
+    /* Watch Dogs 2 - ships broken compute shaders *
+     * with no barriers when they are needed       */
+    { R"(\\WatchDogs2\.exe$)", {{
+      { "d3d11.forceComputeUavBarriers",    "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
