@@ -59,6 +59,11 @@ namespace dxvk::hud {
     Rc<T> addItem(const char* name, int32_t at, Args... args) {
       return m_hudItems.add<T>(name, at, std::forward<Args>(args)...);
     }
+
+    template<typename T>
+    int32_t getItemPos() {
+      return m_hudItems.getItemPos<T>();
+    }
     
     /**
      * \brief Creates the HUD

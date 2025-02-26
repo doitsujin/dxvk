@@ -120,6 +120,9 @@ dxvk_src = [
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_item.cpp',
   'hud/dxvk_hud_renderer.cpp',
+
+  'framepacer/dxvk_framepacer.cpp',
+  'framepacer/dxvk_framepacer_mode_low_latency.cpp',
 ]
 
 if platform == 'windows'

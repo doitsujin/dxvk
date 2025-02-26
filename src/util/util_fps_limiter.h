@@ -7,6 +7,8 @@
 #include "util_time.h"
 
 namespace dxvk {
+
+  class DxvkLatencyTracker;
   
   /**
    * \brief Frame rate limiter
@@ -38,13 +40,15 @@ namespace dxvk {
      * and the time since the last call to \ref delay is
      * shorter than the target interval.
      */
-    void delay();
+    void delay(const Rc<DxvkLatencyTracker>& tracker);
 
     /**
      * \brief Queries environment override
      * \returns Frame rate given by environment override
      */
     static std::optional<double> getEnvironmentOverride();
+
+    static std::atomic<bool> m_isActive;
 
   private:
 
