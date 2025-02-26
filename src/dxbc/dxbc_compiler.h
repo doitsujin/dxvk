@@ -483,7 +483,12 @@ namespace dxvk {
     // Control flow information. Stores labels for
     // currently active if-else blocks and loops.
     std::vector<DxbcCfgBlock> m_controlFlowBlocks;
-    
+
+    bool m_topLevelIsUniform = true;
+
+    uint64_t m_uavRdMask = 0u;
+    uint64_t m_uavWrMask = 0u;
+
     //////////////////////////////////////////////
     // Function state tracking. Required in order
     // to properly end functions in some cases.
@@ -1257,6 +1262,10 @@ namespace dxvk {
     
     bool ignoreInputSystemValue(
             DxbcSystemValue         sv) const;
+
+    void emitUavBarrier(
+            uint64_t                readMask,
+            uint64_t                writeMask);
 
     ///////////////////////////
     // Type definition methods

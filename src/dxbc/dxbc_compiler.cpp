@@ -2831,6 +2831,9 @@ namespace dxvk {
     const DxbcRegister& dstReg = ins.dst[0];
     const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
 
+    if (dstReg.type == DxbcOperandType::UnorderedAccessView)
+      emitUavBarrier(uint64_t(1u) << srcReg.idx[0].offset, 0u);
+
     // Retrieve common info about the buffer
     const DxbcBufferInfo bufferInfo = getBufferInfo(srcReg);
 
@@ -3048,6 +3051,9 @@ namespace dxvk {
     // the data depends on the register type.
     const DxbcRegister& dstReg = ins.dst[0];
     const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
+
+    if (dstReg.type == DxbcOperandType::UnorderedAccessView)
+      emitUavBarrier(0u, uint64_t(1u) << dstReg.idx[0].offset);
 
     DxbcRegisterValue value = emitRegisterLoad(srcReg, dstReg.mask);
     value = emitRegisterBitcast(value, DxbcScalarType::Uint32);
@@ -4157,7 +4163,9 @@ namespace dxvk {
     //    (src1) The UAV to load from
     const uint32_t registerId = ins.src[1].idx[0].offset;
     const DxbcUav uavInfo = m_uavs.at(registerId);
-    
+
+    emitUavBarrier(uint64_t(1u) << registerId, 0u);
+
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(
       ins.src[0], uavInfo.imageInfo);
@@ -4210,6 +4218,7 @@ namespace dxvk {
     //    (src0) The texture or buffer coordinates
     //    (src1) The value to store
     const DxbcBufferInfo uavInfo = getBufferInfo(ins.dst[0]);
+    emitUavBarrier(0u, uint64_t(1u) << ins.dst[0].idx[0].offset);
 
     // Set image operands for coherent access if necessary    
     SpirvImageOperands imageOperands;
@@ -4551,6 +4560,8 @@ namespace dxvk {
       // return can be used in place of break to terminate a case block
       if (m_controlFlowBlocks.back().type == DxbcCfgBlockType::Switch)
         m_controlFlowBlocks.back().b_switch.labelCase = labelId;
+
+      m_topLevelIsUniform = false;
     } else {
       // Last instruction in the current function
       this->emitFunctionEnd();
@@ -4580,6 +4591,9 @@ namespace dxvk {
     m_module.opReturn();
 
     m_module.opLabel(continueLabel);
+
+    // The return condition may be non-uniform
+    m_topLevelIsUniform = false;
   }
   
   
@@ -4606,8 +4620,11 @@ namespace dxvk {
     m_module.opLabel(cond.labelEnd);
 
     m_module.enableCapability(spv::CapabilityDemoteToHelperInvocation);
+
+    // Discard is just retc in a trenchcoat
+    m_topLevelIsUniform = false;
   }
-  
+
   
   void DxbcCompiler::emitControlFlowLabel(const DxbcShaderInstruction& ins) {
     uint32_t functionNr = ins.dst[0].idx[0].offset;
@@ -4623,6 +4640,10 @@ namespace dxvk {
     m_module.setDebugName(functionId, str::format("label", functionNr).c_str());
     
     m_insideFunction = true;
+
+    // We have to assume that this function gets
+    // called from non-uniform control flow
+    m_topLevelIsUniform = false;
   }
 
   
@@ -4670,57 +4691,85 @@ namespace dxvk {
   void DxbcCompiler::emitControlFlow(const DxbcShaderInstruction& ins) {
     switch (ins.op) {
       case DxbcOpcode::If:
-        return this->emitControlFlowIf(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowIf(ins);
+        break;
         
       case DxbcOpcode::Else:
-        return this->emitControlFlowElse(ins);
+        this->emitControlFlowElse(ins);
+        break;
         
       case DxbcOpcode::EndIf:
-        return this->emitControlFlowEndIf(ins);
+        this->emitControlFlowEndIf(ins);
+        this->emitUavBarrier(0, 0);
+        break;
         
       case DxbcOpcode::Switch:
-        return this->emitControlFlowSwitch(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowSwitch(ins);
+        break;
         
       case DxbcOpcode::Case:
-        return this->emitControlFlowCase(ins);
+        this->emitControlFlowCase(ins);
+        break;
         
       case DxbcOpcode::Default:
-        return this->emitControlFlowDefault(ins);
+        this->emitControlFlowDefault(ins);
+        break;
         
       case DxbcOpcode::EndSwitch:
-        return this->emitControlFlowEndSwitch(ins);
-        
+        this->emitControlFlowEndSwitch(ins);
+        this->emitUavBarrier(0, 0);
+        break;
+
       case DxbcOpcode::Loop:
-        return this->emitControlFlowLoop(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowLoop(ins);
+        break;
         
       case DxbcOpcode::EndLoop:
-        return this->emitControlFlowEndLoop(ins);
-        
+        this->emitControlFlowEndLoop(ins);
+        this->emitUavBarrier(0, 0);
+        break;
+
       case DxbcOpcode::Break:
       case DxbcOpcode::Continue:
-        return this->emitControlFlowBreak(ins);
+        this->emitControlFlowBreak(ins);
+        break;
         
       case DxbcOpcode::Breakc:
       case DxbcOpcode::Continuec:
-        return this->emitControlFlowBreakc(ins);
+        this->emitControlFlowBreakc(ins);
+        break;
 
       case DxbcOpcode::Ret:
-        return this->emitControlFlowRet(ins);
+        this->emitControlFlowRet(ins);
+        break;
 
       case DxbcOpcode::Retc:
-        return this->emitControlFlowRetc(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowRetc(ins);
+        break;
         
       case DxbcOpcode::Discard:
-        return this->emitControlFlowDiscard(ins);
+        this->emitControlFlowDiscard(ins);
+        break;
       
       case DxbcOpcode::Label:
-        return this->emitControlFlowLabel(ins);
+        this->emitControlFlowLabel(ins);
+        break;
 
       case DxbcOpcode::Call:
-        return this->emitControlFlowCall(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowCall(ins);
+        this->emitUavBarrier(-1, -1);
+        break;
 
       case DxbcOpcode::Callc:
-        return this->emitControlFlowCallc(ins);
+        this->emitUavBarrier(0, 0);
+        this->emitControlFlowCallc(ins);
+        this->emitUavBarrier(-1, -1);
+        break;
 
       default:
         Logger::warn(str::format(
@@ -7870,6 +7919,53 @@ namespace dxvk {
       default:
         return false;
     }
+  }
+
+
+  void DxbcCompiler::emitUavBarrier(uint64_t readMask, uint64_t writeMask) {
+    if (!m_moduleInfo.options.forceComputeUavBarriers
+     || m_programInfo.type() != DxbcProgramType::ComputeShader)
+      return;
+
+    // If both masks are 0, emit a barrier in case at least one read-write UAV
+    // has a pending unsynchronized access. Only consider read-after-write and
+    // write-after-read hazards, assume that back-to-back stores are safe and
+    // do not overlap in memory. Atomics are also completely ignored here.
+    uint64_t rdMask = m_uavRdMask;
+    uint64_t wrMask = m_uavWrMask;
+
+    bool insertBarrier = bool(rdMask & wrMask);
+
+    if (readMask || writeMask) {
+      rdMask &= m_uavWrMask;
+      wrMask &= m_uavRdMask;
+    }
+
+    for (auto uav : bit::BitMask(rdMask | wrMask)) {
+      constexpr VkAccessFlags rwAccess = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+      insertBarrier |= (m_analysis->uavInfos[uav].accessFlags & rwAccess) == rwAccess;
+    }
+
+    // Need to be in uniform top-level control flow, or otherwise
+    // it is not safe to insert control barriers.
+    if (insertBarrier && m_controlFlowBlocks.empty() && m_topLevelIsUniform) {
+      m_module.opControlBarrier(
+        m_module.constu32(spv::ScopeWorkgroup),
+        m_module.constu32(m_hasGloballyCoherentUav ? spv::ScopeQueueFamily : spv::ScopeWorkgroup),
+        m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
+                        | spv::MemorySemanticsImageMemoryMask
+                        | spv::MemorySemanticsUniformMemoryMask
+                        | spv::MemorySemanticsAcquireReleaseMask
+                        | spv::MemorySemanticsMakeAvailableMask
+                        | spv::MemorySemanticsMakeVisibleMask));
+
+      m_uavWrMask = 0u;
+      m_uavRdMask = 0u;
+    }
+
+    // Mark pending accesses
+    m_uavWrMask |= writeMask;
+    m_uavRdMask |= readMask;
   }
 
   
