@@ -208,6 +208,9 @@ namespace dxvk {
 
     // End the main function
     emitFunctionEnd();
+
+    // For pass-through we always assume points
+    m_inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
   }
   
   
@@ -243,6 +246,7 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
     info.pushConstSize = sizeof(DxbcPushConstants);
+    info.inputTopology = m_inputTopology;
     info.outputTopology = m_outputTopology;
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
@@ -1292,24 +1296,22 @@ namespace dxvk {
     // The input primitive type is stored within in the
     // control bits of the opcode token. In SPIR-V, we
     // have to define an execution mode.
-    const spv::ExecutionMode mode = [&] {
+    const auto mode = [&] {
       switch (ins.controls.primitive()) {
-        case DxbcPrimitive::Point:       return spv::ExecutionModeInputPoints;
-        case DxbcPrimitive::Line:        return spv::ExecutionModeInputLines;
-        case DxbcPrimitive::Triangle:    return spv::ExecutionModeTriangles;
-        case DxbcPrimitive::LineAdj:     return spv::ExecutionModeInputLinesAdjacency;
-        case DxbcPrimitive::TriangleAdj: return spv::ExecutionModeInputTrianglesAdjacency;
+        case DxbcPrimitive::Point:       return std::make_pair(VK_PRIMITIVE_TOPOLOGY_POINT_LIST,                   spv::ExecutionModeInputPoints);
+        case DxbcPrimitive::Line:        return std::make_pair(VK_PRIMITIVE_TOPOLOGY_LINE_LIST,                    spv::ExecutionModeInputLines);
+        case DxbcPrimitive::Triangle:    return std::make_pair(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,                spv::ExecutionModeTriangles);
+        case DxbcPrimitive::LineAdj:     return std::make_pair(VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,     spv::ExecutionModeInputLinesAdjacency);
+        case DxbcPrimitive::TriangleAdj: return std::make_pair(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY, spv::ExecutionModeInputTrianglesAdjacency);
         default: throw DxvkError("DxbcCompiler: Unsupported primitive type");
       }
     }();
-    
+
     m_gs.inputPrimitive = ins.controls.primitive();
-    m_module.setExecutionMode(m_entryPointId, mode);
+    m_module.setExecutionMode(m_entryPointId, mode.second);
+    m_inputTopology = mode.first;
     
-    const uint32_t vertexCount
-      = primitiveVertexCount(m_gs.inputPrimitive);
-    
-    emitDclInputArray(vertexCount);
+    emitDclInputArray(primitiveVertexCount(m_gs.inputPrimitive));
   }
   
   
