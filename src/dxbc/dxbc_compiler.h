@@ -968,9 +968,6 @@ namespace dxvk {
     DxbcRegisterPointer emitGetConstBufPtr(
       const DxbcRegister&           operand);
     
-    DxbcRegisterPointer emitGetImmConstBufPtr(
-      const DxbcRegister&           operand);
-    
     DxbcRegisterPointer emitGetOperandPtr(
       const DxbcRegister&           operand);
     
@@ -1027,13 +1024,16 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcRegMask             writeMask);
     
+    DxbcRegisterValue emitImmediateConstantBufferLoadRaw(
+      const DxbcRegister&           reg);
+
     DxbcRegisterValue emitRegisterLoadRaw(
       const DxbcRegister&           reg);
     
     DxbcRegisterValue emitConstantBufferLoad(
       const DxbcRegister&           reg,
             DxbcRegMask             writeMask);
-    
+
     DxbcRegisterValue emitRegisterLoad(
       const DxbcRegister&           reg,
             DxbcRegMask             writeMask);

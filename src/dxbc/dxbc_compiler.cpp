@@ -5326,9 +5326,11 @@ namespace dxvk {
   }
   
   
-  DxbcRegisterPointer DxbcCompiler::emitGetImmConstBufPtr(
+  DxbcRegisterValue DxbcCompiler::emitImmediateConstantBufferLoadRaw(
     const DxbcRegister&           operand) {
     DxbcRegisterValue constId = emitIndexLoad(operand.idx[0]);
+
+    DxbcRegisterValue value = { };
 
     if (m_icbArray) {
       // We pad the icb array with an extra zero vector, so we can
@@ -5336,40 +5338,54 @@ namespace dxvk {
       constId.id = m_module.opUMin(getVectorTypeId(constId.type),
         constId.id, m_module.constu32(m_icbSize));
 
-      DxbcRegisterInfo ptrInfo;
+      DxbcRegisterInfo ptrInfo = { };
       ptrInfo.type.ctype   = DxbcScalarType::Uint32;
       ptrInfo.type.ccount  = m_icbComponents;
-      ptrInfo.type.alength = 0;
       ptrInfo.sclass = spv::StorageClassPrivate;
 
-      DxbcRegisterPointer result;
-      result.type.ctype  = ptrInfo.type.ctype;
-      result.type.ccount = ptrInfo.type.ccount;
-      result.id = m_module.opAccessChain(
-        getPointerTypeId(ptrInfo),
-        m_icbArray, 1, &constId.id);
-      return result;
+      uint32_t ptrId = m_module.opAccessChain(
+        getPointerTypeId(ptrInfo), m_icbArray, 1, &constId.id);
+
+      value.type.ctype = ptrInfo.type.ctype;
+      value.type.ccount = ptrInfo.type.ccount;
+      value.id = m_module.opLoad(getVectorTypeId(value.type), ptrId);
     } else if (m_constantBuffers.at(Icb_BindingSlotId).varId != 0) {
       const std::array<uint32_t, 2> indices =
         {{ m_module.consti32(0), constId.id }};
       
-      DxbcRegisterInfo ptrInfo;
+      DxbcRegisterInfo ptrInfo = { };
       ptrInfo.type.ctype   = DxbcScalarType::Float32;
       ptrInfo.type.ccount  = m_icbComponents;
-      ptrInfo.type.alength = 0;
       ptrInfo.sclass = spv::StorageClassUniform;
 
-      DxbcRegisterPointer result;
-      result.type.ctype  = ptrInfo.type.ctype;
-      result.type.ccount = ptrInfo.type.ccount;
-      result.id = m_module.opAccessChain(
-        getPointerTypeId(ptrInfo),
+      uint32_t ptrId = m_module.opAccessChain(getPointerTypeId(ptrInfo),
         m_constantBuffers.at(Icb_BindingSlotId).varId,
         indices.size(), indices.data());
-      return result;
+
+      value.type.ctype = ptrInfo.type.ctype;
+      value.type.ccount = ptrInfo.type.ccount;
+      value.id = m_module.opLoad(getVectorTypeId(value.type), ptrId);
     } else {
       throw DxvkError("DxbcCompiler: Immediate constant buffer not defined");
     }
+
+    // Pad to vec4 since apps may want to access
+    // components that we optimized away
+    if (value.type.ccount < 4u) {
+      DxbcVectorType zeroType;
+      zeroType.ctype = value.type.ctype;
+      zeroType.ccount = 4u - value.type.ccount;
+
+      uint32_t zeroVector = emitBuildZeroVector(zeroType).id;
+
+      std::array<uint32_t, 2> constituents = { value.id, zeroVector };
+
+      value.type.ccount = 4u;
+      value.id = m_module.opCompositeConstruct(getVectorTypeId(value.type),
+        constituents.size(), constituents.data());
+    }
+
+    return value;
   }
   
   
@@ -5391,9 +5407,6 @@ namespace dxvk {
       case DxbcOperandType::Output:
         return emitGetOutputPtr(operand);
       
-      case DxbcOperandType::ImmediateConstantBuffer:
-        return emitGetImmConstBufPtr(operand);
-
       case DxbcOperandType::InputThreadId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 3 },
@@ -5796,6 +5809,9 @@ namespace dxvk {
 
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
+    if (reg.type == DxbcOperandType::ImmediateConstantBuffer)
+      return emitImmediateConstantBufferLoadRaw(reg);
+
     // Try to find index range for the given register
     const DxbcIndexRange* indexRange = nullptr;
 
@@ -5862,24 +5878,7 @@ namespace dxvk {
       }
     }
 
-    DxbcRegisterValue value = emitValueLoad(emitGetOperandPtr(reg));
-
-    // Pad icb values to a vec4 since the app may access components that are always 0
-    if (reg.type == DxbcOperandType::ImmediateConstantBuffer && value.type.ccount < 4u) {
-      DxbcVectorType zeroType;
-      zeroType.ctype = value.type.ctype;
-      zeroType.ccount = 4u - value.type.ccount;
-
-      uint32_t zeroVector = emitBuildZeroVector(zeroType).id;
-
-      std::array<uint32_t, 2> constituents = { value.id, zeroVector };
-
-      value.type.ccount = 4u;
-      value.id = m_module.opCompositeConstruct(getVectorTypeId(value.type),
-        constituents.size(), constituents.data());
-    }
-
-    return value;
+    return emitValueLoad(emitGetOperandPtr(reg));
   }
   
   
