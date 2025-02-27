@@ -1512,6 +1512,11 @@ namespace dxvk {
         break;
     }
 
+    // Special case for the pattern where fxc emits a matrix
+    if (this->emitDclImmediateConstantBufferMatrix(
+        ins.customDataSize, ins.customData, componentCount))
+      return;
+
     uint32_t vectorCount = (ins.customDataSize / 4u);
     uint32_t dwordCount = vectorCount * componentCount;
 
@@ -1608,6 +1613,59 @@ namespace dxvk {
     }
 
     m_icbSize = vectorCount;
+  }
+
+
+  bool DxbcCompiler::emitDclImmediateConstantBufferMatrix(
+          uint32_t                dwordCount,
+    const uint32_t*               dwordArray,
+          uint32_t                componentCount) {
+    // A very common pattern is for fxc to emit a matrix as an icb where each
+    // component only has a non-zero value in a single vector. Detect this
+    // pattern and emit it as a single constant vector instead, and implement
+    // dynamic indexing by selecting either the vector component or zero by
+    // comparing against a component map.
+    uint32_t vectorCount = dwordCount / 4u;
+
+    if (vectorCount > componentCount)
+      return false;
+
+    std::array<uint32_t, 4u> componentMap  = { 0u, 0u, 0u, 0u };
+    std::array<uint32_t, 4u> componentData = { 0u, 0u, 0u, 0u };
+
+    for (uint32_t v = 0; v < vectorCount; v++) {
+      for (uint32_t c = 0; c < componentCount; c++) {
+        uint32_t value = dwordArray[4u * v + c];
+
+        if (value && componentData[c])
+          return false;
+
+        if (value) {
+          componentData[c] = value;
+          componentMap[c] = v;
+        }
+      }
+    }
+
+    uint32_t mapId  = m_module.constvec4u32(componentMap[0],  componentMap[1],  componentMap[2],  componentMap[3]);
+    uint32_t dataId = m_module.constvec4u32(componentData[0], componentData[1], componentData[2], componentData[3]);
+
+    // Emit variables to make it more obvious what's going on
+    DxbcRegisterInfo varInfo = { };
+    varInfo.type.ctype = DxbcScalarType::Uint32;
+    varInfo.type.ccount = 4u;
+    varInfo.sclass = spv::StorageClassPrivate;
+
+    uint32_t ptrTypeId = this->getPointerTypeId(varInfo);
+
+    m_icbMatrixMap = m_module.newVarInit(ptrTypeId, spv::StorageClassPrivate, mapId);
+    m_icbMatrixData = m_module.newVarInit(ptrTypeId, spv::StorageClassPrivate, dataId);
+
+    m_module.setDebugName(m_icbMatrixMap, "icb_sel");
+    m_module.setDebugName(m_icbMatrixData, "icb");
+
+    m_icbComponents = 4u;
+    return true;
   }
 
 
@@ -5349,6 +5407,21 @@ namespace dxvk {
       value.type.ctype = ptrInfo.type.ctype;
       value.type.ccount = ptrInfo.type.ccount;
       value.id = m_module.opLoad(getVectorTypeId(value.type), ptrId);
+    } else if (m_icbMatrixData) {
+      value.type.ctype  = DxbcScalarType::Uint32;
+      value.type.ccount = m_icbComponents;
+
+      uint32_t uintTypeId = getVectorTypeId(value.type);
+      uint32_t boolTypeId = getVectorTypeId({ DxbcScalarType::Bool, m_icbComponents });
+
+      uint32_t indexId = emitRegisterExtend(constId, m_icbComponents).id;
+      uint32_t mapId = m_module.opLoad(uintTypeId, m_icbMatrixMap);
+
+      uint32_t selId = m_module.opIEqual(boolTypeId, indexId, mapId);
+      uint32_t icbId = m_module.opLoad(uintTypeId, m_icbMatrixData);
+      uint32_t zeroId = emitBuildZeroVector(value.type).id;
+
+      value.id = m_module.opSelect(uintTypeId, selId, icbId, zeroId);
     } else if (m_constantBuffers.at(Icb_BindingSlotId).varId != 0) {
       const std::array<uint32_t, 2> indices =
         {{ m_module.consti32(0), constId.id }};
