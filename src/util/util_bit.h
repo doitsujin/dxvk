@@ -632,4 +632,25 @@ namespace dxvk::bit {
     return float(n) / float(1u << F);
   }
 
+
+  /**
+   * \brief 48-bit integer storage type
+   */
+  struct uint48_t {
+    uint48_t() = default;
+
+    explicit uint48_t(uint64_t n)
+    : a(uint16_t(n)), b(uint16_t(n >> 16)), c(uint16_t(n >> 32)) { }
+
+    uint16_t a;
+    uint16_t b;
+    uint16_t c;
+
+    explicit operator uint64_t () const {
+      // GCC generates worse code if we promote to uint64 directly
+      uint32_t lo = uint32_t(a) | (uint32_t(b) << 16);
+      return uint64_t(lo) | (uint64_t(c) << 32);
+    }
+  };
+
 }
