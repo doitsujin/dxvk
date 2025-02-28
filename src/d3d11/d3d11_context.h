@@ -1084,7 +1084,7 @@ namespace dxvk {
             UINT                              SampleMask);
 
     template<bool AllowFlush = !IsDeferred, typename Cmd>
-    void EmitCs(Cmd&& command) {
+    void EmitCs(Cmd&& command, bool disableFlush=false ) {
       m_cmdData = nullptr;
 
       if (unlikely(!m_csChunk->push(command))) {
@@ -1092,7 +1092,8 @@ namespace dxvk {
         m_csChunk = AllocCsChunk();
 
         if constexpr (AllowFlush)
-          GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+          if (!disableFlush)
+            GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         m_csChunk->push(command);
       }

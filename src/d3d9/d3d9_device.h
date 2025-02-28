@@ -1180,13 +1180,14 @@ namespace dxvk {
   private:
 
     template<bool AllowFlush = true, typename Cmd>
-    void EmitCs(Cmd&& command) {
+    void EmitCs(Cmd&& command, bool disableFlush=false) {
       if (unlikely(!m_csChunk->push(command))) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
 
         if constexpr (AllowFlush)
-          ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+          if (!disableFlush)
+            ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         m_csChunk->push(command);
       }
