@@ -17,7 +17,7 @@ namespace dxvk {
    * Information used to optimize barriers when a resource
    * is accessed exlusively via order-invariant stores.
    */
-  enum class DxvkAccessOp : uint32_t {
+  enum class DxvkAccessOp : uint16_t {
     None  = 0,
     Or    = 1,
     And   = 2,
@@ -28,8 +28,6 @@ namespace dxvk {
     UMin  = 7,
     UMax  = 8,
   };
-
-  using DxvkAccessOps = Flags<DxvkAccessOp>;
 
 
   /**
