@@ -136,7 +136,7 @@ namespace dxvk {
     // not implemented methods
 
 
-    void notifyCpuPresentBegin( uint64_t frameId) override { }
+    void notifyCpuPresentBegin( uint64_t frameId ) override { }
     void notifyCpuPresentEnd( uint64_t frameId ) override { }
     void notifyQueuePresentEnd( uint64_t frameId, VkResult status) override { }
     void notifyGpuExecutionBegin( uint64_t frameId ) override { }

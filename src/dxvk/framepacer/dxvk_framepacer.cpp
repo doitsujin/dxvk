@@ -2,6 +2,7 @@
 #include "dxvk_framepacer_mode_low_latency.h"
 #include "dxvk_framepacer_mode_min_latency.h"
 #include "dxvk_options.h"
+#include "../../util/util_flush.h"
 #include "../../util/util_env.h"
 #include "../../util/log/log.h"
 
@@ -40,11 +41,15 @@ namespace dxvk {
 
       case FramePacerMode::LOW_LATENCY:
         Logger::info( "Frame pace: low-latency" );
+        GpuFlushTracker::m_minPendingSubmissions = 1;
+        GpuFlushTracker::m_minChunkCount = 1;
         m_mode = std::make_unique<LowLatencyMode>(mode, &m_latencyMarkersStorage, options);
         break;
 
       case FramePacerMode::MIN_LATENCY:
         Logger::info( "Frame pace: min-latency" );
+        GpuFlushTracker::m_minPendingSubmissions = 1;
+        GpuFlushTracker::m_minChunkCount = 1;
         m_mode = std::make_unique<MinLatencyMode>(mode, &m_latencyMarkersStorage);
         break;
     }
