@@ -7945,26 +7945,28 @@ namespace dxvk {
       if (subresources.levelCount == 1u || subresources.layerCount == layerCount) {
         DxvkAddressRange range;
         range.resource = image.getResourceId();
+        range.accessOp = accessOp;
         range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
         range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
                        + (subresources.baseArrayLayer + subresources.layerCount - 1u);
 
         if (hasWrite)
-          m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
+          m_barrierTracker.insertRange(range, DxvkAccess::Write);
         if (hasRead)
-          m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
+          m_barrierTracker.insertRange(range, DxvkAccess::Read);
       } else {
         DxvkAddressRange range;
         range.resource = image.getResourceId();
+        range.accessOp = accessOp;
 
         for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount; i++) {
           range.rangeStart = i * layerCount + subresources.baseArrayLayer;
           range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
 
           if (hasWrite)
-            m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
+            m_barrierTracker.insertRange(range, DxvkAccess::Write);
           if (hasRead)
-            m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
+            m_barrierTracker.insertRange(range, DxvkAccess::Read);
         }
       }
     }
@@ -8013,13 +8015,14 @@ namespace dxvk {
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
       DxvkAddressRange range;
       range.resource = buffer.getResourceId();
+      range.accessOp = accessOp;
       range.rangeStart = offset;
       range.rangeEnd = offset + size - 1;
 
       if (srcAccess & vk::AccessWriteMask)
-        m_barrierTracker.insertRange(range, DxvkAccess::Write, accessOp);
+        m_barrierTracker.insertRange(range, DxvkAccess::Write);
       if (srcAccess & vk::AccessReadMask)
-        m_barrierTracker.insertRange(range, DxvkAccess::Read, accessOp);
+        m_barrierTracker.insertRange(range, DxvkAccess::Read);
     }
   }
 
@@ -8188,10 +8191,11 @@ namespace dxvk {
 
     DxvkAddressRange range;
     range.resource = buffer.getResourceId();
+    range.accessOp = accessOp;
     range.rangeStart = offset;
     range.rangeEnd = offset + size - 1;
 
-    return m_barrierTracker.findRange(range, access, accessOp);
+    return m_barrierTracker.findRange(range, access);
   }
 
 
@@ -8218,6 +8222,7 @@ namespace dxvk {
     // rendering and compute can only access one mip level.
     DxvkAddressRange range;
     range.resource = image.getResourceId();
+    range.accessOp = accessOp;
     range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
     range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
                    + (subresources.baseArrayLayer + subresources.layerCount - 1u);
@@ -8225,7 +8230,7 @@ namespace dxvk {
     // Probe all subresources first, only check individual mip levels
     // if there are overlaps and if we are checking a subset of array
     // layers of multiple mips.
-    bool dirty = m_barrierTracker.findRange(range, access, accessOp);
+    bool dirty = m_barrierTracker.findRange(range, access);
 
     if (!dirty || subresources.levelCount == 1u || subresources.layerCount == layerCount)
       return dirty;
@@ -8234,7 +8239,7 @@ namespace dxvk {
       range.rangeStart = i * layerCount + subresources.baseArrayLayer;
       range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
 
-      dirty = m_barrierTracker.findRange(range, access, accessOp);
+      dirty = m_barrierTracker.findRange(range, access);
     }
 
     return dirty;
