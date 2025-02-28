@@ -79,8 +79,10 @@ namespace dxvk {
       // and calculate backwards when we want to start this frame
 
       const SyncProps props = getSyncPrediction();
-      int32_t gpuReadyPrediction = duration_cast<microseconds>(
-        m->start + microseconds(m->gpuStart+getGpuStartToFinishPrediction()) - now).count();
+      int32_t lastFrameStart = duration_cast<microseconds>( m->start - now ).count();
+      int32_t gpuReadyPrediction = lastFrameStart
+        + std::max( props.cpuUntilGpuStart, m->gpuStart )
+        + props.optimizedGpuTime;
 
       int32_t targetGpuSync = gpuReadyPrediction + props.gpuSync;
       int32_t gpuDelay = targetGpuSync - props.cpuUntilGpuSync;
@@ -144,6 +146,7 @@ namespace dxvk {
       SyncProps& props = m_props[frameId % m_props.size()];
       props.gpuSync = gpuRun[numLoop-1];
       props.cpuUntilGpuSync = offset + duration_cast<microseconds>( m->gpuSubmit[numLoop-1] - m->start ).count();
+      props.cpuUntilGpuStart = props.cpuUntilGpuSync - props.gpuSync;
       props.optimizedGpuTime = optimizedGpuTime;
       props.csStart = m->csStart;
       props.csFinished = m->csFinished;
@@ -176,6 +179,7 @@ namespace dxvk {
       int32_t optimizedGpuTime;   // gpu executing packed submits in one go
       int32_t gpuSync;            // us after gpuStart
       int32_t cpuUntilGpuSync;
+      int32_t cpuUntilGpuStart;
       int32_t csStart;
       int32_t csFinished;
       bool    isOutlier;
@@ -200,30 +204,6 @@ namespace dxvk {
       }
 
       return m_props[ id % m_props.size() ];
-    };
-
-
-    int32_t getGpuStartToFinishPrediction() {
-      uint64_t id = m_propsFinished;
-      if (id < DXGI_MAX_SWAP_CHAIN_BUFFERS+7)
-        return 0;
-
-      for (size_t i=0; i<7; ++i) {
-        const SyncProps& props = m_props[ (id-i) % m_props.size() ];
-        if (!props.isOutlier) {
-          const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(id-i);
-          if (m->gpuReady.empty() || m->gpuSubmit.empty())
-            return m->gpuFinished - m->gpuStart;
-
-          time_point t = std::max( m->gpuReady[0], m->gpuSubmit[0] );
-          return std::chrono::duration_cast<microseconds>( t - m->start ).count()
-            + props.optimizedGpuTime
-            - m->gpuStart;
-        }
-      }
-
-      const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(id);
-      return m->gpuFinished - m->gpuStart;
     };
 
 
