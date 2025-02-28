@@ -116,9 +116,7 @@ namespace dxvk {
       // where gpuSubmit[i] <= gpuRun[i] for all i
 
       std::vector<int32_t>& gpuRun = m_tempGpuRun;
-      std::vector<int32_t>& gpuRunDurations = m_tempGpuRunDurations;
       gpuRun.clear();
-      gpuRunDurations.clear();
       int32_t optimizedGpuTime = 0;
       gpuRun.push_back(optimizedGpuTime);
 
@@ -127,7 +125,6 @@ namespace dxvk {
         int32_t duration = duration_cast<microseconds>( m->gpuReady[i+1] - _gpuRun ).count();
         optimizedGpuTime += duration;
         gpuRun.push_back(optimizedGpuTime);
-        gpuRunDurations.push_back(duration);
       }
 
       int32_t alignment = duration_cast<microseconds>( m->gpuSubmit[numLoop-1] - m->gpuSubmit[0] ).count()
@@ -177,7 +174,7 @@ namespace dxvk {
 
     struct SyncProps {
       int32_t optimizedGpuTime;   // gpu executing packed submits in one go
-      int32_t gpuSync;            // us after gpuStart
+      int32_t gpuSync;            // gpuStart to this sync point, in microseconds
       int32_t cpuUntilGpuSync;
       int32_t cpuUntilGpuStart;
       int32_t csStart;
@@ -187,9 +184,14 @@ namespace dxvk {
 
 
     SyncProps getSyncPrediction() {
-      // in the future we might use more samples to get a prediction
-      // however, simple averaging gives a slightly artificial mouse input
-      // more advanced methods will be investigated
+      // In the future we might use more samples to get a prediction.
+      // Possibly this will be optional, as until now, basing it on
+      // just the previous frame gave us the best mouse input feel.
+      // Simple averaging or median filtering is surely not the way
+      // to go, but more advanced methods will be investigated.
+      // The best place to filter should be on the Present() timeline,
+      // so not sure if we really will do any filtering here other
+      // than outlier removal, which will dampen stuttering effects.
       SyncProps res = {};
       uint64_t id = m_propsFinished;
       if (id < DXGI_MAX_SWAP_CHAIN_BUFFERS+7)
@@ -210,14 +212,14 @@ namespace dxvk {
     bool isOutlier( uint64_t frameId ) {
       constexpr size_t numLoop = 7;
       int32_t totalCpuTime = 0;
-      for (size_t i=0; i<numLoop; ++i) {
+      for (size_t i=1; i<numLoop; ++i) {
         const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId-i);
         totalCpuTime += m->cpuFinished;
       }
 
-      int32_t avgCpuTime = totalCpuTime / numLoop;
+      int32_t avgCpuTime = totalCpuTime / (numLoop-1);
       const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId);
-      if (m->cpuFinished > 1.7*avgCpuTime || m->gpuSubmit.empty() || m->gpuReady.size() != (m->gpuSubmit.size()+1) )
+      if (m->cpuFinished > 1.3*avgCpuTime || m->gpuSubmit.empty() || m->gpuReady.size() != (m->gpuSubmit.size()+1) )
         return true;
 
       return false;
@@ -232,7 +234,6 @@ namespace dxvk {
     std::atomic<uint64_t> m_propsFinished = { 0 };
 
     std::vector<int32_t>  m_tempGpuRun;
-    std::vector<int32_t>  m_tempGpuRunDurations;
 
   };
 
