@@ -1098,6 +1098,9 @@ namespace dxvk {
         : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
       binding.access = m_analysis->uavInfos[registerId].accessFlags;
 
+      if (!m_analysis->uavInfos[registerId].nonInvariantAccess)
+        binding.accessOp = m_analysis->uavInfos[registerId].atomicStore;
+
       if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))
         m_module.decorate(varId, spv::DecorationNonWritable);
       if (!(binding.access & VK_ACCESS_SHADER_READ_BIT))
@@ -1234,9 +1237,14 @@ namespace dxvk {
       : (isUav ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.resourceBinding = bindingId;
-    binding.access = isUav
-      ? m_analysis->uavInfos[registerId].accessFlags
-      : VkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
+    binding.access = VK_ACCESS_SHADER_READ_BIT;
+
+    if (isUav) {
+      binding.access = m_analysis->uavInfos[registerId].accessFlags;
+
+      if (!m_analysis->uavInfos[registerId].nonInvariantAccess)
+        binding.accessOp = m_analysis->uavInfos[registerId].atomicStore;
+    }
 
     if (useRawSsbo || isUav) {
       if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))

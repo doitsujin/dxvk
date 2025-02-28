@@ -68,7 +68,7 @@ namespace dxvk {
 
     sync::Fence m_fenceGpuStart    = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS) };
     sync::Fence m_fenceGpuFinished = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS) };
-    sync::Fence m_fenceCsFinished  = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS+50) };
+    sync::Fence m_fenceCsFinished  = { sync::Fence(DXGI_MAX_SWAP_CHAIN_BUFFERS) };
 
   };
 

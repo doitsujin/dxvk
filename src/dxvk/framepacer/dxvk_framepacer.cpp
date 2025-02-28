@@ -2,13 +2,14 @@
 #include "dxvk_framepacer_mode_low_latency.h"
 #include "dxvk_framepacer_mode_min_latency.h"
 #include "dxvk_options.h"
+#include "../../util/util_flush.h"
 #include "../../util/util_env.h"
 #include "../../util/log/log.h"
 
 namespace dxvk {
 
 
-  FramePacer::FramePacer( const DxvkOptions& options ) {
+  FramePacer::FramePacer( const DxvkOptions& options, uint64_t firstFrameId ) {
     // we'll default to LOW_LATENCY in the draft-PR for now, for demonstration purposes,
     // highlighting the generally much better input lag and medium-term time consistency.
     // although MAX_FRAME_LATENCY has advantages in many games and is likely the better default,
@@ -40,11 +41,15 @@ namespace dxvk {
 
       case FramePacerMode::LOW_LATENCY:
         Logger::info( "Frame pace: low-latency" );
+        GpuFlushTracker::m_minPendingSubmissions = 1;
+        GpuFlushTracker::m_minChunkCount = 1;
         m_mode = std::make_unique<LowLatencyMode>(mode, &m_latencyMarkersStorage, options);
         break;
 
       case FramePacerMode::MIN_LATENCY:
         Logger::info( "Frame pace: min-latency" );
+        GpuFlushTracker::m_minPendingSubmissions = 1;
+        GpuFlushTracker::m_minChunkCount = 1;
         m_mode = std::make_unique<MinLatencyMode>(mode, &m_latencyMarkersStorage);
         break;
     }
@@ -53,9 +58,20 @@ namespace dxvk {
       gpuStart.store(0);
     }
 
-    // be consistent that every frame has a gpuReady event from the previous frame
-    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(DXGI_MAX_SWAP_CHAIN_BUFFERS+1);
-    m->gpuReady.push_back(high_resolution_clock::now());
+    // be consistent that every frame has a gpuReady event from finishing the previous frame
+    LatencyMarkers* m = m_latencyMarkersStorage.getMarkers( firstFrameId );
+    m->gpuReady.push_back( high_resolution_clock::now() );
+    m_gpuStarts[ firstFrameId % m_gpuStarts.size() ] = gpuReadyBit;
+
+    LatencyMarkersTimeline& timeline = m_latencyMarkersStorage.m_timeline;
+    timeline.cpuFinished.store   ( firstFrameId-1 );
+    timeline.gpuStart.store      ( firstFrameId-1 );
+    timeline.gpuFinished.store   ( firstFrameId-1 );
+    timeline.frameFinished.store ( firstFrameId-1 );
+
+    m_mode->signalGpuStart       ( firstFrameId-1 );
+    m_mode->signalRenderFinished ( firstFrameId-1 );
+    m_mode->signalCsFinished     ( firstFrameId );
   }
 
 

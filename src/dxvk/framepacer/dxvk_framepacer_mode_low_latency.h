@@ -83,11 +83,19 @@ namespace dxvk {
       // and calculate backwards when we want to start this frame
 
       const SyncProps props = getSyncPrediction();
-      int32_t gpuReadyPrediction = duration_cast<microseconds>(
-        m->start + microseconds(m->gpuStart+getGpuStartToFinishPrediction()) - now).count();
+      int32_t lastFrameStart = duration_cast<microseconds>( m->start - now ).count();
+      int32_t gpuReadyPrediction = lastFrameStart
+        + std::max( props.cpuUntilGpuStart, m->gpuStart )
+        + props.optimizedGpuTime;
 
       int32_t targetGpuSync = gpuReadyPrediction + props.gpuSync;
-      int32_t delay = targetGpuSync - props.cpuUntilGpuSync + m_lowLatencyOffset;
+      int32_t gpuDelay = targetGpuSync - props.cpuUntilGpuSync;
+
+      int32_t cpuReadyPrediction = duration_cast<microseconds>(
+        m->start + microseconds(props.csFinished) - now).count();
+      int32_t cpuDelay = cpuReadyPrediction - props.csStart;
+
+      int32_t delay = std::max(gpuDelay, cpuDelay) + m_lowLatencyOffset;
 
       m_lastStart = sleepFor( now, delay );
 
@@ -112,9 +120,7 @@ namespace dxvk {
       // where gpuSubmit[i] <= gpuRun[i] for all i
 
       std::vector<int32_t>& gpuRun = m_tempGpuRun;
-      std::vector<int32_t>& gpuRunDurations = m_tempGpuRunDurations;
       gpuRun.clear();
-      gpuRunDurations.clear();
       int32_t optimizedGpuTime = 0;
       gpuRun.push_back(optimizedGpuTime);
 
@@ -123,7 +129,6 @@ namespace dxvk {
         int32_t duration = duration_cast<microseconds>( m->gpuReady[i+1] - _gpuRun ).count();
         optimizedGpuTime += duration;
         gpuRun.push_back(optimizedGpuTime);
-        gpuRunDurations.push_back(duration);
       }
 
       int32_t alignment = duration_cast<microseconds>( m->gpuSubmit[numLoop-1] - m->gpuSubmit[0] ).count()
@@ -142,7 +147,10 @@ namespace dxvk {
       SyncProps& props = m_props[frameId % m_props.size()];
       props.gpuSync = gpuRun[numLoop-1];
       props.cpuUntilGpuSync = offset + duration_cast<microseconds>( m->gpuSubmit[numLoop-1] - m->start ).count();
+      props.cpuUntilGpuStart = props.cpuUntilGpuSync - props.gpuSync;
       props.optimizedGpuTime = optimizedGpuTime;
+      props.csStart = m->csStart;
+      props.csFinished = m->csFinished;
       props.isOutlier = isOutlier(frameId);
 
       m_propsFinished.store( frameId );
@@ -156,7 +164,8 @@ namespace dxvk {
       int32_t frametime = std::chrono::duration_cast<microseconds>( t - m_lastStart ).count();
       int32_t frametimeDiff = std::max( 0, m_fpsLimitFrametime.load() - frametime );
       delay = std::max( delay, frametimeDiff );
-      delay = std::max( 0, std::min( delay, 20000 ) );
+      int32_t maxDelay = std::max( m_fpsLimitFrametime.load(), 20000 );
+      delay = std::max( 0, std::min( delay, maxDelay ) );
 
       Sleep::TimePoint nextStart = t + microseconds(delay);
       Sleep::sleepUntil( t, nextStart );
@@ -169,16 +178,24 @@ namespace dxvk {
 
     struct SyncProps {
       int32_t optimizedGpuTime;   // gpu executing packed submits in one go
-      int32_t gpuSync;            // us after gpuStart
+      int32_t gpuSync;            // gpuStart to this sync point, in microseconds
       int32_t cpuUntilGpuSync;
+      int32_t cpuUntilGpuStart;
+      int32_t csStart;
+      int32_t csFinished;
       bool    isOutlier;
     };
 
 
     SyncProps getSyncPrediction() {
-      // in the future we might use more samples to get a prediction
-      // however, simple averaging gives a slightly artificial mouse input
-      // more advanced methods will be investigated
+      // In the future we might use more samples to get a prediction.
+      // Possibly this will be optional, as until now, basing it on
+      // just the previous frame gave us the best mouse input feel.
+      // Simple averaging or median filtering is surely not the way
+      // to go, but more advanced methods will be investigated.
+      // The best place to filter should be on the Present() timeline,
+      // so not sure if we really will do any filtering here other
+      // than outlier removal, which will dampen stuttering effects.
       SyncProps res = {};
       uint64_t id = m_propsFinished;
       if (id < DXGI_MAX_SWAP_CHAIN_BUFFERS+7)
@@ -196,41 +213,17 @@ namespace dxvk {
     };
 
 
-    int32_t getGpuStartToFinishPrediction() {
-      uint64_t id = m_propsFinished;
-      if (id < DXGI_MAX_SWAP_CHAIN_BUFFERS+7)
-        return 0;
-
-      for (size_t i=0; i<7; ++i) {
-        const SyncProps& props = m_props[ (id-i) % m_props.size() ];
-        if (!props.isOutlier) {
-          const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(id-i);
-          if (m->gpuReady.empty() || m->gpuSubmit.empty())
-            return m->gpuFinished - m->gpuStart;
-
-          time_point t = std::max( m->gpuReady[0], m->gpuSubmit[0] );
-          return std::chrono::duration_cast<microseconds>( t - m->start ).count()
-            + props.optimizedGpuTime
-            - m->gpuStart;
-        }
-      }
-
-      const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(id);
-      return m->gpuFinished - m->gpuStart;
-    };
-
-
     bool isOutlier( uint64_t frameId ) {
       constexpr size_t numLoop = 7;
       int32_t totalCpuTime = 0;
-      for (size_t i=0; i<numLoop; ++i) {
+      for (size_t i=1; i<numLoop; ++i) {
         const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId-i);
         totalCpuTime += m->cpuFinished;
       }
 
-      int32_t avgCpuTime = totalCpuTime / numLoop;
+      int32_t avgCpuTime = totalCpuTime / (numLoop-1);
       const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId);
-      if (m->cpuFinished > 1.7*avgCpuTime || m->gpuSubmit.empty() || m->gpuReady.size() != (m->gpuSubmit.size()+1) )
+      if (m->cpuFinished > 1.3*avgCpuTime || m->gpuSubmit.empty() || m->gpuReady.size() != (m->gpuSubmit.size()+1) )
         return true;
 
       return false;
@@ -248,7 +241,6 @@ namespace dxvk {
     std::atomic<uint64_t> m_propsFinished = { 0 };
 
     std::vector<int32_t>  m_tempGpuRun;
-    std::vector<int32_t>  m_tempGpuRunDurations;
 
   };
 

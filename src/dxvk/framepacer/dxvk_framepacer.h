@@ -23,7 +23,7 @@ namespace dxvk {
     using microseconds = std::chrono::microseconds;
   public:
 
-    FramePacer( const DxvkOptions& options );
+    FramePacer( const DxvkOptions& options, uint64_t firstFrameId );
     ~FramePacer();
 
     void sleepAndBeginFrame(
@@ -34,13 +34,13 @@ namespace dxvk {
       // potentially wait some more if the cpu gets too much ahead
       m_mode->startFrame(frameId);
       m_latencyMarkersStorage.registerFrameStart(frameId);
-      m_gpuStarts[ frameId % m_gpuStarts.size() ].store(0);
     }
 
     void notifyGpuPresentEnd( uint64_t frameId ) override {
       // the frame has been displayed to the screen
       m_latencyMarkersStorage.registerFrameEnd(frameId);
       m_mode->endFrame(frameId);
+      m_gpuStarts[ (frameId-1) % m_gpuStarts.size() ].store(0);
     }
 
     void notifyCsRenderBegin( uint64_t frameId ) override {
@@ -56,8 +56,8 @@ namespace dxvk {
       m_mode->signalCsFinished( frameId );
     }
 
-    void notifySubmit() override {
-      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(m_lastSubmitFrameId+1);
+    void notifySubmit( uint64_t frameId ) override {
+      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuSubmit.push_back(high_resolution_clock::now());
     }
 
@@ -65,7 +65,6 @@ namespace dxvk {
       // dx to vk translation is finished
       if (frameId != 0) {
         auto now = high_resolution_clock::now();
-        m_lastSubmitFrameId = frameId;
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
         LatencyMarkers* next = m_latencyMarkersStorage.getMarkers(frameId+1);
         m->gpuSubmit.push_back(now);
@@ -77,7 +76,6 @@ namespace dxvk {
     }
 
     void notifyQueueSubmit( uint64_t frameId ) override {
-      assert( frameId == m_lastQueueSubmitFrameId + 1 );
       auto now = high_resolution_clock::now();
       LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuQueueSubmit.push_back(now);
@@ -87,7 +85,6 @@ namespace dxvk {
     void notifyQueuePresentBegin( uint64_t frameId ) override {
       if (frameId != 0) {
         auto now = high_resolution_clock::now();
-        m_lastQueueSubmitFrameId = frameId;
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
         LatencyMarkers* next = m_latencyMarkersStorage.getMarkers(frameId+1);
         m->gpuQueueSubmit.push_back(now);
@@ -96,22 +93,15 @@ namespace dxvk {
       }
     }
 
-    void notifyGpuExecutionBegin( uint64_t frameId ) override {
-      assert( frameId == m_lastFinishedFrameId+1 );
-      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(m_lastFinishedFrameId+1);
-      gpuExecutionCheckGpuStart(frameId, m, high_resolution_clock::now());
-    }
-
     void notifyGpuExecutionEnd( uint64_t frameId ) override {
       auto now = high_resolution_clock::now();
-      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(m_lastFinishedFrameId+1);
+      LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->gpuReady.push_back(now);
     }
 
     virtual void notifyGpuPresentBegin( uint64_t frameId ) override {
       // we get frameId == 0 for repeated presents (SyncInterval)
       if (frameId != 0) {
-        m_lastFinishedFrameId = frameId;
         auto now = high_resolution_clock::now();
 
         LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
@@ -121,7 +111,7 @@ namespace dxvk {
         next->gpuReady.clear();
         next->gpuReady.push_back(now);
 
-        gpuExecutionCheckGpuStart(frameId, m, now);
+        gpuExecutionCheckGpuStart(frameId+1, next, now);
 
         m_latencyMarkersStorage.m_timeline.gpuFinished.store(frameId);
         m_mode->finishRender(frameId);
@@ -147,9 +137,10 @@ namespace dxvk {
     // not implemented methods
 
 
-    void notifyCpuPresentBegin( uint64_t frameId) override { }
+    void notifyCpuPresentBegin( uint64_t frameId ) override { }
     void notifyCpuPresentEnd( uint64_t frameId ) override { }
     void notifyQueuePresentEnd( uint64_t frameId, VkResult status) override { }
+    void notifyGpuExecutionBegin( uint64_t frameId ) override { }
     void discardTimings() override { }
     DxvkLatencyStats getStatistics( uint64_t frameId ) override
       { return DxvkLatencyStats(); }
@@ -178,11 +169,7 @@ namespace dxvk {
 
     std::unique_ptr<FramePacerMode> m_mode;
 
-    uint64_t m_lastSubmitFrameId      = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
-    uint64_t m_lastQueueSubmitFrameId = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
-    uint64_t m_lastFinishedFrameId    = { DXGI_MAX_SWAP_CHAIN_BUFFERS };
-
-    std::array< std::atomic< uint16_t >, 16 > m_gpuStarts = { };
+    std::array< std::atomic< uint16_t >, 8 > m_gpuStarts = { };
     static constexpr uint16_t queueSubmitBit = 1;
     static constexpr uint16_t gpuReadyBit    = 2;
 

@@ -865,6 +865,11 @@ namespace dxvk {
           Rc<DxvkLatencyTracker>      LatencyTracker) {
     D3D10DeviceLock lock = LockContext();
 
+    // Don't keep draw buffers alive indefinitely. This cannot be
+    // done in ExecuteFlush because command recording itself might
+    // flush, so no state changes are allowed to happen there.
+    SetDrawBuffers(nullptr, nullptr);
+
     EmitCs<false>([
       cTracker = std::move(LatencyTracker)
     ] (DxvkContext* ctx) {

@@ -43,6 +43,14 @@ namespace dxvk {
 
 
   /**
+   * \brief Barrier node payload
+   */
+  struct DxvkBarrierPayload {
+    DxvkAccessOps accessOps = 0u;
+  };
+
+
+  /**
    * \brief Barrier tree node
    *
    * Node of a red-black tree, consisting of a packed node
@@ -61,6 +69,9 @@ namespace dxvk {
 
     // Address range of the node
     DxvkAddressRange addressRange = { };
+
+    // Node payload
+    DxvkBarrierPayload payload = { };
 
     void setRed(bool red) {
       header &= ~uint64_t(1u);
@@ -117,21 +128,25 @@ namespace dxvk {
      *
      * \param [in] range Resource range
      * \param [in] accessType Access type
+     * \param [in] accessOp Access operation
      * \returns \c true if the range has a pending access
      */
     bool findRange(
       const DxvkAddressRange&           range,
-            DxvkAccess                  accessType) const;
+            DxvkAccess                  accessType,
+            DxvkAccessOp                accessOp) const;
 
     /**
      * \brief Inserts address range for a given access type
      *
      * \param [in] range Resource range
      * \param [in] accessType Access type
+     * \param [in] accessOp Access operation
      */
     void insertRange(
       const DxvkAddressRange&           range,
-            DxvkAccess                  accessType);
+            DxvkAccess                  accessType,
+            DxvkAccessOp                accessOp);
 
     /**
      * \brief Clears the entire structure
@@ -166,7 +181,8 @@ namespace dxvk {
 
     uint32_t insertNode(
       const DxvkAddressRange&           range,
-            uint32_t                    rootIndex);
+            uint32_t                    rootIndex,
+            DxvkBarrierPayload          payload);
 
     void removeNode(
             uint32_t                    nodeIndex,

@@ -30,26 +30,48 @@ namespace dxvk {
     switch (ins.opClass) {
       case DxbcInstClass::Atomic: {
         const uint32_t operandId = ins.dstCount - 1;
-        
+
         if (ins.dst[operandId].type == DxbcOperandType::UnorderedAccessView) {
           const uint32_t registerId = ins.dst[operandId].idx[0].offset;
           m_analysis->uavInfos[registerId].accessAtomicOp = true;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+
+          // Check whether the atomic operation is order-invariant
+          DxvkAccessOp store = DxvkAccessOp::None;
+
+          switch (ins.op) {
+            case DxbcOpcode::AtomicAnd:  store = DxvkAccessOp::And;  break;
+            case DxbcOpcode::AtomicOr:   store = DxvkAccessOp::Or;   break;
+            case DxbcOpcode::AtomicXor:  store = DxvkAccessOp::Xor;  break;
+            case DxbcOpcode::AtomicIAdd: store = DxvkAccessOp::Add;  break;
+            case DxbcOpcode::AtomicIMax: store = DxvkAccessOp::IMax; break;
+            case DxbcOpcode::AtomicIMin: store = DxvkAccessOp::IMin; break;
+            case DxbcOpcode::AtomicUMax: store = DxvkAccessOp::UMax; break;
+            case DxbcOpcode::AtomicUMin: store = DxvkAccessOp::UMin; break;
+            default: break;
+          }
+
+          if (m_analysis->uavInfos[registerId].atomicStore == DxvkAccessOp::None)
+            m_analysis->uavInfos[registerId].atomicStore = store;
+
+          // Maintain ordering if the UAV is accessed via other operations as well
+          if (store == DxvkAccessOp::None || m_analysis->uavInfos[registerId].atomicStore != store)
+            m_analysis->uavInfos[registerId].nonInvariantAccess = true;
         }
       } break;
-      
+
       case DxbcInstClass::TextureSample:
       case DxbcInstClass::TextureGather:
       case DxbcInstClass::TextureQueryLod:
       case DxbcInstClass::VectorDeriv: {
         m_analysis->usesDerivatives = true;
       } break;
-      
+
       case DxbcInstClass::ControlFlow: {
         if (ins.op == DxbcOpcode::Discard)
           m_analysis->usesKill = true;
       } break;
-      
+
       case DxbcInstClass::BufferLoad: {
         uint32_t operandId = ins.op == DxbcOpcode::LdStructured ? 2 : 1;
         bool sparseFeedback = ins.dstCount == 2;
@@ -58,16 +80,18 @@ namespace dxvk {
           const uint32_t registerId = ins.src[operandId].idx[0].offset;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
           m_analysis->uavInfos[registerId].sparseFeedback |= sparseFeedback;
+          m_analysis->uavInfos[registerId].nonInvariantAccess = true;
         } else if (ins.src[operandId].type == DxbcOperandType::Resource) {
           const uint32_t registerId = ins.src[operandId].idx[0].offset;
           m_analysis->srvInfos[registerId].sparseFeedback |= sparseFeedback;
         }
       } break;
-        
+
       case DxbcInstClass::BufferStore: {
         if (ins.dst[0].type == DxbcOperandType::UnorderedAccessView) {
           const uint32_t registerId = ins.dst[0].idx[0].offset;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
+          m_analysis->uavInfos[registerId].nonInvariantAccess = true;
         }
       } break;
 
@@ -75,13 +99,15 @@ namespace dxvk {
         const uint32_t registerId = ins.src[1].idx[0].offset;
         m_analysis->uavInfos[registerId].accessTypedLoad = true;
         m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
+        m_analysis->uavInfos[registerId].nonInvariantAccess = true;
       } break;
       
       case DxbcInstClass::TypedUavStore: {
         const uint32_t registerId = ins.dst[0].idx[0].offset;
         m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
+        m_analysis->uavInfos[registerId].nonInvariantAccess = true;
       } break;
-      
+
       default:
         break;
     }

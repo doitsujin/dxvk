@@ -1009,10 +1009,22 @@ namespace dxvk {
     if (!ctrBuf.defined())
       return;
 
-    EmitCs([=] (DxvkContext* ctx) {
-      ctx->drawIndirectXfb(ctrBuf,
+    // We bind the SO counter as an indirect count buffer,
+    // so reset any tracking we may have been doing here.
+    m_state.id.reset();
+
+    EmitCs([=] (DxvkContext* ctx) mutable {
+      ctx->bindDrawBuffers(DxvkBufferSlice(),
+        Forwarder::move(ctrBuf));
+
+      ctx->drawIndirectXfb(0u,
         vtxBuf.buffer()->getXfbVertexStride(),
         vtxBuf.offset());
+
+      // Reset draw buffer right away so we don't
+      // keep the SO counter alive indefinitely
+      ctx->bindDrawBuffers(DxvkBufferSlice(),
+        DxvkBufferSlice());
     });
   }
 
@@ -1109,7 +1121,7 @@ namespace dxvk {
     } else {
       cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
         [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndexedIndirect(data->offset, data->count, data->stride);
+          ctx->drawIndexedIndirect(data->offset, data->count, data->stride, true);
         });
 
       cmdData->type   = D3D11CmdType::DrawIndirectIndexed;
@@ -1144,7 +1156,7 @@ namespace dxvk {
     } else {
       cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
         [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndirect(data->offset, data->count, data->stride);
+          ctx->drawIndirect(data->offset, data->count, data->stride, true);
         });
 
       cmdData->type   = D3D11CmdType::DrawIndirect;
@@ -4632,10 +4644,6 @@ namespace dxvk {
     ApplyRasterizerSampleCount();
     ApplyViewportState();
 
-    BindDrawBuffers(
-      m_state.id.argBuffer.ptr(),
-      m_state.id.cntBuffer.ptr());
-
     BindIndexBuffer(
       m_state.ia.indexBuffer.buffer.ptr(),
       m_state.ia.indexBuffer.offset,
@@ -4674,6 +4682,11 @@ namespace dxvk {
     RestoreSamplers<DxbcProgramType::GeometryShader>();
     RestoreSamplers<DxbcProgramType::PixelShader>();
     RestoreSamplers<DxbcProgramType::ComputeShader>();
+
+    // Draw buffer bindings aren't persistent at the API level, and
+    // we can't meaningfully track them. Just reset this state here
+    // and reapply on the next indirect draw.
+    SetDrawBuffers(nullptr, nullptr);
   }
 
 
@@ -5000,10 +5013,13 @@ namespace dxvk {
     auto argBuffer = static_cast<D3D11Buffer*>(pBufferForArgs);
     auto cntBuffer = static_cast<D3D11Buffer*>(pBufferForCount);
 
-    if (m_state.id.argBuffer != argBuffer
-     || m_state.id.cntBuffer != cntBuffer) {
-      m_state.id.argBuffer = argBuffer;
-      m_state.id.cntBuffer = cntBuffer;
+    auto argBufferCookie = argBuffer ? argBuffer->GetCookie() : 0u;
+    auto cntBufferCookie = cntBuffer ? cntBuffer->GetCookie() : 0u;
+
+    if (m_state.id.argBufferCookie != argBufferCookie
+     || m_state.id.cntBufferCookie != cntBufferCookie) {
+      m_state.id.argBufferCookie = argBufferCookie;
+      m_state.id.cntBufferCookie = cntBufferCookie;
 
       BindDrawBuffers(argBuffer, cntBuffer);
     }

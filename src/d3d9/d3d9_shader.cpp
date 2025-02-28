@@ -63,7 +63,7 @@ namespace dxvk {
     // do an or per-draw in the device.
     // We shift by 17 because 16 ps samplers + 1 dmap (tess)
     if (ShaderStage == VK_SHADER_STAGE_VERTEX_BIT)
-      m_usedSamplers <<= caps::MaxTexturesPS + 1;
+      m_usedSamplers <<= FirstVSSamplerSlot;
 
     m_usedRTs      = pModule->usedRTs();
 

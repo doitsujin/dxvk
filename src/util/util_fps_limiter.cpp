@@ -57,6 +57,8 @@ namespace dxvk {
       return;
     }
 
+    m_isActive.store(false);
+
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     auto interval = m_targetInterval;
     auto latency = m_maxLatency;
@@ -79,7 +81,6 @@ namespace dxvk {
     // that can be written by setTargetFrameRate
     lock.unlock();
 
-    m_isActive.store(false);
     if (t1 < m_nextFrame) {
       m_isActive.store(true);
       Sleep::sleepUntil(t1, m_nextFrame);

@@ -588,7 +588,7 @@ namespace dxvk {
     // Max Vertex Shader Const
     pCaps->MaxVertexShaderConst       = MaxFloatConstantsVS;
     // Max PS1 Value
-    pCaps->PixelShader1xMaxValue      = options.shaderModel > 0 ? FLT_MAX : 0.0f;
+    pCaps->PixelShader1xMaxValue      = options.shaderModel > 0 ? std::numeric_limits<float>::max() : 0.0f;
     // Dev Caps 2
     pCaps->DevCaps2                   = D3DDEVCAPS2_STREAMOFFSET
                                    /* | D3DDEVCAPS2_DMAPNPATCH */

@@ -309,15 +309,16 @@ namespace dxvk {
 
 
   Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
-    const Rc<Presenter>&            presenter) {
+    const Rc<Presenter>&            presenter,
+    uint64_t                        firstFrameId ) {
     if (m_options.latencySleep == Tristate::False)
-      return new FramePacer(m_options);
+      return new FramePacer(m_options, firstFrameId);
 
     if (m_options.latencySleep == Tristate::Auto) {
       if (m_features.nvLowLatency2)
         return new DxvkReflexLatencyTrackerNv(presenter);
       else
-        return new FramePacer(m_options);
+        return new FramePacer(m_options, firstFrameId);
     }
 
     return new DxvkBuiltInLatencyTracker(presenter,

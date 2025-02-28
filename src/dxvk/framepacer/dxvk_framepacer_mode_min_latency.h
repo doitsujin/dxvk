@@ -28,7 +28,8 @@ namespace dxvk {
         now - m_lastStart ).count();
       int32_t frametimeDiff = std::max( 0, m_fpsLimitFrametime.load() - frametime );
       int32_t delay = std::max( 0, frametimeDiff );
-      delay = std::min( delay, 20000 );
+      int32_t maxDelay = std::max( m_fpsLimitFrametime.load(), 20000 );
+      delay = std::min( delay, maxDelay );
 
       Sleep::TimePoint nextStart = now + std::chrono::microseconds(delay);
       Sleep::sleepUntil( now, nextStart );

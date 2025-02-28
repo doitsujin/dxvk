@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <vector>
+#include <atomic>
 
 namespace dxvk {
 
@@ -63,6 +64,10 @@ namespace dxvk {
     void notifyFlush(
             uint64_t              chunkId,
             uint64_t              submissionId);
+
+    static std::atomic<uint32_t> m_minPendingSubmissions;
+    static std::atomic<uint32_t> m_minChunkCount;
+    static std::atomic<uint32_t> m_maxChunkCount;
 
   private:
 

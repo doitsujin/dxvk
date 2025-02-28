@@ -43,7 +43,7 @@ namespace dxvk {
     ///
     /// May improve performance in some games,
     /// but might also cause rendering issues.
-    bool ignoreGraphicsBarriers = false;
+    bool relaxedGraphicsBarriers = false;
 
     /// Maximum tessellation factor.
     ///

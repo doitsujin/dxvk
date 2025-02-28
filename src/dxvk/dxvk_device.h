@@ -489,7 +489,8 @@ namespace dxvk {
      * \param [in] presenter Presenter instance
      */
     Rc<DxvkLatencyTracker> createLatencyTracker(
-      const Rc<Presenter>&            presenter);
+      const Rc<Presenter>&            presenter,
+      uint64_t                        firstFrameId = 17);
 
     /**
      * \brief Presents a swap chain image
