@@ -44,16 +44,20 @@ namespace dxvk {
 
     LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options)
     : FramePacerMode(mode, storage),
-      m_lowLatencyOffset(getLowLatencyOffset(options)) {
+      m_lowLatencyOffset(getLowLatencyOffset(options)),
+      m_allowCpuFramesOverlap(getLowLatencyAllowCpuFramesOverlap(options)) {
       Logger::info( str::format("Using lowLatencyOffset: ", m_lowLatencyOffset) );
+      Logger::info( str::format("Using lowLatencyAllowCpuFramesOverlap: ", m_allowCpuFramesOverlap) );
     }
 
     ~LowLatencyMode() {}
 
 
     void startFrame( uint64_t frameId ) override {
-
       using std::chrono::duration_cast;
+
+      if (!m_allowCpuFramesOverlap)
+        m_fenceCsFinished.wait( frameId-1 );
 
       m_fenceGpuStart.wait( frameId-1 );
 
@@ -227,7 +231,10 @@ namespace dxvk {
 
 
     int32_t getLowLatencyOffset( const DxvkOptions& options );
+    bool getLowLatencyAllowCpuFramesOverlap( const DxvkOptions& options );
+
     const int32_t m_lowLatencyOffset;
+    const bool    m_allowCpuFramesOverlap;
 
     Sleep::TimePoint m_lastStart = { high_resolution_clock::now() };
     std::array<SyncProps, 16> m_props;

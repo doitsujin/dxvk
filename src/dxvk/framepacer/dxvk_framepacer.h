@@ -53,6 +53,7 @@ namespace dxvk {
       auto now = high_resolution_clock::now();
       LatencyMarkers* m = m_latencyMarkersStorage.getMarkers(frameId);
       m->csFinished = std::chrono::duration_cast<microseconds>(now - m->start).count();
+      m_mode->signalCsFinished( frameId );
     }
 
     void notifySubmit( uint64_t frameId ) override {

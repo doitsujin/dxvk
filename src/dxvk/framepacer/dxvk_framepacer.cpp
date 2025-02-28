@@ -71,6 +71,7 @@ namespace dxvk {
 
     m_mode->signalGpuStart       ( firstFrameId-1 );
     m_mode->signalRenderFinished ( firstFrameId-1 );
+    m_mode->signalCsFinished     ( firstFrameId );
   }
 
 
