@@ -3,7 +3,7 @@
 namespace dxvk {
 
   constexpr uint32_t Icb_BindingSlotId   = 14;
-  constexpr uint32_t Icb_MaxBakedDwords  = 16;
+  constexpr uint32_t Icb_MaxBakedDwords  = 64;
   
   DxbcCompiler::DxbcCompiler(
     const std::string&        fileName,
