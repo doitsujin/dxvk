@@ -1037,6 +1037,9 @@ namespace dxvk {
           UINT            StartVertexLocation) {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(!VertexCount))
+      return;
+
     VkDrawIndirectCommand draw = { };
     draw.vertexCount   = VertexCount;
     draw.instanceCount = 1u;
@@ -1053,6 +1056,9 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!IndexCount))
+      return;
 
     VkDrawIndexedIndirectCommand draw = { };
     draw.indexCount    = IndexCount;
@@ -1073,6 +1079,9 @@ namespace dxvk {
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(!VertexCountPerInstance || !InstanceCount))
+      return;
+
     VkDrawIndirectCommand draw = { };
     draw.vertexCount   = VertexCountPerInstance;
     draw.instanceCount = InstanceCount;
@@ -1091,6 +1100,9 @@ namespace dxvk {
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!IndexCountPerInstance || !InstanceCount))
+      return;
 
     VkDrawIndexedIndirectCommand draw = { };
     draw.indexCount    = IndexCountPerInstance;
@@ -1185,6 +1197,9 @@ namespace dxvk {
           UINT            ThreadGroupCountY,
           UINT            ThreadGroupCountZ) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!ThreadGroupCountX || !ThreadGroupCountY || !ThreadGroupCountZ))
+      return;
 
     if (unlikely(HasDirtyComputeBindings()))
       ApplyDirtyComputeBindings();
