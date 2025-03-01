@@ -1973,6 +1973,13 @@ namespace dxvk {
             VkAccessFlags2            dstAccess,
             DxvkAccessOp              accessOp);
 
+    void accessImageTransfer(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
             DxvkBuffer&               buffer,
@@ -2024,6 +2031,11 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess,
             DxvkAccessOp              accessOp);
+
+    void accessBufferTransfer(
+            DxvkBuffer&               buffer,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
 
     void accessDrawBuffer(
             VkDeviceSize              offset,
