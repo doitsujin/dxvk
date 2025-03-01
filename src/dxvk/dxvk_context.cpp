@@ -3738,16 +3738,16 @@ namespace dxvk {
     // but pipeline barriers need to have all aspect bits set
     auto srcFormatInfo = image->formatInfo();
 
-    auto srcSubresourceRange = vk::makeSubresourceRange(imageSubresource);
-    srcSubresourceRange.aspectMask = srcFormatInfo->aspectMask;
+    auto srcSubresource = imageSubresource;
+    srcSubresource.aspectMask = srcFormatInfo->aspectMask;
 
-    flushPendingAccesses(*image, srcSubresourceRange, DxvkAccess::Read);
+    flushPendingAccesses(*image, srcSubresource, imageOffset, imageExtent, DxvkAccess::Read);
     flushPendingAccesses(*buffer, bufferOffset, dataSize, DxvkAccess::Write);
 
     // Select a suitable image layout for the transfer op
     VkImageLayout srcImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    addImageLayoutTransition(*image, srcSubresourceRange, srcImageLayoutTransfer, 
+    addImageLayoutTransition(*image, vk::makeSubresourceRange(srcSubresource), srcImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
     flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
@@ -3755,7 +3755,7 @@ namespace dxvk {
       image, imageSubresource, imageOffset, imageExtent, srcImageLayoutTransfer,
       bufferSlice, bufferRowAlignment, bufferSliceAlignment);
 
-    accessImage(DxvkCmdBuffer::ExecBuffer, *image, srcSubresourceRange, srcImageLayoutTransfer,
+    accessImageRegion(DxvkCmdBuffer::ExecBuffer, *image, srcSubresource, imageOffset, imageExtent, srcImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
 
     accessBuffer(DxvkCmdBuffer::ExecBuffer, *buffer, bufferOffset, dataSize,
