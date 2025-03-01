@@ -1045,13 +1045,8 @@ namespace dxvk {
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
     }
 
-    accessMemory(DxvkCmdBuffer::SdmaBuffer,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_NONE);
-
-    accessMemory(DxvkCmdBuffer::InitBarriers,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_NONE,
-      buffer->info().stages, buffer->info().access);
+    accessBufferTransfer(*buffer,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->track(buffer, DxvkAccess::Write);
   }
@@ -1062,7 +1057,7 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources,
           VkImageLayout             initialLayout) {
     if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-      accessImage(DxvkCmdBuffer::InitBuffer,
+      accessImage(DxvkCmdBuffer::InitBarriers,
         *image, subresources, initialLayout,
         VK_PIPELINE_STAGE_2_NONE, 0, DxvkAccessOp::None);
 
@@ -1072,11 +1067,13 @@ namespace dxvk {
 
       addImageInitTransition(*image, subresources, clearLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
-      flushImageLayoutTransitions(DxvkCmdBuffer::InitBuffer);
 
       auto formatInfo = image->formatInfo();
 
       if (formatInfo->flags.any(DxvkFormatFlag::BlockCompressed, DxvkFormatFlag::MultiPlane)) {
+        // We're copying from a sparse buffer, use the transfer queue
+        flushImageLayoutTransitions(DxvkCmdBuffer::SdmaBuffer);
+
         for (auto aspects = formatInfo->aspectMask; aspects; ) {
           auto aspect = vk::getNextAspect(aspects);
           auto extent = image->mipLevelExtent(subresources.baseMipLevel);
@@ -1094,8 +1091,7 @@ namespace dxvk {
           VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
           VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
 
-          auto zeroBuffer = createZeroBuffer(dataSize);
-          auto zeroHandle = zeroBuffer->getSliceHandle();
+          auto zeroSlice = createZeroBuffer(dataSize)->getSliceHandle();
 
           for (uint32_t level = 0; level < subresources.levelCount; level++) {
             VkOffset3D offset = VkOffset3D { 0, 0, 0 };
@@ -1109,7 +1105,7 @@ namespace dxvk {
 
             for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
               VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
-              copyRegion.bufferOffset = zeroHandle.offset;
+              copyRegion.bufferOffset = zeroSlice.offset;
               copyRegion.imageSubresource = vk::makeSubresourceLayers(
                 vk::pickSubresource(subresources, level, layer));
               copyRegion.imageSubresource.aspectMask = aspect;
@@ -1117,19 +1113,23 @@ namespace dxvk {
               copyRegion.imageExtent = extent;
 
               VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-              copyInfo.srcBuffer = zeroHandle.handle;
+              copyInfo.srcBuffer = zeroSlice.handle;
               copyInfo.dstImage = image->handle();
               copyInfo.dstImageLayout = clearLayout;
               copyInfo.regionCount = 1;
               copyInfo.pRegions = &copyRegion;
 
-              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &copyInfo);
+              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
             }
           }
-
-          m_cmd->track(zeroBuffer, DxvkAccess::Read);
         }
+
+        accessImageTransfer(*image, subresources, clearLayout,
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
       } else {
+        // Clear commands can only happen on the graphics queue
+        flushImageLayoutTransitions(DxvkCmdBuffer::InitBuffer);
+
         if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           VkClearDepthStencilValue value = { };
 
@@ -1141,10 +1141,10 @@ namespace dxvk {
           m_cmd->cmdClearColorImage(DxvkCmdBuffer::InitBuffer,
             image->handle(), clearLayout, &value, 1, &subresources);
         }
-      }
 
-      accessImage(DxvkCmdBuffer::InitBuffer, *image, subresources, clearLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
+        accessImage(DxvkCmdBuffer::InitBuffer, *image, subresources, clearLayout,
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
+      }
 
       m_cmd->track(image, DxvkAccess::Write);
     }
