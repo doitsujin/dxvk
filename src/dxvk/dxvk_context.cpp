@@ -7615,25 +7615,52 @@ namespace dxvk {
                     | VK_ACCESS_TRANSFER_READ_BIT;
     bufInfo.debugName = "Zero buffer";
 
+    // If supported by the device, create a large sparse buffer and keep it unmapped
+    // in order to avoid having to allocate and clear any actual memory
+    if (m_device->features().core.features.sparseBinding
+     && m_device->features().core.features.sparseResidencyBuffer
+     && m_device->properties().core.properties.sparseProperties.residencyNonResidentStrict) {
+      bufInfo.size = align<VkDeviceSize>(size, DxvkMemoryPool::MaxChunkSize);
+      bufInfo.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+    }
+
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     DxvkBufferSliceHandle slice = m_zeroBuffer->getSliceHandle();
 
-    m_cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
-      slice.handle, slice.offset, slice.length, 0);
+    if (bufInfo.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT) {
+      DxvkSparseBufferBindKey key = { };
+      key.buffer = slice.handle;
+      key.offset = slice.offset;
+      key.size = slice.length;
 
-    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    barrier.srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    barrier.dstStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+      DxvkResourceMemoryInfo memory = { };
+      memory.size = slice.length;
 
-    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-    depInfo.memoryBarrierCount = 1;
-    depInfo.pMemoryBarriers = &barrier;
+      // We really should have a sparse queue, but if for whatever reason we don't,
+      // just assume that the buffer is mapped to null by default, which seems to
+      // be intended by the spec anyway
+      if (m_device->queues().sparse.queueHandle)
+        m_cmd->bindBufferMemory(key, memory);
+    } else {
+      // FillBuffer is allowed even on transfer queues. Execute it on the barrier
+      // command buffer to ensure that subsequent transfer commands can see it.
+      m_cmd->cmdFillBuffer(DxvkCmdBuffer::SdmaBarriers,
+        slice.handle, slice.offset, slice.length, 0);
 
-    m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+      accessMemory(DxvkCmdBuffer::SdmaBarriers,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+
+      if (m_device->hasDedicatedTransferQueue()) {
+        accessMemory(DxvkCmdBuffer::InitBarriers,
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_NONE,
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+      }
+    }
+
+    m_cmd->track(m_zeroBuffer, DxvkAccess::Write);
     return m_zeroBuffer;
   }
   
