@@ -2530,22 +2530,7 @@ namespace dxvk {
 
     m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
 
-    if (m_device->hasDedicatedTransferQueue()) {
-      // Buffers use SHARING_MODE_CONCURRENT, so no explicit queue
-      // family ownership transfer is required. Access is serialized
-      // via a semaphore.
-      accessMemory(DxvkCmdBuffer::SdmaBuffer,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE);
-
-      accessMemory(DxvkCmdBuffer::InitBuffer,
-        VK_PIPELINE_STAGE_2_NONE, VK_ACCESS_2_NONE,
-        buffer->info().stages, buffer->info().access);
-    } else {
-      accessMemory(DxvkCmdBuffer::SdmaBuffer,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        buffer->info().stages, buffer->info().access);
-    }
+    accessBufferTransfer(*buffer, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->track(source, DxvkAccess::Read);
     m_cmd->track(buffer, DxvkAccess::Write);
