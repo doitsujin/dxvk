@@ -28,6 +28,7 @@ namespace dxvk {
     GpuIdleTicks,             ///< GPU idle time in microseconds
     CsSyncCount,              ///< CS thread synchronizations
     CsSyncTicks,              ///< Time spent waiting on CS
+    CsIdleTicks,              ///< CS thread idle time in microseconds
     CsChunkCount,             ///< Submitted CS chunks
     DescriptorPoolCount,      ///< Descriptor pool count
     DescriptorSetCount,       ///< Descriptor sets allocated

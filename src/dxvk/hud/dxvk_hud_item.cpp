@@ -1446,6 +1446,17 @@ namespace dxvk::hud {
         ? str::format(m_maxCsSyncCount, " (", (syncTicks / 10), ".", (syncTicks % 10), " ms)")
         : str::format(m_maxCsSyncCount);
 
+      uint64_t currCsIdleTicks = counters.getCtr(DxvkStatCounter::CsIdleTicks);
+
+      m_diffCsIdleTicks = currCsIdleTicks - m_prevCsIdleTicks;
+      m_prevCsIdleTicks = currCsIdleTicks;
+
+      uint64_t busyTicks = ticks > m_diffCsIdleTicks
+        ? uint64_t(ticks - m_diffCsIdleTicks)
+        : uint64_t(0);
+
+      m_csLoadString = str::format((100 * busyTicks) / ticks, "%");
+
       m_maxCsSyncCount = 0;
       m_maxCsSyncTicks = 0;
 
@@ -1468,6 +1479,10 @@ namespace dxvk::hud {
     position.y += 20;
     renderer.drawText(16, position, 0xff40ff40, "CS syncs:");
     renderer.drawText(16, { position.x + 132, position.y }, 0xffffffffu, m_csSyncString);
+
+    position.y += 20;
+    renderer.drawText(16, position, 0xff40ff40, "CS load:");
+    renderer.drawText(16, { position.x + 132, position.y }, 0xffffffffu, m_csLoadString);
 
     position.y += 8;
     return position;

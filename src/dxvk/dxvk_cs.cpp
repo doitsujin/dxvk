@@ -202,11 +202,22 @@ namespace dxvk {
       while (!m_stopped.load()) {
         { std::unique_lock<dxvk::mutex> lock(m_mutex);
 
-          m_condOnAdd.wait(lock, [this] {
-            return (!m_queueOrdered.queue.empty())
-                || (!m_queueHighPrio.queue.empty())
-                || (m_stopped.load());
-          });
+          auto pred = [this] { return
+              !m_queueOrdered.queue.empty()
+              || !m_queueHighPrio.queue.empty()
+              || m_stopped.load();
+          };
+
+          if (unlikely(!pred())) {
+            auto t0 = dxvk::high_resolution_clock::now();
+
+            m_condOnAdd.wait(lock, [&] {
+              return pred();
+            });
+
+            auto t1 = dxvk::high_resolution_clock::now();
+            m_device->addStatCtr(DxvkStatCounter::CsIdleTicks, std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count());
+          }
 
           std::swap(ordered, m_queueOrdered.queue);
           std::swap(highPrio, m_queueHighPrio.queue);
