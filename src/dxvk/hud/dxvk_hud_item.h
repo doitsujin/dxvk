@@ -645,14 +645,18 @@ namespace dxvk::hud {
     uint64_t m_prevCsSyncCount  = 0;
     uint64_t m_prevCsSyncTicks  = 0;
     uint64_t m_prevCsChunks     = 0;
+    uint64_t m_prevCsIdleTicks = 0;
 
     uint64_t m_maxCsSyncCount   = 0;
     uint64_t m_maxCsSyncTicks   = 0;
+
+    uint64_t m_diffCsIdleTicks = 0;
 
     uint64_t m_updateCount      = 0;
 
     std::string m_csSyncString;
     std::string m_csChunkString;
+    std::string m_csLoadString;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
