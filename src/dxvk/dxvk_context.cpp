@@ -4171,8 +4171,8 @@ namespace dxvk {
 
     auto dstFormatInfo = dstImage->formatInfo();
 
-    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
+    flushPendingAccesses(*dstImage, dstSubresource, dstOffset, extent, DxvkAccess::Write);
+    flushPendingAccesses(*srcImage, srcSubresource, srcOffset, extent, DxvkAccess::Read);
 
     VkImageLayout dstImageLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcImageLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -4217,10 +4217,10 @@ namespace dxvk {
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
     }
 
-    accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresourceRange, dstImageLayout,
+    accessImageRegion(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresource, dstOffset, extent, dstImageLayout,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
 
-    accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange, srcImageLayout,
+    accessImageRegion(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresource, srcOffset, extent, srcImageLayout,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
 
     m_cmd->track(dstImage, DxvkAccess::Write);
