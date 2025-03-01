@@ -7972,6 +7972,91 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::accessImageRegion(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset3D                offset,
+          VkExtent3D                extent,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          DxvkAccessOp              accessOp) {
+    accessImageRegion(cmdBuffer, image, subresources,
+      offset, extent, srcLayout, srcStages, srcAccess,
+      image.info().layout, image.info().stages, image.info().access,
+      accessOp);
+  }
+
+
+  void DxvkContext::accessImageRegion(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset3D                offset,
+          VkExtent3D                extent,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess,
+          DxvkAccessOp              accessOp) {
+    // If the image layout needs to change, access the entire image
+    if (srcLayout != dstLayout) {
+      accessImage(cmdBuffer, image, vk::makeSubresourceRange(subresources),
+        srcLayout, srcStages, srcAccess,
+        dstLayout, dstStages, dstAccess, accessOp);
+      return;
+    }
+
+    // No layout transition, just emit a plain memory barrier
+    auto& batch = getBarrierBatch(cmdBuffer);
+
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = srcStages;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
+    barrier.dstAccessMask = dstAccess;
+
+    batch.addMemoryBarrier(barrier);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+      bool hasWrite = (srcAccess & vk::AccessWriteMask) || (srcLayout != dstLayout);
+      bool hasRead = (srcAccess & vk::AccessReadMask);
+
+      DxvkAddressRange range;
+      range.resource = image.getResourceId();
+      range.accessOp = accessOp;
+
+      if (extent == image.mipLevelExtent(subresources.mipLevel)) {
+        range.rangeStart = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer);
+        range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+
+        if (hasWrite)
+          m_barrierTracker.insertRange(range, DxvkAccess::Write);
+        if (hasRead)
+          m_barrierTracker.insertRange(range, DxvkAccess::Read);
+      } else {
+        VkOffset3D maxCoord = offset;
+        maxCoord.x += extent.width - 1u;
+        maxCoord.y += extent.height - 1u;
+        maxCoord.z += extent.depth - 1u;
+
+        for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
+          range.rangeStart = image.getTrackingAddress(subresources.mipLevel, i, offset);
+          range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, i, maxCoord);
+
+          if (hasWrite)
+            m_barrierTracker.insertRange(range, DxvkAccess::Write);
+          if (hasRead)
+            m_barrierTracker.insertRange(range, DxvkAccess::Read);
+        }
+      }
+    }
+  }
+
+
   void DxvkContext::accessBuffer(
           DxvkCmdBuffer             cmdBuffer,
           DxvkBuffer&               buffer,
@@ -8164,6 +8249,25 @@ namespace dxvk {
 
 
   void DxvkContext::flushPendingAccesses(
+          DxvkImage&                image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset3D                offset,
+          VkExtent3D                extent,
+          DxvkAccess                access) {
+    bool flush = resourceHasAccess(image, subresources,
+      offset, extent, DxvkAccess::Write, DxvkAccessOp::None);
+
+    if (access == DxvkAccess::Write && !flush) {
+      flush = resourceHasAccess(image, subresources,
+        offset, extent, DxvkAccess::Read, DxvkAccessOp::None);
+    }
+
+    if (flush)
+      flushBarriers();
+  }
+
+
+  void DxvkContext::flushPendingAccesses(
           DxvkImageView&            imageView,
           DxvkAccess                access) {
     flushPendingAccesses(*imageView.image(),
@@ -8244,6 +8348,50 @@ namespace dxvk {
     }
 
     return dirty;
+  }
+
+
+  bool DxvkContext::resourceHasAccess(
+          DxvkImage&                image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset3D                offset,
+          VkExtent3D                extent,
+          DxvkAccess                access,
+          DxvkAccessOp              accessOp) {
+    DxvkAddressRange range;
+    range.resource = image.getResourceId();
+    range.accessOp = accessOp;
+
+    // If there are multiple subresources, check whether any of them have been
+    // touched before checking individual regions. If the given region covers
+    // the entire image, there is also no need to check more granularly.
+    bool isFullSize = image.mipLevelExtent(subresources.mipLevel) == extent;
+
+    if (subresources.layerCount > 1u || isFullSize) {
+      range.rangeStart = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer);
+      range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+
+      bool dirty = m_barrierTracker.findRange(range, access);
+
+      if (!dirty || isFullSize)
+        return dirty;
+    }
+
+    // Check given image region in each subresource
+    VkOffset3D maxCoord = offset;
+    maxCoord.x += extent.width - 1u;
+    maxCoord.y += extent.height - 1u;
+    maxCoord.z += extent.depth - 1u;
+
+    for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
+      range.rangeStart = image.getTrackingAddress(subresources.mipLevel, i, offset);
+      range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, i, maxCoord);
+
+      if (m_barrierTracker.findRange(range, access))
+        return true;
+    }
+
+    return false;
   }
 
 
