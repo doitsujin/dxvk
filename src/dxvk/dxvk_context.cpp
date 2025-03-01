@@ -7942,26 +7942,25 @@ namespace dxvk {
 
       uint32_t layerCount = image.info().numLayers;
 
+      DxvkAddressRange range;
+      range.resource = image.getResourceId();
+      range.accessOp = accessOp;
+
       if (subresources.levelCount == 1u || subresources.layerCount == layerCount) {
-        DxvkAddressRange range;
-        range.resource = image.getResourceId();
-        range.accessOp = accessOp;
-        range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
-        range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
-                       + (subresources.baseArrayLayer + subresources.layerCount - 1u);
+        range.rangeStart = image.getTrackingAddress(
+          subresources.baseMipLevel, subresources.baseArrayLayer);
+        range.rangeEnd = image.getTrackingAddress(
+          subresources.baseMipLevel + subresources.levelCount,
+          subresources.baseArrayLayer + subresources.layerCount) - 1u;
 
         if (hasWrite)
           m_barrierTracker.insertRange(range, DxvkAccess::Write);
         if (hasRead)
           m_barrierTracker.insertRange(range, DxvkAccess::Read);
       } else {
-        DxvkAddressRange range;
-        range.resource = image.getResourceId();
-        range.accessOp = accessOp;
-
         for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount; i++) {
-          range.rangeStart = i * layerCount + subresources.baseArrayLayer;
-          range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
+          range.rangeStart = image.getTrackingAddress(i, subresources.baseArrayLayer);
+          range.rangeEnd = image.getTrackingAddress(i, subresources.baseArrayLayer + subresources.layerCount) - 1u;
 
           if (hasWrite)
             m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -8223,9 +8222,11 @@ namespace dxvk {
     DxvkAddressRange range;
     range.resource = image.getResourceId();
     range.accessOp = accessOp;
-    range.rangeStart = subresources.baseMipLevel * layerCount + subresources.baseArrayLayer;
-    range.rangeEnd = (subresources.baseMipLevel + subresources.levelCount - 1u) * layerCount
-                   + (subresources.baseArrayLayer + subresources.layerCount - 1u);
+    range.rangeStart = image.getTrackingAddress(
+      subresources.baseMipLevel, subresources.baseArrayLayer);
+    range.rangeEnd = image.getTrackingAddress(
+      subresources.baseMipLevel + subresources.levelCount,
+      subresources.baseArrayLayer + subresources.layerCount) - 1u;
 
     // Probe all subresources first, only check individual mip levels
     // if there are overlaps and if we are checking a subset of array
@@ -8236,8 +8237,8 @@ namespace dxvk {
       return dirty;
 
     for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount && !dirty; i++) {
-      range.rangeStart = i * layerCount + subresources.baseArrayLayer;
-      range.rangeEnd = range.rangeStart + subresources.layerCount - 1u;
+      range.rangeStart = image.getTrackingAddress(i, subresources.baseArrayLayer);
+      range.rangeEnd = image.getTrackingAddress(i, subresources.baseArrayLayer + subresources.layerCount) - 1u;
 
       dirty = m_barrierTracker.findRange(range, access);
     }

@@ -114,6 +114,29 @@ namespace dxvk {
   }
 
 
+  uint64_t DxvkImage::getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const {
+    // For 2D and 3D images, use morton codes to linearize the address ranges
+    // of pixel blocks. This helps reduce false positives in common use cases
+    // where the application copies aligned power-of-two blocks around.
+    uint64_t base = getTrackingAddress(mip, layer);
+
+    if (likely(m_info.type == VK_IMAGE_TYPE_2D))
+      return base + bit::interleave(coord.x, coord.y);
+
+    // For 1D we can simply use the pixel coordinate as-is
+    if (m_info.type == VK_IMAGE_TYPE_1D)
+      return base + coord.x;
+
+    // 3D is uncommon, but there are different use cases. Assume that if the
+    // format is block-compressed, the app will access one layer at a time.
+    if (formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed))
+      return base + bit::interleave(coord.x, coord.y) + (uint64_t(coord.z) << 32u);
+
+    // Otherwise, it may want to copy actual 3D blocks around.
+    return base + bit::interleave(coord.x, coord.y, coord.z);
+  }
+
+
   Rc<DxvkImageView> DxvkImage::createView(
     const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
