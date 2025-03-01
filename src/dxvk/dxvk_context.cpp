@@ -3435,15 +3435,15 @@ namespace dxvk {
     // barriers need to have all available aspect bits set
     auto dstFormatInfo = image->formatInfo();
 
-    auto dstSubresourceRange = vk::makeSubresourceRange(imageSubresource);
-    dstSubresourceRange.aspectMask = dstFormatInfo->aspectMask;
+    auto dstSubresource = imageSubresource;
+    dstSubresource.aspectMask = dstFormatInfo->aspectMask;
 
     if (!prepareOutOfOrderTransfer(buffer, bufferOffset, dataSize, DxvkAccess::Read)
      || !prepareOutOfOrderTransfer(image, DxvkAccess::Write)) {
       spillRenderPass(true);
       prepareImage(image, vk::makeSubresourceRange(imageSubresource));
 
-      flushPendingAccesses(*image, dstSubresourceRange, DxvkAccess::Write);
+      flushPendingAccesses(*image, dstSubresource, imageOffset, imageExtent, DxvkAccess::Write);
       flushPendingAccesses(*buffer, bufferOffset, dataSize, DxvkAccess::Read);
 
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
@@ -3454,7 +3454,7 @@ namespace dxvk {
     // Initialize the image if the entire subresource is covered
     VkImageLayout dstImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    addImageLayoutTransition(*image, dstSubresourceRange, dstImageLayoutTransfer,
+    addImageLayoutTransition(*image, vk::makeSubresourceRange(dstSubresource), dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       image->isFullSubresource(imageSubresource, imageExtent));
     flushImageLayoutTransitions(cmdBuffer);
@@ -3463,7 +3463,7 @@ namespace dxvk {
       image, imageSubresource, imageOffset, imageExtent, dstImageLayoutTransfer,
       bufferSlice, bufferRowAlignment, bufferSliceAlignment);
 
-    accessImage(cmdBuffer, *image, dstSubresourceRange, dstImageLayoutTransfer,
+    accessImageRegion(cmdBuffer, *image, dstSubresource, imageOffset, imageExtent, dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
 
     accessBuffer(cmdBuffer, *buffer, bufferOffset, dataSize,
