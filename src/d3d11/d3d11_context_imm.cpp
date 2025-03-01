@@ -1142,7 +1142,7 @@ namespace dxvk {
       cStagingMemory    = GetStagingMemoryStatistics().allocatedTotal,
       cFlushReason      = std::exchange(m_flushReason, std::string())
     ] (DxvkContext* ctx) {
-      auto debugLabel = vk::makeLabel(0xc0a2f0, cFlushReason.c_str());
+      auto debugLabel = vk::makeLabel(0xff5959, cFlushReason.c_str());
 
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingFence, cStagingMemory);
