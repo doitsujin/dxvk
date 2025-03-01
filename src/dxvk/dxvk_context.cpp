@@ -5275,30 +5275,8 @@ namespace dxvk {
       }
     }
 
-    if (m_device->hasDedicatedTransferQueue()) {
-      VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
-      barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-      barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-      barrier.oldLayout = transferLayout;
-      barrier.newLayout = image->info().layout;
-      barrier.srcQueueFamilyIndex = m_device->queues().transfer.queueFamily;
-      barrier.dstQueueFamilyIndex = m_device->queues().graphics.queueFamily;
-      barrier.image = image->handle();
-      barrier.subresourceRange = image->getAvailableSubresources();
-
-      m_sdmaBarriers.addImageBarrier(barrier);
-
-      barrier.srcStageMask = VK_PIPELINE_STAGE_2_NONE;
-      barrier.srcAccessMask = VK_ACCESS_2_NONE;
-      barrier.dstStageMask = image->info().stages;
-      barrier.dstAccessMask = image->info().access;
-
-      m_initBarriers.addImageBarrier(barrier);
-    } else {
-      accessImage(DxvkCmdBuffer::SdmaBuffer, *image, image->getAvailableSubresources(),
-        transferLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-        DxvkAccessOp::None);
-    }
+    accessImageTransfer(*image, image->getAvailableSubresources(), transferLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
     m_cmd->track(source, DxvkAccess::Read);
     m_cmd->track(image, DxvkAccess::Write);
