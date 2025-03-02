@@ -26,6 +26,13 @@ namespace dxvk {
     /// without explicit synchronization.
     bool forceVolatileTgsmAccess = false;
 
+    /// Force UAV synchronization insided compute shaders
+    ///
+    /// Workaround for compute shaders that access overlapping
+    /// memory regions within a UAV without proper workgroup
+    /// synchroniation. Will have a negative performance impact.
+    bool forceComputeUavBarriers = false;
+
     /// Use relaxed memory barriers
     ///
     /// May improve performance in some games,

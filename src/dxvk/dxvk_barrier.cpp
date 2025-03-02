@@ -20,12 +20,11 @@ namespace dxvk {
 
   bool DxvkBarrierTracker::findRange(
     const DxvkAddressRange&           range,
-          DxvkAccess                  accessType,
-          DxvkAccessOp                accessOp) const {
+          DxvkAccess                  accessType) const {
     uint32_t rootIndex = computeRootIndex(range, accessType);
     uint32_t nodeIndex = findNode(range, rootIndex);
 
-    if (likely(!nodeIndex || accessOp == DxvkAccessOp::None))
+    if (likely(!nodeIndex || range.accessOp == DxvkAccessOp::None))
       return nodeIndex;
 
     // If we are checking for a specific order-invariant store
@@ -33,32 +32,33 @@ namespace dxvk {
     // resource, and the tracked range must cover the requested
     // range in its entirety so we can rule out that other parts
     // of the resource have been accessed in a different way.
-    auto& node = m_nodes[nodeIndex];
+    const auto& node = m_nodes[nodeIndex];
 
-    return node.payload.accessOps != DxvkAccessOps(accessOp)
-        || !node.addressRange.contains(range);
+    if (node.addressRange.accessOp != range.accessOp)
+      return true;
+
+    return !node.addressRange.contains(range);
   }
 
 
   void DxvkBarrierTracker::insertRange(
     const DxvkAddressRange&           range,
-          DxvkAccess                  accessType,
-          DxvkAccessOp                accessOp) {
-    DxvkBarrierPayload payload = { };
-    payload.accessOps.set(accessOp);
-
+          DxvkAccess                  accessType) {
     // If we can just insert the node with no conflicts,
     // we don't have to do anything.
     uint32_t rootIndex = computeRootIndex(range, accessType);
-    uint32_t nodeIndex = insertNode(range, rootIndex, payload);
+    uint32_t nodeIndex = insertNode(range, rootIndex);
 
     if (likely(!nodeIndex))
       return;
 
     // If there's an existing node and it contains the entire
     // range we want to add already, also don't do anything.
+    // If there are conflicting access ops, reset it.
     auto& node = m_nodes[nodeIndex];
-    node.payload.accessOps.set(payload.accessOps);
+
+    if (node.addressRange.accessOp != range.accessOp)
+      node.addressRange.accessOp = DxvkAccessOp::None;
 
     if (node.addressRange.contains(range))
       return;
@@ -100,14 +100,15 @@ namespace dxvk {
       mergedRange.rangeStart = std::min(mergedRange.rangeStart, node.addressRange.rangeStart);
       mergedRange.rangeEnd = std::max(mergedRange.rangeEnd, node.addressRange.rangeEnd);
 
-      payload.accessOps.set(node.payload.accessOps);
+      if (mergedRange.accessOp != node.addressRange.accessOp)
+        mergedRange.accessOp = DxvkAccessOp::None;
 
       removeNode(nodeIndex, rootIndex);
 
       nodeIndex = findNode(range, rootIndex);
     }
 
-    insertNode(mergedRange, rootIndex, payload);
+    insertNode(mergedRange, rootIndex);
   }
 
 
@@ -186,8 +187,7 @@ namespace dxvk {
 
   uint32_t DxvkBarrierTracker::insertNode(
     const DxvkAddressRange&           range,
-          uint32_t                    rootIndex,
-          DxvkBarrierPayload          payload) {
+          uint32_t                    rootIndex) {
     // Check if the given root is valid at all
     uint64_t rootBit = uint64_t(1u) << (rootIndex - 1u);
 
@@ -199,7 +199,6 @@ namespace dxvk {
       auto& node = m_nodes[rootIndex];
       node.header = 0;
       node.addressRange = range;
-      node.payload = payload;
       return 0;
     } else {
       // Traverse tree and abort if we find any range
@@ -231,7 +230,6 @@ namespace dxvk {
       node.setRed(true);
       node.setParent(parentIndex);
       node.addressRange = range;
-      node.payload = payload;
 
       // Only do the fixup to maintain red-black properties if
       // we haven't marked the root node as red in a deletion.
@@ -261,7 +259,6 @@ namespace dxvk {
         childIndex = m_nodes[childIndex].child(0);
 
       node.addressRange = m_nodes[childIndex].addressRange;
-      node.payload = m_nodes[childIndex].payload;
       removeNode(childIndex, rootIndex);
     } else {
       // Deletion is expected to be exceptionally rare, to the point of
@@ -292,7 +289,6 @@ namespace dxvk {
           node.setRed(child.isRed());
 
         node.addressRange = child.addressRange;
-        node.payload = child.payload;
 
         if (cl) m_nodes[cl].setParent(nodeIndex);
         if (cr) m_nodes[cr].setParent(nodeIndex);
@@ -403,7 +399,6 @@ namespace dxvk {
     node.setChild(1, rr);
 
     std::swap(node.addressRange, m_nodes[r].addressRange);
-    std::swap(node.payload, m_nodes[r].payload);
   }
 
 
@@ -432,7 +427,6 @@ namespace dxvk {
     node.setChild(1, l);
 
     std::swap(node.addressRange, m_nodes[l].addressRange);
-    std::swap(node.payload, m_nodes[l].payload);
   }
 
 

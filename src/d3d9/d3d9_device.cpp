@@ -6102,7 +6102,7 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
       ctx->signal(cStagingBufferFence, cStagingBufferAllocated);
-      ctx->flushCommandList(cSubmissionStatus);
+      ctx->flushCommandList(nullptr, cSubmissionStatus);
     });
 
     FlushCsChunk();

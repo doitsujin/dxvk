@@ -59,9 +59,11 @@ namespace dxvk {
      * 
      * This will not change any context state
      * other than the active command list.
+     * \param [in] reason Optional debug label describing the reason
      * \returns Active command list
      */
-    Rc<DxvkCommandList> endRecording();
+    Rc<DxvkCommandList> endRecording(
+      const VkDebugUtilsLabelEXT*       reason);
 
     /**
      * \brief Ends frame
@@ -100,9 +102,12 @@ namespace dxvk {
      * 
      * Transparently submits the current command
      * buffer and allocates a new one.
+     * \param [in] reason Optional debug label describing the reason
      * \param [out] status Submission feedback
      */
-    void flushCommandList(DxvkSubmitStatus* status);
+    void flushCommandList(
+      const VkDebugUtilsLabelEXT*       reason,
+            DxvkSubmitStatus*           status);
 
     /**
      * \brief Synchronizes command list with WSI
@@ -1945,6 +1950,31 @@ namespace dxvk {
             VkAccessFlags2            dstAccess,
             DxvkAccessOp              accessOp);
 
+    void accessImageRegion(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
+
+    void accessImageRegion(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
+
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
             DxvkBuffer&               buffer,
@@ -2022,6 +2052,13 @@ namespace dxvk {
             DxvkAccess                access);
 
     void flushPendingAccesses(
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            DxvkAccess                access);
+
+    void flushPendingAccesses(
             DxvkImageView&            imageView,
             DxvkAccess                access);
 
@@ -2042,6 +2079,14 @@ namespace dxvk {
     bool resourceHasAccess(
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
+
+    bool resourceHasAccess(
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
             DxvkAccess                access,
             DxvkAccessOp              accessOp);
 

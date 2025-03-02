@@ -353,6 +353,10 @@ namespace dxvk {
     // Required for proper GPU synchronization
     enabledFeatures.vk12.timelineSemaphore = VK_TRUE;
 
+    // Used for better constant array packing in some cases
+    enabledFeatures.vk12.uniformBufferStandardLayout =
+      m_deviceFeatures.vk12.uniformBufferStandardLayout;
+
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
     enabledFeatures.vk13.robustImageAccess =
@@ -406,8 +410,10 @@ namespace dxvk {
     }
 
     // Enable multi-draw for draw batching
-    enabledFeatures.extMultiDraw.multiDraw =
-      m_deviceFeatures.extMultiDraw.multiDraw;
+    if (devExtensions.extMultiDraw) {
+      enabledFeatures.extMultiDraw.multiDraw =
+        m_deviceFeatures.extMultiDraw.multiDraw;
+    }
 
     // Enable memory priority and pageable memory if supported
     // to improve driver-side memory management

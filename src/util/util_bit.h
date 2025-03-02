@@ -632,4 +632,73 @@ namespace dxvk::bit {
     return float(n) / float(1u << F);
   }
 
+
+  /**
+   * \brief Inserts one null bit after each bit
+   */
+  inline uint32_t split2(uint32_t c) {
+    c = (c ^ (c << 8u)) & 0x00ff00ffu;
+    c = (c ^ (c << 4u)) & 0x0f0f0f0fu;
+    c = (c ^ (c << 2u)) & 0x33333333u;
+    c = (c ^ (c << 1u)) & 0x55555555u;
+    return c;
+  }
+
+
+  /**
+   * \brief Inserts two null bits after each bit
+   */
+  inline uint64_t split3(uint64_t c) {
+    c = (c | c << 32u) & 0x001f00000000ffffull;
+    c = (c | c << 16u) & 0x001f0000ff0000ffull;
+    c = (c | c <<  8u) & 0x100f00f00f00f00full;
+    c = (c | c <<  4u) & 0x10c30c30c30c30c3ull;
+    c = (c | c <<  2u) & 0x1249249249249249ull;
+    return c;
+  }
+
+
+  /**
+   * \brief Interleaves bits from two integers
+   *
+   * Both numbers must fit into 16 bits.
+   * \param [in] x X coordinate
+   * \param [in] y Y coordinate
+   * \returns Morton code of x and y
+   */
+  inline uint32_t interleave(uint16_t x, uint16_t y) {
+    return split2(x) | (split2(y) << 1u);
+  }
+
+
+  /**
+   * \brief Interleaves bits from three integers
+   *
+   * All three numbers must fit into 16 bits.
+   */
+  inline uint64_t interleave(uint16_t x, uint16_t y, uint16_t z) {
+    return split3(x) | (split3(y) << 1u) | (split3(z) << 2u);
+  }
+
+
+  /**
+   * \brief 48-bit integer storage type
+   */
+  struct uint48_t {
+    uint48_t() = default;
+
+    explicit uint48_t(uint64_t n)
+    : a(uint16_t(n)), b(uint16_t(n >> 16)), c(uint16_t(n >> 32)) { }
+
+    uint16_t a;
+    uint16_t b;
+    uint16_t c;
+
+    explicit operator uint64_t () const {
+      // GCC generates worse code if we promote to uint64 directly
+      uint32_t lo = uint32_t(a) | (uint32_t(b) << 16);
+      return uint64_t(lo) | (uint64_t(c) << 32);
+    }
+  };
+
 }

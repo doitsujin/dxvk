@@ -637,6 +637,14 @@ namespace dxvk {
      */
     virtual void setDebugName(const char* name) = 0;
 
+    /**
+     * \brief Retrieves debug name
+     *
+     * May return an empty string if debug support is disabled.
+     * \returns The resource debug name
+     */
+    virtual const char* getDebugName() const = 0;
+
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };
