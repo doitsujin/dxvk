@@ -147,4 +147,11 @@ namespace dxvk {
     }
   }
 
+
+  HRESULT STDMETHODCALLTYPE D3D11on12Device::GetD3D12Device(
+          REFIID                  riid,
+          void**                  ppvDevice) {
+    return m_d3d12Queue->GetDevice(riid, ppvDevice);
+  }
+
 }

@@ -3430,7 +3430,8 @@ namespace dxvk {
     }
 
     if (m_d3d11on12.Is11on12Device()) {
-      if (riid == __uuidof(ID3D11On12Device)) {
+      if (riid == __uuidof(ID3D11On12Device)
+       || riid == __uuidof(ID3D11On12Device1_DXVK)) {
         *ppvObject = ref(&m_d3d11on12);
         return S_OK;
       }
