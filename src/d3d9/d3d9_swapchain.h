@@ -243,7 +243,7 @@ namespace dxvk {
       return m_backBuffers.back();
     }
 
-    bool HasFrontBuffer() const {
+    bool SwapWithFrontBuffer() const {
       if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY)
         return false;
 
