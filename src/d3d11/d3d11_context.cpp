@@ -5507,19 +5507,25 @@ namespace dxvk {
     if (Length <= MaxDirectUpdateSize && !((Offset | Length) & 0x3)) {
       // The backend has special code paths for small buffer updates,
       // however both offset and size must be aligned to four bytes.
-      std::array<char, MaxDirectUpdateSize> data;
-      std::memcpy(data.data(), pSrcData, Length);
+      // Write the data directly to the CS chunk.
+      uint32_t dwordCount = Length / sizeof(uint32_t);
 
-      EmitCs([
-        cBufferData = data,
+      EmitCsCmd<uint32_t>(D3D11CmdType::None, dwordCount, [
         cBufferSlice = std::move(bufferSlice)
-      ] (DxvkContext* ctx) {
+      ] (DxvkContext* ctx, const uint32_t* data, size_t) {
         ctx->updateBuffer(
           cBufferSlice.buffer(),
           cBufferSlice.offset(),
-          cBufferSlice.length(),
-          cBufferData.data());
+          cBufferSlice.length(), data);
       });
+
+      // Compiler should be able to vectorize here, but GCC only does
+      // if we cast the destination pointer to the correct type first
+      auto src = reinterpret_cast<const uint32_t*>(pSrcData);
+      auto dst = reinterpret_cast<uint32_t*>(m_csData->first());
+
+      for (uint32_t i = 0; i < dwordCount; i++)
+        new (dst + i) uint32_t(src[i]);
     } else {
       // Write directly to a staging buffer and dispatch a copy
       DxvkBufferSlice stagingSlice = AllocStagingBuffer(Length);
