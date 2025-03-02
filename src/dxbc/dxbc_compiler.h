@@ -524,6 +524,9 @@ namespace dxvk {
 
     uint32_t          m_icbComponents = 0u;
     uint32_t          m_icbSize = 0u;
+
+    uint32_t          m_icbMatrixMap = 0u;
+    uint32_t          m_icbMatrixData = 0u;
     
     ///////////////////////////////////////////////////
     // Sample pos array. If defined, this iis an array
@@ -678,7 +681,12 @@ namespace dxvk {
             uint32_t                dwordCount,
       const uint32_t*               dwordArray,
             uint32_t                componentCount);
-    
+
+    bool emitDclImmediateConstantBufferMatrix(
+            uint32_t                dwordCount,
+      const uint32_t*               dwordArray,
+            uint32_t                componentCount);
+
     void emitCustomData(
       const DxbcShaderInstruction&  ins);
     
@@ -973,9 +981,6 @@ namespace dxvk {
     DxbcRegisterPointer emitGetConstBufPtr(
       const DxbcRegister&           operand);
     
-    DxbcRegisterPointer emitGetImmConstBufPtr(
-      const DxbcRegister&           operand);
-    
     DxbcRegisterPointer emitGetOperandPtr(
       const DxbcRegister&           operand);
     
@@ -1032,13 +1037,16 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcRegMask             writeMask);
     
+    DxbcRegisterValue emitImmediateConstantBufferLoadRaw(
+      const DxbcRegister&           reg);
+
     DxbcRegisterValue emitRegisterLoadRaw(
       const DxbcRegister&           reg);
     
     DxbcRegisterValue emitConstantBufferLoad(
       const DxbcRegister&           reg,
             DxbcRegMask             writeMask);
-    
+
     DxbcRegisterValue emitRegisterLoad(
       const DxbcRegister&           reg,
             DxbcRegMask             writeMask);
