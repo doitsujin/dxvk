@@ -73,13 +73,14 @@ namespace dxvk {
    * a given shader, or for the whole pipeline.
    */
   struct DxvkBindingInfo {
-    VkDescriptorType      descriptorType;   ///< Vulkan descriptor type
-    uint32_t              resourceBinding;  ///< API binding slot for the resource
-    VkImageViewType       viewType;         ///< Image view type
-    VkShaderStageFlagBits stage;            ///< Shader stage
-    VkAccessFlags         access;           ///< Access mask for the resource
-    VkBool32              uboSet;           ///< Whether to include this in the UBO set
-    DxvkAccessOp          accessOp;         ///< Order-invariant store type, if any
+    VkDescriptorType      descriptorType  = VK_DESCRIPTOR_TYPE_MAX_ENUM;        ///< Vulkan descriptor type
+    uint32_t              resourceBinding = 0u;                                 ///< API binding slot for the resource
+    VkImageViewType       viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;        ///< Image view type
+    VkShaderStageFlagBits stage           = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; ///< Shader stage
+    VkAccessFlags         access          = 0u;                                 ///< Access mask for the resource
+    DxvkAccessOp          accessOp        = DxvkAccessOp::None;                 ///< Order-invariant store type, if any
+    bool                  uboSet          = false;                              ///< Whether to include this in the UBO set
+    bool                  isMultisampled  = false;                              ///< Multisampled binding
 
     /**
      * \brief Computes descriptor set index for the given binding
