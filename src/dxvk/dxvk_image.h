@@ -105,6 +105,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Image properties stored in the view
+   *
+   * Used to reduce some pointer chasing.
+   */
+  struct DxvkImageViewImageProperties {
+    VkImageLayout         layout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+    VkAccessFlags         access  = 0u;
+  };
+
+
+  /**
    * \brief Virtual image view
    *
    * Stores views for a number of different view types
@@ -272,6 +284,30 @@ namespace dxvk {
         view->imageSubresources());
     }
 
+    /**
+     * \brief Queries the default image layout
+     *
+     * Used when binding the view as a descriptor.
+     * \returns Default image layout
+     */
+    VkImageLayout defaultLayout() const {
+      return m_properties.layout;
+    }
+
+    /**
+     * \brief Checks whether the image is multisampled
+     * \returns \c true if the image is multisampled
+     */
+    bool isMultisampled() const {
+      return m_properties.samples > VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    /**
+     * \brief Checks whether the image has graphics stores
+     * \returns \c true if the image has graphics pipeline stores
+     */
+    bool hasGfxStores() const;
+
   private:
 
     DxvkImage*              m_image     = nullptr;
@@ -279,11 +315,15 @@ namespace dxvk {
 
     uint32_t                m_version   = 0u;
 
+    DxvkImageViewImageProperties m_properties = { };
+
     std::array<VkImageView, ViewCount> m_views = { };
 
     VkImageView createView(VkImageViewType type) const;
 
     void updateViews();
+
+    void updateProperties();
 
   };
 
@@ -758,6 +798,12 @@ namespace dxvk {
       m_views[viewType] = createView(viewType);
 
     return m_views[viewType];
+  }
+
+
+  inline bool DxvkImageView::hasGfxStores() const {
+    return (m_properties.access & VK_ACCESS_SHADER_WRITE_BIT)
+        && (m_image->hasGfxStores());
   }
 
 }
