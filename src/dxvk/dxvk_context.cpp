@@ -1950,22 +1950,27 @@ namespace dxvk {
     this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
     this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
-    bool useFb = srcImage->info().format != format
+    auto formatInfo = lookupFormatInfo(format);
+
+    bool useRp = srcImage->info().format != format
               || dstImage->info().format != format;
 
-    if (m_device->perfHints().preferFbResolve) {
-      useFb |= (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-            && (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT);
-    }
+    useRp |= (srcImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+          && (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 
-    if (!useFb) {
-      this->resolveImageHw(
-        dstImage, srcImage, region);
+    if (useRp) {
+      // Work out resolve mode based on format properties. For color images,
+      // we must use AVERAGE unless the resolve uses an integer format.
+      VkResolveModeFlagBits mode = VK_RESOLVE_MODE_AVERAGE_BIT;
+
+      if (formatInfo->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt)
+      || (formatInfo->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)))
+        mode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+
+      this->resolveImageRp(dstImage, srcImage, region,
+        format, mode, mode);
     } else {
-      this->resolveImageFb(
-        dstImage, srcImage, region, format,
-        VK_RESOLVE_MODE_NONE,
-        VK_RESOLVE_MODE_NONE);
+      this->resolveImageHw(dstImage, srcImage, region);
     }
   }
 
