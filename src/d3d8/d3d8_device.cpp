@@ -1826,34 +1826,42 @@ namespace dxvk {
       }
     }
 
-    D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
-
-    // Store D3D8 bytecodes in the shader info
-    for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
-      info.declaration.push_back(pDeclaration[i]);
-    info.declaration.push_back(D3DVSD_END());
-
-    if (pFunction != nullptr) {
-      for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
-        info.function.push_back(pFunction[i]);
-      info.function.push_back(D3DVS_END());
-    }
-
-    D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
-
-    // Create vertex declaration
-    HRESULT res = GetD3D9()->CreateVertexDeclaration(result.declaration, &(info.pVertexDecl));
+    D3D9VertexShaderCode translatedVS;
+    HRESULT res = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options, translatedVS);
     if (unlikely(FAILED(res)))
       return res;
 
+    // Create vertex declaration
+    Com<d3d9::IDirect3DVertexDeclaration9> pVertexDecl;
+    res = GetD3D9()->CreateVertexDeclaration(translatedVS.declaration, &pVertexDecl);
+    if (unlikely(FAILED(res)))
+      return res;
+
+    Com<d3d9::IDirect3DVertexShader9> pVertexShader;
     if (pFunction != nullptr) {
-      res = GetD3D9()->CreateVertexShader(result.function.data(), &(info.pVertexShader));
+      res = GetD3D9()->CreateVertexShader(translatedVS.function.data(), &pVertexShader);
     } else {
       // pFunction is NULL: fixed function pipeline
-      info.pVertexShader = nullptr;
+      pVertexShader = nullptr;
     }
 
     if (likely(SUCCEEDED(res))) {
+      D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
+
+      info.pVertexDecl = std::move(pVertexDecl);
+      info.pVertexShader = std::move(pVertexShader);
+
+      // Store D3D8 bytecodes in the shader info
+      for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
+        info.declaration.push_back(pDeclaration[i]);
+      info.declaration.push_back(D3DVSD_END());
+
+      if (pFunction != nullptr) {
+        for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
+          info.function.push_back(pFunction[i]);
+        info.function.push_back(D3DVS_END());
+      }
+
       // Set bit to indicate this is not an FVF
       *pHandle = getShaderHandle(m_vertexShaders.size());
     }
@@ -2064,12 +2072,11 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    d3d9::IDirect3DPixelShader9* pPixelShader;
-
+    Com<d3d9::IDirect3DPixelShader9> pPixelShader;
     HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
 
     if (likely(SUCCEEDED(res))) {
-      m_pixelShaders.push_back(pPixelShader);
+      m_pixelShaders.push_back(std::move(pPixelShader));
       // Still set the shader bit, to prevent conflicts with NULL.
       *pHandle = getShaderHandle(m_pixelShaders.size());
     }
