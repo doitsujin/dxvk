@@ -89,6 +89,7 @@ dxvk_src = [
   'dxvk_gpu_query.cpp',
   'dxvk_graphics.cpp',
   'dxvk_image.cpp',
+  'dxvk_implicit_resolve.cpp',
   'dxvk_instance.cpp',
   'dxvk_latency_builtin.cpp',
   'dxvk_latency_reflex.cpp',
