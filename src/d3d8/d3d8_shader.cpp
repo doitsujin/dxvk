@@ -110,26 +110,27 @@ namespace dxvk {
   }
 
   /**
-   * Converts a D3D8 vertex shader + declaration
-   * to a D3D9 vertex shader + declaration.
+   * Validates and converts a D3D8 vertex shader
+   * + declaration to a D3D9 vertex shader + declaration.
   */
-  D3D9VertexShaderCode TranslateVertexShader8(
-      const DWORD*        pDeclaration,
-      const DWORD*        pFunction,
-      const D3D8Options&  options) {
+  HRESULT TranslateVertexShader8(
+      const DWORD*          pDeclaration,
+      const DWORD*          pFunction,
+      const D3D8Options&    options,
+      D3D9VertexShaderCode& pTranslatedVS) {
     using d3d9::D3DDECLTYPE;
     using d3d9::D3DDECLTYPE_UNUSED;
 
-    D3D9VertexShaderCode result;
+    HRESULT res = D3D_OK;
 
-    std::vector<DWORD>& tokens = result.function;
+    std::vector<DWORD>& tokens = pTranslatedVS.function;
     std::vector<DWORD> defs; // Constant definitions
 
     // shaderInputRegisters:
     // set bit N to enable input register vN
     DWORD shaderInputRegisters = 0;
 
-    d3d9::D3DVERTEXELEMENT9* vertexElements = result.declaration;
+    d3d9::D3DVERTEXELEMENT9* vertexElements = pTranslatedVS.declaration;
     unsigned int elementIdx = 0;
 
     // These are used for pDeclaration and pFunction
@@ -205,6 +206,12 @@ namespace dxvk {
           if ( dataLoadType == 0 ) { // vertex
             D3DVSDT_TYPE     type = D3DVSDT_TYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
             D3DVSDE_REGISTER reg  = D3DVSDE_REGISTER(VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG));
+
+            // FVF normals are expected to only have 3 components
+            if (unlikely(pFunction == nullptr && reg == D3DVSDE_NORMAL && type != D3DVSDT_FLOAT3)) {
+              Logger::err("D3D8Device::CreateVertexShader: Invalid FVF declaration: D3DVSDE_NORMAL must use D3DVSDT_FLOAT3");
+              return D3DERR_INVALIDCALL;
+            }
 
             addVertexElement(reg, type);
 
@@ -332,7 +339,7 @@ namespace dxvk {
       } while (token != D3DVS_END());
     }
 
-    return result;
+    return res;
   }
 
 }
