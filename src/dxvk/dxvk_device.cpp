@@ -427,9 +427,6 @@ namespace dxvk {
       && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
-    hints.preferFbResolve = m_features.amdShaderFragmentMask
-      && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
-       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
 
     // Older Nvidia drivers sometimes use the wrong format
     // to interpret the clear color in render pass clears.
