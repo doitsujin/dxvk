@@ -6144,9 +6144,9 @@ namespace dxvk {
               if (likely(!res.imageView->isMultisampled() || binding.isMultisampled)) {
                 descriptorInfo.image.sampler = VK_NULL_HANDLE;
                 descriptorInfo.image.imageView = viewHandle;
-                descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+                descriptorInfo.image.imageLayout = res.imageView->defaultLayout();
 
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores()))
                   accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
 
                 m_cmd->track(res.imageView->image(), DxvkAccess::Read);
@@ -6155,7 +6155,7 @@ namespace dxvk {
 
                 descriptorInfo.image.sampler = VK_NULL_HANDLE;
                 descriptorInfo.image.imageView = view->handle(binding.viewType);
-                descriptorInfo.image.imageLayout = view->image()->info().layout;
+                descriptorInfo.image.imageLayout = view->defaultLayout();
 
                 m_cmd->track(view->image(), DxvkAccess::Read);
               }
@@ -6177,9 +6177,9 @@ namespace dxvk {
             if (viewHandle) {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
               descriptorInfo.image.imageView = viewHandle;
-              descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->image()->hasGfxStores())
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores())
                 accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, binding.accessOp);
 
               m_cmd->track(res.imageView->image(), (binding.access & vk::AccessWriteMask)
@@ -6203,9 +6203,9 @@ namespace dxvk {
               if (likely(!res.imageView->isMultisampled() || binding.isMultisampled)) {
                 descriptorInfo.image.sampler = res.sampler->handle();
                 descriptorInfo.image.imageView = viewHandle;
-                descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+                descriptorInfo.image.imageLayout = res.imageView->defaultLayout();
 
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores()))
                   accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
 
                 m_cmd->track(res.imageView->image(), DxvkAccess::Read);
@@ -6215,7 +6215,7 @@ namespace dxvk {
 
                 descriptorInfo.image.sampler = res.sampler->handle();
                 descriptorInfo.image.imageView = view->handle(binding.viewType);
-                descriptorInfo.image.imageLayout = view->image()->info().layout;
+                descriptorInfo.image.imageLayout = view->defaultLayout();
 
                 m_cmd->track(view->image(), DxvkAccess::Read);
                 m_cmd->track(res.sampler);
@@ -7062,7 +7062,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             if (slot.imageView) {
-              if (!IsGraphics || slot.imageView->image()->hasGfxStores())
+              if (!IsGraphics || slot.imageView->hasGfxStores())
                 requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access, binding.accessOp);
               else if (binding.access & vk::AccessWriteMask)
                 requiresBarrier |= !slot.imageView->image()->trackGfxStores();
@@ -7071,7 +7071,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-            if (slot.imageView && (!IsGraphics || slot.imageView->image()->hasGfxStores()))
+            if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores()))
               requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access, DxvkAccessOp::None);
           } break;
 
