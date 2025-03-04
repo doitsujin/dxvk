@@ -216,6 +216,9 @@ namespace dxvk {
     allocationInfo.properties = m_properties;
     allocationInfo.mode = mode;
 
+    if (m_info.transient)
+      allocationInfo.mode.set(DxvkAllocationMode::NoDedicated);
+
     return m_allocator->createImageResource(imageInfo,
       allocationInfo, sharedMemoryInfo);
   }

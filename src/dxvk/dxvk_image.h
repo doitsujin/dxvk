@@ -63,6 +63,9 @@ namespace dxvk {
     // to be in its default layout after each submission
     VkBool32 shared = VK_FALSE;
 
+    // Image is likely to have a short lifetime
+    VkBool32 transient = VK_FALSE;
+
     // Image view formats that can
     // be used with this image
     uint32_t viewFormatCount = 0;
