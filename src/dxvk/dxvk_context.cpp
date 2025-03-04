@@ -1999,13 +1999,11 @@ namespace dxvk {
     this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     if (useFb) {
-      this->resolveImageFb(
-        dstImage, srcImage, region, VK_FORMAT_UNDEFINED,
-        depthMode, stencilMode);
+      this->resolveImageFb(dstImage, srcImage, region,
+        VK_FORMAT_UNDEFINED, depthMode, stencilMode);
     } else {
-      this->resolveImageDs(
-        dstImage, srcImage, region,
-        depthMode, stencilMode);
+      this->resolveImageRp(dstImage, srcImage, region,
+        VK_FORMAT_UNDEFINED, depthMode, stencilMode);
     }
   }
 
@@ -4693,21 +4691,31 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::resolveImageDs(
+  void DxvkContext::resolveImageRp(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
-          VkResolveModeFlagBits     depthMode,
+          VkFormat                  format,
+          VkResolveModeFlagBits     mode,
           VkResolveModeFlagBits     stencilMode) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
+    bool isDepthStencil = (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
     DxvkImageUsageInfo usageInfo = { };
-    usageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    usageInfo.usage = isDepthStencil
+      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    if (format) {
+      usageInfo.viewFormatCount = 1u;
+      usageInfo.viewFormats = &format;
+    }
 
     if (!ensureImageCompatibility(dstImage, usageInfo)
      || !ensureImageCompatibility(srcImage, usageInfo)) {
-      Logger::err(str::format("DxvkContext: resolveImageDs: Unsupported images:"
+      Logger::err(str::format("DxvkContext: resolveImageRp: Unsupported images:"
         "\n  dst format: ", dstImage->info().format,
         "\n  src format: ", srcImage->info().format));
     }
@@ -4720,42 +4728,54 @@ namespace dxvk {
       const char* srcName = srcImage->info().debugName;
 
       m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
-        vk::makeLabel(0xf0dcdc, str::format("Resolve DS (",
+        vk::makeLabel(0xf0dcdc, str::format("Resolve pass (",
           dstName ? dstName : "unknown", ", ",
           srcName ? srcName : "unknown", ")").c_str()));
     }
 
-    // Transition both images to usable layouts if necessary. For the source image we
-    // can be fairly leniet since writable layouts are allowed for resolve attachments.
-    VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    // Transition both images to usable layouts if necessary. For the source image
+    // we can be fairly lenient when dealing with writable depth-stencil layouts.
+    VkImageLayout writableLayout = isDepthStencil
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+      : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkImageLayout dstLayout = dstImage->pickLayout(writableLayout);
     VkImageLayout srcLayout = srcImage->info().layout;
 
     if (srcLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
      && srcLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-      srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      srcLayout = srcImage->pickLayout(writableLayout);
 
-    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT, false);
-    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout,
-      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, true);
+    VkPipelineStageFlags2 stages = isDepthStencil
+      ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
+      : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+    VkAccessFlags2 srcAccess = isDepthStencil
+      ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+      : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+    VkAccessFlags2 dstAccess = isDepthStencil
+      ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+      : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout, stages, srcAccess, false);
+    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout, stages, dstAccess, true);
     flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Create a pair of views for the attachment resolve
     DxvkMetaResolveViews views(dstImage, region.dstSubresource,
       srcImage, region.srcSubresource, dstImage->info().format);
 
-    VkRenderingAttachmentInfo depthAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    depthAttachment.imageView = views.srcView->handle();
-    depthAttachment.imageLayout = srcLayout;
-    depthAttachment.resolveMode = depthMode;
-    depthAttachment.resolveImageView = views.dstView->handle();
-    depthAttachment.resolveImageLayout = dstLayout;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    attachment.imageView = views.srcView->handle();
+    attachment.imageLayout = srcLayout;
+    attachment.resolveMode = mode;
+    attachment.resolveImageView = views.dstView->handle();
+    attachment.resolveImageLayout = dstLayout;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    VkRenderingAttachmentInfo stencilAttachment = depthAttachment;
+    VkRenderingAttachmentInfo stencilAttachment = attachment;
     stencilAttachment.resolveMode = stencilMode;
 
     VkExtent3D extent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
@@ -4765,29 +4785,25 @@ namespace dxvk {
     renderingInfo.renderArea.extent = VkExtent2D { extent.width, extent.height };
     renderingInfo.layerCount = region.dstSubresource.layerCount;
 
-    if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      renderingInfo.pDepthAttachment = &depthAttachment;
+    if (isDepthStencil) {
+      if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+        renderingInfo.pDepthAttachment = &attachment;
 
-    if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      renderingInfo.pStencilAttachment = &stencilAttachment;
+      if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+        renderingInfo.pStencilAttachment = &stencilAttachment;
+    } else {
+      renderingInfo.colorAttachmentCount = 1u;
+      renderingInfo.pColorAttachments = &attachment;
+    }
 
     m_cmd->cmdBeginRendering(&renderingInfo);
     m_cmd->cmdEndRendering();
 
-    // Add barriers for the resolve operation
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
-      DxvkAccessOp::None);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *dstImage, dstSubresourceRange, dstLayout,
-      VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      DxvkAccessOp::None);
+    // Add barriers for the render pass resolve
+    accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange,
+      srcLayout, stages, srcAccess, DxvkAccessOp::None);
+    accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresourceRange,
+      dstLayout, stages, dstAccess, DxvkAccessOp::None);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
