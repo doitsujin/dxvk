@@ -173,18 +173,6 @@ namespace dxvk {
 
     Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
 
-    if (!(dxvkImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
-      DxvkImageCreateInfo info = dxvkImage->info();
-      info.flags  = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
-      info.usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-      info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-      info.access = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-      info.tiling = VK_IMAGE_TILING_OPTIMAL;
-      info.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      info.shared = VK_FALSE;
-      dxvkImage = m_copy = pDevice->GetDXVKDevice()->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    }
-
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
     DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
 
@@ -1025,6 +1013,10 @@ namespace dxvk {
     const D3D11_VIDEO_PROCESSOR_STREAM*   pStreams) {
     D3D10DeviceLock lock = m_ctx->LockContext();
 
+    m_ctx->EmitCs([] (DxvkContext* ctx) {
+      ctx->beginDebugLabel(vk::makeLabel(0x59eaff, "Video blit"));
+    });
+
     auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
     bool hasStreamsEnabled = false;
 
@@ -1052,6 +1044,10 @@ namespace dxvk {
 
       m_ctx->RestoreCommandListState();
     }
+
+    m_ctx->EmitCs([] (DxvkContext* ctx) {
+      ctx->endDebugLabel();
+    });
 
     return S_OK;
   }
@@ -1187,6 +1183,13 @@ namespace dxvk {
     auto dxvkView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetView();
 
     m_ctx->EmitCs([this, cView = dxvkView] (DxvkContext* ctx) {
+      DxvkImageUsageInfo usage = { };
+      usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      usage.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      ctx->ensureImageCompatibility(cView->image(), usage);
+
       DxvkRenderTargets rt;
       rt.color[0].view = cView;
       rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -1221,30 +1224,19 @@ namespace dxvk {
 
     auto view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface);
 
-    if (view->NeedsCopy()) {
-      m_ctx->EmitCs([
-        cDstImage     = view->GetShadowCopy(),
-        cSrcImage     = view->GetImage(),
-        cSrcLayers    = view->GetImageSubresources()
-      ] (DxvkContext* ctx) {
-        VkImageSubresourceLayers cDstLayers;
-        cDstLayers.aspectMask = cSrcLayers.aspectMask;
-        cDstLayers.baseArrayLayer = 0;
-        cDstLayers.layerCount = cSrcLayers.layerCount;
-        cDstLayers.mipLevel = cSrcLayers.mipLevel;
-
-        ctx->copyImage(
-          cDstImage, cDstLayers, VkOffset3D(),
-          cSrcImage, cSrcLayers, VkOffset3D(),
-          cDstImage->info().extent);
-      });
-    }
-
     m_ctx->EmitCs([this,
       cStreamState  = *pStreamState,
+      cImage        = view->GetImage(),
       cViews        = view->GetViews(),
       cIsYCbCr      = view->IsYCbCr()
     ] (DxvkContext* ctx) {
+      DxvkImageUsageInfo usage = { };
+      usage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+      usage.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      usage.access = VK_ACCESS_SHADER_READ_BIT;
+
+      ctx->ensureImageCompatibility(cImage, usage);
+
       VkViewport viewport;
       viewport.x        = 0.0f;
       viewport.y        = 0.0f;
