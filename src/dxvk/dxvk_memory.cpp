@@ -932,6 +932,9 @@ namespace dxvk {
       dedicatedRequirements.prefersDedicatedAllocation = VK_TRUE;
     }
 
+    if (!dedicatedRequirements.requiresDedicatedAllocation && allocationInfo.mode.test(DxvkAllocationMode::NoDedicated))
+      dedicatedRequirements.prefersDedicatedAllocation = VK_FALSE;
+
     Rc<DxvkResourceAllocation> allocation;
 
     if (!(createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
