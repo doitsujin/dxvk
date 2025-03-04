@@ -1,4 +1,5 @@
 #include <cstring>
+#include <map>
 #include <vector>
 #include <utility>
 
@@ -15,7 +16,8 @@ namespace dxvk {
     m_initAcquires(DxvkCmdBuffer::InitBarriers),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
-    m_queryManager(m_common->queryPool()) {
+    m_queryManager(m_common->queryPool()),
+    m_implicitResolves(device) {
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
@@ -80,6 +82,8 @@ namespace dxvk {
     const VkDebugUtilsLabelEXT*       reason) {
     this->endCurrentCommands();
     this->relocateQueuedResources();
+
+    m_implicitResolves.cleanup(m_trackingId);
 
     if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
@@ -418,8 +422,16 @@ namespace dxvk {
       clearRect.layerCount          = imageView->info().layerCount;
 
       m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
-    } else
+    } else {
       this->deferClear(imageView, clearAspects, clearValue);
+    }
+
+    if (imageView->isMultisampled()) {
+      auto subresources = imageView->imageSubresources();
+      subresources.aspectMask = clearAspects;
+
+      m_implicitResolves.invalidate(*imageView->image(), subresources);
+    }
   }
   
   
@@ -440,6 +452,13 @@ namespace dxvk {
       this->clearImageViewFb(imageView, offset, extent, aspect, value);
     else if (viewUsage & VK_IMAGE_USAGE_STORAGE_BIT)
       this->clearImageViewCs(imageView, offset, extent, value);
+
+    if (imageView->isMultisampled()) {
+      auto subresources = imageView->imageSubresources();
+      subresources.aspectMask = aspect;
+
+      m_implicitResolves.invalidate(*imageView->image(), subresources);
+    }
   }
   
   
@@ -579,6 +598,9 @@ namespace dxvk {
         srcImage, srcSubresource, srcOffset,
         extent);
     }
+
+    if (dstImage->info().sampleCount > VK_SAMPLE_COUNT_1_BIT)
+      m_implicitResolves.invalidate(*dstImage, vk::makeSubresourceRange(dstSubresource));
   }
   
   
@@ -5659,8 +5681,19 @@ namespace dxvk {
       m_cmd->cmdClearAttachments(lateClearCount, lateClears.data(), 1, &clearRect);
     }
 
-    for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++)
-      m_cmd->track(framebufferInfo.getAttachment(i).view->image(), DxvkAccess::Write);
+    for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
+      const auto& attachment = framebufferInfo.getAttachment(i);
+      m_cmd->track(attachment.view->image(), DxvkAccess::Write);
+
+      if (attachment.view->isMultisampled()) {
+        VkImageSubresourceRange subresources = attachment.view->imageSubresources();
+
+        if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+          subresources.aspectMask = vk::getWritableAspectsForLayout(attachment.layout);
+
+        m_implicitResolves.invalidate(*attachment.view->image(), subresources);
+      }
+    }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1u);
   }
@@ -6108,14 +6141,24 @@ namespace dxvk {
               viewHandle = res.imageView->handle(binding.viewType);
 
             if (viewHandle) {
-              descriptorInfo.image.sampler = VK_NULL_HANDLE;
-              descriptorInfo.image.imageView = viewHandle;
-              descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+              if (likely(!res.imageView->isMultisampled() || binding.isMultisampled)) {
+                descriptorInfo.image.sampler = VK_NULL_HANDLE;
+                descriptorInfo.image.imageView = viewHandle;
+                descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
-              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
-                accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
+                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                  accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
 
-              m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+              } else {
+                auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
+
+                descriptorInfo.image.sampler = VK_NULL_HANDLE;
+                descriptorInfo.image.imageView = view->handle(binding.viewType);
+                descriptorInfo.image.imageLayout = view->image()->info().layout;
+
+                m_cmd->track(view->image(), DxvkAccess::Read);
+              }
             } else {
               descriptorInfo.image.sampler = VK_NULL_HANDLE;
               descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -6157,15 +6200,26 @@ namespace dxvk {
               viewHandle = res.imageView->handle(binding.viewType);
 
             if (viewHandle) {
-              descriptorInfo.image.sampler = res.sampler->handle();
-              descriptorInfo.image.imageView = viewHandle;
-              descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
+              if (likely(!res.imageView->isMultisampled() || binding.isMultisampled)) {
+                descriptorInfo.image.sampler = res.sampler->handle();
+                descriptorInfo.image.imageView = viewHandle;
+                descriptorInfo.image.imageLayout = res.imageView->image()->info().layout;
 
-              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
-                accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
+                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->image()->hasGfxStores()))
+                  accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView, util::pipelineStages(binding.stage), binding.access, DxvkAccessOp::None);
 
-              m_cmd->track(res.sampler);
-              m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                m_cmd->track(res.sampler);
+              } else {
+                auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
+
+                descriptorInfo.image.sampler = res.sampler->handle();
+                descriptorInfo.image.imageView = view->handle(binding.viewType);
+                descriptorInfo.image.imageLayout = view->image()->info().layout;
+
+                m_cmd->track(view->image(), DxvkAccess::Read);
+                m_cmd->track(res.sampler);
+              }
             } else {
               descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
               descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -6821,7 +6875,8 @@ namespace dxvk {
       &m_state.pc.data[pushConstRange.offset]);
   }
   
-  
+
+  template<bool Resolve>
   bool DxvkContext::commitComputeState() {
     this->spillRenderPass(false);
 
@@ -6843,8 +6898,14 @@ namespace dxvk {
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       this->beginBarrierControlDebugRegion<VK_PIPELINE_BIND_POINT_COMPUTE>();
 
-    if (m_descriptorState.hasDirtyComputeSets())
+    if (m_descriptorState.hasDirtyComputeSets()) {
       this->updateComputeShaderResources();
+
+      if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
+        this->flushImplicitResolves();
+        return this->commitComputeState<false>();
+      }
+    }
 
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
@@ -6853,7 +6914,7 @@ namespace dxvk {
   }
   
   
-  template<bool Indexed, bool Indirect>
+  template<bool Indexed, bool Indirect, bool Resolve>
   bool DxvkContext::commitGraphicsState() {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       if (unlikely(!this->updateGraphicsPipeline()))
@@ -6920,8 +6981,18 @@ namespace dxvk {
         return false;
     }
     
-    if (m_descriptorState.hasDirtyGraphicsSets())
+    if (m_descriptorState.hasDirtyGraphicsSets()) {
       this->updateGraphicsShaderResources();
+
+      if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
+        // If implicit resolves are required for any of the shader bindings, we need
+        // to discard all the state setup that we've done so far and try again
+        this->spillRenderPass(true);
+        this->flushImplicitResolves();
+
+        return this->commitGraphicsState<Indexed, Indirect, false>();
+      }
+    }
     
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
       this->updateTransformFeedbackState();
@@ -7671,6 +7742,21 @@ namespace dxvk {
       m_descriptorWrites[i].pImageInfo = &m_descriptors[i].image;
       m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
       m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
+    }
+  }
+
+
+  void DxvkContext::flushImplicitResolves() {
+    spillRenderPass(true);
+
+    DxvkImplicitResolveOp op;
+
+    while (m_implicitResolves.extractResolve(op)) {
+      prepareImage(op.inputImage, vk::makeSubresourceRange(op.resolveRegion.srcSubresource));
+      prepareImage(op.resolveImage, vk::makeSubresourceRange(op.resolveRegion.dstSubresource));
+
+      resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
+        op.resolveFormat, op.resolveMode, op.resolveMode);
     }
   }
 
