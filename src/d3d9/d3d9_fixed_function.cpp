@@ -1160,7 +1160,6 @@ namespace dxvk {
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = vtx;
           if (!applyTransform) {
-            Logger::warn(str::format("!applyTransform flags: ", flags, " projidx: ", projIndex));
             count = 3;
             projIndex = 4;
           }
