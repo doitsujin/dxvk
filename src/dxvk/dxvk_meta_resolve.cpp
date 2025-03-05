@@ -8,7 +8,6 @@
 #include <dxvk_resolve_frag_d.h>
 #include <dxvk_resolve_frag_ds.h>
 #include <dxvk_resolve_frag_f.h>
-#include <dxvk_resolve_frag_f_amd.h>
 #include <dxvk_resolve_frag_u.h>
 #include <dxvk_resolve_frag_i.h>
 
@@ -52,9 +51,7 @@ namespace dxvk {
 
   DxvkMetaResolveObjects::DxvkMetaResolveObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
-    m_shaderFragF (device->features().amdShaderFragmentMask
-      ? createShaderModule(dxvk_resolve_frag_f_amd)
-      : createShaderModule(dxvk_resolve_frag_f)),
+    m_shaderFragF (createShaderModule(dxvk_resolve_frag_f)),
     m_shaderFragU (createShaderModule(dxvk_resolve_frag_u)),
     m_shaderFragI (createShaderModule(dxvk_resolve_frag_i)),
     m_shaderFragD (createShaderModule(dxvk_resolve_frag_d)) {
