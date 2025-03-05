@@ -114,8 +114,8 @@ namespace dxvk {
     return m_interface->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8InterfaceBridge::SetD3D8CompatibilityMode(const bool compatMode) {
-    m_interface->SetD3D8CompatibilityMode(compatMode);
+  void DxvkD3D8InterfaceBridge::EnableD3D8CompatibilityMode() {
+    m_interface->EnableD3D8CompatibilityMode();
   }
 
   const Config* DxvkD3D8InterfaceBridge::GetConfig() const {
