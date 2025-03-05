@@ -536,6 +536,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries tracking ID
+     *
+     * Used to determine when a resource has last been used.
+     * \returns Tracking ID
+     */
+    uint64_t getTrackId() const {
+      return m_trackId >> 1u;
+    }
+
+    /**
      * \brief Sets tracked command list ID
      *
      * Used to work out if a resource has been used in the current

@@ -4,6 +4,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_implicit_resolve.h"
 #include "dxvk_latency.h"
 #include "dxvk_objects.h"
 #include "dxvk_queue.h"
@@ -1461,6 +1462,8 @@ namespace dxvk {
     uint64_t                m_latencyFrameId = 0u;
     bool                    m_endLatencyTracking = false;
 
+    DxvkImplicitResolveTracker  m_implicitResolves;
+
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
       const VkOffset3D*           dstOffsets,
@@ -1616,13 +1619,14 @@ namespace dxvk {
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region);
     
-    void resolveImageDs(
+    void resolveImageRp(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkResolveModeFlagBits     depthMode,
+            VkFormat                  format,
+            VkResolveModeFlagBits     mode,
             VkResolveModeFlagBits     stencilMode);
-    
+
     void resolveImageFb(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
@@ -1775,9 +1779,10 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint>
     void updatePushConstants();
     
+    template<bool Resolve = true>
     bool commitComputeState();
     
-    template<bool Indexed, bool Indirect>
+    template<bool Indexed, bool Indirect, bool Resolve = true>
     bool commitGraphicsState();
     
     template<VkPipelineBindPoint BindPoint>
@@ -1874,6 +1879,8 @@ namespace dxvk {
 
     void resizeDescriptorArrays(
             uint32_t                  bindingCount);
+
+    void flushImplicitResolves();
 
     void beginCurrentCommands();
 
