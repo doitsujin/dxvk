@@ -200,10 +200,15 @@ namespace dxvk {
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
 
-    // Maintain valid state if presentation succeeded, even
-    // if we want to recreate the swapchain.
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
-      currSync.fenceSignaled = status >= 0;
+    // Maintain valid state if presentation succeeded, even if we want to
+    // recreate the swapchain. Spec says that 'queue' operations, i.e. the
+    // semaphore and fence signals, still happen if present fails with
+    // normal swapchain errors, such as OUT_OF_DATE or SURFACE_LOST.
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+      currSync.fenceSignaled = status != VK_ERROR_OUT_OF_DEVICE_MEMORY
+                            && status != VK_ERROR_OUT_OF_HOST_MEMORY
+                            && status != VK_ERROR_DEVICE_LOST;
+    }
 
     if (status >= 0) {
       m_acquireStatus = VK_NOT_READY;
@@ -1140,6 +1145,12 @@ namespace dxvk {
 
 
   void Presenter::destroySwapchain() {
+    // Without present fence support, waiting for the queue or device to go idle
+    // is the only way to properly synchronize swapchain teardown. Care must be
+    // taken not to call this method while the submission queue is locked.
+    if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+      m_device->waitForIdle();
+
     // Wait for the presentWait worker to finish using
     // the swapchain before destroying it.
     std::unique_lock lock(m_frameMutex);
