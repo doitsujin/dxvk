@@ -29,13 +29,15 @@ namespace dxvk {
   }
 
 
-  D3D9Options::D3D9Options(const Rc<DxvkDevice>& device, const Config& config) {
+  D3D9Options::D3D9Options(const Rc<DxvkDevice>& device, const Config& config, bool isD3D8Compatible) {
     const Rc<DxvkAdapter> adapter = device != nullptr ? device->adapter() : nullptr;
 
     // Fetch these as a string representing a hexadecimal number and parse it.
     this->customVendorId        = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
     this->customDeviceDesc      =            config.getOption<std::string>("d3d9.customDeviceDesc");
+
+    const uint32_t maxSupportedShaderModel = isD3D8Compatible ? 1u : 3u;
 
     const uint32_t vendorId = this->customVendorId != -1
       ? this->customVendorId
@@ -44,7 +46,7 @@ namespace dxvk {
     this->maxFrameLatency               = config.getOption<int32_t>     ("d3d9.maxFrameLatency",               0);
     this->maxFrameRate                  = config.getOption<int32_t>     ("d3d9.maxFrameRate",                  0);
     this->presentInterval               = config.getOption<int32_t>     ("d3d9.presentInterval",               -1);
-    this->shaderModel                   = config.getOption<int32_t>     ("d3d9.shaderModel",                   3);
+    this->shaderModel                   = config.getOption<int32_t>     ("d3d9.shaderModel",                   maxSupportedShaderModel);
     this->dpiAware                      = config.getOption<bool>        ("d3d9.dpiAware",                      true);
     this->strictConstantCopies          = config.getOption<bool>        ("d3d9.strictConstantCopies",          false);
     this->strictPow                     = config.getOption<bool>        ("d3d9.strictPow",                     true);
@@ -79,8 +81,8 @@ namespace dxvk {
     // D3D8 options
     this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);
 
-    // Clamp the shader model value between 0 and 3
-    this->shaderModel    = dxvk::clamp(this->shaderModel, 0u, 3u);
+    // Clamp the shader model value between 0 and the maximum supported shader model
+    this->shaderModel    = dxvk::clamp(this->shaderModel, 0u, maxSupportedShaderModel);
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 

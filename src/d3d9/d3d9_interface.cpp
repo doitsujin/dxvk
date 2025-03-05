@@ -17,7 +17,7 @@ namespace dxvk {
     : m_instance    ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
     , m_d3d8Bridge  ( this )
     , m_extended    ( bExtended ) 
-    , m_d3d9Options ( nullptr, m_instance->config() )
+    , m_d3d9Options ( nullptr, m_instance->config(), false )
     , m_d3d9Interop ( this ) {
     // D3D9 doesn't enumerate adapters like physical adapters...
     // only as connected displays.
