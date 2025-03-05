@@ -13,7 +13,7 @@ namespace dxvk {
 
   struct D3D9Options {
 
-    D3D9Options(const Rc<DxvkDevice>& device, const Config& config);
+    D3D9Options(const Rc<DxvkDevice>& device, const Config& config, bool isD3D8Compatible);
 
     /// Override PCI vendor and device IDs reported to the
     /// application. This may make apps think they are running

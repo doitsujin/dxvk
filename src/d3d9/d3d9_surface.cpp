@@ -119,7 +119,7 @@ namespace dxvk {
     
     pDesc->MultiSampleType    = desc.MultiSample;
     pDesc->MultiSampleQuality = desc.MultisampleQuality;
-    pDesc->Width              = std::max(1u, desc.Width >> m_mipLevel);
+    pDesc->Width              = std::max(1u, desc.Width  >> m_mipLevel);
     pDesc->Height             = std::max(1u, desc.Height >> m_mipLevel);
 
     return D3D_OK;
@@ -148,9 +148,9 @@ namespace dxvk {
       bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
 
       // The boundaries of pRect are validated for D3DPOOL_DEFAULT surfaces
-      // with formats which need to be block aligned (mip 0), surfaces created via
+      // with formats which need to be block aligned, surfaces created via
       // CreateImageSurface and D3D8 cube textures outside of D3DPOOL_DEFAULT
-      if ((m_mipLevel == 0 && isBlockAlignedFormat && desc.Pool == D3DPOOL_DEFAULT)
+      if ((isBlockAlignedFormat && desc.Pool == D3DPOOL_DEFAULT)
        || (desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
        || (m_texture->Device()->IsD3D8Compatible() &&
            desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
@@ -161,8 +161,8 @@ namespace dxvk {
          || pRect->right  - pRect->left <= 0
          || pRect->bottom - pRect->top  <= 0
         // Exceeding surface dimensions
-         || static_cast<UINT>(pRect->right)  > desc.Width
-         || static_cast<UINT>(pRect->bottom) > desc.Height)
+         || static_cast<UINT>(pRect->right)  > std::max(1u, desc.Width  >> m_mipLevel)
+         || static_cast<UINT>(pRect->bottom) > std::max(1u, desc.Height >> m_mipLevel))
           return D3DERR_INVALIDCALL;
       }
 

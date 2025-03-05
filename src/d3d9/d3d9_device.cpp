@@ -51,7 +51,7 @@ namespace dxvk {
     , m_shaderModules      ( new D3D9ShaderModuleSet )
     , m_stagingBuffer      ( dxvkDevice, StagingBufferSize )
     , m_stagingBufferFence ( new sync::Fence() )
-    , m_d3d9Options        ( dxvkDevice, pParent->GetInstance()->config() )
+    , m_d3d9Options        ( dxvkDevice, pParent->GetInstance()->config(), pParent->IsD3D8Compatible() )
     , m_multithread        ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP             ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
     , m_isD3D8Compatible   ( pParent->IsD3D8Compatible() )
@@ -3351,6 +3351,13 @@ namespace dxvk {
       pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
+
+    // D3D8 enforces the value advertised in pCaps->MaxVertexShaderConst for HWVP
+    const uint32_t maxVSConstantIndex = module.GetMaxDefinedConstant();
+    if (unlikely(m_isD3D8Compatible && !m_isSWVP && maxVSConstantIndex > caps::MaxFloatConstantsVS - 1)) {
+      Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Invalid constant index ", maxVSConstantIndex));
+      return D3DERR_INVALIDCALL;
+    }
 
     *ppShader = ref(new D3D9VertexShader(this,
       &m_shaderAllocator,
