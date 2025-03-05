@@ -3019,6 +3019,8 @@ namespace dxvk {
 
 
   void DxvkContext::beginRenderPassDebugRegion() {
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
     bool hasColorAttachments = false;
     bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
 
@@ -3044,6 +3046,7 @@ namespace dxvk {
         label << (hasColorAttachments ? ", " : "") << i << ": " << (imageName ? imageName : "unknown");
 
         hasColorAttachments = true;
+        sampleCount = m_state.om.renderTargets.color[i].view->image()->info().sampleCount;
       }
     }
 
@@ -3053,14 +3056,21 @@ namespace dxvk {
 
       const char* imageName = m_state.om.renderTargets.depth.view->image()->info().debugName;
       label << "DS:" << (imageName ? imageName : "unknown");
+
+      sampleCount = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
     }
 
     if (!hasColorAttachments && !hasDepthAttachment)
       label << "No attachments";
 
+    if (sampleCount > VK_SAMPLE_COUNT_1_BIT)
+      label << ", " << uint32_t(sampleCount) << "x MSAA";
+
     label << ")";
 
-    pushDebugRegion(vk::makeLabel(0xf0e6dc, label.str().c_str()),
+    uint32_t color = sampleCount > VK_SAMPLE_COUNT_1_BIT ? 0xf0dcf0 : 0xf0e6dc;
+
+    pushDebugRegion(vk::makeLabel(color, label.str().c_str()),
       util::DxvkDebugLabelType::InternalRenderPass);
   }
 
