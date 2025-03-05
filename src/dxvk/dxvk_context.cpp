@@ -2458,9 +2458,6 @@ namespace dxvk {
 
 
   void DxvkContext::flushResolves() {
-    if (!m_device->perfHints().preferRenderPassOps)
-      return;
-
     for (size_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
       auto& resolve = m_deferredResolves.at(i);
 
@@ -5659,10 +5656,13 @@ namespace dxvk {
     // On drivers that don't natively support secondary command buffers, only
     // use them to enable MSAA resolve attachments. Also ignore color-only
     // render passes here since we almost certainly need the output anyway.
-    bool useSecondaryCmdBuffer = m_device->perfHints().preferRenderPassOps;
+    bool useSecondaryCmdBuffer = !m_device->perfHints().preferPrimaryCmdBufs
+      && renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
 
-    if (useSecondaryCmdBuffer && (m_device->perfHints().preferPrimaryCmdBufs || !depthStencilAspects))
-      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
+    if (m_device->perfHints().preferRenderPassOps) {
+      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT
+        || (!m_device->perfHints().preferPrimaryCmdBufs && depthStencilAspects);
+    }
 
     if (useSecondaryCmdBuffer) {
       // Begin secondary command buffer on tiling GPUs so that subsequent
