@@ -386,7 +386,8 @@ namespace dxvk {
     if (m_state.om.framebufferInfo.isFullSize(imageView))
       attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
 
-    if (attachmentIndex < 0) {
+    // Need to interrupt the render pass if there are pending resolves
+    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       // Suspend works here because we'll end up with one of these scenarios:
       // 1) The render pass gets ended for good, in which case we emit barriers
       // 2) The clear gets folded into render pass ops, so the layout is correct
@@ -3957,7 +3958,7 @@ namespace dxvk {
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, aspect))
       attachmentIndex = -1;
 
-    if (attachmentIndex < 0) {
+    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       this->spillRenderPass(false);
 
       this->prepareImage(imageView->image(), imageView->subresources());
