@@ -119,9 +119,9 @@ namespace dxvk {
         || static_cast<LONG>(pBox->Bottom) - static_cast<LONG>(pBox->Top)   <= 0
         || static_cast<LONG>(pBox->Back)   - static_cast<LONG>(pBox->Front) <= 0
       // Exceeding surface dimensions
-        || pBox->Right  > desc.Width
-        || pBox->Bottom > desc.Height
-        || pBox->Back   > desc.Depth)
+        || pBox->Right  > std::max(1u, desc.Width  >> m_mipLevel)
+        || pBox->Bottom > std::max(1u, desc.Height >> m_mipLevel)
+        || pBox->Back   > std::max(1u, desc.Depth  >> m_mipLevel))
         return D3DERR_INVALIDCALL;
     }
 
