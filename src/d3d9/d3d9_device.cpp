@@ -3352,6 +3352,13 @@ namespace dxvk {
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
+    // D3D8 enforces the value advertised in pCaps->MaxVertexShaderConst for HWVP
+    const uint32_t maxVSConstantIndex = module.GetMaxDefinedConstant();
+    if (unlikely(m_isD3D8Compatible && !m_isSWVP && maxVSConstantIndex > caps::MaxFloatConstantsVS - 1)) {
+      Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Invalid constant index ", maxVSConstantIndex));
+      return D3DERR_INVALIDCALL;
+    }
+
     *ppShader = ref(new D3D9VertexShader(this,
       &m_shaderAllocator,
       module,

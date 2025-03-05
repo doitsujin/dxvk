@@ -259,7 +259,7 @@ namespace dxvk {
 
     DxsoShaderMetaInfo         m_meta;
     DxsoDefinedConstants       m_constants;
-    uint32_t                   m_maxDefinedConstant;
+    uint32_t                   m_maxDefinedConstant = 0u;
 
     SpirvModule                m_module;
 
