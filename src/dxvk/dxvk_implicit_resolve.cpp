@@ -129,11 +129,6 @@ namespace dxvk {
     op.resolveRegion.dstSubresource.baseArrayLayer = 0u;
     op.resolveRegion.extent = view.resolveView->mipLevelExtent(0u);
     op.resolveFormat = view.inputView->info().format;
-    op.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
-
-    if ((format->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt)
-     || (format->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))))
-      op.resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
     view.resolveDone = true;
   }
