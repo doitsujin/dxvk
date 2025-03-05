@@ -7760,8 +7760,21 @@ namespace dxvk {
       prepareImage(op.inputImage, vk::makeSubresourceRange(op.resolveRegion.srcSubresource));
       prepareImage(op.resolveImage, vk::makeSubresourceRange(op.resolveRegion.dstSubresource));
 
-      resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
-        op.resolveFormat, op.resolveMode, op.resolveMode);
+      // Always do a SAMPLE_ZERO resolve here since that's less expensive and closer to what
+      // happens on native AMD anyway. Need to use a shader in case we are dealing with a
+      // non-integer color image since render pass resolves only support AVERAGE.
+      auto formatInfo = lookupFormatInfo(op.resolveFormat);
+
+      bool useRp = (formatInfo->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt))
+                || (formatInfo->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
+      if (useRp) {
+        resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
+          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+      } else {
+        resolveImageFb(op.resolveImage, op.inputImage, op.resolveRegion,
+          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_NONE);
+      }
     }
   }
 

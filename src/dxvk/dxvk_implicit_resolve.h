@@ -20,7 +20,6 @@ namespace dxvk {
     Rc<DxvkImage>             resolveImage  = nullptr;
     VkImageResolve            resolveRegion = { };
     VkFormat                  resolveFormat = VK_FORMAT_UNDEFINED;
-    VkResolveModeFlagBits     resolveMode   = VK_RESOLVE_MODE_NONE;
   };
 
 
