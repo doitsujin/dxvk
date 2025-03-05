@@ -159,7 +159,7 @@ namespace dxvk {
 
   private:
 
-    alignas(M)
+    alignas(std::max(alignof(T), alignof(M)))
     T               m_command;
     DxvkCsDataBlock m_data;
 
