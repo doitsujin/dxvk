@@ -1022,6 +1022,11 @@ namespace dxvk {
       { "d3d9.maxAvailableMemory",          "2048" },
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* CivCity: Rome                              *
+     * Enables soft real-time shadows             */
+    { R"(\\CivCity Rome\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
