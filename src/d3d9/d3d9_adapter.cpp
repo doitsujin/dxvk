@@ -114,7 +114,10 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
-    if(unlikely(AdapterFormat == D3D9Format::Unknown))
+    if (unlikely(AdapterFormat == D3D9Format::Unknown))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER))
       return D3DERR_INVALIDCALL;
 
     if (!IsSupportedAdapterFormat(AdapterFormat))
@@ -167,9 +170,6 @@ namespace dxvk {
 
     if (RType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT)
       return D3DERR_NOTAVAILABLE;
-
-    if (RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER)
-      return D3D_OK;
 
     // Let's actually ask Vulkan now that we got some quirks out the way!
     VkFormat format = mapping.FormatColor;
