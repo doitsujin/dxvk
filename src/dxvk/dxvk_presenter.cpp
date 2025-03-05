@@ -194,17 +194,27 @@ namespace dxvk {
 
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
       modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
-      fenceInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &fenceInfo));
+
+      // It is not clear if present fences are supposed to get signaled if
+      // presentation itself fails, e.g. with OUT_OF_DATE_KHR. Until this
+      // is clarified, we cannot use the feature.
+      // fenceInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &fenceInfo));
     }
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
 
+    // Signal the present fence in a naive way
+    if (status != VK_ERROR_DEVICE_LOST) {
+      VkResult vr = m_vkd->vkQueueSubmit2(m_device->queues().graphics.queueHandle, 0, nullptr, currSync.fence);
+      currSync.fenceSignaled = vr == VK_SUCCESS;
+
+      if (vr != VK_SUCCESS)
+        Logger::err(str::format("Failed to signal emulated present fence: ", vr));
+    }
+
     // Maintain valid state if presentation succeeded, even
     // if we want to recreate the swapchain.
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
-      currSync.fenceSignaled = status >= 0;
-
     if (status >= 0) {
       m_acquireStatus = VK_NOT_READY;
 
