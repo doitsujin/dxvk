@@ -703,7 +703,7 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Escape from Tarkov launcher
-       Same issue as Warhammer: RoR above       */
+       Work around partial presentation issues  */
     { R"(\\BsgLauncher\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
     }} },

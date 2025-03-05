@@ -42,11 +42,9 @@ IDxvkD3D8Bridge : public IUnknown {
 MIDL_INTERFACE("D3D9D3D8-A407-773E-18E9-CAFEBEEF3000")
 IDxvkD3D8InterfaceBridge : public IUnknown {
   /**
-   * \brief Enables or disables D3D9-specific features and validations
-   *
-   * \param [in] compatMode Compatibility state
+   * \brief Enforces D3D8-specific features and validations
    */
-  virtual void SetD3D8CompatibilityMode(const bool compatMode) = 0;
+  virtual void EnableD3D8CompatibilityMode() = 0;
 
   /**
    * \brief Retrieves the DXVK configuration
@@ -106,7 +104,7 @@ namespace dxvk {
             REFIID  riid,
             void** ppvObject);
 
-    void SetD3D8CompatibilityMode(const bool compatMode);
+    void EnableD3D8CompatibilityMode();
 
     const Config* GetConfig() const;
 

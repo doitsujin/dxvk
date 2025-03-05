@@ -15,7 +15,7 @@ namespace dxvk {
       throw DxvkError("D3D8Interface: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
-    m_bridge->SetD3D8CompatibilityMode(true);
+    m_bridge->EnableD3D8CompatibilityMode();
 
     m_d3d8Options = D3D8Options(*m_bridge->GetConfig());
 

@@ -1815,17 +1815,6 @@ namespace dxvk {
     if (unlikely(pDeclaration == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // Validate VS version for non-FF shaders
-    if (pFunction != nullptr) {
-      const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-      const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-      if (unlikely(majorVersion != 1 || minorVersion > 1)) {
-        Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
-        return D3DERR_INVALIDCALL;
-      }
-    }
-
     D3D9VertexShaderCode translatedVS;
     HRESULT res = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options, translatedVS);
     if (unlikely(FAILED(res)))
@@ -2063,14 +2052,6 @@ namespace dxvk {
 
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
-
-    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-    if (unlikely(m_isFixedFunctionOnly || majorVersion != 1 || minorVersion > 4)) {
-      Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
-      return D3DERR_INVALIDCALL;
-    }
 
     Com<d3d9::IDirect3DPixelShader9> pPixelShader;
     HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
