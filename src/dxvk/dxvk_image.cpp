@@ -19,7 +19,7 @@ namespace dxvk {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Assign debug name to image
-    if (device->isDebugEnabled()) {
+    if (device->debugFlags().test(DxvkDebugFlag::Capture)) {
       m_debugName = createDebugName(createInfo.debugName);
       m_info.debugName = m_debugName.c_str();
     } else {

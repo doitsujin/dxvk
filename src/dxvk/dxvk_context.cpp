@@ -55,7 +55,7 @@ namespace dxvk {
       m_features.set(DxvkContextFeature::DirectMultiDraw);
 
     // Add a fast path to query debug utils support
-    if (m_device->isDebugEnabled())
+    if (m_device->debugFlags().test(DxvkDebugFlag::Capture))
       m_features.set(DxvkContextFeature::DebugUtils);
   }
   

@@ -16,6 +16,7 @@ namespace dxvk {
     m_instance          (instance),
     m_adapter           (adapter),
     m_vkd               (vkd),
+    m_debugFlags        (instance->debugFlags()),
     m_queues            (queues),
     m_features          (features),
     m_properties        (adapter->devicePropertiesExt()),

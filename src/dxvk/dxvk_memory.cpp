@@ -774,7 +774,7 @@ namespace dxvk {
         } else {
           // Do not suballocate buffers if debug mode is enabled in order
           // to allow the application to set meaningful debug names.
-          allowSuballocation = !m_device->isDebugEnabled();
+          allowSuballocation = !m_device->debugFlags().test(DxvkDebugFlag::Capture);
         }
 
         // If there is at least one memory type that supports the required
@@ -1219,7 +1219,7 @@ namespace dxvk {
 
     result.cookie = ++m_nextCookie;
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       assignMemoryDebugName(result, type);
 
     type.stats.memoryAllocated += size;

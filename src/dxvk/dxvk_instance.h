@@ -21,6 +21,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Debug flags
+   */
+  enum class DxvkDebugFlag : uint32_t {
+    Validation        = 0,
+    Capture           = 1,
+    Markers           = 2,
+  };
+
+  using DxvkDebugFlags = Flags<DxvkDebugFlag>;
+
+
+  /**
    * \brief Instance creation flags
    *
    * These flags will be passed to the app version field of the Vulkan
@@ -156,6 +168,14 @@ namespace dxvk {
     const DxvkNameList& extensionNameList() const {
       return m_extensionNames;
     }
+
+    /**
+     * \brief Debug flags
+     * \returns Debug flags
+     */
+    DxvkDebugFlags debugFlags() const {
+      return m_debugFlags;
+    }
     
   private:
 
@@ -167,6 +187,7 @@ namespace dxvk {
     DxvkInstanceExtensions  m_extensions;
     DxvkNameSet             m_extensionSet;
     DxvkNameList            m_extensionNames;
+    DxvkDebugFlags          m_debugFlags = 0u;
 
     VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
 
