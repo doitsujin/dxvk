@@ -387,7 +387,7 @@ namespace dxvk {
       attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
 
     // Need to interrupt the render pass if there are pending resolves
-    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
+    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
       // Suspend works here because we'll end up with one of these scenarios:
       // 1) The render pass gets ended for good, in which case we emit barriers
       // 2) The clear gets folded into render pass ops, so the layout is correct
@@ -2688,7 +2688,7 @@ namespace dxvk {
         m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
 
       if (!m_features.test(DxvkContextFeature::VariableMultisampleRate))
-        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+        m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
     }
 
     DxvkRsInfo rsInfo(
@@ -3958,7 +3958,7 @@ namespace dxvk {
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, aspect))
       attachmentIndex = -1;
 
-    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
+    if (attachmentIndex < 0) {
       this->spillRenderPass(false);
 
       this->prepareImage(imageView->image(), imageView->subresources());
@@ -5203,7 +5203,7 @@ namespace dxvk {
       resolve.stencilMode = stencilMode;
 
     // Ensure resolves get flushed before the next draw
-    m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+    m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
     return true;
   }
 
@@ -5341,13 +5341,14 @@ namespace dxvk {
   void DxvkContext::spillRenderPass(bool suspend) {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound,
-                  DxvkContextFlag::GpRenderPassSideEffects);
+                  DxvkContextFlag::GpRenderPassSideEffects,
+                  DxvkContextFlag::GpRenderPassNeedsFlush);
 
       this->pauseTransformFeedback();
-      
+
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
+
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
 
@@ -6302,6 +6303,9 @@ namespace dxvk {
       }
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    } else if (m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
+      // End render pass to flush pending resolves
+      this->spillRenderPass(true);
     }
   }
 
@@ -6840,7 +6844,9 @@ namespace dxvk {
         return false;
     }
 
-    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
+    // End render pass if there are pending resolves
+    if (m_flags.any(DxvkContextFlag::GpDirtyFramebuffer,
+                    DxvkContextFlag::GpRenderPassNeedsFlush))
       this->updateFramebuffer();
 
     if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
@@ -7751,7 +7757,7 @@ namespace dxvk {
             m_state.om.renderingInfo.color[i].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         }
 
-        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+        m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
       }
     }
   }
