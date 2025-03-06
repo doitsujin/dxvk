@@ -25,6 +25,7 @@ namespace dxvk {
     GpRenderPassSuspended,      ///< Render pass is currently suspended
     GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
     GpRenderPassSideEffects,    ///< Render pass has side effects
+    GpRenderPassNeedsFlush,     ///< Render pass has pending resolves or discards
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
