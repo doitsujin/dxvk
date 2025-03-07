@@ -4831,7 +4831,7 @@ namespace dxvk {
       // which need to be block aligned, must be validated for mip level 0.
       if (MipLevel == 0 && isBlockAlignedFormat
         && (type == D3DRTYPE_VOLUMETEXTURE ||
-           (type != D3DRTYPE_VOLUMETEXTURE && desc.Pool == D3DPOOL_DEFAULT))
+            desc.Pool == D3DPOOL_DEFAULT)
         && (isNotLeftAligned  || isNotTopAligned ||
             isNotRightAligned || isNotBottomAligned))
         return D3DERR_INVALIDCALL;
@@ -6021,7 +6021,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdatePushConstant(const void* pData) {
     struct ConstantData { uint8_t Data[Length]; };
 
-    auto* constData = reinterpret_cast<const ConstantData*>(pData);
+    const ConstantData* constData = reinterpret_cast<const ConstantData*>(pData);
 
     EmitCs([
       cData = *constData
@@ -7230,7 +7230,7 @@ namespace dxvk {
           UINT             InstanceCount) {
     D3D9DrawInfo drawInfo;
     drawInfo.vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
-    drawInfo.instanceCount = m_iaState.streamsInstanced & m_iaState.streamsUsed
+    drawInfo.instanceCount = (m_iaState.streamsInstanced & m_iaState.streamsUsed)
       ? InstanceCount
       : 1u;
     return drawInfo;

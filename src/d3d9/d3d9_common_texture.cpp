@@ -357,7 +357,6 @@ namespace dxvk {
       imageInfo.sharing.mode = (*pSharedHandle == INVALID_HANDLE_VALUE || *pSharedHandle == nullptr)
         ? DxvkSharedHandleMode::Export
         : DxvkSharedHandleMode::Import;
-      imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
       imageInfo.sharing.handle = *pSharedHandle;
       imageInfo.shared = true;
       // TODO: validate metadata?
@@ -556,7 +555,7 @@ namespace dxvk {
       return VK_IMAGE_LAYOUT_GENERAL;
 
     // Otherwise, pick a layout that can be used for reading.
-    return Usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+    return (Usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
       : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }

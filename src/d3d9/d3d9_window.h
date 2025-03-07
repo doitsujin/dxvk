@@ -19,7 +19,7 @@ namespace dxvk {
   private:
 
     HWND m_window;
-    bool m_filter;
+    bool m_filter = false;
 
   };
 

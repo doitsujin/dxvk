@@ -81,24 +81,20 @@ namespace dxvk {
   };
 
   struct D3D9Light {
-    D3D9Light(const D3DLIGHT9& light, Matrix4 viewMtx) {
-      Diffuse  = Vector4(light.Diffuse.r,  light.Diffuse.g,  light.Diffuse.b,  light.Diffuse.a);
-      Specular = Vector4(light.Specular.r, light.Specular.g, light.Specular.b, light.Specular.a);
-      Ambient  = Vector4(light.Ambient.r,  light.Ambient.g,  light.Ambient.b,  light.Ambient.a);
-
-      Position  = viewMtx * Vector4(light.Position.x,  light.Position.y,  light.Position.z,  1.0f);
-      Direction = Vector4(light.Direction.x, light.Direction.y, light.Direction.z, 0.0f);
-      Direction = normalize(viewMtx * Direction);
-
-      Type         = light.Type;
-      Range        = light.Range;
-      Falloff      = light.Falloff;
-      Attenuation0 = light.Attenuation0;
-      Attenuation1 = light.Attenuation1;
-      Attenuation2 = light.Attenuation2;
-      Theta        = cosf(light.Theta / 2.0f);
-      Phi          = cosf(light.Phi / 2.0f);
-    }
+    D3D9Light(const D3DLIGHT9& light, Matrix4 viewMtx)
+      : Diffuse      ( Vector4(light.Diffuse.r,  light.Diffuse.g,  light.Diffuse.b,  light.Diffuse.a) )
+      , Specular     ( Vector4(light.Specular.r, light.Specular.g, light.Specular.b, light.Specular.a) )
+      , Ambient      ( Vector4(light.Ambient.r,  light.Ambient.g,  light.Ambient.b,  light.Ambient.a) )
+      , Position     ( viewMtx * Vector4(light.Position.x,  light.Position.y,  light.Position.z,  1.0f) )
+      , Direction    ( normalize(viewMtx * Vector4(light.Direction.x, light.Direction.y, light.Direction.z, 0.0f)) )
+      , Type         ( light.Type )
+      , Range        ( light.Range )
+      , Falloff      ( light.Falloff )
+      , Attenuation0 ( light.Attenuation0 )
+      , Attenuation1 ( light.Attenuation1 )
+      , Attenuation2 ( light.Attenuation2 )
+      , Theta        ( cosf(light.Theta / 2.0f) )
+      , Phi          ( cosf(light.Phi / 2.0f) ) { }
 
     Vector4 Diffuse;
     Vector4 Specular;
@@ -236,8 +232,6 @@ namespace dxvk {
   };
 
   struct D3D9SamplerInfo {
-    D3D9SamplerInfo() = default;
-
     D3D9SamplerInfo(const std::array<DWORD, SamplerStateCount>& state)
     : addressU(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSU]))
     , addressV(D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSV]))
@@ -309,8 +303,8 @@ namespace dxvk {
     std::array<DWORD, caps::MaxEnabledLights>           enabledLightIndices;
 
     bool IsLightEnabled(DWORD Index) const {
-      const auto& indices = enabledLightIndices;
-      return std::find(indices.begin(), indices.end(), Index) != indices.end();
+      const auto& enabledIndices = enabledLightIndices;
+      return std::find(enabledIndices.begin(), enabledIndices.end(), Index) != enabledIndices.end();
     }
   };
 

@@ -190,7 +190,7 @@ namespace dxvk {
       const DWORD*                     pInstr,
             DWORD                      InstrLength,
             D3D9ShaderValidatorMessage MessageID,
-            std::string                Message) {
+      const std::string&               Message) {
     if (m_callback)
       m_callback(pFile, Line, Unknown, MessageID, Message.c_str(), m_userData);
 

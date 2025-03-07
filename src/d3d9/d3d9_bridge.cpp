@@ -64,20 +64,15 @@ namespace dxvk {
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
-    VkOffset3D srcOffset = { 0u, 0u, 0u };
-    VkOffset3D dstOffset = { 0u, 0u, 0u };
-    VkExtent3D texLevelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent3D extent = texLevelExtent;
+    VkOffset3D srcOffset = { pSrcRect->left,
+                             pSrcRect->top,
+                             0u };
 
-    srcOffset = { pSrcRect->left,
-                  pSrcRect->top,
-                  0u };
+    VkExtent3D extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
 
-    extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
-
-    dstOffset = { pDestPoint->x,
-                  pDestPoint->y,
-                  0u };
+    VkOffset3D dstOffset = { pDestPoint->x,
+                             pDestPoint->y,
+                             0u };
 
     m_device->UpdateTextureFromBuffer(
       srcTextureInfo, dstTextureInfo,
