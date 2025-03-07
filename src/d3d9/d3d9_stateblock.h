@@ -367,15 +367,27 @@ namespace dxvk {
             setCaptures.bConsts.set(reg, true);
         }
 
-        UpdateStateConstants<
-          ProgramType,
-          ConstantType,
-          T>(
-            &m_state,
-            StartRegister,
-            pConstantData,
-            Count,
-            false);
+        if constexpr (ProgramType == DxsoProgramType::VertexShader) {
+          UpdateStateConstants<
+            dynamic_item<D3D9ShaderConstantsVSSoftware>&,
+            ConstantType,
+            T>(
+              m_state.vsConsts,
+              StartRegister,
+              pConstantData,
+              Count,
+              false);
+        } else {
+          UpdateStateConstants<
+            dynamic_item<D3D9ShaderConstantsPS>&,
+            ConstantType,
+            T>(
+              m_state.psConsts,
+              StartRegister,
+              pConstantData,
+              Count,
+              false);
+        }
 
         return D3D_OK;
       };

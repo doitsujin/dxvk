@@ -247,7 +247,6 @@ namespace dxvk {
     const DxsoDefinedConstants& constants() { return m_constants; }
     uint32_t usedSamplers() const { return m_usedSamplers; }
     uint32_t usedRTs() const { return m_usedRTs; }
-    uint32_t maxDefinedConstant() const { return m_maxDefinedConstant; }
     uint32_t textureTypes() const { return m_textureTypes; }
 
   private:

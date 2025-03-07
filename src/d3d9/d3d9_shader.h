@@ -52,8 +52,6 @@ namespace dxvk {
 
     const DxsoProgramInfo& GetInfo() const { return m_info; }
 
-    uint32_t GetMaxDefinedConstant() const { return m_maxDefinedConst; }
-
     VkImageViewType GetImageViewType(uint32_t samplerSlot) const {
       const uint32_t offset = samplerSlot * 2;
       const uint32_t mask = 0b11;
@@ -70,7 +68,6 @@ namespace dxvk {
     DxsoProgramInfo       m_info;
     DxsoShaderMetaInfo    m_meta;
     DxsoDefinedConstants  m_constants;
-    uint32_t              m_maxDefinedConst;
 
     Rc<DxvkShader>        m_shader;
 

@@ -1797,7 +1797,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < 4; i++)
       constant.float32[i] = data[i];
     m_constants.push_back(constant);
-    m_maxDefinedConstant = std::max(constant.uboIdx, m_maxDefinedConstant);
+    m_meta.maxShaderDefinedFloatConstant = std::max(constant.uboIdx, m_meta.maxShaderDefinedFloatConstant);
   }
 
   void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {

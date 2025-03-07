@@ -40,15 +40,30 @@ namespace dxvk {
   };
 
   struct D3D9SwvpConstantBuffers {
-    D3D9ConstantBuffer        intBuffer;
-    D3D9ConstantBuffer        boolBuffer;
+    D3D9CSConstantBuffer intBuffer;
+    D3D9CSConstantBuffer boolBuffer;
   };
 
-  struct D3D9ConstantSets {
-    D3D9SwvpConstantBuffers   swvp;
-    D3D9ConstantBuffer        buffer;
+  template<typename ShaderConstantsStorage>
+  struct D3D9CSShaderConstants {
+    ShaderConstantsStorage constants;
+
+    // Primary buffer (contains HWVP or pixel shaders: Ints + Floats, SWVP: Floats)
+    D3D9CSConstantBuffer    buffer;
+    // Secondary buffers for SWVP (one for Ints, one for Bools)
+    D3D9SwvpConstantBuffers swvp;
+
+    // Shader related
     DxsoShaderMetaInfo        meta  = {};
+    DxsoDefinedConstants      shaderDefinedConsts;
+
+    // Tracking
     bool                      dirty = true;
+    uint32_t                  floatConstsCount = 0;
+    // The highest changed int and bool constants are only tracked for SWVP.
+    // For HWVP or pixel shaders, the maximum amount is only 16 anyway.
+    uint32_t                  intConstsCount   = 0;
+    uint32_t                  boolConstsCount = 0;
   };
 
 }

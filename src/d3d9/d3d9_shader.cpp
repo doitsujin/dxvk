@@ -70,7 +70,6 @@ namespace dxvk {
     m_info      = pModule->info();
     m_meta      = pModule->meta();
     m_constants = pModule->constants();
-    m_maxDefinedConst = pModule->maxDefinedConstant();
 
     m_shader->setShaderKey(Key);
 

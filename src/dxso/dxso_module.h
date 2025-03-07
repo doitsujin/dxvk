@@ -59,8 +59,6 @@ namespace dxvk {
 
     uint32_t usedRTs() { return m_usedRTs; }
 
-    uint32_t maxDefinedConstant() { return m_maxDefinedConst; }
-
     uint32_t textureTypes() { return m_textureTypes; }
 
   private:
@@ -82,7 +80,6 @@ namespace dxvk {
     uint32_t        m_textureTypes;
 
     DxsoShaderMetaInfo   m_meta;
-    uint32_t             m_maxDefinedConst;
     DxsoDefinedConstants m_constants;
 
   };

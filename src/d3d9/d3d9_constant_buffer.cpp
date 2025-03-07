@@ -35,7 +35,6 @@ namespace dxvk {
 
   }
 
-
   D3D9ConstantBuffer::~D3D9ConstantBuffer() {
 
   }
@@ -130,6 +129,118 @@ namespace dxvk {
 
 
   VkDeviceSize D3D9ConstantBuffer::getAlignment(const Rc<DxvkDevice>& device) const {
+    return std::max(std::max(
+      device->properties().core.properties.limits.minUniformBufferOffsetAlignment,
+      device->properties().core.properties.limits.minStorageBufferOffsetAlignment),
+      device->properties().extRobustness2.robustUniformBufferAccessSizeAlignment);
+  }
+
+
+
+  // Constant Buffer living on the CS thread
+
+  D3D9CSConstantBuffer::D3D9CSConstantBuffer() {
+
+  }
+
+  D3D9CSConstantBuffer::D3D9CSConstantBuffer(
+    const Rc<DxvkDevice>&       Device,
+          DxsoProgramType       ShaderStage,
+          DxsoConstantBuffers   BufferType,
+          VkDeviceSize          Size,
+          bool                  UseDeviceLocalBuffer)
+  : D3D9CSConstantBuffer(Device, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, GetShaderStage(ShaderStage),
+      computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, BufferType),
+      Size, UseDeviceLocalBuffer) {
+
+  }
+
+  D3D9CSConstantBuffer::D3D9CSConstantBuffer(
+    const Rc<DxvkDevice>&       Device,
+          VkBufferUsageFlags    Usage,
+          VkShaderStageFlags    Stages,
+          uint32_t              ResourceSlot,
+          VkDeviceSize          Size,
+          bool                  UseDeviceLocalBuffer)
+  : m_device    (Device)
+  , m_binding   (ResourceSlot)
+  , m_usage     (Usage)
+  , m_stages    (Stages)
+  , m_size      (Size)
+  , m_align     (getAlignment(Device))
+  , m_useDeviceLocalBuffer(UseDeviceLocalBuffer) {
+
+  }
+
+  D3D9CSConstantBuffer::~D3D9CSConstantBuffer() {
+
+  }
+
+
+  void* D3D9CSConstantBuffer::Alloc(DxvkContext* ctx, VkDeviceSize size) {
+    if (unlikely(m_buffer == nullptr))
+      m_slice = this->createBuffer(ctx);
+
+    size = align(size, m_align);
+
+    if (unlikely(m_offset + size > m_size)) {
+      Rc<DxvkResourceAllocation> newSlice = m_buffer->allocateStorage();
+      m_offset = 0;
+      m_slice = newSlice;
+      ctx->invalidateBuffer(m_buffer, std::move(newSlice));
+    }
+
+    ctx->bindUniformBufferRange(m_stages, m_binding, m_offset, size);
+
+    void* mapPtr = reinterpret_cast<char*>(m_slice->mapPtr()) + m_offset;
+    m_offset += size;
+    return mapPtr;
+  }
+
+
+  void* D3D9CSConstantBuffer::AllocSlice(DxvkContext* ctx) {
+    if (unlikely(m_buffer == nullptr))
+      m_slice = this->createBuffer(ctx);
+    else
+      m_slice = m_buffer->allocateStorage();
+
+    ctx->invalidateBuffer(m_buffer, std::move(m_slice));
+
+    return m_slice->mapPtr();
+  }
+
+
+  Rc<DxvkResourceAllocation> D3D9CSConstantBuffer::createBuffer(DxvkContext* ctx) {
+    // Buffer usage and access flags don't make much of a difference
+    // in the backend, so set both STORAGE and UNIFORM usage/access.
+    DxvkBufferCreateInfo bufferInfo;
+    bufferInfo.size   = align(m_size, m_align);
+    bufferInfo.usage  = m_usage;
+    bufferInfo.access = 0;
+    bufferInfo.stages = util::pipelineStages(m_stages);
+    bufferInfo.debugName = "Constant buffer";
+
+    if (m_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+      bufferInfo.access |= VK_ACCESS_UNIFORM_READ_BIT;
+    if (m_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+      bufferInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+
+    VkMemoryPropertyFlags memoryFlags
+      = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    if (m_useDeviceLocalBuffer)
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    m_buffer = m_device->createBuffer(bufferInfo, memoryFlags);
+
+    ctx->bindUniformBuffer(m_stages, m_binding, DxvkBufferSlice(m_buffer));
+
+    return m_buffer->storage();
+  }
+
+
+  VkDeviceSize D3D9CSConstantBuffer::getAlignment(const Rc<DxvkDevice>& device) const {
     return std::max(std::max(
       device->properties().core.properties.limits.minUniformBufferOffsetAlignment,
       device->properties().core.properties.limits.minStorageBufferOffsetAlignment),

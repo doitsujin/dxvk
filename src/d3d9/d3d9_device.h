@@ -941,16 +941,16 @@ namespace dxvk {
 
     void BindDepthBias();
 
-    inline void UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout);
+    inline static void UploadSoftwareConstantSet(DxvkContext* ctx, D3D9CSShaderConstants<D3D9ShaderConstantsVSSoftware>& ShaderConsts);
 
-    inline void* CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size);
+    inline static void* CopySoftwareConstants(DxvkContext* ctx, D3D9CSConstantBuffer& dstBuffer, const void* src, uint32_t size);
 
-    template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-    inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
-    
-    template <DxsoProgramType ShaderStage>
-    void UploadConstants();
-    
+    template <typename ShaderConstantsStorage, typename GPUShaderConstantsStorage = ShaderConstantsStorage>
+    inline static void UploadConstantSet(DxvkContext* ctx, D3D9CSShaderConstants<ShaderConstantsStorage>& ShaderConsts);
+
+    template <typename ShaderConstantsStorage>
+    static void UploadConstants(DxvkContext* ctx, D3D9CSShaderConstants<ShaderConstantsStorage>& ShaderConsts, bool canSWVP);
+
     void UpdateClipPlanes();
 
     /**
@@ -1190,6 +1190,24 @@ namespace dxvk {
 
         m_csChunk->push(command);
       }
+    }
+
+    template<typename M, bool AllowFlush = true, typename Cmd>
+    DxvkCsDataBlock* EmitCsWithData(size_t count, Cmd&& command) {
+      DxvkCsDataBlock* data = m_csChunk->pushCmd<M, Cmd>(command, count);
+
+      if (unlikely(!data)) {
+        EmitCsChunk(std::move(m_csChunk));
+        m_csChunk = AllocCsChunk();
+
+        if constexpr (AllowFlush)
+          ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
+        // We must record this command after the potential
+        // flush since the caller may still access the data
+        data = m_csChunk->pushCmd<M, Cmd>(command, count);
+      }
+      return data;
     }
 
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
@@ -1582,16 +1600,8 @@ namespace dxvk {
     uint32_t                        m_robustSSBOAlignment     = 1;
     uint32_t                        m_robustUBOAlignment      = 1;
 
-    uint32_t                        m_vsFloatConstsCount = 0;
-    uint32_t                        m_vsIntConstsCount   = 0;
-    uint32_t                        m_vsBoolConstsCount  = 0;
-    uint32_t                        m_psFloatConstsCount = 0;
-    VkDeviceSize                    m_boundVSConstantsBufferSize = 0;
-    VkDeviceSize                    m_boundPSConstantsBufferSize = 0;
-
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;
-    D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
 	
 	D3D9UserDefinedAnnotation*      m_annotation = nullptr;
 
@@ -1641,6 +1651,10 @@ namespace dxvk {
     // Written by CS thread
     alignas(CACHE_LINE_SIZE)
     std::atomic<uint64_t>           m_lastSamplerStats = { 0u };
+
+    D3D9CSShaderConstants<D3D9ShaderConstantsVSSoftware> m_csVSConsts;
+    D3D9CSShaderConstants<D3D9ShaderConstantsPS>         m_csPSConsts;
+
   };
 
 }

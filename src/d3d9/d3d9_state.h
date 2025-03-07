@@ -318,54 +318,46 @@ namespace dxvk {
   using D3D9DeviceState = D3D9State<static_item>;
 
   template <
-    DxsoProgramType  ProgramType,
+    typename         ShaderConstantsStorage,
     D3D9ConstantType ConstantType,
-    typename         T,
-    typename         StateType>
+    typename         T>
   HRESULT UpdateStateConstants(
-          StateType*           pState,
-          UINT                 StartRegister,
-    const T*                   pConstantData,
-          UINT                 Count,
-          bool                 FloatEmu) {
-    auto UpdateHelper = [&] (auto& set) {
-      if constexpr (ConstantType == D3D9ConstantType::Float) {
+          ShaderConstantsStorage ConstantSet,
+          UINT                   StartRegister,
+    const T*                     pConstantData,
+          UINT                   Count,
+          bool                   FloatEmu) {
+    if constexpr (ConstantType == D3D9ConstantType::Float) {
+      if (!FloatEmu) {
+        size_t size = Count * sizeof(Vector4);
 
-        if (!FloatEmu) {
-          size_t size = Count * sizeof(Vector4);
-
-          std::memcpy(set->fConsts[StartRegister].data, pConstantData, size);
-        }
-        else {
-          for (UINT i = 0; i < Count; i++)
-            set->fConsts[StartRegister + i] = replaceNaN(pConstantData + (i * 4));
-        }
-      }
-      else if constexpr (ConstantType == D3D9ConstantType::Int) {
-        size_t size = Count * sizeof(Vector4i);
-
-        std::memcpy(set->iConsts[StartRegister].data, pConstantData, size);
+        std::memcpy(ConstantSet->fConsts[StartRegister].data, pConstantData, size);
       }
       else {
-        for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t constantIdx = StartRegister + i;
-          const uint32_t arrayIdx    = constantIdx / 32;
-          const uint32_t bitIdx      = constantIdx % 32;
-
-          const uint32_t bit = 1u << bitIdx;
-
-          set->bConsts[arrayIdx] &= ~bit;
-          if (pConstantData[i])
-            set->bConsts[arrayIdx] |= bit;
-        }
+        for (UINT i = 0; i < Count; i++)
+          ConstantSet->fConsts[StartRegister + i] = replaceNaN(pConstantData + (i * 4));
       }
+    }
+    else if constexpr (ConstantType == D3D9ConstantType::Int) {
+      size_t size = Count * sizeof(Vector4i);
 
-      return D3D_OK;
-    };
+      std::memcpy(ConstantSet->iConsts[StartRegister].data, pConstantData, size);
+    }
+    else {
+      for (uint32_t i = 0; i < Count; i++) {
+        const uint32_t constantIdx = StartRegister + i;
+        const uint32_t arrayIdx    = constantIdx / 32;
+        const uint32_t bitIdx      = constantIdx % 32;
 
-    return ProgramType == DxsoProgramTypes::VertexShader
-      ? UpdateHelper(pState->vsConsts)
-      : UpdateHelper(pState->psConsts);
+        const uint32_t bit = 1u << bitIdx;
+
+        ConstantSet->bConsts[arrayIdx] &= ~bit;
+        if (pConstantData[i])
+          ConstantSet->bConsts[arrayIdx] |= bit;
+      }
+    }
+
+    return D3D_OK;
   }
 
   struct Direct3DState9 : public D3D9DeviceState {
