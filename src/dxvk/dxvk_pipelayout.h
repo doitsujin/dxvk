@@ -28,11 +28,18 @@ namespace dxvk {
       IMax      = 0x6u,
       UMin      = 0x7u,
       UMax      = 0x8u,
+
+      StoreF    = 0xdu,
+      StoreUi   = 0xeu,
+      StoreSi   = 0xfu,
     };
 
     DxvkAccessOp() = default;
     DxvkAccessOp(OpType t)
     : op(uint16_t(t)) { }
+
+    DxvkAccessOp(OpType t, uint16_t constant)
+    : op(uint16_t(t) | (constant << 4u)) { }
 
     uint16_t op = 0u;
 
