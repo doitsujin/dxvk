@@ -5297,7 +5297,6 @@ namespace dxvk {
 
       m_flags.set(
         DxvkContextFlag::GpRenderPassBound,
-        DxvkContextFlag::GpDirtyPipeline,
         DxvkContextFlag::GpDirtyPipelineState,
         DxvkContextFlag::GpDirtyVertexBuffers,
         DxvkContextFlag::GpDirtyIndexBuffer,
