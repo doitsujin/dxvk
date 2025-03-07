@@ -71,8 +71,11 @@ namespace dxvk {
       m_indices = m_device->m_indices.ptr();
     }
 
-    if (m_capture.swvp)
-      m_device->GetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, (DWORD*)&m_isSWVP);
+    if (m_capture.swvp) {
+      DWORD swvpState;
+      m_device->GetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, &swvpState);
+      m_isSWVP = static_cast<bool>(swvpState);
+    }
 
     return m_stateBlock->Capture();
   }
@@ -101,7 +104,7 @@ namespace dxvk {
 
     // This was a very easy footgun for D3D8 applications.
     if (m_capture.swvp)
-      m_device->SetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, m_isSWVP);
+      m_device->SetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, static_cast<DWORD>(m_isSWVP));
 
     return res;
   }

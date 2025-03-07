@@ -33,16 +33,16 @@ namespace dxvk {
             UINT   OffsetToLock,
             UINT   SizeToLock,
             BYTE** ppbData,
-            DWORD  Flags) {
+            DWORD  Flags) final {
       *ppbData = m_data.data() + OffsetToLock;
       return D3D_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE Unlock() {
+    HRESULT STDMETHODCALLTYPE Unlock() final {
       return D3D_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) final {
       if (unlikely(pDesc == nullptr))
         return D3DERR_INVALIDCALL;
 
@@ -56,7 +56,7 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    void STDMETHODCALLTYPE PreLoad() {
+    void STDMETHODCALLTYPE PreLoad() final {
     }
 
     const void* GetPtr(UINT byteOffset = 0) const {

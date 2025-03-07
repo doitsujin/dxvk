@@ -47,7 +47,7 @@ namespace dxvk {
     , m_behaviorFlags(BehaviorFlags)
     , m_multithread(BehaviorFlags & D3DCREATE_MULTITHREADED) {
     // Get the bridge interface to D3D9.
-    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), (void**)&m_bridge))) {
+    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), reinterpret_cast<void**>(&m_bridge)))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
@@ -578,11 +578,11 @@ namespace dxvk {
     bool compressed = isDXT(srcDesc.Format);
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
-    if (FAILED(res))
+    if (unlikely(FAILED(res)))
       return res;
 
     res = dst->LockRect(&dstLocked, &dstRect, 0);
-    if (FAILED(res)) {
+    if (unlikely(FAILED(res))) {
       src->UnlockRect();
       return res;
     }
@@ -629,8 +629,8 @@ namespace dxvk {
       size_t srcOffset = 0, dstOffset = 0;
       for (auto i = 0; i < rows; i++) {
         std::memcpy(
-          (uint8_t*)dstLocked.pBits + dstOffset,
-          (uint8_t*)srcLocked.pBits + srcOffset,
+          reinterpret_cast<uint8_t*>(dstLocked.pBits) + dstOffset,
+          reinterpret_cast<uint8_t*>(srcLocked.pBits) + srcOffset,
           amplitude);
         srcOffset += srcLocked.Pitch;
         dstOffset += dstLocked.Pitch;
@@ -638,7 +638,13 @@ namespace dxvk {
     }
 
     res = dst->UnlockRect();
+    if (unlikely(FAILED(res))) {
+      src->UnlockRect();
+      return res;
+    }
+
     res = src->UnlockRect();
+
     return res;
   }
 
@@ -1559,7 +1565,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-    return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    return GetD3D9()->GetVertexShaderConstantF(Register, reinterpret_cast<float*>(pConstantData), ConstantCount);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetStreamSource(
@@ -1657,7 +1663,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-    return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    return GetD3D9()->GetPixelShaderConstantF(Register, reinterpret_cast<float*>(pConstantData), ConstantCount);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetPixelShaderConstant(
@@ -1967,11 +1973,8 @@ namespace dxvk {
       if (!info)
         return D3DERR_INVALIDCALL;
 
-      if (info->pVertexDecl != nullptr)
-        info->pVertexDecl = nullptr;
-      if (info->pVertexShader != nullptr)
-        info->pVertexShader = nullptr;
-
+      info->pVertexDecl = nullptr;
+      info->pVertexShader = nullptr;
       info->declaration.clear();
       info->function.clear();
 
