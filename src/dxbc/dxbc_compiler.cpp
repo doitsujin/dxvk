@@ -1088,7 +1088,7 @@ namespace dxvk {
       binding.access = m_analysis->uavInfos[registerId].accessFlags;
 
       if (!m_analysis->uavInfos[registerId].nonInvariantAccess)
-        binding.accessOp = m_analysis->uavInfos[registerId].atomicStore;
+        binding.accessOp = m_analysis->uavInfos[registerId].accessOp;
 
       if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))
         m_module.decorate(varId, spv::DecorationNonWritable);
@@ -1232,7 +1232,7 @@ namespace dxvk {
       binding.access = m_analysis->uavInfos[registerId].accessFlags;
 
       if (!m_analysis->uavInfos[registerId].nonInvariantAccess)
-        binding.accessOp = m_analysis->uavInfos[registerId].atomicStore;
+        binding.accessOp = m_analysis->uavInfos[registerId].accessOp;
     }
 
     if (useRawSsbo || isUav) {

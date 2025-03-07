@@ -21,7 +21,7 @@ namespace dxvk {
     bool accessAtomicOp     = false;
     bool sparseFeedback     = false;
     bool nonInvariantAccess = false;
-    DxvkAccessOp atomicStore = DxvkAccessOp::None;
+    DxvkAccessOp accessOp   = DxvkAccessOp::None;
     VkAccessFlags accessFlags = 0;
   };
   
@@ -98,7 +98,13 @@ namespace dxvk {
     
     DxbcClipCullInfo getClipCullInfo(
       const Rc<DxbcIsgn>& sgn) const;
-    
+
+    void setUavAccessOp(uint32_t uav, DxvkAccessOp op);
+
+    static DxvkAccessOp getStoreAccessOp(DxbcRegMask writeMask, const DxbcRegister& src);
+
+    static DxvkAccessOp getConstantStoreOp(uint32_t value);
+
   };
   
 }
