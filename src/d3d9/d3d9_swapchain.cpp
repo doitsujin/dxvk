@@ -826,18 +826,13 @@ namespace dxvk {
     Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
-    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
-      // Presentation semaphores and WSI swap chain image
-      PresenterSync sync = { };
-      Rc<DxvkImage> backBuffer;
+    // Presentation semaphores and WSI swap chain image
+    PresenterSync sync = { };
+    Rc<DxvkImage> backBuffer;
 
-      status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
+    status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
 
-      if (status < 0 || status == VK_NOT_READY) {
-        status = i ? VK_SUCCESS : status;
-        break;
-      }
-
+    if (status >= 0 && status != VK_NOT_READY) {
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
         { uint32_t(m_srcRect.right - m_srcRect.left), uint32_t(m_srcRect.bottom - m_srcRect.top) } };
@@ -847,8 +842,7 @@ namespace dxvk {
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
       // Bump frame ID
-      if (!i)
-        m_wctx->frameId += 1;
+      m_wctx->frameId += 1;
 
       // Present from CS thread so that we don't
       // have to synchronize with it first.
@@ -871,7 +865,6 @@ namespace dxvk {
         cSrcRect        = srcRect,
         cDstView        = backBuffer->createView(viewInfo),
         cDstRect        = dstRect,
-        cRepeat         = i,
         cSync           = sync,
         cFrameId        = m_wctx->frameId,
         cLatency        = m_latencyTracker
@@ -894,9 +887,7 @@ namespace dxvk {
         ctx->synchronizeWsi(cSync);
         ctx->flushCommandList(nullptr, nullptr);
 
-        uint64_t frameId = cRepeat ? 0 : cFrameId;
-
-        cDevice->presentImage(cPresenter, cLatency, frameId, nullptr);
+        cDevice->presentImage(cPresenter, cLatency, cFrameId, nullptr);
       });
 
       m_parent->FlushCsChunk();
