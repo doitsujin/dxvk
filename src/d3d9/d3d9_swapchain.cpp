@@ -193,9 +193,6 @@ namespace dxvk {
 #endif
 
     try {
-      // We aren't going to device loss simply because
-      // 99% of D3D9 games don't handle this properly and
-      // just end up crashing (like with alt-tab loss)
       UpdateWindowedRefreshRate();
       UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
