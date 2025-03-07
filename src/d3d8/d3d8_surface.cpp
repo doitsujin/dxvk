@@ -70,7 +70,7 @@ namespace dxvk {
       NULL);
 
     if (FAILED(res))
-      throw new DxvkError("D3D8: Failed to create blit image");
+      throw DxvkError("D3D8: Failed to create blit image");
 
     return image;
   }

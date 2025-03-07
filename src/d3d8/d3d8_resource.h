@@ -96,11 +96,11 @@ namespace dxvk {
 
     virtual IUnknown* GetInterface(REFIID riid) override try {
       return D3D8DeviceChild<D3D9, D3D8>::GetInterface(riid);
-    } catch (HRESULT err) {
+    } catch (const DxvkError& e) {
       if (riid == __uuidof(IDirect3DResource8))
         return this;
 
-      throw err;
+      throw e;
     }
 
   protected:
