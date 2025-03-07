@@ -1027,6 +1027,16 @@ namespace dxvk {
     { R"(\\CivCity Rome\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Silent Hill 2 (2001)                       *
+     * The Enhancements mod configures the        *
+     * swapchain to only have a single backbuffer *
+     * and then calls GetFrontBufferData after    *
+     * rendering to the backbuffer. This causes   *
+     * it to get the wrong data from              *
+     * GetFrontBufferData().                      */
+    { R"(\\sh2pc\.exe$)", {{
+      { "d3d9.extraFrontbuffer",            "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
