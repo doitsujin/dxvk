@@ -13,13 +13,6 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
-
-  struct D3D9PresentInfo {
-    float scale[2];
-    float offset[2];
-  };
-
-
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
@@ -761,7 +754,7 @@ namespace dxvk {
       m_blitter->setCursorTexture(
         cursorSize,
         VK_FORMAT_B8G8R8A8_SRGB,
-        (void *) pCursorBitmap);
+        reinterpret_cast<void*>(pCursorBitmap));
   }
 
 
