@@ -540,7 +540,7 @@ namespace dxvk {
   void DxvkImageView::updateProperties() {
     m_properties.layout = m_image->info().layout;
     m_properties.samples = m_image->info().sampleCount;
-    m_properties.layout = m_image->info().layout;
+    m_properties.access = m_image->info().access;
   }
 
 }

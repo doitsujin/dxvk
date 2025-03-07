@@ -5919,10 +5919,6 @@ namespace dxvk {
 
     m_state.gp.flags = newFlags;
 
-    if (newFlags.any(DxvkGraphicsPipelineFlag::HasTransformFeedback,
-                     DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
-
     if (diffFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
       m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
 
