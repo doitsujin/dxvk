@@ -17,17 +17,33 @@ namespace dxvk {
    * Information used to optimize barriers when a resource
    * is accessed exlusively via order-invariant stores.
    */
-  enum class DxvkAccessOp : uint16_t {
-    None  = 0,
-    Or    = 1,
-    And   = 2,
-    Xor   = 3,
-    Add   = 4,
-    IMin  = 5,
-    IMax  = 6,
-    UMin  = 7,
-    UMax  = 8,
+  struct DxvkAccessOp {
+    enum OpType : uint16_t {
+      None      = 0x0u,
+      Or        = 0x1u,
+      And       = 0x2u,
+      Xor       = 0x3u,
+      Add       = 0x4u,
+      IMin      = 0x5u,
+      IMax      = 0x6u,
+      UMin      = 0x7u,
+      UMax      = 0x8u,
+    };
+
+    DxvkAccessOp() = default;
+    DxvkAccessOp(OpType t)
+    : op(uint16_t(t)) { }
+
+    uint16_t op = 0u;
+
+    bool operator == (const DxvkAccessOp& t) const { return op == t.op; }
+    bool operator != (const DxvkAccessOp& t) const { return op != t.op; }
+
+    template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+    explicit operator T() const { return op; }
   };
+
+  static_assert(sizeof(DxvkAccessOp) == sizeof(uint16_t));
 
 
   /**
