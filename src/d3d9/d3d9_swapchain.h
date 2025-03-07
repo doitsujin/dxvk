@@ -249,9 +249,6 @@ namespace dxvk {
       if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY)
         return false;
 
-      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY_VSYNC)
-        return false;
-
       // Tests show that SWAPEEFFECT_DISCARD with 1 backbuffer in windowed mode behaves identically to SWAPEFFECT_COPY
       // For SWAPEFFECT_COPY we don't swap buffers but do another blit to the front buffer instead.
       if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD && m_presentParams.BackBufferCount == 1 && m_presentParams.Windowed)
