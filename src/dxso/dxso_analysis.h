@@ -34,7 +34,7 @@ namespace dxvk {
 
     DxsoAnalysisInfo* m_analysis = nullptr;
 
-    DxsoOpcode m_parentOpcode;
+    DxsoOpcode m_parentOpcode    = DxsoOpcode::Nop;
 
   };
 

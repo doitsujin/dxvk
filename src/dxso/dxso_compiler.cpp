@@ -1163,8 +1163,7 @@ namespace dxvk {
             return m_vs.oPSize;
 
           default: {
-            DxsoRegisterPointer nullPointer;
-            nullPointer.id = 0;
+            DxsoRegisterPointer nullPointer = { };
             return nullPointer;
           }
         }
@@ -1274,8 +1273,7 @@ namespace dxvk {
       default: {
         //Logger::warn(str::format("emitGetOperandPtr: unhandled reg type: ", reg.id.type));
 
-        DxsoRegisterPointer nullPointer;
-        nullPointer.id = 0;
+        DxsoRegisterPointer nullPointer = { };
         return nullPointer;
       }
     }
@@ -2702,7 +2700,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     const DxsoOpcode opcode = ctx.instruction.opcode;
 
     DxsoRegisterValue texcoordVar;
-    uint32_t samplerIdx;
+    uint32_t samplerIdx = 0u;
 
     DxsoRegMask vec3Mask(true, true, true,  false);
     DxsoRegMask srcMask (true, true, true,  true);
