@@ -480,7 +480,7 @@ namespace dxvk {
     
   private:
     
-    DxbcShaderInstruction m_instruction;
+    DxbcShaderInstruction m_instruction = { };
     
     std::array<DxbcRegister,  8> m_dstOperands;
     std::array<DxbcRegister,  8> m_srcOperands;
