@@ -23,8 +23,6 @@ namespace dxvk::util {
 
   public:
 
-    DxvkDebugLabel() = default;
-
     DxvkDebugLabel(const VkDebugUtilsLabelEXT& label, DxvkDebugLabelType type)
     : m_text(label.pLabelName ? label.pLabelName : ""), m_type(type) {
       for (uint32_t i = 0; i < m_color.size(); i++)

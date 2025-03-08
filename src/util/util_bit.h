@@ -685,8 +685,6 @@ namespace dxvk::bit {
    * \brief 48-bit integer storage type
    */
   struct uint48_t {
-    uint48_t() = default;
-
     explicit uint48_t(uint64_t n)
     : a(uint16_t(n)), b(uint16_t(n >> 16)), c(uint16_t(n >> 32)) { }
 
