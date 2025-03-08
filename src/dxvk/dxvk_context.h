@@ -1624,8 +1624,8 @@ namespace dxvk {
     void uploadImageHw(
       const Rc<DxvkImage>&            image,
       const Rc<DxvkBuffer>&           source,
-            VkDeviceSize              subresourceAlignment,
-            VkDeviceSize              sourceOffset);
+            VkDeviceSize              sourceOffset,
+            VkDeviceSize              subresourceAlignment);
 
     void performClear(
       const Rc<DxvkImageView>&        imageView,

@@ -843,9 +843,8 @@ namespace dxvk {
 
             // Only consider variables that have a desired location
             if (candidates.find(varId) != candidates.end()) {
-              VarInfo varInfo;
+              VarInfo varInfo = { };
               varInfo.varId = varId;
-              varInfo.decorationOffset = 0;
 
               auto decoration = decorations.find(varId);
               if (decoration != decorations.end())

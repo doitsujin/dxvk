@@ -328,7 +328,7 @@ namespace dxvk {
     DxvkCsChunkFlags m_flags;
     
     alignas(64)
-    char m_data[DxvkCsChunkSize];
+    char m_data[DxvkCsChunkSize] = { };
 
     template<typename T>
     void* alloc(size_t extra) {
