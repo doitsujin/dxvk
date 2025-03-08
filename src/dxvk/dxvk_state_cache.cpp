@@ -197,7 +197,7 @@ namespace dxvk {
 
     size_t m_size = 0;
     size_t m_read = 0;
-    char   m_data[MaxSize];
+    char   m_data[MaxSize] = { };
 
     template<typename T>
     bool read(T& data) {
