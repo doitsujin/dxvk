@@ -3386,6 +3386,14 @@ namespace dxvk {
           elementSize = plane->elementSize;
         }
 
+        // Fix up some edge cases with unaligned mips of block-compressed images
+        VkExtent3D maxExtent = image->mipLevelExtent(imageSubresource.mipLevel, aspect);
+
+        copyRegion.imageExtent = VkExtent3D {
+          std::min(copyRegion.imageExtent.width,  maxExtent.width),
+          std::min(copyRegion.imageExtent.height, maxExtent.height),
+          std::min(copyRegion.imageExtent.depth,  maxExtent.depth) };
+
         // Vulkan can't really express row pitch in the same way that client APIs
         // may expect, so we'll need to do some heroics here and hope that it works
         VkExtent3D blockCount = util::computeBlockCount(copyRegion.imageExtent, formatInfo->blockSize);
