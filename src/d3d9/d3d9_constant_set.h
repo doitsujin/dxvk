@@ -2,12 +2,11 @@
 
 #include "d3d9_caps.h"
 #include "d3d9_constant_buffer.h"
+#include "d3d9_constant_layout.h"
 
-#include "../dxvk/dxvk_buffer.h"
 
 #include "../dxso/dxso_isgn.h"
 
-#include "../util/util_math.h"
 #include "../util/util_vector.h"
 
 #include <cstdint>
@@ -45,10 +44,14 @@ namespace dxvk {
   };
 
   struct D3D9ConstantSets {
+    D3D9ConstantLayout        layout;
     D3D9SwvpConstantBuffers   swvp;
     D3D9ConstantBuffer        buffer;
     DxsoShaderMetaInfo        meta  = {};
     bool                      dirty = true;
+    uint32_t                  maxChangedConstF = 0;
+    uint32_t                  maxChangedConstI = 0;
+    uint32_t                  maxChangedConstB = 0;
   };
 
 }
