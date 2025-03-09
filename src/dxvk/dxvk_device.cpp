@@ -451,7 +451,7 @@ namespace dxvk {
 
     // Be less aggressive on secondary command buffer usage on
     // drivers that do not natively support them
-    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP);
+    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP) || !tilerMode;
     return hints;
   }
 
