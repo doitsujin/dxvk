@@ -6899,15 +6899,15 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitPointSizeStore() {
-    if (!m_pointSizeOut) {
-      m_pointSizeOut = emitNewBuiltinVariable(DxbcRegisterInfo {
+    if (m_moduleInfo.options.needsPointSizeExport) {
+      uint32_t pointSizeId = emitNewBuiltinVariable(DxbcRegisterInfo {
         { DxbcScalarType::Float32, 1, 0 },
         spv::StorageClassOutput },
         spv::BuiltInPointSize,
         "point_size");
-    }
 
-    m_module.opStore(m_pointSizeOut, m_module.constf32(1.0f));
+      m_module.opStore(pointSizeId, m_module.constf32(1.0f));
+    }
   }
 
 

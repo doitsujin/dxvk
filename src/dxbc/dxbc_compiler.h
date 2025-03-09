@@ -514,8 +514,6 @@ namespace dxvk {
     uint32_t m_primitiveIdIn  = 0;
     uint32_t m_primitiveIdOut = 0;
 
-    uint32_t m_pointSizeOut   = 0;
-
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
