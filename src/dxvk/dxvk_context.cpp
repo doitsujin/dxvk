@@ -3390,9 +3390,9 @@ namespace dxvk {
         VkExtent3D maxExtent = image->mipLevelExtent(imageSubresource.mipLevel, aspect);
 
         copyRegion.imageExtent = VkExtent3D {
-          std::min(copyRegion.imageExtent.width,  maxExtent.width),
-          std::min(copyRegion.imageExtent.height, maxExtent.height),
-          std::min(copyRegion.imageExtent.depth,  maxExtent.depth) };
+          std::min(copyRegion.imageExtent.width,  maxExtent.width  - copyRegion.imageOffset.x),
+          std::min(copyRegion.imageExtent.height, maxExtent.height - copyRegion.imageOffset.y),
+          std::min(copyRegion.imageExtent.depth,  maxExtent.depth  - copyRegion.imageOffset.z) };
 
         // Vulkan can't really express row pitch in the same way that client APIs
         // may expect, so we'll need to do some heroics here and hope that it works
