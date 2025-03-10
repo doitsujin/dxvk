@@ -6732,9 +6732,6 @@ namespace dxvk {
   void D3D9DeviceEx::BindViewportAndScissor() {
     m_flags.clr(D3D9DeviceFlag::DirtyViewportScissor);
 
-    VkViewport viewport;
-    VkRect2D scissor;
-
     // D3D9's coordinate system has its origin in the bottom left,
     // but the viewport coordinates are aligned to the top-left
     // corner so we can get away with flipping the viewport.
@@ -6753,7 +6750,8 @@ namespace dxvk {
       zBias = 0.001f;
     }
 
-    viewport = VkViewport{
+    DxvkViewport state = { };
+    state.viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
       float(vp.Width),        -float(vp.Height),
       std::clamp(vp.MinZ,                            0.0f, 1.0f),
@@ -6784,22 +6782,18 @@ namespace dxvk {
       srSize.width  = uint32_t(srPosB.x - srPosA.x);
       srSize.height = uint32_t(srPosB.y - srPosA.y);
 
-      scissor = VkRect2D{ srPosA, srSize };
+      state.scissor = VkRect2D{ srPosA, srSize };
     }
     else {
-      scissor = VkRect2D{
+      state.scissor = VkRect2D{
         VkOffset2D { int32_t(vp.X), int32_t(vp.Y) },
         VkExtent2D { vp.Width,      vp.Height     }};
     }
 
     EmitCs([
-      cViewport = viewport,
-      cScissor = scissor
+      cViewport = state
     ] (DxvkContext* ctx) {
-      ctx->setViewports(
-        1,
-        &cViewport,
-        &cScissor);
+      ctx->setViewports(1, &cViewport);
     });
   }
 

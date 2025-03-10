@@ -1124,14 +1124,12 @@ namespace dxvk {
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports
-     * \param [in] viewports The viewports
-     * \param [in] scissorRects Schissor rectangles
+     * \param [in] viewports The viewports and scissors
      */
     void setViewports(
             uint32_t            viewportCount,
-      const VkViewport*         viewports,
-      const VkRect2D*           scissorRects);
-    
+      const DxvkViewport*       viewports);
+
     /**
      * \brief Sets blend constants
      * 
