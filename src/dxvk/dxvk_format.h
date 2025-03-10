@@ -114,4 +114,23 @@ namespace dxvk {
       return lookupFormatInfoSlow(format);
   }
 
+  /**
+   * \brief Queries default resolve mode for format
+   *
+   * For depth-stencil formats, this will return SAMPLE_ZERO.
+   * \param [in] format Format to look up
+   * \returns Default resolve mode
+   */
+  inline VkResolveModeFlagBits getDefaultResolveMode(const DxvkFormatInfo* format) {
+    if ((format->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+     || (format->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt)))
+      return VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+
+    return VK_RESOLVE_MODE_AVERAGE_BIT;
+  }
+
+  inline VkResolveModeFlagBits getDefaultResolveMode(VkFormat format) {
+    return getDefaultResolveMode(lookupFormatInfo(format));
+  }
+
 }

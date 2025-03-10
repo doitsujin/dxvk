@@ -1961,11 +1961,7 @@ namespace dxvk {
     if (useRp) {
       // Work out resolve mode based on format properties. For color images,
       // we must use AVERAGE unless the resolve uses an integer format.
-      VkResolveModeFlagBits mode = VK_RESOLVE_MODE_AVERAGE_BIT;
-
-      if (formatInfo->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt)
-      || (formatInfo->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)))
-        mode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+      VkResolveModeFlagBits mode = getDefaultResolveMode(formatInfo);
 
       this->resolveImageRp(dstImage, srcImage, region,
         format, mode, mode);
@@ -7777,17 +7773,12 @@ namespace dxvk {
       // Always do a SAMPLE_ZERO resolve here since that's less expensive and closer to what
       // happens on native AMD anyway. Need to use a shader in case we are dealing with a
       // non-integer color image since render pass resolves only support AVERAGE.
-      auto formatInfo = lookupFormatInfo(op.resolveFormat);
-
-      bool useRp = (formatInfo->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt))
-                || (formatInfo->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
-
-      if (useRp) {
+      if (getDefaultResolveMode(op.resolveFormat) == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT) {
         resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
           op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
       } else {
         resolveImageFb(op.resolveImage, op.inputImage, op.resolveRegion,
-          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_NONE);
+          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
       }
     }
   }
