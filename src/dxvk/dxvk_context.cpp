@@ -4741,23 +4741,6 @@ namespace dxvk {
 
     bool isDepthStencil = (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
 
-    DxvkImageUsageInfo usageInfo = { };
-    usageInfo.usage = isDepthStencil
-      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    if (format) {
-      usageInfo.viewFormatCount = 1u;
-      usageInfo.viewFormats = &format;
-    }
-
-    if (!ensureImageCompatibility(dstImage, usageInfo)
-     || !ensureImageCompatibility(srcImage, usageInfo)) {
-      Logger::err(str::format("DxvkContext: resolveImageRp: Unsupported images:"
-        "\n  dst format: ", dstImage->info().format,
-        "\n  src format: ", srcImage->info().format));
-    }
-
     flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
     flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
@@ -4862,33 +4845,6 @@ namespace dxvk {
 
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
-
-    // Ensure we can access the destination image for rendering,
-    // and the source image for reading within the shader.
-    DxvkImageUsageInfo dstUsage = { };
-    dstUsage.usage = (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    DxvkImageUsageInfo srcUsage = { };
-    srcUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    if (format) {
-      dstUsage.viewFormatCount = 1u;
-      dstUsage.viewFormats = &format;
-
-      srcUsage.viewFormatCount = 1u;
-      srcUsage.viewFormats = &format;
-    }
-
-    if (!ensureImageCompatibility(dstImage, dstUsage)
-     || !ensureImageCompatibility(srcImage, srcUsage)) {
-      Logger::err(str::format("DxvkContext: resolveImageFb: Unsupported images:",
-        "\n  dst format:  ", dstImage->info().format,
-        "\n  src format:  ", srcImage->info().format,
-        "\n  view format: ", format));
-      return;
-    }
 
     flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
     flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
@@ -7772,8 +7728,13 @@ namespace dxvk {
 
       // Always do a SAMPLE_ZERO resolve here since that's less expensive and closer to what
       // happens on native AMD anyway. Need to use a shader in case we are dealing with a
-      // non-integer color image since render pass resolves only support AVERAGE.
-      if (getDefaultResolveMode(op.resolveFormat) == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT) {
+      // non-integer color image since render pass resolves only support AVERAGE..
+      // We know that the source image is shader readable and that the resolve image can be
+      // rendered to, so reduce the image compatibility checks to a minimum here.
+      bool useRp = (getDefaultResolveMode(op.resolveFormat) == VK_RESOLVE_MODE_SAMPLE_ZERO_BIT) &&
+        (op.inputImage->info().usage & (VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
+
+      if (useRp) {
         resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
           op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
       } else {
