@@ -2471,6 +2471,9 @@ namespace dxvk {
       auto srcSubresource = attachment.view->imageSubresources();
       auto dstSubresource = resolve.imageView->imageSubresources();
 
+      prepareImage(attachment.view->image(), srcSubresource);
+      prepareImage(resolve.imageView->image(), dstSubresource);
+
       while (resolve.layerMask) {
         uint32_t layerIndex = bit::tzcnt(resolve.layerMask);
         uint32_t layerCount = bit::tzcnt(~(resolve.layerMask >> layerIndex));
@@ -2486,7 +2489,7 @@ namespace dxvk {
         region.srcSubresource.layerCount = layerCount;
         region.extent = resolve.imageView->mipLevelExtent(0u);
 
-        resolveImage(resolve.imageView->image(), attachment.view->image(),
+        resolveImageRp(resolve.imageView->image(), attachment.view->image(),
           region, attachment.view->info().format, resolve.depthMode, resolve.stencilMode);
 
         resolve.layerMask &= ~0u << (layerIndex + layerCount);
