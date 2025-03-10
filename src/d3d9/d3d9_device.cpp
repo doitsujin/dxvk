@@ -1353,9 +1353,8 @@ namespace dxvk {
         cRegion      = region
       ] (DxvkContext* ctx) {
         if (cRegion.srcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->resolveImage(
-            cDstImage, cSrcImage, cRegion,
-            VK_FORMAT_UNDEFINED);
+          ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
+            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
         }
         else {
           ctx->resolveDepthStencilImage(
@@ -4935,6 +4934,8 @@ namespace dxvk {
             cResolveImage = mappedImage,
             cSubresource  = subresourceLayers
           ] (DxvkContext* ctx) {
+            VkFormat format = cMainImage->info().format;
+
             VkImageResolve region;
             region.srcSubresource = cSubresource;
             region.srcOffset      = VkOffset3D { 0, 0, 0 };
@@ -4943,9 +4944,8 @@ namespace dxvk {
             region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
 
             if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->resolveImage(
-                cResolveImage, cMainImage, region,
-                cMainImage->info().format);
+              ctx->resolveImage(cResolveImage, cMainImage, region, format,
+                getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
             }
             else {
               ctx->resolveDepthStencilImage(
