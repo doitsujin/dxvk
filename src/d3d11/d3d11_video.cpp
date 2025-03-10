@@ -1293,8 +1293,10 @@ namespace dxvk {
       Rc<DxvkResourceAllocation> uboSlice = m_ubo->allocateStorage();
       memcpy(uboSlice->mapPtr(), &uboData, sizeof(uboData));
 
+      DxvkViewport vp = { viewport, scissor };
+
       ctx->invalidateBuffer(m_ubo, std::move(uboSlice));
-      ctx->setViewports(1, &viewport, &scissor);
+      ctx->setViewports(1, &vp);
 
       ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
       ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fs));

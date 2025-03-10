@@ -2579,16 +2579,15 @@ namespace dxvk {
 
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
-    const VkViewport*         viewports,
-    const VkRect2D*           scissorRects) {
+    const DxvkViewport*       viewports) {
     for (uint32_t i = 0; i < viewportCount; i++) {
-      m_state.vp.viewports[i] = viewports[i];
-      m_state.vp.scissorRects[i] = scissorRects[i];
-      
+      m_state.vp.viewports[i] = viewports[i].viewport;
+      m_state.vp.scissorRects[i] = viewports[i].scissor;
+
       // Vulkan viewports are not allowed to have a width or
       // height of zero, so we fall back to a dummy viewport
       // and instead set an empty scissor rect, which is legal.
-      if (viewports[i].width == 0.0f || viewports[i].height == 0.0f) {
+      if (viewports[i].viewport.width <= 0.0f || viewports[i].viewport.height == 0.0f) {
         m_state.vp.viewports[i] = VkViewport {
           0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
         m_state.vp.scissorRects[i] = VkRect2D {
@@ -2596,7 +2595,7 @@ namespace dxvk {
           VkExtent2D { 0, 0 } };
       }
     }
-    
+
     m_state.vp.viewportCount = viewportCount;
     m_flags.set(DxvkContextFlag::GpDirtyViewport);
   }
