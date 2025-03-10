@@ -1046,13 +1046,17 @@ namespace dxvk {
      * \param [in] srcImage Source image
      * \param [in] region Region to resolve
      * \param [in] format Format for the resolve operation
+     * \param [in] mode Image resolve mode
+     * \param [in] stencilMode Stencil resolve mode
      */
     void resolveImage(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkFormat                  format);
-    
+            VkFormat                  format,
+            VkResolveModeFlagBits     mode,
+            VkResolveModeFlagBits     stencilMode);
+
     /**
      * \brief Resolves a multisampled depth-stencil resource
      * 

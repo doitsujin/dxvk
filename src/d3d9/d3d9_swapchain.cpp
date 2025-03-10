@@ -327,9 +327,8 @@ namespace dxvk {
         resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
         resolveRegion.extent         = cSrcImage->info().extent;
 
-        ctx->resolveImage(
-          cDstImage, cSrcImage,
-          resolveRegion, VK_FORMAT_UNDEFINED);
+        ctx->resolveImage(cDstImage, cSrcImage, resolveRegion,
+          cSrcImage->info().format, VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_NONE);
       });
 
       srcImage = std::move(resolvedSrc);

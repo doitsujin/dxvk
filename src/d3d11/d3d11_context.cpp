@@ -909,7 +909,7 @@ namespace dxvk {
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
     } else {
-      const VkFormat format = m_parent->LookupFormat(
+      VkFormat format = m_parent->LookupFormat(
         Format, DXGI_VK_FORMAT_MODE_ANY).Format;
 
       EmitCs([
@@ -919,6 +919,8 @@ namespace dxvk {
         cSrcSubres = srcSubresourceLayers,
         cFormat    = format
       ] (DxvkContext* ctx) {
+        VkFormat format = cFormat ? cFormat : cSrcImage->info().format;
+
         VkImageResolve region;
         region.srcSubresource = cSrcSubres;
         region.srcOffset      = VkOffset3D { 0, 0, 0 };
@@ -926,7 +928,8 @@ namespace dxvk {
         region.dstOffset      = VkOffset3D { 0, 0, 0 };
         region.extent         = cDstImage->mipLevelExtent(cDstSubres.mipLevel);
 
-        ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
+        ctx->resolveImage(cDstImage, cSrcImage, region, format,
+          getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
       });
 
       if constexpr (!IsDeferred)
