@@ -1984,7 +1984,7 @@ namespace dxvk {
         useFb |= dstImage->info().format != srcImage->info().format;
     }
 
-    // Ensure that we can actually use both images as intended
+    // Ensure that we can actually use the destination image as an attachment
     DxvkImageUsageInfo dstUsage = { };
     dstUsage.viewFormatCount = 1;
     dstUsage.viewFormats = &format;
@@ -1999,6 +1999,8 @@ namespace dxvk {
       dstUsage.access = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
+    // Same for the source image, but check for shader usage
+    // instead in case we need to use that path
     DxvkImageUsageInfo srcUsage = dstUsage;
 
     if (useFb) {
@@ -2030,66 +2032,6 @@ namespace dxvk {
       // Default path, use a resolve attachment
       this->resolveImageRp(dstImage, srcImage,
         region, format, mode, stencilMode);
-    }
-  }
-
-
-  void DxvkContext::resolveDepthStencilImage(
-    const Rc<DxvkImage>&            dstImage,
-    const Rc<DxvkImage>&            srcImage,
-    const VkImageResolve&           region,
-          VkResolveModeFlagBits     depthMode,
-          VkResolveModeFlagBits     stencilMode) {
-    // Technically legal, but no-op
-    if (!depthMode && !stencilMode)
-      return;
-
-    // Subsequent functions expect stencil mode to be None
-    // if either of the images have no stencil aspect
-    if (!(region.dstSubresource.aspectMask
-        & region.srcSubresource.aspectMask
-        & VK_IMAGE_ASPECT_STENCIL_BIT))
-      stencilMode = VK_RESOLVE_MODE_NONE;
-
-    // We can only use the depth-stencil resolve path if we are resolving
-    // a full subresource and both images have the same format.
-    bool useFb = !dstImage->isFullSubresource(region.dstSubresource, region.extent)
-              || !srcImage->isFullSubresource(region.srcSubresource, region.extent)
-              || dstImage->info().format != srcImage->info().format;
-    
-    if (!useFb) {
-      // Additionally, the given mode combination must be supported.
-      const auto& properties = m_device->properties().vk12;
-
-      useFb |= (properties.supportedDepthResolveModes   & depthMode)   != depthMode
-            || (properties.supportedStencilResolveModes & stencilMode) != stencilMode;
-      
-      if (depthMode != stencilMode) {
-        useFb |= (!depthMode || !stencilMode)
-          ? !properties.independentResolveNone
-          : !properties.independentResolve;
-      }
-    }
-
-    // If the source image is shader-readable anyway, we can use the
-    // FB path if it's beneficial on the device we're running on
-    if (m_device->perfHints().preferFbDepthStencilCopy)
-      useFb |= srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    // Only try to inline the resolve if we don't need to use the fb path
-    if (!useFb && resolveImageInline(dstImage, srcImage, region, dstImage->info().format, depthMode, stencilMode))
-      return;
-
-    this->spillRenderPass(true);
-    this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
-    this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
-
-    if (useFb) {
-      this->resolveImageFb(dstImage, srcImage, region,
-        VK_FORMAT_UNDEFINED, depthMode, stencilMode);
-    } else {
-      this->resolveImageRp(dstImage, srcImage, region,
-        VK_FORMAT_UNDEFINED, depthMode, stencilMode);
     }
   }
 
@@ -2544,13 +2486,8 @@ namespace dxvk {
         region.srcSubresource.layerCount = layerCount;
         region.extent = resolve.imageView->mipLevelExtent(0u);
 
-        if (dstSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          resolveDepthStencilImage(resolve.imageView->image(),
-            attachment.view->image(), region, resolve.depthMode, resolve.stencilMode);
-        } else {
-          resolveImage(resolve.imageView->image(), attachment.view->image(),
-            region, attachment.view->info().format, resolve.depthMode, resolve.stencilMode);
-        }
+        resolveImage(resolve.imageView->image(), attachment.view->image(),
+          region, attachment.view->info().format, resolve.depthMode, resolve.stencilMode);
 
         resolve.layerMask &= ~0u << (layerIndex + layerCount);
       }

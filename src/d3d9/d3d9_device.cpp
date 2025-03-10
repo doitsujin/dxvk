@@ -1352,16 +1352,9 @@ namespace dxvk {
         cSrcImage    = srcImage,
         cRegion      = region
       ] (DxvkContext* ctx) {
-        if (cRegion.srcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
-            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-        }
-        else {
-          ctx->resolveDepthStencilImage(
-            cDstImage, cSrcImage, cRegion,
-            VK_RESOLVE_MODE_AVERAGE_BIT,
-            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-        }
+        // Deliberately use AVERAGE even for depth resolves here
+        ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
+          VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
       });
     };
 
@@ -4943,16 +4936,8 @@ namespace dxvk {
             region.dstOffset      = VkOffset3D { 0, 0, 0 };
             region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
 
-            if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->resolveImage(cResolveImage, cMainImage, region, format,
-                getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
-            }
-            else {
-              ctx->resolveDepthStencilImage(
-                cResolveImage, cMainImage, region,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-            }
+            ctx->resolveImage(cResolveImage, cMainImage, region, format,
+              getDefaultResolveMode(format), VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
           });
         }
 
@@ -8176,8 +8161,6 @@ namespace dxvk {
         // We should resolve using the first sample according to
         // http://amd-dev.wpengine.netdna-cdn.com/wordpress/media/2012/10/Advanced-DX9-Capabilities-for-ATI-Radeon-Cards_v2.pdf
         // "The resolve operation copies the depth value from the *first sample only* into the resolved depth stencil texture."
-        constexpr auto resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
-
         VkImageResolve region;
         region.srcSubresource = cSrcSubres;
         region.srcOffset      = VkOffset3D { 0, 0, 0 };
@@ -8185,7 +8168,8 @@ namespace dxvk {
         region.dstOffset      = VkOffset3D { 0, 0, 0 };
         region.extent         = cDstImage->mipLevelExtent(cDstSubres.mipLevel);
 
-        ctx->resolveDepthStencilImage(cDstImage, cSrcImage, region, resolveMode, resolveMode);
+        ctx->resolveImage(cDstImage, cSrcImage, region, cSrcImage->info().format,
+          VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
       });
     }
 
