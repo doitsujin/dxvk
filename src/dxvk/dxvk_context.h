@@ -1058,22 +1058,6 @@ namespace dxvk {
             VkResolveModeFlagBits     stencilMode);
 
     /**
-     * \brief Resolves a multisampled depth-stencil resource
-     * 
-     * \param [in] dstImage Destination image
-     * \param [in] srcImage Source image
-     * \param [in] region Region to resolve
-     * \param [in] depthMode Resolve mode for depth aspect
-     * \param [in] stencilMode Resolve mode for stencil aspect
-     */
-    void resolveDepthStencilImage(
-      const Rc<DxvkImage>&            dstImage,
-      const Rc<DxvkImage>&            srcImage,
-      const VkImageResolve&           region,
-            VkResolveModeFlagBits     depthMode,
-            VkResolveModeFlagBits     stencilMode);
-
-    /**
      * \brief Transforms image subresource layouts
      * 
      * \param [in] dstImage Image to transform
