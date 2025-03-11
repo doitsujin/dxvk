@@ -6700,8 +6700,25 @@ namespace dxvk {
     if (unlikely(m_flags.test(DxvkContextFlag::GpDirtyViewport))) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
+      // Clamp scissor against rendering area. Not doing so is technically
+      // out of spec, even if this doesn't get validated. This also solves
+      // problems with potentially invalid scissor rects.
+      std::array<VkRect2D, DxvkLimits::MaxNumViewports> clampedScissors;
+      DxvkFramebufferSize renderSize = m_state.om.framebufferInfo.size();
+
+      for (uint32_t i = 0; i < m_state.vp.viewportCount; i++) {
+        const auto& scissor = m_state.vp.scissorRects[i];
+
+        clampedScissors[i].offset = VkOffset2D {
+          std::clamp<int32_t>(scissor.offset.x, 0, renderSize.width),
+          std::clamp<int32_t>(scissor.offset.y, 0, renderSize.height) };
+        clampedScissors[i].extent = VkExtent2D {
+          uint32_t(std::clamp<int32_t>(scissor.offset.x + scissor.extent.width,  clampedScissors[i].offset.x, renderSize.width)  - clampedScissors[i].offset.x),
+          uint32_t(std::clamp<int32_t>(scissor.offset.y + scissor.extent.height, clampedScissors[i].offset.y, renderSize.height) - clampedScissors[i].offset.y) };
+      }
+
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
-      m_cmd->cmdSetScissor(m_state.vp.viewportCount, m_state.vp.scissorRects.data());
+      m_cmd->cmdSetScissor(m_state.vp.viewportCount, clampedScissors.data());
     }
 
     if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthStencilState,
