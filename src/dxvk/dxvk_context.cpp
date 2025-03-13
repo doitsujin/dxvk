@@ -7671,10 +7671,16 @@ namespace dxvk {
     bufInfo.debugName = "Zero buffer";
 
     // If supported by the device, create a large sparse buffer and keep it unmapped
-    // in order to avoid having to allocate and clear any actual memory
+    // in order to avoid having to allocate and clear any actual memory. Some specific
+    // older AMD hardware seems to have some trouble with this, use the minimum subgroup
+    // size to disable the sparse path on anything that predates RDNA1.
+    bool noSparseWorkaroundAmd = m_device->properties().core.properties.vendorID == uint32_t(DxvkGpuVendor::Amd)
+                              && m_device->properties().vk13.minSubgroupSize == 64u;
+
     if (m_device->features().core.features.sparseBinding
      && m_device->features().core.features.sparseResidencyBuffer
-     && m_device->properties().core.properties.sparseProperties.residencyNonResidentStrict) {
+     && m_device->properties().core.properties.sparseProperties.residencyNonResidentStrict
+     && !noSparseWorkaroundAmd) {
       bufInfo.size = align<VkDeviceSize>(size, DxvkMemoryPool::MaxChunkSize);
       bufInfo.flags |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
     }
