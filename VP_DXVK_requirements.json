@@ -73,6 +73,40 @@
                 }
             }
         },
+        "dxvk_common_optional": {
+            "extensions": {
+                "VK_KHR_maintenance5": 1,
+                "VK_KHR_present_id": 1,
+                "VK_KHR_present_wait": 1,
+                "VK_EXT_line_rasterization": 1,
+                "VK_EXT_pageable_device_local_memory": 1,
+                "VK_EXT_swapchain_maintenance1": 1
+            },
+            "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "wideLines": true
+                },
+                "VkPhysicalDeviceMaintenance5FeaturesKHR": {
+                    "maintenance5": true
+                },
+                "VkPhysicalDevicePresentIdFeaturesKHR": {
+                    "presentId": true
+                },
+                "VkPhysicalDevicePresentWaitFeaturesKHR": {
+                    "presentWait": true
+                },
+                "VkPhysicalDeviceLineRasterizationFeaturesEXT": {
+                    "rectangularLines": true,
+                    "smoothLines": true
+                },
+                "VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT": {
+                    "pageableDeviceLocalMemory": true
+                },
+                "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT": {
+                    "swapchainMaintenance1": true
+                }
+            }
+        },
         "d3d9_baseline": {
             "extensions": {
                 "VK_EXT_robustness2": 1
@@ -107,6 +141,7 @@
             "extensions": {
                 "VK_EXT_memory_priority": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
+                "VK_EXT_depth_bias_control": 1,
                 "VK_EXT_depth_clip_enable": 1,
                 "VK_EXT_custom_border_color": 1,
                 "VK_EXT_attachment_feedback_loop_layout": 1,
@@ -125,6 +160,12 @@
                 "VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT": {
                     "vertexAttributeInstanceRateDivisor": true,
                     "vertexAttributeInstanceRateZeroDivisor": true
+                },
+                "VkPhysicalDeviceDepthBiasControlFeaturesEXT": {
+                    "depthBiasControl": true,
+                    "leastRepresentableValueForceUnormRepresentation": true,
+                    "floatRepresentation": true,
+                    "depthBiasExact": true
                 },
                 "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
                     "depthClipEnable": true
@@ -183,8 +224,10 @@
         "d3d11_baseline_optional":{
             "extensions": {
                 "VK_EXT_memory_priority": 1,
+                "VK_EXT_multi_draw": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_custom_border_color": 1,
+                "VK_EXT_depth_bias_control": 1,
                 "VK_EXT_depth_clip_enable": 1,
                 "VK_EXT_swapchain_colorspace": 1,
                 "VK_EXT_hdr_metadata": 1
@@ -199,6 +242,9 @@
                 "VkPhysicalDeviceMemoryPriorityFeaturesEXT": {
                     "memoryPriority": true
                 },
+                "VkPhysicalDeviceMultiDrawFeaturesEXT": {
+                    "multiDraw": true
+                },
                 "VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT": {
                     "vertexAttributeInstanceRateDivisor": true,
                     "vertexAttributeInstanceRateZeroDivisor": true
@@ -206,6 +252,11 @@
                 "VkPhysicalDeviceCustomBorderColorFeaturesEXT": {
                     "customBorderColors": true,
                     "customBorderColorWithoutFormat": true
+                },
+                "VkPhysicalDeviceDepthBiasControlFeaturesEXT": {
+                    "depthBiasControl": true,
+                    "leastRepresentableValueForceUnormRepresentation": true,
+                    "depthBiasExact": true
                 },
                 "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
                     "depthClipEnable": true
@@ -287,6 +338,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_optional",
                 "d3d9_baseline",
                 "d3d9_optional"
             ]
@@ -343,6 +395,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_optional",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
                 "d3d11_level11_0",
@@ -360,6 +413,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_optional",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
                 "d3d11_level11_0",
