@@ -467,10 +467,11 @@ namespace dxvk::hud {
 
     DxvkStatCounters  m_prevCounters;
 
-    uint64_t          m_gpCount = 0;
-    uint64_t          m_cpCount = 0;
-    uint64_t          m_rpCount = 0;
-    uint64_t          m_pbCount = 0;
+    uint64_t          m_drawCallCount   = 0;
+    uint64_t          m_drawCount       = 0;
+    uint64_t          m_dispatchCount   = 0;
+    uint64_t          m_renderPassCount = 0;
+    uint64_t          m_barrierCount    = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
@@ -689,14 +690,18 @@ namespace dxvk::hud {
     uint64_t m_prevCsSyncCount  = 0;
     uint64_t m_prevCsSyncTicks  = 0;
     uint64_t m_prevCsChunks     = 0;
+    uint64_t m_prevCsIdleTicks = 0;
 
     uint64_t m_maxCsSyncCount   = 0;
     uint64_t m_maxCsSyncTicks   = 0;
+
+    uint64_t m_diffCsIdleTicks = 0;
 
     uint64_t m_updateCount      = 0;
 
     std::string m_csSyncString;
     std::string m_csChunkString;
+    std::string m_csLoadString;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();

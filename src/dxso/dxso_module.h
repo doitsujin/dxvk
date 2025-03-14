@@ -77,12 +77,12 @@ namespace dxvk {
     DxsoCode        m_code;
 
     DxsoIsgn        m_isgn;
-    uint32_t        m_usedSamplers;
-    uint32_t        m_usedRTs;
-    uint32_t        m_textureTypes;
+    uint32_t        m_usedSamplers = 0u;
+    uint32_t        m_usedRTs      = 0u;
+    uint32_t        m_textureTypes = 0u;
 
     DxsoShaderMetaInfo   m_meta;
-    uint32_t             m_maxDefinedConst;
+    uint32_t             m_maxDefinedConst = 0u;
     DxsoDefinedConstants m_constants;
 
   };

@@ -37,7 +37,9 @@ namespace dxvk {
         && viewType        == other.viewType
         && stage           == other.stage
         && access          == other.access
-        && uboSet          == other.uboSet;
+        && accessOp        == other.accessOp
+        && uboSet          == other.uboSet
+        && isMultisampled  == other.isMultisampled;
   }
 
 
@@ -48,7 +50,9 @@ namespace dxvk {
     hash.add(uint32_t(viewType));
     hash.add(uint32_t(stage));
     hash.add(access);
+    hash.add(uint32_t(accessOp));
     hash.add(uint32_t(uboSet));
+    hash.add(uint32_t(isMultisampled));
     return hash;
   }
 

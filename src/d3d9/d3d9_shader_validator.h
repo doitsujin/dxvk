@@ -89,7 +89,7 @@ namespace dxvk {
         const DWORD*                     pInstr,
               DWORD                      InstrLength,
               D3D9ShaderValidatorMessage MessageID,
-              std::string                Message);
+        const std::string&               Message);
 
     bool                        m_isPixelShader = false;
     uint32_t                    m_majorVersion  = 0;

@@ -42,7 +42,7 @@ namespace dxvk {
   
   Rc<DxvkShader> DxbcModule::compile(
     const DxbcModuleInfo& moduleInfo,
-    const std::string&    fileName) const {
+    const std::string&    fileName) {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
@@ -54,6 +54,8 @@ namespace dxvk {
       m_psgnChunk, analysisInfo);
     
     this->runAnalyzer(analyzer, m_shexChunk->slice());
+
+    m_bindings = std::make_optional(analysisInfo.bindings);
     
     DxbcCompiler compiler(
       fileName, moduleInfo,
@@ -62,7 +64,9 @@ namespace dxvk {
       m_psgnChunk, analysisInfo);
     
     this->runCompiler(compiler, m_shexChunk->slice());
-    
+
+    m_icb = compiler.getIcbData();
+
     return compiler.finalize();
   }
   

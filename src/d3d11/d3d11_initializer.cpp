@@ -77,6 +77,33 @@ namespace dxvk {
   }
 
 
+  void D3D11Initializer::InitShaderIcb(
+          D3D11CommonShader*          pShader,
+          size_t                      IcbSize,
+    const void*                       pIcbData) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    m_transferCommands += 1;
+
+    auto icbSlice = pShader->GetIcb();
+    auto srcSlice = m_stagingBuffer.alloc(icbSlice.length());
+
+    std::memcpy(srcSlice.mapPtr(0), pIcbData, IcbSize);
+
+    if (IcbSize < icbSlice.length())
+      std::memset(srcSlice.mapPtr(IcbSize), 0, icbSlice.length() - IcbSize);
+
+    EmitCs([
+      cIcbSlice = std::move(icbSlice),
+      cSrcSlice = std::move(srcSlice)
+    ] (DxvkContext* ctx) {
+      ctx->copyBuffer(cIcbSlice.buffer(), cIcbSlice.offset(),
+        cSrcSlice.buffer(), cSrcSlice.offset(), cIcbSlice.length());
+    });
+
+    ThrottleAllocationLocked();
+  }
+
+
   void D3D11Initializer::InitDeviceLocalBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
@@ -337,7 +364,7 @@ namespace dxvk {
       cSignalValue  = stats.allocatedTotal
     ] (DxvkContext* ctx) {
       ctx->signal(cSignal, cSignalValue);
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(nullptr, nullptr);
     });
 
     FlushCsChunk();

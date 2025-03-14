@@ -1051,8 +1051,8 @@ namespace dxvk {
             VkImageLayout            OldLayout,
             VkImageLayout            NewLayout);
 
-    const D3D9ConstantLayout& GetVertexConstantLayout() { return m_vsLayout; }
-    const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_psLayout; }
+    const D3D9ConstantLayout& GetVertexConstantLayout() { return m_consts[DxsoProgramType::VertexShader].layout; }
+    const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_consts[DxsoProgramType::PixelShader].layout; }
 
     void ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters);
     HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
@@ -1284,8 +1284,7 @@ namespace dxvk {
     template <DxsoProgramType  ProgramType,
               D3D9ConstantType ConstantType>
     inline uint32_t DetermineHardwareRegCount() const {
-      const auto& layout = ProgramType == DxsoProgramType::VertexShader
-        ? m_vsLayout : m_psLayout;
+      const auto& layout = m_consts[ProgramType].layout;
 
       switch (ConstantType) {
         default:
@@ -1583,15 +1582,6 @@ namespace dxvk {
     uint32_t                        m_robustSSBOAlignment     = 1;
     uint32_t                        m_robustUBOAlignment      = 1;
 
-    uint32_t                        m_vsFloatConstsCount = 0;
-    uint32_t                        m_vsIntConstsCount   = 0;
-    uint32_t                        m_vsBoolConstsCount  = 0;
-    uint32_t                        m_psFloatConstsCount = 0;
-    VkDeviceSize                    m_boundVSConstantsBufferSize = 0;
-    VkDeviceSize                    m_boundPSConstantsBufferSize = 0;
-
-    D3D9ConstantLayout              m_vsLayout;
-    D3D9ConstantLayout              m_psLayout;
     D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
 	
 	D3D9UserDefinedAnnotation*      m_annotation = nullptr;

@@ -4,6 +4,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_implicit_resolve.h"
 #include "dxvk_latency.h"
 #include "dxvk_objects.h"
 #include "dxvk_queue.h"
@@ -32,6 +33,8 @@ namespace dxvk {
   class DxvkContext : public RcObject {
     constexpr static VkDeviceSize MaxDiscardSizeInRp = 256u << 10u;
     constexpr static VkDeviceSize MaxDiscardSize     =  16u << 10u;
+
+    constexpr static uint32_t DirectMultiDrawBatchSize = 256u;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
@@ -57,9 +60,11 @@ namespace dxvk {
      * 
      * This will not change any context state
      * other than the active command list.
+     * \param [in] reason Optional debug label describing the reason
      * \returns Active command list
      */
-    Rc<DxvkCommandList> endRecording();
+    Rc<DxvkCommandList> endRecording(
+      const VkDebugUtilsLabelEXT*       reason);
 
     /**
      * \brief Ends frame
@@ -98,9 +103,12 @@ namespace dxvk {
      * 
      * Transparently submits the current command
      * buffer and allocates a new one.
+     * \param [in] reason Optional debug label describing the reason
      * \param [out] status Submission feedback
      */
-    void flushCommandList(DxvkSubmitStatus* status);
+    void flushCommandList(
+      const VkDebugUtilsLabelEXT*       reason,
+            DxvkSubmitStatus*           status);
 
     /**
      * \brief Synchronizes command list with WSI
@@ -744,17 +752,13 @@ namespace dxvk {
     /**
      * \brief Draws primitive without using an index buffer
      * 
-     * \param [in] vertexCount Number of vertices to draw
-     * \param [in] instanceCount Number of instances to render
-     * \param [in] firstVertex First vertex in vertex buffer
-     * \param [in] firstInstance First instance ID
+     * \param [in] count Number of draws
+     * \param [in] draws Draw parameters
      */
     void draw(
-            uint32_t          vertexCount,
-            uint32_t          instanceCount,
-            uint32_t          firstVertex,
-            uint32_t          firstInstance);
-    
+            uint32_t          count,
+      const VkDrawIndirectCommand* draws);
+
     /**
      * \brief Indirect draw call
      * 
@@ -791,19 +795,13 @@ namespace dxvk {
     /**
      * \brief Draws primitives using an index buffer
      * 
-     * \param [in] indexCount Number of indices to draw
-     * \param [in] instanceCount Number of instances to render
-     * \param [in] firstIndex First index within the index buffer
-     * \param [in] vertexOffset Vertex ID that corresponds to index 0
-     * \param [in] firstInstance First instance ID
+     * \param [in] count Number of draws
+     * \param [in] draws Draw parameters
      */
     void drawIndexed(
-            uint32_t indexCount,
-            uint32_t instanceCount,
-            uint32_t firstIndex,
-            int32_t  vertexOffset,
-            uint32_t firstInstance);
-    
+            uint32_t          count,
+      const VkDrawIndexedIndirectCommand* draws);
+
     /**
      * \brief Indirect indexed draw call
      * 
@@ -1048,27 +1046,15 @@ namespace dxvk {
      * \param [in] srcImage Source image
      * \param [in] region Region to resolve
      * \param [in] format Format for the resolve operation
+     * \param [in] mode Image resolve mode
+     * \param [in] stencilMode Stencil resolve mode
      */
     void resolveImage(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkFormat                  format);
-    
-    /**
-     * \brief Resolves a multisampled depth-stencil resource
-     * 
-     * \param [in] dstImage Destination image
-     * \param [in] srcImage Source image
-     * \param [in] region Region to resolve
-     * \param [in] depthMode Resolve mode for depth aspect
-     * \param [in] stencilMode Resolve mode for stencil aspect
-     */
-    void resolveDepthStencilImage(
-      const Rc<DxvkImage>&            dstImage,
-      const Rc<DxvkImage>&            srcImage,
-      const VkImageResolve&           region,
-            VkResolveModeFlagBits     depthMode,
+            VkFormat                  format,
+            VkResolveModeFlagBits     mode,
             VkResolveModeFlagBits     stencilMode);
 
     /**
@@ -1138,14 +1124,12 @@ namespace dxvk {
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports
-     * \param [in] viewports The viewports
-     * \param [in] scissorRects Schissor rectangles
+     * \param [in] viewports The viewports and scissors
      */
     void setViewports(
             uint32_t            viewportCount,
-      const VkViewport*         viewports,
-      const VkRect2D*           scissorRects);
-    
+      const DxvkViewport*       viewports);
+
     /**
      * \brief Sets blend constants
      * 
@@ -1464,6 +1448,8 @@ namespace dxvk {
     uint64_t                m_latencyFrameId = 0u;
     bool                    m_endLatencyTracking = false;
 
+    DxvkImplicitResolveTracker  m_implicitResolves;
+
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
       const VkOffset3D*           dstOffsets,
@@ -1595,6 +1581,11 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       buffer,
             VkDeviceSize          offset);
 
+    template<bool Indexed, typename T>
+    void drawGeneric(
+            uint32_t              count,
+      const T*                    draws);
+
     template<bool Indexed>
     void drawIndirectGeneric(
             VkDeviceSize          offset,
@@ -1614,13 +1605,14 @@ namespace dxvk {
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region);
     
-    void resolveImageDs(
+    void resolveImageRp(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkResolveModeFlagBits     depthMode,
+            VkFormat                  format,
+            VkResolveModeFlagBits     mode,
             VkResolveModeFlagBits     stencilMode);
-    
+
     void resolveImageFb(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
@@ -1773,9 +1765,10 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint>
     void updatePushConstants();
     
+    template<bool Resolve = true>
     bool commitComputeState();
     
-    template<bool Indexed, bool Indirect>
+    template<bool Indexed, bool Indirect, bool Resolve = true>
     bool commitGraphicsState();
     
     template<VkPipelineBindPoint BindPoint>
@@ -1873,6 +1866,8 @@ namespace dxvk {
     void resizeDescriptorArrays(
             uint32_t                  bindingCount);
 
+    void flushImplicitResolves();
+
     void beginCurrentCommands();
 
     void endCurrentCommands();
@@ -1946,6 +1941,38 @@ namespace dxvk {
             VkAccessFlags2            dstAccess,
             DxvkAccessOp              accessOp);
 
+    void accessImageRegion(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            DxvkAccessOp              accessOp);
+
+    void accessImageRegion(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            DxvkAccessOp              accessOp);
+
+    void accessImageTransfer(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
     void accessBuffer(
             DxvkCmdBuffer             cmdBuffer,
             DxvkBuffer&               buffer,
@@ -1997,6 +2024,11 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess,
             DxvkAccessOp              accessOp);
+
+    void accessBufferTransfer(
+            DxvkBuffer&               buffer,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
 
     void accessDrawBuffer(
             VkDeviceSize              offset,
@@ -2023,6 +2055,13 @@ namespace dxvk {
             DxvkAccess                access);
 
     void flushPendingAccesses(
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
+            DxvkAccess                access);
+
+    void flushPendingAccesses(
             DxvkImageView&            imageView,
             DxvkAccess                access);
 
@@ -2043,6 +2082,14 @@ namespace dxvk {
     bool resourceHasAccess(
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
+            DxvkAccess                access,
+            DxvkAccessOp              accessOp);
+
+    bool resourceHasAccess(
+            DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                offset,
+            VkExtent3D                extent,
             DxvkAccess                access,
             DxvkAccessOp              accessOp);
 
@@ -2103,7 +2150,7 @@ namespace dxvk {
       return pred(DxvkAccess::Read);
     }
 
-    void invalidateWriteAfterWriteTracking();
+    bool needsDrawBarriers();
 
     void beginRenderPassDebugRegion();
 

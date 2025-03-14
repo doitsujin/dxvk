@@ -37,26 +37,21 @@ namespace dxvk {
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
           // Check whether the atomic operation is order-invariant
-          DxvkAccessOp store = DxvkAccessOp::None;
+          DxvkAccessOp op = DxvkAccessOp::None;
 
           switch (ins.op) {
-            case DxbcOpcode::AtomicAnd:  store = DxvkAccessOp::And;  break;
-            case DxbcOpcode::AtomicOr:   store = DxvkAccessOp::Or;   break;
-            case DxbcOpcode::AtomicXor:  store = DxvkAccessOp::Xor;  break;
-            case DxbcOpcode::AtomicIAdd: store = DxvkAccessOp::Add;  break;
-            case DxbcOpcode::AtomicIMax: store = DxvkAccessOp::IMax; break;
-            case DxbcOpcode::AtomicIMin: store = DxvkAccessOp::IMin; break;
-            case DxbcOpcode::AtomicUMax: store = DxvkAccessOp::UMax; break;
-            case DxbcOpcode::AtomicUMin: store = DxvkAccessOp::UMin; break;
+            case DxbcOpcode::AtomicAnd:  op = DxvkAccessOp::And;  break;
+            case DxbcOpcode::AtomicOr:   op = DxvkAccessOp::Or;   break;
+            case DxbcOpcode::AtomicXor:  op = DxvkAccessOp::Xor;  break;
+            case DxbcOpcode::AtomicIAdd: op = DxvkAccessOp::Add;  break;
+            case DxbcOpcode::AtomicIMax: op = DxvkAccessOp::IMax; break;
+            case DxbcOpcode::AtomicIMin: op = DxvkAccessOp::IMin; break;
+            case DxbcOpcode::AtomicUMax: op = DxvkAccessOp::UMax; break;
+            case DxbcOpcode::AtomicUMin: op = DxvkAccessOp::UMin; break;
             default: break;
           }
 
-          if (m_analysis->uavInfos[registerId].atomicStore == DxvkAccessOp::None)
-            m_analysis->uavInfos[registerId].atomicStore = store;
-
-          // Maintain ordering if the UAV is accessed via other operations as well
-          if (store == DxvkAccessOp::None || m_analysis->uavInfos[registerId].atomicStore != store)
-            m_analysis->uavInfos[registerId].nonInvariantAccess = true;
+          setUavAccessOp(registerId, op);
         }
       } break;
 
@@ -80,7 +75,8 @@ namespace dxvk {
           const uint32_t registerId = ins.src[operandId].idx[0].offset;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
           m_analysis->uavInfos[registerId].sparseFeedback |= sparseFeedback;
-          m_analysis->uavInfos[registerId].nonInvariantAccess = true;
+
+          setUavAccessOp(registerId, DxvkAccessOp::None);
         } else if (ins.src[operandId].type == DxbcOperandType::Resource) {
           const uint32_t registerId = ins.src[operandId].idx[0].offset;
           m_analysis->srvInfos[registerId].sparseFeedback |= sparseFeedback;
@@ -91,7 +87,8 @@ namespace dxvk {
         if (ins.dst[0].type == DxbcOperandType::UnorderedAccessView) {
           const uint32_t registerId = ins.dst[0].idx[0].offset;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
-          m_analysis->uavInfos[registerId].nonInvariantAccess = true;
+
+          setUavAccessOp(registerId, getStoreAccessOp(ins.dst[0].mask, ins.src[ins.srcCount - 1u]));
         }
       } break;
 
@@ -99,13 +96,63 @@ namespace dxvk {
         const uint32_t registerId = ins.src[1].idx[0].offset;
         m_analysis->uavInfos[registerId].accessTypedLoad = true;
         m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
-        m_analysis->uavInfos[registerId].nonInvariantAccess = true;
+
+        setUavAccessOp(registerId, DxvkAccessOp::None);
       } break;
-      
+
       case DxbcInstClass::TypedUavStore: {
         const uint32_t registerId = ins.dst[0].idx[0].offset;
         m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
-        m_analysis->uavInfos[registerId].nonInvariantAccess = true;
+
+        // The UAV format may change between dispatches, so be conservative here
+        // and only allow this optimization when the app is writing zeroes.
+        DxvkAccessOp storeOp = getStoreAccessOp(DxbcRegMask(0xf), ins.src[1u]);
+
+        if (storeOp != DxvkAccessOp(DxvkAccessOp::OpType::StoreUi, 0u))
+          storeOp = DxvkAccessOp::None;
+
+        setUavAccessOp(registerId, storeOp);
+      } break;
+
+      case DxbcInstClass::Declaration: {
+        switch (ins.op) {
+          case DxbcOpcode::DclConstantBuffer: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcConstBufBindingCount)
+              m_analysis->bindings.cbvMask |= 1u << registerId;
+          } break;
+
+          case DxbcOpcode::DclSampler: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcSamplerBindingCount)
+              m_analysis->bindings.samplerMask |= 1u << registerId;
+          } break;
+
+          case DxbcOpcode::DclResource:
+          case DxbcOpcode::DclResourceRaw:
+          case DxbcOpcode::DclResourceStructured: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            uint32_t idx = registerId / 64u;
+            uint32_t bit = registerId % 64u;
+
+            if (registerId < DxbcResourceBindingCount)
+              m_analysis->bindings.srvMask[idx] |= uint64_t(1u) << bit;
+          } break;
+
+          case DxbcOpcode::DclUavTyped:
+          case DxbcOpcode::DclUavRaw:
+          case DxbcOpcode::DclUavStructured: {
+            uint32_t registerId = ins.dst[0].idx[0].offset;
+
+            if (registerId < DxbcUavBindingCount)
+              m_analysis->bindings.uavMask |= uint64_t(1u) << registerId;
+          } break;
+
+          default: ;
+        }
       } break;
 
       default:
@@ -137,5 +184,71 @@ namespace dxvk {
     
     return result;
   }
-  
+
+
+  void DxbcAnalyzer::setUavAccessOp(uint32_t uav, DxvkAccessOp op) {
+    if (m_analysis->uavInfos[uav].accessOp == DxvkAccessOp::None)
+      m_analysis->uavInfos[uav].accessOp = op;
+
+    // Maintain ordering if the UAV is accessed via other operations as well
+    if (op == DxvkAccessOp::None || m_analysis->uavInfos[uav].accessOp != op)
+      m_analysis->uavInfos[uav].nonInvariantAccess = true;
+  }
+
+
+  DxvkAccessOp DxbcAnalyzer::getStoreAccessOp(DxbcRegMask writeMask, const DxbcRegister& src) {
+    if (src.type != DxbcOperandType::Imm32)
+      return DxvkAccessOp::None;
+
+    // Trivial case, same value is written to all components
+    if (src.componentCount == DxbcComponentCount::Component1)
+      return getConstantStoreOp(src.imm.u32_1);
+
+    if (src.componentCount != DxbcComponentCount::Component4)
+      return DxvkAccessOp::None;
+
+    // Otherwise, make sure that all written components are equal
+    DxvkAccessOp op = DxvkAccessOp::None;
+
+    for (uint32_t i = 0u; i < 4u; i++) {
+      if (!writeMask[i])
+        continue;
+
+      // If the written value can't be represented, skip
+      DxvkAccessOp scalarOp = getConstantStoreOp(src.imm.u32_4[i]);
+
+      if (scalarOp == DxvkAccessOp::None)
+        return DxvkAccessOp::None;
+
+      // First component written
+      if (op == DxvkAccessOp::None)
+        op = scalarOp;
+
+      // Conflicting store ops
+      if (op != scalarOp)
+        return DxvkAccessOp::None;
+    }
+
+    return op;
+  }
+
+
+  DxvkAccessOp DxbcAnalyzer::getConstantStoreOp(uint32_t value) {
+    constexpr uint32_t mask = 0xfffu;
+
+    uint32_t ubits = value & mask;
+    uint32_t fbits = (value >> 20u);
+
+    if (value == ubits)
+      return DxvkAccessOp(DxvkAccessOp::OpType::StoreUi, ubits);
+
+    if (value == (ubits | ~mask))
+      return DxvkAccessOp(DxvkAccessOp::OpType::StoreSi, ubits);
+
+    if (value == (fbits << 20u))
+      return DxvkAccessOp(DxvkAccessOp::OpType::StoreF, fbits);
+
+    return DxvkAccessOp::None;
+  }
+
 }

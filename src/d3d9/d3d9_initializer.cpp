@@ -162,7 +162,7 @@ namespace dxvk {
 
   void D3D9Initializer::ExecuteFlushLocked() {
     EmitCs([] (DxvkContext* ctx) {
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(nullptr, nullptr);
     });
 
     FlushCsChunk();

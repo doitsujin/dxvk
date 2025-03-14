@@ -173,8 +173,8 @@ namespace dxvk {
 
     bool needsOutputSetup = false;
   };
-  
-  
+
+
   /**
    * \brief Pixel shader-specific structure
    */
@@ -404,6 +404,17 @@ namespace dxvk {
      * \returns The final shader object
      */
     Rc<DxvkShader> finalize();
+
+    /**
+     * \brief Extracts immediate constant buffer data
+     *
+     * Only defined if the ICB needs to be backed by a
+     * uniform buffer.
+     * \returns Immediate constant buffer data
+     */
+    std::vector<uint32_t> getIcbData() const {
+      return std::move(m_icbData);
+    }
     
   private:
     
@@ -472,7 +483,12 @@ namespace dxvk {
     // Control flow information. Stores labels for
     // currently active if-else blocks and loops.
     std::vector<DxbcCfgBlock> m_controlFlowBlocks;
-    
+
+    bool m_topLevelIsUniform = true;
+
+    uint64_t m_uavRdMask = 0u;
+    uint64_t m_uavWrMask = 0u;
+
     //////////////////////////////////////////////
     // Function state tracking. Required in order
     // to properly end functions in some cases.
@@ -498,13 +514,14 @@ namespace dxvk {
     uint32_t m_primitiveIdIn  = 0;
     uint32_t m_primitiveIdOut = 0;
 
-    uint32_t m_pointSizeOut   = 0;
-
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
-    uint32_t m_immConstBuf = 0;
-    std::vector<char> m_immConstData;
+    uint32_t          m_icbArray = 0;
+    std::vector<uint32_t> m_icbData;
+
+    uint32_t          m_icbComponents = 0u;
+    uint32_t          m_icbSize = 0u;
     
     ///////////////////////////////////////////////////
     // Sample pos array. If defined, this iis an array
@@ -548,6 +565,7 @@ namespace dxvk {
     DxbcOpcode m_lastOp = DxbcOpcode::Nop;
     DxbcOpcode m_currOp = DxbcOpcode::Nop;
 
+    VkPrimitiveTopology m_inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     VkPrimitiveTopology m_outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
     /////////////////////////////////////////////////////
@@ -590,6 +608,7 @@ namespace dxvk {
     void emitDclConstantBufferVar(
             uint32_t                regIdx,
             uint32_t                numConstants,
+            uint32_t                numComponents,
       const char*                   name);
     
     void emitDclSampler(
@@ -650,11 +669,13 @@ namespace dxvk {
     
     void emitDclImmediateConstantBufferBaked(
             uint32_t                dwordCount,
-      const uint32_t*               dwordArray);
+      const uint32_t*               dwordArray,
+            uint32_t                componentCount);
     
     void emitDclImmediateConstantBufferUbo(
             uint32_t                dwordCount,
-      const uint32_t*               dwordArray);
+      const uint32_t*               dwordArray,
+            uint32_t                componentCount);
     
     void emitCustomData(
       const DxbcShaderInstruction&  ins);
@@ -1239,6 +1260,10 @@ namespace dxvk {
     
     bool ignoreInputSystemValue(
             DxbcSystemValue         sv) const;
+
+    void emitUavBarrier(
+            uint64_t                readMask,
+            uint64_t                writeMask);
 
     ///////////////////////////
     // Type definition methods

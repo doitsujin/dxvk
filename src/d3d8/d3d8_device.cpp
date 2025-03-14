@@ -47,7 +47,7 @@ namespace dxvk {
     , m_behaviorFlags(BehaviorFlags)
     , m_multithread(BehaviorFlags & D3DCREATE_MULTITHREADED) {
     // Get the bridge interface to D3D9.
-    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), (void**)&m_bridge))) {
+    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), reinterpret_cast<void**>(&m_bridge)))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
@@ -578,11 +578,11 @@ namespace dxvk {
     bool compressed = isDXT(srcDesc.Format);
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
-    if (FAILED(res))
+    if (unlikely(FAILED(res)))
       return res;
 
     res = dst->LockRect(&dstLocked, &dstRect, 0);
-    if (FAILED(res)) {
+    if (unlikely(FAILED(res))) {
       src->UnlockRect();
       return res;
     }
@@ -629,8 +629,8 @@ namespace dxvk {
       size_t srcOffset = 0, dstOffset = 0;
       for (auto i = 0; i < rows; i++) {
         std::memcpy(
-          (uint8_t*)dstLocked.pBits + dstOffset,
-          (uint8_t*)srcLocked.pBits + srcOffset,
+          reinterpret_cast<uint8_t*>(dstLocked.pBits) + dstOffset,
+          reinterpret_cast<uint8_t*>(srcLocked.pBits) + srcOffset,
           amplitude);
         srcOffset += srcLocked.Pitch;
         dstOffset += dstLocked.Pitch;
@@ -638,7 +638,13 @@ namespace dxvk {
     }
 
     res = dst->UnlockRect();
+    if (unlikely(FAILED(res))) {
+      src->UnlockRect();
+      return res;
+    }
+
     res = src->UnlockRect();
+
     return res;
   }
 
@@ -1559,7 +1565,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-    return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    return GetD3D9()->GetVertexShaderConstantF(Register, reinterpret_cast<float*>(pConstantData), ConstantCount);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetStreamSource(
@@ -1657,7 +1663,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-    return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    return GetD3D9()->GetPixelShaderConstantF(Register, reinterpret_cast<float*>(pConstantData), ConstantCount);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetPixelShaderConstant(
@@ -1815,45 +1821,42 @@ namespace dxvk {
     if (unlikely(pDeclaration == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // Validate VS version for non-FF shaders
-    if (pFunction != nullptr) {
-      const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-      const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-      if (unlikely(majorVersion != 1 || minorVersion > 1)) {
-        Logger::err(str::format("D3D8Device::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
-        return D3DERR_INVALIDCALL;
-      }
-    }
-
-    D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
-
-    // Store D3D8 bytecodes in the shader info
-    for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
-      info.declaration.push_back(pDeclaration[i]);
-    info.declaration.push_back(D3DVSD_END());
-
-    if (pFunction != nullptr) {
-      for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
-        info.function.push_back(pFunction[i]);
-      info.function.push_back(D3DVS_END());
-    }
-
-    D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
-
-    // Create vertex declaration
-    HRESULT res = GetD3D9()->CreateVertexDeclaration(result.declaration, &(info.pVertexDecl));
+    D3D9VertexShaderCode translatedVS;
+    HRESULT res = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options, translatedVS);
     if (unlikely(FAILED(res)))
       return res;
 
+    // Create vertex declaration
+    Com<d3d9::IDirect3DVertexDeclaration9> pVertexDecl;
+    res = GetD3D9()->CreateVertexDeclaration(translatedVS.declaration, &pVertexDecl);
+    if (unlikely(FAILED(res)))
+      return res;
+
+    Com<d3d9::IDirect3DVertexShader9> pVertexShader;
     if (pFunction != nullptr) {
-      res = GetD3D9()->CreateVertexShader(result.function.data(), &(info.pVertexShader));
+      res = GetD3D9()->CreateVertexShader(translatedVS.function.data(), &pVertexShader);
     } else {
       // pFunction is NULL: fixed function pipeline
-      info.pVertexShader = nullptr;
+      pVertexShader = nullptr;
     }
 
     if (likely(SUCCEEDED(res))) {
+      D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
+
+      info.pVertexDecl = std::move(pVertexDecl);
+      info.pVertexShader = std::move(pVertexShader);
+
+      // Store D3D8 bytecodes in the shader info
+      for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
+        info.declaration.push_back(pDeclaration[i]);
+      info.declaration.push_back(D3DVSD_END());
+
+      if (pFunction != nullptr) {
+        for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
+          info.function.push_back(pFunction[i]);
+        info.function.push_back(D3DVS_END());
+      }
+
       // Set bit to indicate this is not an FVF
       *pHandle = getShaderHandle(m_vertexShaders.size());
     }
@@ -1970,11 +1973,8 @@ namespace dxvk {
       if (!info)
         return D3DERR_INVALIDCALL;
 
-      if (info->pVertexDecl != nullptr)
-        info->pVertexDecl = nullptr;
-      if (info->pVertexShader != nullptr)
-        info->pVertexShader = nullptr;
-
+      info->pVertexDecl = nullptr;
+      info->pVertexShader = nullptr;
       info->declaration.clear();
       info->function.clear();
 
@@ -2056,20 +2056,11 @@ namespace dxvk {
     if (unlikely(pFunction == nullptr || pHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
-    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-    if (unlikely(m_isFixedFunctionOnly || majorVersion != 1 || minorVersion > 4)) {
-      Logger::err(str::format("D3D8Device::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
-      return D3DERR_INVALIDCALL;
-    }
-
-    d3d9::IDirect3DPixelShader9* pPixelShader;
-
+    Com<d3d9::IDirect3DPixelShader9> pPixelShader;
     HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
 
     if (likely(SUCCEEDED(res))) {
-      m_pixelShaders.push_back(pPixelShader);
+      m_pixelShaders.push_back(std::move(pPixelShader));
       // Still set the shader bit, to prevent conflicts with NULL.
       *pHandle = getShaderHandle(m_pixelShaders.size());
     }

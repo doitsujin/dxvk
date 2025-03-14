@@ -13,13 +13,6 @@ namespace dxvk {
   struct D3D11Options {
     D3D11Options(const Config& config);
 
-    /// Enables speed hack for mapping on deferred contexts
-    ///
-    /// This can substantially speed up some games, but may
-    /// cause issues if the game submits command lists more
-    /// than once.
-    bool dcSingleUseMode = false;
-
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize
@@ -32,6 +25,13 @@ namespace dxvk {
     /// write from the same shared memory location
     /// without explicit synchronization.
     bool forceVolatileTgsmAccess = false;
+
+    /// Force UAV synchronization insided compute shaders
+    ///
+    /// Workaround for compute shaders that access overlapping
+    /// memory regions within a UAV without proper workgroup
+    /// synchroniation. Will have a negative performance impact.
+    bool forceComputeUavBarriers = false;
 
     /// Use relaxed memory barriers
     ///

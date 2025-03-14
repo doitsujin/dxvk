@@ -138,6 +138,8 @@ namespace dxvk {
 
     Com<D3D11DeviceContextState, false> m_stateObject;
 
+    std::string             m_flushReason;
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
@@ -194,6 +196,8 @@ namespace dxvk {
     uint64_t GetCurrentSequenceNumber();
 
     uint64_t GetPendingCsChunks();
+
+    void ApplyDirtyNullBindings();
 
     void ConsiderFlush(
             GpuFlushType                FlushType);

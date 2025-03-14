@@ -63,6 +63,9 @@ namespace dxvk {
     // to be in its default layout after each submission
     VkBool32 shared = VK_FALSE;
 
+    // Image is likely to have a short lifetime
+    VkBool32 transient = VK_FALSE;
+
     // Image view formats that can
     // be used with this image
     uint32_t viewFormatCount = 0;
@@ -101,6 +104,18 @@ namespace dxvk {
     const VkFormat* viewFormats = nullptr;
     // Requtes the image to not be relocated in the future
     VkBool32 stableGpuAddress = VK_FALSE;
+  };
+
+
+  /**
+   * \brief Image properties stored in the view
+   *
+   * Used to reduce some pointer chasing.
+   */
+  struct DxvkImageViewImageProperties {
+    VkImageLayout         layout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+    VkAccessFlags         access  = 0u;
   };
 
 
@@ -272,6 +287,30 @@ namespace dxvk {
         view->imageSubresources());
     }
 
+    /**
+     * \brief Queries the default image layout
+     *
+     * Used when binding the view as a descriptor.
+     * \returns Default image layout
+     */
+    VkImageLayout defaultLayout() const {
+      return m_properties.layout;
+    }
+
+    /**
+     * \brief Checks whether the image is multisampled
+     * \returns \c true if the image is multisampled
+     */
+    bool isMultisampled() const {
+      return m_properties.samples > VK_SAMPLE_COUNT_1_BIT;
+    }
+
+    /**
+     * \brief Checks whether the image has graphics stores
+     * \returns \c true if the image has graphics pipeline stores
+     */
+    bool hasGfxStores() const;
+
   private:
 
     DxvkImage*              m_image     = nullptr;
@@ -279,11 +318,15 @@ namespace dxvk {
 
     uint32_t                m_version   = 0u;
 
+    DxvkImageViewImageProperties m_properties = { };
+
     std::array<VkImageView, ViewCount> m_views = { };
 
     VkImageView createView(VkImageViewType type) const;
 
     void updateViews();
+
+    void updateProperties();
 
   };
 
@@ -577,10 +620,35 @@ namespace dxvk {
      * \brief Retrieves resource ID for barrier tracking
      * \returns Unique resource ID
      */
-    uint64_t getResourceId() const {
+    bit::uint48_t getResourceId() const {
       constexpr static size_t Align = alignof(DxvkResourceAllocation);
-      return reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align);
+      return bit::uint48_t(reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align));
     }
+
+    /**
+     * \brief Computes virtual offset of a subresource
+     *
+     * Used for hazard tracking. Ignores the aspect mask and
+     * only takes the mip level and array layer into account.
+     * \param [in] mip Mip level index
+     * \param [in] layer Array layer index
+     */
+    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer) const {
+      // Put layers within the same mip into a contiguous range. This works well
+      // for not only transfer operations but also most image view use cases.
+      return uint64_t((m_info.numLayers * mip) + layer) << 48u;
+    }
+
+    /**
+     * \brief Computes virtual offset of a specific image region
+     *
+     * Used for more granular hazard tracking. This interleaves coordinate
+     * bits in order to compute a unique address for each pixel.
+     * \param [in] mip Mip level index
+     * \param [in] layer Array layer index
+     * \param [in] coord Pixel coordinate within the subresource
+     */
+    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const;
 
     /**
      * \brief Creates or retrieves an image view
@@ -615,6 +683,14 @@ namespace dxvk {
      * \param [in] name New debug name
      */
     void setDebugName(const char* name);
+
+    /**
+     * \brief Retrieves debug name
+     * \returns Debug name
+     */
+    const char* getDebugName() const {
+      return m_debugName.c_str();
+    }
 
   private:
 
@@ -725,6 +801,12 @@ namespace dxvk {
       m_views[viewType] = createView(viewType);
 
     return m_views[viewType];
+  }
+
+
+  inline bool DxvkImageView::hasGfxStores() const {
+    return (m_properties.access & VK_ACCESS_SHADER_WRITE_BIT)
+        && (m_image->hasGfxStores());
   }
 
 }

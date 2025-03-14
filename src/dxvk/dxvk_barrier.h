@@ -13,40 +13,34 @@ namespace dxvk {
    * \brief Address range
    */
   struct DxvkAddressRange {
-    /// Unique resource handle or address
-    uint64_t resource = 0u;
+    /// Unique resource handle
+    bit::uint48_t resource = bit::uint48_t(0u);
+    /// Access modes used for the given address range
+    DxvkAccessOp accessOp = DxvkAccessOp::None;
     /// Range start. For buffers, this shall be a byte offset,
     /// images can encode the first subresource index here.
-    uint32_t rangeStart = 0u;
+    uint64_t rangeStart = 0u;
     /// Range end. For buffers, this is the offset of the last byte
     /// included in the range, i.e. offset + size - 1. For images,
     /// this is the last subresource included in the range.
-    uint32_t rangeEnd = 0u;
+    uint64_t rangeEnd = 0u;
 
     bool contains(const DxvkAddressRange& other) const {
-      return resource == other.resource
+      return uint64_t(resource) == uint64_t(other.resource)
           && rangeStart <= other.rangeStart
           && rangeEnd >= other.rangeEnd;
     }
 
     bool overlaps(const DxvkAddressRange& other) const {
-      return resource == other.resource
+      return uint64_t(resource) == uint64_t(other.resource)
           && rangeEnd >= other.rangeStart
           && rangeStart <= other.rangeEnd;
     }
 
     bool lt(const DxvkAddressRange& other) const {
-      return (resource < other.resource)
-          || (resource == other.resource && rangeStart < other.rangeStart);
+      return (uint64_t(resource) < uint64_t(other.resource))
+          || (uint64_t(resource) == uint64_t(other.resource) && rangeStart < other.rangeStart);
     }
-  };
-
-
-  /**
-   * \brief Barrier node payload
-   */
-  struct DxvkBarrierPayload {
-    DxvkAccessOps accessOps = 0u;
   };
 
 
@@ -69,9 +63,6 @@ namespace dxvk {
 
     // Address range of the node
     DxvkAddressRange addressRange = { };
-
-    // Node payload
-    DxvkBarrierPayload payload = { };
 
     void setRed(bool red) {
       header &= ~uint64_t(1u);
@@ -128,25 +119,21 @@ namespace dxvk {
      *
      * \param [in] range Resource range
      * \param [in] accessType Access type
-     * \param [in] accessOp Access operation
      * \returns \c true if the range has a pending access
      */
     bool findRange(
       const DxvkAddressRange&           range,
-            DxvkAccess                  accessType,
-            DxvkAccessOp                accessOp) const;
+            DxvkAccess                  accessType) const;
 
     /**
      * \brief Inserts address range for a given access type
      *
      * \param [in] range Resource range
      * \param [in] accessType Access type
-     * \param [in] accessOp Access operation
      */
     void insertRange(
       const DxvkAddressRange&           range,
-            DxvkAccess                  accessType,
-            DxvkAccessOp                accessOp);
+            DxvkAccess                  accessType);
 
     /**
      * \brief Clears the entire structure
@@ -181,8 +168,7 @@ namespace dxvk {
 
     uint32_t insertNode(
       const DxvkAddressRange&           range,
-            uint32_t                    rootIndex,
-            DxvkBarrierPayload          payload);
+            uint32_t                    rootIndex);
 
     void removeNode(
             uint32_t                    nodeIndex,
@@ -205,7 +191,7 @@ namespace dxvk {
             DxvkAccess                  access) {
       // TODO revisit once we use internal allocation
       // objects or resource cookies here.
-      size_t hash = size_t(range.resource) * 93887;
+      size_t hash = uint64_t(range.resource) * 93887;
              hash ^= (hash >> 16);
 
       // Reserve the upper half of the implicit hash table for written

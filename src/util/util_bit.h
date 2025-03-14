@@ -129,6 +129,32 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t bsf(uint32_t n) {
+    #if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
+    uint32_t res;
+    asm ("tzcnt %1,%0"
+    : "=r" (res)
+    : "r" (n)
+    : "cc");
+    return res;
+    #else
+    return tzcnt(n);
+    #endif
+  }
+
+  inline uint32_t bsf(uint64_t n) {
+    #if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86_64)
+    uint64_t res;
+    asm ("tzcnt %1,%0"
+    : "=r" (res)
+    : "r" (n)
+    : "cc");
+    return res;
+    #else
+    return tzcnt(n);
+    #endif
+  }
+
   inline uint32_t lzcnt(uint32_t n) {
     #if (defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__)
     return _lzcnt_u32(n);
@@ -490,6 +516,7 @@ namespace dxvk::bit {
 
   };
 
+  template<typename T>
   class BitMask {
 
   public:
@@ -497,12 +524,12 @@ namespace dxvk::bit {
     class iterator {
     public:
       using iterator_category = std::input_iterator_tag;
-      using value_type = uint32_t;
-      using difference_type = uint32_t;
-      using pointer = const uint32_t*;
-      using reference = uint32_t;
+      using value_type = T;
+      using difference_type = T;
+      using pointer = const T*;
+      using reference = T;
 
-      explicit iterator(uint32_t flags)
+      explicit iterator(T flags)
         : m_mask(flags) { }
 
       iterator& operator ++ () {
@@ -516,17 +543,8 @@ namespace dxvk::bit {
         return retval;
       }
 
-      uint32_t operator * () const {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
-        uint32_t res;
-        asm ("tzcnt %1,%0"
-        : "=r" (res)
-        : "r" (m_mask)
-        : "cc");
-        return res;
-#else
-        return tzcnt(m_mask);
-#endif
+      T operator * () const {
+        return bsf(m_mask);
       }
 
       bool operator == (iterator other) const { return m_mask == other.m_mask; }
@@ -534,14 +552,14 @@ namespace dxvk::bit {
 
     private:
 
-      uint32_t m_mask;
+      T m_mask;
 
     };
 
     BitMask()
       : m_mask(0) { }
 
-    BitMask(uint32_t n)
+    explicit BitMask(T n)
       : m_mask(n) { }
 
     iterator begin() {
@@ -554,7 +572,7 @@ namespace dxvk::bit {
 
   private:
 
-    uint32_t m_mask;
+    T m_mask;
 
   };
 
@@ -613,5 +631,72 @@ namespace dxvk::bit {
 
     return float(n) / float(1u << F);
   }
+
+
+  /**
+   * \brief Inserts one null bit after each bit
+   */
+  inline uint32_t split2(uint32_t c) {
+    c = (c ^ (c << 8u)) & 0x00ff00ffu;
+    c = (c ^ (c << 4u)) & 0x0f0f0f0fu;
+    c = (c ^ (c << 2u)) & 0x33333333u;
+    c = (c ^ (c << 1u)) & 0x55555555u;
+    return c;
+  }
+
+
+  /**
+   * \brief Inserts two null bits after each bit
+   */
+  inline uint64_t split3(uint64_t c) {
+    c = (c | c << 32u) & 0x001f00000000ffffull;
+    c = (c | c << 16u) & 0x001f0000ff0000ffull;
+    c = (c | c <<  8u) & 0x100f00f00f00f00full;
+    c = (c | c <<  4u) & 0x10c30c30c30c30c3ull;
+    c = (c | c <<  2u) & 0x1249249249249249ull;
+    return c;
+  }
+
+
+  /**
+   * \brief Interleaves bits from two integers
+   *
+   * Both numbers must fit into 16 bits.
+   * \param [in] x X coordinate
+   * \param [in] y Y coordinate
+   * \returns Morton code of x and y
+   */
+  inline uint32_t interleave(uint16_t x, uint16_t y) {
+    return split2(x) | (split2(y) << 1u);
+  }
+
+
+  /**
+   * \brief Interleaves bits from three integers
+   *
+   * All three numbers must fit into 16 bits.
+   */
+  inline uint64_t interleave(uint16_t x, uint16_t y, uint16_t z) {
+    return split3(x) | (split3(y) << 1u) | (split3(z) << 2u);
+  }
+
+
+  /**
+   * \brief 48-bit integer storage type
+   */
+  struct uint48_t {
+    explicit uint48_t(uint64_t n)
+    : a(uint16_t(n)), b(uint16_t(n >> 16)), c(uint16_t(n >> 32)) { }
+
+    uint16_t a;
+    uint16_t b;
+    uint16_t c;
+
+    explicit operator uint64_t () const {
+      // GCC generates worse code if we promote to uint64 directly
+      uint32_t lo = uint32_t(a) | (uint32_t(b) << 16);
+      return uint64_t(lo) | (uint64_t(c) << 32);
+    }
+  };
 
 }

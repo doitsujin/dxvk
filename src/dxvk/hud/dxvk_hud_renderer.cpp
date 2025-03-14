@@ -58,7 +58,7 @@ namespace dxvk::hud {
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
     const HudOptions&         options) {
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xf0c0dc, "HUD"));
     }
@@ -93,7 +93,7 @@ namespace dxvk::hud {
   
   void HudRenderer::endFrame(
     const DxvkContextObjects& ctx) {
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 

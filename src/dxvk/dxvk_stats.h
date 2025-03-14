@@ -12,6 +12,7 @@ namespace dxvk {
    */
   enum class DxvkStatCounter : uint32_t {
     CmdDrawCalls,             ///< Number of draw calls
+    CmdDrawsMerged,           ///< Number of unique draws, minus draw calls
     CmdDispatchCalls,         ///< Number of compute calls
     CmdRenderPassCount,       ///< Number of render passes
     CmdBarrierCount,          ///< Number of pipeline barriers
@@ -27,10 +28,12 @@ namespace dxvk {
     GpuIdleTicks,             ///< GPU idle time in microseconds
     CsSyncCount,              ///< CS thread synchronizations
     CsSyncTicks,              ///< Time spent waiting on CS
+    CsIdleTicks,              ///< CS thread idle time in microseconds
     CsChunkCount,             ///< Submitted CS chunks
     DescriptorPoolCount,      ///< Descriptor pool count
     DescriptorSetCount,       ///< Descriptor sets allocated
-    NumCounters,              ///< Number of counters available
+
+    NumCounters               ///< Number of counters available
   };
   
   

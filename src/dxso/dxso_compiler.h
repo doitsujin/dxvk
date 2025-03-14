@@ -259,7 +259,7 @@ namespace dxvk {
 
     DxsoShaderMetaInfo         m_meta;
     DxsoDefinedConstants       m_constants;
-    uint32_t                   m_maxDefinedConstant;
+    uint32_t                   m_maxDefinedConstant = 0u;
 
     SpirvModule                m_module;
 
@@ -279,7 +279,7 @@ namespace dxvk {
     // Predicate registers
     std::array<
       DxsoRegisterPointer,
-      1> m_pRegs;
+      1> m_pRegs = { };
 
     //////////////////////////////////////////////////////////////////
     // Array of input values. Since v# and o# registers are indexable
@@ -313,7 +313,7 @@ namespace dxvk {
     // Working tex/coord registers (PS)
     std::array<
       DxsoRegisterPointer,
-      DxsoMaxTextureRegs> m_tRegs;
+      DxsoMaxTextureRegs> m_tRegs = { };
 
     ///////////////////////////////////////////////
     // Control flow information. Stores labels for
@@ -327,7 +327,7 @@ namespace dxvk {
 
     ////////////
     // Samplers
-    std::array<DxsoSampler, 17> m_samplers;
+    std::array<DxsoSampler, 17> m_samplers = { };
 
     ////////////////////////////////////////////
     // What io regswe need to

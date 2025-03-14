@@ -453,7 +453,7 @@ namespace dxvk {
 
       // Submit current command list and present
       ctx->synchronizeWsi(cSync);
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(nullptr, nullptr);
 
       cDevice->presentImage(cPresenter, cLatency, cFrameId, nullptr);
     });

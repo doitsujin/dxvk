@@ -64,20 +64,15 @@ namespace dxvk {
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
-    VkOffset3D srcOffset = { 0u, 0u, 0u };
-    VkOffset3D dstOffset = { 0u, 0u, 0u };
-    VkExtent3D texLevelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent3D extent = texLevelExtent;
+    VkOffset3D srcOffset = { pSrcRect->left,
+                             pSrcRect->top,
+                             0u };
 
-    srcOffset = { pSrcRect->left,
-                  pSrcRect->top,
-                  0u };
+    VkExtent3D extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
 
-    extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
-
-    dstOffset = { pDestPoint->x,
-                  pDestPoint->y,
-                  0u };
+    VkOffset3D dstOffset = { pDestPoint->x,
+                             pDestPoint->y,
+                             0u };
 
     m_device->UpdateTextureFromBuffer(
       srcTextureInfo, dstTextureInfo,
@@ -114,8 +109,8 @@ namespace dxvk {
     return m_interface->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8InterfaceBridge::SetD3D8CompatibilityMode(const bool compatMode) {
-    m_interface->SetD3D8CompatibilityMode(compatMode);
+  void DxvkD3D8InterfaceBridge::EnableD3D8CompatibilityMode() {
+    m_interface->EnableD3D8CompatibilityMode();
   }
 
   const Config* DxvkD3D8InterfaceBridge::GetConfig() const {

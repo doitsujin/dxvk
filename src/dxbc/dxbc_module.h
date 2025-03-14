@@ -7,6 +7,7 @@
 #include "dxbc_header.h"
 #include "dxbc_modinfo.h"
 #include "dxbc_reader.h"
+#include "dxbc_util.h"
 
 // References used for figuring out DXBC:
 // - https://github.com/tgjones/slimshader-cpp
@@ -17,6 +18,15 @@ namespace dxvk {
   class DxbcAnalyzer;
   class DxbcCompiler;
   
+  /**
+   * \brief Immediate constant buffer properties
+   */
+  struct DxbcIcbInfo {
+    size_t      size = 0u;
+    const void* data = nullptr;
+  };
+
+
   /**
    * \brief DXBC shader module
    * 
@@ -41,7 +51,29 @@ namespace dxvk {
 
       return m_shexChunk->programInfo();
     }
-    
+
+    /**
+     * \brief Queries shader binding mask
+     *
+     * Only valid after successfully compiling the shader.
+     */
+    std::optional<DxbcBindingMask> bindings() const {
+      return m_bindings;
+    }
+
+    /**
+     * \brief Retrieves immediate constant buffer info
+     *
+     * Only valid after successfully compiling the shader.
+     * \returns Immediate constant buffer data
+     */
+    DxbcIcbInfo icbInfo() const {
+      DxbcIcbInfo result = { };
+      result.size = m_icb.size() * sizeof(uint32_t);
+      result.data = m_icb.data();
+      return result;
+    }
+
     /**
      * \brief Input and output signature chunks
      * 
@@ -50,7 +82,7 @@ namespace dxvk {
      */
     Rc<DxbcIsgn> isgn() const { return m_isgnChunk; }
     Rc<DxbcIsgn> osgn() const { return m_osgnChunk; }
-    
+
     /**
      * \brief Compiles DXBC shader to SPIR-V module
      * 
@@ -61,7 +93,7 @@ namespace dxvk {
      */
     Rc<DxvkShader> compile(
       const DxbcModuleInfo& moduleInfo,
-      const std::string&    fileName) const;
+      const std::string&    fileName);
     
     /**
      * \brief Compiles a pass-through geometry shader
@@ -76,7 +108,7 @@ namespace dxvk {
     Rc<DxvkShader> compilePassthroughShader(
       const DxbcModuleInfo& moduleInfo,
       const std::string&    fileName) const;
-    
+
   private:
     
     DxbcHeader   m_header;
@@ -85,6 +117,10 @@ namespace dxvk {
     Rc<DxbcIsgn> m_osgnChunk;
     Rc<DxbcIsgn> m_psgnChunk;
     Rc<DxbcShex> m_shexChunk;
+
+    std::vector<uint32_t> m_icb;
+
+    std::optional<DxbcBindingMask> m_bindings;
     
     void runAnalyzer(
             DxbcAnalyzer&       analyzer,

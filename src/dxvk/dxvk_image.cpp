@@ -19,7 +19,7 @@ namespace dxvk {
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
 
     // Assign debug name to image
-    if (device->isDebugEnabled()) {
+    if (device->debugFlags().test(DxvkDebugFlag::Capture)) {
       m_debugName = createDebugName(createInfo.debugName);
       m_info.debugName = m_debugName.c_str();
     } else {
@@ -114,6 +114,29 @@ namespace dxvk {
   }
 
 
+  uint64_t DxvkImage::getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const {
+    // For 2D and 3D images, use morton codes to linearize the address ranges
+    // of pixel blocks. This helps reduce false positives in common use cases
+    // where the application copies aligned power-of-two blocks around.
+    uint64_t base = getTrackingAddress(mip, layer);
+
+    if (likely(m_info.type == VK_IMAGE_TYPE_2D))
+      return base + bit::interleave(coord.x, coord.y);
+
+    // For 1D we can simply use the pixel coordinate as-is
+    if (m_info.type == VK_IMAGE_TYPE_1D)
+      return base + coord.x;
+
+    // 3D is uncommon, but there are different use cases. Assume that if the
+    // format is block-compressed, the app will access one layer at a time.
+    if (formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed))
+      return base + bit::interleave(coord.x, coord.y) + (uint64_t(coord.z) << 32u);
+
+    // Otherwise, it may want to copy actual 3D blocks around.
+    return base + bit::interleave(coord.x, coord.y, coord.z);
+  }
+
+
   Rc<DxvkImageView> DxvkImage::createView(
     const DxvkImageViewKey& info) {
     std::unique_lock lock(m_viewMutex);
@@ -193,6 +216,9 @@ namespace dxvk {
     allocationInfo.properties = m_properties;
     allocationInfo.mode = mode;
 
+    if (m_info.transient)
+      allocationInfo.mode.set(DxvkAllocationMode::NoDedicated);
+
     return m_allocator->createImageResource(imageInfo,
       allocationInfo, sharedMemoryInfo);
   }
@@ -211,23 +237,30 @@ namespace dxvk {
 
     // Self-assignment is possible here if we
     // just update the image properties
+    bool invalidateViews = false;
     m_storage = std::move(resource);
 
     if (m_storage != old) {
       m_imageInfo = m_storage->getImageInfo();
-      m_version += 1u;
 
       if (unlikely(m_info.debugName))
         updateDebugName();
+
+      invalidateViews = true;
     }
+
+    if ((m_info.access | usageInfo.access) != m_info.access)
+      invalidateViews = true;
 
     m_info.flags |= usageInfo.flags;
     m_info.usage |= usageInfo.usage;
     m_info.stages |= usageInfo.stages;
     m_info.access |= usageInfo.access;
 
-    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED)
+    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED) {
       m_info.layout = usageInfo.layout;
+      invalidateViews = true;
+    }
 
     if (usageInfo.colorSpace != VK_COLOR_SPACE_MAX_ENUM_KHR)
       m_info.colorSpace = usageInfo.colorSpace;
@@ -243,6 +276,10 @@ namespace dxvk {
     }
 
     m_stableAddress |= usageInfo.stableGpuAddress;
+
+    if (invalidateViews)
+      m_version += 1u;
+
     return old;
   }
 
@@ -400,8 +437,9 @@ namespace dxvk {
   DxvkImageView::DxvkImageView(
           DxvkImage*                image,
     const DxvkImageViewKey&         key)
-  : m_image(image), m_key(key) {
-
+  : m_image   (image),
+    m_key     (key) {
+    updateProperties();
   }
 
 
@@ -486,6 +524,9 @@ namespace dxvk {
 
 
   void DxvkImageView::updateViews() {
+    // Latch updated image properties
+    updateProperties();
+
     // Update all views that are not currently null
     for (uint32_t i = 0; i < m_views.size(); i++) {
       if (m_views[i])
@@ -494,5 +535,12 @@ namespace dxvk {
 
     m_version = m_image->m_version;
   }
-  
+
+
+  void DxvkImageView::updateProperties() {
+    m_properties.layout = m_image->info().layout;
+    m_properties.samples = m_image->info().sampleCount;
+    m_properties.access = m_image->info().access;
+  }
+
 }

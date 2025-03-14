@@ -776,8 +776,8 @@ namespace dxvk {
     std::vector
       <DxvkBindingInfo>   m_bindings;
 
-    uint32_t              m_inputMask = 0u;
-    uint32_t              m_outputMask = 0u;
+    uint32_t              m_inputMask       = 0u;
+    uint32_t              m_outputMask      = 0u;
     uint32_t              m_flatShadingMask = 0u;
 
     DxsoProgramType       m_programType;
@@ -790,19 +790,19 @@ namespace dxvk {
     DxsoIsgn              m_isgn;
     DxsoIsgn              m_osgn;
 
-    uint32_t              m_floatType;
-    uint32_t              m_uint32Type;
-    uint32_t              m_vec4Type;
-    uint32_t              m_vec3Type;
-    uint32_t              m_vec2Type;
-    uint32_t              m_mat3Type;
-    uint32_t              m_mat4Type;
+    uint32_t              m_floatType       = 0u;
+    uint32_t              m_uint32Type      = 0u;
+    uint32_t              m_vec4Type        = 0u;
+    uint32_t              m_vec3Type        = 0u;
+    uint32_t              m_vec2Type        = 0u;
+    uint32_t              m_mat3Type        = 0u;
+    uint32_t              m_mat4Type        = 0u;
 
-    uint32_t              m_entryPointId;
+    uint32_t              m_entryPointId    = 0u;
 
-    uint32_t              m_rsBlock;
-    uint32_t              m_specUbo;
-    uint32_t              m_mainFuncLabel;
+    uint32_t              m_rsBlock         = 0u;
+    uint32_t              m_specUbo         = 0u;
+    uint32_t              m_mainFuncLabel   = 0u;
 
     D3D9FixedFunctionOptions m_options;
 
@@ -814,11 +814,11 @@ namespace dxvk {
     const D3D9FFShaderKeyVS&       Key,
     const std::string&             Name,
           D3D9FixedFunctionOptions Options)
-  : m_module(spvVersion(1, 3)), m_options(Options) {
-    m_programType = DxsoProgramTypes::VertexShader;
-    m_vsKey    = Key;
-    m_filename = Name;
-  }
+  : m_filename    ( Name )
+  , m_module      ( spvVersion(1, 3) )
+  , m_programType ( DxsoProgramTypes::VertexShader )
+  , m_vsKey       ( Key )
+  , m_options     ( Options ) { }
 
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
@@ -826,11 +826,11 @@ namespace dxvk {
     const D3D9FFShaderKeyFS&       Key,
     const std::string&             Name,
           D3D9FixedFunctionOptions Options)
-  : m_module(spvVersion(1, 3)), m_options(Options) {
-    m_programType = DxsoProgramTypes::PixelShader;
-    m_fsKey    = Key;
-    m_filename = Name;
-  }
+  : m_filename    ( Name )
+  , m_module      ( spvVersion(1, 3) )
+  , m_programType ( DxsoProgramTypes::PixelShader )
+  , m_fsKey       ( Key )
+  , m_options     ( Options ) { }
 
 
   Rc<DxvkShader> D3D9FFShaderCompiler::compile() {
@@ -1160,7 +1160,6 @@ namespace dxvk {
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = vtx;
           if (!applyTransform) {
-            Logger::warn(str::format("!applyTransform flags: ", flags, " projidx: ", projIndex));
             count = 3;
             projIndex = 4;
           }

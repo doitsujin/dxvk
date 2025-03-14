@@ -54,15 +54,14 @@ namespace dxvk {
     /// Push constant range
     VkShaderStageFlags pushConstStages = 0;
     uint32_t pushConstSize = 0;
-    /// Uniform buffer data
-    uint32_t uniformSize = 0;
-    const char* uniformData = nullptr;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
     uint32_t patchVertexCount = 0;
     /// Transform feedback vertex strides
     uint32_t xfbStrides[MaxNumXfbBuffers] = { };
+    /// Input primitive topology for geometry shaders
+    VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     /// Output primitive topology
     VkPrimitiveTopology outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
   };
@@ -75,6 +74,7 @@ namespace dxvk {
     bool      fsDualSrcBlend  = false;
     bool      fsFlatShading   = false;
     uint32_t  undefinedInputs = 0;
+    VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 
@@ -266,7 +266,6 @@ namespace dxvk {
     uint32_t                      m_specConstantMask = 0;
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
-    std::vector<char>             m_uniformData;
     std::vector<BindingOffsets>   m_bindingOffsets;
 
     DxvkBindingLayout             m_bindings;
@@ -283,6 +282,10 @@ namespace dxvk {
     static void emitFlatShadingDeclarations(
             SpirvCodeBuffer&          code,
             uint32_t                  inputMask);
+
+    static void patchInputTopology(
+            SpirvCodeBuffer&          code,
+            VkPrimitiveTopology       topology);
 
   };
   
