@@ -358,6 +358,15 @@ namespace dxvk {
               || pPresentationParameters    == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(DeviceType == D3DDEVTYPE_SW))
+      return D3DERR_INVALIDCALL;
+
+    // D3DDEVTYPE_REF devices can be created with D3D8, but not
+    // with D3D9, unless the Windows SDK 8.0 or later is installed.
+    // Report it unavailable, as it would be on most end-user systems.
+    if (unlikely(DeviceType == D3DDEVTYPE_REF && !m_isD3D8Compatible))
+      return D3DERR_NOTAVAILABLE;
+
     // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
     // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
     if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
