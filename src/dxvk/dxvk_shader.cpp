@@ -126,6 +126,9 @@ namespace dxvk {
 
         if (ins.arg(2) == spv::ExecutionModeXfb)
           m_flags.set(DxvkShaderFlag::HasTransformFeedback);
+
+        if (ins.arg(2) == spv::ExecutionModePointMode)
+          m_flags.set(DxvkShaderFlag::TessellationPoints);
       }
 
       if (ins.opCode() == spv::OpCapability) {
