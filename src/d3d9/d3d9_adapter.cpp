@@ -292,8 +292,15 @@ namespace dxvk {
           D3DCAPS9*  pCaps) {
     using namespace dxvk::caps;
 
-    if (pCaps == nullptr)
+    if (unlikely(pCaps == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(DeviceType == D3DDEVTYPE_SW)) {
+      if (m_parent->IsD3D8Compatible())
+        return D3DERR_INVALIDCALL;
+      else
+        return D3DERR_NOTAVAILABLE;
+    }
 
     auto& options = m_parent->GetOptions();
 

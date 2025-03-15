@@ -247,6 +247,10 @@ namespace dxvk {
           UINT       Adapter,
           D3DDEVTYPE DeviceType,
           D3DCAPS9*  pCaps) {
+    // Device caps can't be queried from the interface for D3DDEVTYPE_NULLREF
+    if (unlikely(DeviceType == D3DDEVTYPE_NULLREF))
+      return D3DERR_INVALIDDEVICE;
+
     if (auto* adapter = GetAdapter(Adapter))
       return adapter->GetDeviceCaps(
         DeviceType, pCaps);
@@ -357,6 +361,13 @@ namespace dxvk {
     if (unlikely(ppReturnedDeviceInterface  == nullptr
               || pPresentationParameters    == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(DeviceType == D3DDEVTYPE_SW))
+      return D3DERR_INVALIDCALL;
+
+    // D3DDEVTYPE_REF devices can be created with D3D8, but not with D3D9
+    if (unlikely(DeviceType == D3DDEVTYPE_REF && !m_isD3D8Compatible))
+      return D3DERR_NOTAVAILABLE;
 
     // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
     // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
