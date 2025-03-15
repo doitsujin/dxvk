@@ -57,6 +57,16 @@ namespace dxvk {
   }
 
 
+  VkPrimitiveTopology determinePipelineTopology(
+    const DxvkGraphicsPipelineShaders&      shaders,
+    const DxvkGraphicsPipelineStateInfo&    state) {
+    if (shaders.gs)
+      return shaders.gs->info().outputTopology;
+
+    return determinePreGsTopology(shaders, state);
+  }
+
+
   DxvkGraphicsPipelineVertexInputState::DxvkGraphicsPipelineVertexInputState() {
     
   }
@@ -646,22 +656,17 @@ namespace dxvk {
   bool DxvkGraphicsPipelinePreRasterizationState::isLineRendering(
     const DxvkGraphicsPipelineShaders&    shaders,
     const DxvkGraphicsPipelineStateInfo&  state) {
-    bool isLineRendering = state.rs.polygonMode() == VK_POLYGON_MODE_LINE;
+    VkPrimitiveTopology topology = determinePipelineTopology(shaders, state);
 
-    if (shaders.gs) {
-      isLineRendering |= shaders.gs->info().outputTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    } else if (shaders.tes) {
-      isLineRendering |= shaders.tes->info().outputTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-    } else {
-      VkPrimitiveTopology topology = state.ia.primitiveTopology();
-
-      isLineRendering |= topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST
-                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
-                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
-                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+    if (state.rs.polygonMode() == VK_POLYGON_MODE_LINE) {
+      return topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST
+          && topology != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
     }
 
-    return isLineRendering;
+    return topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+        || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
+        || topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
+        || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
   }
 
 
