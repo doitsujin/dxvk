@@ -449,9 +449,13 @@ namespace dxvk {
     applyTristate(tilerMode, m_options.tilerMode);
     hints.preferRenderPassOps = tilerMode;
 
-    // Be less aggressive on secondary command buffer usage on
-    // drivers that do not natively support them
-    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP) || !tilerMode;
+    // Honeykrisp does not have native support for secondary command buffers
+    // and would suffer from added CPU overhead, so be less aggressive.
+    // TODO: Enable ANV once mesa issue 12791 is resolved.
+    // RADV has issues on RDNA4 up to version 25.0.1.
+    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
+                              || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                              || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, Version(), Version(25, 0, 2));
     return hints;
   }
 
