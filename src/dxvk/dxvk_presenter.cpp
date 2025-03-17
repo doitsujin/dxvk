@@ -1019,8 +1019,8 @@ namespace dxvk {
         scRGBFormatList.size(), scRGBFormatList.data() },
     }};
 
-    // Third-party overlays don't handle sRGB image formats correctly,
-    // so use the corresponding linear format instead.
+    // Some third-party overlays don't handle sRGB image formats
+    // correctly, so use the corresponding UNORM format instead.
     auto formatPair = vk::getSrgbFormatPair(format);
 
     if (formatPair.first)
@@ -1050,19 +1050,9 @@ namespace dxvk {
     if (!compatList)
       return fallback;
 
-    // If the desired format is linear, ignore sRGB formats. We can do
-    // this because sRGB and linear formats must be supported in pairs.
-    // sRGB to linear fallbacks need to be allowed though in order to
-    // be able to select a format with a higher bit depth than requested.
-    bool desiredIsSrgb = lookupFormatInfo(format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
     bool desiredFound = false;
 
     for (uint32_t i = 0; i < compatList->formatCount; i++) {
-      bool formatIsSrgb = lookupFormatInfo(compatList->formats[i])->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
-
-      if (!desiredIsSrgb && formatIsSrgb)
-        continue;
-
       bool isSupported = false;
 
       if (compatList->formats[i] == format)
