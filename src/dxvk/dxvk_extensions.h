@@ -326,6 +326,7 @@ namespace dxvk {
     DxvkExt khrPresentId                      = { VK_KHR_PRESENT_ID_EXTENSION_NAME,                         DxvkExtMode::Optional };
     DxvkExt khrPresentWait                    = { VK_KHR_PRESENT_WAIT_EXTENSION_NAME,                       DxvkExtMode::Optional };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
+    DxvkExt khrSwapchainMutableFormat         = { VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrWin32KeyedMutex                = { VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt nvDescriptorPoolOverallocation    = { VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME,      DxvkExtMode::Optional };
     DxvkExt nvLowLatency2                     = { VK_NV_LOW_LATENCY_2_EXTENSION_NAME,                       DxvkExtMode::Optional };

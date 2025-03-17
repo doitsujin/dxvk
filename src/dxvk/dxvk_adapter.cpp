@@ -1069,6 +1069,7 @@ namespace dxvk {
       &devExtensions.khrPresentId,
       &devExtensions.khrPresentWait,
       &devExtensions.khrSwapchain,
+      &devExtensions.khrSwapchainMutableFormat,
       &devExtensions.khrWin32KeyedMutex,
       &devExtensions.nvDescriptorPoolOverallocation,
       &devExtensions.nvLowLatency2,
@@ -1221,6 +1222,9 @@ namespace dxvk {
       enabledFeatures.khrPresentWait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
       enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
     }
+
+    if (devExtensions.khrSwapchainMutableFormat)
+      enabledFeatures.khrSwapchainMutableFormat = VK_TRUE;
 
     if (devExtensions.nvDescriptorPoolOverallocation) {
       enabledFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
