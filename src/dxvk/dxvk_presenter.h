@@ -381,6 +381,8 @@ namespace dxvk {
 
     void runFrameThread();
 
+    static bool isReshadeEnabled();
+
     static VkResult softError(
             VkResult                  vr);
 

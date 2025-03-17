@@ -713,7 +713,8 @@ namespace dxvk {
     swapInfo.presentMode            = m_presentMode;
     swapInfo.clipped                = VK_TRUE;
 
-    if (m_device->features().khrSwapchainMutableFormat && formatList.viewFormatCount) {
+    // Reshade doesn't seem to like it when we use a different format for drawing
+    if (m_device->features().khrSwapchainMutableFormat && formatList.viewFormatCount && !isReshadeEnabled()) {
       swapInfo.flags |= VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
       formatList.pNext = std::exchange(swapInfo.pNext, &formatList);
     }
@@ -1293,6 +1294,27 @@ namespace dxvk {
       if (canSignal)
         m_signal->signal(frame.frameId);
     }
+  }
+
+
+  bool Presenter::isReshadeEnabled() {
+#ifdef _WIN32
+    static Tristate s_status = Tristate::Auto;
+
+    if (s_status == Tristate::Auto) {
+      const auto* dllName = env::is32BitHostPlatform()
+        ? L"ReShade32.dll"
+        : L"ReShade64.dll";
+
+      s_status = GetModuleHandleW(dllName)
+        ? Tristate::True
+        : Tristate::False;
+    }
+
+    return s_status == Tristate::True;
+#else
+    return false;
+#endif
   }
 
 
