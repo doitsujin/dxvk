@@ -50,6 +50,11 @@ namespace dxvk {
     { R"(\\BrightMemory_EP1-Win64-Shipping\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* AC Shadows: Uses composition swapchain to   *
+     * check for HDR support                       */
+    { R"(\\ACShadows\.exe$)", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -1216,9 +1221,7 @@ namespace dxvk {
 
 
   const static ProfileList g_hashedProfiles = {
-    { "27fb4433abea6d1d68f678cbfa8c5e0a0fdc0803", {{
-      { "dxgi.enableDummyCompositionSwapchain", "True" }
-    }} },
+    /* Nothing to see here */
   };
 
 
