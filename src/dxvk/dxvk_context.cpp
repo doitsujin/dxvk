@@ -2502,8 +2502,10 @@ namespace dxvk {
       auto srcSubresource = attachment.view->imageSubresources();
       auto dstSubresource = resolve.imageView->imageSubresources();
 
-      prepareImage(attachment.view->image(), srcSubresource);
-      prepareImage(resolve.imageView->image(), dstSubresource);
+      // We're within a render pass, any pending clears will have happened
+      // after the resolve, so ignore them here.
+      prepareImage(attachment.view->image(), srcSubresource, false);
+      prepareImage(resolve.imageView->image(), dstSubresource, false);
 
       while (resolve.layerMask) {
         uint32_t layerIndex = bit::tzcnt(resolve.layerMask);
@@ -5084,10 +5086,6 @@ namespace dxvk {
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
           VkFormat                  format) {
-    // Can't have pending clears if we're already inside a render pass
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      return false;
-
     // If the destination image is only partially written, ignore
     if (dstImage->mipLevelExtent(region.dstSubresource.mipLevel, region.dstSubresource.aspectMask) != region.extent)
       return false;
@@ -5118,6 +5116,10 @@ namespace dxvk {
     if (!ensureImageCompatibility(dstImage, usage))
       return false;
 
+    // End current render pass and prepare the destination image
+    spillRenderPass(true);
+    prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
+
     // Create an image view that we can use to perform the clear
     DxvkImageViewKey key = { };
     key.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -5132,7 +5134,6 @@ namespace dxvk {
     if (isDepthStencil)
       key.aspects = dstImage->formatInfo()->aspectMask;
 
-    prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
     deferClear(dstImage->createView(key), region.dstSubresource.aspectMask, clear->clearValue);
     return true;
   }
@@ -7908,6 +7909,10 @@ namespace dxvk {
     const DxvkImage&                image,
     const VkImageSubresourceRange&  subresources) {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd))
+      return;
+
+    // Handling 3D is possible, but annoying, so skip it
+    if (image.info().type == VK_IMAGE_TYPE_3D)
       return;
 
     for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
