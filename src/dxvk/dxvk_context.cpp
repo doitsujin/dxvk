@@ -384,17 +384,16 @@ namespace dxvk {
       clearValue.color = util::swizzleClearColor(clearValue.color,
         util::invertComponentMapping(imageView->info().unpackSwizzle()));
     }
-    
+
     // Check whether the render target view is an attachment
     // of the current framebuffer and is included entirely.
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
-    
+
     if (m_state.om.framebufferInfo.isFullSize(imageView))
       attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
 
-    // Need to interrupt the render pass if there are pending resolves
-    if (attachmentIndex < 0 || m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
+    if (attachmentIndex < 0) {
       // Suspend works here because we'll end up with one of these scenarios:
       // 1) The render pass gets ended for good, in which case we emit barriers
       // 2) The clear gets folded into render pass ops, so the layout is correct
@@ -404,31 +403,20 @@ namespace dxvk {
       this->spillRenderPass(true);
       this->prepareImage(imageView->image(), imageView->subresources(), false);
     } else if (!m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects)) {
-      // We cannot inline clears if the clear aspects are not writable
-      this->spillRenderPass(true);
+      // We cannot inline clears if the clear aspects are not writable. End the
+      // render pass on the next draw to ensure that the image gets cleared.
+      if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+        m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
     }
 
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      uint32_t colorIndex = std::max(0, m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex));
-
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask      = clearAspects;
-      clearInfo.colorAttachment = colorIndex;
-      clearInfo.clearValue      = clearValue;
-
-      VkClearRect clearRect;
-      clearRect.rect.offset.x       = 0;
-      clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
-      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
-      clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = imageView->info().layerCount;
-
-      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
-    } else {
+    // Unconditionally defer clears until either the next render pass, or the
+    // next draw if there is no reason to interrupt the render pass. This is
+    // useful to adjust store ops for tilers, and ensures that pending resolves
+    // are handled correctly.
+    if (clearAspects)
       this->deferClear(imageView, clearAspects, clearValue);
-    }
 
+    // Invalidate implicit resolves
     if (imageView->isMultisampled()) {
       auto subresources = imageView->imageSubresources();
       subresources.aspectMask = clearAspects;
