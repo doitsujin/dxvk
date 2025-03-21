@@ -1193,7 +1193,7 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Error, state);
 
     m_stats->numGraphicsPipelines += 1;
-    return &(*m_pipelines.emplace(state, baseHandle, fastHandle));
+    return &(*m_pipelines.emplace(state, baseHandle, fastHandle, computeAttachmentMask(state)));
   }
   
   
@@ -1484,6 +1484,57 @@ namespace dxvk {
       mask |= m_shaders.fs->getSpecConstantMask();
 
     return mask;
+  }
+
+
+  DxvkAttachmentMask DxvkGraphicsPipeline::computeAttachmentMask(
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    // Scan color attachments first, we only need to check if any given
+    // attachment is accessed by the shader and has a non-zero write mask.
+    DxvkAttachmentMask result = { };
+
+    if (m_shaders.fs) {
+      uint32_t colorMask = m_shaders.fs->info().outputMask;
+
+      for (auto i : bit::BitMask(colorMask)) {
+        if (state.writesRenderTarget(i))
+          result.trackColorWrite(i);
+      }
+    }
+
+    // Check depth buffer access
+    auto depthFormat = state.rt.getDepthStencilFormat();
+
+    if (depthFormat) {
+      auto dsReadable = lookupFormatInfo(depthFormat)->aspectMask;
+      auto dsWritable = dsReadable & ~state.rt.getDepthStencilReadOnlyAspects();
+
+      if (dsReadable & VK_IMAGE_ASPECT_DEPTH_BIT) {
+        if (state.ds.enableDepthBoundsTest())
+          result.trackDepthRead();
+
+        if (state.ds.enableDepthTest()) {
+          result.trackDepthRead();
+
+          if (state.ds.enableDepthWrite() && (dsWritable & VK_IMAGE_ASPECT_DEPTH_BIT))
+            result.trackDepthWrite();
+        }
+      }
+
+      if (dsReadable & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        if (state.ds.enableStencilTest()) {
+          auto f = state.dsFront.state(dsWritable & VK_IMAGE_ASPECT_STENCIL_BIT);
+          auto b = state.dsBack.state(dsWritable & VK_IMAGE_ASPECT_STENCIL_BIT);
+
+          result.trackStencilRead();
+
+          if (f.writeMask | b.writeMask)
+            result.trackStencilWrite();
+        }
+      }
+    }
+
+    return result;
   }
 
 

@@ -351,6 +351,7 @@ namespace dxvk {
   struct DxvkGraphicsPipelineHandle {
     VkPipeline                handle      = VK_NULL_HANDLE;
     DxvkGraphicsPipelineType  type        = DxvkGraphicsPipelineType::FastPipeline;
+    DxvkAttachmentMask        attachments = { };
   };
 
 
@@ -365,16 +366,19 @@ namespace dxvk {
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state_,
             VkPipeline                      baseHandle_,
-            VkPipeline                      fastHandle_)
+            VkPipeline                      fastHandle_,
+            DxvkAttachmentMask              attachments_)
     : state       (state_),
       baseHandle  (baseHandle_),
       fastHandle  (fastHandle_),
-      isCompiling (fastHandle_ != VK_NULL_HANDLE) { }
+      isCompiling (fastHandle_ != VK_NULL_HANDLE),
+      attachments (attachments_) { }
 
     DxvkGraphicsPipelineStateInfo state;
     std::atomic<VkPipeline>       baseHandle  = { VK_NULL_HANDLE };
     std::atomic<VkPipeline>       fastHandle  = { VK_NULL_HANDLE };
     std::atomic<VkBool32>         isCompiling = { VK_FALSE };
+    DxvkAttachmentMask            attachments = { };
 
     DxvkGraphicsPipelineHandle getHandle() const {
       // Find a pipeline handle to use. If no optimized pipeline has
@@ -382,6 +386,7 @@ namespace dxvk {
       DxvkGraphicsPipelineHandle result;
       result.handle = fastHandle.load(std::memory_order_acquire);
       result.type = DxvkGraphicsPipelineType::FastPipeline;
+      result.attachments = attachments;
 
       if (likely(fastHandle))
         return result;
@@ -666,6 +671,9 @@ namespace dxvk {
       const DxvkShaderModuleCreateInfo&    info) const;
     
     uint32_t computeSpecConstantMask() const;
+
+    DxvkAttachmentMask computeAttachmentMask(
+      const DxvkGraphicsPipelineStateInfo& state) const;
 
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state,
