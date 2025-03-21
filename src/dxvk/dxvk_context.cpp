@@ -2596,6 +2596,53 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::finalizeLoadStoreOps() {
+    auto& renderingInfo = m_state.om.renderingInfo;
+
+    if (!m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess)
+      m_state.om.attachmentMask.unifyDepthStencilAccess();
+
+    for (uint32_t i = 0; i < renderingInfo.rendering.colorAttachmentCount; i++) {
+      adjustAttachmentLoadStoreOps(renderingInfo.color[i],
+        m_state.om.attachmentMask.getColorAccess(i));
+    }
+
+    if (renderingInfo.rendering.pDepthAttachment) {
+      adjustAttachmentLoadStoreOps(renderingInfo.depth,
+        m_state.om.attachmentMask.getDepthAccess());
+    }
+
+    if (renderingInfo.rendering.pStencilAttachment) {
+      adjustAttachmentLoadStoreOps(renderingInfo.stencil,
+        m_state.om.attachmentMask.getStencilAccess());
+    }
+  }
+
+
+  void DxvkContext::adjustAttachmentLoadStoreOps(
+          VkRenderingAttachmentInfo&  attachment,
+          DxvkAccess                  access) const {
+    if (access == DxvkAccess::None) {
+      // If the attachment is not accessed at all, we can set both the
+      // load and store op to NONE if supported by the implementation.
+      bool hasLoadOpNone = m_device->features().khrLoadStoreOpNone;
+
+      attachment.loadOp = hasLoadOpNone
+        ? VK_ATTACHMENT_LOAD_OP_NONE
+        : VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachment.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+    } else if (access == DxvkAccess::Read) {
+      // Unlike clears, we don't treat DONT_CARE as a write. If the
+      // attachment isn't written in this pass but is read anyway,
+      // demote the store op to DONT_CARE as well.
+      if (attachment.loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+        attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+      else
+        attachment.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+    }
+  }
+
+
   void DxvkContext::updateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,
@@ -5837,6 +5884,10 @@ namespace dxvk {
       // modified store or resolve ops here
       flushRenderPassResolves();
       flushRenderPassDiscards();
+
+      // Need information about clears, discards and resolve
+      // to set up the final load and store ops for the pass
+      finalizeLoadStoreOps();
 
       auto& renderingInfo = m_state.om.renderingInfo.rendering;
       m_cmd->cmdBeginRendering(&renderingInfo);

@@ -1666,6 +1666,12 @@ namespace dxvk {
 
     void flushResolves();
 
+    void finalizeLoadStoreOps();
+
+    void adjustAttachmentLoadStoreOps(
+            VkRenderingAttachmentInfo&  attachment,
+            DxvkAccess                  access) const;
+
     void startRenderPass();
     void spillRenderPass(bool suspend);
     
