@@ -4822,7 +4822,7 @@ namespace dxvk {
     attachment.resolveImageView = views.dstView->handle();
     attachment.resolveImageLayout = dstLayout;
     attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
 
     VkRenderingAttachmentInfo stencilAttachment = attachment;
     stencilAttachment.resolveMode = stencilMode;
