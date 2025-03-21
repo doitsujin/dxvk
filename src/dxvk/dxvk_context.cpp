@@ -6588,7 +6588,7 @@ namespace dxvk {
     const VkImageSubresourceRange& subresources) {
     for (auto& entry : m_deferredClears) {
       if ((entry.imageView->image() == image.ptr())
-       && (entry.clearAspects & entry.discardAspects & subresources.aspectMask)
+       && ((entry.clearAspects | entry.discardAspects) | subresources.aspectMask)
        && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources)))
         return &entry;
     }
