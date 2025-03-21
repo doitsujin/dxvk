@@ -1754,6 +1754,10 @@ namespace dxvk {
       const Rc<DxvkImage>&          image,
       const VkImageSubresourceRange& subresources);
 
+    DxvkDeferredClear* findOverlappingDeferredClear(
+      const Rc<DxvkImage>&          image,
+      const VkImageSubresourceRange& subresources);
+
     bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
 
