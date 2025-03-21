@@ -203,11 +203,11 @@ namespace dxvk {
       }
     }
 
-    // Since we don't handle SRVs here, we can assume that the
-    // view covers all aspects of the underlying resource.
-    EmitCs([cView = view] (DxvkContext* ctx) {
-      ctx->discardImageView(cView, cView->formatInfo()->aspectMask);
-    });
+    if (rtv || dsv) {
+      EmitCs([cView = view] (DxvkContext* ctx) {
+        ctx->clearRenderTarget(cView, 0, VkClearValue(), cView->info().aspects);
+      });
+    }
   }
 
 
@@ -430,10 +430,9 @@ namespace dxvk {
       cClearValue = color,
       cImageView  = std::move(view)
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(
-        cImageView,
+      ctx->clearRenderTarget(cImageView,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        cClearValue);
+        cClearValue, 0u);
     });
   }
 
@@ -667,10 +666,8 @@ namespace dxvk {
       cAspectMask = aspectMask,
       cImageView  = dsv->GetImageView()
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(
-        cImageView,
-        cAspectMask,
-        cClearValue);
+      ctx->clearRenderTarget(cImageView,
+        cAspectMask, cClearValue, 0u);
     });
   }
 
@@ -795,17 +792,10 @@ namespace dxvk {
           bool isFullSize = cImageView->mipLevelExtent(0) == cAreaExtent;
 
           if ((cImageView->info().usage & rtUsage) && isFullSize) {
-            ctx->clearRenderTarget(
-              cImageView,
-              cClearAspect,
-              cClearValue);
+            ctx->clearRenderTarget(cImageView, cClearAspect, cClearValue, 0u);
           } else {
-            ctx->clearImageView(
-              cImageView,
-              cAreaOffset,
-              cAreaExtent,
-              cClearAspect,
-              cClearValue);
+            ctx->clearImageView(cImageView, cAreaOffset, cAreaExtent,
+              cClearAspect, cClearValue);
           }
         });
       }

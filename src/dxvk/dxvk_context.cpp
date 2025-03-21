@@ -378,7 +378,8 @@ namespace dxvk {
   void DxvkContext::clearRenderTarget(
     const Rc<DxvkImageView>&    imageView,
           VkImageAspectFlags    clearAspects,
-          VkClearValue          clearValue) {
+          VkClearValue          clearValue,
+          VkImageAspectFlags    discardAspects) {
     // Make sure the color components are ordered correctly
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       clearValue.color = util::swizzleClearColor(clearValue.color,
@@ -413,6 +414,9 @@ namespace dxvk {
     // next draw if there is no reason to interrupt the render pass. This is
     // useful to adjust store ops for tilers, and ensures that pending resolves
     // are handled correctly.
+    if (discardAspects)
+      this->deferDiscard(imageView, discardAspects);
+
     if (clearAspects)
       this->deferClear(imageView, clearAspects, clearValue);
 
@@ -863,27 +867,6 @@ namespace dxvk {
     this->copySparsePages<false>(
       dstResource, pageCount, pages,
       srcBuffer, srcOffset);
-  }
-
-
-  void DxvkContext::discardImageView(
-    const Rc<DxvkImageView>&      imageView,
-          VkImageAspectFlags      discardAspects) {
-    VkImageUsageFlags viewUsage = imageView->info().usage;
-
-    if (!(viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
-      return;
-
-    // Perform store op optimization on bound render targets
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      VkImageSubresourceRange subresource = imageView->imageSubresources();
-      subresource.aspectMask &= discardAspects;
-
-      discardRenderTarget(*imageView->image(), subresource);
-    }
-
-    // Perform load op optimization on subsequent render passes
-    deferDiscard(imageView, discardAspects);
   }
 
 
