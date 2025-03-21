@@ -2289,8 +2289,16 @@ namespace dxvk {
       entry.aspectMask = clear.clearAspects;
       entry.clearValue = clear.clearValue;
 
-      if (clear.clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      if (clear.clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         entry.colorAttachment = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+        m_state.om.attachmentMask.trackColorWrite(entry.colorAttachment);
+      }
+
+      if (clear.clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+        m_state.om.attachmentMask.trackDepthWrite();
+
+      if (clear.clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+        m_state.om.attachmentMask.trackStencilWrite();
     }
 
     if (!attachments.empty()) {
@@ -2472,12 +2480,16 @@ namespace dxvk {
         color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
         color.resolveImageView = resolve.imageView->handle();
         color.resolveImageLayout = newLayout;
+
+        m_state.om.attachmentMask.trackColorRead(index);
       } else {
         if (resolve.depthMode) {
           auto& depth = m_state.om.renderingInfo.depth;
           depth.resolveMode = resolve.depthMode;
           depth.resolveImageView = resolve.imageView->handle();
           depth.resolveImageLayout = newLayout;
+
+          m_state.om.attachmentMask.trackDepthRead();
         }
 
         if (resolve.stencilMode) {
@@ -2485,6 +2497,8 @@ namespace dxvk {
           stencil.resolveMode = resolve.stencilMode;
           stencil.resolveImageView = resolve.imageView->handle();
           stencil.resolveImageLayout = newLayout;
+
+          m_state.om.attachmentMask.trackStencilRead();
         }
       }
 
@@ -5604,6 +5618,8 @@ namespace dxvk {
     this->renderPassEmitInitBarriers(framebufferInfo, ops);
     this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
+    m_state.om.attachmentMask.clear();
+
     VkCommandBufferInheritanceRenderingInfo renderingInheritance = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_RENDERING_INFO };
     VkCommandBufferInheritanceInfo inheritance = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO, &renderingInheritance };
 
@@ -5641,6 +5657,8 @@ namespace dxvk {
             clear.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
             clear.clearValue.color = ops.colorOps[i].clearValue;
           }
+
+          m_state.om.attachmentMask.trackColorWrite(i);
         }
 
         colorInfoCount = i + 1;
@@ -5673,6 +5691,9 @@ namespace dxvk {
       if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR) {
         depthInfo.clearValue.depthStencil.depth = ops.depthOps.clearValue.depth;
         depthInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        if (depthStencilAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+          m_state.om.attachmentMask.trackDepthWrite();
       }
 
       renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
@@ -5689,6 +5710,9 @@ namespace dxvk {
       if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR) {
         stencilInfo.clearValue.depthStencil.stencil = ops.depthOps.clearValue.stencil;
         stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        if (depthStencilAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+          m_state.om.attachmentMask.trackStencilWrite();
       }
     }
 
@@ -6015,6 +6039,9 @@ namespace dxvk {
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.handle);
+
+    // Update attachment usage info based on the pipeline state
+    m_state.om.attachmentMask.merge(pipelineInfo.attachments);
 
     // For pipelines created from graphics pipeline libraries, we need to
     // apply a bunch of dynamic state that is otherwise static or unused
