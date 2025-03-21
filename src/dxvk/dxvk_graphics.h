@@ -346,6 +346,15 @@ namespace dxvk {
 
 
   /**
+   * \brief Graphics pipeline handle
+   */
+  struct DxvkGraphicsPipelineHandle {
+    VkPipeline                handle      = VK_NULL_HANDLE;
+    DxvkGraphicsPipelineType  type        = DxvkGraphicsPipelineType::FastPipeline;
+  };
+
+
+  /**
    * \brief Graphics pipeline instance
    * 
    * Stores a state vector and the
@@ -366,6 +375,21 @@ namespace dxvk {
     std::atomic<VkPipeline>       baseHandle  = { VK_NULL_HANDLE };
     std::atomic<VkPipeline>       fastHandle  = { VK_NULL_HANDLE };
     std::atomic<VkBool32>         isCompiling = { VK_FALSE };
+
+    DxvkGraphicsPipelineHandle getHandle() const {
+      // Find a pipeline handle to use. If no optimized pipeline has
+      // been compiled yet, use the slower base pipeline instead.
+      DxvkGraphicsPipelineHandle result;
+      result.handle = fastHandle.load(std::memory_order_acquire);
+      result.type = DxvkGraphicsPipelineType::FastPipeline;
+
+      if (likely(fastHandle))
+        return result;
+
+      result.handle = baseHandle.load(std::memory_order_acquire);
+      result.type = DxvkGraphicsPipelineType::BasePipeline;
+      return result;
+    }
   };
 
 
@@ -529,7 +553,7 @@ namespace dxvk {
      * \param [in] state Pipeline state vector
      * \returns Pipeline handle and handle type
      */
-    std::pair<VkPipeline, DxvkGraphicsPipelineType> getPipelineHandle(
+    DxvkGraphicsPipelineHandle getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state);
     
     /**
