@@ -1664,10 +1664,14 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkImageAspectFlags        discardAspects);
 
+    void flushClearsInline();
+
     void flushClears(
             bool                      useRenderPass);
 
     void flushSharedImages();
+
+    void flushRenderPassDiscards();
 
     void flushRenderPassResolves();
 
