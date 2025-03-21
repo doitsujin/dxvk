@@ -981,6 +981,9 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME))
       m_deviceFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
 
+    if (m_deviceExtensions.supports(VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME))
+      m_deviceFeatures.khrLoadStoreOpNone = VK_TRUE;
+
     if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
       m_deviceFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
       m_deviceFeatures.khrMaintenance5.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance5);
@@ -1074,6 +1077,7 @@ namespace dxvk {
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrExternalSemaphoreWin32,
+      &devExtensions.khrLoadStoreOpNone,
       &devExtensions.khrMaintenance5,
       &devExtensions.khrMaintenance7,
       &devExtensions.khrPipelineLibrary,
@@ -1218,6 +1222,9 @@ namespace dxvk {
 
     if (devExtensions.khrExternalSemaphoreWin32)
       enabledFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
+
+    if (devExtensions.khrLoadStoreOpNone)
+      enabledFeatures.khrLoadStoreOpNone = VK_TRUE;
 
     if (devExtensions.khrMaintenance5) {
       enabledFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
@@ -1400,6 +1407,8 @@ namespace dxvk {
       "\n  extension supported                    : " << (features.khrExternalMemoryWin32 ? "1" : "0") <<
       "\n" << VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME <<
       "\n  extension supported                    : " << (features.khrExternalSemaphoreWin32 ? "1" : "0") <<
+      "\n" << VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME <<
+      "\n  extension supported                    : " << (features.khrLoadStoreOpNone ? "1" : "0") <<
       "\n" << VK_KHR_MAINTENANCE_5_EXTENSION_NAME <<
       "\n  maintenance5                           : " << (features.khrMaintenance5.maintenance5 ? "1" : "0") <<
       "\n" << VK_KHR_MAINTENANCE_7_EXTENSION_NAME <<
