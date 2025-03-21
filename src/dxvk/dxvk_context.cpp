@@ -4537,7 +4537,9 @@ namespace dxvk {
       return false;
 
     auto view = dstImage->createView(viewInfo);
-    this->deferClear(view, srcSubresource.aspectMask, clear->clearValue);
+
+    prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
+    deferClear(view, srcSubresource.aspectMask, clear->clearValue);
     return true;
   }
 
@@ -5100,6 +5102,7 @@ namespace dxvk {
     if (isDepthStencil)
       key.aspects = dstImage->formatInfo()->aspectMask;
 
+    prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
     deferClear(dstImage->createView(key), region.dstSubresource.aspectMask, clear->clearValue);
     return true;
   }
