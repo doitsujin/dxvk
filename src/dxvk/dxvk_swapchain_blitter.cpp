@@ -267,7 +267,7 @@ namespace dxvk {
     VkColorSpaceKHR dstColorSpace = dstView->image()->info().colorSpace;
     VkColorSpaceKHR srcColorSpace = srcView->image()->info().colorSpace;
 
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Swapchain blit"));
     }
@@ -388,7 +388,7 @@ namespace dxvk {
 
     ctx.cmd->cmdDraw(3, 1, 0, 0);
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     // Make sure to keep used resources alive
@@ -420,7 +420,7 @@ namespace dxvk {
     if (!m_hudImage || m_hudImage->info().extent != extent)
       createHudImage(extent);
 
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "HUD render"));
     }
@@ -474,7 +474,7 @@ namespace dxvk {
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     ctx.cmd->track(m_hudImage, DxvkAccess::Write);
@@ -532,7 +532,7 @@ namespace dxvk {
     if (!m_cursorRect.extent.width || !m_cursorRect.extent.height)
       return;
 
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Software cursor"));
     }
@@ -601,7 +601,7 @@ namespace dxvk {
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     ctx.cmd->track(m_cursorImage, DxvkAccess::Write);

@@ -13,13 +13,6 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
-
-  struct D3D9PresentInfo {
-    float scale[2];
-    float offset[2];
-  };
-
-
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
@@ -167,16 +160,32 @@ namespace dxvk {
     UpdatePresentRegion(pSourceRect, pDestRect);
     UpdatePresentParameters();
 
+    if (!SwapWithFrontBuffer() && m_parent->GetOptions()->extraFrontbuffer) {
+      // We never actually rotate in the front buffer.
+      // Just blit to it for GetFrontBufferData.
+
+      // When we have multiple buffers, the last buffer always acts as the front buffer.
+      // (See comment in PresentImage for an explaination why.)
+      // Games with a buffer count of 1 rely on the contents of the previous frame still
+      // being there, so we can't just add another buffer to the rotation.
+      // At the same time, they could call GetFrontBufferData after already rendering to the backbuffer.
+      // So we have to do a copy of the backbuffer that will be copied to the Vulkan backbuffer
+      // and keep that around for the next frame.
+
+      const auto& backbuffer = m_backBuffers[0];
+      const auto& frontbuffer = GetFrontBuffer();
+      if (FAILED(m_parent->StretchRect(backbuffer.ptr(), nullptr, frontbuffer.ptr(), nullptr, D3DTEXF_NONE))) {
+        Logger::err("Failed to blit to front buffer");
+      }
+    }
+
 #ifdef _WIN32
-    const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
+    const bool useGDIFallback = m_partialCopy && !SwapWithFrontBuffer();
     if (useGDIFallback)
       return PresentImageGDI(m_window);
 #endif
 
     try {
-      // We aren't going to device loss simply because
-      // 99% of D3D9 games don't handle this properly and
-      // just end up crashing (like with alt-tab loss)
       UpdateWindowedRefreshRate();
       UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
@@ -318,9 +327,8 @@ namespace dxvk {
         resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
         resolveRegion.extent         = cSrcImage->info().extent;
 
-        ctx->resolveImage(
-          cDstImage, cSrcImage,
-          resolveRegion, VK_FORMAT_UNDEFINED);
+        ctx->resolveImage(cDstImage, cSrcImage, resolveRegion,
+          cSrcImage->info().format, VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_NONE);
       });
 
       srcImage = std::move(resolvedSrc);
@@ -745,7 +753,7 @@ namespace dxvk {
       m_blitter->setCursorTexture(
         cursorSize,
         VK_FORMAT_B8G8R8A8_SRGB,
-        (void *) pCursorBitmap);
+        reinterpret_cast<void*>(pCursorBitmap));
   }
 
 
@@ -826,18 +834,13 @@ namespace dxvk {
     Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
-    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
-      // Presentation semaphores and WSI swap chain image
-      PresenterSync sync = { };
-      Rc<DxvkImage> backBuffer;
+    // Presentation semaphores and WSI swap chain image
+    PresenterSync sync = { };
+    Rc<DxvkImage> backBuffer;
 
-      status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
+    status = m_wctx->presenter->acquireNextImage(sync, backBuffer);
 
-      if (status < 0 || status == VK_NOT_READY) {
-        status = i ? VK_SUCCESS : status;
-        break;
-      }
-
+    if (status >= 0 && status != VK_NOT_READY) {
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
         { uint32_t(m_srcRect.right - m_srcRect.left), uint32_t(m_srcRect.bottom - m_srcRect.top) } };
@@ -847,8 +850,7 @@ namespace dxvk {
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
       // Bump frame ID
-      if (!i)
-        m_wctx->frameId += 1;
+      m_wctx->frameId += 1;
 
       // Present from CS thread so that we don't
       // have to synchronize with it first.
@@ -871,7 +873,6 @@ namespace dxvk {
         cSrcRect        = srcRect,
         cDstView        = backBuffer->createView(viewInfo),
         cDstRect        = dstRect,
-        cRepeat         = i,
         cSync           = sync,
         cFrameId        = m_wctx->frameId,
         cLatency        = m_latencyTracker
@@ -894,9 +895,7 @@ namespace dxvk {
         ctx->synchronizeWsi(cSync);
         ctx->flushCommandList(nullptr, nullptr);
 
-        uint64_t frameId = cRepeat ? 0 : cFrameId;
-
-        cDevice->presentImage(cPresenter, cLatency, frameId, nullptr);
+        cDevice->presentImage(cPresenter, cLatency, cFrameId, nullptr);
       });
 
       m_parent->FlushCsChunk();
@@ -925,7 +924,17 @@ namespace dxvk {
 
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
-    for (uint32_t i = 1; i < m_backBuffers.size(); i++)
+    uint32_t rotatingBufferCount = m_backBuffers.size();
+    if (!SwapWithFrontBuffer() && m_parent->GetOptions()->extraFrontbuffer) {
+      // The front buffer only exists for GetFrontBufferData
+      // and the application cannot obserse buffer swapping in GetBackBuffer()
+      rotatingBufferCount -= 1;
+    }
+
+    // Backbuffer 0 is the one that gets copied to the Vulkan swapchain backbuffer.
+    // => m_backBuffers[1] is the next one that gets presented
+    // and the currente m_backBuffers[0] ends up at the end of the vector.
+    for (uint32_t i = 1; i < rotatingBufferCount; i++)
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -995,10 +1004,10 @@ namespace dxvk {
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int NumFrontBuffer = HasFrontBuffer() ? 1 : 0;
-    const uint32_t NumBuffers = NumBackBuffers + NumFrontBuffer;
+    int frontBufferCount = (SwapWithFrontBuffer() || m_parent->GetOptions()->extraFrontbuffer) ? 1 : 0;
+    const uint32_t bufferCount = NumBackBuffers + frontBufferCount;
 
-    m_backBuffers.reserve(NumBuffers);
+    m_backBuffers.reserve(bufferCount);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -1019,7 +1028,7 @@ namespace dxvk {
     // we might need to lock for the BlitGDI fallback path
     desc.IsLockable         = true;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < bufferCount; i++) {
       D3D9Surface* surface;
       try {
         surface = new D3D9Surface(m_parent, &desc, m_parent->IsExtended(), this, nullptr);

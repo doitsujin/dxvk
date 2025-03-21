@@ -16,6 +16,7 @@ namespace dxvk {
     m_instance          (instance),
     m_adapter           (adapter),
     m_vkd               (vkd),
+    m_debugFlags        (instance->debugFlags()),
     m_queues            (queues),
     m_features          (features),
     m_properties        (adapter->devicePropertiesExt()),
@@ -426,9 +427,6 @@ namespace dxvk {
       && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
-    hints.preferFbResolve = m_features.amdShaderFragmentMask
-      && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
-       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
 
     // Older Nvidia drivers sometimes use the wrong format
     // to interpret the clear color in render pass clears.
@@ -451,10 +449,13 @@ namespace dxvk {
     applyTristate(tilerMode, m_options.tilerMode);
     hints.preferRenderPassOps = tilerMode;
 
-    // Be less aggressive on secondary command buffer usage on
-    // drivers that do not natively support them
-    hints.preferPrimaryCmdBufs = !hints.preferRenderPassOps
-      || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP);
+    // Honeykrisp does not have native support for secondary command buffers
+    // and would suffer from added CPU overhead, so be less aggressive.
+    // TODO: Enable ANV once mesa issue 12791 is resolved.
+    // RADV has issues on RDNA4 up to version 25.0.1.
+    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
+                              || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                              || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, Version(), Version(25, 0, 2));
     return hints;
   }
 

@@ -10,9 +10,10 @@ namespace dxvk {
       std::vector<DWORD> function;
     };
 
-    D3D9VertexShaderCode TranslateVertexShader8(
-      const DWORD*        pDeclaration,
-      const DWORD*        pFunction,
-      const D3D8Options&  overrides);
+    HRESULT TranslateVertexShader8(
+      const DWORD*          pDeclaration,
+      const DWORD*          pFunction,
+      const D3D8Options&    overrides,
+      D3D9VertexShaderCode& pTranslatedVS);
 
 }

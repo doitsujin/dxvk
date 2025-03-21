@@ -959,6 +959,8 @@ namespace dxvk {
     /// If set, the allocation will only succeed if it
     /// can be suballocated from an existing chunk.
     NoAllocation    = 1,
+    /// Avoid using a dedicated allocation for this resource
+    NoDedicated     = 2,
 
     eFlagEnum
   };

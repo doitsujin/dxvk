@@ -279,7 +279,7 @@ namespace dxvk::hud {
           uint32_t            dataPoint,
           HudPos              minPos,
           HudPos              maxPos) {
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
         vk::makeLabel(0xf0c0dc, "HUD frame time processing"));
     }
@@ -379,7 +379,7 @@ namespace dxvk::hud {
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
       drawInfoBuffer, textBufferView, 2u);
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
 
     // Make sure GPU resources are being kept alive as necessary

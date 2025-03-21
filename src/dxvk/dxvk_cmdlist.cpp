@@ -150,7 +150,7 @@ namespace dxvk {
     if (vk->vkBeginCommandBuffer(commandBuffer, &info))
       throw DxvkError("DxvkCommandPool: Failed to begin command buffer");
 
-    if (m_device->isDebugEnabled()) {
+    if (m_device->debugFlags().test(DxvkDebugFlag::Capture)) {
       auto vki = m_device->vki();
 
       VkDebugUtilsLabelEXT label = { };
@@ -470,7 +470,7 @@ namespace dxvk {
   void DxvkCommandList::endCommandBuffer(VkCommandBuffer cmdBuffer) {
     auto vk = m_device->vkd();
 
-    if (m_device->isDebugEnabled())
+    if (m_device->debugFlags().test(DxvkDebugFlag::Capture))
       m_vki->vkCmdEndDebugUtilsLabelEXT(cmdBuffer);
 
     if (vk->vkEndCommandBuffer(cmdBuffer))

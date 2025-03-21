@@ -114,7 +114,10 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
-    if(unlikely(AdapterFormat == D3D9Format::Unknown))
+    if (unlikely(AdapterFormat == D3D9Format::Unknown))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER))
       return D3DERR_INVALIDCALL;
 
     if (!IsSupportedAdapterFormat(AdapterFormat))
@@ -167,9 +170,6 @@ namespace dxvk {
 
     if (RType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT)
       return D3DERR_NOTAVAILABLE;
-
-    if (RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER)
-      return D3D_OK;
 
     // Let's actually ask Vulkan now that we got some quirks out the way!
     VkFormat format = mapping.FormatColor;
@@ -292,11 +292,19 @@ namespace dxvk {
           D3DCAPS9*  pCaps) {
     using namespace dxvk::caps;
 
-    if (pCaps == nullptr)
+    if (unlikely(pCaps == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(DeviceType == D3DDEVTYPE_SW)) {
+      if (m_parent->IsD3D8Compatible())
+        return D3DERR_INVALIDCALL;
+      else
+        return D3DERR_NOTAVAILABLE;
+    }
 
     auto& options = m_parent->GetOptions();
 
+    const uint32_t maxShaderModel = m_parent->IsD3D8Compatible() ? std::min(1u, options.shaderModel) : options.shaderModel;
     const VkPhysicalDeviceLimits& limits = m_adapter->deviceProperties().limits;
 
     // TODO: Actually care about what the adapter supports here.
@@ -575,8 +583,8 @@ namespace dxvk {
 
     // Late fixed-function capable cards, such as the GeForce 4 MX series,
     // expose support for VS 1.1, while not advertising any PS support
-    const uint32_t majorVersionVS = options.shaderModel == 0 ? 1 : options.shaderModel;
-    const uint32_t majorVersionPS = options.shaderModel;
+    const uint32_t majorVersionVS = maxShaderModel == 0 ? 1 : maxShaderModel;
+    const uint32_t majorVersionPS = maxShaderModel;
     // Max supported SM1 is VS 1.1 and PS 1.4
     const uint32_t minorVersionVS = majorVersionVS != 1 ? 0 : 1;
     const uint32_t minorVersionPS = majorVersionPS != 1 ? 0 : 4;
@@ -588,7 +596,7 @@ namespace dxvk {
     // Max Vertex Shader Const
     pCaps->MaxVertexShaderConst       = MaxFloatConstantsVS;
     // Max PS1 Value
-    pCaps->PixelShader1xMaxValue      = options.shaderModel > 0 ? std::numeric_limits<float>::max() : 0.0f;
+    pCaps->PixelShader1xMaxValue      = maxShaderModel > 0 ? std::numeric_limits<float>::max() : 0.0f;
     // Dev Caps 2
     pCaps->DevCaps2                   = D3DDEVCAPS2_STREAMOFFSET
                                    /* | D3DDEVCAPS2_DMAPNPATCH */
@@ -635,41 +643,41 @@ namespace dxvk {
                                    /* | D3DPTFILTERCAPS_MAGFPYRAMIDALQUAD */
                                    /* | D3DPTFILTERCAPS_MAGFGAUSSIANQUAD */;
 
-    pCaps->VS20Caps.Caps                     = options.shaderModel >= 2 ? D3DVS20CAPS_PREDICATION : 0;
-    pCaps->VS20Caps.DynamicFlowControlDepth  = options.shaderModel >= 2 ? D3DVS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
-    pCaps->VS20Caps.NumTemps                 = options.shaderModel >= 2 ? D3DVS20_MAX_NUMTEMPS : 0;
-    pCaps->VS20Caps.StaticFlowControlDepth   = options.shaderModel >= 2 ? D3DVS20_MAX_STATICFLOWCONTROLDEPTH : 0;
+    pCaps->VS20Caps.Caps                     = maxShaderModel >= 2 ? D3DVS20CAPS_PREDICATION : 0;
+    pCaps->VS20Caps.DynamicFlowControlDepth  = maxShaderModel >= 2 ? D3DVS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
+    pCaps->VS20Caps.NumTemps                 = maxShaderModel >= 2 ? D3DVS20_MAX_NUMTEMPS : 0;
+    pCaps->VS20Caps.StaticFlowControlDepth   = maxShaderModel >= 2 ? D3DVS20_MAX_STATICFLOWCONTROLDEPTH : 0;
 
-    pCaps->PS20Caps.Caps                     = options.shaderModel >= 2 ? D3DPS20CAPS_ARBITRARYSWIZZLE
-                                                                        | D3DPS20CAPS_GRADIENTINSTRUCTIONS
-                                                                        | D3DPS20CAPS_PREDICATION
-                                                                        | D3DPS20CAPS_NODEPENDENTREADLIMIT
-                                                                        | D3DPS20CAPS_NOTEXINSTRUCTIONLIMIT : 0;
-    pCaps->PS20Caps.DynamicFlowControlDepth  = options.shaderModel >= 2 ? D3DPS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
-    pCaps->PS20Caps.NumTemps                 = options.shaderModel >= 2 ? D3DPS20_MAX_NUMTEMPS : 0;
-    pCaps->PS20Caps.StaticFlowControlDepth   = options.shaderModel >= 2 ? D3DPS20_MAX_STATICFLOWCONTROLDEPTH : 0;
-    pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? D3DPS20_MAX_NUMINSTRUCTIONSLOTS : 0;
+    pCaps->PS20Caps.Caps                     = maxShaderModel >= 2 ? D3DPS20CAPS_ARBITRARYSWIZZLE
+                                                                   | D3DPS20CAPS_GRADIENTINSTRUCTIONS
+                                                                   | D3DPS20CAPS_PREDICATION
+                                                                   | D3DPS20CAPS_NODEPENDENTREADLIMIT
+                                                                   | D3DPS20CAPS_NOTEXINSTRUCTIONLIMIT : 0;
+    pCaps->PS20Caps.DynamicFlowControlDepth  = maxShaderModel >= 2 ? D3DPS20_MAX_DYNAMICFLOWCONTROLDEPTH : 0;
+    pCaps->PS20Caps.NumTemps                 = maxShaderModel >= 2 ? D3DPS20_MAX_NUMTEMPS : 0;
+    pCaps->PS20Caps.StaticFlowControlDepth   = maxShaderModel >= 2 ? D3DPS20_MAX_STATICFLOWCONTROLDEPTH : 0;
+    pCaps->PS20Caps.NumInstructionSlots      = maxShaderModel >= 2 ? D3DPS20_MAX_NUMINSTRUCTIONSLOTS : 0;
 
     // Vertex texture samplers are only available as part of SM3, the caps are 0 otherwise.
-    pCaps->VertexTextureFilterCaps           = options.shaderModel == 3 ? D3DPTFILTERCAPS_MINFPOINT
-                                                                        | D3DPTFILTERCAPS_MINFLINEAR
-                                                                     /* | D3DPTFILTERCAPS_MINFANISOTROPIC */
-                                                                     /* | D3DPTFILTERCAPS_MINFPYRAMIDALQUAD */
-                                                                     /* | D3DPTFILTERCAPS_MINFGAUSSIANQUAD */
-                                                                     /* | D3DPTFILTERCAPS_MIPFPOINT */
-                                                                     /* | D3DPTFILTERCAPS_MIPFLINEAR */
-                                                                     /* | D3DPTFILTERCAPS_CONVOLUTIONMONO */
-                                                                        | D3DPTFILTERCAPS_MAGFPOINT
-                                                                        | D3DPTFILTERCAPS_MAGFLINEAR
-                                                                     /* | D3DPTFILTERCAPS_MAGFANISOTROPIC */
-                                                                     /* | D3DPTFILTERCAPS_MAGFPYRAMIDALQUAD */
-                                                                     /* | D3DPTFILTERCAPS_MAGFGAUSSIANQUAD */ : 0;
+    pCaps->VertexTextureFilterCaps           = maxShaderModel == 3 ? D3DPTFILTERCAPS_MINFPOINT
+                                                                   | D3DPTFILTERCAPS_MINFLINEAR
+                                                                /* | D3DPTFILTERCAPS_MINFANISOTROPIC */
+                                                                /* | D3DPTFILTERCAPS_MINFPYRAMIDALQUAD */
+                                                                /* | D3DPTFILTERCAPS_MINFGAUSSIANQUAD */
+                                                                /* | D3DPTFILTERCAPS_MIPFPOINT */
+                                                                /* | D3DPTFILTERCAPS_MIPFLINEAR */
+                                                                /* | D3DPTFILTERCAPS_CONVOLUTIONMONO */
+                                                                   | D3DPTFILTERCAPS_MAGFPOINT
+                                                                   | D3DPTFILTERCAPS_MAGFLINEAR
+                                                                /* | D3DPTFILTERCAPS_MAGFANISOTROPIC */
+                                                                /* | D3DPTFILTERCAPS_MAGFPYRAMIDALQUAD */
+                                                                /* | D3DPTFILTERCAPS_MAGFGAUSSIANQUAD */ : 0;
 
-    pCaps->MaxVShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
-    pCaps->MaxPShaderInstructionsExecuted    = options.shaderModel >= 2 ? 4294967295 : 0;
+    pCaps->MaxVShaderInstructionsExecuted    = maxShaderModel >= 2 ? 4294967295 : 0;
+    pCaps->MaxPShaderInstructionsExecuted    = maxShaderModel >= 2 ? 4294967295 : 0;
 
-    pCaps->MaxVertexShader30InstructionSlots = options.shaderModel == 3 ? 32768 : 0;
-    pCaps->MaxPixelShader30InstructionSlots  = options.shaderModel == 3 ? 32768 : 0;
+    pCaps->MaxVertexShader30InstructionSlots = maxShaderModel == 3 ? 32768 : 0;
+    pCaps->MaxPixelShader30InstructionSlots  = maxShaderModel == 3 ? 32768 : 0;
 
     return D3D_OK;
   }

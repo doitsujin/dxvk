@@ -234,6 +234,30 @@ namespace dxvk::vk {
 
 
   /**
+   * \brief Queries sRGB and non-sSRGB format pair
+   *
+   * \param [in] format Format to look up
+   * \returns Pair of the corresponding non-SRGB and sRGB formats.
+   *    If the format in quesion has no sRGB equivalent, this
+   *    function returns \c VK_FORMAT_UNDEFINED.
+   */
+  inline std::pair<VkFormat, VkFormat> getSrgbFormatPair(VkFormat format) {
+    static const std::array<std::pair<VkFormat, VkFormat>, 3> srgbFormatMap = {{
+      { VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
+      { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB },
+      { VK_FORMAT_A8B8G8R8_UNORM_PACK32, VK_FORMAT_A8B8G8R8_SRGB_PACK32 },
+    }};
+
+    for (const auto& f : srgbFormatMap) {
+      if (f.first == format || f.second == format)
+        return f;
+    }
+
+    return std::make_pair(VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED);
+  }
+
+
+  /**
    * \brief Makes debug label
    *
    * \param [in] color Color, as BGR with implied opaque alpha

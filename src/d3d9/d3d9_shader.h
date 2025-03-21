@@ -96,9 +96,8 @@ namespace dxvk {
             uint32_t             BytecodeLength)
       : D3D9DeviceChild<Base>( pDevice )
       , m_shader             ( CommonShader )
+      , m_bytecode           ( pAllocator->Alloc(BytecodeLength) )
       , m_bytecodeLength     ( BytecodeLength ) {
-
-      m_bytecode = pAllocator->Alloc(BytecodeLength);
       m_bytecode.Map();
       std::memcpy(m_bytecode.Ptr(), pShaderBytecode, BytecodeLength);
       m_bytecode.Unmap();

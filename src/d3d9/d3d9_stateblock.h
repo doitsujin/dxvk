@@ -277,7 +277,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts->fConsts[idx], 1);
+            dst->SetVertexShaderConstantF(idx, reinterpret_cast<const float*>(&src->vsConsts->fConsts[idx]), 1);
           }
         }
 
@@ -285,7 +285,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts->iConsts[idx], 1);
+            dst->SetVertexShaderConstantI(idx, reinterpret_cast<const int*>(&src->vsConsts->iConsts[idx]), 1);
           }
         }
 
@@ -300,7 +300,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts->fConsts[idx], 1);
+            dst->SetPixelShaderConstantF(idx, reinterpret_cast<const float*>(&src->psConsts->fConsts[idx]), 1);
           }
         }
 
@@ -308,7 +308,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts->iConsts[idx], 1);
+            dst->SetPixelShaderConstantI(idx, reinterpret_cast<const int*>(&src->psConsts->iConsts[idx]), 1);
           }
         }
 

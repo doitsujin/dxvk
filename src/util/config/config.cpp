@@ -50,6 +50,11 @@ namespace dxvk {
     { R"(\\BrightMemory_EP1-Win64-Shipping\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* AC Shadows: Uses composition swapchain to   *
+     * check for HDR support                       */
+    { R"(\\ACShadows\.exe$)", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -703,7 +708,7 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Escape from Tarkov launcher
-       Same issue as Warhammer: RoR above       */
+       Work around partial presentation issues  */
     { R"(\\BsgLauncher\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
     }} },
@@ -1022,6 +1027,21 @@ namespace dxvk {
       { "d3d9.maxAvailableMemory",          "2048" },
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* CivCity: Rome                              *
+     * Enables soft real-time shadows             */
+    { R"(\\CivCity Rome\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
+    /* Silent Hill 2 (2001)                       *
+     * The Enhancements mod configures the        *
+     * swapchain to only have a single backbuffer *
+     * and then calls GetFrontBufferData after    *
+     * rendering to the backbuffer. This causes   *
+     * it to get the wrong data from              *
+     * GetFrontBufferData().                      */
+    { R"(\\sh2pc\.exe$)", {{
+      { "d3d9.extraFrontbuffer",            "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
@@ -1201,9 +1221,7 @@ namespace dxvk {
 
 
   const static ProfileList g_hashedProfiles = {
-    { "27fb4433abea6d1d68f678cbfa8c5e0a0fdc0803", {{
-      { "dxgi.enableDummyCompositionSwapchain", "True" }
-    }} },
+    /* Nothing to see here */
   };
 
 

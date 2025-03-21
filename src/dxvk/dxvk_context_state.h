@@ -25,6 +25,7 @@ namespace dxvk {
     GpRenderPassSuspended,      ///< Render pass is currently suspended
     GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
     GpRenderPassSideEffects,    ///< Render pass has side effects
+    GpRenderPassNeedsFlush,     ///< Render pass has pending resolves or discards
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
@@ -113,8 +114,14 @@ namespace dxvk {
     std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
     std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexExtents = { };
   };
-  
-  
+
+
+  struct DxvkViewport {
+    VkViewport viewport = { };
+    VkRect2D   scissor  = { };
+  };
+
+
   struct DxvkViewportState {
     uint32_t viewportCount = 0;
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };

@@ -50,7 +50,7 @@ namespace dxvk {
     DxvkGraphicsPipelineVertexInputState(
       const DxvkDevice*                     device,
       const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkShader*                     vs);
+      const DxvkGraphicsPipelineShaders&    shaders);
 
     VkPipelineInputAssemblyStateCreateInfo          iaInfo        = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     VkPipelineVertexInputStateCreateInfo            viInfo        = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -109,7 +109,7 @@ namespace dxvk {
     DxvkGraphicsPipelineFragmentOutputState(
       const DxvkDevice*                     device,
       const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkShader*                     fs);
+      const DxvkGraphicsPipelineShaders&    shaders);
 
     VkPipelineRenderingCreateInfo                   rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     VkPipelineColorBlendStateCreateInfo             cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
@@ -170,9 +170,7 @@ namespace dxvk {
     DxvkGraphicsPipelinePreRasterizationState(
       const DxvkDevice*                     device,
       const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkShader*                     tes,
-      const DxvkShader*                     gs,
-      const DxvkShader*                     fs);
+      const DxvkGraphicsPipelineShaders&    shaders);
 
     VkPipelineViewportStateCreateInfo                     vpInfo              = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
     VkPipelineTessellationStateCreateInfo                 tsInfo              = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
@@ -187,9 +185,8 @@ namespace dxvk {
     size_t hash() const;
 
     static bool isLineRendering(
-      const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkShader*                     tes,
-      const DxvkShader*                     gs);
+      const DxvkGraphicsPipelineShaders&    shaders,
+      const DxvkGraphicsPipelineStateInfo&  state);
 
   };
 
@@ -413,10 +410,10 @@ namespace dxvk {
             uint32_t                          specConstantMask)
     : shState(shaders, state),
       dyState(device, state, flags),
-      viState(device, state, shaders.vs.ptr()),
-      prState(device, state, shaders.tes.ptr(), shaders.gs.ptr(), shaders.fs.ptr()),
+      viState(device, state, shaders),
+      prState(device, state, shaders),
       fsState(device, state),
-      foState(device, state, shaders.fs.ptr()),
+      foState(device, state, shaders),
       scState(specConstantMask, state.sc) { }
 
     DxvkGraphicsPipelineShaderState           shState;

@@ -240,17 +240,16 @@ namespace dxvk {
     bool IsDeviceReset(D3D9WindowContext* wctx);
 
     const Com<D3D9Surface, false>& GetFrontBuffer() const {
+      // Buffer 0 is the one that gets copied to the Vulkan backbuffer.
+      // We rotate buffers after presenting, so buffer 0 becomes the last buffer in the vector.
       return m_backBuffers.back();
     }
 
-    bool HasFrontBuffer() const {
+    bool SwapWithFrontBuffer() const {
       if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY)
         return false;
 
-      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY_VSYNC)
-        return false;
-
-      // Tests show that SWAPEEFFECT_DISCARD + 1 backbuffer in windowed mode behaves identically to SWAPEFFECT_COPY
+      // Tests show that SWAPEEFFECT_DISCARD with 1 backbuffer in windowed mode behaves identically to SWAPEFFECT_COPY
       // For SWAPEFFECT_COPY we don't swap buffers but do another blit to the front buffer instead.
       if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD && m_presentParams.BackBufferCount == 1 && m_presentParams.Windowed)
         return false;

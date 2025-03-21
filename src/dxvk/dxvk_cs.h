@@ -114,6 +114,16 @@ namespace dxvk {
       return reinterpret_cast<char*>(this) + m_dataOffset;
     }
 
+    /**
+     * \brief Retrieves pointer to given structure
+     *
+     * \param [in] idx Structure index
+     * \returns Untyped pointer to given structure
+     */
+    void* at(uint32_t idx) {
+      return reinterpret_cast<char*>(this) + m_dataOffset + idx * uint32_t(m_structSize);
+    }
+
   private:
 
     uint32_t m_dataOffset  = 0u;
@@ -159,7 +169,7 @@ namespace dxvk {
 
   private:
 
-    alignas(M)
+    alignas(std::max(alignof(T), alignof(M)))
     T               m_command;
     DxvkCsDataBlock m_data;
 

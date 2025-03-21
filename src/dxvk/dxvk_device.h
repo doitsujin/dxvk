@@ -36,7 +36,6 @@ namespace dxvk {
    */
   struct DxvkDevicePerfHints {
     VkBool32 preferFbDepthStencilCopy : 1;
-    VkBool32 preferFbResolve          : 1;
     VkBool32 renderPassClearFormatBug : 1;
     VkBool32 preferRenderPassOps      : 1;
     VkBool32 preferPrimaryCmdBufs     : 1;
@@ -115,8 +114,8 @@ namespace dxvk {
      * \brief Checks whether debug functionality is enabled
      * \returns \c true if debug utils are enabled
      */
-    bool isDebugEnabled() const {
-      return bool(m_instance->extensions().extDebugUtils);
+    DxvkDebugFlags debugFlags() const {
+      return m_debugFlags;
     }
 
     /**
@@ -602,6 +601,7 @@ namespace dxvk {
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
 
+    DxvkDebugFlags              m_debugFlags;
     DxvkDeviceQueueSet          m_queues;
 
     DxvkDeviceFeatures          m_features;

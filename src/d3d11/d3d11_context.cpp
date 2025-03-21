@@ -909,7 +909,7 @@ namespace dxvk {
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
     } else {
-      const VkFormat format = m_parent->LookupFormat(
+      VkFormat format = m_parent->LookupFormat(
         Format, DXGI_VK_FORMAT_MODE_ANY).Format;
 
       EmitCs([
@@ -919,6 +919,8 @@ namespace dxvk {
         cSrcSubres = srcSubresourceLayers,
         cFormat    = format
       ] (DxvkContext* ctx) {
+        VkFormat format = cFormat ? cFormat : cSrcImage->info().format;
+
         VkImageResolve region;
         region.srcSubresource = cSrcSubres;
         region.srcOffset      = VkOffset3D { 0, 0, 0 };
@@ -926,7 +928,8 @@ namespace dxvk {
         region.dstOffset      = VkOffset3D { 0, 0, 0 };
         region.extent         = cDstImage->mipLevelExtent(cDstSubres.mipLevel);
 
-        ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
+        ctx->resolveImage(cDstImage, cSrcImage, region, format,
+          getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
       });
 
       if constexpr (!IsDeferred)
@@ -2466,8 +2469,8 @@ namespace dxvk {
 
       // In D3D11, the rasterizer state defines whether the scissor test is
       // enabled, so if that changes, we need to update scissor rects as well.
-      bool currScissorEnable = currRasterizerState != nullptr ? currRasterizerState->Desc()->ScissorEnable : false;
-      bool nextScissorEnable = nextRasterizerState != nullptr ? nextRasterizerState->Desc()->ScissorEnable : false;
+      bool currScissorEnable = currRasterizerState && currRasterizerState->Desc()->ScissorEnable;
+      bool nextScissorEnable = nextRasterizerState && nextRasterizerState->Desc()->ScissorEnable;
 
       if (currScissorEnable != nextScissorEnable)
         ApplyViewportState();
@@ -2542,13 +2545,8 @@ namespace dxvk {
       }
     }
 
-    if (m_state.rs.state != nullptr && dirty) {
-      D3D11_RASTERIZER_DESC rsDesc;
-      m_state.rs.state->GetDesc(&rsDesc);
-
-      if (rsDesc.ScissorEnable)
-        ApplyViewportState();
-    }
+    if (dirty && m_state.rs.state && m_state.rs.state->Desc()->ScissorEnable)
+      ApplyViewportState();
   }
 
 
@@ -3484,92 +3482,52 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyViewportState() {
-    std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
-    std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
-
-    // The backend can't handle a viewport count of zero,
-    // so we should at least specify one empty viewport
     uint32_t viewportCount = m_state.rs.numViewports;
 
-    if (unlikely(!viewportCount)) {
-      viewportCount = 1;
-      viewports[0] = VkViewport();
-      scissors [0] = VkRect2D();
-    }
+    if (likely(viewportCount)) {
+      EmitCsCmd<DxvkViewport>(D3D11CmdType::None, viewportCount,
+        [] (DxvkContext* ctx, const DxvkViewport* viewports, size_t count) {
+          ctx->setViewports(count, viewports);
+        });
 
-    // D3D11's coordinate system has its origin in the bottom left,
-    // but the viewport coordinates are aligned to the top-left
-    // corner so we can get away with flipping the viewport.
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      const D3D11_VIEWPORT& vp = m_state.rs.viewports[i];
+      // Vulkan does not provide an easy way to disable the scissor test,
+      // Set scissor rects that are at least as large as the framebuffer.
+      bool enableScissorTest = m_state.rs.state && m_state.rs.state->Desc()->ScissorEnable;
 
-      viewports[i] = VkViewport {
-        vp.TopLeftX, vp.Height + vp.TopLeftY,
-        vp.Width,   -vp.Height,
-        vp.MinDepth, vp.MaxDepth,
-      };
-    }
+      // D3D11's coordinate system has its origin in the bottom left,
+      // but the viewport coordinates are aligned to the top-left
+      // corner so we can get away with flipping the viewport.
+      for (uint32_t i = 0; i < viewportCount; i++) {
+        const auto& vp = m_state.rs.viewports[i];
 
-    // Scissor rectangles. Vulkan does not provide an easy way
-    // to disable the scissor test, so we'll have to set scissor
-    // rects that are at least as large as the framebuffer.
-    bool enableScissorTest = false;
-  
-    if (m_state.rs.state != nullptr) {
-      D3D11_RASTERIZER_DESC rsDesc;
-      m_state.rs.state->GetDesc(&rsDesc);
-      enableScissorTest = rsDesc.ScissorEnable;
-    }
+        auto* dst = new (m_csData->at(i)) DxvkViewport();
+        dst->viewport.x = vp.TopLeftX;
+        dst->viewport.y = vp.Height + vp.TopLeftY;
+        dst->viewport.width = vp.Width;
+        dst->viewport.height = -vp.Height;
+        dst->viewport.minDepth = vp.MinDepth;
+        dst->viewport.maxDepth = vp.MaxDepth;
 
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      if (!enableScissorTest) {
-        scissors[i] = VkRect2D {
-          VkOffset2D { 0, 0 },
-          VkExtent2D {
+        if (!enableScissorTest) {
+          dst->scissor.offset = VkOffset2D { 0, 0 };
+          dst->scissor.extent = VkExtent2D {
             D3D11_VIEWPORT_BOUNDS_MAX,
-            D3D11_VIEWPORT_BOUNDS_MAX } };
-      } else if (i >= m_state.rs.numScissors) {
-        scissors[i] = VkRect2D {
-          VkOffset2D { 0, 0 },
-          VkExtent2D { 0, 0 } };
-      } else {
-        D3D11_RECT sr = m_state.rs.scissors[i];
+            D3D11_VIEWPORT_BOUNDS_MAX };
+        } else if (i < m_state.rs.numScissors) {
+          const auto& sr = m_state.rs.scissors[i];
 
-        VkOffset2D srPosA;
-        srPosA.x = std::max<int32_t>(0, sr.left);
-        srPosA.y = std::max<int32_t>(0, sr.top);
-
-        VkOffset2D srPosB;
-        srPosB.x = std::max<int32_t>(srPosA.x, sr.right);
-        srPosB.y = std::max<int32_t>(srPosA.y, sr.bottom);
-
-        VkExtent2D srSize;
-        srSize.width  = uint32_t(srPosB.x - srPosA.x);
-        srSize.height = uint32_t(srPosB.y - srPosA.y);
-
-        scissors[i] = VkRect2D { srPosA, srSize };
+          dst->scissor.offset = VkOffset2D { sr.left, sr.top };
+          dst->scissor.extent = VkExtent2D {
+            uint32_t(std::max(sr.left, sr.right) - sr.left),
+            uint32_t(std::max(sr.top, sr.bottom) - sr.top) };
+        }
       }
-    }
-
-    if (likely(viewportCount == 1)) {
-      EmitCs([
-        cViewport = viewports[0],
-        cScissor  = scissors[0]
-      ] (DxvkContext* ctx) {
-        ctx->setViewports(1,
-          &cViewport,
-          &cScissor);
-      });
     } else {
-      EmitCs([
-        cViewportCount = viewportCount,
-        cViewports     = viewports,
-        cScissors      = scissors
-      ] (DxvkContext* ctx) {
-        ctx->setViewports(
-          cViewportCount,
-          cViewports.data(),
-          cScissors.data());
+      // The backend can't handle a viewport count of zero,
+      // so we should at least specify one empty viewport
+      EmitCs([] (DxvkContext* ctx) {
+        DxvkViewport viewport = { };
+        ctx->setViewports(1, &viewport);
       });
     }
   }
@@ -4799,10 +4757,8 @@ namespace dxvk {
       ctx->setStencilReference(D3D11_DEFAULT_STENCIL_REFERENCE);
 
       // Reset viewports
-      auto viewport = VkViewport();
-      auto scissor  = VkRect2D();
-
-      ctx->setViewports(1, &viewport, &scissor);
+      DxvkViewport viewport = { };
+      ctx->setViewports(1, &viewport);
 
       // Unbind indirect draw buffer
       ctx->bindDrawBuffers(DxvkBufferSlice(), DxvkBufferSlice());
