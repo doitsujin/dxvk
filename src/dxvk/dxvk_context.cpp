@@ -2332,6 +2332,44 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::preparePostRenderPassClears() {
+    for (const auto& clear : m_deferredClears)
+      prepareImage(clear.imageView->image(), clear.imageView->imageSubresources(), false);
+  }
+
+
+  void DxvkContext::flushClearsInline() {
+    small_vector<VkClearAttachment, MaxNumRenderTargets + 1u> attachments;
+
+    for (const auto& clear : m_deferredClears) {
+      // Ignore pure discards, we can't do anything useful with
+      // those without interrupting the render pass again.
+      if (!clear.clearAspects)
+        continue;
+
+      // If we end up here, the image is guaranteed to be bound.
+      int32_t attachmentIndex = m_state.om.framebufferInfo.findAttachment(clear.imageView);
+
+      auto& entry = attachments.emplace_back();
+      entry.aspectMask = clear.clearAspects;
+      entry.clearValue = clear.clearValue;
+
+      if (clear.clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+        entry.colorAttachment = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+    }
+
+    if (!attachments.empty()) {
+      VkClearRect clearRect = { };
+      clearRect.rect = m_state.om.renderingInfo.rendering.renderArea;
+      clearRect.layerCount = m_state.om.renderingInfo.rendering.layerCount;
+
+      m_cmd->cmdClearAttachments(attachments.size(), attachments.data(), 1u, &clearRect);
+    }
+
+    m_deferredClears.clear();
+  }
+
+
   void DxvkContext::flushClears(
           bool                      useRenderPass) {
     for (const auto& clear : m_deferredClears) {
@@ -2359,6 +2397,45 @@ namespace dxvk {
     }
 
     this->transitionRenderTargetLayouts(true);
+  }
+
+
+  void DxvkContext::flushRenderPassDiscards() {
+    if (!m_deferredClears.empty()) {
+      for (size_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+        auto view = m_state.om.framebufferInfo.getAttachment(i).view;
+
+        if (m_deferredResolves.at(i).imageView)
+          continue;
+
+        for (const auto& clear : m_deferredClears) {
+          if (clear.imageView->image() != view->image())
+            continue;
+
+          // Make sure that the cleared and discarded subresources are a superset
+          // of the subresources currently active in the render pass
+          auto clearSubresource = clear.imageView->subresources();
+          auto renderSubresource = view->subresources();
+
+          if (clearSubresource.aspectMask != renderSubresource.aspectMask
+          || !vk::checkSubresourceRangeSuperset(clearSubresource, renderSubresource))
+            continue;
+
+          VkImageAspectFlags aspects = clear.clearAspects | clear.discardAspects;
+          int32_t colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(i);
+
+          if (colorIndex < 0) {
+            if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && m_state.om.renderingInfo.rendering.pDepthAttachment)
+              m_state.om.renderingInfo.depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+            if ((aspects & VK_IMAGE_ASPECT_STENCIL_BIT) && m_state.om.renderingInfo.rendering.pStencilAttachment)
+              m_state.om.renderingInfo.stencil.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          } else if (aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+            if (uint32_t(colorIndex) < m_state.om.renderingInfo.rendering.colorAttachmentCount)
+              m_state.om.renderingInfo.color[colorIndex].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+          }
+        }
+      }
+    }
   }
 
 
@@ -5199,6 +5276,11 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd))
       return false;
 
+    // Otherwise, if any clears are queued up for the source image,
+    // that clear operation needs to be performed first.
+    if (findOverlappingDeferredClear(srcImage, vk::makeSubresourceRange(region.srcSubresource)))
+      flushClearsInline();
+
     // Check whether we're dealing with a color or depth attachment, one
     // of those flags needs to be set for resolve to even make sense
     VkImageUsageFlags usage = srcImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -5464,6 +5546,12 @@ namespace dxvk {
 
       flushBarriers();
       flushResolves();
+
+      // Need to process pending clears after resolves
+      preparePostRenderPassClears();
+
+      if (!suspend)
+        flushClears(false);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalRenderPass);
@@ -5780,6 +5868,7 @@ namespace dxvk {
       // Record scoped rendering commands with potentially
       // modified store or resolve ops here
       flushRenderPassResolves();
+      flushRenderPassDiscards();
 
       auto& renderingInfo = m_state.om.renderingInfo.rendering;
       m_cmd->cmdBeginRendering(&renderingInfo);
@@ -7059,6 +7148,10 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
 
+    // If there are any pending clears, record them now
+    if (unlikely(!m_deferredClears.empty()))
+      flushClearsInline();
+
     if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)) {
       // Make sure that the debug label for barrier control
       // always starts within an active render pass
@@ -7935,6 +8028,8 @@ namespace dxvk {
   void DxvkContext::discardRenderTarget(
     const DxvkImage&                image,
     const VkImageSubresourceRange&  subresources) {
+    // We can only retroactively change store ops if we are currently
+    // inside a render pass that uses secondary command buffers.
     if (!m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd))
       return;
 
@@ -7952,22 +8047,8 @@ namespace dxvk {
       // retroactively change the corresponding store op to DONT_CARE.
       auto viewSubresources = view->imageSubresources();
 
-      if (vk::checkSubresourceRangeSuperset(subresources, viewSubresources)) {
-        if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          if ((subresources.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT) && m_state.om.renderingInfo.depth.imageView)
-            m_state.om.renderingInfo.depth.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-
-          if ((subresources.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && m_state.om.renderingInfo.stencil.imageView)
-            m_state.om.renderingInfo.stencil.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        } else {
-          uint32_t index = m_state.om.framebufferInfo.getColorAttachmentIndex(i);
-
-          if (index < m_state.om.renderingInfo.rendering.colorAttachmentCount)
-            m_state.om.renderingInfo.color[i].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        }
-
-        m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
-      }
+      if (vk::checkSubresourceRangeSuperset(subresources, viewSubresources))
+        deferDiscard(view, subresources.aspectMask);
     }
   }
 
