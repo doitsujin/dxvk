@@ -6075,15 +6075,15 @@ namespace dxvk {
     // Retrieve and bind actual Vulkan pipeline handle
     auto pipelineInfo = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
 
-    if (unlikely(!pipelineInfo.first))
+    if (unlikely(!pipelineInfo.handle))
       return false;
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.first);
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineInfo.handle);
 
     // For pipelines created from graphics pipeline libraries, we need to
     // apply a bunch of dynamic state that is otherwise static or unused
-    if (pipelineInfo.second == DxvkGraphicsPipelineType::BasePipeline) {
+    if (pipelineInfo.type == DxvkGraphicsPipelineType::BasePipeline) {
       m_flags.set(
         DxvkContextFlag::GpDynamicDepthStencilState,
         DxvkContextFlag::GpDynamicDepthBias,
