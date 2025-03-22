@@ -1146,8 +1146,7 @@ namespace dxvk {
     static void InitDefaultPrimitiveTopology(
             DxvkInputAssemblyState*           pIaState);
 
-    static void InitDefaultRasterizerState(
-            DxvkRasterizerState*              pRsState);
+    static DxvkRasterizerState InitDefaultRasterizerState();
 
     static DxvkDepthStencilState InitDefaultDepthStencilState();
 

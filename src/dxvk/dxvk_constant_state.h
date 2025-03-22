@@ -118,15 +118,94 @@ namespace dxvk {
    * rasterizer, including the depth bias.
    */
   struct DxvkRasterizerState {
-    VkPolygonMode       polygonMode;
-    VkCullModeFlags     cullMode;
-    VkFrontFace         frontFace;
-    VkBool32            depthClipEnable;
-    VkBool32            depthBiasEnable;
-    VkConservativeRasterizationModeEXT conservativeMode;
-    VkSampleCountFlags  sampleCount;
-    VkBool32            flatShading;
-    VkLineRasterizationModeEXT lineMode;
+
+  public:
+
+    VkPolygonMode polygonMode() const {
+      return VkPolygonMode(m_polygonMode);
+    }
+
+    VkCullModeFlags cullMode() const {
+      return VkCullModeFlags(m_cullMode);
+    }
+
+    VkFrontFace frontFace() const {
+      return VkFrontFace(m_frontFace);
+    }
+
+    bool depthClip() const {
+      return m_depthClipEnable;
+    }
+
+    bool depthBias() const {
+      return m_depthBiasEnable;
+    }
+
+    VkConservativeRasterizationModeEXT conservativeMode() const {
+      return VkConservativeRasterizationModeEXT(m_conservativeMode);
+    }
+
+    VkSampleCountFlags sampleCount() const {
+      return VkSampleCountFlags(m_sampleCount);
+    }
+
+    bool flatShading() const {
+      return m_flatShading;
+    }
+
+    VkLineRasterizationModeEXT lineMode() const {
+      return VkLineRasterizationModeEXT(m_lineMode);
+    }
+
+    void setPolygonMode(VkPolygonMode mode) {
+      m_polygonMode = uint32_t(mode);
+    }
+
+    void setCullMode(VkCullModeFlags mode) {
+      m_cullMode = uint32_t(mode);
+    }
+
+    void setFrontFace(VkFrontFace face) {
+      m_frontFace = uint32_t(face);
+    }
+
+    void setDepthClip(bool enable) {
+      m_depthClipEnable = enable;
+    }
+
+    void setDepthBias(bool enable) {
+      m_depthBiasEnable = enable;
+    }
+
+    void setConservativeMode(VkConservativeRasterizationModeEXT mode) {
+      m_conservativeMode = uint32_t(mode);
+    }
+
+    void setSampleCount(VkSampleCountFlags count) {
+      m_sampleCount = uint32_t(count);
+    }
+
+    void setFlatShading(bool enable) {
+      m_flatShading = enable;
+    }
+
+    void setLineMode(VkLineRasterizationModeEXT mode) {
+      m_lineMode = uint32_t(mode);
+    }
+
+  private:
+
+    uint32_t m_polygonMode       : 2;
+    uint32_t m_cullMode          : 2;
+    uint32_t m_frontFace         : 1;
+    uint32_t m_depthClipEnable   : 1;
+    uint32_t m_depthBiasEnable   : 1;
+    uint32_t m_conservativeMode  : 2;
+    uint32_t m_sampleCount       : 5;
+    uint32_t m_flatShading       : 1;
+    uint32_t m_lineMode          : 2;
+    uint32_t m_reserved          : 15;
+
   };
   
   
