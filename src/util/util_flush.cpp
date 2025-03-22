@@ -2,6 +2,10 @@
 
 namespace dxvk {
 
+  std::atomic<uint32_t> GpuFlushTracker::m_minPendingSubmissions = { 2 };
+  std::atomic<uint32_t> GpuFlushTracker::m_minChunkCount         = { 3 };
+  std::atomic<uint32_t> GpuFlushTracker::m_maxChunkCount         = { 20 };
+
   GpuFlushTracker::GpuFlushTracker(GpuFlushType maxType)
   : m_maxType(maxType) {
 
@@ -11,10 +15,6 @@ namespace dxvk {
           GpuFlushType          flushType,
           uint64_t              chunkId,
           uint32_t              lastCompleteSubmissionId) {
-    constexpr uint32_t minPendingSubmissions = 2;
-
-    constexpr uint32_t minChunkCount =  3u;
-    constexpr uint32_t maxChunkCount = 20u;
 
     // Do not flush if there is nothing to flush
     uint32_t chunkCount = uint32_t(chunkId - m_lastFlushChunkId);
@@ -42,14 +42,14 @@ namespace dxvk {
 
       case GpuFlushType::ImplicitStrongHint: {
         // Flush aggressively with a strong hint to reduce readback latency.
-        return chunkCount >= minChunkCount;
+        return chunkCount >= m_minChunkCount;
       }
 
       case GpuFlushType::ImplicitMediumHint:
       case GpuFlushType::ImplicitWeakHint: {
         // Aim for a higher number of chunks per submission with
         // a weak hint in order to avoid submitting too often.
-        if (chunkCount < 2 * minChunkCount)
+        if (chunkCount < 2 * m_minChunkCount)
           return false;
 
         // Actual heuristic is shared with synchronization commands
@@ -60,13 +60,13 @@ namespace dxvk {
         // required if the application is spinning on a query or resource.
         uint32_t pendingSubmissions = uint32_t(m_lastFlushSubmissionId - lastCompleteSubmissionId);
 
-        if (pendingSubmissions < minPendingSubmissions)
+        if (pendingSubmissions < m_minPendingSubmissions)
           return true;
 
         // Use the number of pending submissions to decide whether to flush. Other
         // than ignoring the minimum chunk count condition, we should treat this
         // the same as weak hints to avoid unnecessary synchronization.
-        uint32_t threshold = std::min(maxChunkCount, pendingSubmissions * minChunkCount);
+        uint32_t threshold = std::min(m_maxChunkCount.load(), pendingSubmissions * m_minChunkCount.load());
         return chunkCount >= threshold;
       }
     }

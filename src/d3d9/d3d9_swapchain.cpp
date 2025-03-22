@@ -5,6 +5,8 @@
 #include "d3d9_hud.h"
 #include "d3d9_window.h"
 
+#include "../dxvk/framepacer/dxvk_framepacer.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -922,6 +924,9 @@ namespace dxvk {
     if (m_latencyHud)
       m_latencyHud->accumulateStats(latencyStats);
 
+    if (m_renderLatencyHud)
+      m_renderLatencyHud->updateLatencyTracker(m_latencyTracker);
+
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     uint32_t rotatingBufferCount = m_backBuffers.size();
@@ -991,7 +996,7 @@ namespace dxvk {
       entry->second.presenter = CreatePresenter(m_window, entry->second.frameLatencySignal);
 
       if (m_presentParams.hDeviceWindow == m_window && m_latencyTracking)
-        m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter);
+        m_latencyTracker = m_device->createLatencyTracker(entry->second.presenter, entry->second.frameId+1);
     }
 
     m_wctx = &entry->second;
@@ -1069,8 +1074,14 @@ namespace dxvk {
     if (hud) {
       m_apiHud = hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
 
-      if (m_latencyTracking)
+      if (m_latencyTracking) {
         m_latencyHud = hud->addItem<hud::HudLatencyItem>("latency", 4);
+        FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+        if (framePacer) {
+          int32_t fpsItemPos = hud->getItemPos<hud::HudFpsItem>();
+          m_renderLatencyHud = hud->addItem<hud::HudRenderLatencyItem>("renderlatency", fpsItemPos+1);
+        }
+      }
 
       hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
       hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
@@ -1121,6 +1132,9 @@ namespace dxvk {
     }
 
     m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
+    FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+    if (framePacer != nullptr)
+      framePacer->setTargetFrameRate(frameRate);
     m_targetFrameRate = frameRate;
   }
 

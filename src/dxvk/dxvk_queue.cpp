@@ -1,5 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_queue.h"
+#include "framepacer/dxvk_framepacer.h"
 
 namespace dxvk {
   
@@ -46,6 +47,8 @@ namespace dxvk {
           DxvkSubmitInfo            submitInfo,
           DxvkLatencyInfo           latencyInfo,
           DxvkSubmitStatus*         status) {
+    if (latencyInfo.tracker)
+      latencyInfo.tracker->notifySubmit(latencyInfo.frameId);
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {
@@ -66,6 +69,8 @@ namespace dxvk {
           DxvkPresentInfo           presentInfo,
           DxvkLatencyInfo           latencyInfo,
           DxvkSubmitStatus*         status) {
+    if (latencyInfo.tracker)
+      latencyInfo.tracker->notifyPresent(presentInfo.frameId);
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     DxvkSubmitEntry entry = { };
@@ -274,7 +279,9 @@ namespace dxvk {
       } else if (entry.present.presenter != nullptr) {
         // Signal the frame and then immediately destroy the reference.
         // This is necessary since the front-end may want to explicitly
-        // destroy the presenter object. 
+        // destroy the presenter object.
+        if (entry.latency.tracker)
+          entry.latency.tracker->notifyGpuPresentBegin(entry.present.frameId);
         entry.present.presenter->signalFrame(entry.present.frameId, entry.latency.tracker);
         entry.present.presenter = nullptr;
       }

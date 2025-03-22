@@ -44,7 +44,9 @@ namespace dxvk {
     Tristate tearFree = Tristate::Auto;
 
     /// Enables latency sleep
-    Tristate latencySleep = Tristate::Auto;
+    /// Defaults to false in this build to activate the FramePacer,
+    /// especially for the case when the game doesn't support Reflex
+    Tristate latencySleep = Tristate::False;
 
     /// Latency tolerance, in microseconds
     int32_t latencyTolerance = 0u;
@@ -66,6 +68,18 @@ namespace dxvk {
 
     /// Whether to enable tiler optimizations
     Tristate tilerMode = Tristate::Auto;
+
+    /// Frame pacing
+    std::string framePace;
+
+    /// A value in microseconds to fine-tune the low-latency frame pacing.
+    /// Positive values make a frame begin later which might improve responsiveness.
+    /// Negative values make a frame begin earlier which might improve fps.
+    int32_t lowLatencyOffset;
+
+    /// Determines whether a frame is allowed to begin before finishing processing
+    /// the cpu-part of the previous one, when low-latency frame pacing is used.
+    bool lowLatencyAllowCpuFramesOverlap;
 
     // Device name
     std::string deviceFilter;

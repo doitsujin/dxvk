@@ -128,6 +128,11 @@ namespace dxvk {
     virtual void notifyCpuPresentEnd(
             uint64_t                  frameId) = 0;
 
+    virtual void notifySubmit(
+            uint64_t                  frameId) { }
+    virtual void notifyPresent(
+            uint64_t                  frameId) { }
+
     /**
      * \brief Called when a command list is submitted to the GPU
      *
@@ -173,6 +178,9 @@ namespace dxvk {
      */
     virtual void notifyGpuExecutionEnd(
             uint64_t                  frameId) = 0;
+
+    virtual void notifyGpuPresentBegin(
+            uint64_t                  frameId) { }
 
     /**
      * \brief Called when presentation of a given frame finishes on the GPU

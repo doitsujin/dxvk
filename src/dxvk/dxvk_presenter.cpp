@@ -3,6 +3,7 @@
 #include "dxvk_device.h"
 #include "dxvk_presenter.h"
 
+#include "framepacer/dxvk_framepacer.h"
 #include "../wsi/wsi_window.h"
 
 namespace dxvk {
@@ -264,18 +265,11 @@ namespace dxvk {
       return;
 
     if (m_device->features().khrPresentWait.presentWait) {
-      bool canSignal = false;
-
-      { std::unique_lock lock(m_frameMutex);
-
-        m_lastSignaled = frameId;
-        canSignal = m_lastCompleted >= frameId;
-      }
-
-      if (canSignal)
-        m_signal->signal(frameId);
+      std::lock_guard lock(m_frameMutex);
+      m_lastSignaled = frameId;
+      m_frameCond.notify_one();
     } else {
-      m_fpsLimiter.delay();
+      m_fpsLimiter.delay(tracker);
       m_signal->signal(frameId);
 
       if (tracker)
@@ -1233,30 +1227,30 @@ namespace dxvk {
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
-    while (true) {
-      PresenterFrame frame = { };
+    std::unique_lock lock(m_frameMutex);
 
+    while (true) {
       // Wait for all GPU work for this frame to complete in order to maintain
       // ordering guarantees of the frame signal w.r.t. objects being released
-      { std::unique_lock lock(m_frameMutex);
+      m_frameCond.wait(lock, [this] {
+        return !m_frameQueue.empty() && m_frameQueue.front().frameId <= m_lastSignaled;
+      });
 
-        m_frameCond.wait(lock, [this] {
-          return !m_frameQueue.empty();
-        });
+      // Use a frame ID of 0 as an exit condition
+      PresenterFrame frame = m_frameQueue.front();
 
-        // Use a frame ID of 0 as an exit condition
-        frame = m_frameQueue.front();
-
-        if (!frame.frameId) {
-          m_frameQueue.pop();
-          return;
-        }
+      if (!frame.frameId) {
+        m_frameQueue.pop();
+        return;
       }
+
+      lock.unlock();
 
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
-      if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR)) {
+      if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR
+        || (dynamic_cast<FramePacer*>(frame.tracker.ptr()) && dynamic_cast<FramePacer*>(frame.tracker.ptr())->getMode()) )) {
         VkResult vr = m_vkd->vkWaitForPresentKHR(m_vkd->device(),
           m_swapchain, frame.frameId, std::numeric_limits<uint64_t>::max());
 
@@ -1266,32 +1260,24 @@ namespace dxvk {
 
       // Signal latency tracker right away to get more accurate
       // measurements if the frame rate limiter is enabled.
-      if (frame.tracker) {
+      if (frame.tracker)
         frame.tracker->notifyGpuPresentEnd(frame.frameId);
-        frame.tracker = nullptr;
-      }
 
-      // Apply FPS limiter here to align it as closely with scanout as we can,
+      // Apply FPS limtier here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      m_fpsLimiter.delay();
-
-      // Wake up any thread that may be waiting for the queue to become empty
-      bool canSignal = false;
-
-      { std::unique_lock lock(m_frameMutex);
-
-        m_frameQueue.pop();
-        m_frameDrain.notify_one();
-
-        m_lastCompleted = frame.frameId;
-        canSignal = m_lastSignaled >= frame.frameId;
-      }
+      m_fpsLimiter.delay(frame.tracker);
+      frame.tracker = nullptr;
 
       // Always signal even on error, since failures here
       // are transparent to the front-end.
-      if (canSignal)
-        m_signal->signal(frame.frameId);
+      m_signal->signal(frame.frameId);
+
+      // Wake up any thread that may be waiting for the queue to become empty
+      lock.lock();
+
+      m_frameQueue.pop();
+      m_frameDrain.notify_one();
     }
   }
 
