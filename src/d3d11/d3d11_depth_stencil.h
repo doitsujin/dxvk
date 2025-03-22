@@ -28,9 +28,11 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE GetDesc(
             D3D11_DEPTH_STENCIL_DESC* pDesc) final;
-    
-    void BindToContext(DxvkContext* ctx);
-    
+
+    DxvkDepthStencilState GetState() const {
+      return m_state;
+    }
+
     D3D10DepthStencilState* GetD3D10Iface() {
       return &m_d3d10;
     }
@@ -41,10 +43,10 @@ namespace dxvk {
   private:
     
     D3D11_DEPTH_STENCIL_DESC  m_desc;
-    DxvkDepthStencilState     m_state;
+    DxvkDepthStencilState     m_state = { };
     D3D10DepthStencilState    m_d3d10;
     
-    VkStencilOpState DecodeStencilOpState(
+    DxvkStencilOp DecodeStencilOpState(
       const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,
       const D3D11_DEPTH_STENCIL_DESC&   Desc) const;
     

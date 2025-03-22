@@ -6917,35 +6917,36 @@ namespace dxvk {
     bool stencil            = rs[D3DRS_STENCILENABLE];
     bool twoSidedStencil    = stencil && rs[D3DRS_TWOSIDEDSTENCILMODE];
 
-    DxvkDepthStencilState state;
-    state.enableDepthTest   = rs[D3DRS_ZENABLE]       != FALSE;
-    state.enableDepthWrite  = rs[D3DRS_ZWRITEENABLE]  != FALSE;
-    state.enableStencilTest = stencil;
-    state.depthCompareOp    = DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ZFUNC]));
+    DxvkDepthStencilState state = { };
+    state.setDepthTest(rs[D3DRS_ZENABLE]);
+    state.setDepthWrite(rs[D3DRS_ZWRITEENABLE]);
+    state.setStencilTest(stencil);
+    state.setDepthCompareOp(DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ZFUNC])));
+
+    DxvkStencilOp frontOp = { };
 
     if (stencil) {
-      state.stencilOpFront.failOp      = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILFAIL]));
-      state.stencilOpFront.passOp      = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILPASS]));
-      state.stencilOpFront.depthFailOp = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILZFAIL]));
-      state.stencilOpFront.compareOp   = DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_STENCILFUNC]));
-      state.stencilOpFront.compareMask = uint32_t(rs[D3DRS_STENCILMASK]);
-      state.stencilOpFront.writeMask   = uint32_t(rs[D3DRS_STENCILWRITEMASK]);
-      state.stencilOpFront.reference   = 0;
+      frontOp.setFailOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILFAIL])));
+      frontOp.setPassOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILPASS])));
+      frontOp.setDepthFailOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILZFAIL])));
+      frontOp.setCompareOp(DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_STENCILFUNC])));
+      frontOp.setCompareMask(rs[D3DRS_STENCILMASK]);
+      frontOp.setWriteMask(rs[D3DRS_STENCILWRITEMASK]);
     }
-    else
-      state.stencilOpFront = VkStencilOpState();
+
+    DxvkStencilOp backOp = frontOp;
 
     if (twoSidedStencil) {
-      state.stencilOpBack.failOp      = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL]));
-      state.stencilOpBack.passOp      = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS]));
-      state.stencilOpBack.depthFailOp = DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILZFAIL]));
-      state.stencilOpBack.compareOp   = DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_CCW_STENCILFUNC]));
-      state.stencilOpBack.compareMask = state.stencilOpFront.compareMask;
-      state.stencilOpBack.writeMask   = state.stencilOpFront.writeMask;
-      state.stencilOpBack.reference   = 0;
+      backOp.setFailOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL])));
+      backOp.setPassOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS])));
+      backOp.setDepthFailOp(DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILZFAIL])));
+      backOp.setCompareOp(DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_CCW_STENCILFUNC])));
+      backOp.setCompareMask(rs[D3DRS_STENCILMASK]);
+      backOp.setWriteMask(rs[D3DRS_STENCILWRITEMASK]);
     }
-    else
-      state.stencilOpBack = state.stencilOpFront;
+
+    state.setStencilOpFront(frontOp);
+    state.setStencilOpBack(backOp);
 
     EmitCs([
       cState = state

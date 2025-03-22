@@ -2891,15 +2891,32 @@ namespace dxvk {
   
   void DxvkContext::setDepthStencilState(const DxvkDepthStencilState& ds) {
     m_state.gp.state.ds = DxvkDsInfo(
-      ds.enableDepthTest,
-      ds.enableDepthWrite,
+      ds.depthTest(),
+      ds.depthWrite(),
       m_state.gp.state.ds.enableDepthBoundsTest(),
-      ds.enableStencilTest,
-      ds.depthCompareOp);
-    
-    m_state.gp.state.dsFront = DxvkDsStencilOp(ds.stencilOpFront);
-    m_state.gp.state.dsBack  = DxvkDsStencilOp(ds.stencilOpBack);
-    
+      ds.stencilTest(),
+      ds.depthCompareOp());
+
+    DxvkStencilOp front = ds.stencilOpFront();
+
+    m_state.gp.state.dsFront = DxvkDsStencilOp(
+      front.failOp(),
+      front.passOp(),
+      front.depthFailOp(),
+      front.compareOp(),
+      front.compareMask(),
+      front.writeMask());
+
+    DxvkStencilOp back = ds.stencilOpBack();
+
+    m_state.gp.state.dsBack = DxvkDsStencilOp(
+      back.failOp(),
+      back.passOp(),
+      back.depthFailOp(),
+      back.compareOp(),
+      back.compareMask(),
+      back.writeMask());
+
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyDepthStencilState);

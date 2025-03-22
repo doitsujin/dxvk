@@ -400,14 +400,20 @@ namespace dxvk {
 
     DxvkDsStencilOp() = default;
 
-    DxvkDsStencilOp(VkStencilOpState state)
-    : m_failOp      (uint32_t(state.failOp)),
-      m_passOp      (uint32_t(state.passOp)),
-      m_depthFailOp (uint32_t(state.depthFailOp)),
-      m_compareOp   (uint32_t(state.compareOp)),
+    DxvkDsStencilOp(
+            VkStencilOp           failOp,
+            VkStencilOp           passOp,
+            VkStencilOp           depthFailOp,
+            VkCompareOp           compareOp,
+            uint8_t               compareMask,
+            uint8_t               writeMask)
+    : m_failOp      (uint32_t(failOp)),
+      m_passOp      (uint32_t(passOp)),
+      m_depthFailOp (uint32_t(depthFailOp)),
+      m_compareOp   (uint32_t(compareOp)),
       m_reserved    (0),
-      m_compareMask (uint32_t(state.compareMask)),
-      m_writeMask   (uint32_t(state.writeMask)) { }
+      m_compareMask (uint32_t(compareMask)),
+      m_writeMask   (uint32_t(writeMask)) { }
     
     VkStencilOpState state(bool write) const {
       VkStencilOpState result;
