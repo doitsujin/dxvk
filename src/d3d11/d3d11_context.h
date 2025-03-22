@@ -1154,9 +1154,10 @@ namespace dxvk {
     static DxvkMultisampleState InitDefaultMultisampleState(
             UINT                              SampleMask);
 
+    static DxvkLogicOpState InitDefaultLogicOpState();
+
     static void InitDefaultBlendState(
-            DxvkBlendMode*                    pCbState,
-            DxvkLogicOpState*                 pLoState);
+            DxvkBlendMode*                    pCbState);
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
