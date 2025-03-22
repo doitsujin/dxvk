@@ -3420,16 +3420,13 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyDepthStencilState() {
     if (m_state.om.dsState != nullptr) {
       EmitCs([
-        cDepthStencilState = m_state.om.dsState
+        cState = m_state.om.dsState->GetState()
       ] (DxvkContext* ctx) {
-        cDepthStencilState->BindToContext(ctx);
+        ctx->setDepthStencilState(cState);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
-        DxvkDepthStencilState dsState;
-        InitDefaultDepthStencilState(&dsState);
-
-        ctx->setDepthStencilState(dsState);
+        ctx->setDepthStencilState(InitDefaultDepthStencilState());
       });
     }
   }
@@ -4738,9 +4735,6 @@ namespace dxvk {
       DxvkInputAssemblyState iaState;
       InitDefaultPrimitiveTopology(&iaState);
 
-      DxvkDepthStencilState dsState;
-      InitDefaultDepthStencilState(&dsState);
-
       DxvkRasterizerState rsState;
       InitDefaultRasterizerState(&rsState);
 
@@ -4750,7 +4744,7 @@ namespace dxvk {
       InitDefaultBlendState(&cbState, &loState, &msState, D3D11_DEFAULT_SAMPLE_MASK);
 
       ctx->setInputAssemblyState(iaState);
-      ctx->setDepthStencilState(dsState);
+      ctx->setDepthStencilState(InitDefaultDepthStencilState());
       ctx->setRasterizerState(rsState);
       ctx->setLogicOpState(loState);
       ctx->setMultisampleState(msState);
@@ -5819,23 +5813,12 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultDepthStencilState(
-          DxvkDepthStencilState*            pDsState) {
-    VkStencilOpState stencilOp;
-    stencilOp.failOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp       = VK_STENCIL_OP_KEEP;
-    stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask       = D3D11_DEFAULT_STENCIL_READ_MASK;
-    stencilOp.writeMask         = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-    stencilOp.reference         = 0;
-
-    pDsState->enableDepthTest   = VK_TRUE;
-    pDsState->enableDepthWrite  = VK_TRUE;
-    pDsState->enableStencilTest = VK_FALSE;
-    pDsState->depthCompareOp    = VK_COMPARE_OP_LESS;
-    pDsState->stencilOpFront    = stencilOp;
-    pDsState->stencilOpBack     = stencilOp;
+  DxvkDepthStencilState D3D11CommonContext<ContextType>::InitDefaultDepthStencilState() {
+    DxvkDepthStencilState dsState = { };
+    dsState.setDepthTest(true);
+    dsState.setDepthWrite(true);
+    dsState.setDepthCompareOp(VK_COMPARE_OP_LESS);
+    return dsState;
   }
 
 

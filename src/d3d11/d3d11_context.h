@@ -1149,8 +1149,7 @@ namespace dxvk {
     static void InitDefaultRasterizerState(
             DxvkRasterizerState*              pRsState);
 
-    static void InitDefaultDepthStencilState(
-            DxvkDepthStencilState*            pDsState);
+    static DxvkDepthStencilState InitDefaultDepthStencilState();
 
     static void InitDefaultBlendState(
             DxvkBlendMode*                    pCbState,
