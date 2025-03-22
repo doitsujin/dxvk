@@ -539,9 +539,6 @@ namespace dxvk {
   
   /**
    * \brief Vertex attribute description
-   * 
-   * Stores information about a
-   * single vertex attribute.
    */
   struct DxvkVertexAttribute {
     uint32_t location;
@@ -549,34 +546,113 @@ namespace dxvk {
     VkFormat format;
     uint32_t offset;
   };
-  
-  
+
+
+  /**
+   * \brief Packed vertex attribute
+   *
+   * Compact representation of a vertex attribute.
+   */
+  struct DxvkPackedVertexAttribute {
+    DxvkPackedVertexAttribute() = default;
+    DxvkPackedVertexAttribute(const DxvkVertexAttribute& a)
+    : location  (a.location),
+      binding   (a.binding),
+      format    (uint32_t(a.format)),
+      offset    (a.offset),
+      reserved  (0u) { }
+
+    uint32_t location   : 5;
+    uint32_t binding    : 5;
+    uint32_t format     : 7;
+    uint32_t offset     : 11;
+    uint32_t reserved   : 4;
+
+    DxvkVertexAttribute unpack() const {
+      DxvkVertexAttribute result = { };
+      result.location = location;
+      result.binding = binding;
+      result.format = VkFormat(format);
+      result.offset = offset;
+      return result;
+    }
+  };
+
+
   /**
    * \brief Vertex binding description
-   * 
-   * Stores information about a
-   * single vertex binding slot.
    */
   struct DxvkVertexBinding {
-    uint32_t          binding;
-    uint32_t          fetchRate;
+    uint32_t binding;
+    uint32_t extent;
     VkVertexInputRate inputRate;
-    uint32_t          extent;
+    uint32_t divisor;
   };
-  
-  
+
+
   /**
-   * \brief Input layout
-   * 
-   * Stores the description of all active
-   * vertex attributes and vertex bindings.
+   * \brief Packed vertex attribute
+   *
+   * Compact representation of a vertex binding.
    */
-  struct DxvkInputLayout {
-    uint32_t numAttributes;
-    uint32_t numBindings;
-    
-    std::array<DxvkVertexAttribute, DxvkLimits::MaxNumVertexAttributes> attributes;
-    std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
+  struct DxvkPackedVertexBinding {
+    DxvkPackedVertexBinding() = default;
+    DxvkPackedVertexBinding(const DxvkVertexBinding& b)
+    : binding   (b.binding),
+      extent    (b.extent),
+      inputRate (uint32_t(b.inputRate)),
+      divisor   (b.divisor < (1u << 14) ? b.divisor : 0u) { }
+
+    uint32_t binding    : 5;
+    uint32_t extent     : 12;
+    uint32_t inputRate  : 1;
+    uint32_t divisor    : 14;
+
+    DxvkVertexBinding unpack() const {
+      DxvkVertexBinding result = { };
+      result.binding = binding;
+      result.extent = extent;
+      result.inputRate = VkVertexInputRate(inputRate);
+      result.divisor = divisor;
+      return result;
+    }
   };
+
+  /**
+   * \brief Packed attribute binding
+   *
+   * Relies on attriute and bining
+   * structures to have the same size.
+   */
+  class DxvkVertexInput {
+
+  public:
+
+    DxvkVertexInput() = default;
+
+    DxvkVertexInput(const DxvkVertexAttribute& attribute)
+    : m_attribute(attribute) { }
+
+    DxvkVertexInput(const DxvkVertexBinding& binding)
+    : m_binding(binding) { }
+
+    DxvkVertexAttribute attribute() const {
+      return m_attribute.unpack();
+    }
+
+    DxvkVertexBinding binding() const {
+      return m_binding.unpack();
+    }
+
+  private:
+
+    union {
+      DxvkPackedVertexAttribute m_attribute;
+      DxvkPackedVertexBinding   m_binding;
+    };
+
+  };
+
+  static_assert(sizeof(DxvkVertexInput) == sizeof(uint32_t));
 
 }
