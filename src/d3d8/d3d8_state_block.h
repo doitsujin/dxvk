@@ -43,8 +43,6 @@ namespace dxvk {
 
     D3D8StateBlock(D3D8Device* pDevice);
 
-    ~D3D8StateBlock();
-
     void SetD3D9(Com<d3d9::IDirect3DStateBlock9>&& pStateBlock);
 
     HRESULT Capture();

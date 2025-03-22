@@ -75,7 +75,7 @@ namespace dxvk {
 
   public:
 
-    static constexpr UINT AllLayers = UINT32_MAX;
+    static constexpr UINT AllLayers = std::numeric_limits<uint32_t>::max();
 
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
@@ -324,6 +324,8 @@ namespace dxvk {
     }
 
     uint32_t GetPlaneCount() const;
+
+    D3DPOOL GetPool() const { return m_desc.Pool; }
 
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 

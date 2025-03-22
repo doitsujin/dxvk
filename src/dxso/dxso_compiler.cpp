@@ -1163,8 +1163,7 @@ namespace dxvk {
             return m_vs.oPSize;
 
           default: {
-            DxsoRegisterPointer nullPointer;
-            nullPointer.id = 0;
+            DxsoRegisterPointer nullPointer = { };
             return nullPointer;
           }
         }
@@ -1274,8 +1273,7 @@ namespace dxvk {
       default: {
         //Logger::warn(str::format("emitGetOperandPtr: unhandled reg type: ", reg.id.type));
 
-        DxsoRegisterPointer nullPointer;
-        nullPointer.id = 0;
+        DxsoRegisterPointer nullPointer = { };
         return nullPointer;
       }
     }
@@ -1957,7 +1955,7 @@ namespace dxvk {
 
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
-            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+            m_module.constfReplicant(std::numeric_limits<float>::max(), result.type.ccount));
         }
         break;
       case DxsoOpcode::Rsq: 
@@ -1969,7 +1967,7 @@ namespace dxvk {
 
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
-            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+            m_module.constfReplicant(std::numeric_limits<float>::max(), result.type.ccount));
         }
         break;
       case DxsoOpcode::Dp3: {
@@ -2029,7 +2027,7 @@ namespace dxvk {
 
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
-            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+            m_module.constfReplicant(std::numeric_limits<float>::max(), result.type.ccount));
         }
           break;
         }
@@ -2040,7 +2038,7 @@ namespace dxvk {
 
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
-            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+            m_module.constfReplicant(std::numeric_limits<float>::max(), result.type.ccount));
         }
         break;
       case DxsoOpcode::Pow: {
@@ -2102,7 +2100,7 @@ namespace dxvk {
         rcpLength.type = scalarType;
         rcpLength.id = m_module.opInverseSqrt(scalarTypeId, dot.id);
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
-          rcpLength.id = m_module.opNMin(scalarTypeId, rcpLength.id, m_module.constf32(FLT_MAX));
+          rcpLength.id = m_module.opNMin(scalarTypeId, rcpLength.id, m_module.constf32(std::numeric_limits<float>::max()));
         }
 
         // r * rsq(r . r)
@@ -2216,7 +2214,7 @@ namespace dxvk {
         result.id = m_module.opLog2(typeId, result.id);
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMax(typeId, result.id,
-            m_module.constfReplicant(-FLT_MAX, result.type.ccount));
+            m_module.constfReplicant(-std::numeric_limits<float>::max(), result.type.ccount));
         }
         break;
       case DxsoOpcode::Lrp:
@@ -2702,7 +2700,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     const DxsoOpcode opcode = ctx.instruction.opcode;
 
     DxsoRegisterValue texcoordVar;
-    uint32_t samplerIdx;
+    uint32_t samplerIdx = 0u;
 
     DxsoRegMask vec3Mask(true, true, true,  false);
     DxsoRegMask srcMask (true, true, true,  true);
@@ -2965,7 +2963,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t lOffset = m_module.opAccessChain(m_module.defPointerType(float_t, spv::StorageClassUniform),
                                                   m_ps.sharedState, 1, &index);
                  lOffset = m_module.opLoad(float_t, lOffset);
-            
+
         uint32_t zIndex = 2;
         uint32_t scale = m_module.opCompositeExtract(float_t, result.id, 1, &zIndex);
                  scale = m_module.opFMul(float_t, scale, lScale);
@@ -2980,7 +2978,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
       uint32_t bitOffset = m_programInfo.type() == DxsoProgramTypes::VertexShader
-        ? samplerIdx + caps::MaxTexturesPS + 1
+        ? samplerIdx + FirstVSSamplerSlot
         : samplerIdx;
 
       uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);

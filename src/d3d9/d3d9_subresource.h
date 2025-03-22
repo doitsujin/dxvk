@@ -12,12 +12,13 @@ namespace dxvk {
 
     D3D9Subresource(
             D3D9DeviceEx*           pDevice,
+      const bool                    Extended,
             D3D9CommonTexture*      pTexture,
             UINT                    Face,
             UINT                    MipLevel,
             IDirect3DBaseTexture9*  pBaseTexture,
             IUnknown*               pContainer)
-    : D3D9Resource<Type...>(pDevice),
+    : D3D9Resource<Type...>(pDevice, pTexture->GetPool(), Extended),
       m_container          (pContainer),
       m_baseTexture        (pBaseTexture),
       m_texture            (pTexture),

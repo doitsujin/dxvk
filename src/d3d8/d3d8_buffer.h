@@ -16,8 +16,7 @@ namespace dxvk {
             Com<D3D9>&&     pBuffer,
             D3DPOOL         Pool,
             DWORD           Usage)
-      : D3D8Resource<D3D9, D3D8> (pDevice, std::move(pBuffer))
-      , m_pool                   (Pool)
+      : D3D8Resource<D3D9, D3D8> (pDevice, Pool, std::move(pBuffer))
       , m_usage                  (Usage) {
       m_options = this->GetParent()->GetOptions();
     }
@@ -52,7 +51,6 @@ namespace dxvk {
   protected:
 
     const D3D8Options* m_options;
-    const D3DPOOL      m_pool;
     const DWORD        m_usage;
 
   };

@@ -24,7 +24,9 @@ enum D3D11_VK_EXTENSION : uint32_t {
  */
 enum D3D11_VK_BARRIER_CONTROL : uint32_t {
   D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE   = 1 << 0,
-  D3D11_VK_BARRIER_CONTROL_IGNORE_GRAPHICS_UAV        = 1 << 1,
+
+  // Removed:
+  // D3D11_VK_BARRIER_CONTROL_IGNORE_GRAPHICS_UAV        = 1 << 1,
 };
 
 
@@ -183,10 +185,70 @@ ID3D11VkExtContext1 : public ID3D11VkExtContext {
 };
 
 
+/**
+ * \brief Frame reports used for Reflex interop
+ */
+struct D3D_LOW_LATENCY_FRAME_REPORT
+{
+    UINT64 frameID;
+    UINT64 inputSampleTime;
+    UINT64 simStartTime;
+    UINT64 simEndTime;
+    UINT64 renderSubmitStartTime;
+    UINT64 renderSubmitEndTime;
+    UINT64 presentStartTime;
+    UINT64 presentEndTime;
+    UINT64 driverStartTime;
+    UINT64 driverEndTime;
+    UINT64 osRenderQueueStartTime;
+    UINT64 osRenderQueueEndTime;
+    UINT64 gpuRenderStartTime;
+    UINT64 gpuRenderEndTime;
+    UINT32 gpuActiveRenderTimeUs;
+    UINT32 gpuFrameTimeUs;
+    UINT8 rsvd[120];
+};
+
+
+/**
+ * \brief Data structure used for Reflex interop
+ */
+struct D3D_LOW_LATENCY_RESULTS
+{
+    UINT32 version;
+    D3D_LOW_LATENCY_FRAME_REPORT frameReports[64];
+    UINT8 rsvd[32];
+};
+
+
+/**
+ * \brief D3D interop interface for Nvidia Reflex
+ */
+MIDL_INTERFACE("f3112584-41f9-348d-a59b-00b7e1d285d6")
+ID3DLowLatencyDevice : public IUnknown {
+  virtual BOOL STDMETHODCALLTYPE SupportsLowLatency() = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE LatencySleep() = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetLatencySleepMode(
+          BOOL                          LowLatencyEnable,
+          BOOL                          LowLatencyBoost,
+          UINT32                        MinIntervalUs) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetLatencyMarker(
+          UINT64                        FrameId,
+          UINT32                        MarkerType) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE GetLatencyInfo(
+          D3D_LOW_LATENCY_RESULTS*      pLowLatencyResults) = 0;
+};
+
+
 #ifndef _MSC_VER
 __CRT_UUID_DECL(ID3D11VkExtShader,         0xbb8a4fb9,0x3935,0x4762,0xb4,0x4b,0x35,0x18,0x9a,0x26,0x41,0x4a);
 __CRT_UUID_DECL(ID3D11VkExtDevice,         0x8a6e3c42,0xf74c,0x45b7,0x82,0x65,0xa2,0x31,0xb6,0x77,0xca,0x17);
 __CRT_UUID_DECL(ID3D11VkExtDevice1,        0xcfcf64ef,0x9586,0x46d0,0xbc,0xa4,0x97,0xcf,0x2c,0xa6,0x1b,0x06);
 __CRT_UUID_DECL(ID3D11VkExtContext,        0xfd0bca13,0x5cb6,0x4c3a,0x98,0x7e,0x47,0x50,0xde,0x2c,0xa7,0x91);
 __CRT_UUID_DECL(ID3D11VkExtContext1,       0x874b09b2,0xae0b,0x41d8,0x84,0x76,0x5f,0x3b,0x7a,0x0e,0x87,0x9d);
+__CRT_UUID_DECL(ID3DLowLatencyDevice,      0xf3112584,0x41f9,0x348d,0xa5,0x9b,0x00,0xb7,0xe1,0xd2,0x85,0xd6);
 #endif

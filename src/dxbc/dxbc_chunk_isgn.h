@@ -54,8 +54,6 @@ namespace dxvk {
             uint32_t     registerId) const;
     
     uint32_t maxRegisterCount() const;
-
-    void printEntries() const;
     
     static bool compareSemanticNames(
       const std::string& a,

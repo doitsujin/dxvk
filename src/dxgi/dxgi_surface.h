@@ -35,8 +35,13 @@ namespace dxvk {
 
   private:
 
-    PFN_vkGetInstanceProcAddr m_vkGetInstanceProcAddr;
-    HWND                      m_window;
+    PFN_vkGetInstanceProcAddr m_vkGetInstanceProcAddr = nullptr;
+    HWND                      m_window = nullptr;
+    bool                      m_ownsWindow = false;
+
+    HWND CreateDummyWindow();
+
+    void DestroyDummyWindow();
 
   };
   

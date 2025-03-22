@@ -39,6 +39,10 @@ namespace dxvk {
     /// Insert memory barriers after TGSM stoes
     bool forceVolatileTgsmAccess = false;
 
+    /// Try to detect hazards in UAV access and insert
+    /// barriers when we know control flow is uniform.
+    bool forceComputeUavBarriers = false;
+
     /// Replace ld_ms with ld
     bool disableMsaa = false;
 
@@ -48,6 +52,13 @@ namespace dxvk {
 
     // Enable per-sample interlock if supported
     bool enableSampleShadingInterlock = false;
+
+    /// Use tightly packed arrays for immediate
+    /// constant buffers if possible
+    bool supportsTightIcbPacking = false;
+
+    /// Whether exporting point size is required
+    bool needsPointSizeExport = true;
 
     /// Float control flags
     DxbcFloatControlFlags floatControl;

@@ -4,6 +4,8 @@
 #include <thread>
 #include <unordered_map>
 
+#include "./hud/dxvk_hud.h"
+
 #include "../util/thread.h"
 
 #include "../dxvk/dxvk_device.h"
@@ -43,8 +45,10 @@ namespace dxvk {
     VkBool32 needsBlit = VK_FALSE;
     /// Bit indicating whether a gamma curve is to be applied.
     VkBool32 needsGamma = VK_FALSE;
-    /// Bit indicating whether alpha blending is required
-    VkBool32 needsBlending = VK_FALSE;
+    /// Bit indicating whether the HUD needs to be composited
+    VkBool32 compositeHud = VK_FALSE;
+    /// Bit indicating whether the software cursor needs to be composited
+    VkBool32 compositeCursor = VK_FALSE;
 
     size_t hash() const {
       DxvkHashState hash;
@@ -55,7 +59,8 @@ namespace dxvk {
       hash.add(uint32_t(dstFormat));
       hash.add(uint32_t(needsBlit));
       hash.add(uint32_t(needsGamma));
-      hash.add(uint32_t(needsBlending));
+      hash.add(uint32_t(compositeHud));
+      hash.add(uint32_t(compositeCursor));
       return hash;
     }
 
@@ -67,7 +72,32 @@ namespace dxvk {
           && dstFormat == other.dstFormat
           && needsBlit == other.needsBlit
           && needsGamma == other.needsGamma
-          && needsBlending == other.needsBlending;
+          && compositeHud == other.compositeHud
+          && compositeCursor == other.compositeCursor;
+    }
+  };
+
+
+  /**
+   * \brief Swap chain cursor pipeline key
+   */
+  struct DxvkCursorPipelineKey {
+    /// Output color space.
+    VkColorSpaceKHR dstSpace = VK_COLOR_SPACE_MAX_ENUM_KHR;
+    /// Output image format. Used as pipeline state, but also to
+    /// determine the sRGB-ness of the format.
+    VkFormat dstFormat = VK_FORMAT_UNDEFINED;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(dstSpace));
+      hash.add(uint32_t(dstFormat));
+      return hash;
+    }
+
+    bool eq(const DxvkCursorPipelineKey& other) const {
+      return dstSpace == other.dstSpace
+          && dstFormat == other.dstFormat;
     }
   };
 
@@ -82,7 +112,9 @@ namespace dxvk {
     
   public:
 
-    DxvkSwapchainBlitter(const Rc<DxvkDevice>& device);
+    DxvkSwapchainBlitter(
+      const Rc<DxvkDevice>& device,
+      const Rc<hud::Hud>&   hud);
     ~DxvkSwapchainBlitter();
 
     /**
@@ -93,33 +125,17 @@ namespace dxvk {
      * The swap chain image will remain bound for rendering.
      * \param [in] ctx Context objects
      * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Swap chain color space
      * \param [in] dstRect Destination rectangle
      * \param [in] srcView Image to present
      * \param [in] srcColorSpace Image color space
      * \param [in] srcRect Source rectangle to present
      */
-    void beginPresent(
+    void present(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace,
             VkRect2D            dstRect,
       const Rc<DxvkImageView>&  srcView,
-            VkColorSpaceKHR     srcColorSpace,
             VkRect2D            srcRect);
-
-    /**
-     * \brief Finalizes presentation commands
-     *
-     * Finishes rendering and prepares the image for presentation.
-     * \param [in] ctx Context objects
-     * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Swap chain color space
-     */
-    void endPresent(
-      const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace);
 
     /**
      * \brief Sets gamma ramp
@@ -167,12 +183,27 @@ namespace dxvk {
       VkBool32 srcIsSrgb;
       VkColorSpaceKHR dstSpace;
       VkBool32 dstIsSrgb;
+      VkBool32 compositeHud;
+      VkBool32 compositeCursor;
     };
 
     struct PushConstants {
       VkOffset2D srcOffset;
       VkExtent2D srcExtent;
       VkOffset2D dstOffset;
+      VkOffset2D cursorOffset;
+      VkExtent2D cursorExtent;
+    };
+
+    struct CursorSpecConstants {
+      VkColorSpaceKHR dstSpace;
+      VkBool32 dstIsSrgb;
+    };
+
+    struct CursorPushConstants {
+      VkExtent2D dstExtent;
+      VkOffset2D cursorOffset;
+      VkExtent2D cursorExtent;
     };
 
     struct ShaderModule {
@@ -181,12 +212,16 @@ namespace dxvk {
     };
 
     Rc<DxvkDevice>      m_device;
+    Rc<hud::Hud>        m_hud;
 
     ShaderModule        m_shaderVsBlit;
     ShaderModule        m_shaderFsCopy;
     ShaderModule        m_shaderFsBlit;
     ShaderModule        m_shaderFsMsResolve;
     ShaderModule        m_shaderFsMsBlit;
+
+    ShaderModule        m_shaderVsCursor;
+    ShaderModule        m_shaderFsCursor;
 
     dxvk::mutex         m_mutex;
     Rc<DxvkBuffer>      m_gammaBuffer;
@@ -201,22 +236,44 @@ namespace dxvk {
 
     Rc<DxvkSampler>     m_samplerPresent;
     Rc<DxvkSampler>     m_samplerGamma;
+    Rc<DxvkSampler>     m_samplerCursorLinear;
+    Rc<DxvkSampler>     m_samplerCursorNearest;
+
+    Rc<DxvkImage>       m_hudImage;
+    Rc<DxvkImageView>   m_hudView;
 
     VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
-    VkPipelineLayout    m_pipelineLayout = VK_NULL_HANDLE;
+    VkPipelineLayout      m_pipelineLayout = VK_NULL_HANDLE;
+
+    VkDescriptorSetLayout m_cursorSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout      m_cursorPipelineLayout = VK_NULL_HANDLE;
 
     std::unordered_map<DxvkSwapchainPipelineKey,
       VkPipeline, DxvkHash, DxvkEq> m_pipelines;
 
+    std::unordered_map<DxvkCursorPipelineKey,
+      VkPipeline, DxvkHash, DxvkEq> m_cursorPipelines;
+
     void performDraw(
       const DxvkContextObjects&         ctx,
       const Rc<DxvkImageView>&          dstView,
-            VkColorSpaceKHR             dstColorSpace,
             VkRect2D                    dstRect,
       const Rc<DxvkImageView>&          srcView,
-            VkColorSpaceKHR             srcColorSpace,
             VkRect2D                    srcRect,
-            VkBool32                    enableBlending);
+            VkBool32                    composite);
+
+    void renderHudImage(
+      const DxvkContextObjects&         ctx,
+            VkExtent3D                  extent);
+
+    void createHudImage(
+            VkExtent3D                  extent);
+
+    void destroyHudImage();
+
+    void renderCursor(
+      const DxvkContextObjects&         ctx,
+      const Rc<DxvkImageView>&          dstView);
 
     void uploadGammaImage(
       const DxvkContextObjects&         ctx);
@@ -241,13 +298,26 @@ namespace dxvk {
 
     VkDescriptorSetLayout createSetLayout();
 
+    VkDescriptorSetLayout createCursorSetLayout();
+
     VkPipelineLayout createPipelineLayout();
 
+    VkPipelineLayout createCursorPipelineLayout();
+
     VkPipeline createPipeline(
-      const DxvkSwapchainPipelineKey& key);
+      const DxvkSwapchainPipelineKey&   key);
 
     VkPipeline getPipeline(
-      const DxvkSwapchainPipelineKey& key);
+      const DxvkSwapchainPipelineKey&   key);
+
+    VkPipeline createCursorPipeline(
+      const DxvkCursorPipelineKey&      key);
+
+    VkPipeline getCursorPipeline(
+      const DxvkCursorPipelineKey&      key);
+
+    static bool needsComposition(
+      const Rc<DxvkImageView>&          dstView);
 
   };
   

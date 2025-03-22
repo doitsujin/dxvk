@@ -67,6 +67,9 @@ namespace dxvk {
       SetProcessDPIAware();
     }
 #endif
+
+    if (unlikely(m_d3d9Options.shaderModel == 0))
+      Logger::warn("D3D9InterfaceEx: WARNING! Fixed-function exclusive mode is enabled.");
   }
 
 
@@ -355,6 +358,15 @@ namespace dxvk {
               || pPresentationParameters    == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(DeviceType == D3DDEVTYPE_SW))
+      return D3DERR_INVALIDCALL;
+
+    // D3DDEVTYPE_REF devices can be created with D3D8, but not
+    // with D3D9, unless the Windows SDK 8.0 or later is installed.
+    // Report it unavailable, as it would be on most end-user systems.
+    if (unlikely(DeviceType == D3DDEVTYPE_REF && !m_isD3D8Compatible))
+      return D3DERR_NOTAVAILABLE;
+
     // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
     // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
     if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
@@ -454,6 +466,13 @@ namespace dxvk {
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_TWO
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_THREE
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_FOUR
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
+      return D3DERR_INVALIDCALL;
+
+    // In windowed mode, only a subset of the presentation interval flags can be used.
+    if (unlikely(pPresentationParameters->Windowed
+            && !(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
+              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
               || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
       return D3DERR_INVALIDCALL;
 

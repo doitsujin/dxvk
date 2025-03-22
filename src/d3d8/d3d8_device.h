@@ -383,8 +383,6 @@ namespace dxvk {
       m_presentParams.BackBufferCount = std::max(m_presentParams.BackBufferCount, 1u);
 
       // Purge cached objects
-      // TODO: Some functions may need to be called here (e.g. SetTexture, etc.)
-      // in case Reset can be recorded by state blocks and other things.
       m_textures.fill(nullptr);
       m_streams.fill(D3D8VBO());
       m_indices = nullptr;
@@ -395,20 +393,22 @@ namespace dxvk {
       m_backBuffers.resize(m_presentParams.BackBufferCount);
 
       m_autoDepthStencil = nullptr;
+
+      m_shadowPerspectiveDivide = false;
     }
 
     inline void RecreateBackBuffersAndAutoDepthStencil() {
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         GetD3D9()->GetBackBuffer(0, i, d3d9::D3DBACKBUFFER_TYPE_MONO, &pSurface9);
-        m_backBuffers[i] = new D3D8Surface(this, std::move(pSurface9));
+        m_backBuffers[i] = new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pSurface9));
       }
 
       Com<d3d9::IDirect3DSurface9> pStencil9;
       // This call will fail if the D3D9 device is created without
       // the EnableAutoDepthStencil presentation parameter set to TRUE.
       HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
-      m_autoDepthStencil = FAILED(res) ? nullptr : new D3D8Surface(this, std::move(pStencil9));
+      m_autoDepthStencil = FAILED(res) ? nullptr : new D3D8Surface(this, D3DPOOL_DEFAULT, std::move(pStencil9));
 
       m_renderTarget = m_backBuffers[0];
       m_depthStencil = m_autoDepthStencil;
@@ -425,6 +425,18 @@ namespace dxvk {
     Com<D3D8Interface>    m_parent;
 
     D3DPRESENT_PARAMETERS m_presentParams;
+    
+    // Value of D3DRS_LINEPATTERN
+    D3DLINEPATTERN        m_linePattern   = {};
+    // Value of D3DRS_ZVISIBLE (although the RS is not supported, its value is stored)
+    DWORD                 m_zVisible      = 0;
+    // Value of D3DRS_PATCHSEGMENTS
+    float                 m_patchSegments = 1.0f;
+
+    // Controls fixed-function exclusive mode (no PS support)
+    bool                  m_isFixedFunctionOnly = false;
+
+    bool                  m_shadowPerspectiveDivide = false;
 
     D3D8StateBlock*                            m_recorder = nullptr;
     DWORD                                      m_recorderToken = 0;
@@ -437,14 +449,12 @@ namespace dxvk {
       UINT                           stride = 0;
     };
 
-    // Remember to fill() these in the constructor!
     std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
 
     Com<D3D8IndexBuffer, false>        m_indices;
     UINT                               m_baseVertexIndex = 0;
 
-    // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
     Com<D3D8Surface, false>              m_autoDepthStencil;
 

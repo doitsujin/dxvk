@@ -9,5 +9,5 @@
 	url = https://github.com/KhronosGroup/SPIRV-Headers.git
 [submodule "subprojects/libdisplay-info"]
 	path = subprojects/libdisplay-info
-	url = https://gitlab.freedesktop.org/JoshuaAshton/libdisplay-info.git
+	url = https://github.com/doitsujin/libdisplay-info.git
 	branch = windows

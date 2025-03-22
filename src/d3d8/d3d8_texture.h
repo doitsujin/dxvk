@@ -21,25 +21,25 @@ namespace dxvk {
 
     D3D8BaseTexture(
             D3D8Device*                         pDevice,
+      const D3DPOOL                             Pool,
             Com<D3D9>&&                         pBaseTexture,
             UINT                                SubresourceCount)
-        : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
+        : D3D8Resource<D3D9, D3D8> ( pDevice, Pool, std::move(pBaseTexture) ) {
       m_subresources.resize(SubresourceCount, nullptr);
     }
 
     ~D3D8BaseTexture() {
       for (size_t i = 0; i < m_subresources.size(); i++)
-        if (m_subresources[i] != nullptr)
-          m_subresources[i] = nullptr;
+        m_subresources[i] = nullptr;
     }
 
     virtual IUnknown* GetInterface(REFIID riid) final override try {
       return D3D8Resource<D3D9, D3D8>::GetInterface(riid);
-    } catch (HRESULT err) {
+    } catch (const DxvkError& e) {
       if (riid == __uuidof(IDirect3DBaseTexture8))
         return this;
 
-      throw err;
+      throw e;
     }
 
     void STDMETHODCALLTYPE PreLoad() final {
@@ -74,9 +74,10 @@ namespace dxvk {
           Com<SubresourceType9> subresource = LookupSubresource(Index);
 
           // Cache the subresource
-          m_subresources[Index] = new SubresourceType(this->m_parent, this, std::move(subresource));
-        } catch (HRESULT res) {
-          return res;
+          m_subresources[Index] = new SubresourceType(this->m_parent, this->m_pool, this, std::move(subresource));
+        } catch (const DxvkError& e) {
+          Logger::warn(e.message());
+          return D3DERR_INVALIDCALL;
         }
       }
 
@@ -96,8 +97,10 @@ namespace dxvk {
       } else if constexpr (std::is_same_v<D3D8, IDirect3DCubeTexture8>) {
         res = this->GetD3D9()->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACES(Index % CUBE_FACES), Index / CUBE_FACES, &ptr);
       }
+
       if (FAILED(res))
-        throw res;
+        throw DxvkError(str::format("D3D8BaseTexture::GetSubresource: Failed to retrieve index ", Index));
+
       return ptr;
     }
 
@@ -112,6 +115,7 @@ namespace dxvk {
 
     D3D8Texture2D(
             D3D8Device*                    pDevice,
+      const D3DPOOL                        Pool,
             Com<d3d9::IDirect3DTexture9>&& pTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
@@ -139,6 +143,7 @@ namespace dxvk {
 
     D3D8Texture3D(
             D3D8Device*                           pDevice,
+      const D3DPOOL                               Pool,
             Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
@@ -166,6 +171,7 @@ namespace dxvk {
 
     D3D8TextureCube(
             D3D8Device*                         pDevice,
+      const D3DPOOL                             Pool,
             Com<d3d9::IDirect3DCubeTexture9>&&  pTexture);
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;

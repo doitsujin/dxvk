@@ -19,16 +19,13 @@ namespace dxvk {
 
     // Max supported shader model is PS 1.4 and VS 1.1
     pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 1);
-    pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
-
-    // This was removed by D3D9. We can probably render windowed.
-    pCaps8->Caps2       |= D3DCAPS2_CANRENDERWINDOWED;
-
-    // Replaced by D3DPRASTERCAPS_DEPTHBIAS in D3D9
-    pCaps8->RasterCaps  |= D3DPRASTERCAPS_ZBIAS;
-
+    // Late fixed-function capable hardware will advertise VS 1.1
+    // support, but will not advertise any support for PS
+    if (likely(caps9.PixelShaderVersion != D3DPS_VERSION(0, 0)))
+      pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
 
     // Remove D3D9-specific caps:
+
     pCaps8->Caps2                 &= ~D3DCAPS2_CANAUTOGENMIPMAP;
 
     pCaps8->Caps3                 &= ~D3DCAPS3_LINEAR_TO_SRGB_PRESENTATION
@@ -58,6 +55,34 @@ namespace dxvk {
     pCaps8->StencilCaps           &= ~D3DSTENCILCAPS_TWOSIDED;
 
     pCaps8->VertexProcessingCaps  &= ~D3DVTXPCAPS_TEXGEN_SPHEREMAP;
+
+    // Add D3D8-specific caps:
+
+    // Removed in D3D9, since it can always render windowed
+    pCaps8->Caps2                     |= D3DCAPS2_CANRENDERWINDOWED
+    // A remnant from a bygone age of ddraw interop most likely
+    /*                                 | D3DCAPS2_NO2DDURING3DSCENE*/;
+
+    // Used in conjunction with D3DPRASTERCAPS_PAT, but generally unadvertised
+    /*pCaps8->PrimitiveMiscCaps       |= D3DPMISCCAPS_LINEPATTERNREP;*/
+
+    // Replaced by D3DPRASTERCAPS_DEPTHBIAS in D3D9
+    pCaps8->RasterCaps                |= D3DPRASTERCAPS_ZBIAS
+    // Advertised on Nvidia cards by modern drivers, but not on AMD or Intel
+    /*                                 | D3DPRASTERCAPS_ANTIALIASEDGES*/
+    // Advertised on Nvidia cards, but not on AMD or Intel
+    /*                                 | D3DPRASTERCAPS_STRETCHBLTMULTISAMPLE*/
+    // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
+    /*                                 | D3DPRASTERCAPS_PAT*/;
+
+    // MAG only filter caps, generally unsupported
+    /*pCaps8->TextureFilterCaps       |= D3DPTFILTERCAPS_MAGFAFLATCUBIC*/
+    /*                                 | D3DPTFILTERCAPS_MAGFGAUSSIANCUBIC;*/
+    /*pCaps8->CubeTextureFilterCaps    = pCaps8->TextureFilterCaps;*/
+    /*pCaps8->VolumeTextureFilterCaps  = pCaps8->TextureFilterCaps;*/
+
+    // Not advertised on any modern hardware
+    /*pCaps8->VertexProcessingCaps    |= D3DVTXPCAPS_NO_VSDT_UBYTE4;*/
   }
 
   // (9<-8) D3DD3DPRESENT_PARAMETERS: Returns D3D9's params given an input for D3D8
@@ -75,35 +100,28 @@ namespace dxvk {
     params.BackBufferCount = pParams->BackBufferCount;
 
     params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
-    params.MultiSampleQuality = 0; // (D3D8: no MultiSampleQuality), TODO: get a value for this
+    // MultiSampleQuality is only used with D3DMULTISAMPLE_NONMASKABLE, which is not available in D3D8
+    params.MultiSampleQuality = 0;
 
+    // If an application passes multiple D3DPRESENT_INTERVAL flags, this will be
+    // validated appropriately by D3D9. Simply copy the values here.
     UINT PresentationInterval = pParams->FullScreen_PresentationInterval;
 
     if (pParams->Windowed) {
-
-      if (unlikely(PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT)) {
-        // TODO: what does dx8 do if windowed app sets FullScreen_PresentationInterval?
-        Logger::warn(str::format(
-          "D3D8: Application is windowed yet requested FullScreen_PresentationInterval ", PresentationInterval,
-          " (should be D3DPRESENT_INTERVAL_DEFAULT). This will be ignored."));
-      }
-
       // D3D8: For windowed swap chain, the back buffer is copied to the window immediately.
       PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     }
 
     D3DSWAPEFFECT SwapEffect = pParams->SwapEffect;
 
-    // D3DSWAPEFFECT_COPY_VSYNC has been removed
     if (SwapEffect == D3DSWAPEFFECT_COPY_VSYNC) {
-
+      // D3DSWAPEFFECT_COPY_VSYNC has been removed from D3D9, use D3DSWAPEFFECT_COPY
       SwapEffect = D3DSWAPEFFECT_COPY;
 
       // D3D8: In windowed mode, D3DSWAPEFFECT_COPY_VSYNC enables VSYNC.
       // In fullscreen, D3DPRESENT_INTERVAL_IMMEDIATE is meaningless.
-      if (pParams->Windowed || (PresentationInterval & D3DPRESENT_INTERVAL_IMMEDIATE) != 0) {
+      if (pParams->Windowed || PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE) {
         PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-        // TODO: what does dx8 do if multiple D3DPRESENT_INTERVAL flags are set?
       }
     }
 

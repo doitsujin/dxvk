@@ -293,6 +293,7 @@ namespace dxvk {
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
       info.inputMask = m_inputMask;
+      info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
       return new DxvkShader(info, m_module.compile());
     }

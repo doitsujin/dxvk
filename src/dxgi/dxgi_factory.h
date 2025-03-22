@@ -201,7 +201,7 @@ namespace dxvk {
     BOOL             m_monitorFallback;
       
 
-    HRESULT STDMETHODCALLTYPE CreateSwapChainForHwndBase(
+    HRESULT STDMETHODCALLTYPE CreateSwapChainBase(
             IUnknown*             pDevice,
             HWND                  hWnd,
       const DXGI_SWAP_CHAIN_DESC1* pDesc,

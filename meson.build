@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.5.3', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'b_vscrt=static_from_buildtype', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : '2.6.0', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'b_vscrt=static_from_buildtype', 'warning_level=2' ])
 
 pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
@@ -80,11 +80,15 @@ if platform == 'windows'
       ]
     endif
 
-    # Enable stdcall fixup on 32-bit
     if cpu_family == 'x86'
+      # Enable stdcall fixup on 32-bit
       link_args += [
         '-Wl,--enable-stdcall-fixup',
         '-Wl,--kill-at',
+      ]
+      # Fix stack alignment issues with mingw on 32-bit
+      compiler_args += [
+        '-mpreferred-stack-boundary=2'
       ]
     endif
   else

@@ -137,11 +137,9 @@ namespace dxvk {
       return m_isD3D8Compatible;
     }
 
-    void SetD3D8CompatibilityMode(bool compatMode) {
-      if (compatMode)
-        Logger::info("The D3D9 interface is now operating in D3D8 compatibility mode.");
-
-      m_isD3D8Compatible = compatMode;
+    void EnableD3D8CompatibilityMode() {
+      m_isD3D8Compatible = true;
+      Logger::info("The D3D9 interface is now operating in D3D8 compatibility mode.");
     }
 
     Rc<DxvkInstance> GetInstance() { return m_instance; }

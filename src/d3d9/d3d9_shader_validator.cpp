@@ -156,8 +156,8 @@ namespace dxvk {
         "IDirect3DShaderValidator9::Instruction: Bad version token. It indicates neither a pixel shader nor a vertex shader.");
     }
 
-    m_majorVersion = (headerToken >> 8) & 0xff;
-    m_minorVersion = headerToken & 0xff;
+    m_majorVersion = D3DSHADER_VERSION_MAJOR(headerToken);
+    m_minorVersion = D3DSHADER_VERSION_MINOR(headerToken);
     m_ctx   = std::make_unique<DxsoDecodeContext>(DxsoProgramInfo{ programType, m_minorVersion, m_majorVersion });
     m_state = D3D9ShaderValidatorState::ValidatingInstructions;
 
@@ -190,7 +190,7 @@ namespace dxvk {
       const DWORD*                     pInstr,
             DWORD                      InstrLength,
             D3D9ShaderValidatorMessage MessageID,
-            std::string                Message) {
+      const std::string&               Message) {
     if (m_callback)
       m_callback(pFile, Line, Unknown, MessageID, Message.c_str(), m_userData);
 

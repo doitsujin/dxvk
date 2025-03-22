@@ -98,16 +98,18 @@ namespace dxvk {
     }
 
     void InjectCsChunk(
+            DxvkCsQueue                 Queue,
             DxvkCsChunkRef&&            Chunk,
             bool                        Synchronize);
 
     template<typename Fn>
     void InjectCs(
+            DxvkCsQueue                 Queue,
             Fn&&                        Command) {
       auto chunk = AllocCsChunk();
       chunk->push(std::move(Command));
 
-      InjectCsChunk(std::move(chunk), false);
+      InjectCsChunk(Queue, std::move(chunk), false);
     }
 
   private:
@@ -129,10 +131,14 @@ namespace dxvk {
     VkDeviceSize            m_discardMemoryCounter = 0u;
     VkDeviceSize            m_discardMemoryOnFlush = 0u;
 
+    bool                    m_hasPendingMsaaResolve = false;
+
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
     Com<D3D11DeviceContextState, false> m_stateObject;
+
+    std::string             m_flushReason;
 
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
@@ -169,7 +175,8 @@ namespace dxvk {
 
     void SynchronizeDevice();
 
-    void EndFrame();
+    void EndFrame(
+            Rc<DxvkLatencyTracker>      LatencyTracker);
     
     bool WaitForResource(
       const DxvkPagedResource&          Resource,
@@ -190,6 +197,8 @@ namespace dxvk {
 
     uint64_t GetPendingCsChunks();
 
+    void ApplyDirtyNullBindings();
+
     void ConsiderFlush(
             GpuFlushType                FlushType);
 
@@ -204,6 +213,10 @@ namespace dxvk {
             VkDeviceSize                Size);
 
     DxvkStagingBufferStats GetStagingMemoryStatistics();
+
+    static GpuFlushType GetMaxFlushType(
+            D3D11Device*    pParent,
+      const Rc<DxvkDevice>& Device);
 
   };
   

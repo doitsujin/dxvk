@@ -37,7 +37,9 @@ namespace dxvk {
         && viewType        == other.viewType
         && stage           == other.stage
         && access          == other.access
-        && uboSet          == other.uboSet;
+        && accessOp        == other.accessOp
+        && uboSet          == other.uboSet
+        && isMultisampled  == other.isMultisampled;
   }
 
 
@@ -48,7 +50,9 @@ namespace dxvk {
     hash.add(uint32_t(viewType));
     hash.add(uint32_t(stage));
     hash.add(access);
+    hash.add(uint32_t(accessOp));
     hash.add(uint32_t(uboSet));
+    hash.add(uint32_t(isMultisampled));
     return hash;
   }
 
@@ -205,7 +209,7 @@ namespace dxvk {
 
 
   DxvkBindingLayout::DxvkBindingLayout(VkShaderStageFlags stages)
-  : m_pushConst { 0, 0, 0 }, m_pushConstStages(0), m_stages(stages) {
+  : m_pushConst { 0, 0, 0 }, m_pushConstStages(0), m_stages(stages), m_hazards(0u) {
 
   }
 
@@ -236,6 +240,9 @@ namespace dxvk {
   void DxvkBindingLayout::addBinding(const DxvkBindingInfo& binding) {
     uint32_t set = binding.computeSetIndex();
     m_bindings[set].addBinding(binding);
+
+    if ((binding.access & VK_ACCESS_2_SHADER_WRITE_BIT) && binding.accessOp == DxvkAccessOp::None)
+      m_hazards |= 1u << set;
   }
 
 
@@ -260,6 +267,8 @@ namespace dxvk {
 
     addPushConstantRange(layout.m_pushConst);
     m_pushConstStages |= layout.m_pushConstStages;
+
+    m_hazards |= layout.m_hazards;
   }
 
 

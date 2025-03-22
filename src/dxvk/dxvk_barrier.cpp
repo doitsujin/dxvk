@@ -22,17 +22,31 @@ namespace dxvk {
     const DxvkAddressRange&           range,
           DxvkAccess                  accessType) const {
     uint32_t rootIndex = computeRootIndex(range, accessType);
-    return findNode(range, rootIndex);
+    uint32_t nodeIndex = findNode(range, rootIndex);
+
+    if (likely(!nodeIndex || range.accessOp == DxvkAccessOp::None))
+      return nodeIndex;
+
+    // If we are checking for a specific order-invariant store
+    // op, the op must have been the only op used to access the
+    // resource, and the tracked range must cover the requested
+    // range in its entirety so we can rule out that other parts
+    // of the resource have been accessed in a different way.
+    const auto& node = m_nodes[nodeIndex];
+
+    if (node.addressRange.accessOp != range.accessOp)
+      return true;
+
+    return !node.addressRange.contains(range);
   }
 
 
   void DxvkBarrierTracker::insertRange(
     const DxvkAddressRange&           range,
           DxvkAccess                  accessType) {
-    uint32_t rootIndex = computeRootIndex(range, accessType);
-
     // If we can just insert the node with no conflicts,
     // we don't have to do anything.
+    uint32_t rootIndex = computeRootIndex(range, accessType);
     uint32_t nodeIndex = insertNode(range, rootIndex);
 
     if (likely(!nodeIndex))
@@ -40,7 +54,11 @@ namespace dxvk {
 
     // If there's an existing node and it contains the entire
     // range we want to add already, also don't do anything.
+    // If there are conflicting access ops, reset it.
     auto& node = m_nodes[nodeIndex];
+
+    if (node.addressRange.accessOp != range.accessOp)
+      node.addressRange.accessOp = DxvkAccessOp::None;
 
     if (node.addressRange.contains(range))
       return;
@@ -81,6 +99,9 @@ namespace dxvk {
       auto& node = m_nodes[nodeIndex];
       mergedRange.rangeStart = std::min(mergedRange.rangeStart, node.addressRange.rangeStart);
       mergedRange.rangeEnd = std::max(mergedRange.rangeEnd, node.addressRange.rangeEnd);
+
+      if (mergedRange.accessOp != node.addressRange.accessOp)
+        mergedRange.accessOp = DxvkAccessOp::None;
 
       removeNode(nodeIndex, rootIndex);
 

@@ -31,7 +31,7 @@ namespace dxvk {
      */
     DxvkShaderKey(
             VkShaderStageFlagBits stage,
-            Sha1Hash              hash)
+      const Sha1Hash&             hash)
     : m_type(stage), m_sha1(hash) { }
     
     /**

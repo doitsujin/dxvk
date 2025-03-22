@@ -20,7 +20,7 @@ namespace dxvk::hud {
     Hud(const Rc<DxvkDevice>& device);
     
     ~Hud();
-    
+
     /**
      * \brief Update HUD
      * 
@@ -35,12 +35,18 @@ namespace dxvk::hud {
      * Renders the HUD to the given context.
      * \param [in] ctx Context objects for rendering
      * \param [in] dstView Swap chain image view
-     * \param [in] dstColorSpace Color space
      */
     void render(
       const DxvkContextObjects& ctx,
-      const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace);
+      const Rc<DxvkImageView>&  dstView);
+
+    /**
+     * \brief Checks whether the HUD is empty
+     * \returns \c true if the HUD is empty
+     */
+    bool empty() const {
+      return m_hudItems.empty();
+    }
 
     /**
      * \brief Adds a HUD item if enabled
@@ -50,8 +56,8 @@ namespace dxvk::hud {
      * \param [in] args Constructor arguments
      */
     template<typename T, typename... Args>
-    void addItem(const char* name, int32_t at, Args... args) {
-      m_hudItems.add<T>(name, at, std::forward<Args>(args)...);
+    Rc<T> addItem(const char* name, int32_t at, Args... args) {
+      return m_hudItems.add<T>(name, at, std::forward<Args>(args)...);
     }
     
     /**

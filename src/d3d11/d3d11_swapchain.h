@@ -4,6 +4,7 @@
 
 #include "../dxvk/hud/dxvk_hud.h"
 
+#include "../dxvk/dxvk_latency.h"
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
 #include "../util/sync/sync_signal.h"
@@ -107,13 +108,9 @@ namespace dxvk {
     Rc<Presenter>             m_presenter;
 
     Rc<DxvkSwapchainBlitter>  m_blitter;
-
-    Rc<hud::Hud>              m_hud;
+    Rc<DxvkLatencyTracker>    m_latency;
 
     small_vector<Com<D3D11Texture2D, false>, 4> m_backBuffers;
-    DxvkSubmitStatus          m_presentStatus;
-
-    std::vector<Rc<DxvkImageView>> m_imageViews;
 
     uint64_t                  m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
     uint32_t                  m_frameLatency = DefaultFrameLatency;
@@ -121,17 +118,14 @@ namespace dxvk {
     HANDLE                    m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence>   m_frameLatencySignal;
 
-    bool                      m_dirty = true;
-
-    VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-
-    std::optional<VkHdrMetadataEXT> m_hdrMetadata;
-    bool                      m_dirtyHdrMetadata = true;
+    VkColorSpaceKHR           m_colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     double                    m_targetFrameRate = 0.0;
 
     dxvk::mutex               m_frameStatisticsLock;
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
+
+    Rc<hud::HudLatencyItem>   m_latencyHud;
 
     Rc<DxvkImageView> GetBackBufferView();
 
@@ -139,37 +133,26 @@ namespace dxvk {
 
     void RotateBackBuffers(D3D11ImmediateContext* ctx);
 
-    void SynchronizePresent();
-
-    void RecreateSwapChain();
-
     void CreateFrameLatencyEvent();
 
     void CreatePresenter();
-
-    VkResult CreateSurface(VkSurfaceKHR* pSurface);
-
-    void CreateRenderTargetViews();
 
     void CreateBackBuffers();
 
     void CreateBlitter();
 
-    void CreateHud();
-
     void DestroyFrameLatencyEvent();
+
+    void DestroyLatencyTracker();
 
     void SyncFrameLatency();
 
     uint32_t GetActualFrameLatency();
-    
-    uint32_t PickFormats(
-            DXGI_FORMAT               Format,
-            VkSurfaceFormatKHR*       pDstFormats);
-    
-    uint32_t PickImageCount(
-            UINT                      Preferred);
-    
+
+    VkSurfaceFormatKHR GetSurfaceFormat(DXGI_FORMAT Format);
+
+    Com<D3D11ReflexDevice> GetReflexDevice();
+
     std::string GetApiName() const;
 
   };

@@ -364,9 +364,9 @@ namespace dxvk {
      * \brief Retrieves resource ID for barrier tracking
      * \returns Unique resource ID
      */
-    uint64_t getResourceId() const {
+    bit::uint48_t getResourceId() const {
       constexpr static size_t Align = alignof(DxvkResourceAllocation);
-      return reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align);
+      return bit::uint48_t(reinterpret_cast<uintptr_t>(m_storage.ptr()) / (Align & -Align));
     }
 
     /**
@@ -417,6 +417,14 @@ namespace dxvk {
      * \param [in] name New debug name
      */
     void setDebugName(const char* name);
+
+    /**
+     * \brief Retrieves debug name
+     * \returns Debug name
+     */
+    const char* getDebugName() const {
+      return m_debugName.c_str();
+    }
 
   private:
 

@@ -12,6 +12,48 @@ namespace dxvk {
   class DxvkDevice;
 
   /**
+   * \brief Order-invariant atomic access operation
+   *
+   * Information used to optimize barriers when a resource
+   * is accessed exlusively via order-invariant stores.
+   */
+  struct DxvkAccessOp {
+    enum OpType : uint16_t {
+      None      = 0x0u,
+      Or        = 0x1u,
+      And       = 0x2u,
+      Xor       = 0x3u,
+      Add       = 0x4u,
+      IMin      = 0x5u,
+      IMax      = 0x6u,
+      UMin      = 0x7u,
+      UMax      = 0x8u,
+
+      StoreF    = 0xdu,
+      StoreUi   = 0xeu,
+      StoreSi   = 0xfu,
+    };
+
+    DxvkAccessOp() = default;
+    DxvkAccessOp(OpType t)
+    : op(uint16_t(t)) { }
+
+    DxvkAccessOp(OpType t, uint16_t constant)
+    : op(uint16_t(t) | (constant << 4u)) { }
+
+    uint16_t op = 0u;
+
+    bool operator == (const DxvkAccessOp& t) const { return op == t.op; }
+    bool operator != (const DxvkAccessOp& t) const { return op != t.op; }
+
+    template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+    explicit operator T() const { return op; }
+  };
+
+  static_assert(sizeof(DxvkAccessOp) == sizeof(uint16_t));
+
+
+  /**
    * \brief Descriptor set indices
    */
   struct DxvkDescriptorSets {
@@ -31,12 +73,14 @@ namespace dxvk {
    * a given shader, or for the whole pipeline.
    */
   struct DxvkBindingInfo {
-    VkDescriptorType      descriptorType;   ///< Vulkan descriptor type
-    uint32_t              resourceBinding;  ///< API binding slot for the resource
-    VkImageViewType       viewType;         ///< Image view type
-    VkShaderStageFlagBits stage;            ///< Shader stage
-    VkAccessFlags         access;           ///< Access mask for the resource
-    VkBool32              uboSet;           ///< Whether to include this in the UBO set
+    VkDescriptorType      descriptorType  = VK_DESCRIPTOR_TYPE_MAX_ENUM;        ///< Vulkan descriptor type
+    uint32_t              resourceBinding = 0u;                                 ///< API binding slot for the resource
+    VkImageViewType       viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;        ///< Image view type
+    VkShaderStageFlagBits stage           = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; ///< Shader stage
+    VkAccessFlags         access          = 0u;                                 ///< Access mask for the resource
+    DxvkAccessOp          accessOp        = DxvkAccessOp::None;                 ///< Order-invariant store type, if any
+    bool                  uboSet          = false;                              ///< Whether to include this in the UBO set
+    bool                  isMultisampled  = false;                              ///< Multisampled binding
 
     /**
      * \brief Computes descriptor set index for the given binding
@@ -316,6 +360,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries hazardous sets
+     *
+     * \returns Mask of sets with storage descriptors
+     *    that are not accessed in an order-invariant way.
+     */
+    uint32_t getHazardousSetMask() const {
+      return m_hazards;
+    }
+
+    /**
      * \brief Queries defined descriptor set layouts
      *
      * Any set layout not included in this must be null.
@@ -372,6 +426,7 @@ namespace dxvk {
     VkPushConstantRange                                       m_pushConst;
     VkShaderStageFlags                                        m_pushConstStages;
     VkShaderStageFlags                                        m_stages;
+    uint32_t                                                  m_hazards;
 
   };
 

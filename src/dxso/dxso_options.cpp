@@ -20,8 +20,6 @@ namespace dxvk {
     strictPow            = options.strictPow;
     d3d9FloatEmulation   = options.d3d9FloatEmulation;
 
-    shaderModel          = options.shaderModel;
-
     invariantPosition    = options.invariantPosition;
 
     forceSamplerTypeSpecConstants = options.forceSamplerTypeSpecConstants;

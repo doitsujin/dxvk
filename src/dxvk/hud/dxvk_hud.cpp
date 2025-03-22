@@ -41,13 +41,16 @@ namespace dxvk::hud {
 
   void Hud::render(
     const DxvkContextObjects& ctx,
-    const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace) {
-    auto key = m_renderer.getPipelineKey(dstView, dstColorSpace);
+    const Rc<DxvkImageView>&  dstView) {
+    if (empty())
+      return;
 
-    m_renderer.beginFrame(ctx, dstView, dstColorSpace, m_options);
+    auto key = m_renderer.getPipelineKey(dstView);
+
+    m_renderer.beginFrame(ctx, dstView, m_options);
     m_hudItems.render(ctx, key, m_options, m_renderer);
-    m_renderer.flushDraws(ctx, dstView, dstColorSpace, m_options);
+    m_renderer.flushDraws(ctx, dstView, m_options);
+    m_renderer.endFrame(ctx);
   }
 
 

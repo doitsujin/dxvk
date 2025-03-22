@@ -7,9 +7,11 @@ namespace dxvk {
 
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
-    const D3D9_COMMON_TEXTURE_DESC* pDesc)
+    const D3D9_COMMON_TEXTURE_DESC* pDesc,
+    const bool                      Extended)
     : D3D9VolumeBase(
         pDevice,
+        Extended,
         new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr ),
         0, 0,
         nullptr,
@@ -18,12 +20,14 @@ namespace dxvk {
 
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
+    const bool                      Extended,
           D3D9CommonTexture*        pTexture,
           UINT                      Face,
           UINT                      MipLevel,
           IDirect3DBaseTexture9*    pContainer)
     : D3D9VolumeBase(
         pDevice,
+        Extended,
         pTexture,
         Face, MipLevel,
         pContainer,
@@ -115,9 +119,9 @@ namespace dxvk {
         || static_cast<LONG>(pBox->Bottom) - static_cast<LONG>(pBox->Top)   <= 0
         || static_cast<LONG>(pBox->Back)   - static_cast<LONG>(pBox->Front) <= 0
       // Exceeding surface dimensions
-        || pBox->Right  > desc.Width
-        || pBox->Bottom > desc.Height
-        || pBox->Back   > desc.Depth)
+        || pBox->Right  > std::max(1u, desc.Width  >> m_mipLevel)
+        || pBox->Bottom > std::max(1u, desc.Height >> m_mipLevel)
+        || pBox->Back   > std::max(1u, desc.Depth  >> m_mipLevel))
         return D3DERR_INVALIDCALL;
     }
 

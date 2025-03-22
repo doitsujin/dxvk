@@ -28,10 +28,6 @@ namespace dxvk {
     return m_device->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8Bridge::SetAPIName(const char* name) {
-    m_device->m_implicitSwapchain->SetApiName(name);
-  }
-
   HRESULT DxvkD3D8Bridge::UpdateTextureFromBuffer(
         IDirect3DSurface9*  pDestSurface,
         IDirect3DSurface9*  pSrcSurface,
@@ -45,26 +41,38 @@ namespace dxvk {
     if (unlikely(dst == nullptr || src == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // CopyRects will not pass a null pSrcRect, but check anyway
+    if (unlikely(pSrcRect == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // validate dimensions to ensure we calculate a meaningful srcOffset & extent
+    if (unlikely(pSrcRect->left < 0
+              || pSrcRect->top  < 0
+              || pSrcRect->right  <= pSrcRect->left
+              || pSrcRect->bottom <= pSrcRect->top))
+      return D3DERR_INVALIDCALL;
+
+    // CopyRects will not pass a null pDestPoint, but check anyway
+    if (unlikely(pDestPoint == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // validate dimensions to ensure we caculate a meaningful dstOffset
+    if (unlikely(pDestPoint->x < 0
+              || pDestPoint->y < 0))
+      return D3DERR_INVALIDCALL;
+
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
-    VkOffset3D srcOffset = { 0u, 0u, 0u };
-    VkOffset3D dstOffset = { 0u, 0u, 0u };
-    VkExtent3D texLevelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent3D extent = texLevelExtent;
+    VkOffset3D srcOffset = { pSrcRect->left,
+                             pSrcRect->top,
+                             0u };
 
-    srcOffset = { pSrcRect->left,
-                  pSrcRect->top,
-                  0u };
+    VkExtent3D extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
 
-    extent = { uint32_t(pSrcRect->right - pSrcRect->left), uint32_t(pSrcRect->bottom - pSrcRect->top), 1 };
-
-    // TODO: Validate extents like in D3D9DeviceEx::UpdateSurface
-
-    dstOffset = { pDestPoint->x,
-                  pDestPoint->y,
-                  0u };
-
+    VkOffset3D dstOffset = { pDestPoint->x,
+                             pDestPoint->y,
+                             0u };
 
     m_device->UpdateTextureFromBuffer(
       srcTextureInfo, dstTextureInfo,
@@ -101,8 +109,8 @@ namespace dxvk {
     return m_interface->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8InterfaceBridge::SetD3D8CompatibilityMode(const bool compatMode) {
-    m_interface->SetD3D8CompatibilityMode(compatMode);
+  void DxvkD3D8InterfaceBridge::EnableD3D8CompatibilityMode() {
+    m_interface->EnableD3D8CompatibilityMode();
   }
 
   const Config* DxvkD3D8InterfaceBridge::GetConfig() const {

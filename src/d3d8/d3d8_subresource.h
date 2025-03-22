@@ -16,13 +16,11 @@ namespace dxvk {
 
     D3D8Subresource(
             D3D8Device*             pDevice,
+      const D3DPOOL                 Pool,
             Com<D3D9>&&             Object,
             IDirect3DBaseTexture8*  pBaseTexture)
-    : Resource(pDevice, std::move(Object)),
+    : Resource(pDevice, Pool, std::move(Object)),
       m_container(pBaseTexture) {
-    }
-
-    ~D3D8Subresource() {
     }
 
     // Refing subresources implicitly refs the container texture,

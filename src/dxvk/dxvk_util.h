@@ -5,6 +5,15 @@
 namespace dxvk::util {
 
   /**
+   * \brief Debug utils label type
+   */
+  enum class DxvkDebugLabelType : uint32_t {
+    External,               ///< App-provided scope
+    InternalRenderPass,     ///< Internal render pass markers
+    InternalBarrierControl, ///< Barrier control markers
+  };
+
+  /**
    * \brief Debug label wrapper
    *
    * Wrapper around a Vulkan debug label that
@@ -14,12 +23,14 @@ namespace dxvk::util {
 
   public:
 
-    DxvkDebugLabel() = default;
-
-    DxvkDebugLabel(const VkDebugUtilsLabelEXT& label)
-    : m_text(label.pLabelName ? label.pLabelName : "") {
+    DxvkDebugLabel(const VkDebugUtilsLabelEXT& label, DxvkDebugLabelType type)
+    : m_text(label.pLabelName ? label.pLabelName : ""), m_type(type) {
       for (uint32_t i = 0; i < m_color.size(); i++)
         m_color[i] = label.color[i];
+    }
+
+    DxvkDebugLabelType type() const {
+      return m_type;
     }
 
     VkDebugUtilsLabelEXT get() const {
@@ -34,6 +45,7 @@ namespace dxvk::util {
 
     std::string           m_text;
     std::array<float, 4>  m_color = { };
+    DxvkDebugLabelType    m_type;
 
   };
 

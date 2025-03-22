@@ -481,7 +481,7 @@ namespace dxvk {
     std::ifstream ifile = openCacheFileForRead();
 
     if (!ifile) {
-      Logger::warn("DXVK: No state cache file found");
+      Logger::debug("DXVK: No state cache file found");
       return true;
     }
 
@@ -504,7 +504,7 @@ namespace dxvk {
 
     // Notify user about format conversion
     if (curHeader.version != newHeader.version)
-      Logger::warn(str::format("DXVK: Updating state cache version to v", newHeader.version));
+      Logger::info(str::format("DXVK: Updating state cache version to v", newHeader.version));
 
     // Read actual cache entries from the file.
     // If we encounter invalid entries, we should
@@ -880,7 +880,7 @@ namespace dxvk {
       return file;
 
     if (recreate) {
-      Logger::warn("DXVK: Creating new state cache file");
+      Logger::info("DXVK: Creating new state cache file");
 
       // Write header with the current version number
       DxvkStateCacheHeader header;

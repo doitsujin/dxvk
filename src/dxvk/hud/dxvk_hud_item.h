@@ -83,6 +83,14 @@ namespace dxvk::hud {
             HudRenderer&        renderer);
 
     /**
+     * \brief Checks whether the item set is empty
+     * \returns \c true if there are no items
+     */
+    bool empty() const {
+      return m_items.empty();
+    }
+
+    /**
      * \brief Creates a HUD item if enabled
      *
      * \tparam T The HUD item type
@@ -91,7 +99,7 @@ namespace dxvk::hud {
      * \param [in] args Constructor arguments
      */
     template<typename T, typename... Args>
-    void add(const char* name, int32_t at, Args... args) {
+    Rc<T> add(const char* name, int32_t at, Args... args) {
       bool enable = m_enableFull;
 
       if (!enable) {
@@ -102,10 +110,14 @@ namespace dxvk::hud {
       if (at < 0 || at > int32_t(m_items.size()))
         at = m_items.size();
 
+      Rc<T> item;
+
       if (enable) {
-        m_items.insert(m_items.begin() + at,
-          new T(std::forward<Args>(args)...));
+        item = new T(std::forward<Args>(args)...);
+        m_items.insert(m_items.begin() + at, item);
       }
+
+      return item;
     }
 
     template<typename T>
@@ -168,7 +180,8 @@ namespace dxvk::hud {
 
   private:
 
-    std::string m_api;
+    sync::Spinlock  m_mutex;
+    std::string     m_api;
 
   };
 
@@ -409,10 +422,11 @@ namespace dxvk::hud {
 
     DxvkStatCounters  m_prevCounters;
 
-    uint64_t          m_gpCount = 0;
-    uint64_t          m_cpCount = 0;
-    uint64_t          m_rpCount = 0;
-    uint64_t          m_pbCount = 0;
+    uint64_t          m_drawCallCount   = 0;
+    uint64_t          m_drawCount       = 0;
+    uint64_t          m_dispatchCount   = 0;
+    uint64_t          m_renderPassCount = 0;
+    uint64_t          m_barrierCount    = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
@@ -631,14 +645,18 @@ namespace dxvk::hud {
     uint64_t m_prevCsSyncCount  = 0;
     uint64_t m_prevCsSyncTicks  = 0;
     uint64_t m_prevCsChunks     = 0;
+    uint64_t m_prevCsIdleTicks = 0;
 
     uint64_t m_maxCsSyncCount   = 0;
     uint64_t m_maxCsSyncTicks   = 0;
+
+    uint64_t m_diffCsIdleTicks = 0;
 
     uint64_t m_updateCount      = 0;
 
     std::string m_csSyncString;
     std::string m_csChunkString;
+    std::string m_csLoadString;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
@@ -716,6 +734,48 @@ namespace dxvk::hud {
     dxvk::high_resolution_clock::time_point m_timeDone = dxvk::high_resolution_clock::now();
 
     uint32_t computePercentage() const;
+
+  };
+
+
+  /**
+   * \brief Frame latency item
+   */
+  class HudLatencyItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+
+    constexpr static uint32_t MaxInvalidUpdates = 20u;
+  public:
+
+    HudLatencyItem();
+
+    ~HudLatencyItem();
+
+    void accumulateStats(const DxvkLatencyStats& stats);
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+      const DxvkContextObjects& ctx,
+      const HudPipelineKey&     key,
+      const HudOptions&         options,
+            HudRenderer&        renderer,
+            HudPos              position);
+
+  private:
+
+    sync::Spinlock      m_mutex;
+
+    DxvkLatencyStats    m_accumStats = { };
+    uint32_t            m_accumFrames = 0u;
+
+    uint32_t            m_invalidUpdates = MaxInvalidUpdates;
+
+    std::string         m_latencyString;
+    std::string         m_sleepString;
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
 
   };
 

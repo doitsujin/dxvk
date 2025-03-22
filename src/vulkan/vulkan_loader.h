@@ -405,6 +405,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkSetDeviceMemoryPriorityEXT);
     #endif
 
+    #ifdef VK_EXT_multi_draw
+    VULKAN_FN(vkCmdDrawMultiEXT);
+    VULKAN_FN(vkCmdDrawMultiIndexedEXT);
+    #endif
+
     #ifdef VK_EXT_shader_module_identifier
     VULKAN_FN(vkGetShaderModuleCreateInfoIdentifierEXT);
     VULKAN_FN(vkGetShaderModuleIdentifierEXT);
@@ -457,6 +462,14 @@ namespace dxvk::vk {
     // Wine additions to actually use this extension.
     VULKAN_FN(wine_vkAcquireKeyedMutex);
     VULKAN_FN(wine_vkReleaseKeyedMutex);
+    #endif
+
+    #ifdef VK_NV_low_latency2
+    VULKAN_FN(vkSetLatencySleepModeNV);
+    VULKAN_FN(vkLatencySleepNV);
+    VULKAN_FN(vkSetLatencyMarkerNV);
+    VULKAN_FN(vkGetLatencyTimingsNV);
+    VULKAN_FN(vkQueueNotifyOutOfBandNV);
     #endif
   };
   

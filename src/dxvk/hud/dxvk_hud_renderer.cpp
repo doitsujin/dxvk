@@ -57,10 +57,9 @@ namespace dxvk::hud {
   void HudRenderer::beginFrame(
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace,
     const HudOptions&         options) {
-    if (unlikely(m_device->isDebugEnabled())) {
-      ctx.cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
+      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xf0c0dc, "HUD"));
     }
 
@@ -92,6 +91,13 @@ namespace dxvk::hud {
   }
   
   
+  void HudRenderer::endFrame(
+    const DxvkContextObjects& ctx) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
+      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+  }
+
+
   void HudRenderer::drawText(
           uint32_t            size,
           HudPos              pos,
@@ -116,7 +122,6 @@ namespace dxvk::hud {
   void HudRenderer::flushDraws(
     const DxvkContextObjects& ctx,
     const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace,
     const HudOptions&         options) {
     if (m_textDraws.empty())
       return;
@@ -192,7 +197,7 @@ namespace dxvk::hud {
     VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
     VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
 
-    drawTextIndirect(ctx, getPipelineKey(dstView, dstColorSpace),
+    drawTextIndirect(ctx, getPipelineKey(dstView),
       drawBufferDescriptor, textBufferDescriptor,
       m_textBufferView->handle(), m_textDraws.size());
 
@@ -261,11 +266,10 @@ namespace dxvk::hud {
 
 
   HudPipelineKey HudRenderer::getPipelineKey(
-    const Rc<DxvkImageView>&  dstView,
-          VkColorSpaceKHR     dstColorSpace) const {
+    const Rc<DxvkImageView>&  dstView) const {
     HudPipelineKey key;
     key.format = dstView->info().format;
-    key.colorSpace = dstColorSpace;
+    key.colorSpace = dstView->image()->info().colorSpace;
     return key;
   }
 

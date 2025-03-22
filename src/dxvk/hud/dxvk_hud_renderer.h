@@ -103,8 +103,10 @@ namespace dxvk::hud {
     void beginFrame(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace,
       const HudOptions&         options);
+
+    void endFrame(
+      const DxvkContextObjects& ctx);
 
     void drawText(
             uint32_t            size,
@@ -123,12 +125,10 @@ namespace dxvk::hud {
     void flushDraws(
       const DxvkContextObjects& ctx,
       const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace,
       const HudOptions&         options);
 
     HudPipelineKey getPipelineKey(
-      const Rc<DxvkImageView>&  dstView,
-            VkColorSpaceKHR     dstColorSpace) const;
+      const Rc<DxvkImageView>&  dstView) const;
 
     HudSpecConstants getSpecConstants(
       const HudPipelineKey&     key) const;

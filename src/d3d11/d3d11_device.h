@@ -9,6 +9,7 @@
 #include "../dxgi/dxgi_interfaces.h"
 
 #include "../dxvk/dxvk_cs.h"
+#include "../dxvk/dxvk_latency_reflex.h"
 
 #include "../d3d10/d3d10_device.h"
 
@@ -428,6 +429,13 @@ namespace dxvk {
       m_initializer->NotifyContextFlush();
     }
     
+    void InitShaderIcb(
+            D3D11CommonShader*          pShader,
+            size_t                      IcbSize,
+      const void*                       pIcbData) {
+      return m_initializer->InitShaderIcb(pShader, IcbSize, pIcbData);
+    }
+
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
     }
@@ -471,13 +479,13 @@ namespace dxvk {
       const Rc<DxvkAdapter>&  Adapter);
 
     DxvkBarrierControlFlags GetOptionsBarrierControlFlags() {
-      DxvkBarrierControlFlags barrierControl;
+      DxvkBarrierControlFlags barrierControl = 0u;
 
       if (m_d3d11Options.relaxedBarriers)
-        barrierControl.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
+        barrierControl.set(DxvkBarrierControl::ComputeAllowWriteOnlyOverlap);
 
-      if (m_d3d11Options.ignoreGraphicsBarriers)
-        barrierControl.set(DxvkBarrierControl::IgnoreGraphicsBarriers);
+      if (m_d3d11Options.relaxedBarriers || m_d3d11Options.relaxedGraphicsBarriers)
+        barrierControl.set(DxvkBarrierControl::GraphicsAllowReadWriteOverlap);
 
       return barrierControl;
     }
@@ -752,6 +760,66 @@ namespace dxvk {
 
 
   /**
+   * \brief Nvidia Reflex interop
+   */
+  class D3D11ReflexDevice : public ID3DLowLatencyDevice {
+
+  public:
+
+    D3D11ReflexDevice(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+
+    ~D3D11ReflexDevice();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                        riid,
+            void**                        ppvObject);
+
+    BOOL STDMETHODCALLTYPE SupportsLowLatency();
+
+    HRESULT STDMETHODCALLTYPE LatencySleep();
+
+    HRESULT STDMETHODCALLTYPE SetLatencySleepMode(
+            BOOL                          LowLatencyEnable,
+            BOOL                          LowLatencyBoost,
+            UINT32                        MinIntervalUs);
+
+    HRESULT STDMETHODCALLTYPE SetLatencyMarker(
+            UINT64                        FrameId,
+            UINT32                        MarkerType);
+
+    HRESULT STDMETHODCALLTYPE GetLatencyInfo(
+            D3D_LOW_LATENCY_RESULTS*      pLowLatencyResults);
+
+    void RegisterLatencyTracker(
+            Rc<DxvkLatencyTracker>          Tracker);
+
+    void UnregisterLatencyTracker(
+            Rc<DxvkLatencyTracker>          Tracker);
+
+  private:
+
+    D3D11DXGIDevice*  m_container;
+    D3D11Device*      m_device;
+
+    bool              m_reflexEnabled = false;
+
+    dxvk::mutex       m_mutex;
+
+    bool              m_enableLowLatency  = false;
+    bool              m_enableBoost       = false;
+    uint64_t          m_minIntervalUs     = 0u;
+
+    Rc<DxvkReflexLatencyTrackerNv>  m_tracker;
+  };
+
+
+  /**
    * \brief DXVK swap chain factory
    */
   class DXGIVkSwapChainFactory : public IDXGIVkSwapChainFactory {
@@ -914,6 +982,7 @@ namespace dxvk {
     D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
     D3D11VideoDevice    m_d3d11Video;
+    D3D11ReflexDevice   m_d3d11Reflex;
     D3D11on12Device     m_d3d11on12;
     DXGIDXVKDevice      m_metaDevice;
     

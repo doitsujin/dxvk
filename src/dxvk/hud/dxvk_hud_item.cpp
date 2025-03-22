@@ -112,7 +112,7 @@ namespace dxvk::hud {
 
 
   HudClientApiItem::HudClientApiItem(std::string api)
-  : m_api(api) {
+  : m_api(std::move(api)) {
 
   }
 
@@ -128,6 +128,8 @@ namespace dxvk::hud {
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
+    std::lock_guard lock(m_mutex);
+
     position.y += 16;
     renderer.drawText(16, position, 0xffffffffu, m_api);
 
@@ -277,7 +279,7 @@ namespace dxvk::hud {
           uint32_t            dataPoint,
           HudPos              minPos,
           HudPos              maxPos) {
-    if (unlikely(m_device->isDebugEnabled())) {
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
       ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
         vk::makeLabel(0xf0c0dc, "HUD frame time processing"));
     }
@@ -377,7 +379,7 @@ namespace dxvk::hud {
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
       drawInfoBuffer, textBufferView, 2u);
 
-    if (unlikely(m_device->isDebugEnabled()))
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
 
     // Make sure GPU resources are being kept alive as necessary
@@ -798,10 +800,11 @@ namespace dxvk::hud {
     auto diffCounters = counters.diff(m_prevCounters);
 
     if (elapsed.count() >= UpdateInterval) {
-      m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
-      m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
-      m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
-      m_pbCount = diffCounters.getCtr(DxvkStatCounter::CmdBarrierCount);
+      m_drawCallCount   = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
+      m_drawCount       = diffCounters.getCtr(DxvkStatCounter::CmdDrawsMerged) + m_drawCallCount;
+      m_dispatchCount   = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
+      m_renderPassCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
+      m_barrierCount    = diffCounters.getCtr(DxvkStatCounter::CmdBarrierCount);
 
       m_lastUpdate = time;
     }
@@ -816,21 +819,25 @@ namespace dxvk::hud {
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
+    std::string drawCount = m_drawCount > m_drawCallCount
+      ? str::format(m_drawCallCount, " (", m_drawCount, ")")
+      : str::format(m_drawCallCount);
+
     position.y += 16;
     renderer.drawText(16, position, 0xffff8040, "Draw calls:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_gpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, drawCount);
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Dispatch calls:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_cpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_dispatchCount));
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Render passes:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_rpCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_renderPassCount));
     
     position.y += 20;
     renderer.drawText(16, position, 0xffff8040, "Barriers:");
-    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_pbCount));
+    renderer.drawText(16, { position.x + 192, position.y }, 0xffffffffu, str::format(m_barrierCount));
     
     position.y += 8;
     return position;
@@ -1439,6 +1446,17 @@ namespace dxvk::hud {
         ? str::format(m_maxCsSyncCount, " (", (syncTicks / 10), ".", (syncTicks % 10), " ms)")
         : str::format(m_maxCsSyncCount);
 
+      uint64_t currCsIdleTicks = counters.getCtr(DxvkStatCounter::CsIdleTicks);
+
+      m_diffCsIdleTicks = currCsIdleTicks - m_prevCsIdleTicks;
+      m_prevCsIdleTicks = currCsIdleTicks;
+
+      uint64_t busyTicks = ticks > m_diffCsIdleTicks
+        ? uint64_t(ticks - m_diffCsIdleTicks)
+        : uint64_t(0);
+
+      m_csLoadString = str::format((100 * busyTicks) / ticks, "%");
+
       m_maxCsSyncCount = 0;
       m_maxCsSyncTicks = 0;
 
@@ -1461,6 +1479,10 @@ namespace dxvk::hud {
     position.y += 20;
     renderer.drawText(16, position, 0xff40ff40, "CS syncs:");
     renderer.drawText(16, { position.x + 132, position.y }, 0xffffffffu, m_csSyncString);
+
+    position.y += 20;
+    renderer.drawText(16, position, 0xff40ff40, "CS load:");
+    renderer.drawText(16, { position.x + 132, position.y }, 0xffffffffu, m_csLoadString);
 
     position.y += 8;
     return position;
@@ -1586,6 +1608,86 @@ namespace dxvk::hud {
 
     return (uint32_t(m_tasksDone - m_offset) * 100)
          / (uint32_t(m_tasksTotal - m_offset));
+  }
+
+
+
+  HudLatencyItem::HudLatencyItem() {
+
+  }
+
+
+  HudLatencyItem::~HudLatencyItem() {
+
+  }
+
+
+  void HudLatencyItem::accumulateStats(const DxvkLatencyStats& stats) {
+    std::lock_guard lock(m_mutex);
+
+    if (stats.frameLatency.count()) {
+      m_accumStats.frameLatency += stats.frameLatency;
+      m_accumStats.sleepDuration += stats.sleepDuration;
+
+      m_accumFrames += 1u;
+    } else {
+      m_accumStats = { };
+      m_accumFrames = 0u;
+    }
+  }
+
+
+  void HudLatencyItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      std::lock_guard lock(m_mutex);
+
+      if (m_accumFrames) {
+        uint32_t latency = (m_accumStats.frameLatency / m_accumFrames).count() / 100u;
+        uint32_t sleep = (m_accumStats.sleepDuration / m_accumFrames).count() / 100u;
+
+        m_latencyString = str::format(latency / 10, ".", latency % 10, " ms");
+        m_sleepString = str::format(sleep / 10, ".", sleep % 10, " ms");
+
+        m_accumStats = { };
+        m_accumFrames = 0u;
+
+        m_invalidUpdates = 0u;
+      } else {
+        m_latencyString = "--";
+        m_sleepString = "--";
+
+        if (m_invalidUpdates < MaxInvalidUpdates)
+          m_invalidUpdates += 1u;
+      }
+
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudLatencyItem::render(
+    const DxvkContextObjects& ctx,
+    const HudPipelineKey&     key,
+    const HudOptions&         options,
+          HudRenderer&        renderer,
+          HudPos              position) {
+    if (m_invalidUpdates >= MaxInvalidUpdates)
+      return position;
+
+    position.y += 16;
+
+    renderer.drawText(16, position, 0xffff60a0u, "Latency: ");
+    renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_latencyString);
+
+    position.y += 20;
+
+    renderer.drawText(16, position, 0xffff60a0u, "Sleep: ");
+    renderer.drawText(16, { position.x + 108, position.y }, 0xffffffffu, m_sleepString);
+
+    position.y += 8;
+    return position;
   }
 
 }

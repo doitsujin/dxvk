@@ -377,7 +377,7 @@ namespace dxvk {
 
   void D3D11CommonTexture::SetDebugName(const char* pName) {
     if (m_image) {
-      m_device->GetContext()->InjectCs([
+      m_device->GetContext()->InjectCs(DxvkCsQueue::HighPriority, [
         cImage  = m_image,
         cName   = std::string(pName ? pName : "")
       ] (DxvkContext* ctx) {
@@ -387,7 +387,7 @@ namespace dxvk {
 
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING) {
       for (uint32_t i = 0; i < m_buffers.size(); i++) {
-        m_device->GetContext()->InjectCs([
+        m_device->GetContext()->InjectCs(DxvkCsQueue::HighPriority, [
           cBuffer = m_buffers[i].buffer,
           cName   = std::string(pName ? pName : "")
         ] (DxvkContext* ctx) {

@@ -199,10 +199,11 @@ namespace dxvk {
     UINT  stencilRef     = D3D11_DEFAULT_STENCIL_REFERENCE;
 
     UINT  maxRtv         = 0u;
+    UINT  minUav         = D3D11_1_UAV_SLOT_COUNT;
     UINT  maxUav         = 0u;
 
     void reset() {
-      for (uint32_t i = 0; i < maxUav; i++)
+      for (uint32_t i = minUav; i < maxUav; i++)
         uavs[i] = nullptr;
 
       for (uint32_t i = 0; i < maxRtv; i++)
@@ -220,8 +221,9 @@ namespace dxvk {
       sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
       stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
 
-      maxRtv = 0;
-      maxUav = 0;
+      maxRtv = 0u;
+      minUav = D3D11_1_UAV_SLOT_COUNT;
+      maxUav = 0u;
     }
   };
   
@@ -232,12 +234,12 @@ namespace dxvk {
    * argument and draw count buffer.
    */
   struct D3D11ContextStateID {
-    Com<D3D11Buffer, false> argBuffer = nullptr;
-    Com<D3D11Buffer, false> cntBuffer = nullptr;
+    uint64_t argBufferCookie = 0u;
+    uint64_t cntBufferCookie = 0u;
 
     void reset() {
-      argBuffer = nullptr;
-      cntBuffer = nullptr;
+      argBufferCookie = 0u;
+      cntBufferCookie = 0u;
     }
   };
 
@@ -302,6 +304,32 @@ namespace dxvk {
       predicateValue = false;
     }
   };
+
+
+  /**
+   * \brief Lazy binding state
+   *
+   * Keeps track of what state needs to be
+   * re-applied to the context.
+   */
+  struct D3D11LazyBindings {
+    DxbcProgramTypeFlags shadersUsed = 0u;
+    DxbcProgramTypeFlags shadersDirty = 0u;
+    DxbcProgramTypeFlags graphicsUavShaders = 0u;
+
+    D3D11ShaderStageState<DxbcBindingMask> bindingsUsed;
+    D3D11ShaderStageState<DxbcBindingMask> bindingsDirty;
+
+    void reset() {
+      shadersUsed = 0u;
+      shadersDirty = 0u;
+      graphicsUavShaders = 0u;
+
+      bindingsUsed.reset();
+      bindingsDirty.reset();
+    }
+  };
+
   
   /**
    * \brief Context state
@@ -325,6 +353,8 @@ namespace dxvk {
     D3D11SrvBindings    srv;
     D3D11UavBindings    uav;
     D3D11SamplerBindings samplers;
+
+    D3D11LazyBindings   lazy;
   };
 
   /**
@@ -342,7 +372,7 @@ namespace dxvk {
    * \brief Maximum used binding numbers for all context state
    */
   struct D3D11MaxUsedBindings {
-    std::array<D3D11MaxUsedStageBindings, 6> stages;
+    std::array<D3D11MaxUsedStageBindings, uint32_t(DxbcProgramType::Count)> stages;
     uint32_t  vbCount;
     uint32_t  soCount;
   };
