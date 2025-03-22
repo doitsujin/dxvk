@@ -6806,11 +6806,11 @@ namespace dxvk {
   void D3D9DeviceEx::BindMultiSampleState() {
     m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
 
-    DxvkMultisampleState msState;
-    msState.sampleMask = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
-      ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
-      : 0xffffffff;
-    msState.enableAlphaToCoverage = IsAlphaToCoverageEnabled();
+    DxvkMultisampleState msState = { };
+    msState.setSampleMask(m_flags.test(D3D9DeviceFlag::ValidSampleMask)
+      ? uint16_t(m_state.renderStates[D3DRS_MULTISAMPLEMASK])
+      : uint16_t(0xffffu));
+    msState.setAlphaToCoverage(IsAlphaToCoverageEnabled());
 
     EmitCs([
       cState = msState
