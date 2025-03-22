@@ -136,9 +136,32 @@ namespace dxvk {
    * Defines how to handle certain
    * aspects of multisampling.
    */
-  struct DxvkMultisampleState {
-    uint32_t            sampleMask;
-    VkBool32            enableAlphaToCoverage;
+  class DxvkMultisampleState {
+
+  public:
+
+    uint16_t sampleMask() const {
+      return m_sampleMask;
+    }
+
+    bool alphaToCoverage() const {
+      return m_enableAlphaToCoverage;
+    }
+
+    void setSampleMask(uint16_t mask) {
+      m_sampleMask = mask;
+    }
+
+    void setAlphaToCoverage(bool alphaToCoverage) {
+      m_enableAlphaToCoverage = alphaToCoverage;
+    }
+
+  private:
+
+    uint16_t m_sampleMask;
+    uint16_t m_enableAlphaToCoverage : 1;
+    uint16_t m_reserved              : 15;
+
   };
   
 

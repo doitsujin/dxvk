@@ -1151,11 +1151,12 @@ namespace dxvk {
 
     static DxvkDepthStencilState InitDefaultDepthStencilState();
 
+    static DxvkMultisampleState InitDefaultMultisampleState(
+            UINT                              SampleMask);
+
     static void InitDefaultBlendState(
             DxvkBlendMode*                    pCbState,
-            DxvkLogicOpState*                 pLoState,
-            DxvkMultisampleState*             pMsState,
-            UINT                              SampleMask);
+            DxvkLogicOpState*                 pLoState);
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {

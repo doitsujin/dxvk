@@ -19,8 +19,8 @@ namespace dxvk {
     }
     
     // Multisample state is part of the blend state in D3D11
-    m_msState.sampleMask            = 0; // Set during bind
-    m_msState.enableAlphaToCoverage = desc.AlphaToCoverageEnable;
+    m_msState.setSampleMask(0u); // Set during bind
+    m_msState.setAlphaToCoverage(desc.AlphaToCoverageEnable);
     
     // Vulkan only supports a global logic op for the blend
     // state, which might be problematic in some cases.
@@ -90,18 +90,12 @@ namespace dxvk {
   
   
   void D3D11BlendState::BindToContext(
-          DxvkContext*      ctx,
-          uint32_t          sampleMask) const {
+          DxvkContext*      ctx) const {
     // We handled Independent Blend during object creation
     // already, so if it is disabled, all elements in the
     // blend mode array will be identical
     for (uint32_t i = 0; i < m_blendModes.size(); i++)
       ctx->setBlendMode(i, m_blendModes.at(i));
-    
-    // The sample mask is dynamic state in D3D11
-    DxvkMultisampleState msState = m_msState;
-    msState.sampleMask = sampleMask;
-    ctx->setMultisampleState(msState);
     
     // Set up logic op state as well
     ctx->setLogicOpState(m_loState);
