@@ -2694,38 +2694,45 @@ namespace dxvk {
   
   void DxvkContext::setInputLayout(
           uint32_t             attributeCount,
-    const DxvkVertexAttribute* attributes,
+    const DxvkVertexInput*     attributes,
           uint32_t             bindingCount,
-    const DxvkVertexBinding*   bindings) {
+    const DxvkVertexInput*     bindings) {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
 
     for (uint32_t i = 0; i < bindingCount; i++) {
+      auto binding = bindings[i].binding();
+
       m_state.gp.state.ilBindings[i] = DxvkIlBinding(
-        bindings[i].binding, 0, bindings[i].inputRate,
-        bindings[i].fetchRate);
-      m_state.vi.vertexExtents[i] = bindings[i].extent;
+        binding.binding, 0,
+        binding.inputRate,
+        binding.divisor);
+      m_state.vi.vertexExtents[i] = binding.extent;
     }
 
     for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++) {
       m_state.gp.state.ilBindings[i] = DxvkIlBinding();
       m_state.vi.vertexExtents[i] = 0;
     }
-    
+
     for (uint32_t i = 0; i < attributeCount; i++) {
+      auto attribute = attributes[i].attribute();
+
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
-        attributes[i].location, attributes[i].binding,
-        attributes[i].format,   attributes[i].offset);
+        attribute.location,
+        attribute.binding,
+        attribute.format,
+        attribute.offset);
     }
-    
+
     for (uint32_t i = attributeCount; i < m_state.gp.state.il.attributeCount(); i++)
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute();
-    
+
     m_state.gp.state.il = DxvkIlInfo(attributeCount, bindingCount);
   }
-  
-  
+
+
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
     VkCullModeFlags cullMode = rs.cullMode();
     VkFrontFace frontFace = rs.frontFace();

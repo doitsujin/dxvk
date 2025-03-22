@@ -7524,8 +7524,9 @@ namespace dxvk {
 
         const auto& elements = cVertexDecl->GetElements();
 
-        std::array<DxvkVertexAttribute, 2 * caps::InputRegisterCount> attrList;
-        std::array<DxvkVertexBinding,   2 * caps::InputRegisterCount> bindList;
+        std::array<DxvkVertexInput, 2 * caps::InputRegisterCount> attrList = { };
+        std::array<DxvkVertexInput, 2 * caps::InputRegisterCount> bindList = { };
+        std::array<uint32_t, 2 * caps::InputRegisterCount> vertexSizes = { };
 
         uint32_t attrMask = 0;
         uint32_t bindMask = 0;
@@ -7537,7 +7538,7 @@ namespace dxvk {
         for (uint32_t i = 0; i < isgn.elemCount; i++) {
           const auto& decl = isgn.elems[i];
 
-          DxvkVertexAttribute attrib;
+          DxvkVertexAttribute attrib = { };
           attrib.location = i;
           attrib.binding  = NullStreamIdx;
           attrib.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -7558,28 +7559,26 @@ namespace dxvk {
             }
           }
 
-          attrList[i] = attrib;
+          attrList[i] = DxvkVertexInput(attrib);
 
-          DxvkVertexBinding binding;
+          vertexSizes[attrib.binding] = std::max(vertexSizes[attrib.binding],
+            uint32_t(attrib.offset + lookupFormatInfo(attrib.format)->elementSize));
+
+          DxvkVertexBinding binding = { };
           binding.binding = attrib.binding;
-          binding.extent = attrib.offset + lookupFormatInfo(attrib.format)->elementSize;
+          binding.extent = vertexSizes[attrib.binding];
 
           uint32_t instanceData = cStreamFreq[binding.binding % caps::MaxStreams];
           if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
-            binding.fetchRate = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
+            binding.divisor = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
             binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
           }
           else {
-            binding.fetchRate = 0;
+            binding.divisor = 0u;
             binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
           }
 
-          if (bindMask & (1u << binding.binding)) {
-            bindList.at(binding.binding).extent = std::max(
-              bindList.at(binding.binding).extent, binding.extent);
-          } else {
-            bindList.at(binding.binding) = binding;
-          }
+          bindList[binding.binding] = DxvkVertexInput(binding);
 
           attrMask |= 1u << i;
           bindMask |= 1u << binding.binding;

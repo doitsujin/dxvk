@@ -1187,16 +1187,16 @@ namespace dxvk {
      * \brief Sets input layout
      * 
      * \param [in] attributeCount Number of vertex attributes
-     * \param [in] attributes The vertex attributes
+     * \param [in] attributes Array of attribute infos
      * \param [in] bindingCount Number of buffer bindings
-     * \param [in] bindings Vertex buffer bindigs
+     * \param [in] bindings Array of binding infos
      */
     void setInputLayout(
             uint32_t             attributeCount,
-      const DxvkVertexAttribute* attributes,
+      const DxvkVertexInput*     attributes,
             uint32_t             bindingCount,
-      const DxvkVertexBinding*   bindings);
-    
+      const DxvkVertexInput*     bindings);
+
     /**
      * \brief Sets rasterizer state
      * \param [in] rs New state object
