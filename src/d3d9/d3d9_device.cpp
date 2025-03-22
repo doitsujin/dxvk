@@ -6882,6 +6882,8 @@ namespace dxvk {
                           NormalizeFactor(mode.alphaDstFactor()), mode.alphaBlendOp());
         }
 
+        mode.normalize();
+
         ctx->setBlendMode(i, mode);
       }
     });

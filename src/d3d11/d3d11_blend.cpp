@@ -182,6 +182,8 @@ namespace dxvk {
                     DecodeBlendFactor(BlendDesc.DestBlendAlpha, true),
                     DecodeBlendOp(BlendDesc.BlendOpAlpha));
     mode.setWriteMask(BlendDesc.RenderTargetWriteMask);
+
+    mode.normalize();
     return mode;
   }
   

@@ -400,6 +400,8 @@ namespace dxvk {
       m_writeMask = writeMask;
     }
 
+    void normalize();
+
   private:
 
     uint32_t m_enableBlending : 1;
