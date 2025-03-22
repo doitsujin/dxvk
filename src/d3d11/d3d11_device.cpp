@@ -668,29 +668,29 @@ namespace dxvk {
     // works, provided the shader does not have any actual inputs
     if (!pInputElementDescs)
       return E_INVALIDARG;
-    
+
     try {
       DxbcReader dxbcReader(reinterpret_cast<const char*>(
         pShaderBytecodeWithInputSignature), BytecodeLength);
       DxbcModule dxbcModule(dxbcReader);
-      
+
       const Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
 
       uint32_t attrMask = 0;
       uint32_t bindMask = 0;
       uint32_t locationMask = 0;
       uint32_t bindingsDefined = 0;
-      
+
       std::array<DxvkVertexAttribute, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> attrList = { };
       std::array<DxvkVertexBinding,   D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> bindList = { };
-      
+
       for (uint32_t i = 0; i < NumElements; i++) {
         const DxbcSgnEntry* entry = inputSignature->find(
           pInputElementDescs[i].SemanticName,
           pInputElementDescs[i].SemanticIndex, 0);
 
         // Create vertex input attribute description
-        DxvkVertexAttribute attrib;
+        DxvkVertexAttribute attrib = { };
         attrib.location = entry != nullptr ? entry->registerId : 0;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = LookupFormat(pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
@@ -714,17 +714,18 @@ namespace dxvk {
               break;
             }
           }
-        } else if (attrib.offset & (alignment - 1))
+        } else if (attrib.offset & (alignment - 1)) {
           return E_INVALIDARG;
+        }
 
         attrList.at(i) = attrib;
 
         // Create vertex input binding description. The
         // stride is dynamic state in D3D11 and will be
         // set by D3D11DeviceContext::IASetVertexBuffers.
-        DxvkVertexBinding binding;
+        DxvkVertexBinding binding = { };
         binding.binding   = pInputElementDescs[i].InputSlot;
-        binding.fetchRate = pInputElementDescs[i].InstanceDataStepRate;
+        binding.divisor   = pInputElementDescs[i].InstanceDataStepRate;
         binding.inputRate = pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA
           ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
         binding.extent    = entry ? uint32_t(attrib.offset + formatInfo->elementSize) : 0u;

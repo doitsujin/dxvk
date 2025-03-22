@@ -3316,14 +3316,20 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyInputLayout() {
-    auto inputLayout = m_state.ia.inputLayout.prvRef();
+    if (likely(m_state.ia.inputLayout != nullptr)) {
+      uint32_t attributeCount = m_state.ia.inputLayout->GetAttributeCount();
+      uint32_t bindingCount = m_state.ia.inputLayout->GetBindingCount();
 
-    if (likely(inputLayout != nullptr)) {
-      EmitCs([
-        cInputLayout = std::move(inputLayout)
-      ] (DxvkContext* ctx) {
-        cInputLayout->BindToContext(ctx);
+      EmitCsCmd<DxvkVertexInput>(D3D11CmdType::None, attributeCount + bindingCount, [
+        cAttributeCount   = attributeCount,
+        cBindingCount     = bindingCount
+      ] (DxvkContext* ctx, const DxvkVertexInput* layout, size_t) {
+        ctx->setInputLayout(cAttributeCount, &layout[0],
+          cBindingCount, &layout[cAttributeCount]);
       });
+
+      for (uint32_t i = 0; i < attributeCount + bindingCount; i++)
+        new (m_csData->at(i)) DxvkVertexInput(m_state.ia.inputLayout->GetInput(i));
     } else {
       EmitCs([] (DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);
