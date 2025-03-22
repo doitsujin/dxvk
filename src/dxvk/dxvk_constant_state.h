@@ -141,20 +141,143 @@ namespace dxvk {
     VkBool32            enableAlphaToCoverage;
   };
   
-  
+
+  /**
+   * \brief Stencil operation
+   */
+  class DxvkStencilOp {
+
+  public:
+
+    VkStencilOp failOp() const {
+      return VkStencilOp(m_failOp);
+    }
+
+    VkStencilOp passOp() const {
+      return VkStencilOp(m_passOp);
+    }
+
+    VkStencilOp depthFailOp() const {
+      return VkStencilOp(m_depthFailOp);
+    }
+
+    VkCompareOp compareOp() const {
+      return VkCompareOp(m_compareOp);
+    }
+
+    uint8_t compareMask() const {
+      return m_compareMask;
+    }
+
+    uint8_t writeMask() const {
+      return m_writeMask;
+    }
+
+    void setFailOp(VkStencilOp op) {
+      m_failOp = uint16_t(op);
+    }
+
+    void setPassOp(VkStencilOp op) {
+      m_passOp = uint16_t(op);
+    }
+
+    void setDepthFailOp(VkStencilOp op) {
+      m_depthFailOp = uint16_t(op);
+    }
+
+    void setCompareOp(VkCompareOp op) {
+      m_compareOp = uint16_t(op);
+    }
+
+    void setCompareMask(uint8_t mask) {
+      m_compareMask = mask;
+    }
+
+    void setWriteMask(uint8_t mask) {
+      m_writeMask = mask;
+    }
+
+  private:
+
+    uint16_t m_failOp            : 3;
+    uint16_t m_passOp            : 3;
+    uint16_t m_depthFailOp       : 3;
+    uint16_t m_compareOp         : 3;
+    uint16_t m_reserved          : 4;
+    uint8_t  m_compareMask;
+    uint8_t  m_writeMask;
+
+  };
+
+
   /**
    * \brief Depth-stencil state
    * 
    * Defines the depth test and stencil
    * operations for the graphics pipeline.
    */
-  struct DxvkDepthStencilState {
-    VkBool32            enableDepthTest;
-    VkBool32            enableDepthWrite;
-    VkBool32            enableStencilTest;
-    VkCompareOp         depthCompareOp;
-    VkStencilOpState    stencilOpFront;
-    VkStencilOpState    stencilOpBack;
+  class DxvkDepthStencilState {
+
+  public:
+
+    bool depthTest() const {
+      return m_enableDepthTest;
+    }
+
+    bool depthWrite() const {
+      return m_enableDepthWrite;
+    }
+
+    bool stencilTest() const {
+      return m_enableStencilTest;
+    }
+
+    VkCompareOp depthCompareOp() const {
+      return VkCompareOp(m_depthCompareOp);
+    }
+
+    DxvkStencilOp stencilOpFront() const {
+      return m_stencilOpFront;
+    }
+
+    DxvkStencilOp stencilOpBack() const {
+      return m_stencilOpBack;
+    }
+
+    void setDepthTest(bool depthTest) {
+      m_enableDepthTest = depthTest;
+    }
+
+    void setDepthWrite(bool depthWrite) {
+      m_enableDepthWrite = depthWrite;
+    }
+
+    void setStencilTest(bool stencilTest) {
+      m_enableStencilTest = stencilTest;
+    }
+
+    void setDepthCompareOp(VkCompareOp compareOp) {
+      m_depthCompareOp = uint16_t(compareOp);
+    }
+
+    void setStencilOpFront(DxvkStencilOp op) {
+      m_stencilOpFront = op;
+    }
+
+    void setStencilOpBack(DxvkStencilOp op) {
+      m_stencilOpBack = op;
+    }
+
+  private:
+
+    uint16_t m_enableDepthTest   : 1;
+    uint16_t m_enableDepthWrite  : 1;
+    uint16_t m_enableStencilTest : 1;
+    uint16_t m_depthCompareOp    : 3;
+    uint16_t m_reserved          : 10;
+    DxvkStencilOp m_stencilOpFront;
+    DxvkStencilOp m_stencilOpBack;
+
   };
   
   
@@ -227,5 +350,5 @@ namespace dxvk {
     std::array<DxvkVertexAttribute, DxvkLimits::MaxNumVertexAttributes> attributes;
     std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
   };
-  
+
 }
