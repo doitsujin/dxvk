@@ -3380,11 +3380,12 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyBlendState() {
     if (m_state.om.cbState != nullptr) {
       EmitCs([
-        cBlendState = m_state.om.cbState,
+        cBlendState = m_state.om.cbState->GetBlendState(),
         cMsState    = m_state.om.cbState->GetMsState(m_state.om.sampleMask),
         cLoState    = m_state.om.cbState->GetLoState()
       ] (DxvkContext* ctx) {
-        cBlendState->BindToContext(ctx);
+        for (uint32_t i = 0; i < cBlendState.size(); i++)
+          ctx->setBlendMode(i, cBlendState[i]);
 
         ctx->setMultisampleState(cMsState);
         ctx->setLogicOpState(cLoState);
@@ -3393,8 +3394,7 @@ namespace dxvk {
       EmitCs([
         cSampleMask = m_state.om.sampleMask
       ] (DxvkContext* ctx) {
-        DxvkBlendMode cbState;
-        InitDefaultBlendState(&cbState);
+        DxvkBlendMode cbState = InitDefaultBlendState();
 
         for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
           ctx->setBlendMode(i, cbState);
@@ -4740,14 +4740,13 @@ namespace dxvk {
       DxvkRasterizerState rsState;
       InitDefaultRasterizerState(&rsState);
 
-      DxvkBlendMode cbState;
-      InitDefaultBlendState(&cbState);
-
       ctx->setInputAssemblyState(iaState);
       ctx->setDepthStencilState(InitDefaultDepthStencilState());
       ctx->setRasterizerState(rsState);
       ctx->setLogicOpState(InitDefaultLogicOpState());
       ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
+
+      DxvkBlendMode cbState = InitDefaultBlendState();
 
       for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
         ctx->setBlendMode(i, cbState);
@@ -5840,17 +5839,14 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultBlendState(
-          DxvkBlendMode*                    pCbState) {
-    pCbState->enableBlending    = VK_FALSE;
-    pCbState->colorSrcFactor    = VK_BLEND_FACTOR_ONE;
-    pCbState->colorDstFactor    = VK_BLEND_FACTOR_ZERO;
-    pCbState->colorBlendOp      = VK_BLEND_OP_ADD;
-    pCbState->alphaSrcFactor    = VK_BLEND_FACTOR_ONE;
-    pCbState->alphaDstFactor    = VK_BLEND_FACTOR_ZERO;
-    pCbState->alphaBlendOp      = VK_BLEND_OP_ADD;
-    pCbState->writeMask         = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  DxvkBlendMode D3D11CommonContext<ContextType>::InitDefaultBlendState() {
+    DxvkBlendMode cbState = { };
+    cbState.setBlendEnable(false);
+    cbState.setColorOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+    cbState.setAlphaOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+    cbState.setWriteMask(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+    return cbState;
   }
 
   // Explicitly instantiate here

@@ -12,7 +12,7 @@ namespace dxvk {
     // blend modes for render target 1 to 7. In Vulkan, all
     // blend modes need to be identical in that case.
     for (uint32_t i = 0; i < m_blendModes.size(); i++) {
-      m_blendModes.at(i) = DecodeBlendMode(
+      m_blendModes[i] = DecodeBlendMode(
         desc.IndependentBlendEnable
           ? desc.RenderTarget[i]
           : desc.RenderTarget[0]);
@@ -86,16 +86,6 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11BlendState::GetDesc1(D3D11_BLEND_DESC1* pDesc) {
     *pDesc = m_desc;
-  }
-  
-  
-  void D3D11BlendState::BindToContext(
-          DxvkContext*      ctx) const {
-    // We handled Independent Blend during object creation
-    // already, so if it is disabled, all elements in the
-    // blend mode array will be identical
-    for (uint32_t i = 0; i < m_blendModes.size(); i++)
-      ctx->setBlendMode(i, m_blendModes.at(i));
   }
   
   
@@ -183,15 +173,15 @@ namespace dxvk {
   
   DxvkBlendMode D3D11BlendState::DecodeBlendMode(
     const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc) {
-    DxvkBlendMode mode;
-    mode.enableBlending   = BlendDesc.BlendEnable;
-    mode.colorSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlend, false);
-    mode.colorDstFactor   = DecodeBlendFactor(BlendDesc.DestBlend, false);
-    mode.colorBlendOp     = DecodeBlendOp(BlendDesc.BlendOp);
-    mode.alphaSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true);
-    mode.alphaDstFactor   = DecodeBlendFactor(BlendDesc.DestBlendAlpha, true);
-    mode.alphaBlendOp     = DecodeBlendOp(BlendDesc.BlendOpAlpha);
-    mode.writeMask        = BlendDesc.RenderTargetWriteMask;
+    DxvkBlendMode mode = { };
+    mode.setBlendEnable(BlendDesc.BlendEnable);
+    mode.setColorOp(DecodeBlendFactor(BlendDesc.SrcBlend, false),
+                    DecodeBlendFactor(BlendDesc.DestBlend, false),
+                    DecodeBlendOp(BlendDesc.BlendOp));
+    mode.setAlphaOp(DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true),
+                    DecodeBlendFactor(BlendDesc.DestBlendAlpha, true),
+                    DecodeBlendOp(BlendDesc.BlendOpAlpha));
+    mode.setWriteMask(BlendDesc.RenderTargetWriteMask);
     return mode;
   }
   

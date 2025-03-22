@@ -2824,15 +2824,15 @@ namespace dxvk {
           uint32_t            attachment,
     const DxvkBlendMode&      blendMode) {
     m_state.gp.state.omBlend[attachment] = DxvkOmAttachmentBlend(
-      blendMode.enableBlending,
-      blendMode.colorSrcFactor,
-      blendMode.colorDstFactor,
-      blendMode.colorBlendOp,
-      blendMode.alphaSrcFactor,
-      blendMode.alphaDstFactor,
-      blendMode.alphaBlendOp,
-      blendMode.writeMask);
-    
+      blendMode.blendEnable(),
+      blendMode.colorSrcFactor(),
+      blendMode.colorDstFactor(),
+      blendMode.colorBlendOp(),
+      blendMode.alphaSrcFactor(),
+      blendMode.alphaDstFactor(),
+      blendMode.alphaBlendOp(),
+      blendMode.writeMask());
+
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
 
