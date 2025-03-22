@@ -2840,14 +2840,17 @@ namespace dxvk {
   
   
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
-    if (m_state.dyn.cullMode != rs.cullMode || m_state.dyn.frontFace != rs.frontFace) {
-      m_state.dyn.cullMode = rs.cullMode;
-      m_state.dyn.frontFace = rs.frontFace;
+    VkCullModeFlags cullMode = rs.cullMode();
+    VkFrontFace frontFace = rs.frontFace();
+
+    if (m_state.dyn.cullMode != cullMode || m_state.dyn.frontFace != frontFace) {
+      m_state.dyn.cullMode = cullMode;
+      m_state.dyn.frontFace = frontFace;
 
       m_flags.set(DxvkContextFlag::GpDirtyRasterizerState);
     }
 
-    if (unlikely(rs.sampleCount != m_state.gp.state.rs.sampleCount())) {
+    if (unlikely(rs.sampleCount() != m_state.gp.state.rs.sampleCount())) {
       if (!m_state.gp.state.ms.sampleCount())
         m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
 
@@ -2856,20 +2859,20 @@ namespace dxvk {
     }
 
     DxvkRsInfo rsInfo(
-      rs.depthClipEnable,
-      rs.depthBiasEnable,
-      rs.polygonMode,
-      rs.sampleCount,
-      rs.conservativeMode,
-      rs.flatShading,
-      rs.lineMode);
+      rs.depthClip(),
+      rs.depthBias(),
+      rs.polygonMode(),
+      rs.sampleCount(),
+      rs.conservativeMode(),
+      rs.flatShading(),
+      rs.lineMode());
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
 
       // Since depth bias enable is only dynamic for base pipelines,
       // it is applied as part of the dynamic depth-stencil state
-      if (m_state.gp.state.rs.depthBiasEnable() != rs.depthBiasEnable)
+      if (m_state.gp.state.rs.depthBiasEnable() != rs.depthBias())
         m_flags.set(DxvkContextFlag::GpDirtyDepthStencilState);
 
       m_state.gp.state.rs = rsInfo;

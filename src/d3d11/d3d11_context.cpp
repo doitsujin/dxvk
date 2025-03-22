@@ -3438,16 +3438,17 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyRasterizerState() {
     if (m_state.rs.state != nullptr) {
       EmitCs([
-        cRasterizerState = m_state.rs.state
+        cState      = m_state.rs.state->GetState(),
+        cDepthBias  = m_state.rs.state->GetDepthBias()
       ] (DxvkContext* ctx) {
-        cRasterizerState->BindToContext(ctx);
+        ctx->setRasterizerState(cState);
+
+        if (cState.depthBias())
+          ctx->setDepthBias(cDepthBias);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
-        DxvkRasterizerState rsState;
-        InitDefaultRasterizerState(&rsState);
-
-        ctx->setRasterizerState(rsState);
+        ctx->setRasterizerState(InitDefaultRasterizerState());
       });
     }
   }
@@ -4727,12 +4728,9 @@ namespace dxvk {
       DxvkInputAssemblyState iaState;
       InitDefaultPrimitiveTopology(&iaState);
 
-      DxvkRasterizerState rsState;
-      InitDefaultRasterizerState(&rsState);
-
       ctx->setInputAssemblyState(iaState);
       ctx->setDepthStencilState(InitDefaultDepthStencilState());
-      ctx->setRasterizerState(rsState);
+      ctx->setRasterizerState(InitDefaultRasterizerState());
       ctx->setLogicOpState(InitDefaultLogicOpState());
       ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
 
@@ -5787,17 +5785,18 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultRasterizerState(
-          DxvkRasterizerState*              pRsState) {
-    pRsState->polygonMode     = VK_POLYGON_MODE_FILL;
-    pRsState->cullMode        = VK_CULL_MODE_BACK_BIT;
-    pRsState->frontFace       = VK_FRONT_FACE_CLOCKWISE;
-    pRsState->depthClipEnable = VK_TRUE;
-    pRsState->depthBiasEnable = VK_FALSE;
-    pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-    pRsState->sampleCount     = 0;
-    pRsState->flatShading     = VK_FALSE;
-    pRsState->lineMode        = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+  DxvkRasterizerState D3D11CommonContext<ContextType>::InitDefaultRasterizerState() {
+    DxvkRasterizerState rsState = { };
+    rsState.setPolygonMode(VK_POLYGON_MODE_FILL);
+    rsState.setCullMode(VK_CULL_MODE_BACK_BIT);
+    rsState.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+    rsState.setDepthClip(true);
+    rsState.setDepthBias(false);
+    rsState.setConservativeMode(VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
+    rsState.setSampleCount(0);
+    rsState.setFlatShading(false);
+    rsState.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
+    return rsState;
   }
 
 
