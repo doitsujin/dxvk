@@ -500,12 +500,14 @@ namespace dxvk {
      * \param [in] imageView Render target view to clear
      * \param [in] clearAspects Image aspects to clear
      * \param [in] clearValue The clear value
+     * \param [in] discardAspects Image aspects to discard
      */
     void clearRenderTarget(
       const Rc<DxvkImageView>&    imageView,
             VkImageAspectFlags    clearAspects,
-            VkClearValue          clearValue);
-    
+            VkClearValue          clearValue,
+            VkImageAspectFlags    discardAspects);
+
     /**
      * \brief Clears an image view
      * 
@@ -705,19 +707,6 @@ namespace dxvk {
       const uint32_t*             pages,
       const Rc<DxvkBuffer>&       srcBuffer,
             VkDeviceSize          srcOffset);
-    
-    /**
-     * \brief Discards contents of an image view
-     *
-     * Discards the current contents of the image
-     * and performs a fast layout transition. This
-     * may improve performance in some cases.
-     * \param [in] imageView View to discard
-     * \param [in] discardAspects Image aspects to discard
-     */
-    void discardImageView(
-      const Rc<DxvkImageView>&      imageView,
-            VkImageAspectFlags      discardAspects);
 
     /**
      * \brief Discards contents of an image
@@ -1664,14 +1653,24 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkImageAspectFlags        discardAspects);
 
+    void flushClearsInline();
+
     void flushClears(
             bool                      useRenderPass);
 
     void flushSharedImages();
 
+    void flushRenderPassDiscards();
+
     void flushRenderPassResolves();
 
     void flushResolves();
+
+    void finalizeLoadStoreOps();
+
+    void adjustAttachmentLoadStoreOps(
+            VkRenderingAttachmentInfo&  attachment,
+            DxvkAccess                  access) const;
 
     void startRenderPass();
     void spillRenderPass(bool suspend);
