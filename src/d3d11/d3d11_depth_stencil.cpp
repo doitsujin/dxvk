@@ -14,6 +14,8 @@ namespace dxvk {
     m_state.setDepthCompareOp(DecodeCompareOp(desc.DepthFunc));
     m_state.setStencilOpFront(DecodeStencilOpState(desc.FrontFace, desc));
     m_state.setStencilOpBack(DecodeStencilOpState(desc.BackFace, desc));
+
+    m_state.normalize();
   }
   
   

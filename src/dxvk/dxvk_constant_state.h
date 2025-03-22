@@ -197,6 +197,8 @@ namespace dxvk {
       m_writeMask = mask;
     }
 
+    bool normalize(VkCompareOp depthOp);
+
   private:
 
     uint16_t m_failOp            : 3;
@@ -267,6 +269,8 @@ namespace dxvk {
     void setStencilOpBack(DxvkStencilOp op) {
       m_stencilOpBack = op;
     }
+
+    void normalize();
 
   private:
 
