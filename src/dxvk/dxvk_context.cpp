@@ -5236,12 +5236,8 @@ namespace dxvk {
 
     resolve.imageView = dstView;
     resolve.layerMask |= 1u << relativeLayer;
-
-    if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      resolve.depthMode = depthMode;
-
-    if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      resolve.stencilMode = stencilMode;
+    resolve.depthMode = depthMode;
+    resolve.stencilMode = stencilMode;
 
     // Ensure resolves get flushed before the next draw
     m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
