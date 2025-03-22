@@ -75,6 +75,7 @@ dxvk_src = [
   'dxvk_buffer.cpp',
   'dxvk_cmdlist.cpp',
   'dxvk_compute.cpp',
+  'dxvk_constant_state.cpp',
   'dxvk_context.cpp',
   'dxvk_cs.cpp',
   'dxvk_descriptor.cpp',
