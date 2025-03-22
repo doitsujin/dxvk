@@ -142,22 +142,22 @@ namespace dxvk {
     switch (type) {
       default:
       case D3DPT_TRIANGLELIST:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,  VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
 
       case D3DPT_POINTLIST:
-        return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST,     VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_POINT_LIST, false);
 
       case D3DPT_LINELIST:
-        return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_LIST, false);
 
       case D3DPT_LINESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, false);
 
       case D3DPT_TRIANGLESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, false);
 
       case D3DPT_TRIANGLEFAN:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,   VK_FALSE, 0 };
+        return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, false);
     }
   }
 

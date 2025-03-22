@@ -105,12 +105,53 @@ namespace dxvk {
    * is enabled.
    */
   struct DxvkInputAssemblyState {
-    VkPrimitiveTopology primitiveTopology;
-    VkBool32            primitiveRestart;
-    uint32_t            patchVertexCount;
+
+  public:
+
+    DxvkInputAssemblyState() = default;
+
+    DxvkInputAssemblyState(VkPrimitiveTopology topology, bool restart)
+    : m_primitiveTopology (uint16_t(topology)),
+      m_primitiveRestart  (uint16_t(restart)),
+      m_patchVertexCount  (0u),
+      m_reserved          (0u) { }
+
+    VkPrimitiveTopology primitiveTopology() const {
+      return VkPrimitiveTopology(m_primitiveTopology) <= VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+        ? VkPrimitiveTopology(m_primitiveTopology)
+        : VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    }
+
+    bool primitiveRestart() const {
+      return m_primitiveRestart;
+    }
+
+    uint32_t patchVertexCount() const {
+      return m_patchVertexCount;
+    }
+
+    void setPrimitiveTopology(VkPrimitiveTopology topology) {
+      m_primitiveTopology = uint16_t(topology);
+    }
+
+    void setPrimitiveRestart(bool enable) {
+      m_primitiveRestart = enable;
+    }
+
+    void setPatchVertexCount(uint32_t count) {
+      m_patchVertexCount = count;
+    }
+
+  private:
+
+    uint16_t m_primitiveTopology  : 4;
+    uint16_t m_primitiveRestart   : 1;
+    uint16_t m_patchVertexCount   : 6;
+    uint16_t m_reserved           : 5;
+
   };
-  
-  
+
+
   /**
    * \brief Rasterizer state
    * 

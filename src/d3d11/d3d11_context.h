@@ -75,7 +75,6 @@ namespace dxvk {
     // Use a local staging buffer to handle tiny uploads, most
     // of the time we're fine with hitting the global allocator
     constexpr static VkDeviceSize StagingBufferSize = 256ull << 10;
-
   protected:
     // Compile-time debug flag to force lazy binding on (True) or off (False)
     constexpr static Tristate DebugLazyBinding = Tristate::Auto;
@@ -1143,8 +1142,7 @@ namespace dxvk {
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
 
-    static void InitDefaultPrimitiveTopology(
-            DxvkInputAssemblyState*           pIaState);
+    static DxvkInputAssemblyState InitDefaultPrimitiveTopology();
 
     static DxvkRasterizerState InitDefaultRasterizerState();
 
