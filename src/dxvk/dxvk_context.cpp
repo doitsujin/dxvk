@@ -5236,12 +5236,8 @@ namespace dxvk {
 
     resolve.imageView = dstView;
     resolve.layerMask |= 1u << relativeLayer;
-
-    if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      resolve.depthMode = depthMode;
-
-    if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      resolve.stencilMode = stencilMode;
+    resolve.depthMode = depthMode;
+    resolve.stencilMode = stencilMode;
 
     // Ensure resolves get flushed before the next draw
     m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
@@ -6540,8 +6536,9 @@ namespace dxvk {
     if (!(image->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
       return;
 
-    // Flush clears if there are any since they may affect the image
-    if (!m_deferredClears.empty() && flushClears)
+    // Flush clears if there are any that affect the image. We need
+    // to check all subresources here, not just the ones to be used.
+    if (flushClears && findOverlappingDeferredClear(image, image->getAvailableSubresources()))
       this->spillRenderPass(false);
 
     // All images are in their default layout for suspended passes
@@ -6579,8 +6576,22 @@ namespace dxvk {
     const Rc<DxvkImage>&          image,
     const VkImageSubresourceRange& subresources) {
     for (auto& entry : m_deferredClears) {
-      if ((entry.imageView->image() == image) && ((subresources.aspectMask & entry.clearAspects) == subresources.aspectMask)
+      if ((entry.imageView->image() == image.ptr()) && ((subresources.aspectMask & entry.clearAspects) == subresources.aspectMask)
        && (vk::checkSubresourceRangeSuperset(entry.imageView->imageSubresources(), subresources)))
+        return &entry;
+    }
+
+    return nullptr;
+  }
+
+
+  DxvkDeferredClear* DxvkContext::findOverlappingDeferredClear(
+    const Rc<DxvkImage>&          image,
+    const VkImageSubresourceRange& subresources) {
+    for (auto& entry : m_deferredClears) {
+      if ((entry.imageView->image() == image.ptr())
+       && ((entry.clearAspects | entry.discardAspects) | subresources.aspectMask)
+       && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources)))
         return &entry;
     }
 
