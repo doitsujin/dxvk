@@ -1196,10 +1196,7 @@ namespace dxvk {
 
       ctx->bindRenderTargets(std::move(rt), 0u);
 
-      DxvkInputAssemblyState iaState;
-      iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-      iaState.primitiveRestart = VK_FALSE;
-      iaState.patchVertexCount = 0;
+      DxvkInputAssemblyState iaState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
       ctx->setInputAssemblyState(iaState);
     });
 
