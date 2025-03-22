@@ -42,9 +42,10 @@ namespace dxvk {
       return m_loState;
     }
 
-    void BindToContext(
-            DxvkContext*      ctx) const;
-    
+    std::array<DxvkBlendMode, 8> GetBlendState() const {
+      return m_blendModes;
+    }
+
     D3D10BlendState* GetD3D10Iface() {
       return &m_d3d10;
     }
@@ -59,7 +60,7 @@ namespace dxvk {
     
     D3D11_BLEND_DESC1             m_desc;
     
-    std::array<DxvkBlendMode, 8>  m_blendModes;
+    std::array<DxvkBlendMode, 8>  m_blendModes = { };
     DxvkMultisampleState          m_msState = { };
     DxvkLogicOpState              m_loState = { };
 

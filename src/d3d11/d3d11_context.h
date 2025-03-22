@@ -1156,8 +1156,7 @@ namespace dxvk {
 
     static DxvkLogicOpState InitDefaultLogicOpState();
 
-    static void InitDefaultBlendState(
-            DxvkBlendMode*                    pCbState);
+    static DxvkBlendMode InitDefaultBlendState();
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {

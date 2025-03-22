@@ -344,15 +344,74 @@ namespace dxvk {
    * Stores the blend state for a single color attachment.
    * Blend modes can be set separately for each attachment.
    */
-  struct DxvkBlendMode {
-    VkBool32              enableBlending;
-    VkBlendFactor         colorSrcFactor;
-    VkBlendFactor         colorDstFactor;
-    VkBlendOp             colorBlendOp;
-    VkBlendFactor         alphaSrcFactor;
-    VkBlendFactor         alphaDstFactor;
-    VkBlendOp             alphaBlendOp;
-    VkColorComponentFlags writeMask;
+  class DxvkBlendMode {
+
+  public:
+
+    bool blendEnable() const {
+      return m_enableBlending;
+    }
+
+    VkBlendFactor colorSrcFactor() const {
+      return VkBlendFactor(m_colorSrcFactor);
+    }
+
+    VkBlendFactor colorDstFactor() const {
+      return VkBlendFactor(m_colorDstFactor);
+    }
+
+    VkBlendOp colorBlendOp() const {
+      return VkBlendOp(m_colorBlendOp);
+    }
+
+    VkBlendFactor alphaSrcFactor() const {
+      return VkBlendFactor(m_alphaSrcFactor);
+    }
+
+    VkBlendFactor alphaDstFactor() const {
+      return VkBlendFactor(m_alphaDstFactor);
+    }
+
+    VkBlendOp alphaBlendOp() const {
+      return VkBlendOp(m_alphaBlendOp);
+    }
+
+    VkColorComponentFlags writeMask() const {
+      return VkColorComponentFlags(m_writeMask);
+    }
+
+    void setBlendEnable(bool enable) {
+      m_enableBlending = enable;
+    }
+
+    void setColorOp(VkBlendFactor srcFactor, VkBlendFactor dstFactor, VkBlendOp op) {
+      m_colorSrcFactor = uint32_t(srcFactor);
+      m_colorDstFactor = uint32_t(dstFactor);
+      m_colorBlendOp = uint32_t(op);
+    }
+
+    void setAlphaOp(VkBlendFactor srcFactor, VkBlendFactor dstFactor, VkBlendOp op) {
+      m_alphaSrcFactor = uint32_t(srcFactor);
+      m_alphaDstFactor = uint32_t(dstFactor);
+      m_alphaBlendOp = uint32_t(op);
+    }
+
+    void setWriteMask(VkColorComponentFlags writeMask) {
+      m_writeMask = writeMask;
+    }
+
+  private:
+
+    uint32_t m_enableBlending : 1;
+    uint32_t m_colorSrcFactor : 5;
+    uint32_t m_colorDstFactor : 5;
+    uint32_t m_colorBlendOp   : 3;
+    uint32_t m_alphaSrcFactor : 5;
+    uint32_t m_alphaDstFactor : 5;
+    uint32_t m_alphaBlendOp   : 3;
+    uint32_t m_writeMask      : 4;
+    uint32_t m_reserved       : 1;
+
   };
   
   
