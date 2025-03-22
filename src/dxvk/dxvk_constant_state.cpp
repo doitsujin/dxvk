@@ -65,4 +65,56 @@ namespace dxvk {
     }
   }
 
+
+  void DxvkBlendMode::normalize() {
+    constexpr VkColorComponentFlags colorMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT;
+    constexpr VkColorComponentFlags alphaMask = VK_COLOR_COMPONENT_A_BIT;
+
+    VkColorComponentFlags newWriteMask = writeMask();
+
+    if (!newWriteMask)
+      setBlendEnable(false);
+
+    if (blendEnable()) {
+      // If alpha or color are effectively not modified given the blend
+      // function, set the corresponding part of the write mask to 0.
+      if (colorBlendOp() == VK_BLEND_OP_ADD
+       && colorSrcFactor() == VK_BLEND_FACTOR_ZERO
+       && colorDstFactor() == VK_BLEND_FACTOR_ONE)
+        newWriteMask &= ~colorMask;
+
+      if (alphaBlendOp() == VK_BLEND_OP_ADD
+       && alphaSrcFactor() == VK_BLEND_FACTOR_ZERO
+       && alphaDstFactor() == VK_BLEND_FACTOR_ONE)
+        newWriteMask &= ~alphaMask;
+
+      // Check whether blending is equivalent to passing through
+      // the source data as if blending was disabled.
+      bool needsBlending = false;
+
+      if (newWriteMask & colorMask) {
+        needsBlending |= colorSrcFactor() != VK_BLEND_FACTOR_ONE
+                      || colorDstFactor() != VK_BLEND_FACTOR_ZERO
+                      || colorBlendOp()   != VK_BLEND_OP_ADD;
+      }
+
+      if (newWriteMask & alphaMask) {
+        needsBlending |= alphaSrcFactor() != VK_BLEND_FACTOR_ONE
+                      || alphaDstFactor() != VK_BLEND_FACTOR_ZERO
+                      || alphaBlendOp()   != VK_BLEND_OP_ADD;
+      }
+
+      if (!needsBlending)
+        setBlendEnable(false);
+    }
+
+    if (!blendEnable() || !(newWriteMask & colorMask))
+      setColorOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+
+    if (!blendEnable() || !(newWriteMask & alphaMask))
+      setAlphaOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+
+    setWriteMask(newWriteMask);
+  }
+
 }
