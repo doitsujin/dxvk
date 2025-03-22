@@ -82,9 +82,7 @@ namespace dxvk {
       ctx->beginRecording(cDevice->createCommandList());
 
       // Disable logic op once and for all.
-      DxvkLogicOpState loState;
-      loState.enableLogicOp = VK_FALSE;
-      loState.logicOp       = VK_LOGIC_OP_CLEAR;
+      DxvkLogicOpState loState = { };
       ctx->setLogicOpState(loState);
     });
 

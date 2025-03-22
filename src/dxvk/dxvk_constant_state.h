@@ -312,9 +312,29 @@ namespace dxvk {
    * \brief Logic op state
    * Defines a logic op.
    */
-  struct DxvkLogicOpState {
-    VkBool32  enableLogicOp;
-    VkLogicOp logicOp;
+  class DxvkLogicOpState {
+
+  public:
+
+    bool logicOpEnable() const {
+      return m_logicOpEnable;
+    }
+
+    VkLogicOp logicOp() const {
+      return VkLogicOp(m_logicOp);
+    }
+
+    void setLogicOp(bool enable, VkLogicOp op) {
+      m_logicOpEnable = enable;
+      m_logicOp = uint8_t(op);
+    }
+
+  private:
+
+    uint8_t m_logicOpEnable : 1;
+    uint8_t m_logicOp       : 4;
+    uint8_t m_reserved      : 3;
+
   };
   
   

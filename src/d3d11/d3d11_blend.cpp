@@ -27,8 +27,8 @@ namespace dxvk {
     if (desc.IndependentBlendEnable && desc.RenderTarget[0].LogicOpEnable)
       Logger::warn("D3D11: Per-target logic ops not supported");
     
-    m_loState.enableLogicOp         = desc.RenderTarget[0].LogicOpEnable;
-    m_loState.logicOp               = DecodeLogicOp(desc.RenderTarget[0].LogicOp);
+    m_loState.setLogicOp(desc.RenderTarget[0].LogicOpEnable,
+      DecodeLogicOp(desc.RenderTarget[0].LogicOp));
   }
   
   
@@ -96,9 +96,6 @@ namespace dxvk {
     // blend mode array will be identical
     for (uint32_t i = 0; i < m_blendModes.size(); i++)
       ctx->setBlendMode(i, m_blendModes.at(i));
-    
-    // Set up logic op state as well
-    ctx->setLogicOpState(m_loState);
   }
   
   
