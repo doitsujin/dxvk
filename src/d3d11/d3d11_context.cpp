@@ -3371,9 +3371,11 @@ namespace dxvk {
     if (m_state.om.cbState != nullptr) {
       EmitCs([
         cBlendState = m_state.om.cbState,
-        cSampleMask = m_state.om.sampleMask
+        cMsState    = m_state.om.cbState->GetMsState(m_state.om.sampleMask)
       ] (DxvkContext* ctx) {
-        cBlendState->BindToContext(ctx, cSampleMask);
+        cBlendState->BindToContext(ctx);
+
+        ctx->setMultisampleState(cMsState);
       });
     } else {
       EmitCs([
@@ -3381,14 +3383,13 @@ namespace dxvk {
       ] (DxvkContext* ctx) {
         DxvkBlendMode cbState;
         DxvkLogicOpState loState;
-        DxvkMultisampleState msState;
-        InitDefaultBlendState(&cbState, &loState, &msState, cSampleMask);
+        InitDefaultBlendState(&cbState, &loState);
 
         for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
           ctx->setBlendMode(i, cbState);
 
         ctx->setLogicOpState(loState);
-        ctx->setMultisampleState(msState);
+        ctx->setMultisampleState(InitDefaultMultisampleState(cSampleMask));
       });
     }
   }
@@ -4730,14 +4731,13 @@ namespace dxvk {
 
       DxvkBlendMode cbState;
       DxvkLogicOpState loState;
-      DxvkMultisampleState msState;
-      InitDefaultBlendState(&cbState, &loState, &msState, D3D11_DEFAULT_SAMPLE_MASK);
+      InitDefaultBlendState(&cbState, &loState);
 
       ctx->setInputAssemblyState(iaState);
       ctx->setDepthStencilState(InitDefaultDepthStencilState());
       ctx->setRasterizerState(rsState);
       ctx->setLogicOpState(loState);
-      ctx->setMultisampleState(msState);
+      ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
 
       for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
         ctx->setBlendMode(i, cbState);
@@ -5813,11 +5813,18 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  DxvkMultisampleState D3D11CommonContext<ContextType>::InitDefaultMultisampleState(
+          UINT                              SampleMask) {
+    DxvkMultisampleState msState = { };
+    msState.setSampleMask(SampleMask);
+    return msState;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::InitDefaultBlendState(
           DxvkBlendMode*                    pCbState,
-          DxvkLogicOpState*                 pLoState,
-          DxvkMultisampleState*             pMsState,
-          UINT                              SampleMask) {
+          DxvkLogicOpState*                 pLoState) {
     pCbState->enableBlending    = VK_FALSE;
     pCbState->colorSrcFactor    = VK_BLEND_FACTOR_ONE;
     pCbState->colorDstFactor    = VK_BLEND_FACTOR_ZERO;
@@ -5830,9 +5837,6 @@ namespace dxvk {
 
     pLoState->enableLogicOp     = VK_FALSE;
     pLoState->logicOp           = VK_LOGIC_OP_NO_OP;
-
-    pMsState->sampleMask            = SampleMask;
-    pMsState->enableAlphaToCoverage = VK_FALSE;
   }
 
   // Explicitly instantiate here

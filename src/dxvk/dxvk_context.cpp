@@ -2880,9 +2880,9 @@ namespace dxvk {
   void DxvkContext::setMultisampleState(const DxvkMultisampleState& ms) {
     m_state.gp.state.ms = DxvkMsInfo(
       m_state.gp.state.ms.sampleCount(),
-      ms.sampleMask,
-      ms.enableAlphaToCoverage);
-    
+      ms.sampleMask(),
+      ms.alphaToCoverage());
+
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyMultisampleState);

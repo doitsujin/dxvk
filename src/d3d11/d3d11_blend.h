@@ -32,9 +32,14 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_BLEND_DESC1* pDesc) final;
     
+    DxvkMultisampleState GetMsState(uint32_t SampleMask) const {
+      DxvkMultisampleState msState = m_msState;
+      msState.setSampleMask(SampleMask);
+      return msState;
+    }
+
     void BindToContext(
-            DxvkContext*      ctx,
-            UINT              sampleMask) const;
+            DxvkContext*      ctx) const;
     
     D3D10BlendState* GetD3D10Iface() {
       return &m_d3d10;
@@ -51,7 +56,7 @@ namespace dxvk {
     D3D11_BLEND_DESC1             m_desc;
     
     std::array<DxvkBlendMode, 8>  m_blendModes;
-    DxvkMultisampleState          m_msState;
+    DxvkMultisampleState          m_msState = { };
     DxvkLogicOpState              m_loState;
 
     D3D10BlendState               m_d3d10;
