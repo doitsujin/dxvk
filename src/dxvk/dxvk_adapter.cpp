@@ -326,12 +326,6 @@ namespace dxvk {
     // Always enable robust buffer access
     enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
 
-    // Always enable sparse residency if we can use it for efficient zero-initialization
-    if (m_deviceInfo.core.properties.sparseProperties.residencyNonResidentStrict) {
-      enabledFeatures.core.features.sparseBinding = m_deviceFeatures.core.features.sparseBinding;
-      enabledFeatures.core.features.sparseResidencyBuffer = m_deviceFeatures.core.features.sparseResidencyBuffer;
-    }
-
     // Always enable features used by the HUD
     enabledFeatures.core.features.multiDrawIndirect = VK_TRUE;
     enabledFeatures.vk11.shaderDrawParameters = VK_TRUE;
