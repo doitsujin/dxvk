@@ -219,8 +219,8 @@ namespace dxvk::hud {
     m_gfxPipelineLayout (createPipelineLayout()) {
     createComputePipeline(*renderer);
 
-    renderer->createShaderModule(m_vs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_graph_vert), hud_graph_vert);
-    renderer->createShaderModule(m_fs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_graph_frag), hud_graph_frag);
+    renderer->initShader(m_vs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_graph_vert), hud_graph_vert);
+    renderer->initShader(m_fs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_graph_frag), hud_graph_frag);
   }
 
 
@@ -229,9 +229,6 @@ namespace dxvk::hud {
 
     for (const auto& p : m_gfxPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_vs.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_fs.stageInfo.module, nullptr);
 
     vk->vkDestroyPipeline(vk->device(), m_computePipeline, nullptr);
     vk->vkDestroyPipelineLayout(vk->device(), m_computePipelineLayout, nullptr);
@@ -529,7 +526,7 @@ namespace dxvk::hud {
       throw DxvkError(str::format("Failed to create frame time compute pipeline layout: ", vr));
 
     HudShaderModule shader = { };
-    renderer.createShaderModule(shader, VK_SHADER_STAGE_COMPUTE_BIT,
+    renderer.initShader(shader, VK_SHADER_STAGE_COMPUTE_BIT,
       sizeof(hud_frame_time_eval), hud_frame_time_eval);
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
@@ -542,8 +539,6 @@ namespace dxvk::hud {
 
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create frame time compute pipeline: ", vr));
-
-    vk->vkDestroyShaderModule(vk->device(), shader.stageInfo.module, nullptr);
   }
 
 
@@ -983,10 +978,10 @@ namespace dxvk::hud {
   : m_device          (device),
     m_setLayout       (createSetLayout()),
     m_pipelineLayout  (createPipelineLayout()) {
-    renderer->createShaderModule(m_fsBackground, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_background), hud_chunk_frag_background);
-    renderer->createShaderModule(m_vsBackground, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_background), hud_chunk_vert_background);
-    renderer->createShaderModule(m_fsVisualize, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_visualize), hud_chunk_frag_visualize);
-    renderer->createShaderModule(m_vsVisualize, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_visualize), hud_chunk_vert_visualize);
+    renderer->initShader(m_fsBackground, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_background), hud_chunk_frag_background);
+    renderer->initShader(m_vsBackground, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_background), hud_chunk_vert_background);
+    renderer->initShader(m_fsVisualize, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_visualize), hud_chunk_frag_visualize);
+    renderer->initShader(m_vsVisualize, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_visualize), hud_chunk_vert_visualize);
   }
 
 
@@ -997,12 +992,6 @@ namespace dxvk::hud {
       vk->vkDestroyPipeline(vk->device(), p.second.background, nullptr);
       vk->vkDestroyPipeline(vk->device(), p.second.visualize, nullptr);
     }
-
-    vk->vkDestroyShaderModule(vk->device(), m_vsBackground.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_fsBackground.stageInfo.module, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_vsVisualize.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_fsVisualize.stageInfo.module, nullptr);
 
     vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
     vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
