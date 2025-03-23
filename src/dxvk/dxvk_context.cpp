@@ -1088,8 +1088,9 @@ namespace dxvk {
 
   void DxvkContext::initImage(
     const Rc<DxvkImage>&            image,
-    const VkImageSubresourceRange&  subresources,
           VkImageLayout             initialLayout) {
+    VkImageSubresourceRange subresources = image->getAvailableSubresources();
+
     if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
       accessImage(DxvkCmdBuffer::InitBarriers,
         *image, subresources, initialLayout,
