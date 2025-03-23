@@ -70,33 +70,16 @@ namespace dxvk {
       info.pNext = &formatList;
     }
 
-    if (m_features.khrMaintenance5.maintenance5) {
-      VkImageSubresource2KHR subresourceInfo = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR };
-      subresourceInfo.imageSubresource = subresource;
+    VkImageSubresource2KHR subresourceInfo = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR };
+    subresourceInfo.imageSubresource = subresource;
 
-      VkDeviceImageSubresourceInfoKHR query = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO_KHR };
-      query.pCreateInfo = &info;
-      query.pSubresource = &subresourceInfo;
+    VkDeviceImageSubresourceInfoKHR query = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO_KHR };
+    query.pCreateInfo = &info;
+    query.pSubresource = &subresourceInfo;
 
-      VkSubresourceLayout2KHR layout = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR };
-      m_vkd->vkGetDeviceImageSubresourceLayoutKHR(m_vkd->device(), &query, &layout);
-      return layout.subresourceLayout;
-    } else {
-      // Technically, there is no guarantee that all images with the same
-      // properties are going to have consistent subresource layouts if
-      // maintenance5 is not supported, but the only such use case we care
-      // about is RenderDoc.
-      VkImage image = VK_NULL_HANDLE;
-      VkResult vr = m_vkd->vkCreateImage(m_vkd->device(), &info, nullptr, &image);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("Failed to create temporary image: ", vr));
-
-      VkSubresourceLayout layout = { };
-      m_vkd->vkGetImageSubresourceLayout(m_vkd->device(), image, &subresource, &layout);
-      m_vkd->vkDestroyImage(m_vkd->device(), image, nullptr);
-      return layout;
-    }
+    VkSubresourceLayout2KHR layout = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR };
+    m_vkd->vkGetDeviceImageSubresourceLayoutKHR(m_vkd->device(), &query, &layout);
+    return layout.subresourceLayout;
   }
 
 
