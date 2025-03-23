@@ -1,22 +1,3 @@
-# About this fork:
-
-This fork contains the following changes:
-* GTR2 specific tweaks for higher framerate/image quality/resource usage.  Might be helpful for other gMotor based/derived DX9 games, but GTR2 is the sole focus of this fork so it is not guaranteed to work on other games.  Some differences vs main repo are marked with `GTR2_SPECIFIC` symbol.
-* additional resource unmapping.
-* allow DX9->Vulkan OpenVR/OpenXR (Initially based on Joshua Ashton's work).  Note: game side changes needed for VR to work, dropping this .dll into random game won't magically add Vulkan VR.
-* option to force SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to *some* pipelines, I am not yet sure how - suggestions welcome!  Note: main DXVK branch added this as well recently, but this fork has additional experimental setting: `dxvk.forceSampleRateShadingFactor`
-* option to force 32bit float depth buffer.
-* preserved `d3d9.enableDialogMode` setting deprecated in the mainline as it is tiny bit faster in GTR2 when disabled.
-
-I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks there (at least no one expressed interest).  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.  Also, any ideas for further DX9 gMotor specific tweaks are welcome.
-
-Follow updates to this fork here: https://thecrewchief.org/showthread.php?2012-Crew-Chief-GTR2-Enhancements-Plugin-Setup-Instructions-Known-Issues-and-Changelog
-Old versions are linked in CCGEP Manual's *Downloads and Resources* section.
-
-## Branches:
-* Latest Vulkan 1.3: vr-dx9-rel-110423
-* Vulkan 1.2: vr-dx9-rel-042322 - Please do not report issues on this version.
-
 # DXVK
 
 A Vulkan-based translation layer for Direct3D 8/9/10/11 which allows running 3D applications on Linux using Wine.
