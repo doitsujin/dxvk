@@ -2012,23 +2012,11 @@ namespace dxvk {
           VkMemoryRequirements2&  memoryRequirements) const {
     auto vk = m_device->vkd();
 
-    if (m_device->features().vk13.maintenance4) {
-      VkDeviceBufferMemoryRequirements info = { VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS };
-      info.pCreateInfo = &createInfo;
+    VkDeviceBufferMemoryRequirements info = { VK_STRUCTURE_TYPE_DEVICE_BUFFER_MEMORY_REQUIREMENTS };
+    info.pCreateInfo = &createInfo;
 
-      vk->vkGetDeviceBufferMemoryRequirements(vk->device(), &info, &memoryRequirements);
-      return true;
-    } else {
-      VkBufferMemoryRequirementsInfo2 info = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
-      VkResult vr = vk->vkCreateBuffer(vk->device(), &createInfo, nullptr, &info.buffer);
-
-      if (vr != VK_SUCCESS)
-        return false;
-
-      vk->vkGetBufferMemoryRequirements2(vk->device(), &info, &memoryRequirements);
-      vk->vkDestroyBuffer(vk->device(), info.buffer, nullptr);
-      return true;
-    }
+    vk->vkGetDeviceBufferMemoryRequirements(vk->device(), &info, &memoryRequirements);
+    return true;
   }
 
 
@@ -2037,23 +2025,11 @@ namespace dxvk {
           VkMemoryRequirements2&  memoryRequirements) const {
     auto vk = m_device->vkd();
 
-    if (m_device->features().vk13.maintenance4) {
-      VkDeviceImageMemoryRequirements info = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS };
-      info.pCreateInfo = &createInfo;
+    VkDeviceImageMemoryRequirements info = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_MEMORY_REQUIREMENTS };
+    info.pCreateInfo = &createInfo;
 
-      vk->vkGetDeviceImageMemoryRequirements(vk->device(), &info, &memoryRequirements);
-      return true;
-    } else {
-      VkImageMemoryRequirementsInfo2 info = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
-      VkResult vr = vk->vkCreateImage(vk->device(), &createInfo, nullptr, &info.image);
-
-      if (vr != VK_SUCCESS)
-        return false;
-
-      vk->vkGetImageMemoryRequirements2(vk->device(), &info, &memoryRequirements);
-      vk->vkDestroyImage(vk->device(), info.image, nullptr);
-      return true;
-    }
+    vk->vkGetDeviceImageMemoryRequirements(vk->device(), &info, &memoryRequirements);
+    return true;
   }
 
 
