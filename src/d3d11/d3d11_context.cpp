@@ -462,12 +462,15 @@ namespace dxvk {
     VkFormat uavFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     VkFormat rawFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_RAW).Format;
 
-    if (uavFormat != rawFormat && rawFormat == VK_FORMAT_UNDEFINED) {
+    if (uavDesc.Format == DXGI_FORMAT_A8_UNORM)
+      rawFormat = uavFormat;
+
+    if (uavFormat && !rawFormat) {
       Logger::err(str::format("D3D11: ClearUnorderedAccessViewUint: No raw format found for ", uavFormat));
       return;
     }
 
-    VkClearValue clearValue;
+    VkClearValue clearValue = { };
 
     if (uavDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT) {
       // R11G11B10 is a special case since there's no corresponding
@@ -479,12 +482,15 @@ namespace dxvk {
       clearValue.color.uint32[2] = 0;
       clearValue.color.uint32[3] = 0;
     } else if (uavDesc.Format == DXGI_FORMAT_A8_UNORM) {
-      // We need to use R8_UINT to clear A8_UNORM images,
-      // so remap the alpha component to the red channel.
-      clearValue.color.uint32[0] = Values[3];
-      clearValue.color.uint32[1] = 0;
-      clearValue.color.uint32[2] = 0;
-      clearValue.color.uint32[3] = 0;
+      // Use the unorm format itself to execute the clear, regardless
+      // of whether we use A8 or emulate the format with R8. This is
+      // necessary because we cannot create R8_UINT views for A8.
+      float a = float(Values[3] & 0xff) / 255.0f;
+
+      clearValue.color.float32[0] = a;
+      clearValue.color.float32[1] = a;
+      clearValue.color.float32[2] = a;
+      clearValue.color.float32[3] = a;
     } else {
       clearValue.color.uint32[0] = Values[0];
       clearValue.color.uint32[1] = Values[1];
