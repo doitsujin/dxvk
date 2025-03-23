@@ -1053,9 +1053,7 @@ namespace dxvk {
       cImages = std::move(images)
     ] (DxvkContext* ctx) {
       for (size_t i = 0; i < cImages.size(); i++) {
-        ctx->initImage(cImages[i],
-          cImages[i]->getAvailableSubresources(),
-          VK_IMAGE_LAYOUT_UNDEFINED);
+        ctx->initImage(cImages[i], VK_IMAGE_LAYOUT_UNDEFINED);
       }
     });
 

@@ -316,7 +316,7 @@ namespace dxvk {
         cStorage = std::move(storage)
       ] (DxvkContext* ctx) {
         ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
-        ctx->initImage(cImage, cImage->getAvailableSubresources(), VK_IMAGE_LAYOUT_PREINITIALIZED);
+        ctx->initImage(cImage, VK_IMAGE_LAYOUT_PREINITIALIZED);
       });
 
       pMappedResource->RowPitch   = layout.RowPitch;
