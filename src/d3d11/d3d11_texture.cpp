@@ -827,8 +827,9 @@ namespace dxvk {
 
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
-    Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
-             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    Usage &= VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT
+      | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     // Storage images require GENERAL.
     if (Usage & VK_IMAGE_USAGE_STORAGE_BIT)
@@ -837,7 +838,7 @@ namespace dxvk {
     // Also use GENERAL if the image cannot be rendered to. This
     // should not harm any hardware in practice and may avoid some
     // redundant layout transitions for regular textures.
-    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
+    if (!(Usage & ~VK_IMAGE_USAGE_SAMPLED_BIT))
       return VK_IMAGE_LAYOUT_GENERAL;
 
     // If the image is used only as an attachment, we never
