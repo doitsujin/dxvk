@@ -47,10 +47,6 @@ namespace dxvk {
     if (m_device->features().core.features.variableMultisampleRate)
       m_features.set(DxvkContextFeature::VariableMultisampleRate);
 
-    // Maintenance5 introduced a bounded BindIndexBuffer function
-    if (m_device->features().khrMaintenance5.maintenance5)
-      m_features.set(DxvkContextFeature::IndexBufferRobustness);
-
     // Check whether we can batch direct draws
     if (m_device->features().extMultiDraw.multiDraw
      && m_device->properties().extMultiDraw.maxMultiDrawCount >= DirectMultiDrawBatchSize)
@@ -6865,20 +6861,13 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
     auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
 
-    if (m_features.test(DxvkContextFeature::IndexBufferRobustness)) {
-      VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
-      VkDeviceSize range = bufferInfo.buffer.range & ~(align - 1);
+    VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
+    VkDeviceSize range = bufferInfo.buffer.range & ~(align - 1);
 
-      m_cmd->cmdBindIndexBuffer2(
-        bufferInfo.buffer.buffer,
-        bufferInfo.buffer.offset,
-        range, m_state.vi.indexType);
-    } else {
-      m_cmd->cmdBindIndexBuffer(
-        bufferInfo.buffer.buffer,
-        bufferInfo.buffer.offset,
-        m_state.vi.indexType);
-    }
+    m_cmd->cmdBindIndexBuffer2(
+      bufferInfo.buffer.buffer,
+      bufferInfo.buffer.offset,
+      range, m_state.vi.indexType);
 
     if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
       accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
