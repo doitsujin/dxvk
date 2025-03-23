@@ -1034,6 +1034,16 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer) {
     auto dstSlice = buffer->getSliceHandle();
 
+    // If the buffer is suballocated, clear the entire allocated
+    // region, which is guaranteed to have a nicely aligned size
+    if (!buffer->storage()->flags().test(DxvkAllocationFlag::OwnsBuffer)) {
+      auto bufferInfo = buffer->storage()->getBufferInfo();
+
+      dstSlice.handle = bufferInfo.buffer;
+      dstSlice.offset = bufferInfo.offset;
+      dstSlice.length = bufferInfo.size;
+    }
+
     // Buffer size may be misaligned, in which case we have
     // to use a plain buffer copy to fill the last few bytes.
     constexpr VkDeviceSize MinCopyAndFillSize = 1u << 20;
