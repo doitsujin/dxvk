@@ -308,7 +308,6 @@ namespace dxvk {
 
     Rc<vk::DeviceFn>  m_vkd;
     VkBuffer          m_buffer          = VK_NULL_HANDLE;
-    bool              m_passBufferUsage = false;
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkBufferViewKey,
