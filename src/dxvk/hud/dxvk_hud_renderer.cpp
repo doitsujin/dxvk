@@ -35,8 +35,8 @@ namespace dxvk::hud {
   : m_device              (device),
     m_textSetLayout       (createSetLayout()),
     m_textPipelineLayout  (createPipelineLayout()) {
-    createShaderModule(m_textVs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_text_vert), hud_text_vert);
-    createShaderModule(m_textFs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_text_frag), hud_text_frag);
+    initShader(m_textVs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_text_vert), hud_text_vert);
+    initShader(m_textFs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_text_frag), hud_text_frag);
   }
   
   
@@ -45,9 +45,6 @@ namespace dxvk::hud {
 
     for (const auto& p : m_textPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_textVs.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_textFs.stageInfo.module, nullptr);
 
     vk->vkDestroyPipelineLayout(vk->device(), m_textPipelineLayout, nullptr);
     vk->vkDestroyDescriptorSetLayout(vk->device(), m_textSetLayout, nullptr);
@@ -299,7 +296,7 @@ namespace dxvk::hud {
   }
 
 
-  void HudRenderer::createShaderModule(
+  void HudRenderer::initShader(
           HudShaderModule&    shader,
           VkShaderStageFlagBits stage,
           size_t              size,
@@ -307,22 +304,9 @@ namespace dxvk::hud {
     shader.moduleInfo.codeSize = size;
     shader.moduleInfo.pCode = code;
 
+    shader.stageInfo.pNext = &shader.moduleInfo;
     shader.stageInfo.stage = stage;
     shader.stageInfo.pName = "main";
-
-    if (m_device->features().khrMaintenance5.maintenance5
-     || m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      shader.stageInfo.pNext = &shader.moduleInfo;
-      return;
-    }
-
-    auto vk = m_device->vkd();
-
-    VkResult vr = vk->vkCreateShaderModule(vk->device(),
-      &shader.moduleInfo, nullptr, &shader.stageInfo.module);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit shader module: ", vr));
   }
 
 
