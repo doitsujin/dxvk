@@ -1822,16 +1822,12 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::determineBufferUsageFlagsPerMemoryType() {
     VkBufferUsageFlags flags = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                             | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
                              | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                              | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                              | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                              | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                              | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-
-    // Also lock index buffer usage to maintenance5 support since we
-    // cannot explicitly specify a buffer range otherwise.
-    if (m_device->features().khrMaintenance5.maintenance5)
-      flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     if (m_device->features().extTransformFeedback.transformFeedback) {
       flags |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT
