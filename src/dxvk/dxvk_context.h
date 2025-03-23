@@ -1865,6 +1865,8 @@ namespace dxvk {
     Rc<DxvkBuffer> createZeroBuffer(
             VkDeviceSize              size);
 
+    void freeZeroBuffer();
+
     void resizeDescriptorArrays(
             uint32_t                  bindingCount);
 

@@ -153,6 +153,9 @@ namespace dxvk {
       m_endLatencyTracking = false;
     }
 
+    // If we have a zero buffer, see if we can get rid of it
+    freeZeroBuffer();
+
     this->beginRecording(
       m_device->createCommandList());
   }
@@ -7773,7 +7776,21 @@ namespace dxvk {
     m_cmd->track(m_zeroBuffer, DxvkAccess::Write);
     return m_zeroBuffer;
   }
-  
+
+
+  void DxvkContext::freeZeroBuffer() {
+    constexpr uint64_t ZeroBufferLifetime = 4096u;
+
+    // Don't free the zero buffer if it is still kept alive by a prior
+    // submission anyway
+    if (!m_zeroBuffer || m_zeroBuffer->isInUse(DxvkAccess::Write))
+      return;
+
+    // Delete zero buffer if it hasn't been actively used in a while
+    if (m_zeroBuffer->getTrackId() + ZeroBufferLifetime < m_trackingId)
+      m_zeroBuffer = nullptr;
+  }
+
 
   void DxvkContext::resizeDescriptorArrays(
           uint32_t                  bindingCount) {
