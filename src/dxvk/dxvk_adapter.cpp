@@ -434,9 +434,8 @@ namespace dxvk {
       m_deviceFeatures.extSwapchainMaintenance1.swapchainMaintenance1 &&
       instance->extensions().extSurfaceMaintenance1;
 
-    // Enable maintenance features if supported
-    enabledFeatures.khrMaintenance5.maintenance5 =
-      m_deviceFeatures.khrMaintenance5.maintenance5;
+    // Enable maintenance features if supported. maintenance5 is required.
+    enabledFeatures.khrMaintenance5.maintenance5 = VK_TRUE;
     enabledFeatures.khrMaintenance7.maintenance7 =
       m_deviceFeatures.khrMaintenance7.maintenance7;
 
