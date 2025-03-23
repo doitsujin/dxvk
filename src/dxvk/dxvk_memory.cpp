@@ -39,8 +39,7 @@ namespace dxvk {
   DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
           DxvkMemoryAllocator*        allocator,
           VkBuffer                    buffer)
-  : m_vkd(allocator->device()->vkd()), m_buffer(buffer),
-    m_passBufferUsage(allocator->device()->features().khrMaintenance5.maintenance5) {
+  : m_vkd(allocator->device()->vkd()), m_buffer(buffer) {
 
   }
 
@@ -64,14 +63,11 @@ namespace dxvk {
     VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
     flags.usage = key.usage;
 
-    VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
+    VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
     info.buffer = m_buffer;
     info.format = key.format;
     info.offset = key.offset + baseOffset;
     info.range = key.size;
-
-    if (m_passBufferUsage)
-      info.pNext = &flags;
 
     VkBufferView view = VK_NULL_HANDLE;
 
@@ -1829,16 +1825,13 @@ namespace dxvk {
                              | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                              | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                              | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                             | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+                             | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+                             | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
 
-    // Lock storage texel buffer usage to maintenance5 support since we will
-    // otherwise not be able to legally use formats that support one type of
-    // texel buffer but not the other. Also lock index buffer usage since we
+    // Also lock index buffer usage to maintenance5 support since we
     // cannot explicitly specify a buffer range otherwise.
-    if (m_device->features().khrMaintenance5.maintenance5) {
-      flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT
-            |  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    }
+    if (m_device->features().khrMaintenance5.maintenance5)
+      flags |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     if (m_device->features().extTransformFeedback.transformFeedback) {
       flags |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT
