@@ -33,15 +33,6 @@ namespace dxvk {
     for (const auto& p : m_cursorPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
 
-    vk->vkDestroyShaderModule(vk->device(), m_shaderVsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsCopy.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsResolve.stageInfo.module, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_shaderVsCursor.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsCursor.stageInfo.module, nullptr);
-
     vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
     vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
 
@@ -743,31 +734,31 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::createShaders() {
-    createShaderModule(m_shaderVsBlit, VK_SHADER_STAGE_VERTEX_BIT,
+    initShader(m_shaderVsBlit, VK_SHADER_STAGE_VERTEX_BIT,
       sizeof(dxvk_present_vert), dxvk_present_vert);
-    createShaderModule(m_shaderFsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
+    initShader(m_shaderFsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(dxvk_present_frag_blit), dxvk_present_frag_blit);
-    createShaderModule(m_shaderFsCopy, VK_SHADER_STAGE_FRAGMENT_BIT,
+    initShader(m_shaderFsCopy, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(dxvk_present_frag), dxvk_present_frag);
-    createShaderModule(m_shaderFsMsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
+    initShader(m_shaderFsMsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(dxvk_present_frag_ms_blit), dxvk_present_frag_ms_blit);
 
     if (m_device->features().amdShaderFragmentMask) {
-      createShaderModule(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
+      initShader(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(dxvk_present_frag_ms_amd), dxvk_present_frag_ms_amd);
     } else {
-      createShaderModule(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
+      initShader(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
         sizeof(dxvk_present_frag_ms), dxvk_present_frag_ms);
     }
 
-    createShaderModule(m_shaderVsCursor, VK_SHADER_STAGE_VERTEX_BIT,
+    initShader(m_shaderVsCursor, VK_SHADER_STAGE_VERTEX_BIT,
       sizeof(dxvk_cursor_vert), dxvk_cursor_vert);
-    createShaderModule(m_shaderFsCursor, VK_SHADER_STAGE_FRAGMENT_BIT,
+    initShader(m_shaderFsCursor, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(dxvk_cursor_frag), dxvk_cursor_frag);
   }
 
 
-  void DxvkSwapchainBlitter::createShaderModule(
+  void DxvkSwapchainBlitter::initShader(
           ShaderModule&               shader,
           VkShaderStageFlagBits       stage,
           size_t                      size,
@@ -775,22 +766,9 @@ namespace dxvk {
     shader.moduleInfo.codeSize = size;
     shader.moduleInfo.pCode = code;
 
+    shader.stageInfo.pNext = &shader.moduleInfo;
     shader.stageInfo.stage = stage;
     shader.stageInfo.pName = "main";
-
-    if (m_device->features().khrMaintenance5.maintenance5
-     || m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      shader.stageInfo.pNext = &shader.moduleInfo;
-      return;
-    }
-
-    auto vk = m_device->vkd();
-
-    VkResult vr = vk->vkCreateShaderModule(vk->device(),
-      &shader.moduleInfo, nullptr, &shader.stageInfo.module);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit shader module: ", vr));
   }
 
 
