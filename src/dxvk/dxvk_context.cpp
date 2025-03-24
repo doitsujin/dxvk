@@ -1292,8 +1292,10 @@ namespace dxvk {
     if (imageView->info().mipCount <= 1)
       return;
     
-    this->spillRenderPass(false);
+    this->spillRenderPass(true);
     this->invalidateState();
+
+    this->prepareImage(imageView->image(), imageView->imageSubresources());
 
     // Make sure we can both render to and read from the image
     VkFormat viewFormat = imageView->info().format;
@@ -4166,7 +4168,7 @@ namespace dxvk {
       attachmentIndex = -1;
 
     if (attachmentIndex < 0) {
-      this->spillRenderPass(false);
+      this->spillRenderPass(true);
 
       this->prepareImage(imageView->image(), imageView->imageSubresources());
       this->flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
@@ -4270,7 +4272,7 @@ namespace dxvk {
     DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
 
     if (!prepareOutOfOrderTransfer(imageView->image(), DxvkAccess::Write)) {
-      spillRenderPass(false);
+      spillRenderPass(true);
       invalidateState();
 
       prepareImage(imageView->image(), imageView->imageSubresources());
