@@ -1043,6 +1043,11 @@ namespace dxvk {
     { R"(\\sh2pc\.exe$)", {{
       { "d3d9.extraFrontbuffer",            "True" },
     }} },
+    /* Lego Indiana Jones: The Original Adventures *
+     * Fix UI performance                          */
+    { R"(\\LEGOIndy\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
