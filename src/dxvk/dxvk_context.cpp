@@ -402,7 +402,7 @@ namespace dxvk {
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
-      this->prepareImage(imageView->image(), imageView->subresources(), false);
+      this->prepareImage(imageView->image(), imageView->imageSubresources(), false);
     } else if (!m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects)) {
       // We cannot inline clears if the clear aspects are not writable. End the
       // render pass on the next draw to ensure that the image gets cleared.
@@ -4141,7 +4141,7 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass(false);
 
-      this->prepareImage(imageView->image(), imageView->subresources());
+      this->prepareImage(imageView->image(), imageView->imageSubresources());
       this->flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -4246,7 +4246,7 @@ namespace dxvk {
       spillRenderPass(false);
       invalidateState();
 
-      prepareImage(imageView->image(), imageView->subresources());
+      prepareImage(imageView->image(), imageView->imageSubresources());
       flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
 
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
@@ -6721,7 +6721,7 @@ namespace dxvk {
         const DxvkAttachment& attachment = m_state.om.framebufferInfo.getColorTarget(i);
 
         if (attachment.view != nullptr && attachment.view->image() == image
-         && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
+         && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->imageSubresources(), subresources))) {
           this->transitionColorAttachment(attachment, m_rtLayouts.color[i]);
           m_rtLayouts.color[i] = image->info().layout;
         }
@@ -6730,7 +6730,7 @@ namespace dxvk {
       const DxvkAttachment& attachment = m_state.om.framebufferInfo.getDepthTarget();
 
       if (attachment.view != nullptr && attachment.view->image() == image
-       && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
+       && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->imageSubresources(), subresources))) {
         this->transitionDepthAttachment(attachment, m_rtLayouts.depth);
         m_rtLayouts.depth = image->info().layout;
       }
