@@ -58,7 +58,7 @@ namespace dxvk {
     bool supportsTightIcbPacking = false;
 
     /// Whether exporting point size is required
-    bool needsPointSizeExport = true;
+    bool needsPointSizeExport = false;
 
     /// Float control flags
     DxbcFloatControlFlags floatControl;
