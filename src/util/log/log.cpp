@@ -101,10 +101,13 @@ namespace dxvk {
                 m_wineLogOutput(buffer.data());
               }
             }
-          } else {
-            std::cerr << adjusted;
           }
+
+          // Don't log anything to stderr if we're not on wine. Usually games are
+          // compiled as gui apps anyway, and emitting anything to the standard
+          // output streams can crash certain games.
 #else
+          // For native builds, logging to stderr should be fine.
           std::cerr << adjusted;
 #endif
         }
