@@ -76,6 +76,7 @@
         "dxvk_common_optional": {
             "extensions": {
                 "VK_KHR_maintenance5": 1,
+                "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id": 1,
                 "VK_KHR_present_wait": 1,
                 "VK_KHR_swapchain_mutable_format": 1,
@@ -89,6 +90,9 @@
                 },
                 "VkPhysicalDeviceMaintenance5FeaturesKHR": {
                     "maintenance5": true
+                },
+                "VkPhysicalDeviceMaintenance7FeaturesKHR": {
+                    "maintenance7": true
                 },
                 "VkPhysicalDevicePresentIdFeaturesKHR": {
                     "presentId": true
