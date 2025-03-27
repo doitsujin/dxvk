@@ -46,9 +46,8 @@ namespace dxvk {
     needsPointSizeExport = !device->features().khrMaintenance5.maintenance5
                         && !device->adapter()->matchesDriver(VK_DRIVER_ID_QUALCOMM_PROPRIETARY);
 
-    // ANV breaks when we *don't* explicitly write point size, even though it
-    // supports maintenance5. TODO version check if this gets fixed upstream.
-    needsPointSizeExport |= device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA);
+    // ANV up to mesa 25.0.2 breaks when we *don't* explicitly write point size
+    needsPointSizeExport |= device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version(25, 0, 3));
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
