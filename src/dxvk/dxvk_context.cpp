@@ -4227,6 +4227,17 @@ namespace dxvk {
       // Make sure the render pass is active so
       // that we can actually perform the clear
       this->startRenderPass();
+
+      if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+        uint32_t colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+        m_state.om.attachmentMask.trackColorWrite(colorIndex);
+      }
+
+      if (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
+        m_state.om.attachmentMask.trackDepthWrite();
+
+      if (aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
+        m_state.om.attachmentMask.trackStencilWrite();
     }
 
     // Perform the actual clear operation
