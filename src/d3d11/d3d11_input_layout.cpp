@@ -14,10 +14,10 @@ namespace dxvk {
     m_bindingCount    (numBindings),
     m_d3d10           (this) {
     for (uint32_t i = 0; i < numAttributes; i++)
-      m_input.inputs[i] = DxvkVertexInput(pAttributes[i]);
+      m_inputs[i] = DxvkVertexInput(pAttributes[i]);
 
     for (uint32_t i = 0; i < numBindings; i++)
-      m_input.inputs[i + numAttributes] = DxvkVertexInput(pBindings[i]);
+      m_inputs[i + numAttributes] = DxvkVertexInput(pBindings[i]);
   }
 
 
@@ -58,7 +58,14 @@ namespace dxvk {
     if (m_attributeCount != pOther->m_attributeCount || m_bindingCount != pOther->m_bindingCount)
       return false;
 
-    return bit::bcmpeq(&m_input, &pOther->m_input);
+    // Try to vectorize at least a little bit here. We can't use bcmpeq here
+    // since there is no way at all to guaratee alignment for the array.
+    for (uint32_t i = 0; i < m_attributeCount + m_bindingCount; i += 4u) {
+      if (std::memcmp(&m_inputs[i], &pOther->m_inputs[i], 4u * sizeof(DxvkVertexInput)))
+        return false;
+    }
+
+    return true;
   }
   
 }
