@@ -1653,6 +1653,11 @@ namespace dxvk {
 
     void preparePostRenderPassClears();
 
+    void hoistInlineClear(
+            DxvkDeferredClear&        clear,
+            VkRenderingAttachmentInfo& attachment,
+            VkImageAspectFlagBits     aspect);
+
     void flushClearsInline();
 
     void flushClears(

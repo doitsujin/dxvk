@@ -2311,17 +2311,52 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::hoistInlineClear(
+          DxvkDeferredClear&        clear,
+          VkRenderingAttachmentInfo& attachment,
+          VkImageAspectFlagBits     aspect) {
+    if (clear.clearAspects & aspect) {
+      attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+      attachment.clearValue = clear.clearValue;
+
+      clear.clearAspects &= ~aspect;
+    } else if (clear.discardAspects & aspect) {
+      attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+      clear.discardAspects &= ~aspect;
+    }
+  }
+
+
   void DxvkContext::flushClearsInline() {
     small_vector<VkClearAttachment, MaxNumRenderTargets + 1u> attachments;
 
-    for (const auto& clear : m_deferredClears) {
-      // Ignore pure discards, we can't do anything useful with
+    for (auto& clear : m_deferredClears) {
+      // If we end up here, the image is guaranteed to be bound and writable.
+      int32_t attachmentIndex = m_state.om.framebufferInfo.findAttachment(clear.imageView);
+
+      if (m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd)) {
+        // If the attachment hasn't been used for rendering yet, and if we're inside
+        // a render pass using secondary command buffers, we can fold the clear or
+        // discard into the render pass itself.
+        if ((clear.clearAspects | clear.discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
+          uint32_t colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+
+          if (m_state.om.attachmentMask.getColorAccess(colorIndex) == DxvkAccess::None)
+            hoistInlineClear(clear, m_state.om.renderingInfo.color[colorIndex], VK_IMAGE_ASPECT_COLOR_BIT);
+        } else {
+          if (m_state.om.attachmentMask.getDepthAccess() == DxvkAccess::None)
+            hoistInlineClear(clear, m_state.om.renderingInfo.depth, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+          if (m_state.om.attachmentMask.getStencilAccess() == DxvkAccess::None)
+            hoistInlineClear(clear, m_state.om.renderingInfo.stencil, VK_IMAGE_ASPECT_STENCIL_BIT);
+        }
+      }
+
+      // Ignore discards here, we can't do anything useful with
       // those without interrupting the render pass again.
       if (!clear.clearAspects)
         continue;
-
-      // If we end up here, the image is guaranteed to be bound.
-      int32_t attachmentIndex = m_state.om.framebufferInfo.findAttachment(clear.imageView);
 
       auto& entry = attachments.emplace_back();
       entry.aspectMask = clear.clearAspects;
