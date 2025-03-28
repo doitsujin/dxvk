@@ -58,7 +58,7 @@ namespace dxvk {
     if (m_attributeCount != pOther->m_attributeCount || m_bindingCount != pOther->m_bindingCount)
       return false;
 
-    return bit::bcmpeq(&m_input, &pOther->m_input);
+    return !std::memcmp(&m_input, &pOther->m_input, sizeof(m_input));
   }
   
 }
