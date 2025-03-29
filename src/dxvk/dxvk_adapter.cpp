@@ -371,11 +371,7 @@ namespace dxvk {
     // Core features that we're relying on in various places
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
-
-    // Maintenance4 may cause performance problems on amdvlk in some cases
-    if (m_deviceInfo.vk12.driverID != VK_DRIVER_ID_AMD_OPEN_SOURCE
-     && m_deviceInfo.vk12.driverID != VK_DRIVER_ID_AMD_PROPRIETARY)
-      enabledFeatures.vk13.maintenance4 = VK_TRUE;
+    enabledFeatures.vk13.maintenance4 = VK_TRUE;
 
     // We expose depth clip rather than depth clamp to client APIs
     enabledFeatures.extDepthClipEnable.depthClipEnable =
@@ -438,9 +434,8 @@ namespace dxvk {
       m_deviceFeatures.extSwapchainMaintenance1.swapchainMaintenance1 &&
       instance->extensions().extSurfaceMaintenance1;
 
-    // Enable maintenance features if supported
-    enabledFeatures.khrMaintenance5.maintenance5 =
-      m_deviceFeatures.khrMaintenance5.maintenance5;
+    // Enable maintenance features if supported. maintenance5 is required.
+    enabledFeatures.khrMaintenance5.maintenance5 = VK_TRUE;
     enabledFeatures.khrMaintenance7.maintenance7 =
       m_deviceFeatures.khrMaintenance7.maintenance7;
 

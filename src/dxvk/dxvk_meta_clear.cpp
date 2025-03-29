@@ -149,38 +149,30 @@ namespace dxvk {
   
   
   VkPipeline DxvkMetaClearObjects::createPipeline(
-    const SpirvCodeBuffer&        spirvCode,
+          size_t                  size,
+    const uint32_t*               code,
           VkPipelineLayout        pipeLayout) {
     VkShaderModuleCreateInfo shaderInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    shaderInfo.codeSize           = spirvCode.size();
-    shaderInfo.pCode              = spirvCode.data();
-    
-    VkShaderModule shaderModule = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(),
-          &shaderInfo, nullptr, &shaderModule) != VK_SUCCESS)
-      throw DxvkError("Dxvk: Failed to create meta clear shader module");
-    
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+    shaderInfo.codeSize           = size;
+    shaderInfo.pCode              = code;
+
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &shaderInfo };
     stageInfo.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
-    stageInfo.module              = shaderModule;
     stageInfo.pName               = "main";
-    stageInfo.pSpecializationInfo = nullptr;
-    
+
     VkComputePipelineCreateInfo pipeInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     pipeInfo.stage                = stageInfo;
     pipeInfo.layout               = pipeLayout;
     pipeInfo.basePipelineIndex    = -1;
-    
+
     VkPipeline result = VK_NULL_HANDLE;
-    
+
     const VkResult status = m_vkd->vkCreateComputePipelines(
       m_vkd->device(), VK_NULL_HANDLE, 1, &pipeInfo, nullptr, &result);
-    
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), shaderModule, nullptr);
-    
+
     if (status != VK_SUCCESS)
       throw DxvkError("Dxvk: Failed to create meta clear compute pipeline");
     return result;
   }
-  
+
 }

@@ -220,34 +220,22 @@ namespace dxvk {
     specInfo.dataSize = sizeof(specConstant);
     specInfo.pData = &specConstant;
 
+    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    moduleInfo.codeSize = size;
+    moduleInfo.pCode = code;
+
     VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineInfo.stage.pNext = &moduleInfo;
     pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     pipelineInfo.stage.pName = "main";
     pipelineInfo.stage.pSpecializationInfo = &specInfo;
     pipelineInfo.layout = m_pipelineLayout;
     pipelineInfo.basePipelineIndex = -1;
 
-    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    moduleInfo.codeSize = size;
-    moduleInfo.pCode = code;
-
-    if (m_device->features().khrMaintenance5.maintenance5
-     || m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      pipelineInfo.stage.pNext = &moduleInfo;
-    } else {
-      VkResult vr = vk->vkCreateShaderModule(vk->device(),
-        &moduleInfo, nullptr, &pipelineInfo.stage.module);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("Failed to create format conversion shader module: ", vr));
-    }
-
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateComputePipelines(vk->device(),
       VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
-
-    vk->vkDestroyShaderModule(vk->device(), pipelineInfo.stage.module, nullptr);
 
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create format conversion pipeline: ", vr));
