@@ -1048,6 +1048,11 @@ namespace dxvk {
     { R"(\\LEGOIndy\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Lego Batman: The Videogame                 *
+     * Fix UI performance                         */
+    { R"((\\LEGOBatman|LegoBatman\\Game)\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
