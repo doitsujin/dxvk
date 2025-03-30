@@ -176,7 +176,11 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint64_t n) {
-    #if defined(DXVK_ARCH_X86_64) && ((defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__))
+    #if defined(_MSC_VER) && !defined(__AVX2__)
+    unsigned long bsr;
+    _BitScanReverse(&bsr, n);
+    return 31-bsr;
+    #elif defined(DXVK_ARCH_X86_64) && ((defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__))
     return _lzcnt_u64(n);
     #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
     return n != 0 ? __builtin_clzll(n) : 64;
