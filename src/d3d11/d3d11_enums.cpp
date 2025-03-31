@@ -11,6 +11,7 @@ std::ostream& operator << (std::ostream& os, D3D_FEATURE_LEVEL e) {
     ENUM_NAME(D3D_FEATURE_LEVEL_11_1);
     ENUM_NAME(D3D_FEATURE_LEVEL_12_0);
     ENUM_NAME(D3D_FEATURE_LEVEL_12_1);
+    ENUM_NAME(D3D_FEATURE_LEVEL_12_2);
     ENUM_DEFAULT(e);
   }
 }
