@@ -83,7 +83,7 @@ namespace dxvk {
     // Clamp the shader model value between 0 and 3
     this->shaderModel    = dxvk::clamp(this->shaderModel, 0u, 3u);
     // Clamp LOD bias so that people don't abuse this in unintended ways
-    this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
+    this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 64.0f);
 
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
