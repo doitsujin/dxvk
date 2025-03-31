@@ -156,13 +156,13 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint32_t n) {
-    #if defined(_MSC_VER) && !defined(__AVX2__)
+    #if ((defined(_MSC_VER) && !defined(__clang__))) && !defined(__AVX2__)
     unsigned long bsr;
     if(n == 0)
       return 32;
     _BitScanReverse(&bsr, n);
     return 31-bsr;
-    #elif (defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__)
+    #elif (defined(_MSC_VER) && !defined(__clang__)) || defined(__AVX2__)
     return _lzcnt_u32(n);
     #elif defined(__GNUC__) || defined(__clang__)
     return n != 0 ? __builtin_clz(n) : 32;
@@ -182,13 +182,13 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint64_t n) {
-    #if defined(_MSC_VER) && !defined(__AVX2__) && defined(DXVK_ARCH_X86_64)
+    #if ((defined(_MSC_VER) && !defined(__clang__))) && !defined(__AVX2__) && defined(DXVK_ARCH_X86_64)
     unsigned long bsr;
     if(n == 0)
       return 64;
     _BitScanReverse64(&bsr, n);
     return 63-bsr;
-    #elif defined(DXVK_ARCH_X86_64) && ((defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__))
+    #elif defined(DXVK_ARCH_X86_64) && ((defined(_MSC_VER) && !defined(__clang__)) || defined(__AVX2__))
     return _lzcnt_u64(n);
     #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
     return n != 0 ? __builtin_clzll(n) : 64;
