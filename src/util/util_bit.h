@@ -160,7 +160,7 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint32_t n) {
-    #if ((defined(_MSC_VER) && !defined(__clang__))) && !defined(__LZCNT__)
+    #if defined(_MSC_VER) && !defined(__clang__) && !defined(__LZCNT__)
     unsigned long bsr;
     if(n == 0)
       return 32;
@@ -186,7 +186,7 @@ namespace dxvk::bit {
   }
 
   inline uint32_t lzcnt(uint64_t n) {
-    #if ((defined(_MSC_VER) && !defined(__clang__))) && !defined(__LZCNT__) && defined(DXVK_ARCH_X86_64)
+    #if defined(_MSC_VER) && !defined(__clang__) && !defined(__LZCNT__) && defined(DXVK_ARCH_X86_64)
     unsigned long bsr;
     if(n == 0)
       return 64;
