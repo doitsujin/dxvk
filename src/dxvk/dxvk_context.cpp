@@ -1988,6 +1988,13 @@ namespace dxvk {
         useFb |= dstImage->info().format != srcImage->info().format;
     }
 
+    // If the resolve format does not match the base image format, the resolve
+    // attachment path is broken on some drivers so use the framebuffer path.
+    if (m_device->perfHints().renderPassResolveFormatBug) {
+      useFb |= format != srcImage->info().format
+            || format != dstImage->info().format;
+    }
+
     // Ensure that we can actually use the destination image as an attachment
     DxvkImageUsageInfo dstUsage = { };
     dstUsage.viewFormatCount = 1;
