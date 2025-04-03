@@ -6741,8 +6741,10 @@ namespace dxvk {
     // corner so we can get away with flipping the viewport.
     const D3DVIEWPORT9& vp = m_state.viewport;
 
+    
     // Correctness Factor for 1/2 texel offset
-    constexpr float cf = 0.5f;
+    // Unless for buggy games that need a bit bias
+    float cf = m_d3d9Options.correctnessBias? 0.5f - (1.0f / 128.0f) : 0.5f;
 
     // How much to bias MinZ by to avoid a depth
     // degenerate viewport.
