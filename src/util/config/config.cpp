@@ -492,12 +492,14 @@ namespace dxvk {
      * without Strict floats                       */
     { R"(\\Borderlands2\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
+      { "d3d9.correctnessBias",             "True" },
       { "d3d9.supportDFFormats",            "False" },
       { "d3d9.floatEmulation",              "Strict" },
     }} },
     /* Borderlands: The Pre-Sequel                  */
     { R"(\\BorderlandsPreSequel\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
+      { "d3d9.correctnessBias",             "True" },
       { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Gothic 3                                   */
