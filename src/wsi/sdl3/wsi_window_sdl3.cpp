@@ -22,8 +22,8 @@ namespace dxvk::wsi {
     int w = 0;
     int h = 0;
 
-    if (!SDL_GetWindowSize(window, &w, &h))
-      Logger::err(str::format("SDL3 WSI: SDL_GetWindowSize: ", SDL_GetError()));
+    if (!SDL_GetWindowSizeInPixels(window, &w, &h))
+      Logger::err(str::format("SDL3 WSI: SDL_GetWindowSizeinPixels: ", SDL_GetError()));
 
     if (pWidth)
       *pWidth = uint32_t(w);
