@@ -144,6 +144,9 @@ namespace dxvk {
     /// Disable counting losable resources and rejecting calls to Reset() if any are still alive
     bool countLosableResources;
 
+    /// Bias correctness factor a bit to fix some game bugs
+    bool correctnessBias;
+
     /// Ensure that for the same D3D commands the output VK commands
     /// don't change between runs. Useful for comparative benchmarking,
     /// can negatively affect performance.

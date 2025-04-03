@@ -74,6 +74,7 @@ namespace dxvk {
     this->samplerLodBias                = config.getOption<float>       ("d3d9.samplerLodBias",                0.0f);
     this->clampNegativeLodBias          = config.getOption<bool>        ("d3d9.clampNegativeLodBias",          false);
     this->countLosableResources         = config.getOption<bool>        ("d3d9.countLosableResources",         true);
+    this->correctnessBias               = config.getOption<bool>        ("d3d9.correctnessBias",               false);
     this->reproducibleCommandStream     = config.getOption<bool>        ("d3d9.reproducibleCommandStream",     false);
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
 
