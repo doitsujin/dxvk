@@ -138,7 +138,7 @@ namespace dxvk::hud {
     VkSpecializationInfo getSpecInfo(
       const HudSpecConstants*   constants) const;
 
-    void createShaderModule(
+    void initShader(
             HudShaderModule&    shader,
             VkShaderStageFlagBits stage,
             size_t              size,

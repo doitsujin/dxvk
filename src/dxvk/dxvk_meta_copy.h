@@ -142,7 +142,7 @@ namespace dxvk {
 
   public:
 
-    DxvkMetaCopyObjects(const DxvkDevice* device);
+    DxvkMetaCopyObjects(DxvkDevice* device);
     ~DxvkMetaCopyObjects();
 
     /**
@@ -209,33 +209,13 @@ namespace dxvk {
 
   private:
 
-    struct FragShaders {
-      VkShaderModule frag1D = VK_NULL_HANDLE;
-      VkShaderModule frag2D = VK_NULL_HANDLE;
-      VkShaderModule fragMs = VK_NULL_HANDLE;
-    };
-
-    Rc<vk::DeviceFn> m_vkd;
-
-    VkShaderModule m_shaderVert = VK_NULL_HANDLE;
-    VkShaderModule m_shaderGeom = VK_NULL_HANDLE;
+    DxvkDevice* m_device = nullptr;
 
     VkDescriptorSetLayout m_bufferToImageCopySetLayout = VK_NULL_HANDLE;
     VkPipelineLayout m_bufferToImageCopyPipelineLayout = VK_NULL_HANDLE;
 
-    VkShaderModule m_shaderBufferToImageD = VK_NULL_HANDLE;
-    VkShaderModule m_shaderBufferToImageS = VK_NULL_HANDLE;
-    VkShaderModule m_shaderBufferToImageDSExport = VK_NULL_HANDLE;
-
     VkDescriptorSetLayout m_imageToBufferCopySetLayout = VK_NULL_HANDLE;
     VkPipelineLayout m_imageToBufferCopyPipelineLayout = VK_NULL_HANDLE;
-
-    VkShaderModule m_shaderImageToBufferF = VK_NULL_HANDLE;
-    VkShaderModule m_shaderImageToBufferDS = VK_NULL_HANDLE;
-
-    FragShaders m_color;
-    FragShaders m_depth;
-    FragShaders m_depthStencil;
 
     dxvk::mutex m_mutex;
 
@@ -251,9 +231,6 @@ namespace dxvk {
       VkPipeline, DxvkHash, DxvkEq> m_imageToBufferPipelines;
 
     DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
-
-    VkShaderModule createShaderModule(
-      const SpirvCodeBuffer&          code) const;
 
     DxvkMetaCopyPipeline createCopyFormattedBufferPipeline();
 
