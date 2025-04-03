@@ -12,23 +12,23 @@ namespace dxvk {
     // blend modes for render target 1 to 7. In Vulkan, all
     // blend modes need to be identical in that case.
     for (uint32_t i = 0; i < m_blendModes.size(); i++) {
-      m_blendModes.at(i) = DecodeBlendMode(
+      m_blendModes[i] = DecodeBlendMode(
         desc.IndependentBlendEnable
           ? desc.RenderTarget[i]
           : desc.RenderTarget[0]);
     }
     
     // Multisample state is part of the blend state in D3D11
-    m_msState.sampleMask            = 0; // Set during bind
-    m_msState.enableAlphaToCoverage = desc.AlphaToCoverageEnable;
+    m_msState.setSampleMask(0u); // Set during bind
+    m_msState.setAlphaToCoverage(desc.AlphaToCoverageEnable);
     
     // Vulkan only supports a global logic op for the blend
     // state, which might be problematic in some cases.
     if (desc.IndependentBlendEnable && desc.RenderTarget[0].LogicOpEnable)
       Logger::warn("D3D11: Per-target logic ops not supported");
     
-    m_loState.enableLogicOp         = desc.RenderTarget[0].LogicOpEnable;
-    m_loState.logicOp               = DecodeLogicOp(desc.RenderTarget[0].LogicOp);
+    m_loState.setLogicOp(desc.RenderTarget[0].LogicOpEnable,
+      DecodeLogicOp(desc.RenderTarget[0].LogicOp));
   }
   
   
@@ -86,25 +86,6 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11BlendState::GetDesc1(D3D11_BLEND_DESC1* pDesc) {
     *pDesc = m_desc;
-  }
-  
-  
-  void D3D11BlendState::BindToContext(
-          DxvkContext*      ctx,
-          uint32_t          sampleMask) const {
-    // We handled Independent Blend during object creation
-    // already, so if it is disabled, all elements in the
-    // blend mode array will be identical
-    for (uint32_t i = 0; i < m_blendModes.size(); i++)
-      ctx->setBlendMode(i, m_blendModes.at(i));
-    
-    // The sample mask is dynamic state in D3D11
-    DxvkMultisampleState msState = m_msState;
-    msState.sampleMask = sampleMask;
-    ctx->setMultisampleState(msState);
-    
-    // Set up logic op state as well
-    ctx->setLogicOpState(m_loState);
   }
   
   
@@ -192,15 +173,17 @@ namespace dxvk {
   
   DxvkBlendMode D3D11BlendState::DecodeBlendMode(
     const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc) {
-    DxvkBlendMode mode;
-    mode.enableBlending   = BlendDesc.BlendEnable;
-    mode.colorSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlend, false);
-    mode.colorDstFactor   = DecodeBlendFactor(BlendDesc.DestBlend, false);
-    mode.colorBlendOp     = DecodeBlendOp(BlendDesc.BlendOp);
-    mode.alphaSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true);
-    mode.alphaDstFactor   = DecodeBlendFactor(BlendDesc.DestBlendAlpha, true);
-    mode.alphaBlendOp     = DecodeBlendOp(BlendDesc.BlendOpAlpha);
-    mode.writeMask        = BlendDesc.RenderTargetWriteMask;
+    DxvkBlendMode mode = { };
+    mode.setBlendEnable(BlendDesc.BlendEnable);
+    mode.setColorOp(DecodeBlendFactor(BlendDesc.SrcBlend, false),
+                    DecodeBlendFactor(BlendDesc.DestBlend, false),
+                    DecodeBlendOp(BlendDesc.BlendOp));
+    mode.setAlphaOp(DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true),
+                    DecodeBlendFactor(BlendDesc.DestBlendAlpha, true),
+                    DecodeBlendOp(BlendDesc.BlendOpAlpha));
+    mode.setWriteMask(BlendDesc.RenderTargetWriteMask);
+
+    mode.normalize();
     return mode;
   }
   

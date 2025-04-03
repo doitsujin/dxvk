@@ -203,11 +203,11 @@ namespace dxvk {
       }
     }
 
-    // Since we don't handle SRVs here, we can assume that the
-    // view covers all aspects of the underlying resource.
-    EmitCs([cView = view] (DxvkContext* ctx) {
-      ctx->discardImageView(cView, cView->formatInfo()->aspectMask);
-    });
+    if (rtv || dsv) {
+      EmitCs([cView = view] (DxvkContext* ctx) {
+        ctx->clearRenderTarget(cView, 0, VkClearValue(), cView->info().aspects);
+      });
+    }
   }
 
 
@@ -430,10 +430,9 @@ namespace dxvk {
       cClearValue = color,
       cImageView  = std::move(view)
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(
-        cImageView,
+      ctx->clearRenderTarget(cImageView,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        cClearValue);
+        cClearValue, 0u);
     });
   }
 
@@ -462,12 +461,15 @@ namespace dxvk {
     VkFormat uavFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     VkFormat rawFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_RAW).Format;
 
-    if (uavFormat != rawFormat && rawFormat == VK_FORMAT_UNDEFINED) {
+    if (uavDesc.Format == DXGI_FORMAT_A8_UNORM)
+      rawFormat = uavFormat;
+
+    if (uavFormat && !rawFormat) {
       Logger::err(str::format("D3D11: ClearUnorderedAccessViewUint: No raw format found for ", uavFormat));
       return;
     }
 
-    VkClearValue clearValue;
+    VkClearValue clearValue = { };
 
     if (uavDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT) {
       // R11G11B10 is a special case since there's no corresponding
@@ -479,12 +481,15 @@ namespace dxvk {
       clearValue.color.uint32[2] = 0;
       clearValue.color.uint32[3] = 0;
     } else if (uavDesc.Format == DXGI_FORMAT_A8_UNORM) {
-      // We need to use R8_UINT to clear A8_UNORM images,
-      // so remap the alpha component to the red channel.
-      clearValue.color.uint32[0] = Values[3];
-      clearValue.color.uint32[1] = 0;
-      clearValue.color.uint32[2] = 0;
-      clearValue.color.uint32[3] = 0;
+      // Use the unorm format itself to execute the clear, regardless
+      // of whether we use A8 or emulate the format with R8. This is
+      // necessary because we cannot create R8_UINT views for A8.
+      float a = float(Values[3] & 0xff) / 255.0f;
+
+      clearValue.color.float32[0] = a;
+      clearValue.color.float32[1] = a;
+      clearValue.color.float32[2] = a;
+      clearValue.color.float32[3] = a;
     } else {
       clearValue.color.uint32[0] = Values[0];
       clearValue.color.uint32[1] = Values[1];
@@ -661,10 +666,8 @@ namespace dxvk {
       cAspectMask = aspectMask,
       cImageView  = dsv->GetImageView()
     ] (DxvkContext* ctx) {
-      ctx->clearRenderTarget(
-        cImageView,
-        cAspectMask,
-        cClearValue);
+      ctx->clearRenderTarget(cImageView,
+        cAspectMask, cClearValue, 0u);
     });
   }
 
@@ -789,17 +792,10 @@ namespace dxvk {
           bool isFullSize = cImageView->mipLevelExtent(0) == cAreaExtent;
 
           if ((cImageView->info().usage & rtUsage) && isFullSize) {
-            ctx->clearRenderTarget(
-              cImageView,
-              cClearAspect,
-              cClearValue);
+            ctx->clearRenderTarget(cImageView, cClearAspect, cClearValue, 0u);
           } else {
-            ctx->clearImageView(
-              cImageView,
-              cAreaOffset,
-              cAreaExtent,
-              cClearAspect,
-              cClearValue);
+            ctx->clearImageView(cImageView, cAreaOffset, cAreaExtent,
+              cClearAspect, cClearValue);
           }
         });
       }
@@ -3320,14 +3316,20 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyInputLayout() {
-    auto inputLayout = m_state.ia.inputLayout.prvRef();
+    if (likely(m_state.ia.inputLayout != nullptr)) {
+      uint32_t attributeCount = m_state.ia.inputLayout->GetAttributeCount();
+      uint32_t bindingCount = m_state.ia.inputLayout->GetBindingCount();
 
-    if (likely(inputLayout != nullptr)) {
-      EmitCs([
-        cInputLayout = std::move(inputLayout)
-      ] (DxvkContext* ctx) {
-        cInputLayout->BindToContext(ctx);
+      EmitCsCmd<DxvkVertexInput>(D3D11CmdType::None, attributeCount + bindingCount, [
+        cAttributeCount   = attributeCount,
+        cBindingCount     = bindingCount
+      ] (DxvkContext* ctx, const DxvkVertexInput* layout, size_t) {
+        ctx->setInputLayout(cAttributeCount, &layout[0],
+          cBindingCount, &layout[cAttributeCount]);
       });
+
+      for (uint32_t i = 0; i < attributeCount + bindingCount; i++)
+        new (m_csData->at(i)) DxvkVertexInput(m_state.ia.inputLayout->GetInput(i));
     } else {
       EmitCs([] (DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);
@@ -3339,31 +3341,37 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyPrimitiveTopology() {
     D3D11_PRIMITIVE_TOPOLOGY topology = m_state.ia.primitiveTopology;
-    DxvkInputAssemblyState iaState = { };
+    DxvkInputAssemblyState iaState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false);
 
     if (topology <= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ) {
       static const std::array<DxvkInputAssemblyState, 14> s_iaStates = {{
-        { VK_PRIMITIVE_TOPOLOGY_MAX_ENUM,       VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_POINT_LIST,     VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_TRUE,  0 },
-        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,  VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE,  0 },
-        { }, { }, { }, { }, // Random gap that exists for no reason
-        { VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,       VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,      VK_TRUE,  0 },
-        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,   VK_FALSE, 0 },
-        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,  VK_TRUE,  0 },
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false),
+        // Regular topologies
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_POINT_LIST,     false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     true),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,  false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, true),
+        // Gap. This includes triangle fan which isn't supported in D3D11
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false),
+        // Adjacency topologies
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,       false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,      true),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,   false),
+        DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,  true),
       }};
 
       iaState = s_iaStates[uint32_t(topology)];
     } else if (topology >= D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST
             && topology <= D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST) {
       // The number of control points per patch can be inferred from the enum value in D3D11
-      uint32_t vertexCount = uint32_t(topology - D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + 1);
-      iaState = { VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_FALSE, vertexCount };
+      iaState = DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, false);
+      iaState.setPatchVertexCount(topology - D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + 1);
     }
-    
+
     EmitCs([iaState] (DxvkContext* ctx) {
       ctx->setInputAssemblyState(iaState);
     });
@@ -3374,25 +3382,27 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyBlendState() {
     if (m_state.om.cbState != nullptr) {
       EmitCs([
-        cBlendState = m_state.om.cbState,
-        cSampleMask = m_state.om.sampleMask
+        cBlendState = m_state.om.cbState->GetBlendState(),
+        cMsState    = m_state.om.cbState->GetMsState(m_state.om.sampleMask),
+        cLoState    = m_state.om.cbState->GetLoState()
       ] (DxvkContext* ctx) {
-        cBlendState->BindToContext(ctx, cSampleMask);
+        for (uint32_t i = 0; i < cBlendState.size(); i++)
+          ctx->setBlendMode(i, cBlendState[i]);
+
+        ctx->setMultisampleState(cMsState);
+        ctx->setLogicOpState(cLoState);
       });
     } else {
       EmitCs([
         cSampleMask = m_state.om.sampleMask
       ] (DxvkContext* ctx) {
-        DxvkBlendMode cbState;
-        DxvkLogicOpState loState;
-        DxvkMultisampleState msState;
-        InitDefaultBlendState(&cbState, &loState, &msState, cSampleMask);
+        DxvkBlendMode cbState = InitDefaultBlendState();
 
         for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
           ctx->setBlendMode(i, cbState);
 
-        ctx->setLogicOpState(loState);
-        ctx->setMultisampleState(msState);
+        ctx->setMultisampleState(InitDefaultMultisampleState(cSampleMask));
+        ctx->setLogicOpState(InitDefaultLogicOpState());
       });
     }
   }
@@ -3414,16 +3424,13 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyDepthStencilState() {
     if (m_state.om.dsState != nullptr) {
       EmitCs([
-        cDepthStencilState = m_state.om.dsState
+        cState = m_state.om.dsState->GetState()
       ] (DxvkContext* ctx) {
-        cDepthStencilState->BindToContext(ctx);
+        ctx->setDepthStencilState(cState);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
-        DxvkDepthStencilState dsState;
-        InitDefaultDepthStencilState(&dsState);
-
-        ctx->setDepthStencilState(dsState);
+        ctx->setDepthStencilState(InitDefaultDepthStencilState());
       });
     }
   }
@@ -3443,16 +3450,17 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ApplyRasterizerState() {
     if (m_state.rs.state != nullptr) {
       EmitCs([
-        cRasterizerState = m_state.rs.state
+        cState      = m_state.rs.state->GetState(),
+        cDepthBias  = m_state.rs.state->GetDepthBias()
       ] (DxvkContext* ctx) {
-        cRasterizerState->BindToContext(ctx);
+        ctx->setRasterizerState(cState);
+
+        if (cState.depthBias())
+          ctx->setDepthBias(cDepthBias);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
-        DxvkRasterizerState rsState;
-        InitDefaultRasterizerState(&rsState);
-
-        ctx->setRasterizerState(rsState);
+        ctx->setRasterizerState(InitDefaultRasterizerState());
       });
     }
   }
@@ -4729,25 +4737,13 @@ namespace dxvk {
       ctx->setInputLayout(0, nullptr, 0, nullptr);
 
       // Reset render states
-      DxvkInputAssemblyState iaState;
-      InitDefaultPrimitiveTopology(&iaState);
+      ctx->setInputAssemblyState(InitDefaultPrimitiveTopology());
+      ctx->setDepthStencilState(InitDefaultDepthStencilState());
+      ctx->setRasterizerState(InitDefaultRasterizerState());
+      ctx->setLogicOpState(InitDefaultLogicOpState());
+      ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
 
-      DxvkDepthStencilState dsState;
-      InitDefaultDepthStencilState(&dsState);
-
-      DxvkRasterizerState rsState;
-      InitDefaultRasterizerState(&rsState);
-
-      DxvkBlendMode cbState;
-      DxvkLogicOpState loState;
-      DxvkMultisampleState msState;
-      InitDefaultBlendState(&cbState, &loState, &msState, D3D11_DEFAULT_SAMPLE_MASK);
-
-      ctx->setInputAssemblyState(iaState);
-      ctx->setDepthStencilState(dsState);
-      ctx->setRasterizerState(rsState);
-      ctx->setLogicOpState(loState);
-      ctx->setMultisampleState(msState);
+      DxvkBlendMode cbState = InitDefaultBlendState();
 
       for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
         ctx->setBlendMode(i, cbState);
@@ -5789,71 +5785,63 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultPrimitiveTopology(
-          DxvkInputAssemblyState*           pIaState) {
-    pIaState->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
-    pIaState->primitiveRestart  = VK_FALSE;
-    pIaState->patchVertexCount  = 0;
+  DxvkInputAssemblyState D3D11CommonContext<ContextType>::InitDefaultPrimitiveTopology() {
+    return DxvkInputAssemblyState(VK_PRIMITIVE_TOPOLOGY_MAX_ENUM, false);
   }
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultRasterizerState(
-          DxvkRasterizerState*              pRsState) {
-    pRsState->polygonMode     = VK_POLYGON_MODE_FILL;
-    pRsState->cullMode        = VK_CULL_MODE_BACK_BIT;
-    pRsState->frontFace       = VK_FRONT_FACE_CLOCKWISE;
-    pRsState->depthClipEnable = VK_TRUE;
-    pRsState->depthBiasEnable = VK_FALSE;
-    pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-    pRsState->sampleCount     = 0;
-    pRsState->flatShading     = VK_FALSE;
-    pRsState->lineMode        = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+  DxvkRasterizerState D3D11CommonContext<ContextType>::InitDefaultRasterizerState() {
+    DxvkRasterizerState rsState = { };
+    rsState.setPolygonMode(VK_POLYGON_MODE_FILL);
+    rsState.setCullMode(VK_CULL_MODE_BACK_BIT);
+    rsState.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
+    rsState.setDepthClip(true);
+    rsState.setDepthBias(false);
+    rsState.setConservativeMode(VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
+    rsState.setSampleCount(0);
+    rsState.setFlatShading(false);
+    rsState.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
+    return rsState;
   }
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultDepthStencilState(
-          DxvkDepthStencilState*            pDsState) {
-    VkStencilOpState stencilOp;
-    stencilOp.failOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp       = VK_STENCIL_OP_KEEP;
-    stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask       = D3D11_DEFAULT_STENCIL_READ_MASK;
-    stencilOp.writeMask         = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-    stencilOp.reference         = 0;
-
-    pDsState->enableDepthTest   = VK_TRUE;
-    pDsState->enableDepthWrite  = VK_TRUE;
-    pDsState->enableStencilTest = VK_FALSE;
-    pDsState->depthCompareOp    = VK_COMPARE_OP_LESS;
-    pDsState->stencilOpFront    = stencilOp;
-    pDsState->stencilOpBack     = stencilOp;
+  DxvkDepthStencilState D3D11CommonContext<ContextType>::InitDefaultDepthStencilState() {
+    DxvkDepthStencilState dsState = { };
+    dsState.setDepthTest(true);
+    dsState.setDepthWrite(true);
+    dsState.setDepthCompareOp(VK_COMPARE_OP_LESS);
+    return dsState;
   }
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::InitDefaultBlendState(
-          DxvkBlendMode*                    pCbState,
-          DxvkLogicOpState*                 pLoState,
-          DxvkMultisampleState*             pMsState,
+  DxvkMultisampleState D3D11CommonContext<ContextType>::InitDefaultMultisampleState(
           UINT                              SampleMask) {
-    pCbState->enableBlending    = VK_FALSE;
-    pCbState->colorSrcFactor    = VK_BLEND_FACTOR_ONE;
-    pCbState->colorDstFactor    = VK_BLEND_FACTOR_ZERO;
-    pCbState->colorBlendOp      = VK_BLEND_OP_ADD;
-    pCbState->alphaSrcFactor    = VK_BLEND_FACTOR_ONE;
-    pCbState->alphaDstFactor    = VK_BLEND_FACTOR_ZERO;
-    pCbState->alphaBlendOp      = VK_BLEND_OP_ADD;
-    pCbState->writeMask         = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    DxvkMultisampleState msState = { };
+    msState.setSampleMask(SampleMask);
+    return msState;
+  }
 
-    pLoState->enableLogicOp     = VK_FALSE;
-    pLoState->logicOp           = VK_LOGIC_OP_NO_OP;
 
-    pMsState->sampleMask            = SampleMask;
-    pMsState->enableAlphaToCoverage = VK_FALSE;
+  template<typename ContextType>
+  DxvkLogicOpState D3D11CommonContext<ContextType>::InitDefaultLogicOpState() {
+    DxvkLogicOpState loState = { };
+    loState.setLogicOp(false, VK_LOGIC_OP_NO_OP);
+    return loState;
+  }
+
+
+  template<typename ContextType>
+  DxvkBlendMode D3D11CommonContext<ContextType>::InitDefaultBlendState() {
+    DxvkBlendMode cbState = { };
+    cbState.setBlendEnable(false);
+    cbState.setColorOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+    cbState.setAlphaOp(VK_BLEND_FACTOR_ZERO, VK_BLEND_FACTOR_ZERO, VK_BLEND_OP_ADD);
+    cbState.setWriteMask(VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT);
+    return cbState;
   }
 
   // Explicitly instantiate here

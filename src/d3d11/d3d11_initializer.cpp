@@ -232,9 +232,7 @@ namespace dxvk {
         EmitCs([
           cImage = std::move(image)
         ] (DxvkContext* ctx) {
-          ctx->initImage(cImage,
-            cImage->getAvailableSubresources(),
-            VK_IMAGE_LAYOUT_UNDEFINED);
+          ctx->initImage(cImage, VK_IMAGE_LAYOUT_UNDEFINED);
         });
       }
 
@@ -305,9 +303,7 @@ namespace dxvk {
     EmitCs([
       cImage = std::move(image)
     ] (DxvkContext* ctx) {
-      ctx->initImage(cImage,
-        cImage->getAvailableSubresources(),
-        VK_IMAGE_LAYOUT_PREINITIALIZED);
+      ctx->initImage(cImage, VK_IMAGE_LAYOUT_PREINITIALIZED);
     });
 
     m_transferCommands += 1;

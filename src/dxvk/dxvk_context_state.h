@@ -134,6 +134,7 @@ namespace dxvk {
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     DxvkFramebufferInfo framebufferInfo;
+    DxvkAttachmentMask  attachmentMask;
   };
 
 

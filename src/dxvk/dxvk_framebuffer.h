@@ -2,6 +2,7 @@
 
 #include "dxvk_image.h"
 #include "dxvk_graphics_state.h"
+#include "dxvk_pipelayout.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
@@ -242,6 +243,89 @@ namespace dxvk {
 
     DxvkFramebufferSize computeRenderTargetSize(
       const Rc<DxvkImageView>& renderTarget) const;
+
+  };
+
+
+  /**
+   * \brief Attachment mask
+   *
+   * Convenience class to track attachment access.
+   */
+  class DxvkAttachmentMask {
+    constexpr static uint32_t ColorRead     = 1u << 0;
+    constexpr static uint32_t ColorWrite    = 1u << 8;
+    constexpr static uint32_t DepthRead     = 1u << 16;
+    constexpr static uint32_t DepthWrite    = 1u << 17;
+    constexpr static uint32_t StencilRead   = 1u << 18;
+    constexpr static uint32_t StencilWrite  = 1u << 19;
+  public:
+
+    DxvkAttachmentMask() = default;
+
+    DxvkAccess getColorAccess(uint32_t index) const {
+      return getAccess(ColorRead << index, ColorWrite << index);
+    }
+
+    DxvkAccess getDepthAccess() const {
+      return getAccess(DepthRead, DepthWrite);
+    }
+
+    DxvkAccess getStencilAccess() const {
+      return getAccess(StencilRead, StencilWrite);
+    }
+
+    void trackColorRead(uint32_t index) {
+      m_mask |= ColorRead << index;
+    }
+
+    void trackColorWrite(uint32_t index) {
+      m_mask |= ColorWrite << index;
+    }
+
+    void trackDepthRead() {
+      m_mask |= DepthRead;
+    }
+
+    void trackDepthWrite() {
+      m_mask |= DepthWrite;
+    }
+
+    void trackStencilRead() {
+      m_mask |= StencilRead;
+    }
+
+    void trackStencilWrite() {
+      m_mask |= StencilWrite;
+    }
+
+    void unifyDepthStencilAccess() {
+      if (m_mask & (DepthRead | StencilRead))
+        m_mask |= DepthRead | StencilRead;
+      if (m_mask & (DepthWrite | StencilWrite))
+        m_mask |= DepthWrite | StencilWrite;
+    }
+
+    void merge(const DxvkAttachmentMask& other) {
+      m_mask |= other.m_mask;
+    }
+
+    void clear() {
+      m_mask = 0u;
+    }
+
+  private:
+
+    uint32_t m_mask = 0u;
+
+    DxvkAccess getAccess(uint32_t readBit, uint32_t writeBit) const {
+      if (m_mask & writeBit)
+        return DxvkAccess::Write;
+      else if (m_mask & readBit)
+        return DxvkAccess::Read;
+      else
+        return DxvkAccess::None;
+    }
 
   };
   
