@@ -7,7 +7,7 @@
 namespace dxvk {
   
   class D3D11Device;
-  
+
   class D3D11InputLayout : public D3D11DeviceChild<ID3D11InputLayout> {
     
   public:
@@ -24,9 +24,19 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                riid,
             void**                ppvObject) final;
-    
-    void BindToContext(DxvkContext* ctx);
-    
+
+    uint32_t GetAttributeCount() const {
+      return m_attributeCount;
+    }
+
+    uint32_t GetBindingCount() const {
+      return m_bindingCount;
+    }
+
+    DxvkVertexInput GetInput(uint32_t Index) const {
+      return m_inputs[Index];
+    }
+
     bool Compare(
       const D3D11InputLayout*     pOther) const;
     
@@ -35,9 +45,11 @@ namespace dxvk {
     }
     
   private:
-    
-    std::vector<DxvkVertexAttribute> m_attributes;
-    std::vector<DxvkVertexBinding>   m_bindings;
+
+    uint32_t m_attributeCount = 0;
+    uint32_t m_bindingCount = 0;
+
+    std::array<DxvkVertexInput, MaxNumVertexAttributes + MaxNumVertexBindings> m_inputs = { };
 
     D3D10InputLayout m_d3d10;
     

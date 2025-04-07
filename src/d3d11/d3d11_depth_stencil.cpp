@@ -8,12 +8,14 @@ namespace dxvk {
     const D3D11_DEPTH_STENCIL_DESC& desc)
   : D3D11StateObject<ID3D11DepthStencilState>(device),
     m_desc(desc), m_d3d10(this) {
-    m_state.enableDepthTest   = desc.DepthEnable;
-    m_state.enableDepthWrite  = desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL;
-    m_state.enableStencilTest = desc.StencilEnable;
-    m_state.depthCompareOp    = DecodeCompareOp(desc.DepthFunc);
-    m_state.stencilOpFront    = DecodeStencilOpState(desc.FrontFace, desc);
-    m_state.stencilOpBack     = DecodeStencilOpState(desc.BackFace,  desc);
+    m_state.setDepthTest(desc.DepthEnable);
+    m_state.setDepthWrite(desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL);
+    m_state.setStencilTest(desc.StencilEnable);
+    m_state.setDepthCompareOp(DecodeCompareOp(desc.DepthFunc));
+    m_state.setStencilOpFront(DecodeStencilOpState(desc.FrontFace, desc));
+    m_state.setStencilOpBack(DecodeStencilOpState(desc.BackFace, desc));
+
+    m_state.normalize();
   }
   
   
@@ -52,11 +54,6 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DepthStencilState::GetDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
     *pDesc = m_desc;
-  }
-  
-  
-  void D3D11DepthStencilState::BindToContext(DxvkContext* ctx) {
-    ctx->setDepthStencilState(m_state);
   }
   
   
@@ -105,25 +102,20 @@ namespace dxvk {
   }
   
   
-  VkStencilOpState D3D11DepthStencilState::DecodeStencilOpState(
+  DxvkStencilOp D3D11DepthStencilState::DecodeStencilOpState(
     const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,
     const D3D11_DEPTH_STENCIL_DESC&   Desc) const {
-    VkStencilOpState result;
-    result.failOp      = VK_STENCIL_OP_KEEP;
-    result.passOp      = VK_STENCIL_OP_KEEP;
-    result.depthFailOp = VK_STENCIL_OP_KEEP;
-    result.compareOp   = VK_COMPARE_OP_ALWAYS;
-    result.compareMask = Desc.StencilReadMask;
-    result.writeMask   = Desc.StencilWriteMask;
-    result.reference   = 0;
-    
+    DxvkStencilOp result = { };
+
     if (Desc.StencilEnable) {
-      result.failOp      = DecodeStencilOp(StencilDesc.StencilFailOp);
-      result.passOp      = DecodeStencilOp(StencilDesc.StencilPassOp);
-      result.depthFailOp = DecodeStencilOp(StencilDesc.StencilDepthFailOp);
-      result.compareOp   = DecodeCompareOp(StencilDesc.StencilFunc);
+      result.setFailOp(DecodeStencilOp(StencilDesc.StencilFailOp));
+      result.setPassOp(DecodeStencilOp(StencilDesc.StencilPassOp));
+      result.setDepthFailOp(DecodeStencilOp(StencilDesc.StencilDepthFailOp));
+      result.setCompareOp(DecodeCompareOp(StencilDesc.StencilFunc));
+      result.setCompareMask(Desc.StencilReadMask);
+      result.setWriteMask(Desc.StencilWriteMask);
     }
-    
+
     return result;
   }
   

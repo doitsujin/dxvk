@@ -581,6 +581,16 @@ namespace dxvk {
 
     VkSurfaceFormatKHR surfaceFormat = pickSurfaceFormat(formats.size(), formats.data(), m_preferredFormat);
 
+    // Set up image format list for mutable swap chain if necessary
+    small_vector<VkFormat, 2> viewFormats = { };
+
+    auto formatPair = vk::getSrgbFormatPair(surfaceFormat.format);
+
+    if (formatPair.second) {
+      viewFormats.push_back(formatPair.first);
+      viewFormats.push_back(formatPair.second);
+    }
+
     // Select a present mode for the current sync interval
     if ((status = getSupportedPresentModes(modes)))
       return status;
@@ -678,6 +688,10 @@ namespace dxvk {
     VkSwapchainLatencyCreateInfoNV latencyInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV };
     latencyInfo.latencyModeEnable   = m_latencySleepMode.has_value();
 
+    VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
+    formatList.viewFormatCount      = viewFormats.size();
+    formatList.pViewFormats         = viewFormats.data();
+
     VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
     swapInfo.minImageCount          = pickImageCount(minImageCount, maxImageCount);
@@ -692,6 +706,11 @@ namespace dxvk {
     swapInfo.compositeAlpha         = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapInfo.presentMode            = m_presentMode;
     swapInfo.clipped                = VK_TRUE;
+
+    if (m_device->features().khrSwapchainMutableFormat && formatList.viewFormatCount) {
+      swapInfo.flags |= VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR;
+      formatList.pNext = std::exchange(swapInfo.pNext, &formatList);
+    }
 
     if (m_device->features().extFullScreenExclusive)
       fullScreenInfo.pNext = const_cast<void*>(std::exchange(swapInfo.pNext, &fullScreenInfo));
@@ -737,6 +756,17 @@ namespace dxvk {
       imageInfo.colorSpace  = swapInfo.imageColorSpace;
       imageInfo.shared      = VK_TRUE;
       imageInfo.debugName   = debugName.c_str();
+
+      // If possible, expose the image with an sRGB format internally so
+      // that it will be used as the default format for composition.
+      if (swapInfo.flags & VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR) {
+        imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+        imageInfo.viewFormatCount = formatList.viewFormatCount;
+        imageInfo.viewFormats = formatList.pViewFormats;
+
+        if (formatPair.second)
+          imageInfo.format = formatPair.second;
+      }
 
       m_images.push_back(m_device->importImage(imageInfo, images[i],
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT));
@@ -946,21 +976,15 @@ namespace dxvk {
     const VkSurfaceFormatKHR*       pSupported,
           VkColorSpaceKHR           colorSpace,
           VkFormat                  format) {
-    static const std::array<std::pair<VkFormat, VkFormat>, 3> srgbFormatMap = {{
-      { VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB },
-      { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_SRGB },
-      { VK_FORMAT_A8B8G8R8_UNORM_PACK32, VK_FORMAT_A8B8G8R8_SRGB_PACK32 },
-    }};
-
     static const std::array<VkFormat, 13> srgbFormatList = {
       VK_FORMAT_B5G5R5A1_UNORM_PACK16,
       VK_FORMAT_R5G5B5A1_UNORM_PACK16,
       VK_FORMAT_A1B5G5R5_UNORM_PACK16_KHR,
       VK_FORMAT_R5G6B5_UNORM_PACK16,
       VK_FORMAT_B5G6R5_UNORM_PACK16,
-      VK_FORMAT_R8G8B8A8_SRGB,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_FORMAT_A8B8G8R8_SRGB_PACK32,
+      VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_A8B8G8R8_UNORM_PACK32,
       VK_FORMAT_A2R10G10B10_UNORM_PACK32,
       VK_FORMAT_A2B10G10R10_UNORM_PACK32,
       VK_FORMAT_E5B9G9R9_UFLOAT_PACK32,
@@ -989,14 +1013,12 @@ namespace dxvk {
         scRGBFormatList.size(), scRGBFormatList.data() },
     }};
 
-    // For the sRGB color space, always prefer an actual sRGB
-    // format so that the blitter can use alpha blending.
-    if (colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
-      for (const auto& e : srgbFormatMap) {
-        if (format == e.first)
-          format = e.second;
-      }
-    }
+    // Some third-party overlays don't handle sRGB image formats
+    // correctly, so use the corresponding UNORM format instead.
+    auto formatPair = vk::getSrgbFormatPair(format);
+
+    if (formatPair.first)
+      format = formatPair.first;
 
     // If the desired format is supported natively, use it
     VkFormat fallback = VK_FORMAT_UNDEFINED;
@@ -1022,19 +1044,9 @@ namespace dxvk {
     if (!compatList)
       return fallback;
 
-    // If the desired format is linear, ignore sRGB formats. We can do
-    // this because sRGB and linear formats must be supported in pairs.
-    // sRGB to linear fallbacks need to be allowed though in order to
-    // be able to select a format with a higher bit depth than requested.
-    bool desiredIsSrgb = lookupFormatInfo(format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
     bool desiredFound = false;
 
     for (uint32_t i = 0; i < compatList->formatCount; i++) {
-      bool formatIsSrgb = lookupFormatInfo(compatList->formats[i])->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
-
-      if (!desiredIsSrgb && formatIsSrgb)
-        continue;
-
       bool isSupported = false;
 
       if (compatList->formats[i] == format)

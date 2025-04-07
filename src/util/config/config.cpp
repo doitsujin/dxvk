@@ -50,6 +50,11 @@ namespace dxvk {
     { R"(\\BrightMemory_EP1-Win64-Shipping\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True"  },
     }} },
+    /* AC Shadows: Uses composition swapchain to   *
+     * check for HDR support                       */
+    { R"(\\ACShadows\.exe$)", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
@@ -163,6 +168,7 @@ namespace dxvk {
     /* Hitman 2 - requires AGS library      */
     { R"(\\HITMAN2\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
+      { "d3d11.cachedDynamicResources",     "c"    },
     }} },
     /* Modern Warfare Remastered                  */
     { R"(\\h1(_[ms]p64_ship|-mod)\.exe$)", {{
@@ -1037,6 +1043,16 @@ namespace dxvk {
     { R"(\\sh2pc\.exe$)", {{
       { "d3d9.extraFrontbuffer",            "True" },
     }} },
+    /* Lego Indiana Jones: The Original Adventures *
+     * Fix UI performance                          */
+    { R"(\\LEGOIndy\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* Lego Batman: The Videogame                 *
+     * Fix UI performance                         */
+    { R"((\\LEGOBatman|LegoBatman\\Game)\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
@@ -1216,9 +1232,7 @@ namespace dxvk {
 
 
   const static ProfileList g_hashedProfiles = {
-    { "27fb4433abea6d1d68f678cbfa8c5e0a0fdc0803", {{
-      { "dxgi.enableDummyCompositionSwapchain", "True" }
-    }} },
+    /* Nothing to see here */
   };
 
 

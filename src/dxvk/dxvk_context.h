@@ -500,12 +500,14 @@ namespace dxvk {
      * \param [in] imageView Render target view to clear
      * \param [in] clearAspects Image aspects to clear
      * \param [in] clearValue The clear value
+     * \param [in] discardAspects Image aspects to discard
      */
     void clearRenderTarget(
       const Rc<DxvkImageView>&    imageView,
             VkImageAspectFlags    clearAspects,
-            VkClearValue          clearValue);
-    
+            VkClearValue          clearValue,
+            VkImageAspectFlags    discardAspects);
+
     /**
      * \brief Clears an image view
      * 
@@ -705,19 +707,6 @@ namespace dxvk {
       const uint32_t*             pages,
       const Rc<DxvkBuffer>&       srcBuffer,
             VkDeviceSize          srcOffset);
-    
-    /**
-     * \brief Discards contents of an image view
-     *
-     * Discards the current contents of the image
-     * and performs a fast layout transition. This
-     * may improve performance in some cases.
-     * \param [in] imageView View to discard
-     * \param [in] discardAspects Image aspects to discard
-     */
-    void discardImageView(
-      const Rc<DxvkImageView>&      imageView,
-            VkImageAspectFlags      discardAspects);
 
     /**
      * \brief Discards contents of an image
@@ -934,12 +923,10 @@ namespace dxvk {
      * it to black unless the initial layout is preinitialized.
      * Only safe to call if the image is not in use by the GPU.
      * \param [in] image The image to initialize
-     * \param [in] subresources Image subresources
      * \param [in] initialLayout Initial image layout
      */
     void initImage(
       const Rc<DxvkImage>&            image,
-      const VkImageSubresourceRange&  subresources,
             VkImageLayout             initialLayout);
 
     /**
@@ -1189,16 +1176,16 @@ namespace dxvk {
      * \brief Sets input layout
      * 
      * \param [in] attributeCount Number of vertex attributes
-     * \param [in] attributes The vertex attributes
+     * \param [in] attributes Array of attribute infos
      * \param [in] bindingCount Number of buffer bindings
-     * \param [in] bindings Vertex buffer bindigs
+     * \param [in] bindings Array of binding infos
      */
     void setInputLayout(
             uint32_t             attributeCount,
-      const DxvkVertexAttribute* attributes,
+      const DxvkVertexInput*     attributes,
             uint32_t             bindingCount,
-      const DxvkVertexBinding*   bindings);
-    
+      const DxvkVertexInput*     bindings);
+
     /**
      * \brief Sets rasterizer state
      * \param [in] rs New state object
@@ -1664,14 +1651,31 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkImageAspectFlags        discardAspects);
 
+    void preparePostRenderPassClears();
+
+    void hoistInlineClear(
+            DxvkDeferredClear&        clear,
+            VkRenderingAttachmentInfo& attachment,
+            VkImageAspectFlagBits     aspect);
+
+    void flushClearsInline();
+
     void flushClears(
             bool                      useRenderPass);
 
     void flushSharedImages();
 
+    void flushRenderPassDiscards();
+
     void flushRenderPassResolves();
 
     void flushResolves();
+
+    void finalizeLoadStoreOps();
+
+    void adjustAttachmentLoadStoreOps(
+            VkRenderingAttachmentInfo&  attachment,
+            DxvkAccess                  access) const;
 
     void startRenderPass();
     void spillRenderPass(bool suspend);
@@ -1751,6 +1755,10 @@ namespace dxvk {
             bool                    flushClears = true);
 
     DxvkDeferredClear* findDeferredClear(
+      const Rc<DxvkImage>&          image,
+      const VkImageSubresourceRange& subresources);
+
+    DxvkDeferredClear* findOverlappingDeferredClear(
       const Rc<DxvkImage>&          image,
       const VkImageSubresourceRange& subresources);
 
@@ -1862,6 +1870,8 @@ namespace dxvk {
     
     Rc<DxvkBuffer> createZeroBuffer(
             VkDeviceSize              size);
+
+    void freeZeroBuffer();
 
     void resizeDescriptorArrays(
             uint32_t                  bindingCount);

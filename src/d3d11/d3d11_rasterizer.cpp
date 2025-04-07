@@ -12,8 +12,8 @@ namespace dxvk {
     // a polygon or renders lines connecting the vertices.
     switch (desc.FillMode) {
       default:
-      case D3D11_FILL_SOLID:     m_state.polygonMode = VK_POLYGON_MODE_FILL; break;
-      case D3D11_FILL_WIREFRAME: m_state.polygonMode = VK_POLYGON_MODE_LINE; break;
+      case D3D11_FILL_SOLID:     m_state.setPolygonMode(VK_POLYGON_MODE_FILL); break;
+      case D3D11_FILL_WIREFRAME: m_state.setPolygonMode(VK_POLYGON_MODE_LINE); break;
     }
     
     // Face culling properties. The rasterizer may discard
@@ -21,38 +21,40 @@ namespace dxvk {
     // viewer, depending on the options below.
     switch (desc.CullMode) {
       default:
-      case D3D11_CULL_NONE:  m_state.cullMode = VK_CULL_MODE_NONE;      break;
-      case D3D11_CULL_FRONT: m_state.cullMode = VK_CULL_MODE_FRONT_BIT; break;
-      case D3D11_CULL_BACK:  m_state.cullMode = VK_CULL_MODE_BACK_BIT;  break;
+      case D3D11_CULL_NONE:  m_state.setCullMode(VK_CULL_MODE_NONE);      break;
+      case D3D11_CULL_FRONT: m_state.setCullMode(VK_CULL_MODE_FRONT_BIT); break;
+      case D3D11_CULL_BACK:  m_state.setCullMode(VK_CULL_MODE_BACK_BIT);  break;
     }
-    
-    m_state.frontFace = desc.FrontCounterClockwise
+
+    m_state.setFrontFace(desc.FrontCounterClockwise
       ? VK_FRONT_FACE_COUNTER_CLOCKWISE
-      : VK_FRONT_FACE_CLOCKWISE;
-    
+      : VK_FRONT_FACE_CLOCKWISE);
+
     // In the backend we treat depth bias as a dynamic state because
     // some games like to put random/uninitialized numbers here, but
     // we do not need to enable it in case the parameters are both 0.
-    m_state.depthBiasEnable   = desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f;
-    m_state.depthClipEnable   = desc.DepthClipEnable;
-    m_state.conservativeMode  = DecodeConservativeRasterizationMode(desc.ConservativeRaster);
-    m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
-    m_state.flatShading       = VK_FALSE;
-    m_state.lineMode          = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
+    m_state.setDepthBias(desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f);
+    m_state.setDepthClip(desc.DepthClipEnable);
+    m_state.setConservativeMode(DecodeConservativeRasterizationMode(desc.ConservativeRaster));
+    m_state.setSampleCount(desc.ForcedSampleCount);
+    m_state.setFlatShading(false);
+    m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
 
-    m_depthBias.depthBiasConstant = float(desc.DepthBias);
-    m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
-    m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
-    
+    if (m_state.depthBias()) {
+      m_depthBias.depthBiasConstant = float(desc.DepthBias);
+      m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
+      m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
+    }
+
     // Set up line rasterization mode
     const auto& features = device->GetDXVKDevice()->features();
 
     if (desc.MultisampleEnable) {
       if (features.extLineRasterization.rectangularLines)
-        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT);
     } else if (desc.AntialiasedLineEnable) {
       if (features.extLineRasterization.smoothLines)
-        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
     }
   }
   
@@ -125,14 +127,6 @@ namespace dxvk {
     *pDesc = m_desc;
   }
 
-  
-  void D3D11RasterizerState::BindToContext(DxvkContext* ctx) {
-    ctx->setRasterizerState(m_state);
-    
-    if (m_state.depthBiasEnable)
-      ctx->setDepthBias(m_depthBias);
-  }
-  
   
   D3D11_RASTERIZER_DESC2 D3D11RasterizerState::PromoteDesc(
     const D3D11_RASTERIZER_DESC*  pSrcDesc) {
