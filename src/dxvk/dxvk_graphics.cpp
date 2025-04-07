@@ -1493,6 +1493,9 @@ namespace dxvk {
     // attachment is accessed by the shader and has a non-zero write mask.
     DxvkAttachmentMask result = { };
 
+    if (m_flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
+      return result;
+
     if (m_shaders.fs) {
       uint32_t colorMask = m_shaders.fs->info().outputMask;
 
