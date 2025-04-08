@@ -147,9 +147,9 @@ else
     './include/native/directx'
   ]
 
-  lib_sdl3 = dependency('sdl3', required: false)
-  lib_sdl2 = dependency('sdl2', required: false)
-  lib_glfw = dependency('glfw', required: false)
+  lib_sdl3 = dependency('sdl3', required: get_option('native_sdl3'))
+  lib_sdl2 = dependency('sdl2', required: get_option('native_sdl2'))
+  lib_glfw = dependency('glfw', required: get_option('native_glfw'))
   if lib_sdl3.found()
     compiler_args += ['-DDXVK_WSI_SDL3']
   endif
