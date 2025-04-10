@@ -69,6 +69,9 @@ namespace dxvk {
         uint32_t threshold = std::min(maxChunkCount, pendingSubmissions * minChunkCount);
         return chunkCount >= threshold;
       }
+
+      case GpuFlushType::None:
+        return false;
     }
 
     // Should be unreachable
@@ -79,7 +82,7 @@ namespace dxvk {
   void GpuFlushTracker::notifyFlush(
           uint64_t              chunkId,
           uint64_t              submissionId) {
-    m_lastMissedType = GpuFlushType::ImplicitWeakHint;
+    m_lastMissedType = GpuFlushType::None;
 
     m_lastFlushChunkId = chunkId;
     m_lastFlushSubmissionId = submissionId;
