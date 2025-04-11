@@ -31,6 +31,7 @@ namespace dxvk {
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
     this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
+    this->disableDirectImageMapping = config.getOption<bool>("d3d11.disableDirectImageMapping", false);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
