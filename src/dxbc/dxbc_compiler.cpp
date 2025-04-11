@@ -187,7 +187,6 @@ namespace dxvk {
     m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeInputPoints);
     m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeOutputPoints);
     m_module.setOutputVertices(m_entryPointId, 1);
-    m_module.setInvocations   (m_entryPointId, 1);
 
     for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
       emitDclInput(e->registerId, 1,

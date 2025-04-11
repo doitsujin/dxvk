@@ -290,7 +290,7 @@ namespace dxvk {
 
     void createShaders();
 
-    void createShaderModule(
+    void initShader(
             ShaderModule&               shader,
             VkShaderStageFlagBits       stage,
             size_t                      size,

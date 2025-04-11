@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : '2.6.0', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++latest', 'b_vscrt=static_from_buildtype', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : '2.6.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++latest', 'b_vscrt=static_from_buildtype', 'warning_level=2' ])
 
 pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
@@ -147,9 +147,9 @@ else
     './include/native/directx'
   ]
 
-  lib_sdl3 = dependency('SDL3', required: false)
-  lib_sdl2 = dependency('SDL2', required: false)
-  lib_glfw = dependency('glfw', required: false)
+  lib_sdl3 = dependency('sdl3', required: get_option('native_sdl3'))
+  lib_sdl2 = dependency('sdl2', required: get_option('native_sdl2'))
+  lib_glfw = dependency('glfw', required: get_option('native_glfw'))
   if lib_sdl3.found()
     compiler_args += ['-DDXVK_WSI_SDL3']
   endif

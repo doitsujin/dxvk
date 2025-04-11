@@ -1150,31 +1150,14 @@ namespace dxvk {
     auto& codeBuffer = m_codeBuffers[m_stageCount];
     codeBuffer = std::move(code);
 
-    // For graphics pipelines, as long as graphics pipeline libraries are
-    // enabled, we do not need to create a shader module object and can
-    // instead chain the create info to the shader stage info struct.
     auto& moduleInfo = m_moduleInfos[m_stageCount].moduleInfo;
     moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = codeBuffer.size();
     moduleInfo.pCode = codeBuffer.data();
 
-    VkShaderModule shaderModule = VK_NULL_HANDLE;
-    if (!m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      auto vk = m_device->vkd();
-
-      if (vk->vkCreateShaderModule(vk->device(), &moduleInfo, nullptr, &shaderModule))
-        throw DxvkError("DxvkShaderStageInfo: Failed to create shader module");
-    }
-
-    // Set up shader stage info with the data provided
     auto& stageInfo = m_stageInfos[m_stageCount];
-    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-
-    if (!stageInfo.module)
-      stageInfo.pNext = &moduleInfo;
-
+    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &moduleInfo };
     stageInfo.stage = stage;
-    stageInfo.module = shaderModule;
     stageInfo.pName = "main";
     stageInfo.pSpecializationInfo = specInfo;
 
@@ -1208,12 +1191,7 @@ namespace dxvk {
 
 
   DxvkShaderStageInfo::~DxvkShaderStageInfo() {
-    auto vk = m_device->vkd();
 
-    for (uint32_t i = 0; i < m_stageCount; i++) {
-      if (m_stageInfos[i].module)
-        vk->vkDestroyShaderModule(vk->device(), m_stageInfos[i].module, nullptr);
-    }
   }
 
 

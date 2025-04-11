@@ -927,9 +927,6 @@ namespace dxvk {
         ctx->resolveImage(cDstImage, cSrcImage, region, format,
           getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
       });
-
-      if constexpr (!IsDeferred)
-        GetTypedContext()->m_hasPendingMsaaResolve = false;
     }
 
     if (dstTextureInfo->HasSequenceNumber())
@@ -5241,7 +5238,6 @@ namespace dxvk {
       return;
 
     bool needsUpdate = false;
-    bool isMultisampled = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -5261,9 +5257,6 @@ namespace dxvk {
 
           if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
             ResolveOmUavHazards(rtv);
-
-          if (rtv && rtv->GetSampleCount() > 1u)
-            isMultisampled = true;
         }
       }
 
@@ -5273,9 +5266,6 @@ namespace dxvk {
         m_state.om.dsv = dsv;
         needsUpdate = true;
         ResolveOmSrvHazards(dsv);
-
-        if (dsv && dsv->GetSampleCount() > 1u)
-          isMultisampled = true;
       }
 
       m_state.om.maxRtv = NumRTVs;
@@ -5320,15 +5310,8 @@ namespace dxvk {
     if (needsUpdate) {
       BindFramebuffer();
 
-      if constexpr (!IsDeferred) {
-        // Doing this makes it less likely to flush during render passes
-        auto imm = GetTypedContext();
-
-        if (!imm->m_hasPendingMsaaResolve || !m_device->perfHints().preferRenderPassOps)
-          imm->ConsiderFlush(GpuFlushType::ImplicitMediumHint);
-
-        imm->m_hasPendingMsaaResolve |= isMultisampled;
-      }
+      if constexpr (!IsDeferred)
+        GetTypedContext()->NotifyRenderPassBoundary();
     }
   }
 

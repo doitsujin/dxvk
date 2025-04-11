@@ -51,6 +51,50 @@ namespace dxvk::util {
 
 
   /**
+   * \brief Built-in shader stage helper
+   *
+   * Useful when creating built-in pipelines.
+   */
+  class DxvkBuiltInShaderStages {
+
+  public:
+
+    uint32_t count() const {
+      return m_stageCount;
+    }
+
+    const VkPipelineShaderStageCreateInfo* infos() const {
+      return m_stages.data();
+    }
+
+    template<size_t N>
+    void addStage(VkShaderStageFlagBits stage, const uint32_t (&code)[N], const VkSpecializationInfo* specInfo) {
+      auto& moduleInfo = m_modules.at(m_stageCount);
+      moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+      moduleInfo.codeSize = sizeof(uint32_t) * N;
+      moduleInfo.pCode = &code[0];
+
+      auto& stageInfo = m_stages.at(m_stageCount);
+      stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      stageInfo.pNext = &moduleInfo;
+      stageInfo.stage = stage;
+      stageInfo.pName = "main";
+      stageInfo.pSpecializationInfo = specInfo;
+
+      m_stageCount += 1u;
+    }
+
+  private:
+
+    uint32_t m_stageCount = 0u;
+
+    std::array<VkShaderModuleCreateInfo, 3>         m_modules = { };
+    std::array<VkPipelineShaderStageCreateInfo, 3>  m_stages  = { };
+
+  };
+
+
+  /**
    * \brief Gets pipeline stage flags for shader stages
    * 
    * \param [in] shaderStages Shader stage flags

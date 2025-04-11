@@ -99,7 +99,7 @@ namespace dxvk {
     
   public:
     
-    DxvkMetaBlitObjects(const DxvkDevice* device);
+    DxvkMetaBlitObjects(DxvkDevice* device);
     ~DxvkMetaBlitObjects();
     
     /**
@@ -116,14 +116,8 @@ namespace dxvk {
             VkSampleCountFlagBits samples);
     
   private:
-    
-    Rc<vk::DeviceFn>  m_vkd;
-    
-    VkShaderModule m_shaderVert   = VK_NULL_HANDLE;
-    VkShaderModule m_shaderGeom   = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFrag1D = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFrag2D = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFrag3D = VK_NULL_HANDLE;
+
+    DxvkDevice* m_device = nullptr;
     
     dxvk::mutex m_mutex;
     
@@ -131,9 +125,6 @@ namespace dxvk {
       DxvkMetaBlitPipelineKey,
       DxvkMetaBlitPipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
-    VkShaderModule createShaderModule(
-      const SpirvCodeBuffer&            code) const;
     
     DxvkMetaBlitPipeline createPipeline(
       const DxvkMetaBlitPipelineKey&    key);

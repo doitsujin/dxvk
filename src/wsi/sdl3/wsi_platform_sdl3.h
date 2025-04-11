@@ -19,9 +19,18 @@ namespace dxvk::wsi {
     static void convertMode(const SDL_DisplayMode& mode, WsiMode* pMode) {
       pMode->width          = uint32_t(mode.w);
       pMode->height         = uint32_t(mode.h);
-      pMode->refreshRate    = WsiRational {
-        uint32_t(mode.refresh_rate_numerator),
-        uint32_t(mode.refresh_rate_denominator) };
+      if (mode.refresh_rate_numerator) {
+        pMode->refreshRate  = WsiRational {
+          uint32_t(mode.refresh_rate_numerator),
+          uint32_t(mode.refresh_rate_denominator) };
+      } else if (mode.refresh_rate > 0.0f) {
+        pMode->refreshRate  = WsiRational {
+          uint32_t(mode.refresh_rate * 1000.0f),
+          1000 };
+      } else {
+        // Platform gave us no refresh rate to work with, assume 60Hz :(
+        pMode->refreshRate  = WsiRational { 60, 1 };
+      }
       // BPP should always be a power of two
       // to match Windows behaviour of including padding.
       pMode->bitsPerPixel   = (uint32_t(-1) >> bit::lzcnt(uint32_t(SDL_BITSPERPIXEL(mode.format) - 1u))) + 1u;
