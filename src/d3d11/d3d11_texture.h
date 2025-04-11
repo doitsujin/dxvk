@@ -603,6 +603,7 @@ namespace dxvk {
             VkFormatFeatureFlags2 Features) const;
     
     std::pair<D3D11_COMMON_TEXTURE_MAP_MODE, VkMemoryPropertyFlags> DetermineMapMode(
+      const D3D11Device*          device,
       const DxvkImageCreateInfo*  pImageInfo) const;
 
     D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT DetermineSubresourceLayout(

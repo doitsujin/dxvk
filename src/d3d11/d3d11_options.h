@@ -110,6 +110,10 @@ namespace dxvk {
     /// can negatively affect performance.
     bool reproducibleCommandStream = false;
 
+    /// Whether to force a staging buffer for mapped images.
+    /// Some games are broken and ignore row pitch.
+    bool disableDirectImageMapping = false;
+
     /// Shader dump path
     std::string shaderDumpPath;
   };
