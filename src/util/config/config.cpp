@@ -469,6 +469,11 @@ namespace dxvk {
     { R"(\\WatchDogs2\.exe$)", {{
       { "d3d11.forceComputeUavBarriers",    "True" },
     }} },
+    /* Rocketbirds 2: Ignores row pitch for mapped *
+     * images, corrupting intro video              */
+    { R"(\\Rocketbirds 2\\Game\.exe$)", {{
+      { "d3d11.disableDirectImageMapping",  "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
