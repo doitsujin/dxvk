@@ -9,10 +9,10 @@ namespace dxvk {
           UINT64              InitialValue,
           D3D11_FENCE_FLAG    Flags,
           HANDLE              hFence)
-  : D3D11DeviceChild<ID3D11Fence>(pDevice) {
+  : D3D11DeviceChild<ID3D11Fence> ( pDevice )
+  , m_flags                       ( Flags ) {
     DxvkFenceCreateInfo fenceInfo;
     fenceInfo.initialValue = InitialValue;
-    m_flags = Flags;
 
     if (Flags & D3D11_FENCE_FLAG_SHARED) {
       fenceInfo.sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D11_FENCE_BIT;
