@@ -938,9 +938,11 @@ namespace dxvk {
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Prototype                                 *
-     * Incorrect shadows on AMD & Intel          */
+     * Incorrect shadows on AMD & Intel.         *
+     * AA 4x can not be selected above 2GB vram  */
     { R"(\\prototypef\.exe$)", {{ 
       { "d3d9.supportDFFormats",            "False" },
+      { "dxgi.maxDeviceMemory",             "2047" },
     }} },
     /* STAR WARS: The Force Unleashed            *
      * Prevents black screen on each alt-tab     */
