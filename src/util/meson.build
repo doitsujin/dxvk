@@ -11,6 +11,7 @@ util_src = files([
 
   'thread.cpp',
 
+  'com/com_destruction_notifier.cpp',
   'com/com_guid.cpp',
   'com/com_private_data.cpp',
 
