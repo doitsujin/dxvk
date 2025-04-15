@@ -8,11 +8,22 @@ namespace dxvk {
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
   : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, 0u),
-    m_commandList (CreateCommandList()) {
+    m_commandList(CreateCommandList()),
+    m_destructionNotifier(this) {
     ResetContextState();
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11DeferredContext::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
+    return D3D11CommonContext<D3D11DeferredContext>::QueryInterface(riid, ppvObject);
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,

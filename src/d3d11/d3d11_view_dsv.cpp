@@ -11,7 +11,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc)
   : D3D11DeviceChild<ID3D11DepthStencilView>(pDevice),
-    m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
+    m_resource(pResource), m_desc(*pDesc), m_d3d10(this),
+    m_destructionNotifier(this) {
     ResourceAddRefPrivate(m_resource);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
@@ -106,6 +107,8 @@ namespace dxvk {
   
   
   D3D11DepthStencilView::~D3D11DepthStencilView() {
+    m_destructionNotifier.Notify();
+
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
 
@@ -133,7 +136,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11DepthStencilView), riid)) {
       Logger::warn("D3D11DepthStencilView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

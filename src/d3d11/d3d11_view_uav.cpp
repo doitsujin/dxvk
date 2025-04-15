@@ -11,7 +11,8 @@ namespace dxvk {
           ID3D11Resource*                    pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc)
   : D3D11DeviceChild<ID3D11UnorderedAccessView1>(pDevice),
-    m_resource(pResource), m_desc(*pDesc) {
+    m_resource(pResource), m_desc(*pDesc),
+    m_destructionNotifier(this) {
     ResourceAddRefPrivate(m_resource);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
@@ -127,6 +128,8 @@ namespace dxvk {
   
   
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {
+    m_destructionNotifier.Notify();
+
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
 
@@ -150,7 +153,12 @@ namespace dxvk {
       *ppvObject = ref(this);
       return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11UnorderedAccessView), riid)) {
       Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

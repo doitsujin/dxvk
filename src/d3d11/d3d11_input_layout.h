@@ -52,6 +52,8 @@ namespace dxvk {
     std::array<DxvkVertexInput, MaxNumVertexAttributes + MaxNumVertexBindings> m_inputs = { };
 
     D3D10InputLayout m_d3d10;
+
+    D3DDestructionNotifier m_destructionNotifier;
     
   };
   

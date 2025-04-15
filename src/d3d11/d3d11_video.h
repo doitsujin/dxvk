@@ -47,6 +47,8 @@ namespace dxvk {
 
     D3D11_VIDEO_PROCESSOR_CONTENT_DESC  m_desc;
 
+    D3DDestructionNotifier              m_destructionNotifier;
+
   };
 
 
@@ -109,6 +111,8 @@ namespace dxvk {
     D3D11VideoProcessorState       m_state;
     D3D11VideoProcessorStreamState m_streams[D3D11_VK_VIDEO_STREAM_COUNT];
 
+    D3DDestructionNotifier         m_destructionNotifier;
+
   };
 
 
@@ -158,6 +162,8 @@ namespace dxvk {
     std::array<Rc<DxvkImageView>, 2>      m_views;
     bool                                  m_isYCbCr = false;
 
+    D3DDestructionNotifier                m_destructionNotifier;
+
     static bool IsYCbCrFormat(DXGI_FORMAT Format);
 
   };
@@ -194,6 +200,8 @@ namespace dxvk {
     Com<ID3D11Resource>                     m_resource;
     D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC  m_desc;
     Rc<DxvkImageView>                       m_view;
+
+    D3DDestructionNotifier                  m_destructionNotifier;
 
   };
 

@@ -9,15 +9,17 @@ namespace dxvk {
           UINT64              InitialValue,
           D3D11_FENCE_FLAG    Flags,
           HANDLE              hFence)
-  : D3D11DeviceChild<ID3D11Fence>(pDevice) {
-    DxvkFenceCreateInfo fenceInfo;
+  : D3D11DeviceChild<ID3D11Fence>(pDevice),
+    m_flags(Flags), m_destructionNotifier(this) {
+    DxvkFenceCreateInfo fenceInfo = { };
     fenceInfo.initialValue = InitialValue;
-    m_flags = Flags;
 
     if (Flags & D3D11_FENCE_FLAG_SHARED) {
       fenceInfo.sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_D3D11_FENCE_BIT;
-      if (hFence == nullptr)
+
+      if (!hFence)
         hFence = INVALID_HANDLE_VALUE;
+
       fenceInfo.sharedHandle = hFence;
     }
 
@@ -45,6 +47,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11Fence)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 

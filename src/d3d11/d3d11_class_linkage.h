@@ -32,7 +32,11 @@ namespace dxvk {
             LPCSTR              pClassInstanceName,
             UINT                InstanceIndex,
             ID3D11ClassInstance **ppInstance);  
+
+  private:
     
+    D3DDestructionNotifier m_destructionNotifier;
+
   };
   
 }

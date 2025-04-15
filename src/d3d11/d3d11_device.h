@@ -987,6 +987,8 @@ namespace dxvk {
     DXGIDXVKDevice      m_metaDevice;
     
     DXGIVkSwapChainFactory   m_dxvkFactory;
+
+    D3DDestructionNotifier   m_destructionNotifier;
     
     uint32_t m_frameLatency = DefaultFrameLatency;
 
