@@ -646,7 +646,7 @@ namespace dxvk {
     }} },
     /* Dragon Nest                               */
     { R"(\\DragonNest_x64\.exe$)", {{
-      { "d3d9.memoryTrackTest ",            "True" },
+      { "d3d9.memoryTrackTest",             "True" },
     }} },
     /* Dal Segno                                 */
     { R"(\\DST\.exe$)", {{
@@ -932,8 +932,7 @@ namespace dxvk {
     { R"(\\ninthdawnii\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-    /* Delta Force: Xtreme 1 & 2                 *
-     * Black screen on Alt-Tab and performance   */
+    /* Delta Force: Xtreme 1 & 2 - Performance   */
     { R"(\\(DFX|dfx2)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
@@ -969,8 +968,8 @@ namespace dxvk {
     { R"(\\WRC4\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Splinter Cell Conviction - Alt-tab black  *
-     * screen and unsupported GPU complaint      */
+    /* Splinter Cell Conviction                  *
+     * Unsupported GPU complaint                 */
     { R"(\\conviction_game\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
       { "dxgi.customDeviceId",              "05e0" },
