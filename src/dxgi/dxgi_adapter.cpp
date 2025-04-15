@@ -360,7 +360,7 @@ namespace dxvk {
 
     // Make sure to never return exact powers of two outside the 32-bit range
     // because some games don't understand the concept of actually having VRAM
-    constexpr VkDeviceSize adjustment = 32ull << 20;
+    constexpr VkDeviceSize adjustment = 16ull << 20;
 
     if (deviceMemory && !(deviceMemory & 0xffffffffull))
       deviceMemory -= adjustment;
@@ -380,7 +380,7 @@ namespace dxvk {
     if (env::is32BitHostPlatform()) {
       // The value returned by DXGI is a 32-bit value
       // on 32-bit platforms, so we need to clamp it
-      VkDeviceSize maxMemory = 0xC0000000;
+      VkDeviceSize maxMemory = 0x7f000000u;
       deviceMemory = std::min(deviceMemory, maxMemory);
       sharedMemory = std::min(sharedMemory, maxMemory);
     }
