@@ -89,6 +89,8 @@ namespace dxvk {
     Rc<DxvkImageView>                 m_imageView;
     D3D10ShaderResourceView           m_d3d10;
 
+    D3DDestructionNotifier            m_destructionNotifier;
+
   };
   
 }

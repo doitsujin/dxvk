@@ -12,7 +12,7 @@ namespace dxvk {
           D3D11Device*            pDevice,
     const D3D11_VIDEO_PROCESSOR_CONTENT_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorEnumerator>(pDevice),
-    m_desc(Desc) {
+    m_desc(Desc), m_destructionNotifier(this) {
 
   }
 
@@ -29,6 +29,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11VideoProcessorEnumerator)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 
@@ -119,7 +124,8 @@ namespace dxvk {
           D3D11VideoProcessorEnumerator*  pEnumerator,
           UINT                            RateConversionIndex)
   : D3D11DeviceChild<ID3D11VideoProcessor>(pDevice),
-    m_enumerator(pEnumerator), m_rateConversionIndex(RateConversionIndex) {
+    m_enumerator(pEnumerator), m_rateConversionIndex(RateConversionIndex),
+    m_destructionNotifier(this) {
 
   }
 
@@ -136,6 +142,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11VideoProcessor)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 
@@ -167,7 +178,8 @@ namespace dxvk {
           ID3D11Resource*         pResource,
     const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorInputView>(pDevice),
-    m_resource(pResource), m_desc(Desc) {
+    m_resource(pResource), m_desc(Desc),
+    m_destructionNotifier(this) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -241,6 +253,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorInputView), riid)) {
       Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));
@@ -268,7 +285,7 @@ namespace dxvk {
           ID3D11Resource*         pResource,
     const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorOutputView>(pDevice),
-    m_resource(pResource), m_desc(Desc) {
+    m_resource(pResource), m_desc(Desc), m_destructionNotifier(this) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -319,6 +336,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11View)
      || riid == __uuidof(ID3D11VideoProcessorOutputView)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 

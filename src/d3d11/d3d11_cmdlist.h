@@ -49,11 +49,13 @@ namespace dxvk {
       uint64_t          chunkId;
     };
 
-    UINT m_contextFlags;
-    
+    UINT m_contextFlags = 0u;
+
     std::vector<DxvkCsChunkRef>         m_chunks;
     std::vector<Com<D3D11Query, false>> m_queries;
     std::vector<TrackedResource>        m_resources;
+
+    D3DDestructionNotifier              m_destructionNotifier;
 
     void TrackResourceSequenceNumber(
       const D3D11ResourceRef&   Resource,

@@ -11,7 +11,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc)
   : D3D11DeviceChild<ID3D11ShaderResourceView1>(pDevice),
-    m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
+    m_resource(pResource), m_desc(*pDesc), m_d3d10(this),
+    m_destructionNotifier(this) {
     ResourceAddRefPrivate(m_resource);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
@@ -182,6 +183,8 @@ namespace dxvk {
   
   
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
+    m_destructionNotifier.Notify();
+
     ResourceReleasePrivate(m_resource);
     m_resource = nullptr;
 
@@ -212,7 +215,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11ShaderResourceView), riid)) {
       Logger::warn("D3D11ShaderResourceView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

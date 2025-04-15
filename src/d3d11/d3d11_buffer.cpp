@@ -12,7 +12,8 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
     m_resource    (this, pDevice),
-    m_d3d10       (this) {
+    m_d3d10       (this),
+    m_destructionNotifier(this) {
     DxvkBufferCreateInfo info;
     info.flags  = 0;
     info.size   = pDesc->ByteWidth;
@@ -159,7 +160,12 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11Buffer), riid)) {
       Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

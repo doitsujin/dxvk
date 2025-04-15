@@ -5,7 +5,8 @@ namespace dxvk {
   
   D3D11ClassLinkage::D3D11ClassLinkage(
           D3D11Device*                pDevice)
-  : D3D11DeviceChild<ID3D11ClassLinkage>(pDevice) {
+  : D3D11DeviceChild<ID3D11ClassLinkage>(pDevice),
+    m_destructionNotifier(this) {
     
   }
   
@@ -28,6 +29,11 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11ClassLinkage), riid)) {
       Logger::warn("D3D11ClassLinkage::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

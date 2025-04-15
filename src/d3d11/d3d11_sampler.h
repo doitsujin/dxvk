@@ -47,6 +47,8 @@ namespace dxvk {
 
     std::atomic<uint32_t> m_refCount = { 0u };
 
+    D3DDestructionNotifier m_destructionNotifier;
+
     static bool ValidateAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  Mode);
 

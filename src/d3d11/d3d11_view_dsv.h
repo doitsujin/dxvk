@@ -96,7 +96,9 @@ namespace dxvk {
     D3D11_VK_VIEW_INFO                m_info;
     Rc<DxvkImageView>                 m_view;
     D3D10DepthStencilView             m_d3d10;
-    
+
+    D3DDestructionNotifier            m_destructionNotifier;
+
   };
   
 }
