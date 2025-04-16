@@ -442,7 +442,7 @@ namespace dxvk {
     // RADV has issues on RDNA4 up to version 25.0.1.
     hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
                               || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
-                              || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, Version(), Version(25, 0, 2));
+                              || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, Version(), Version(99, 9, 9));
     return hints;
   }
 
