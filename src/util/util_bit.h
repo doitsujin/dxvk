@@ -8,8 +8,6 @@
   #endif
 #elif defined(__aarch64__) || defined(_M_ARM64) || defined(_M_ARM64EC)
   #define DXVK_ARCH_ARM64
-#else
-#error "Unknown CPU Architecture"
 #endif
 
 #ifdef DXVK_ARCH_X86
