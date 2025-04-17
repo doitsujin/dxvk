@@ -1002,7 +1002,8 @@ namespace dxvk {
       if ((m_analysis->uavInfos[registerId].accessAtomicOp)
        || (m_analysis->uavInfos[registerId].accessTypedLoad
         && !m_moduleInfo.options.supportsTypedUavLoadR32))
-        imageFormat = getScalarImageFormat(sampledType);
+        // Because sampledType is x type, there is x,y,z and w four scalar type.
+        imageFormat = getRgbaImageFormat(sampledType);
     }
     
     // We do not know whether the image is going to be used as
@@ -8086,6 +8087,15 @@ namespace dxvk {
       case DxbcScalarType::Float32: return spv::ImageFormatR32f;
       case DxbcScalarType::Sint32:  return spv::ImageFormatR32i;
       case DxbcScalarType::Uint32:  return spv::ImageFormatR32ui;
+      default: throw DxvkError("DxbcCompiler: Unhandled scalar resource type");
+    }
+  }
+
+  spv::ImageFormat DxbcCompiler::getRgbaImageFormat(DxbcScalarType type) const {
+    switch (type) {
+      case DxbcScalarType::Float32: return spv::ImageFormatRgba32f;
+      case DxbcScalarType::Sint32:  return spv::ImageFormatRgba32i;
+      case DxbcScalarType::Uint32:  return spv::ImageFormatRgba32ui;
       default: throw DxvkError("DxbcCompiler: Unhandled scalar resource type");
     }
   }

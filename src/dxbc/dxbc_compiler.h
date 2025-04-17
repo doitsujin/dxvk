@@ -1245,6 +1245,9 @@ namespace dxvk {
     spv::ImageFormat getScalarImageFormat(
             DxbcScalarType type) const;
     
+    spv::ImageFormat getRgbaImageFormat(
+            DxbcScalarType type) const;
+
     bool isDoubleType(
             DxbcScalarType type) const;
     
