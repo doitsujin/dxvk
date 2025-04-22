@@ -5053,7 +5053,7 @@ namespace dxvk {
 
     // Create a pair of views for the attachment resolve
     DxvkMetaResolveViews views(dstImage, region.dstSubresource,
-      srcImage, region.srcSubresource, dstImage->info().format);
+      srcImage, region.srcSubresource, format);
 
     VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachment.imageView = views.srcView->handle();
