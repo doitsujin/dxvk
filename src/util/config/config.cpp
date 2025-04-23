@@ -1059,6 +1059,10 @@ namespace dxvk {
     { R"((\\LEGOBatman|LegoBatman\\Game)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Thumper - Fixes missing track              */
+    { R"(\\THUMPER_dx9\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
