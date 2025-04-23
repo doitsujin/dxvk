@@ -101,6 +101,11 @@ namespace dxvk {
       d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
 
+    // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
+    this->sincosEmulation = adapter && (adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                                     || adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS));
+    applyTristate(this->sincosEmulation, config.getOption<Tristate>("d3d9.sincosEmulation", Tristate::Auto));
+
     this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
   }
 
