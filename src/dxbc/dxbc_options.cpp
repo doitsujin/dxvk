@@ -49,6 +49,11 @@ namespace dxvk {
     // ANV up to mesa 25.0.2 breaks when we *don't* explicitly write point size
     needsPointSizeExport |= device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version(25, 0, 3));
 
+    // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
+    sincosEmulation = device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                   || device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS);
+    applyTristate(sincosEmulation, options.sincosEmulation);
+
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
       if (devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32)
