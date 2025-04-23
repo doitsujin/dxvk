@@ -1277,6 +1277,10 @@ namespace dxvk {
 
     void opEndInvocationInterlock();
 
+    uint32_t opSinCos(
+            uint32_t                x,
+            bool                    useBuiltIn);
+
   private:
     
     uint32_t m_version;
@@ -1331,6 +1335,15 @@ namespace dxvk {
     void classifyBlocks(
             std::unordered_set<uint32_t>& reachableBlocks,
             std::unordered_set<uint32_t>& mergeBlocks);
+
+    static constexpr double sincosTaylorFactor(uint32_t power) {
+      double result = 1.0;
+
+      for (uint32_t i = 1; i <= power; i++)
+        result *= pi * 0.25f / double(i);
+
+      return result;
+    }
 
   };
   
