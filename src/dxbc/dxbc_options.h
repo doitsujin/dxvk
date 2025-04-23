@@ -60,6 +60,9 @@ namespace dxvk {
     /// Whether exporting point size is required
     bool needsPointSizeExport = true;
 
+    /// Whether to enable sincos emulation
+    bool sincosEmulation = false;
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 
