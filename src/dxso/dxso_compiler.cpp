@@ -2114,11 +2114,16 @@ namespace dxvk {
         std::array<uint32_t, 4> sincosVectorIndices = { 0, 0, 0, 0 };
 
         uint32_t index = 0;
+
+        uint32_t flt = m_module.defFloatType(32);
+        uint32_t sin = m_module.opSin(scalarTypeId, src0);
+        uint32_t cos = m_module.opSqrt(flt, m_module.opFSub(flt, m_module.constf32(1.0f), m_module.opFMul(flt, sin, sin)));
+
         if (mask[0])
-          sincosVectorIndices[index++] = m_module.opCos(scalarTypeId, src0);
+          sincosVectorIndices[index++] = cos;
 
         if (mask[1])
-          sincosVectorIndices[index++] = m_module.opSin(scalarTypeId, src0);
+          sincosVectorIndices[index++] = sin;
 
         for (; index < result.type.ccount; index++) {
           if (sincosVectorIndices[index] == 0)
