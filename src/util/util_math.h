@@ -5,7 +5,8 @@
 namespace dxvk {
   
   constexpr size_t CACHE_LINE_SIZE = 64;
-  
+  constexpr double pi = 3.14159265359;
+
   template<typename T>
   constexpr T clamp(T n, T lo, T hi) {
     if (n < lo) return lo;
