@@ -704,6 +704,8 @@ namespace dxvk {
      */
     bool SupportsSWVP();
 
+    bool SupportsVCacheQuery() const;
+
     bool IsExtended();
 
     HWND GetWindow();
@@ -1566,6 +1568,7 @@ namespace dxvk {
 
     bool                            m_isSWVP;
     bool                            m_isD3D8Compatible;
+    bool                            m_isVCacheQuerySupported;
     bool                            m_amdATOC          = false;
     bool                            m_nvATOC           = false;
     bool                            m_ffZTest          = false;
