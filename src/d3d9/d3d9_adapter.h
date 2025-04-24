@@ -107,6 +107,9 @@ namespace dxvk {
 
     const D3D9VkFormatTable       m_d3d9Formats;
 
+    // Ensure GPU hiding only gets logged once per adapter
+    bool                          m_notifyHidingGpu = true;
+
   };
 
 }

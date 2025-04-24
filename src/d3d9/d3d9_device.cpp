@@ -193,6 +193,12 @@ namespace dxvk {
     m_activeRTsWhichAreTextures = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
+
+    // Determine VCache query support
+    D3DADAPTER_IDENTIFIER9 adapterId9;
+    HRESULT res = m_adapter->GetAdapterIdentifier(0, &adapterId9);
+    const uint32_t vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
+    m_isVCacheQuerySupported = vendorId == uint32_t(DxvkGpuVendor::Nvidia);
   }
 
 
@@ -4507,6 +4513,11 @@ namespace dxvk {
 
   bool D3D9DeviceEx::SupportsSWVP() {
     return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics && m_dxvkDevice->features().vk12.shaderInt8;
+  }
+
+
+  bool D3D9DeviceEx::SupportsVCacheQuery() const {
+    return m_isVCacheQuerySupported;
   }
 
 
