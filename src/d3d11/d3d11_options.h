@@ -63,8 +63,8 @@ namespace dxvk {
     /// Enforces the given LOD bias for all samplers.
     float samplerLodBias = 0.0f;
 
-    /// Clamps negative LOD bias
-    bool clampNegativeLodBias = false;
+    /// Clamps LOD bias
+    std::string clampLodBias;
 
     /// Declare vertex positions in shaders as invariant
     bool invariantPosition = true;
@@ -117,5 +117,5 @@ namespace dxvk {
     /// Shader dump path
     std::string shaderDumpPath;
   };
-  
+
 }

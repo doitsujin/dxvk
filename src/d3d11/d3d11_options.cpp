@@ -3,7 +3,7 @@
 #include "d3d11_options.h"
 
 namespace dxvk {
-  
+
   static bool IsAPITracingDXGI() {
 #ifdef _WIN32
     return !!::GetModuleHandle("dxgitrace.dll");
@@ -21,7 +21,7 @@ namespace dxvk {
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
     this->samplerLodBias        = config.getOption<float>("d3d11.samplerLodBias", 0.0f);
-    this->clampNegativeLodBias  = config.getOption<bool>("d3d11.clampNegativeLodBias", false);
+    this->clampLodBias          = config.getOption<std::string>("d3d11.clampLodBias", std::string());
     this->invariantPosition     = config.getOption<bool>("d3d11.invariantPosition", true);
     this->floatControls         = config.getOption<bool>("d3d11.floatControls", true);
     this->forceSampleRateShading = config.getOption<bool>("d3d11.forceSampleRateShading", false);
@@ -61,5 +61,5 @@ namespace dxvk {
     // Shader dump path is only available via an environment variable
     this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
   }
-  
+
 }

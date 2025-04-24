@@ -9,7 +9,7 @@ namespace dxvk {
   static int32_t parsePciId(const std::string& str) {
     if (str.size() != 4)
       return -1;
-    
+
     int32_t id = 0;
 
     for (size_t i = 0; i < str.size(); i++) {
@@ -72,7 +72,7 @@ namespace dxvk {
     this->textureMemory                 = config.getOption<int32_t>     ("d3d9.textureMemory",                 100) << 20;
     this->deviceLossOnFocusLoss         = config.getOption<bool>        ("d3d9.deviceLossOnFocusLoss",         false);
     this->samplerLodBias                = config.getOption<float>       ("d3d9.samplerLodBias",                0.0f);
-    this->clampNegativeLodBias          = config.getOption<bool>        ("d3d9.clampNegativeLodBias",          false);
+    this->clampLodBias                  = config.getOption<std::string> ("d3d9.clampLodBias",                  "None");
     this->countLosableResources         = config.getOption<bool>        ("d3d9.countLosableResources",         true);
     this->reproducibleCommandStream     = config.getOption<bool>        ("d3d9.reproducibleCommandStream",     false);
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
