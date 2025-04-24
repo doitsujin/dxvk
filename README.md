@@ -9,10 +9,11 @@ The most recent development builds can be found [here](https://github.com/doitsu
 Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
+
 In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add `native` DLL overrides for `d3d8`, `d3d9`, `d3d10core`, `d3d11` and `dxgi` under the Libraries tab.
 
 In a default Wine prefix that would be as follows:
-```
+```sh
 export WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
@@ -20,7 +21,7 @@ winecfg
 ```
 
 For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `system32` directory:
-```
+```sh
 export WINEPREFIX=/path/to/wineprefix
 cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
 winecfg
@@ -32,68 +33,82 @@ In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and ru
 
 Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatically handle setup of dxvk on their own when enabled.
 
-#### DLL dependencies 
-Listed below are the DLL requirements for using DXVK with any single API.
+#### DLL dependencies
 
-- d3d8: `d3d8.dll` and `d3d9.dll`
-- d3d9: `d3d9.dll`
-- d3d10: `d3d10core.dll`, `d3d11.dll` and `dxgi.dll`
-- d3d11: `d3d11.dll` and `dxgi.dll`
+Listed below are the DLL requirements for using DXVK with any single API.
+API   | DLL(s)
+---   | ---
+d3d8  | `d3d8.dll`<br>`d3d9.dll`
+d3d9  | `d3d9.dll`
+d3d10 | `d3d10core.dll`<br>`d3d11.dll`<br>`dxgi.dll`
+d3d11 | `d3d11.dll`<br>`dxgi.dll`
 
 ### Notes on Vulkan drivers
+
 Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
 
 ### Online multi-player games
+
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
 
 ### HUD
-The `DXVK_HUD` environment variable controls a HUD which can display the framerate and some stat counters. It accepts a comma-separated list of the following options:
-- `devinfo`: Displays the name of the GPU and the driver version.
-- `fps`: Shows the current frame rate.
-- `frametimes`: Shows a frame time graph.
-- `submissions`: Shows the number of command buffers submitted per frame.
-- `drawcalls`: Shows the number of draw calls and render passes per frame.
-- `pipelines`: Shows the total number of graphics and compute pipelines.
-- `descriptors`: Shows the number of descriptor pools and descriptor sets.
-- `memory`: Shows the amount of device memory allocated and used.
-- `allocations`: Shows detailed memory chunk suballocation info.
-- `gpuload`: Shows estimated GPU load. May be inaccurate.
-- `version`: Shows DXVK version.
-- `api`: Shows the D3D feature level used by the application.
-- `cs`: Shows worker thread statistics.
-- `compiler`: Shows shader compiler activity
-- `samplers`: Shows the current number of sampler pairs used *[D3D9 Only]*
-- `ffshaders`: Shows the current number of shaders generated from fixed function state *[D3D9 Only]*
-- `swvp`: Shows whether or not the device is running in software vertex processing mode *[D3D9 Only]*
-- `scale=x`: Scales the HUD by a factor of `x` (e.g. `1.5`)
-- `opacity=y`: Adjusts the HUD opacity by a factor of `y` (e.g. `0.5`, `1.0` being fully opaque).
 
-Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
+The `DXVK_HUD` environment variable controls a HUD which can display the framerate and some stat counters. It accepts a comma-separated list of the following options:
+Option        | Description
+------        | -----------
+`full`        | Enables all available HUD elements.
+`1`           | Same effect as `devinfo,fps`
+`devinfo`     | Displays the name of the GPU and the driver version.
+`fps`         | Shows the current frame rate.
+`frametimes`  | Shows a frame time graph.
+`submissions` | Shows the number of command buffers submitted per frame.
+`drawcalls`   | Shows the number of draw calls and render passes per frame.
+`pipelines`   | Shows the total number of graphics and compute pipelines.
+`descriptors` | Shows the number of descriptor pools and descriptor sets.
+`memory`      | Shows the amount of device memory allocated and used.
+`allocations` | Shows detailed memory chunk suballocation info.
+`gpuload`     | Shows estimated GPU load. May be inaccurate.
+`version`     | Shows DXVK version.
+`api`         | Shows the D3D feature level used by the application.
+`cs`          | Shows worker thread statistics.
+`compiler`    | Shows shader compiler activity.
+`samplers`    | Shows the current number of sampler pairs used. *[D3D9 Only]*
+`ffshaders`   | Shows the current number of shaders generated from fixed function state. *[D3D9 Only]*
+`swvp`        | Shows whether or not the device is running in software vertex processing mode. *[D3D9 Only]*
+`scale=x`     | Scales the HUD by a factor of `x` (e.g. `1.5`)
+`opacity=y`   | Adjusts the HUD opacity by a factor of `y` (e.g. `0.5`, `1.0` being fully opaque).
 
 ### Logs
+
 When used with Wine, DXVK will print log messages to `stderr`. Additionally, standalone log files can optionally be generated by setting the `DXVK_LOG_PATH` variable, where log files in the given directory will be called `app_d3d11.log`, `app_dxgi.log` etc., where `app` is the name of the game executable.
 
 On Windows, log files will be created in the game's working directory by default, which is usually next to the game executable.
 
 ### Frame rate limit
+
 The `DXVK_FRAME_RATE` environment variable can be used to limit the frame rate. A value of `0` uncaps the frame rate, while any positive value will limit rendering to the given number of frames per second. Alternatively, the configuration file can be used.
 
 ### Device filter
+
 Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
 - `DXVK_FILTER_DEVICE_NAME="Device Name"` Selects devices with a matching Vulkan device name, which can be retrieved with tools such as `vulkaninfo`. Matches on substrings, so "VEGA" or "AMD RADV VEGA10" is supported if the full device name is "AMD RADV VEGA10 (LLVM 9.0.0)", for example. If the substring matches more than one device, the first device matched will be used.
 
 **Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
 
 ### Debugging
+
 The following environment variables can be used for **debugging** purposes.
-- `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
-- `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
-- `DXVK_LOG_PATH=/some/directory` Changes path where log files are stored. Set to `none` to disable log file creation entirely, without disabling logging.
-- `DXVK_DEBUG=markers|validation` Enables use of the `VK_EXT_debug_utils` extension for translating performance event markers, or to enable Vulkan validation, respecticely.
-- `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
-- `DXVK_CONFIG="dxgi.hideAmdGpu = True; dxgi.syncInterval = 0"` Can be used to set config variables through the environment instead of a configuration file using the same syntax. `;` is used as a seperator.
+Environment Variable  | Options | Description
+--------------------  | ------- | -----------
+`VK_INSTANCE_LAYERS=` | `VK_LAYER_KHRONOS_validation` | Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
+`DXVK_LOG_LEVEL=`     | `none`<br>`error`<br>`warn`<br>`info`<br>`debug` | Controls message logging.
+`DXVK_LOG_PATH=`      | `/some/directory` | Changes path where log files are stored. Set to `none` to disable log file creation entirely, without disabling logging.
+`DXVK_DEBUG=`         | `markers`<br>`validation` | Enables use of the `VK_EXT_debug_utils` extension for translating performance event markers, or to enable Vulkan validation, respecticely.
+`DXVK_CONFIG_FILE=`   | `/xxx/dxvk.conf` | Sets path to the configuration file.
+`DXVK_CONFIG=`        | `"dxgi.hideAmdGpu = True; dxgi.syncInterval = 0"` | Can be used to set config variables through the environment instead of a configuration file using the same syntax. `;` is used as a seperator.
 
 ### Graphics Pipeline Library
+
 On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will be compiled at the time the game loads its D3D shaders, rather than at draw time. This reduces or eliminates shader compile stutter in many games when compared to the previous system.
 
 In games that load their shaders during loading screens or in the menu, this can lead to prolonged periods of very high CPU utilization, especially on weaker CPUs. For affected games it is recommended to wait for shader compilation to finish before starting the game to avoid stutter and low performance. Shader compiler activity can be monitored with `DXVK_HUD=compiler`.
@@ -103,15 +118,14 @@ This feature largely replaces the state cache.
 **Note:** Games which only load their D3D shaders at draw time (e.g. most Unreal Engine games) will still exhibit some stutter, although it should still be less severe than without this feature.
 
 ### State cache
+
 DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
 
 The following environment variables can be used to control the cache:
-- `DXVK_STATE_CACHE`: Controls the state cache. The following values are supported:
-  - `disable`: Disables the cache entirely.
-  - `reset`: Clears the cache file.
-- `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
-
-This feature is mostly only relevant on systems without support for `VK_EXT_graphics_pipeline_library`
+Environment Variable     | Options | Description
+--------------------     | ------- | -----------
+`DXVK_STATE_CACHE=`      | `disable`: Disables the cache entirely.<br>`reset`: Clears the cache file. | Controls the state cache.
+`DXVK_STATE_CACHE_PATH=` | `/some/directory` | Specifies a directory where to put the cache files. Defaults to the current working directory of the application.<br>This feature is mostly only relevant on systems without support for `VK_EXT_graphics_pipeline_library`
 
 ## Build instructions
 
@@ -121,6 +135,7 @@ git clone --recursive https://github.com/doitsujin/dxvk.git
 ```
 
 ### Requirements:
+
 - [wine 7.1](https://www.winehq.org/) or newer
 - [Meson](https://mesonbuild.com/) build system (at least version 0.58)
 - [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 10.0)
@@ -129,8 +144,9 @@ git clone --recursive https://github.com/doitsujin/dxvk.git
 ### Building DLLs
 
 #### The simple way
+
 Inside the DXVK directory, run:
-```
+```sh
 ./package-release.sh master /your/target/directory --no-package
 ```
 
@@ -144,6 +160,7 @@ ninja install
 ```
 
 #### Compiling manually
+
 ```
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
@@ -155,6 +172,7 @@ ninja install
 The D3D8, D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`.
 
 ### Build troubleshooting
+
 DXVK requires threading support from your mingw-w64 build environment. If you
 are missing this, you may see "error: ‘std::cv_status’ has not been declared"
 or similar threading related errors.
@@ -162,16 +180,16 @@ or similar threading related errors.
 On Debian and Ubuntu, this can be resolved by using the posix alternate, which
 supports threading. For example, choose the posix alternate from these
 commands:
-```
+```sh
 update-alternatives --config x86_64-w64-mingw32-gcc
 update-alternatives --config x86_64-w64-mingw32-g++
 update-alternatives --config i686-w64-mingw32-gcc
 update-alternatives --config i686-w64-mingw32-g++
 ```
-For non debian based distros, make sure that your mingw-w64-gcc cross compiler 
+For non debian based distros, make sure that your mingw-w64-gcc cross compiler
 does have `--enable-threads=posix` enabled during configure. If your distro does
 ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
-recompile locally or open a bug at your distro's bugtracker to ask for it. 
+recompile locally or open a bug at your distro's bugtracker to ask for it.
 
 # DXVK Native
 
