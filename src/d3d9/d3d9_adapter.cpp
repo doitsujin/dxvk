@@ -18,14 +18,17 @@ namespace dxvk {
 
   const char* GetDriverDLL(DxvkGpuVendor vendor) {
     switch (vendor) {
-      default:
       case DxvkGpuVendor::Nvidia: return "nvd3dum.dll";
 
 #if defined(__x86_64__) || defined(_M_X64)
+      default:
       case DxvkGpuVendor::Amd:    return "aticfx64.dll";
+
       case DxvkGpuVendor::Intel:  return "igdumd64.dll";
 #else
+      default:
       case DxvkGpuVendor::Amd:    return "aticfx32.dll";
+
       case DxvkGpuVendor::Intel:  return "igdumd32.dll";
 #endif
     }
@@ -42,7 +45,7 @@ namespace dxvk {
     m_ordinal         (Ordinal),
     m_displayIndex    (DisplayIndex),
     m_modeCacheFormat (D3D9Format::Unknown),
-    m_d3d9Formats     (Adapter, m_parent->GetOptions()) {
+    m_d3d9Formats     (this, Adapter, m_parent->GetOptions()) {
     m_adapter->logAdapterInfo();
   }
 
@@ -71,15 +74,77 @@ namespace dxvk {
     std::string displayName = str::fromws(wideDisplayName);
 
     GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
+    uint32_t vendorId  = props.vendorID;
+    uint32_t deviceId  = props.deviceID;
+    const char*  desc  = props.deviceName;
 
-    uint32_t vendorId  = options.customVendorId == -1     ? props.vendorID   : uint32_t(options.customVendorId);
-    uint32_t deviceId  = options.customDeviceId == -1     ? props.deviceID   : uint32_t(options.customDeviceId);
-    const char*  desc  = options.customDeviceDesc.empty() ? props.deviceName : options.customDeviceDesc.c_str();
+    // Custom Vendor / Device ID
+    if (options.customVendorId >= 0)
+      vendorId = uint32_t(options.customVendorId);
+
+    if (options.customDeviceId >= 0)
+      deviceId = uint32_t(options.customDeviceId);
+
+    if (!options.customDeviceDesc.empty())
+      desc = options.customDeviceDesc.c_str();
+
+    if (options.customVendorId < 0) {
+      bool isNonclassicalVendorId = vendorId != uint32_t(DxvkGpuVendor::Nvidia) &&
+                                    vendorId != uint32_t(DxvkGpuVendor::Amd) &&
+                                    vendorId != uint32_t(DxvkGpuVendor::Intel);
+
+      if (isNonclassicalVendorId)
+        Logger::info(str::format("D3D9: Detected nonclassical vendor ID: 0x", std::hex, vendorId));
+
+      uint32_t     fallbackVendor = 0xdead;
+      uint32_t     fallbackDevice = 0xbeef;
+      const char*  fallbackDesc   = "Generic Graphics Card";
+
+      if (!options.hideAmdGpu) {
+        // AMD RX 6700 XT
+        fallbackVendor = uint32_t(DxvkGpuVendor::Amd);
+        fallbackDevice = 0x73df;
+        fallbackDesc   = "AMD Radeon RX 6700 XT";
+      } else if (!options.hideNvidiaGpu) {
+        // Nvidia RTX 3060
+        fallbackVendor = uint32_t(DxvkGpuVendor::Nvidia);
+        fallbackDevice = 0x2487;
+        fallbackDesc   = "NVIDIA GeForce RTX 3060";
+      }
+
+      bool hideNvidiaGpu = m_adapter->devicePropertiesExt().vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+        ? options.hideNvidiaGpu : options.hideNvkGpu;
+
+      bool hideGpu = (vendorId == uint32_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
+                  || (vendorId == uint32_t(DxvkGpuVendor::Amd) && options.hideAmdGpu)
+                  || (vendorId == uint32_t(DxvkGpuVendor::Intel) && options.hideIntelGpu)
+                  // Hide the GPU by default for other vendors (default to reporting AMD)
+                  || isNonclassicalVendorId;
+
+      if (hideGpu) {
+        vendorId = fallbackVendor;
+
+        if (options.customDeviceId < 0)
+          deviceId = fallbackDevice;
+
+        if (options.customDeviceDesc.empty())
+          desc = fallbackDesc;
+
+        if (m_notifyHidingGpu) {
+          Logger::info(str::format("D3D9: Hiding actual GPU, reporting:\n",
+                                    "  vendor ID: 0x", std::hex, vendorId, "\n",
+                                    "  device ID: 0x", std::hex, deviceId, "\n",
+                                    "  device description: ", desc, "\n"));
+          m_notifyHidingGpu = false;
+        }
+      }
+    }
+
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
     copyToStringArray(pIdentifier->Description, desc);
     copyToStringArray(pIdentifier->DeviceName,  displayName.c_str()); // The GDI device name. Not the actual device name.
-    copyToStringArray(pIdentifier->Driver,      driver);            // This is the driver's dll.
+    copyToStringArray(pIdentifier->Driver,      driver);              // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
     pIdentifier->DeviceId               = deviceId;

@@ -22,6 +22,19 @@ namespace dxvk {
     int32_t customDeviceId;
     std::string customDeviceDesc;
 
+    /// Reports Nvidia GPUs running on the proprietary driver as a different
+    /// vendor (usually AMD)
+    bool hideNvidiaGpu;
+
+    /// Reports Nvidia GPUs running on NVK as a different vendor (usually AMD)
+    bool hideNvkGpu;
+
+    /// Reports AMD GPUs as a different vendor (usually Nvidia)
+    bool hideAmdGpu;
+
+    /// Reports Intel GPUs as a different vendor (usually AMD)
+    bool hideIntelGpu;
+
     /// Present interval. Overrides the value
     /// in D3DPRESENT_PARAMS used in swapchain present.
     int32_t presentInterval;
@@ -74,9 +87,6 @@ namespace dxvk {
     /// Support X4R4G4B4
     bool supportX4R4G4B4;
 
-    /// Support D16_LOCKABLE
-    bool supportD16Lockable;
-
     /// Use D32f for D24
     bool useD32forD24;
 
@@ -92,9 +102,6 @@ namespace dxvk {
     /// Whether or not to respect memory tracking for
     /// failing resource allocation.
     bool memoryTrackTest;
-
-    /// Support VCACHE query
-    bool supportVCache;
 
     /// Forced aspect ratio, disable other modes
     std::string forceAspectRatio;

@@ -179,6 +179,8 @@ namespace dxvk {
 
   D3D9_FORMAT_BLOCK_SIZE GetFormatAlignedBlockSize(D3D9Format Format);
 
+  class D3D9Adapter;
+
   /**
    * \brief Format table
    *
@@ -191,6 +193,7 @@ namespace dxvk {
   public:
 
     D3D9VkFormatTable(
+            D3D9Adapter*     pParent,
       const Rc<DxvkAdapter>& adapter,
       const D3D9Options&     options);
 

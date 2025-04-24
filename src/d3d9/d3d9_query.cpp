@@ -314,7 +314,7 @@ namespace dxvk {
   HRESULT D3D9Query::QuerySupported(D3D9DeviceEx* pDevice, D3DQUERYTYPE QueryType) {
     switch (QueryType) {
       case D3DQUERYTYPE_VCACHE:
-        if (!pDevice->GetOptions()->supportVCache)
+        if (!pDevice->SupportsVCacheQuery())
           return D3DERR_NOTAVAILABLE;
 
         return D3D_OK;
