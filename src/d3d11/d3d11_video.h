@@ -641,7 +641,7 @@ namespace dxvk {
     void ApplyYCbCrMatrix(float pColorMatrix[3][4], bool UseBt709);
 
     void BindOutputView(
-            ID3D11VideoProcessorOutputView* pOutputView);
+            Rc<DxvkImageView> dxvkView);
 
     void BlitStream(
       const D3D11VideoProcessorStreamState* pStreamState,
