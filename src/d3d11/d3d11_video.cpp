@@ -1247,7 +1247,8 @@ namespace dxvk {
       cStreamState  = *pStreamState,
       cImage        = view->GetImage(),
       cViews        = view->GetViews(),
-      cIsYCbCr      = view->IsYCbCr()
+      cIsYCbCr      = view->IsYCbCr(),
+      cDstExtent    = m_dstExtent
     ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1259,14 +1260,14 @@ namespace dxvk {
       VkViewport viewport;
       viewport.x        = 0.0f;
       viewport.y        = 0.0f;
-      viewport.width    = float(m_dstExtent.width);
-      viewport.height   = float(m_dstExtent.height);
+      viewport.width    = float(cDstExtent.width);
+      viewport.height   = float(cDstExtent.height);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
 
       VkRect2D scissor;
       scissor.offset = { 0, 0 };
-      scissor.extent = m_dstExtent;
+      scissor.extent = cDstExtent;
 
       if (cStreamState.dstRectEnabled) {
         viewport.x      = float(cStreamState.dstRect.left);
