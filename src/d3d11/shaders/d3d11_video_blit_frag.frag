@@ -2,6 +2,10 @@
 
 #extension GL_EXT_samplerless_texture_functions : require
 
+#define EXPORT_RGBA (0u)
+#define EXPORT_Y (1u)
+#define EXPORT_CbCr (2u)
+
 // Can't use matrix types here since even a two-row
 // matrix will be padded to 16 bytes per column for
 // absolutely no reason
@@ -18,6 +22,7 @@ uniform ubo_t {
   float y_min;
   float y_max;
   bool is_planar;
+  uint export_mode;
 };
 
 layout(location = 0) in vec2 i_texcoord;
@@ -90,5 +95,10 @@ void main() {
     accum += factor.x * factor.y * color;
   }
 
-  o_color = accum;
+  if (export_mode == EXPORT_RGBA)
+    o_color = accum;
+  else if (export_mode == EXPORT_Y)
+    o_color = vec4(accum.g, 0.0, 0.0, 1.0);
+  else if (export_mode == EXPORT_CbCr)
+    o_color = vec4(accum.br, 0.0, 1.0);
 }
