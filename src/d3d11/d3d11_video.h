@@ -177,29 +177,18 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC* pDesc);
 
-    bool IsYCbCr() const {
-      return m_isYCbCr;
-    }
-
-    Rc<DxvkImage> GetImage() const {
-      return GetCommonTexture(m_resource.ptr())->GetImage();
-    }
-
-    std::array<Rc<DxvkImageView>, 2> GetViews() const {
-      return m_views;
+    const VideoProcessorView& GetCommon() const {
+      return m_common;
     }
 
   private:
 
-    Com<ID3D11Resource>                   m_resource;
+    VideoProcessorView                    m_common;
     D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC m_desc;
-    std::array<Rc<DxvkImageView>, 2>      m_views;
-    bool                                  m_isYCbCr = false;
 
     D3DDestructionNotifier                m_destructionNotifier;
 
-    static bool IsYCbCrFormat(DXGI_FORMAT Format);
-
+    static DxvkImageViewKey CreateViewInfo(const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC& Desc);
   };
 
 
