@@ -173,6 +173,56 @@ namespace dxvk {
 
 
 
+  VideoProcessorView::VideoProcessorView(
+          D3D11Device*            pDevice,
+          ID3D11Resource*         pResource,
+          DxvkImageViewKey        viewInfo)
+  : m_resource(pResource)
+      {
+    D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
+    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
+
+    DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
+    DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
+
+    VkImageAspectFlags aspectMask = lookupFormatInfo(formatInfo.Format)->aspectMask;
+
+    viewInfo.format = formatInfo.Format;
+    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
+    viewInfo.aspects = aspectMask;
+
+    for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
+      viewInfo.aspects = vk::getNextAspect(aspectMask);
+
+      if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT)
+        viewInfo.format = formatFamily.Formats[i];
+
+      m_views[i] = dxvkImage->createView(viewInfo);
+    }
+
+    m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
+  }
+
+
+  VideoProcessorView::~VideoProcessorView() {
+
+  }
+
+
+  bool VideoProcessorView::IsYCbCrFormat(DXGI_FORMAT Format) {
+    static const std::array<DXGI_FORMAT, 3> s_formats = {{
+      DXGI_FORMAT_NV12,
+      DXGI_FORMAT_YUY2,
+      DXGI_FORMAT_AYUV,
+    }};
+
+    return std::find(s_formats.begin(), s_formats.end(), Format) != s_formats.end();
+  }
+
+
+
   D3D11VideoProcessorInputView::D3D11VideoProcessorInputView(
           D3D11Device*            pDevice,
           ID3D11Resource*         pResource,

@@ -117,6 +117,45 @@ namespace dxvk {
 
 
 
+  class VideoProcessorView {
+
+  public:
+
+    VideoProcessorView(
+            D3D11Device*            pDevice,
+            ID3D11Resource*         pResource,
+            DxvkImageViewKey        viewInfo);
+
+    ~VideoProcessorView();
+
+    bool IsYCbCr() const {
+      return m_isYCbCr;
+    }
+
+    Rc<DxvkImage> GetImage() const {
+      return GetCommonTexture(m_resource.ptr())->GetImage();
+    }
+
+    std::array<Rc<DxvkImageView>, 2> GetViews() const {
+      return m_views;
+    }
+
+    ID3D11Resource *GetResource() {
+      return m_resource.ref();
+    }
+
+  private:
+
+    Com<ID3D11Resource>                   m_resource;
+    std::array<Rc<DxvkImageView>, 2>      m_views;
+    bool                                  m_isYCbCr = false;
+
+    static bool IsYCbCrFormat(DXGI_FORMAT Format);
+
+  };
+
+
+
   class D3D11VideoProcessorInputView : public D3D11DeviceChild<ID3D11VideoProcessorInputView> {
 
   public:
