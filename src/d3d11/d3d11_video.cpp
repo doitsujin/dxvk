@@ -1061,25 +1061,46 @@ namespace dxvk {
     });
 
     auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
+    auto outputView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView);
+    auto views = outputView->GetCommon().GetViews();
     bool hasStreamsEnabled = false;
 
-    // Resetting and restoring all context state incurs
-    // a lot of overhead, so only do it as necessary
-    for (uint32_t i = 0; i < StreamCount; i++) {
-      auto streamState = videoProcessor->GetStreamState(i);
+    m_dstIsYCbCr = outputView->GetCommon().IsYCbCr();
 
-      if (!pStreams[i].Enable || !streamState)
+    for (uint32_t vi = 0; vi < views.size(); vi++) {
+      if (views[vi] == nullptr)
         continue;
 
-      if (!hasStreamsEnabled) {
-        m_ctx->ResetDirtyTracking();
-        m_ctx->ResetCommandListState();
+      bool outputBound = false;
 
-        BindOutputView(pOutputView);
-        hasStreamsEnabled = true;
+      // Resetting and restoring all context state incurs
+      // a lot of overhead, so only do it as necessary
+      for (uint32_t i = 0; i < StreamCount; i++) {
+        auto streamState = videoProcessor->GetStreamState(i);
+
+        if (!pStreams[i].Enable || !streamState)
+          continue;
+
+        if (!hasStreamsEnabled) {
+          m_ctx->ResetDirtyTracking();
+          m_ctx->ResetCommandListState();
+          hasStreamsEnabled = true;
+        }
+
+        if (!outputBound) {
+          BindOutputView(views[vi]);
+          outputBound = true;
+        }
+
+        if (views[1] == nullptr)
+          m_exportMode = ExportRGBA;
+        else if (vi == 0)
+          m_exportMode = ExportY;
+        else
+          m_exportMode = ExportCbCr;
+
+        BlitStream(streamState, &pStreams[i]);
       }
-
-      BlitStream(streamState, &pStreams[i]);
     }
 
     if (hasStreamsEnabled) {
@@ -1222,9 +1243,7 @@ namespace dxvk {
 
 
   void D3D11VideoContext::BindOutputView(
-          ID3D11VideoProcessorOutputView* pOutputView) {
-    auto dxvkView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetView();
-
+          Rc<DxvkImageView> dxvkView) {
     m_ctx->EmitCs([this, cView = dxvkView] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
