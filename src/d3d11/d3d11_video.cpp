@@ -303,41 +303,13 @@ namespace dxvk {
           ID3D11Resource*         pResource,
     const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorOutputView>(pDevice),
-    m_resource(pResource), m_desc(Desc), m_destructionNotifier(this) {
-    D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
-    GetCommonResourceDesc(pResource, &resourceDesc);
-
-    DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
-      resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
-
-    DxvkImageViewKey viewInfo;
-    viewInfo.format = formatInfo.Format;
-    viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
-    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    switch (m_desc.ViewDimension) {
-      case D3D11_VPOV_DIMENSION_TEXTURE2D:
-        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
-        viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = 0;
-        viewInfo.layerCount = 1;
-        break;
-
-      case D3D11_VPOV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.mipIndex   = m_desc.Texture2DArray.MipSlice;
-        viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = m_desc.Texture2DArray.FirstArraySlice;
-        viewInfo.layerCount = m_desc.Texture2DArray.ArraySize;
-        break;
-
-      case D3D11_VPOV_DIMENSION_UNKNOWN:
-        throw DxvkError("Invalid view dimension");
+    m_common(pDevice, pResource, CreateViewInfo(Desc)),
+    m_desc(Desc), m_destructionNotifier(this) {
+    // TODO: handle ClearView for planar outputs
+    auto views = m_common.GetViews();
+    if (views[1] == nullptr) {
+      m_view = views[0];
     }
-
-    m_view = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
   }
 
 
@@ -373,7 +345,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D11VideoProcessorOutputView::GetResource(
           ID3D11Resource**        ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = m_common.GetResource();
   }
 
 
@@ -381,6 +353,37 @@ namespace dxvk {
           D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC* pDesc) {
     *pDesc = m_desc;
   }
+
+
+  DxvkImageViewKey D3D11VideoProcessorOutputView::CreateViewInfo(
+    const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc) {
+    DxvkImageViewKey viewInfo = { };
+    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    switch (Desc.ViewDimension) {
+      case D3D11_VPOV_DIMENSION_TEXTURE2D:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = Desc.Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
+        break;
+
+      case D3D11_VPOV_DIMENSION_TEXTURE2DARRAY:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = Desc.Texture2DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = Desc.Texture2DArray.FirstArraySlice;
+        viewInfo.layerCount = Desc.Texture2DArray.ArraySize;
+        break;
+
+      case D3D11_VPOV_DIMENSION_UNKNOWN:
+        throw DxvkError("Invalid view dimension");
+    }
+
+    return viewInfo;
+  }
+
 
 
 

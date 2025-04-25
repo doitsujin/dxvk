@@ -218,14 +218,19 @@ namespace dxvk {
       return m_view;
     }
 
+    const VideoProcessorView& GetCommon() const {
+      return m_common;
+    }
+
   private:
 
-    Com<ID3D11Resource>                     m_resource;
+    VideoProcessorView                      m_common;
     D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC  m_desc;
     Rc<DxvkImageView>                       m_view;
 
     D3DDestructionNotifier                  m_destructionNotifier;
 
+    static DxvkImageViewKey CreateViewInfo(const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc);
   };
 
 
