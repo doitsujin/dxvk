@@ -608,12 +608,19 @@ namespace dxvk {
 
   private:
 
+    enum ExportMode : uint32_t {
+      ExportRGBA = 0,
+      ExportY    = 1,
+      ExportCbCr = 2,
+    };
+
     struct alignas(16) UboData {
       float colorMatrix[3][4];
       float coordMatrix[3][2];
       VkRect2D srcRect;
       float yMin, yMax;
       VkBool32 isPlanar;
+      ExportMode exportMode;
     };
 
     D3D11ImmediateContext*  m_ctx;
@@ -623,7 +630,9 @@ namespace dxvk {
     Rc<DxvkShader>          m_fs;
     Rc<DxvkBuffer>          m_ubo;
 
-    VkExtent2D m_dstExtent = { 0u, 0u };
+    VkExtent2D m_dstExtent  = { 0u, 0u };
+    bool       m_dstIsYCbCr = false;
+    ExportMode m_exportMode = ExportRGBA;
 
     bool m_resourcesCreated = false;
 

@@ -1268,8 +1268,10 @@ namespace dxvk {
       cStreamState  = *pStreamState,
       cImage        = view->GetCommon().GetImage(),
       cViews        = view->GetCommon().GetViews(),
-      cIsYCbCr      = view->GetCommon().IsYCbCr(),
-      cDstExtent    = m_dstExtent
+      cSrcIsYCbCr   = view->GetCommon().IsYCbCr(),
+      cDstIsYCbCr   = m_dstIsYCbCr,
+      cDstExtent    = m_dstExtent,
+      cExportMode   = m_exportMode
     ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1322,8 +1324,9 @@ namespace dxvk {
       uboData.yMin = 0.0f;
       uboData.yMax = 1.0f;
       uboData.isPlanar = cViews[1] != nullptr;
+      uboData.exportMode = cExportMode;
 
-      if (cIsYCbCr)
+      if (cSrcIsYCbCr && !cDstIsYCbCr)
         ApplyYCbCrMatrix(uboData.colorMatrix, cStreamState.colorSpace.YCbCr_Matrix);
 
       if (cStreamState.colorSpace.Nominal_Range) {
