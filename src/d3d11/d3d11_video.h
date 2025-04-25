@@ -146,10 +146,6 @@ namespace dxvk {
       return GetCommonTexture(m_resource.ptr())->GetImage();
     }
 
-    VkImageSubresourceLayers GetImageSubresources() const {
-      return m_subresources;
-    }
-
     std::array<Rc<DxvkImageView>, 2> GetViews() const {
       return m_views;
     }
@@ -158,7 +154,6 @@ namespace dxvk {
 
     Com<ID3D11Resource>                   m_resource;
     D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC m_desc;
-    VkImageSubresourceLayers              m_subresources;
     std::array<Rc<DxvkImageView>, 2>      m_views;
     bool                                  m_isYCbCr = false;
 

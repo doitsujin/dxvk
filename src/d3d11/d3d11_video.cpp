@@ -208,11 +208,6 @@ namespace dxvk {
         throw DxvkError("Invalid view dimension");
     }
 
-    m_subresources.aspectMask = aspectMask;
-    m_subresources.baseArrayLayer = viewInfo.layerIndex;
-    m_subresources.layerCount = viewInfo.layerCount;
-    m_subresources.mipLevel = viewInfo.mipIndex;
-
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
       viewInfo.aspects = vk::getNextAspect(aspectMask);
 
