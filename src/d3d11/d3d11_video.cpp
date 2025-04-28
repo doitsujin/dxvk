@@ -305,11 +305,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11VideoProcessorOutputView>(pDevice),
     m_common(pDevice, pResource, CreateViewInfo(Desc)),
     m_desc(Desc), m_destructionNotifier(this) {
-    // TODO: handle ClearView for planar outputs
-    auto views = m_common.GetViews();
-    if (views[1] == nullptr) {
-      m_view = views[0];
-    }
+
   }
 
 

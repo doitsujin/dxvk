@@ -214,10 +214,6 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC* pDesc);
 
-    Rc<DxvkImageView> GetView() const {
-      return m_view;
-    }
-
     const VideoProcessorView& GetCommon() const {
       return m_common;
     }
@@ -226,7 +222,6 @@ namespace dxvk {
 
     VideoProcessorView                      m_common;
     D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC  m_desc;
-    Rc<DxvkImageView>                       m_view;
 
     D3DDestructionNotifier                  m_destructionNotifier;
 
