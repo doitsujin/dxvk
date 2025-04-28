@@ -691,114 +691,30 @@ namespace dxvk {
     auto vov = dynamic_cast<D3D11VideoProcessorOutputView*>(pView);
 
     // Retrieve underlying resource view
-    Rc<DxvkBufferView> bufView;
-    Rc<DxvkImageView>  imgView;
+    if (dsv) {
+      Rc<DxvkImageView> imgView = dsv->GetImageView();
 
-    if (dsv != nullptr)
-      imgView = dsv->GetImageView();
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
+    } else if (rtv) {
+      Rc<DxvkImageView> imgView = rtv->GetImageView();
 
-    if (rtv != nullptr)
-      imgView = rtv->GetImageView();
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
+    } else if (uav) {
+      Rc<DxvkImageView> imgView = uav->GetImageView();
+      Rc<DxvkBufferView> bufView = uav->GetBufferView();
 
-    if (uav != nullptr) {
-      bufView = uav->GetBufferView();
-      imgView = uav->GetImageView();
-    }
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
 
-    if (vov != nullptr)
-      imgView = vov->GetView();
+      if (bufView)
+        ClearBufferView(std::move(bufView), Color, pRect, NumRects);
+    } else if (vov) {
+      auto views = vov->GetCommon().GetViews();
 
-    // 3D views are unsupported
-    if (imgView != nullptr
-     && imgView->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
-      return;
-
-    // Query the view format. We'll have to convert
-    // the clear color based on the format's data type.
-    VkFormat format = VK_FORMAT_UNDEFINED;
-
-    if (bufView != nullptr)
-      format = bufView->info().format;
-
-    if (imgView != nullptr)
-      format = imgView->info().format;
-
-    if (format == VK_FORMAT_UNDEFINED)
-      return;
-
-    // We'll need the format info to determine the buffer
-    // element size, and we also need it for depth images.
-    const DxvkFormatInfo* formatInfo = lookupFormatInfo(format);
-
-    // Convert the clear color format. ClearView takes
-    // the clear value for integer formats as a set of
-    // integral floats, so we'll have to convert.
-    VkClearValue        clearValue  = ConvertColorValue(Color, formatInfo);
-    VkImageAspectFlags  clearAspect = formatInfo->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
-
-    // Clear all the rectangles that are specified
-    for (uint32_t i = 0; i < NumRects || i < 1; i++) {
-      if (NumRects) {
-        if (pRect[i].left >= pRect[i].right
-         || pRect[i].top >= pRect[i].bottom)
-          continue;
-      }
-
-      if (bufView != nullptr) {
-        VkDeviceSize offset = 0;
-        VkDeviceSize length = bufView->info().size / formatInfo->elementSize;
-
-        if (NumRects) {
-          offset = pRect[i].left;
-          length = pRect[i].right - pRect[i].left;
-        }
-
-        EmitCs([
-          cBufferView   = bufView,
-          cRangeOffset  = offset,
-          cRangeLength  = length,
-          cClearValue   = clearValue
-        ] (DxvkContext* ctx) {
-          ctx->clearBufferView(
-            cBufferView,
-            cRangeOffset,
-            cRangeLength,
-            cClearValue.color);
-        });
-      }
-
-      if (imgView != nullptr) {
-        VkOffset3D offset = { 0, 0, 0 };
-        VkExtent3D extent = imgView->mipLevelExtent(0);
-
-        if (NumRects) {
-          offset = { pRect[i].left, pRect[i].top, 0 };
-          extent = {
-            uint32_t(pRect[i].right - pRect[i].left),
-            uint32_t(pRect[i].bottom - pRect[i].top), 1 };
-        }
-
-        EmitCs([
-          cImageView    = imgView,
-          cAreaOffset   = offset,
-          cAreaExtent   = extent,
-          cClearAspect  = clearAspect,
-          cClearValue   = clearValue
-        ] (DxvkContext* ctx) {
-          const VkImageUsageFlags rtUsage =
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-          bool isFullSize = cImageView->mipLevelExtent(0) == cAreaExtent;
-
-          if ((cImageView->info().usage & rtUsage) && isFullSize) {
-            ctx->clearRenderTarget(cImageView, cClearAspect, cClearValue, 0u);
-          } else {
-            ctx->clearImageView(cImageView, cAreaOffset, cAreaExtent,
-              cClearAspect, cClearValue);
-          }
-        });
-      }
+      if (views[0])
+        ClearImageView(std::move(views[0]), Color, pRect, NumRects);
     }
   }
 
@@ -4055,6 +3971,110 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ClearImageView(
+          Rc<DxvkImageView>                 View,
+    const FLOAT                             Color[4],
+    const D3D11_RECT*                       pRects,
+          UINT                              NumRects) {
+    // 3D views are unsupported
+    if (View->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
+      return;
+
+    // Convert clear value
+    auto clearValue = ConvertColorValue(Color, View->formatInfo());
+
+    VkExtent3D extent3D = View->mipLevelExtent(0);
+    VkExtent2D extent2D = { extent3D.width, extent3D.height };
+
+    // Figure out which plane we're clearing for subsampling
+    const DxvkPlaneFormatInfo* plane = nullptr;
+    auto imageFormatInfo = View->image()->formatInfo();
+
+    if (imageFormatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+      plane = &imageFormatInfo->planes[vk::getPlaneIndex(View->info().aspects)];
+
+    // Clear all non-empty rectangles
+    EmitCsCmd<VkRect2D>(D3D11CmdType::None, std::max(NumRects, 1u), [
+      cView       = std::move(View),
+      cClearValue = clearValue
+    ] (DxvkContext* ctx, const VkRect2D* rects, size_t count) {
+      constexpr VkImageUsageFlags rtUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      VkImageAspectFlags clearAspect = cView->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
+
+      for (size_t i = 0; i < count; i++) {
+        VkOffset3D offset = { rects[i].offset.x, rects[i].offset.y, 0 };
+        VkExtent3D extent = { rects[i].extent.width, rects[i].extent.height, 1u };
+
+        if (extent.width && extent.height) {
+          bool isFullSize = cView->mipLevelExtent(0) == extent;
+
+          if ((cView->info().usage & rtUsage) && isFullSize)
+            ctx->clearRenderTarget(cView, clearAspect, cClearValue, 0u);
+          else
+            ctx->clearImageView(cView, offset, extent, clearAspect, cClearValue);
+        }
+      }
+    });
+
+    if (NumRects) {
+      for (uint32_t i = 0; i < NumRects; i++) {
+        D3D11_RECT subsampledRect = pRects[i];
+
+        if (plane) {
+          subsampledRect.left   /= plane->blockSize.width;
+          subsampledRect.top    /= plane->blockSize.height;
+          subsampledRect.right  /= plane->blockSize.width;
+          subsampledRect.bottom /= plane->blockSize.height;
+        }
+
+        new (m_csData->at(i)) VkRect2D(ConvertRect(subsampledRect, extent2D));
+      }
+    } else {
+      auto vkRect = new (m_csData->first()) VkRect2D();
+      vkRect->offset = VkOffset2D { 0, 0 };
+      vkRect->extent = extent2D;
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ClearBufferView(
+          Rc<DxvkBufferView>                View,
+    const FLOAT                             Color[4],
+    const D3D11_RECT*                       pRects,
+          UINT                              NumRects) {
+    // Convert clear value
+    auto formatInfo = View->formatInfo();
+    auto clearValue = ConvertColorValue(Color, formatInfo);
+
+    // Just pass the rectangles through, even though we only need one dimension
+    VkExtent2D extent2D = { uint32_t(View->info().size / formatInfo->elementSize), 1u };
+
+    EmitCsCmd<VkRect2D>(D3D11CmdType::None, std::max(NumRects, 1u), [
+      cView       = std::move(View),
+      cClearValue = clearValue
+    ] (DxvkContext* ctx, const VkRect2D* rects, size_t count) {
+      for (size_t i = 0; i < count; i++) {
+        if (rects[i].extent.width) {
+          ctx->clearBufferView(cView,
+            rects[i].offset.x, rects[i].extent.width,
+            cClearValue.color);
+        }
+      }
+    });
+
+    if (NumRects) {
+      for (uint32_t i = 0; i < NumRects; i++)
+        new (m_csData->at(i)) VkRect2D(ConvertRect(pRects[i], extent2D));
+    } else {
+      auto vkRect = new (m_csData->first()) VkRect2D();
+      vkRect->offset = VkOffset2D { 0, 0 };
+      vkRect->extent = extent2D;
+    }
+  }
+
+
+  template<typename ContextType>
   VkClearValue D3D11CommonContext<ContextType>::ConvertColorValue(
     const FLOAT                             Color[4],
     const DxvkFormatInfo*                   pFormatInfo) {
@@ -4074,6 +4094,27 @@ namespace dxvk {
       result.depthStencil.stencil = 0;
     }
 
+    return result;
+  }
+
+
+  template<typename ContextType>
+  VkRect2D D3D11CommonContext<ContextType>::ConvertRect(
+          D3D11_RECT                        Rect,
+          VkExtent2D                        Extent) {
+    Rect.left   = std::max<int32_t>(Rect.left,   0);
+    Rect.top    = std::max<int32_t>(Rect.top,    0);
+    Rect.right  = std::min<int32_t>(Rect.right,  Extent.width);
+    Rect.bottom = std::min<int32_t>(Rect.bottom, Extent.height);
+
+    if (Rect.left >= Rect.right || Rect.top >= Rect.bottom)
+      return VkRect2D();
+
+    VkRect2D result = { };
+    result.offset.x = Rect.left;
+    result.offset.y = Rect.top;
+    result.extent.width = Rect.right - Rect.left;
+    result.extent.height = Rect.bottom - Rect.top;
     return result;
   }
 
