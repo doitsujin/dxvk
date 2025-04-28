@@ -713,8 +713,27 @@ namespace dxvk {
     } else if (vov) {
       auto views = vov->GetCommon().GetViews();
 
-      if (views[0])
-        ClearImageView(std::move(views[0]), Color, pRect, NumRects);
+      // Assume that planar video formats use Y - Cb - Cr
+      // order for the purpose of mapping color components.
+      uint32_t component = 0u;
+      FLOAT planeColor[4] = { };
+
+      for (uint32_t i = 0u; i < views.size(); i++) {
+        if (!views[i])
+          break;
+
+        // Extract relevant color components from the clear color
+        // and shift the input array accordingly.
+        uint32_t n = bit::popcnt(views[i]->formatInfo()->componentMask);
+
+        for (uint32_t c = 0u; c < 4u; c++)
+          planeColor[c] = c < n && component + c < 4u ? Color[c] : 0.0f;
+
+        component += n;
+
+        // Perform the actual clear. Rects will be adjusted by called method.
+        ClearImageView(std::move(views[i]), planeColor, pRect, NumRects);
+      }
     }
   }
 
