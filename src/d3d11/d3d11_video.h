@@ -133,20 +133,21 @@ namespace dxvk {
     }
 
     Rc<DxvkImage> GetImage() const {
-      return GetCommonTexture(m_resource.ptr())->GetImage();
+      return m_image;
     }
 
     std::array<Rc<DxvkImageView>, 2> GetViews() const {
       return m_views;
     }
 
-    ID3D11Resource *GetResource() {
+    ID3D11Resource* GetResource() {
       return m_resource.ref();
     }
 
   private:
 
     Com<ID3D11Resource>                   m_resource;
+    Rc<DxvkImage>                         m_image;
     std::array<Rc<DxvkImageView>, 2>      m_views;
     bool                                  m_isYCbCr = false;
 

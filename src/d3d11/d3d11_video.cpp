@@ -177,12 +177,9 @@ namespace dxvk {
           D3D11Device*            pDevice,
           ID3D11Resource*         pResource,
           DxvkImageViewKey        viewInfo)
-  : m_resource(pResource)
-      {
+  : m_resource(pResource), m_image(GetCommonTexture(pResource)->GetImage()) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
-
-    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
 
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
     DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
@@ -199,7 +196,7 @@ namespace dxvk {
       if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = dxvkImage->createView(viewInfo);
+      m_views[i] = m_image->createView(viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
