@@ -194,11 +194,10 @@ namespace dxvk {
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
 
-    // Determine VCache query support
+    // Determine used vendor ID
     D3DADAPTER_IDENTIFIER9 adapterId9;
     HRESULT res = m_adapter->GetAdapterIdentifier(0, &adapterId9);
-    const uint32_t vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
-    m_isVCacheQuerySupported = vendorId == uint32_t(DxvkGpuVendor::Nvidia);
+    m_vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
   }
 
 
@@ -2265,8 +2264,9 @@ namespace dxvk {
 
       states[State] = Value;
 
-      // AMD's driver hack for ATOC and RESZ
-      if (unlikely(State == D3DRS_POINTSIZE)) {
+      // AMD's driver hack for ATOC and RESZ.
+      if (unlikely(State == D3DRS_POINTSIZE &&
+                   m_vendorId == uint32_t(DxvkGpuVendor::Amd))) {
         // ATOC
         constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::A2M1);
         constexpr uint32_t AlphaToCoverageDisable = uint32_t(D3D9Format::A2M0);
@@ -2295,8 +2295,10 @@ namespace dxvk {
         }
       }
 
-      // NV's driver hack for ATOC.
-      if (unlikely(State == D3DRS_ADAPTIVETESS_Y)) {
+      // Nvidia/Intel's driver hack for ATOC.
+      if (unlikely(State == D3DRS_ADAPTIVETESS_Y &&
+                   (m_vendorId == uint32_t(DxvkGpuVendor::Nvidia)
+                 || m_vendorId == uint32_t(DxvkGpuVendor::Intel)))) {
         constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::ATOC);
         constexpr uint32_t AlphaToCoverageDisable = 0;
 
@@ -4517,7 +4519,7 @@ namespace dxvk {
 
 
   bool D3D9DeviceEx::SupportsVCacheQuery() const {
-    return m_isVCacheQuerySupported;
+    return m_vendorId == uint32_t(DxvkGpuVendor::Nvidia);
   }
 
 
