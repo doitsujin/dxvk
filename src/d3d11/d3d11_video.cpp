@@ -173,7 +173,7 @@ namespace dxvk {
 
 
 
-  VideoProcessorView::VideoProcessorView(
+  D3D11VideoProcessorView::D3D11VideoProcessorView(
           D3D11Device*            pDevice,
           ID3D11Resource*         pResource,
           DxvkImageViewKey        viewInfo)
@@ -190,25 +190,71 @@ namespace dxvk {
     viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
     viewInfo.aspects = aspectMask;
 
+    m_layers.aspectMask = aspectMask;
+    m_layers.baseArrayLayer = viewInfo.layerIndex;
+    m_layers.layerCount = viewInfo.layerCount;
+    m_layers.mipLevel = viewInfo.mipIndex;
+
+    // Create shadow image if we know that the base image is incompatible
+    // with the required usage flags and cannot be relocated.
+    if (m_image->info().shared && (m_image->info().usage & viewInfo.usage) != viewInfo.usage) {
+      DxvkImageCreateInfo imageInfo = { };
+      imageInfo.type = m_image->info().type;
+      imageInfo.format = viewInfo.format;
+      imageInfo.sampleCount = m_image->info().sampleCount;
+      imageInfo.extent = m_image->mipLevelExtent(viewInfo.mipIndex);
+      imageInfo.numLayers = viewInfo.layerCount;
+      imageInfo.mipLevels = viewInfo.mipCount;
+      imageInfo.usage = viewInfo.usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+      imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+      imageInfo.debugName = "Video shadow image";
+
+      if (viewInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        imageInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      }
+
+      if (viewInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+
+        if (imageInfo.layout != VK_IMAGE_LAYOUT_GENERAL)
+          imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT) {
+        imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+                        |  VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+      }
+
+      m_shadow = pDevice->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      viewInfo.layerIndex = 0u;
+      viewInfo.mipIndex = 0u;
+    }
+
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
       viewInfo.aspects = vk::getNextAspect(aspectMask);
 
       if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = m_image->createView(viewInfo);
+      m_views[i] = (m_shadow ? m_shadow : m_image)->createView(viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
   }
 
 
-  VideoProcessorView::~VideoProcessorView() {
+  D3D11VideoProcessorView::~D3D11VideoProcessorView() {
 
   }
 
 
-  bool VideoProcessorView::IsYCbCrFormat(DXGI_FORMAT Format) {
+  bool D3D11VideoProcessorView::IsYCbCrFormat(DXGI_FORMAT Format) {
     static const std::array<DXGI_FORMAT, 3> s_formats = {{
       DXGI_FORMAT_NV12,
       DXGI_FORMAT_YUY2,
@@ -1054,14 +1100,16 @@ namespace dxvk {
     });
 
     auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
-    auto outputView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView);
-    auto views = outputView->GetCommon().GetViews();
+
+    auto& outputView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetCommon();
+    auto views = outputView.GetViews();
+
     bool hasStreamsEnabled = false;
 
-    m_dstIsYCbCr = outputView->GetCommon().IsYCbCr();
+    m_dstIsYCbCr = outputView.IsYCbCr();
 
     for (uint32_t vi = 0; vi < views.size(); vi++) {
-      if (views[vi] == nullptr)
+      if (!views[vi])
         continue;
 
       bool outputBound = false;
@@ -1077,6 +1125,9 @@ namespace dxvk {
         if (!hasStreamsEnabled) {
           m_ctx->ResetDirtyTracking();
           m_ctx->ResetCommandListState();
+
+          CopyBaseImageToShadow(outputView);
+
           hasStreamsEnabled = true;
         }
 
@@ -1085,9 +1136,9 @@ namespace dxvk {
           outputBound = true;
         }
 
-        if (views[1] == nullptr)
+        if (!views[1])
           m_exportMode = ExportRGBA;
-        else if (vi == 0)
+        else if (!vi)
           m_exportMode = ExportY;
         else
           m_exportMode = ExportCbCr;
@@ -1097,6 +1148,8 @@ namespace dxvk {
     }
 
     if (hasStreamsEnabled) {
+      CopyShadowToBaseImage(outputView);
+
       UnbindResources();
 
       m_ctx->RestoreCommandListState();
@@ -1236,8 +1289,13 @@ namespace dxvk {
 
 
   void D3D11VideoContext::BindOutputView(
-          Rc<DxvkImageView> dxvkView) {
-    m_ctx->EmitCs([this, cView = dxvkView] (DxvkContext* ctx) {
+          Rc<DxvkImageView>               View) {
+    VkExtent3D viewExtent = View->mipLevelExtent(0);
+    m_dstExtent = { viewExtent.width, viewExtent.height };
+
+    m_ctx->EmitCs([
+      cView   = std::move(View)
+    ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1247,16 +1305,13 @@ namespace dxvk {
 
       DxvkRenderTargets rt;
       rt.color[0].view = cView;
-      rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      rt.color[0].layout = cView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
       ctx->bindRenderTargets(std::move(rt), 0u);
 
       DxvkInputAssemblyState iaState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
       ctx->setInputAssemblyState(iaState);
     });
-
-    VkExtent3D viewExtent = dxvkView->mipLevelExtent(0);
-    m_dstExtent = { viewExtent.width, viewExtent.height };
   }
 
 
@@ -1274,13 +1329,15 @@ namespace dxvk {
     if (pStream->InputFrameOrField)
       Logger::err("D3D11VideoContext: Ignoring non-zero InputFrameOrField");
 
-    auto view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface);
+    auto& view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface)->GetCommon();
+
+    CopyBaseImageToShadow(view);
 
     m_ctx->EmitCs([this,
       cStreamState  = *pStreamState,
-      cImage        = view->GetCommon().GetImage(),
-      cViews        = view->GetCommon().GetViews(),
-      cSrcIsYCbCr   = view->GetCommon().IsYCbCr(),
+      cImage        = view.GetImage(),
+      cViews        = view.GetViews(),
+      cSrcIsYCbCr   = view.IsYCbCr(),
       cDstIsYCbCr   = m_dstIsYCbCr,
       cDstExtent    = m_dstExtent,
       cExportMode   = m_exportMode
@@ -1371,6 +1428,40 @@ namespace dxvk {
       for (uint32_t i = 0; i < cViews.size(); i++)
         ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 1 + i, nullptr);
     });
+  }
+
+
+  void D3D11VideoContext::CopyBaseImageToShadow(
+    const D3D11VideoProcessorView&        View) {
+    auto shadow = View.GetShadow();
+
+    if (!shadow)
+      return;
+
+    VkImageSubresourceLayers imageLayers = View.GetImageSubresource();
+
+    VkImageSubresourceLayers shadowLayers = { };
+    shadowLayers.aspectMask = imageLayers.aspectMask;
+    shadowLayers.layerCount = imageLayers.layerCount;
+
+    m_ctx->SyncImage(shadow, shadowLayers, View.GetImage(), imageLayers);
+  }
+
+
+  void D3D11VideoContext::CopyShadowToBaseImage(
+    const D3D11VideoProcessorView&        View) {
+    auto shadow = View.GetShadow();
+
+    if (!shadow)
+      return;
+
+    VkImageSubresourceLayers imageLayers = View.GetImageSubresource();
+
+    VkImageSubresourceLayers shadowLayers = { };
+    shadowLayers.aspectMask = imageLayers.aspectMask;
+    shadowLayers.layerCount = imageLayers.layerCount;
+
+    m_ctx->SyncImage(View.GetImage(), imageLayers, shadow, shadowLayers);
   }
 
 

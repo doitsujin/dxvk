@@ -1106,6 +1106,12 @@ namespace dxvk {
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
 
+    void SyncImage(
+      const Rc<DxvkImage>&                    DstImage,
+      const VkImageSubresourceLayers&         DstLayers,
+      const Rc<DxvkImage>&                    SrcImage,
+      const VkImageSubresourceLayers&         SrcLayers);
+
     bool TestRtvUavHazards(
             UINT                              NumRTVs,
             ID3D11RenderTargetView* const*    ppRTVs,

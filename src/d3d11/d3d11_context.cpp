@@ -712,6 +712,18 @@ namespace dxvk {
         ClearBufferView(std::move(bufView), Color, pRect, NumRects);
     } else if (vov) {
       auto views = vov->GetCommon().GetViews();
+      auto shadow = vov->GetCommon().GetShadow();
+
+      // If we have to assume that the image is only partially cleared,
+      // make sure to properly sync it with the shadow image.
+      VkImageSubresourceLayers imageLayers = vov->GetCommon().GetImageSubresource();
+
+      VkImageSubresourceLayers shadowLayers = { };
+      shadowLayers.aspectMask = imageLayers.aspectMask;
+      shadowLayers.layerCount = imageLayers.layerCount;
+
+      if (shadow && NumRects)
+        SyncImage(shadow, shadowLayers, vov->GetCommon().GetImage(), imageLayers);
 
       // Assume that planar video formats use Y - Cb - Cr
       // order for the purpose of mapping color components.
@@ -734,6 +746,10 @@ namespace dxvk {
         // Perform the actual clear. Rects will be adjusted by called method.
         ClearImageView(std::move(views[i]), planeColor, pRect, NumRects);
       }
+
+      // If the video view has a shadow image, copy it back to the base image
+      if (shadow)
+        SyncImage(vov->GetCommon().GetImage(), imageLayers, shadow, shadowLayers);
     }
   }
 
@@ -5393,6 +5409,26 @@ namespace dxvk {
 
       BindDrawBuffers(argBuffer, cntBuffer);
     }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::SyncImage(
+    const Rc<DxvkImage>&                    DstImage,
+    const VkImageSubresourceLayers&         DstLayers,
+    const Rc<DxvkImage>&                    SrcImage,
+    const VkImageSubresourceLayers&         SrcLayers) {
+    EmitCs([
+      cDstImage = DstImage,
+      cDstLayers = DstLayers,
+      cSrcImage = SrcImage,
+      cSrcLayers = SrcLayers
+    ] (DxvkContext* ctx) {
+      ctx->copyImage(
+        cDstImage, cDstLayers, VkOffset3D(),
+        cSrcImage, cSrcLayers, VkOffset3D(),
+        cDstImage->mipLevelExtent(cDstLayers.mipLevel));
+    });
   }
 
 

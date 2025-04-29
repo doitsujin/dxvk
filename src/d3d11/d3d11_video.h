@@ -116,30 +116,69 @@ namespace dxvk {
   };
 
 
-
-  class VideoProcessorView {
+  /**
+   * \brief Common video processor view
+   */
+  class D3D11VideoProcessorView {
 
   public:
 
-    VideoProcessorView(
+    D3D11VideoProcessorView(
             D3D11Device*            pDevice,
             ID3D11Resource*         pResource,
             DxvkImageViewKey        viewInfo);
 
-    ~VideoProcessorView();
+    ~D3D11VideoProcessorView();
 
     bool IsYCbCr() const {
       return m_isYCbCr;
     }
 
+    /**
+     * \brief Queries base image
+     *
+     * Returns the base image for whihc
+     */
     Rc<DxvkImage> GetImage() const {
       return m_image;
     }
 
+    /**
+     * \brief Queries shadow image
+     *
+     * In some cases, a dedicated image is required in order to support
+     * the image usage flags. This must be kept in sync with the base
+     * image whenever the view is used for video input or output.
+     * \returns Shadow image
+     */
+    Rc<DxvkImage> GetShadow() const {
+      return m_shadow;
+    }
+
+    /**
+     * \brief Queries base image subresources
+     *
+     * Useful in case a shadow image is requried.
+     * \returns Base image subresource layers
+     */
+    VkImageSubresourceLayers GetImageSubresource() const {
+      return m_layers;
+    }
+
+    /**
+     * \brief Retrieves image views
+     *
+     * For planar formats, this will contain one view per plane.
+     * \returns Array of views
+     */
     std::array<Rc<DxvkImageView>, 2> GetViews() const {
       return m_views;
     }
 
+    /**
+     * \brief Queries underlying D3D11 resource
+     * \returns D3D11 resource pointer
+     */
     ID3D11Resource* GetResource() {
       return m_resource.ref();
     }
@@ -147,7 +186,12 @@ namespace dxvk {
   private:
 
     Com<ID3D11Resource>                   m_resource;
+
     Rc<DxvkImage>                         m_image;
+    Rc<DxvkImage>                         m_shadow;
+
+    VkImageSubresourceLayers              m_layers = { };
+
     std::array<Rc<DxvkImageView>, 2>      m_views;
     bool                                  m_isYCbCr = false;
 
@@ -178,13 +222,13 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC* pDesc);
 
-    const VideoProcessorView& GetCommon() const {
+    const D3D11VideoProcessorView& GetCommon() const {
       return m_common;
     }
 
   private:
 
-    VideoProcessorView                    m_common;
+    D3D11VideoProcessorView               m_common;
     D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC m_desc;
 
     D3DDestructionNotifier                m_destructionNotifier;
@@ -215,13 +259,13 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC* pDesc);
 
-    const VideoProcessorView& GetCommon() const {
+    const D3D11VideoProcessorView& GetCommon() const {
       return m_common;
     }
 
   private:
 
-    VideoProcessorView                      m_common;
+    D3D11VideoProcessorView                 m_common;
     D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC  m_desc;
 
     D3DDestructionNotifier                  m_destructionNotifier;
@@ -637,11 +681,17 @@ namespace dxvk {
     void ApplyYCbCrMatrix(float pColorMatrix[3][4], bool UseBt709);
 
     void BindOutputView(
-            Rc<DxvkImageView> dxvkView);
+            Rc<DxvkImageView>               View);
 
     void BlitStream(
       const D3D11VideoProcessorStreamState* pStreamState,
       const D3D11_VIDEO_PROCESSOR_STREAM*   pStream);
+
+    void CopyBaseImageToShadow(
+      const D3D11VideoProcessorView&        View);
+
+    void CopyShadowToBaseImage(
+      const D3D11VideoProcessorView&        View);
 
     void CreateUniformBuffer();
 
