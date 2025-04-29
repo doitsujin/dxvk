@@ -3774,6 +3774,7 @@ namespace dxvk {
       return opCompositeConstruct(resultType, members.size(), members.data());
     } else {
       uint32_t uintType = defIntType(32, false);
+      uint32_t sintType = defIntType(32, true);
       uint32_t boolType = defBoolType();
 
       // Normalize input to multiple of pi/4
@@ -3817,9 +3818,12 @@ namespace dxvk {
       uint32_t sin = opSelect(floatType, funcIsSin, taylor, coFunc);
       uint32_t cos = opSelect(floatType, funcIsSin, coFunc, taylor);
 
-      // Determine whether sine is negative
+      // Determine whether sine is negative. Interpret the input as a
+      // signed integer in order to propagate signed zeroes properly.
+      uint32_t inputNeg = opSLessThan(boolType, opBitcast(sintType, x), consti32(0));
+
       uint32_t sinNeg = opINotEqual(boolType, opBitwiseAnd(uintType, xInt, constu32(4u)), constu32(0u));
-               sinNeg = opLogicalNotEqual(boolType, sinNeg, opFOrdLessThan(boolType, x, constf32(0.0f)));
+               sinNeg = opLogicalNotEqual(boolType, sinNeg, inputNeg);
 
       // Determine whether cosine is negative
       uint32_t cosNeg = opINotEqual(boolType, opBitwiseAnd(uintType, opIAdd(uintType, xInt, constu32(2u)), constu32(4u)), constu32(0u));
