@@ -737,6 +737,8 @@ namespace dxvk {
     
     ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
+
+    std::atomic<bool>   m_locked = { false };
     
   };
   
