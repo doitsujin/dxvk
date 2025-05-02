@@ -47,6 +47,7 @@ namespace dxvk {
     m_modeCacheFormat (D3D9Format::Unknown),
     m_d3d9Formats     (this, Adapter, m_parent->GetOptions()) {
     m_adapter->logAdapterInfo();
+    CacheIdentifierInfo();
   }
 
   template <size_t N>
@@ -61,10 +62,6 @@ namespace dxvk {
     if (unlikely(pIdentifier == nullptr))
       return D3DERR_INVALIDCALL;
 
-    auto& options = m_parent->GetOptions();
-    
-    const auto& props = m_adapter->deviceProperties();
-
     WCHAR wideDisplayName[32] = { };
     if (!wsi::getDisplayName(wsi::getDefaultMonitor(), wideDisplayName)) {
       Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
@@ -73,82 +70,13 @@ namespace dxvk {
 
     std::string displayName = str::fromws(wideDisplayName);
 
-    GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
-    uint32_t vendorId  = props.vendorID;
-    uint32_t deviceId  = props.deviceID;
-    const char*  desc  = props.deviceName;
+    copyToStringArray(pIdentifier->Description, m_deviceDesc.c_str());
+    copyToStringArray(pIdentifier->DeviceName,  displayName.c_str());    // The GDI device name. Not the actual device name.
+    copyToStringArray(pIdentifier->Driver,      m_deviceDriver.c_str()); // This is the driver's dll.
 
-    // Custom Vendor / Device ID
-    if (options.customVendorId >= 0)
-      vendorId = uint32_t(options.customVendorId);
-
-    if (options.customDeviceId >= 0)
-      deviceId = uint32_t(options.customDeviceId);
-
-    if (!options.customDeviceDesc.empty())
-      desc = options.customDeviceDesc.c_str();
-
-    if (options.customVendorId < 0) {
-      bool isNonclassicalVendorId = vendorId != uint32_t(DxvkGpuVendor::Nvidia) &&
-                                    vendorId != uint32_t(DxvkGpuVendor::Amd) &&
-                                    vendorId != uint32_t(DxvkGpuVendor::Intel);
-
-      if (isNonclassicalVendorId)
-        Logger::info(str::format("D3D9: Detected nonclassical vendor ID: 0x", std::hex, vendorId));
-
-      uint32_t     fallbackVendor = 0xdead;
-      uint32_t     fallbackDevice = 0xbeef;
-      const char*  fallbackDesc   = "Generic Graphics Card";
-
-      if (!options.hideAmdGpu) {
-        // AMD RX 6700 XT
-        fallbackVendor = uint32_t(DxvkGpuVendor::Amd);
-        fallbackDevice = 0x73df;
-        fallbackDesc   = "AMD Radeon RX 6700 XT";
-      } else if (!options.hideNvidiaGpu) {
-        // Nvidia RTX 3060
-        fallbackVendor = uint32_t(DxvkGpuVendor::Nvidia);
-        fallbackDevice = 0x2487;
-        fallbackDesc   = "NVIDIA GeForce RTX 3060";
-      }
-
-      bool hideNvidiaGpu = m_adapter->devicePropertiesExt().vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
-        ? options.hideNvidiaGpu : options.hideNvkGpu;
-
-      bool hideGpu = (vendorId == uint32_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
-                  || (vendorId == uint32_t(DxvkGpuVendor::Amd) && options.hideAmdGpu)
-                  || (vendorId == uint32_t(DxvkGpuVendor::Intel) && options.hideIntelGpu)
-                  // Hide the GPU by default for other vendors (default to reporting AMD)
-                  || isNonclassicalVendorId;
-
-      if (hideGpu) {
-        vendorId = fallbackVendor;
-
-        if (options.customDeviceId < 0)
-          deviceId = fallbackDevice;
-
-        if (options.customDeviceDesc.empty())
-          desc = fallbackDesc;
-
-        if (m_notifyHidingGpu) {
-          Logger::info(str::format("D3D9: Hiding actual GPU, reporting:\n",
-                                    "  vendor ID: 0x", std::hex, vendorId, "\n",
-                                    "  device ID: 0x", std::hex, deviceId, "\n",
-                                    "  device description: ", desc, "\n"));
-          m_notifyHidingGpu = false;
-        }
-      }
-    }
-
-    const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
-
-    copyToStringArray(pIdentifier->Description, desc);
-    copyToStringArray(pIdentifier->DeviceName,  displayName.c_str()); // The GDI device name. Not the actual device name.
-    copyToStringArray(pIdentifier->Driver,      driver);              // This is the driver's dll.
-
-    pIdentifier->DeviceIdentifier       = guid;
-    pIdentifier->DeviceId               = deviceId;
-    pIdentifier->VendorId               = vendorId;
+    pIdentifier->DeviceIdentifier       = m_deviceGuid;
+    pIdentifier->DeviceId               = m_deviceId;
+    pIdentifier->VendorId               = m_vendorId;
     pIdentifier->Revision               = 0;
     pIdentifier->SubSysId               = 0;
     pIdentifier->WHQLLevel              = m_parent->IsExtended() ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
@@ -188,6 +116,10 @@ namespace dxvk {
     if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
+    const bool isD3D8Compatible = m_parent->IsD3D8Compatible();
+    const bool isNvidia         = m_vendorId == uint32_t(DxvkGpuVendor::Nvidia);
+    const bool isAmd            = m_vendorId == uint32_t(DxvkGpuVendor::Amd);
+
     const bool dmap = Usage & D3DUSAGE_DMAP;
     const bool rt   = Usage & D3DUSAGE_RENDERTARGET;
     const bool ds   = Usage & D3DUSAGE_DEPTHSTENCIL;
@@ -199,32 +131,70 @@ namespace dxvk {
 
     const bool srgb = (Usage & (D3DUSAGE_QUERY_SRGBREAD | D3DUSAGE_QUERY_SRGBWRITE)) != 0;
 
-    if (CheckFormat == D3D9Format::INST)
-      return D3D_OK;
-
-    if (rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT)
-      return D3DERR_NOTAVAILABLE;
-
     if (ds && !IsDepthStencilFormat(CheckFormat))
       return D3DERR_NOTAVAILABLE;
 
-    if (rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional)
+    if (unlikely(rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT))
+      return D3DERR_NOTAVAILABLE;
+
+    // NULL RT format hack (supported across all vendors,
+    // and also advertised in D3D8 by modern drivers)
+    if (unlikely(rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional))
       return D3D_OK;
 
-    if (rt && CheckFormat == D3D9Format::RESZ && surface)
-      return D3D_OK;
-
-    if (CheckFormat == D3D9Format::ATOC && surface)
-      return D3D_OK;
-
-    if (CheckFormat == D3D9Format::NVDB && surface)
-      return m_adapter->features().core.features.depthBounds
+    // AMD/Intel's driver hack for RESZ (also advertised
+    // in D3D8 by modern AMD drivers, not advertised
+    // at all by modern Intel drivers)
+    if (unlikely(rt && CheckFormat == D3D9Format::RESZ && surface))
+      return isAmd
         ? D3D_OK
         : D3DERR_NOTAVAILABLE;
 
-    // I really don't want to support this...
-    if (dmap)
+    // Nvidia/Intel's driver hack for ATOC
+    if (unlikely(CheckFormat == D3D9Format::ATOC && surface))
+      return (!isD3D8Compatible && !isAmd)
+        ? D3D_OK
+        : D3DERR_NOTAVAILABLE;
+
+    // Nvidia's driver hack for SSAA
+    // (supported on modern Nvidia drivers)
+    if (unlikely(CheckFormat == D3D9Format::SSAA && surface)) {
+      if (!isD3D8Compatible && isNvidia)
+        Logger::warn("D3D9Adapter::CheckDeviceFormat: Transparency supersampling (SSAA) is unsupported");
       return D3DERR_NOTAVAILABLE;
+    }
+
+    // Nvidia specific depth bounds test hack
+    if (unlikely(CheckFormat == D3D9Format::NVDB && surface))
+      return (!isD3D8Compatible &&
+              m_adapter->features().core.features.depthBounds && isNvidia)
+        ? D3D_OK
+        : D3DERR_NOTAVAILABLE;
+
+    // AMD specific render to vertex buffer hack
+    // (not supported on modern AMD drivers)
+    if (unlikely(CheckFormat == D3D9Format::R2VB && surface)) {
+      if (!isD3D8Compatible && isAmd)
+        Logger::info("D3D9Adapter::CheckDeviceFormat: Render to vertex buffer (R2VB) is unsupported");
+      return D3DERR_NOTAVAILABLE;
+    }
+
+    // AMD specific INST hack
+    if (unlikely(CheckFormat == D3D9Format::INST && surface))
+      return (!isD3D8Compatible && isAmd)
+        ? D3D_OK
+        : D3DERR_NOTAVAILABLE;
+
+    // AMD/Nvidia CENT(roid) hack (not advertised by
+    // either AMD or Nvidia modern drivers)
+    if (unlikely(CheckFormat == D3D9Format::CENT && surface))
+      return D3DERR_NOTAVAILABLE;
+
+    // I really don't want to support this...
+    if (unlikely(dmap)) {
+      Logger::warn("D3D9Adapter::CheckDeviceFormat: D3DUSAGE_DMAP is unsupported");
+      return D3DERR_NOTAVAILABLE;
+    }
 
     auto mapping = m_d3d9Formats.GetFormatMapping(CheckFormat);
     if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
@@ -929,6 +899,79 @@ namespace dxvk {
         
         return b.RefreshRate < a.RefreshRate;
     });
+  }
+
+
+  void D3D9Adapter::CacheIdentifierInfo() {
+    auto& options = m_parent->GetOptions();
+
+    const auto& props = m_adapter->deviceProperties();
+
+    m_deviceGuid   = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
+    m_vendorId     = props.vendorID;
+    m_deviceId     = props.deviceID;
+    m_deviceDesc   = props.deviceName;
+
+    // Custom Vendor ID / Device ID / Device Description
+    if (options.customVendorId >= 0)
+      m_vendorId = uint32_t(options.customVendorId);
+
+    if (options.customDeviceId >= 0)
+      m_deviceId = uint32_t(options.customDeviceId);
+
+    if (!options.customDeviceDesc.empty())
+      m_deviceDesc = options.customDeviceDesc;
+
+    if (options.customVendorId < 0) {
+      bool isNonclassicalVendorId = m_vendorId != uint32_t(DxvkGpuVendor::Nvidia) &&
+                                    m_vendorId != uint32_t(DxvkGpuVendor::Amd) &&
+                                    m_vendorId != uint32_t(DxvkGpuVendor::Intel);
+
+      if (isNonclassicalVendorId)
+        Logger::info(str::format("D3D9: Detected nonclassical vendor ID: 0x", std::hex, m_vendorId));
+
+      uint32_t     fallbackVendor = 0xdead;
+      uint32_t     fallbackDevice = 0xbeef;
+      const char*  fallbackDesc   = "Generic Graphics Card";
+
+      if (!options.hideAmdGpu) {
+        // AMD RX 6700 XT
+        fallbackVendor = uint32_t(DxvkGpuVendor::Amd);
+        fallbackDevice = 0x73df;
+        fallbackDesc   = "AMD Radeon RX 6700 XT";
+      } else if (!options.hideNvidiaGpu) {
+        // Nvidia RTX 3060
+        fallbackVendor = uint32_t(DxvkGpuVendor::Nvidia);
+        fallbackDevice = 0x2487;
+        fallbackDesc   = "NVIDIA GeForce RTX 3060";
+      }
+
+      bool hideNvidiaGpu = m_adapter->devicePropertiesExt().vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+        ? options.hideNvidiaGpu : options.hideNvkGpu;
+
+      bool hideGpu = (m_vendorId == uint32_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
+                  || (m_vendorId == uint32_t(DxvkGpuVendor::Amd) && options.hideAmdGpu)
+                  || (m_vendorId == uint32_t(DxvkGpuVendor::Intel) && options.hideIntelGpu)
+                  // Hide the GPU by default for other vendors (default to reporting AMD)
+                  || isNonclassicalVendorId;
+
+      if (hideGpu) {
+        m_vendorId = fallbackVendor;
+
+        if (options.customDeviceId < 0)
+          m_deviceId = fallbackDevice;
+
+        if (options.customDeviceDesc.empty())
+          m_deviceDesc = fallbackDesc;
+
+        Logger::info(str::format("D3D9: Hiding actual GPU, reporting:\n",
+                                 "  vendor ID: 0x", std::hex, m_vendorId, "\n",
+                                 "  device ID: 0x", std::hex, m_deviceId, "\n",
+                                 "  device description: ", m_deviceDesc, "\n"));
+      }
+    }
+
+    m_deviceDriver = GetDriverDLL(DxvkGpuVendor(m_vendorId));
   }
 
 }

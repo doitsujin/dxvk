@@ -403,6 +403,8 @@ namespace dxvk {
 
       case D3D9Format::ATOC: return {}; // Driver hack, handled elsewhere
 
+      case D3D9Format::SSAA: return {}; // Driver hack, handled elsewhere
+
       case D3D9Format::INTZ: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
@@ -466,9 +468,7 @@ namespace dxvk {
     const Rc<DxvkAdapter>& adapter,
     const D3D9Options&     options) {
 
-    D3DADAPTER_IDENTIFIER9 adapterId9;
-    HRESULT res = pParent->GetAdapterIdentifier(0, &adapterId9);
-    const uint32_t vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
+    const uint32_t vendorId = pParent->GetVendorId();
 
     // NVIDIA does not natively support any DF formats
     m_dfSupport = vendorId == uint32_t(DxvkGpuVendor::Nvidia) ? false : options.supportDFFormats;
