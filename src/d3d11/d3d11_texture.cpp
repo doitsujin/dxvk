@@ -1086,20 +1086,34 @@ namespace dxvk {
           VkImageLayout*        pLayout,
           VkImageCreateInfo*    pInfo) {
     const Rc<DxvkImage> image = m_texture->GetImage();
+
+    if (!m_locked.load(std::memory_order_acquire)) {
+      // Need to make sure that the image cannot be relocated. This may
+      // be entered by multiple threads, which is fine since the actual
+      // work is serialized into the CS thread and only the first call
+      // will actually modify any image state.
+      Com<ID3D11Device> device;
+      m_resource->GetDevice(&device);
+
+      static_cast<D3D11Device*>(device.ptr())->LockImage(image, 0u);
+
+      m_locked.store(true, std::memory_order_release);
+    }
+
     const DxvkImageCreateInfo& info = image->info();
-    
+
     if (pHandle != nullptr)
       *pHandle = image->handle();
-    
+
     if (pLayout != nullptr)
       *pLayout = info.layout;
-    
+
     if (pInfo != nullptr) {
       // We currently don't support any extended structures
       if (pInfo->sType != VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
        || pInfo->pNext != nullptr)
         return E_INVALIDARG;
-      
+
       pInfo->flags          = 0;
       pInfo->imageType      = info.type;
       pInfo->format         = info.format;
