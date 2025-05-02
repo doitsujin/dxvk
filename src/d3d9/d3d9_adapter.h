@@ -79,6 +79,10 @@ namespace dxvk {
 
     Rc<DxvkAdapter> GetDXVKAdapter() { return m_adapter; }
 
+    uint32_t GetVendorId() const {
+      return m_vendorId;
+    }
+
     D3D9_VK_FORMAT_MAPPING GetFormatMapping(D3D9Format Format) const {
       return m_d3d9Formats.GetFormatMapping(Format);
     }
@@ -96,19 +100,24 @@ namespace dxvk {
 
     void CacheModes(D3D9Format Format);
 
+    void CacheIdentifierInfo();
+
     D3D9InterfaceEx*              m_parent;
 
     Rc<DxvkAdapter>               m_adapter;
     UINT                          m_ordinal;
     UINT                          m_displayIndex;
 
+    GUID                          m_deviceGuid;
+    uint32_t                      m_vendorId;
+    uint32_t                      m_deviceId;
+    std::string                   m_deviceDesc;
+    std::string                   m_deviceDriver;
+
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format                    m_modeCacheFormat;
 
     const D3D9VkFormatTable       m_d3d9Formats;
-
-    // Ensure GPU hiding only gets logged once per adapter
-    bool                          m_notifyHidingGpu = true;
 
   };
 
