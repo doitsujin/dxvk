@@ -471,6 +471,10 @@ namespace dxvk {
 
     bool Is11on12Device() const;
 
+    bool LockImage(
+      const Rc<DxvkImage>&            Image,
+            VkImageUsageFlags         Usage);
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
