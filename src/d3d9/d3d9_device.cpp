@@ -6815,6 +6815,19 @@ namespace dxvk {
   }
 
 
+  bool D3D9DeviceEx::IsAlphaToCoverageEnabled() const {
+    const bool alphaTest = m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0;
+
+    const D3D9CommonTexture* rt0 = GetCommonTexture(m_state.renderTargets[0].ptr());
+    const bool isMultisampled = rt0 != nullptr && (
+      rt0->Desc()->MultiSample >= D3DMULTISAMPLE_2_SAMPLES
+      || (rt0->Desc()->MultiSample == D3DMULTISAMPLE_NONMASKABLE && rt0->Desc()->MultisampleQuality > 0)
+    );
+
+    return (m_amdATOC || (m_nvATOC && alphaTest)) && rt0 != nullptr && isMultisampled;
+  }
+
+
   void D3D9DeviceEx::BindMultiSampleState() {
     m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
 
