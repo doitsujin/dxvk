@@ -2489,7 +2489,7 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
       bool isFullWrite = (resolve.depthMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
-                      && (resolve.stencilMode  || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
+                      && (resolve.stencilMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
 
       if (isFullWrite)
         oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -2506,6 +2506,15 @@ namespace dxvk {
 
       bool needsNewBackingStorage = (dstImage->info().stages & graphicsStages)
         && dstImage->isTracked(m_trackingId, DxvkAccess::Write);
+
+      if (needsNewBackingStorage && dstImage->hasGfxStores()) {
+        needsNewBackingStorage = resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Read, DxvkAccessOp::None)
+                              || resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Write, DxvkAccessOp::None);
+      }
+
+      // Enable tracking so that we don't unnecessarily hit slow paths in the future
+      if (dstImage->info().stages & graphicsStages)
+        dstImage->trackGfxStores();
 
       if (needsNewBackingStorage) {
         auto imageSubresource = dstImage->getAvailableSubresources();
