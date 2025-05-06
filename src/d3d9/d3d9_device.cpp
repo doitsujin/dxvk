@@ -2655,13 +2655,21 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipStatus(const D3DCLIPSTATUS9* pClipStatus) {
-    Logger::warn("D3D9DeviceEx::SetClipStatus: Stub");
+    if (unlikely(pClipStatus == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    m_state.clipStatus = *pClipStatus;
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipStatus(D3DCLIPSTATUS9* pClipStatus) {
-    Logger::warn("D3D9DeviceEx::GetClipStatus: Stub");
+    if (unlikely(pClipStatus == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pClipStatus = m_state.clipStatus;
+
     return D3D_OK;
   }
 
@@ -3018,7 +3026,7 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(m_state.vertexDecl == nullptr))
-        return D3DERR_INVALIDCALL;
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(!PrimitiveCount))
       return S_OK;
