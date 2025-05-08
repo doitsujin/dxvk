@@ -49,14 +49,14 @@ namespace dxvk {
 
     CubinShaderLaunchInfo() = default;
 
-    CubinShaderLaunchInfo(CubinShaderLaunchInfo&& other) {
-      shader         = std::move(other.shader);
-      params         = std::move(other.params);
-      paramSize      = std::move(other.paramSize);
-      nvxLaunchInfo  = std::move(other.nvxLaunchInfo);
-      cuLaunchConfig = other.cuLaunchConfig;
-      buffers        = std::move(other.buffers);
-      images         = std::move(other.images);
+    CubinShaderLaunchInfo(CubinShaderLaunchInfo&& other)
+    : shader         ( std::move(other.shader) )
+    , params         ( std::move(other.params) )
+    , paramSize      ( std::move(other.paramSize) )
+    , nvxLaunchInfo  ( std::move(other.nvxLaunchInfo) )
+    , cuLaunchConfig ( other.cuLaunchConfig )
+    , buffers        ( std::move(other.buffers) )
+    , images         ( std::move(other.images) ) {
       other.cuLaunchConfig[1] = nullptr;
       other.cuLaunchConfig[3] = nullptr;
       other.nvxLaunchInfo.pExtras = nullptr;
@@ -68,9 +68,9 @@ namespace dxvk {
 
     Com<CubinShaderWrapper> shader;
     std::vector<uint8_t>    params;
-    size_t                  paramSize;
+    size_t                  paramSize = 0;
     VkCuLaunchInfoNVX       nvxLaunchInfo = { VK_STRUCTURE_TYPE_CU_LAUNCH_INFO_NVX };
-    std::array<void*, 5>    cuLaunchConfig;
+    std::array<void*, 5>    cuLaunchConfig = { };
 
     std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>> buffers;
     std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>> images;
