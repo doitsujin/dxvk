@@ -516,7 +516,7 @@ namespace dxvk {
     
     /**
      * \brief Pipeline layout
-     * 
+     *
      * Stores the pipeline layout and the descriptor set
      * layout, as well as information on the resource
      * slots used by the pipeline.

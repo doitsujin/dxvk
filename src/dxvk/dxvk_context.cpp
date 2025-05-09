@@ -6354,7 +6354,9 @@ namespace dxvk {
 
   
   template<VkPipelineBindPoint BindPoint>
-  void DxvkContext::updateResourceBindings(const DxvkBindingLayoutObjects* layout) {
+  void DxvkContext::updateResourceBindings(
+    const DxvkBindingLayoutObjects* layout,
+    const DxvkPipelineBindings* pipelineLayout) {
     const auto& bindings = layout->layout();
 
     // Ensure that the arrays we write descriptor info to are big enough
@@ -6601,7 +6603,7 @@ namespace dxvk {
         dirtySetMask &= (~1u) << setIndex;
 
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, layout->getPipelineLayout(independentSets),
+          BindPoint, pipelineLayout->getLayout()->getPipelineLayout(independentSets),
           firstSet, setIndex - firstSet + 1, &sets[firstSet],
           0, nullptr);
       }
@@ -6610,14 +6612,18 @@ namespace dxvk {
 
 
   void DxvkContext::updateComputeShaderResources() {
-    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->getBindings());
+    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_COMPUTE>(
+      m_state.cp.pipeline->getBindings(),
+      m_state.cp.pipeline->getLayout());
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_COMPUTE_BIT);
   }
   
   
   void DxvkContext::updateGraphicsShaderResources() {
-    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->getBindings());
+    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(
+      m_state.gp.pipeline->getBindings(),
+      m_state.gp.pipeline->getLayout());
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_ALL_GRAPHICS);
   }
@@ -7160,21 +7166,21 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::DirtyPushConstants);
 
     auto bindings = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_state.gp.pipeline->getBindings()
-      : m_state.cp.pipeline->getBindings();
+      ? m_state.gp.pipeline->getLayout()
+      : m_state.cp.pipeline->getLayout();
 
     // Optimized pipelines may have push constants trimmed, so look up
     // the exact layout used for the currently bound pipeline.
     bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       && m_flags.test(DxvkContextFlag::GpIndependentSets);
 
-    VkPushConstantRange pushConstRange = bindings->layout().getPushConstantRange(independentSets);
+    VkPushConstantRange pushConstRange = bindings->getPushConstantRange(independentSets).getPushConstantRange();
 
     if (!pushConstRange.size)
       return;
 
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      bindings->getPipelineLayout(independentSets),
+      bindings->getLayout()->getPipelineLayout(independentSets),
       pushConstRange.stageFlags,
       pushConstRange.offset,
       pushConstRange.size,
