@@ -280,10 +280,8 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkImageView>&&   view) {
-      if (m_rc[slot].bufferView != nullptr) {
-        m_rc[slot].bufferSlice = DxvkBufferSlice();
-        m_rc[slot].bufferView  = nullptr;
-      }
+      if (m_rc[slot].bufferView)
+        m_rc[slot].bufferView = nullptr;
 
       m_rc[slot].imageView = std::move(view);
 
@@ -301,16 +299,10 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkBufferView>&&  view) {
-      if (m_rc[slot].imageView != nullptr)
+      if (m_rc[slot].imageView)
         m_rc[slot].imageView = nullptr;
 
-      if (view != nullptr) {
-        m_rc[slot].bufferSlice = DxvkBufferSlice(view);
-        m_rc[slot].bufferView = std::move(view);
-      } else {
-        m_rc[slot].bufferSlice = DxvkBufferSlice();
-        m_rc[slot].bufferView = nullptr;
-      }
+      m_rc[slot].bufferView = std::move(view);
 
       m_descriptorState.dirtyViews(stages);
     }
