@@ -217,5 +217,16 @@ namespace dxvk {
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;
   };
+
+
+  /**
+   * \brief View pair
+   *
+   * Stores a buffer view and an image view.
+   */
+  struct DxvkViewPair {
+    Rc<DxvkBufferView> bufferView;
+    Rc<DxvkImageView> imageView;
+  };
   
 }
