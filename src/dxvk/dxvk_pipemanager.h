@@ -302,11 +302,6 @@ namespace dxvk {
       DxvkHash, DxvkEq> m_pipelineLayouts;
 
     std::unordered_map<
-      DxvkBindingLayout,
-      DxvkBindingLayoutObjects,
-      DxvkHash, DxvkEq> m_bindingLayouts;
-
-    std::unordered_map<
       DxvkGraphicsPipelineVertexInputState,
       DxvkGraphicsPipelineVertexInputLibrary,
       DxvkHash, DxvkEq> m_vertexInputLibraries;
@@ -330,9 +325,6 @@ namespace dxvk {
       DxvkGraphicsPipelineShaders,
       DxvkGraphicsPipeline,
       DxvkHash, DxvkEq> m_graphicsPipelines;
-
-    DxvkBindingLayoutObjects* createPipelineLayout(
-      const DxvkBindingLayout& layout);
 
     DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
       const DxvkShaderPipelineLibraryKey& key);

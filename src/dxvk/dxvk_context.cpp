@@ -6129,7 +6129,7 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
+    if (!newPipeline->getLayout()->getPushConstantRange(true).isEmpty())
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -6191,7 +6191,7 @@ namespace dxvk {
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
+    if (!newPipeline->getLayout()->getPushConstantRange(true).isEmpty())
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);

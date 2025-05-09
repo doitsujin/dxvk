@@ -120,14 +120,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves binding layout
-     * \returns Binding layout
-     */
-    const DxvkBindingLayout& getBindings() const {
-      return m_bindings;
-    }
-
-    /**
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
@@ -277,8 +269,6 @@ namespace dxvk {
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
     std::vector<BindingOffsets>   m_bindingOffsets;
-
-    DxvkBindingLayout             m_bindings;
 
     DxvkPipelineLayoutBuilder     m_layout;
 
@@ -433,12 +423,6 @@ namespace dxvk {
     DxvkShaderSet getShaderSet() const;
 
     /**
-     * \brief Generates merged binding layout
-     * \returns Binding layout
-     */
-    DxvkBindingLayout getBindings() const;
-
-    /**
      * \brief Builds merged binding layout
      * \returns Pipeline layout builder
      */
@@ -510,8 +494,7 @@ namespace dxvk {
     DxvkShaderPipelineLibrary(
       const DxvkDevice*               device,
             DxvkPipelineManager*      manager,
-      const DxvkShaderPipelineLibraryKey& key,
-      const DxvkBindingLayoutObjects* layout);
+      const DxvkShaderPipelineLibraryKey& key);
 
     ~DxvkShaderPipelineLibrary();
 
@@ -558,9 +541,9 @@ namespace dxvk {
   private:
 
     const DxvkDevice*               m_device;
-          DxvkPipelineStats*        m_stats;
-          DxvkShaderSet             m_shaders;
-    const DxvkBindingLayoutObjects* m_bindings;
+
+    DxvkPipelineStats*              m_stats;
+    DxvkShaderSet                   m_shaders;
 
     DxvkPipelineBindings            m_layout;
 

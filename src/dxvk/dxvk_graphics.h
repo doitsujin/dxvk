@@ -492,7 +492,6 @@ namespace dxvk {
             DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkGraphicsPipelineShaders shaders,
-            DxvkBindingLayoutObjects*   layout,
             DxvkShaderPipelineLibrary*  vsLibrary,
             DxvkShaderPipelineLibrary*  fsLibrary);
 
@@ -514,18 +513,6 @@ namespace dxvk {
       return m_flags;
     }
     
-    /**
-     * \brief Pipeline layout
-     *
-     * Stores the pipeline layout and the descriptor set
-     * layout, as well as information on the resource
-     * slots used by the pipeline.
-     * \returns Pipeline layout
-     */
-    DxvkBindingLayoutObjects* getBindings() const {
-      return m_bindings;
-    }
-
     /**
      * \brief Queries pipeline layout
      * \returns Pipeline layout
@@ -616,7 +603,6 @@ namespace dxvk {
     DxvkPipelineStats*          m_stats;
 
     DxvkGraphicsPipelineShaders m_shaders;
-    DxvkBindingLayoutObjects*   m_bindings;
     DxvkPipelineBindings        m_layout;
     DxvkGlobalPipelineBarrier   m_barrier;
     DxvkGraphicsPipelineFlags   m_flags;
