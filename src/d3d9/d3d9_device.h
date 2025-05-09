@@ -1462,8 +1462,6 @@ namespace dxvk {
     D3D9Adapter*                    m_adapter;
     Rc<DxvkDevice>                  m_dxvkDevice;
 
-    uint32_t                        m_vendorId;
-
     D3D9MemoryAllocator             m_memoryAllocator;
 
     // Second memory allocator used for D3D9 shader bytecode.
