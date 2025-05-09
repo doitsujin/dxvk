@@ -46,14 +46,13 @@ namespace dxvk {
   DxvkShader::DxvkShader(
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
-  : m_info(info), m_code(spirv), m_bindings(info.stage), m_layout(info.stage) {
+  : m_info(info), m_code(spirv), m_layout(info.stage) {
     m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
     for (uint32_t i = 0; i < info.bindingCount; i++) {
       DxvkBindingInfo binding = info.bindings[i];
       binding.stage = info.stage;
-      m_bindings.addBinding(binding);
 
       DxvkShaderDescriptor descriptor(binding);
       m_layout.addBindings(1, &descriptor);
@@ -64,8 +63,6 @@ namespace dxvk {
       pushConst.stageFlags = info.pushConstStages;
       pushConst.offset = 0;
       pushConst.size = info.pushConstSize;
-
-      m_bindings.addPushConstantRange(pushConst);
 
       m_layout.addPushConstants(DxvkPushConstantRange(
         info.pushConstStages, info.pushConstSize));
@@ -175,11 +172,6 @@ namespace dxvk {
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
     }
-
-    // Set flag for stages that actually use push constants
-    // so that they can be trimmed for optimized pipelines.
-    if (usesPushConstants)
-      m_bindings.addPushConstantStage(info.stage);
 
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries
@@ -1236,16 +1228,6 @@ namespace dxvk {
   }
 
 
-  DxvkBindingLayout DxvkShaderPipelineLibraryKey::getBindings() const {
-    DxvkBindingLayout mergedLayout(m_shaderStages);
-
-    for (uint32_t i = 0; i < m_shaderCount; i++)
-      mergedLayout.merge(m_shaders[i]->getBindings());
-
-    return mergedLayout;
-  }
-
-
   DxvkPipelineLayoutBuilder DxvkShaderPipelineLibraryKey::getLayout() const {
     // If no shader is defined, this is a null fragment shader library
     VkShaderStageFlags stages = m_shaderStages;
@@ -1316,12 +1298,10 @@ namespace dxvk {
   DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
     const DxvkDevice*               device,
           DxvkPipelineManager*      manager,
-    const DxvkShaderPipelineLibraryKey& key,
-    const DxvkBindingLayoutObjects* layout)
+    const DxvkShaderPipelineLibraryKey& key)
   : m_device      (device),
     m_stats       (&manager->m_stats),
     m_shaders     (key.getShaderSet()),
-    m_bindings    (layout),
     m_layout      (manager, key.getLayout()) {
 
   }
@@ -1687,7 +1667,7 @@ namespace dxvk {
     if (!shader)
       return SpirvCodeBuffer(dxvk_dummy_frag);
 
-    return shader->getCode(&m_bindings->map(), DxvkShaderModuleCreateInfo());
+    return shader->getCode(m_layout.getBindingMap(), DxvkShaderModuleCreateInfo());
   }
 
 
