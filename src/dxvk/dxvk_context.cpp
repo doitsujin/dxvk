@@ -6356,7 +6356,8 @@ namespace dxvk {
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateResourceBindings(
     const DxvkBindingLayoutObjects* layout,
-    const DxvkPipelineBindings* pipelineLayout) {
+    const DxvkPipelineBindings* layout_) {
+    const auto* pipelineLayout = layout_->getLayout();
     const auto& bindings = layout->layout();
 
     // Ensure that the arrays we write descriptor info to are big enough
@@ -6371,14 +6372,14 @@ namespace dxvk {
     bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
                         && m_flags.test(DxvkContextFlag::GpIndependentSets);
 
-    uint32_t layoutSetMask = layout->getSetMask();
+    uint32_t layoutSetMask = layout_->getSetMask();
     uint32_t dirtySetMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_descriptorState.getDirtyGraphicsSets()
       : m_descriptorState.getDirtyComputeSets();
     dirtySetMask &= layoutSetMask;
 
     std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets;
-    m_descriptorPool->alloc(layout, dirtySetMask, sets.data());
+    m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
 
     uint32_t descriptorCount = 0;
 
@@ -6603,7 +6604,7 @@ namespace dxvk {
         dirtySetMask &= (~1u) << setIndex;
 
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, pipelineLayout->getLayout()->getPipelineLayout(independentSets),
+          BindPoint, layout_->getLayout()->getPipelineLayout(independentSets),
           firstSet, setIndex - firstSet + 1, &sets[firstSet],
           0, nullptr);
       }

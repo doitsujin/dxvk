@@ -553,6 +553,18 @@ namespace dxvk {
     ~DxvkDescriptorSetLayout();
 
     /**
+     * \brief Checks whether the set layout is empty
+     *
+     * Empty set layouts are sometimes needed to create valid
+     * pipeline layouts for pipeline libraries.
+     * \returns \c true if the set layout contains no descriptors
+     */
+    bool isEmpty() const {
+      // Can check the template for now
+      return !m_template;
+    }
+
+    /**
      * \brief Queries descriptor set layout
      * \returns Descriptor set layout
      */
@@ -899,6 +911,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*       m_device;
+
     VkPipelineLayout  m_layoutIndependent = VK_NULL_HANDLE;
     VkPipelineLayout  m_layoutComplete    = VK_NULL_HANDLE;
 
