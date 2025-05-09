@@ -113,7 +113,7 @@ namespace dxvk {
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = *stageInfo.getStageInfos();
-    info.layout               = m_bindings->getPipelineLayout(false);
+    info.layout               = m_layout.getLayout()->getPipelineLayout(false);
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;

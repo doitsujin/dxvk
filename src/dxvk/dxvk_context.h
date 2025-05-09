@@ -1720,7 +1720,9 @@ namespace dxvk {
     void invalidateState();
 
     template<VkPipelineBindPoint BindPoint>
-    void updateResourceBindings(const DxvkBindingLayoutObjects* layout);
+    void updateResourceBindings(
+      const DxvkBindingLayoutObjects* layout,
+      const DxvkPipelineBindings* pipelineLayout);
 
     void updateComputeShaderResources();
     void updateGraphicsShaderResources();
