@@ -1000,6 +1000,7 @@ namespace dxvk {
     m_stats         (&pipeMgr->m_stats),
     m_shaders       (std::move(shaders)),
     m_bindings      (layout),
+    m_layout        (pipeMgr, buildPipelineLayout()),
     m_barrier       (layout->getGlobalBarrier()),
     m_vsLibrary     (vsLibrary),
     m_fsLibrary     (fsLibrary),
@@ -1638,7 +1639,20 @@ namespace dxvk {
 
     return true;
   }
-  
+
+
+  DxvkPipelineLayoutBuilder DxvkGraphicsPipeline::buildPipelineLayout() const {
+    DxvkPipelineLayoutBuilder builder(VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+
+    if (m_shaders.vs)  builder.addLayout(m_shaders.vs->getLayout());
+    if (m_shaders.tcs) builder.addLayout(m_shaders.tcs->getLayout());
+    if (m_shaders.tes) builder.addLayout(m_shaders.tcs->getLayout());
+    if (m_shaders.gs)  builder.addLayout(m_shaders.gs->getLayout());
+    if (m_shaders.fs)  builder.addLayout(m_shaders.fs->getLayout());
+
+    return builder;
+  }
+
   
   void DxvkGraphicsPipeline::writePipelineStateToCache(
     const DxvkGraphicsPipelineStateInfo& state) const {
@@ -1825,5 +1839,5 @@ namespace dxvk {
 
     return name.str();
   }
-  
+
 }

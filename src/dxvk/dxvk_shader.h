@@ -128,6 +128,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries shader binding layout
+     * \returns Pipeline layout builder
+     */
+    DxvkPipelineLayoutBuilder getLayout() const {
+      return m_layout;
+    }
+
+    /**
      * \brief Retrieves spec constant mask
      * \returns Bit mask of used spec constants
      */
@@ -271,6 +279,8 @@ namespace dxvk {
     std::vector<BindingOffsets>   m_bindingOffsets;
 
     DxvkBindingLayout             m_bindings;
+
+    DxvkPipelineLayoutBuilder     m_layout;
 
     static void eliminateInput(
             SpirvCodeBuffer&          code,
@@ -429,6 +439,12 @@ namespace dxvk {
     DxvkBindingLayout getBindings() const;
 
     /**
+     * \brief Builds merged binding layout
+     * \returns Pipeline layout builder
+     */
+    DxvkPipelineLayoutBuilder getLayout() const;
+
+    /**
      * \brief Adds a shader to the key
      *
      * Shaders must be added in stage order.
@@ -544,7 +560,9 @@ namespace dxvk {
     const DxvkDevice*               m_device;
           DxvkPipelineStats*        m_stats;
           DxvkShaderSet             m_shaders;
-    const DxvkBindingLayoutObjects* m_layout;
+    const DxvkBindingLayoutObjects* m_bindings;
+
+    DxvkPipelineBindings            m_layout;
 
     dxvk::mutex                     m_mutex;
     DxvkShaderPipelineLibraryHandle m_pipeline      = { VK_NULL_HANDLE, 0 };

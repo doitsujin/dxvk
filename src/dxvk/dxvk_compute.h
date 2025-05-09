@@ -91,6 +91,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries pipeline layout
+     * \returns Pipeline layout
+     */
+    const DxvkPipelineBindings* getLayout() const {
+      return &m_layout;
+    }
+
+    /**
      * \brief Queries spec constant mask
      *
      * This only includes user spec constants.
@@ -141,6 +149,8 @@ namespace dxvk {
 
     DxvkComputePipelineShaders  m_shaders;
     DxvkBindingLayoutObjects*   m_bindings;
+
+    DxvkPipelineBindings        m_layout;
     
     std::string                 m_debugName;
 

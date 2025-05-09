@@ -25,6 +25,7 @@ namespace dxvk {
     m_libraryHandle (VK_NULL_HANDLE),
     m_shaders       (std::move(shaders)),
     m_bindings      (layout),
+    m_layout        (pipeMgr, m_shaders.cs->getLayout()),
     m_debugName     (createDebugName()) {
 
   }

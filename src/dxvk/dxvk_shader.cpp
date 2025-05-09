@@ -46,7 +46,7 @@ namespace dxvk {
   DxvkShader::DxvkShader(
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
-  : m_info(info), m_code(spirv), m_bindings(info.stage) {
+  : m_info(info), m_code(spirv), m_bindings(info.stage), m_layout(info.stage) {
     m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
@@ -54,6 +54,9 @@ namespace dxvk {
       DxvkBindingInfo binding = info.bindings[i];
       binding.stage = info.stage;
       m_bindings.addBinding(binding);
+
+      DxvkShaderDescriptor descriptor(binding);
+      m_layout.addBindings(1, &descriptor);
     }
 
     if (info.pushConstSize) {
@@ -63,6 +66,9 @@ namespace dxvk {
       pushConst.size = info.pushConstSize;
 
       m_bindings.addPushConstantRange(pushConst);
+
+      m_layout.addPushConstants(DxvkPushConstantRange(
+        info.pushConstStages, info.pushConstSize));
     }
 
     // Run an analysis pass over the SPIR-V code to gather some
@@ -1240,6 +1246,22 @@ namespace dxvk {
   }
 
 
+  DxvkPipelineLayoutBuilder DxvkShaderPipelineLibraryKey::getLayout() const {
+    // If no shader is defined, this is a null fragment shader library
+    VkShaderStageFlags stages = m_shaderStages;
+
+    if (!stages)
+      stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    DxvkPipelineLayoutBuilder result(stages);
+
+    for (uint32_t i = 0u; i < m_shaderCount; i++)
+      result.addLayout(m_shaders[i]->getLayout());
+
+    return result;
+  }
+
+
   void DxvkShaderPipelineLibraryKey::addShader(
     const Rc<DxvkShader>&               shader) {
     m_shaderStages |= shader->info().stage;
@@ -1299,7 +1321,8 @@ namespace dxvk {
   : m_device      (device),
     m_stats       (&manager->m_stats),
     m_shaders     (key.getShaderSet()),
-    m_layout      (layout) {
+    m_bindings    (layout),
+    m_layout      (manager, key.getLayout()) {
 
   }
 
@@ -1530,7 +1553,7 @@ namespace dxvk {
     info.pViewportState       = &vpInfo;
     info.pRasterizationState  = &rsInfo;
     info.pDynamicState        = &dyInfo;
-    info.layout               = m_layout->getPipelineLayout(true);
+    info.layout               = m_bindings->getPipelineLayout(true);
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
@@ -1616,7 +1639,7 @@ namespace dxvk {
     info.pStages              = stageInfo.getStageInfos();
     info.pDepthStencilState   = &dsInfo;
     info.pDynamicState        = &dyInfo;
-    info.layout               = m_layout->getPipelineLayout(true);
+    info.layout               = m_bindings->getPipelineLayout(true);
     info.basePipelineIndex    = -1;
 
     if (hasSampleRateShading)
@@ -1641,7 +1664,7 @@ namespace dxvk {
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.flags        = flags;
     info.stage        = *stageInfo.getStageInfos();
-    info.layout       = m_layout->getPipelineLayout(false);
+    info.layout       = m_bindings->getPipelineLayout(false);
     info.basePipelineIndex = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
@@ -1664,7 +1687,7 @@ namespace dxvk {
     if (!shader)
       return SpirvCodeBuffer(dxvk_dummy_frag);
 
-    return shader->getCode(&m_layout->map(), DxvkShaderModuleCreateInfo());
+    return shader->getCode(&m_bindings->map(), DxvkShaderModuleCreateInfo());
   }
 
 
