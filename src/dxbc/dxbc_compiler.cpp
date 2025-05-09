@@ -237,16 +237,19 @@ namespace dxvk {
     m_module.setDebugName(m_entryPointId, "main");
 
     // Create the shader object
-    DxvkShaderCreateInfo info;
+    DxvkShaderCreateInfo info = { };
     info.stage = m_programInfo.shaderStage();
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
-    info.pushConstSize = sizeof(DxbcPushConstants);
     info.inputTopology = m_inputTopology;
     info.outputTopology = m_outputTopology;
+
+    if (m_programInfo.type() != DxbcProgramType::ComputeShader) {
+      info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+      info.pushConstSize = sizeof(DxbcPushConstants);
+    }
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
