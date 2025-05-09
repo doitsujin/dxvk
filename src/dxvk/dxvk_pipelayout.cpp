@@ -344,24 +344,31 @@ namespace dxvk {
 
       setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
 
-      if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
-       || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-        appendDescriptors(m_setSamplers[set], binding, dstMapping);
+      if (binding.getDescriptorCount()) {
+        appendDescriptors(m_setDescriptors[set], binding, dstMapping);
 
-      if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
-        if (binding.isUniformBuffer())
-          appendDescriptors(m_setUniformBuffers[set], binding, dstMapping);
-        else
-          appendDescriptors(m_setResources[set], binding, dstMapping);
+        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
+         || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+          appendDescriptors(m_setSamplers[set], binding, dstMapping);
 
-        if (binding.getAccess() & vk::AccessWriteMask)
-          appendDescriptors(m_readWriteResources, binding, dstMapping);
-        else
-          appendDescriptors(m_setReadOnlyResources[set], binding, dstMapping);
+        if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
+          if (binding.isUniformBuffer()) {
+            appendDescriptors(m_setUniformBuffers[set], binding, dstMapping);
+          } else {
+            appendDescriptors(m_setResources[set], binding, dstMapping);
+
+            if (binding.getAccess() & vk::AccessWriteMask)
+              appendDescriptors(m_readWriteResources, binding, dstMapping);
+            else
+              appendDescriptors(m_setReadOnlyResources[set], binding, dstMapping);
+          }
+        }
+
+        m_barrier.stages |= util::pipelineStages(binding.getStageMask());
+        m_barrier.access |= binding.getAccess();
+
+        m_descriptorCount += binding.getDescriptorCount();
       }
-
-      m_barrier.stages |= util::pipelineStages(binding.getStageMask());
-      m_barrier.access |= binding.getAccess();
 
       m_setMask |= 1u << set;
     }

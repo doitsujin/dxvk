@@ -1174,6 +1174,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Gets total number of descriptors in all sets
+     * \returns Total descriptor count in all sets
+     */
+    uint32_t getDescriptorCount() const {
+      return m_descriptorCount;
+    }
+
+    /**
      * \brief Queries push constant range
      */
     DxvkPushConstantRange getPushConstantRange(bool independent) const {
@@ -1283,7 +1291,8 @@ namespace dxvk {
 
     DxvkGlobalPipelineBarrier m_barrier = { };
 
-    uint32_t                  m_setMask = 0u;
+    uint32_t                  m_setMask         = 0u;
+    uint32_t                  m_descriptorCount = 0u;
 
     std::array<BindingList, MaxSets> m_setDescriptors       = { };
     std::array<BindingList, MaxSets> m_setSamplers          = { };
