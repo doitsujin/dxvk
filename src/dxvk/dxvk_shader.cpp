@@ -58,16 +58,6 @@ namespace dxvk {
       m_layout.addBindings(1, &descriptor);
     }
 
-    if (info.pushConstSize) {
-      VkPushConstantRange pushConst;
-      pushConst.stageFlags = info.pushConstStages;
-      pushConst.offset = 0;
-      pushConst.size = info.pushConstSize;
-
-      m_layout.addPushConstants(DxvkPushConstantRange(
-        info.pushConstStages, info.pushConstSize));
-    }
-
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
     bool usesPushConstants = false;
@@ -171,6 +161,15 @@ namespace dxvk {
 
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
+    }
+
+    if (info.pushConstSize) {
+      VkShaderStageFlags requiredStage = usesPushConstants
+        ? VkShaderStageFlags(m_info.stage)
+        : VkShaderStageFlags(0u);
+
+      m_layout.addPushConstants(DxvkPushConstantRange(
+        info.pushConstStages, requiredStage, info.pushConstSize));
     }
 
     // Don't set pipeline library flag if the shader

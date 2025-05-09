@@ -6129,7 +6129,7 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    if (!newPipeline->getLayout()->getPushConstantRange(true).isEmpty())
+    if (!newPipeline->getLayout()->getPushConstantRange().isEmpty())
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -6191,7 +6191,7 @@ namespace dxvk {
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-    if (!newPipeline->getLayout()->getPushConstantRange(true).isEmpty())
+    if (!newPipeline->getLayout()->getPushConstantRange().isEmpty())
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
@@ -7203,7 +7203,8 @@ namespace dxvk {
     bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       && m_flags.test(DxvkContextFlag::GpIndependentSets);
 
-    VkPushConstantRange pushConstRange = bindings->getPushConstantRange(independentSets).getPushConstantRange();
+    VkPushConstantRange pushConstRange = bindings->getPushConstantRange()
+      .getPushConstantRange(independentSets);
 
     if (!pushConstRange.size)
       return;
