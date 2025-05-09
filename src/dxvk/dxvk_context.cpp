@@ -7321,81 +7321,123 @@ namespace dxvk {
   
   template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkResourceHazards(
-    const DxvkBindingLayout&        layout,
-          uint32_t                  setMask) {
+    const DxvkPipelineBindings*     layout) {
     constexpr bool IsGraphics = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    // For graphics, if we are not currently inside a render pass, we'll issue
-    // a barrier anyway so checking hazards is not meaningful. Avoid some overhead
-    // and only track written resources in that case.
-    bool requiresBarrier = IsGraphics && !m_flags.test(DxvkContextFlag::GpRenderPassBound);
+    // Iterate over all resources that are actively being written by the shader pipeline.
+    // On graphics, this must not exit early since extra resource tracking is required.
+    { auto range = layout->getReadWriteResources();
 
-    for (auto setIndex : bit::BitMask(setMask)) {
-      uint32_t bindingCount = layout.getBindingCount(setIndex);
+      if (range.bindingCount) {
+        bool requiresBarrier = false;
 
-      for (uint32_t j = 0; j < bindingCount; j++) {
-        const DxvkBindingInfo& binding = layout.getBinding(setIndex, j);
-        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
+        for (uint32_t j = 0u; j < range.bindingCount; j++) {
+          const auto& binding = range.bindings[j];
+          const auto& slot = m_rc[binding.getResourceIndex()];
 
-        // Skip read-only bindings if we already know that we need a barrier
-        if (requiresBarrier && !(binding.access & vk::AccessWriteMask))
-          continue;
+          switch (binding.getDescriptorType()) {
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+              if (slot.bufferView) {
+                if (!IsGraphics || slot.bufferView->buffer()->hasGfxStores()) {
+                  requiresBarrier = requiresBarrier || checkBufferViewBarrier<BindPoint>(
+                    slot.bufferView, binding.getAccess(), binding.getAccessOp());
+                } else {
+                  requiresBarrier = !slot.bufferView->buffer()->trackGfxStores() || requiresBarrier;
+                }
+              }
+            } break;
 
-        switch (binding.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-            if (slot.bufferView) {
-              if (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())
-                requiresBarrier |= checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.access, binding.accessOp);
-              else if (binding.access & vk::AccessWriteMask)
-                requiresBarrier |= !slot.bufferView->buffer()->trackGfxStores();
-            }
-          } break;
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+              if (slot.imageView) {
+                if (!IsGraphics || slot.imageView->hasGfxStores()) {
+                  requiresBarrier = requiresBarrier || checkImageViewBarrier<BindPoint>(
+                    slot.imageView, binding.getAccess(), binding.getAccessOp());
+                } else {
+                  requiresBarrier = !slot.imageView->image()->trackGfxStores() || requiresBarrier;
+                }
+              }
+            } break;
 
-          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-            if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores()))
-              requiresBarrier |= checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.access, DxvkAccessOp::None);
-          } break;
+            default:
+              /* nothing to do */;
+          }
 
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-            if (slot.bufferSlice.length() && (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores()))
-              requiresBarrier |= checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.access, DxvkAccessOp::None);
-          } break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-            if (slot.bufferSlice.length()) {
-              if (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores())
-                requiresBarrier |= checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.access, binding.accessOp);
-              else if (binding.access & vk::AccessWriteMask)
-                requiresBarrier |= !slot.bufferSlice.buffer()->trackGfxStores();
-            }
-          } break;
-
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-            if (slot.imageView) {
-              if (!IsGraphics || slot.imageView->hasGfxStores())
-                requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access, binding.accessOp);
-              else if (binding.access & vk::AccessWriteMask)
-                requiresBarrier |= !slot.imageView->image()->trackGfxStores();
-            }
-          } break;
-
-          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-            if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores()))
-              requiresBarrier |= checkImageViewBarrier<BindPoint>(slot.imageView, binding.access, DxvkAccessOp::None);
-          } break;
-
-          default:
-            /* nothing to do */;
+          // On compute, we may exit immediately since no additional tracking is required.
+          if (!IsGraphics && requiresBarrier)
+            return true;
         }
 
-        // We don't need to do any extra tracking for compute here, exit early
-        if (requiresBarrier && !IsGraphics)
+        // Once we've processed all written resources, we can exit on graphics as well
+        if (IsGraphics && requiresBarrier)
           return true;
       }
     }
 
-    return requiresBarrier;
+    // For graphics, if we are not currently inside a render pass, we'll
+    // issue a barrier anyway so checking hazards is not meaningful.
+    if (IsGraphics && (!m_flags.test(DxvkContextFlag::GpRenderPassBound)))
+      return true;
+
+    // For read-only resources, it is sufficient to check dirty sets since any
+    // resource previously bound as read-only cannot have been written by the
+    // same pipeline.
+    uint32_t dirtySetMask = IsGraphics
+      ? m_descriptorState.getDirtyGraphicsSets()
+      : m_descriptorState.getDirtyComputeSets();
+
+    dirtySetMask &= layout->getSetMask();
+
+    for (auto setIndex : bit::BitMask(dirtySetMask)) {
+      // Check any view-based resource for hazards
+      { auto range = layout->getReadOnlyResourcesInSet(setIndex);
+
+        for (uint32_t j = 0; j < range.bindingCount; j++) {
+          const auto& binding = range.bindings[j];
+          const auto& slot = m_rc[binding.getResourceIndex()];
+
+          switch (binding.getDescriptorType()) {
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+              if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())) {
+                if (checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.getAccess(), DxvkAccessOp::None))
+                  return true;
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+              if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores())) {
+                if (checkImageViewBarrier<BindPoint>(slot.imageView, binding.getAccess(), DxvkAccessOp::None))
+                  return true;
+              }
+            } break;
+
+            default:
+              /* nothing to do */;
+          }
+        }
+      }
+
+      // Check uniform buffers last, we're unlikely to have any hazards here
+      { auto range = layout->getUniformBuffersInSet(setIndex);
+
+        for (uint32_t j = 0; j < range.bindingCount; j++) {
+          const auto& binding = range.bindings[j];
+          const auto& slot = m_rc[binding.getResourceIndex()];
+
+          if (slot.bufferSlice.length() && (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores())) {
+            if (checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.getAccess(), DxvkAccessOp::None))
+              return true;
+          }
+        }
+      }
+    }
+
+    return false;
   }
   
 
@@ -7405,24 +7447,16 @@ namespace dxvk {
     if (m_barrierTracker.empty())
       return false;
 
-    const auto& layout = m_state.cp.pipeline->getBindings()->layout();
-    return checkResourceHazards<VK_PIPELINE_BIND_POINT_COMPUTE>(layout, layout.getSetMask());
+    return checkResourceHazards<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->getLayout());
   }
 
 
   template<bool Indexed, bool Indirect>
   bool DxvkContext::checkGraphicsHazards() {
     // Check shader resources on every draw to handle WAW hazards, and to make
-    // sure that writes are handled properly. If the pipeline does not have any
-    // storage descriptors, we only need to check dirty resources.
-    const auto& layout = m_state.gp.pipeline->getBindings()->layout();
-
-    uint32_t setMask = layout.getSetMask();
-
-    if (!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      setMask &= m_descriptorState.getDirtyGraphicsSets();
-
-    bool requiresBarrier = checkResourceHazards<VK_PIPELINE_BIND_POINT_GRAPHICS>(layout, setMask);
+    // sure that writes are handled properly. Checking dirty sets is sufficient
+    // since we will unconditionally iterate over writable resources anyway.
+    bool requiresBarrier = checkResourceHazards<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->getLayout());
 
     // Transform feedback buffer writes won't overlap, so we also only need to
     // check those if dirty.
