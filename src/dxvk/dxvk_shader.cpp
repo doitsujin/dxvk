@@ -81,9 +81,16 @@ namespace dxvk {
         if (ins.arg(2) == spv::DecorationBinding) {
           uint32_t varId = ins.arg(1);
           bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
-          bindingOffsets[varId].bindingId = ins.arg(3);
+          bindingOffsets[varId].bindingIndex = ins.arg(3);
           bindingOffsets[varId].bindingOffset = ins.offset() + 3;
           varIds.push_back(varId);
+        }
+
+        if (ins.arg(2) == spv::DecorationDescriptorSet) {
+          uint32_t varId = ins.arg(1);
+          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
+          bindingOffsets[varId].setIndex = ins.arg(3);
+          bindingOffsets[varId].setOffset = ins.offset() + 3;
         }
 
         if (ins.arg(2) == spv::DecorationBuiltIn) {
@@ -91,12 +98,6 @@ namespace dxvk {
             sampleMaskIds.push_back(ins.arg(1));
           if (ins.arg(3) == spv::BuiltInPosition)
             m_flags.set(DxvkShaderFlag::ExportsPosition);
-        }
-
-        if (ins.arg(2) == spv::DecorationDescriptorSet) {
-          uint32_t varId = ins.arg(1);
-          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
-          bindingOffsets[varId].setOffset = ins.offset() + 3;
         }
 
         if (ins.arg(2) == spv::DecorationSpecId) {
@@ -186,20 +187,23 @@ namespace dxvk {
   
   
   SpirvCodeBuffer DxvkShader::getCode(
-    const DxvkBindingLayoutObjects*   layout,
+    const DxvkShaderBindingMap*       bindings,
     const DxvkShaderModuleCreateInfo& state) const {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     uint32_t* code = spirvCode.data();
     
     // Remap resource binding IDs
-    for (const auto& info : m_bindingOffsets) {
-      auto mappedBinding = layout->lookupBinding(m_info.stage, info.bindingId);
+    if (bindings) {
+      for (const auto& info : m_bindingOffsets) {
+        auto mappedBinding = bindings->find(DxvkShaderBinding(
+          m_info.stage, info.setIndex, info.bindingIndex));
 
-      if (mappedBinding) {
-        code[info.bindingOffset] = mappedBinding->binding;
+        if (mappedBinding) {
+          code[info.bindingOffset] = mappedBinding->getBinding();
 
-        if (info.setOffset)
-          code[info.setOffset] = mappedBinding->set;
+          if (info.setOffset)
+            code[info.setOffset] = mappedBinding->getSet();
+        }
       }
     }
 
@@ -1660,7 +1664,7 @@ namespace dxvk {
     if (!shader)
       return SpirvCodeBuffer(dxvk_dummy_frag);
 
-    return shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+    return shader->getCode(&m_layout->map(), DxvkShaderModuleCreateInfo());
   }
 
 

@@ -385,8 +385,8 @@ namespace dxvk {
   }
 
 
-  DxvkBindingSetLayout* DxvkPipelineManager::createDescriptorSetLayout(
-    const DxvkBindingSetLayoutKey& key) {
+  const DxvkDescriptorSetLayout* DxvkPipelineManager::createDescriptorSetLayout(
+    const DxvkDescriptorSetLayoutKey& key) {
     auto pair = m_descriptorSetLayouts.find(key);
     if (pair != m_descriptorSetLayouts.end())
       return &pair->second;
@@ -399,13 +399,27 @@ namespace dxvk {
   }
 
 
-  DxvkBindingLayoutObjects* DxvkPipelineManager::createPipelineLayout(
-    const DxvkBindingLayout& layout) {
-    auto pair = m_pipelineLayouts.find(layout);
+  const DxvkPipelineLayout* DxvkPipelineManager::createPipelineLayout(
+    const DxvkPipelineLayoutKey& key) {
+    auto pair = m_pipelineLayouts.find(key);
     if (pair != m_pipelineLayouts.end())
       return &pair->second;
 
-    std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> setLayouts = { };
+    auto iter = m_pipelineLayouts.emplace(
+      std::piecewise_construct,
+      std::tuple(key),
+      std::tuple(m_device, key));
+    return &iter.first->second;
+  }
+
+
+  DxvkBindingLayoutObjects* DxvkPipelineManager::createPipelineLayout(
+    const DxvkBindingLayout& layout) {
+    auto pair = m_bindingLayouts.find(layout);
+    if (pair != m_bindingLayouts.end())
+      return &pair->second;
+
+    std::array<const DxvkDescriptorSetLayout*, DxvkDescriptorSets::SetCount> setLayouts = { };
     uint32_t setMask = layout.getSetMask();
 
     for (uint32_t i = 0; i < setLayouts.size(); i++) {
@@ -413,7 +427,7 @@ namespace dxvk {
         setLayouts[i] = createDescriptorSetLayout(layout.getBindingList(i));
     }
 
-    auto iter = m_pipelineLayouts.emplace(
+    auto iter = m_bindingLayouts.emplace(
       std::piecewise_construct,
       std::tuple(layout),
       std::tuple(m_device, layout, setLayouts.data()));

@@ -169,12 +169,12 @@ namespace dxvk {
      *
      * Rewrites binding IDs and potentially fixes up other
      * parts of the code depending on pipeline state.
-     * \param [in] layout Biding layout
+     * \param [in] bindings Biding map
      * \param [in] state Pipeline state info
      * \returns Uncompressed SPIR-V code buffer
      */
     SpirvCodeBuffer getCode(
-      const DxvkBindingLayoutObjects*   layout,
+      const DxvkShaderBindingMap*       bindings,
       const DxvkShaderModuleCreateInfo& state) const;
     
     /**
@@ -249,9 +249,10 @@ namespace dxvk {
   private:
 
     struct BindingOffsets {
-      uint32_t bindingId;
-      uint32_t bindingOffset;
-      uint32_t setOffset;
+      uint32_t bindingIndex = 0u;
+      uint32_t bindingOffset = 0u;
+      uint32_t setIndex = 0u;
+      uint32_t setOffset = 0u;
     };
 
     DxvkShaderCreateInfo          m_info;
