@@ -1781,8 +1781,7 @@ namespace dxvk {
     
     template<VkPipelineBindPoint BindPoint>
     bool checkResourceHazards(
-      const DxvkBindingLayout&        layout,
-            uint32_t                  setMask);
+      const DxvkPipelineBindings*     layout);
 
     bool checkComputeHazards();
 
