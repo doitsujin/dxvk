@@ -499,17 +499,22 @@ namespace dxvk {
     DxvkPushConstantRange() = default;
 
     DxvkPushConstantRange(
-            VkShaderStageFlags  stages,
+            VkShaderStageFlags  declaredStages,
+            VkShaderStageFlags  requiredStages,
             uint32_t            size)
-    : m_size  (uint8_t(stages ? (size / sizeof(uint32_t)) : 0u)),
-      m_stages(uint8_t(size ? stages : 0u)) { }
+    : m_size      (uint16_t(declaredStages ? size : 0u)),
+      m_declared  (uint8_t(m_size ? declaredStages : 0u)),
+      m_required  (uint8_t(m_size ? requiredStages : 0u)) { }
 
     /**
      * \brief Queries shader stage mask
+     *
+     * \param [in] independent Whether to query the range for
+     *    pipeline layouts compatible with independent sets
      * \returns Shader stage mask
      */
-    VkShaderStageFlags getStageMask() const {
-      return VkShaderStageFlags(m_stages);
+    VkShaderStageFlags getStageMask(bool independent) const {
+      return VkShaderStageFlags(independent ? m_declared : m_required);
     }
 
     /**
@@ -517,17 +522,20 @@ namespace dxvk {
      * \returns Push constant size, in bytes
      */
     uint32_t getSize() const {
-      return uint32_t(m_size) * sizeof(uint32_t);
+      return uint32_t(m_size);
     }
 
     /**
      * \brief Converts push constant range to Vulkan struct
+     *
+     * \param [in] independent Whether to query the range for
+     *    pipeline layouts compatible with independent sets
      * \returns Vulkan push constant range
      */
-    VkPushConstantRange getPushConstantRange() const {
+    VkPushConstantRange getPushConstantRange(bool independent) const {
       VkPushConstantRange vk = { };
-      vk.size       = getSize();
-      vk.stageFlags = getStageMask();
+      vk.stageFlags = getStageMask(independent);
+      vk.size = vk.stageFlags ? getSize() : 0u;
       return vk;
     }
 
@@ -538,22 +546,10 @@ namespace dxvk {
      * \param [in] other Other push constant range
      */
     void merge(const DxvkPushConstantRange& other) {
-      m_stages |= other.m_stages;
+      m_declared |= other.m_declared;
+      m_required |= other.m_required;
+
       m_size = std::max(m_size, other.m_size);
-    }
-
-    /**
-     * \brief Applies subset of stages
-     *
-     * Removes any stages not included in the given
-     * set of stages, and adjusts the size if needed.
-     * \param [in] stages Shader stage mask
-     */
-    void maskStages(VkShaderStageFlags stages) {
-      m_stages &= uint8_t(stages);
-
-      if (!m_stages)
-        m_size = 0u;
     }
 
     /**
@@ -571,8 +567,9 @@ namespace dxvk {
      * \returns \c true if the two ranges are equal
      */
     bool eq(const DxvkPushConstantRange& other) const {
-      return m_size   == other.m_size
-          && m_stages == other.m_stages;
+      return m_size     == other.m_size
+          && m_declared == other.m_declared
+          && m_required == other.m_required;
     }
 
     /**
@@ -581,13 +578,15 @@ namespace dxvk {
      */
     size_t hash() const {
       return size_t(m_size)
-          | (size_t(m_stages) << 8u);
+          | (size_t(m_declared) << 16u)
+          | (size_t(m_required) << 24u);
     }
 
   private:
 
-    uint8_t m_size    = 0u;
-    uint8_t m_stages  = 0u;
+    uint16_t  m_size     = 0u;
+    uint8_t   m_declared = 0u;
+    uint8_t   m_required = 0u;
 
   };
 
@@ -668,19 +667,10 @@ namespace dxvk {
 
     /**
      * \brief Queries push constant range
-     *
-     * \param [in] independent Whether to include stages not included
-     *    in the pipeline layout itself, which is necessary to create
-     *    valid pipeline layouts for pipeline libraries.
      * \returns Push constant range
      */
-    DxvkPushConstantRange getPushConstantRange(bool independent) const {
-      DxvkPushConstantRange result = m_pushConstants;
-
-      if (!independent)
-        result.maskStages(getStageMask());
-
-      return result;
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
     }
 
     /**
@@ -1091,11 +1081,10 @@ namespace dxvk {
 
     /**
      * \brief Queries push constant range
+     * \returns Push constant range
      */
-    DxvkPushConstantRange getPushConstantRange(bool independent) const {
-      return independent
-        ? m_pushConstantsIndependent
-        : m_pushConstantsComplete;
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
     }
 
     /**
@@ -1209,8 +1198,7 @@ namespace dxvk {
     VkShaderStageFlags        m_shaderStageMask           = 0u;
     VkShaderStageFlags        m_hazardousStageMask        = 0u;
 
-    DxvkPushConstantRange     m_pushConstantsComplete     = { };
-    DxvkPushConstantRange     m_pushConstantsIndependent  = { };
+    DxvkPushConstantRange     m_pushConstants             = { };
 
     DxvkGlobalPipelineBarrier m_barrier = { };
 

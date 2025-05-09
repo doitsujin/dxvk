@@ -130,7 +130,7 @@ namespace dxvk {
     // supported by the implementation, create a set layout that is compatible with
     // pipeline libraries.
     if (device->canUseGraphicsPipelineLibrary() && (key.getStageMask() & VK_SHADER_STAGE_ALL_GRAPHICS)) {
-      VkPushConstantRange pushConstants = key.getPushConstantRange(true).getPushConstantRange();
+      VkPushConstantRange pushConstants = key.getPushConstantRange().getPushConstantRange(true);
 
       VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
       layoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
@@ -151,7 +151,7 @@ namespace dxvk {
     // If all descriptor set layouts are defined, create a pipeline layout object
     // that is optimal for monolithic pipelines and discards unused push constants.
     if (key.isComplete()) {
-      VkPushConstantRange pushConstants = key.getPushConstantRange(false).getPushConstantRange();
+      VkPushConstantRange pushConstants = key.getPushConstantRange().getPushConstantRange(false);
 
       VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
       layoutInfo.setLayoutCount = key.getDescriptorSetCount();
@@ -207,9 +207,7 @@ namespace dxvk {
           DxvkPipelineManager*        manager,
     const DxvkPipelineLayoutBuilder&  builder) {
     m_shaderStageMask = builder.getStageMask();
-
-    m_pushConstantsIndependent = builder.getPushConstantRange();
-    m_pushConstantsComplete.maskStages(m_shaderStageMask);
+    m_pushConstants = builder.getPushConstantRange();
 
     buildPipelineLayout(builder.getBindings(), manager);
   }
@@ -281,7 +279,7 @@ namespace dxvk {
     uint32_t setCount = getSetCountForStages(m_shaderStageMask);
 
     m_layout = manager->createPipelineLayout(DxvkPipelineLayoutKey(
-      m_shaderStageMask, m_pushConstantsIndependent, setCount, setLayouts.data()));
+      m_shaderStageMask, m_pushConstants, setCount, setLayouts.data()));
   }
 
 
