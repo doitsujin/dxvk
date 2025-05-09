@@ -27,7 +27,7 @@ namespace dxvk {
 
 
   uint32_t DxvkBindingInfo::value() const {
-    return (uint32_t(descriptorType) << 24) | resourceBinding;
+    return (uint32_t(stage) << 24) | (uint32_t(descriptorType) << 16) | resourceBinding;
   }
 
 
