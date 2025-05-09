@@ -224,6 +224,24 @@ namespace dxvk {
       const DxvkGraphicsPipelineFragmentOutputState& state);
 
     /**
+     * \brief Creates a descriptor set layout
+     *
+     * \param [in] key Descriptor set layout key
+     * \returns Descriptor set layout object
+     */
+    const DxvkDescriptorSetLayout* createDescriptorSetLayout(
+      const DxvkDescriptorSetLayoutKey& key);
+
+    /**
+     * \brief Creates a pipeline layout
+     *
+     * \param [in] key Pipeline layout key
+     * \returns Descriptor set layout object
+     */
+    const DxvkPipelineLayout* createPipelineLayout(
+      const DxvkPipelineLayoutKey& key);
+
+    /**
      * \brief Registers a shader
      * 
      * Starts compiling pipelines asynchronously
@@ -274,14 +292,19 @@ namespace dxvk {
     dxvk::mutex m_mutex;
     
     std::unordered_map<
-      DxvkBindingSetLayoutKey,
-      DxvkBindingSetLayout,
+      DxvkDescriptorSetLayoutKey,
+      DxvkDescriptorSetLayout,
       DxvkHash, DxvkEq> m_descriptorSetLayouts;
+
+    std::unordered_map<
+      DxvkPipelineLayoutKey,
+      DxvkPipelineLayout,
+      DxvkHash, DxvkEq> m_pipelineLayouts;
 
     std::unordered_map<
       DxvkBindingLayout,
       DxvkBindingLayoutObjects,
-      DxvkHash, DxvkEq> m_pipelineLayouts;
+      DxvkHash, DxvkEq> m_bindingLayouts;
 
     std::unordered_map<
       DxvkGraphicsPipelineVertexInputState,
@@ -307,9 +330,6 @@ namespace dxvk {
       DxvkGraphicsPipelineShaders,
       DxvkGraphicsPipeline,
       DxvkHash, DxvkEq> m_graphicsPipelines;
-
-    DxvkBindingSetLayout* createDescriptorSetLayout(
-      const DxvkBindingSetLayoutKey& key);
 
     DxvkBindingLayoutObjects* createPipelineLayout(
       const DxvkBindingLayout& layout);

@@ -107,7 +107,7 @@ namespace dxvk {
     
     DxvkShaderStageInfo stageInfo(m_device);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
-      m_shaders.cs->getCode(m_bindings, DxvkShaderModuleCreateInfo()),
+      m_shaders.cs->getCode(&m_bindings->map(), DxvkShaderModuleCreateInfo()),
       &scState.scInfo);
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
