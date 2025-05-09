@@ -6394,18 +6394,19 @@ namespace dxvk {
         }
 
         auto& descriptorInfo = m_descriptors[descriptorCount++];
-        const auto& res = m_rc[binding.getResourceIndex()];
 
         if (binding.isUniformBuffer()) {
-          if (res.bufferSlice.length()) {
-            descriptorInfo = res.bufferSlice.getDescriptor();
+          const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
 
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferSlice.buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, res.bufferSlice,
+          if (slice.length()) {
+            descriptorInfo = slice.getDescriptor();
+
+            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
+              accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
                 util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
             }
 
-            m_cmd->track(res.bufferSlice.buffer(), DxvkAccess::Read);
+            m_cmd->track(slice.buffer(), DxvkAccess::Read);
           } else {
             descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
             descriptorInfo.buffer.offset = 0;
@@ -6414,12 +6415,14 @@ namespace dxvk {
         } else {
           switch (binding.getDescriptorType()) {
             case VK_DESCRIPTOR_TYPE_SAMPLER: {
-              if (res.sampler != nullptr) {
-                descriptorInfo.image.sampler = res.sampler->handle();
+              const auto& sampler = m_samplers[binding.getResourceIndex()];
+
+              if (sampler) {
+                descriptorInfo.image.sampler = sampler->handle();
                 descriptorInfo.image.imageView = VK_NULL_HANDLE;
                 descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                m_cmd->track(res.sampler);
+                m_cmd->track(sampler);
               } else {
                 descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
                 descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -6428,6 +6431,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               VkImageView viewHandle = VK_NULL_HANDLE;
 
               if (res.imageView != nullptr)
@@ -6462,6 +6467,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               VkImageView viewHandle = VK_NULL_HANDLE;
 
               if (res.imageView != nullptr)
@@ -6487,14 +6494,17 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+              const auto& sampler = m_samplers[binding.getResourceIndex()];
+
               VkImageView viewHandle = VK_NULL_HANDLE;
 
-              if (res.imageView && res.sampler)
+              if (res.imageView && sampler)
                 viewHandle = res.imageView->handle(binding.getViewType());
 
               if (viewHandle) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  descriptorInfo.image.sampler = res.sampler->handle();
+                  descriptorInfo.image.sampler = sampler->handle();
                   descriptorInfo.image.imageView = viewHandle;
                   descriptorInfo.image.imageLayout = res.imageView->defaultLayout();
 
@@ -6504,16 +6514,16 @@ namespace dxvk {
                   }
 
                   m_cmd->track(res.imageView->image(), DxvkAccess::Read);
-                  m_cmd->track(res.sampler);
+                  m_cmd->track(sampler);
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
 
-                  descriptorInfo.image.sampler = res.sampler->handle();
+                  descriptorInfo.image.sampler = sampler->handle();
                   descriptorInfo.image.imageView = view->handle(binding.getViewType());
                   descriptorInfo.image.imageLayout = view->defaultLayout();
 
                   m_cmd->track(view->image(), DxvkAccess::Read);
-                  m_cmd->track(res.sampler);
+                  m_cmd->track(sampler);
                 }
               } else {
                 descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
@@ -6523,6 +6533,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               if (res.bufferView != nullptr) {
                 descriptorInfo.texelBuffer = res.bufferView->handle();
 
@@ -6538,6 +6550,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               if (res.bufferView != nullptr) {
                 descriptorInfo.texelBuffer = res.bufferView->handle();
 
@@ -6554,6 +6568,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               if (res.bufferView != nullptr) {
                 descriptorInfo.buffer = res.bufferView->getRawDescriptorInfo();
 
@@ -6571,6 +6587,8 @@ namespace dxvk {
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+              const auto& res = m_resources[binding.getResourceIndex()];
+
               if (res.bufferView != nullptr) {
                 descriptorInfo.buffer = res.bufferView->getRawDescriptorInfo();
 
@@ -7350,7 +7368,7 @@ namespace dxvk {
 
         for (uint32_t j = 0u; j < range.bindingCount; j++) {
           const auto& binding = range.bindings[j];
-          const auto& slot = m_rc[binding.getResourceIndex()];
+          const auto& slot = m_resources[binding.getResourceIndex()];
 
           switch (binding.getDescriptorType()) {
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -7411,7 +7429,7 @@ namespace dxvk {
 
         for (uint32_t j = 0; j < range.bindingCount; j++) {
           const auto& binding = range.bindings[j];
-          const auto& slot = m_rc[binding.getResourceIndex()];
+          const auto& slot = m_resources[binding.getResourceIndex()];
 
           switch (binding.getDescriptorType()) {
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -7444,10 +7462,10 @@ namespace dxvk {
 
         for (uint32_t j = 0; j < range.bindingCount; j++) {
           const auto& binding = range.bindings[j];
-          const auto& slot = m_rc[binding.getResourceIndex()];
+          const auto& slot = m_uniformBuffers[binding.getResourceIndex()];
 
-          if (slot.bufferSlice.length() && (!IsGraphics || slot.bufferSlice.buffer()->hasGfxStores())) {
-            if (checkBufferBarrier<BindPoint>(slot.bufferSlice, binding.getAccess(), DxvkAccessOp::None))
+          if (slot.length() && (!IsGraphics || slot.buffer()->hasGfxStores())) {
+            if (checkBufferBarrier<BindPoint>(slot, binding.getAccess(), DxvkAccessOp::None))
               return true;
           }
         }
