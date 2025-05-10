@@ -106,6 +106,15 @@ namespace dxvk {
      * \returns The descriptor set
      */
     VkDescriptorSet alloc(
+      const DxvkDescriptorSetLayout*  layout);
+
+    /**
+     * \brief Allocates a single descriptor set
+     *
+     * \param [in] layout Descriptor set layout
+     * \returns The descriptor set
+     */
+    VkDescriptorSet alloc(
             VkDescriptorSetLayout     layout);
 
     /**

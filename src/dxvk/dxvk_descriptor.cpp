@@ -96,6 +96,12 @@ namespace dxvk {
 
 
   VkDescriptorSet DxvkDescriptorPool::alloc(
+    const DxvkDescriptorSetLayout*  layout) {
+    return alloc(layout->getSetLayout());
+  }
+
+
+  VkDescriptorSet DxvkDescriptorPool::alloc(
           VkDescriptorSetLayout     layout) {
     auto list = getSetList(layout);
 
