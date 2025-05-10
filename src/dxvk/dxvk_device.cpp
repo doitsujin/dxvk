@@ -228,6 +228,35 @@ namespace dxvk {
   }
 
 
+  const DxvkPipelineLayout* DxvkDevice::createBuiltInPipelineLayout(
+          VkShaderStageFlags              pushConstantStages,
+          VkDeviceSize                    pushConstantSize,
+          uint32_t                        bindingCount,
+    const DxvkDescriptorSetLayoutBinding* bindings) {
+    DxvkPipelineLayoutKey key;
+
+    if (pushConstantSize) {
+      key.addStages(pushConstantStages);
+      key.addPushConstantRange(DxvkPushConstantRange(
+        pushConstantStages, pushConstantStages, pushConstantSize));
+    }
+
+    if (bindingCount) {
+      DxvkDescriptorSetLayoutKey setLayoutKey;
+
+      for (uint32_t i = 0; i < bindingCount; i++) {
+        key.addStages(bindings[i].getStageMask());
+        setLayoutKey.add(bindings[i]);
+      }
+
+      const auto* layout = m_objects.pipelineManager().createDescriptorSetLayout(setLayoutKey);
+      key.setDescriptorSetLayouts(1, &layout);
+    }
+
+    return m_objects.pipelineManager().createPipelineLayout(key);
+  }
+
+
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
     DxvkPipelineWorkerStats workers = m_objects.pipelineManager().getWorkerStats();
