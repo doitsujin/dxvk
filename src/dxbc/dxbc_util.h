@@ -17,19 +17,17 @@ namespace dxvk {
    * \brief Binding numbers and properties
    */
   enum DxbcBindingProperties : uint32_t {
-    DxbcConstBufBindingIndex  = 0,
-    DxbcConstBufBindingCount  = 16,
-    DxbcSamplerBindingIndex   = DxbcConstBufBindingIndex
-                              + DxbcConstBufBindingCount,
-    DxbcSamplerBindingCount   = 16,
-    DxbcResourceBindingIndex  = DxbcSamplerBindingIndex
-                              + DxbcSamplerBindingCount,
-    DxbcResourceBindingCount  = 128,
-    DxbcStageBindingCount     = DxbcConstBufBindingCount
-                              + DxbcSamplerBindingCount
-                              + DxbcResourceBindingCount,
-    DxbcUavBindingIndex       = DxbcStageBindingCount * 6,
-    DxbcUavBindingCount       = 64,
+    DxbcConstantBuffersPerStage = 16u,
+    DxbcSamplersPerStage        = 16u,
+
+    DxbcSrvPerStage             = 128u,
+    DxbcSrvTotal                = DxbcSrvPerStage * 6u,
+
+    DxbcUavPerPipeline          = 64u,
+    DxbcUavTotal                = DxbcUavPerPipeline * 4u,
+
+    DxbcUavIndexGraphics        = DxbcSrvTotal,
+    DxbcUavIndexCompute         = DxbcUavIndexGraphics + DxbcUavPerPipeline * 2u,
   };
 
   
@@ -71,29 +69,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Computes first binding index for a given stage
-   *
-   * \param [in] stage The shader stage
-   * \returns Index of first binding
-   */
-  inline uint32_t computeStageBindingOffset(DxbcProgramType stage) {
-    return DxbcStageBindingCount * uint32_t(stage);
-  }
-
-
-  /**
-   * \brief Computes first UAV binding index offset for a given stage
-   *
-   * \param [in] stage The shader stage
-   * \returns Index of first UAV binding
-   */
-  inline uint32_t computeStageUavBindingOffset(DxbcProgramType stage) {
-    return DxbcUavBindingIndex
-         + DxbcUavBindingCount * (stage == DxbcProgramType::ComputeShader ? 2 : 0);
-  }
-
-
-  /**
    * \brief Computes constant buffer binding index
    * 
    * \param [in] stage Shader stage
@@ -101,7 +76,7 @@ namespace dxvk {
    * \returns Binding index
    */
   inline uint32_t computeConstantBufferBinding(DxbcProgramType stage, uint32_t index) {
-    return computeStageBindingOffset(stage) + DxbcConstBufBindingIndex + index;
+    return uint32_t(stage) * DxbcConstantBuffersPerStage + index;
   }
 
 
@@ -113,7 +88,7 @@ namespace dxvk {
    * \returns Binding index
    */
   inline uint32_t computeSamplerBinding(DxbcProgramType stage, uint32_t index) {
-    return computeStageBindingOffset(stage) + DxbcSamplerBindingIndex + index;
+    return uint32_t(stage) * DxbcSamplersPerStage + index;
   }
 
 
@@ -125,7 +100,7 @@ namespace dxvk {
    * \returns Binding index
    */
   inline uint32_t computeSrvBinding(DxbcProgramType stage, uint32_t index) {
-    return computeStageBindingOffset(stage) + DxbcResourceBindingIndex + index;
+    return uint32_t(stage) * DxbcSrvPerStage + index;
   }
 
 
@@ -137,7 +112,7 @@ namespace dxvk {
    * \returns Binding index
    */
   inline uint32_t computeUavBinding(DxbcProgramType stage, uint32_t index) {
-    return computeStageUavBindingOffset(stage) + index;
+    return (stage == DxbcProgramType::ComputeShader ? DxbcUavIndexCompute : DxbcUavIndexGraphics) + index;
   }
   
   
@@ -149,7 +124,7 @@ namespace dxvk {
    * \returns Binding index
    */
   inline uint32_t computeUavCounterBinding(DxbcProgramType stage, uint32_t index) {
-    return computeStageUavBindingOffset(stage) + DxbcUavBindingCount + index;
+    return computeUavBinding(stage, index) + DxbcUavPerPipeline;
   }
   
   /**

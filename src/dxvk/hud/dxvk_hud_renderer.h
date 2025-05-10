@@ -77,15 +77,6 @@ namespace dxvk::hud {
 
 
   /**
-   * \brief Shader module info
-   */
-  struct HudShaderModule {
-    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-  };
-
-
-  /**
    * \brief Text renderer for the HUD
    * 
    * Can be used by the presentation backend to
@@ -138,12 +129,6 @@ namespace dxvk::hud {
     VkSpecializationInfo getSpecInfo(
       const HudSpecConstants*   constants) const;
 
-    void initShader(
-            HudShaderModule&    shader,
-            VkShaderStageFlagBits stage,
-            size_t              size,
-      const uint32_t*           code) const;
-
   private:
 
     Rc<DxvkDevice>          m_device;
@@ -159,11 +144,7 @@ namespace dxvk::hud {
     std::vector<HudTextDrawInfo>  m_textDraws;
     std::vector<char>             m_textData;
 
-    HudShaderModule         m_textVs;
-    HudShaderModule         m_textFs;
-
-    VkDescriptorSetLayout   m_textSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout        m_textPipelineLayout = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* m_textPipelineLayout = nullptr;
 
     HudPushConstants        m_pushConstants = { };
 
@@ -175,9 +156,7 @@ namespace dxvk::hud {
     void uploadFontResources(
       const DxvkContextObjects& ctx);
 
-    VkDescriptorSetLayout createSetLayout();
-
-    VkPipelineLayout createPipelineLayout();
+    const DxvkPipelineLayout* createPipelineLayout();
 
     VkPipeline createPipeline(
       const HudPipelineKey&     key);

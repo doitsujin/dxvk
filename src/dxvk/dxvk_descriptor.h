@@ -90,14 +90,23 @@ namespace dxvk {
     /**
      * \brief Allocates one or multiple descriptor sets
      *
-     * \param [in] layout Binding layout
+     * \param [in] layout Pipeline layout
      * \param [in] setMask Descriptor set mask
      * \param [out] sets Descriptor sets
      */
     void alloc(
-      const DxvkBindingLayoutObjects* layout,
+      const DxvkPipelineLayout*       layout,
             uint32_t                  setMask,
             VkDescriptorSet*          sets);
+
+    /**
+     * \brief Allocates a single descriptor set
+     *
+     * \param [in] layout Descriptor set layout
+     * \returns The descriptor set
+     */
+    VkDescriptorSet alloc(
+      const DxvkDescriptorSetLayout*  layout);
 
     /**
      * \brief Allocates a single descriptor set
@@ -131,11 +140,11 @@ namespace dxvk {
       DxvkDescriptorSetList>  m_setLists;
 
     std::unordered_map<
-      const DxvkBindingLayoutObjects*,
+      const DxvkPipelineLayout*,
       DxvkDescriptorSetMap>   m_setMaps;
 
     std::pair<
-      const DxvkBindingLayoutObjects*,
+      const DxvkPipelineLayout*,
       DxvkDescriptorSetMap*>  m_cachedEntry;
 
     uint32_t m_setsAllocated  = 0;
@@ -144,16 +153,16 @@ namespace dxvk {
     uint32_t m_prevSetsAllocated = 0;
 
     DxvkDescriptorSetMap* getSetMapCached(
-      const DxvkBindingLayoutObjects*           layout);
+      const DxvkPipelineLayout*                 layout);
 
     DxvkDescriptorSetMap* getSetMap(
-      const DxvkBindingLayoutObjects*           layout);
+      const DxvkPipelineLayout*                 layout);
 
     DxvkDescriptorSetList* getSetList(
             VkDescriptorSetLayout               layout);
 
-    VkDescriptorSet allocSet(
-            DxvkDescriptorSetList*    list,
+    VkDescriptorSet allocSetWithLayout(
+            DxvkDescriptorSetList*              list,
             VkDescriptorSetLayout               layout);
 
     VkDescriptorSet allocSetFromPool(

@@ -12,8 +12,7 @@ namespace dxvk {
 
   D3D9FormatHelper::D3D9FormatHelper(const Rc<DxvkDevice>& device)
   : m_device          (device)
-  , m_setLayout       (CreateSetLayout())
-  , m_pipelineLayout  (CreatePipelineLayout()) {
+  , m_layout          (CreatePipelineLayout()) {
     InitPipelines();
   }
 
@@ -23,9 +22,6 @@ namespace dxvk {
 
     for (auto& p : m_pipelines)
       vk->vkDestroyPipeline(vk->device(), p, nullptr);
-
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
-    vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
   }
 
 
@@ -103,7 +99,8 @@ namespace dxvk {
     bufferViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     auto tmpBufferView = srcSlice.buffer()->createView(bufferViewInfo);
 
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
+    VkPipelineLayout pipelineLayout = m_layout->getPipelineLayout(false);
+    VkDescriptorSet set = ctx.descriptorPool->alloc(m_layout->getDescriptorSetLayout(0));
 
     VkDescriptorImageInfo imageDescriptor = { };
     imageDescriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -124,10 +121,13 @@ namespace dxvk {
 
     ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[videoFormat.FormatType]);
+
     ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelineLayout, set, 0, nullptr);
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, m_pipelineLayout,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, set, 0, nullptr);
+
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
       VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(VkExtent2D), &imageExtent);
+
     ctx.cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       ((imageExtent.width + 7u) / 8u),
       ((imageExtent.height + 7u) / 8u),
@@ -163,48 +163,14 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSetLayout D3D9FormatHelper::CreateSetLayout() {
-    auto vk = m_device->vkd();
-
-    static const std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+  const DxvkPipelineLayout* D3D9FormatHelper::CreatePipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create format conversion descriptor set layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipelineLayout D3D9FormatHelper::CreatePipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConstants = { };
-    pushConstants.size = sizeof(VkExtent2D);
-    pushConstants.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1u;
-    info.pSetLayouts = &m_setLayout;
-    info.pushConstantRangeCount = 1u;
-    info.pPushConstantRanges = &pushConstants;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create format conversion pipeline layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_COMPUTE_BIT,
+      sizeof(VkExtent2D), bindings.size(), bindings.data());
   }
 
 
@@ -220,27 +186,12 @@ namespace dxvk {
     specInfo.dataSize = sizeof(specConstant);
     specInfo.pData = &specConstant;
 
-    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    moduleInfo.codeSize = size;
-    moduleInfo.pCode = code;
+    util::DxvkBuiltInShaderStage stage;
+    stage.size = size;
+    stage.code = code;
+    stage.spec = &specInfo;
 
-    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    pipelineInfo.stage.pNext = &moduleInfo;
-    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    pipelineInfo.stage.pName = "main";
-    pipelineInfo.stage.pSpecializationInfo = &specInfo;
-    pipelineInfo.layout = m_pipelineLayout;
-    pipelineInfo.basePipelineIndex = -1;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateComputePipelines(vk->device(),
-      VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create format conversion pipeline: ", vr));
-
-    return pipeline;
+    return m_device->createBuiltInComputePipeline(m_layout, stage);
   }
 
 }

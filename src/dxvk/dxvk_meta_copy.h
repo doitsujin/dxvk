@@ -39,9 +39,8 @@ namespace dxvk {
    * that is used for fragment shader copies.
    */
   struct DxvkMetaCopyPipeline {
-    VkDescriptorSetLayout dsetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout      pipeLayout = VK_NULL_HANDLE;
-    VkPipeline            pipeHandle = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* layout   = nullptr;
+    VkPipeline                pipeline = VK_NULL_HANDLE;
   };
 
 
@@ -63,12 +62,12 @@ namespace dxvk {
    * Used to look up copy pipelines based
    * on the copy operation they support.
    */
-  struct DxvkMetaCopyPipelineKey {
-    VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    VkFormat format = VK_FORMAT_UNDEFINED;
-    VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+  struct DxvkMetaImageCopyPipelineKey {
+    VkImageViewType       viewType  = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    VkFormat              format    = VK_FORMAT_UNDEFINED;
+    VkSampleCountFlagBits samples   = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
-    bool eq(const DxvkMetaCopyPipelineKey& other) const {
+    bool eq(const DxvkMetaImageCopyPipelineKey& other) const {
       return this->viewType == other.viewType
           && this->format   == other.format
           && this->samples  == other.samples;
@@ -211,47 +210,29 @@ namespace dxvk {
 
     DxvkDevice* m_device = nullptr;
 
-    VkDescriptorSetLayout m_bufferToImageCopySetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout m_bufferToImageCopyPipelineLayout = VK_NULL_HANDLE;
-
-    VkDescriptorSetLayout m_imageToBufferCopySetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout m_imageToBufferCopyPipelineLayout = VK_NULL_HANDLE;
-
     dxvk::mutex m_mutex;
 
-    std::unordered_map<
-      DxvkMetaCopyPipelineKey,
-      DxvkMetaCopyPipeline,
-      DxvkHash, DxvkEq> m_pipelines;
+    std::unordered_map<DxvkMetaImageCopyPipelineKey,
+      DxvkMetaCopyPipeline, DxvkHash, DxvkEq> m_copyImagePipelines;
 
     std::unordered_map<DxvkMetaBufferImageCopyPipelineKey,
-      VkPipeline, DxvkHash, DxvkEq> m_bufferToImagePipelines;
+      DxvkMetaCopyPipeline, DxvkHash, DxvkEq> m_bufferToImagePipelines;
 
     std::unordered_map<DxvkMetaBufferImageCopyPipelineKey,
-      VkPipeline, DxvkHash, DxvkEq> m_imageToBufferPipelines;
+      DxvkMetaCopyPipeline, DxvkHash, DxvkEq> m_imageToBufferPipelines;
 
     DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
 
     DxvkMetaCopyPipeline createCopyFormattedBufferPipeline();
 
-    DxvkMetaCopyPipeline createPipeline(
-      const DxvkMetaCopyPipelineKey&  key);
+    DxvkMetaCopyPipeline createCopyImagePipeline(
+      const DxvkMetaImageCopyPipelineKey& key);
 
-    VkPipeline createCopyBufferToImagePipeline(
+    DxvkMetaCopyPipeline createCopyBufferToImagePipeline(
       const DxvkMetaBufferImageCopyPipelineKey& key);
 
-    VkPipeline createCopyImageToBufferPipeline(
+    DxvkMetaCopyPipeline createCopyImageToBufferPipeline(
       const DxvkMetaBufferImageCopyPipelineKey& key);
-
-    VkDescriptorSetLayout createDescriptorSetLayout(
-      const DxvkMetaCopyPipelineKey&  key) const;
-    
-    VkPipelineLayout createPipelineLayout(
-            VkDescriptorSetLayout     descriptorSetLayout) const;
-    
-    VkPipeline createPipelineObject(
-      const DxvkMetaCopyPipelineKey&  key,
-            VkPipelineLayout          pipelineLayout);
     
   };
   

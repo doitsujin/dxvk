@@ -53,7 +53,6 @@ namespace dxvk {
     /// Flat shading input mask
     uint32_t flatShadingInputs = 0;
     /// Push constant range
-    VkShaderStageFlags pushConstStages = 0;
     uint32_t pushConstSize = 0;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
@@ -120,11 +119,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves binding layout
-     * \returns Binding layout
+     * \brief Queries shader binding layout
+     * \returns Pipeline layout builder
      */
-    const DxvkBindingLayout& getBindings() const {
-      return m_bindings;
+    DxvkPipelineLayoutBuilder getLayout() const {
+      return m_layout;
     }
 
     /**
@@ -169,12 +168,12 @@ namespace dxvk {
      *
      * Rewrites binding IDs and potentially fixes up other
      * parts of the code depending on pipeline state.
-     * \param [in] layout Biding layout
+     * \param [in] bindings Biding map
      * \param [in] state Pipeline state info
      * \returns Uncompressed SPIR-V code buffer
      */
     SpirvCodeBuffer getCode(
-      const DxvkBindingLayoutObjects*   layout,
+      const DxvkShaderBindingMap*       bindings,
       const DxvkShaderModuleCreateInfo& state) const;
     
     /**
@@ -249,9 +248,10 @@ namespace dxvk {
   private:
 
     struct BindingOffsets {
-      uint32_t bindingId;
-      uint32_t bindingOffset;
-      uint32_t setOffset;
+      uint32_t bindingIndex = 0u;
+      uint32_t bindingOffset = 0u;
+      uint32_t setIndex = 0u;
+      uint32_t setOffset = 0u;
     };
 
     DxvkShaderCreateInfo          m_info;
@@ -269,7 +269,7 @@ namespace dxvk {
 
     std::vector<BindingOffsets>   m_bindingOffsets;
 
-    DxvkBindingLayout             m_bindings;
+    DxvkPipelineLayoutBuilder     m_layout;
 
     static void eliminateInput(
             SpirvCodeBuffer&          code,
@@ -422,10 +422,10 @@ namespace dxvk {
     DxvkShaderSet getShaderSet() const;
 
     /**
-     * \brief Generates merged binding layout
-     * \returns Binding layout
+     * \brief Builds merged binding layout
+     * \returns Pipeline layout builder
      */
-    DxvkBindingLayout getBindings() const;
+    DxvkPipelineLayoutBuilder getLayout() const;
 
     /**
      * \brief Adds a shader to the key
@@ -493,8 +493,7 @@ namespace dxvk {
     DxvkShaderPipelineLibrary(
       const DxvkDevice*               device,
             DxvkPipelineManager*      manager,
-      const DxvkShaderPipelineLibraryKey& key,
-      const DxvkBindingLayoutObjects* layout);
+      const DxvkShaderPipelineLibraryKey& key);
 
     ~DxvkShaderPipelineLibrary();
 
@@ -541,9 +540,11 @@ namespace dxvk {
   private:
 
     const DxvkDevice*               m_device;
-          DxvkPipelineStats*        m_stats;
-          DxvkShaderSet             m_shaders;
-    const DxvkBindingLayoutObjects* m_layout;
+
+    DxvkPipelineStats*              m_stats;
+    DxvkShaderSet                   m_shaders;
+
+    DxvkPipelineBindings            m_layout;
 
     dxvk::mutex                     m_mutex;
     DxvkShaderPipelineLibraryHandle m_pipeline      = { VK_NULL_HANDLE, 0 };
