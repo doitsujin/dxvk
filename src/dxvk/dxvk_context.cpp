@@ -329,7 +329,8 @@ namespace dxvk {
     // Create a descriptor set pointing to the view
     VkBufferView viewObject = bufferView->handle();
 
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
 
     VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
     descriptorWrite.dstSet           = descriptorSet;
@@ -351,12 +352,13 @@ namespace dxvk {
 
     m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
-    m_cmd->cmdBindDescriptorSet(cmdBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
-      descriptorSet, 0, nullptr);
-    m_cmd->cmdPushConstants(cmdBuffer,
-      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(pushArgs), &pushArgs);
+
+    m_cmd->cmdBindDescriptorSet(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipelineLayout, descriptorSet, 0, nullptr);
+
+    m_cmd->cmdPushConstants(cmdBuffer, pipelineLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushArgs), &pushArgs);
+
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
@@ -4379,7 +4381,8 @@ namespace dxvk {
       imageView->type(), lookupFormatInfo(imageView->info().format)->flags);
 
     // Create a descriptor set pointing to the view
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
     
     VkDescriptorImageInfo viewInfo;
     viewInfo.sampler      = VK_NULL_HANDLE;
@@ -4411,12 +4414,13 @@ namespace dxvk {
     
     m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
-    m_cmd->cmdBindDescriptorSet(cmdBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeLayout,
-      descriptorSet, 0, nullptr);
-    m_cmd->cmdPushConstants(cmdBuffer,
-      pipeInfo.pipeLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(pushArgs), &pushArgs);
+
+    m_cmd->cmdBindDescriptorSet(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipelineLayout, descriptorSet, 0, nullptr);
+
+    m_cmd->cmdPushConstants(cmdBuffer, pipelineLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushArgs), &pushArgs);
+
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 

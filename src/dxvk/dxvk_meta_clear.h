@@ -2,6 +2,7 @@
 
 #include "dxvk_format.h"
 #include "dxvk_include.h"
+#include "dxvk_pipelayout.h"
 
 #include "../spirv/spirv_code_buffer.h"
 
@@ -29,10 +30,9 @@ namespace dxvk {
    * and allocate a descriptor set.
    */
   struct DxvkMetaClearPipeline {
-    VkDescriptorSetLayout dsetLayout;
-    VkPipelineLayout      pipeLayout;
-    VkPipeline            pipeline;
-    VkExtent3D            workgroupSize;
+    const DxvkPipelineLayout* layout = nullptr;
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkExtent3D workgroupSize = { };
   };
   
   
@@ -47,7 +47,7 @@ namespace dxvk {
     
   public:
     
-    DxvkMetaClearObjects(const DxvkDevice* device);
+    DxvkMetaClearObjects(DxvkDevice* device);
     ~DxvkMetaClearObjects();
     
     /**
@@ -85,33 +85,27 @@ namespace dxvk {
       VkPipeline clearImg2DArray = VK_NULL_HANDLE;
     };
     
-    Rc<vk::DeviceFn> m_vkd;
+    DxvkDevice* m_device = nullptr;
     
-    VkDescriptorSetLayout m_clearBufDsetLayout = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_clearImgDsetLayout = VK_NULL_HANDLE;
-    
-    VkPipelineLayout m_clearBufPipeLayout = VK_NULL_HANDLE;
-    VkPipelineLayout m_clearImgPipeLayout = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* m_clearBufPipeLayout = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* m_clearImgPipeLayout = VK_NULL_HANDLE;
     
     DxvkMetaClearPipelines m_clearPipesF32;
     DxvkMetaClearPipelines m_clearPipesU32;
     
-    VkDescriptorSetLayout createDescriptorSetLayout(
+    const DxvkPipelineLayout* createPipelineLayout(
             VkDescriptorType        descriptorType);
-    
-    VkPipelineLayout createPipelineLayout(
-            VkDescriptorSetLayout   dsetLayout);
     
     VkPipeline createPipeline(
             size_t                  size,
       const uint32_t*               code,
-            VkPipelineLayout        pipeLayout);
+      const DxvkPipelineLayout*     layout);
 
     template<size_t N>
     VkPipeline createPipeline(
       const uint32_t                (&code)[N],
-            VkPipelineLayout        pipeLayout) {
-      return createPipeline(sizeof(uint32_t) * N, &code[0], pipeLayout);
+      const DxvkPipelineLayout*     layout) {
+      return createPipeline(sizeof(uint32_t) * N, &code[0], layout);
     }
 
   };
