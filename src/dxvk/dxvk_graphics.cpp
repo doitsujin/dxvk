@@ -1080,7 +1080,7 @@ namespace dxvk {
 
         m_workers->compileGraphicsPipeline(this, state, DxvkPipelinePriority::High);
 
-        return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
+        return DxvkGraphicsPipelineHandle();
       } else {
 
         // Keep pipeline object locked, at worst we're going to stall
