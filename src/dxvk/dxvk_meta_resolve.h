@@ -18,9 +18,8 @@ namespace dxvk {
    * that is used for fragment shader resolve.
    */
   struct DxvkMetaResolvePipeline {
-    VkDescriptorSetLayout dsetLayout;
-    VkPipelineLayout      pipeLayout;
-    VkPipeline            pipeHandle;
+    const DxvkPipelineLayout* layout   = nullptr;
+    VkPipeline                pipeline = VK_NULL_HANDLE;
   };
 
   /**
@@ -30,10 +29,10 @@ namespace dxvk {
    * on the copy operation they support.
    */
   struct DxvkMetaResolvePipelineKey {
-    VkFormat                  format;
-    VkSampleCountFlagBits     samples;
-    VkResolveModeFlagBits     modeD;
-    VkResolveModeFlagBits     modeS;
+    VkFormat                  format  = VK_FORMAT_UNDEFINED;
+    VkSampleCountFlagBits     samples = VK_SAMPLE_COUNT_1_BIT;
+    VkResolveModeFlagBits     modeD   = VK_RESOLVE_MODE_NONE;
+    VkResolveModeFlagBits     modeS   = VK_RESOLVE_MODE_NONE;
 
     bool eq(const DxvkMetaResolvePipelineKey& other) const {
       return this->format  == other.format
@@ -113,16 +112,6 @@ namespace dxvk {
 
     DxvkMetaResolvePipeline createPipeline(
       const DxvkMetaResolvePipelineKey& key);
-
-    VkDescriptorSetLayout createDescriptorSetLayout(
-      const DxvkMetaResolvePipelineKey& key);
-
-    VkPipelineLayout createPipelineLayout(
-            VkDescriptorSetLayout  descriptorSetLayout);
-
-    VkPipeline createPipelineObject(
-      const DxvkMetaResolvePipelineKey& key,
-            VkPipelineLayout       pipelineLayout);
 
   };
 
