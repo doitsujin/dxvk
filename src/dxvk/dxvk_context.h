@@ -1415,9 +1415,9 @@ namespace dxvk {
     std::vector<VkWriteDescriptorSet> m_descriptorWrites;
     std::vector<DxvkDescriptorInfo>   m_descriptors;
 
-    std::array<Rc<DxvkSampler>, MaxNumResourceSlots> m_samplers;
-    std::array<DxvkBufferSlice, MaxNumResourceSlots> m_uniformBuffers;
-    std::array<DxvkViewPair,    MaxNumResourceSlots> m_resources;
+    std::array<Rc<DxvkSampler>, MaxNumSamplerSlots> m_samplers;
+    std::array<DxvkBufferSlice, MaxNumUniformBufferSlots> m_uniformBuffers;
+    std::array<DxvkViewPair, MaxNumResourceSlots> m_resources;
 
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
