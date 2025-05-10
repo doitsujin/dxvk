@@ -306,12 +306,13 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_cBuffer, 0);
     m_module.decorateBinding(m_cBuffer, bindingId);
 
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
   }
 
   template<DxsoConstantBufferType ConstantBufferType>
@@ -393,17 +394,17 @@ namespace dxvk {
     if (asSsbo)
       m_module.decorate(constantBufferId, spv::DecorationNonWritable);
 
-    DxvkBindingInfo binding = { };
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
     binding.descriptorType  = asSsbo
       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access          = asSsbo
       ? VK_ACCESS_SHADER_READ_BIT
       : VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
     return constantBufferId;
   }
@@ -484,12 +485,13 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_ps.sharedState, 0);
     m_module.decorateBinding(m_ps.sharedState, bindingId);
 
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
   }
 
 
@@ -784,11 +786,13 @@ namespace dxvk {
     m_samplers[idx].type = type;
 
     // Store descriptor info for the shader interface
-    DxvkBindingInfo bindingInfo = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-    bindingInfo.resourceBinding = binding;
+    auto& bindingInfo = m_bindings.emplace_back();
+    bindingInfo.set             = 0u;
+    bindingInfo.binding         = binding;
+    bindingInfo.resourceIndex   = binding;
+    bindingInfo.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     bindingInfo.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
     bindingInfo.access          = VK_ACCESS_SHADER_READ_BIT;
-    m_bindings.push_back(bindingInfo);
   }
 
 
@@ -3515,12 +3519,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.decorateDescriptorSet(clipPlaneBlock, 0);
     m_module.decorateBinding      (clipPlaneBlock, bindingId);
     
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
     // Declare output array for clip distances
     uint32_t clipDistArray = m_module.newVar(
