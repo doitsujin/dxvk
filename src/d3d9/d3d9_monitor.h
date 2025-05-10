@@ -28,6 +28,15 @@ namespace dxvk {
   bool IsSupportedAdapterFormat(
           D3D9Format Format);
 
+  /**
+  * \brief Returns if a format is considered for mode enumeration.
+  *
+  * \param [in] Format The D3D9 format to query
+  * \returns If it is supported for mode enumeration.
+  */
+  bool IsSupportedModeFormat(
+          D3D9Format Format);
+
   bool IsSupportedBackBufferFormat(
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
