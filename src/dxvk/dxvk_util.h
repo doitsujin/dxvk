@@ -69,6 +69,47 @@ namespace dxvk::util {
 
 
   /**
+   * \brief Built-in graphics pipeline state
+   *
+   * For any state not explicitly specified, sane
+   * defaults will be chosen as necessary.
+   */
+  struct DxvkBuiltInGraphicsState {
+    /** Vertex shader. Must be defined. */
+    DxvkBuiltInShaderStage vs;
+    /** Geometry shader. */
+    DxvkBuiltInShaderStage gs;
+    /** Fragment shader. */
+    DxvkBuiltInShaderStage fs;
+    /** Color attachment format. */
+    VkFormat colorFormat = VK_FORMAT_UNDEFINED;
+    /** Depth-stencil attachment format */
+    VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+    /** Sample count */
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    /** Vertex input state. If null, a default state containing
+     *  no vertex attributes or bindings will be used. */
+    const VkPipelineVertexInputStateCreateInfo* viState = nullptr;
+    /** Primitive topology state. If null, this will use a
+     *  triangle list without primitive restart. */
+    const VkPipelineInputAssemblyStateCreateInfo* iaState = nullptr;
+    /** Rasterization state. If null, this will use a default
+     *  state without any back-face culling. */
+    const VkPipelineRasterizationStateCreateInfo* rsState = nullptr;
+    /** Depth-stencil state. If null, no depth or stencil tests
+     *  will be performed by the pipeline. */
+    const VkPipelineDepthStencilStateCreateInfo* dsState = nullptr;
+    /** Blend state for the color attachment. If null, blending
+     *  will be disabled and all color components are written. */
+    const VkPipelineColorBlendAttachmentState* cbAttachment = nullptr;
+    /** Additional dynamic states. These will be added to the
+     *  default set of viewport and scissor states. */
+    uint32_t dynamicStateCount = 0u;
+    const VkDynamicState* dynamicStates = nullptr;
+  };
+
+
+  /**
    * \brief Built-in shader stage helper
    *
    * Useful when creating built-in pipelines.
