@@ -206,6 +206,8 @@ namespace dxvk {
 
     uint32_t                        m_globalHDRStateSerial = 0;
     bool                            m_hasLatencyControl = false;
+
+    D3DDestructionNotifier          m_destructionNotifier;
     
     HRESULT EnterFullscreenMode(
             IDXGIOutput1            *pTarget);

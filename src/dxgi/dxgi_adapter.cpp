@@ -293,7 +293,7 @@ namespace dxvk {
       uint16_t fallbackDevice = 0xbeef;
 
       if (!options->hideAmdGpu) {
-        // AMD RX 6700XT
+        // AMD RX 6700 XT
         fallbackVendor = uint16_t(DxvkGpuVendor::Amd);
         fallbackDevice = 0x73df;
       } else if (!options->hideNvidiaGpu) {
@@ -315,7 +315,9 @@ namespace dxvk {
         if (options->customDeviceId < 0)
           deviceProp.deviceID = fallbackDevice;
 
-        Logger::info(str::format("DXGI: Hiding actual GPU, reporting vendor ID 0x", std::hex, deviceProp.vendorID, ", device ID ", deviceProp.deviceID));
+        Logger::info(str::format("DXGI: Hiding actual GPU, reporting:\n",
+                                 "  vendor ID: 0x", std::hex, deviceProp.vendorID, "\n",
+                                 "  device ID: 0x", std::hex, deviceProp.deviceID, "\n"));
       }
     }
     

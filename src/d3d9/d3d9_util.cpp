@@ -55,8 +55,8 @@ namespace dxvk {
     const auto& limits = pDevice->properties().core.properties.limits;
     VkSampleCountFlags supportedSampleCounts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
 
-    while (sampleCount > supportedSampleCounts)
-      sampleCount >>= 1;
+    if ((sampleCount & supportedSampleCounts) == 0)
+      return D3DERR_INVALIDCALL;
 
     if (pSampleCount)
       *pSampleCount = VkSampleCountFlagBits(sampleCount);

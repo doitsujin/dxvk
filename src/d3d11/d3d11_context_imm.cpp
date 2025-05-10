@@ -21,7 +21,8 @@ namespace dxvk {
     m_flushTracker(GetMaxFlushType(pParent, Device)),
     m_stagingBufferFence(new sync::Fence(0)),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
-    m_videoContext(this, Device) {
+    m_videoContext(this, Device),
+    m_destructionNotifier(this) {
     EmitCs([
       cDevice                 = m_device,
       cBarrierControlFlags    = pParent->GetOptionsBarrierControlFlags()
@@ -59,6 +60,11 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D11VideoContext)) {
       *ppvObject = ref(&m_videoContext);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 

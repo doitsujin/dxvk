@@ -200,6 +200,8 @@ namespace dxvk {
     D3D11DXGIResource             m_resource;
     D3D10Buffer                   m_d3d10;
 
+    D3DDestructionNotifier        m_destructionNotifier;
+
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
             VkFormatFeatureFlags2 Features) const;

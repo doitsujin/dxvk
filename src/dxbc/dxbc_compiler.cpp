@@ -2386,33 +2386,48 @@ namespace dxvk {
     // Load source operand as 32-bit float vector.
     const DxbcRegisterValue srcValue = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, true, true, true));
-    
-    // Either output may be DxbcOperandType::Null, in
-    // which case we don't have to generate any code.
-    if (ins.dst[0].type != DxbcOperandType::Null) {
-      const DxbcRegisterValue sinInput =
-        emitRegisterExtract(srcValue, ins.dst[0].mask);
-      
-      DxbcRegisterValue sin;
-      sin.type = sinInput.type;
-      sin.id = m_module.opSin(
-        getVectorTypeId(sin.type),
-        sinInput.id);
-      
-      emitRegisterStore(ins.dst[0], sin);
+
+    uint32_t typeId = getScalarTypeId(srcValue.type.ctype);
+
+    DxbcRegisterValue sinVector = { };
+    sinVector.type.ctype = DxbcScalarType::Float32;
+
+    DxbcRegisterValue cosVector = { };
+    cosVector.type.ctype = DxbcScalarType::Float32;
+
+    // Only compute sincos for enabled components
+    std::array<uint32_t, 4> sinIds = { };
+    std::array<uint32_t, 4> cosIds = { };
+
+    for (uint32_t i = 0; i < 4; i++) {
+      const uint32_t sinIndex = 0u;
+      const uint32_t cosIndex = 1u;
+
+      if (ins.dst[0].mask[i] || ins.dst[1].mask[i]) {
+        uint32_t sincosId = m_module.opSinCos(m_module.opCompositeExtract(typeId, srcValue.id, 1u, &i), !m_moduleInfo.options.sincosEmulation);
+
+        if (ins.dst[0].type != DxbcOperandType::Null && ins.dst[0].mask[i])
+          sinIds[sinVector.type.ccount++] = m_module.opCompositeExtract(typeId, sincosId, 1u, &sinIndex);
+
+        if (ins.dst[1].type != DxbcOperandType::Null && ins.dst[1].mask[i])
+          cosIds[cosVector.type.ccount++] = m_module.opCompositeExtract(typeId, sincosId, 1u, &cosIndex);
+      }
     }
-    
-    if (ins.dst[1].type != DxbcOperandType::Null) {
-      const DxbcRegisterValue cosInput =
-        emitRegisterExtract(srcValue, ins.dst[1].mask);
-      
-      DxbcRegisterValue cos;
-      cos.type = cosInput.type;
-      cos.id = m_module.opCos(
-        getVectorTypeId(cos.type),
-        cosInput.id);
-      
-      emitRegisterStore(ins.dst[1], cos);
+
+    if (sinVector.type.ccount) {
+      sinVector.id = sinVector.type.ccount > 1u
+        ? m_module.opCompositeConstruct(getVectorTypeId(sinVector.type), sinVector.type.ccount, sinIds.data())
+        : sinIds[0];
+
+      emitRegisterStore(ins.dst[0], sinVector);
+    }
+
+    if (cosVector.type.ccount) {
+      cosVector.id = cosVector.type.ccount > 1u
+        ? m_module.opCompositeConstruct(getVectorTypeId(cosVector.type), cosVector.type.ccount, cosIds.data())
+        : cosIds[0];
+
+      emitRegisterStore(ins.dst[1], cosVector);
     }
   }
   

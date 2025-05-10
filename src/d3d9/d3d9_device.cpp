@@ -193,6 +193,11 @@ namespace dxvk {
     m_activeRTsWhichAreTextures = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
+
+    // Determine used vendor ID
+    D3DADAPTER_IDENTIFIER9 adapterId9;
+    HRESULT res = m_adapter->GetAdapterIdentifier(0, &adapterId9);
+    m_vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
   }
 
 
@@ -2259,8 +2264,9 @@ namespace dxvk {
 
       states[State] = Value;
 
-      // AMD's driver hack for ATOC and RESZ
-      if (unlikely(State == D3DRS_POINTSIZE)) {
+      // AMD's driver hack for ATOC and RESZ.
+      if (unlikely(State == D3DRS_POINTSIZE &&
+                   m_vendorId == uint32_t(DxvkGpuVendor::Amd))) {
         // ATOC
         constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::A2M1);
         constexpr uint32_t AlphaToCoverageDisable = uint32_t(D3D9Format::A2M0);
@@ -2289,8 +2295,10 @@ namespace dxvk {
         }
       }
 
-      // NV's driver hack for ATOC.
-      if (unlikely(State == D3DRS_ADAPTIVETESS_Y)) {
+      // Nvidia/Intel's driver hack for ATOC.
+      if (unlikely(State == D3DRS_ADAPTIVETESS_Y &&
+                   (m_vendorId == uint32_t(DxvkGpuVendor::Nvidia)
+                 || m_vendorId == uint32_t(DxvkGpuVendor::Intel)))) {
         constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::ATOC);
         constexpr uint32_t AlphaToCoverageDisable = 0;
 
@@ -2647,13 +2655,21 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipStatus(const D3DCLIPSTATUS9* pClipStatus) {
-    Logger::warn("D3D9DeviceEx::SetClipStatus: Stub");
+    if (unlikely(pClipStatus == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    m_state.clipStatus = *pClipStatus;
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipStatus(D3DCLIPSTATUS9* pClipStatus) {
-    Logger::warn("D3D9DeviceEx::GetClipStatus: Stub");
+    if (unlikely(pClipStatus == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pClipStatus = m_state.clipStatus;
+
     return D3D_OK;
   }
 
@@ -3010,7 +3026,7 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(m_state.vertexDecl == nullptr))
-        return D3DERR_INVALIDCALL;
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(!PrimitiveCount))
       return S_OK;
@@ -4507,6 +4523,11 @@ namespace dxvk {
 
   bool D3D9DeviceEx::SupportsSWVP() {
     return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics && m_dxvkDevice->features().vk12.shaderInt8;
+  }
+
+
+  bool D3D9DeviceEx::SupportsVCacheQuery() const {
+    return m_vendorId == uint32_t(DxvkGpuVendor::Nvidia);
   }
 
 
@@ -6799,6 +6820,19 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->setViewports(1, &cViewport);
     });
+  }
+
+
+  bool D3D9DeviceEx::IsAlphaToCoverageEnabled() const {
+    const bool alphaTest = m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0;
+
+    const D3D9CommonTexture* rt0 = GetCommonTexture(m_state.renderTargets[0].ptr());
+    const bool isMultisampled = rt0 != nullptr && (
+      rt0->Desc()->MultiSample >= D3DMULTISAMPLE_2_SAMPLES
+      || (rt0->Desc()->MultiSample == D3DMULTISAMPLE_NONMASKABLE && rt0->Desc()->MultisampleQuality > 0)
+    );
+
+    return (m_amdATOC || (m_nvATOC && alphaTest)) && rt0 != nullptr && isMultisampled;
   }
 
 

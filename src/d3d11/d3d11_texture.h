@@ -603,6 +603,7 @@ namespace dxvk {
             VkFormatFeatureFlags2 Features) const;
     
     std::pair<D3D11_COMMON_TEXTURE_MAP_MODE, VkMemoryPropertyFlags> DetermineMapMode(
+      const D3D11Device*          device,
       const DxvkImageCreateInfo*  pImageInfo) const;
 
     D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT DetermineSubresourceLayout(
@@ -736,6 +737,8 @@ namespace dxvk {
     
     ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
+
+    std::atomic<bool>   m_locked = { false };
     
   };
   
@@ -784,7 +787,9 @@ namespace dxvk {
     D3D11DXGISurface      m_surface;
     D3D11DXGIResource     m_resource;
     D3D10Texture1D        m_d3d10;
-    
+
+    D3DDestructionNotifier m_destructionNotifier;
+
   };
   
   
@@ -852,8 +857,10 @@ namespace dxvk {
     D3D11DXGISurface      m_surface;
     D3D11DXGIResource     m_resource;
     D3D10Texture2D        m_d3d10;
-    IUnknown*             m_swapChain;
-    
+    IUnknown*             m_swapChain = nullptr;
+
+    D3DDestructionNotifier m_destructionNotifier;
+
   };
   
   
@@ -903,6 +910,8 @@ namespace dxvk {
     D3D11VkInteropSurface m_interop;
     D3D11DXGIResource     m_resource;
     D3D10Texture3D        m_d3d10;
+
+    D3DDestructionNotifier m_destructionNotifier;
     
   };
   

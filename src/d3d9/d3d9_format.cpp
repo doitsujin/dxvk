@@ -1,4 +1,5 @@
 #include "d3d9_format.h"
+#include "d3d9_adapter.h"
 
 namespace dxvk {
 
@@ -461,17 +462,19 @@ namespace dxvk {
   }
 
   D3D9VkFormatTable::D3D9VkFormatTable(
+          D3D9Adapter*     pParent,
     const Rc<DxvkAdapter>& adapter,
     const D3D9Options&     options) {
 
-    const auto& props = adapter->deviceProperties();
-    uint32_t vendorId  = options.customVendorId == -1 ? props.vendorID : uint32_t(options.customVendorId);
+    D3DADAPTER_IDENTIFIER9 adapterId9;
+    HRESULT res = pParent->GetAdapterIdentifier(0, &adapterId9);
+    const uint32_t vendorId = SUCCEEDED(res) ? adapterId9.VendorId : 0;
 
     // NVIDIA does not natively support any DF formats
     m_dfSupport = vendorId == uint32_t(DxvkGpuVendor::Nvidia) ? false : options.supportDFFormats;
     m_x4r4g4b4Support = options.supportX4R4G4B4;
     // Only AMD supports D16_LOCKABLE natively
-    m_d16lockableSupport = vendorId == uint32_t(DxvkGpuVendor::Amd) ? true : options.supportD16Lockable;
+    m_d16lockableSupport = vendorId == uint32_t(DxvkGpuVendor::Amd);
 
     // AMD do not support 24-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.

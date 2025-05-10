@@ -337,6 +337,8 @@ namespace dxvk {
 
     /**
      * \brief Checks whether the image has graphics stores
+     *
+     * This may include attachment access for render passes.
      * \returns \c true if the image has graphics pipeline stores
      */
     bool hasGfxStores() const;
@@ -838,7 +840,7 @@ namespace dxvk {
 
 
   inline bool DxvkImageView::hasGfxStores() const {
-    return (m_properties.access & VK_ACCESS_SHADER_WRITE_BIT)
+    return (m_properties.access & (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT))
         && (m_image->hasGfxStores());
   }
 

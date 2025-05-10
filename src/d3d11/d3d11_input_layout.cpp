@@ -12,7 +12,8 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11InputLayout>(pDevice),
     m_attributeCount  (numAttributes),
     m_bindingCount    (numBindings),
-    m_d3d10           (this) {
+    m_d3d10           (this),
+    m_destructionNotifier(this) {
     for (uint32_t i = 0; i < numAttributes; i++)
       m_inputs[i] = DxvkVertexInput(pAttributes[i]);
 
@@ -45,6 +46,11 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11InputLayout), riid)) {
       Logger::warn("D3D11InputLayout::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

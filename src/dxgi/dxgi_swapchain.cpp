@@ -22,7 +22,8 @@ namespace dxvk {
     m_presentId (0u),
     m_presenter (pPresenter),
     m_monitor   (wsi::getWindowMonitor(m_window)),
-    m_is_d3d12(SUCCEEDED(pDevice->QueryInterface(__uuidof(ID3D12CommandQueue), reinterpret_cast<void**>(&Com<ID3D12CommandQueue>())))) {
+    m_is_d3d12(SUCCEEDED(pDevice->QueryInterface(__uuidof(ID3D12CommandQueue), reinterpret_cast<void**>(&Com<ID3D12CommandQueue>())))),
+    m_destructionNotifier(this) {
 
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
@@ -85,6 +86,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGISwapChain3)
      || riid == __uuidof(IDXGISwapChain4)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
     

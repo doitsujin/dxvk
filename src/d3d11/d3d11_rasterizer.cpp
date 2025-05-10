@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*                    device,
     const D3D11_RASTERIZER_DESC2&         desc)
   : D3D11StateObject<ID3D11RasterizerState2>(device),
-    m_desc(desc), m_d3d10(this) {
+    m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
     switch (desc.FillMode) {
@@ -84,7 +84,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11RasterizerState), riid)) {
       Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

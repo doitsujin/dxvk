@@ -2485,7 +2485,7 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
       bool isFullWrite = (resolve.depthMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
-                      && (resolve.stencilMode  || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
+                      && (resolve.stencilMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
 
       if (isFullWrite)
         oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -2502,6 +2502,15 @@ namespace dxvk {
 
       bool needsNewBackingStorage = (dstImage->info().stages & graphicsStages)
         && dstImage->isTracked(m_trackingId, DxvkAccess::Write);
+
+      if (needsNewBackingStorage && dstImage->hasGfxStores()) {
+        needsNewBackingStorage = resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Read, DxvkAccessOp::None)
+                              || resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Write, DxvkAccessOp::None);
+      }
+
+      // Enable tracking so that we don't unnecessarily hit slow paths in the future
+      if (dstImage->info().stages & graphicsStages)
+        dstImage->trackGfxStores();
 
       if (needsNewBackingStorage) {
         auto imageSubresource = dstImage->getAvailableSubresources();
@@ -4237,9 +4246,9 @@ namespace dxvk {
           str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
       }
 
-      clearLayout = (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT)
-        ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-        : imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      clearLayout = (imageView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+        ? imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+        : imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
       VkExtent3D extent = imageView->mipLevelExtent(0);
 
@@ -4253,14 +4262,7 @@ namespace dxvk {
       renderingInfo.renderArea.extent = { extent.width, extent.height };
       renderingInfo.layerCount = imageView->info().layerCount;
 
-      if (imageView->info().aspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                    |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments = &attachmentInfo;
-      } else {
+      if (imageView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
         clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
@@ -4271,6 +4273,13 @@ namespace dxvk {
 
         if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
           renderingInfo.pStencilAttachment = &attachmentInfo;
+      } else {
+        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                    |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &attachmentInfo;
       }
 
       addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
@@ -5053,7 +5062,7 @@ namespace dxvk {
 
     // Create a pair of views for the attachment resolve
     DxvkMetaResolveViews views(dstImage, region.dstSubresource,
-      srcImage, region.srcSubresource, dstImage->info().format);
+      srcImage, region.srcSubresource, format);
 
     VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachment.imageView = views.srcView->handle();

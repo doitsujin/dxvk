@@ -136,6 +136,8 @@ namespace dxvk {
 
     Com<D3D11DeviceContextState, false> m_stateObject;
 
+    D3DDestructionNotifier  m_destructionNotifier;
+
     std::string             m_flushReason;
 
     HRESULT MapBuffer(

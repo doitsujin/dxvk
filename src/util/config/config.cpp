@@ -184,15 +184,15 @@ namespace dxvk {
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
-     * Apitrace mode helps massively in cpu bound   *
-     * game parts                                   */
+     * Cached dynamic buffers help massively        *
+     * in CPU bound game parts                      */
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Crysis 3 Remastered                          *
-     * Apitrace mode helps massively in cpu bound   *
-     * game parts                                   */
+     * Cached dynamic buffers help massively        *
+     * in CPU bound game parts                      */
     { R"(\\Crysis3Remastered\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
@@ -469,6 +469,11 @@ namespace dxvk {
     { R"(\\WatchDogs2\.exe$)", {{
       { "d3d11.forceComputeUavBarriers",    "True" },
     }} },
+    /* Rocketbirds 2: Ignores row pitch for mapped *
+     * images, corrupting intro video              */
+    { R"(\\Rocketbirds 2\\Game\.exe$)", {{
+      { "d3d11.disableDirectImageMapping",  "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -565,7 +570,7 @@ namespace dxvk {
        Needs NVAPI to avoid a forced AO + Smoke
        exploit so we must force AMD vendor ID.    */
     { R"(\\csgo\.exe$)", {{
-      { "d3d9.customVendorId",              "1002" },
+      { "d3d9.hideNvidiaGpu",               "True" },
     }} },
     /* Vampire - The Masquerade Bloodlines        */
     { R"(\\vampire\.exe$)", {{
@@ -579,7 +584,7 @@ namespace dxvk {
     }} },
     /* Skyrim (NVAPI)                             */
     { R"(\\TESV\.exe$)", {{
-      { "d3d9.customVendorId",              "1002" },
+      { "d3d9.hideNvidiaGpu",               "True" },
     }} },
     /* Hyperdimension Neptunia U: Action Unleashed */
     { R"(\\Neptunia\.exe$)", {{
@@ -594,7 +599,7 @@ namespace dxvk {
      * path for mirrors.
      * Also runs into issues after alt-tabbing.   */
     { R"(\\(GTAIV|EFLC)\.exe$)", {{
-      { "d3d9.customVendorId",              "1002" },
+      { "d3d9.hideNvidiaGpu",               "True" },
       { "dxgi.maxDeviceMemory",             "128" },
       { "d3d9.supportDFFormats",            "False" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
@@ -635,13 +640,14 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "0402" },
     }} },
-    /* Warhammer: Online                         */
+    /* Warhammer: Online                         *
+     * Overly bright ground textures on Nvidia   */
     { R"(\\(WAR(-64)?|WARTEST(-64)?)\.exe$)", {{
-      { "d3d9.customVendorId",              "1002" },
+      { "d3d9.hideNvidiaGpu",               "True" },
     }} },
     /* Dragon Nest                               */
     { R"(\\DragonNest_x64\.exe$)", {{
-      { "d3d9.memoryTrackTest ",            "True" },
+      { "d3d9.memoryTrackTest",             "True" },
     }} },
     /* Dal Segno                                 */
     { R"(\\DST\.exe$)", {{
@@ -665,7 +671,7 @@ namespace dxvk {
     }} },
     /* Far Cry 1 has worse water rendering when it detects AMD GPUs */
     { R"(\\FarCry\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.hideAmdGpu",                  "True" },
     }} },
     /* Sine Mora EX */
     { R"(\\SineMoraEX\.exe$)", {{
@@ -729,12 +735,10 @@ namespace dxvk {
       { "d3d9.maxAvailableMemory",          "2048" },
     }} },
     /* Myst V End of Ages                       *
-     * White textures unless it sees Nvidia,    *
-     * Intel or ATI VendorId.                   *
-     * "Radeon" in gpu description also works.  *
-     * countLosable for resolution change crash.*/
+     * Resolution change crash and cached       *
+     * dynamic buffers for performance reasons  */
     { R"(\\eoa\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.countLosableResources",       "False" },
     }} },
     /* Supreme Commander & Forged Alliance Forever */
@@ -801,20 +805,11 @@ namespace dxvk {
     { R"(\\DAOrigins\.exe$)" , {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
-    /* Fallout 3 - Doesn't like Intel Id       */
-    { R"(\\Fallout3\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
-    }} },
     /* Sonic & All-Stars Racing Transformed    *
      * Helps performance when Resizable BAR    *
      * is enabled                              */
     { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* Black Mesa                              *
-     * Artifacts & broken flashlight on Intel  */
-    { R"(\\bms\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
     }} },
     /* Final Fantasy XIV - Direct3D 9 mode     *
      * Can crash with unmapping                */
@@ -927,15 +922,16 @@ namespace dxvk {
     { R"(\\ninthdawnii\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-    /* Delta Force: Xtreme 1 & 2                 *
-     * Black screen on Alt-Tab and performance   */
+    /* Delta Force: Xtreme 1 & 2 - Performance   */
     { R"(\\(DFX|dfx2)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Prototype                                 *
-     * Incorrect shadows on AMD & Intel          */
-    { R"(\\prototypef\.exe$)", {{ 
-      { "d3d9.supportDFFormats",            "False" },
+     * Incorrect shadows on AMD & Intel.         *
+     * AA 4x can not be selected above 2GB vram  */
+    { R"(\\prototypef\.exe$)", {{
+      { "d3d9.hideAmdGpu",                  "True" },
+      { "dxgi.maxDeviceMemory",             "2047" },
     }} },
     /* STAR WARS: The Force Unleashed            *
      * Prevents black screen on each alt-tab     */
@@ -962,8 +958,8 @@ namespace dxvk {
     { R"(\\WRC4\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Splinter Cell Conviction - Alt-tab black  *
-     * screen and unsupported GPU complaint      */
+    /* Splinter Cell Conviction                  *
+     * Unsupported GPU complaint                 */
     { R"(\\conviction_game\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
       { "dxgi.customDeviceId",              "05e0" },
@@ -997,12 +993,10 @@ namespace dxvk {
     { R"(\\SecretWorldLegends\.exe$)", {{
       { "d3d9.memoryTrackTest",              "True" },
     }} },
-    /* Far Cry 2: Set vendor ID to Nvidia to       *
-     * avoid vegetation artifacts on Intel, and    *
-     * set apitrace mode to True to improve perf   *
-     * on all hardware.                            */
+    /* Far Cry 2:                                  *
+     * Set cached dynamic buffers to True to       *
+     * improve perf on all hardware.               */
     { R"(\\(FarCry2|farcry2game)\.exe$)", {{
-      { "d3d9.customVendorId",              "10de" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Dark Sector - Crashes in places             */
@@ -1020,11 +1014,9 @@ namespace dxvk {
       { "d3d9.floatEmulation",              "Strict" },
     }} },
     /* Star Wars Empire at War & expansion         *
-     * On Intel the Water & Shader Detail option   *
-     * can't be modified. In base game the AA      *
-     * option dissapears at 2075MB vram and above  */
+     * In base game the AA option dissapears at    *
+     * 2075MB vram and above                       */
     { R"(\\(StarWarsG|sweaw|swfoc)\.exe$)", {{
-      { "d3d9.customVendorId",              "1002" },
       { "d3d9.maxAvailableMemory",          "2048" },
       { "d3d9.memoryTrackTest",             "True" },
     }} },
@@ -1052,6 +1044,10 @@ namespace dxvk {
      * Fix UI performance                         */
     { R"((\\LEGOBatman|LegoBatman\\Game)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* Thumper - Fixes missing track              */
+    { R"(\\THUMPER_dx9\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
     }} },
 
     /**********************************************/
