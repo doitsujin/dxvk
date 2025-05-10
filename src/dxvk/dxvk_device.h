@@ -413,6 +413,16 @@ namespace dxvk {
       const util::DxvkBuiltInShaderStage&   stage);
 
     /**
+     * \brief Creates built-in graphics pipeline
+     *
+     * \param [in] layout Pipeline layout
+     * \param [in] state Pipeline state
+     */
+    VkPipeline createBuiltInGraphicsPipeline(
+      const DxvkPipelineLayout*             layout,
+      const util::DxvkBuiltInGraphicsState& state);
+
+    /**
      * \brief Imports a buffer
      *
      * \param [in] createInfo Buffer create info
