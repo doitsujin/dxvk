@@ -5215,7 +5215,8 @@ namespace dxvk {
       dstFormat, srcImage->info().sampleCount, depthMode, stencilMode);
 
     // Create and initialize descriptor set    
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
 
     std::array<VkDescriptorImageInfo, 2> descriptorImages = {{
       { VK_NULL_HANDLE, views.srcImageView->handle(), srcLayout },
@@ -5287,17 +5288,23 @@ namespace dxvk {
       region.srcOffset.y - region.dstOffset.y };
     
     m_cmd->cmdBeginRendering(&renderingInfo);
+
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
-      descriptorSet, 0, nullptr);
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
+
+    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+      descriptorSet, 0, nullptr);
+
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(srcOffset), &srcOffset);
+
     m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
+
     m_cmd->cmdEndRendering();
 
     accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange,
