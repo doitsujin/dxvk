@@ -1366,14 +1366,16 @@ namespace dxvk {
     // Retrieve a compatible pipeline to use for rendering
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       mipGenerator.getSrcViewType(), imageView->info().format, VK_SAMPLE_COUNT_1_BIT);
-    
+
+    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
+
     for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
       // Width, height and layer count for the current pass
       VkExtent3D passExtent = mipGenerator.computePassExtent(i);
       
       // Create descriptor set with the current source view
       descriptorImage.imageView = mipGenerator.getSrcViewHandle(i);
-      descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+      descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
       m_cmd->updateDescriptorSets(1, &descriptorWrite);
       
       // Set up viewport and scissor rect
@@ -1412,17 +1414,19 @@ namespace dxvk {
       }
 
       m_cmd->cmdBeginRendering(&renderingInfo);
+
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
-      m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
-        descriptorWrite.dstSet, 0, nullptr);
-      
+        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+
       m_cmd->cmdSetViewport(1, &viewport);
       m_cmd->cmdSetScissor(1, &scissor);
       
+      m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
+        descriptorWrite.dstSet, 0, nullptr);
+
       m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+        pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
         0, sizeof(pushConstants), &pushConstants);
       
       m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
@@ -3447,8 +3451,10 @@ namespace dxvk {
       dstView->info().viewType, dstView->info().format,
       dstView->image()->info().sampleCount);
 
+    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
+
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
 
     // Set up viewport
     VkViewport viewport;
@@ -3475,7 +3481,7 @@ namespace dxvk {
     descriptorImage.imageLayout = srcLayout;
     
     VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet           = m_descriptorPool->alloc(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet           = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
     descriptorWrite.dstBinding       = 0;
     descriptorWrite.dstArrayElement  = 0;
     descriptorWrite.descriptorCount  = 1;
@@ -3483,8 +3489,9 @@ namespace dxvk {
     descriptorWrite.pImageInfo       = &descriptorImage;
 
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
     m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeLayout,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
       descriptorWrite.dstSet, 0, nullptr);
 
     // Compute shader parameters for the operation
@@ -3502,7 +3509,7 @@ namespace dxvk {
     pushConstants.layerCount = dstView->info().layerCount;
 
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.pipeLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
+      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(pushConstants), &pushConstants);
 
     m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);

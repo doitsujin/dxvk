@@ -345,7 +345,7 @@ namespace dxvk {
     VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
     msState.rasterizationSamples  = state.sampleCount;
     msState.pSampleMask           = &sampleMask;
-    msState.sampleShadingEnable   = state.sampleCount > VK_SAMPLE_COUNT_1_BIT;
+    msState.sampleShadingEnable   = VK_FALSE;
     msState.minSampleShading      = 1.0f;
 
     // Default depth-stencil state, enables depth and stencil write-through
