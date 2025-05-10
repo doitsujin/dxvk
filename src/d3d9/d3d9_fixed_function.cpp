@@ -889,7 +889,6 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
-    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     return new DxvkShader(info, m_module.compile());

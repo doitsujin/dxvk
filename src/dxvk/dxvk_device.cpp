@@ -237,8 +237,7 @@ namespace dxvk {
 
     if (pushConstantSize) {
       key.addStages(pushConstantStages);
-      key.addPushConstantRange(DxvkPushConstantRange(
-        pushConstantStages, pushConstantStages, pushConstantSize));
+      key.addPushConstantRange(DxvkPushConstantRange(pushConstantStages, pushConstantSize));
     }
 
     if (bindingCount) {

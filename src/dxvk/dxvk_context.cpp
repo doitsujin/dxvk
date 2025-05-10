@@ -6157,7 +6157,9 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    if (!newPipeline->getLayout()->getPushConstantRange().isEmpty()) {
+    auto pushConstants = newPipeline->getLayout()->getPushConstantRange().getPushConstantRange(false);
+
+    if (pushConstants.size) {
       m_flags.set(DxvkContextFlag::CpHasPushConstants,
                   DxvkContextFlag::DirtyPushConstants);
     }

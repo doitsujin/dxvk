@@ -229,7 +229,6 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)

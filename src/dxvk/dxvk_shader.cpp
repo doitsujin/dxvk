@@ -160,13 +160,9 @@ namespace dxvk {
         m_bindingOffsets.push_back(info);
     }
 
-    if (info.pushConstSize) {
-      VkShaderStageFlags requiredStage = usesPushConstants
-        ? VkShaderStageFlags(m_info.stage)
-        : VkShaderStageFlags(0u);
-
+    if (info.pushConstSize && usesPushConstants) {
       m_layout.addPushConstants(DxvkPushConstantRange(
-        info.pushConstStages, requiredStage, info.pushConstSize));
+        m_info.stage, info.pushConstSize));
     }
 
     // Don't set pipeline library flag if the shader

@@ -6,6 +6,7 @@
 
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
+#include "dxvk_limits.h"
 
 namespace dxvk {
 
@@ -505,31 +506,10 @@ namespace dxvk {
     DxvkPushConstantRange() = default;
 
     DxvkPushConstantRange(
-            VkShaderStageFlags  declaredStages,
-            VkShaderStageFlags  requiredStages,
+            VkShaderStageFlags  stages,
             uint32_t            size)
-    : m_size      (uint16_t(declaredStages ? size : 0u)),
-      m_declared  (uint8_t(m_size ? declaredStages : 0u)),
-      m_required  (uint8_t(m_size ? requiredStages : 0u)) { }
-
-    /**
-     * \brief Queries shader stage mask
-     *
-     * \param [in] independent Whether to query the range for
-     *    pipeline layouts compatible with independent sets
-     * \returns Shader stage mask
-     */
-    VkShaderStageFlags getStageMask(bool independent) const {
-      return VkShaderStageFlags(independent ? m_declared : m_required);
-    }
-
-    /**
-     * \brief Queries push constant block size
-     * \returns Push constant size, in bytes
-     */
-    uint32_t getSize() const {
-      return uint32_t(m_size);
-    }
+    : m_size      (uint8_t(stages ? size : 0u)),
+      m_stages    (uint8_t(m_size ? stages : 0u)) { }
 
     /**
      * \brief Converts push constant range to Vulkan struct
@@ -539,10 +519,17 @@ namespace dxvk {
      * \returns Vulkan push constant range
      */
     VkPushConstantRange getPushConstantRange(bool independent) const {
-      VkPushConstantRange vk = { };
-      vk.stageFlags = getStageMask(independent);
-      vk.size = vk.stageFlags ? getSize() : 0u;
-      return vk;
+      if (independent) {
+        VkPushConstantRange vk = { };
+        vk.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+        vk.size = MaxPushConstantSize;
+        return vk;
+      } else {
+        VkPushConstantRange vk = { };
+        vk.stageFlags = VkShaderStageFlags(m_stages);
+        vk.size = vk.stageFlags ? m_size : 0u;
+        return vk;
+      }
     }
 
     /**
@@ -552,18 +539,9 @@ namespace dxvk {
      * \param [in] other Other push constant range
      */
     void merge(const DxvkPushConstantRange& other) {
-      m_declared |= other.m_declared;
-      m_required |= other.m_required;
+      m_stages |= other.m_stages;
 
       m_size = std::max(m_size, other.m_size);
-    }
-
-    /**
-     * \brief Checks whether the push constant range is empty
-     * \returns \c true if the range has a size of 0 bytes.
-     */
-    bool isEmpty() const {
-      return !m_size;
     }
 
     /**
@@ -573,9 +551,8 @@ namespace dxvk {
      * \returns \c true if the two ranges are equal
      */
     bool eq(const DxvkPushConstantRange& other) const {
-      return m_size     == other.m_size
-          && m_declared == other.m_declared
-          && m_required == other.m_required;
+      return m_size   == other.m_size
+          && m_stages == other.m_stages;
     }
 
     /**
@@ -583,16 +560,13 @@ namespace dxvk {
      * \returns Hash
      */
     size_t hash() const {
-      return size_t(m_size)
-          | (size_t(m_declared) << 16u)
-          | (size_t(m_required) << 24u);
+      return size_t(m_size) | (size_t(m_stages) << 8u);
     }
 
   private:
 
-    uint16_t  m_size     = 0u;
-    uint8_t   m_declared = 0u;
-    uint8_t   m_required = 0u;
+    uint8_t m_size   = 0u;
+    uint8_t m_stages = 0u;
 
   };
 
