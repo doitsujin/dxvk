@@ -246,10 +246,8 @@ namespace dxvk {
     info.inputTopology = m_inputTopology;
     info.outputTopology = m_outputTopology;
 
-    if (m_programInfo.type() != DxbcProgramType::ComputeShader) {
-      info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    if (m_ps.pushConstantId)
       info.pushConstSize = sizeof(DxbcPushConstants);
-    }
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
