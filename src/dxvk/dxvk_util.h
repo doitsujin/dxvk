@@ -51,6 +51,24 @@ namespace dxvk::util {
 
 
   /**
+   * \brief Built-in shader stage
+   *
+   * Stores pointer to shader code and code size.
+   */
+  struct DxvkBuiltInShaderStage {
+    DxvkBuiltInShaderStage() = default;
+
+    template<size_t N>
+    DxvkBuiltInShaderStage(const uint32_t (&dwords)[N], const VkSpecializationInfo* s)
+    : size(N * sizeof(uint32_t)), code(&dwords[0]), spec(s) { }
+
+    size_t                      size = 0u;
+    const uint32_t*             code = nullptr;
+    const VkSpecializationInfo* spec = nullptr;
+  };
+
+
+  /**
    * \brief Built-in shader stage helper
    *
    * Useful when creating built-in pipelines.

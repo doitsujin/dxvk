@@ -403,6 +403,16 @@ namespace dxvk {
       const DxvkDescriptorSetLayoutBinding* bindings);
 
     /**
+     * \brief Creates built-in compute pipeline
+     *
+     * \param [in] layout Pipeline layout
+     * \param [in] stage Shader stage info
+     */
+    VkPipeline createBuiltInComputePipeline(
+      const DxvkPipelineLayout*             layout,
+      const util::DxvkBuiltInShaderStage&   stage);
+
+    /**
      * \brief Imports a buffer
      *
      * \param [in] createInfo Buffer create info

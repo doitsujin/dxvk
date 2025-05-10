@@ -257,6 +257,35 @@ namespace dxvk {
   }
 
 
+  VkPipeline DxvkDevice::createBuiltInComputePipeline(
+    const DxvkPipelineLayout*             layout,
+    const util::DxvkBuiltInShaderStage&   stage) {
+    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    moduleInfo.codeSize = stage.size;
+    moduleInfo.pCode = stage.code;
+
+    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    pipelineInfo.layout = layout->getPipelineLayout(false);
+    pipelineInfo.basePipelineIndex = -1;
+
+    VkPipelineShaderStageCreateInfo& stageInfo = pipelineInfo.stage;
+    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &moduleInfo };
+    stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    stageInfo.pName = "main";
+    stageInfo.pSpecializationInfo = stage.spec;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    VkResult vr = m_vkd->vkCreateComputePipelines(m_vkd->device(),
+      VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create built-in compute pipeline: ", vr));
+
+    return pipeline;
+  }
+
+
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
     DxvkPipelineWorkerStats workers = m_objects.pipelineManager().getWorkerStats();
