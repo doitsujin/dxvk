@@ -1265,6 +1265,8 @@ namespace dxvk {
             uint64_t                readMask,
             uint64_t                writeMask);
 
+    DxvkShaderBinding nextBindingId() const;
+
     ///////////////////////////
     // Type definition methods
     uint32_t getScalarTypeId(
