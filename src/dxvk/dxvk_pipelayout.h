@@ -86,14 +86,24 @@ namespace dxvk {
    * a given shader, or for the whole pipeline.
    */
   struct DxvkBindingInfo {
-    VkDescriptorType      descriptorType  = VK_DESCRIPTOR_TYPE_MAX_ENUM;        ///< Vulkan descriptor type
-    uint32_t              resourceBinding = 0u;                                 ///< API binding slot for the resource
-    VkImageViewType       viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;        ///< Image view type
-    VkShaderStageFlagBits stage           = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM; ///< Shader stage
-    VkAccessFlags         access          = 0u;                                 ///< Access mask for the resource
-    DxvkAccessOp          accessOp        = DxvkAccessOp::None;                 ///< Order-invariant store type, if any
-    bool                  uboSet          = false;                              ///< Whether to include this in the UBO set
-    bool                  isMultisampled  = false;                              ///< Multisampled binding
+    /** Shader-defined descriptor set index */
+    uint32_t set = 0u;
+    /** Shader-defined binding index */
+    uint32_t binding = 0u;
+    /** Binding slot for the resource */
+    uint32_t resourceIndex = 0u;
+    /** Descriptor type */
+    VkDescriptorType descriptorType  = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    /** Size of descriptor array */
+    uint32_t descriptorCount = 1u;
+    /** Image view type */
+    VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    /** Access flags for the resource in the shader */
+    VkAccessFlags access = 0u;
+    /** Additional binding properties */
+    DxvkDescriptorFlags flags = 0u;
+    /** Order-invariant access type, if any */
+    DxvkAccessOp accessOp = DxvkAccessOp::None;
   };
 
 
@@ -110,22 +120,18 @@ namespace dxvk {
 
     DxvkShaderDescriptor() = default;
 
-    DxvkShaderDescriptor(const DxvkBindingInfo& binding)
+    DxvkShaderDescriptor(const DxvkBindingInfo& binding, VkShaderStageFlags stages)
     : m_type      (uint8_t(binding.descriptorType)),
-      m_stages    (uint8_t(binding.stage)),
-      m_index     (uint16_t(binding.resourceBinding)),
+      m_stages    (uint8_t(stages)),
+      m_index     (uint16_t(binding.resourceIndex)),
       m_viewType  (uint8_t(binding.viewType)),
       m_access    (uint8_t(binding.access)),
       m_accessOp  (binding.accessOp),
-      m_set       (0u),
-      m_binding   (binding.resourceBinding),
+      m_flags     (binding.flags),
+      m_set       (uint8_t(binding.set)),
+      m_binding   (uint16_t(binding.binding)),
       m_arrayIndex(0u),
-      m_arraySize (1u) {
-      if (binding.uboSet)
-        m_flags.set(DxvkDescriptorFlag::UniformBuffer);
-      if (binding.isMultisampled)
-        m_flags.set(DxvkDescriptorFlag::Multisampled);
-    }
+      m_arraySize (uint16_t(binding.descriptorCount)) { }
 
     /**
      * \brief Queries descriptor type

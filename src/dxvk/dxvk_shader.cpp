@@ -51,10 +51,7 @@ namespace dxvk {
 
     // Copy resource binding slot infos
     for (uint32_t i = 0; i < info.bindingCount; i++) {
-      DxvkBindingInfo binding = info.bindings[i];
-      binding.stage = info.stage;
-
-      DxvkShaderDescriptor descriptor(binding);
+      DxvkShaderDescriptor descriptor(info.bindings[i], info.stage);
       m_layout.addBindings(1, &descriptor);
     }
 

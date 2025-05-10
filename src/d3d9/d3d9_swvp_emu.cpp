@@ -131,12 +131,15 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
+      m_bufferBinding = { };
+      m_bufferBinding.set             = 0u;
+      m_bufferBinding.binding         = bufferSlot;
+      m_bufferBinding.resourceIndex   = bufferSlot;
       m_bufferBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      m_bufferBinding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      m_bufferBinding.resourceBinding = bufferSlot;
-      m_bufferBinding.stage           = VK_SHADER_STAGE_GEOMETRY_BIT;
       m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
-      m_bufferBinding.uboSet          = VK_TRUE;
+      // TODO change this to be a raw view (with push constant offset
+      // or something to avoid bloating the number of unique objects)
+      m_bufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
