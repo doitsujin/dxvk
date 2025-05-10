@@ -388,6 +388,21 @@ namespace dxvk {
     Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
+     * \brief Creates built-in pipeline layout
+     *
+     * \param [in] pushConstantStages Push constant stage mask
+     * \param [in] pushConstantSize Push constant size
+     * \param [in] bindingCount Number of resource bindings
+     * \param [in] bindings Resource bindings
+     * \returns Unique pipeline layout
+     */
+    const DxvkPipelineLayout* createBuiltInPipelineLayout(
+            VkShaderStageFlags              pushConstantStages,
+            VkDeviceSize                    pushConstantSize,
+            uint32_t                        bindingCount,
+      const DxvkDescriptorSetLayoutBinding* bindings);
+
+    /**
      * \brief Imports a buffer
      *
      * \param [in] createInfo Buffer create info
