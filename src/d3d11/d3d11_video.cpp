@@ -1132,7 +1132,7 @@ namespace dxvk {
         }
 
         if (!outputBound) {
-          BindOutputView(views[vi]);
+          BindOutputView(views[vi], views[0]);
           outputBound = true;
         }
 
@@ -1289,9 +1289,14 @@ namespace dxvk {
 
 
   void D3D11VideoContext::BindOutputView(
-          Rc<DxvkImageView>               View) {
+          Rc<DxvkImageView>               View,
+          Rc<DxvkImageView>               FirstView) {
     VkExtent3D viewExtent = View->mipLevelExtent(0);
     m_dstExtent = { viewExtent.width, viewExtent.height };
+
+    VkExtent3D firstExtent = FirstView->mipLevelExtent(0);
+    m_dstSizeFact[0] = (float) viewExtent.width  / (float) firstExtent.width;
+    m_dstSizeFact[1] = (float) viewExtent.height / (float) firstExtent.height;
 
     m_ctx->EmitCs([
       cView   = std::move(View)
@@ -1340,6 +1345,8 @@ namespace dxvk {
       cSrcIsYCbCr   = view.IsYCbCr(),
       cDstIsYCbCr   = m_dstIsYCbCr,
       cDstExtent    = m_dstExtent,
+      cDstSizeFactX = m_dstSizeFact[0],
+      cDstSizeFactY = m_dstSizeFact[1],
       cExportMode   = m_exportMode
     ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
@@ -1362,10 +1369,10 @@ namespace dxvk {
       scissor.extent = cDstExtent;
 
       if (cStreamState.dstRectEnabled) {
-        viewport.x      = float(cStreamState.dstRect.left);
-        viewport.y      = float(cStreamState.dstRect.top);
-        viewport.width  = float(cStreamState.dstRect.right) - viewport.x;
-        viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
+        viewport.x      = cDstSizeFactX * float(cStreamState.dstRect.left);
+        viewport.y      = cDstSizeFactY * float(cStreamState.dstRect.top);
+        viewport.width  = cDstSizeFactX * float(cStreamState.dstRect.right) - viewport.x;
+        viewport.height = cDstSizeFactY * float(cStreamState.dstRect.bottom) - viewport.y;
       }
 
       VkExtent3D viewExtent = cViews[0]->mipLevelExtent(0);

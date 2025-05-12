@@ -670,9 +670,10 @@ namespace dxvk {
     Rc<DxvkShader>          m_fs;
     Rc<DxvkBuffer>          m_ubo;
 
-    VkExtent2D m_dstExtent  = { 0u, 0u };
-    bool       m_dstIsYCbCr = false;
-    ExportMode m_exportMode = ExportRGBA;
+    VkExtent2D m_dstExtent      = { 0u, 0u };
+    float      m_dstSizeFact[2] = { 1.0f, 1.0f };
+    bool       m_dstIsYCbCr     = false;
+    ExportMode m_exportMode     = ExportRGBA;
 
     bool m_resourcesCreated = false;
 
@@ -681,7 +682,8 @@ namespace dxvk {
     void ApplyYCbCrMatrix(float pColorMatrix[3][4], bool UseBt709);
 
     void BindOutputView(
-            Rc<DxvkImageView>               View);
+            Rc<DxvkImageView>               View,
+            Rc<DxvkImageView>               FirstView);
 
     void BlitStream(
       const D3D11VideoProcessorStreamState* pStreamState,
