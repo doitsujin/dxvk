@@ -109,15 +109,6 @@ namespace dxvk {
       const DxvkDescriptorSetLayout*  layout);
 
     /**
-     * \brief Allocates a single descriptor set
-     *
-     * \param [in] layout Descriptor set layout
-     * \returns The descriptor set
-     */
-    VkDescriptorSet alloc(
-            VkDescriptorSetLayout     layout);
-
-    /**
      * \brief Resets pool
      */
     void reset();
@@ -136,7 +127,7 @@ namespace dxvk {
     std::vector<VkDescriptorPool> m_descriptorPools;
 
     std::unordered_map<
-      VkDescriptorSetLayout,
+      const DxvkDescriptorSetLayout*,
       DxvkDescriptorSetList>  m_setLists;
 
     std::unordered_map<
@@ -159,15 +150,15 @@ namespace dxvk {
       const DxvkPipelineLayout*                 layout);
 
     DxvkDescriptorSetList* getSetList(
-            VkDescriptorSetLayout               layout);
+      const DxvkDescriptorSetLayout*            layout);
 
     VkDescriptorSet allocSetWithLayout(
             DxvkDescriptorSetList*              list,
-            VkDescriptorSetLayout               layout);
+      const DxvkDescriptorSetLayout*            layout);
 
     VkDescriptorSet allocSetFromPool(
             VkDescriptorPool                    pool,
-            VkDescriptorSetLayout               layout);
+      const DxvkDescriptorSetLayout*            layout);
 
     VkDescriptorPool addPool();
 

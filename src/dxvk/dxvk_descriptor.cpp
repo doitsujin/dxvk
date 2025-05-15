@@ -87,7 +87,7 @@ namespace dxvk {
 
       if (unlikely(!(sets[setIndex] = list->alloc()))) {
         sets[setIndex] = allocSetWithLayout(list,
-          layout->getDescriptorSetLayout(setIndex)->getSetLayout());
+          layout->getDescriptorSetLayout(setIndex));
       }
 
       m_setsUsed += 1;
@@ -97,12 +97,6 @@ namespace dxvk {
 
   VkDescriptorSet DxvkDescriptorPool::alloc(
     const DxvkDescriptorSetLayout*  layout) {
-    return alloc(layout->getSetLayout());
-  }
-
-
-  VkDescriptorSet DxvkDescriptorPool::alloc(
-          VkDescriptorSetLayout     layout) {
     auto list = getSetList(layout);
 
     VkDescriptorSet set = list->alloc();
@@ -183,7 +177,7 @@ namespace dxvk {
       const auto* setLayout = layout->getDescriptorSetLayout(i);
 
       iter.first->second.sets[i] = (setLayout && !setLayout->isEmpty())
-        ? getSetList(setLayout->getSetLayout())
+        ? getSetList(setLayout)
         : nullptr;
     }
 
@@ -192,7 +186,7 @@ namespace dxvk {
 
 
   DxvkDescriptorSetList* DxvkDescriptorPool::getSetList(
-          VkDescriptorSetLayout               layout) {
+    const DxvkDescriptorSetLayout*            layout) {
     auto pair = m_setLists.find(layout);
 
     if (pair != m_setLists.end())
@@ -208,7 +202,7 @@ namespace dxvk {
 
   VkDescriptorSet DxvkDescriptorPool::allocSetWithLayout(
           DxvkDescriptorSetList*              list,
-          VkDescriptorSetLayout               layout) {
+    const DxvkDescriptorSetLayout*            layout) {
     VkDescriptorSet set = VK_NULL_HANDLE;
 
     if (!m_descriptorPools.empty())
@@ -226,13 +220,15 @@ namespace dxvk {
 
   VkDescriptorSet DxvkDescriptorPool::allocSetFromPool(
           VkDescriptorPool                    pool,
-          VkDescriptorSetLayout               layout) {
+    const DxvkDescriptorSetLayout*            layout) {
     auto vk = m_device->vkd();
+
+    VkDescriptorSetLayout setLayout = layout->getSetLayout();
 
     VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
     info.descriptorPool = pool;
     info.descriptorSetCount = 1;
-    info.pSetLayouts = &layout;
+    info.pSetLayouts = &setLayout;
 
     VkDescriptorSet set = VK_NULL_HANDLE;
     
