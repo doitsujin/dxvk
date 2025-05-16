@@ -1713,7 +1713,10 @@ namespace dxvk {
       // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
       // and advertise support with D3DPRASTERCAPS_PAT once that is done
       case D3DRS_LINEPATTERN:
-        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
+        static bool s_linePatternErrorShown;
+
+        if (!std::exchange(s_linePatternErrorShown, true))
+          Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
@@ -1745,7 +1748,10 @@ namespace dxvk {
 
       // TODO: Implement D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
-        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
+        static bool s_patchSegmentsErrorShown;
+
+        if (!std::exchange(s_patchSegmentsErrorShown, true))
+          Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
         m_patchSegments = bit::cast<float>(Value);
         return D3D_OK;
     }
