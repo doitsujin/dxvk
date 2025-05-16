@@ -110,6 +110,7 @@ namespace dxvk {
     // Not supported but exist
     AI44 = MAKEFOURCC('A', 'I', '4', '4'),
     IA44 = MAKEFOURCC('I', 'A', '4', '4'),
+    CENT = MAKEFOURCC('C', 'E', 'N', 'T'),
     R2VB = MAKEFOURCC('R', '2', 'V', 'B'),
     COPM = MAKEFOURCC('C', 'O', 'P', 'M'),
     SSAA = MAKEFOURCC('S', 'S', 'A', 'A'),
