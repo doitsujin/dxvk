@@ -3,7 +3,7 @@
 #include "d3d11_util.h"
 
 namespace dxvk {
-  
+
   D3D11SamplerState::D3D11SamplerState(
           D3D11Device*        device,
     const D3D11_SAMPLER_DESC& desc)
@@ -27,8 +27,14 @@ namespace dxvk {
     if (minFilter == VK_FILTER_LINEAR && magFilter == VK_FILTER_LINEAR) {
       lodBias += device->GetOptions()->samplerLodBias;
 
-      if (device->GetOptions()->clampNegativeLodBias)
+      auto clampLodBias = device->GetOptions()->clampLodBias;
+      if (clampLodBias == "Negative") {
         lodBias = std::max(lodBias, 0.0f);
+      } else if (clampLodBias == "Positive") {
+        lodBias = std::min(lodBias, 0.0f);
+      } else if (clampLodBias == "Both") {
+        lodBias = 0.0f;
+      }
     }
 
     info.setLodRange(desc.MinLOD, desc.MaxLOD, lodBias);
@@ -62,7 +68,7 @@ namespace dxvk {
 
 
   D3D11SamplerState::~D3D11SamplerState() {
-    
+
   }
 
 
@@ -71,14 +77,14 @@ namespace dxvk {
       return E_POINTER;
 
     *ppvObject = nullptr;
-    
+
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11SamplerState)) {
       *ppvObject = ref(this);
       return S_OK;
     }
-    
+
     if (riid == __uuidof(ID3D10DeviceChild)
      || riid == __uuidof(ID3D10SamplerState)) {
       *ppvObject = ref(&m_d3d10);
@@ -97,29 +103,29 @@ namespace dxvk {
 
     return E_NOINTERFACE;
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11SamplerState::GetDesc(D3D11_SAMPLER_DESC* pDesc) {
     *pDesc = m_desc;
   }
-  
-  
+
+
   HRESULT D3D11SamplerState::NormalizeDesc(D3D11_SAMPLER_DESC* pDesc) {
     const uint32_t filterBits = uint32_t(pDesc->Filter);
-    
+
     if (filterBits & 0xFFFFFE2A) {
       Logger::err(str::format(
         "D3D11SamplerState: Unhandled filter: ", filterBits));
       return E_INVALIDARG;
     }
-    
+
     if (pDesc->MaxAnisotropy > 16) {
       return E_INVALIDARG;
     } else if ((filterBits & 0x40) == 0 /* not anisotropic */) {
       // Reset anisotropy if it is not used
       pDesc->MaxAnisotropy = 0;
     }
-    
+
     if ((filterBits & 0x180) == 0x80 /* compare-to-depth */) {
       if (!ValidateComparisonFunc(pDesc->ComparisonFunc))
         return E_INVALIDARG;
@@ -127,12 +133,12 @@ namespace dxvk {
       // Reset compare func if it is not used
       pDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
     }
-    
+
     if (!ValidateAddressMode(pDesc->AddressU)
      || !ValidateAddressMode(pDesc->AddressV)
      || !ValidateAddressMode(pDesc->AddressW))
       return E_INVALIDARG;
-    
+
     // Clear BorderColor to 0 if none of the address
     // modes are D3D11_TEXTURE_ADDRESS_BORDER
     if (pDesc->AddressU != D3D11_TEXTURE_ADDRESS_BORDER
@@ -141,20 +147,20 @@ namespace dxvk {
       for (int i = 0; i < 4; i++)
         pDesc->BorderColor[i] = 0.0f;
     }
-    
+
     return S_OK;
   }
-  
-  
+
+
   bool D3D11SamplerState::ValidateAddressMode(D3D11_TEXTURE_ADDRESS_MODE Mode) {
     return Mode >= D3D11_TEXTURE_ADDRESS_WRAP
         && Mode <= D3D11_TEXTURE_ADDRESS_MIRROR_ONCE;
   }
-  
-  
+
+
   bool D3D11SamplerState::ValidateComparisonFunc(D3D11_COMPARISON_FUNC Comparison) {
     return Comparison >= D3D11_COMPARISON_NEVER
         && Comparison <= D3D11_COMPARISON_ALWAYS;
   }
-  
+
 }
