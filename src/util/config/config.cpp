@@ -1049,6 +1049,12 @@ namespace dxvk {
     { R"(\\THUMPER_dx9\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
+    /* Red Orchestra: Ostfront 41-45 - Blinks,    *
+     * freeze, crash or goes Windowed on alt-tab  */
+    { R"(\\RedOrchestra\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+      { "d3d9.countLosableResources",       "False" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
