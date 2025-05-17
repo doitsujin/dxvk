@@ -273,12 +273,8 @@ namespace dxvk::hud {
 
   HudFrameTimeItem::HudFrameTimeItem(const Rc<DxvkDevice>& device, HudRenderer* renderer)
   : m_device            (device),
-    m_gfxSetLayout      (createDescriptorSetLayout()),
     m_gfxPipelineLayout (createPipelineLayout()) {
     createComputePipeline(*renderer);
-
-    renderer->initShader(m_vs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_graph_vert), hud_graph_vert);
-    renderer->initShader(m_fs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_graph_frag), hud_graph_frag);
   }
 
 
@@ -289,11 +285,6 @@ namespace dxvk::hud {
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
 
     vk->vkDestroyPipeline(vk->device(), m_computePipeline, nullptr);
-    vk->vkDestroyPipelineLayout(vk->device(), m_computePipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_computeSetLayout, nullptr);
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_gfxPipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_gfxSetLayout, nullptr);
   }
 
 
@@ -368,7 +359,8 @@ namespace dxvk::hud {
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
     // Process contents of the buffer and write out text draws
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_computeSetLayout);
+    VkPipelineLayout pipelineLayout = m_computePipelineLayout->getPipelineLayout(false);
+    VkDescriptorSet set = ctx.descriptorPool->alloc(m_computePipelineLayout->getDescriptorSetLayout(0));
 
     auto bufferLayout = computeBufferLayout();
 
@@ -402,7 +394,7 @@ namespace dxvk::hud {
       VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline);
 
     ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::InitBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipelineLayout,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout,
       set, 0, nullptr);
 
     ComputePushConstants pushConstants = { };
@@ -414,7 +406,7 @@ namespace dxvk::hud {
     pushConstants.textPosMaxY = maxPos.y;
 
     ctx.cmd->cmdPushConstants(DxvkCmdBuffer::InitBuffer,
-      m_computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+      pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
       0, sizeof(pushConstants), &pushConstants);
 
     ctx.cmd->cmdDispatch(DxvkCmdBuffer::InitBuffer, 1, 1, 1);
@@ -453,7 +445,8 @@ namespace dxvk::hud {
     ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, getPipeline(renderer, key));
 
-    auto set = ctx.descriptorPool->alloc(m_gfxSetLayout);
+    auto pipelineLayout = m_gfxPipelineLayout->getPipelineLayout(false);
+    auto set = ctx.descriptorPool->alloc(m_gfxPipelineLayout->getDescriptorSetLayout(0));
 
     VkDescriptorBufferInfo bufferDescriptor = m_gpuBuffer->getDescriptor(0,
       computeBufferLayout().timestampSize).buffer;
@@ -467,8 +460,8 @@ namespace dxvk::hud {
     ctx.cmd->updateDescriptorSets(1, &descriptorWrite);
 
     ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_gfxPipelineLayout,
-      set, 0, nullptr);
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipelineLayout, set, 0, nullptr);
 
     RenderPushConstants pushConstants = { };
     pushConstants.hud = renderer.getPushConstants();
@@ -478,7 +471,7 @@ namespace dxvk::hud {
     pushConstants.h = graphSize.y;
     pushConstants.frameIndex = dataPoint;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, m_gfxPipelineLayout,
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(pushConstants), &pushConstants);
 
@@ -547,103 +540,30 @@ namespace dxvk::hud {
 
   void HudFrameTimeItem::createComputePipeline(
           HudRenderer&        renderer) {
-    auto vk = m_device->vkd();
-
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { 3, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+    static const std::array<DxvkDescriptorSetLayoutBinding, 4> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo setLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    setLayoutInfo.bindingCount = bindings.size();
-    setLayoutInfo.pBindings = bindings.data();
+    m_computePipelineLayout = m_device->createBuiltInPipelineLayout(
+      VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ComputePushConstants),
+      bindings.size(), bindings.data());
 
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(),
-      &setLayoutInfo, nullptr, &m_computeSetLayout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time compute set layout: ", vr));
-
-    VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.offset = 0u;
-    pushConstantRange.size = sizeof(ComputePushConstants);
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutInfo.setLayoutCount = 1u;
-    pipelineLayoutInfo.pSetLayouts = &m_computeSetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-    vr = vk->vkCreatePipelineLayout(vk->device(),
-      &pipelineLayoutInfo, nullptr, &m_computePipelineLayout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time compute pipeline layout: ", vr));
-
-    HudShaderModule shader = { };
-    renderer.initShader(shader, VK_SHADER_STAGE_COMPUTE_BIT,
-      sizeof(hud_frame_time_eval), hud_frame_time_eval);
-
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    info.stage = shader.stageInfo;
-    info.layout = m_computePipelineLayout;
-    info.basePipelineIndex = -1;
-
-    vr = vk->vkCreateComputePipelines(vk->device(),
-      VK_NULL_HANDLE, 1, &info, nullptr, &m_computePipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time compute pipeline: ", vr));
+    m_computePipeline = m_device->createBuiltInComputePipeline(m_computePipelineLayout,
+      util::DxvkBuiltInShaderStage(hud_frame_time_eval, nullptr));
   }
 
 
-  VkDescriptorSetLayout HudFrameTimeItem::createDescriptorSetLayout() {
-    auto vk = m_device->vkd();
-
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+  const DxvkPipelineLayout* HudFrameTimeItem::createPipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(
-      vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time graphics pipeline descriptor set layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipelineLayout HudFrameTimeItem::createPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.offset = 0u;
-    pushConstantRange.size = sizeof(RenderPushConstants);
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1u;
-    info.pSetLayouts = &m_gfxSetLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges = &pushConstantRange;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(
-      vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create frame time graphics pipeline layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(RenderPushConstants), bindings.size(), bindings.data());
   }
 
 
@@ -669,33 +589,8 @@ namespace dxvk::hud {
     HudSpecConstants specConstants = renderer.getSpecConstants(key);
     VkSpecializationInfo specInfo = renderer.getSpecInfo(&specConstants);
 
-    std::array<VkPipelineShaderStageCreateInfo, 2> stages = { };
-    stages[0] = m_vs.stageInfo;
-    stages[1] = m_fs.stageInfo;
-    stages[1].pSpecializationInfo = &specInfo;
-
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtInfo.colorAttachmentCount = 1;
-    rtInfo.pColorAttachmentFormats = &key.format;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
     VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    constexpr uint32_t sampleMask = 0x1;
-
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &sampleMask;
 
     VkPipelineColorBlendAttachmentState cbAttachment = { };
     cbAttachment.blendEnable = VK_TRUE;
@@ -709,40 +604,14 @@ namespace dxvk::hud {
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo cbOpaqueState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbOpaqueState.attachmentCount = 1;
-    cbOpaqueState.pAttachments = &cbAttachment;
+    util::DxvkBuiltInGraphicsState state = { };
+    state.vs = util::DxvkBuiltInShaderStage(hud_graph_vert, nullptr);
+    state.fs = util::DxvkBuiltInShaderStage(hud_graph_frag, &specInfo);
+    state.iaState = &iaState;
+    state.colorFormat = key.format;
+    state.cbAttachment = &cbAttachment;
 
-    static const std::array<VkDynamicState, 2> dynStates = {
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
-    info.stageCount = stages.size();
-    info.pStages = stages.data();
-    info.pVertexInputState = &viState;
-    info.pInputAssemblyState = &iaState;
-    info.pViewportState = &vpState;
-    info.pRasterizationState = &rsState;
-    info.pMultisampleState = &msState;
-    info.pColorBlendState = &cbOpaqueState;
-    info.pDynamicState = &dynState;
-    info.layout = m_gfxPipelineLayout;
-    info.basePipelineIndex = -1;
-
-    VkPipeline pipeline = { };
-    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
-      VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD memory detail pipeline 1: ", vr));
-
-    return pipeline;
+    return m_device->createBuiltInGraphicsPipeline(m_gfxPipelineLayout, state);
   }
 
 
@@ -1034,12 +903,8 @@ namespace dxvk::hud {
     const Rc<DxvkDevice>&     device,
           HudRenderer*        renderer)
   : m_device          (device),
-    m_setLayout       (createSetLayout()),
     m_pipelineLayout  (createPipelineLayout()) {
-    renderer->initShader(m_fsBackground, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_background), hud_chunk_frag_background);
-    renderer->initShader(m_vsBackground, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_background), hud_chunk_vert_background);
-    renderer->initShader(m_fsVisualize, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_chunk_frag_visualize), hud_chunk_frag_visualize);
-    renderer->initShader(m_vsVisualize, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_chunk_vert_visualize), hud_chunk_vert_visualize);
+
   }
 
 
@@ -1050,9 +915,6 @@ namespace dxvk::hud {
       vk->vkDestroyPipeline(vk->device(), p.second.background, nullptr);
       vk->vkDestroyPipeline(vk->device(), p.second.visualize, nullptr);
     }
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
   }
 
 
@@ -1207,7 +1069,8 @@ namespace dxvk::hud {
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.background);
 
     // Bind resources
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
+    VkPipelineLayout pipelineLayout = m_pipelineLayout->getPipelineLayout(false);
+    VkDescriptorSet set = ctx.descriptorPool->alloc(m_pipelineLayout->getDescriptorSetLayout(0));
 
     VkDescriptorBufferInfo drawDescriptor = { };
     VkDescriptorBufferInfo dataDescriptor = { };
@@ -1226,12 +1089,12 @@ namespace dxvk::hud {
       descriptorWrites.data());
 
     ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-      set, 0, nullptr);
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipelineLayout, set, 0, nullptr);
 
     HudPushConstants pushConstants = renderer.getPushConstants();
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, m_pipelineLayout,
+    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(pushConstants), &pushConstants);
 
@@ -1292,49 +1155,15 @@ namespace dxvk::hud {
   }
 
 
-  VkDescriptorSetLayout HudMemoryDetailsItem::createSetLayout() {
-    auto vk = m_device->vkd();
-
-    static const std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+  const DxvkPipelineLayout* HudMemoryDetailsItem::createPipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD descriptor set layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipelineLayout HudMemoryDetailsItem::createPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.offset = 0u;
-    pushConstantRange.size = sizeof(HudPushConstants);
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1;
-    info.pSetLayouts = &m_setLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges = &pushConstantRange;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD descriptor set layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(HudPushConstants), bindings.size(), bindings.data());
   }
 
 
@@ -1346,38 +1175,10 @@ namespace dxvk::hud {
     HudSpecConstants specConstants = renderer.getSpecConstants(key);
     VkSpecializationInfo specInfo = renderer.getSpecInfo(&specConstants);
 
-    std::array<VkPipelineShaderStageCreateInfo, 2> backgroundStages = { };
-    backgroundStages[0] = m_vsBackground.stageInfo;
-    backgroundStages[1] = m_fsBackground.stageInfo;
-    backgroundStages[1].pSpecializationInfo = &specInfo;
-
-    std::array<VkPipelineShaderStageCreateInfo, 2> visualizeStages = { };
-    visualizeStages[0] = m_vsVisualize.stageInfo;
-    visualizeStages[1] = m_fsVisualize.stageInfo;
-    visualizeStages[1].pSpecializationInfo = &specInfo;
-
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtInfo.colorAttachmentCount = 1;
-    rtInfo.pColorAttachmentFormats = &key.format;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    PipelinePair pipelines = { };
 
     VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    constexpr uint32_t sampleMask = 0x1;
-
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &sampleMask;
 
     VkPipelineColorBlendAttachmentState cbAttachment = { };
     cbAttachment.blendEnable = VK_TRUE;
@@ -1391,48 +1192,20 @@ namespace dxvk::hud {
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo cbOpaqueState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbOpaqueState.attachmentCount = 1;
-    cbOpaqueState.pAttachments = &cbAttachment;
+    util::DxvkBuiltInGraphicsState state = { };
+    state.iaState = &iaState;
+    state.colorFormat = key.format;
+    state.cbAttachment = &cbAttachment;
 
-    static const std::array<VkDynamicState, 2> dynStates = {
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    };
+    state.vs = util::DxvkBuiltInShaderStage(hud_chunk_vert_background, nullptr);
+    state.fs = util::DxvkBuiltInShaderStage(hud_chunk_frag_background, &specInfo);
 
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
+    pipelines.background = m_device->createBuiltInGraphicsPipeline(m_pipelineLayout, state);
 
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
-    info.stageCount = backgroundStages.size();
-    info.pStages = backgroundStages.data();
-    info.pVertexInputState = &viState;
-    info.pInputAssemblyState = &iaState;
-    info.pViewportState = &vpState;
-    info.pRasterizationState = &rsState;
-    info.pMultisampleState = &msState;
-    info.pColorBlendState = &cbOpaqueState;
-    info.pDynamicState = &dynState;
-    info.layout = m_pipelineLayout;
-    info.basePipelineIndex = -1;
+    state.vs = util::DxvkBuiltInShaderStage(hud_chunk_vert_visualize, nullptr);
+    state.fs = util::DxvkBuiltInShaderStage(hud_chunk_frag_visualize, &specInfo);
 
-    PipelinePair pipelines = { };
-    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
-      1, &info, nullptr, &pipelines.background);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD memory detail pipeline 1: ", vr));
-
-    info.stageCount = visualizeStages.size();
-    info.pStages = visualizeStages.data();
-
-    vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
-      1, &info, nullptr, &pipelines.visualize);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD memory detail pipeline 2: ", vr));
-
+    pipelines.visualize = m_device->createBuiltInGraphicsPipeline(m_pipelineLayout, state);
     return pipelines;
   }
 

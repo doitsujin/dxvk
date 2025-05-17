@@ -1132,7 +1132,7 @@ namespace dxvk {
         }
 
         if (!outputBound) {
-          BindOutputView(views[vi]);
+          BindOutputView(views[vi], views[0]);
           outputBound = true;
         }
 
@@ -1289,9 +1289,14 @@ namespace dxvk {
 
 
   void D3D11VideoContext::BindOutputView(
-          Rc<DxvkImageView>               View) {
+          Rc<DxvkImageView>               View,
+          Rc<DxvkImageView>               FirstView) {
     VkExtent3D viewExtent = View->mipLevelExtent(0);
     m_dstExtent = { viewExtent.width, viewExtent.height };
+
+    VkExtent3D firstExtent = FirstView->mipLevelExtent(0);
+    m_dstSizeFact[0] = (float) viewExtent.width  / (float) firstExtent.width;
+    m_dstSizeFact[1] = (float) viewExtent.height / (float) firstExtent.height;
 
     m_ctx->EmitCs([
       cView   = std::move(View)
@@ -1340,6 +1345,8 @@ namespace dxvk {
       cSrcIsYCbCr   = view.IsYCbCr(),
       cDstIsYCbCr   = m_dstIsYCbCr,
       cDstExtent    = m_dstExtent,
+      cDstSizeFactX = m_dstSizeFact[0],
+      cDstSizeFactY = m_dstSizeFact[1],
       cExportMode   = m_exportMode
     ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
@@ -1362,10 +1369,10 @@ namespace dxvk {
       scissor.extent = cDstExtent;
 
       if (cStreamState.dstRectEnabled) {
-        viewport.x      = float(cStreamState.dstRect.left);
-        viewport.y      = float(cStreamState.dstRect.top);
-        viewport.width  = float(cStreamState.dstRect.right) - viewport.x;
-        viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
+        viewport.x      = cDstSizeFactX * float(cStreamState.dstRect.left);
+        viewport.y      = cDstSizeFactY * float(cStreamState.dstRect.top);
+        viewport.width  = cDstSizeFactX * float(cStreamState.dstRect.right) - viewport.x;
+        viewport.height = cDstSizeFactY * float(cStreamState.dstRect.bottom) - viewport.y;
       }
 
       VkExtent3D viewExtent = cViews[0]->mipLevelExtent(0);
@@ -1482,9 +1489,9 @@ namespace dxvk {
     SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
     const std::array<DxvkBindingInfo, 3> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_UNIFORM_READ_BIT, DxvkAccessOp::None, true },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { 0u, 0u, 0u, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_ACCESS_UNIFORM_READ_BIT, DxvkDescriptorFlag::UniformBuffer },
+      { 0u, 1u, 1u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
+      { 0u, 2u, 2u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;

@@ -883,7 +883,7 @@ namespace dxvk {
     m_modeCacheFormat = Format;
 
     // Skip unsupported formats
-    if (!IsSupportedAdapterFormat(Format))
+    if (!IsSupportedModeFormat(Format))
       return;
 
     auto& options = m_parent->GetOptions();

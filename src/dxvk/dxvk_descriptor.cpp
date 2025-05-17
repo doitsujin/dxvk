@@ -77,15 +77,18 @@ namespace dxvk {
 
 
   void DxvkDescriptorPool::alloc(
-    const DxvkBindingLayoutObjects* layout,
+    const DxvkPipelineLayout*       layout,
           uint32_t                  setMask,
           VkDescriptorSet*          sets) {
     auto setMap = getSetMapCached(layout);
 
     for (auto setIndex : bit::BitMask(setMask)) {
-      sets[setIndex] = allocSet(
-        setMap->sets[setIndex],
-        layout->getSetLayout(setIndex));
+      auto list = setMap->sets[setIndex];
+
+      if (unlikely(!(sets[setIndex] = list->alloc()))) {
+        sets[setIndex] = allocSetWithLayout(list,
+          layout->getDescriptorSetLayout(setIndex));
+      }
 
       m_setsUsed += 1;
     }
@@ -93,9 +96,15 @@ namespace dxvk {
 
 
   VkDescriptorSet DxvkDescriptorPool::alloc(
-          VkDescriptorSetLayout     layout) {
-    auto setList = getSetList(layout);
-    return allocSet(setList, layout);
+    const DxvkDescriptorSetLayout*  layout) {
+    auto list = getSetList(layout);
+
+    VkDescriptorSet set = list->alloc();
+
+    if (unlikely(!set))
+      set = allocSetWithLayout(list, layout);
+
+    return set;
   }
 
 
@@ -142,7 +151,7 @@ namespace dxvk {
 
 
   DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMapCached(
-    const DxvkBindingLayoutObjects*           layout) {
+    const DxvkPipelineLayout*                 layout) {
     if (likely(m_cachedEntry.first == layout))
       return m_cachedEntry.second;
 
@@ -153,8 +162,9 @@ namespace dxvk {
 
 
   DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMap(
-    const DxvkBindingLayoutObjects*           layout) {
+    const DxvkPipelineLayout*                 layout) {
     auto pair = m_setMaps.find(layout);
+
     if (likely(pair != m_setMaps.end()))
       return &pair->second;
 
@@ -164,8 +174,10 @@ namespace dxvk {
       std::tuple());
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      iter.first->second.sets[i] = (layout->getSetMask() & (1u << i))
-        ? getSetList(layout->getSetLayout(i))
+      const auto* setLayout = layout->getDescriptorSetLayout(i);
+
+      iter.first->second.sets[i] = (setLayout && !setLayout->isEmpty())
+        ? getSetList(setLayout)
         : nullptr;
     }
 
@@ -174,8 +186,9 @@ namespace dxvk {
 
 
   DxvkDescriptorSetList* DxvkDescriptorPool::getSetList(
-          VkDescriptorSetLayout               layout) {
+    const DxvkDescriptorSetLayout*            layout) {
     auto pair = m_setLists.find(layout);
+
     if (pair != m_setLists.end())
       return &pair->second;
 
@@ -187,21 +200,19 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSet DxvkDescriptorPool::allocSet(
+  VkDescriptorSet DxvkDescriptorPool::allocSetWithLayout(
           DxvkDescriptorSetList*              list,
-          VkDescriptorSetLayout               layout) {
-    VkDescriptorSet set = list->alloc();
+    const DxvkDescriptorSetLayout*            layout) {
+    VkDescriptorSet set = VK_NULL_HANDLE;
 
-    if (unlikely(!set)) {
-      if (!m_descriptorPools.empty())
-        set = allocSetFromPool(m_descriptorPools.back(), layout);
+    if (!m_descriptorPools.empty())
+      set = allocSetFromPool(m_descriptorPools.back(), layout);
 
-      if (!set)
-        set = allocSetFromPool(addPool(), layout);
+    if (!set)
+      set = allocSetFromPool(addPool(), layout);
 
-      list->addSet(set);
-      m_setsAllocated += 1;
-    }
+    list->addSet(set);
+    m_setsAllocated += 1;
 
     return set;
   }
@@ -209,13 +220,15 @@ namespace dxvk {
 
   VkDescriptorSet DxvkDescriptorPool::allocSetFromPool(
           VkDescriptorPool                    pool,
-          VkDescriptorSetLayout               layout) {
+    const DxvkDescriptorSetLayout*            layout) {
     auto vk = m_device->vkd();
+
+    VkDescriptorSetLayout setLayout = layout->getSetLayout();
 
     VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
     info.descriptorPool = pool;
     info.descriptorSetCount = 1;
-    info.pSetLayouts = &layout;
+    info.pSetLayouts = &setLayout;
 
     VkDescriptorSet set = VK_NULL_HANDLE;
     

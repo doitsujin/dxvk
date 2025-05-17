@@ -81,9 +81,8 @@ namespace dxvk {
    * that is used for blitting.
    */
   struct DxvkMetaBlitPipeline {
-    VkDescriptorSetLayout dsetLayout;
-    VkPipelineLayout      pipeLayout;
-    VkPipeline            pipeHandle;
+    const DxvkPipelineLayout* layout    = nullptr;
+    VkPipeline                pipeline  = VK_NULL_HANDLE;;
   };
   
 
@@ -118,6 +117,8 @@ namespace dxvk {
   private:
 
     DxvkDevice* m_device = nullptr;
+
+    const DxvkPipelineLayout* m_layout = nullptr;
     
     dxvk::mutex m_mutex;
     
@@ -128,15 +129,10 @@ namespace dxvk {
     
     DxvkMetaBlitPipeline createPipeline(
       const DxvkMetaBlitPipelineKey&    key);
-    
-    VkDescriptorSetLayout createDescriptorSetLayout(
-            VkImageViewType             viewType) const;
-    
-    VkPipelineLayout createPipelineLayout(
-            VkDescriptorSetLayout       descriptorSetLayout) const;
+
+    const DxvkPipelineLayout* createPipelineLayout() const;
     
     VkPipeline createPipeline(
-            VkPipelineLayout            pipelineLayout,
             VkImageViewType             imageViewType,
             VkFormat                    format,
             VkSampleCountFlagBits       samples) const;
