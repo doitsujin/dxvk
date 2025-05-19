@@ -307,12 +307,12 @@ namespace dxvk {
     VkDescriptorSet set = ctx.descriptorPool->alloc(m_blitLayout->getDescriptorSetLayout(0));
 
     VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = m_samplerPresent->handle();
+    imageDescriptor.sampler = m_samplerPresent->getDescriptor().samplerObject;
     imageDescriptor.imageView = srcView->handle();
     imageDescriptor.imageLayout = srcView->image()->info().layout;
 
     VkDescriptorImageInfo gammaDescriptor = { };
-    gammaDescriptor.sampler = m_samplerGamma->handle();
+    gammaDescriptor.sampler = m_samplerGamma->getDescriptor().samplerObject;
 
     if (m_gammaView) {
       gammaDescriptor.imageView = m_gammaView->handle();
@@ -327,14 +327,14 @@ namespace dxvk {
     }
 
     VkDescriptorImageInfo cursorDescriptor = { };
-    cursorDescriptor.sampler = m_samplerCursorNearest->handle();
+    cursorDescriptor.sampler = m_samplerCursorNearest->getDescriptor().samplerObject;
 
     if (m_cursorView) {
       VkExtent3D extent = m_cursorImage->info().extent;
 
       if (m_cursorRect.extent.width != extent.width
        || m_cursorRect.extent.height != extent.height)
-        cursorDescriptor.sampler = m_samplerCursorLinear->handle();
+        cursorDescriptor.sampler = m_samplerCursorLinear->getDescriptor().samplerObject;
 
       cursorDescriptor.imageLayout = m_cursorImage->info().layout;
       cursorDescriptor.imageView = m_cursorView->handle();
@@ -560,8 +560,8 @@ namespace dxvk {
 
     VkDescriptorImageInfo imageDescriptor = { };
     imageDescriptor.sampler = filterLinear
-      ? m_samplerCursorLinear->handle()
-      : m_samplerCursorNearest->handle();
+      ? m_samplerCursorLinear->getDescriptor().samplerObject
+      : m_samplerCursorNearest->getDescriptor().samplerObject;
     imageDescriptor.imageView = m_cursorView->handle();
     imageDescriptor.imageLayout = m_cursorImage->info().layout;
 

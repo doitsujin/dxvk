@@ -27,7 +27,7 @@ namespace dxvk {
   }
 
 
-  VkSampler DxvkUnboundResources::samplerHandle() {
+  DxvkSamplerDescriptor DxvkUnboundResources::samplerInfo() {
     if (unlikely(!m_samplerCreated.load(std::memory_order_acquire))) {
       std::lock_guard lock(m_mutex);
 
@@ -37,7 +37,7 @@ namespace dxvk {
       }
     }
 
-    return m_sampler->handle();
+    return m_sampler->getDescriptor();
   }
 
 

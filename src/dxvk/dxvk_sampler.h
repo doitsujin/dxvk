@@ -5,6 +5,7 @@
 #include "../util/util_bit.h"
 #include "../util/thread.h"
 
+#include "dxvk_descriptor.h"
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 
@@ -183,8 +184,10 @@ namespace dxvk {
      * \brief Sampler handle
      * \returns Sampler handle
      */
-    VkSampler handle() const {
-      return m_sampler;
+    DxvkSamplerDescriptor getDescriptor() const {
+      DxvkSamplerDescriptor result = { };
+      result.samplerObject = m_sampler;
+      return result;
     }
     
     /**

@@ -41,7 +41,7 @@ namespace dxvk {
      * still require different behaviour.
      * \returns Dummy sampler
      */
-    VkSampler samplerHandle();
+    DxvkSamplerDescriptor samplerInfo();
 
   private:
     
