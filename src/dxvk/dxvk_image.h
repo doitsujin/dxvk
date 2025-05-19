@@ -322,9 +322,9 @@ namespace dxvk {
 
     DxvkImageViewImageProperties m_properties = { };
 
-    std::array<VkImageView, ViewCount> m_views = { };
+    std::array<const DxvkDescriptor*, ViewCount> m_views = { };
 
-    VkImageView createView(VkImageViewType type) const;
+    const DxvkDescriptor* createView(VkImageViewType type) const;
 
     void updateViews();
 
@@ -799,10 +799,14 @@ namespace dxvk {
     if (unlikely(m_version < m_image->m_version))
       updateViews();
 
-    if (unlikely(!m_views[viewType]))
+    if (unlikely(!m_views[viewType])) {
       m_views[viewType] = createView(viewType);
 
-    return m_views[viewType];
+      if (!m_views[viewType])
+        return VK_NULL_HANDLE;
+    }
+
+    return m_views[viewType]->legacy.image.imageView;
   }
 
 

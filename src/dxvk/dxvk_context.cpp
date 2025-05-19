@@ -5347,10 +5347,12 @@ namespace dxvk {
     // that can be used for rendering.
     bool isDepthStencil = region.dstSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
-    DxvkImageUsageInfo usage = { };
-    usage.usage = isDepthStencil
+    VkImageUsageFlagBits usageBit = isDepthStencil
       ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
       : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    DxvkImageUsageInfo usage = { };
+    usage.usage = usageBit;
     usage.viewFormatCount = 1;
     usage.viewFormats = &format;
 
@@ -5364,7 +5366,7 @@ namespace dxvk {
     // Create an image view that we can use to perform the clear
     DxvkImageViewKey key = { };
     key.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    key.usage = usage.usage;
+    key.usage = usageBit;
     key.format = format;
     key.aspects = region.dstSubresource.aspectMask;
     key.layerIndex = region.dstSubresource.baseArrayLayer;
@@ -5438,7 +5440,7 @@ namespace dxvk {
     uint32_t relativeLayer = 0u;
 
     DxvkImageViewKey dstKey = { };
-    dstKey.usage = usage;
+    dstKey.usage = VkImageUsageFlagBits(usage);
     dstKey.aspects = region.dstSubresource.aspectMask;
     dstKey.mipIndex = region.dstSubresource.mipLevel;
     dstKey.mipCount = 1u;

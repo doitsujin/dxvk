@@ -295,7 +295,7 @@ namespace dxvk {
     key.dstFormat = dstView->info().format;
     key.needsGamma = m_gammaView != nullptr;
     key.needsBlit = dstRect.extent != srcRect.extent;
-    key.compositeHud = composite && m_hudView;
+    key.compositeHud = composite && m_hudSrv;
     key.compositeCursor = composite && m_cursorView;
 
     VkPipeline pipeline = getBlitPipeline(key);
@@ -321,8 +321,8 @@ namespace dxvk {
 
     VkDescriptorImageInfo hudDescriptor = { };
 
-    if (m_hudView) {
-      hudDescriptor.imageView = m_hudView->handle();
+    if (m_hudSrv) {
+      hudDescriptor.imageView = m_hudSrv->handle();
       hudDescriptor.imageLayout = m_hudImage->info().layout;
     }
 
@@ -418,7 +418,7 @@ namespace dxvk {
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = m_hudImage->handle();
-    barrier.subresourceRange = m_hudView->imageSubresources();
+    barrier.subresourceRange = m_hudRtv->imageSubresources();
 
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
     depInfo.imageMemoryBarrierCount = 1;
@@ -429,7 +429,7 @@ namespace dxvk {
 
     // Render actual HUD image
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = m_hudView->handle();
+    attachmentInfo.imageView = m_hudRtv->handle();
     attachmentInfo.imageLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -443,7 +443,7 @@ namespace dxvk {
 
     ctx.cmd->cmdBeginRendering(&renderInfo);
 
-    m_hud->render(ctx, m_hudView);
+    m_hud->render(ctx, m_hudRtv);
 
     ctx.cmd->cmdEndRendering();
 
@@ -490,8 +490,6 @@ namespace dxvk {
 
     DxvkImageViewKey viewInfo = { };
     viewInfo.viewType       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.usage          = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                            | VK_IMAGE_USAGE_SAMPLED_BIT;
     viewInfo.format         = imageInfo.format;
     viewInfo.aspects        = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.mipIndex       = 0u;
@@ -499,13 +497,18 @@ namespace dxvk {
     viewInfo.layerIndex     = 0u;
     viewInfo.layerCount     = 1u;
 
-    m_hudView = m_hudImage->createView(viewInfo);
+    viewInfo.usage          = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    m_hudRtv = m_hudImage->createView(viewInfo);
+
+    viewInfo.usage          = VK_IMAGE_USAGE_SAMPLED_BIT;
+    m_hudSrv = m_hudImage->createView(viewInfo);
   }
 
 
   void DxvkSwapchainBlitter::destroyHudImage() {
     m_hudImage = nullptr;
-    m_hudView = nullptr;
+    m_hudRtv = nullptr;
+    m_hudSrv = nullptr;
   }
 
 

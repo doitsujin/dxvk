@@ -6,6 +6,7 @@
 #include "dxvk_access.h"
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
+#include "dxvk_descriptor.h"
 #include "dxvk_hash.h"
 
 #include "../util/util_time.h"
@@ -326,7 +327,7 @@ namespace dxvk {
     /// View type
     VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     /// View usage flags
-    VkImageUsageFlags usage = 0u;
+    VkImageUsageFlagBits usage = VkImageUsageFlagBits(0u);
     /// View format
     VkFormat format = VK_FORMAT_UNDEFINED;
     /// Aspect flags to include in this view
@@ -400,9 +401,9 @@ namespace dxvk {
      * \brief Creates an image view
      *
      * \param [in] key View properties
-     * \returns Image view handle
+     * \returns Pointer to descriptor info
      */
-    VkImageView createImageView(
+    const DxvkDescriptor* createImageView(
       const DxvkImageViewKey&           key);
 
   private:
@@ -412,7 +413,7 @@ namespace dxvk {
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkImageViewKey,
-      VkImageView, DxvkHash, DxvkEq> m_views;
+      DxvkDescriptor, DxvkHash, DxvkEq> m_views;
 
   };
 
@@ -610,7 +611,7 @@ namespace dxvk {
      * \param [in] key View properties
      * \returns Image view handle
      */
-    VkImageView createImageView(
+    const DxvkDescriptor* createImageView(
       const DxvkImageViewKey&           key);
 
   private:

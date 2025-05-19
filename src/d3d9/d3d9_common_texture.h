@@ -371,7 +371,7 @@ namespace dxvk {
     Rc<DxvkImageView> CreateView(
             UINT                   Layer,
             UINT                   Lod,
-            VkImageUsageFlags      UsageFlags,
+            VkImageUsageFlagBits   UsageFlags,
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 

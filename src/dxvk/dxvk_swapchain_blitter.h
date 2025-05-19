@@ -226,7 +226,8 @@ namespace dxvk {
     Rc<DxvkSampler>     m_samplerCursorNearest;
 
     Rc<DxvkImage>       m_hudImage;
-    Rc<DxvkImageView>   m_hudView;
+    Rc<DxvkImageView>   m_hudRtv;
+    Rc<DxvkImageView>   m_hudSrv;
 
     const DxvkPipelineLayout* m_blitLayout = nullptr;
     const DxvkPipelineLayout* m_cursorLayout = nullptr;
