@@ -301,16 +301,6 @@ namespace dxvk {
     VkImageLayout getLayout() const;
 
     /**
-     * \brief Queries the default image layout
-     *
-     * Used when binding the view as a descriptor.
-     * \returns Default image layout
-     */
-    VkImageLayout defaultLayout() const {
-      return m_properties.layout;
-    }
-
-    /**
      * \brief Checks whether the image is multisampled
      * \returns \c true if the image is multisampled
      */
