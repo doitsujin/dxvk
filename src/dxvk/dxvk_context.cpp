@@ -3729,7 +3729,6 @@ namespace dxvk {
     bufferViewInfo.size = slicePitch * imageExtent.depth * imageSubresource.layerCount;
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-    VkBufferView bufferViewHandle = bufferView->getDescriptor(false)->legacy.bufferView;
 
     flushPendingAccesses(*bufferView, DxvkAccess::Read);
 
@@ -3757,11 +3756,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> imageView = image->createView(imageViewInfo);
-
-    // Transition image to required layout and discard if possible
-    VkImageLayout imageLayout = isDepthStencil
-      ? image->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-      : image->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkImageLayout imageLayout = imageView->getLayout();
 
     VkPipelineStageFlags stages = isDepthStencil
       ? VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
@@ -3829,15 +3824,9 @@ namespace dxvk {
     DxvkMetaCopyPipeline pipeline = m_common->metaCopy().getCopyBufferToImagePipeline(
       image->info().format, bufferFormat, imageSubresource.aspectMask);
 
-    VkPipelineLayout pipelineLayout = pipeline.layout->getPipelineLayout(false);
-
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet = m_descriptorPool->alloc(pipeline.layout->getDescriptorSetLayout(0));
-    descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pTexelBufferView = &bufferViewHandle;
-
-    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    DxvkDescriptorWrite bufferDescriptor = { };
+    bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    bufferDescriptor.descriptor = bufferView->getDescriptor(false);
 
     DxvkBufferImageCopyArgs pushConst = { };
     pushConst.imageOffset = imageOffset;
@@ -3850,13 +3839,9 @@ namespace dxvk {
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
-      m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-        descriptorWrite.dstSet, 0, nullptr);
-
-      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-        0, sizeof(pushConst), &pushConst);
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        pipeline.layout, 1u, &bufferDescriptor,
+        sizeof(pushConst), &pushConst);
 
       m_cmd->cmdDraw(3, renderingInfo.layerCount, 0, 0);
     }
@@ -3883,16 +3868,12 @@ namespace dxvk {
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline.pipeline);
 
-      m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-        descriptorWrite.dstSet, 0, nullptr);
-
       for (uint32_t i = 0; i < 8; i++) {
         pushConst.stencilBitIndex = i;
 
-        m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-          pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-          0, sizeof(pushConst), &pushConst);
+        m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+          pipeline.layout, i ? 0u : 1u, &bufferDescriptor,
+          sizeof(pushConst), &pushConst);
 
         m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_FRONT_AND_BACK, 1u << i);
         m_cmd->cmdDraw(3, renderingInfo.layerCount, 0, 0);
