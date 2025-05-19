@@ -23,13 +23,9 @@ namespace dxvk {
   
   /**
    * \brief Framebuffer attachment
-   * 
-   * Stores an attachment, as well as the image layout
-   * that will be used for rendering to the attachment.
    */
   struct DxvkAttachment {
     Rc<DxvkImageView> view    = nullptr;
-    VkImageLayout     layout  = VK_IMAGE_LAYOUT_UNDEFINED;
   };
   
   

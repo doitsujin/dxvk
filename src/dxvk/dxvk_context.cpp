@@ -2110,7 +2110,7 @@ namespace dxvk {
       // isn't writable. We can only hit this particular path when starting a render pass,
       // so we can safely manipulate load layouts here.
       int32_t colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
-      VkImageLayout renderLayout = m_state.om.framebufferInfo.getAttachment(attachmentIndex).layout;
+      VkImageLayout renderLayout = m_state.om.framebufferInfo.getAttachment(attachmentIndex).view->getLayout();
 
       if (colorIndex < 0) {
         depthOp.loadLayout = m_state.om.renderPassOps.depthOps.loadLayout;
@@ -5718,56 +5718,60 @@ namespace dxvk {
     // Transition all images to the render layout as necessary
     const auto& depthAttachment = framebufferInfo.getDepthTarget();
 
-    if (depthAttachment.layout != ops.depthOps.loadLayout
-     && depthAttachment.view != nullptr) {
-      VkImageAspectFlags depthAspects = depthAttachment.view->info().aspects;
+    if (depthAttachment.view) {
+      VkImageLayout layout = depthAttachment.view->getLayout();
 
-      VkPipelineStageFlags2 depthStages =
-        VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-        VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
-      VkAccessFlags2 depthAccess = VK_ACCESS_2_NONE;
+      if (layout != ops.depthOps.loadLayout) {
+        VkImageAspectFlags depthAspects = depthAttachment.view->info().aspects;
 
-      if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
-       || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD))
-        depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        VkPipelineStageFlags2 depthStages =
+          VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
+          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
+        VkAccessFlags2 depthAccess = VK_ACCESS_2_NONE;
 
-      if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD != VK_ATTACHMENT_LOAD_OP_LOAD)
-       || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS != VK_ATTACHMENT_LOAD_OP_LOAD)
-       || (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL))
-        depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
+         || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD))
+          depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
-      if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
-        depthStages |= m_device->getShaderPipelineStages();
-        depthAccess |= VK_ACCESS_2_SHADER_READ_BIT;
+        if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD != VK_ATTACHMENT_LOAD_OP_LOAD)
+         || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS != VK_ATTACHMENT_LOAD_OP_LOAD)
+         || (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL))
+          depthAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+          depthStages |= m_device->getShaderPipelineStages();
+          depthAccess |= VK_ACCESS_2_SHADER_READ_BIT;
+        }
+
+        accessImage(DxvkCmdBuffer::ExecBuffer,
+          *depthAttachment.view->image(),
+          depthAttachment.view->imageSubresources(),
+          ops.depthOps.loadLayout,
+          depthStages, 0, layout,
+          depthStages, depthAccess, DxvkAccessOp::None);
       }
-
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *depthAttachment.view->image(),
-        depthAttachment.view->imageSubresources(),
-        ops.depthOps.loadLayout,
-        depthStages, 0,
-        depthAttachment.layout,
-        depthStages, depthAccess, DxvkAccessOp::None);
     }
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorAttachment = framebufferInfo.getColorTarget(i);
 
-      if (colorAttachment.layout != ops.colorOps[i].loadLayout
-       && colorAttachment.view != nullptr) {
-        VkAccessFlags2 colorAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
+      if (colorAttachment.view) {
+        VkImageLayout layout = colorAttachment.view->getLayout();
 
-        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
-          colorAccess |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+        if (layout != ops.colorOps[i].loadLayout) {
+          VkAccessFlags2 colorAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
-        accessImage(DxvkCmdBuffer::ExecBuffer,
-          *colorAttachment.view->image(),
-          colorAttachment.view->imageSubresources(),
-          ops.colorOps[i].loadLayout,
-          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
-          colorAttachment.layout,
-          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-          colorAccess, DxvkAccessOp::None);
+          if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
+            colorAccess |= VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
+
+          accessImage(DxvkCmdBuffer::ExecBuffer,
+            *colorAttachment.view->image(),
+            colorAttachment.view->imageSubresources(),
+            ops.colorOps[i].loadLayout,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, 0, layout,
+            VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            colorAccess, DxvkAccessOp::None);
+        }
       }
     }
 
@@ -5783,16 +5787,16 @@ namespace dxvk {
     const DxvkRenderPassOps&    ops) {
     const auto& depthAttachment = framebufferInfo.getDepthTarget();
 
-    if (depthAttachment.view != nullptr) {
+    if (depthAttachment.view) {
+      VkImageLayout srcLayout = depthAttachment.view->getLayout();
       VkAccessFlags2 srcAccess = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
-      if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+      if (srcLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
         srcAccess |= VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
       accessImage(DxvkCmdBuffer::ExecBuffer,
         *depthAttachment.view->image(),
-        depthAttachment.view->imageSubresources(),
-        depthAttachment.layout,
+        depthAttachment.view->imageSubresources(), srcLayout,
         VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
         VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
         srcAccess, ops.depthOps.storeLayout,
@@ -5804,11 +5808,11 @@ namespace dxvk {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorAttachment = framebufferInfo.getColorTarget(i);
 
-      if (colorAttachment.view != nullptr) {
+      if (colorAttachment.view) {
         accessImage(DxvkCmdBuffer::ExecBuffer,
           *colorAttachment.view->image(),
           colorAttachment.view->imageSubresources(),
-          colorAttachment.layout,
+          colorAttachment.view->getLayout(),
           VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
           VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT |
           VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
@@ -5853,7 +5857,7 @@ namespace dxvk {
         colorFormats[i] = colorTarget.view->info().format;
 
         colorInfo.imageView = colorTarget.view->handle();
-        colorInfo.imageLayout = colorTarget.layout;
+        colorInfo.imageLayout = colorTarget.view->getLayout();
         colorInfo.loadOp = ops.colorOps[i].loadOp;
         colorInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -5889,13 +5893,13 @@ namespace dxvk {
     if (depthTarget.view) {
       depthStencilFormat = depthTarget.view->info().format;
       depthStencilAspects = depthTarget.view->info().aspects;
-      depthStencilWritable = vk::getWritableAspectsForLayout(depthTarget.layout);
+      depthStencilWritable = vk::getWritableAspectsForLayout(depthTarget.view->info().layout);
 
       if (!m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess && depthStencilWritable)
         depthStencilWritable = depthStencilAspects;
 
       depthInfo.imageView = depthTarget.view->handle();
-      depthInfo.imageLayout = depthTarget.layout;
+      depthInfo.imageLayout = depthTarget.view->getLayout();
       depthInfo.loadOp = ops.depthOps.loadOpD;
       depthInfo.storeOp = (depthStencilWritable & VK_IMAGE_ASPECT_DEPTH_BIT)
         ? VK_ATTACHMENT_STORE_OP_STORE : VK_ATTACHMENT_STORE_OP_NONE;
@@ -5989,7 +5993,7 @@ namespace dxvk {
         VkImageSubresourceRange subresources = attachment.view->imageSubresources();
 
         if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-          subresources.aspectMask = vk::getWritableAspectsForLayout(attachment.layout);
+          subresources.aspectMask = vk::getWritableAspectsForLayout(attachment.view->info().layout);
 
         m_implicitResolves.invalidate(*attachment.view->image(), subresources);
       }
@@ -6032,20 +6036,21 @@ namespace dxvk {
   void DxvkContext::resetRenderPassOps(
     const DxvkRenderTargets&    renderTargets,
           DxvkRenderPassOps&    renderPassOps) {
-    if (renderTargets.depth.view != nullptr) {
+    if (renderTargets.depth.view) {
+      VkImageLayout layout = renderTargets.depth.view->getLayout();
+
       renderPassOps.depthOps = DxvkDepthAttachmentOps {
-        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_LOAD_OP_LOAD,
-        renderTargets.depth.layout, renderTargets.depth.layout };
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_LOAD_OP_LOAD, layout, layout };
     } else {
       renderPassOps.depthOps = DxvkDepthAttachmentOps { };
     }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (renderTargets.color[i].view != nullptr) {
+      if (renderTargets.color[i].view) {
+        VkImageLayout layout = renderTargets.color[i].view->getLayout();
+
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps {
-            VK_ATTACHMENT_LOAD_OP_LOAD,
-            renderTargets.color[i].layout,
-            renderTargets.color[i].layout };
+            VK_ATTACHMENT_LOAD_OP_LOAD, layout, layout };
       } else {
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps { };
       }

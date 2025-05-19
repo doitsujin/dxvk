@@ -3654,20 +3654,12 @@ namespace dxvk {
     for (UINT i = 0; i < m_state.om.rtvs.size(); i++) {
       if (m_state.om.rtvs[i] != nullptr) {
         attachments.color[i].view = m_state.om.rtvs[i]->GetImageView();
-
-        if (likely(attachments.color[i].view))
-          attachments.color[i].layout = attachments.color[i].view->info().layout;
-
         sampleCount = m_state.om.rtvs[i]->GetSampleCount();
       }
     }
 
     if (m_state.om.dsv != nullptr) {
       attachments.depth.view = m_state.om.dsv->GetImageView();
-
-      if (likely(attachments.depth.view))
-        attachments.depth.layout = attachments.depth.view->info().layout;
-
       sampleCount = m_state.om.dsv->GetSampleCount();
 
       if (m_device->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
