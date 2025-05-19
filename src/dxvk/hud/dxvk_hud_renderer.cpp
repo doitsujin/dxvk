@@ -191,7 +191,8 @@ namespace dxvk::hud {
 
     drawTextIndirect(ctx, getPipelineKey(dstView),
       drawBufferDescriptor, textBufferDescriptor,
-      m_textBufferView->handle(), m_textDraws.size());
+      m_textBufferView->getDescriptor(false)->legacy.bufferView,
+      m_textDraws.size());
 
     // Ensure all used resources are kept alive
     ctx.cmd->track(m_textBuffer, DxvkAccess::Read);
