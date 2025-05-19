@@ -2546,8 +2546,7 @@ namespace dxvk {
         return deviceFeatures.nvxImageViewHandle;
 
       case D3D11_VK_NVX_BINARY_IMPORT:
-        return deviceFeatures.nvxBinaryImport
-            && deviceFeatures.vk12.bufferDeviceAddress;
+        return deviceFeatures.nvxBinaryImport;
 
       default:
         return false;
