@@ -4459,24 +4459,28 @@ namespace dxvk {
     flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
     flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
-    // Flag used to determine whether we can do an UNDEFINED transition    
+    // Create source and destination image views
+    DxvkMetaCopyViews views(
+      dstImage, dstSubresource, viewFormats.dstFormat,
+      srcImage, srcSubresource, viewFormats.srcFormat);
+
+    VkAccessFlags dstAccess = views.srcImageView->getLayout();
+    VkImageLayout dstLayout = views.dstImageView->getLayout();
+
+    // Flag used to determine whether we can do an UNDEFINED transition
     bool doDiscard = dstImage->isFullSubresource(dstSubresource, extent);
 
     // This function can process both color and depth-stencil images, so
     // some things change a lot depending on the destination image type
     VkPipelineStageFlags dstStages;
-    VkAccessFlags dstAccess;
-    VkImageLayout dstLayout;
 
     if (dstSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-      dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
       dstStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
       if (!doDiscard)
         dstAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
     } else {
-      dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
       dstStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                 | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
       dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
@@ -4496,43 +4500,22 @@ namespace dxvk {
       dstStages, dstAccess, doDiscard);
     flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
-    // Create source and destination image views
-    DxvkMetaCopyViews views(
-      dstImage, dstSubresource, viewFormats.dstFormat,
-      srcImage, srcSubresource, viewFormats.srcFormat);
-
     // Create pipeline for the copy operation
     DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getCopyImagePipeline(
       views.srcImageView->info().viewType, viewFormats.dstFormat, dstImage->info().sampleCount);
 
     // Create and initialize descriptor set
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
+    std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
-    std::array<VkDescriptorImageInfo, 2> descriptorImages = {{
-      { VK_NULL_HANDLE, views.srcImageView->handle(), srcLayout },
-      { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED },
-    }};
+    auto& imagePlane0Descriptor = descriptors[0u];
+    imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imagePlane0Descriptor.descriptor = views.srcImageView->getDescriptor();
 
-    if (views.srcStencilView) {
-      descriptorImages[1].imageView = views.srcStencilView->handle();
-      descriptorImages[1].imageLayout = srcLayout;
-    }
+    auto& imagePlane1Descriptor = descriptors[1u];
+    imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites;
-
-    for (uint32_t i = 0; i < descriptorWrites.size(); i++) {
-      descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-      descriptorWrites[i].dstSet = descriptorSet;
-      descriptorWrites[i].dstBinding = i;
-      descriptorWrites[i].descriptorCount = 1;
-      descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-      descriptorWrites[i].pImageInfo = &descriptorImages[i];
-    }
-
-    m_cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
+    if (views.srcStencilView)
+      imagePlane1Descriptor.descriptor = views.srcStencilView->getDescriptor();
 
     // Set up render state    
     VkViewport viewport;
@@ -4575,27 +4558,23 @@ namespace dxvk {
         renderingInfo.pStencilAttachment = &attachmentInfo;
     }
 
+    VkOffset2D srcCoordOffset = {
+      srcOffset.x - dstOffset.x,
+      srcOffset.y - dstOffset.y };
+
     // Perform the actual copy operation
     m_cmd->cmdBeginRendering(&renderingInfo);
-
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
-
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      descriptorSet, 0, nullptr);
 
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    VkOffset2D srcCoordOffset = {
-      srcOffset.x - dstOffset.x,
-      srcOffset.y - dstOffset.y };
-    
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(srcCoordOffset), &srcCoordOffset);
-    
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+
+    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.layout, descriptors.size(), descriptors.data(),
+      sizeof(srcCoordOffset), &srcCoordOffset);
+
     m_cmd->cmdDraw(3, dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
 
