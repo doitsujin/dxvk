@@ -92,12 +92,12 @@ namespace dxvk::hud {
     ~HudRenderer();
 
     void beginFrame(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView,
       const HudOptions&         options);
 
     void endFrame(
-      const DxvkContextObjects& ctx);
+      const Rc<DxvkCommandList>&ctx);
 
     void drawText(
             uint32_t            size,
@@ -106,7 +106,7 @@ namespace dxvk::hud {
       const std::string&        text);
 
     void drawTextIndirect(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const DxvkResourceBufferInfo& drawArgs,
       const DxvkResourceBufferInfo& drawInfos,
@@ -114,7 +114,7 @@ namespace dxvk::hud {
             uint32_t            drawCount);
 
     void flushDraws(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView,
       const HudOptions&         options);
 
@@ -154,7 +154,7 @@ namespace dxvk::hud {
     void createFontResources();
 
     void uploadFontResources(
-      const DxvkContextObjects& ctx);
+      const Rc<DxvkCommandList>&ctx);
 
     const DxvkPipelineLayout* createPipelineLayout();
 
