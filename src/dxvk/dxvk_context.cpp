@@ -327,7 +327,7 @@ namespace dxvk {
       lookupFormatInfo(bufferView->info().format)->flags);
 
     // Create a descriptor set pointing to the view
-    VkBufferView viewObject = bufferView->handle();
+    VkBufferView viewObject = bufferView->getDescriptor(false)->legacy.bufferView;
 
     VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
@@ -787,8 +787,8 @@ namespace dxvk {
     std::array<VkWriteDescriptorSet, 2> descriptorWrites;
 
     std::array<std::pair<VkDescriptorType, VkBufferView>, 2> descriptorInfos = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, dstView->handle() },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, srcView->handle() },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, dstView->getDescriptor(false)->legacy.bufferView },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, srcView->getDescriptor(false)->legacy.bufferView },
     }};
 
     for (uint32_t i = 0; i < descriptorWrites.size(); i++) {
@@ -3805,7 +3805,7 @@ namespace dxvk {
     bufferViewInfo.size = slicePitch * imageExtent.depth * imageSubresource.layerCount;
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-    VkBufferView bufferViewHandle = bufferView->handle();
+    VkBufferView bufferViewHandle = bufferView->getDescriptor(false)->legacy.bufferView;
 
     flushPendingAccesses(*bufferView, DxvkAccess::Read);
 
@@ -4106,7 +4106,7 @@ namespace dxvk {
     bufferViewInfo.size = slicePitch * imageExtent.depth * imageSubresource.layerCount;
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-    VkBufferView bufferViewHandle = bufferView->handle();
+    VkBufferView bufferViewHandle = bufferView->getDescriptor(false)->legacy.bufferView;
 
     flushPendingAccesses(*bufferView, DxvkAccess::Write);
 
@@ -6568,9 +6568,13 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              if (res.bufferView != nullptr) {
-                descriptorInfo.bufferView = res.bufferView->handle();
+              if (res.bufferView)
+                descriptor = res.bufferView->getDescriptor(false);
+
+              if (descriptor) {
+                descriptorInfo = descriptor->legacy;
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
@@ -6585,9 +6589,13 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              if (res.bufferView != nullptr) {
-                descriptorInfo.bufferView = res.bufferView->handle();
+              if (res.bufferView)
+                descriptor = res.bufferView->getDescriptor(false);
+
+              if (descriptor) {
+                descriptorInfo = descriptor->legacy;
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
@@ -6603,9 +6611,13 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              if (res.bufferView != nullptr) {
-                descriptorInfo.buffer = res.bufferView->getRawDescriptorInfo();
+              if (res.bufferView)
+                descriptor = res.bufferView->getDescriptor(true);
+
+              if (descriptor) {
+                descriptorInfo = descriptor->legacy;
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
@@ -6622,9 +6634,13 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              if (res.bufferView != nullptr) {
-                descriptorInfo.buffer = res.bufferView->getRawDescriptorInfo();
+              if (res.bufferView)
+                descriptor = res.bufferView->getDescriptor(true);
+
+              if (descriptor) {
+                descriptorInfo = descriptor->legacy;
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,

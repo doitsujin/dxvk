@@ -315,7 +315,7 @@ namespace dxvk::hud {
     VkDescriptorBufferInfo drawParamBuffer = m_gpuBuffer->getDescriptor(
       bufferLayout.drawParamOffset, bufferLayout.drawParamSize).buffer;
 
-    VkBufferView textBufferView = m_textView->handle();
+    VkBufferView textBufferView = m_textView->getDescriptor(false)->legacy.bufferView;
 
     std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,

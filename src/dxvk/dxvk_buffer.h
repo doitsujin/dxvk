@@ -89,24 +89,16 @@ namespace dxvk {
      * \brief Retrieves buffer view handle
      *
      * Creates a new view if the buffer has been invalidated.
+     * \param [in] raw Whether to return a raw or formatted descriptor.
      * \returns Vulkan buffer view handle
      */
-    VkBufferView handle();
+    const DxvkDescriptor* getDescriptor(bool raw);
 
     /**
      * \brief Retrieves buffer slice handle
      * \returns Buffer slice handle
      */
     DxvkBufferSliceHandle getSliceHandle() const;
-
-    /**
-     * \brief Retrieves raw buffer descriptor info
-     *
-     * Useful when accessing a buffer view as an
-     * unformatted storage or uniform buffer.
-     * \returns Raw buffer descriptor info
-     */
-    VkDescriptorBufferInfo getRawDescriptorInfo() const;
 
     /**
      * \brief Element count
@@ -150,7 +142,11 @@ namespace dxvk {
     DxvkBufferViewKey m_key     = { };
 
     uint32_t          m_version = 0u;
-    VkBufferView      m_handle  = VK_NULL_HANDLE;
+
+    const DxvkDescriptor* m_raw       = nullptr;
+    const DxvkDescriptor* m_formatted = nullptr;
+
+    void updateViews();
 
   };
 
@@ -677,23 +673,16 @@ namespace dxvk {
 
 
 
-  inline VkBufferView DxvkBufferView::handle() {
-    if (likely(m_version == m_buffer->m_version))
-      return m_handle;
+  inline const DxvkDescriptor* DxvkBufferView::getDescriptor(bool raw) {
+    if (unlikely(m_version < m_buffer->m_version))
+      updateViews();
 
-    m_handle = m_buffer->m_storage->createBufferView(m_key)->legacy.bufferView;
-    m_version = m_buffer->m_version;
-    return m_handle;
+    return raw ? m_raw : m_formatted;
   }
 
 
   inline DxvkBufferSliceHandle DxvkBufferView::getSliceHandle() const {
     return m_buffer->getSliceHandle(m_key.offset, m_key.size);
-  }
-
-
-  inline VkDescriptorBufferInfo DxvkBufferView::getRawDescriptorInfo() const {
-    return m_buffer->getDescriptor(m_key.offset, m_key.size).buffer;
   }
 
 
