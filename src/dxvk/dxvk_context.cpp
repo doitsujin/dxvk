@@ -6474,17 +6474,14 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              VkImageView viewHandle = VK_NULL_HANDLE;
+              if (res.imageView)
+                descriptor = res.imageView->getDescriptor(binding.getViewType());
 
-              if (res.imageView != nullptr)
-                viewHandle = res.imageView->handle(binding.getViewType());
-
-              if (viewHandle) {
+              if (descriptor) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  descriptorInfo.image.sampler = VK_NULL_HANDLE;
-                  descriptorInfo.image.imageView = viewHandle;
-                  descriptorInfo.image.imageLayout = res.imageView->defaultLayout();
+                  descriptorInfo = descriptor->legacy;
 
                   if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
                     accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
@@ -6494,10 +6491,7 @@ namespace dxvk {
                   m_cmd->track(res.imageView->image(), DxvkAccess::Read);
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
-
-                  descriptorInfo.image.sampler = VK_NULL_HANDLE;
-                  descriptorInfo.image.imageView = view->handle(binding.getViewType());
-                  descriptorInfo.image.imageLayout = view->defaultLayout();
+                  descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
 
                   m_cmd->track(view->image(), DxvkAccess::Read);
                 }
@@ -6510,16 +6504,13 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
               const auto& res = m_resources[binding.getResourceIndex()];
+              const DxvkDescriptor* descriptor = nullptr;
 
-              VkImageView viewHandle = VK_NULL_HANDLE;
+              if (res.imageView)
+                descriptor = res.imageView->getDescriptor(binding.getViewType());
 
-              if (res.imageView != nullptr)
-                viewHandle = res.imageView->handle(binding.getViewType());
-
-              if (viewHandle) {
-                descriptorInfo.image.sampler = VK_NULL_HANDLE;
-                descriptorInfo.image.imageView = viewHandle;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+              if (descriptor) {
+                descriptorInfo = descriptor->legacy;
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores()) {
                   accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
@@ -6539,16 +6530,17 @@ namespace dxvk {
               const auto& res = m_resources[binding.getResourceIndex()];
               const auto& sampler = m_samplers[binding.getResourceIndex()];
 
-              VkImageView viewHandle = VK_NULL_HANDLE;
+              const DxvkDescriptor* descriptor = nullptr;
 
               if (res.imageView && sampler)
-                viewHandle = res.imageView->handle(binding.getViewType());
+                descriptor = res.imageView->getDescriptor(binding.getViewType());
 
-              if (viewHandle) {
+              if (descriptor) {
+                descriptorInfo.image.sampler = sampler->handle();
+
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  descriptorInfo.image.sampler = sampler->handle();
-                  descriptorInfo.image.imageView = viewHandle;
-                  descriptorInfo.image.imageLayout = res.imageView->defaultLayout();
+                  descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
+                  descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
 
                   if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
                     accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
@@ -6559,10 +6551,10 @@ namespace dxvk {
                   m_cmd->track(sampler);
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
+                  descriptor = view->getDescriptor(binding.getViewType());
 
-                  descriptorInfo.image.sampler = sampler->handle();
-                  descriptorInfo.image.imageView = view->handle(binding.getViewType());
-                  descriptorInfo.image.imageLayout = view->defaultLayout();
+                  descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
+                  descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
 
                   m_cmd->track(view->image(), DxvkAccess::Read);
                   m_cmd->track(sampler);
