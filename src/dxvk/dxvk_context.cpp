@@ -7061,7 +7061,7 @@ namespace dxvk {
       xfbLengths[i] = bufferSlice.size;
 
       if (!bufferSlice.buffer)
-        xfbBuffers[i] = m_common->dummyResources().bufferHandle();
+        xfbBuffers[i] = m_common->dummyResources().bufferInfo().buffer;
 
       if (bufferSlice.buffer) {
         Rc<DxvkBuffer> buffer = m_state.xfb.buffers[i].buffer();
