@@ -26,7 +26,7 @@ namespace dxvk {
 
 
   void D3D9FormatHelper::ConvertFormat(
-    const DxvkContextObjects&           ctx,
+    const Rc<DxvkCommandList>&          ctx,
           D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
     const Rc<DxvkImage>&                dstImage,
           VkImageSubresourceLayers      dstSubresource,
@@ -69,7 +69,7 @@ namespace dxvk {
 
 
   void D3D9FormatHelper::ConvertGenericFormat(
-    const DxvkContextObjects&           ctx,
+    const Rc<DxvkCommandList>&          ctx,
           D3D9_CONVERSION_FORMAT_INFO   videoFormat,
     const Rc<DxvkImage>&                dstImage,
           VkImageSubresourceLayers      dstSubresource,
@@ -110,14 +110,14 @@ namespace dxvk {
     bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
     bufferDescriptor.descriptor = tmpBufferView->getDescriptor(false);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[videoFormat.FormatType]);
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_layout, descriptors.size(), descriptors.data(),
       sizeof(imageExtent), &imageExtent);
 
-    ctx.cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       ((imageExtent.width + 7u) / 8u),
       ((imageExtent.height + 7u) / 8u),
       1u);
@@ -133,10 +133,10 @@ namespace dxvk {
     depInfo.memoryBarrierCount = 1u;
     depInfo.pMemoryBarriers = &memoryBarrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->track(tmpImageView->image(), DxvkAccess::Write);
-    ctx.cmd->track(tmpBufferView->buffer(), DxvkAccess::Read);
+    ctx->track(tmpImageView->image(), DxvkAccess::Write);
+    ctx->track(tmpBufferView->buffer(), DxvkAccess::Read);
   }
 
 

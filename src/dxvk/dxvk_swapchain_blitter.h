@@ -131,7 +131,7 @@ namespace dxvk {
      * \param [in] srcRect Source rectangle to present
      */
     void present(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView,
             VkRect2D            dstRect,
       const Rc<DxvkImageView>&  srcView,
@@ -239,7 +239,7 @@ namespace dxvk {
       VkPipeline, DxvkHash, DxvkEq> m_cursorPipelines;
 
     void performDraw(
-      const DxvkContextObjects&         ctx,
+      const Rc<DxvkCommandList>&        ctx,
       const Rc<DxvkImageView>&          dstView,
             VkRect2D                    dstRect,
       const Rc<DxvkImageView>&          srcView,
@@ -247,7 +247,7 @@ namespace dxvk {
             VkBool32                    composite);
 
     void renderHudImage(
-      const DxvkContextObjects&         ctx,
+      const Rc<DxvkCommandList>&        ctx,
             VkExtent3D                  extent);
 
     void createHudImage(
@@ -256,17 +256,17 @@ namespace dxvk {
     void destroyHudImage();
 
     void renderCursor(
-      const DxvkContextObjects&         ctx,
+      const Rc<DxvkCommandList>&        ctx,
       const Rc<DxvkImageView>&          dstView);
 
     void uploadGammaImage(
-      const DxvkContextObjects&         ctx);
+      const Rc<DxvkCommandList>&        ctx);
 
     void uploadCursorImage(
-      const DxvkContextObjects&         ctx);
+      const Rc<DxvkCommandList>&        ctx);
 
     void uploadTexture(
-      const DxvkContextObjects&         ctx,
+      const Rc<DxvkCommandList>&        ctx,
       const Rc<DxvkImage>&              image,
       const Rc<DxvkBuffer>&             buffer);
 

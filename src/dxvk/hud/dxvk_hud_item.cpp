@@ -77,7 +77,7 @@ namespace dxvk::hud {
 
 
   void HudItemSet::render(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
             HudRenderer&        renderer) {
@@ -98,7 +98,7 @@ namespace dxvk::hud {
 
 
   HudPos HudVersionItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -123,7 +123,7 @@ namespace dxvk::hud {
 
 
   HudPos HudClientApiItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -158,7 +158,7 @@ namespace dxvk::hud {
 
 
   HudPos HudDeviceInfoItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -197,7 +197,7 @@ namespace dxvk::hud {
 
 
   HudPos HudFpsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -231,7 +231,7 @@ namespace dxvk::hud {
 
 
   HudPos HudFrameTimeItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -261,14 +261,14 @@ namespace dxvk::hud {
 
 
   void HudFrameTimeItem::processFrameTimes(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
           HudRenderer&        renderer,
           uint32_t            dataPoint,
           HudPos              minPos,
           HudPos              maxPos) {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::InitBuffer,
         vk::makeLabel(0xf0c0dc, "HUD frame time processing"));
     }
 
@@ -276,14 +276,14 @@ namespace dxvk::hud {
     DxvkResourceBufferInfo slice = m_gpuBuffer->getSliceInfo();
     std::pair<VkQueryPool, uint32_t> query = m_query->getQuery();
 
-    ctx.cmd->cmdResetQueryPool(DxvkCmdBuffer::InitBuffer,
+    ctx->cmdResetQueryPool(DxvkCmdBuffer::InitBuffer,
       query.first, query.second, 1);
 
-    ctx.cmd->cmdWriteTimestamp(DxvkCmdBuffer::InitBuffer,
+    ctx->cmdWriteTimestamp(DxvkCmdBuffer::InitBuffer,
       VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
       query.first, query.second);
 
-    ctx.cmd->cmdCopyQueryPoolResults(DxvkCmdBuffer::InitBuffer,
+    ctx->cmdCopyQueryPoolResults(DxvkCmdBuffer::InitBuffer,
       query.first, query.second, 1, slice.buffer,
       slice.offset + (dataPoint & 1u) * sizeof(uint64_t), sizeof(uint64_t),
       VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
@@ -298,7 +298,7 @@ namespace dxvk::hud {
     depInfo.memoryBarrierCount = 1u;
     depInfo.pMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
     // Process contents of the buffer and write out text draws
     auto bufferLayout = computeBufferLayout();
@@ -329,14 +329,14 @@ namespace dxvk::hud {
     pushConstants.textPosMaxX = maxPos.x + 48;
     pushConstants.textPosMaxY = maxPos.y;
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::InitBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::InitBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline);
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::InitBuffer,
+    ctx->bindResources(DxvkCmdBuffer::InitBuffer,
       m_computePipelineLayout, descriptors.size(), descriptors.data(),
       sizeof(pushConstants), &pushConstants);
 
-    ctx.cmd->cmdDispatch(DxvkCmdBuffer::InitBuffer, 1, 1, 1);
+    ctx->cmdDispatch(DxvkCmdBuffer::InitBuffer, 1, 1, 1);
 
     barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
@@ -344,7 +344,7 @@ namespace dxvk::hud {
     barrier.dstAccessMask = m_gpuBuffer->info().access;
     barrier.dstStageMask = m_gpuBuffer->info().stages;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
     // Display the min/max numbers
     renderer.drawText(12, minPos, 0xff4040ff, "min:");
@@ -354,16 +354,16 @@ namespace dxvk::hud {
       drawInfoBuffer, m_textView, 2u);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
 
     // Make sure GPU resources are being kept alive as necessary
-    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
-    ctx.cmd->track(m_query);
+    ctx->track(m_gpuBuffer, DxvkAccess::Write);
+    ctx->track(m_query);
   }
 
 
   void HudFrameTimeItem::drawFrameTimeGraph(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
           HudRenderer&        renderer,
           uint32_t            dataPoint,
@@ -381,21 +381,21 @@ namespace dxvk::hud {
     pushConstants.h = graphSize.y;
     pushConstants.frameIndex = dataPoint;
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, getPipeline(renderer, key));
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_gfxPipelineLayout, 1u, &descriptorWrite,
       sizeof(pushConstants), &pushConstants);
 
-    ctx.cmd->cmdDraw(4, 1, 0, 0);
+    ctx->cmdDraw(4, 1, 0, 0);
 
-    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Read);
+    ctx->track(m_gpuBuffer, DxvkAccess::Read);
   }
 
 
   void HudFrameTimeItem::createResources(
-    const DxvkContextObjects& ctx) {
+    const Rc<DxvkCommandList>&ctx) {
     auto bufferLayout = computeBufferLayout();
 
     DxvkBufferCreateInfo bufferInfo = { };
@@ -431,7 +431,7 @@ namespace dxvk::hud {
     // Zero-init buffer so we don't display random garbage at the start
     DxvkResourceBufferInfo bufferSlice = m_gpuBuffer->getSliceInfo();
 
-    ctx.cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
+    ctx->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
       bufferSlice.buffer, bufferSlice.offset, bufferSlice.size, 0u);
 
     VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
@@ -444,8 +444,8 @@ namespace dxvk::hud {
     depInfo.memoryBarrierCount = 1u;
     depInfo.pMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    ctx.cmd->track(m_gpuBuffer, DxvkAccess::Write);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->track(m_gpuBuffer, DxvkAccess::Write);
 
     m_query = m_device->createRawQuery(VK_QUERY_TYPE_TIMESTAMP);
   }
@@ -599,7 +599,7 @@ namespace dxvk::hud {
 
 
   HudPos HudSubmissionStatsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -649,7 +649,7 @@ namespace dxvk::hud {
 
 
   HudPos HudDrawCallStatsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -700,7 +700,7 @@ namespace dxvk::hud {
 
 
   HudPos HudPipelineStatsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -744,7 +744,7 @@ namespace dxvk::hud {
 
 
   HudPos HudDescriptorStatsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -780,7 +780,7 @@ namespace dxvk::hud {
 
 
   HudPos HudMemoryStatsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -844,7 +844,7 @@ namespace dxvk::hud {
 
 
   HudPos HudMemoryDetailsItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -969,7 +969,7 @@ namespace dxvk::hud {
 
 
   void HudMemoryDetailsItem::flushDraws(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer) {
@@ -994,30 +994,30 @@ namespace dxvk::hud {
 
     HudPushConstants pushConstants = renderer.getPushConstants();
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_pipelineLayout, descriptors.size(), descriptors.data(),
       sizeof(pushConstants), &pushConstants);
 
     // Draw background first, then the actual usage info. The pipeline
     // layout is the same for both pipelines, so don't rebind resources.
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.background);
 
-    ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
+    ctx->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.visualize);
-    ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
+    ctx->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
     // Track data buffer lifetime
-    ctx.cmd->track(m_dataBuffer, DxvkAccess::Read);
+    ctx->track(m_dataBuffer, DxvkAccess::Read);
 
     m_drawInfos.clear();
   }
 
 
   void HudMemoryDetailsItem::updateDataBuffer(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
           DxvkResourceBufferInfo& drawDescriptor,
           DxvkResourceBufferInfo& dataDescriptor) {
     size_t drawInfoSize = m_drawInfos.size() * sizeof(DrawInfo);
@@ -1043,7 +1043,7 @@ namespace dxvk::hud {
     } else {
       // Ensure we can update the buffer without overriding live data
       auto allocation = m_dataBuffer->assignStorage(m_dataBuffer->allocateStorage());
-      ctx.cmd->track(std::move(allocation));
+      ctx->track(std::move(allocation));
     }
 
     // Update draw infos and pad unused area with zeroes
@@ -1192,7 +1192,7 @@ namespace dxvk::hud {
 
 
   HudPos HudCsThreadItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -1246,7 +1246,7 @@ namespace dxvk::hud {
 
 
   HudPos HudGpuLoadItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -1309,7 +1309,7 @@ namespace dxvk::hud {
 
 
   HudPos HudCompilerActivityItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -1393,7 +1393,7 @@ namespace dxvk::hud {
 
 
   HudPos HudLatencyItem::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
