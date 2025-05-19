@@ -681,7 +681,7 @@ namespace dxvk {
     if (likely(m_version == m_buffer->m_version))
       return m_handle;
 
-    m_handle = m_buffer->m_storage->createBufferView(m_key);
+    m_handle = m_buffer->m_storage->createBufferView(m_key)->legacy.bufferView;
     m_version = m_buffer->m_version;
     return m_handle;
   }
