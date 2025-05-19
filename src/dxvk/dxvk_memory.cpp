@@ -127,6 +127,7 @@ namespace dxvk {
     info.subresourceRange.layerCount = key.layerCount;
 
     DxvkDescriptor descriptor = { };
+    descriptor.legacy.image.imageLayout = key.layout;
 
     VkResult vr = m_vkd->vkCreateImageView(
       m_vkd->device(), &info, nullptr, &descriptor.legacy.image.imageView);

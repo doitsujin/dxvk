@@ -1310,7 +1310,7 @@ namespace dxvk {
 
       DxvkRenderTargets rt;
       rt.color[0].view = cView;
-      rt.color[0].layout = cView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+      rt.color[0].layout = cView->getLayout();
 
       ctx->bindRenderTargets(std::move(rt), 0u);
 

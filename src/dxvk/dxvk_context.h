@@ -159,7 +159,7 @@ namespace dxvk {
         auto& rt = m_state.om.renderTargets.color[i];
 
         if (rt.view)
-          rt.layout = rt.view->pickLayout(rt.layout);
+          rt.layout = rt.view->image()->pickLayout(rt.layout);
       }
 
       if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {

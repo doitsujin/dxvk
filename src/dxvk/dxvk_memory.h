@@ -330,6 +330,8 @@ namespace dxvk {
     VkImageUsageFlagBits usage = VkImageUsageFlagBits(0u);
     /// View format
     VkFormat format = VK_FORMAT_UNDEFINED;
+    /// Image layout that the view will be used as
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
     /// Aspect flags to include in this view
     VkImageAspectFlags aspects = 0u;
     /// First mip
@@ -348,6 +350,7 @@ namespace dxvk {
       hash.add(uint32_t(viewType));
       hash.add(uint32_t(usage));
       hash.add(uint32_t(format));
+      hash.add(uint32_t(layout));
       hash.add(uint32_t(aspects));
       hash.add(uint32_t(mipIndex) | (uint32_t(mipCount) << 16));
       hash.add(uint32_t(layerIndex) | (uint32_t(layerCount) << 16));
@@ -359,6 +362,7 @@ namespace dxvk {
       return viewType == other.viewType
           && usage == other.usage
           && format == other.format
+          && layout == other.layout
           && aspects == other.aspects
           && mipIndex == other.mipIndex
           && mipCount == other.mipCount
