@@ -1839,15 +1839,13 @@ namespace dxvk {
                              | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                              | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                              | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
-                             | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+                             | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                             | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     if (m_device->features().extTransformFeedback.transformFeedback) {
       flags |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT
             |  VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
     }
-
-    if (m_device->features().vk12.bufferDeviceAddress)
-      flags |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     // Check which individual flags are supported on each memory type. This is a
     // bit dodgy since the spec technically does not require a combination of flags
