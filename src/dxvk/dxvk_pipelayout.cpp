@@ -116,6 +116,12 @@ namespace dxvk {
   : m_device(device) {
     auto vk = m_device->vkd();
 
+    // Determine bind point based on shader stages
+    m_bindPoint = (key.getStageMask() == VK_SHADER_STAGE_COMPUTE_BIT)
+      ? VK_PIPELINE_BIND_POINT_COMPUTE
+      : VK_PIPELINE_BIND_POINT_GRAPHICS;
+    m_pushConstants = key.getPushConstantRange();
+
     // Gather descriptor set layout objects, some of these may be null.
     std::array<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets> setLayouts = { };
 

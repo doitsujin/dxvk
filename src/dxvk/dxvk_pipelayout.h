@@ -764,6 +764,14 @@ namespace dxvk {
     ~DxvkPipelineLayout();
 
     /**
+     * \brief Queries pipeline bind point
+     * \returns Pipeline bind point
+     */
+    VkPipelineBindPoint getBindPoint() const {
+      return m_bindPoint;
+    }
+
+    /**
      * \brief Queries Vulkan pipeline layout
      *
      * \param [in] independent Whether to return a pipeline
@@ -786,9 +794,20 @@ namespace dxvk {
       return m_setLayouts[set];
     }
 
+    /**
+     * \brief Queries actual push constant range
+     * \returns Push constant range
+     */
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
+    }
+
   private:
 
     DxvkDevice*       m_device;
+
+    VkPipelineBindPoint   m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    DxvkPushConstantRange m_pushConstants = { };
 
     VkPipelineLayout  m_layoutIndependent = VK_NULL_HANDLE;
     VkPipelineLayout  m_layoutComplete    = VK_NULL_HANDLE;
