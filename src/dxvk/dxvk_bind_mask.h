@@ -3,7 +3,7 @@
 #include <type_traits>
 
 #include "dxvk_buffer.h"
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_image.h"
 #include "dxvk_limits.h"
 #include "dxvk_sampler.h"

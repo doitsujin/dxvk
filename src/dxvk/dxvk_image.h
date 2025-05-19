@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_sparse.h"

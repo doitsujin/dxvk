@@ -1392,7 +1392,7 @@ namespace dxvk {
     DxvkDescriptorState     m_descriptorState;
 
     Rc<DxvkDescriptorPool>  m_descriptorPool;
-    Rc<DxvkDescriptorManager> m_descriptorManager;
+    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
 
     DxvkBarrierBatch        m_sdmaAcquires;
     DxvkBarrierBatch        m_sdmaBarriers;

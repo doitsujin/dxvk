@@ -2,7 +2,7 @@
 #include <vector>
 
 #include "dxvk_device.h"
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 

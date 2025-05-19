@@ -10,7 +10,7 @@
 namespace dxvk {
 
   class DxvkDevice;
-  class DxvkDescriptorManager;
+  class DxvkDescriptorPoolSet;
   
   /**
    * \brief Descriptor info
@@ -75,7 +75,7 @@ namespace dxvk {
 
     DxvkDescriptorPool(
             DxvkDevice*               device,
-            DxvkDescriptorManager*    manager);
+            DxvkDescriptorPoolSet*    manager);
 
     ~DxvkDescriptorPool();
 
@@ -122,7 +122,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*               m_device;
-    DxvkDescriptorManager*    m_manager;
+    DxvkDescriptorPoolSet*    m_manager;
 
     std::vector<VkDescriptorPool> m_descriptorPools;
 
@@ -167,14 +167,14 @@ namespace dxvk {
   /*
    * \brief Descriptor pool manager
    */
-  class DxvkDescriptorManager : public RcObject {
+  class DxvkDescriptorPoolSet : public RcObject {
 
   public:
 
-    DxvkDescriptorManager(
+    DxvkDescriptorPoolSet(
             DxvkDevice*                 device);
 
-    ~DxvkDescriptorManager();
+    ~DxvkDescriptorPoolSet();
 
     /**
      * \brief Queries maximum number of descriptor sets per pool

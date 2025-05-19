@@ -21,7 +21,7 @@ namespace dxvk {
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
-    m_descriptorManager = new DxvkDescriptorManager(device.ptr());
+    m_descriptorManager = new DxvkDescriptorPoolSet(device.ptr());
 
     // Global barrier for graphics pipelines. This is only used to
     // avoid write-after-read hazards after a render pass, so the
