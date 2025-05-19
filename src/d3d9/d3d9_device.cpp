@@ -6733,21 +6733,13 @@ namespace dxvk {
     // despite not having color writes enabled,
     // otherwise we might end up with unnecessary render pass spills
     boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
-    for (uint32_t i : bit::BitMask(boundMask)) {
+    for (uint32_t i : bit::BitMask(boundMask))
       attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
-
-      if (attachments.color[i].view)
-        attachments.color[i].layout = attachments.color[i].view->info().layout;
-    }
 
     const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
-    if (dsvBound) {
+    if (dsvBound)
       attachments.depth.view = m_state.depthStencil->GetDepthStencilView(depthWrite);
-
-      if (attachments.depth.view)
-        attachments.depth.layout = attachments.depth.view->info().layout;
-    }
 
     VkImageAspectFlags feedbackLoopAspects = 0u;
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
