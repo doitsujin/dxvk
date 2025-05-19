@@ -25,6 +25,7 @@ namespace dxvk {
 
     DxvkImageViewKey viewInfo;
     viewInfo.format = formatInfo.Format;
+    viewInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);

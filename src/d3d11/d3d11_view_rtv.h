@@ -51,10 +51,6 @@ namespace dxvk {
       return m_view;
     }
     
-    VkImageLayout GetRenderLayout() const {
-      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    }
-
     UINT GetSampleCount() const {
       return UINT(m_view->image()->info().sampleCount);
     }
