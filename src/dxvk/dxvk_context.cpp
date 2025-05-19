@@ -1308,17 +1308,10 @@ namespace dxvk {
     // bind the source image view to the fragment shader
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
-    VkDescriptorImageInfo descriptorImage = { };
-    descriptorImage.sampler     = sampler->getDescriptor().samplerObject;
-    descriptorImage.imageLayout = srcLayout;
-    
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstBinding       = 0;
-    descriptorWrite.dstArrayElement  = 0;
-    descriptorWrite.descriptorCount  = 1;
-    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite.pImageInfo       = &descriptorImage;
-    
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.sampler = sampler->getDescriptor();
+
     // Common render pass info
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageLayout = dstLayout;
@@ -1333,17 +1326,13 @@ namespace dxvk {
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       mipGenerator.getSrcViewType(), imageView->info().format, VK_SAMPLE_COUNT_1_BIT);
 
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-
     for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
+      // Image view to read from
+      imageDescriptor.descriptor = mipGenerator.getSrcView(i)->getDescriptor();
+
       // Width, height and layer count for the current pass
       VkExtent3D passExtent = mipGenerator.computePassExtent(i);
-      
-      // Create descriptor set with the current source view
-      descriptorImage.imageView = mipGenerator.getSrcView(i)->handle();
-      descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
-      m_cmd->updateDescriptorSets(1, &descriptorWrite);
-      
+
       // Set up viewport and scissor rect
       VkViewport viewport;
       viewport.x        = 0.0f;
@@ -1352,16 +1341,16 @@ namespace dxvk {
       viewport.height   = float(passExtent.height);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
-      
+
       VkRect2D scissor;
       scissor.offset    = { 0, 0 };
       scissor.extent    = { passExtent.width, passExtent.height };
-      
+
       // Set up rendering info
       attachmentInfo.imageView = mipGenerator.getDstView(i)->handle();
       renderingInfo.renderArea = scissor;
       renderingInfo.layerCount = passExtent.depth;
-      
+
       // Set up push constants
       DxvkMetaBlitPushConstants pushConstants = { };
       pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
@@ -1386,15 +1375,11 @@ namespace dxvk {
 
       m_cmd->cmdSetViewport(1, &viewport);
       m_cmd->cmdSetScissor(1, &scissor);
-      
-      m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-        descriptorWrite.dstSet, 0, nullptr);
 
-      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-        0, sizeof(pushConstants), &pushConstants);
-      
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        pipeInfo.layout, 1u, &imageDescriptor,
+        sizeof(pushConstants), &pushConstants);
+
       m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
       m_cmd->cmdEndRendering();
     }
