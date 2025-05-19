@@ -4996,8 +4996,19 @@ namespace dxvk {
           srcName ? srcName : "unknown", ")").c_str()));
     }
 
+    // Create image views for the resolve operation
+    VkFormat dstFormat = format ? format : dstImage->info().format;
+    VkFormat srcFormat = format ? format : srcImage->info().format;
+
+    DxvkMetaCopyViews views(
+      dstImage, region.dstSubresource, dstFormat,
+      srcImage, region.srcSubresource, srcFormat);
+
     // Discard the destination image if we're fully writing it,
     // and transition the image layout if necessary
+    VkImageLayout dstLayout = views.dstImageView->getLayout();
+    VkImageLayout srcLayout = views.srcImageView->getLayout();
+
     bool doDiscard = dstImage->isFullSubresource(region.dstSubresource, region.extent);
 
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
@@ -5006,34 +5017,21 @@ namespace dxvk {
       doDiscard &= stencilMode != VK_RESOLVE_MODE_NONE;
 
     VkPipelineStageFlags dstStages;
-    VkImageLayout dstLayout;
     VkAccessFlags dstAccess;
 
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-      dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
       dstStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
       if (!doDiscard)
         dstAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
     } else {
-      dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
       dstStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                 | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
       dstAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
       if (!doDiscard)
         dstAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    }
-
-    // Check source image layout, and try to avoid transitions if we can
-    VkImageLayout srcLayout = srcImage->info().layout;
-    
-    if (srcLayout != VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-     && srcLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL) {
-      srcLayout = (region.srcSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT & VK_IMAGE_ASPECT_COLOR_BIT)
-        ? srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-        : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     }
 
     addImageLayoutTransition(*dstImage, dstSubresourceRange,
@@ -5043,46 +5041,23 @@ namespace dxvk {
     flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
 
     // Create a framebuffer and pipeline for the resolve op
-    VkFormat dstFormat = format ? format : dstImage->info().format;
-    VkFormat srcFormat = format ? format : srcImage->info().format;
-
     VkExtent3D passExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
-
-    DxvkMetaCopyViews views(
-      dstImage, region.dstSubresource, dstFormat,
-      srcImage, region.srcSubresource, srcFormat);
 
     DxvkMetaResolvePipeline pipeInfo = m_common->metaResolve().getPipeline(
       dstFormat, srcImage->info().sampleCount, depthMode, stencilMode);
 
-    // Create and initialize descriptor set    
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
+    // Create and initialize descriptor set
+    std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
-    std::array<VkDescriptorImageInfo, 2> descriptorImages = {{
-      { VK_NULL_HANDLE, views.srcImageView->handle(), srcLayout },
-      { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED },
-    }};
+    auto& imagePlane0Descriptor = descriptors[0u];
+    imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imagePlane0Descriptor.descriptor = views.srcImageView->getDescriptor();
 
-    if (views.srcStencilView) {
-      descriptorImages[1].imageView = views.srcStencilView->handle();
-      descriptorImages[1].imageLayout = srcLayout;
-    }
+    auto& imagePlane1Descriptor = descriptors[1u];
+    imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites;
-
-    for (uint32_t i = 0; i < descriptorWrites.size(); i++) {
-      descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-      descriptorWrites[i].dstSet = descriptorSet;
-      descriptorWrites[i].dstBinding = i;
-      descriptorWrites[i].descriptorCount = 1;
-      descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-      descriptorWrites[i].pImageInfo = &descriptorImages[i];
-    }
-    
-    m_cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
+    if (views.srcStencilView)
+      imagePlane1Descriptor.descriptor = views.srcStencilView->getDescriptor();
 
     // Set up render state    
     VkViewport viewport;
@@ -5130,19 +5105,15 @@ namespace dxvk {
     
     m_cmd->cmdBeginRendering(&renderingInfo);
 
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
-
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      descriptorSet, 0, nullptr);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
 
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(srcOffset), &srcOffset);
+    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.layout, descriptors.size(), descriptors.data(),
+      sizeof(srcOffset), &srcOffset);
 
     m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
 
