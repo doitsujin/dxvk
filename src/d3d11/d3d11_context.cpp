@@ -5773,7 +5773,8 @@ namespace dxvk {
       }
 
       // Otherwise we can't really do anything fancy, so just do a GPU copy
-      context->UpdateBuffer(bufferResource, offset, length, pSrcData);
+      if (likely(length))
+        context->UpdateBuffer(bufferResource, offset, length, pSrcData);
     } else {
       D3D11CommonTexture* textureResource = GetCommonTexture(pDstResource);
 
