@@ -80,6 +80,7 @@ namespace dxvk {
     imageViewInfo.viewType  = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format    = dstImage->info().format;
     imageViewInfo.usage     = VK_IMAGE_USAGE_STORAGE_BIT;
+    imageViewInfo.layout    = VK_IMAGE_LAYOUT_GENERAL;
     imageViewInfo.aspects   = dstSubresource.aspectMask;
     imageViewInfo.mipIndex  = dstSubresource.mipLevel;
     imageViewInfo.mipCount  = 1;
@@ -99,34 +100,22 @@ namespace dxvk {
     bufferViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     auto tmpBufferView = srcSlice.buffer()->createView(bufferViewInfo);
 
-    VkPipelineLayout pipelineLayout = m_layout->getPipelineLayout(false);
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_layout->getDescriptorSetLayout(0));
+    std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-    imageDescriptor.imageView = tmpImageView->handle();
+    auto& imageDescriptor = descriptors[0u];
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    imageDescriptor.descriptor = tmpImageView->getDescriptor();
 
-    VkBufferView bufferViewHandle = tmpBufferView->getDescriptor(false)->legacy.bufferView;
-
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, &imageDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &bufferViewHandle },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
+    auto& bufferDescriptor = descriptors[1u];
+    bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    bufferDescriptor.descriptor = tmpBufferView->getDescriptor(false);
 
     ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, m_pipelines[videoFormat.FormatType]);
 
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, set, 0, nullptr);
-
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(VkExtent2D), &imageExtent);
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_layout, descriptors.size(), descriptors.data(),
+      sizeof(imageExtent), &imageExtent);
 
     ctx.cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       ((imageExtent.width + 7u) / 8u),
