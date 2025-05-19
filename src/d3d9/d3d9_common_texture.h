@@ -355,23 +355,11 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout DetermineDepthStencilLayout(bool write, bool hazardous, VkImageLayout hazardLayout) const {
-      if (unlikely(m_transitionedToHazardLayout))
-        return hazardLayout;
-
-      if (unlikely(m_image->info().tiling != VK_IMAGE_TILING_OPTIMAL))
-        return VK_IMAGE_LAYOUT_GENERAL;
-
-      if (unlikely(hazardous && !write))
-        return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-
-      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    }
-
     Rc<DxvkImageView> CreateView(
             UINT                   Layer,
             UINT                   Lod,
             VkImageUsageFlagBits   UsageFlags,
+            VkImageLayout          Layout,
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 

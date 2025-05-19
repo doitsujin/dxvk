@@ -1946,7 +1946,7 @@ namespace dxvk {
       VkExtent3D         extent) {
       // Clear depth if we need to.
       if (depthAspectMask != 0)
-        ClearImageView(alignment, offset, extent, m_state.depthStencil->GetDepthStencilView(), depthAspectMask, clearValueDepth);
+        ClearImageView(alignment, offset, extent, m_state.depthStencil->GetDepthStencilView(true), depthAspectMask, clearValueDepth);
 
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
@@ -6734,24 +6734,26 @@ namespace dxvk {
     // otherwise we might end up with unnecessary render pass spills
     boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
     for (uint32_t i : bit::BitMask(boundMask)) {
-      attachments.color[i] = {
-        m_state.renderTargets[i]->GetRenderTargetView(srgb),
-        m_state.renderTargets[i]->GetRenderTargetLayout(m_hazardLayout) };
+      attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
+
+      if (attachments.color[i].view)
+        attachments.color[i].layout = attachments.color[i].view->info().layout;
     }
 
-    if (dsvBound) {
-      const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
-      attachments.depth = {
-        m_state.depthStencil->GetDepthStencilView(),
-        m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
+    if (dsvBound) {
+      attachments.depth.view = m_state.depthStencil->GetDepthStencilView(depthWrite);
+
+      if (attachments.depth.view)
+        attachments.depth.layout = attachments.depth.view->info().layout;
     }
 
     VkImageAspectFlags feedbackLoopAspects = 0u;
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       if (m_activeHazardsRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-      if (m_activeHazardsDS != 0 && attachments.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+      if (m_activeHazardsDS != 0 && depthWrite)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
