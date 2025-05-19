@@ -909,8 +909,7 @@ namespace dxvk {
   
   void DxvkContext::dispatchIndirect(
           VkDeviceSize      offset) {
-    auto bufferSlice = m_state.id.argBuffer.getSliceHandle(
-      offset, sizeof(VkDispatchIndirectCommand));
+    auto argInfo = m_state.id.argBuffer.getSliceHandle();
 
     flushPendingAccesses(
       *m_state.id.argBuffer.buffer(),
@@ -922,7 +921,7 @@ namespace dxvk {
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
       m_cmd->cmdDispatchIndirect(DxvkCmdBuffer::ExecBuffer,
-        bufferSlice.handle, bufferSlice.offset);
+        argInfo.handle, argInfo.offset + offset);
       m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1u);
 
       m_queryManager.endQueries(m_cmd,
@@ -1855,15 +1854,15 @@ namespace dxvk {
       : sizeof(VkDrawIndirectCommand);
 
     if (this->commitGraphicsState<Indexed, true>()) {
-      auto descriptor = m_state.id.argBuffer.getDescriptor();
+      auto argInfo = m_state.id.argBuffer.getSliceHandle();
 
       if (likely(count == 1u || !unroll || !needsDrawBarriers())) {
         if (Indexed) {
-          m_cmd->cmdDrawIndexedIndirect(descriptor.buffer.buffer,
-            descriptor.buffer.offset + offset, count, stride);
+          m_cmd->cmdDrawIndexedIndirect(argInfo.handle,
+            argInfo.offset + offset, count, stride);
         } else {
-          m_cmd->cmdDrawIndirect(descriptor.buffer.buffer,
-            descriptor.buffer.offset + offset, count, stride);
+          m_cmd->cmdDrawIndirect(argInfo.handle,
+            argInfo.offset + offset, count, stride);
         }
 
         m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
@@ -1884,11 +1883,11 @@ namespace dxvk {
             this->commitGraphicsState<Indexed, true>();
 
           if (Indexed) {
-            m_cmd->cmdDrawIndexedIndirect(descriptor.buffer.buffer,
-              descriptor.buffer.offset + offset, 1u, 0u);
+            m_cmd->cmdDrawIndexedIndirect(argInfo.handle,
+              argInfo.offset + offset, 1u, 0u);
           } else {
-            m_cmd->cmdDrawIndirect(descriptor.buffer.buffer,
-              descriptor.buffer.offset + offset, 1u, 0u);
+            m_cmd->cmdDrawIndirect(argInfo.handle,
+              argInfo.offset + offset, 1u, 0u);
           }
 
           if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
@@ -1910,22 +1909,18 @@ namespace dxvk {
           uint32_t              maxCount,
           uint32_t              stride) {
     if (this->commitGraphicsState<Indexed, true>()) {
-      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
-      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
+      auto argInfo = m_state.id.argBuffer.getSliceHandle();
+      auto cntInfo = m_state.id.cntBuffer.getSliceHandle();
 
       if (Indexed) {
         m_cmd->cmdDrawIndexedIndirectCount(
-          argDescriptor.buffer.buffer,
-          argDescriptor.buffer.offset + offset,
-          cntDescriptor.buffer.buffer,
-          cntDescriptor.buffer.offset + countOffset,
+          argInfo.handle, argInfo.offset + offset,
+          cntInfo.handle, cntInfo.offset + countOffset,
           maxCount, stride);
       } else {
         m_cmd->cmdDrawIndirectCount(
-          argDescriptor.buffer.buffer,
-          argDescriptor.buffer.offset + offset,
-          cntDescriptor.buffer.buffer,
-          cntDescriptor.buffer.offset + countOffset,
+          argInfo.handle, argInfo.offset + offset,
+          cntInfo.handle, cntInfo.offset + countOffset,
           maxCount, stride);
       }
 
@@ -6441,7 +6436,10 @@ namespace dxvk {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
 
           if (slice.length()) {
-            descriptorInfo = slice.getDescriptor();
+            auto bufferInfo = slice.getSliceHandle();
+            descriptorInfo.buffer.buffer = bufferInfo.handle;
+            descriptorInfo.buffer.offset = bufferInfo.offset;
+            descriptorInfo.buffer.range = bufferInfo.length;
 
             if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
               accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
@@ -6953,15 +6951,14 @@ namespace dxvk {
       return false;
 
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
-    auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
+    auto bufferInfo = m_state.vi.indexBuffer.getSliceHandle();
 
     VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
-    VkDeviceSize range = bufferInfo.buffer.range & ~(align - 1);
+    VkDeviceSize length = bufferInfo.length & ~(align - 1);
 
     m_cmd->cmdBindIndexBuffer2(
-      bufferInfo.buffer.buffer,
-      bufferInfo.buffer.offset,
-      range, m_state.vi.indexType);
+      bufferInfo.handle, bufferInfo.offset,
+      length, m_state.vi.indexType);
 
     if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
       accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
@@ -6995,11 +6992,11 @@ namespace dxvk {
       uint32_t binding = m_state.gp.state.ilBindings[i].binding();
       
       if (likely(m_state.vi.vertexBuffers[binding].length())) {
-        auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
+        auto vbo = m_state.vi.vertexBuffers[binding].getSliceHandle();
         
-        buffers[i] = vbo.buffer.buffer;
-        offsets[i] = vbo.buffer.offset;
-        lengths[i] = vbo.buffer.range;
+        buffers[i] = vbo.handle;
+        offsets[i] = vbo.offset;
+        lengths[i] = vbo.length;
         strides[i] = m_state.vi.vertexStrides[binding];
 
         if (strides[i]) {

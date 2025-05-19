@@ -268,7 +268,7 @@ namespace dxvk {
 
     /**
      * \brief Retrieves descriptor info
-     * 
+     *
      * \param [in] offset Buffer slice offset
      * \param [in] length Buffer slice length
      * \returns Buffer slice descriptor
@@ -599,7 +599,7 @@ namespace dxvk {
     DxvkLegacyDescriptor getDescriptor() const {
       return m_buffer->getDescriptor(m_offset, m_length);
     }
-    
+
     /**
      * \brief Pointer to mapped memory region
      * 
