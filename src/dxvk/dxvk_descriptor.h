@@ -27,4 +27,14 @@ namespace dxvk {
     DxvkLegacyDescriptor legacy;
   };
 
+
+  /**
+   * \brief Sampler descriptor info
+   *
+   * Stores info on a sampler descriptor.
+   */
+  struct DxvkSamplerDescriptor {
+    VkSampler samplerObject = VK_NULL_HANDLE;
+  };
+
 }

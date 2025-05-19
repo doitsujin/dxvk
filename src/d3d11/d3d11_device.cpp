@@ -2579,7 +2579,7 @@ namespace dxvk {
 
     VkImageViewHandleInfoNVX imageViewHandleInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX };
     imageViewHandleInfo.imageView = pIV->handle();
-    imageViewHandleInfo.sampler = pDSS->handle();
+    imageViewHandleInfo.sampler = pDSS->getDescriptor().samplerObject;
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     // note: there's no implicit lifetime management here; it's up to the

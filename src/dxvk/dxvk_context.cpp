@@ -1344,7 +1344,7 @@ namespace dxvk {
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
     VkDescriptorImageInfo descriptorImage = { };
-    descriptorImage.sampler     = sampler->handle();
+    descriptorImage.sampler     = sampler->getDescriptor().samplerObject;
     descriptorImage.imageLayout = srcLayout;
     
     VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
@@ -3471,7 +3471,7 @@ namespace dxvk {
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
     VkDescriptorImageInfo descriptorImage;
-    descriptorImage.sampler     = sampler->handle();
+    descriptorImage.sampler     = sampler->getDescriptor().samplerObject;
     descriptorImage.imageView   = srcView->handle();
     descriptorImage.imageLayout = srcLayout;
     
@@ -6458,13 +6458,13 @@ namespace dxvk {
               const auto& sampler = m_samplers[binding.getResourceIndex()];
 
               if (sampler) {
-                descriptorInfo.image.sampler = sampler->handle();
+                descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
                 descriptorInfo.image.imageView = VK_NULL_HANDLE;
                 descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
                 m_cmd->track(sampler);
               } else {
-                descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
+                descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
                 descriptorInfo.image.imageView = VK_NULL_HANDLE;
                 descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
               }
@@ -6534,7 +6534,7 @@ namespace dxvk {
                 descriptor = res.imageView->getDescriptor(binding.getViewType());
 
               if (descriptor) {
-                descriptorInfo.image.sampler = sampler->handle();
+                descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
 
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                   descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
@@ -6558,7 +6558,7 @@ namespace dxvk {
                   m_cmd->track(sampler);
                 }
               } else {
-                descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
+                descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
                 descriptorInfo.image.imageView = VK_NULL_HANDLE;
                 descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
               }
