@@ -439,6 +439,34 @@ namespace dxvk {
     const DxvkImageViewKey&         key)
   : m_image   (image),
     m_key     (key) {
+    // If the view does not define a layout, figure out a suitable
+    // layout based on image view usage and image prperties. This
+    // will be good enough in most situations.
+    if (!m_key.layout) {
+      switch (m_key.usage) {
+        case VK_IMAGE_USAGE_SAMPLED_BIT:
+          m_key.layout = (m_image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+            ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+          break;
+
+        case VK_IMAGE_USAGE_STORAGE_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_GENERAL;
+          break;
+
+        case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+          break;
+
+        case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+          break;
+
+        default:
+          break;
+      }
+    }
+
     updateProperties();
   }
 
@@ -459,6 +487,7 @@ namespace dxvk {
     // objects so that some internal APIs can be more consistent.
     DxvkImageViewKey key = m_key;
     key.viewType = type;
+    key.layout = getLayout();
 
     if (!(key.usage & ViewUsage))
       return nullptr;
