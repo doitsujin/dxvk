@@ -236,6 +236,9 @@ namespace dxvk {
       viewInfo.mipIndex = 0u;
     }
 
+    if (viewInfo.usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      viewInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
       viewInfo.aspects = vk::getNextAspect(aspectMask);
 
