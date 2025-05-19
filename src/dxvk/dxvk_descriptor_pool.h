@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "dxvk_include.h"
+#include "dxvk_descriptor.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_recycler.h"
 #include "dxvk_stats.h"
@@ -11,19 +11,6 @@ namespace dxvk {
 
   class DxvkDevice;
   class DxvkDescriptorPoolSet;
-  
-  /**
-   * \brief Descriptor info
-   * 
-   * Stores information that is required to
-   * update a single resource descriptor.
-   */
-  union DxvkDescriptorInfo {
-    VkDescriptorImageInfo  image;
-    VkDescriptorBufferInfo buffer;
-    VkBufferView           texelBuffer;
-  };
-  
   
   /**
    * \brief Descriptor set list

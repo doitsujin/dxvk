@@ -1413,7 +1413,7 @@ namespace dxvk {
     std::array<DxvkDeferredResolve, MaxNumRenderTargets + 1u> m_deferredResolves = { };
 
     std::vector<VkWriteDescriptorSet> m_descriptorWrites;
-    std::vector<DxvkDescriptorInfo>   m_descriptors;
+    std::vector<DxvkLegacyDescriptor> m_descriptorInfos;
 
     std::array<Rc<DxvkSampler>, MaxNumSamplerSlots> m_samplers;
     std::array<DxvkBufferSlice, MaxNumUniformBufferSlots> m_uniformBuffers;

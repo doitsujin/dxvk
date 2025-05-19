@@ -6397,7 +6397,7 @@ namespace dxvk {
     const auto* pipelineLayout = layout->getLayout();
 
     // Ensure that the arrays we write descriptor info to are big enough
-    if (unlikely(layout->getDescriptorCount() > m_descriptors.size()))
+    if (unlikely(layout->getDescriptorCount() > m_descriptorInfos.size()))
       this->resizeDescriptorArrays(layout->getDescriptorCount());
 
     // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
@@ -6432,7 +6432,7 @@ namespace dxvk {
           descriptorWrite.descriptorType = binding.getDescriptorType();
         }
 
-        auto& descriptorInfo = m_descriptors[descriptorCount++];
+        auto& descriptorInfo = m_descriptorInfos[descriptorCount++];
 
         if (binding.isUniformBuffer()) {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
@@ -6575,7 +6575,7 @@ namespace dxvk {
               const auto& res = m_resources[binding.getResourceIndex()];
 
               if (res.bufferView != nullptr) {
-                descriptorInfo.texelBuffer = res.bufferView->handle();
+                descriptorInfo.bufferView = res.bufferView->handle();
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
@@ -6584,7 +6584,7 @@ namespace dxvk {
 
                 m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
               } else {
-                descriptorInfo.texelBuffer = VK_NULL_HANDLE;
+                descriptorInfo.bufferView = VK_NULL_HANDLE;
               }
             } break;
 
@@ -6592,7 +6592,7 @@ namespace dxvk {
               const auto& res = m_resources[binding.getResourceIndex()];
 
               if (res.bufferView != nullptr) {
-                descriptorInfo.texelBuffer = res.bufferView->handle();
+                descriptorInfo.bufferView = res.bufferView->handle();
 
                 if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
                   accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
@@ -6602,7 +6602,7 @@ namespace dxvk {
                 m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
                   ? DxvkAccess::Write : DxvkAccess::Read);
               } else {
-                descriptorInfo.texelBuffer = VK_NULL_HANDLE;
+                descriptorInfo.bufferView = VK_NULL_HANDLE;
               }
             } break;
 
@@ -6654,7 +6654,7 @@ namespace dxvk {
       if (useDescriptorTemplates) {
         m_cmd->updateDescriptorSetWithTemplate(sets[setIndex],
           pipelineLayout->getDescriptorSetLayout(setIndex)->getSetUpdateTemplate(),
-          &m_descriptors[0]);
+          &m_descriptorInfos[0]);
         descriptorCount = 0;
       }
 
@@ -8141,16 +8141,16 @@ namespace dxvk {
 
   void DxvkContext::resizeDescriptorArrays(
           uint32_t                  bindingCount) {
-    m_descriptors.resize(bindingCount);
+    m_descriptorInfos.resize(bindingCount);
     m_descriptorWrites.resize(bindingCount);
 
     for (uint32_t i = 0; i < bindingCount; i++) {
       m_descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
       m_descriptorWrites[i].descriptorCount = 1;
       m_descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-      m_descriptorWrites[i].pImageInfo = &m_descriptors[i].image;
-      m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
-      m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
+      m_descriptorWrites[i].pImageInfo = &m_descriptorInfos[i].image;
+      m_descriptorWrites[i].pBufferInfo = &m_descriptorInfos[i].buffer;
+      m_descriptorWrites[i].pTexelBufferView = &m_descriptorInfos[i].bufferView;
     }
   }
 

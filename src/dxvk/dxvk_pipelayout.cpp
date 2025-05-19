@@ -74,8 +74,8 @@ namespace dxvk {
         templateInfo.dstArrayElement = 0;
         templateInfo.descriptorCount = entry.getDescriptorCount();
         templateInfo.descriptorType = entry.getDescriptorType();
-        templateInfo.offset = sizeof(DxvkDescriptorInfo) * descriptorCount;
-        templateInfo.stride = sizeof(DxvkDescriptorInfo);
+        templateInfo.offset = sizeof(DxvkLegacyDescriptor) * descriptorCount;
+        templateInfo.stride = sizeof(DxvkLegacyDescriptor);
         templateInfos.push_back(templateInfo);
 
         descriptorCount += entry.getDescriptorCount();

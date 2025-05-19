@@ -246,8 +246,8 @@ namespace dxvk {
      * \param [in] layout Image layout
      * \returns Image descriptor
      */
-    DxvkDescriptorInfo getDescriptor(VkImageViewType type, VkImageLayout layout) {
-      DxvkDescriptorInfo result;
+    DxvkLegacyDescriptor getDescriptor(VkImageViewType type, VkImageLayout layout) {
+      DxvkLegacyDescriptor result = { };
       result.image.sampler = VK_NULL_HANDLE;
       result.image.imageView = handle(type);
       result.image.imageLayout = layout;
