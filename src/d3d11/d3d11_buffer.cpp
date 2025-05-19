@@ -18,7 +18,8 @@ namespace dxvk {
     info.flags  = 0;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -83,10 +84,6 @@ namespace dxvk {
       if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         info.access |= VK_ACCESS_HOST_WRITE_BIT;
     }
-
-    // Always enable BDA usage if available so that CUDA interop can work
-    if (m_parent->GetDXVKDevice()->features().vk12.bufferDeviceAddress)
-      info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     if (p11on12Info) {
       m_11on12 = *p11on12Info;

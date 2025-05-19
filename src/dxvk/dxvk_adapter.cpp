@@ -283,14 +283,11 @@ namespace dxvk {
     // VK_KHR_buffer_device_address is expensive on some drivers.
     bool enableCudaInterop = !env::is32BitHostPlatform() &&
       m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
-      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
-      m_deviceFeatures.vk12.bufferDeviceAddress;
+      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name());
 
     if (enableCudaInterop) {
       devExtensions.nvxBinaryImport.setMode(DxvkExtMode::Optional);
       devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
-
-      enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
     }
 
     // Disable NV_low_latency2 on 32-bit due to buggy latency sleep
@@ -356,6 +353,9 @@ namespace dxvk {
     // Used for better constant array packing in some cases
     enabledFeatures.vk12.uniformBufferStandardLayout =
       m_deviceFeatures.vk12.uniformBufferStandardLayout;
+
+    // Required internally
+    enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
 
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
@@ -520,8 +520,6 @@ namespace dxvk {
 
       extensionsEnabled.disableExtension(devExtensions.nvxBinaryImport);
       extensionsEnabled.disableExtension(devExtensions.nvxImageViewHandle);
-
-      enabledFeatures.vk12.bufferDeviceAddress = VK_FALSE;
 
       extensionNameList = extensionsEnabled.toNameList();
       info.enabledExtensionCount      = extensionNameList.count();
