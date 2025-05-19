@@ -277,8 +277,8 @@ namespace dxvk {
      * \param [in] length Buffer slice length
      * \returns Buffer slice descriptor
      */
-    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
-      DxvkDescriptorInfo result = { };
+    DxvkLegacyDescriptor getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
+      DxvkLegacyDescriptor result = { };
       result.buffer.buffer = m_bufferInfo.buffer;
       result.buffer.offset = m_bufferInfo.offset + offset;
       result.buffer.range = length;
@@ -600,7 +600,7 @@ namespace dxvk {
      * \brief Retrieves descriptor info
      * \returns Buffer slice descriptor
      */
-    DxvkDescriptorInfo getDescriptor() const {
+    DxvkLegacyDescriptor getDescriptor() const {
       return m_buffer->getDescriptor(m_offset, m_length);
     }
     
