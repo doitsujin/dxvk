@@ -256,8 +256,9 @@ namespace dxvk {
   struct DxvkBufferViewKey {
     /// Buffer view format
     VkFormat format = VK_FORMAT_UNDEFINED;
-    /// View usage. Must include one or both texel buffer flags.
-    VkBufferUsageFlags usage = 0u;
+    /// View usage. Must include one or both texel buffer flags for
+    /// formatted views, or the storage buffer bit for raw views.
+    VkBufferUsageFlagBits usage = VkBufferUsageFlagBits(0u);
     /// Buffer offset, in bytes
     VkDeviceSize offset = 0u;
     /// Buffer view size, in bytes
@@ -301,7 +302,7 @@ namespace dxvk {
      * \param [in] baseOffset Buffer offset
      * \returns Buffer view handle
      */
-    VkBufferView createBufferView(
+    const DxvkDescriptor* createBufferView(
       const DxvkBufferViewKey&          key,
             VkDeviceSize                baseOffset);
 
@@ -312,7 +313,7 @@ namespace dxvk {
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkBufferViewKey,
-      VkBufferView, DxvkHash, DxvkEq> m_views;
+      DxvkDescriptor, DxvkHash, DxvkEq> m_views;
 
   };
 
@@ -606,7 +607,7 @@ namespace dxvk {
      * \param [in] key View properties
      * \returns Buffer view handle
      */
-    VkBufferView createBufferView(
+    const DxvkDescriptor* createBufferView(
       const DxvkBufferViewKey&          key);
 
     /**
