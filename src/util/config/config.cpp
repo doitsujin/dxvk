@@ -1056,6 +1056,11 @@ namespace dxvk {
       { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.countLosableResources",       "False" },
     }} },
+    /* Pirate Huner - Prevents crash              */
+    { R"(\\PH\.exe$)", {{
+      { "d3d9.memoryTrackTest",          "True" },
+      { "d3d9.maxAvailableMemory",       "2048" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
