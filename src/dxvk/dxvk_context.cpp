@@ -4011,7 +4011,6 @@ namespace dxvk {
     bufferViewInfo.size = slicePitch * imageExtent.depth * imageSubresource.layerCount;
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
-    VkBufferView bufferViewHandle = bufferView->getDescriptor(false)->legacy.bufferView;
 
     flushPendingAccesses(*bufferView, DxvkAccess::Write);
 
@@ -4034,63 +4033,41 @@ namespace dxvk {
 
     DxvkMetaCopyPipeline pipeline = m_common->metaCopy().getCopyImageToBufferPipeline(viewType, bufferFormat);
 
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
-
     // Create image views  for the main and stencil aspects
-    VkDescriptorImageInfo imageDescriptor = { };
-    VkDescriptorImageInfo stencilDescriptor = { };
-
-    Rc<DxvkImageView> imageView;
-    Rc<DxvkImageView> stencilView;
+    std::array<DxvkDescriptorWrite, 3> descriptors = { };
 
     DxvkImageViewKey imageViewInfo;
     imageViewInfo.viewType = viewType;
     imageViewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     imageViewInfo.format = image->info().format;
-    imageViewInfo.aspects = imageSubresource.aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
+    imageViewInfo.layout = imageLayout;
     imageViewInfo.mipIndex = imageSubresource.mipLevel;
     imageViewInfo.mipCount = 1;
     imageViewInfo.layerIndex = imageSubresource.baseArrayLayer;
     imageViewInfo.layerCount = imageSubresource.layerCount;
 
-    if (imageViewInfo.aspects) {
-      imageView = image->createView(imageViewInfo);
+    auto& bufferDescriptor = descriptors[0u];
+    bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    bufferDescriptor.descriptor = bufferView->getDescriptor(false);
 
-      imageDescriptor.imageView = imageView->handle();
-      imageDescriptor.imageLayout = imageLayout;
-    }
+    auto& imagePlane0Descriptor = descriptors[1u];
+    imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    imageViewInfo.aspects = imageSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT;
+    if ((imageViewInfo.aspects = (imageSubresource.aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT))))
+      imagePlane0Descriptor.descriptor = image->createView(imageViewInfo)->getDescriptor();
 
-    if (imageViewInfo.aspects) {
-      stencilView = image->createView(imageViewInfo);
+    auto& imagePlane1Descriptor = descriptors[2u];
+    imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-      stencilDescriptor.imageView = stencilView->handle();
-      stencilDescriptor.imageLayout = imageLayout;
-    }
+    if ((imageViewInfo.aspects = (imageSubresource.aspectMask & (VK_IMAGE_ASPECT_STENCIL_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT))))
+      imagePlane1Descriptor.descriptor = image->createView(imageViewInfo)->getDescriptor();
 
-    VkPipelineLayout pipelineLayout = pipeline.layout->getPipelineLayout(false);
-    VkDescriptorSet set = m_descriptorPool->alloc(pipeline.layout->getDescriptorSetLayout(0));
+    // Compute number of workgroups
+    VkExtent3D workgroupCount = imageExtent;
+    workgroupCount.depth *= imageSubresource.layerCount;
+    workgroupCount = util::computeBlockCount(workgroupCount, { 16, 16, 1 });
 
-    std::array<VkWriteDescriptorSet, 3> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, nullptr, nullptr, &bufferViewHandle },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, &imageDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, &stencilDescriptor },
-    }};
-
-    m_cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout,
-      set, 0, nullptr);
-
-    // Set up shader arguments
+    // Set up shader arguments and dispatch shader
     DxvkBufferImageCopyArgs pushConst = { };
     pushConst.imageOffset = imageOffset;
     pushConst.bufferOffset = 0u;
@@ -4098,14 +4075,12 @@ namespace dxvk {
     pushConst.bufferImageWidth = rowPitch / formatInfo->elementSize;
     pushConst.bufferImageHeight = slicePitch / rowPitch;
 
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(pushConst), &pushConst);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
 
-    // Compute number of workgroups and dispatch shader
-    VkExtent3D workgroupCount = imageExtent;
-    workgroupCount.depth *= imageSubresource.layerCount;
-    workgroupCount = util::computeBlockCount(workgroupCount, { 16, 16, 1 });
+    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      pipeline.layout, descriptors.size(), descriptors.data(),
+      sizeof(pushConst), &pushConst);
 
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       workgroupCount.width,
