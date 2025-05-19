@@ -538,10 +538,10 @@ namespace dxvk {
         setLayout->getSetUpdateTemplate(),
         descriptors.data());
 
-      this->cmdBindDescriptorSet(cmdBuffer,
+      this->cmdBindDescriptorSets(cmdBuffer,
         layout->getBindPoint(),
         layout->getPipelineLayout(false),
-        set, 0, nullptr);
+        0u, 1u, &set);
     }
 
     // Update push constants

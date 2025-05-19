@@ -6504,8 +6504,7 @@ namespace dxvk {
 
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
           BindPoint, layout->getLayout()->getPipelineLayout(independentSets),
-          firstSet, setIndex - firstSet + 1, &sets[firstSet],
-          0, nullptr);
+          firstSet, setIndex - firstSet + 1, &sets[firstSet]);
       }
     }
   }
