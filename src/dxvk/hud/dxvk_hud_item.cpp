@@ -451,7 +451,7 @@ namespace dxvk::hud {
 
     DxvkBufferViewKey textViewInfo = { };
     textViewInfo.format = VK_FORMAT_R8_UINT;
-    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     textViewInfo.offset = bufferLayout.textOffset;
     textViewInfo.size = bufferLayout.textSize;
 
