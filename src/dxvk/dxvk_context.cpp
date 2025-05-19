@@ -274,19 +274,19 @@ namespace dxvk {
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    auto bufferSlice = buffer->getSliceHandle(offset, align(length, sizeof(uint32_t)));
+    auto bufferSlice = buffer->getSliceInfo(offset, align(length, sizeof(uint32_t)));
 
     if (length > sizeof(value)) {
       m_cmd->cmdFillBuffer(cmdBuffer,
-        bufferSlice.handle,
+        bufferSlice.buffer,
         bufferSlice.offset,
-        bufferSlice.length,
+        bufferSlice.size,
         value);
     } else {
       m_cmd->cmdUpdateBuffer(cmdBuffer,
-        bufferSlice.handle,
+        bufferSlice.buffer,
         bufferSlice.offset,
-        bufferSlice.length,
+        bufferSlice.size,
         &value);
     }
 
@@ -473,17 +473,17 @@ namespace dxvk {
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
-    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
+    auto srcSlice = srcBuffer->getSliceInfo(srcOffset, numBytes);
+    auto dstSlice = dstBuffer->getSliceInfo(dstOffset, numBytes);
 
     VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
     copyRegion.srcOffset = srcSlice.offset;
     copyRegion.dstOffset = dstSlice.offset;
-    copyRegion.size      = dstSlice.length;
+    copyRegion.size      = dstSlice.size;
 
     VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    copyInfo.srcBuffer = srcSlice.handle;
-    copyInfo.dstBuffer = dstSlice.handle;
+    copyInfo.srcBuffer = srcSlice.buffer;
+    copyInfo.dstBuffer = dstSlice.buffer;
     copyInfo.regionCount = 1;
     copyInfo.pRegions = &copyRegion;
 
@@ -751,17 +751,17 @@ namespace dxvk {
 
       Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      auto tmpBufferSlice = tmpBuffer->getSliceHandle();
-      auto srcBufferSlice = srcView->getSliceHandle();
+      auto tmpBufferSlice = tmpBuffer->getSliceInfo();
+      auto srcBufferSlice = srcView->getSliceInfo();
 
       VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
       copyRegion.srcOffset = srcBufferSlice.offset;
       copyRegion.dstOffset = tmpBufferSlice.offset;
-      copyRegion.size = tmpBufferSlice.length;
+      copyRegion.size = tmpBufferSlice.size;
 
       VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-      copyInfo.srcBuffer = srcBufferSlice.handle;
-      copyInfo.dstBuffer = tmpBufferSlice.handle;
+      copyInfo.srcBuffer = srcBufferSlice.buffer;
+      copyInfo.dstBuffer = tmpBufferSlice.buffer;
       copyInfo.regionCount = 1;
       copyInfo.pRegions = &copyRegion;
 
@@ -909,7 +909,7 @@ namespace dxvk {
   
   void DxvkContext::dispatchIndirect(
           VkDeviceSize      offset) {
-    auto argInfo = m_state.id.argBuffer.getSliceHandle();
+    auto argInfo = m_state.id.argBuffer.getSliceInfo();
 
     flushPendingAccesses(
       *m_state.id.argBuffer.buffer(),
@@ -921,7 +921,7 @@ namespace dxvk {
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
       m_cmd->cmdDispatchIndirect(DxvkCmdBuffer::ExecBuffer,
-        argInfo.handle, argInfo.offset + offset);
+        argInfo.buffer, argInfo.offset + offset);
       m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1u);
 
       m_queryManager.endQueries(m_cmd,
@@ -989,10 +989,10 @@ namespace dxvk {
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
     if (this->commitGraphicsState<false, true>()) {
-      auto physSlice = m_state.id.cntBuffer.getSliceHandle();
+      auto argInfo = m_state.id.cntBuffer.getSliceInfo();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
-        physSlice.handle, physSlice.offset + counterOffset,
+        argInfo.buffer, argInfo.offset + counterOffset,
         counterBias, counterDivisor);
       m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
@@ -1005,38 +1005,38 @@ namespace dxvk {
 
   void DxvkContext::initBuffer(
     const Rc<DxvkBuffer>&           buffer) {
-    auto dstSlice = buffer->getSliceHandle();
+    auto dstSlice = buffer->getSliceInfo();
 
     // If the buffer is suballocated, clear the entire allocated
     // region, which is guaranteed to have a nicely aligned size
     if (!buffer->storage()->flags().test(DxvkAllocationFlag::OwnsBuffer)) {
       auto bufferInfo = buffer->storage()->getBufferInfo();
 
-      dstSlice.handle = bufferInfo.buffer;
+      dstSlice.buffer = bufferInfo.buffer;
       dstSlice.offset = bufferInfo.offset;
-      dstSlice.length = bufferInfo.size;
+      dstSlice.size = bufferInfo.size;
     }
 
     // Buffer size may be misaligned, in which case we have
     // to use a plain buffer copy to fill the last few bytes.
     constexpr VkDeviceSize MinCopyAndFillSize = 1u << 20;
 
-    VkDeviceSize copySize = dstSlice.length & 3u;
-    VkDeviceSize fillSize = dstSlice.length - copySize;
+    VkDeviceSize copySize = dstSlice.size & 3u;
+    VkDeviceSize fillSize = dstSlice.size - copySize;
 
     // If the buffer is small, just dispatch one single copy
-    if (copySize && dstSlice.length < MinCopyAndFillSize) {
-      copySize = dstSlice.length;
+    if (copySize && dstSlice.size < MinCopyAndFillSize) {
+      copySize = dstSlice.size;
       fillSize = 0u;
     }
 
     if (fillSize) {
       m_cmd->cmdFillBuffer(DxvkCmdBuffer::SdmaBuffer,
-        dstSlice.handle, dstSlice.offset, fillSize, 0u);
+        dstSlice.buffer, dstSlice.offset, fillSize, 0u);
     }
 
     if (copySize) {
-      auto srcSlice = createZeroBuffer(copySize)->getSliceHandle();
+      auto srcSlice = createZeroBuffer(copySize)->getSliceInfo();
 
       VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
       copyRegion.srcOffset = srcSlice.offset;
@@ -1044,8 +1044,8 @@ namespace dxvk {
       copyRegion.size      = copySize;
 
       VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-      copyInfo.srcBuffer = srcSlice.handle;
-      copyInfo.dstBuffer = dstSlice.handle;
+      copyInfo.srcBuffer = srcSlice.buffer;
+      copyInfo.dstBuffer = dstSlice.buffer;
       copyInfo.regionCount = 1;
       copyInfo.pRegions = &copyRegion;
 
@@ -1133,7 +1133,7 @@ namespace dxvk {
           VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
           VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
 
-          auto zeroSlice = createZeroBuffer(dataSize)->getSliceHandle();
+          auto zeroSlice = createZeroBuffer(dataSize)->getSliceInfo();
 
           for (uint32_t level = 0; level < subresources.levelCount; level++) {
             VkOffset3D offset = VkOffset3D { 0, 0, 0 };
@@ -1155,7 +1155,7 @@ namespace dxvk {
               copyRegion.imageExtent = extent;
 
               VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-              copyInfo.srcBuffer = zeroSlice.handle;
+              copyInfo.srcBuffer = zeroSlice.buffer;
               copyInfo.dstImage = image->handle();
               copyInfo.dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
               copyInfo.regionCount = 1;
@@ -1854,14 +1854,14 @@ namespace dxvk {
       : sizeof(VkDrawIndirectCommand);
 
     if (this->commitGraphicsState<Indexed, true>()) {
-      auto argInfo = m_state.id.argBuffer.getSliceHandle();
+      auto argInfo = m_state.id.argBuffer.getSliceInfo();
 
       if (likely(count == 1u || !unroll || !needsDrawBarriers())) {
         if (Indexed) {
-          m_cmd->cmdDrawIndexedIndirect(argInfo.handle,
+          m_cmd->cmdDrawIndexedIndirect(argInfo.buffer,
             argInfo.offset + offset, count, stride);
         } else {
-          m_cmd->cmdDrawIndirect(argInfo.handle,
+          m_cmd->cmdDrawIndirect(argInfo.buffer,
             argInfo.offset + offset, count, stride);
         }
 
@@ -1883,10 +1883,10 @@ namespace dxvk {
             this->commitGraphicsState<Indexed, true>();
 
           if (Indexed) {
-            m_cmd->cmdDrawIndexedIndirect(argInfo.handle,
+            m_cmd->cmdDrawIndexedIndirect(argInfo.buffer,
               argInfo.offset + offset, 1u, 0u);
           } else {
-            m_cmd->cmdDrawIndirect(argInfo.handle,
+            m_cmd->cmdDrawIndirect(argInfo.buffer,
               argInfo.offset + offset, 1u, 0u);
           }
 
@@ -1909,18 +1909,18 @@ namespace dxvk {
           uint32_t              maxCount,
           uint32_t              stride) {
     if (this->commitGraphicsState<Indexed, true>()) {
-      auto argInfo = m_state.id.argBuffer.getSliceHandle();
-      auto cntInfo = m_state.id.cntBuffer.getSliceHandle();
+      auto argInfo = m_state.id.argBuffer.getSliceInfo();
+      auto cntInfo = m_state.id.cntBuffer.getSliceInfo();
 
       if (Indexed) {
         m_cmd->cmdDrawIndexedIndirectCount(
-          argInfo.handle, argInfo.offset + offset,
-          cntInfo.handle, cntInfo.offset + countOffset,
+          argInfo.buffer, argInfo.offset + offset,
+          cntInfo.buffer, cntInfo.offset + countOffset,
           maxCount, stride);
       } else {
         m_cmd->cmdDrawIndirectCount(
-          argInfo.handle, argInfo.offset + offset,
-          cntInfo.handle, cntInfo.offset + countOffset,
+          argInfo.buffer, argInfo.offset + offset,
+          cntInfo.buffer, cntInfo.offset + countOffset,
           maxCount, stride);
       }
 
@@ -2727,12 +2727,12 @@ namespace dxvk {
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    auto bufferSlice = buffer->getSliceHandle(offset, size);
+    auto bufferSlice = buffer->getSliceInfo(offset, size);
 
     m_cmd->cmdUpdateBuffer(cmdBuffer,
-      bufferSlice.handle,
+      bufferSlice.buffer,
       bufferSlice.offset,
-      bufferSlice.length,
+      bufferSlice.size,
       data);
 
     accessBuffer(cmdBuffer, *buffer, offset, size,
@@ -2747,17 +2747,17 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const Rc<DxvkBuffer>&           source,
           VkDeviceSize              sourceOffset) {
-    auto bufferSlice = buffer->getSliceHandle();
-    auto sourceSlice = source->getSliceHandle(sourceOffset, buffer->info().size);
+    auto bufferSlice = buffer->getSliceInfo();
+    auto sourceSlice = source->getSliceInfo(sourceOffset, buffer->info().size);
 
     VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
     copyRegion.srcOffset = sourceSlice.offset;
     copyRegion.dstOffset = bufferSlice.offset;
-    copyRegion.size      = bufferSlice.length;
+    copyRegion.size      = bufferSlice.size;
 
     VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    copyInfo.srcBuffer = sourceSlice.handle;
-    copyInfo.dstBuffer = bufferSlice.handle;
+    copyInfo.srcBuffer = sourceSlice.buffer;
+    copyInfo.dstBuffer = bufferSlice.buffer;
     copyInfo.regionCount = 1;
     copyInfo.pRegions = &copyRegion;
 
@@ -3589,7 +3589,7 @@ namespace dxvk {
           VkOffset3D            imageOffset,
           VkExtent3D            imageExtent,
           VkImageLayout         imageLayout,
-    const DxvkBufferSliceHandle& bufferSlice,
+    const DxvkResourceBufferInfo& bufferSlice,
           VkDeviceSize          bufferRowAlignment,
           VkDeviceSize          bufferSliceAlignment) {
     auto formatInfo = image->formatInfo();
@@ -3653,7 +3653,7 @@ namespace dxvk {
         // Perform the actual copy
         if constexpr (ToImage) {
           VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-          copyInfo.srcBuffer = bufferSlice.handle;
+          copyInfo.srcBuffer = bufferSlice.buffer;
           copyInfo.dstImage = image->handle();
           copyInfo.dstImageLayout = imageLayout;
           copyInfo.regionCount = 1;
@@ -3664,7 +3664,7 @@ namespace dxvk {
           VkCopyImageToBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2 };
           copyInfo.srcImage = image->handle();
           copyInfo.srcImageLayout = imageLayout;
-          copyInfo.dstBuffer = bufferSlice.handle;
+          copyInfo.dstBuffer = bufferSlice.buffer;
           copyInfo.regionCount = 1;
           copyInfo.pRegions = &copyRegion;
 
@@ -3718,7 +3718,7 @@ namespace dxvk {
       cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
-    auto bufferSlice = buffer->getSliceHandle(bufferOffset, dataSize);
+    auto bufferSlice = buffer->getSliceInfo(bufferOffset, dataSize);
 
     // Initialize the image if the entire subresource is covered
     VkImageLayout dstImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -4003,7 +4003,7 @@ namespace dxvk {
     VkDeviceSize dataSize = imageSubresource.layerCount * util::computeImageDataSize(
       image->info().format, imageExtent, imageSubresource.aspectMask);
 
-    auto bufferSlice = buffer->getSliceHandle(bufferOffset, dataSize);
+    auto bufferSlice = buffer->getSliceInfo(bufferOffset, dataSize);
 
     // We may copy to only one aspect of a depth-stencil image,
     // but pipeline barriers need to have all aspect bits set
@@ -4843,8 +4843,8 @@ namespace dxvk {
 
     auto pageTable = sparse->getSparsePageTable();
 
-    auto sparseHandle = sparse->getSliceHandle();
-    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
+    auto sparseSlice = sparse->getSliceInfo();
+    auto bufferSlice = buffer->getSliceInfo(offset, SparseMemoryPageSize * pageCount);
 
     flushPendingAccesses(*sparse, 0, sparse->info().size,
       ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
@@ -4854,7 +4854,7 @@ namespace dxvk {
 
       if (pageInfo.type == DxvkSparsePageType::Buffer) {
         VkDeviceSize sparseOffset = pageInfo.buffer.offset;
-        VkDeviceSize bufferOffset = bufferHandle.offset + SparseMemoryPageSize * i;
+        VkDeviceSize bufferOffset = bufferSlice.offset + SparseMemoryPageSize * i;
 
         VkBufferCopy2 copy = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
         copy.srcOffset = ToBuffer ? sparseOffset : bufferOffset;
@@ -4866,8 +4866,8 @@ namespace dxvk {
     }
 
     VkCopyBufferInfo2 info = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    info.srcBuffer = ToBuffer ? sparseHandle.handle : bufferHandle.handle;
-    info.dstBuffer = ToBuffer ? bufferHandle.handle : sparseHandle.handle;
+    info.srcBuffer = ToBuffer ? sparseSlice.buffer: bufferSlice.buffer;
+    info.dstBuffer = ToBuffer ? bufferSlice.buffer: sparseSlice.buffer;
     info.regionCount = uint32_t(regions.size());
     info.pRegions = regions.data();
 
@@ -4897,7 +4897,7 @@ namespace dxvk {
     auto pageTable = sparse->getSparsePageTable();
     auto pageExtent = pageTable->getProperties().pageRegionExtent;
 
-    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
+    auto bufferSlice = buffer->getSliceInfo(offset, SparseMemoryPageSize * pageCount);
     auto sparseSubresources = sparse->getAvailableSubresources();
 
     flushPendingAccesses(*sparse, sparseSubresources,
@@ -4920,7 +4920,7 @@ namespace dxvk {
 
       if (pageInfo.type == DxvkSparsePageType::Image) {
         VkBufferImageCopy2 copy = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
-        copy.bufferOffset = bufferHandle.offset + SparseMemoryPageSize * i;
+        copy.bufferOffset = bufferSlice.offset + SparseMemoryPageSize * i;
         copy.bufferRowLength = pageExtent.width;
         copy.bufferImageHeight = pageExtent.height;
         copy.imageSubresource = vk::makeSubresourceLayers(pageInfo.image.subresource);
@@ -4935,7 +4935,7 @@ namespace dxvk {
       VkCopyImageToBufferInfo2 info = { VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2 };
       info.srcImage = sparse->handle();
       info.srcImageLayout = transferLayout;
-      info.dstBuffer = bufferHandle.handle;
+      info.dstBuffer = bufferSlice.buffer;
       info.regionCount = regions.size();
       info.pRegions = regions.data();
 
@@ -4943,7 +4943,7 @@ namespace dxvk {
         m_cmd->cmdCopyImageToBuffer(DxvkCmdBuffer::ExecBuffer, &info);
     } else {
       VkCopyBufferToImageInfo2 info = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-      info.srcBuffer = bufferHandle.handle;
+      info.srcBuffer = bufferSlice.buffer;
       info.dstImage = sparse->handle();
       info.dstImageLayout = transferLayout;
       info.regionCount = regions.size();
@@ -5577,7 +5577,7 @@ namespace dxvk {
 
         copyImageBufferData<true>(DxvkCmdBuffer::SdmaBuffer,
           image, layers, VkOffset3D { 0, 0, 0 }, mipExtent, transferLayout,
-          source->getSliceHandle(dataOffset, mipSize), 0, 0);
+          source->getSliceInfo(dataOffset, mipSize), 0, 0);
 
         dataOffset += align(mipSize, subresourceAlignment);
       }
@@ -6062,12 +6062,12 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
         m_state.xfb.activeCounters[i] = m_state.xfb.counters[i];
-        auto physSlice = m_state.xfb.activeCounters[i].getSliceHandle();
+        auto bufferSlice = m_state.xfb.activeCounters[i].getSliceInfo();
 
-        ctrBuffers[i] = physSlice.handle;
-        ctrOffsets[i] = physSlice.offset;
+        ctrBuffers[i] = bufferSlice.buffer;
+        ctrOffsets[i] = bufferSlice.offset;
 
-        if (physSlice.handle) {
+        if (bufferSlice.buffer) {
           // Just in case someone is mad enough to write to a
           // transform feedback buffer from a shader as well
           m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
@@ -6099,10 +6099,10 @@ namespace dxvk {
       VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
 
       for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
-        auto physSlice = m_state.xfb.activeCounters[i].getSliceHandle();
+        auto bufferSlice = m_state.xfb.activeCounters[i].getSliceInfo();
 
-        ctrBuffers[i] = physSlice.handle;
-        ctrOffsets[i] = physSlice.offset;
+        ctrBuffers[i] = bufferSlice.buffer;
+        ctrOffsets[i] = bufferSlice.offset;
 
         m_state.xfb.activeCounters[i] = DxvkBufferSlice();
       }
@@ -6436,10 +6436,10 @@ namespace dxvk {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
 
           if (slice.length()) {
-            auto bufferInfo = slice.getSliceHandle();
-            descriptorInfo.buffer.buffer = bufferInfo.handle;
+            auto bufferInfo = slice.getSliceInfo();
+            descriptorInfo.buffer.buffer = bufferInfo.buffer;
             descriptorInfo.buffer.offset = bufferInfo.offset;
-            descriptorInfo.buffer.range = bufferInfo.length;
+            descriptorInfo.buffer.range = bufferInfo.size;
 
             if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
               accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
@@ -6951,13 +6951,13 @@ namespace dxvk {
       return false;
 
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
-    auto bufferInfo = m_state.vi.indexBuffer.getSliceHandle();
+    auto bufferInfo = m_state.vi.indexBuffer.getSliceInfo();
 
     VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
-    VkDeviceSize length = bufferInfo.length & ~(align - 1);
+    VkDeviceSize length = bufferInfo.size & ~(align - 1);
 
     m_cmd->cmdBindIndexBuffer2(
-      bufferInfo.handle, bufferInfo.offset,
+      bufferInfo.buffer, bufferInfo.offset,
       length, m_state.vi.indexType);
 
     if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
@@ -6992,11 +6992,11 @@ namespace dxvk {
       uint32_t binding = m_state.gp.state.ilBindings[i].binding();
       
       if (likely(m_state.vi.vertexBuffers[binding].length())) {
-        auto vbo = m_state.vi.vertexBuffers[binding].getSliceHandle();
+        auto vbo = m_state.vi.vertexBuffers[binding].getSliceInfo();
         
-        buffers[i] = vbo.handle;
+        buffers[i] = vbo.buffer;
         offsets[i] = vbo.offset;
-        lengths[i] = vbo.length;
+        lengths[i] = vbo.size;
         strides[i] = m_state.vi.vertexStrides[binding];
 
         if (strides[i]) {
@@ -7054,16 +7054,16 @@ namespace dxvk {
     VkDeviceSize xfbLengths[MaxNumXfbBuffers];
 
     for (size_t i = 0; i < MaxNumXfbBuffers; i++) {
-      auto physSlice = m_state.xfb.buffers[i].getSliceHandle();
+      auto bufferSlice = m_state.xfb.buffers[i].getSliceInfo();
       
-      xfbBuffers[i] = physSlice.handle;
-      xfbOffsets[i] = physSlice.offset;
-      xfbLengths[i] = physSlice.length;
+      xfbBuffers[i] = bufferSlice.buffer;
+      xfbOffsets[i] = bufferSlice.offset;
+      xfbLengths[i] = bufferSlice.size;
 
-      if (!physSlice.handle)
+      if (!bufferSlice.buffer)
         xfbBuffers[i] = m_common->dummyResources().bufferHandle();
 
-      if (physSlice.handle) {
+      if (bufferSlice.buffer) {
         Rc<DxvkBuffer> buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsInfo.xfbStrides[i]);
 
@@ -8111,12 +8111,12 @@ namespace dxvk {
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    DxvkBufferSliceHandle slice = m_zeroBuffer->getSliceHandle();
+    auto slice = m_zeroBuffer->getSliceInfo();
 
     // FillBuffer is allowed even on transfer queues. Execute it on the barrier
     // command buffer to ensure that subsequent transfer commands can see it.
     m_cmd->cmdFillBuffer(DxvkCmdBuffer::SdmaBarriers,
-      slice.handle, slice.offset, slice.length, 0);
+      slice.buffer, slice.offset, slice.size, 0);
 
     accessMemory(DxvkCmdBuffer::SdmaBarriers,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,

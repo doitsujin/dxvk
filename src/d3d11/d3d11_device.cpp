@@ -2686,7 +2686,7 @@ namespace dxvk {
       Rc<DxvkBuffer> dxvkBuffer = GetCommonBuffer(pResource)->GetBuffer();
       LockBuffer(dxvkBuffer);
 
-      *gpuVAStart = dxvkBuffer->gpuAddress();
+      *gpuVAStart = dxvkBuffer->getSliceInfo().gpuAddress;
       *gpuVASize = dxvkBuffer->info().size;
     } else {
       Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Unsupported resource type: ", resourceDesc.Dim));
