@@ -32,7 +32,7 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::present(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
@@ -88,7 +88,7 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
     VkExtent3D dstExtent = dstView->mipLevelExtent(0u);
 
@@ -108,7 +108,7 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx.cmd->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(&renderInfo);
 
     performDraw(ctx, dstView, dstRect,
       srcView, srcRect, composite);
@@ -121,7 +121,7 @@ namespace dxvk {
         renderCursor(ctx, dstView);
     }
 
-    ctx.cmd->cmdEndRendering();
+    ctx->cmdEndRendering();
 
     barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -139,7 +139,7 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
   }
 
 
@@ -241,7 +241,7 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::performDraw(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
@@ -251,7 +251,7 @@ namespace dxvk {
     VkColorSpaceKHR srcColorSpace = srcView->image()->info().colorSpace;
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Swapchain blit"));
     }
 
@@ -279,14 +279,14 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 0.0f;
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
+    ctx->cmdSetViewport(1, &viewport);
 
     VkRect2D scissor = { };
     scissor.offset = coordA;
     scissor.extent.width = uint32_t(coordB.x - coordA.x);
     scissor.extent.height = uint32_t(coordB.y - coordA.y);
 
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetScissor(1, &scissor);
 
     DxvkSwapchainPipelineKey key;
     key.srcSpace = srcColorSpace;
@@ -343,40 +343,40 @@ namespace dxvk {
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_blitLayout, descriptors.size(), descriptors.data(),
       sizeof(args), &args);
 
-    ctx.cmd->cmdDraw(3, 1, 0, 0);
+    ctx->cmdDraw(3, 1, 0, 0);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     // Make sure to keep used resources alive
-    ctx.cmd->track(srcView->image(), DxvkAccess::Read);
-    ctx.cmd->track(dstView->image(), DxvkAccess::Write);
+    ctx->track(srcView->image(), DxvkAccess::Read);
+    ctx->track(dstView->image(), DxvkAccess::Write);
 
     if (m_gammaImage)
-      ctx.cmd->track(m_gammaImage, DxvkAccess::Read);
+      ctx->track(m_gammaImage, DxvkAccess::Read);
 
     if (m_hudImage)
-      ctx.cmd->track(m_hudImage, DxvkAccess::Read);
+      ctx->track(m_hudImage, DxvkAccess::Read);
 
     if (m_cursorImage)
-      ctx.cmd->track(m_cursorImage, DxvkAccess::Read);
+      ctx->track(m_cursorImage, DxvkAccess::Read);
 
-    ctx.cmd->track(m_samplerGamma);
-    ctx.cmd->track(m_samplerPresent);
-    ctx.cmd->track(m_samplerCursorLinear);
-    ctx.cmd->track(m_samplerCursorNearest);
+    ctx->track(m_samplerGamma);
+    ctx->track(m_samplerPresent);
+    ctx->track(m_samplerCursorLinear);
+    ctx->track(m_samplerCursorNearest);
   }
 
 
   void DxvkSwapchainBlitter::renderHudImage(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
           VkExtent3D                  extent) {
     if (m_hud->empty())
       return;
@@ -385,7 +385,7 @@ namespace dxvk {
       createHudImage(extent);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "HUD render"));
     }
 
@@ -407,7 +407,7 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_hudImage->trackInitialization(barrier.subresourceRange);
 
     // Render actual HUD image
@@ -424,11 +424,11 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx.cmd->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(&renderInfo);
 
     m_hud->render(ctx, m_hudRtv);
 
-    ctx.cmd->cmdEndRendering();
+    ctx->cmdEndRendering();
 
     // Make image shader-readable
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -438,12 +438,12 @@ namespace dxvk {
     barrier.oldLayout = renderLayout;
     barrier.newLayout = m_hudImage->info().layout;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    ctx.cmd->track(m_hudImage, DxvkAccess::Write);
+    ctx->track(m_hudImage, DxvkAccess::Write);
   }
 
 
@@ -496,13 +496,13 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::renderCursor(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
     const Rc<DxvkImageView>&          dstView) {
     if (!m_cursorRect.extent.width || !m_cursorRect.extent.height)
       return;
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Software cursor"));
     }
 
@@ -516,13 +516,13 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 0.0f;
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
+    ctx->cmdSetViewport(1, &viewport);
 
     VkRect2D scissor = { };
     scissor.extent.width = dstExtent.width;
     scissor.extent.height = dstExtent.height;
 
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetScissor(1, &scissor);
 
     DxvkCursorPipelineKey key = { };
     key.dstFormat = dstView->info().format;
@@ -546,23 +546,23 @@ namespace dxvk {
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_cursorLayout, 1u, &imageDescriptor, sizeof(args), &args);
 
-    ctx.cmd->cmdDraw(4, 1, 0, 0);
+    ctx->cmdDraw(4, 1, 0, 0);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    ctx.cmd->track(m_cursorImage, DxvkAccess::Write);
+    ctx->track(m_cursorImage, DxvkAccess::Write);
   }
 
 
   void DxvkSwapchainBlitter::uploadGammaImage(
-    const DxvkContextObjects&         ctx) {
+    const Rc<DxvkCommandList>&        ctx) {
     if (!m_gammaImage || m_gammaImage->info().extent.width != m_gammaCpCount) {
       DxvkImageCreateInfo imageInfo = { };
       imageInfo.type = VK_IMAGE_TYPE_1D;
@@ -601,14 +601,14 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::uploadCursorImage(
-    const DxvkContextObjects&         ctx) {
+    const Rc<DxvkCommandList>&        ctx) {
     uploadTexture(ctx, m_cursorImage, m_cursorBuffer);
     m_cursorBuffer = nullptr;
   }
 
 
   void DxvkSwapchainBlitter::uploadTexture(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
     const Rc<DxvkImage>&              image,
     const Rc<DxvkBuffer>&             buffer) {
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -627,7 +627,7 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     image->trackInitialization(barrier.subresourceRange);
 
     DxvkResourceBufferInfo bufferSlice = buffer->getSliceInfo();
@@ -645,7 +645,7 @@ namespace dxvk {
     copy.regionCount = 1;
     copy.pRegions = &copyRegion;
 
-    ctx.cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copy);
+    ctx->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copy);
 
     barrier.srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -654,10 +654,10 @@ namespace dxvk {
     barrier.oldLayout = barrier.newLayout;
     barrier.newLayout = image->info().layout;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->track(buffer, DxvkAccess::Read);
-    ctx.cmd->track(image, DxvkAccess::Write);
+    ctx->track(buffer, DxvkAccess::Read);
+    ctx->track(image, DxvkAccess::Write);
   }
 
 

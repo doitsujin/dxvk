@@ -157,15 +157,12 @@ namespace dxvk {
   }
 
 
-  DxvkContextObjects DxvkContext::beginExternalRendering() {
+  Rc<DxvkCommandList> DxvkContext::beginExternalRendering() {
     // Flush and invalidate everything
     endCurrentCommands();
     beginCurrentCommands();
 
-    DxvkContextObjects result;
-    result.cmd = m_cmd;
-    result.descriptorPool = m_descriptorPool;
-    return result;
+    return m_cmd;
   }
 
   

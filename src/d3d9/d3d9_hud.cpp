@@ -16,7 +16,7 @@ namespace dxvk::hud {
 
 
   HudPos HudSamplerCount::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -57,7 +57,7 @@ namespace dxvk::hud {
 
 
   HudPos HudTextureMemory::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -89,7 +89,7 @@ namespace dxvk::hud {
 
 
   HudPos HudFixedFunctionShaders::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -127,7 +127,7 @@ namespace dxvk::hud {
 
 
   HudPos HudSWVPState::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
