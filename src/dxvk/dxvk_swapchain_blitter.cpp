@@ -72,11 +72,13 @@ namespace dxvk {
     else
       destroyHudImage();
 
+    VkImageLayout renderLayout = dstView->getLayout();
+
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.newLayout = renderLayout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = dstView->image()->handle();
@@ -92,7 +94,7 @@ namespace dxvk {
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = dstView->handle();
-    attachmentInfo.imageLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    attachmentInfo.imageLayout = renderLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -126,7 +128,7 @@ namespace dxvk {
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    barrier.oldLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.oldLayout = renderLayout;
     barrier.newLayout = dstView->image()->info().layout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -299,63 +301,40 @@ namespace dxvk {
 
     VkPipeline pipeline = getBlitPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    // Set up resource bindings
+    std::array<DxvkDescriptorWrite, 4> descriptors = { };
 
-    VkPipelineLayout pipelineLayout = m_blitLayout->getPipelineLayout(false);
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_blitLayout->getDescriptorSetLayout(0));
+    auto& imageDescriptor = descriptors[0u];
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptor = srcView->getDescriptor();
+    imageDescriptor.sampler = m_samplerPresent->getDescriptor();
 
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = m_samplerPresent->getDescriptor().samplerObject;
-    imageDescriptor.imageView = srcView->handle();
-    imageDescriptor.imageLayout = srcView->image()->info().layout;
+    auto& gammaDescriptor = descriptors[1u];
+    gammaDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    gammaDescriptor.sampler = m_samplerGamma->getDescriptor();
 
-    VkDescriptorImageInfo gammaDescriptor = { };
-    gammaDescriptor.sampler = m_samplerGamma->getDescriptor().samplerObject;
+    if (m_gammaView)
+      gammaDescriptor.descriptor = m_gammaView->getDescriptor();
 
-    if (m_gammaView) {
-      gammaDescriptor.imageView = m_gammaView->handle();
-      gammaDescriptor.imageLayout = m_gammaView->image()->info().layout;
-    }
+    auto& hudDescriptor = descriptors[2u];
+    hudDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    VkDescriptorImageInfo hudDescriptor = { };
+    if (m_hudSrv)
+      hudDescriptor.descriptor = m_hudSrv->getDescriptor();
 
-    if (m_hudSrv) {
-      hudDescriptor.imageView = m_hudSrv->handle();
-      hudDescriptor.imageLayout = m_hudImage->info().layout;
-    }
-
-    VkDescriptorImageInfo cursorDescriptor = { };
-    cursorDescriptor.sampler = m_samplerCursorNearest->getDescriptor().samplerObject;
+    auto& cursorDescriptor = descriptors[3u];
+    cursorDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    cursorDescriptor.sampler = m_samplerCursorNearest->getDescriptor();
 
     if (m_cursorView) {
       VkExtent3D extent = m_cursorImage->info().extent;
 
       if (m_cursorRect.extent.width != extent.width
        || m_cursorRect.extent.height != extent.height)
-        cursorDescriptor.sampler = m_samplerCursorLinear->getDescriptor().samplerObject;
+        cursorDescriptor.sampler = m_samplerCursorLinear->getDescriptor();
 
-      cursorDescriptor.imageLayout = m_cursorImage->info().layout;
-      cursorDescriptor.imageView = m_cursorView->handle();
+      cursorDescriptor.descriptor = m_cursorView->getDescriptor();
     }
-
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, &hudDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &cursorDescriptor },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(), descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      set, 0, nullptr);
 
     PushConstants args = { };
     args.srcOffset = srcRect.offset;
@@ -364,9 +343,12 @@ namespace dxvk {
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(args), &args);
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_blitLayout, descriptors.size(), descriptors.data(),
+      sizeof(args), &args);
 
     ctx.cmd->cmdDraw(3, 1, 0, 0);
 
@@ -408,12 +390,14 @@ namespace dxvk {
     }
 
     // Reset image
+    VkImageLayout renderLayout = m_hudRtv->getLayout();
+
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.newLayout = renderLayout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = m_hudImage->handle();
@@ -429,7 +413,7 @@ namespace dxvk {
     // Render actual HUD image
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = m_hudRtv->handle();
-    attachmentInfo.imageLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    attachmentInfo.imageLayout = renderLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -451,7 +435,7 @@ namespace dxvk {
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-    barrier.oldLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.oldLayout = renderLayout;
     barrier.newLayout = m_hudImage->info().layout;
 
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
@@ -546,44 +530,27 @@ namespace dxvk {
 
     VkPipeline pipeline = getCursorPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    VkPipelineLayout pipelineLayout = m_cursorLayout->getPipelineLayout(false);
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_cursorLayout->getDescriptorSetLayout(0));
-
     VkExtent3D cursorExtent = m_cursorImage->info().extent;
 
-    bool filterLinear = m_cursorRect.extent.width != cursorExtent.width
-                     || m_cursorRect.extent.height != cursorExtent.height;
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptor = m_cursorView->getDescriptor();
+    imageDescriptor.sampler = m_samplerCursorNearest->getDescriptor();
 
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = filterLinear
-      ? m_samplerCursorLinear->getDescriptor().samplerObject
-      : m_samplerCursorNearest->getDescriptor().samplerObject;
-    imageDescriptor.imageView = m_cursorView->handle();
-    imageDescriptor.imageLayout = m_cursorImage->info().layout;
-
-    std::array<VkWriteDescriptorSet, 1> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(), descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      set, 0, nullptr);
+    if (m_cursorRect.extent.width != cursorExtent.width
+     || m_cursorRect.extent.height != cursorExtent.height)
+      imageDescriptor.sampler = m_samplerCursorLinear->getDescriptor();
 
     CursorPushConstants args = { };
     args.dstExtent = { dstExtent.width, dstExtent.height };
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-      0, sizeof(args), &args);
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_cursorLayout, 1u, &imageDescriptor, sizeof(args), &args);
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
