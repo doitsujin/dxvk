@@ -768,33 +768,15 @@ namespace dxvk {
 
     auto pipeInfo = m_common->metaCopy().getCopyFormattedBufferPipeline();
 
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
+    std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites;
+    auto& dstDescriptor = descriptors[0u];
+    dstDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    dstDescriptor.descriptor = dstView->getDescriptor(false);
 
-    std::array<std::pair<VkDescriptorType, VkBufferView>, 2> descriptorInfos = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, dstView->getDescriptor(false)->legacy.bufferView },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, srcView->getDescriptor(false)->legacy.bufferView },
-    }};
-
-    for (uint32_t i = 0; i < descriptorWrites.size(); i++) {
-      auto write = &descriptorWrites[i];
-      auto info = &descriptorInfos[i];
-
-      write->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      write->pNext = nullptr;
-      write->dstSet = descriptorSet;
-      write->dstBinding = i;
-      write->dstArrayElement = 0;
-      write->descriptorCount = 1;
-      write->descriptorType = info->first;
-      write->pImageInfo = nullptr;
-      write->pBufferInfo = nullptr;
-      write->pTexelBufferView = &info->second;
-    }
-
-    m_cmd->updateDescriptorSets(descriptorWrites.size(), descriptorWrites.data());
+    auto& srcDescriptor = descriptors[1u];
+    srcDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    srcDescriptor.descriptor = srcView->getDescriptor(false);
 
     DxvkFormattedBufferCopyArgs args = { };
     args.dstOffset = dstOffset;
@@ -805,20 +787,16 @@ namespace dxvk {
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
-    
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout,
-      descriptorSet, 0, nullptr);
-    
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(args), &args);
-    
+
+    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.layout, descriptors.size(), descriptors.data(),
+      sizeof(args), &args);
+
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       (extent.width  + 7) / 8,
       (extent.height + 7) / 8,
       extent.depth);
-    
+
     accessBuffer(DxvkCmdBuffer::ExecBuffer, *dstView,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
       DxvkAccessOp::None);
