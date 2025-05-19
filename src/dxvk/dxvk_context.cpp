@@ -327,19 +327,9 @@ namespace dxvk {
       lookupFormatInfo(bufferView->info().format)->flags);
 
     // Create a descriptor set pointing to the view
-    VkBufferView viewObject = bufferView->getDescriptor(false)->legacy.bufferView;
-
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
-
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet           = descriptorSet;
-    descriptorWrite.dstBinding       = 0;
-    descriptorWrite.dstArrayElement  = 0;
-    descriptorWrite.descriptorCount  = 1;
-    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    descriptorWrite.pTexelBufferView = &viewObject;
-    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    DxvkDescriptorWrite descriptor = { };
+    descriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    descriptor.descriptor = bufferView->getDescriptor(false);
 
     // Prepare shader arguments
     DxvkMetaClearArgs pushArgs = { };
@@ -353,11 +343,8 @@ namespace dxvk {
     m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
 
-    m_cmd->cmdBindDescriptorSet(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipelineLayout, descriptorSet, 0, nullptr);
-
-    m_cmd->cmdPushConstants(cmdBuffer, pipelineLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushArgs), &pushArgs);
+    m_cmd->bindResources(cmdBuffer, pipeInfo.layout,
+      1u, &descriptor, sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
