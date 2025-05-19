@@ -632,7 +632,7 @@ namespace dxvk {
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
           UINT                   Layer,
           UINT                   Lod,
-          VkImageUsageFlags      UsageFlags,
+          VkImageUsageFlagBits   UsageFlags,
           bool                   Srgb) {    
     DxvkImageViewKey viewInfo;
     viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED

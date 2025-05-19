@@ -99,18 +99,18 @@ namespace dxvk {
 
   DxvkResourceImageViewMap::~DxvkResourceImageViewMap() {
     for (const auto& view : m_views)
-      m_vkd->vkDestroyImageView(m_vkd->device(), view.second, nullptr);
+      m_vkd->vkDestroyImageView(m_vkd->device(), view.second.legacy.image.imageView, nullptr);
   }
 
 
-  VkImageView DxvkResourceImageViewMap::createImageView(
+  const DxvkDescriptor* DxvkResourceImageViewMap::createImageView(
     const DxvkImageViewKey&           key) {
     std::lock_guard lock(m_mutex);
 
     auto entry = m_views.find(key);
 
     if (entry != m_views.end())
-      return entry->second;
+      return &entry->second;
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
@@ -126,16 +126,16 @@ namespace dxvk {
     info.subresourceRange.baseArrayLayer = key.layerIndex;
     info.subresourceRange.layerCount = key.layerCount;
 
-    VkImageView view = VK_NULL_HANDLE;
+    DxvkDescriptor descriptor = { };
 
     VkResult vr = m_vkd->vkCreateImageView(
-      m_vkd->device(), &info, nullptr, &view);
+      m_vkd->device(), &info, nullptr, &descriptor.legacy.image.imageView);
 
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
 
-    m_views.insert({ key, view });
-    return view;
+    entry = m_views.insert({ key, descriptor }).first;
+    return &entry->second;
   }
 
 
@@ -181,7 +181,7 @@ namespace dxvk {
   }
 
 
-  VkImageView DxvkResourceAllocation::createImageView(
+  const DxvkDescriptor* DxvkResourceAllocation::createImageView(
     const DxvkImageViewKey&           key) {
     if (unlikely(!m_imageViews))
       m_imageViews = new DxvkResourceImageViewMap(m_allocator, m_image);
