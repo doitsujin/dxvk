@@ -586,8 +586,8 @@ namespace dxvk::hud {
 
     void updateDataBuffer(
       const DxvkContextObjects& ctx,
-            VkDescriptorBufferInfo& drawDescriptor,
-            VkDescriptorBufferInfo& dataDescriptor);
+            DxvkResourceBufferInfo& drawDescriptor,
+            DxvkResourceBufferInfo& dataDescriptor);
 
     const DxvkPipelineLayout* createPipelineLayout();
 
