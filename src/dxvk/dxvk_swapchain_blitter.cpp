@@ -5,7 +5,6 @@
 #include <dxvk_present_frag.h>
 #include <dxvk_present_frag_blit.h>
 #include <dxvk_present_frag_ms.h>
-#include <dxvk_present_frag_ms_amd.h>
 #include <dxvk_present_frag_ms_blit.h>
 #include <dxvk_present_vert.h>
 

@@ -862,9 +862,6 @@ namespace dxvk {
     m_deviceFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     m_deviceFeatures.vk13.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk13);
 
-    if (m_deviceExtensions.supports(VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME))
-      m_deviceFeatures.amdShaderFragmentMask = VK_TRUE;
-
     if (m_deviceExtensions.supports(VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME)) {
       m_deviceFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
       m_deviceFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extAttachmentFeedbackLoopLayout);
@@ -1044,7 +1041,6 @@ namespace dxvk {
           DxvkDeviceExtensions&   devExtensions) {
     return {{
       &devExtensions.amdMemoryOverallocationBehaviour,
-      &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
@@ -1103,9 +1099,6 @@ namespace dxvk {
 
     enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
-
-    if (devExtensions.amdShaderFragmentMask)
-      enabledFeatures.amdShaderFragmentMask = VK_TRUE;
 
     if (devExtensions.extAttachmentFeedbackLoopLayout) {
       enabledFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
@@ -1334,8 +1327,6 @@ namespace dxvk {
       "\n  shaderZeroInitializeWorkgroupMemory    : " << (features.vk13.shaderZeroInitializeWorkgroupMemory ? "1" : "0") <<
       "\n  synchronization2                       : " << (features.vk13.synchronization2 ? "1" : "0") <<
       "\n  dynamicRendering                       : " << (features.vk13.dynamicRendering ? "1" : "0") <<
-      "\n" << VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME <<
-      "\n  extension supported                    : " << (features.amdShaderFragmentMask ? "1" : "0") <<
       "\n" << VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME <<
       "\n  attachmentFeedbackLoopLayout           : " << (features.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout ? "1" : "0") <<
       "\n" << VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME <<
