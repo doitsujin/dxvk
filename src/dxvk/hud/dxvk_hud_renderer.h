@@ -108,9 +108,9 @@ namespace dxvk::hud {
     void drawTextIndirect(
       const DxvkContextObjects& ctx,
       const HudPipelineKey&     key,
-      const VkDescriptorBufferInfo& drawArgs,
-      const VkDescriptorBufferInfo& drawInfos,
-            VkBufferView        text,
+      const DxvkResourceBufferInfo& drawArgs,
+      const DxvkResourceBufferInfo& drawInfos,
+      const Rc<DxvkBufferView>& textView,
             uint32_t            drawCount);
 
     void flushDraws(

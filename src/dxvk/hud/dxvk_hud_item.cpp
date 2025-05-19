@@ -301,43 +301,25 @@ namespace dxvk::hud {
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
     // Process contents of the buffer and write out text draws
-    VkPipelineLayout pipelineLayout = m_computePipelineLayout->getPipelineLayout(false);
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_computePipelineLayout->getDescriptorSetLayout(0));
-
     auto bufferLayout = computeBufferLayout();
 
-    VkDescriptorBufferInfo frameTimeBuffer = m_gpuBuffer->getDescriptor(
-      0, bufferLayout.timestampSize).buffer;
+    auto drawParamBuffer = m_gpuBuffer->getSliceInfo(
+      bufferLayout.drawParamOffset, bufferLayout.drawParamSize);
+    auto drawInfoBuffer = m_gpuBuffer->getSliceInfo(
+      bufferLayout.drawInfoOffset, bufferLayout.drawInfoSize);
 
-    VkDescriptorBufferInfo drawInfoBuffer = m_gpuBuffer->getDescriptor(
-      bufferLayout.drawInfoOffset, bufferLayout.drawInfoSize).buffer;
+    std::array<DxvkDescriptorWrite, 4u> descriptors = { };
+    descriptors[0u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[0u].buffer = m_gpuBuffer->getSliceInfo(0, bufferLayout.timestampSize);
 
-    VkDescriptorBufferInfo drawParamBuffer = m_gpuBuffer->getDescriptor(
-      bufferLayout.drawParamOffset, bufferLayout.drawParamSize).buffer;
+    descriptors[1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[1u].buffer = drawParamBuffer;
 
-    VkBufferView textBufferView = m_textView->getDescriptor(false)->legacy.bufferView;
+    descriptors[2u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[2u].buffer = drawInfoBuffer;
 
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &frameTimeBuffer },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawParamBuffer },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfoBuffer },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, nullptr, nullptr, &textBufferView },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::InitBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline);
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::InitBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout,
-      set, 0, nullptr);
+    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    descriptors[3u].descriptor = m_textView->getDescriptor(false);
 
     ComputePushConstants pushConstants = { };
     pushConstants.msPerTick = m_device->properties().core.properties.limits.timestampPeriod / 1000000.0f;
@@ -347,9 +329,12 @@ namespace dxvk::hud {
     pushConstants.textPosMaxX = maxPos.x + 48;
     pushConstants.textPosMaxY = maxPos.y;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::InitBuffer,
-      pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(pushConstants), &pushConstants);
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::InitBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, m_computePipeline);
+
+    ctx.cmd->bindResources(DxvkCmdBuffer::InitBuffer,
+      m_computePipelineLayout, descriptors.size(), descriptors.data(),
+      sizeof(pushConstants), &pushConstants);
 
     ctx.cmd->cmdDispatch(DxvkCmdBuffer::InitBuffer, 1, 1, 1);
 
@@ -366,7 +351,7 @@ namespace dxvk::hud {
     renderer.drawText(12, maxPos, 0xff4040ff, "max:");
 
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
-      drawInfoBuffer, textBufferView, 2u);
+      drawInfoBuffer, m_textView, 2u);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
@@ -384,26 +369,9 @@ namespace dxvk::hud {
           uint32_t            dataPoint,
           HudPos              graphPos,
           HudPos              graphSize) {
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, getPipeline(renderer, key));
-
-    auto pipelineLayout = m_gfxPipelineLayout->getPipelineLayout(false);
-    auto set = ctx.descriptorPool->alloc(m_gfxPipelineLayout->getDescriptorSetLayout(0));
-
-    VkDescriptorBufferInfo bufferDescriptor = m_gpuBuffer->getDescriptor(0,
-      computeBufferLayout().timestampSize).buffer;
-
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet = set;
+    DxvkDescriptorWrite descriptorWrite;
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pBufferInfo = &bufferDescriptor;
-
-    ctx.cmd->updateDescriptorSets(1, &descriptorWrite);
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipelineLayout, set, 0, nullptr);
+    descriptorWrite.buffer = m_gpuBuffer->getSliceInfo(0u, computeBufferLayout().timestampSize);
 
     RenderPushConstants pushConstants = { };
     pushConstants.hud = renderer.getPushConstants();
@@ -413,9 +381,12 @@ namespace dxvk::hud {
     pushConstants.h = graphSize.y;
     pushConstants.frameIndex = dataPoint;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(pushConstants), &pushConstants);
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, getPipeline(renderer, key));
+
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_gfxPipelineLayout, 1u, &descriptorWrite,
+      sizeof(pushConstants), &pushConstants);
 
     ctx.cmd->cmdDraw(4, 1, 0, 0);
 
@@ -1007,38 +978,30 @@ namespace dxvk::hud {
 
     PipelinePair pipelines = getPipeline(renderer, key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.background);
-
-    // Bind resources
-    VkPipelineLayout pipelineLayout = m_pipelineLayout->getPipelineLayout(false);
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_pipelineLayout->getDescriptorSetLayout(0));
-
-    VkDescriptorBufferInfo drawDescriptor = { };
-    VkDescriptorBufferInfo dataDescriptor = { };
+    // Update relevant buffers
+    DxvkResourceBufferInfo drawDescriptor = { };
+    DxvkResourceBufferInfo dataDescriptor = { };
 
     updateDataBuffer(ctx, drawDescriptor, dataDescriptor);
 
-    std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &dataDescriptor },
-    }};
+    // Bind resources
+    std::array<DxvkDescriptorWrite, 2u> descriptors = { };
+    descriptors[0u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[0u].buffer = drawDescriptor;
 
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipelineLayout, set, 0, nullptr);
+    descriptors[1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[1u].buffer = dataDescriptor;
 
     HudPushConstants pushConstants = renderer.getPushConstants();
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(pushConstants), &pushConstants);
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_pipelineLayout, descriptors.size(), descriptors.data(),
+      sizeof(pushConstants), &pushConstants);
+
+    // Draw background first, then the actual usage info. The pipeline
+    // layout is the same for both pipelines, so don't rebind resources.
+    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.background);
 
     ctx.cmd->cmdDraw(4, m_drawInfos.size(), 0, 0);
 
@@ -1055,8 +1018,8 @@ namespace dxvk::hud {
 
   void HudMemoryDetailsItem::updateDataBuffer(
     const DxvkContextObjects& ctx,
-          VkDescriptorBufferInfo& drawDescriptor,
-          VkDescriptorBufferInfo& dataDescriptor) {
+          DxvkResourceBufferInfo& drawDescriptor,
+          DxvkResourceBufferInfo& dataDescriptor) {
     size_t drawInfoSize = m_drawInfos.size() * sizeof(DrawInfo);
     size_t drawInfoSizeAligned = align(drawInfoSize, 256u);
 
@@ -1092,8 +1055,8 @@ namespace dxvk::hud {
     std::memset(m_dataBuffer->mapPtr(drawInfoSizeAligned + chunkDataSize), 0, chunkDataSizeAligned - chunkDataSize);
 
     // Write back descriptors
-    drawDescriptor = m_dataBuffer->getDescriptor(0, drawInfoSizeAligned).buffer;
-    dataDescriptor = m_dataBuffer->getDescriptor(drawInfoSizeAligned, chunkDataSizeAligned).buffer;
+    drawDescriptor = m_dataBuffer->getSliceInfo(0u, drawInfoSizeAligned);
+    dataDescriptor = m_dataBuffer->getSliceInfo(drawInfoSizeAligned, chunkDataSizeAligned);
   }
 
 

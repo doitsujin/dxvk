@@ -186,13 +186,12 @@ namespace dxvk::hud {
     std::memset(m_textBuffer->mapPtr(drawArgOffset + drawArgWriteSize), 0, drawArgsSize - drawArgWriteSize);
 
     // Draw the actual text
-    VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
-    VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    DxvkResourceBufferInfo textBufferInfo = m_textBuffer->getSliceInfo(textSizeAligned, drawInfoSize);
+    DxvkResourceBufferInfo drawBufferInfo = m_textBuffer->getSliceInfo(drawArgOffset, drawArgWriteSize);
 
     drawTextIndirect(ctx, getPipelineKey(dstView),
-      drawBufferDescriptor, textBufferDescriptor,
-      m_textBufferView->getDescriptor(false)->legacy.bufferView,
-      m_textDraws.size());
+      drawBufferInfo, textBufferInfo,
+      m_textBufferView, m_textDraws.size());
 
     // Ensure all used resources are kept alive
     ctx.cmd->track(m_textBuffer, DxvkAccess::Read);
@@ -209,9 +208,9 @@ namespace dxvk::hud {
   void HudRenderer::drawTextIndirect(
     const DxvkContextObjects& ctx,
     const HudPipelineKey&     key,
-    const VkDescriptorBufferInfo& drawArgs,
-    const VkDescriptorBufferInfo& drawInfos,
-          VkBufferView        text,
+    const DxvkResourceBufferInfo& drawArgs,
+    const DxvkResourceBufferInfo& drawInfos,
+    const Rc<DxvkBufferView>& textView,
           uint32_t            drawCount) {
     // Bind the correct pipeline for the swap chain
     VkPipeline pipeline = getPipeline(key);
@@ -220,39 +219,23 @@ namespace dxvk::hud {
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     // Bind resources
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_textPipelineLayout->getDescriptorSetLayout(0));
+    std::array<DxvkDescriptorWrite, 4u> descriptors = { };
+    descriptors[0u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[0u].buffer = m_fontBuffer->getSliceInfo();
 
-    VkDescriptorBufferInfo fontBufferDescriptor = m_fontBuffer->getDescriptor(0, m_fontBuffer->info().size).buffer;
+    descriptors[1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[1u].buffer = drawInfos;
 
-    VkDescriptorImageInfo fontTextureDescriptor = { };
-    fontTextureDescriptor.sampler = m_fontSampler->getDescriptor().samplerObject;
-    fontTextureDescriptor.imageView = m_fontTextureView->handle();
-    fontTextureDescriptor.imageLayout = m_fontTexture->info().layout;
+    descriptors[2u].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    descriptors[2u].descriptor = textView->getDescriptor(false);
 
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &fontTextureDescriptor },
-    }};
+    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptors[3u].descriptor = m_fontTextureView->getDescriptor();
+    descriptors[3u].sampler = m_fontSampler->getDescriptor();
 
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    VkPipelineLayout pipelineLayout = m_textPipelineLayout->getPipelineLayout(false);
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipelineLayout, set, 0, nullptr);
-
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(m_pushConstants), &m_pushConstants);
+    ctx.cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_textPipelineLayout, descriptors.size(), descriptors.data(),
+      sizeof(m_pushConstants), &m_pushConstants);
 
     // Emit the actual draw call
     ctx.cmd->cmdDrawIndirect(drawArgs.buffer, drawArgs.offset,
