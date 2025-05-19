@@ -26,7 +26,7 @@ namespace dxvk {
       return buffer;
 
     m_buffer = createBuffer();
-    buffer = m_buffer->getSliceHandle().handle;
+    buffer = m_buffer->getSliceInfo().buffer;
 
     m_bufferHandle.store(buffer, std::memory_order_release);
     return buffer;

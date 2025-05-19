@@ -1446,7 +1446,7 @@ namespace dxvk {
             VkOffset3D            imageOffset,
             VkExtent3D            imageExtent,
             VkImageLayout         imageLayout,
-      const DxvkBufferSliceHandle& bufferSlice,
+      const DxvkResourceBufferInfo& bufferSlice,
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment);
 

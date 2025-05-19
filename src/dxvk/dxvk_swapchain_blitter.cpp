@@ -664,7 +664,7 @@ namespace dxvk {
     ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     image->trackInitialization(barrier.subresourceRange);
 
-    DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle();
+    DxvkResourceBufferInfo bufferSlice = buffer->getSliceInfo();
 
     VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
     copyRegion.bufferOffset = bufferSlice.offset;
@@ -673,7 +673,7 @@ namespace dxvk {
     copyRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 copy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    copy.srcBuffer = bufferSlice.handle;
+    copy.srcBuffer = bufferSlice.buffer;
     copy.dstImage = image->handle();
     copy.dstImageLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copy.regionCount = 1;
