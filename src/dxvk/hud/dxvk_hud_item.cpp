@@ -273,7 +273,7 @@ namespace dxvk::hud {
     }
 
     // Write current time stamp to the buffer
-    DxvkBufferSliceHandle sliceHandle = m_gpuBuffer->getSliceHandle();
+    DxvkResourceBufferInfo slice = m_gpuBuffer->getSliceInfo();
     std::pair<VkQueryPool, uint32_t> query = m_query->getQuery();
 
     ctx.cmd->cmdResetQueryPool(DxvkCmdBuffer::InitBuffer,
@@ -284,8 +284,8 @@ namespace dxvk::hud {
       query.first, query.second);
 
     ctx.cmd->cmdCopyQueryPoolResults(DxvkCmdBuffer::InitBuffer,
-      query.first, query.second, 1, sliceHandle.handle,
-      sliceHandle.offset + (dataPoint & 1u) * sizeof(uint64_t), sizeof(uint64_t),
+      query.first, query.second, 1, slice.buffer,
+      slice.offset + (dataPoint & 1u) * sizeof(uint64_t), sizeof(uint64_t),
       VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
 
     VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
@@ -458,10 +458,10 @@ namespace dxvk::hud {
     m_textView = m_gpuBuffer->createView(textViewInfo);
 
     // Zero-init buffer so we don't display random garbage at the start
-    DxvkBufferSliceHandle bufferSlice = m_gpuBuffer->getSliceHandle();
+    DxvkResourceBufferInfo bufferSlice = m_gpuBuffer->getSliceInfo();
 
     ctx.cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
-      bufferSlice.handle, bufferSlice.offset, bufferSlice.length, 0u);
+      bufferSlice.buffer, bufferSlice.offset, bufferSlice.size, 0u);
 
     VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;

@@ -389,8 +389,8 @@ namespace dxvk::hud {
     std::memcpy(uploadBuffer->mapPtr(0), &glyphData, bufferDataSize);
     std::memcpy(uploadBuffer->mapPtr(bufferDataSize), g_hudFont.texture, textureDataSize);
 
-    auto uploadSlice = uploadBuffer->getSliceHandle();
-    auto fontSlice = m_fontBuffer->getSliceHandle();
+    auto uploadSlice = uploadBuffer->getSliceInfo();
+    auto fontSlice = m_fontBuffer->getSliceInfo();
 
     VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -415,8 +415,8 @@ namespace dxvk::hud {
     bufferRegion.size = bufferDataSize;
 
     VkCopyBufferInfo2 bufferCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    bufferCopy.srcBuffer = uploadSlice.handle;
-    bufferCopy.dstBuffer = fontSlice.handle;
+    bufferCopy.srcBuffer = uploadSlice.buffer;
+    bufferCopy.dstBuffer = fontSlice.buffer;
     bufferCopy.regionCount = 1;
     bufferCopy.pRegions = &bufferRegion;
 
@@ -429,7 +429,7 @@ namespace dxvk::hud {
     imageRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 imageCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    imageCopy.srcBuffer = uploadSlice.handle;
+    imageCopy.srcBuffer = uploadSlice.buffer;
     imageCopy.dstImage = m_fontTexture->handle();
     imageCopy.dstImageLayout = m_fontTexture->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     imageCopy.regionCount = 1;
