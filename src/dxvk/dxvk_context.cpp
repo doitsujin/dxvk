@@ -4256,10 +4256,12 @@ namespace dxvk {
     }
 
     // Avoid inserting useless barriers if the image is already in the correct layout
-    if (imageView->image()->info().layout != VK_IMAGE_LAYOUT_GENERAL
+    VkImageLayout clearLayout = imageView->getLayout();
+
+    if (imageView->image()->info().layout != clearLayout
      || !imageView->image()->isInitialized(imageView->imageSubresources())) {
       addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
-        VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        clearLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
         imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
       flushImageLayoutTransitions(cmdBuffer);
     }
@@ -4269,51 +4271,35 @@ namespace dxvk {
       imageView->type(), lookupFormatInfo(imageView->info().format)->flags);
 
     // Create a descriptor set pointing to the view
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
-    
-    VkDescriptorImageInfo viewInfo;
-    viewInfo.sampler      = VK_NULL_HANDLE;
-    viewInfo.imageView    = imageView->handle();
-    viewInfo.imageLayout  = imageView->image()->info().layout;
-    
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet           = descriptorSet;
-    descriptorWrite.dstBinding       = 0;
-    descriptorWrite.dstArrayElement  = 0;
-    descriptorWrite.descriptorCount  = 1;
-    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorWrite.pImageInfo       = &viewInfo;
-    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    imageDescriptor.descriptor = imageView->getDescriptor();
     
     // Prepare shader arguments
     DxvkMetaClearArgs pushArgs = { };
     pushArgs.clearValue = value.color;
     pushArgs.offset = offset;
     pushArgs.extent = extent;
-    
+
     VkExtent3D workgroups = util::computeBlockCount(
       pushArgs.extent, pipeInfo.workgroupSize);
-    
+
     if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
       workgroups.height = imageView->subresources().layerCount;
     else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
       workgroups.depth = imageView->subresources().layerCount;
-    
+
     m_cmd->cmdBindPipeline(cmdBuffer,
       VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
 
-    m_cmd->cmdBindDescriptorSet(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipelineLayout, descriptorSet, 0, nullptr);
-
-    m_cmd->cmdPushConstants(cmdBuffer, pipelineLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pushArgs), &pushArgs);
+    m_cmd->bindResources(cmdBuffer, pipeInfo.layout,
+      1u, &imageDescriptor, sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
     accessImage(cmdBuffer, *imageView->image(), imageView->imageSubresources(),
-      VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+      clearLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
       VK_ACCESS_2_SHADER_WRITE_BIT, DxvkAccessOp::None);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
