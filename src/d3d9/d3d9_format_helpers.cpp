@@ -106,7 +106,7 @@ namespace dxvk {
     imageDescriptor.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     imageDescriptor.imageView = tmpImageView->handle();
 
-    VkBufferView bufferViewHandle = tmpBufferView->handle();
+    VkBufferView bufferViewHandle = tmpBufferView->getDescriptor(false)->legacy.bufferView;
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites = {{
       { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,

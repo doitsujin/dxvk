@@ -45,8 +45,10 @@ namespace dxvk {
 
 
   DxvkResourceBufferViewMap::~DxvkResourceBufferViewMap() {
-    for (const auto& view : m_views)
-      m_vkd->vkDestroyBufferView(m_vkd->device(), view.second.legacy.bufferView, nullptr);
+    for (const auto& view : m_views) {
+      if (view.first.format)
+        m_vkd->vkDestroyBufferView(m_vkd->device(), view.second.legacy.bufferView, nullptr);
+    }
   }
 
 
