@@ -43,7 +43,6 @@ dxvk_shaders = files([
   'shaders/dxvk_present_frag.frag',
   'shaders/dxvk_present_frag_blit.frag',
   'shaders/dxvk_present_frag_ms.frag',
-  'shaders/dxvk_present_frag_ms_amd.frag',
   'shaders/dxvk_present_frag_ms_blit.frag',
   'shaders/dxvk_present_vert.vert',
 
