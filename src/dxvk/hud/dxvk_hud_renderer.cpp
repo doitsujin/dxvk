@@ -225,7 +225,7 @@ namespace dxvk::hud {
     VkDescriptorBufferInfo fontBufferDescriptor = m_fontBuffer->getDescriptor(0, m_fontBuffer->info().size).buffer;
 
     VkDescriptorImageInfo fontTextureDescriptor = { };
-    fontTextureDescriptor.sampler = m_fontSampler->handle();
+    fontTextureDescriptor.sampler = m_fontSampler->getDescriptor().samplerObject;
     fontTextureDescriptor.imageView = m_fontTextureView->handle();
     fontTextureDescriptor.imageLayout = m_fontTexture->info().layout;
 
