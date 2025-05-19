@@ -3306,7 +3306,6 @@ namespace dxvk {
           VkFilter              filter) {
     this->invalidateState();
 
-    bool srcIsDepthStencil = srcView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
     bool dstIsDepthStencil = dstView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
     dstView = ensureImageViewCompatibility(dstView, dstIsDepthStencil
@@ -3332,12 +3331,8 @@ namespace dxvk {
           srcName ? srcName : "unknown", ")").c_str()));
     }
 
-    VkImageLayout srcLayout = srcView->image()->pickLayout(srcIsDepthStencil
-      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    VkImageLayout dstLayout = dstView->image()->pickLayout(
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    VkImageLayout srcLayout = srcView->getLayout();
+    VkImageLayout dstLayout = dstView->getLayout();
 
     addImageLayoutTransition(*dstView->image(), dstView->imageSubresources(),
       dstLayout, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -3396,11 +3391,6 @@ namespace dxvk {
       dstView->info().viewType, dstView->info().format,
       dstView->image()->info().sampleCount);
 
-    VkPipelineLayout pipelineLayout = pipeInfo.layout->getPipelineLayout(false);
-
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
-
     // Set up viewport
     VkViewport viewport;
     viewport.x = float(dstOffsetsAdjusted[0].x);
@@ -3417,28 +3407,14 @@ namespace dxvk {
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    // Bind source image view
+    // Set up source image view
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
-    VkDescriptorImageInfo descriptorImage;
-    descriptorImage.sampler     = sampler->getDescriptor().samplerObject;
-    descriptorImage.imageView   = srcView->handle();
-    descriptorImage.imageLayout = srcLayout;
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptor = srcView->getDescriptor();
+    imageDescriptor.sampler = sampler->getDescriptor();
     
-    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    descriptorWrite.dstSet           = m_descriptorPool->alloc(pipeInfo.layout->getDescriptorSetLayout(0));
-    descriptorWrite.dstBinding       = 0;
-    descriptorWrite.dstArrayElement  = 0;
-    descriptorWrite.descriptorCount  = 1;
-    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite.pImageInfo       = &descriptorImage;
-
-    m_cmd->updateDescriptorSets(1, &descriptorWrite);
-
-    m_cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-      descriptorWrite.dstSet, 0, nullptr);
-
     // Compute shader parameters for the operation
     VkExtent3D srcExtent = srcView->mipLevelExtent(0);
 
@@ -3453,9 +3429,12 @@ namespace dxvk {
       float(srcOffsetsAdjusted[1].z) / float(srcExtent.depth) };
     pushConstants.layerCount = dstView->info().layerCount;
 
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(pushConstants), &pushConstants);
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+
+    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+      pipeInfo.layout, 1u, &imageDescriptor,
+      sizeof(pushConstants), &pushConstants);
 
     m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
