@@ -64,11 +64,11 @@ namespace dxvk {
   
   
   void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
+    if (!m_descriptorPool)
+      m_descriptorPool = m_descriptorManager->getDescriptorPool();
+
     m_cmd = cmdList;
     m_cmd->init();
-
-    if (m_descriptorPool == nullptr)
-      m_descriptorPool = m_descriptorManager->getDescriptorPool();
 
     this->beginCurrentCommands();
   }
@@ -82,8 +82,8 @@ namespace dxvk {
     m_implicitResolves.cleanup(m_trackingId);
 
     if (m_descriptorPool->shouldSubmit(false)) {
-      m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
+      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -99,8 +99,8 @@ namespace dxvk {
 
   void DxvkContext::endFrame() {
     if (m_descriptorPool->shouldSubmit(true)) {
-      m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
+      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
     }
 
     m_renderPassIndex = 0u;
@@ -8228,6 +8228,7 @@ namespace dxvk {
     m_state.cp.pipeline = nullptr;
 
     m_cmd->setTrackingId(++m_trackingId);
+    m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
   }
 
 
