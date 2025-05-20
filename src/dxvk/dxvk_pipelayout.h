@@ -70,6 +70,66 @@ namespace dxvk {
 
 
   /**
+   * \brief Descriptor class
+   */
+  struct DxvkDescriptorClass {
+    static constexpr uint32_t Buffer  = 1u << 0u;
+    static constexpr uint32_t View    = 1u << 8u;
+    static constexpr uint32_t Sampler = 1u << 16u;
+
+    static constexpr uint32_t All = Buffer | View | Sampler;
+  };
+
+
+  /**
+   * \brief Dirty descriptor set tracker
+   */
+  class DxvkDescriptorState {
+
+  public:
+
+    DxvkDescriptorState() = default;
+
+    void dirtyBuffers(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer);
+    }
+
+    void dirtyViews(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View);
+    }
+
+    void dirtySamplers(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler);
+    }
+
+    void dirtyStages(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::All);
+    }
+
+    void clearStages(VkShaderStageFlags stages) {
+      m_dirtyMask &= ~(computeMask(stages, DxvkDescriptorClass::All));
+    }
+
+    bool hasDirtyResources(VkShaderStageFlags stages) const {
+      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::All));
+    }
+
+    bool testDirtyMask(uint32_t mask) const {
+      return m_dirtyMask & mask;
+    }
+
+    static constexpr uint32_t computeMask(VkShaderStageFlags stages, uint32_t classes) {
+      return uint32_t(stages) * classes;
+    }
+
+  private:
+
+    uint32_t m_dirtyMask = 0u;
+
+  };
+
+
+  /**
    * \brief Pipeline layout type
    *
    * Determines whether to use a pipeline layout with stage-separated
@@ -1087,11 +1147,23 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries mask of non-empty descriptor sets
-     * \returns Mask of non-empty sets
+     * \brief Compute dirty sets for the given descriptor state
+     *
+     * \param [in] type Pipeline layout type
+     * \param [in] state Descriptor state
+     * \returns Mask of sets that need updating
      */
-    uint32_t getSetMask() const {
-      return m_setMask;
+    uint32_t getDirtySetMask(
+            DxvkPipelineLayoutType  type,
+      const DxvkDescriptorState&    state) const {
+      uint32_t result = 0u;
+
+      for (uint32_t set = 0u; set < MaxSets; set++) {
+        if (state.testDirtyMask(m_setStateMasks[set]))
+          result |= 1u << set;
+      }
+
+      return result;
     }
 
     /**
@@ -1216,7 +1288,6 @@ namespace dxvk {
 
     DxvkGlobalPipelineBarrier m_barrier = { };
 
-    uint32_t                  m_setMask         = 0u;
     uint32_t                  m_descriptorCount = 0u;
 
     std::array<BindingList, MaxSets> m_setDescriptors       = { };
@@ -1224,6 +1295,8 @@ namespace dxvk {
     std::array<BindingList, MaxSets> m_setResources         = { };
     std::array<BindingList, MaxSets> m_setUniformBuffers    = { };
     std::array<BindingList, MaxSets> m_setReadOnlyResources = { };
+
+    std::array<uint32_t, MaxSets> m_setStateMasks = { };
 
     BindingList               m_readWriteResources = { };
 
@@ -1239,6 +1312,8 @@ namespace dxvk {
             DxvkPipelineManager*      manager);
 
     uint32_t mapToSet(const DxvkShaderDescriptor& binding) const;
+
+    static uint32_t computeStateMask(const DxvkShaderDescriptor& binding);
 
     static uint32_t getSetMaskForStages(VkShaderStageFlags stages);
 
@@ -1261,63 +1336,4 @@ namespace dxvk {
 
   };
 
-
-  /**
-   * \brief Dirty descriptor set state
-   */
-  class DxvkDescriptorState {
-
-  public:
-
-    void dirtyBuffers(VkShaderStageFlags stages) {
-      m_dirtyBuffers  |= stages;
-    }
-
-    void dirtyViews(VkShaderStageFlags stages) {
-      m_dirtyViews    |= stages;
-    }
-
-    void dirtyStages(VkShaderStageFlags stages) {
-      m_dirtyBuffers  |= stages;
-      m_dirtyViews    |= stages;
-    }
-
-    void clearStages(VkShaderStageFlags stages) {
-      m_dirtyBuffers  &= ~stages;
-      m_dirtyViews    &= ~stages;
-    }
-
-    bool hasDirtyGraphicsSets() const {
-      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS);
-    }
-
-    bool hasDirtyComputeSets() const {
-      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_COMPUTE_BIT);
-    }
-
-    uint32_t getDirtyGraphicsSets() const {
-      uint32_t result = 0;
-      if (m_dirtyBuffers & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsBuffers);
-      if (m_dirtyViews & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsViews);
-      if ((m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT))
-        result |= (1u << DxvkDescriptorSets::VsAll);
-      return result;
-    }
-
-    uint32_t getDirtyComputeSets() const {
-      uint32_t result = 0;
-      if ((m_dirtyBuffers | m_dirtyViews) & VK_SHADER_STAGE_COMPUTE_BIT)
-        result |= (1u << DxvkDescriptorSets::CsAll);
-      return result;
-    }
-
-  private:
-
-    VkShaderStageFlags m_dirtyBuffers   = 0;
-    VkShaderStageFlags m_dirtyViews     = 0;
-
-  };
-  
 }
