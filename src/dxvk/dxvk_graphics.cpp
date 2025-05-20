@@ -1466,7 +1466,7 @@ namespace dxvk {
   SpirvCodeBuffer DxvkGraphicsPipeline::getShaderCode(
     const Rc<DxvkShader>&                shader,
     const DxvkShaderModuleCreateInfo&    info) const {
-    return shader->getCode(m_layout.getBindingMap(), info);
+    return shader->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), info);
   }
 
 

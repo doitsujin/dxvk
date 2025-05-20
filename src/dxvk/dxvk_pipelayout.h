@@ -1202,9 +1202,10 @@ namespace dxvk {
      * \brief Queries binding map
      *
      * The binding map is primarily useful for shader patching.
+     * \param [in] type Pipeline layout type
      * \returns Pointer to binding map
      */
-    const DxvkShaderBindingMap* getBindingMap() const {
+    const DxvkShaderBindingMap* getBindingMap(DxvkPipelineLayoutType type) const {
       return &m_map;
     }
 
