@@ -311,6 +311,8 @@ namespace dxvk {
           }
         }
 
+        m_nonemptyStageMask |= binding.getStageMask();
+
         m_barrier.stages |= util::pipelineStages(binding.getStageMask());
         m_barrier.access |= binding.getAccess();
 
