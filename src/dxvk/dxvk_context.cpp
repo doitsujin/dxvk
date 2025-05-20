@@ -7271,58 +7271,58 @@ namespace dxvk {
     if (IsGraphics && (!m_flags.test(DxvkContextFlag::GpRenderPassBound)))
       return true;
 
-    // For read-only resources, it is sufficient to check dirty sets since any
-    // resource previously bound as read-only cannot have been written by the
-    // same pipeline.
-    // TODO track stuff per stage and resource type rather than per set
-    auto layoutType = getActivePipelineLayoutType(BindPoint);
-    uint32_t dirtySetMask = layout->getDirtySetMask(layoutType, m_descriptorState);
+    // For read-only resources, it is sufficient to check dirty bindings since
+    // any resource previously bound as read-only cannot have been written by
+    // the same pipeline.
+    VkShaderStageFlags dirtyStageMask = m_descriptorState.getDirtyStageMask(
+      DxvkDescriptorClass::Buffer | DxvkDescriptorClass::View);
 
-    for (auto setIndex : bit::BitMask(dirtySetMask)) {
+    for (auto stageIndex : bit::BitMask(uint32_t(dirtyStageMask))) {
+      VkShaderStageFlagBits stage = VkShaderStageFlagBits(1u << stageIndex);
+
       // Check any view-based resource for hazards
-      { auto range = layout->getReadOnlyResourcesInSet(setIndex);
+      auto range = layout->getReadOnlyResourcesForStage(stage);
 
-        for (uint32_t j = 0; j < range.bindingCount; j++) {
-          const auto& binding = range.bindings[j];
-          const auto& slot = m_resources[binding.getResourceIndex()];
+      for (uint32_t j = 0; j < range.bindingCount; j++) {
+        const auto& binding = range.bindings[j];
 
-          switch (binding.getDescriptorType()) {
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-              if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())) {
-                if (checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.getAccess(), DxvkAccessOp::None))
+        switch (binding.getDescriptorType()) {
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            if (binding.isUniformBuffer()) {
+              const auto& slot = m_uniformBuffers[binding.getResourceIndex()];
+
+              if (slot.length() && (!IsGraphics || slot.buffer()->hasGfxStores())) {
+                if (checkBufferBarrier<BindPoint>(slot, binding.getAccess(), DxvkAccessOp::None))
                   return true;
               }
-            } break;
+              break;
+            }
+            [[fallthrough]];
 
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-              if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores())) {
-                if (checkImageViewBarrier<BindPoint>(slot.imageView, binding.getAccess(), DxvkAccessOp::None))
-                  return true;
-              }
-            } break;
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            const auto& slot = m_resources[binding.getResourceIndex()];
 
-            default:
-              /* nothing to do */;
-          }
-        }
-      }
+            if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())) {
+              if (checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.getAccess(), DxvkAccessOp::None))
+                return true;
+            }
+          } break;
 
-      // Check uniform buffers last, we're unlikely to have any hazards here
-      { auto range = layout->getUniformBuffersInSet(setIndex);
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            const auto& slot = m_resources[binding.getResourceIndex()];
 
-        for (uint32_t j = 0; j < range.bindingCount; j++) {
-          const auto& binding = range.bindings[j];
-          const auto& slot = m_uniformBuffers[binding.getResourceIndex()];
+            if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores())) {
+              if (checkImageViewBarrier<BindPoint>(slot.imageView, binding.getAccess(), DxvkAccessOp::None))
+                return true;
+            }
+          } break;
 
-          if (slot.length() && (!IsGraphics || slot.buffer()->hasGfxStores())) {
-            if (checkBufferBarrier<BindPoint>(slot, binding.getAccess(), DxvkAccessOp::None))
-              return true;
-          }
+          default:
+            /* nothing to do */;
         }
       }
     }

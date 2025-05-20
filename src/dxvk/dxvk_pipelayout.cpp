@@ -245,9 +245,12 @@ namespace dxvk {
 
               if (binding.getAccessOp() == DxvkAccessOp::None)
                 m_hazardousStageMask |= binding.getStageMask();
-            } else {
-              appendDescriptors(m_setReadOnlyResources[set], binding, dstMapping);
             }
+          }
+
+          if (!(binding.getAccess() & vk::AccessWriteMask)) {
+            for (auto stageIndex : bit::BitMask(uint32_t(binding.getStageMask())))
+              appendDescriptors(m_stageReadOnlyResources[stageIndex], binding, dstMapping);
           }
         }
 
