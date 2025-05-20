@@ -132,55 +132,35 @@ namespace dxvk {
         setLayouts[i] = m_setLayouts[i]->getSetLayout();
     }
 
-    // If we're creating a graphics pipeline layout, and if pipeline libraries are
-    // supported by the implementation, create a set layout that is compatible with
-    // pipeline libraries.
-    if (device->canUseGraphicsPipelineLibrary() && (key.getStageMask() & VK_SHADER_STAGE_ALL_GRAPHICS)) {
-      VkPushConstantRange pushConstants = key.getPushConstantRange().getPushConstantRange(true);
+    // Set up push constant range, if any
+    VkPushConstantRange pushConstantRange = { };
+    pushConstantRange.stageFlags = m_pushConstants.getStageMask();
+    pushConstantRange.size = m_pushConstants.getSize();
 
-      VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+
+    if (key.getType() == DxvkPipelineLayoutType::Independent)
       layoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
-      layoutInfo.setLayoutCount = key.getDescriptorSetCount();
 
-      if (layoutInfo.setLayoutCount)
-        layoutInfo.pSetLayouts = setLayouts.data();
+    layoutInfo.setLayoutCount = key.getDescriptorSetCount();
 
-      if (pushConstants.size) {
-        layoutInfo.pushConstantRangeCount = 1u;
-        layoutInfo.pPushConstantRanges = &pushConstants;
-      }
+    if (layoutInfo.setLayoutCount)
+      layoutInfo.pSetLayouts = setLayouts.data();
 
-      if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_layoutIndependent))
-        throw DxvkError("DxvkPipelineLayout: Failed to create independent pipeline layout");
+    if (pushConstantRange.size) {
+      layoutInfo.pushConstantRangeCount = 1u;
+      layoutInfo.pPushConstantRanges = &pushConstantRange;
     }
 
-    // If all descriptor set layouts are defined, create a pipeline layout object
-    // that is optimal for monolithic pipelines and discards unused push constants.
-    if (key.isComplete()) {
-      VkPushConstantRange pushConstants = key.getPushConstantRange().getPushConstantRange(false);
-
-      VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-      layoutInfo.setLayoutCount = key.getDescriptorSetCount();
-
-      if (layoutInfo.setLayoutCount)
-        layoutInfo.pSetLayouts = setLayouts.data();
-
-      if (pushConstants.size) {
-        layoutInfo.pushConstantRangeCount = 1u;
-        layoutInfo.pPushConstantRanges = &pushConstants;
-      }
-
-      if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_layoutComplete))
-        throw DxvkError("DxvkPipelineLayout: Failed to create complete pipeline layout");
-    }
+    if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_layout))
+      throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
   }
 
 
   DxvkPipelineLayout::~DxvkPipelineLayout() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyPipelineLayout(vk->device(), m_layoutIndependent, nullptr);
-    vk->vkDestroyPipelineLayout(vk->device(), m_layoutComplete, nullptr);
+    vk->vkDestroyPipelineLayout(vk->device(), m_layout, nullptr);
   }
 
 
@@ -210,12 +190,15 @@ namespace dxvk {
 
 
   DxvkPipelineBindings::DxvkPipelineBindings(
+          DxvkDevice*                 device,
           DxvkPipelineManager*        manager,
     const DxvkPipelineLayoutBuilder&  builder) {
     m_shaderStageMask = builder.getStageMask();
-    m_pushConstants = builder.getPushConstantRange();
 
-    buildPipelineLayout(builder.getBindings(), manager);
+    buildPipelineLayout(
+      builder.getBindings(),
+      builder.getPushConstantRange(),
+      device, manager);
   }
 
 
@@ -224,7 +207,11 @@ namespace dxvk {
   }
 
 
-  void DxvkPipelineBindings::buildPipelineLayout(DxvkPipelineBindingRange bindings, DxvkPipelineManager* manager) {
+  void DxvkPipelineBindings::buildPipelineLayout(
+          DxvkPipelineBindingRange  bindings,
+          DxvkPushConstantRange     pushConstants,
+          DxvkDevice*               device,
+          DxvkPipelineManager*      manager) {
     // Generate descriptor set layout keys from all bindings
     std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };
 
@@ -284,8 +271,20 @@ namespace dxvk {
     // Create pipeline layout with all known push constants and sets
     uint32_t setCount = getSetCountForStages(m_shaderStageMask);
 
-    m_layout = manager->createPipelineLayout(DxvkPipelineLayoutKey(
-      m_shaderStageMask, m_pushConstants, setCount, setLayouts.data()));
+    if ((m_shaderStageMask & VK_SHADER_STAGE_ALL_GRAPHICS) && device->canUseGraphicsPipelineLibrary()) {
+      DxvkPushConstantRange maxPushConstants(VK_SHADER_STAGE_ALL_GRAPHICS, MaxPushConstantSize);
+
+      DxvkPipelineLayoutKey independentKey(DxvkPipelineLayoutType::Merged,
+        m_shaderStageMask, maxPushConstants, setCount, setLayouts.data());
+
+      m_layoutIndependent = manager->createPipelineLayout(independentKey);
+    }
+
+    DxvkPipelineLayoutKey mergedKey(DxvkPipelineLayoutType::Merged,
+      m_shaderStageMask, pushConstants, setCount, setLayouts.data());
+
+    if (mergedKey.isComplete())
+      m_layoutMerged = manager->createPipelineLayout(mergedKey);
   }
 
 

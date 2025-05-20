@@ -233,7 +233,7 @@ namespace dxvk {
           VkDeviceSize                    pushConstantSize,
           uint32_t                        bindingCount,
     const DxvkDescriptorSetLayoutBinding* bindings) {
-    DxvkPipelineLayoutKey key;
+    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged);
 
     if (pushConstantSize) {
       key.addStages(pushConstantStages);
@@ -264,7 +264,7 @@ namespace dxvk {
     moduleInfo.pCode = stage.code;
 
     VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    pipelineInfo.layout = layout->getPipelineLayout(false);
+    pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
 
     VkPipelineShaderStageCreateInfo& stageInfo = pipelineInfo.stage;
@@ -419,7 +419,7 @@ namespace dxvk {
     pipelineInfo.pDepthStencilState = state.depthFormat ? (state.dsState ? state.dsState : &dsState) : nullptr;
     pipelineInfo.pColorBlendState = state.colorFormat ? &cbState : nullptr;
     pipelineInfo.pDynamicState = &dyState;
-    pipelineInfo.layout = layout->getPipelineLayout(false);
+    pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
