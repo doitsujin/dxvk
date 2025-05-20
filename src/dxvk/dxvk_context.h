@@ -2136,6 +2136,12 @@ namespace dxvk {
       return pred(DxvkAccess::Read);
     }
 
+    DxvkPipelineLayoutType getActivePipelineLayoutType(VkPipelineBindPoint bindPoint) const {
+      return (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_flags.test(DxvkContextFlag::GpIndependentSets))
+        ? DxvkPipelineLayoutType::Independent
+        : DxvkPipelineLayoutType::Merged;
+    }
+
     bool needsDrawBarriers();
 
     void beginRenderPassDebugRegion();

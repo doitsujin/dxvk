@@ -5973,9 +5973,9 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    auto pushConstants = newPipeline->getLayout()->getPushConstantRange().getPushConstantRange(false);
+    auto pushConstants = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged)->getPushConstantRange();
 
-    if (pushConstants.size) {
+    if (pushConstants.getSize()) {
       m_flags.set(DxvkContextFlag::CpHasPushConstants,
                   DxvkContextFlag::DirtyPushConstants);
     }
@@ -6046,7 +6046,7 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsPipelineState() {
-    bool oldIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
+    auto oldPipelineLayoutType = getActivePipelineLayoutType(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
@@ -6117,15 +6117,15 @@ namespace dxvk {
     }
 
     // If necessary, dirty descriptor sets due to layout incompatibilities
-    bool newIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
+    auto newPipelineLayoutType = getActivePipelineLayoutType(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-    if (newIndependentSets != oldIndependentSets)
+    if (newPipelineLayoutType != oldPipelineLayoutType)
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
     // Also update push constant status when we know the final layout
-    DxvkPushConstantRange pushConstants = m_state.gp.pipeline->getLayout()->getPushConstantRange();
+    DxvkPushConstantRange pushConstants = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType)->getPushConstantRange();
 
-    if (pushConstants.getPushConstantRange(newIndependentSets).size) {
+    if (pushConstants.getSize()) {
       m_flags.set(DxvkContextFlag::GpHasPushConstants,
                   DxvkContextFlag::DirtyPushConstants);
     }
@@ -6210,7 +6210,8 @@ namespace dxvk {
   
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
-    const auto* pipelineLayout = layout->getLayout();
+    DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
+    const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
     // Ensure that the arrays we write descriptor info to are big enough
     if (unlikely(layout->getDescriptorCount() > m_descriptorInfos.size()))
@@ -6220,9 +6221,6 @@ namespace dxvk {
     // to struct conversion, so we should use descriptor update templates.
     // For 64-bit applications, using templates is slower on some drivers.
     constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
-
-    bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-                        && m_flags.test(DxvkContextFlag::GpIndependentSets);
 
     uint32_t dirtySetMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_descriptorState.getDirtyGraphicsSets()
@@ -6500,7 +6498,7 @@ namespace dxvk {
         dirtySetMask &= (~1u) << setIndex;
 
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, layout->getLayout()->getPipelineLayout(independentSets),
+          BindPoint, pipelineLayout->getPipelineLayout(),
           firstSet, setIndex - firstSet + 1, &sets[firstSet]);
       }
     }
@@ -7064,21 +7062,17 @@ namespace dxvk {
 
     // Optimized pipelines may have push constants trimmed, so look up
     // the exact layout used for the currently bound pipeline.
-    bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      && m_flags.test(DxvkContextFlag::GpIndependentSets);
+    auto layout = bindings->getLayout(getActivePipelineLayoutType(BindPoint));
+    auto pushConstants = layout->getPushConstantRange();
 
-    VkPushConstantRange pushConstRange = bindings->getPushConstantRange()
-      .getPushConstantRange(independentSets);
-
-    if (unlikely(!pushConstRange.size))
+    if (unlikely(!pushConstants.getSize()))
       return;
 
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      bindings->getLayout()->getPipelineLayout(independentSets),
-      pushConstRange.stageFlags,
-      pushConstRange.offset,
-      pushConstRange.size,
-      &m_state.pc.data[pushConstRange.offset]);
+      layout->getPipelineLayout(),
+      pushConstants.getStageMask(), 0u,
+      pushConstants.getSize(),
+      &m_state.pc.data[0u]);
   }
   
 

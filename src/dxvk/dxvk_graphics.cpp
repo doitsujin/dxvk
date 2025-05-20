@@ -998,7 +998,7 @@ namespace dxvk {
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_shaders       (std::move(shaders)),
-    m_layout        (pipeMgr, buildPipelineLayout()),
+    m_layout        (device, pipeMgr, buildPipelineLayout()),
     m_barrier       (m_layout.getGlobalBarrier()),
     m_vsLibrary     (vsLibrary),
     m_fsLibrary     (fsLibrary),
@@ -1348,7 +1348,7 @@ namespace dxvk {
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.flags              = vs.linkFlags | fs.linkFlags;
-    info.layout             = m_layout.getLayout()->getPipelineLayout(true);
+    info.layout             = m_layout.getLayout(DxvkPipelineLayoutType::Independent)->getPipelineLayout();
     info.basePipelineIndex  = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
@@ -1412,7 +1412,7 @@ namespace dxvk {
     info.pDepthStencilState       = &key.fsState.dsInfo;
     info.pColorBlendState         = &key.foState.cbInfo;
     info.pDynamicState            = &key.dyState.dyInfo;
-    info.layout                   = m_layout.getLayout()->getPipelineLayout(false);
+    info.layout                   = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex        = -1;
     
     if (!key.prState.tsInfo.patchControlPoints)
