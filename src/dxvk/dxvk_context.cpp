@@ -7276,6 +7276,7 @@ namespace dxvk {
     // the same pipeline.
     VkShaderStageFlags dirtyStageMask = m_descriptorState.getDirtyStageMask(
       DxvkDescriptorClass::Buffer | DxvkDescriptorClass::View);
+    dirtyStageMask &= layout->getNonemptyStageMask();
 
     for (auto stageIndex : bit::BitMask(uint32_t(dirtyStageMask))) {
       VkShaderStageFlagBits stage = VkShaderStageFlagBits(1u << stageIndex);

@@ -1146,6 +1146,14 @@ namespace dxvk {
     ~DxvkPipelineBindings();
 
     /**
+     * \brief Queries available pipeline stages
+     * \returns All stages with descriptors
+     */
+    VkShaderStageFlags getNonemptyStageMask() const {
+      return m_nonemptyStageMask;
+    }
+
+    /**
      * \brief Queries pipeline layout
      * \returns Pipeline layout
      */
@@ -1318,6 +1326,7 @@ namespace dxvk {
       std::array<uint8_t, MaxSets> map = { };
     };
 
+    VkShaderStageFlags        m_nonemptyStageMask = 0u;
     VkShaderStageFlags        m_hazardousStageMask = 0u;
 
     DxvkGlobalPipelineBarrier m_barrier = { };
