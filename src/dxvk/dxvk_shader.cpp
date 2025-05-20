@@ -1659,7 +1659,11 @@ namespace dxvk {
     if (!shader)
       return SpirvCodeBuffer(dxvk_dummy_frag);
 
-    return shader->getCode(m_layout.getBindingMap(), DxvkShaderModuleCreateInfo());
+    DxvkPipelineLayoutType layoutType = stage == VK_SHADER_STAGE_COMPUTE_BIT
+      ? DxvkPipelineLayoutType::Merged
+      : DxvkPipelineLayoutType::Independent;
+
+    return shader->getCode(m_layout.getBindingMap(layoutType), DxvkShaderModuleCreateInfo());
   }
 
 
