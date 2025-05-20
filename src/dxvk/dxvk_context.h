@@ -304,7 +304,7 @@ namespace dxvk {
             Rc<DxvkSampler>&&     sampler) {
       m_samplers[slot] = std::move(sampler);
 
-      m_descriptorState.dirtyViews(stages);
+      m_descriptorState.dirtySamplers(stages);
     }
 
     /**

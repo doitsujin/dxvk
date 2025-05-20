@@ -6222,10 +6222,7 @@ namespace dxvk {
     // For 64-bit applications, using templates is slower on some drivers.
     constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
 
-    uint32_t dirtySetMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_descriptorState.getDirtyGraphicsSets()
-      : m_descriptorState.getDirtyComputeSets();
-    dirtySetMask &= layout->getSetMask();
+    uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
     std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets;
     m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
@@ -7097,7 +7094,7 @@ namespace dxvk {
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       this->beginBarrierControlDebugRegion<VK_PIPELINE_BIND_POINT_COMPUTE>();
 
-    if (m_descriptorState.hasDirtyComputeSets()) {
+    if (m_descriptorState.hasDirtyResources(VK_SHADER_STAGE_COMPUTE_BIT)) {
       this->updateComputeShaderResources();
 
       if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
@@ -7185,7 +7182,7 @@ namespace dxvk {
         return false;
     }
     
-    if (m_descriptorState.hasDirtyGraphicsSets()) {
+    if (m_descriptorState.hasDirtyResources(VK_SHADER_STAGE_ALL_GRAPHICS)) {
       this->updateGraphicsShaderResources();
 
       if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
@@ -7277,11 +7274,9 @@ namespace dxvk {
     // For read-only resources, it is sufficient to check dirty sets since any
     // resource previously bound as read-only cannot have been written by the
     // same pipeline.
-    uint32_t dirtySetMask = IsGraphics
-      ? m_descriptorState.getDirtyGraphicsSets()
-      : m_descriptorState.getDirtyComputeSets();
-
-    dirtySetMask &= layout->getSetMask();
+    // TODO track stuff per stage and resource type rather than per set
+    auto layoutType = getActivePipelineLayoutType(BindPoint);
+    uint32_t dirtySetMask = layout->getDirtySetMask(layoutType, m_descriptorState);
 
     for (auto setIndex : bit::BitMask(dirtySetMask)) {
       // Check any view-based resource for hazards
