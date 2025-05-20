@@ -59,13 +59,27 @@ namespace dxvk {
    * \brief Descriptor set indices
    */
   struct DxvkDescriptorSets {
-    static constexpr uint32_t FsViews     = 0;
-    static constexpr uint32_t FsBuffers   = 1;
-    static constexpr uint32_t VsAll       = 2;
-    static constexpr uint32_t SetCount    = 3;
+    // For fast-linked pipelines, use the bare minimum of one set
+    // for the fragment shader and one for vertex shader resources.
+    static constexpr uint32_t GpIndependentSetCount     = 2u;
+    static constexpr uint32_t GpIndependentFsResources  = 0u;
+    static constexpr uint32_t GpIndependentVsResources  = 1u;
 
-    static constexpr uint32_t CsAll       = 0;
-    static constexpr uint32_t CsSetCount  = 1;
+    // For merged pipelines, use one set containing per unique
+    // descriptor class. We can reasonably expect uniform buffers
+    // to be rebound more often than views and samplers.
+    static constexpr uint32_t GpSetCount                = 3u;
+    static constexpr uint32_t GpSamplers                = 0u;
+    static constexpr uint32_t GpViews                   = 1u;
+    static constexpr uint32_t GpBuffers                 = 2u;
+
+    // For compute shaders, put everything into one set since it is
+    // very likely that all types of resources get changed at once.
+    static constexpr uint32_t CpResources               = 0u;
+    static constexpr uint32_t CpSetCount                = 1u;
+
+    // Maximum number of descriptor sets per layout
+    static constexpr uint32_t SetCount                  = 3u;
   };
 
 
@@ -778,22 +792,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks whether all sets are defined
-     *
-     * If all set layouts are valid, a non-independent
-     * pipeline layout can be created.
-     * \returns \c true if all included sets are not \c nullptr.
-     */
-    bool isComplete() const {
-      bool result = true;
-
-      for (uint32_t i = 0; i < m_setCount; i++)
-        result &= m_sets[i] != nullptr;
-
-      return result;
-    }
-
-    /**
      * \brief Checks for equality
      *
      * \param [in] other Pipeline layout key to compare to
@@ -1152,9 +1150,7 @@ namespace dxvk {
      * \returns Pipeline layout
      */
     const DxvkPipelineLayout* getLayout(DxvkPipelineLayoutType type) const {
-      return type == DxvkPipelineLayoutType::Independent
-        ? m_layoutIndependent
-        : m_layoutMerged;
+      return m_layouts[uint32_t(type)].layout;
     }
 
     /**
@@ -1167,10 +1163,12 @@ namespace dxvk {
     uint32_t getDirtySetMask(
             DxvkPipelineLayoutType  type,
       const DxvkDescriptorState&    state) const {
+      const auto& layout = m_layouts[uint32_t(type)];
+
       uint32_t result = 0u;
 
-      for (uint32_t set = 0u; set < MaxSets; set++) {
-        if (state.testDirtyMask(m_setStateMasks[set]))
+      for (uint32_t set = 0u; set < layout.setStateMasks.size(); set++) {
+        if (state.testDirtyMask(layout.setStateMasks[set]))
           result |= 1u << set;
       }
 
@@ -1179,6 +1177,9 @@ namespace dxvk {
 
     /**
      * \brief Gets total number of descriptors in all sets
+     *
+     * Can be used to determine an upper bound of descriptor infos
+     * to allocate when exact information is not yet available.
      * \returns Total descriptor count in all sets
      */
     uint32_t getDescriptorCount() const {
@@ -1189,11 +1190,12 @@ namespace dxvk {
      * \brief Queries all available bindings in a given set
      *
      * Primarily useful to update dirty descriptor sets.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all bindings in the set
      */
-    DxvkPipelineBindingRange getAllDescriptorsInSet(uint32_t set) const {
-      return makeBindingRange(m_setDescriptors[set]);
+    DxvkPipelineBindingRange getAllDescriptorsInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setDescriptors[set]);
     }
 
     /**
@@ -1201,11 +1203,12 @@ namespace dxvk {
      *
      * This includes both pure samplers as well as
      * combined image and sampler bindings.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all sampler bindings in the set
      */
-    DxvkPipelineBindingRange getSamplersInSet(uint32_t set) const {
-      return makeBindingRange(m_setSamplers[set]);
+    DxvkPipelineBindingRange getSamplersInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setSamplers[set]);
     }
 
     /**
@@ -1215,11 +1218,12 @@ namespace dxvk {
      * even unformatted buffer views (i.e. storage buffers). Does not
      * include pure samplers or buffers that are only bound via a buffer
      * range or address, i.e. uniform buffers.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all resource bindings in the set
      */
-    DxvkPipelineBindingRange getResourcesInSet(uint32_t set) const {
-      return makeBindingRange(m_setResources[set]);
+    DxvkPipelineBindingRange getResourcesInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setResources[set]);
     }
 
     /**
@@ -1228,11 +1232,12 @@ namespace dxvk {
      * Includes all uniform buffer resources, i.e. resources that are only
      * bound via a buffer range and do not use views, and use the uniform
      * or storage buffer descriptor type.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all uniform buffer bindings in the set
      */
-    DxvkPipelineBindingRange getUniformBuffersInSet(uint32_t set) const {
-      return makeBindingRange(m_setUniformBuffers[set]);
+    DxvkPipelineBindingRange getUniformBuffersInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setUniformBuffers[set]);
     }
 
     /**
@@ -1243,7 +1248,7 @@ namespace dxvk {
      * \returns List of all read-only resources in the set
      */
     DxvkPipelineBindingRange getReadOnlyResourcesForStage(VkShaderStageFlagBits stage) const {
-      return makeBindingRange(m_stageReadOnlyResources[bit::bsf(uint32_t(stage))]);
+      return makeBindingRange(m_readOnlyResources[bit::bsf(uint32_t(stage))]);
     }
 
     /**
@@ -1289,47 +1294,61 @@ namespace dxvk {
      * \returns Pointer to binding map
      */
     const DxvkShaderBindingMap* getBindingMap(DxvkPipelineLayoutType type) const {
-      return &m_map;
+      return &m_layouts[uint32_t(type)].bindingMap;
     }
 
   private:
 
-    VkShaderStageFlags        m_shaderStageMask           = 0u;
-    VkShaderStageFlags        m_hazardousStageMask        = 0u;
+    struct PerLayoutInfo {
+      std::array<BindingList, MaxSets>  setDescriptors       = { };
+      std::array<BindingList, MaxSets>  setSamplers          = { };
+      std::array<BindingList, MaxSets>  setResources         = { };
+      std::array<BindingList, MaxSets>  setUniformBuffers    = { };
+
+      std::array<uint32_t, MaxSets>     setStateMasks = { };
+
+      DxvkShaderBindingMap              bindingMap = { };
+
+      const DxvkPipelineLayout*         layout = nullptr;
+    };
+
+    struct SetInfos {
+      uint32_t mask   = { };
+      uint32_t count  = { };
+      std::array<uint8_t, MaxSets> map = { };
+    };
+
+    VkShaderStageFlags        m_hazardousStageMask = 0u;
 
     DxvkGlobalPipelineBarrier m_barrier = { };
-
     uint32_t                  m_descriptorCount = 0u;
 
-    std::array<BindingList, MaxSets> m_setDescriptors       = { };
-    std::array<BindingList, MaxSets> m_setSamplers          = { };
-    std::array<BindingList, MaxSets> m_setResources         = { };
-    std::array<BindingList, MaxSets> m_setUniformBuffers    = { };
+    std::array<PerLayoutInfo, 2u> m_layouts = { };
 
-    std::array<BindingList, MaxStages> m_stageReadOnlyResources = { };
-
-    std::array<uint32_t, MaxSets> m_setStateMasks = { };
-
-    BindingList               m_readWriteResources = { };
-
-    DxvkShaderBindingMap      m_map;
-
-    const DxvkPipelineLayout* m_layoutIndependent = nullptr;
-    const DxvkPipelineLayout* m_layoutMerged = nullptr;
+    std::array<BindingList, MaxStages>  m_readOnlyResources = { };
+    BindingList                         m_readWriteResources = { };
 
     void buildPipelineLayout(
+            DxvkPipelineLayoutType    type,
+            VkShaderStageFlags        stageMask,
             DxvkPipelineBindingRange  bindings,
             DxvkPushConstantRange     pushConstants,
-            DxvkDevice*               device,
             DxvkPipelineManager*      manager);
 
-    uint32_t mapToSet(const DxvkShaderDescriptor& binding) const;
+    void buildMetadata(
+            DxvkPipelineBindingRange  bindings);
 
-    static uint32_t computeStateMask(const DxvkShaderDescriptor& binding);
+    static uint32_t computeStateMask(
+      const DxvkShaderDescriptor&     binding);
 
-    static uint32_t getSetMaskForStages(VkShaderStageFlags stages);
+    static uint32_t computeSetForBinding(
+            DxvkPipelineLayoutType    type,
+      const DxvkShaderDescriptor&     binding);
 
-    static uint32_t getSetCountForStages(VkShaderStageFlags stages);
+    static SetInfos computeSetMaskAndCount(
+            DxvkPipelineLayoutType    type,
+            VkShaderStageFlags        stageMask,
+            DxvkPipelineBindingRange  bindings);
 
     static DxvkPipelineBindingRange makeBindingRange(const BindingList& list) {
       DxvkPipelineBindingRange result;

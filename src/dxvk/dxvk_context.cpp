@@ -6230,7 +6230,7 @@ namespace dxvk {
     uint32_t descriptorCount = 0;
 
     for (auto setIndex : bit::BitMask(dirtySetMask)) {
-      auto range = layout->getAllDescriptorsInSet(setIndex);
+      auto range = layout->getAllDescriptorsInSet(pipelineLayoutType, setIndex);
 
       for (uint32_t j = 0; j < range.bindingCount; j++) {
         const auto& binding = range.bindings[j];
