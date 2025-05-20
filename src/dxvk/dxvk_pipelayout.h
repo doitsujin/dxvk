@@ -70,6 +70,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Pipeline layout type
+   *
+   * Determines whether to use a pipeline layout with stage-separated
+   * descriptor sets, or one with merged sets.
+   */
+  enum class DxvkPipelineLayoutType : uint16_t {
+    Independent = 0u, ///< Fragment and pre-raster shaders use separate sets
+    Merged      = 1u, ///< Fragment and pre-raster shaders use the same sets
+  };
+
+
+  /**
    * \brief Descriptor flags
    */
   enum class DxvkDescriptorFlag : uint8_t {
@@ -512,24 +524,19 @@ namespace dxvk {
       m_stages    (uint8_t(m_size ? stages : 0u)) { }
 
     /**
-     * \brief Converts push constant range to Vulkan struct
-     *
-     * \param [in] independent Whether to query the range for
-     *    pipeline layouts compatible with independent sets
-     * \returns Vulkan push constant range
+     * \brief Queries shader stage mask
+     * \returns Shaders using push constants
      */
-    VkPushConstantRange getPushConstantRange(bool independent) const {
-      if (independent) {
-        VkPushConstantRange vk = { };
-        vk.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-        vk.size = MaxPushConstantSize;
-        return vk;
-      } else {
-        VkPushConstantRange vk = { };
-        vk.stageFlags = VkShaderStageFlags(m_stages);
-        vk.size = vk.stageFlags ? m_size : 0u;
-        return vk;
-      }
+    VkShaderStageFlags getStageMask() const {
+      return m_stages;
+    }
+
+    /**
+     * \brief Queries push constant size
+     * \return Push constant size, in bytes
+     */
+    uint32_t getSize() const {
+      return m_size;
     }
 
     /**
@@ -589,15 +596,29 @@ namespace dxvk {
     DxvkPipelineLayoutKey() = default;
 
     DxvkPipelineLayoutKey(
+            DxvkPipelineLayoutType    type)
+    : m_type          (type) { }
+
+    DxvkPipelineLayoutKey(
+            DxvkPipelineLayoutType    type,
             VkShaderStageFlags        stageMask,
             DxvkPushConstantRange     pushConstants,
             uint32_t                  setCount,
       const DxvkDescriptorSetLayout** setLayouts)
-    : m_stages        (uint8_t(stageMask)),
+    : m_type          (type),
+      m_stages        (uint8_t(stageMask)),
       m_setCount      (uint8_t(setCount)),
       m_pushConstants (pushConstants) {
       for (uint32_t i = 0; i < setCount; i++)
         m_sets[i] = setLayouts[i];
+    }
+
+    /**
+     * \brief Queries layout type
+     * \returns Layout type
+     */
+    DxvkPipelineLayoutType getType() const {
+      return m_type;
     }
 
     /**
@@ -709,7 +730,8 @@ namespace dxvk {
      * \returns \c true if both layout keys are equal
      */
     bool eq(const DxvkPipelineLayoutKey& other) const {
-      bool eq = m_stages    == other.m_stages
+      bool eq = m_type      == other.m_type
+             && m_stages    == other.m_stages
              && m_setCount  == other.m_setCount;
 
       eq &= m_pushConstants.eq(other.m_pushConstants);
@@ -726,6 +748,7 @@ namespace dxvk {
      */
     size_t hash() const {
       DxvkHashState hash;
+      hash.add(uint16_t(m_type));
       hash.add(m_stages);
       hash.add(m_setCount);
       hash.add(m_pushConstants.hash());
@@ -738,9 +761,10 @@ namespace dxvk {
 
   private:
 
-    uint8_t               m_stages    = 0u;
-    uint8_t               m_setCount  = 0u;
-    DxvkPushConstantRange m_pushConstants = { };
+    DxvkPipelineLayoutType  m_type      = DxvkPipelineLayoutType::Independent;
+    uint8_t                 m_stages    = 0u;
+    uint8_t                 m_setCount  = 0u;
+    DxvkPushConstantRange   m_pushConstants = { };
 
     std::array<const DxvkDescriptorSetLayout*, MaxSets> m_sets = { };
 
@@ -778,10 +802,8 @@ namespace dxvk {
      *    layout that can be used with pipeline libraries.
      * \returns Pipeline layout handle
      */
-    VkPipelineLayout getPipelineLayout(bool independent) const {
-      return independent
-        ? m_layoutIndependent
-        : m_layoutComplete;
+    VkPipelineLayout getPipelineLayout() const {
+      return m_layout;
     }
 
     /**
@@ -809,8 +831,7 @@ namespace dxvk {
     VkPipelineBindPoint   m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     DxvkPushConstantRange m_pushConstants = { };
 
-    VkPipelineLayout  m_layoutIndependent = VK_NULL_HANDLE;
-    VkPipelineLayout  m_layoutComplete    = VK_NULL_HANDLE;
+    VkPipelineLayout  m_layout = VK_NULL_HANDLE;
 
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
@@ -966,14 +987,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries push constant range
-     * \returns Merged push constant range
-     */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
-    }
-
-    /**
      * \brief Queries descriptor bindings
      * \returns Descriptor bindings
      */
@@ -982,6 +995,14 @@ namespace dxvk {
       range.bindingCount = m_bindings.size();
       range.bindings = m_bindings.data();
       return range;
+    }
+
+    /**
+     * \brief Queries push constant range
+     * \returns Push constant range
+     */
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
     }
 
     /**
@@ -1049,6 +1070,7 @@ namespace dxvk {
   public:
 
     DxvkPipelineBindings(
+            DxvkDevice*                 device,
             DxvkPipelineManager*        manager,
       const DxvkPipelineLayoutBuilder&  builder);
 
@@ -1058,8 +1080,10 @@ namespace dxvk {
      * \brief Queries pipeline layout
      * \returns Pipeline layout
      */
-    const DxvkPipelineLayout* getLayout() const {
-      return m_layout;
+    const DxvkPipelineLayout* getLayout(DxvkPipelineLayoutType type) const {
+      return type == DxvkPipelineLayoutType::Independent
+        ? m_layoutIndependent
+        : m_layoutMerged;
     }
 
     /**
@@ -1076,14 +1100,6 @@ namespace dxvk {
      */
     uint32_t getDescriptorCount() const {
       return m_descriptorCount;
-    }
-
-    /**
-     * \brief Queries push constant range
-     * \returns Push constant range
-     */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
     }
 
     /**
@@ -1197,8 +1213,6 @@ namespace dxvk {
     VkShaderStageFlags        m_shaderStageMask           = 0u;
     VkShaderStageFlags        m_hazardousStageMask        = 0u;
 
-    DxvkPushConstantRange     m_pushConstants             = { };
-
     DxvkGlobalPipelineBarrier m_barrier = { };
 
     uint32_t                  m_setMask         = 0u;
@@ -1214,9 +1228,14 @@ namespace dxvk {
 
     DxvkShaderBindingMap      m_map;
 
-    const DxvkPipelineLayout* m_layout = nullptr;
+    const DxvkPipelineLayout* m_layoutIndependent = nullptr;
+    const DxvkPipelineLayout* m_layoutMerged = nullptr;
 
-    void buildPipelineLayout(DxvkPipelineBindingRange bindings, DxvkPipelineManager* manager);
+    void buildPipelineLayout(
+            DxvkPipelineBindingRange  bindings,
+            DxvkPushConstantRange     pushConstants,
+            DxvkDevice*               device,
+            DxvkPipelineManager*      manager);
 
     uint32_t mapToSet(const DxvkShaderDescriptor& binding) const;
 

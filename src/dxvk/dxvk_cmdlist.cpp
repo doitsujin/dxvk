@@ -540,23 +540,22 @@ namespace dxvk {
 
       this->cmdBindDescriptorSets(cmdBuffer,
         layout->getBindPoint(),
-        layout->getPipelineLayout(false),
+        layout->getPipelineLayout(),
         0u, 1u, &set);
     }
 
     // Update push constants
-    VkPushConstantRange pushConstants = layout->getPushConstantRange().getPushConstantRange(false);
+    DxvkPushConstantRange pushConstants = layout->getPushConstantRange();
 
-    if (pushDataSize && pushConstants.size) {
+    if (pushDataSize && pushConstants.getSize()) {
       std::array<char, MaxPushConstantSize> dataCopy;
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
       this->cmdPushConstants(cmdBuffer,
-        layout->getPipelineLayout(false),
-        pushConstants.stageFlags,
-        pushConstants.offset,
-        pushConstants.size,
+        layout->getPipelineLayout(),
+        pushConstants.getStageMask(), 0u,
+        pushConstants.getSize(),
         dataCopy.data());
     }
   }
