@@ -85,7 +85,8 @@ namespace dxvk {
    * \brief Dirty descriptor set tracker
    */
   class DxvkDescriptorState {
-
+    constexpr static VkShaderStageFlags AllStageMask =
+      VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
   public:
 
     DxvkDescriptorState() = default;
@@ -116,6 +117,15 @@ namespace dxvk {
 
     bool testDirtyMask(uint32_t mask) const {
       return m_dirtyMask & mask;
+    }
+
+    VkShaderStageFlags getDirtyStageMask(uint32_t classes) const {
+      VkShaderStageFlags result = 0u;
+
+      for (auto classShift : bit::BitMask(classes))
+        result |= m_dirtyMask >> classShift;
+
+      return result & AllStageMask;
     }
 
     static constexpr uint32_t computeMask(VkShaderStageFlags stages, uint32_t classes) {
@@ -1125,6 +1135,7 @@ namespace dxvk {
    */
   class DxvkPipelineBindings {
     constexpr static uint32_t MaxSets = DxvkPipelineLayoutKey::MaxSets;
+    constexpr static uint32_t MaxStages = 6u;
 
     using BindingList = small_vector<DxvkShaderDescriptor, 32>;
   public:
@@ -1203,7 +1214,7 @@ namespace dxvk {
      * Includes all resources that are bound via an image or buffer view,
      * even unformatted buffer views (i.e. storage buffers). Does not
      * include pure samplers or buffers that are only bound via a buffer
-     * range, i.e. uniform buffers.
+     * range or address, i.e. uniform buffers.
      * \param [in] set Set index
      * \returns List of all resource bindings in the set
      */
@@ -1225,14 +1236,14 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries all read-only resources in a given set
+     * \brief Queries all read-only resources for a given stage
      *
      * Subset of \c getResourcesInSet that only includes bindings that are
      * read and not written by the shader. Useful for hazard tracking.
      * \returns List of all read-only resources in the set
      */
-    DxvkPipelineBindingRange getReadOnlyResourcesInSet(uint32_t set) const {
-      return makeBindingRange(m_setReadOnlyResources[set]);
+    DxvkPipelineBindingRange getReadOnlyResourcesForStage(VkShaderStageFlagBits stage) const {
+      return makeBindingRange(m_stageReadOnlyResources[bit::bsf(uint32_t(stage))]);
     }
 
     /**
@@ -1294,7 +1305,8 @@ namespace dxvk {
     std::array<BindingList, MaxSets> m_setSamplers          = { };
     std::array<BindingList, MaxSets> m_setResources         = { };
     std::array<BindingList, MaxSets> m_setUniformBuffers    = { };
-    std::array<BindingList, MaxSets> m_setReadOnlyResources = { };
+
+    std::array<BindingList, MaxStages> m_stageReadOnlyResources = { };
 
     std::array<uint32_t, MaxSets> m_setStateMasks = { };
 
