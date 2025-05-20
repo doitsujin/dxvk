@@ -225,6 +225,7 @@ namespace dxvk {
       m_map.add(srcMapping, dstMapping);
 
       setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+      m_setStateMasks[set] |= computeStateMask(binding);
 
       if (binding.getDescriptorCount()) {
         appendDescriptors(m_setDescriptors[set], binding, dstMapping);
@@ -255,8 +256,6 @@ namespace dxvk {
 
         m_descriptorCount += binding.getDescriptorCount();
       }
-
-      m_setMask |= 1u << set;
     }
 
     // Create set layouts for all stages covered by the layout
@@ -301,6 +300,34 @@ namespace dxvk {
     }
 
     return uint32_t(DxvkDescriptorSets::VsAll);
+  }
+
+
+  uint32_t DxvkPipelineBindings::computeStateMask(const DxvkShaderDescriptor& binding) {
+    switch (binding.getDescriptorType()) {
+      case VK_DESCRIPTOR_TYPE_SAMPLER:
+        return DxvkDescriptorState::computeMask(
+          binding.getStageMask(), DxvkDescriptorClass::Sampler);
+
+      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        return DxvkDescriptorState::computeMask(
+          binding.getStageMask(), DxvkDescriptorClass::Sampler | DxvkDescriptorClass::View);
+
+      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+        return DxvkDescriptorState::computeMask(
+          binding.getStageMask(), DxvkDescriptorClass::View);
+
+      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+        return DxvkDescriptorState::computeMask(
+          binding.getStageMask(), DxvkDescriptorClass::Buffer);
+
+      default:
+        throw DxvkError("Unhandled descriptor type");
+    }
   }
 
 
