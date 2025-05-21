@@ -6217,14 +6217,20 @@ namespace dxvk {
     if (unlikely(layout->getDescriptorCount() > m_descriptorInfos.size()))
       this->resizeDescriptorArrays(layout->getDescriptorCount());
 
+    // Find out which sets we actually need to update based on the pipeline
+    // layout. This may be an empty mask if only unrelated resources were
+    // changed, but we have no way of knowing that up-front.
+    uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
+
+    if (unlikely(!dirtySetMask))
+      return;
+
     // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
     // to struct conversion, so we should use descriptor update templates.
     // For 64-bit applications, using templates is slower on some drivers.
     constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
 
-    uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
-
-    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets;
+    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
     m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
 
     uint32_t descriptorCount = 0;
@@ -6479,26 +6485,29 @@ namespace dxvk {
           &m_descriptorInfos[0]);
         descriptorCount = 0;
       }
-
-      // If the next set is not dirty, update and bind all previously
-      // updated sets in one go in order to reduce api call overhead.
-      if (!(((dirtySetMask >> 1) >> setIndex) & 1u)) {
-        if (!useDescriptorTemplates) {
-          m_cmd->updateDescriptorSets(descriptorCount,
-            m_descriptorWrites.data());
-          descriptorCount = 0;
-        }
-
-        // Find first dirty set in the mask and clear bits
-        // for all sets that we're going to update here.
-        uint32_t firstSet = bit::tzcnt(dirtySetMask);
-        dirtySetMask &= (~1u) << setIndex;
-
-        m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, pipelineLayout->getPipelineLayout(),
-          firstSet, setIndex - firstSet + 1, &sets[firstSet]);
-      }
     }
+
+    // Update all descriptors in one go to avoid API call overhead
+    if (!useDescriptorTemplates) {
+      m_cmd->updateDescriptorSets(descriptorCount,
+        m_descriptorWrites.data());
+    }
+
+    do {
+      // Similarly, bind consecutive descriptor set ranges at once.
+      uint32_t first = bit::bsf(dirtySetMask);
+
+      // Add the lowest set bit to the mask and count the number of
+      // additional zeroes we created to get the final set count
+      uint32_t countMask = dirtySetMask + (dirtySetMask & -dirtySetMask);
+      uint32_t count = bit::bsf(countMask) - first;
+
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
+        BindPoint, pipelineLayout->getPipelineLayout(),
+        first, count, &sets[first]);
+
+      dirtySetMask &= countMask;
+    } while (dirtySetMask);
   }
 
 
