@@ -18,8 +18,11 @@ namespace dxvk {
   }
 
 
-  void DxvkDescriptorSetLayoutKey::add(DxvkDescriptorSetLayoutBinding binding) {
+  uint32_t DxvkDescriptorSetLayoutKey::add(DxvkDescriptorSetLayoutBinding binding) {
+    uint32_t index = m_bindings.size();
+
     m_bindings.push_back(binding);
+    return index;
   }
 
 
@@ -242,13 +245,13 @@ namespace dxvk {
     for (size_t i = 0; i < bindings.bindingCount; i++) {
       auto binding = bindings.bindings[i];
       auto set = setInfos.map[computeSetForBinding(type, binding)];
+      auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
 
       DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
-      DxvkShaderBinding dstMapping(binding.getStageMask(), set, setLayoutKeys[set].getBindingCount());
+      DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
 
       layout.bindingMap.add(srcMapping, dstMapping);
 
-      setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
       layout.setStateMasks[set] |= computeStateMask(binding);
 
       if (binding.getDescriptorCount()) {
