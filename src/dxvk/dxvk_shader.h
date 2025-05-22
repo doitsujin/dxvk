@@ -254,6 +254,11 @@ namespace dxvk {
       uint32_t setOffset = 0u;
     };
 
+    struct PushDataOffsets {
+      uint32_t codeOffset = 0u;
+      uint32_t pushOffset = 0u;
+    };
+
     DxvkShaderCreateInfo          m_info;
     SpirvCompressedBuffer         m_code;
     
@@ -268,6 +273,7 @@ namespace dxvk {
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
     std::vector<BindingOffsets>   m_bindingOffsets;
+    std::vector<PushDataOffsets>  m_pushDataOffsets;
 
     DxvkPipelineLayoutBuilder     m_layout;
 

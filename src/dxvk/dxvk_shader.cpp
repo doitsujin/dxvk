@@ -57,15 +57,16 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
-    bool usesPushConstants = false;
+    uint32_t pushConstantStructId = 0u;
 
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
     std::vector<uint32_t> sampleMaskIds;
+    std::unordered_map<uint32_t, uint32_t> pushConstantTypes;
 
     SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
-    
+
     for (auto ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
         if (ins.arg(2) == spv::DecorationBinding) {
@@ -143,12 +144,35 @@ namespace dxvk {
             m_flags.set(DxvkShaderFlag::ExportsSampleMask);
         }
 
-        if (ins.arg(3) == spv::StorageClassPushConstant)
-          usesPushConstants = true;
+        if (ins.arg(3) == spv::StorageClassPushConstant) {
+          auto type = pushConstantTypes.find(ins.arg(1));
+
+          if (type != pushConstantTypes.end())
+            pushConstantStructId = type->second;
+        }
+      }
+
+      if (ins.opCode() == spv::OpTypePointer) {
+        if (ins.arg(2) == spv::StorageClassPushConstant)
+          pushConstantTypes.insert({ ins.arg(1), ins.arg(3) });
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
       if (ins.opCode() == spv::OpFunction)
+        break;
+    }
+
+    for (auto ins : code) {
+      if (ins.opCode() == spv::OpMemberDecorate
+       && ins.arg(1) == pushConstantStructId
+       && ins.arg(3) == spv::DecorationOffset) {
+        auto& e = m_pushDataOffsets.emplace_back();
+        e.codeOffset = ins.offset() + 4;
+        e.pushOffset = ins.arg(4);
+      }
+
+      // Can exit even earlier here since decorations come up early
+      if (ins.opCode() == spv::OpFunction || ins.opCode() == spv::OpTypeVoid)
         break;
     }
 
@@ -160,7 +184,7 @@ namespace dxvk {
         m_bindingOffsets.push_back(info);
     }
 
-    if (info.pushConstSize && usesPushConstants) {
+    if (info.pushConstSize && pushConstantStructId) {
       VkShaderStageFlags stage = (m_info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
         ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
 
@@ -197,6 +221,13 @@ namespace dxvk {
           if (info.setOffset)
             code[info.setOffset] = mappedBinding->getSet();
         }
+      }
+
+      for (const auto& info : m_pushDataOffsets) {
+        uint32_t offset = bindings->mapPushData(m_info.stage, info.pushOffset);
+
+        if (offset < MaxTotalPushDataSize)
+          code[info.codeOffset] = offset;
       }
     }
 
