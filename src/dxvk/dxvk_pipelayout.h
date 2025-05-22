@@ -878,76 +878,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Push constant info
-   */
-  class DxvkPushConstantRange {
-
-  public:
-
-    DxvkPushConstantRange() = default;
-
-    DxvkPushConstantRange(
-            VkShaderStageFlags  stages,
-            uint32_t            size)
-    : m_size      (uint8_t(stages ? size : 0u)),
-      m_stages    (uint8_t(m_size ? stages : 0u)) { }
-
-    /**
-     * \brief Queries shader stage mask
-     * \returns Shaders using push constants
-     */
-    VkShaderStageFlags getStageMask() const {
-      return m_stages;
-    }
-
-    /**
-     * \brief Queries push constant size
-     * \return Push constant size, in bytes
-     */
-    uint32_t getSize() const {
-      return m_size;
-    }
-
-    /**
-     * \brief Merges two push constant ranges
-     *
-     * Takes the shader stage and size from the other rage.
-     * \param [in] other Other push constant range
-     */
-    void merge(const DxvkPushConstantRange& other) {
-      m_stages |= other.m_stages;
-
-      m_size = std::max(m_size, other.m_size);
-    }
-
-    /**
-     * \brief Checks for equality
-     *
-     * \param [in] other Push constant range to compare against
-     * \returns \c true if the two ranges are equal
-     */
-    bool eq(const DxvkPushConstantRange& other) const {
-      return m_size   == other.m_size
-          && m_stages == other.m_stages;
-    }
-
-    /**
-     * \brief Computes hash
-     * \returns Hash
-     */
-    size_t hash() const {
-      return size_t(m_size) | (size_t(m_stages) << 8u);
-    }
-
-  private:
-
-    uint8_t m_size   = 0u;
-    uint8_t m_stages = 0u;
-
-  };
-
-
-  /**
    * \brief Pipeline layout key
    *
    * Used to look up pipeline layout objects. Stores a reference to the
@@ -971,15 +901,16 @@ namespace dxvk {
     DxvkPipelineLayoutKey(
             DxvkPipelineLayoutType    type,
             VkShaderStageFlags        stageMask,
-            DxvkPushConstantRange     pushConstants,
+            uint32_t                  pushDataBlockCount,
+      const DxvkPushDataBlock*        pushDataBlocks,
             uint32_t                  setCount,
       const DxvkDescriptorSetLayout** setLayouts)
     : m_type          (type),
-      m_stages        (uint8_t(stageMask)),
-      m_setCount      (uint8_t(setCount)),
-      m_pushConstants (pushConstants) {
-      for (uint32_t i = 0; i < setCount; i++)
-        m_sets[i] = setLayouts[i];
+      m_stages        (uint8_t(stageMask)) {
+      for (uint32_t i = 0u; i < pushDataBlockCount; i++)
+        addPushData(pushDataBlocks[i]);
+
+      setDescriptorSetLayouts(setCount, setLayouts);
     }
 
     /**
@@ -999,14 +930,37 @@ namespace dxvk {
     }
 
     /**
-     * \brief Adds a push constant range
+     * \brief Adds a push data block
      *
-     * Merges stage mask and uses the largest of the available
-     * sizes so that all push constants are included in one range.
-     * \param [in] range Push constant range to add
+     * If a shared block is added and another shared push
+     * constant block already exists, they will be merged.
+     * \param [in] block Push data block to add
      */
-    void addPushConstantRange(DxvkPushConstantRange range) {
-      m_pushConstants.merge(range);
+    void addPushData(const DxvkPushDataBlock& block) {
+      uint32_t index = DxvkPushDataBlock::computeIndex(block.getStageMask());
+
+      if (!block.isEmpty()) {
+        m_pushMask |= 1u << index;
+        m_pushData[index].merge(block);
+      }
+    }
+
+    /**
+     * \brief Queries push data block mask
+     * \returns Mask of active push data blocks
+     */
+    uint32_t getPushDataMask() const {
+      return m_pushMask;
+    }
+
+    /**
+     * \brief Queries push data block info
+     *
+     * \param [in] index Block index
+     * \returns Push data block info
+     */
+    DxvkPushDataBlock getPushDataBlock(uint32_t index) const {
+      return m_pushData[index];
     }
 
     /**
@@ -1033,14 +987,6 @@ namespace dxvk {
      */
     VkShaderStageFlags getStageMask() const {
       return m_stages;
-    }
-
-    /**
-     * \brief Queries push constant range
-     * \returns Push constant range
-     */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
     }
 
     /**
@@ -1085,9 +1031,11 @@ namespace dxvk {
     bool eq(const DxvkPipelineLayoutKey& other) const {
       bool eq = m_type      == other.m_type
              && m_stages    == other.m_stages
+             && m_pushMask  == other.m_pushMask
              && m_setCount  == other.m_setCount;
 
-      eq &= m_pushConstants.eq(other.m_pushConstants);
+      for (auto i : bit::BitMask(uint32_t(m_pushMask)))
+        eq &= m_pushData[i].eq(other.m_pushData[i]);
 
       for (uint32_t i = 0; i < m_setCount && eq; i++)
         eq = m_sets[i] == other.m_sets[i];
@@ -1104,7 +1052,10 @@ namespace dxvk {
       hash.add(uint16_t(m_type));
       hash.add(m_stages);
       hash.add(m_setCount);
-      hash.add(m_pushConstants.hash());
+      hash.add(m_pushMask);
+
+      for (auto i : bit::BitMask(uint32_t(m_pushMask)))
+        hash.add(m_pushData[i].hash());
 
       for (uint32_t i = 0; i < m_setCount; i++)
         hash.add(reinterpret_cast<uintptr_t>(m_sets[i]));
@@ -1116,8 +1067,10 @@ namespace dxvk {
 
     DxvkPipelineLayoutType  m_type      = DxvkPipelineLayoutType::Independent;
     uint8_t                 m_stages    = 0u;
+    uint8_t                 m_pushMask  = 0u;
     uint8_t                 m_setCount  = 0u;
-    DxvkPushConstantRange   m_pushConstants = { };
+
+    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
 
     std::array<const DxvkDescriptorSetLayout*, MaxSets> m_sets = { };
 
@@ -1170,23 +1123,44 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries actual push constant range
-     * \returns Push constant range
+     * \brief Queries non-empty push data block mask
      */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
+    uint32_t getPushDataMask() const {
+      return m_pushMask;
+    }
+
+    /**
+     * \brief Queries merged push data block
+     *
+     * This block includes all stages and all bytes.
+     */
+    DxvkPushDataBlock getPushData() const {
+      return m_pushDataMerged;
+    }
+
+    /**
+     * \brief Queries push data block
+     *
+     * \param [in] index Block index
+     * \returns Push data block
+     */
+    DxvkPushDataBlock getPushDataBlock(uint32_t index) const {
+      return m_pushData[index];
     }
 
   private:
 
-    DxvkDevice*       m_device;
+    DxvkDevice*             m_device;
 
-    VkPipelineBindPoint   m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    DxvkPushConstantRange m_pushConstants = { };
+    VkPipelineBindPoint     m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    VkPipelineLayout  m_layout = VK_NULL_HANDLE;
+    uint32_t                                                        m_pushMask = 0u;
+    DxvkPushDataBlock                                               m_pushDataMerged;
+    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
 
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
+
+    VkPipelineLayout        m_layout = VK_NULL_HANDLE;
 
   };
 
@@ -1277,7 +1251,15 @@ namespace dxvk {
      * \param [in] srcBinding Shader binding
      * \param [in] dstBinding Actual descriptor set binding
      */
-    void add(DxvkShaderBinding srcBinding, DxvkShaderBinding dstBinding);
+    void addBinding(DxvkShaderBinding srcBinding, DxvkShaderBinding dstBinding);
+
+    /**
+     * \brief Adds push data block
+     *
+     * \param [in] block Push constant block
+     * \param [in] offset New offset
+     */
+    void addPushData(const DxvkPushDataBlock& block, uint32_t offset);
 
     /**
      * \brief Looks up shader binding
@@ -1285,11 +1267,24 @@ namespace dxvk {
      * \param [in] srcBinding Shader-defined binding
      * \returns Pointer to remapped binding, or \c nullptr
      */
-    const DxvkShaderBinding* find(DxvkShaderBinding srcBinding) const;
+    const DxvkShaderBinding* mapBinding(DxvkShaderBinding srcBinding) const;
+
+    /**
+     * \brief Looks up push constant data
+     *
+     * Finds a push data block containing the given
+     * offset and computes the remapped offset.
+     * \param [in] stage Shader stage
+     * \param [in] offset Push data offset to look up
+     * \returns Remapped offset, or -1
+     */
+    uint32_t mapPushData(VkShaderStageFlags stage, uint32_t offset) const;
 
   private:
 
-    std::unordered_map<DxvkShaderBinding, DxvkShaderBinding, DxvkHash, DxvkEq> m_entries;
+    std::unordered_map<DxvkShaderBinding, DxvkShaderBinding, DxvkHash, DxvkEq> m_bindings;
+
+    small_vector<std::pair<DxvkPushDataBlock, uint32_t>, DxvkPushDataBlock::MaxBlockCount> m_pushData;
 
   };
 
@@ -1340,6 +1335,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries push data block mask
+     * \returns Mask of active push data blocks
+     */
+    uint32_t getPushDataMask() const {
+      return m_pushMask;
+    }
+
+    /**
+     * \brief Queries push data block info
+     *
+     * \param [in] index Block index
+     * \returns Push data block info
+     */
+    DxvkPushDataBlock getPushDataBlock(uint32_t index) const {
+      return m_pushData[index];
+    }
+
+    /**
      * \brief Queries descriptor bindings
      * \returns Descriptor bindings
      */
@@ -1351,19 +1364,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries push constant range
-     * \returns Push constant range
+     * \brief Adds push data block
+     * \param [in] range Push data block
      */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
-    }
-
-    /**
-     * \brief Adds push constant range
-     * \param [in] range Push constant range
-     */
-    void addPushConstants(
-            DxvkPushConstantRange     range);
+    void addPushData(
+            DxvkPushDataBlock         range);
 
     /**
      * \brief Adds bindings
@@ -1389,8 +1394,10 @@ namespace dxvk {
 
   private:
 
-    VkShaderStageFlags    m_stageMask     = 0u;
-    DxvkPushConstantRange m_pushConstants = { };
+    VkShaderStageFlags      m_stageMask     = 0u;
+
+    uint32_t                                                        m_pushMask = 0u;
+    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
 
     std::vector<DxvkShaderDescriptor> m_bindings;
 
@@ -1635,14 +1642,13 @@ namespace dxvk {
     BindingList                         m_readWriteResources = { };
 
     void buildPipelineLayout(
-            DxvkPipelineLayoutType    type,
-            VkShaderStageFlags        stageMask,
-            DxvkPipelineBindingRange  bindings,
-            DxvkPushConstantRange     pushConstants,
-            DxvkPipelineManager*      manager);
+            DxvkPipelineLayoutType      type,
+            DxvkDevice*                 device,
+      const DxvkPipelineLayoutBuilder&  builder,
+            DxvkPipelineManager*        manager);
 
     void buildMetadata(
-            DxvkPipelineBindingRange  bindings);
+      const DxvkPipelineLayoutBuilder&  builder);
 
     static uint32_t computeStateMask(
       const DxvkShaderDescriptor&     binding);
