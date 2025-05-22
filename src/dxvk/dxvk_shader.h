@@ -491,7 +491,7 @@ namespace dxvk {
   public:
 
     DxvkShaderPipelineLibrary(
-      const DxvkDevice*               device,
+            DxvkDevice*               device,
             DxvkPipelineManager*      manager,
       const DxvkShaderPipelineLibraryKey& key);
 

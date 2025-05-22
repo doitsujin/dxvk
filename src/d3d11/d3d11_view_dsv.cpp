@@ -20,6 +20,7 @@ namespace dxvk {
 
     DxvkImageViewKey viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
+    viewInfo.layout = GetViewLayout();
     viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
@@ -292,4 +293,17 @@ namespace dxvk {
     return S_OK;
   }
   
+
+  VkImageLayout D3D11DepthStencilView::GetViewLayout() const {
+    switch (m_desc.Flags & (D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL)) {
+      default:  // case 0
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      case D3D11_DSV_READ_ONLY_DEPTH:
+        return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR;
+      case D3D11_DSV_READ_ONLY_STENCIL:
+        return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR;
+      case D3D11_DSV_READ_ONLY_DEPTH | D3D11_DSV_READ_ONLY_STENCIL:
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    }
+  }
 }

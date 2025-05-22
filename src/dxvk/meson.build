@@ -43,7 +43,6 @@ dxvk_shaders = files([
   'shaders/dxvk_present_frag.frag',
   'shaders/dxvk_present_frag_blit.frag',
   'shaders/dxvk_present_frag_ms.frag',
-  'shaders/dxvk_present_frag_ms_amd.frag',
   'shaders/dxvk_present_frag_ms_blit.frag',
   'shaders/dxvk_present_vert.vert',
 
@@ -78,7 +77,7 @@ dxvk_src = [
   'dxvk_constant_state.cpp',
   'dxvk_context.cpp',
   'dxvk_cs.cpp',
-  'dxvk_descriptor.cpp',
+  'dxvk_descriptor_pool.cpp',
   'dxvk_device.cpp',
   'dxvk_device_filter.cpp',
   'dxvk_extensions.cpp',

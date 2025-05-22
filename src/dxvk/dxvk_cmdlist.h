@@ -5,6 +5,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
@@ -17,6 +18,28 @@
 #include "dxvk_stats.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Immediate descriptor write
+   *
+   * Takes descriptor info either from an existing
+   * view descriptor or from a buffer range.
+   */
+  struct DxvkDescriptorWrite {
+    /** Actual descriptor type */
+    VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    /** Pointer to view descriptor. Used for all image descriptors
+     *  as well as texel buffer descriptors. If \c nullptr, a null
+     *  descriptor of the corresponding type will be created. */
+    const DxvkDescriptor* descriptor;
+    /** Buffer info, used for storage and uniform buffers. May be
+     *  used to build a null descriptor. */
+    DxvkResourceBufferInfo buffer;
+    /** Sampler info. Must be a valid sampler, no null descriptor.
+     *  Must be present for any descriptor type with a sampler. */
+    DxvkSamplerDescriptor sampler;
+  };
+
   
   /**
    * \brief Timeline semaphore pair
@@ -423,6 +446,35 @@ namespace dxvk {
      */
     void reset();
     
+    /**
+     * \brief Sets resources and push constants
+     *
+     * Allocates and writes a descriptor set and sets push constant
+     * data all in one go. This method is primarily intended to be
+     * used with meta pipelines and external rendering.
+     *
+     * If \c descriptorCount is 0, no descriptors will be updated,
+     * and the currently bound set must be layout-compatible with
+     * the pipeline. Similarly, when setting \c pushDataSize to 0,
+     * no push constant data will be updated. This behaviour is
+     * useful when doing back-to-back draws with the same pipeline.
+     * \param [in] cmdBuffer Target command buffer
+     * \param [in] layout Pipeline layout. Must only have one
+     *    single non-empty descriptor set at index 0.
+     * \param [in] descriptorCount Number of descriptor infos
+     * \param [in] descriptorInfos Descriptors
+     * \param [in] pushDataSize Size of push constant data
+     * \param [in] pushData Pointer to push constant data
+     */
+    void bindResources(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+
     void updateDescriptorSets(
             uint32_t                      descriptorWriteCount,
       const VkWriteDescriptorSet*         pDescriptorWrites) {
@@ -500,31 +552,16 @@ namespace dxvk {
     }
     
     
-    void cmdBindDescriptorSet(
-            DxvkCmdBuffer             cmdBuffer,
-            VkPipelineBindPoint       pipeline,
-            VkPipelineLayout          pipelineLayout,
-            VkDescriptorSet           descriptorSet,
-            uint32_t                  dynamicOffsetCount,
-      const uint32_t*                 pDynamicOffsets) {
-      m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
-        pipeline, pipelineLayout, 0, 1,
-        &descriptorSet, dynamicOffsetCount, pDynamicOffsets);
-    }
-    
-    
     void cmdBindDescriptorSets(
             DxvkCmdBuffer             cmdBuffer,
             VkPipelineBindPoint       pipeline,
             VkPipelineLayout          pipelineLayout,
             uint32_t                  firstSet,
             uint32_t                  descriptorSetCount,
-      const VkDescriptorSet*          descriptorSets,
-            uint32_t                  dynamicOffsetCount,
-      const uint32_t*                 pDynamicOffsets) {
+      const VkDescriptorSet*          descriptorSets) {
       m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
         pipeline, pipelineLayout, firstSet, descriptorSetCount,
-        descriptorSets, dynamicOffsetCount, pDynamicOffsets);
+        descriptorSets, 0, nullptr);
     }
 
 
@@ -1152,11 +1189,16 @@ namespace dxvk {
     }
 
 
-    void trackDescriptorPool(
-      const Rc<DxvkDescriptorPool>&       pool,
-      const Rc<DxvkDescriptorManager>&    manager) {
-      pool->updateStats(m_statCounters);
-      m_descriptorPools.push_back({ pool, manager });
+    void setDescriptorPool(
+            Rc<DxvkDescriptorPool>        pool,
+            Rc<DxvkDescriptorPoolSet>     manager) {
+      if (m_descriptorPool && m_descriptorPool != pool) {
+        m_descriptorPool->updateStats(m_statCounters);
+        m_descriptorPools.push_back({ std::move(m_descriptorPool), std::move(m_descriptorManager) });
+      }
+
+      m_descriptorPool = std::move(pool);
+      m_descriptorManager = std::move(manager);
     }
 
 
@@ -1193,7 +1235,10 @@ namespace dxvk {
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
-      Rc<DxvkDescriptorManager>>> m_descriptorPools;
+      Rc<DxvkDescriptorPoolSet>>> m_descriptorPools;
+
+    Rc<DxvkDescriptorPool>    m_descriptorPool;
+    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
 

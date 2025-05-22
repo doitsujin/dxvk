@@ -3653,17 +3653,13 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     for (UINT i = 0; i < m_state.om.rtvs.size(); i++) {
       if (m_state.om.rtvs[i] != nullptr) {
-        attachments.color[i] = {
-          m_state.om.rtvs[i]->GetImageView(),
-          m_state.om.rtvs[i]->GetRenderLayout() };
+        attachments.color[i].view = m_state.om.rtvs[i]->GetImageView();
         sampleCount = m_state.om.rtvs[i]->GetSampleCount();
       }
     }
 
     if (m_state.om.dsv != nullptr) {
-      attachments.depth = {
-        m_state.om.dsv->GetImageView(),
-        m_state.om.dsv->GetRenderLayout() };
+      attachments.depth.view = m_state.om.dsv->GetImageView();
       sampleCount = m_state.om.dsv->GetSampleCount();
 
       if (m_device->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
@@ -5777,7 +5773,8 @@ namespace dxvk {
       }
 
       // Otherwise we can't really do anything fancy, so just do a GPU copy
-      context->UpdateBuffer(bufferResource, offset, length, pSrcData);
+      if (likely(length))
+        context->UpdateBuffer(bufferResource, offset, length, pSrcData);
     } else {
       D3D11CommonTexture* textureResource = GetCommonTexture(pDstResource);
 

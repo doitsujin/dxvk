@@ -136,4 +136,22 @@ namespace dxvk {
     return str::format(vk::isValidDebugName(name) ? name : "Buffer", " (", cookie(), ")");
   }
 
+
+
+
+  void DxvkBufferView::updateViews() {
+    if (likely(m_key.format))
+      m_formatted = m_buffer->m_storage->createBufferView(m_key);
+
+    if (likely(m_buffer->info().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
+      DxvkBufferViewKey rawKey = m_key;
+      rawKey.format = VK_FORMAT_UNDEFINED;
+      rawKey.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+      m_raw = m_buffer->m_storage->createBufferView(rawKey);
+    }
+
+    m_version = m_buffer->m_version;
+  }
+
 }

@@ -59,13 +59,109 @@ namespace dxvk {
    * \brief Descriptor set indices
    */
   struct DxvkDescriptorSets {
-    static constexpr uint32_t FsViews     = 0;
-    static constexpr uint32_t FsBuffers   = 1;
-    static constexpr uint32_t VsAll       = 2;
-    static constexpr uint32_t SetCount    = 3;
+    // For fast-linked pipelines, use the bare minimum of one set
+    // for the fragment shader and one for vertex shader resources.
+    static constexpr uint32_t GpIndependentSetCount     = 2u;
+    static constexpr uint32_t GpIndependentFsResources  = 0u;
+    static constexpr uint32_t GpIndependentVsResources  = 1u;
 
-    static constexpr uint32_t CsAll       = 0;
-    static constexpr uint32_t CsSetCount  = 1;
+    // For merged pipelines, use one set containing per unique
+    // descriptor class. We can reasonably expect uniform buffers
+    // to be rebound more often than views and samplers.
+    static constexpr uint32_t GpSetCount                = 3u;
+    static constexpr uint32_t GpSamplers                = 0u;
+    static constexpr uint32_t GpViews                   = 1u;
+    static constexpr uint32_t GpBuffers                 = 2u;
+
+    // For compute shaders, put everything into one set since it is
+    // very likely that all types of resources get changed at once.
+    static constexpr uint32_t CpResources               = 0u;
+    static constexpr uint32_t CpSetCount                = 1u;
+
+    // Maximum number of descriptor sets per layout
+    static constexpr uint32_t SetCount                  = 3u;
+  };
+
+
+  /**
+   * \brief Descriptor class
+   */
+  struct DxvkDescriptorClass {
+    static constexpr uint32_t Buffer  = 1u << 0u;
+    static constexpr uint32_t View    = 1u << 8u;
+    static constexpr uint32_t Sampler = 1u << 16u;
+
+    static constexpr uint32_t All = Buffer | View | Sampler;
+  };
+
+
+  /**
+   * \brief Dirty descriptor set tracker
+   */
+  class DxvkDescriptorState {
+    constexpr static VkShaderStageFlags AllStageMask =
+      VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
+  public:
+
+    DxvkDescriptorState() = default;
+
+    void dirtyBuffers(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer);
+    }
+
+    void dirtyViews(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View);
+    }
+
+    void dirtySamplers(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler);
+    }
+
+    void dirtyStages(VkShaderStageFlags stages) {
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::All);
+    }
+
+    void clearStages(VkShaderStageFlags stages) {
+      m_dirtyMask &= ~(computeMask(stages, DxvkDescriptorClass::All));
+    }
+
+    bool hasDirtyResources(VkShaderStageFlags stages) const {
+      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::All));
+    }
+
+    bool testDirtyMask(uint32_t mask) const {
+      return m_dirtyMask & mask;
+    }
+
+    VkShaderStageFlags getDirtyStageMask(uint32_t classes) const {
+      VkShaderStageFlags result = 0u;
+
+      for (auto classShift : bit::BitMask(classes))
+        result |= m_dirtyMask >> classShift;
+
+      return result & AllStageMask;
+    }
+
+    static constexpr uint32_t computeMask(VkShaderStageFlags stages, uint32_t classes) {
+      return uint32_t(stages) * classes;
+    }
+
+  private:
+
+    uint32_t m_dirtyMask = 0u;
+
+  };
+
+
+  /**
+   * \brief Pipeline layout type
+   *
+   * Determines whether to use a pipeline layout with stage-separated
+   * descriptor sets, or one with merged sets.
+   */
+  enum class DxvkPipelineLayoutType : uint16_t {
+    Independent = 0u, ///< Fragment and pre-raster shaders use separate sets
+    Merged      = 1u, ///< Fragment and pre-raster shaders use the same sets
   };
 
 
@@ -512,24 +608,19 @@ namespace dxvk {
       m_stages    (uint8_t(m_size ? stages : 0u)) { }
 
     /**
-     * \brief Converts push constant range to Vulkan struct
-     *
-     * \param [in] independent Whether to query the range for
-     *    pipeline layouts compatible with independent sets
-     * \returns Vulkan push constant range
+     * \brief Queries shader stage mask
+     * \returns Shaders using push constants
      */
-    VkPushConstantRange getPushConstantRange(bool independent) const {
-      if (independent) {
-        VkPushConstantRange vk = { };
-        vk.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-        vk.size = MaxPushConstantSize;
-        return vk;
-      } else {
-        VkPushConstantRange vk = { };
-        vk.stageFlags = VkShaderStageFlags(m_stages);
-        vk.size = vk.stageFlags ? m_size : 0u;
-        return vk;
-      }
+    VkShaderStageFlags getStageMask() const {
+      return m_stages;
+    }
+
+    /**
+     * \brief Queries push constant size
+     * \return Push constant size, in bytes
+     */
+    uint32_t getSize() const {
+      return m_size;
     }
 
     /**
@@ -589,15 +680,29 @@ namespace dxvk {
     DxvkPipelineLayoutKey() = default;
 
     DxvkPipelineLayoutKey(
+            DxvkPipelineLayoutType    type)
+    : m_type          (type) { }
+
+    DxvkPipelineLayoutKey(
+            DxvkPipelineLayoutType    type,
             VkShaderStageFlags        stageMask,
             DxvkPushConstantRange     pushConstants,
             uint32_t                  setCount,
       const DxvkDescriptorSetLayout** setLayouts)
-    : m_stages        (uint8_t(stageMask)),
+    : m_type          (type),
+      m_stages        (uint8_t(stageMask)),
       m_setCount      (uint8_t(setCount)),
       m_pushConstants (pushConstants) {
       for (uint32_t i = 0; i < setCount; i++)
         m_sets[i] = setLayouts[i];
+    }
+
+    /**
+     * \brief Queries layout type
+     * \returns Layout type
+     */
+    DxvkPipelineLayoutType getType() const {
+      return m_type;
     }
 
     /**
@@ -687,29 +792,14 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks whether all sets are defined
-     *
-     * If all set layouts are valid, a non-independent
-     * pipeline layout can be created.
-     * \returns \c true if all included sets are not \c nullptr.
-     */
-    bool isComplete() const {
-      bool result = true;
-
-      for (uint32_t i = 0; i < m_setCount; i++)
-        result &= m_sets[i] != nullptr;
-
-      return result;
-    }
-
-    /**
      * \brief Checks for equality
      *
      * \param [in] other Pipeline layout key to compare to
      * \returns \c true if both layout keys are equal
      */
     bool eq(const DxvkPipelineLayoutKey& other) const {
-      bool eq = m_stages    == other.m_stages
+      bool eq = m_type      == other.m_type
+             && m_stages    == other.m_stages
              && m_setCount  == other.m_setCount;
 
       eq &= m_pushConstants.eq(other.m_pushConstants);
@@ -726,6 +816,7 @@ namespace dxvk {
      */
     size_t hash() const {
       DxvkHashState hash;
+      hash.add(uint16_t(m_type));
       hash.add(m_stages);
       hash.add(m_setCount);
       hash.add(m_pushConstants.hash());
@@ -738,9 +829,10 @@ namespace dxvk {
 
   private:
 
-    uint8_t               m_stages    = 0u;
-    uint8_t               m_setCount  = 0u;
-    DxvkPushConstantRange m_pushConstants = { };
+    DxvkPipelineLayoutType  m_type      = DxvkPipelineLayoutType::Independent;
+    uint8_t                 m_stages    = 0u;
+    uint8_t                 m_setCount  = 0u;
+    DxvkPushConstantRange   m_pushConstants = { };
 
     std::array<const DxvkDescriptorSetLayout*, MaxSets> m_sets = { };
 
@@ -764,16 +856,22 @@ namespace dxvk {
     ~DxvkPipelineLayout();
 
     /**
+     * \brief Queries pipeline bind point
+     * \returns Pipeline bind point
+     */
+    VkPipelineBindPoint getBindPoint() const {
+      return m_bindPoint;
+    }
+
+    /**
      * \brief Queries Vulkan pipeline layout
      *
      * \param [in] independent Whether to return a pipeline
      *    layout that can be used with pipeline libraries.
      * \returns Pipeline layout handle
      */
-    VkPipelineLayout getPipelineLayout(bool independent) const {
-      return independent
-        ? m_layoutIndependent
-        : m_layoutComplete;
+    VkPipelineLayout getPipelineLayout() const {
+      return m_layout;
     }
 
     /**
@@ -786,12 +884,22 @@ namespace dxvk {
       return m_setLayouts[set];
     }
 
+    /**
+     * \brief Queries actual push constant range
+     * \returns Push constant range
+     */
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
+    }
+
   private:
 
     DxvkDevice*       m_device;
 
-    VkPipelineLayout  m_layoutIndependent = VK_NULL_HANDLE;
-    VkPipelineLayout  m_layoutComplete    = VK_NULL_HANDLE;
+    VkPipelineBindPoint   m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    DxvkPushConstantRange m_pushConstants = { };
+
+    VkPipelineLayout  m_layout = VK_NULL_HANDLE;
 
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
@@ -947,14 +1055,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries push constant range
-     * \returns Merged push constant range
-     */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
-    }
-
-    /**
      * \brief Queries descriptor bindings
      * \returns Descriptor bindings
      */
@@ -963,6 +1063,14 @@ namespace dxvk {
       range.bindingCount = m_bindings.size();
       range.bindings = m_bindings.data();
       return range;
+    }
+
+    /**
+     * \brief Queries push constant range
+     * \returns Push constant range
+     */
+    DxvkPushConstantRange getPushConstantRange() const {
+      return m_pushConstants;
     }
 
     /**
@@ -1025,34 +1133,61 @@ namespace dxvk {
    */
   class DxvkPipelineBindings {
     constexpr static uint32_t MaxSets = DxvkPipelineLayoutKey::MaxSets;
+    constexpr static uint32_t MaxStages = 6u;
 
     using BindingList = small_vector<DxvkShaderDescriptor, 32>;
   public:
 
     DxvkPipelineBindings(
+            DxvkDevice*                 device,
             DxvkPipelineManager*        manager,
       const DxvkPipelineLayoutBuilder&  builder);
 
     ~DxvkPipelineBindings();
 
     /**
-     * \brief Queries pipeline layout
-     * \returns Pipeline layout
+     * \brief Queries available pipeline stages
+     * \returns All stages with descriptors
      */
-    const DxvkPipelineLayout* getLayout() const {
-      return m_layout;
+    VkShaderStageFlags getNonemptyStageMask() const {
+      return m_nonemptyStageMask;
     }
 
     /**
-     * \brief Queries mask of non-empty descriptor sets
-     * \returns Mask of non-empty sets
+     * \brief Queries pipeline layout
+     * \returns Pipeline layout
      */
-    uint32_t getSetMask() const {
-      return m_setMask;
+    const DxvkPipelineLayout* getLayout(DxvkPipelineLayoutType type) const {
+      return m_layouts[uint32_t(type)].layout;
+    }
+
+    /**
+     * \brief Compute dirty sets for the given descriptor state
+     *
+     * \param [in] type Pipeline layout type
+     * \param [in] state Descriptor state
+     * \returns Mask of sets that need updating
+     */
+    uint32_t getDirtySetMask(
+            DxvkPipelineLayoutType  type,
+      const DxvkDescriptorState&    state) const {
+      const auto& layout = m_layouts[uint32_t(type)];
+
+      uint32_t result = 0u;
+
+      for (uint32_t set = 0u; set < layout.setStateMasks.size(); set++) {
+        if (state.testDirtyMask(layout.setStateMasks[set]))
+          result |= 1u << set;
+      }
+
+      return result;
     }
 
     /**
      * \brief Gets total number of descriptors in all sets
+     *
+     * Can be used to determine an upper bound of descriptor infos
+     * to allocate when exact information is not yet available.
      * \returns Total descriptor count in all sets
      */
     uint32_t getDescriptorCount() const {
@@ -1060,22 +1195,15 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries push constant range
-     * \returns Push constant range
-     */
-    DxvkPushConstantRange getPushConstantRange() const {
-      return m_pushConstants;
-    }
-
-    /**
      * \brief Queries all available bindings in a given set
      *
      * Primarily useful to update dirty descriptor sets.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all bindings in the set
      */
-    DxvkPipelineBindingRange getAllDescriptorsInSet(uint32_t set) const {
-      return makeBindingRange(m_setDescriptors[set]);
+    DxvkPipelineBindingRange getAllDescriptorsInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setDescriptors[set]);
     }
 
     /**
@@ -1083,11 +1211,12 @@ namespace dxvk {
      *
      * This includes both pure samplers as well as
      * combined image and sampler bindings.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all sampler bindings in the set
      */
-    DxvkPipelineBindingRange getSamplersInSet(uint32_t set) const {
-      return makeBindingRange(m_setSamplers[set]);
+    DxvkPipelineBindingRange getSamplersInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setSamplers[set]);
     }
 
     /**
@@ -1096,12 +1225,13 @@ namespace dxvk {
      * Includes all resources that are bound via an image or buffer view,
      * even unformatted buffer views (i.e. storage buffers). Does not
      * include pure samplers or buffers that are only bound via a buffer
-     * range, i.e. uniform buffers.
+     * range or address, i.e. uniform buffers.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all resource bindings in the set
      */
-    DxvkPipelineBindingRange getResourcesInSet(uint32_t set) const {
-      return makeBindingRange(m_setResources[set]);
+    DxvkPipelineBindingRange getResourcesInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setResources[set]);
     }
 
     /**
@@ -1110,22 +1240,23 @@ namespace dxvk {
      * Includes all uniform buffer resources, i.e. resources that are only
      * bound via a buffer range and do not use views, and use the uniform
      * or storage buffer descriptor type.
+     * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all uniform buffer bindings in the set
      */
-    DxvkPipelineBindingRange getUniformBuffersInSet(uint32_t set) const {
-      return makeBindingRange(m_setUniformBuffers[set]);
+    DxvkPipelineBindingRange getUniformBuffersInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setUniformBuffers[set]);
     }
 
     /**
-     * \brief Queries all read-only resources in a given set
+     * \brief Queries all read-only resources for a given stage
      *
      * Subset of \c getResourcesInSet that only includes bindings that are
      * read and not written by the shader. Useful for hazard tracking.
      * \returns List of all read-only resources in the set
      */
-    DxvkPipelineBindingRange getReadOnlyResourcesInSet(uint32_t set) const {
-      return makeBindingRange(m_setReadOnlyResources[set]);
+    DxvkPipelineBindingRange getReadOnlyResourcesForStage(VkShaderStageFlagBits stage) const {
+      return makeBindingRange(m_readOnlyResources[bit::bsf(uint32_t(stage))]);
     }
 
     /**
@@ -1167,43 +1298,66 @@ namespace dxvk {
      * \brief Queries binding map
      *
      * The binding map is primarily useful for shader patching.
+     * \param [in] type Pipeline layout type
      * \returns Pointer to binding map
      */
-    const DxvkShaderBindingMap* getBindingMap() const {
-      return &m_map;
+    const DxvkShaderBindingMap* getBindingMap(DxvkPipelineLayoutType type) const {
+      return &m_layouts[uint32_t(type)].bindingMap;
     }
 
   private:
 
-    VkShaderStageFlags        m_shaderStageMask           = 0u;
-    VkShaderStageFlags        m_hazardousStageMask        = 0u;
+    struct PerLayoutInfo {
+      std::array<BindingList, MaxSets>  setDescriptors       = { };
+      std::array<BindingList, MaxSets>  setSamplers          = { };
+      std::array<BindingList, MaxSets>  setResources         = { };
+      std::array<BindingList, MaxSets>  setUniformBuffers    = { };
 
-    DxvkPushConstantRange     m_pushConstants             = { };
+      std::array<uint32_t, MaxSets>     setStateMasks = { };
+
+      DxvkShaderBindingMap              bindingMap = { };
+
+      const DxvkPipelineLayout*         layout = nullptr;
+    };
+
+    struct SetInfos {
+      uint32_t mask   = { };
+      uint32_t count  = { };
+      std::array<uint8_t, MaxSets> map = { };
+    };
+
+    VkShaderStageFlags        m_nonemptyStageMask = 0u;
+    VkShaderStageFlags        m_hazardousStageMask = 0u;
 
     DxvkGlobalPipelineBarrier m_barrier = { };
-
-    uint32_t                  m_setMask         = 0u;
     uint32_t                  m_descriptorCount = 0u;
 
-    std::array<BindingList, MaxSets> m_setDescriptors       = { };
-    std::array<BindingList, MaxSets> m_setSamplers          = { };
-    std::array<BindingList, MaxSets> m_setResources         = { };
-    std::array<BindingList, MaxSets> m_setUniformBuffers    = { };
-    std::array<BindingList, MaxSets> m_setReadOnlyResources = { };
+    std::array<PerLayoutInfo, 2u> m_layouts = { };
 
-    BindingList               m_readWriteResources = { };
+    std::array<BindingList, MaxStages>  m_readOnlyResources = { };
+    BindingList                         m_readWriteResources = { };
 
-    DxvkShaderBindingMap      m_map;
+    void buildPipelineLayout(
+            DxvkPipelineLayoutType    type,
+            VkShaderStageFlags        stageMask,
+            DxvkPipelineBindingRange  bindings,
+            DxvkPushConstantRange     pushConstants,
+            DxvkPipelineManager*      manager);
 
-    const DxvkPipelineLayout* m_layout = nullptr;
+    void buildMetadata(
+            DxvkPipelineBindingRange  bindings);
 
-    void buildPipelineLayout(DxvkPipelineBindingRange bindings, DxvkPipelineManager* manager);
+    static uint32_t computeStateMask(
+      const DxvkShaderDescriptor&     binding);
 
-    uint32_t mapToSet(const DxvkShaderDescriptor& binding) const;
+    static uint32_t computeSetForBinding(
+            DxvkPipelineLayoutType    type,
+      const DxvkShaderDescriptor&     binding);
 
-    static uint32_t getSetMaskForStages(VkShaderStageFlags stages);
-
-    static uint32_t getSetCountForStages(VkShaderStageFlags stages);
+    static SetInfos computeSetMaskAndCount(
+            DxvkPipelineLayoutType    type,
+            VkShaderStageFlags        stageMask,
+            DxvkPipelineBindingRange  bindings);
 
     static DxvkPipelineBindingRange makeBindingRange(const BindingList& list) {
       DxvkPipelineBindingRange result;
@@ -1222,63 +1376,4 @@ namespace dxvk {
 
   };
 
-
-  /**
-   * \brief Dirty descriptor set state
-   */
-  class DxvkDescriptorState {
-
-  public:
-
-    void dirtyBuffers(VkShaderStageFlags stages) {
-      m_dirtyBuffers  |= stages;
-    }
-
-    void dirtyViews(VkShaderStageFlags stages) {
-      m_dirtyViews    |= stages;
-    }
-
-    void dirtyStages(VkShaderStageFlags stages) {
-      m_dirtyBuffers  |= stages;
-      m_dirtyViews    |= stages;
-    }
-
-    void clearStages(VkShaderStageFlags stages) {
-      m_dirtyBuffers  &= ~stages;
-      m_dirtyViews    &= ~stages;
-    }
-
-    bool hasDirtyGraphicsSets() const {
-      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS);
-    }
-
-    bool hasDirtyComputeSets() const {
-      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_COMPUTE_BIT);
-    }
-
-    uint32_t getDirtyGraphicsSets() const {
-      uint32_t result = 0;
-      if (m_dirtyBuffers & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsBuffers);
-      if (m_dirtyViews & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsViews);
-      if ((m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT))
-        result |= (1u << DxvkDescriptorSets::VsAll);
-      return result;
-    }
-
-    uint32_t getDirtyComputeSets() const {
-      uint32_t result = 0;
-      if ((m_dirtyBuffers | m_dirtyViews) & VK_SHADER_STAGE_COMPUTE_BIT)
-        result |= (1u << DxvkDescriptorSets::CsAll);
-      return result;
-    }
-
-  private:
-
-    VkShaderStageFlags m_dirtyBuffers   = 0;
-    VkShaderStageFlags m_dirtyViews     = 0;
-
-  };
-  
 }

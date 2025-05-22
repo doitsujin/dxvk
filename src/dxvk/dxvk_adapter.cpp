@@ -283,14 +283,11 @@ namespace dxvk {
     // VK_KHR_buffer_device_address is expensive on some drivers.
     bool enableCudaInterop = !env::is32BitHostPlatform() &&
       m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
-      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
-      m_deviceFeatures.vk12.bufferDeviceAddress;
+      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name());
 
     if (enableCudaInterop) {
       devExtensions.nvxBinaryImport.setMode(DxvkExtMode::Optional);
       devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
-
-      enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
     }
 
     // Disable NV_low_latency2 on 32-bit due to buggy latency sleep
@@ -356,6 +353,9 @@ namespace dxvk {
     // Used for better constant array packing in some cases
     enabledFeatures.vk12.uniformBufferStandardLayout =
       m_deviceFeatures.vk12.uniformBufferStandardLayout;
+
+    // Required internally
+    enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
 
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
@@ -520,8 +520,6 @@ namespace dxvk {
 
       extensionsEnabled.disableExtension(devExtensions.nvxBinaryImport);
       extensionsEnabled.disableExtension(devExtensions.nvxImageViewHandle);
-
-      enabledFeatures.vk12.bufferDeviceAddress = VK_FALSE;
 
       extensionNameList = extensionsEnabled.toNameList();
       info.enabledExtensionCount      = extensionNameList.count();
@@ -864,9 +862,6 @@ namespace dxvk {
     m_deviceFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     m_deviceFeatures.vk13.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk13);
 
-    if (m_deviceExtensions.supports(VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME))
-      m_deviceFeatures.amdShaderFragmentMask = VK_TRUE;
-
     if (m_deviceExtensions.supports(VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME)) {
       m_deviceFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
       m_deviceFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extAttachmentFeedbackLoopLayout);
@@ -1046,7 +1041,6 @@ namespace dxvk {
           DxvkDeviceExtensions&   devExtensions) {
     return {{
       &devExtensions.amdMemoryOverallocationBehaviour,
-      &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
@@ -1105,9 +1099,6 @@ namespace dxvk {
 
     enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
-
-    if (devExtensions.amdShaderFragmentMask)
-      enabledFeatures.amdShaderFragmentMask = VK_TRUE;
 
     if (devExtensions.extAttachmentFeedbackLoopLayout) {
       enabledFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
@@ -1336,8 +1327,6 @@ namespace dxvk {
       "\n  shaderZeroInitializeWorkgroupMemory    : " << (features.vk13.shaderZeroInitializeWorkgroupMemory ? "1" : "0") <<
       "\n  synchronization2                       : " << (features.vk13.synchronization2 ? "1" : "0") <<
       "\n  dynamicRendering                       : " << (features.vk13.dynamicRendering ? "1" : "0") <<
-      "\n" << VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME <<
-      "\n  extension supported                    : " << (features.amdShaderFragmentMask ? "1" : "0") <<
       "\n" << VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME <<
       "\n  attachmentFeedbackLoopLayout           : " << (features.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout ? "1" : "0") <<
       "\n" << VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME <<

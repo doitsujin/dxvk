@@ -47,11 +47,11 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
     const HudOptions&         options) {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xf0c0dc, "HUD"));
     }
 
@@ -78,15 +78,15 @@ namespace dxvk::hud {
     scissor.offset = { 0u, 0u };
     scissor.extent = { extent.width, extent.height };
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetViewport(1, &viewport);
+    ctx->cmdSetScissor(1, &scissor);
   }
   
   
   void HudRenderer::endFrame(
-    const DxvkContextObjects& ctx) {
+    const Rc<DxvkCommandList>&ctx) {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
@@ -112,7 +112,7 @@ namespace dxvk::hud {
 
 
   void HudRenderer::flushDraws(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
     const HudOptions&         options) {
     if (m_textDraws.empty())
@@ -159,7 +159,7 @@ namespace dxvk::hud {
     } else {
       // Discard and invalidate buffer so we can safely update it
       auto storage = m_textBuffer->assignStorage(Rc<DxvkResourceAllocation>(m_textBuffer->allocateStorage()));
-      ctx.cmd->track(std::move(storage));
+      ctx->track(std::move(storage));
     }
 
     // Upload aligned text data in such a way that we write full cache lines
@@ -186,18 +186,18 @@ namespace dxvk::hud {
     std::memset(m_textBuffer->mapPtr(drawArgOffset + drawArgWriteSize), 0, drawArgsSize - drawArgWriteSize);
 
     // Draw the actual text
-    VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
-    VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    DxvkResourceBufferInfo textBufferInfo = m_textBuffer->getSliceInfo(textSizeAligned, drawInfoSize);
+    DxvkResourceBufferInfo drawBufferInfo = m_textBuffer->getSliceInfo(drawArgOffset, drawArgWriteSize);
 
     drawTextIndirect(ctx, getPipelineKey(dstView),
-      drawBufferDescriptor, textBufferDescriptor,
-      m_textBufferView->handle(), m_textDraws.size());
+      drawBufferInfo, textBufferInfo,
+      m_textBufferView, m_textDraws.size());
 
     // Ensure all used resources are kept alive
-    ctx.cmd->track(m_textBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontTexture, DxvkAccess::Read);
-    ctx.cmd->track(m_fontSampler);
+    ctx->track(m_textBuffer, DxvkAccess::Read);
+    ctx->track(m_fontBuffer, DxvkAccess::Read);
+    ctx->track(m_fontTexture, DxvkAccess::Read);
+    ctx->track(m_fontSampler);
 
     // Reset internal text buffers
     m_textDraws.clear();
@@ -206,55 +206,39 @@ namespace dxvk::hud {
 
 
   void HudRenderer::drawTextIndirect(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
-    const VkDescriptorBufferInfo& drawArgs,
-    const VkDescriptorBufferInfo& drawInfos,
-          VkBufferView        text,
+    const DxvkResourceBufferInfo& drawArgs,
+    const DxvkResourceBufferInfo& drawInfos,
+    const Rc<DxvkBufferView>& textView,
           uint32_t            drawCount) {
     // Bind the correct pipeline for the swap chain
     VkPipeline pipeline = getPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     // Bind resources
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_textPipelineLayout->getDescriptorSetLayout(0));
+    std::array<DxvkDescriptorWrite, 4u> descriptors = { };
+    descriptors[0u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[0u].buffer = m_fontBuffer->getSliceInfo();
 
-    VkDescriptorBufferInfo fontBufferDescriptor = m_fontBuffer->getDescriptor(0, m_fontBuffer->info().size).buffer;
+    descriptors[1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[1u].buffer = drawInfos;
 
-    VkDescriptorImageInfo fontTextureDescriptor = { };
-    fontTextureDescriptor.sampler = m_fontSampler->handle();
-    fontTextureDescriptor.imageView = m_fontTextureView->handle();
-    fontTextureDescriptor.imageLayout = m_fontTexture->info().layout;
+    descriptors[2u].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    descriptors[2u].descriptor = textView->getDescriptor(false);
 
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &fontTextureDescriptor },
-    }};
+    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptors[3u].descriptor = m_fontTextureView->getDescriptor();
+    descriptors[3u].sampler = m_fontSampler->getDescriptor();
 
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    VkPipelineLayout pipelineLayout = m_textPipelineLayout->getPipelineLayout(false);
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipelineLayout, set, 0, nullptr);
-
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, pipelineLayout,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(m_pushConstants), &m_pushConstants);
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_textPipelineLayout, descriptors.size(), descriptors.data(),
+      sizeof(m_pushConstants), &m_pushConstants);
 
     // Emit the actual draw call
-    ctx.cmd->cmdDrawIndirect(drawArgs.buffer, drawArgs.offset,
+    ctx->cmdDrawIndirect(drawArgs.buffer, drawArgs.offset,
       drawCount, sizeof(VkDrawIndirectCommand));
   }
 
@@ -356,7 +340,7 @@ namespace dxvk::hud {
 
 
   void HudRenderer::uploadFontResources(
-    const DxvkContextObjects& ctx) {
+    const Rc<DxvkCommandList>&ctx) {
     size_t bufferDataSize = sizeof(HudFontGpuData);
     size_t textureDataSize = g_hudFont.width * g_hudFont.height;
 
@@ -388,8 +372,8 @@ namespace dxvk::hud {
     std::memcpy(uploadBuffer->mapPtr(0), &glyphData, bufferDataSize);
     std::memcpy(uploadBuffer->mapPtr(bufferDataSize), g_hudFont.texture, textureDataSize);
 
-    auto uploadSlice = uploadBuffer->getSliceHandle();
-    auto fontSlice = m_fontBuffer->getSliceHandle();
+    auto uploadSlice = uploadBuffer->getSliceInfo();
+    auto fontSlice = m_fontBuffer->getSliceInfo();
 
     VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -405,7 +389,7 @@ namespace dxvk::hud {
     depInfo.imageMemoryBarrierCount = 1u;
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
     m_fontTexture->trackInitialization(imageBarrier.subresourceRange);
 
     VkBufferCopy2 bufferRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
@@ -414,12 +398,12 @@ namespace dxvk::hud {
     bufferRegion.size = bufferDataSize;
 
     VkCopyBufferInfo2 bufferCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    bufferCopy.srcBuffer = uploadSlice.handle;
-    bufferCopy.dstBuffer = fontSlice.handle;
+    bufferCopy.srcBuffer = uploadSlice.buffer;
+    bufferCopy.dstBuffer = fontSlice.buffer;
     bufferCopy.regionCount = 1;
     bufferCopy.pRegions = &bufferRegion;
 
-    ctx.cmd->cmdCopyBuffer(DxvkCmdBuffer::InitBuffer, &bufferCopy);
+    ctx->cmdCopyBuffer(DxvkCmdBuffer::InitBuffer, &bufferCopy);
 
     VkBufferImageCopy2 imageRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
     imageRegion.bufferOffset = uploadSlice.offset + bufferDataSize;
@@ -428,13 +412,13 @@ namespace dxvk::hud {
     imageRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 imageCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    imageCopy.srcBuffer = uploadSlice.handle;
+    imageCopy.srcBuffer = uploadSlice.buffer;
     imageCopy.dstImage = m_fontTexture->handle();
     imageCopy.dstImageLayout = m_fontTexture->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     imageCopy.regionCount = 1;
     imageCopy.pRegions = &imageRegion;
 
-    ctx.cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &imageCopy);
+    ctx->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &imageCopy);
 
     VkMemoryBarrier2 memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
     memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -460,11 +444,11 @@ namespace dxvk::hud {
     depInfo.imageMemoryBarrierCount = 1u;
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
-    ctx.cmd->track(uploadBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontBuffer, DxvkAccess::Write);
-    ctx.cmd->track(m_fontTexture, DxvkAccess::Write);
+    ctx->track(uploadBuffer, DxvkAccess::Read);
+    ctx->track(m_fontBuffer, DxvkAccess::Write);
+    ctx->track(m_fontTexture, DxvkAccess::Write);
   }
 
 

@@ -2546,8 +2546,7 @@ namespace dxvk {
         return deviceFeatures.nvxImageViewHandle;
 
       case D3D11_VK_NVX_BINARY_IMPORT:
-        return deviceFeatures.nvxBinaryImport
-            && deviceFeatures.vk12.bufferDeviceAddress;
+        return deviceFeatures.nvxBinaryImport;
 
       default:
         return false;
@@ -2580,7 +2579,7 @@ namespace dxvk {
 
     VkImageViewHandleInfoNVX imageViewHandleInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX };
     imageViewHandleInfo.imageView = pIV->handle();
-    imageViewHandleInfo.sampler = pDSS->handle();
+    imageViewHandleInfo.sampler = pDSS->getDescriptor().samplerObject;
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     // note: there's no implicit lifetime management here; it's up to the
@@ -2687,7 +2686,7 @@ namespace dxvk {
       Rc<DxvkBuffer> dxvkBuffer = GetCommonBuffer(pResource)->GetBuffer();
       LockBuffer(dxvkBuffer);
 
-      *gpuVAStart = dxvkBuffer->gpuAddress();
+      *gpuVAStart = dxvkBuffer->getSliceInfo().gpuAddress;
       *gpuVASize = dxvkBuffer->info().size;
     } else {
       Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Unsupported resource type: ", resourceDesc.Dim));

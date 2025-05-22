@@ -1,4 +1,4 @@
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_device.h"
 
 namespace dxvk {
@@ -35,7 +35,7 @@ namespace dxvk {
 
   DxvkDescriptorPool::DxvkDescriptorPool(
           DxvkDevice*               device,
-          DxvkDescriptorManager*    manager)
+          DxvkDescriptorPoolSet*    manager)
   : m_device(device), m_manager(manager),
     m_cachedEntry(nullptr, nullptr) {
 
@@ -246,7 +246,7 @@ namespace dxvk {
   }
 
   
-  DxvkDescriptorManager::DxvkDescriptorManager(
+  DxvkDescriptorPoolSet::DxvkDescriptorPoolSet(
           DxvkDevice*                 device)
   : m_device(device) {
     // Deliberately pick a very high number of descriptor sets so that
@@ -256,7 +256,7 @@ namespace dxvk {
   }
 
 
-  DxvkDescriptorManager::~DxvkDescriptorManager() {
+  DxvkDescriptorPoolSet::~DxvkDescriptorPoolSet() {
     auto vk = m_device->vkd();
 
     for (size_t i = 0; i < m_vkPoolCount; i++)
@@ -267,7 +267,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDescriptorPool> DxvkDescriptorManager::getDescriptorPool() {
+  Rc<DxvkDescriptorPool> DxvkDescriptorPoolSet::getDescriptorPool() {
     Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
 
     if (pool == nullptr)
@@ -277,7 +277,7 @@ namespace dxvk {
   }
 
 
-  void DxvkDescriptorManager::recycleDescriptorPool(
+  void DxvkDescriptorPoolSet::recycleDescriptorPool(
     const Rc<DxvkDescriptorPool>&     pool) {
     pool->reset();
 
@@ -285,7 +285,7 @@ namespace dxvk {
   }
 
 
-  VkDescriptorPool DxvkDescriptorManager::createVulkanDescriptorPool() {
+  VkDescriptorPool DxvkDescriptorPoolSet::createVulkanDescriptorPool() {
     auto vk = m_device->vkd();
 
     { std::lock_guard lock(m_mutex);
@@ -328,7 +328,7 @@ namespace dxvk {
   }
 
   
-  void DxvkDescriptorManager::recycleVulkanDescriptorPool(VkDescriptorPool pool) {
+  void DxvkDescriptorPoolSet::recycleVulkanDescriptorPool(VkDescriptorPool pool) {
     auto vk = m_device->vkd();
     vk->vkResetDescriptorPool(vk->device(), pool, 0);
 

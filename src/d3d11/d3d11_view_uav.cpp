@@ -59,6 +59,7 @@ namespace dxvk {
       
       DxvkImageViewKey viewInfo;
       viewInfo.format = formatInfo.Format;
+      viewInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
       viewInfo.aspects = formatInfo.Aspect;
       viewInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
 

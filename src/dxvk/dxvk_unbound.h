@@ -27,29 +27,28 @@ namespace dxvk {
     /**
      * \brief Dummy buffer handle
      * 
-     * Returns a handle to a buffer filled
-     * with zeroes. Use for unbound vertex
-     * and index buffers.
+     * Returns a handle to a buffer filled with zeroes.
+     * Use for unbound transform feedback buffers only.
      * \returns Dummy buffer handle
      */
-    VkBuffer bufferHandle();
-    
+    DxvkResourceBufferInfo bufferInfo();
+
     /**
-     * \brief Dummy sampler descriptor
+     * \brief Dummy sampler object
      * 
      * Points to a sampler which was created with
      * reasonable default values. Client APIs may
      * still require different behaviour.
-     * \returns Dummy sampler descriptor
+     * \returns Dummy sampler
      */
-    VkSampler samplerHandle();
-    
+    DxvkSamplerDescriptor samplerInfo();
+
   private:
     
     DxvkDevice*             m_device;
 
-    std::atomic<VkSampler>  m_samplerHandle = { VK_NULL_HANDLE };
-    std::atomic<VkBuffer>   m_bufferHandle  = { VK_NULL_HANDLE };
+    std::atomic<bool>       m_bufferCreated = { false };
+    std::atomic<bool>       m_samplerCreated = { false };
 
     dxvk::mutex             m_mutex;
     Rc<DxvkSampler>         m_sampler;

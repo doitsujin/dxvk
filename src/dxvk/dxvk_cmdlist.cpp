@@ -447,6 +447,9 @@ namespace dxvk {
 
     m_descriptorPools.clear();
 
+    m_descriptorPool = nullptr;
+    m_descriptorManager = nullptr;
+
     // Release pipelines
     for (auto pipeline : m_pipelines)
       pipeline->releasePipeline();
@@ -464,6 +467,97 @@ namespace dxvk {
     // Reset actual command buffers and pools
     m_graphicsPool->reset();
     m_transferPool->reset();
+  }
+
+
+  void DxvkCommandList::bindResources(
+          DxvkCmdBuffer                 cmdBuffer,
+    const DxvkPipelineLayout*           layout,
+          uint32_t                      descriptorCount,
+    const DxvkDescriptorWrite*          descriptorInfos,
+          size_t                        pushDataSize,
+    const void*                         pushData) {
+    // Update descriptor set as necessary
+    auto setLayout = layout->getDescriptorSetLayout(0u);
+
+    if (descriptorCount && setLayout && !setLayout->isEmpty()) {
+      VkDescriptorSet set = m_descriptorPool->alloc(setLayout);
+
+      small_vector<DxvkLegacyDescriptor, 16u> descriptors;
+
+      for (uint32_t i = 0u; i < descriptorCount; i++) {
+        const auto& info = descriptorInfos[i];
+        auto& descriptor = descriptors.emplace_back();
+
+        switch (info.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_SAMPLER: {
+            descriptor.image.sampler = info.sampler.samplerObject;
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+            if (info.descriptor) {
+              descriptor.buffer = info.descriptor->legacy.buffer;
+            } else {
+              descriptor.buffer.buffer = info.buffer.buffer;
+              descriptor.buffer.offset = info.buffer.offset;
+              descriptor.buffer.range = info.buffer.size;
+
+              if (!descriptor.buffer.buffer)
+                descriptor.buffer.range = VK_WHOLE_SIZE;
+            }
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            if (info.descriptor)
+              descriptor.bufferView = info.descriptor->legacy.bufferView;
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+            if (info.descriptor)
+              descriptor.image = info.descriptor->legacy.image;
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            descriptor.image.sampler = info.sampler.samplerObject;
+
+            if (info.descriptor) {
+              descriptor.image.imageView = info.descriptor->legacy.image.imageView;
+              descriptor.image.imageLayout = info.descriptor->legacy.image.imageLayout;
+            }
+          } break;
+
+          default:
+            Logger::err(str::format("Unhandled descriptor type ", info.descriptorType));
+        }
+      }
+
+      this->updateDescriptorSetWithTemplate(set,
+        setLayout->getSetUpdateTemplate(),
+        descriptors.data());
+
+      this->cmdBindDescriptorSets(cmdBuffer,
+        layout->getBindPoint(),
+        layout->getPipelineLayout(),
+        0u, 1u, &set);
+    }
+
+    // Update push constants
+    DxvkPushConstantRange pushConstants = layout->getPushConstantRange();
+
+    if (pushDataSize && pushConstants.getSize()) {
+      std::array<char, MaxPushConstantSize> dataCopy;
+      std::memcpy(dataCopy.data(), pushData,
+        std::min(dataCopy.size(), pushDataSize));
+
+      this->cmdPushConstants(cmdBuffer,
+        layout->getPipelineLayout(),
+        pushConstants.getStageMask(), 0u,
+        pushConstants.getSize(),
+        dataCopy.data());
+    }
   }
 
 

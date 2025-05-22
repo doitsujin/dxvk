@@ -23,7 +23,7 @@ namespace dxvk {
     m_library       (library),
     m_libraryHandle (VK_NULL_HANDLE),
     m_shaders       (std::move(shaders)),
-    m_layout        (pipeMgr, m_shaders.cs->getLayout()),
+    m_layout        (device, pipeMgr, m_shaders.cs->getLayout()),
     m_debugName     (createDebugName()) {
 
   }
@@ -106,12 +106,12 @@ namespace dxvk {
     
     DxvkShaderStageInfo stageInfo(m_device);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
-      m_shaders.cs->getCode(m_layout.getBindingMap(), DxvkShaderModuleCreateInfo()),
+      m_shaders.cs->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), DxvkShaderModuleCreateInfo()),
       &scState.scInfo);
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = *stageInfo.getStageInfos();
-    info.layout               = m_layout.getLayout()->getPipelineLayout(false);
+    info.layout               = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;

@@ -13,17 +13,6 @@
 namespace dxvk {
 
   /**
-   * \brief Context-provided objects
-   *
-   * Useful when submitting raw Vulkan commands to a command list.
-   */
-  struct DxvkContextObjects {
-    Rc<DxvkCommandList> cmd;
-    Rc<DxvkDescriptorPool> descriptorPool;
-  };
-
-
-  /**
    * \brief DXVK context
    * 
    * Tracks pipeline state and records command lists.
@@ -125,8 +114,9 @@ namespace dxvk {
      *
      * Invalidates all state and provides the caller
      * with the objects necessary to start drawing.
+     * \returns Current command list object
      */
-    DxvkContextObjects beginExternalRendering();
+    Rc<DxvkCommandList> beginExternalRendering();
 
     /**
      * \brief Begins generating query data
@@ -152,15 +142,7 @@ namespace dxvk {
     void bindRenderTargets(
             DxvkRenderTargets&&   targets,
             VkImageAspectFlags    feedbackLoop) {
-      // Set up default render pass ops and normalize layouts
       m_state.om.renderTargets = std::move(targets);
-
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        auto& rt = m_state.om.renderTargets.color[i];
-
-        if (rt.view)
-          rt.layout = rt.view->pickLayout(rt.layout);
-      }
 
       if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
         m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
@@ -322,7 +304,7 @@ namespace dxvk {
             Rc<DxvkSampler>&&     sampler) {
       m_samplers[slot] = std::move(sampler);
 
-      m_descriptorState.dirtyViews(stages);
+      m_descriptorState.dirtySamplers(stages);
     }
 
     /**
@@ -1392,7 +1374,7 @@ namespace dxvk {
     DxvkDescriptorState     m_descriptorState;
 
     Rc<DxvkDescriptorPool>  m_descriptorPool;
-    Rc<DxvkDescriptorManager> m_descriptorManager;
+    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
 
     DxvkBarrierBatch        m_sdmaAcquires;
     DxvkBarrierBatch        m_sdmaBarriers;
@@ -1413,7 +1395,7 @@ namespace dxvk {
     std::array<DxvkDeferredResolve, MaxNumRenderTargets + 1u> m_deferredResolves = { };
 
     std::vector<VkWriteDescriptorSet> m_descriptorWrites;
-    std::vector<DxvkDescriptorInfo>   m_descriptors;
+    std::vector<DxvkLegacyDescriptor> m_descriptorInfos;
 
     std::array<Rc<DxvkSampler>, MaxNumSamplerSlots> m_samplers;
     std::array<DxvkBufferSlice, MaxNumUniformBufferSlots> m_uniformBuffers;
@@ -1454,7 +1436,7 @@ namespace dxvk {
             VkOffset3D            imageOffset,
             VkExtent3D            imageExtent,
             VkImageLayout         imageLayout,
-      const DxvkBufferSliceHandle& bufferSlice,
+      const DxvkResourceBufferInfo& bufferSlice,
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment);
 
@@ -2154,6 +2136,12 @@ namespace dxvk {
 
       // Check if there are any pending reads to avoid write-after-read issues.
       return pred(DxvkAccess::Read);
+    }
+
+    DxvkPipelineLayoutType getActivePipelineLayoutType(VkPipelineBindPoint bindPoint) const {
+      return (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_flags.test(DxvkContextFlag::GpIndependentSets))
+        ? DxvkPipelineLayoutType::Independent
+        : DxvkPipelineLayoutType::Merged;
     }
 
     bool needsDrawBarriers();

@@ -13,43 +13,31 @@ namespace dxvk {
   }
 
 
-  VkBuffer DxvkUnboundResources::bufferHandle() {
-    VkBuffer buffer = m_bufferHandle.load();
+  DxvkResourceBufferInfo DxvkUnboundResources::bufferInfo() {
+    if (unlikely(!m_bufferCreated.load(std::memory_order_acquire))) {
+      std::lock_guard lock(m_mutex);
 
-    if (likely(buffer != VK_NULL_HANDLE))
-      return buffer;
+      if (!m_bufferCreated.load(std::memory_order_acquire)) {
+        m_buffer = createBuffer();
+        m_bufferCreated.store(true, std::memory_order_release);
+      }
+    }
 
-    std::lock_guard lock(m_mutex);
-    buffer = m_bufferHandle.load();
-
-    if (buffer)
-      return buffer;
-
-    m_buffer = createBuffer();
-    buffer = m_buffer->getSliceHandle().handle;
-
-    m_bufferHandle.store(buffer, std::memory_order_release);
-    return buffer;
+    return m_buffer->getSliceInfo();;
   }
 
 
-  VkSampler DxvkUnboundResources::samplerHandle() {
-    VkSampler sampler = m_samplerHandle.load();
+  DxvkSamplerDescriptor DxvkUnboundResources::samplerInfo() {
+    if (unlikely(!m_samplerCreated.load(std::memory_order_acquire))) {
+      std::lock_guard lock(m_mutex);
 
-    if (likely(sampler != VK_NULL_HANDLE))
-      return sampler;
+      if (!m_samplerCreated.load(std::memory_order_acquire)) {
+        m_sampler = createSampler();
+        m_samplerCreated.store(true, std::memory_order_release);
+      }
+    }
 
-    std::lock_guard lock(m_mutex);
-    sampler = m_samplerHandle.load();
-
-    if (sampler)
-      return sampler;
-
-    m_sampler = createSampler();
-    sampler = m_sampler->handle();
-
-    m_samplerHandle.store(sampler, std::memory_order_release);
-    return sampler;
+    return m_sampler->getDescriptor();
   }
 
 

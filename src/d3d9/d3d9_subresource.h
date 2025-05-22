@@ -77,40 +77,45 @@ namespace dxvk {
     }
 
     inline const Rc<DxvkImageView>& GetImageView(bool Srgb) {
-      Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
 
-      if (unlikely(view == nullptr && !IsNull()))
-        view = m_texture->CreateView(m_face, m_mipLevel, VK_IMAGE_USAGE_SAMPLED_BIT, Srgb);
+      if (unlikely(!view && !IsNull())) {
+        view = m_texture->CreateView(m_face, m_mipLevel,
+          VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+          Srgb && m_isSrgbCompatible);
+      }
 
       return view;
     }
 
     inline const Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
-      Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
-      if (unlikely(view == nullptr && !IsNull()))
-        view = m_texture->CreateView(m_face, m_mipLevel, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, Srgb);
+      if (unlikely(!view && !IsNull())) {
+        view = m_texture->CreateView(m_face, m_mipLevel,
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          Srgb && m_isSrgbCompatible);
+      }
 
       return view;
     }
 
-    inline VkImageLayout GetRenderTargetLayout(VkImageLayout hazardLayout) const {
-      return m_texture->DetermineRenderTargetLayout(hazardLayout);
-    }
+    inline const Rc<DxvkImageView>& GetDepthStencilView(bool Writable) {
+      Rc<DxvkImageView>& view = Writable
+        ? m_dsvReadWrite
+        : m_dsvReadOnly;
 
-    inline const Rc<DxvkImageView>& GetDepthStencilView() {
-      Rc<DxvkImageView>& view = m_depthStencilView;
+      if (unlikely(!view)) {
+        VkImageLayout layout = Writable
+          ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+          : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
 
-      if (unlikely(view == nullptr))
-        view = m_texture->CreateView(m_face, m_mipLevel, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false);
+        view = m_texture->CreateView(m_face, m_mipLevel,
+          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, layout, false);
+      }
 
       return view;
-    }
-
-    inline VkImageLayout GetDepthStencilLayout(bool write, bool hazardous, VkImageLayout hazardLayout) const {
-      return m_texture->DetermineDepthStencilLayout(write, hazardous, hazardLayout);
     }
 
     inline bool IsNull() {
@@ -143,7 +148,9 @@ namespace dxvk {
   
     D3D9ColorView           m_sampleView;
     D3D9ColorView           m_renderTargetView;
-    Rc<DxvkImageView>       m_depthStencilView;
+
+    Rc<DxvkImageView>       m_dsvReadWrite;
+    Rc<DxvkImageView>       m_dsvReadOnly;
 
   };
 

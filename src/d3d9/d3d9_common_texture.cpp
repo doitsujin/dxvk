@@ -632,12 +632,14 @@ namespace dxvk {
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
           UINT                   Layer,
           UINT                   Lod,
-          VkImageUsageFlags      UsageFlags,
-          bool                   Srgb) {    
+          VkImageUsageFlagBits   UsageFlags,
+          VkImageLayout          Layout,
+          bool                   Srgb) {
     DxvkImageViewKey viewInfo;
     viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
                        ? PickSRGB(m_mapping.ConversionFormatInfo.FormatColor, m_mapping.ConversionFormatInfo.FormatSrgb, Srgb)
                        : PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
+    viewInfo.layout    = Layout;
     viewInfo.aspects   = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage     = UsageFlags;
     viewInfo.viewType  = GetImageViewTypeFromResourceType(m_type, Layer);
@@ -696,10 +698,13 @@ namespace dxvk {
     if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
       return;
 
-    m_sampleView.Color = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+    m_sampleView.Color = CreateView(AllLayers, Lod,
+      VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, false);
 
-    if (IsSrgbCompatible())
-      m_sampleView.Srgb = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+    if (IsSrgbCompatible()) {
+      m_sampleView.Srgb = CreateView(AllLayers, Lod,
+        VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, true);
+    }
   }
 
 
