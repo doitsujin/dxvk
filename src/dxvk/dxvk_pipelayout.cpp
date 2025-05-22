@@ -255,17 +255,21 @@ namespace dxvk {
       layout.setStateMasks[set] |= computeStateMask(binding);
 
       if (binding.getDescriptorCount()) {
-        appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
-
         if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
          || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
           appendDescriptors(layout.setSamplers[set], binding, dstMapping);
 
-        if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
-          if (binding.isUniformBuffer())
-            appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
-          else
-            appendDescriptors(layout.setResources[set], binding, dstMapping);
+        if (binding.usesDescriptor()) {
+          appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
+
+          if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
+            if (binding.isUniformBuffer())
+              appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
+            else
+              appendDescriptors(layout.setResources[set], binding, dstMapping);
+          }
+        } else {
+          appendDescriptors(layout.setRawBindings[set], binding, dstMapping);
         }
       }
     }

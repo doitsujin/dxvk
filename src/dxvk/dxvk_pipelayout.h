@@ -169,8 +169,12 @@ namespace dxvk {
    * \brief Descriptor flags
    */
   enum class DxvkDescriptorFlag : uint8_t {
-    UniformBuffer   = 0u, ///< Resource is a uniform buffer, not a view
-    Multisampled    = 1u, ///< Image view must be multisampled
+    /** Resource is a plain (uniform) buffer, not a view */
+    UniformBuffer   = 0u,
+    /** Image resource may be be multisampled */
+    Multisampled    = 1u,
+    /** Resource is accessed via push data */
+    PushData        = 2u,
   };
 
   using DxvkDescriptorFlags = Flags<DxvkDescriptorFlag>;
@@ -201,6 +205,10 @@ namespace dxvk {
     DxvkDescriptorFlags flags = 0u;
     /** Order-invariant access type, if any */
     DxvkAccessOp accessOp = DxvkAccessOp::None;
+    /** Byte offset of raw address or descriptor index within
+     *  the shader's push data block. This will get remapped
+     *  when chaining push constant blocks. */
+    uint32_t blockOffset = 0u;
   };
 
 
@@ -228,7 +236,8 @@ namespace dxvk {
       m_set       (uint8_t(binding.set)),
       m_binding   (uint16_t(binding.binding)),
       m_arrayIndex(0u),
-      m_arraySize (uint16_t(binding.descriptorCount)) { }
+      m_arraySize (uint16_t(binding.descriptorCount)),
+      m_blockOffset(uint16_t(binding.blockOffset)) { }
 
     /**
      * \brief Queries descriptor type
@@ -291,6 +300,18 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether the resource uses a descriptor
+     *
+     * Resources may either be accessed through a descriptor stored in the
+     * descriptor set, or through the raw GPU address or a descriptor index
+     * that is passed in as a push constant.
+     * \returns \c true for any descriptor-backed resource
+     */
+    bool usesDescriptor() const {
+      return !m_flags.test(DxvkDescriptorFlag::PushData);
+    }
+
+    /**
      * \brief Queries shader access types
      * \returns Access types
      */
@@ -323,6 +344,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries offset in push data block
+     *
+     * For GPU addresses, the size of each element will be 8 bytes.
+     * For descripor-backed resources, this carries no meaning.
+     * \returns Byte offset into push data block
+     */
+    uint32_t getBlockOffset() const {
+      return m_blockOffset;
+    }
+
+    /**
      * \brief Queries descriptor index in array
      * \returns Index into descriptor array
      */
@@ -337,10 +369,13 @@ namespace dxvk {
      * \returns Descriptor info with adjusted index
      */
     DxvkShaderDescriptor getArrayElement(uint32_t index) const {
+      uint8_t baseIndex = m_arrayIndex;
+
       DxvkShaderDescriptor result = *this;
-      result.m_index += index;
-      result.m_arrayIndex = index;
+      result.m_index += index - baseIndex;
+      result.m_arrayIndex = index - baseIndex;
       result.m_arraySize = 1u;
+      result.m_blockOffset += getBlockEntrySize() * uint32_t(index - baseIndex);
       return result;
     }
 
@@ -356,6 +391,40 @@ namespace dxvk {
       result.m_set = set;
       result.m_binding = binding;
       return result;
+    }
+
+    /**
+     * \brief Adds base offset to block offset
+     *
+     * The offset may be adjusted after determining the
+     * exact layout of push data in memory.
+     * \param [in] baseOffset Base block offset, in bytes
+     */
+    void addBlockOffset(uint32_t baseOffset) {
+      m_blockOffset += baseOffset;
+    }
+
+    /**
+     * \brief Queries resource info size within the push data block
+     *
+     * Only returns info for a single element. To get the full data
+     * size, multiply with the descriptor count of the binding.
+     *
+     * The returned size depends on the descriptor type.
+     * \returns Element size in push data block
+     */
+    uint32_t getBlockEntrySize() const {
+      switch (getDescriptorType()) {
+        case VK_DESCRIPTOR_TYPE_SAMPLER:
+          return sizeof(uint16_t);
+
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          return sizeof(VkDeviceAddress);
+
+        default:
+          return 0u;
+      }
     }
 
     /**
@@ -382,15 +451,16 @@ namespace dxvk {
     DxvkDescriptorFlags m_flags             = 0u;
     uint8_t             m_set               = 0u;
     uint16_t            m_binding           = 0u;
-    uint16_t            m_arrayIndex        = 0u;
-    uint16_t            m_arraySize         = 0u;
+    uint8_t             m_arrayIndex        = 0u;
+    uint8_t             m_arraySize         = 0u;
+    uint16_t            m_blockOffset       = 0u;
 
     uint64_t encodeNumeric() const {
-      return uint64_t(m_arrayIndex)
-          | (uint64_t(m_binding) << 16u)
-          | (uint64_t(m_set)     << 32u)
-          | (uint64_t(m_type)    << 40u)
-          | (uint64_t(m_stages)  << 48u);
+      return uint64_t(m_arrayIndex + m_blockOffset)
+          | (uint64_t(m_binding)     << 16u)
+          | (uint64_t(m_set)         << 32u)
+          | (uint64_t(m_type)        << 40u)
+          | (uint64_t(m_stages)      << 48u);
     }
 
   };
@@ -1250,6 +1320,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries all raw bindings in a given set
+     *
+     * \param [in] type Pipeline layout type
+     * \param [in] set Set index
+     * \returns List of all non-descriptor bindings.
+     */
+    DxvkPipelineBindingRange getRawBindingsInSet(DxvkPipelineLayoutType type, uint32_t set) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].setRawBindings[set]);
+    }
+
+    /**
      * \brief Queries all read-only resources for a given stage
      *
      * Subset of \c getResourcesInSet that only includes bindings that are
@@ -1313,6 +1394,7 @@ namespace dxvk {
       std::array<BindingList, MaxSets>  setSamplers          = { };
       std::array<BindingList, MaxSets>  setResources         = { };
       std::array<BindingList, MaxSets>  setUniformBuffers    = { };
+      std::array<BindingList, MaxSets>  setRawBindings       = { };
 
       std::array<uint32_t, MaxSets>     setStateMasks = { };
 
