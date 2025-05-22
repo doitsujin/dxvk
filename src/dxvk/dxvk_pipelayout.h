@@ -515,8 +515,9 @@ namespace dxvk {
      *
      * Useful to construct set layouts on the fly.
      * \param [in] binding Binding info
+     * \returns Binding index
      */
-    void add(DxvkDescriptorSetLayoutBinding binding);
+    uint32_t add(DxvkDescriptorSetLayoutBinding binding);
 
     /**
      * \brief Checks for equality
