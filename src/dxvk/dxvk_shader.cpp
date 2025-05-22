@@ -161,8 +161,11 @@ namespace dxvk {
     }
 
     if (info.pushConstSize && usesPushConstants) {
-      m_layout.addPushConstants(DxvkPushConstantRange(
-        m_info.stage, info.pushConstSize));
+      VkShaderStageFlags stage = (m_info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
+        ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
+
+      m_layout.addPushData(DxvkPushDataBlock(
+        stage, 0u, info.pushConstSize, 4u, 0u));
     }
 
     // Don't set pipeline library flag if the shader
@@ -185,7 +188,7 @@ namespace dxvk {
     // Remap resource binding IDs
     if (bindings) {
       for (const auto& info : m_bindingOffsets) {
-        auto mappedBinding = bindings->find(DxvkShaderBinding(
+        auto mappedBinding = bindings->mapBinding(DxvkShaderBinding(
           m_info.stage, info.setIndex, info.bindingIndex));
 
         if (mappedBinding) {

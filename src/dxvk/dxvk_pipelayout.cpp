@@ -123,7 +123,14 @@ namespace dxvk {
     m_bindPoint = (key.getStageMask() == VK_SHADER_STAGE_COMPUTE_BIT)
       ? VK_PIPELINE_BIND_POINT_COMPUTE
       : VK_PIPELINE_BIND_POINT_GRAPHICS;
-    m_pushConstants = key.getPushConstantRange();
+
+    m_pushMask = key.getPushDataMask();
+
+    for (auto i : bit::BitMask(m_pushMask)) {
+      m_pushData[i] = key.getPushDataBlock(i);
+      m_pushDataMerged.merge(m_pushData[i]);
+      m_pushDataMerged.makeAbsolute();
+    }
 
     // Gather descriptor set layout objects, some of these may be null.
     std::array<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets> setLayouts = { };
@@ -137,8 +144,8 @@ namespace dxvk {
 
     // Set up push constant range, if any
     VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.stageFlags = m_pushConstants.getStageMask();
-    pushConstantRange.size = m_pushConstants.getSize();
+    pushConstantRange.stageFlags = m_pushDataMerged.getStageMask();
+    pushConstantRange.size = m_pushDataMerged.getSize();
 
     VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
@@ -177,18 +184,37 @@ namespace dxvk {
   }
 
 
-  void DxvkShaderBindingMap::add(DxvkShaderBinding srcBinding, DxvkShaderBinding dstBinding) {
-    m_entries.insert_or_assign(srcBinding, dstBinding);
+  void DxvkShaderBindingMap::addBinding(DxvkShaderBinding srcBinding, DxvkShaderBinding dstBinding) {
+    m_bindings.insert_or_assign(srcBinding, dstBinding);
   }
 
 
-  const DxvkShaderBinding* DxvkShaderBindingMap::find(DxvkShaderBinding srcBinding) const {
-    auto entry = m_entries.find(srcBinding);
+  void DxvkShaderBindingMap::addPushData(const DxvkPushDataBlock& block, uint32_t offset) {
+    m_pushData.push_back(std::make_pair(block, offset));
+  }
 
-    if (entry == m_entries.end())
+
+  const DxvkShaderBinding* DxvkShaderBindingMap::mapBinding(DxvkShaderBinding srcBinding) const {
+    auto entry = m_bindings.find(srcBinding);
+
+    if (entry == m_bindings.end())
       return nullptr;
 
     return &entry->second;
+  }
+
+
+  uint32_t DxvkShaderBindingMap::mapPushData(VkShaderStageFlags stage, uint32_t offset) const {
+    for (size_t i = 0u; i < m_pushData.size(); i++) {
+      const auto& block = m_pushData[i];
+
+      if ((block.first.getStageMask() & stage)
+       && offset >= block.first.getOffset()
+       && offset < block.first.getOffset() + block.first.getSize())
+        return block.second + offset - block.first.getOffset();
+    }
+
+    return -1u;
   }
 
 
@@ -199,13 +225,11 @@ namespace dxvk {
     auto stageMask = builder.getStageMask();
 
     // Fill metadata structures that are independent of set layouts
-    buildMetadata(builder.getBindings());
+    buildMetadata(builder);
 
     // Build pipeline layout for graphics pipeline libraries if applicable
-    if ((stageMask & VK_SHADER_STAGE_ALL_GRAPHICS) && device->canUseGraphicsPipelineLibrary()) {
-      buildPipelineLayout(DxvkPipelineLayoutType::Independent, stageMask,
-        builder.getBindings(), builder.getPushConstantRange(), manager);
-    }
+    if ((stageMask & VK_SHADER_STAGE_ALL_GRAPHICS) && device->canUseGraphicsPipelineLibrary())
+      buildPipelineLayout(DxvkPipelineLayoutType::Independent, device, builder, manager);
 
     // Build pipeline layout for monolithic pipelines if binding
     // layouts for all shader stages are known
@@ -216,10 +240,8 @@ namespace dxvk {
                 && (stageMask & VK_SHADER_STAGE_VERTEX_BIT);
     }
 
-    if (isComplete) {
-      buildPipelineLayout(DxvkPipelineLayoutType::Merged, stageMask,
-        builder.getBindings(), builder.getPushConstantRange(), manager);
-    }
+    if (isComplete)
+      buildPipelineLayout(DxvkPipelineLayoutType::Merged, device, builder, manager);
   }
 
 
@@ -229,11 +251,13 @@ namespace dxvk {
 
 
   void DxvkPipelineBindings::buildPipelineLayout(
-          DxvkPipelineLayoutType    type,
-          VkShaderStageFlags        stageMask,
-          DxvkPipelineBindingRange  bindings,
-          DxvkPushConstantRange     pushConstants,
-          DxvkPipelineManager*      manager) {
+          DxvkPipelineLayoutType      type,
+          DxvkDevice*                 device,
+    const DxvkPipelineLayoutBuilder&  builder,
+          DxvkPipelineManager*        manager) {
+    auto stageMask = builder.getStageMask();
+    auto bindings = builder.getBindings();
+
     auto& layout = m_layouts[uint32_t(type)];
 
     // Determine descriptor sets covered by this layout
@@ -250,7 +274,7 @@ namespace dxvk {
       DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
       DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
 
-      layout.bindingMap.add(srcMapping, dstMapping);
+      layout.bindingMap.addBinding(srcMapping, dstMapping);
 
       layout.setStateMasks[set] |= computeStateMask(binding);
 
@@ -282,19 +306,72 @@ namespace dxvk {
         setLayouts[i] = manager->createDescriptorSetLayout(setLayoutKeys[i]);
     }
 
-    // Push constant state is shared by all stages, so we need to
-    if (type == DxvkPipelineLayoutType::Independent)
-      pushConstants = DxvkPushConstantRange(VK_SHADER_STAGE_ALL_GRAPHICS, MaxSharedPushDataSize);
+    // Process and re-map data blocks
+    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> pushDataBlocks = { };
 
+    uint32_t pushDataMask = builder.getPushDataMask();
+    uint32_t pushDataSize = 0u;
+
+    if (type == DxvkPipelineLayoutType::Independent) {
+      // For independent layouts, we don't know in advance how the other stages
+      // are going to use their push constants, so allocate the maximum amount.
+      VkShaderStageFlags stageMask = VK_SHADER_STAGE_ALL_GRAPHICS & util::shaderStages(device->getShaderPipelineStages());
+
+      pushDataSize = MaxSharedPushDataSize;
+      uint32_t index = DxvkPushDataBlock::computeIndex(stageMask);
+
+      pushDataBlocks[index] = DxvkPushDataBlock(stageMask, 0u, pushDataSize, 4u, 0u);
+      pushDataMask |= 1u << index;
+
+      for (auto i : bit::BitMask(stageMask)) {
+        auto stage = VkShaderStageFlagBits(1u << i);
+        index = DxvkPushDataBlock::computeIndex(stage);
+
+        pushDataBlocks[index] = DxvkPushDataBlock(stage,
+          pushDataSize, MaxPerStagePushDataSize, 4u, 0u);
+
+        pushDataSize += MaxPerStagePushDataSize;
+        pushDataMask |= 1u << index;
+      }
+    }
+
+    for (auto i : bit::BitMask(builder.getPushDataMask())) {
+      const auto block = builder.getPushDataBlock(i);
+
+      if (type == DxvkPipelineLayoutType::Independent) {
+        // Merge resource mask into existing block
+        pushDataBlocks[i].merge(block);
+      } else {
+        pushDataSize = align(pushDataSize, block.getAlignment());
+
+        pushDataBlocks[i] = block;
+        pushDataBlocks[i].rebase(pushDataSize);
+
+        pushDataSize += block.getSize();
+      }
+
+      layout.bindingMap.addPushData(block, pushDataBlocks[i].getOffset());
+    }
+
+    // Compact the array based on the bit mask
+    uint32_t pushDataBlockCount = 0u;
+
+    for (auto i : bit::BitMask(pushDataMask))
+      pushDataBlocks[pushDataBlockCount++] = pushDataBlocks[i];
+
+    // Create the actual pipeline layout
     DxvkPipelineLayoutKey key(type, stageMask,
-      pushConstants, setInfos.count, setLayouts.data());
+      pushDataBlockCount, pushDataBlocks.data(),
+      setInfos.count, setLayouts.data());
 
     layout.layout = manager->createPipelineLayout(key);
   }
 
 
   void DxvkPipelineBindings::buildMetadata(
-            DxvkPipelineBindingRange  bindings) {
+    const DxvkPipelineLayoutBuilder&  builder) {
+    auto bindings = builder.getBindings();
+
     for (size_t i = 0; i < bindings.bindingCount; i++) {
       auto binding = bindings.bindings[i];
 
@@ -459,9 +536,14 @@ namespace dxvk {
   }
 
 
-  void DxvkPipelineLayoutBuilder::addPushConstants(
-          DxvkPushConstantRange     range) {
-    m_pushConstants.merge(range);
+  void DxvkPipelineLayoutBuilder::addPushData(
+          DxvkPushDataBlock         block) {
+    uint32_t index = DxvkPushDataBlock::computeIndex(block.getStageMask());
+
+    if (!block.isEmpty()) {
+      m_pushMask |= 1u << index;
+      m_pushData[index].merge(block);
+    }
   }
 
 
@@ -487,7 +569,16 @@ namespace dxvk {
   void DxvkPipelineLayoutBuilder::addLayout(
     const DxvkPipelineLayoutBuilder& layout) {
     m_stageMask |= layout.m_stageMask;
-    m_pushConstants.merge(layout.m_pushConstants);
+    m_pushMask |= layout.m_pushMask;
+
+    for (auto i : bit::BitMask(layout.getPushDataMask())) {
+      auto srcBlock = layout.getPushDataBlock(i);
+
+      if (m_pushData[i].isEmpty())
+        m_pushData[i] = srcBlock;
+      else
+        m_pushData[i].merge(srcBlock);
+    }
 
     addBindings(layout.m_bindings.size(), layout.m_bindings.data());
   }
