@@ -21,7 +21,7 @@ namespace dxvk {
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
-    tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::Auto);
+    tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::False);
     latencySleep          = config.getOption<Tristate>("dxvk.latencySleep",           Tristate::False);
     latencyTolerance      = config.getOption<int32_t> ("dxvk.latencyTolerance",       1000);
     disableNvLowLatency2  = config.getOption<Tristate>("dxvk.disableNvLowLatency2",   Tristate::Auto);
