@@ -5973,9 +5973,9 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    auto pushConstants = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged)->getPushConstantRange();
+    auto pushData = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged)->getPushData();
 
-    if (pushConstants.getSize()) {
+    if (!pushData.isEmpty()) {
       m_flags.set(DxvkContextFlag::CpHasPushConstants,
                   DxvkContextFlag::DirtyPushConstants);
     }
@@ -6123,9 +6123,9 @@ namespace dxvk {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
     // Also update push constant status when we know the final layout
-    DxvkPushConstantRange pushConstants = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType)->getPushConstantRange();
+    auto pushData = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType)->getPushData();
 
-    if (pushConstants.getSize()) {
+    if (!pushData.isEmpty()) {
       m_flags.set(DxvkContextFlag::GpHasPushConstants,
                   DxvkContextFlag::DirtyPushConstants);
     }
@@ -7069,16 +7069,17 @@ namespace dxvk {
     // Optimized pipelines may have push constants trimmed, so look up
     // the exact layout used for the currently bound pipeline.
     auto layout = bindings->getLayout(getActivePipelineLayoutType(BindPoint));
-    auto pushConstants = layout->getPushConstantRange();
+    auto pushData = layout->getPushData();
 
-    if (unlikely(!pushConstants.getSize()))
+    if (unlikely(!pushData.getSize()))
       return;
 
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       layout->getPipelineLayout(),
-      pushConstants.getStageMask(), 0u,
-      pushConstants.getSize(),
-      &m_state.pc.data[0u]);
+      pushData.getStageMask(),
+      pushData.getOffset(),
+      pushData.getSize(),
+      &m_state.pc.data[pushData.getOffset()]);
   }
   
 

@@ -546,17 +546,18 @@ namespace dxvk {
     }
 
     // Update push constants
-    DxvkPushConstantRange pushConstants = layout->getPushConstantRange();
+    DxvkPushDataBlock pushDataBlock = layout->getPushData();
 
-    if (pushDataSize && pushConstants.getSize()) {
+    if (pushDataSize && !pushDataBlock.isEmpty()) {
       std::array<char, MaxTotalPushDataSize> dataCopy;
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
       this->cmdPushConstants(cmdBuffer,
         layout->getPipelineLayout(),
-        pushConstants.getStageMask(), 0u,
-        pushConstants.getSize(),
+        pushDataBlock.getStageMask(),
+        pushDataBlock.getOffset(),
+        pushDataBlock.getSize(),
         dataCopy.data());
     }
   }
