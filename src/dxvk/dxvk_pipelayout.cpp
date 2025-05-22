@@ -284,7 +284,7 @@ namespace dxvk {
 
     // Push constant state is shared by all stages, so we need to
     if (type == DxvkPipelineLayoutType::Independent)
-      pushConstants = DxvkPushConstantRange(VK_SHADER_STAGE_ALL_GRAPHICS, MaxPushConstantSize);
+      pushConstants = DxvkPushConstantRange(VK_SHADER_STAGE_ALL_GRAPHICS, MaxSharedPushDataSize);
 
     DxvkPipelineLayoutKey key(type, stageMask,
       pushConstants, setInfos.count, setLayouts.data());
