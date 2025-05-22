@@ -140,7 +140,7 @@ namespace dxvk {
 
 
   struct DxvkPushConstantState {
-    char data[MaxPushConstantSize];
+    char data[MaxSharedPushDataSize];
   };
 
 

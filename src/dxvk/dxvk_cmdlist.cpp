@@ -1,3 +1,4 @@
+
 #include "dxvk_cmdlist.h"
 #include "dxvk_device.h"
 
@@ -548,7 +549,7 @@ namespace dxvk {
     DxvkPushConstantRange pushConstants = layout->getPushConstantRange();
 
     if (pushDataSize && pushConstants.getSize()) {
-      std::array<char, MaxPushConstantSize> dataCopy;
+      std::array<char, MaxTotalPushDataSize> dataCopy;
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
