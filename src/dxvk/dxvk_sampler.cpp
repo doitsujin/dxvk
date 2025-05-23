@@ -52,6 +52,8 @@ namespace dxvk {
     if (vk->vkCreateSampler(vk->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
       throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
+
+    m_pool->m_descriptorPool.writeDescriptor(m_index, m_sampler);
   }
 
 
@@ -117,8 +119,90 @@ namespace dxvk {
 
 
 
-  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
+  DxvkSamplerDescriptorPool::DxvkSamplerDescriptorPool(
+          DxvkDevice*               device,
+          uint32_t                  size)
   : m_device(device) {
+    auto vk = m_device->vkd();
+
+    VkDescriptorPoolSize poolSize = { };
+    poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    poolSize.descriptorCount = size;
+
+    VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    poolInfo.maxSets = 1u;
+    poolInfo.poolSizeCount = 1u;
+    poolInfo.pPoolSizes = &poolSize;
+
+    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &poolInfo, nullptr, &m_pool);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler pool: ", vr));
+
+    VkDescriptorSetLayoutBinding binding = { };
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    binding.descriptorCount = size;
+    binding.stageFlags = VK_SHADER_STAGE_ALL;
+
+    VkDescriptorBindingFlags bindingFlags =
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT |
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+    layoutFlags.bindingCount = 1u;
+    layoutFlags.pBindingFlags = &bindingFlags;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, &layoutFlags };
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layoutInfo.bindingCount = 1u;
+    layoutInfo.pBindings = &binding;
+
+    if ((vr = vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_setLayout)))
+      throw DxvkError(str::format("Failed to create sampler descriptor set layout: ", vr));
+
+    VkDescriptorSetAllocateInfo setInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    setInfo.descriptorPool = m_pool;
+    setInfo.descriptorSetCount = 1u;
+    setInfo.pSetLayouts = &m_setLayout;
+
+    if ((vr = vk->vkAllocateDescriptorSets(vk->device(), &setInfo, &m_set)))
+      throw DxvkError(str::format("Failed to allocate sampler descriptor set: ", vr));
+  }
+
+
+  DxvkSamplerDescriptorPool::~DxvkSamplerDescriptorPool() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyDescriptorPool(vk->device(), m_pool, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
+  }
+
+
+  void DxvkSamplerDescriptorPool::writeDescriptor(
+          uint16_t              index,
+          VkSampler             sampler) {
+    auto vk = m_device->vkd();
+
+    VkDescriptorImageInfo info = { };
+    info.sampler = sampler;
+
+    VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    write.dstSet = m_set;
+    write.dstArrayElement = index;
+    write.descriptorCount = 1u;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    write.pImageInfo = &info;
+
+    vk->vkUpdateDescriptorSets(vk->device(), 1u, &write, 0u, nullptr);
+  }
+
+
+
+
+  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
+  : m_device(device), m_descriptorPool(device, MaxSamplerCount) {
     // Populate free list in reverse order. Sampler index 0 is
     // reserved for the default sampler, so skip that.
     for (uint16_t i = MaxSamplerCount; i; i--)

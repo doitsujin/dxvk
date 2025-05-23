@@ -222,6 +222,59 @@ namespace dxvk {
 
 
   /**
+   * \brief Global sampler set and layout
+   */
+  struct DxvkSamplerDescriptorSet {
+    VkDescriptorSet       set     = VK_NULL_HANDLE;
+    VkDescriptorSetLayout layout  = VK_NULL_HANDLE;
+  };
+
+
+  /**
+   * \brief Sampler descriptor pool
+   *
+   * Manages a global descriptor pool and set for samplers.
+   */
+  class DxvkSamplerDescriptorPool {
+
+  public:
+
+    DxvkSamplerDescriptorPool(
+            DxvkDevice*               device,
+            uint32_t                  size);
+
+    ~DxvkSamplerDescriptorPool();
+
+    /**
+     * \brief Retrieves descriptor set and layout
+     * \returns Descriptor set and layout handles
+     */
+    DxvkSamplerDescriptorSet getDescriptorSetInfo() const {
+      return { m_set, m_setLayout };
+    }
+
+    /**
+     * \brief Writes sampler descriptor to pool
+     *
+     * \param [in] index Sampler index
+     * \param [in] sampler Sampler object
+     */
+    void writeDescriptor(
+            uint16_t              index,
+            VkSampler             sampler);
+
+  private:
+
+    DxvkDevice*           m_device    = nullptr;
+
+    VkDescriptorPool      m_pool      = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
+    VkDescriptorSet       m_set       = VK_NULL_HANDLE;
+
+  };
+
+
+  /**
    * \brief Sampler statistics
    */
   struct DxvkSamplerStats {
@@ -260,6 +313,16 @@ namespace dxvk {
     Rc<DxvkSampler> createSampler(const DxvkSamplerKey& key);
 
     /**
+     * \brief Queries the global sampler descriptor set
+     *
+     * Required to bind the set, and for pipeline creation.
+     * \returns Global sampler descriptor set and layout
+     */
+    DxvkSamplerDescriptorSet getDescriptorSetInfo() const {
+      return m_descriptorPool.getDescriptorSetInfo();
+    }
+
+    /**
      * \brief Retrieves sampler statistics
      *
      * Note that these might be out of date immediately.
@@ -275,6 +338,8 @@ namespace dxvk {
   private:
 
     DxvkDevice* m_device;
+
+    DxvkSamplerDescriptorPool m_descriptorPool;
 
     dxvk::mutex m_mutex;
     std::unordered_map<DxvkSamplerKey,
