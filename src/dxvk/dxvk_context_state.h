@@ -58,7 +58,6 @@ namespace dxvk {
     CpHasPushConstants,         ///< Compute pipeline uses push constants
 
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
-    DirtyPushConstants,         ///< Push constant data has changed
 
     ForceWriteAfterWriteSync,   ///< Ignores barrier control flags for write-after-write hazards
 
@@ -139,8 +138,9 @@ namespace dxvk {
   };
 
 
-  struct DxvkPushConstantState {
-    char data[MaxSharedPushDataSize];
+  struct DxvkPushDataState {
+    std::array<char, MaxTotalPushDataSize> constantData = { };
+    std::array<char, MaxTotalPushDataSize> resourceData = { };
   };
 
 
@@ -212,7 +212,7 @@ namespace dxvk {
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkOutputMergerState     om;
-    DxvkPushConstantState     pc;
+    DxvkPushDataState         pc;
     DxvkXfbState              xfb;
     DxvkDynamicState          dyn;
     
