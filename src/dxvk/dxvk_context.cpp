@@ -5976,8 +5976,8 @@ namespace dxvk {
     auto pushData = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged)->getPushData();
 
     if (!pushData.isEmpty()) {
-      m_flags.set(DxvkContextFlag::CpHasPushConstants,
-                  DxvkContextFlag::DirtyPushConstants);
+      m_flags.set(DxvkContextFlag::CpHasPushConstants);
+      m_dirtyPushDataBlocks |= (1u << DxvkPushDataBlock::MaxBlockCount) - 1u;
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -6126,8 +6126,8 @@ namespace dxvk {
     auto pushData = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType)->getPushData();
 
     if (!pushData.isEmpty()) {
-      m_flags.set(DxvkContextFlag::GpHasPushConstants,
-                  DxvkContextFlag::DirtyPushConstants);
+      m_flags.set(DxvkContextFlag::GpHasPushConstants);
+      m_dirtyPushDataBlocks |= (1u << DxvkPushDataBlock::MaxBlockCount) - 1u;
     }
 
     // Emit barrier based on pipeline properties, in order to avoid
@@ -7059,27 +7059,74 @@ namespace dxvk {
 
 
   template<VkPipelineBindPoint BindPoint>
-  void DxvkContext::updatePushConstants() {
-    m_flags.clr(DxvkContextFlag::DirtyPushConstants);
-
+  void DxvkContext::updatePushData() {
     auto bindings = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.pipeline->getLayout()
       : m_state.cp.pipeline->getLayout();
 
-    // Optimized pipelines may have push constants trimmed, so look up
-    // the exact layout used for the currently bound pipeline.
+    // Optimized pipelines may have push constants trimmed, so look
+    // up the exact layout used for the currently bound pipeline.
     auto layout = bindings->getLayout(getActivePipelineLayoutType(BindPoint));
-    auto pushData = layout->getPushData();
 
-    if (unlikely(!pushData.getSize()))
+    if (unlikely(!(m_dirtyPushDataBlocks & layout->getPushDataMask()))) {
+      m_dirtyPushDataBlocks = 0u;
       return;
+    }
+
+    // Gather push data for all the different blocks
+    std::array<char, MaxTotalPushDataSize> data;
+
+    for (auto i : bit::BitMask(layout->getPushDataMask())) {
+      auto block = layout->getPushDataBlock(i);
+      auto blockSize = block.getSize();
+
+      auto srcOffset = computePushDataBlockOffset(i);
+      auto dstOffset = block.getOffset();
+
+      auto constantData = &m_state.pc.constantData[srcOffset];
+      auto resourceData = &m_state.pc.resourceData[dstOffset];
+
+      auto dstData = &data[dstOffset];
+
+      uint32_t rangeOffset = 0u;
+
+      // Copy chunks of dwords either from the constant data array or
+      // the resource data array, depending on the resource mask.
+      uint64_t resourceMask = block.getResourceDwordMask();
+
+      while (resourceMask) {
+        uint32_t dwordIndex = bit::tzcnt(resourceMask);
+        uint32_t dwordCount = bit::tzcnt(resourceMask + (resourceMask & -resourceMask));
+
+        uint32_t byteIndex = dwordIndex * sizeof(uint32_t);
+        uint32_t byteCount = dwordCount * sizeof(uint32_t);
+
+        std::memcpy(&dstData[rangeOffset],
+          &constantData[rangeOffset], byteIndex);
+
+        std::memcpy(&dstData[rangeOffset + byteIndex],
+          &resourceData[rangeOffset + byteIndex],
+          byteCount - byteIndex);
+
+        resourceMask >>= dwordCount;
+        rangeOffset += byteCount;
+      }
+
+      std::memcpy(&dstData[rangeOffset],
+        &constantData[rangeOffset], blockSize - rangeOffset);
+    }
+
+    // Use the merged push data range to commit
+    auto pushData = layout->getPushData();
 
     m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
       layout->getPipelineLayout(),
       pushData.getStageMask(),
       pushData.getOffset(),
       pushData.getSize(),
-      &m_state.pc.data[pushData.getOffset()]);
+      &data[pushData.getOffset()]);
+
+    m_dirtyPushDataBlocks = 0u;
   }
   
 
@@ -7113,9 +7160,8 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.all(DxvkContextFlag::CpHasPushConstants,
-                    DxvkContextFlag::DirtyPushConstants))
-      this->updatePushConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
+    if (m_flags.test(DxvkContextFlag::CpHasPushConstants) && m_dirtyPushDataBlocks)
+      this->updatePushData<VK_PIPELINE_BIND_POINT_COMPUTE>();
 
     return true;
   }
@@ -7210,9 +7256,8 @@ namespace dxvk {
     
     this->updateDynamicState();
     
-    if (m_flags.all(DxvkContextFlag::GpHasPushConstants,
-                    DxvkContextFlag::DirtyPushConstants))
-      this->updatePushConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
+    if (m_flags.test(DxvkContextFlag::GpHasPushConstants) && m_dirtyPushDataBlocks)
+      this->updatePushData<VK_PIPELINE_BIND_POINT_GRAPHICS>();
 
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
       this->trackDrawBuffer();
