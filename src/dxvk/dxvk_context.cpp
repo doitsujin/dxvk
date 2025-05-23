@@ -6222,43 +6222,307 @@ namespace dxvk {
     // changed, but we have no way of knowing that up-front.
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
-    if (unlikely(!dirtySetMask))
-      return;
+    if (likely(dirtySetMask)) {
+      // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
+      // to struct conversion, so we should use descriptor update templates.
+      // For 64-bit applications, using templates is slower on some drivers.
+      constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
 
-    // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
-    // to struct conversion, so we should use descriptor update templates.
-    // For 64-bit applications, using templates is slower on some drivers.
-    constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
+      std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
+      m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
 
-    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
-    m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
+      uint32_t descriptorCount = 0;
 
-    uint32_t descriptorCount = 0;
+      for (auto setIndex : bit::BitMask(dirtySetMask)) {
+        auto range = layout->getAllDescriptorsInSet(pipelineLayoutType, setIndex);
 
-    for (auto setIndex : bit::BitMask(dirtySetMask)) {
-      auto range = layout->getAllDescriptorsInSet(pipelineLayoutType, setIndex);
+        for (uint32_t j = 0; j < range.bindingCount; j++) {
+          const auto& binding = range.bindings[j];
 
-      for (uint32_t j = 0; j < range.bindingCount; j++) {
-        const auto& binding = range.bindings[j];
+          if (!useDescriptorTemplates) {
+            auto& descriptorWrite = m_descriptorWrites[descriptorCount];
+            descriptorWrite.dstSet = sets[setIndex];
+            descriptorWrite.dstBinding = binding.getBinding();
+            descriptorWrite.dstArrayElement = binding.getArrayIndex();
+            descriptorWrite.descriptorType = binding.getDescriptorType();
+          }
 
-        if (!useDescriptorTemplates) {
-          auto& descriptorWrite = m_descriptorWrites[descriptorCount];
-          descriptorWrite.dstSet = sets[setIndex];
-          descriptorWrite.dstBinding = binding.getBinding();
-          descriptorWrite.dstArrayElement = binding.getArrayIndex();
-          descriptorWrite.descriptorType = binding.getDescriptorType();
+          auto& descriptorInfo = m_descriptorInfos[descriptorCount++];
+
+          if (binding.isUniformBuffer()) {
+            const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
+
+            if (slice.length()) {
+              auto bufferInfo = slice.getSliceInfo();
+              descriptorInfo.buffer.buffer = bufferInfo.buffer;
+              descriptorInfo.buffer.offset = bufferInfo.offset;
+              descriptorInfo.buffer.range = bufferInfo.size;
+
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
+                  util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+              }
+
+              m_cmd->track(slice.buffer(), DxvkAccess::Read);
+            } else {
+              descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
+              descriptorInfo.buffer.offset = 0;
+              descriptorInfo.buffer.range = VK_WHOLE_SIZE;
+            }
+          } else {
+            switch (binding.getDescriptorType()) {
+              case VK_DESCRIPTOR_TYPE_SAMPLER: {
+                const auto& sampler = m_samplers[binding.getResourceIndex()];
+
+                if (sampler) {
+                  descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
+                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+                  m_cmd->track(sampler);
+                } else {
+                  descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
+                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.imageView)
+                  descriptor = res.imageView->getDescriptor(binding.getViewType());
+
+                if (descriptor) {
+                  if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
+                    descriptorInfo = descriptor->legacy;
+
+                    if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
+                      accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
+                        util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+                    }
+
+                    m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                  } else {
+                    auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
+                    descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
+
+                    m_cmd->track(view->image(), DxvkAccess::Read);
+                  }
+                } else {
+                  descriptorInfo.image.sampler = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.imageView)
+                  descriptor = res.imageView->getDescriptor(binding.getViewType());
+
+                if (descriptor) {
+                  descriptorInfo = descriptor->legacy;
+
+                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores()) {
+                    accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
+                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+                  }
+
+                  m_cmd->track(res.imageView->image(), (binding.getAccess() & vk::AccessWriteMask)
+                    ? DxvkAccess::Write : DxvkAccess::Read);
+                } else {
+                  descriptorInfo.image.sampler = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const auto& sampler = m_samplers[binding.getResourceIndex()];
+
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.imageView && sampler)
+                  descriptor = res.imageView->getDescriptor(binding.getViewType());
+
+                if (descriptor) {
+                  descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
+
+                  if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
+                    descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
+                    descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
+
+                    if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
+                      accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
+                        util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+                    }
+
+                    m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                    m_cmd->track(sampler);
+                  } else {
+                    auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
+                    descriptor = view->getDescriptor(binding.getViewType());
+
+                    descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
+                    descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
+
+                    m_cmd->track(view->image(), DxvkAccess::Read);
+                    m_cmd->track(sampler);
+                  }
+                } else {
+                  descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
+                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.bufferView)
+                  descriptor = res.bufferView->getDescriptor(false);
+
+                if (descriptor) {
+                  descriptorInfo = descriptor->legacy;
+
+                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
+                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+                  }
+
+                  m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
+                } else {
+                  descriptorInfo.bufferView = VK_NULL_HANDLE;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.bufferView)
+                  descriptor = res.bufferView->getDescriptor(false);
+
+                if (descriptor) {
+                  descriptorInfo = descriptor->legacy;
+
+                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
+                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+                  }
+
+                  m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
+                    ? DxvkAccess::Write : DxvkAccess::Read);
+                } else {
+                  descriptorInfo.bufferView = VK_NULL_HANDLE;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.bufferView)
+                  descriptor = res.bufferView->getDescriptor(true);
+
+                if (descriptor) {
+                  descriptorInfo = descriptor->legacy;
+
+                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
+                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+                  }
+
+                  m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
+                } else {
+                  descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
+                  descriptorInfo.buffer.offset = 0;
+                  descriptorInfo.buffer.range = VK_WHOLE_SIZE;
+                }
+              } break;
+
+              case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+                const auto& res = m_resources[binding.getResourceIndex()];
+                const DxvkDescriptor* descriptor = nullptr;
+
+                if (res.bufferView)
+                  descriptor = res.bufferView->getDescriptor(true);
+
+                if (descriptor) {
+                  descriptorInfo = descriptor->legacy;
+
+                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
+                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+                  }
+
+                  m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
+                    ? DxvkAccess::Write : DxvkAccess::Read);
+                } else {
+                  descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
+                  descriptorInfo.buffer.offset = 0;
+                  descriptorInfo.buffer.range = VK_WHOLE_SIZE;
+                }
+              } break;
+
+              default:
+                /* nothing to do */;
+            }
+          }
         }
 
-        auto& descriptorInfo = m_descriptorInfos[descriptorCount++];
+        if (useDescriptorTemplates) {
+          m_cmd->updateDescriptorSetWithTemplate(sets[setIndex],
+            pipelineLayout->getDescriptorSetLayout(setIndex)->getSetUpdateTemplate(),
+            &m_descriptorInfos[0]);
+          descriptorCount = 0;
+        }
+      }
+
+      // Update all descriptors in one go to avoid API call overhead
+      if (!useDescriptorTemplates) {
+        m_cmd->updateDescriptorSets(descriptorCount,
+          m_descriptorWrites.data());
+      }
+
+      do {
+        // Similarly, bind consecutive descriptor set ranges at once.
+        uint32_t first = bit::bsf(dirtySetMask);
+
+        // Add the lowest set bit to the mask and count the number of
+        // additional zeroes we created to get the final set count
+        uint32_t countMask = dirtySetMask + (dirtySetMask & -dirtySetMask);
+        uint32_t count = bit::bsf(countMask) - first;
+
+        m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
+          BindPoint, pipelineLayout->getPipelineLayout(),
+          first, count, &sets[first]);
+
+        dirtySetMask &= countMask;
+      } while (dirtySetMask);
+    }
+
+    // Update push data resources
+    if (m_descriptorState.hasDirtyRawDescriptors(layout->getNonemptyStageMask())) {
+      auto range = layout->getRawBindings(pipelineLayoutType);
+
+      for (uint32_t i = 0u; i < range.bindingCount; i++) {
+        const auto& binding = range.bindings[i];
+        const auto& res = m_resources[binding.getResourceIndex()];
+
+        VkDeviceAddress va = 0u;
 
         if (binding.isUniformBuffer()) {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
 
           if (slice.length()) {
-            auto bufferInfo = slice.getSliceInfo();
-            descriptorInfo.buffer.buffer = bufferInfo.buffer;
-            descriptorInfo.buffer.offset = bufferInfo.offset;
-            descriptorInfo.buffer.range = bufferInfo.size;
+            va = slice.getSliceInfo().gpuAddress;
 
             if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
               accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
@@ -6266,248 +6530,25 @@ namespace dxvk {
             }
 
             m_cmd->track(slice.buffer(), DxvkAccess::Read);
-          } else {
-            descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
-            descriptorInfo.buffer.offset = 0;
-            descriptorInfo.buffer.range = VK_WHOLE_SIZE;
           }
         } else {
-          switch (binding.getDescriptorType()) {
-            case VK_DESCRIPTOR_TYPE_SAMPLER: {
-              const auto& sampler = m_samplers[binding.getResourceIndex()];
+          if (res.bufferView) {
+            va = res.bufferView->getSliceInfo().gpuAddress;
 
-              if (sampler) {
-                descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
-                descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
+              accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+            }
 
-                m_cmd->track(sampler);
-              } else {
-                descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
-                descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.imageView)
-                descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-              if (descriptor) {
-                if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  descriptorInfo = descriptor->legacy;
-
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
-                    accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                  }
-
-                  m_cmd->track(res.imageView->image(), DxvkAccess::Read);
-                } else {
-                  auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
-                  descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
-
-                  m_cmd->track(view->image(), DxvkAccess::Read);
-                }
-              } else {
-                descriptorInfo.image.sampler = VK_NULL_HANDLE;
-                descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.imageView)
-                descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-              if (descriptor) {
-                descriptorInfo = descriptor->legacy;
-
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores()) {
-                  accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.imageView->image(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
-                descriptorInfo.image.sampler = VK_NULL_HANDLE;
-                descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const auto& sampler = m_samplers[binding.getResourceIndex()];
-
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.imageView && sampler)
-                descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-              if (descriptor) {
-                descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
-
-                if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
-                  descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
-
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
-                    accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                  }
-
-                  m_cmd->track(res.imageView->image(), DxvkAccess::Read);
-                  m_cmd->track(sampler);
-                } else {
-                  auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
-                  descriptor = view->getDescriptor(binding.getViewType());
-
-                  descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
-                  descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
-
-                  m_cmd->track(view->image(), DxvkAccess::Read);
-                  m_cmd->track(sampler);
-                }
-              } else {
-                descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
-                descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(false);
-
-              if (descriptor) {
-                descriptorInfo = descriptor->legacy;
-
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                }
-
-                m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
-              } else {
-                descriptorInfo.bufferView = VK_NULL_HANDLE;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(false);
-
-              if (descriptor) {
-                descriptorInfo = descriptor->legacy;
-
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
-                descriptorInfo.bufferView = VK_NULL_HANDLE;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(true);
-
-              if (descriptor) {
-                descriptorInfo = descriptor->legacy;
-
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                }
-
-                m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
-              } else {
-                descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
-                descriptorInfo.buffer.offset = 0;
-                descriptorInfo.buffer.range = VK_WHOLE_SIZE;
-              }
-            } break;
-
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-              const auto& res = m_resources[binding.getResourceIndex()];
-              const DxvkDescriptor* descriptor = nullptr;
-
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(true);
-
-              if (descriptor) {
-                descriptorInfo = descriptor->legacy;
-
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
-                descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
-                descriptorInfo.buffer.offset = 0;
-                descriptorInfo.buffer.range = VK_WHOLE_SIZE;
-              }
-            } break;
-
-            default:
-              /* nothing to do */;
+            m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
+              ? DxvkAccess::Write : DxvkAccess::Read);
           }
         }
-      }
 
-      if (useDescriptorTemplates) {
-        m_cmd->updateDescriptorSetWithTemplate(sets[setIndex],
-          pipelineLayout->getDescriptorSetLayout(setIndex)->getSetUpdateTemplate(),
-          &m_descriptorInfos[0]);
-        descriptorCount = 0;
+        std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &va, sizeof(va));
+        m_dirtyPushDataBlocks |= 1u << DxvkPushDataBlock::computeIndex(binding.getStageMask());
       }
     }
-
-    // Update all descriptors in one go to avoid API call overhead
-    if (!useDescriptorTemplates) {
-      m_cmd->updateDescriptorSets(descriptorCount,
-        m_descriptorWrites.data());
-    }
-
-    do {
-      // Similarly, bind consecutive descriptor set ranges at once.
-      uint32_t first = bit::bsf(dirtySetMask);
-
-      // Add the lowest set bit to the mask and count the number of
-      // additional zeroes we created to get the final set count
-      uint32_t countMask = dirtySetMask + (dirtySetMask & -dirtySetMask);
-      uint32_t count = bit::bsf(countMask) - first;
-
-      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-        BindPoint, pipelineLayout->getPipelineLayout(),
-        first, count, &sets[first]);
-
-      dirtySetMask &= countMask;
-    } while (dirtySetMask);
   }
 
 
