@@ -117,7 +117,7 @@ namespace dxvk {
     }
 
     void dirtySamplers(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler | DxvkDescriptorClass::Raw);
     }
 
     void dirtyStages(VkShaderStageFlags stages) {
@@ -170,6 +170,18 @@ namespace dxvk {
     Independent = 0u, ///< Fragment and pre-raster shaders use separate sets
     Merged      = 1u, ///< Fragment and pre-raster shaders use the same sets
   };
+
+
+  /**
+   * \brief Pipeline layout flag
+   *
+   * Defines properties of the layout.
+   */
+  enum class DxvkPipelineLayoutFlag : uint8_t {
+    UsesSamplerHeap = 0u, ///< Requires global sampler heap
+  };
+
+  using DxvkPipelineLayoutFlags = Flags<DxvkPipelineLayoutFlag>;
 
 
   /**
@@ -915,12 +927,14 @@ namespace dxvk {
 
     DxvkPipelineLayoutKey(
             DxvkPipelineLayoutType    type,
+            DxvkPipelineLayoutFlags   flags,
             VkShaderStageFlags        stageMask,
             uint32_t                  pushDataBlockCount,
       const DxvkPushDataBlock*        pushDataBlocks,
             uint32_t                  setCount,
       const DxvkDescriptorSetLayout** setLayouts)
     : m_type          (type),
+      m_flags         (flags),
       m_stages        (uint8_t(stageMask)) {
       for (uint32_t i = 0u; i < pushDataBlockCount; i++)
         addPushData(pushDataBlocks[i]);
@@ -934,6 +948,14 @@ namespace dxvk {
      */
     DxvkPipelineLayoutType getType() const {
       return m_type;
+    }
+
+    /**
+     * \brief Queries layout flags
+     * \returns Layout flags
+     */
+    DxvkPipelineLayoutFlags getFlags() const {
+      return m_flags;
     }
 
     /**
@@ -958,6 +980,14 @@ namespace dxvk {
         m_pushMask |= 1u << index;
         m_pushData[index].merge(block);
       }
+    }
+
+    /**
+     * \brief Sets flags
+     * \param [in] flags Flags to set
+     */
+    void setFlags(DxvkPipelineLayoutFlags flags) {
+      m_flags.set(flags);
     }
 
     /**
@@ -1045,6 +1075,7 @@ namespace dxvk {
      */
     bool eq(const DxvkPipelineLayoutKey& other) const {
       bool eq = m_type      == other.m_type
+             && m_flags     == other.m_flags
              && m_stages    == other.m_stages
              && m_pushMask  == other.m_pushMask
              && m_setCount  == other.m_setCount;
@@ -1065,6 +1096,7 @@ namespace dxvk {
     size_t hash() const {
       DxvkHashState hash;
       hash.add(uint16_t(m_type));
+      hash.add(m_flags.raw());
       hash.add(m_stages);
       hash.add(m_setCount);
       hash.add(m_pushMask);
@@ -1081,6 +1113,7 @@ namespace dxvk {
   private:
 
     DxvkPipelineLayoutType  m_type      = DxvkPipelineLayoutType::Independent;
+    DxvkPipelineLayoutFlags m_flags     = 0u;
     uint8_t                 m_stages    = 0u;
     uint8_t                 m_pushMask  = 0u;
     uint8_t                 m_setCount  = 0u;
@@ -1128,6 +1161,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether the pipeline layout uses the sampler heap
+     *
+     * Affects the pipeline layout as well as resource binding.
+     * \returns \c true if the sampler heap is used
+     */
+    bool usesSamplerHeap() const {
+      return m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap);
+    }
+
+    /**
      * \brief Queries specific descriptor set layout
      *
      * \param [in] set Set index
@@ -1167,6 +1210,7 @@ namespace dxvk {
 
     DxvkDevice*             m_device;
 
+    DxvkPipelineLayoutFlags m_flags;
     VkPipelineBindPoint     m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     uint32_t                                                        m_pushMask = 0u;
@@ -1676,6 +1720,10 @@ namespace dxvk {
             DxvkPipelineManager*        manager);
 
     void buildMetadata(
+      const DxvkPipelineLayoutBuilder&  builder);
+
+    DxvkPipelineLayoutFlags getPipelineLayoutFlags(
+            DxvkPipelineLayoutType      type,
       const DxvkPipelineLayoutBuilder&  builder);
 
     static uint32_t computeStateMask(

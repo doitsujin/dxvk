@@ -116,7 +116,7 @@ namespace dxvk {
   DxvkPipelineLayout::DxvkPipelineLayout(
           DxvkDevice*                 device,
     const DxvkPipelineLayoutKey&      key)
-  : m_device(device) {
+  : m_device(device), m_flags(key.getFlags()) {
     auto vk = m_device->vkd();
 
     // Determine bind point based on shader stages
@@ -255,13 +255,14 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
+    auto flags = getPipelineLayoutFlags(type, builder);
     auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
 
     // Descriptor processing needs to know the exact push data offsets
     auto setLayouts = buildDescriptorSetLayouts(type, builder, manager);
 
     // Create the actual pipeline layout
-    DxvkPipelineLayoutKey key(type, builder.getStageMask(),
+    DxvkPipelineLayoutKey key(type, flags, builder.getStageMask(),
       pushDataBlocks.size(), pushDataBlocks.data(),
       setLayouts.size(), setLayouts.data());
 
@@ -457,6 +458,31 @@ namespace dxvk {
         m_descriptorCount += binding.getDescriptorCount();
       }
     }
+  }
+
+
+  DxvkPipelineLayoutFlags DxvkPipelineBindings::getPipelineLayoutFlags(
+          DxvkPipelineLayoutType      type,
+    const DxvkPipelineLayoutBuilder&  builder) {
+    auto bindings = builder.getBindings();
+
+    DxvkPipelineLayoutFlags result;
+
+    if (type == DxvkPipelineLayoutType::Independent) {
+      // Always need to assume that at least one stage uses samplers
+      result.set(DxvkPipelineLayoutFlag::UsesSamplerHeap);
+    } else {
+      for (size_t i = 0; i < bindings.bindingCount; i++) {
+        auto binding = bindings.bindings[i];
+
+        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER && !binding.usesDescriptor()) {
+          result.set(DxvkPipelineLayoutFlag::UsesSamplerHeap);
+          break;
+        }
+      }
+    }
+
+    return result;
   }
 
 
