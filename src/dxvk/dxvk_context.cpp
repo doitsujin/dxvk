@@ -6516,36 +6516,49 @@ namespace dxvk {
         const auto& binding = range.bindings[i];
         const auto& res = m_resources[binding.getResourceIndex()];
 
-        VkDeviceAddress va = 0u;
+        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER) {
+          const auto& sampler = m_samplers[binding.getResourceIndex()];
+          uint16_t index = 0u;
 
-        if (binding.isUniformBuffer()) {
-          const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
-
-          if (slice.length()) {
-            va = slice.getSliceInfo().gpuAddress;
-
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
-                util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-            }
-
-            m_cmd->track(slice.buffer(), DxvkAccess::Read);
+          if (sampler) {
+            index = sampler->getDescriptor().samplerIndex;
+            m_cmd->track(sampler);
           }
+
+          std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &index, sizeof(index));
         } else {
-          if (res.bufferView) {
-            va = res.bufferView->getSliceInfo().gpuAddress;
+          VkDeviceAddress va = 0u;
 
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+          if (binding.isUniformBuffer()) {
+            const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
+
+            if (slice.length()) {
+              va = slice.getSliceInfo().gpuAddress;
+
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
+                  util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+              }
+
+              m_cmd->track(slice.buffer(), DxvkAccess::Read);
             }
+          } else {
+            if (res.bufferView) {
+              va = res.bufferView->getSliceInfo().gpuAddress;
 
-            m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-              ? DxvkAccess::Write : DxvkAccess::Read);
+              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
+                accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
+                  util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
+              }
+
+              m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
+                ? DxvkAccess::Write : DxvkAccess::Read);
+            }
           }
+
+          std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &va, sizeof(va));
         }
 
-        std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &va, sizeof(va));
         m_dirtyPushDataBlocks |= 1u << DxvkPushDataBlock::computeIndex(binding.getStageMask());
       }
     }
