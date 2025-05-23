@@ -58,10 +58,10 @@ namespace dxvk {
   
   
   const DxvkPipelineLayout* DxvkMetaBlitObjects::createPipelineLayout() const {
-    DxvkDescriptorSetLayoutBinding binding = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT };
+    DxvkDescriptorSetLayoutBinding binding = { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT };
 
-    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(DxvkMetaBlitPushConstants), 1, &binding);
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(DxvkMetaBlitPushConstants), 1, &binding);
   }
 
 
