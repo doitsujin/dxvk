@@ -483,6 +483,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkSamplerDescriptorSet getSamplerDescriptorSet() {
+      return m_objects.samplerPool().getDescriptorSetInfo();
+    }
+
+    /**
      * \brief Retreves current frame ID
      * \returns Current frame ID
      */
