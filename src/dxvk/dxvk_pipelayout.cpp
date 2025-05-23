@@ -389,10 +389,6 @@ namespace dxvk {
 
       if (binding.getDescriptorCount()) {
         if (binding.usesDescriptor()) {
-          if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
-           || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-            appendDescriptors(layout.setSamplers[set], binding, dstMapping);
-
           appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
 
           if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
@@ -402,6 +398,7 @@ namespace dxvk {
               appendDescriptors(layout.setResources[set], binding, dstMapping);
           }
         } else {
+          // Compute correct push data offset for the resource
           auto offset = layout.bindingMap.mapPushData(
             binding.getStageMask(), binding.getBlockOffset());
 
@@ -410,7 +407,11 @@ namespace dxvk {
 
           binding.setBlockOffset(offset);
 
-          appendDescriptors(layout.rawBindings, binding, dstMapping);
+          // This can be either a sampler or raw buffer address
+          if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER)
+            appendDescriptors(layout.samplers, binding, dstMapping);
+          else
+            appendDescriptors(layout.vaBindings, binding, dstMapping);
         }
       }
     }
