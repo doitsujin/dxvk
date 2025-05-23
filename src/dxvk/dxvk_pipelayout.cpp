@@ -255,59 +255,29 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
-    auto stageMask = builder.getStageMask();
-    auto bindings = builder.getBindings();
+    auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
+    auto setLayouts = buildDescriptorSetLayouts(type, builder, manager);
+
+    // Create the actual pipeline layout
+    DxvkPipelineLayoutKey key(type, builder.getStageMask(),
+      pushDataBlocks.size(), pushDataBlocks.data(),
+      setLayouts.size(), setLayouts.data());
 
     auto& layout = m_layouts[uint32_t(type)];
+    layout.layout = manager->createPipelineLayout(key);
+  }
 
-    // Determine descriptor sets covered by this layout
-    SetInfos setInfos = computeSetMaskAndCount(type, stageMask, bindings);
 
-    // Generate descriptor set layout keys from all bindings
-    std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };
-
-    for (size_t i = 0; i < bindings.bindingCount; i++) {
-      auto binding = bindings.bindings[i];
-      auto set = setInfos.map[computeSetForBinding(type, binding)];
-      auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
-
-      DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
-      DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
-
-      layout.bindingMap.addBinding(srcMapping, dstMapping);
-
-      layout.setStateMasks[set] |= computeStateMask(binding);
-
-      if (binding.getDescriptorCount()) {
-        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
-         || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-          appendDescriptors(layout.setSamplers[set], binding, dstMapping);
-
-        if (binding.usesDescriptor()) {
-          appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
-
-          if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
-            if (binding.isUniformBuffer())
-              appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
-            else
-              appendDescriptors(layout.setResources[set], binding, dstMapping);
-          }
-        } else {
-          appendDescriptors(layout.setRawBindings[set], binding, dstMapping);
-        }
-      }
-    }
-
-    // Create the actual descriptor set layout objects
-    std::array<const DxvkDescriptorSetLayout*, MaxSets> setLayouts = { };
-
-    for (uint32_t i = 0u; i < setInfos.count; i++) {
-      if (setInfos.mask & (1u << i))
-        setLayouts[i] = manager->createDescriptorSetLayout(setLayoutKeys[i]);
-    }
+  small_vector<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount>
+  DxvkPipelineBindings::buildPushDataBlocks(
+          DxvkPipelineLayoutType      type,
+          DxvkDevice*                 device,
+    const DxvkPipelineLayoutBuilder&  builder,
+          DxvkPipelineManager*        manager) {
+    auto& layout = m_layouts[uint32_t(type)];
 
     // Process and re-map data blocks
-    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> pushDataBlocks = { };
+    small_vector<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> pushDataBlocks(DxvkPushDataBlock::MaxBlockCount);
 
     uint32_t pushDataMask = builder.getPushDataMask();
     uint32_t pushDataSize = 0u;
@@ -359,12 +329,68 @@ namespace dxvk {
     for (auto i : bit::BitMask(pushDataMask))
       pushDataBlocks[pushDataBlockCount++] = pushDataBlocks[i];
 
-    // Create the actual pipeline layout
-    DxvkPipelineLayoutKey key(type, stageMask,
-      pushDataBlockCount, pushDataBlocks.data(),
-      setInfos.count, setLayouts.data());
+    pushDataBlocks.resize(pushDataBlockCount);
+    return pushDataBlocks;
+  }
 
-    layout.layout = manager->createPipelineLayout(key);
+
+  small_vector<const DxvkDescriptorSetLayout*, DxvkPipelineBindings::MaxSets>
+  DxvkPipelineBindings::buildDescriptorSetLayouts(
+          DxvkPipelineLayoutType      type,
+    const DxvkPipelineLayoutBuilder&  builder,
+          DxvkPipelineManager*        manager) {
+    auto stageMask = builder.getStageMask();
+    auto bindings = builder.getBindings();
+
+    auto& layout = m_layouts[uint32_t(type)];
+
+    // Determine descriptor sets covered by this layout
+    SetInfos setInfos = computeSetMaskAndCount(type, stageMask, bindings);
+
+    // Generate descriptor set layout keys from all bindings
+    std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };
+
+    for (size_t i = 0; i < bindings.bindingCount; i++) {
+      auto binding = bindings.bindings[i];
+      auto set = setInfos.map[computeSetForBinding(type, binding)];
+      auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+
+      DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
+      DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
+
+      layout.bindingMap.addBinding(srcMapping, dstMapping);
+
+      layout.setStateMasks[set] |= computeStateMask(binding);
+
+      if (binding.getDescriptorCount()) {
+        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
+         || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+          appendDescriptors(layout.setSamplers[set], binding, dstMapping);
+
+        if (binding.usesDescriptor()) {
+          appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
+
+          if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
+            if (binding.isUniformBuffer())
+              appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
+            else
+              appendDescriptors(layout.setResources[set], binding, dstMapping);
+          }
+        } else {
+          appendDescriptors(layout.setRawBindings[set], binding, dstMapping);
+        }
+      }
+    }
+
+    // Create the actual descriptor set layout objects
+    small_vector<const DxvkDescriptorSetLayout*, MaxSets> setLayouts(setInfos.count);
+
+    for (uint32_t i = 0u; i < setInfos.count; i++) {
+      if (setInfos.mask & (1u << i))
+        setLayouts[i] = manager->createDescriptorSetLayout(setLayoutKeys[i]);
+    }
+
+    return setLayouts;
   }
 
 
