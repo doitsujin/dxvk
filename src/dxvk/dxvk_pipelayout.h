@@ -70,10 +70,9 @@ namespace dxvk {
     // For merged pipelines, use one set containing per unique
     // descriptor class. We can reasonably expect uniform buffers
     // to be rebound more often than views and samplers.
-    static constexpr uint32_t GpSetCount                = 3u;
-    static constexpr uint32_t GpSamplers                = 0u;
-    static constexpr uint32_t GpViews                   = 1u;
-    static constexpr uint32_t GpBuffers                 = 2u;
+    static constexpr uint32_t GpSetCount                = 2u;
+    static constexpr uint32_t GpViews                   = 0u;
+    static constexpr uint32_t GpBuffers                 = 1u;
 
     // For compute shaders, put everything into one set since it is
     // very likely that all types of resources get changed at once.
@@ -81,7 +80,7 @@ namespace dxvk {
     static constexpr uint32_t CpSetCount                = 1u;
 
     // Maximum number of descriptor sets per layout
-    static constexpr uint32_t SetCount                  = 3u;
+    static constexpr uint32_t SetCount                  = 2u;
   };
 
 

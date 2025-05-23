@@ -544,9 +544,6 @@ namespace dxvk {
         : DxvkDescriptorSets::GpIndependentVsResources;
     }
 
-    if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER)
-      return DxvkDescriptorSets::GpSamplers;
-
     if (binding.isUniformBuffer())
       return DxvkDescriptorSets::GpBuffers;
 
@@ -585,30 +582,11 @@ namespace dxvk {
         }
       }
 
-      // As an optimization, if a graphics pipeline only uses a very small
-      // number of unique samplers, merge them with the regular view set.
-      constexpr static uint32_t MaxMergedSamplerCount = 3u;
-      uint32_t samplerSet = DxvkDescriptorSets::GpSamplers;
-
-      if (stages & VK_SHADER_STAGE_ALL_GRAPHICS) {
-        uint32_t samplerCount = setSizes[samplerSet];
-
-        if (samplerCount <= MaxMergedSamplerCount) {
-          setSizes[samplerSet] -= samplerCount;
-          samplerSet = DxvkDescriptorSets::GpViews;
-          setSizes[samplerSet] += samplerCount;
-        }
-      }
-
       // Compute mapping from logical set to real set index
       for (size_t i = 0u; i < MaxSets; i++) {
         if (setSizes[i])
           result.map[i] = result.count++;
       }
-
-      // Re-map merged sampler set as necessary
-      if (stages & VK_SHADER_STAGE_ALL_GRAPHICS)
-        result.map[DxvkDescriptorSets::GpSamplers] = result.map[samplerSet];
 
       // Compute compact mask of all used sets
       result.mask = (1u << result.count) - 1u;
