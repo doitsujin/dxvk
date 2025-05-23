@@ -256,6 +256,8 @@ namespace dxvk {
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
     auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
+
+    // Descriptor processing needs to know the exact push data offsets
     auto setLayouts = buildDescriptorSetLayouts(type, builder, manager);
 
     // Create the actual pipeline layout
@@ -308,14 +310,22 @@ namespace dxvk {
     for (auto i : bit::BitMask(builder.getPushDataMask())) {
       const auto block = builder.getPushDataBlock(i);
 
-      if (type == DxvkPipelineLayoutType::Independent) {
-        // Merge resource mask into existing block
+      if (block.isShared()) {
+        // Shared block needs to be consistent
         pushDataBlocks[i].merge(block);
+      } else if (type == DxvkPipelineLayoutType::Independent) {
+        // Move entrie block to pre-computed location
+        uint32_t offset = pushDataBlocks[i].getOffset();
+        uint32_t size = pushDataBlocks[i].getSize();
+
+        pushDataBlocks[i] = block;
+        pushDataBlocks[i].rebase(offset, size);
       } else {
+        // Pack push data as tightly as possible
         pushDataSize = align(pushDataSize, block.getAlignment());
 
         pushDataBlocks[i] = block;
-        pushDataBlocks[i].rebase(pushDataSize);
+        pushDataBlocks[i].rebase(pushDataSize, block.getSize());
 
         pushDataSize += block.getSize();
       }
@@ -352,15 +362,21 @@ namespace dxvk {
 
     for (size_t i = 0; i < bindings.bindingCount; i++) {
       auto binding = bindings.bindings[i];
-      auto set = setInfos.map[computeSetForBinding(type, binding)];
-      auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+      auto set = computeSetForBinding(type, binding);
+
+      if (set < setInfos.map.size())
+        set = setInfos.map[set];
 
       DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
-      DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
+      DxvkShaderBinding dstMapping(srcMapping);
 
-      layout.bindingMap.addBinding(srcMapping, dstMapping);
+      if (binding.usesDescriptor()) {
+        auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+        dstMapping = DxvkShaderBinding(binding.getStageMask(), set, bindingIndex);
 
-      layout.setStateMasks[set] |= computeStateMask(binding);
+        layout.bindingMap.addBinding(srcMapping, dstMapping);
+        layout.setStateMasks[set] |= computeStateMask(binding);
+      }
 
       if (binding.getDescriptorCount()) {
         if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
@@ -377,7 +393,15 @@ namespace dxvk {
               appendDescriptors(layout.setResources[set], binding, dstMapping);
           }
         } else {
-          appendDescriptors(layout.setRawBindings[set], binding, dstMapping);
+          auto offset = layout.bindingMap.mapPushData(
+            binding.getStageMask(), binding.getBlockOffset());
+
+          if (offset == -1u)
+            throw DxvkError(str::format("No push data mapping found for offset ", binding.getBlockOffset()));
+
+          binding.setBlockOffset(offset);
+
+          appendDescriptors(layout.rawBindings, binding, dstMapping);
         }
       }
     }
@@ -465,6 +489,9 @@ namespace dxvk {
     const DxvkShaderDescriptor&     binding) {
     VkShaderStageFlags stage = binding.getStageMask();
 
+    if (!binding.usesDescriptor())
+      return -1u;
+
     if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
       return DxvkDescriptorSets::CpResources;
 
@@ -509,8 +536,10 @@ namespace dxvk {
       std::array<uint16_t, MaxSets> setSizes = { };
 
       for (size_t i = 0u; i < bindings.bindingCount; i++) {
-        uint32_t set = computeSetForBinding(type, bindings.bindings[i]);
-        setSizes[set] += bindings.bindings[i].getDescriptorCount();
+        if (bindings.bindings[i].usesDescriptor()) {
+          uint32_t set = computeSetForBinding(type, bindings.bindings[i]);
+          setSizes[set] += bindings.bindings[i].getDescriptorCount();
+        }
       }
 
       // As an optimization, if a graphics pipeline only uses a very small
