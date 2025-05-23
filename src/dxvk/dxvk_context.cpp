@@ -1306,8 +1306,7 @@ namespace dxvk {
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
     DxvkDescriptorWrite imageDescriptor = { };
-    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    imageDescriptor.sampler = sampler->getDescriptor();
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
     // Common render pass info
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -1353,6 +1352,7 @@ namespace dxvk {
       pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
       pushConstants.srcCoord1  = { 1.0f, 1.0f, 1.0f };
       pushConstants.layerCount = passExtent.depth;
+      pushConstants.sampler = sampler->getDescriptor().samplerIndex;
 
       if (i) {
         addImageLayoutTransition(*imageView->image(),
@@ -3408,9 +3408,8 @@ namespace dxvk {
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
 
     DxvkDescriptorWrite imageDescriptor = { };
-    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     imageDescriptor.descriptor = srcView->getDescriptor();
-    imageDescriptor.sampler = sampler->getDescriptor();
     
     // Compute shader parameters for the operation
     VkExtent3D srcExtent = srcView->mipLevelExtent(0);
@@ -3425,6 +3424,7 @@ namespace dxvk {
       float(srcOffsetsAdjusted[1].y) / float(srcExtent.height),
       float(srcOffsetsAdjusted[1].z) / float(srcExtent.depth) };
     pushConstants.layerCount = dstView->info().layerCount;
+    pushConstants.sampler = sampler->getDescriptor().samplerIndex;
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
