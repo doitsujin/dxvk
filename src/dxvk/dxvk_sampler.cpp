@@ -5,8 +5,9 @@ namespace dxvk {
     
   DxvkSampler::DxvkSampler(
           DxvkSamplerPool*        pool,
-    const DxvkSamplerKey&         key)
-  : m_pool(pool), m_key(key) {
+    const DxvkSamplerKey&         key,
+          uint16_t                index)
+  : m_pool(pool), m_key(key), m_index(index) {
     auto vk = m_pool->m_device->vkd();
 
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
@@ -118,11 +119,31 @@ namespace dxvk {
 
   DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
   : m_device(device) {
+    // Populate free list in reverse order. Sampler index 0 is
+    // reserved for the default sampler, so skip that.
+    for (uint16_t i = MaxSamplerCount; i; i--)
+      m_freeList.push_back(i);
 
+    // Default sampler, implicitly used for null descriptors or when creating
+    // additional samplers fails for any reason. Keep a persistent reference
+    // so that this sampler does not accidentally get recycled.
+    DxvkSamplerKey defaultKey;
+    defaultKey.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR);
+    defaultKey.setLodRange(-256.0f, 256.0f, 0.0f);
+    defaultKey.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    defaultKey.setReduction(VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE);
+
+    m_default = &m_samplers.emplace(std::piecewise_construct,
+      std::forward_as_tuple(defaultKey),
+      std::forward_as_tuple(this, defaultKey, 0u)).first->second;
   }
 
 
   DxvkSamplerPool::~DxvkSamplerPool() {
+    m_default = nullptr;
     m_samplers.clear();
   }
 
@@ -161,17 +182,20 @@ namespace dxvk {
 
     // If we're spamming sampler allocations, we might need
     // to clean up unused ones here to stay within the limit
-    if (m_samplers.size() >= MaxSamplerCount)
-      destroyLeastRecentlyUsedSampler();
+    uint16_t samplerIndex = allocateSamplerIndex();
 
-    // Create new sampler object
-    DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
-      std::forward_as_tuple(key),
-      std::forward_as_tuple(this, key)).first->second;
+    if (samplerIndex) {
+      DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
+        std::forward_as_tuple(key),
+        std::forward_as_tuple(this, key, samplerIndex)).first->second;
 
-    m_samplersTotal.store(m_samplers.size());
-    m_samplersLive.store(m_samplersLive.load() + 1u);
-    return sampler;
+      m_samplersTotal.store(m_samplers.size());
+      m_samplersLive.store(m_samplersLive.load() + 1u);
+      return sampler;
+    } else {
+      Logger::err("Failed to allocate sampler, using default one.");
+      return m_default;
+    }
   }
 
 
@@ -214,6 +238,7 @@ namespace dxvk {
     DxvkSampler* sampler = m_lruHead;
 
     if (sampler) {
+      freeSamplerIndex(sampler->m_index);
       m_lruHead = sampler->m_lruNext;
 
       if (m_lruHead)
@@ -224,6 +249,25 @@ namespace dxvk {
       m_samplers.erase(sampler->key());
       m_samplersTotal.store(m_samplers.size());
     }
+  }
+
+
+  uint16_t DxvkSamplerPool::allocateSamplerIndex() {
+    if (m_freeList.empty()) {
+      destroyLeastRecentlyUsedSampler();
+
+      if (m_freeList.empty())
+        return 0u;
+    }
+
+    uint16_t index = m_freeList.back();
+    m_freeList.pop_back();
+    return index;
+  }
+
+
+  void DxvkSamplerPool::freeSamplerIndex(uint16_t index) {
+    m_freeList.push_back(index);
   }
 
 }
