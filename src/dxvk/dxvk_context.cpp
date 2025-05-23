@@ -5955,6 +5955,8 @@ namespace dxvk {
     if (unlikely(!newPipeline))
       return false;
 
+    auto newLayout = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged);
+
     if (unlikely(newPipeline->getSpecConstantMask() != m_state.cp.constants.mask))
       this->resetSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>(newPipeline->getSpecConstantMask());
 
@@ -5973,7 +5975,7 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    auto pushData = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged)->getPushData();
+    auto pushData = newLayout->getPushData();
 
     if (!pushData.isEmpty()) {
       m_flags.set(DxvkContextFlag::CpHasPushConstants);
@@ -5984,6 +5986,10 @@ namespace dxvk {
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xf0dca2, newPipeline->debugName()));
     }
+
+    // Bind global sampler set if needed and if the previous pipeline did not use it
+    if (newLayout->usesSamplerHeap())
+      updateSamplerSet<VK_PIPELINE_BIND_POINT_COMPUTE>(newLayout);
 
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
     return true;
@@ -6123,7 +6129,8 @@ namespace dxvk {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
     // Also update push constant status when we know the final layout
-    auto pushData = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType)->getPushData();
+    auto layout = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType);
+    auto pushData = layout->getPushData();
 
     if (!pushData.isEmpty()) {
       m_flags.set(DxvkContextFlag::GpHasPushConstants);
@@ -6142,6 +6149,11 @@ namespace dxvk {
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(color, m_state.gp.pipeline->debugName()));
     }
+
+    // If the new pipeline uses the global sampler set when the
+    // previous one didn't, re-bind it to the static set index 0.
+    if (layout->usesSamplerHeap())
+      updateSamplerSet<VK_PIPELINE_BIND_POINT_GRAPHICS>(layout);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
@@ -6207,7 +6219,15 @@ namespace dxvk {
     this->unbindGraphicsPipeline();
   }
 
-  
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::updateSamplerSet(const DxvkPipelineLayout* layout) {
+    VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
+
+    m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
+      BindPoint, layout->getPipelineLayout(), 0u, 1u, &set);
+  }
+
+
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
