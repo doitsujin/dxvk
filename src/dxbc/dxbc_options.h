@@ -63,6 +63,9 @@ namespace dxvk {
     /// Whether to enable sincos emulation
     bool sincosEmulation = false;
 
+    /// Whether device suppors 16-bit push constants
+    bool supports16BitPushData = false;
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 

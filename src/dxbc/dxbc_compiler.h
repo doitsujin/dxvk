@@ -477,6 +477,7 @@ namespace dxvk {
     std::array<DxbcUav,             64> m_uavs;
 
     uint32_t m_pushDataId = 0u;
+    uint32_t m_samplerHeapId = 0u;
 
     DxvkPushDataBlock m_sharedPushData;
     DxvkPushDataBlock m_localPushData;
@@ -1219,6 +1220,10 @@ namespace dxvk {
     void emitUavCounterTypes();
 
     void emitUavCounterBindings();
+
+    void emitSamplerArray();
+
+    void emitPushSampler(uint32_t samplerIndex, uint32_t baseMember, uint32_t offset);
 
     void emitPushData();
 
