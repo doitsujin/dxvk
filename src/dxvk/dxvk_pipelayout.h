@@ -396,14 +396,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Adds base offset to block offset
+     * \bief Changes block offset
      *
-     * The offset may be adjusted after determining the
-     * exact layout of push data in memory.
-     * \param [in] baseOffset Base block offset, in bytes
+     * Used when remapping push data to its final memory layout.
+     * \param [in] offset New absolute block offset
      */
-    void addBlockOffset(uint32_t baseOffset) {
-      m_blockOffset += baseOffset;
+    void setBlockOffset(uint32_t offset) {
+      m_blockOffset = offset;
     }
 
     /**
@@ -615,9 +614,11 @@ namespace dxvk {
      *
      * Useful when remapping push constant ranges.
      * \param [in] newOffset New block offset
+     * \param [in] newSize New block size
      */
-    void rebase(uint32_t newOffset) {
+    void rebase(uint32_t newOffset, uint32_t newSize) {
       m_offset = newOffset;
+      m_size = newSize;
     }
 
     /**
@@ -1556,8 +1557,8 @@ namespace dxvk {
      * \param [in] set Set index
      * \returns List of all non-descriptor bindings.
      */
-    DxvkPipelineBindingRange getRawBindingsInSet(DxvkPipelineLayoutType type, uint32_t set) const {
-      return makeBindingRange(m_layouts[uint32_t(type)].setRawBindings[set]);
+    DxvkPipelineBindingRange getRawBindings(DxvkPipelineLayoutType type) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].rawBindings);
     }
 
     /**
@@ -1624,10 +1625,10 @@ namespace dxvk {
       std::array<BindingList, MaxSets>  setSamplers          = { };
       std::array<BindingList, MaxSets>  setResources         = { };
       std::array<BindingList, MaxSets>  setUniformBuffers    = { };
-      std::array<BindingList, MaxSets>  setRawBindings       = { };
 
       std::array<uint32_t, MaxSets>     setStateMasks = { };
 
+      BindingList                       rawBindings = { };
       DxvkShaderBindingMap              bindingMap = { };
 
       const DxvkPipelineLayout*         layout = nullptr;
