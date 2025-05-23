@@ -39,7 +39,6 @@ namespace dxvk {
     disableMsaa              = options.disableMsaa;
     forceSampleRateShading   = options.forceSampleRateShading;
     enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
-    supportsTightIcbPacking  = device->features().vk12.uniformBufferStandardLayout;
     supports16BitPushData    = device->features().vk11.storagePushConstant16;
 
     // ANV up to mesa 25.0.2 breaks when we *don't* explicitly write point size
