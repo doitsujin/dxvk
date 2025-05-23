@@ -1542,10 +1542,7 @@ namespace dxvk {
 
     // Tightly pack vec2 or scalar arrays if possible. Don't bother with
     // vec3 since we'd rather have properly vectorized loads in that case.
-    if (m_moduleInfo.options.supportsTightIcbPacking && componentCount <= 2u)
-      m_icbComponents = componentCount;
-    else
-      m_icbComponents = 4u;
+    m_icbComponents = componentCount <= 2u ? componentCount : 4u;
 
     // Immediate constant buffer can be read out of bounds, declare
     // it with the maximum possible size and rely on robustness.

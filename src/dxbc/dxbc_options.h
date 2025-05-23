@@ -53,10 +53,6 @@ namespace dxvk {
     // Enable per-sample interlock if supported
     bool enableSampleShadingInterlock = false;
 
-    /// Use tightly packed arrays for immediate
-    /// constant buffers if possible
-    bool supportsTightIcbPacking = false;
-
     /// Whether exporting point size is required
     bool needsPointSizeExport = false;
 
