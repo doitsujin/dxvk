@@ -121,7 +121,7 @@ namespace dxvk {
       m_module.decorate(push_const_t, spv::DecorationBlock);
       m_module.setDebugName(push_const_t, "pc_t");
       m_module.setDebugMemberName(push_const_t, 0, "offset");
-      m_module.memberDecorateOffset(push_const_t, 0, sizeof(D3D9RenderStateInfo));
+      m_module.memberDecorateOffset(push_const_t, 0, MaxSharedPushDataSize);
 
       uint32_t push_const_uint_ptr_t = m_module.defPointerType(uint_t, spv::StorageClassPushConstant);
       uint32_t push_const_ptr_t = m_module.defPointerType(push_const_t, spv::StorageClassPushConstant);
@@ -310,8 +310,7 @@ namespace dxvk {
       info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
-      info.sharedPushData = DxvkPushDataBlock(0u,
-        sizeof(D3D9RenderStateInfo) + sizeof(D3D9SwvpEmuArgs), 4u, 0u);
+      info.localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, sizeof(D3D9SwvpEmuArgs), 4u, 0u);
       info.inputMask = m_inputMask;
       info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
