@@ -95,7 +95,7 @@ namespace dxvk {
     }};
 
     DxvkMetaResolvePipeline pipeline = { };
-    pipeline.layout = m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_FRAGMENT_BIT,
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(VkOffset2D), bindings.size(), bindings.data());
 
     auto formatInfo = lookupFormatInfo(key.format);
