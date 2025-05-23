@@ -604,7 +604,11 @@ namespace dxvk {
     uint32_t opConvertUtoF(
             uint32_t                resultType,
             uint32_t                operand);
-    
+
+    uint32_t opUConvert(
+            uint32_t                resultType,
+            uint32_t                operand);
+
     uint32_t opCompositeConstruct(
             uint32_t                resultType,
             uint32_t                valueCount,

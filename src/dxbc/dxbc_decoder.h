@@ -46,7 +46,8 @@ namespace dxvk {
    * used together with a texture resource.
    */
   struct DxbcSampler {
-    uint32_t varId  = 0;
+    uint32_t member = 0;
+    uint32_t word = 0;
     uint32_t typeId = 0;
   };
   
