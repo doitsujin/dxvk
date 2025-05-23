@@ -319,7 +319,7 @@ namespace dxvk::hud {
     descriptors[2u].buffer = drawInfoBuffer;
 
     descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    descriptors[3u].descriptor = m_textView->getDescriptor(false);
+    descriptors[3u].descriptor = m_textWrView->getDescriptor(false);
 
     ComputePushConstants pushConstants = { };
     pushConstants.msPerTick = m_device->properties().core.properties.limits.timestampPeriod / 1000000.0f;
@@ -351,7 +351,7 @@ namespace dxvk::hud {
     renderer.drawText(12, maxPos, 0xff4040ff, "max:");
 
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
-      drawInfoBuffer, m_textView, 2u);
+      drawInfoBuffer, m_textRdView, 2u);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
@@ -422,11 +422,13 @@ namespace dxvk::hud {
 
     DxvkBufferViewKey textViewInfo = { };
     textViewInfo.format = VK_FORMAT_R8_UINT;
-    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     textViewInfo.offset = bufferLayout.textOffset;
     textViewInfo.size = bufferLayout.textSize;
+    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    m_textWrView = m_gpuBuffer->createView(textViewInfo);
 
-    m_textView = m_gpuBuffer->createView(textViewInfo);
+    textViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    m_textRdView = m_gpuBuffer->createView(textViewInfo);
 
     // Zero-init buffer so we don't display random garbage at the start
     DxvkResourceBufferInfo bufferSlice = m_gpuBuffer->getSliceInfo();

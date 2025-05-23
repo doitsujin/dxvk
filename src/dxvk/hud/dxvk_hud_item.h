@@ -298,7 +298,8 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice>            m_device;
     Rc<DxvkBuffer>            m_gpuBuffer;
-    Rc<DxvkBufferView>        m_textView;
+    Rc<DxvkBufferView>        m_textWrView;
+    Rc<DxvkBufferView>        m_textRdView;
     Rc<DxvkGpuQuery>          m_query;
 
     const DxvkPipelineLayout* m_computePipelineLayout = nullptr;
