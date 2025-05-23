@@ -305,13 +305,11 @@ namespace dxvk {
     std::array<DxvkDescriptorWrite, 4> descriptors = { };
 
     auto& imageDescriptor = descriptors[0u];
-    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     imageDescriptor.descriptor = srcView->getDescriptor();
-    imageDescriptor.sampler = m_samplerPresent->getDescriptor();
 
     auto& gammaDescriptor = descriptors[1u];
-    gammaDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    gammaDescriptor.sampler = m_samplerGamma->getDescriptor();
+    gammaDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
     if (m_gammaView)
       gammaDescriptor.descriptor = m_gammaView->getDescriptor();
@@ -323,15 +321,16 @@ namespace dxvk {
       hudDescriptor.descriptor = m_hudSrv->getDescriptor();
 
     auto& cursorDescriptor = descriptors[3u];
-    cursorDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    cursorDescriptor.sampler = m_samplerCursorNearest->getDescriptor();
+    cursorDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+    uint32_t cursorSampler = m_samplerCursorNearest->getDescriptor().samplerIndex;
 
     if (m_cursorView) {
       VkExtent3D extent = m_cursorImage->info().extent;
 
       if (m_cursorRect.extent.width != extent.width
        || m_cursorRect.extent.height != extent.height)
-        cursorDescriptor.sampler = m_samplerCursorLinear->getDescriptor();
+        cursorSampler = m_samplerCursorLinear->getDescriptor().samplerIndex;
 
       cursorDescriptor.descriptor = m_cursorView->getDescriptor();
     }
@@ -342,6 +341,8 @@ namespace dxvk {
     args.dstOffset = dstRect.offset;
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
+    args.samplerGamma = m_samplerGamma->getDescriptor().samplerIndex;
+    args.samplerCursor = cursorSampler;
 
     ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -369,7 +370,6 @@ namespace dxvk {
       ctx->track(m_cursorImage, DxvkAccess::Read);
 
     ctx->track(m_samplerGamma);
-    ctx->track(m_samplerPresent);
     ctx->track(m_samplerCursorLinear);
     ctx->track(m_samplerCursorNearest);
   }
@@ -533,18 +533,18 @@ namespace dxvk {
     VkExtent3D cursorExtent = m_cursorImage->info().extent;
 
     DxvkDescriptorWrite imageDescriptor = { };
-    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     imageDescriptor.descriptor = m_cursorView->getDescriptor();
-    imageDescriptor.sampler = m_samplerCursorNearest->getDescriptor();
-
-    if (m_cursorRect.extent.width != cursorExtent.width
-     || m_cursorRect.extent.height != cursorExtent.height)
-      imageDescriptor.sampler = m_samplerCursorLinear->getDescriptor();
 
     CursorPushConstants args = { };
     args.dstExtent = { dstExtent.width, dstExtent.height };
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
+    args.sampler = m_samplerCursorNearest->getDescriptor().samplerIndex;
+
+    if (m_cursorRect.extent.width != cursorExtent.width
+     || m_cursorRect.extent.height != cursorExtent.height)
+      args.sampler = m_samplerCursorLinear->getDescriptor().samplerIndex;
 
     ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -666,14 +666,6 @@ namespace dxvk {
     samplerInfo.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
       VK_SAMPLER_MIPMAP_MODE_NEAREST);
     samplerInfo.setAddressModes(
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
-    samplerInfo.setUsePixelCoordinates(true);
- 
-    m_samplerPresent = m_device->createSampler(samplerInfo);
-
-    samplerInfo.setAddressModes(
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -697,23 +689,24 @@ namespace dxvk {
 
   const DxvkPipelineLayout* DxvkSwapchainBlitter::createBlitPipelineLayout() {
     static const std::array<DxvkDescriptorSetLayoutBinding, 4> bindings = {{
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(PushConstants), bindings.size(), bindings.data());
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(PushConstants), bindings.size(), bindings.data());
   }
 
 
   const DxvkPipelineLayout* DxvkSwapchainBlitter::createCursorPipelineLayout() {
     static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_VERTEX_BIT,
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(CursorPushConstants), bindings.size(), bindings.data());
   }
 
