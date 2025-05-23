@@ -247,7 +247,7 @@ namespace dxvk {
     info.outputTopology = m_outputTopology;
 
     if (m_ps.pushConstantId)
-      info.pushConstSize = sizeof(DxbcPushConstants);
+      info.sharedPushData = DxvkPushDataBlock(0u, sizeof(DxbcPushConstants), 4u, 0u);
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;

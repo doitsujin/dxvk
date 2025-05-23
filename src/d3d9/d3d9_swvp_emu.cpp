@@ -310,7 +310,8 @@ namespace dxvk {
       info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
-      info.pushConstSize = sizeof(D3D9RenderStateInfo) + sizeof(D3D9SwvpEmuArgs);
+      info.sharedPushData = DxvkPushDataBlock(0u,
+        sizeof(D3D9RenderStateInfo) + sizeof(D3D9SwvpEmuArgs), 4u, 0u);
       info.inputMask = m_inputMask;
       info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
