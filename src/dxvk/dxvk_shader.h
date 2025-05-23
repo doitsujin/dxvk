@@ -52,8 +52,9 @@ namespace dxvk {
     uint32_t outputMask = 0;
     /// Flat shading input mask
     uint32_t flatShadingInputs = 0;
-    /// Push constant range
-    uint32_t pushConstSize = 0;
+    /// Push data blocks
+    DxvkPushDataBlock sharedPushData;
+    DxvkPushDataBlock localPushData;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
