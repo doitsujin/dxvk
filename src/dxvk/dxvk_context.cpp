@@ -6500,9 +6500,12 @@ namespace dxvk {
         uint32_t countMask = dirtySetMask + (dirtySetMask & -dirtySetMask);
         uint32_t count = bit::bsf(countMask) - first;
 
+        // Global sampler set will always be bound to index 0
+        uint32_t setIndex = first + uint32_t(pipelineLayout->usesSamplerHeap());
+
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
           BindPoint, pipelineLayout->getPipelineLayout(),
-          first, count, &sets[first]);
+          setIndex, count, &sets[first]);
 
         dirtySetMask &= countMask;
       } while (dirtySetMask);

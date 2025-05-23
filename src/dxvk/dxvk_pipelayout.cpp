@@ -133,13 +133,14 @@ namespace dxvk {
     }
 
     // Gather descriptor set layout objects, some of these may be null.
-    std::array<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets> setLayouts = { };
+    small_vector<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets + 1u> setLayouts;
+
+    if (m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap))
+      setLayouts.push_back(m_device->getSamplerDescriptorSet().layout);
 
     for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
       m_setLayouts[i] = key.getDescriptorSetLayout(i);
-
-      if (m_setLayouts[i])
-        setLayouts[i] = m_setLayouts[i]->getSetLayout();
+      setLayouts.push_back(m_setLayouts[i] ? m_setLayouts[i]->getSetLayout() : VK_NULL_HANDLE);
     }
 
     // Set up push constant range, if any
@@ -152,7 +153,7 @@ namespace dxvk {
     if (key.getType() == DxvkPipelineLayoutType::Independent)
       layoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
 
-    layoutInfo.setLayoutCount = key.getDescriptorSetCount();
+    layoutInfo.setLayoutCount = setLayouts.size();
 
     if (layoutInfo.setLayoutCount)
       layoutInfo.pSetLayouts = setLayouts.data();
@@ -259,7 +260,7 @@ namespace dxvk {
     auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
 
     // Descriptor processing needs to know the exact push data offsets
-    auto setLayouts = buildDescriptorSetLayouts(type, builder, manager);
+    auto setLayouts = buildDescriptorSetLayouts(type, flags, builder, manager);
 
     // Create the actual pipeline layout
     DxvkPipelineLayoutKey key(type, flags, builder.getStageMask(),
@@ -352,6 +353,7 @@ namespace dxvk {
   small_vector<const DxvkDescriptorSetLayout*, DxvkPipelineBindings::MaxSets>
   DxvkPipelineBindings::buildDescriptorSetLayouts(
           DxvkPipelineLayoutType      type,
+          DxvkPipelineLayoutFlags     flags,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
     auto stageMask = builder.getStageMask();
@@ -376,8 +378,10 @@ namespace dxvk {
       DxvkShaderBinding dstMapping(srcMapping);
 
       if (binding.usesDescriptor()) {
+        uint32_t realSet = set + uint32_t(flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap));
+
         auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
-        dstMapping = DxvkShaderBinding(binding.getStageMask(), set, bindingIndex);
+        dstMapping = DxvkShaderBinding(binding.getStageMask(), realSet, bindingIndex);
 
         layout.bindingMap.addBinding(srcMapping, dstMapping);
         layout.setStateMasks[set] |= computeStateMask(binding);
