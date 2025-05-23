@@ -415,6 +415,15 @@ namespace dxvk {
       }
     }
 
+    // Remap sampler descriptor heap bindings
+    if (flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap)) {
+      DxvkShaderBinding dstMapping(builder.getStageMask(), 0u, 0u);
+
+      for (uint32_t i = 0u; i < builder.getSamplerHeapBindingCount(); i++) {
+        layout.bindingMap.addBinding(builder.getSamplerHeapBinding(i), dstMapping);
+      }
+    }
+
     // Create the actual descriptor set layout objects
     small_vector<const DxvkDescriptorSetLayout*, MaxSets> setLayouts(setInfos.count);
 
@@ -655,6 +664,12 @@ namespace dxvk {
   }
 
 
+  void DxvkPipelineLayoutBuilder::addSamplerHeap(
+    const DxvkShaderBinding&        binding) {
+    m_samplerHeaps.push_back(binding);
+  }
+
+
   void DxvkPipelineLayoutBuilder::addLayout(
     const DxvkPipelineLayoutBuilder& layout) {
     m_stageMask |= layout.m_stageMask;
@@ -670,6 +685,9 @@ namespace dxvk {
     }
 
     addBindings(layout.m_bindings.size(), layout.m_bindings.data());
+
+    for (uint32_t i = 0u; i < layout.getSamplerHeapBindingCount(); i++)
+      addSamplerHeap(layout.getSamplerHeapBinding(i));
   }
 
 }

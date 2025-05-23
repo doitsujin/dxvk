@@ -55,6 +55,8 @@ namespace dxvk {
     /// Push data blocks
     DxvkPushDataBlock sharedPushData;
     DxvkPushDataBlock localPushData;
+    /// Descriptor set and binding of global sampler heap
+    DxvkShaderBinding samplerHeap;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
