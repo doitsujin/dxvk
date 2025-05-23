@@ -256,6 +256,8 @@ namespace dxvk {
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
     auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
+
+    // Descriptor processing needs to know the exact push data offsets
     auto setLayouts = buildDescriptorSetLayouts(type, builder, manager);
 
     // Create the actual pipeline layout
@@ -287,10 +289,14 @@ namespace dxvk {
       // are going to use their push constants, so allocate the maximum amount.
       VkShaderStageFlags stageMask = VK_SHADER_STAGE_ALL_GRAPHICS & util::shaderStages(device->getShaderPipelineStages());
 
-      pushDataSize = MaxSharedPushDataSize;
       uint32_t index = DxvkPushDataBlock::computeIndex(stageMask);
 
-      pushDataBlocks[index] = DxvkPushDataBlock(stageMask, 0u, pushDataSize, 4u, 0u);
+      pushDataSize = align(pushDataSize, sizeof(uint64_t));
+
+      pushDataBlocks[index] = DxvkPushDataBlock(stageMask,
+        pushDataSize, MaxSharedPushDataSize, 8u, 0u);
+      pushDataSize += MaxSharedPushDataSize;
+
       pushDataMask |= 1u << index;
 
       for (auto i : bit::BitMask(stageMask)) {
@@ -298,30 +304,38 @@ namespace dxvk {
         index = DxvkPushDataBlock::computeIndex(stage);
 
         pushDataBlocks[index] = DxvkPushDataBlock(stage,
-          pushDataSize, MaxPerStagePushDataSize, 4u, 0u);
+          pushDataSize, MaxPerStagePushDataSize, 8u, 0u);
 
         pushDataSize += MaxPerStagePushDataSize;
         pushDataMask |= 1u << index;
       }
-    }
 
-    for (auto i : bit::BitMask(builder.getPushDataMask())) {
-      const auto block = builder.getPushDataBlock(i);
+      // Move blocks to pre-computed locations
+      for (auto i : bit::BitMask(builder.getPushDataMask())) {
+        auto block = builder.getPushDataBlock(i);
 
-      if (type == DxvkPipelineLayoutType::Independent) {
-        // Merge resource mask into existing block
-        pushDataBlocks[i].merge(block);
-      } else {
+        block.rebase(
+          pushDataBlocks[i].getOffset(),
+          pushDataBlocks[i].getSize());
+
+        pushDataBlocks[i] = block;
+      }
+    } else {
+      // Pack push data as tightly as possible
+      for (auto i : bit::BitMask(builder.getPushDataMask())) {
+        auto block = builder.getPushDataBlock(i);
+
         pushDataSize = align(pushDataSize, block.getAlignment());
 
         pushDataBlocks[i] = block;
-        pushDataBlocks[i].rebase(pushDataSize);
+        pushDataBlocks[i].rebase(pushDataSize, block.getSize());
 
         pushDataSize += block.getSize();
       }
-
-      layout.bindingMap.addPushData(block, pushDataBlocks[i].getOffset());
     }
+
+    for (auto i : bit::BitMask(builder.getPushDataMask()))
+      layout.bindingMap.addPushData(builder.getPushDataBlock(i), pushDataBlocks[i].getOffset());
 
     // Compact the array based on the bit mask
     uint32_t pushDataBlockCount = 0u;
@@ -352,15 +366,21 @@ namespace dxvk {
 
     for (size_t i = 0; i < bindings.bindingCount; i++) {
       auto binding = bindings.bindings[i];
-      auto set = setInfos.map[computeSetForBinding(type, binding)];
-      auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+      auto set = computeSetForBinding(type, binding);
+
+      if (set < setInfos.map.size())
+        set = setInfos.map[set];
 
       DxvkShaderBinding srcMapping(binding.getStageMask(), binding.getSet(), binding.getBinding());
-      DxvkShaderBinding dstMapping(binding.getStageMask(), set, bindingIndex);
+      DxvkShaderBinding dstMapping(srcMapping);
 
-      layout.bindingMap.addBinding(srcMapping, dstMapping);
+      if (binding.usesDescriptor()) {
+        auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
+        dstMapping = DxvkShaderBinding(binding.getStageMask(), set, bindingIndex);
 
-      layout.setStateMasks[set] |= computeStateMask(binding);
+        layout.bindingMap.addBinding(srcMapping, dstMapping);
+        layout.setStateMasks[set] |= computeStateMask(binding);
+      }
 
       if (binding.getDescriptorCount()) {
         if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
@@ -377,7 +397,15 @@ namespace dxvk {
               appendDescriptors(layout.setResources[set], binding, dstMapping);
           }
         } else {
-          appendDescriptors(layout.setRawBindings[set], binding, dstMapping);
+          auto offset = layout.bindingMap.mapPushData(
+            binding.getStageMask(), binding.getBlockOffset());
+
+          if (offset == -1u)
+            throw DxvkError(str::format("No push data mapping found for offset ", binding.getBlockOffset()));
+
+          binding.setBlockOffset(offset);
+
+          appendDescriptors(layout.rawBindings, binding, dstMapping);
         }
       }
     }
@@ -465,6 +493,9 @@ namespace dxvk {
     const DxvkShaderDescriptor&     binding) {
     VkShaderStageFlags stage = binding.getStageMask();
 
+    if (!binding.usesDescriptor())
+      return -1u;
+
     if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
       return DxvkDescriptorSets::CpResources;
 
@@ -509,8 +540,10 @@ namespace dxvk {
       std::array<uint16_t, MaxSets> setSizes = { };
 
       for (size_t i = 0u; i < bindings.bindingCount; i++) {
-        uint32_t set = computeSetForBinding(type, bindings.bindings[i]);
-        setSizes[set] += bindings.bindings[i].getDescriptorCount();
+        if (bindings.bindings[i].usesDescriptor()) {
+          uint32_t set = computeSetForBinding(type, bindings.bindings[i]);
+          setSizes[set] += bindings.bindings[i].getDescriptorCount();
+        }
       }
 
       // As an optimization, if a graphics pipeline only uses a very small
