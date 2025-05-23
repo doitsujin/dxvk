@@ -383,11 +383,11 @@ namespace dxvk {
       }
 
       if (binding.getDescriptorCount()) {
-        if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
-         || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-          appendDescriptors(layout.setSamplers[set], binding, dstMapping);
-
         if (binding.usesDescriptor()) {
+          if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER
+           || binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+            appendDescriptors(layout.setSamplers[set], binding, dstMapping);
+
           appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
 
           if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
