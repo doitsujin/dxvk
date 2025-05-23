@@ -978,20 +978,25 @@ namespace dxvk {
       const DxvkImageUsageInfo&       usageInfo);
 
     /**
-     * \brief Updates push constants
+     * \brief Updates push data
      * 
-     * Updates the given push constant range.
+     * \param [in] stages Stage to set data for. If multiple
+     *    stages are set, this will push to the shared block.
      * \param [in] offset Byte offset of data to update
      * \param [in] size Number of bytes to update
      * \param [in] data Pointer to raw data
      */
-    void pushConstants(
+    void pushData(
+            VkShaderStageFlags        stages,
             uint32_t                  offset,
             uint32_t                  size,
       const void*                     data) {
-      std::memcpy(&m_state.pc.data[offset], data, size);
+      uint32_t index = DxvkPushDataBlock::computeIndex(stages);
 
-      m_flags.set(DxvkContextFlag::DirtyPushConstants);
+      uint32_t baseOffset = computePushDataBlockOffset(index);
+      std::memcpy(&m_state.pc.constantData[baseOffset + offset], data, size);
+
+      m_dirtyPushDataBlocks |= 1u << index;
     }
 
     /**
@@ -1372,6 +1377,7 @@ namespace dxvk {
     DxvkContextState        m_state;
     DxvkContextFeatures     m_features;
     DxvkDescriptorState     m_descriptorState;
+    uint32_t                m_dirtyPushDataBlocks = 0u;
 
     Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorPoolSet> m_descriptorManager;
@@ -1748,7 +1754,7 @@ namespace dxvk {
     void updateDynamicState();
 
     template<VkPipelineBindPoint BindPoint>
-    void updatePushConstants();
+    void updatePushData();
     
     template<bool Resolve = true>
     bool commitComputeState();
@@ -2162,6 +2168,10 @@ namespace dxvk {
     void beginActiveDebugRegions();
 
     void endActiveDebugRegions();
+
+    static uint32_t computePushDataBlockOffset(uint32_t index) {
+      return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
+    }
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
