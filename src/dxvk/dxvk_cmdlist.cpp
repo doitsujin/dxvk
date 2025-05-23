@@ -517,15 +517,6 @@ namespace dxvk {
               descriptor.image = info.descriptor->legacy.image;
           } break;
 
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-            descriptor.image.sampler = info.sampler.samplerObject;
-
-            if (info.descriptor) {
-              descriptor.image.imageView = info.descriptor->legacy.image.imageView;
-              descriptor.image.imageLayout = info.descriptor->legacy.image.imageLayout;
-            }
-          } break;
-
           default:
             Logger::err(str::format("Unhandled descriptor type ", info.descriptorType));
         }
