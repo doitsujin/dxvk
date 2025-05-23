@@ -497,6 +497,13 @@ namespace dxvk {
       m_size        (uint16_t(size)),
       m_resourceMask(uint64_t(resourceMask)) { }
 
+    DxvkPushDataBlock(
+            uint32_t                  offset,
+            uint32_t                  size,
+            uint32_t                  alignment,
+            uint64_t                  resourceMask)
+    : DxvkPushDataBlock(0u, offset, size, alignment, resourceMask) { }
+
     /**
      * \brief Queries stage mask
      * \returns Stage mask

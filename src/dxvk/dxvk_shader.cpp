@@ -184,12 +184,25 @@ namespace dxvk {
         m_bindingOffsets.push_back(info);
     }
 
-    if (info.pushConstSize && pushConstantStructId) {
-      VkShaderStageFlags stage = (m_info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
-        ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
+    if (pushConstantStructId) {
+      if (!info.sharedPushData.isEmpty()) {
+        auto stageMask = (info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
+          ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
 
-      m_layout.addPushData(DxvkPushDataBlock(
-        stage, 0u, info.pushConstSize, 4u, 0u));
+        m_layout.addPushData(DxvkPushDataBlock(stageMask,
+          info.sharedPushData.getOffset(),
+          info.sharedPushData.getSize(),
+          info.sharedPushData.getAlignment(),
+          info.sharedPushData.getResourceDwordMask()));
+      }
+
+      if (!info.localPushData.isEmpty()) {
+        m_layout.addPushData(DxvkPushDataBlock(info.stage,
+          info.localPushData.getOffset(),
+          info.localPushData.getSize(),
+          info.localPushData.getAlignment(),
+          info.localPushData.getResourceDwordMask()));
+      }
     }
 
     // Don't set pipeline library flag if the shader
