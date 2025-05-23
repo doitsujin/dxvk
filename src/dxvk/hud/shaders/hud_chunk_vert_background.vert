@@ -17,6 +17,7 @@ uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
+  uint  samplerIndex;
 };
 
 vec2 unpack_u16(uint v) {
