@@ -1445,6 +1445,18 @@ namespace dxvk {
         && !m_state.renderTargets[Index]->IsNull();
     }
 
+    inline D3D9ShaderMasks VSShaderMasks() const {
+      return m_state.vertexShader != nullptr
+        ? m_state.vertexShader->GetCommonShader()->GetShaderMask()
+        : D3D9ShaderMasks();
+    }
+
+    inline D3D9ShaderMasks PSShaderMasks() const {
+      return m_state.pixelShader != nullptr
+        ? m_state.pixelShader->GetCommonShader()->GetShaderMask()
+        : FixedFunctionMask;
+    }
+
     GpuFlushType GetMaxFlushType() const;
 
     Com<D3D9InterfaceEx>            m_parent;
@@ -1519,7 +1531,11 @@ namespace dxvk {
     uint32_t                        m_mismatchingTextureTypes = 0;
     uint32_t                        m_projectionBitfield  = 0;
 
+    // Used to track whether sampler slots whose state has been changed and bindings in the backend need to be updated
     uint32_t                        m_dirtySamplerStates = 0;
+    /**
+     * Used to track the texture slots that have been changed and bindings in the backend need to be updated
+     */
     uint32_t                        m_dirtyTextures      = 0;
 
     uint32_t                        m_activeRTsWhichAreTextures : 4;
@@ -1551,9 +1567,6 @@ namespace dxvk {
     uint32_t                        m_lastSamplerTypesFF = 0;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
-
-    D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
-    D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
 
     bool                            m_isSWVP;
     bool                            m_isD3D8Compatible;
