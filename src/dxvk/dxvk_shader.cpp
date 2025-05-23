@@ -205,6 +205,12 @@ namespace dxvk {
       }
     }
 
+    if (info.samplerHeap.getStageMask() & info.stage) {
+      m_layout.addSamplerHeap(DxvkShaderBinding(info.stage,
+        info.samplerHeap.getSet(),
+        info.samplerHeap.getBinding()));
+    }
+
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries
     m_needsLibraryCompile = canUsePipelineLibrary(true);

@@ -1245,6 +1245,14 @@ namespace dxvk {
       m_binding (uint16_t(binding)) { }
 
     /**
+     * \brief Queries stage mask
+     * \returns Stage mask
+     */
+    VkShaderStageFlags getStageMask() const {
+      return VkShaderStageFlags(m_stages);
+    }
+
+    /**
      * \brief Queries set index
      * \returns Set index
      */
@@ -1423,6 +1431,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries number of sampler heap bindings
+     * \returns Sampler heap binding count
+     */
+    uint32_t getSamplerHeapBindingCount() const {
+      return m_samplerHeaps.size();
+    }
+
+    /**
+     * \brief Queries sampler heap binding info
+     *
+     * \param [in] index Sampler heap binding index
+     * \returns Set and binding for a given shader stage
+     */
+    DxvkShaderBinding getSamplerHeapBinding(uint32_t index) const {
+      return m_samplerHeaps[index];
+    }
+
+    /**
      * \brief Adds push data block
      * \param [in] range Push data block
      */
@@ -1442,6 +1468,15 @@ namespace dxvk {
       const DxvkShaderDescriptor*     bindings);
 
     /**
+     * \brief Adds sampler heap declaration
+     *
+     * Used so that the sampler binding can be remapped.
+     * \param [in] binding Sampler heap binding info
+     */
+    void addSamplerHeap(
+      const DxvkShaderBinding&        binding);
+
+    /**
      * \brief Merges another layout
      *
      * Adds push constants and bindings from the given
@@ -1458,7 +1493,8 @@ namespace dxvk {
     uint32_t                                                        m_pushMask = 0u;
     std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
 
-    std::vector<DxvkShaderDescriptor> m_bindings;
+    small_vector<DxvkShaderDescriptor, 32u> m_bindings;
+    small_vector<DxvkShaderBinding, 4u> m_samplerHeaps;
 
   };
 
