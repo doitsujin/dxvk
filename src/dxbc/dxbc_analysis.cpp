@@ -55,6 +55,11 @@ namespace dxvk {
         }
       } break;
 
+      case DxbcInstClass::AtomicCounter: {
+        const uint32_t registerId = ins.dst[1].idx[0].offset;
+        m_analysis->uavCounterMask |= uint64_t(1u) << registerId;
+      } break;
+
       case DxbcInstClass::TextureSample:
       case DxbcInstClass::TextureGather:
       case DxbcInstClass::TextureQueryLod:
