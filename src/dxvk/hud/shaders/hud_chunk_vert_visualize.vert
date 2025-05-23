@@ -17,6 +17,7 @@ uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
+  uint  samplerIndex;
 };
 
 layout(location = 0) out vec2 o_coord;
