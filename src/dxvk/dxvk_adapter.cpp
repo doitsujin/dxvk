@@ -365,6 +365,13 @@ namespace dxvk {
     enabledFeatures.vk12.descriptorBindingPartiallyBound = VK_TRUE;
     enabledFeatures.vk12.runtimeDescriptorArray = VK_TRUE;
 
+    // Convenience feature, we can work without this
+    enabledFeatures.core.features.shaderInt16 =
+      m_deviceFeatures.core.features.shaderInt16;
+    enabledFeatures.vk11.storagePushConstant16 =
+      m_deviceFeatures.vk11.storagePushConstant16 &&
+      m_deviceFeatures.core.features.shaderInt16;
+
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
     enabledFeatures.vk13.robustImageAccess =
