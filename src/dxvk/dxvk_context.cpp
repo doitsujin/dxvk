@@ -7330,7 +7330,7 @@ namespace dxvk {
     // any resource previously bound as read-only cannot have been written by
     // the same pipeline.
     VkShaderStageFlags dirtyStageMask = m_descriptorState.getDirtyStageMask(
-      DxvkDescriptorClass::Buffer | DxvkDescriptorClass::View);
+      DxvkDescriptorClass::Buffer | DxvkDescriptorClass::View | DxvkDescriptorClass::Raw);
     dirtyStageMask &= layout->getNonemptyStageMask();
 
     for (auto stageIndex : bit::BitMask(uint32_t(dirtyStageMask))) {

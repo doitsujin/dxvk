@@ -92,8 +92,9 @@ namespace dxvk {
     static constexpr uint32_t Buffer  = 1u << 0u;
     static constexpr uint32_t View    = 1u << 8u;
     static constexpr uint32_t Sampler = 1u << 16u;
+    static constexpr uint32_t Raw     = 1u << 24u;
 
-    static constexpr uint32_t All = Buffer | View | Sampler;
+    static constexpr uint32_t All = Buffer | View | Sampler | Raw;
   };
 
 
@@ -108,11 +109,11 @@ namespace dxvk {
     DxvkDescriptorState() = default;
 
     void dirtyBuffers(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer | DxvkDescriptorClass::Raw);
     }
 
     void dirtyViews(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View | DxvkDescriptorClass::Raw);
     }
 
     void dirtySamplers(VkShaderStageFlags stages) {
@@ -129,6 +130,10 @@ namespace dxvk {
 
     bool hasDirtyResources(VkShaderStageFlags stages) const {
       return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::All));
+    }
+
+    bool hasDirtyRawDescriptors(VkShaderStageFlags stages) {
+      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::Raw));
     }
 
     bool testDirtyMask(uint32_t mask) const {
