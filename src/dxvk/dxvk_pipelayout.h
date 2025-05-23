@@ -91,9 +91,9 @@ namespace dxvk {
     static constexpr uint32_t Buffer  = 1u << 0u;
     static constexpr uint32_t View    = 1u << 8u;
     static constexpr uint32_t Sampler = 1u << 16u;
-    static constexpr uint32_t Raw     = 1u << 24u;
+    static constexpr uint32_t Va      = 1u << 24u;
 
-    static constexpr uint32_t All = Buffer | View | Sampler | Raw;
+    static constexpr uint32_t All = Buffer | View | Sampler | Va;
   };
 
 
@@ -108,15 +108,15 @@ namespace dxvk {
     DxvkDescriptorState() = default;
 
     void dirtyBuffers(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer | DxvkDescriptorClass::Raw);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Buffer | DxvkDescriptorClass::Va);
     }
 
     void dirtyViews(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View | DxvkDescriptorClass::Raw);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::View | DxvkDescriptorClass::Va);
     }
 
     void dirtySamplers(VkShaderStageFlags stages) {
-      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler | DxvkDescriptorClass::Raw);
+      m_dirtyMask |= computeMask(stages, DxvkDescriptorClass::Sampler);
     }
 
     void dirtyStages(VkShaderStageFlags stages) {
@@ -131,8 +131,12 @@ namespace dxvk {
       return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::All));
     }
 
-    bool hasDirtyRawDescriptors(VkShaderStageFlags stages) {
-      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::Raw));
+    bool hasDirtySamplers(VkShaderStageFlags stages) {
+      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::Sampler));
+    }
+
+    bool hasDirtyVas(VkShaderStageFlags stages) {
+      return bool(m_dirtyMask & computeMask(stages, DxvkDescriptorClass::Va));
     }
 
     bool testDirtyMask(uint32_t mask) const {
@@ -1593,19 +1597,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries all sampler bindings in a given set
-     *
-     * This includes both pure samplers as well as
-     * combined image and sampler bindings.
-     * \param [in] type Pipeline layout type
-     * \param [in] set Set index
-     * \returns List of all sampler bindings in the set
-     */
-    DxvkPipelineBindingRange getSamplersInSet(DxvkPipelineLayoutType type, uint32_t set) const {
-      return makeBindingRange(m_layouts[uint32_t(type)].setSamplers[set]);
-    }
-
-    /**
      * \brief Queries all shader resources in a given set
      *
      * Includes all resources that are bound via an image or buffer view,
@@ -1635,14 +1626,26 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries all raw bindings in a given set
+     * \brief Queries all sampler bindings
+     *
+     * This includes only pure samplers, not
+     * combined image and sampler descriptors.
+     * \param [in] type Pipeline layout type
+     * \returns List of all sampler bindings in the set
+     */
+    DxvkPipelineBindingRange getSamplers(DxvkPipelineLayoutType type) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].samplers);
+    }
+
+    /**
+     * \brief Queries all virtual address bindings
      *
      * \param [in] type Pipeline layout type
      * \param [in] set Set index
      * \returns List of all non-descriptor bindings.
      */
-    DxvkPipelineBindingRange getRawBindings(DxvkPipelineLayoutType type) const {
-      return makeBindingRange(m_layouts[uint32_t(type)].rawBindings);
+    DxvkPipelineBindingRange getVaBindings(DxvkPipelineLayoutType type) const {
+      return makeBindingRange(m_layouts[uint32_t(type)].vaBindings);
     }
 
     /**
@@ -1706,13 +1709,13 @@ namespace dxvk {
 
     struct PerLayoutInfo {
       std::array<BindingList, MaxSets>  setDescriptors       = { };
-      std::array<BindingList, MaxSets>  setSamplers          = { };
       std::array<BindingList, MaxSets>  setResources         = { };
       std::array<BindingList, MaxSets>  setUniformBuffers    = { };
 
       std::array<uint32_t, MaxSets>     setStateMasks = { };
 
-      BindingList                       rawBindings = { };
+      BindingList                       samplers = { };
+      BindingList                       vaBindings = { };
       DxvkShaderBindingMap              bindingMap = { };
 
       const DxvkPipelineLayout*         layout = nullptr;
