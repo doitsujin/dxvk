@@ -3483,16 +3483,8 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
-      m_vsShaderMasks = newShader->GetShaderMask();
 
-      UpdateTextureTypeMismatchesForShader(newShader, m_vsShaderMasks.samplerMask, FirstVSSamplerSlot);
-    }
-    else {
-      m_vsShaderMasks = D3D9ShaderMasks();
-
-      // Fixed function vertex shaders don't support sampling textures.
-      m_dirtyTextures |= m_vsShaderMasks.samplerMask & m_mismatchingTextureTypes;
-      m_mismatchingTextureTypes &= ~m_vsShaderMasks.samplerMask;
+      UpdateTextureTypeMismatchesForShader(newShader, VSShaderMasks().samplerMask, FirstVSSamplerSlot);
     }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
@@ -3852,25 +3844,20 @@ namespace dxvk {
         || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
+    const D3D9ShaderMasks oldShaderMasks = PSShaderMasks();
     m_state.pixelShader = shader;
-
-    D3D9ShaderMasks newShaderMasks;
+    const D3D9ShaderMasks newShaderMasks = PSShaderMasks();
 
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
       BindShader<DxsoProgramTypes::PixelShader>(newShader);
-      newShaderMasks = newShader->GetShaderMask();
 
       UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
     }
     else {
       // TODO: What fixed function textures are in use?
       // Currently we are making all 8 of them as in use here.
-
-      // The RT output is always 0 for fixed function.
-      newShaderMasks = FixedFunctionMask;
-
       // Fixed function always uses spec constants to decide the texture type.
       m_dirtyTextures |= newShaderMasks.samplerMask & m_mismatchingTextureTypes;
       m_mismatchingTextureTypes &= ~newShaderMasks.samplerMask;
@@ -3886,14 +3873,13 @@ namespace dxvk {
       anyColorWriteMask |= (m_state.renderStates[ColorWriteIndex(i)] != 0) << i;
     }
 
-    uint32_t oldUseMask = boundMask & anyColorWriteMask & m_psShaderMasks.rtMask;
+    uint32_t oldUseMask = boundMask & anyColorWriteMask & oldShaderMasks.rtMask;
     uint32_t newUseMask = boundMask & anyColorWriteMask & newShaderMasks.rtMask;
     if (oldUseMask != newUseMask)
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    if (m_psShaderMasks.samplerMask != newShaderMasks.samplerMask ||
-        m_psShaderMasks.rtMask != newShaderMasks.rtMask) {
-      m_psShaderMasks = newShaderMasks;
+    if (oldShaderMasks.samplerMask != newShaderMasks.samplerMask ||
+        oldShaderMasks.rtMask != newShaderMasks.rtMask) {
       UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
       UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
     }
@@ -6268,7 +6254,7 @@ namespace dxvk {
 
 
   inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
-    auto masks = m_psShaderMasks;
+    auto masks = PSShaderMasks();
     masks.rtMask      &= m_activeRTsWhichAreTextures;
     masks.samplerMask &= m_activeTextureRTs & texMask;
 
@@ -6295,7 +6281,7 @@ namespace dxvk {
 
 
   inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
-    auto masks = m_psShaderMasks;
+    auto masks = PSShaderMasks();
     masks.samplerMask &= m_activeTextureDSs & texMask;
 
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
@@ -6650,6 +6636,8 @@ namespace dxvk {
     // break up the current render pass. So we dont unbind for disabled color write masks
     // if the RT has the same size or is bigger than the smallest active RT.
 
+    const D3D9ShaderMasks psShaderMasks = PSShaderMasks();
+
     uint32_t boundMask = 0u;
     uint32_t anyColorWriteMask = 0u;
     uint32_t limitsRenderAreaMask = 0u;
@@ -6667,7 +6655,7 @@ namespace dxvk {
         continue;
 
       // Dont bind it if the pixel shader doesnt write to it
-      if (!(m_psShaderMasks.rtMask & (1 << i)))
+      if (!(psShaderMasks.rtMask & (1 << i)))
         continue;
 
       boundMask |= 1 << i;
@@ -7280,7 +7268,7 @@ namespace dxvk {
       m_activeVertexBuffersToUpload &= ~buffersToUpload;
     }
 
-    const uint32_t usedSamplerMask = m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+    const uint32_t usedSamplerMask = PSShaderMasks().samplerMask | VSShaderMasks().samplerMask;
     const uint32_t usedTextureMask = m_activeTextures & usedSamplerMask;
 
     const uint32_t texturesToUpload = m_activeTexturesToUpload & usedTextureMask;
