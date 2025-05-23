@@ -67,6 +67,12 @@ namespace dxvk {
         m_analysis->usesDerivatives = true;
       } break;
 
+      case DxbcInstClass::TextureQueryMs:
+      case DxbcInstClass::TextureQueryMsPos: {
+        if (ins.src[0].type == DxbcOperandType::Rasterizer)
+          m_analysis->usesSampleCount = true;
+      } break;
+
       case DxbcInstClass::ControlFlow: {
         if (ins.op == DxbcOpcode::Discard)
           m_analysis->usesKill = true;

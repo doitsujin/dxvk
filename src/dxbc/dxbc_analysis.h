@@ -60,6 +60,7 @@ namespace dxvk {
     
     bool usesDerivatives  = false;
     bool usesKill         = false;
+    bool usesSampleCount  = false;
   };
   
   /**
