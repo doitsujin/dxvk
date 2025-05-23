@@ -143,7 +143,8 @@ namespace dxvk {
     
     DxvkSampler(
             DxvkSamplerPool*        pool,
-      const DxvkSamplerKey&         key);
+      const DxvkSamplerKey&         key,
+            uint16_t                index);
 
     ~DxvkSampler();
 
@@ -187,6 +188,7 @@ namespace dxvk {
     DxvkSamplerDescriptor getDescriptor() const {
       DxvkSamplerDescriptor result = { };
       result.samplerObject = m_sampler;
+      result.samplerIndex = m_index;
       return result;
     }
     
@@ -207,6 +209,7 @@ namespace dxvk {
     DxvkSamplerKey        m_key       = { };
 
     VkSampler             m_sampler   = VK_NULL_HANDLE;
+    uint16_t              m_index     = 0u;
 
     DxvkSampler*          m_lruPrev   = nullptr;
     DxvkSampler*          m_lruNext   = nullptr;
@@ -277,6 +280,10 @@ namespace dxvk {
     std::unordered_map<DxvkSamplerKey,
       DxvkSampler, DxvkHash, DxvkEq> m_samplers;
 
+    small_vector<uint16_t, MaxSamplerCount> m_freeList;
+
+    Rc<DxvkSampler> m_default = nullptr;
+
     DxvkSampler* m_lruHead = nullptr;
     DxvkSampler* m_lruTail = nullptr;
 
@@ -286,6 +293,10 @@ namespace dxvk {
     void releaseSampler(DxvkSampler* sampler);
 
     void destroyLeastRecentlyUsedSampler();
+
+    uint16_t allocateSamplerIndex();
+
+    void freeSamplerIndex(uint16_t index);
 
   };
 
