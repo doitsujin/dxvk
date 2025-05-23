@@ -193,6 +193,8 @@ namespace dxvk {
       VkOffset2D dstOffset;
       VkOffset2D cursorOffset;
       VkExtent2D cursorExtent;
+      uint32_t   samplerGamma;
+      uint32_t   samplerCursor;
     };
 
     struct CursorSpecConstants {
@@ -204,6 +206,7 @@ namespace dxvk {
       VkExtent2D dstExtent;
       VkOffset2D cursorOffset;
       VkExtent2D cursorExtent;
+      uint32_t   sampler;
     };
 
     Rc<DxvkDevice>      m_device;
@@ -220,7 +223,6 @@ namespace dxvk {
     Rc<DxvkImageView>   m_cursorView;
     VkRect2D            m_cursorRect = { };
 
-    Rc<DxvkSampler>     m_samplerPresent;
     Rc<DxvkSampler>     m_samplerGamma;
     Rc<DxvkSampler>     m_samplerCursorLinear;
     Rc<DxvkSampler>     m_samplerCursorNearest;

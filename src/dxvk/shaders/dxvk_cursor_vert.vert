@@ -5,6 +5,7 @@ uniform present_info_t {
   ivec2 dst_extent;
   ivec2 cursor_offset;
   ivec2 cursor_extent;
+  uint sampler_index;
 };
 
 layout(location = 0) out vec2 o_texcoord;

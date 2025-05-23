@@ -1,5 +1,6 @@
 #include "dxvk_color_space.glsl"
 
+#extension GL_EXT_nonuniform_qualifier : require
 #extension GL_EXT_samplerless_texture_functions : require
 
 layout(constant_id = 0) const uint c_samples = 0u;
@@ -12,11 +13,13 @@ layout(constant_id = 5) const bool c_dst_is_srgb = true;
 layout(constant_id = 6) const bool c_composite_hud = false;
 layout(constant_id = 7) const bool c_composite_cursor = false;
 
-layout(set = 0, binding = 0) uniform sampler2D s_image;
-layout(set = 0, binding = 0) uniform sampler2DMS s_image_ms;
-layout(set = 0, binding = 1) uniform sampler1D s_gamma;
-layout(set = 0, binding = 2) uniform texture2D s_hud;
-layout(set = 0, binding = 3) uniform sampler2D s_cursor;
+layout(set = 0, binding = 0) uniform sampler s_samplers[];
+
+layout(set = 1, binding = 0) uniform texture2D s_image;
+layout(set = 1, binding = 0) uniform texture2DMS s_image_ms;
+layout(set = 1, binding = 1) uniform texture1D s_gamma;
+layout(set = 1, binding = 2) uniform texture2D s_hud;
+layout(set = 1, binding = 3) uniform texture2D s_cursor;
 
 layout(push_constant)
 uniform present_info_t {
@@ -25,6 +28,8 @@ uniform present_info_t {
   ivec2 dst_offset;
   ivec2 cursor_offset;
   ivec2 cursor_extent;
+  uint sampler_gamma;
+  uint sampler_cursor;
 };
 
 
@@ -48,8 +53,11 @@ vec4 composite_image(vec4 color) {
   if (c_composite_cursor) {
     ivec2 rel_ofs = coord - cursor_offset;
 
-    if (max(rel_ofs.x, rel_ofs.y) >= 0 && all(lessThan(rel_ofs, cursor_extent)))
-      color = blend_linear_sdr(color, texture(s_cursor, vec2(rel_ofs) / vec2(cursor_extent)));
+    if (max(rel_ofs.x, rel_ofs.y) >= 0 && all(lessThan(rel_ofs, cursor_extent))) {
+      color = blend_linear_sdr(color,
+        texture(sampler2D(s_cursor, s_samplers[sampler_cursor]),
+        vec2(rel_ofs) / vec2(cursor_extent)));
+    }
   }
 
   return color;
@@ -93,9 +101,9 @@ vec4 sc_rgb_to_output(vec4 color) {
     }
 
     color.rgb = vec3(
-      texture(s_gamma, color.r).r,
-      texture(s_gamma, color.g).g,
-      texture(s_gamma, color.b).b);
+      texture(sampler1D(s_gamma, s_samplers[sampler_gamma]), color.r).r,
+      texture(sampler1D(s_gamma, s_samplers[sampler_gamma]), color.g).g,
+      texture(sampler1D(s_gamma, s_samplers[sampler_gamma]), color.b).b);
 
     if (c_dst_color_space != VK_COLOR_SPACE_PASS_THROUGH_EXT) {
       color.rgb = srgb_to_linear(color.rgb);
