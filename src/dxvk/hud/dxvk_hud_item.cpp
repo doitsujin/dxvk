@@ -460,7 +460,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    m_computePipelineLayout = m_device->createBuiltInPipelineLayout(
+    m_computePipelineLayout = m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ComputePushConstants),
       bindings.size(), bindings.data());
 
@@ -474,7 +474,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(RenderPushConstants), bindings.size(), bindings.data());
   }
@@ -1066,7 +1066,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(HudPushConstants), bindings.size(), bindings.data());
   }

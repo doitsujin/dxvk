@@ -925,8 +925,10 @@ namespace dxvk {
     DxvkPipelineLayoutKey() = default;
 
     DxvkPipelineLayoutKey(
-            DxvkPipelineLayoutType    type)
-    : m_type          (type) { }
+            DxvkPipelineLayoutType    type,
+            DxvkPipelineLayoutFlags   flags)
+    : m_type          (type),
+      m_flags         (flags) { }
 
     DxvkPipelineLayoutKey(
             DxvkPipelineLayoutType    type,

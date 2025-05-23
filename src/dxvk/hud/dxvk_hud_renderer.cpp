@@ -460,7 +460,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(HudPushConstants), bindings.size(), bindings.data());
   }

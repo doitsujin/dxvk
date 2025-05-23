@@ -703,7 +703,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_FRAGMENT_BIT,
+    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(PushConstants), bindings.size(), bindings.data());
   }
 
@@ -713,7 +713,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_VERTEX_BIT,
+    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_VERTEX_BIT,
       sizeof(CursorPushConstants), bindings.size(), bindings.data());
   }
 

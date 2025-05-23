@@ -229,11 +229,12 @@ namespace dxvk {
 
 
   const DxvkPipelineLayout* DxvkDevice::createBuiltInPipelineLayout(
+          DxvkPipelineLayoutFlags         flags,
           VkShaderStageFlags              pushDataStages,
           VkDeviceSize                    pushDataSize,
           uint32_t                        bindingCount,
     const DxvkDescriptorSetLayoutBinding* bindings) {
-    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged);
+    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged, flags);
 
     if (pushDataSize) {
       key.addStages(pushDataStages);

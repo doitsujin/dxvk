@@ -491,10 +491,6 @@ namespace dxvk {
         auto& descriptor = descriptors.emplace_back();
 
         switch (info.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_SAMPLER: {
-            descriptor.image.sampler = info.sampler.samplerObject;
-          } break;
-
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
             if (info.descriptor) {
@@ -539,10 +535,18 @@ namespace dxvk {
         setLayout->getSetUpdateTemplate(),
         descriptors.data());
 
+      // Bind set as well as the global sampler heap, if requested
+      small_vector<VkDescriptorSet, 2u> sets;
+
+      if (layout->usesSamplerHeap())
+        sets.push_back(m_device->getSamplerDescriptorSet().set);
+
+      sets.push_back(set);
+
       this->cmdBindDescriptorSets(cmdBuffer,
         layout->getBindPoint(),
         layout->getPipelineLayout(),
-        0u, 1u, &set);
+        0u, sets.size(), sets.data());
     }
 
     // Update push constants

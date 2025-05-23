@@ -390,6 +390,7 @@ namespace dxvk {
     /**
      * \brief Creates built-in pipeline layout
      *
+     * \param [in] flags Pipeline layout flags
      * \param [in] pushDataStages Push data stage mask
      * \param [in] pushDataSize Push data size
      * \param [in] bindingCount Number of resource bindings
@@ -397,6 +398,7 @@ namespace dxvk {
      * \returns Unique pipeline layout
      */
     const DxvkPipelineLayout* createBuiltInPipelineLayout(
+            DxvkPipelineLayoutFlags         flags,
             VkShaderStageFlags              pushDataStages,
             VkDeviceSize                    pushDataSize,
             uint32_t                        bindingCount,
