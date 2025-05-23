@@ -4,6 +4,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "../util/util_small_vector.h"
+
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
@@ -1651,6 +1653,19 @@ namespace dxvk {
     void buildPipelineLayout(
             DxvkPipelineLayoutType      type,
             DxvkDevice*                 device,
+      const DxvkPipelineLayoutBuilder&  builder,
+            DxvkPipelineManager*        manager);
+
+    small_vector<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount>
+    buildPushDataBlocks(
+            DxvkPipelineLayoutType      type,
+            DxvkDevice*                 device,
+      const DxvkPipelineLayoutBuilder&  builder,
+            DxvkPipelineManager*        manager);
+
+    small_vector<const DxvkDescriptorSetLayout*, MaxSets>
+    buildDescriptorSetLayouts(
+            DxvkPipelineLayoutType      type,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
 
