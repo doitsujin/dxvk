@@ -597,21 +597,29 @@ namespace dxvk {
     uint32_t minDiffRefreshRate = 0;
 
     if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
+      const bool     isFlippedRefreshRate  = TargetMode.RefreshRate.Denominator > TargetMode.RefreshRate.Numerator;
+
+      if (unlikely(isFlippedRefreshRate))
+        Logger::warn("DXGI: The refresh rate denominator is greater than the numerator. Selecting the highest supported rate.");
+
+      const uint32_t targetModeNumerator   = !isFlippedRefreshRate ? TargetMode.RefreshRate.Numerator   : std::numeric_limits<uint32_t>::max();
+      const uint32_t targetModeDenominator = !isFlippedRefreshRate ? TargetMode.RefreshRate.Denominator : 1u;
+
       minDiffRefreshRate = std::accumulate(
         Modes.begin(), Modes.end(), std::numeric_limits<uint64_t>::max(),
-        [&TargetMode] (uint64_t current, const DXGI_MODE_DESC1& mode) {
+        [&targetModeNumerator, &targetModeDenominator] (uint64_t current, const DXGI_MODE_DESC1& mode) {
           uint64_t rate = uint64_t(mode.RefreshRate.Numerator)
-                        * uint64_t(TargetMode.RefreshRate.Denominator)
+                        * uint64_t(targetModeDenominator)
                         / uint64_t(mode.RefreshRate.Denominator);
-          uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
+          uint64_t diff = std::abs(int64_t(rate - uint64_t(targetModeNumerator)));
           return std::min(current, diff);
         });
 
       for (auto it = Modes.begin(); it != Modes.end(); ) {
         uint64_t rate = uint64_t(it->RefreshRate.Numerator)
-                      * uint64_t(TargetMode.RefreshRate.Denominator)
+                      * uint64_t(targetModeDenominator)
                       / uint64_t(it->RefreshRate.Denominator);
-        uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
+        uint64_t diff = std::abs(int64_t(rate - uint64_t(targetModeNumerator)));
 
         bool skipMode = diff != minDiffRefreshRate;
         it = skipMode ? Modes.erase(it) : ++it;
