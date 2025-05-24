@@ -1526,7 +1526,6 @@ namespace dxvk {
 
     uint32_t                        m_depthTextures = 0;
     uint32_t                        m_drefClamp = 0;
-    uint32_t                        m_cubeTextures = 0;
     uint32_t                        m_textureTypes = 0;
     uint32_t                        m_mismatchingTextureTypes = 0;
     uint32_t                        m_projectionBitfield  = 0;
