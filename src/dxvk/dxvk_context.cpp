@@ -6345,46 +6345,6 @@ namespace dxvk {
                 }
               } break;
 
-              case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                const auto& res = m_resources[binding.getResourceIndex()];
-                const auto& sampler = m_samplers[binding.getResourceIndex()];
-
-                const DxvkDescriptor* descriptor = nullptr;
-
-                if (res.imageView && sampler)
-                  descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-                if (descriptor) {
-                  descriptorInfo.image.sampler = sampler->getDescriptor().samplerObject;
-
-                  if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                    descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
-                    descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
-
-                    if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
-                      accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                        util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                    }
-
-                    m_cmd->track(res.imageView->image(), DxvkAccess::Read);
-                    m_cmd->track(sampler);
-                  } else {
-                    auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
-                    descriptor = view->getDescriptor(binding.getViewType());
-
-                    descriptorInfo.image.imageView = descriptor->legacy.image.imageView;
-                    descriptorInfo.image.imageLayout = descriptor->legacy.image.imageLayout;
-
-                    m_cmd->track(view->image(), DxvkAccess::Read);
-                    m_cmd->track(sampler);
-                  }
-                } else {
-                  descriptorInfo.image.sampler = m_common->dummyResources().samplerInfo().samplerObject;
-                  descriptorInfo.image.imageView = VK_NULL_HANDLE;
-                  descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-                }
-              } break;
-
               case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
                 const auto& res = m_resources[binding.getResourceIndex()];
                 const DxvkDescriptor* descriptor = nullptr;
@@ -7448,8 +7408,7 @@ namespace dxvk {
           } break;
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             const auto& slot = m_resources[binding.getResourceIndex()];
 
             if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores())) {

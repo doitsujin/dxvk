@@ -391,12 +391,10 @@ namespace dxvk {
         if (binding.usesDescriptor()) {
           appendDescriptors(layout.setDescriptors[set], binding, dstMapping);
 
-          if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
-            if (binding.isUniformBuffer())
-              appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
-            else
-              appendDescriptors(layout.setResources[set], binding, dstMapping);
-          }
+          if (binding.isUniformBuffer())
+            appendDescriptors(layout.setUniformBuffers[set], binding, dstMapping);
+          else
+            appendDescriptors(layout.setResources[set], binding, dstMapping);
         } else {
           // Compute correct push data offset for the resource
           auto offset = layout.bindingMap.mapPushData(
@@ -448,6 +446,12 @@ namespace dxvk {
         binding.getStageMask(),
         binding.getSet(),
         binding.getBinding());
+
+      if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_SAMPLER && binding.usesDescriptor())
+        throw DxvkError("Sampler descriptor without push index found");
+
+      if (binding.getDescriptorType() == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+        throw DxvkError("Combined image/sampler descriptors not supported");
 
       if (binding.getDescriptorCount()) {
         if (binding.getDescriptorType() != VK_DESCRIPTOR_TYPE_SAMPLER) {
@@ -501,19 +505,8 @@ namespace dxvk {
 
 
   uint32_t DxvkPipelineBindings::computeStateMask(const DxvkShaderDescriptor& binding) {
-    switch (binding.getDescriptorType()) {
-      case VK_DESCRIPTOR_TYPE_SAMPLER:
-        return DxvkDescriptorState::computeMask(
-          binding.getStageMask(), DxvkDescriptorClass::Sampler);
-
-      case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-        return DxvkDescriptorState::computeMask(
-          binding.getStageMask(), DxvkDescriptorClass::Sampler | DxvkDescriptorClass::View);
-
-      default:
-        return DxvkDescriptorState::computeMask(binding.getStageMask(),
-          binding.isUniformBuffer() ? DxvkDescriptorClass::Buffer : DxvkDescriptorClass::View);
-    }
+    return DxvkDescriptorState::computeMask(binding.getStageMask(),
+      binding.isUniformBuffer() ? DxvkDescriptorClass::Buffer : DxvkDescriptorClass::View);
   }
 
 
