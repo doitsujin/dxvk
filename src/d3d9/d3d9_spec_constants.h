@@ -27,9 +27,9 @@ namespace dxvk {
     SpecVertexShaderBools,  // 16 bools                       | Bits: 16
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
 
-    SpecDrefClamp,          // 1 bit for 16 PS samplers       | Bits: 16
     SpecFetch4,             // 1 bit for 16 PS samplers       | Bits: 16
 
+    SpecDrefClamp,          // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
 
     SpecConstantCount,
@@ -53,7 +53,7 @@ namespace dxvk {
 
     static constexpr std::array<BitfieldPosition, SpecConstantCount> Layout{{
       { 0, 0, 32 },  // SamplerType
-      
+
       { 1, 0,  21 }, // SamplerDepthMode
       { 1, 21, 3 },  // AlphaCompareOp
       { 1, 24, 2 },  // PointMode
@@ -68,10 +68,10 @@ namespace dxvk {
       { 3, 0,  16 }, // VertexShaderBools
       { 3, 16, 16 }, // PixelShaderBools
 
-      { 4, 0,  16 }, // DrefClamp
-      { 4, 16, 16 }, // Fetch4
+      { 4, 0,  16 }, // Fetch4
 
-      { 5, 0, 3 },   // ClipPlaneCount
+      { 5, 0, 21 },  // DrefClamp
+      { 5, 21, 3 },  // ClipPlaneCount
     }};
 
     template <D3D9SpecConstantId Id, typename T>
