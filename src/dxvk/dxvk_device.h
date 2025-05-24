@@ -268,6 +268,14 @@ namespace dxvk {
     bool mustTrackPipelineLifetime() const;
 
     /**
+     * \brief Checks whether descriptor buffers can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseDescriptorBuffer() const {
+      return m_features.extDescriptorBuffer.descriptorBuffer;
+    }
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */
@@ -475,6 +483,15 @@ namespace dxvk {
      * \returns Shared allocation cache stats
      */
     DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
+
+    /**
+     * \brief Queries descriptor properties
+     *
+     * And null descriptors.
+     */
+    const DxvkDescriptorProperties& getDescriptorProperties() {
+      return m_objects.descriptors();
+    }
 
     /**
      * \brief Queries sampler statistics
