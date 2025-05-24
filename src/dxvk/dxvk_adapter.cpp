@@ -351,11 +351,26 @@ namespace dxvk {
     enabledFeatures.vk12.timelineSemaphore = VK_TRUE;
 
     // Used for better constant array packing in some cases
-    enabledFeatures.vk12.uniformBufferStandardLayout =
-      m_deviceFeatures.vk12.uniformBufferStandardLayout;
+    enabledFeatures.vk12.uniformBufferStandardLayout = VK_TRUE;
+    enabledFeatures.vk12.scalarBlockLayout = VK_TRUE;
 
     // Required internally
     enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
+
+    // Features required for bindless samplers
+    enabledFeatures.core.features.shaderSampledImageArrayDynamicIndexing = VK_TRUE;
+    enabledFeatures.vk12.descriptorIndexing = VK_TRUE;
+    enabledFeatures.vk12.descriptorBindingSampledImageUpdateAfterBind = VK_TRUE;
+    enabledFeatures.vk12.descriptorBindingUpdateUnusedWhilePending = VK_TRUE;
+    enabledFeatures.vk12.descriptorBindingPartiallyBound = VK_TRUE;
+    enabledFeatures.vk12.runtimeDescriptorArray = VK_TRUE;
+
+    // Convenience feature, we can work without this
+    enabledFeatures.core.features.shaderInt16 =
+      m_deviceFeatures.core.features.shaderInt16;
+    enabledFeatures.vk11.storagePushConstant16 =
+      m_deviceFeatures.vk11.storagePushConstant16 &&
+      m_deviceFeatures.core.features.shaderInt16;
 
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.

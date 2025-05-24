@@ -24,8 +24,8 @@ namespace dxvk {
     DxvkObjects(DxvkDevice* device)
     : m_device          (device),
       m_memoryManager   (device),
-      m_pipelineManager (device),
       m_samplerPool     (device),
+      m_pipelineManager (device),
       m_eventPool       (device),
       m_queryPool       (device),
       m_dummyResources  (device) {
@@ -77,9 +77,9 @@ namespace dxvk {
     DxvkDevice*                   m_device;
 
     DxvkMemoryAllocator           m_memoryManager;
+    DxvkSamplerPool               m_samplerPool;
     DxvkPipelineManager           m_pipelineManager;
 
-    DxvkSamplerPool               m_samplerPool;
     DxvkGpuEventPool              m_eventPool;
     DxvkGpuQueryPool              m_queryPool;
 

@@ -5,8 +5,9 @@ namespace dxvk {
     
   DxvkSampler::DxvkSampler(
           DxvkSamplerPool*        pool,
-    const DxvkSamplerKey&         key)
-  : m_pool(pool), m_key(key) {
+    const DxvkSamplerKey&         key,
+          uint16_t                index)
+  : m_pool(pool), m_key(key), m_index(index) {
     auto vk = m_pool->m_device->vkd();
 
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
@@ -51,6 +52,8 @@ namespace dxvk {
     if (vk->vkCreateSampler(vk->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
       throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
+
+    m_pool->m_descriptorPool.writeDescriptor(m_index, m_sampler);
   }
 
 
@@ -116,13 +119,115 @@ namespace dxvk {
 
 
 
-  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
+  DxvkSamplerDescriptorPool::DxvkSamplerDescriptorPool(
+          DxvkDevice*               device,
+          uint32_t                  size)
   : m_device(device) {
+    auto vk = m_device->vkd();
 
+    VkDescriptorPoolSize poolSize = { };
+    poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    poolSize.descriptorCount = size;
+
+    VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    poolInfo.maxSets = 1u;
+    poolInfo.poolSizeCount = 1u;
+    poolInfo.pPoolSizes = &poolSize;
+
+    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &poolInfo, nullptr, &m_pool);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler pool: ", vr));
+
+    VkDescriptorSetLayoutBinding binding = { };
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    binding.descriptorCount = size;
+    binding.stageFlags = VK_SHADER_STAGE_ALL;
+
+    VkDescriptorBindingFlags bindingFlags =
+      VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
+      VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT |
+      VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+    layoutFlags.bindingCount = 1u;
+    layoutFlags.pBindingFlags = &bindingFlags;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, &layoutFlags };
+    layoutInfo.flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layoutInfo.bindingCount = 1u;
+    layoutInfo.pBindings = &binding;
+
+    if ((vr = vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_setLayout)))
+      throw DxvkError(str::format("Failed to create sampler descriptor set layout: ", vr));
+
+    VkDescriptorSetAllocateInfo setInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    setInfo.descriptorPool = m_pool;
+    setInfo.descriptorSetCount = 1u;
+    setInfo.pSetLayouts = &m_setLayout;
+
+    if ((vr = vk->vkAllocateDescriptorSets(vk->device(), &setInfo, &m_set)))
+      throw DxvkError(str::format("Failed to allocate sampler descriptor set: ", vr));
+  }
+
+
+  DxvkSamplerDescriptorPool::~DxvkSamplerDescriptorPool() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyDescriptorPool(vk->device(), m_pool, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
+  }
+
+
+  void DxvkSamplerDescriptorPool::writeDescriptor(
+          uint16_t              index,
+          VkSampler             sampler) {
+    auto vk = m_device->vkd();
+
+    VkDescriptorImageInfo info = { };
+    info.sampler = sampler;
+
+    VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    write.dstSet = m_set;
+    write.dstArrayElement = index;
+    write.descriptorCount = 1u;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    write.pImageInfo = &info;
+
+    vk->vkUpdateDescriptorSets(vk->device(), 1u, &write, 0u, nullptr);
+  }
+
+
+
+
+  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
+  : m_device(device), m_descriptorPool(device, MaxSamplerCount) {
+    // Populate free list in reverse order. Sampler index 0 is
+    // reserved for the default sampler, so skip that.
+    for (uint16_t i = MaxSamplerCount; i; i--)
+      m_freeList.push_back(i);
+
+    // Default sampler, implicitly used for null descriptors or when creating
+    // additional samplers fails for any reason. Keep a persistent reference
+    // so that this sampler does not accidentally get recycled.
+    DxvkSamplerKey defaultKey;
+    defaultKey.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR);
+    defaultKey.setLodRange(-256.0f, 256.0f, 0.0f);
+    defaultKey.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    defaultKey.setReduction(VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE);
+
+    m_default = &m_samplers.emplace(std::piecewise_construct,
+      std::forward_as_tuple(defaultKey),
+      std::forward_as_tuple(this, defaultKey, 0u)).first->second;
   }
 
 
   DxvkSamplerPool::~DxvkSamplerPool() {
+    m_default = nullptr;
     m_samplers.clear();
   }
 
@@ -161,17 +266,20 @@ namespace dxvk {
 
     // If we're spamming sampler allocations, we might need
     // to clean up unused ones here to stay within the limit
-    if (m_samplers.size() >= MaxSamplerCount)
-      destroyLeastRecentlyUsedSampler();
+    uint16_t samplerIndex = allocateSamplerIndex();
 
-    // Create new sampler object
-    DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
-      std::forward_as_tuple(key),
-      std::forward_as_tuple(this, key)).first->second;
+    if (samplerIndex) {
+      DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
+        std::forward_as_tuple(key),
+        std::forward_as_tuple(this, key, samplerIndex)).first->second;
 
-    m_samplersTotal.store(m_samplers.size());
-    m_samplersLive.store(m_samplersLive.load() + 1u);
-    return sampler;
+      m_samplersTotal.store(m_samplers.size());
+      m_samplersLive.store(m_samplersLive.load() + 1u);
+      return sampler;
+    } else {
+      Logger::err("Failed to allocate sampler, using default one.");
+      return m_default;
+    }
   }
 
 
@@ -214,6 +322,7 @@ namespace dxvk {
     DxvkSampler* sampler = m_lruHead;
 
     if (sampler) {
+      freeSamplerIndex(sampler->m_index);
       m_lruHead = sampler->m_lruNext;
 
       if (m_lruHead)
@@ -224,6 +333,25 @@ namespace dxvk {
       m_samplers.erase(sampler->key());
       m_samplersTotal.store(m_samplers.size());
     }
+  }
+
+
+  uint16_t DxvkSamplerPool::allocateSamplerIndex() {
+    if (m_freeList.empty()) {
+      destroyLeastRecentlyUsedSampler();
+
+      if (m_freeList.empty())
+        return 0u;
+    }
+
+    uint16_t index = m_freeList.back();
+    m_freeList.pop_back();
+    return index;
+  }
+
+
+  void DxvkSamplerPool::freeSamplerIndex(uint16_t index) {
+    m_freeList.push_back(index);
   }
 
 }

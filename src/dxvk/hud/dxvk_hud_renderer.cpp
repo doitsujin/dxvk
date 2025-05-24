@@ -65,6 +65,7 @@ namespace dxvk::hud {
     m_pushConstants.surfaceSize = { extent.width, extent.height };
     m_pushConstants.opacity = options.opacity;
     m_pushConstants.scale = options.scale;
+    m_pushConstants.sampler = m_fontSampler->getDescriptor().samplerIndex;
 
     VkViewport viewport = { };
     viewport.x = 0.0f;
@@ -229,9 +230,8 @@ namespace dxvk::hud {
     descriptors[2u].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
     descriptors[2u].descriptor = textView->getDescriptor(false);
 
-    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     descriptors[3u].descriptor = m_fontTextureView->getDescriptor();
-    descriptors[3u].sampler = m_fontSampler->getDescriptor();
 
     ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
       m_textPipelineLayout, descriptors.size(), descriptors.data(),
@@ -457,10 +457,10 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          1, VK_SHADER_STAGE_VERTEX_BIT   },
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          1, VK_SHADER_STAGE_VERTEX_BIT   },
       { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,    1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,           1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(HudPushConstants), bindings.size(), bindings.data());
   }

@@ -27,6 +27,9 @@ namespace dxvk {
       m_info.debugName = nullptr;
     }
 
+    // Unconditionally enable BDA usage
+    m_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
     // Create and assign actual buffer resource
     assignStorage(allocateStorage());
   }

@@ -44,6 +44,7 @@ namespace dxvk::hud {
     VkExtent2D surfaceSize;
     float opacity;
     float scale;
+    uint32_t sampler;
   };
 
 

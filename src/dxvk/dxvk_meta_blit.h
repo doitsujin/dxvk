@@ -22,9 +22,9 @@ namespace dxvk {
    */
   struct DxvkMetaBlitPushConstants {
     DxvkMetaBlitOffset srcCoord0;
-    uint32_t           pad1;
     DxvkMetaBlitOffset srcCoord1;
     uint32_t           layerCount;
+    uint32_t           sampler;
   };
   
   /**

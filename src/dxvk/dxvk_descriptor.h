@@ -35,6 +35,7 @@ namespace dxvk {
    */
   struct DxvkSamplerDescriptor {
     VkSampler samplerObject = VK_NULL_HANDLE;
+    uint16_t samplerIndex = 0u;
   };
 
 }

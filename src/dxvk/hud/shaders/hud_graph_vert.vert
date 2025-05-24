@@ -7,6 +7,7 @@ uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
+  uint  samplerIndex;
   uint  packed_xy;
   uint  packed_wh;
   uint  frame_index;

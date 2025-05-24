@@ -12,12 +12,6 @@ struct glyph_info_t {
   uint packed_origin;
 };
 
-layout(binding = 0, std430)
-readonly buffer font_buffer_t {
-  font_info_t font_data;
-  glyph_info_t glyph_data[];
-};
-
 struct draw_info_t {
   uint text_offset;
   uint text_length_and_size;
@@ -25,18 +19,25 @@ struct draw_info_t {
   uint color;
 };
 
-layout(binding = 1, std430)
+layout(set = 1, binding = 0, std430)
+readonly buffer font_buffer_t {
+  font_info_t font_data;
+  glyph_info_t glyph_data[];
+};
+
+layout(set = 1, binding = 1, std430)
 readonly buffer draw_buffer_t {
   draw_info_t draw_infos[];
 };
 
-layout(binding = 2) uniform usamplerBuffer text_buffer;
+layout(set = 1, binding = 2) uniform usamplerBuffer text_buffer;
 
 layout(push_constant)
 uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
+  uint samplerIndex;
 };
 
 layout(location = 0) out vec2 o_texcoord;

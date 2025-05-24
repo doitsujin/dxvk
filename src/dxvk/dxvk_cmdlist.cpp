@@ -1,3 +1,4 @@
+
 #include "dxvk_cmdlist.h"
 #include "dxvk_device.h"
 
@@ -490,10 +491,6 @@ namespace dxvk {
         auto& descriptor = descriptors.emplace_back();
 
         switch (info.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_SAMPLER: {
-            descriptor.image.sampler = info.sampler.samplerObject;
-          } break;
-
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
             if (info.descriptor) {
@@ -520,15 +517,6 @@ namespace dxvk {
               descriptor.image = info.descriptor->legacy.image;
           } break;
 
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-            descriptor.image.sampler = info.sampler.samplerObject;
-
-            if (info.descriptor) {
-              descriptor.image.imageView = info.descriptor->legacy.image.imageView;
-              descriptor.image.imageLayout = info.descriptor->legacy.image.imageLayout;
-            }
-          } break;
-
           default:
             Logger::err(str::format("Unhandled descriptor type ", info.descriptorType));
         }
@@ -538,24 +526,33 @@ namespace dxvk {
         setLayout->getSetUpdateTemplate(),
         descriptors.data());
 
+      // Bind set as well as the global sampler heap, if requested
+      small_vector<VkDescriptorSet, 2u> sets;
+
+      if (layout->usesSamplerHeap())
+        sets.push_back(m_device->getSamplerDescriptorSet().set);
+
+      sets.push_back(set);
+
       this->cmdBindDescriptorSets(cmdBuffer,
         layout->getBindPoint(),
         layout->getPipelineLayout(),
-        0u, 1u, &set);
+        0u, sets.size(), sets.data());
     }
 
     // Update push constants
-    DxvkPushConstantRange pushConstants = layout->getPushConstantRange();
+    DxvkPushDataBlock pushDataBlock = layout->getPushData();
 
-    if (pushDataSize && pushConstants.getSize()) {
-      std::array<char, MaxPushConstantSize> dataCopy;
+    if (pushDataSize && !pushDataBlock.isEmpty()) {
+      std::array<char, MaxTotalPushDataSize> dataCopy;
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
       this->cmdPushConstants(cmdBuffer,
         layout->getPipelineLayout(),
-        pushConstants.getStageMask(), 0u,
-        pushConstants.getSize(),
+        pushDataBlock.getStageMask(),
+        pushDataBlock.getOffset(),
+        pushDataBlock.getSize(),
         dataCopy.data());
     }
   }

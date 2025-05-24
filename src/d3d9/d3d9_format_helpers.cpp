@@ -158,7 +158,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_COMPUTE_BIT,
+    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
       sizeof(VkExtent2D), bindings.size(), bindings.data());
   }
 

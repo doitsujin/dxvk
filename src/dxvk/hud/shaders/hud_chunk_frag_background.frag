@@ -9,6 +9,7 @@ uniform push_data_t {
   uvec2 surface_size;
   float opacity;
   float scale;
+  uint  samplerIndex;
 };
 
 layout(location = 0) flat in uint v_active;

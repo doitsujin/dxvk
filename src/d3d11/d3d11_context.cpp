@@ -3431,7 +3431,8 @@ namespace dxvk {
     EmitCs([
       cPushConstants = pc
     ] (DxvkContext* ctx) {
-      ctx->pushConstants(0, sizeof(cPushConstants), &cPushConstants);
+      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
+        0, sizeof(cPushConstants), &cPushConstants);
     });
   }
 
@@ -4890,7 +4891,7 @@ namespace dxvk {
       // Initialize push constants
       DxbcPushConstants pc;
       pc.rasterizerSampleCount = 1;
-      ctx->pushConstants(0, sizeof(pc), &pc);
+      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pc), &pc);
     });
   }
 

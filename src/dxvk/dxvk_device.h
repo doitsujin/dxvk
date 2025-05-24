@@ -390,15 +390,17 @@ namespace dxvk {
     /**
      * \brief Creates built-in pipeline layout
      *
-     * \param [in] pushConstantStages Push constant stage mask
-     * \param [in] pushConstantSize Push constant size
+     * \param [in] flags Pipeline layout flags
+     * \param [in] pushDataStages Push data stage mask
+     * \param [in] pushDataSize Push data size
      * \param [in] bindingCount Number of resource bindings
      * \param [in] bindings Resource bindings
      * \returns Unique pipeline layout
      */
     const DxvkPipelineLayout* createBuiltInPipelineLayout(
-            VkShaderStageFlags              pushConstantStages,
-            VkDeviceSize                    pushConstantSize,
+            DxvkPipelineLayoutFlags         flags,
+            VkShaderStageFlags              pushDataStages,
+            VkDeviceSize                    pushDataSize,
             uint32_t                        bindingCount,
       const DxvkDescriptorSetLayoutBinding* bindings);
 
@@ -480,6 +482,14 @@ namespace dxvk {
      */
     DxvkSamplerStats getSamplerStats() {
       return m_objects.samplerPool().getStats();
+    }
+
+    /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkSamplerDescriptorSet getSamplerDescriptorSet() {
+      return m_objects.samplerPool().getDescriptorSetInfo();
     }
 
     /**
