@@ -605,6 +605,10 @@ namespace dxvk {
           enabledFeatures.extDepthBiasControl = *reinterpret_cast<const VkPhysicalDeviceDepthBiasControlFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT:
+          enabledFeatures.extDescriptorBuffer = *reinterpret_cast<const VkPhysicalDeviceDescriptorBufferFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
           enabledFeatures.extExtendedDynamicState3 = *reinterpret_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*>(f);
           break;
@@ -809,6 +813,11 @@ namespace dxvk {
       m_deviceInfo.extCustomBorderColor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extCustomBorderColor);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)) {
+      m_deviceInfo.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+      m_deviceInfo.extDescriptorBuffer.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extDescriptorBuffer);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
       m_deviceInfo.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT;
       m_deviceInfo.extExtendedDynamicState3.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extExtendedDynamicState3);
@@ -852,6 +861,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_7_EXTENSION_NAME)) {
       m_deviceInfo.khrMaintenance7.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR;
       m_deviceInfo.khrMaintenance7.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrMaintenance7);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)) {
+      m_deviceInfo.khrPushDescriptor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR;
+      m_deviceInfo.khrPushDescriptor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrPushDescriptor);
     }
 
     // Query full device properties for all enabled extensions
@@ -898,6 +912,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME)) {
       m_deviceFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
       m_deviceFeatures.extDepthBiasControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthBiasControl);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)) {
+      m_deviceFeatures.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+      m_deviceFeatures.extDescriptorBuffer.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDescriptorBuffer);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
@@ -1009,6 +1028,9 @@ namespace dxvk {
       m_deviceFeatures.khrPresentWait.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentWait);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME))
+      m_deviceFeatures.khrPushDescriptor = VK_TRUE;
+
     if (m_deviceExtensions.supports(VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME)) {
       m_deviceFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
       m_deviceFeatures.nvDescriptorPoolOverallocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.nvDescriptorPoolOverallocation);
@@ -1061,6 +1083,7 @@ namespace dxvk {
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
       &devExtensions.extDepthBiasControl,
+      &devExtensions.extDescriptorBuffer,
       &devExtensions.extExtendedDynamicState3,
       &devExtensions.extFragmentShaderInterlock,
       &devExtensions.extFullScreenExclusive,
@@ -1087,6 +1110,7 @@ namespace dxvk {
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrPresentId,
       &devExtensions.khrPresentWait,
+      &devExtensions.khrPushDescriptor,
       &devExtensions.khrSwapchain,
       &devExtensions.khrSwapchainMutableFormat,
       &devExtensions.khrWin32KeyedMutex,
@@ -1136,6 +1160,11 @@ namespace dxvk {
     if (devExtensions.extDepthBiasControl) {
       enabledFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
       enabledFeatures.extDepthBiasControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthBiasControl);
+    }
+
+    if (devExtensions.extDescriptorBuffer) {
+      enabledFeatures.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+      enabledFeatures.extDescriptorBuffer.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDescriptorBuffer);
     }
 
     if (devExtensions.extExtendedDynamicState3) {
@@ -1247,6 +1276,9 @@ namespace dxvk {
       enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
     }
 
+    if (devExtensions.khrPushDescriptor)
+      enabledFeatures.khrPushDescriptor = VK_TRUE;
+
     if (devExtensions.khrSwapchainMutableFormat)
       enabledFeatures.khrSwapchainMutableFormat = VK_TRUE;
 
@@ -1356,6 +1388,10 @@ namespace dxvk {
       "\n  leastRepresentableValueForceUnormRepresentation : " << (features.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation ? "1" : "0") <<
       "\n  floatRepresentation                    : " << (features.extDepthBiasControl.floatRepresentation ? "1" : "0") <<
       "\n  depthBiasExact                         : " << (features.extDepthBiasControl.depthBiasExact ? "1" : "0") <<
+      "\n" << VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME <<
+      "\n  descriptorBuffer                       : " << (features.extDescriptorBuffer.descriptorBuffer ? "1" : "0") <<
+      "\n  descriptorBufferImageLayoutIgnored     : " << (features.extDescriptorBuffer.descriptorBufferImageLayoutIgnored ? "1" : "0") <<
+      "\n  descriptorBufferPushDescriptors        : " << (features.extDescriptorBuffer.descriptorBufferPushDescriptors ? "1" : "0") <<
       "\n" << VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME <<
       "\n  extDynamicState3AlphaToCoverageEnable  : " << (features.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable ? "1" : "0") <<
       "\n  extDynamicState3DepthClipEnable        : " << (features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0") <<
@@ -1416,6 +1452,8 @@ namespace dxvk {
       "\n  presentId                              : " << (features.khrPresentId.presentId ? "1" : "0") <<
       "\n" << VK_KHR_PRESENT_WAIT_EXTENSION_NAME <<
       "\n  presentWait                            : " << (features.khrPresentWait.presentWait ? "1" : "0") <<
+      "\n" << VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME <<
+      "\n  extension supported                    : " << (features.khrPushDescriptor ? "1" : "0") <<
       "\n" << VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME <<
       "\n  descriptorPoolOverallocation           : " << (features.nvDescriptorPoolOverallocation.descriptorPoolOverallocation ? "1" : "0") <<
       "\n" << VK_NV_LOW_LATENCY_2_EXTENSION_NAME <<
