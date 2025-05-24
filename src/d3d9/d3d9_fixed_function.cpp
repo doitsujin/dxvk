@@ -770,8 +770,10 @@ namespace dxvk {
 
     struct {
       uint32_t texcoordCnt;
-      uint32_t typeId;
-      uint32_t varId;
+      uint32_t imageTypeId;
+      uint32_t imageVarId;
+      uint32_t sampledTypeId;
+      uint32_t samplerIndex;
     } samplers[8];
 
     struct {
@@ -807,7 +809,7 @@ namespace dxvk {
 
     void compileVS();
 
-    void setupRenderStateInfo(uint32_t samplerCount);
+    void setupRenderStateInfo(VkShaderStageFlagBits stage, uint32_t samplerCount);
 
     void emitLightTypeDecl();
 
@@ -869,6 +871,8 @@ namespace dxvk {
     uint32_t              m_rsFirstSampler  = 0u;
     uint32_t              m_specUbo         = 0u;
     uint32_t              m_mainFuncLabel   = 0u;
+
+    DxvkPushDataBlock     m_samplerBlock;
 
     D3D9FixedFunctionOptions m_options;
 
@@ -955,6 +959,8 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
+    info.localPushData = m_samplerBlock;
+    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
     return new DxvkShader(info, m_module.compile());
   }
@@ -1472,7 +1478,7 @@ namespace dxvk {
   }
 
 
-  void D3D9FFShaderCompiler::setupRenderStateInfo(uint32_t samplerCount) {
+  void D3D9FFShaderCompiler::setupRenderStateInfo(VkShaderStageFlagBits stage, uint32_t samplerCount) {
     auto blockInfo = SetupRenderStateBlock(m_module, (1u << samplerCount) - 1u);
 
     m_rsBlock = blockInfo.first;
@@ -1480,6 +1486,11 @@ namespace dxvk {
 
     if (samplerCount)
       m_samplerArray = SetupSamplerArray(m_module);
+
+    uint32_t samplerDwordCount = (samplerCount + 1u) / 2u;
+
+    m_samplerBlock = DxvkPushDataBlock(stage, GetPushSamplerOffset(0u),
+      samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
   }
 
 
@@ -1719,7 +1730,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupVS() {
-    setupRenderStateInfo(0u);
+    setupRenderStateInfo(VK_SHADER_STAGE_VERTEX_BIT, 0u);
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // VS Caps
@@ -1881,7 +1892,9 @@ namespace dxvk {
       auto GetTexture = [&]() {
         if (!processedTexture) {
           SpirvImageOperands imageOperands;
-          uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
+          uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].imageTypeId, m_ps.samplers[i].imageVarId);
+          imageVarId = m_module.opSampledImage(m_ps.samplers[i].sampledTypeId, imageVarId,
+            LoadSampler(m_module, m_samplerArray, m_rsBlock, m_rsFirstSampler, m_ps.samplers[i].samplerIndex));
 
           uint32_t texcoordCnt = m_ps.samplers[i].texcoordCnt;
 
@@ -2268,7 +2281,7 @@ namespace dxvk {
   }
 
   void D3D9FFShaderCompiler::setupPS() {
-    setupRenderStateInfo(8u);
+    setupRenderStateInfo(VK_SHADER_STAGE_FRAGMENT_BIT, 8u);
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // PS Caps
@@ -2380,35 +2393,39 @@ namespace dxvk {
           break;
       }
 
-      sampler.typeId = m_module.defImageType(
+      sampler.imageTypeId = m_module.defImageType(
         m_module.defFloatType(32),
         dimensionality, 0, 0, 0, 1,
         spv::ImageFormatUnknown);
-
-      sampler.typeId = m_module.defSampledImageType(sampler.typeId);
-
-      sampler.varId = m_module.newVar(
-        m_module.defPointerType(
-          sampler.typeId, spv::StorageClassUniformConstant),
+      sampler.imageVarId = m_module.newVar(
+        m_module.defPointerType(sampler.imageTypeId, spv::StorageClassUniformConstant),
         spv::StorageClassUniformConstant);
 
-      std::string name = str::format("s", i);
-      m_module.setDebugName(sampler.varId, name.c_str());
+      sampler.sampledTypeId = m_module.defSampledImageType(sampler.imageTypeId);
+      sampler.samplerIndex = i;
+
+      std::string name = str::format("t", i);
+      m_module.setDebugName(sampler.imageVarId, name.c_str());
 
       const uint32_t bindingId = computeResourceSlotId(DxsoProgramType::PixelShader,
-        DxsoBindingType::Image, i);
+        DxsoBindingType::Image, sampler.samplerIndex);
 
-      m_module.decorateDescriptorSet(sampler.varId, 0);
-      m_module.decorateBinding(sampler.varId, bindingId);
+      m_module.decorateDescriptorSet(sampler.imageVarId, 0);
+      m_module.decorateBinding(sampler.imageVarId, bindingId);
 
-      // Store descriptor info for the shader interface
-      auto& binding = m_bindings.emplace_back();
-      binding.set             = 0u;
-      binding.binding         = bindingId;
-      binding.resourceIndex   = bindingId;
-      binding.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      binding.viewType        = viewType;
-      binding.access          = VK_ACCESS_SHADER_READ_BIT;
+      auto& imageBinding = m_bindings.emplace_back();
+      imageBinding.set             = 0u;
+      imageBinding.binding         = bindingId;
+      imageBinding.resourceIndex   = bindingId;
+      imageBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      imageBinding.viewType        = viewType;
+      imageBinding.access          = VK_ACCESS_SHADER_READ_BIT;
+
+      auto& samplerBinding = m_bindings.emplace_back();
+      samplerBinding.resourceIndex   = bindingId;
+      samplerBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+      samplerBinding.blockOffset     = GetPushSamplerOffset(i);
+      samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
     }
 
     emitPsSharedConstants();
