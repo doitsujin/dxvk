@@ -50,14 +50,15 @@ namespace dxvk {
     GpDynamicMultisampleState,  ///< Multisample state is dynamic
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
-    GpHasPushConstants,         ///< Graphics pipeline uses push constants
+    GpHasPushData,              ///< Graphics pipeline uses push data
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
 
     CpDirtyPipelineState,       ///< Compute pipeline is out of date
     CpDirtySpecConstants,       ///< Compute spec constants are out of date
-    CpHasPushConstants,         ///< Compute pipeline uses push constants
+    CpHasPushData,              ///< Compute pipeline uses push data
 
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
+    DirtyPushData,              ///< Push data needs to be updated
 
     ForceWriteAfterWriteSync,   ///< Ignores barrier control flags for write-after-write hazards
 

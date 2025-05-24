@@ -996,7 +996,7 @@ namespace dxvk {
       uint32_t baseOffset = computePushDataBlockOffset(index);
       std::memcpy(&m_state.pc.constantData[baseOffset + offset], data, size);
 
-      m_dirtyPushDataBlocks |= 1u << index;
+      m_flags.set(DxvkContextFlag::DirtyPushData);
     }
 
     /**
@@ -1377,7 +1377,6 @@ namespace dxvk {
     DxvkContextState        m_state;
     DxvkContextFeatures     m_features;
     DxvkDescriptorState     m_descriptorState;
-    uint32_t                m_dirtyPushDataBlocks = 0u;
 
     Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorPoolSet> m_descriptorManager;
