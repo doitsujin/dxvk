@@ -364,6 +364,10 @@ namespace dxvk {
     uint32_t m_specUbo = 0;
 
     uint32_t m_rsBlock = 0;
+    uint32_t m_rsFirstSampler = 0u;
+
+    uint32_t m_samplerArray = 0u;
+
     uint32_t m_mainFuncLabel = 0;
 
     //////////////////////////////////////
@@ -681,7 +685,7 @@ namespace dxvk {
     void emitInputSetup();
 
     void emitVsClipping();
-    void setupRenderStateInfo();
+    void setupRenderStateInfo(uint32_t samplerCount);
     void emitFog();
     void emitPsProcessing();
     void emitOutputDepthClamp();
