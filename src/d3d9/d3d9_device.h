@@ -518,7 +518,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetIndices(IDirect3DIndexBuffer9** ppIndexData);
 
     HRESULT STDMETHODCALLTYPE CreatePixelShader(
-      const DWORD*                  pFunction, 
+      const DWORD*                  pFunction,
             IDirect3DPixelShader9** ppShader);
 
     HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DPixelShader9* pShader);
@@ -727,7 +727,7 @@ namespace dxvk {
 
     /**
      * \brief Locks a subresource of an image
-     * 
+     *
      * \param [in] Subresource The subresource of the image to lock
      * \param [out] pLockedBox The returned locked box of the image, containing data ptr and strides
      * \param [in] pBox The region of the subresource to lock. This offsets the returned data ptr
@@ -904,6 +904,14 @@ namespace dxvk {
 
     bool IsAlphaToCoverageEnabled() const;
 
+    inline bool IsNVDepthBoundsTestEnabled () {
+      // NVDB is not supported by D3D8
+      if (m_isD3D8Compatible)
+        return false;
+
+      return m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+    }
+
     inline bool IsDepthBiasEnabled() {
       const auto& rs = m_state.renderStates;
 
@@ -926,7 +934,7 @@ namespace dxvk {
     }
 
     void BindMultiSampleState();
-    
+
     void BindBlendState();
 
     void BindBlendFactor();
@@ -945,10 +953,10 @@ namespace dxvk {
 
     template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
     inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
-    
+
     template <DxsoProgramType ShaderStage>
     void UploadConstants();
-    
+
     void UpdateClipPlanes();
 
     /**
@@ -989,7 +997,7 @@ namespace dxvk {
       D3DPRIMITIVETYPE PrimitiveType,
       UINT             PrimitiveCount,
       UINT             InstanceCount);
-    
+
     uint32_t GetInstanceCount() const;
 
     void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadVBOs, bool UploadIBOs);
@@ -1567,7 +1575,14 @@ namespace dxvk {
     bool                            m_amdATOC          = false;
     bool                            m_nvATOC           = false;
     bool                            m_ffZTest          = false;
-    
+
+    bool                            m_clipPlaneEnabled = false;
+    bool                            m_depthBiasEnabled = false;
+    bool                            m_alphaTestEnabled = false;
+    // vendor hack state tracking
+    bool                            m_atocEnabled      = false;
+    bool                            m_nvdbEnabled      = false;
+
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     bool                            m_usingGraphicsPipelines = false;
@@ -1580,8 +1595,8 @@ namespace dxvk {
     uint32_t                        m_robustUBOAlignment      = 1;
 
     D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
-	
-	D3D9UserDefinedAnnotation*      m_annotation = nullptr;
+
+    D3D9UserDefinedAnnotation*      m_annotation = nullptr;
 
     D3D9ViewportInfo                m_viewportInfo;
 
