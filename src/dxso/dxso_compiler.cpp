@@ -230,6 +230,8 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
+    info.localPushData = m_samplerPushData;
+    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
@@ -737,18 +739,19 @@ namespace dxvk {
         dimensionality, depth ? 1 : 0, 0, 0, 1,
         spv::ImageFormatUnknown);
 
-      sampler.typeId = m_module.defSampledImageType(sampler.imageTypeId);
-
-      sampler.varId = m_module.newVar(
+      sampler.imageVarId = m_module.newVar(
         m_module.defPointerType(
-          sampler.typeId, spv::StorageClassUniformConstant),
+          sampler.imageTypeId, spv::StorageClassUniformConstant),
         spv::StorageClassUniformConstant);
 
-      std::string name = str::format("s", idx, suffix, depth ? "_shadow" : "");
-      m_module.setDebugName(sampler.varId, name.c_str());
+      sampler.sampledTypeId = m_module.defSampledImageType(sampler.imageTypeId);
+      sampler.samplerIndex = idx;
 
-      m_module.decorateDescriptorSet(sampler.varId, 0);
-      m_module.decorateBinding      (sampler.varId, bindingId);
+      std::string name = str::format("t", idx, suffix, depth ? "_shadow" : "");
+      m_module.setDebugName(sampler.imageVarId, name.c_str());
+
+      m_module.decorateDescriptorSet(sampler.imageVarId, 0);
+      m_module.decorateBinding      (sampler.imageVarId, bindingId);
     };
 
     const uint32_t binding = computeResourceSlotId(m_programInfo.type(),
@@ -787,14 +790,19 @@ namespace dxvk {
 
     m_samplers[idx].type = type;
 
-    // Store descriptor info for the shader interface
-    auto& bindingInfo = m_bindings.emplace_back();
-    bindingInfo.set             = 0u;
-    bindingInfo.binding         = binding;
-    bindingInfo.resourceIndex   = binding;
-    bindingInfo.descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    bindingInfo.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
-    bindingInfo.access          = VK_ACCESS_SHADER_READ_BIT;
+    auto& imageBinding = m_bindings.emplace_back();
+    imageBinding.set             = 0u;
+    imageBinding.binding         = binding;
+    imageBinding.resourceIndex   = binding;
+    imageBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imageBinding.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
+    imageBinding.access          = VK_ACCESS_SHADER_READ_BIT;
+
+    auto& samplerBinding = m_bindings.emplace_back();
+    samplerBinding.resourceIndex  = binding;
+    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerBinding.blockOffset    = GetPushSamplerOffset(idx);
+    samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
   }
 
 
@@ -2856,7 +2864,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     }
 
     // SM < 1.x does not have dcl sampler type.
-    if (m_programInfo.majorVersion() < 2 && m_samplers[samplerIdx].color[SamplerTypeTexture2D].varId == 0)
+    if (m_programInfo.majorVersion() < 2 && !m_samplers[samplerIdx].color[SamplerTypeTexture2D].imageVarId)
       emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
@@ -3149,7 +3157,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
        (operands.flags & spv::ImageOperandsLodMask)
     || (operands.flags & spv::ImageOperandsGradMask);
 
-    const uint32_t sampledImage = m_module.opLoad(samplerInfo.typeId, samplerInfo.varId);
+    uint32_t image = m_module.opLoad(samplerInfo.imageTypeId, samplerInfo.imageVarId);
+    uint32_t sampler = LoadSampler(m_module, m_samplerArray, m_rsBlock, m_rsFirstSampler, samplerInfo.samplerIndex);
+
+    uint32_t sampledImage = m_module.opSampledImage(samplerInfo.sampledTypeId, image, sampler);
 
     uint32_t val;
 
@@ -3587,6 +3598,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     m_rsBlock = blockInfo.first;
     m_rsFirstSampler = blockInfo.second;
+
+    uint32_t samplerDwordCount = (samplerCount + 1u) / 2u;
+
+    m_samplerPushData = DxvkPushDataBlock(m_programInfo.shaderStage(), GetPushSamplerOffset(0u),
+      samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
   }
 
 
