@@ -364,6 +364,20 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
     #endif
 
+    #ifdef VK_EXT_descriptor_buffer
+    VULKAN_FN(vkGetDescriptorSetLayoutSizeEXT);
+    VULKAN_FN(vkGetDescriptorSetLayoutBindingOffsetEXT);
+    VULKAN_FN(vkGetDescriptorEXT);
+    VULKAN_FN(vkCmdBindDescriptorBuffersEXT);
+    VULKAN_FN(vkCmdSetDescriptorBufferOffsetsEXT);
+    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplersEXT);
+    VULKAN_FN(vkGetBufferOpaqueCaptureDescriptorDataEXT);
+    VULKAN_FN(vkGetImageOpaqueCaptureDescriptorDataEXT);
+    VULKAN_FN(vkGetImageViewOpaqueCaptureDescriptorDataEXT);
+    VULKAN_FN(vkGetSamplerOpaqueCaptureDescriptorDataEXT);
+    VULKAN_FN(vkGetAccelerationStructureOpaqueCaptureDescriptorDataEXT);
+    #endif
+
     #ifdef VK_EXT_debug_utils
     VULKAN_FN(vkQueueBeginDebugUtilsLabelEXT);
     VULKAN_FN(vkQueueEndDebugUtilsLabelEXT);
