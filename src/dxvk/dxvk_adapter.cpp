@@ -605,6 +605,10 @@ namespace dxvk {
           enabledFeatures.extDepthBiasControl = *reinterpret_cast<const VkPhysicalDeviceDepthBiasControlFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT:
+          enabledFeatures.extDescriptorBuffer = *reinterpret_cast<const VkPhysicalDeviceDescriptorBufferFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
           enabledFeatures.extExtendedDynamicState3 = *reinterpret_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*>(f);
           break;
@@ -809,6 +813,11 @@ namespace dxvk {
       m_deviceInfo.extCustomBorderColor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extCustomBorderColor);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)) {
+      m_deviceInfo.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT;
+      m_deviceInfo.extDescriptorBuffer.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extDescriptorBuffer);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
       m_deviceInfo.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT;
       m_deviceInfo.extExtendedDynamicState3.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extExtendedDynamicState3);
@@ -898,6 +907,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME)) {
       m_deviceFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
       m_deviceFeatures.extDepthBiasControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthBiasControl);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME)) {
+      m_deviceFeatures.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+      m_deviceFeatures.extDescriptorBuffer.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDescriptorBuffer);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
@@ -1061,6 +1075,7 @@ namespace dxvk {
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
       &devExtensions.extDepthBiasControl,
+      &devExtensions.extDescriptorBuffer,
       &devExtensions.extExtendedDynamicState3,
       &devExtensions.extFragmentShaderInterlock,
       &devExtensions.extFullScreenExclusive,
@@ -1136,6 +1151,11 @@ namespace dxvk {
     if (devExtensions.extDepthBiasControl) {
       enabledFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
       enabledFeatures.extDepthBiasControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthBiasControl);
+    }
+
+    if (devExtensions.extDescriptorBuffer) {
+      enabledFeatures.extDescriptorBuffer.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_FEATURES_EXT;
+      enabledFeatures.extDescriptorBuffer.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDescriptorBuffer);
     }
 
     if (devExtensions.extExtendedDynamicState3) {
@@ -1356,6 +1376,10 @@ namespace dxvk {
       "\n  leastRepresentableValueForceUnormRepresentation : " << (features.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation ? "1" : "0") <<
       "\n  floatRepresentation                    : " << (features.extDepthBiasControl.floatRepresentation ? "1" : "0") <<
       "\n  depthBiasExact                         : " << (features.extDepthBiasControl.depthBiasExact ? "1" : "0") <<
+      "\n" << VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME <<
+      "\n  descriptorBuffer                       : " << (features.extDescriptorBuffer.descriptorBuffer ? "1" : "0") <<
+      "\n  descriptorBufferImageLayoutIgnored     : " << (features.extDescriptorBuffer.descriptorBufferImageLayoutIgnored ? "1" : "0") <<
+      "\n  descriptorBufferPushDescriptors        : " << (features.extDescriptorBuffer.descriptorBufferPushDescriptors ? "1" : "0") <<
       "\n" << VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME <<
       "\n  extDynamicState3AlphaToCoverageEnable  : " << (features.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable ? "1" : "0") <<
       "\n  extDynamicState3DepthClipEnable        : " << (features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0") <<
