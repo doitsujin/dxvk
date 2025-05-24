@@ -4458,19 +4458,6 @@ namespace dxvk {
     // a valid resource or vice versa.
     const bool isPSSampler = StateSampler < caps::MaxTexturesPS;
     if (isPSSampler) {
-      const uint32_t textureType = newTexture != nullptr
-        ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
-        : 0;
-      // There are 3 texture types, so we need 2 bits.
-      const uint32_t offset = StateSampler * 2;
-      const uint32_t textureBitMask = 0b11u       << offset;
-      const uint32_t textureBits    = textureType << offset;
-
-      // In fixed function shaders and SM < 2 we put the type mask
-      // into a spec constant to select the used sampler type.
-      m_textureTypes &= ~textureBitMask;
-      m_textureTypes |=  textureBits;
-
       // If we either bind a new texture or unbind the old one,
       // we need to update the fixed function shader
       // because we generate a different shader based on whether each texture is bound.
@@ -6200,7 +6187,23 @@ namespace dxvk {
     m_mismatchingTextureTypes &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
-    if (tex != nullptr) {
+
+    if (likely(IsPSSampler(index))) {
+      const uint32_t textureType = tex != nullptr
+        ? uint32_t(tex->GetType() - D3DRTYPE_TEXTURE)
+        : 0;
+      // There are 3 texture types, so we need 2 bits.
+      const uint32_t offset = index * 2;
+      const uint32_t textureBitMask = 0b11u       << offset;
+      const uint32_t textureBits    = textureType << offset;
+
+      // In fixed function shaders and SM < 2 we put the type mask
+      // into a spec constant to select the used sampler type.
+      m_textureTypes &= ~textureBitMask;
+      m_textureTypes |=  textureBits;
+    }
+
+    if (likely(tex != nullptr)) {
       m_activeTextures |= bit;
 
       if (unlikely(tex->IsRenderTarget()))
