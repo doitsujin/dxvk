@@ -461,7 +461,7 @@ namespace dxvk {
     m_vs.functionId = m_module.allocateId();
     m_module.setDebugName(m_vs.functionId, "vs_main");
 
-    this->setupRenderStateInfo();
+    this->setupRenderStateInfo(caps::MaxTexturesVS + 1u);
 
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
@@ -507,7 +507,7 @@ namespace dxvk {
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
 
-    this->setupRenderStateInfo();
+    this->setupRenderStateInfo(caps::MaxTexturesPS);
     this->emitPsSharedConstants();
 
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
@@ -688,6 +688,9 @@ namespace dxvk {
           uint32_t        idx,
           DxsoTextureType type) {
     m_usedSamplers |= (1u << idx);
+
+    if (!m_samplerArray)
+      m_samplerArray = SetupSamplerArray(m_module);
 
     VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -3579,8 +3582,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   }
 
 
-  void DxsoCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+  void DxsoCompiler::setupRenderStateInfo(uint32_t samplerCount) {
+    auto blockInfo = SetupRenderStateBlock(m_module, (1u << samplerCount) - 1u);
+
+    m_rsBlock = blockInfo.first;
+    m_rsFirstSampler = blockInfo.second;
   }
 
 

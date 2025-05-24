@@ -6,6 +6,8 @@
 
 #include "../dxvk/dxvk_hash.h"
 
+#include "../util/util_small_vector.h"
+
 #include "../spirv/spirv_module.h"
 
 #include <cfloat>
@@ -337,26 +339,34 @@ namespace dxvk {
   }
 
 
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
+  std::pair<uint32_t, uint32_t> SetupRenderStateBlock(SpirvModule& spvModule, uint32_t samplerMask) {
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t uintType  = spvModule.defIntType(32, 0);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
 
-    std::array<uint32_t, 11> rsMembers = {{
-      vec3Type,
-      floatType,
-      floatType,
-      floatType,
+    small_vector<uint32_t, 32u> rsMembers;
+    rsMembers.push_back(vec3Type);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
 
-      uintType,
+    rsMembers.push_back(uintType);
 
-      floatType,
-      floatType,
-      floatType,
-      floatType,
-      floatType,
-      floatType,
-    }};
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+    rsMembers.push_back(floatType);
+
+    // Number of static data members
+    uint32_t rsMemberCount = rsMembers.size();
+
+    // Add one dword for each sampler pair
+    uint32_t samplerCount = bit::popcnt(samplerMask);
+
+    for (uint32_t i = 0u; i < samplerCount; i += 2u)
+      rsMembers.push_back(uintType);
 
     uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
     uint32_t rsBlock = spvModule.newVar(
@@ -387,7 +397,59 @@ namespace dxvk {
     SetMemberName("point_scale_b",  offsetof(D3D9RenderStateInfo, pointScaleB));
     SetMemberName("point_scale_c",  offsetof(D3D9RenderStateInfo, pointScaleC));
 
-    return rsBlock;
+    uint32_t samplerOffset = GetPushSamplerOffset(0u);
+
+    while (samplerMask) {
+      uint32_t s0 = bit::tzcnt(samplerMask); samplerMask &= samplerMask - 1u;
+      uint32_t s1 = bit::tzcnt(samplerMask); samplerMask &= samplerMask - 1u;
+
+      std::string name = s1 < samplerCount
+        ? str::format("s", s0, "_s", s1, "_idx")
+        : str::format("s", s0, "_idx");
+
+      SetMemberName(name.c_str(), samplerOffset);
+      samplerOffset += sizeof(uint32_t);
+    }
+
+    return std::make_pair(rsBlock, rsMemberCount);
+  }
+
+
+  uint32_t SetupSamplerArray(SpirvModule& spvModule) {
+    // Old spir-v, need to enable extension
+    spvModule.enableExtension("SPV_EXT_descriptor_indexing");
+    spvModule.enableCapability(spv::CapabilityRuntimeDescriptorArray);
+
+    uint32_t samplerArray = spvModule.defRuntimeArrayTypeUnique(spvModule.defSamplerType());
+    uint32_t samplerPtr = spvModule.defPointerType(samplerArray, spv::StorageClassUniformConstant);
+
+    uint32_t samplerHeap = spvModule.newVar(samplerPtr, spv::StorageClassUniformConstant);
+    spvModule.setDebugName(samplerHeap, "sampler_heap");
+
+    spvModule.decorateBinding(samplerHeap, 0u);
+    spvModule.decorateDescriptorSet(samplerHeap, GetGlobalSamplerSetIndex());
+    return samplerHeap;
+  }
+
+
+  uint32_t LoadSampler(SpirvModule& spvModule, uint32_t descriptorId,
+    uint32_t pushBlockId, uint32_t pushMember, uint32_t samplerIndex) {
+    uint32_t uintType = spvModule.defIntType(32u, 0);
+    uint32_t uintPtr = spvModule.defPointerType(uintType, spv::StorageClassPushConstant);
+
+    uint32_t pushIndexId = spvModule.constu32(pushMember + samplerIndex / 2u);
+
+    uint32_t descriptorIndex = spvModule.opLoad(uintType,
+      spvModule.opAccessChain(uintPtr, pushBlockId, 1u, &pushIndexId));
+
+    descriptorIndex = spvModule.opBitFieldUExtract(uintType, descriptorIndex,
+      spvModule.constu32(16u * (samplerIndex & 1u)), spvModule.constu32(16u));
+
+    uint32_t samplerType = spvModule.defSamplerType();
+    uint32_t samplerPtr = spvModule.defPointerType(samplerType, spv::StorageClassUniformConstant);
+
+    return spvModule.opLoad(samplerType,
+      spvModule.opAccessChain(samplerPtr, descriptorId, 1u, &descriptorIndex));
   }
 
 
@@ -745,7 +807,7 @@ namespace dxvk {
 
     void compileVS();
 
-    void setupRenderStateInfo();
+    void setupRenderStateInfo(uint32_t samplerCount);
 
     void emitLightTypeDecl();
 
@@ -801,7 +863,10 @@ namespace dxvk {
 
     uint32_t              m_entryPointId    = 0u;
 
+    uint32_t              m_samplerArray    = 0u;
+
     uint32_t              m_rsBlock         = 0u;
+    uint32_t              m_rsFirstSampler  = 0u;
     uint32_t              m_specUbo         = 0u;
     uint32_t              m_mainFuncLabel   = 0u;
 
@@ -1407,8 +1472,14 @@ namespace dxvk {
   }
 
 
-  void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+  void D3D9FFShaderCompiler::setupRenderStateInfo(uint32_t samplerCount) {
+    auto blockInfo = SetupRenderStateBlock(m_module, (1u << samplerCount) - 1u);
+
+    m_rsBlock = blockInfo.first;
+    m_rsFirstSampler = blockInfo.second;
+
+    if (samplerCount)
+      m_samplerArray = SetupSamplerArray(m_module);
   }
 
 
@@ -1648,7 +1719,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupVS() {
-    setupRenderStateInfo();
+    setupRenderStateInfo(0u);
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // VS Caps
@@ -2197,7 +2268,7 @@ namespace dxvk {
   }
 
   void D3D9FFShaderCompiler::setupPS() {
-    setupRenderStateInfo();
+    setupRenderStateInfo(8u);
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // PS Caps
