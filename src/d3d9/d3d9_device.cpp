@@ -6205,6 +6205,10 @@ namespace dxvk {
 
       // In fixed function shaders and SM < 2 we put the type mask
       // into a spec constant to select the used sampler type.
+      uint32_t oldTextureTypes = m_textureTypes;
+      if (oldTextureTypes != m_textureTypes) {
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      }
       m_textureTypes &= ~textureBitMask;
       m_textureTypes |=  textureBits;
     }
@@ -7976,9 +7980,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) || m_lastSamplerTypesFF != m_textureTypes) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
-      m_lastSamplerTypesFF = m_textureTypes;
 
       // Used args for a given operation.
       auto ArgsMask = [](DWORD Op) {
