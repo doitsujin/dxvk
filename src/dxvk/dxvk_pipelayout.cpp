@@ -510,20 +510,9 @@ namespace dxvk {
         return DxvkDescriptorState::computeMask(
           binding.getStageMask(), DxvkDescriptorClass::Sampler | DxvkDescriptorClass::View);
 
-      case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-      case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-      case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-        return DxvkDescriptorState::computeMask(
-          binding.getStageMask(), DxvkDescriptorClass::View);
-
-      case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-        return DxvkDescriptorState::computeMask(
-          binding.getStageMask(), DxvkDescriptorClass::Buffer);
-
       default:
-        throw DxvkError("Unhandled descriptor type");
+        return DxvkDescriptorState::computeMask(binding.getStageMask(),
+          binding.isUniformBuffer() ? DxvkDescriptorClass::Buffer : DxvkDescriptorClass::View);
     }
   }
 
