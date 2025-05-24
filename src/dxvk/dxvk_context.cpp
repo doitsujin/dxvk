@@ -5936,7 +5936,7 @@ namespace dxvk {
 
   void DxvkContext::unbindComputePipeline() {
     m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
-    m_flags.clr(DxvkContextFlag::CpHasPushConstants);
+    m_flags.clr(DxvkContextFlag::CpHasPushData);
 
     m_state.cp.pipeline = nullptr;
   }
@@ -5946,7 +5946,7 @@ namespace dxvk {
     if (unlikely(m_state.gp.pipeline != nullptr))
       this->unbindGraphicsPipeline();
 
-    m_flags.clr(DxvkContextFlag::CpHasPushConstants);
+    m_flags.clr(DxvkContextFlag::CpHasPushData);
 
     // Look up pipeline object based on the bound compute shader
     auto newPipeline = lookupComputePipeline(m_state.cp.shaders);
@@ -5978,8 +5978,8 @@ namespace dxvk {
     auto pushData = newLayout->getPushData();
 
     if (!pushData.isEmpty()) {
-      m_flags.set(DxvkContextFlag::CpHasPushConstants);
-      m_dirtyPushDataBlocks |= (1u << DxvkPushDataBlock::MaxBlockCount) - 1u;
+      m_flags.set(DxvkContextFlag::CpHasPushData,
+                  DxvkContextFlag::DirtyPushData);
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -6011,7 +6011,7 @@ namespace dxvk {
                 DxvkContextFlag::GpDirtyDepthBounds,
                 DxvkContextFlag::GpDirtyDepthStencilState);
 
-    m_flags.clr(DxvkContextFlag::GpHasPushConstants);
+    m_flags.clr(DxvkContextFlag::GpHasPushData);
 
     m_state.gp.pipeline = nullptr;
   }
@@ -6063,7 +6063,7 @@ namespace dxvk {
                 DxvkContextFlag::GpDynamicStencilRef,
                 DxvkContextFlag::GpDynamicMultisampleState,
                 DxvkContextFlag::GpDynamicRasterizerState,
-                DxvkContextFlag::GpHasPushConstants,
+                DxvkContextFlag::GpHasPushData,
                 DxvkContextFlag::GpIndependentSets);
     
     m_flags.set(m_state.gp.state.useDynamicBlendConstants()
@@ -6133,8 +6133,8 @@ namespace dxvk {
     auto pushData = layout->getPushData();
 
     if (!pushData.isEmpty()) {
-      m_flags.set(DxvkContextFlag::GpHasPushConstants);
-      m_dirtyPushDataBlocks |= (1u << DxvkPushDataBlock::MaxBlockCount) - 1u;
+      m_flags.set(DxvkContextFlag::GpHasPushData,
+                  DxvkContextFlag::DirtyPushData);
     }
 
     // Emit barrier based on pipeline properties, in order to avoid
@@ -6519,6 +6519,9 @@ namespace dxvk {
     if (m_descriptorState.hasDirtyVas(layout->getNonemptyStageMask())) {
       auto range = layout->getVaBindings(pipelineLayoutType);
 
+      if (range.bindingCount)
+        m_flags.set(DxvkContextFlag::DirtyPushData);
+
       for (uint32_t i = 0u; i < range.bindingCount; i++) {
         const auto& binding = range.bindings[i];
         const auto& res = m_resources[binding.getResourceIndex()];
@@ -6553,13 +6556,15 @@ namespace dxvk {
         }
 
         std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &va, sizeof(va));
-        m_dirtyPushDataBlocks |= 1u << DxvkPushDataBlock::computeIndex(binding.getStageMask());
       }
     }
 
     // Update dirty samplers, if any
     if (m_descriptorState.hasDirtySamplers(layout->getNonemptyStageMask())) {
       auto range = layout->getSamplers(pipelineLayoutType);
+
+      if (range.bindingCount)
+        m_flags.set(DxvkContextFlag::DirtyPushData);
 
       for (uint32_t i = 0u; i < range.bindingCount; i++) {
         const auto& binding = range.bindings[i];
@@ -6573,7 +6578,6 @@ namespace dxvk {
         }
 
         std::memcpy(&m_state.pc.resourceData[binding.getBlockOffset()], &index, sizeof(index));
-        m_dirtyPushDataBlocks |= 1u << DxvkPushDataBlock::computeIndex(binding.getStageMask());
       }
     }
   }
@@ -7128,73 +7132,81 @@ namespace dxvk {
 
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updatePushData() {
-    auto bindings = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_state.gp.pipeline->getLayout()
-      : m_state.cp.pipeline->getLayout();
+    m_flags.clr(DxvkContextFlag::DirtyPushData);
 
     // Optimized pipelines may have push constants trimmed, so look
     // up the exact layout used for the currently bound pipeline.
-    auto layout = bindings->getLayout(getActivePipelineLayoutType(BindPoint));
+    auto layoutType = getActivePipelineLayoutType(BindPoint);
 
-    if (unlikely(!(m_dirtyPushDataBlocks & layout->getPushDataMask()))) {
-      m_dirtyPushDataBlocks = 0u;
-      return;
-    }
+    auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.pipeline->getLayout()->getLayout(layoutType)
+      : m_state.cp.pipeline->getLayout()->getLayout(layoutType);
 
-    // Gather push data for all the different blocks
-    std::array<char, MaxTotalPushDataSize> data;
-
-    for (auto i : bit::BitMask(layout->getPushDataMask())) {
-      auto block = layout->getPushDataBlock(i);
-      auto blockSize = block.getSize();
-
-      auto srcOffset = computePushDataBlockOffset(i);
-      auto dstOffset = block.getOffset();
-
-      auto constantData = &m_state.pc.constantData[srcOffset];
-      auto resourceData = &m_state.pc.resourceData[dstOffset];
-
-      auto dstData = &data[dstOffset];
-
-      uint32_t rangeOffset = 0u;
-
-      // Copy chunks of dwords either from the constant data array or
-      // the resource data array, depending on the resource mask.
-      uint64_t resourceMask = block.getResourceDwordMask();
-
-      while (resourceMask) {
-        uint32_t dwordIndex = bit::tzcnt(resourceMask);
-        uint32_t dwordCount = bit::tzcnt(resourceMask + (resourceMask & -resourceMask));
-
-        uint32_t byteIndex = dwordIndex * sizeof(uint32_t);
-        uint32_t byteCount = dwordCount * sizeof(uint32_t);
-
-        std::memcpy(&dstData[rangeOffset],
-          &constantData[rangeOffset], byteIndex);
-
-        std::memcpy(&dstData[rangeOffset + byteIndex],
-          &resourceData[rangeOffset + byteIndex],
-          byteCount - byteIndex);
-
-        resourceMask >>= dwordCount;
-        rangeOffset += byteCount;
-      }
-
-      std::memcpy(&dstData[rangeOffset],
-        &constantData[rangeOffset], blockSize - rangeOffset);
-    }
-
-    // Use the merged push data range to commit
     auto pushData = layout->getPushData();
 
-    m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      layout->getPipelineLayout(),
-      pushData.getStageMask(),
-      pushData.getOffset(),
-      pushData.getSize(),
-      &data[pushData.getOffset()]);
+    if (unlikely(pushData.isEmpty()))
+      return;
 
-    m_dirtyPushDataBlocks = 0u;
+    if ((bit::tzcnt(pushData.getResourceDwordMask() + 1u) * 4u) >= pushData.getSize()) {
+      // All push data comes from resource updates, which means it
+      // is already in the correct layout. Commit directly.
+      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+        layout->getPipelineLayout(),
+        pushData.getStageMask(),
+        pushData.getOffset(),
+        pushData.getSize(),
+        &m_state.pc.resourceData[pushData.getOffset()]);
+    } else {
+      // Gather push data for all the different blocks
+      std::array<char, MaxTotalPushDataSize> data;
+
+      for (auto i : bit::BitMask(layout->getPushDataMask())) {
+        auto block = layout->getPushDataBlock(i);
+        auto blockSize = block.getSize();
+
+        auto srcOffset = computePushDataBlockOffset(i);
+        auto dstOffset = block.getOffset();
+
+        auto constantData = &m_state.pc.constantData[srcOffset];
+        auto resourceData = &m_state.pc.resourceData[dstOffset];
+
+        auto dstData = &data[dstOffset];
+
+        uint32_t rangeOffset = 0u;
+
+        // Copy chunks of dwords either from the constant data array or
+        // the resource data array, depending on the resource mask.
+        uint64_t resourceMask = block.getResourceDwordMask();
+
+        while (resourceMask) {
+          uint32_t dwordIndex = bit::tzcnt(resourceMask);
+          uint32_t dwordCount = bit::tzcnt(resourceMask + (resourceMask & -resourceMask));
+
+          uint32_t byteIndex = dwordIndex * sizeof(uint32_t);
+          uint32_t byteCount = dwordCount * sizeof(uint32_t);
+
+          std::memcpy(&dstData[rangeOffset],
+            &constantData[rangeOffset], byteIndex);
+
+          std::memcpy(&dstData[rangeOffset + byteIndex],
+            &resourceData[rangeOffset + byteIndex],
+            byteCount - byteIndex);
+
+          resourceMask >>= dwordCount;
+          rangeOffset += byteCount;
+        }
+
+        std::memcpy(&dstData[rangeOffset],
+          &constantData[rangeOffset], blockSize - rangeOffset);
+      }
+
+      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
+        layout->getPipelineLayout(),
+        pushData.getStageMask(),
+        pushData.getOffset(),
+        pushData.getSize(),
+        &data[pushData.getOffset()]);
+    }
   }
   
 
@@ -7228,7 +7240,8 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.test(DxvkContextFlag::CpHasPushConstants) && m_dirtyPushDataBlocks)
+    if (m_flags.all(DxvkContextFlag::CpHasPushData,
+                    DxvkContextFlag::DirtyPushData))
       this->updatePushData<VK_PIPELINE_BIND_POINT_COMPUTE>();
 
     return true;
@@ -7324,7 +7337,7 @@ namespace dxvk {
     
     this->updateDynamicState();
     
-    if (m_flags.test(DxvkContextFlag::GpHasPushConstants) && m_dirtyPushDataBlocks)
+    if (m_flags.all(DxvkContextFlag::GpHasPushData, DxvkContextFlag::DirtyPushData))
       this->updatePushData<VK_PIPELINE_BIND_POINT_GRAPHICS>();
 
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
