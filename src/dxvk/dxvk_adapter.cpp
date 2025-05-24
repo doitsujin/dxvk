@@ -290,6 +290,13 @@ namespace dxvk {
       devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
     }
 
+    // If descriptor buffer support is disabled, don't enable the extensions
+    bool enableDescriptorBuffer = instance->options().enableDescriptorBuffer
+      && m_deviceFeatures.extDescriptorBuffer.descriptorBuffer;
+
+    if (!enableDescriptorBuffer)
+      devExtensions.extDescriptorBuffer.setMode(DxvkExtMode::Disabled);
+
     // Disable NV_low_latency2 on 32-bit due to buggy latency sleep
     // behaviour, or if explicitly set via the onfig file.
     bool disableNvLowLatency2 = env::is32BitHostPlatform();
@@ -392,6 +399,10 @@ namespace dxvk {
     enabledFeatures.extDepthClipEnable.depthClipEnable =
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
 
+    // Descriptor buffer features
+    if (enableDescriptorBuffer)
+      enabledFeatures.extDescriptorBuffer.descriptorBuffer = VK_TRUE;
+
     // Used to make pipeline library stuff less clunky
     enabledFeatures.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable =
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
@@ -468,8 +479,10 @@ namespace dxvk {
     }
 
     // Enable descriptor pool overallocation if supported
-    enabledFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation =
-      m_deviceFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation;
+    if (!enableDescriptorBuffer) {
+      enabledFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation =
+        m_deviceFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation;
+    }
 
     // Enable raw access chains for shader backends
     enabledFeatures.nvRawAccessChains.shaderRawAccessChains =
