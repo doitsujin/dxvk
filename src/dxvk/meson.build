@@ -77,7 +77,7 @@ dxvk_src = [
   'dxvk_constant_state.cpp',
   'dxvk_context.cpp',
   'dxvk_cs.cpp',
-  'dxvk_descriptor_heap.cpp',
+  'dxvk_descriptor_info.cpp',
   'dxvk_descriptor_pool.cpp',
   'dxvk_device.cpp',
   'dxvk_device_filter.cpp',
