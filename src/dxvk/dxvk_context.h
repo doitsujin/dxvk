@@ -1711,6 +1711,12 @@ namespace dxvk {
     void updateResourceBindings(const DxvkPipelineBindings* layout);
 
     template<VkPipelineBindPoint BindPoint>
+    void updateDescriptorSetsBindings(const DxvkPipelineBindings* layout);
+
+    template<VkPipelineBindPoint BindPoint>
+    void updateDescriptorBufferBindings(const DxvkPipelineBindings* layout);
+
+    template<VkPipelineBindPoint BindPoint>
     void updatePushDataBindings(const DxvkPipelineBindings* layout);
 
     void updateComputeShaderResources();
