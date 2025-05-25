@@ -121,7 +121,7 @@ namespace dxvk {
           void*                       dst,
     const DxvkDescriptor**            descriptor,
     const DxvkDescriptorUpdateRange&  range) {
-    auto dstPtr = reinterpret_cast<char*>(dst);
+    auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
     auto srcPtr = descriptor + range.srcIndex;
 
     for (uint32_t i = 0u; i < range.descriptorCount; i++) {
@@ -135,9 +135,9 @@ namespace dxvk {
           void*                       dst,
     const DxvkDescriptor**            descriptor,
     const DxvkDescriptorUpdateRange&  range) {
-    auto dstPtr = reinterpret_cast<char*>(dst);
+    auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
 
-    std::memset(dstPtr + range.dstOffset, 0, range.descriptorSize);
+    std::memset(dstPtr, 0, range.descriptorSize);
   }
 
 
