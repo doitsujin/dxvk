@@ -291,7 +291,8 @@ namespace dxvk {
 
     DxvkResourceBufferViewMap(
             DxvkMemoryAllocator*        allocator,
-            VkBuffer                    buffer);
+            VkBuffer                    buffer,
+            VkDeviceAddress             va);
 
     ~DxvkResourceBufferViewMap();
 
@@ -308,8 +309,9 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device          = nullptr;
     VkBuffer          m_buffer          = VK_NULL_HANDLE;
+    VkDeviceAddress   m_va              = 0u;
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkBufferViewKey,

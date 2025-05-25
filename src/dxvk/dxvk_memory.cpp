@@ -38,16 +38,19 @@ namespace dxvk {
 
   DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
           DxvkMemoryAllocator*        allocator,
-          VkBuffer                    buffer)
-  : m_vkd(allocator->device()->vkd()), m_buffer(buffer) {
+          VkBuffer                    buffer,
+          VkDeviceAddress             va)
+  : m_device(allocator->device()), m_buffer(buffer), m_va(va) {
 
   }
 
 
   DxvkResourceBufferViewMap::~DxvkResourceBufferViewMap() {
+    auto vk = m_device->vkd();
+
     for (const auto& view : m_views) {
       if (view.first.format)
-        m_vkd->vkDestroyBufferView(m_vkd->device(), view.second.legacy.bufferView, nullptr);
+        vk->vkDestroyBufferView(vk->device(), view.second.legacy.bufferView, nullptr);
     }
   }
 
@@ -62,39 +65,74 @@ namespace dxvk {
     if (entry != m_views.end())
       return &entry->second;
 
-    DxvkDescriptor descriptor = { };
+    auto vk = m_device->vkd();
+
+    auto& descriptor = m_views.emplace(std::piecewise_construct,
+      std::tuple(key), std::tuple()).first->second;
 
     if (key.format) {
-      VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
-      flags.usage = key.usage;
+      if (m_device->canUseDescriptorBuffer()) {
+        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+        bufferInfo.address = m_va + key.offset;
+        bufferInfo.range = key.size;
+        bufferInfo.format = key.format;
 
-      VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
-      info.buffer = m_buffer;
-      info.format = key.format;
-      info.offset = key.offset + baseOffset;
-      info.range = key.size;
+        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
-      VkResult vr = m_vkd->vkCreateBufferView(
-        m_vkd->device(), &info, nullptr, &descriptor.legacy.bufferView);
+        if (key.usage == VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+          info.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;;
+          info.data.pStorageTexelBuffer = &bufferInfo;
+        } else {
+          info.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;;
+          info.data.pUniformTexelBuffer = &bufferInfo;
+        }
 
-      if (vr != VK_SUCCESS) {
-        throw DxvkError(str::format("Failed to create Vulkan buffer view: ", vr,
-          "\n   usage:  0x", std::hex, key.usage,
-          "\n   format: ", key.format,
-          "\n   offset: ", std::dec, key.offset,
-          "\n   size:   ", std::dec, key.size));
+        vk->vkGetDescriptorEXT(vk->device(), &info,
+          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+          descriptor.descriptor.data());
+      } else {
+        VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
+        flags.usage = key.usage;
+
+        VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
+        info.buffer = m_buffer;
+        info.format = key.format;
+        info.offset = key.offset + baseOffset;
+        info.range = key.size;
+
+        VkResult vr = vk->vkCreateBufferView(
+          vk->device(), &info, nullptr, &descriptor.legacy.bufferView);
+
+        if (vr != VK_SUCCESS) {
+          throw DxvkError(str::format("Failed to create Vulkan buffer view: ", vr,
+            "\n   usage:  0x", std::hex, key.usage,
+            "\n   format: ", key.format,
+            "\n   offset: ", std::dec, key.offset,
+            "\n   size:   ", std::dec, key.size));
+        }
       }
     } else {
-      VkDescriptorBufferInfo bufferInfo = descriptor.legacy.buffer;
+      auto& bufferInfo = descriptor.legacy.buffer;
       bufferInfo.buffer = m_buffer;
       bufferInfo.offset = key.offset + baseOffset;
       bufferInfo.range = key.size;
 
-      descriptor.legacy.buffer = bufferInfo;
+      if (m_device->canUseDescriptorBuffer()) {
+        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+        bufferInfo.address = m_va + key.offset;
+        bufferInfo.range = key.size;
+
+        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        info.data.pStorageBuffer = &bufferInfo;
+
+        vk->vkGetDescriptorEXT(vk->device(), &info,
+          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+          descriptor.descriptor.data());
+      }
     }
 
-    entry = m_views.insert({ key, descriptor }).first;
-    return &entry->second;
+    return &descriptor;
   }
 
 
@@ -210,7 +248,7 @@ namespace dxvk {
   const DxvkDescriptor* DxvkResourceAllocation::createBufferView(
     const DxvkBufferViewKey&          key) {
     if (unlikely(!m_bufferViews))
-      m_bufferViews = new DxvkResourceBufferViewMap(m_allocator, m_buffer);
+      m_bufferViews = new DxvkResourceBufferViewMap(m_allocator, m_buffer, m_bufferAddress);
 
     return m_bufferViews->createBufferView(key, m_bufferOffset);
   }
