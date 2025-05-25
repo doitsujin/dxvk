@@ -199,6 +199,19 @@ namespace dxvk {
       return m_setAlignment;
     }
 
+    /**
+     * \brief Queries maximum descriptor size
+     * \returns Size of the largest descriptor type
+     */
+    VkDeviceSize getMaxDescriptorSize() const {
+      VkDeviceSize size = 0u;
+
+      for (const auto& e : m_descriptorTypes)
+        size = std::max<VkDeviceSize>(size, e.size);
+
+      return size;
+    }
+
   private:
 
     VkDeviceSize m_setAlignment = 0u;
