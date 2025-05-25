@@ -103,14 +103,16 @@ namespace dxvk {
   DxvkResourceImageViewMap::DxvkResourceImageViewMap(
           DxvkMemoryAllocator*        allocator,
           VkImage                     image)
-  : m_vkd(allocator->device()->vkd()), m_image(image) {
+  : m_device(allocator->device()), m_image(image) {
 
   }
 
 
   DxvkResourceImageViewMap::~DxvkResourceImageViewMap() {
+    auto vk = m_device->vkd();
+
     for (const auto& view : m_views)
-      m_vkd->vkDestroyImageView(m_vkd->device(), view.second.legacy.image.imageView, nullptr);
+      vk->vkDestroyImageView(vk->device(), view.second.legacy.image.imageView, nullptr);
   }
 
 
@@ -122,6 +124,13 @@ namespace dxvk {
 
     if (entry != m_views.end())
       return &entry->second;
+
+    auto vk = m_device->vkd();
+
+    auto& descriptor = m_views.emplace(std::piecewise_construct,
+      std::tuple(key), std::tuple()).first->second;
+
+    bool isShaderResource = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
@@ -137,17 +146,31 @@ namespace dxvk {
     info.subresourceRange.baseArrayLayer = key.layerIndex;
     info.subresourceRange.layerCount = key.layerCount;
 
-    DxvkDescriptor descriptor = { };
     descriptor.legacy.image.imageLayout = key.layout;
 
-    VkResult vr = m_vkd->vkCreateImageView(
-      m_vkd->device(), &info, nullptr, &descriptor.legacy.image.imageView);
+    VkResult vr = vk->vkCreateImageView(
+      vk->device(), &info, nullptr, &descriptor.legacy.image.imageView);
 
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
 
-    entry = m_views.insert({ key, descriptor }).first;
-    return &entry->second;
+    if (m_device->canUseDescriptorBuffer() && isShaderResource) {
+      VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+
+      if (key.usage == VK_IMAGE_USAGE_STORAGE_BIT) {
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        info.data.pStorageImage = &descriptor.legacy.image;
+      } else {
+        info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        info.data.pSampledImage = &descriptor.legacy.image;
+      }
+
+      vk->vkGetDescriptorEXT(vk->device(), &info,
+        m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+        descriptor.descriptor.data());
+    }
+
+    return &descriptor;
   }
 
 

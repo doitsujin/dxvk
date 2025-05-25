@@ -413,7 +413,7 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device = nullptr;
     VkImage           m_image = VK_NULL_HANDLE;
 
     dxvk::mutex       m_mutex;
