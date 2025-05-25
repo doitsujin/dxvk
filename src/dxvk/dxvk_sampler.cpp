@@ -143,7 +143,7 @@ namespace dxvk {
     VkDescriptorSetLayoutBinding binding = { };
     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
     binding.descriptorCount = size;
-    binding.stageFlags = VK_SHADER_STAGE_ALL;
+    binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorBindingFlags bindingFlags =
       VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT |
