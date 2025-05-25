@@ -910,6 +910,18 @@ namespace dxvk {
       VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
       vk->vkGetBufferMemoryRequirements2(vk->device(), &requirementInfo, &requirements);
 
+      // When allocating memory for a descriptor heap, use a dedicated allocation. We
+      // ca expect these to be long-lived and mapped, and potentially use a dedicated
+      // memory type that may have unexpected size restrictions. Also make sure not
+      // to ever relocate these buffers since they require a stable GPU address.
+      if (createInfo.usage & DescriptorBufferUsage) {
+        VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+        dedicatedInfo.buffer = buffer;
+
+        if ((allocation = allocateDedicatedMemory(requirements.memoryRequirements, allocationInfo, &dedicatedInfo)))
+          allocation->m_flags.clr(DxvkAllocationFlag::CanMove);
+      }
+
       // If we have an existing global allocation from earlier, make sure it is suitable
       if (!allocation || !(requirements.memoryRequirements.memoryTypeBits & (1u << allocation->m_type->index))
        || (allocation->m_size < requirements.memoryRequirements.size)
@@ -1927,36 +1939,57 @@ namespace dxvk {
       if (getBufferMemoryRequirements(bufferInfo, requirements)) {
         uint32_t typeMask = requirements.memoryRequirements.memoryTypeBits;
 
-        while (typeMask) {
-          uint32_t type = bit::tzcnt(typeMask);
-
+        for (auto type : bit::BitMask(typeMask)) {
           if (type < m_memTypeCount)
             m_memTypes.at(type).bufferUsage |= bufferInfo.usage;
-
-          typeMask &= typeMask - 1;
         }
       }
 
       flags &= ~flag;
     }
 
+    // Figure out which memory types support descriptor heaps and set the device
+    // address flag so that memory allocations correctly enable it too. Do not
+    // set the descriptor heap usage flags themselves since we do not want any
+    // non-descriptor allocation to enable those bits.
+    VkBufferUsageFlags descriptorHeapUsage = 0u;
+
+    if (m_device->canUseDescriptorBuffer())
+      descriptorHeapUsage |= DescriptorBufferUsage;
+
+    while (descriptorHeapUsage) {
+      VkBufferCreateFlags flag = descriptorHeapUsage & -descriptorHeapUsage;
+
+      bufferInfo.usage = flag
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+      if (getBufferMemoryRequirements(bufferInfo, requirements)) {
+        uint32_t typeMask = requirements.memoryRequirements.memoryTypeBits;
+
+        for (auto type : bit::BitMask(typeMask)) {
+          if (type < m_memTypeCount)
+            m_memTypes.at(type).bufferUsage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        }
+      }
+
+      descriptorHeapUsage &= ~flag;
+    }
+
     // Only use a minimal set of usage flags for the global buffer if the
     // full combination of flags is not supported for whatever reason.
-    m_globalBufferUsageFlags = ~0u;
+    m_globalBufferUsageFlags = -1;
     m_globalBufferMemoryTypes = 0u;
 
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
       bufferInfo.usage = m_memTypes[i].bufferUsage;
 
-      if (!bufferInfo.usage)
+      if (MinGlobalBufferUsage & ~bufferInfo.usage)
         continue;
 
       if (!getBufferMemoryRequirements(bufferInfo, requirements)
-       || !(requirements.memoryRequirements.memoryTypeBits & (1u << i))) {
-        m_memTypes[i].bufferUsage &= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                                  |  VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                  |  VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-      }
+       || !(requirements.memoryRequirements.memoryTypeBits & (1u << i)))
+        m_memTypes[i].bufferUsage &= MinGlobalBufferUsage;
 
       if (m_memTypes[i].bufferUsage) {
         m_globalBufferUsageFlags &= m_memTypes[i].bufferUsage;
