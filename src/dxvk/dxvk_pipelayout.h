@@ -6,7 +6,7 @@
 
 #include "../util/util_small_vector.h"
 
-#include "dxvk_descriptor_heap.h"
+#include "dxvk_descriptor_info.h"
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 #include "dxvk_limits.h"

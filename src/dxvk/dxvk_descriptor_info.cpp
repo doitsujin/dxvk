@@ -1,6 +1,6 @@
 #include <algorithm>
 
-#include "dxvk_descriptor_heap.h"
+#include "dxvk_descriptor_info.h"
 #include "dxvk_device.h"
 
 namespace dxvk {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dxvk_descriptor_heap.h"
+#include "dxvk_descriptor_info.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_memory.h"
