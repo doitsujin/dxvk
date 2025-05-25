@@ -6,6 +6,7 @@
 
 #include "../util/util_small_vector.h"
 
+#include "dxvk_descriptor_heap.h"
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
@@ -878,8 +879,7 @@ namespace dxvk {
      * \returns \c true if the set layout contains no descriptors
      */
     bool isEmpty() const {
-      // Can check the template for now
-      return !m_template;
+      return m_empty;
     }
 
     /**
@@ -898,11 +898,42 @@ namespace dxvk {
       return m_template;
     }
 
+    /**
+     * \brief Queries allocation size for the set
+     * \returns Space required in descriptor heap
+     */
+    VkDeviceSize getMemorySize() const {
+      return m_memorySize;
+    }
+
+    /**
+     * \brief Updates descriptor memory
+     *
+     * Uses the pre-computed update list to write descriptors.
+     * \param [in] dst Pointer to descriptor memory
+     * \param [in] descriptors Pointer to source descriptor list
+     */
+    void update(
+            void*                   dst,
+      const DxvkDescriptor**        descriptors) const {
+      m_update.update(dst, descriptors);
+    }
+
   private:
 
     DxvkDevice*                   m_device;
+    bool                          m_empty     = 0u;
+
+    VkDeviceSize                  m_memorySize = 0u;
+
     VkDescriptorSetLayout         m_layout    = VK_NULL_HANDLE;
     VkDescriptorUpdateTemplate    m_template  = VK_NULL_HANDLE;
+
+    DxvkDescriptorUpdateList      m_update;
+
+    void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
+
+    void initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key);
 
   };
 
@@ -1186,6 +1217,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries total descriptor memory size
+     *
+     * Returns the memory required for all descriptor sets.
+     * Use this to determine whether to allocate a new
+     * descriptor range from the resource heap.
+     */
+    VkDeviceSize getDescriptorMemorySize() const {
+      return m_setMemorySize;
+    }
+
+    /**
      * \brief Queries non-empty push data block mask
      */
     uint32_t getPushDataMask() const {
@@ -1222,6 +1264,7 @@ namespace dxvk {
     DxvkPushDataBlock                                               m_pushDataMerged;
     std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
 
+    VkDeviceSize            m_setMemorySize = 0u;
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
     VkPipelineLayout        m_layout = VK_NULL_HANDLE;
