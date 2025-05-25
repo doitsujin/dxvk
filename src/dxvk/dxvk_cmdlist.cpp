@@ -558,6 +558,103 @@ namespace dxvk {
   }
 
 
+  bool DxvkCommandList::createDescriptorRange() {
+    auto oldBaseAddress = m_descriptorRange
+      ? m_descriptorRange->getHeapInfo().gpuAddress
+      : 0u;
+
+    m_descriptorRange = m_descriptorHeap->allocRange();
+    auto newBaseAddress = m_descriptorRange->getHeapInfo().gpuAddress;
+
+    if (newBaseAddress != oldBaseAddress) {
+      if (m_execBuffer) {
+        m_descriptorRange = nullptr;
+        return false;
+      }
+
+      rebindDescriptorBuffers();
+    }
+
+    track(m_descriptorRange);
+    return true;
+  }
+
+
+  void DxvkCommandList::beginSecondaryCommandBuffer(
+    const VkCommandBufferInheritanceInfo& inheritanceInfo) {
+    VkCommandBuffer cmdBuffer = m_graphicsPool->getSecondaryCommandBuffer(inheritanceInfo);
+
+    if (m_device->canUseDescriptorBuffer())
+      bindDescriptorBuffers(cmdBuffer);
+
+    m_execBuffer = std::exchange(m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)], cmdBuffer);
+  }
+
+
+  VkCommandBuffer DxvkCommandList::endSecondaryCommandBuffer() {
+    VkCommandBuffer cmd = getCmdBuffer();
+
+    if (m_vkd->vkEndCommandBuffer(cmd))
+      throw DxvkError("DxvkCommandList: Failed to end secondary command buffer");
+
+    m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = m_execBuffer;
+    m_execBuffer = VK_NULL_HANDLE;
+    return cmd;
+  }
+
+
+  void DxvkCommandList::setDescriptorHeap(
+          Rc<DxvkResourceDescriptorHeap> heap) {
+    m_descriptorHeap = std::move(heap);
+    m_descriptorRange = m_descriptorHeap->getRange();
+
+    rebindDescriptorBuffers();
+
+    track(m_descriptorRange);
+  }
+
+
+  void DxvkCommandList::rebindDescriptorBuffers() {
+    // Secondary command buffer must not be active when this gets called
+    for (uint32_t i = uint32_t(DxvkCmdBuffer::ExecBuffer); i <= uint32_t(DxvkCmdBuffer::InitBuffer); i++)
+      bindDescriptorBuffers(m_cmd.cmdBuffers[i]);
+  }
+
+
+  void DxvkCommandList::bindDescriptorBuffers(VkCommandBuffer cmdBuffer) {
+    auto vk = m_device->vkd();
+
+    if (!cmdBuffer || !m_descriptorRange)
+      return;
+
+    auto samplerInfo = m_device->getSamplerDescriptorSet();
+    auto resourceInfo = m_descriptorRange->getHeapInfo();
+
+    std::array<VkDescriptorBufferBindingInfoEXT, 2u> heaps = { };
+
+    VkDescriptorBufferBindingPushDescriptorBufferHandleEXT pushInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_PUSH_DESCRIPTOR_BUFFER_HANDLE_EXT };
+    pushInfo.buffer = resourceInfo.buffer;
+
+    auto& samplerHeap = heaps[0u];
+    samplerHeap.sType = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT };
+    samplerHeap.address = samplerInfo.gpuAddress;
+    samplerHeap.usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    auto& resourceHeap = heaps[1u];
+    resourceHeap.sType = { VK_STRUCTURE_TYPE_DESCRIPTOR_BUFFER_BINDING_INFO_EXT };
+    resourceHeap.address = resourceInfo.gpuAddress;
+    resourceHeap.usage = VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    if (m_device->features().extDescriptorBuffer.descriptorBufferPushDescriptors
+     && !m_device->properties().extDescriptorBuffer.bufferlessPushDescriptors) {
+      resourceHeap.pNext = &pushInfo;
+      resourceHeap.usage |= VK_BUFFER_USAGE_PUSH_DESCRIPTORS_DESCRIPTOR_BUFFER_BIT_EXT;
+    }
+
+    vk->vkCmdBindDescriptorBuffersEXT(cmdBuffer, heaps.size(), heaps.data());
+  }
+
+
   void DxvkCommandList::endCommandBuffer(VkCommandBuffer cmdBuffer) {
     auto vk = m_device->vkd();
 
@@ -570,9 +667,14 @@ namespace dxvk {
 
 
   VkCommandBuffer DxvkCommandList::allocateCommandBuffer(DxvkCmdBuffer type) {
-    return type == DxvkCmdBuffer::SdmaBuffer || type == DxvkCmdBuffer::SdmaBarriers
+    VkCommandBuffer cmdBuffer = (type >= DxvkCmdBuffer::SdmaBuffer)
       ? m_transferPool->getCommandBuffer(type)
       : m_graphicsPool->getCommandBuffer(type);
+
+    if (type <= DxvkCmdBuffer::InitBuffer && m_device->canUseDescriptorBuffer())
+      bindDescriptorBuffers(cmdBuffer);
+
+    return cmdBuffer;
   }
 
 }
