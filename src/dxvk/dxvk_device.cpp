@@ -272,6 +272,9 @@ namespace dxvk {
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
 
+    if (canUseDescriptorBuffer())
+      pipelineInfo.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
     VkPipelineShaderStageCreateInfo& stageInfo = pipelineInfo.stage;
     stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &moduleInfo };
     stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
@@ -426,6 +429,9 @@ namespace dxvk {
     pipelineInfo.pDynamicState = &dyState;
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
+
+    if (canUseDescriptorBuffer())
+      pipelineInfo.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
