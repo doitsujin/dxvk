@@ -4,6 +4,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_descriptor_heap.h"
 #include "dxvk_implicit_resolve.h"
 #include "dxvk_latency.h"
 #include "dxvk_objects.h"
@@ -1381,6 +1382,8 @@ namespace dxvk {
     Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorPoolSet> m_descriptorManager;
 
+    Rc<DxvkResourceDescriptorHeap> m_descriptorHeap;
+
     DxvkBarrierBatch        m_sdmaAcquires;
     DxvkBarrierBatch        m_sdmaBarriers;
     DxvkBarrierBatch        m_initAcquires;
@@ -2170,6 +2173,8 @@ namespace dxvk {
     void beginActiveDebugRegions();
 
     void endActiveDebugRegions();
+
+    void submitDescriptorPool(bool endFrame);
 
     static uint32_t computePushDataBlockOffset(uint32_t index) {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
