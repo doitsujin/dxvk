@@ -6220,10 +6220,19 @@ namespace dxvk {
 
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateSamplerSet(const DxvkPipelineLayout* layout) {
-    VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
+    if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
+      const uint32_t     bufferIndex = 0u;
+      const VkDeviceSize bufferOffset = 0u;
 
-    m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-      BindPoint, layout->getPipelineLayout(), 0u, 1u, &set);
+      m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer,
+        BindPoint, layout->getPipelineLayout(), 0u, 1u,
+        &bufferIndex, &bufferOffset);
+    } else {
+      VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
+
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
+        BindPoint, layout->getPipelineLayout(), 0u, 1u, &set);
+    }
   }
 
 
