@@ -49,7 +49,23 @@ namespace dxvk {
   DxvkDescriptorSetLayout::DxvkDescriptorSetLayout(
           DxvkDevice*                 device,
     const DxvkDescriptorSetLayoutKey& key)
-  : m_device(device) {
+  : m_device(device), m_empty(!key.getBindingCount()) {
+    initSetLayout(key);
+
+    if (m_device->canUseDescriptorBuffer())
+      initDescriptorBufferUpdate(key);
+  }
+
+
+  DxvkDescriptorSetLayout::~DxvkDescriptorSetLayout() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_layout, nullptr);
+    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_template, nullptr);
+  }
+
+
+  void DxvkDescriptorSetLayout::initSetLayout(const DxvkDescriptorSetLayoutKey& key) {
     auto vk = m_device->vkd();
 
     size_t descriptorCount = 0u;
@@ -89,10 +105,13 @@ namespace dxvk {
     layoutInfo.bindingCount = bindingInfos.size();
     layoutInfo.pBindings = bindingInfos.data();
 
+    if (m_device->canUseDescriptorBuffer())
+      layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
     if (vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS)
       throw DxvkError("DxvkDescriptorSetLayout: Failed to create descriptor set layout");
 
-    if (layoutInfo.bindingCount) {
+    if (layoutInfo.bindingCount && !m_device->canUseDescriptorBuffer()) {
       VkDescriptorUpdateTemplateCreateInfo templateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
       templateInfo.descriptorUpdateEntryCount = templateInfos.size();
       templateInfo.pDescriptorUpdateEntries = templateInfos.data();
@@ -105,11 +124,27 @@ namespace dxvk {
   }
 
 
-  DxvkDescriptorSetLayout::~DxvkDescriptorSetLayout() {
+  void DxvkDescriptorSetLayout::initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key) {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_layout, nullptr);
-    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_template, nullptr);
+    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_layout, &m_memorySize);
+    m_memorySize = align(m_memorySize, m_device->getDescriptorProperties().getDescriptorSetAlignment());
+
+    small_vector<DxvkDescriptorUpdateInfo, 32u> descriptors;
+
+    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+      const auto& binding = key.getBinding(i);
+
+      VkDeviceSize offset = 0u;
+      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_layout, i, &offset);
+
+      auto& e = descriptors.emplace_back();
+      e.descriptorType = binding.getDescriptorType();
+      e.offset = uint32_t(offset);
+    }
+
+    m_update = DxvkDescriptorUpdateList(m_device,
+      m_memorySize, descriptors.size(), descriptors.data());
   }
 
 
@@ -130,6 +165,12 @@ namespace dxvk {
       m_pushData[i] = key.getPushDataBlock(i);
       m_pushDataMerged.merge(m_pushData[i]);
       m_pushDataMerged.makeAbsolute();
+    }
+
+    for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
+      m_setMemorySize += key.getDescriptorSetLayout(i)
+        ? key.getDescriptorSetLayout(i)->getMemorySize()
+        : 0u;
     }
 
     // Gather descriptor set layout objects, some of these may be null.
