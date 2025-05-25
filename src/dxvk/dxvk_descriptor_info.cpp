@@ -3,7 +3,79 @@
 #include "dxvk_descriptor_info.h"
 #include "dxvk_device.h"
 
+#include "../util/util_bit.h"
+
 namespace dxvk {
+
+  template<size_t Size>
+  static force_inline void copy_nontemporal(void* dst, const void* src) {
+    static_assert(Size == 4u || Size == 8u || Size == 16u);
+
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+    switch (Size) {
+      case 4u: {
+        auto dstPtr = reinterpret_cast<      int*>(dst);
+        auto srcPtr = reinterpret_cast<const int*>(src);
+        _mm_stream_si32(dstPtr, srcPtr[0u]);
+      } break;
+
+      case 8u: {
+        #if defined(DXVK_ARCH_X86_64)
+        auto dstPtr = reinterpret_cast<      long long int*>(dst);
+        auto srcPtr = reinterpret_cast<const long long int*>(src);
+        _mm_stream_si64(dstPtr, srcPtr[0u]);
+        #else
+        auto dstPtr = reinterpret_cast<      int32_t*>(dst);
+        auto srcPtr = reinterpret_cast<const int32_t*>(src);
+        _mm_stream_si32(dstPtr + 0u, srcPtr[0u]);
+        _mm_stream_si32(dstPtr + 1u, srcPtr[1u]);
+        #endif
+      } break;
+
+      case 16u: {
+        auto dstPtr = reinterpret_cast<      __m128i*>(dst);
+        auto srcPtr = reinterpret_cast<const __m128i*>(src);
+        _mm_stream_si128(dstPtr, _mm_loadu_si128(srcPtr));
+      } break;
+    }
+    #else
+    std::memcpy(dst, src, Size);
+    #endif
+  }
+
+
+  template<size_t Size>
+  static force_inline void clear_nontemporal(void* dst) {
+    static_assert(Size == 4u || Size == 8u || Size == 16u);
+
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+    switch (Size) {
+      case 4u: {
+        auto dstPtr = reinterpret_cast<int*>(dst);
+        _mm_stream_si32(dstPtr, 0);
+      } break;
+
+      case 8u: {
+        #if defined(DXVK_ARCH_X86_64)
+        auto dstPtr = reinterpret_cast<long long int*>(dst);
+        _mm_stream_si64(dstPtr, 0l);
+        #else
+        auto dstPtr = reinterpret_cast<int*>(dst);
+        _mm_stream_si32(dstPtr + 0u, 0);
+        _mm_stream_si32(dstPtr + 1u, 0);
+        #endif
+      } break;
+
+      case 16u: {
+        auto dstPtr = reinterpret_cast<__m128i*>(dst);
+        _mm_stream_si128(dstPtr, _mm_setzero_si128());
+      } break;
+    }
+    #else
+    std::memset(dst, 0, Size);
+    #endif
+  }
+
 
   DxvkDescriptorUpdateList::DxvkDescriptorUpdateList(
           DxvkDevice*               device,
@@ -106,13 +178,45 @@ namespace dxvk {
 
 
   DxvkDescriptorUpdateFn* DxvkDescriptorUpdateList::getCopyFn(uint32_t alignment, uint32_t size) {
-    // TODO pre-compile optimized variants
+    if (alignment >= 16u || alignment >= size || !alignment) {
+      switch (size) {
+        case   4u: return &copyAligned< 4u>;
+        case   8u: return &copyAligned< 8u>;
+        case  16u: return &copyAligned<16u>;
+        case  32u: return &copyAligned<32u>;
+        case  48u: return &copyAligned<48u>;
+        case  64u: return &copyAligned<64u>;
+        case  96u: return &copyAligned<96u>;
+        case 128u: return &copyAligned<128u>;
+        case 160u: return &copyAligned<160u>;
+        case 192u: return &copyAligned<192u>;
+        case 224u: return &copyAligned<224u>;
+        case 256u: return &copyAligned<256u>;
+      }
+    }
+
+    Logger::err(str::format("generic copy: ", alignment, ", ", size));
     return &copyGeneric;
   }
 
 
   DxvkDescriptorUpdateFn* DxvkDescriptorUpdateList::getPaddingFn(uint32_t alignment, uint32_t size) {
-    // TODO pre-compile optimized variants
+    if (alignment >= 16u || alignment >= size) {
+      switch (size) {
+        case  4u: return &padAligned< 4u>;
+        case  8u: return &padAligned< 8u>;
+        case 12u: return &padAligned<12u>;
+        case 16u: return &padAligned<16u>;
+        case 24u: return &padAligned<24u>;
+        case 32u: return &padAligned<32u>;
+        case 40u: return &padAligned<40u>;
+        case 48u: return &padAligned<48u>;
+        case 56u: return &padAligned<56u>;
+        case 64u: return &padAligned<64u>;
+      }
+    }
+
+    Logger::err(str::format("generic pad: ", alignment, ", ", size));
     return &padGeneric;
   }
 
@@ -138,6 +242,61 @@ namespace dxvk {
     auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
 
     std::memset(dstPtr, 0, range.descriptorSize);
+  }
+
+
+  template<size_t Size>
+  void DxvkDescriptorUpdateList::copyAligned(
+          void*                       dst,
+    const DxvkDescriptor**            descriptor,
+    const DxvkDescriptorUpdateRange&  range) {
+    auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
+    auto srcBase = descriptor + range.srcIndex;
+
+    for (uint32_t i = 0u; i < range.descriptorCount; i++) {
+      auto srcPtr = reinterpret_cast<const char*>(srcBase[i]->descriptor.data());
+
+      for (size_t i = 0u; i < Size / 16u; i++)
+        copy_nontemporal<16u>(dstPtr + 16u * i, srcPtr + 16u * i);
+
+      dstPtr += 16u * (Size / 16u);
+      srcPtr += 16u * (Size / 16u);
+
+      if (Size & 8u) {
+        copy_nontemporal<8u>(dstPtr, srcPtr);
+
+        dstPtr += 8u;
+        srcPtr += 8u;
+      }
+
+      if (Size & 4u) {
+        copy_nontemporal<4u>(dstPtr, srcPtr);
+
+        dstPtr += 4u;
+      }
+    }
+  }
+
+
+  template<size_t Size>
+  void DxvkDescriptorUpdateList::padAligned(
+          void*                       dst,
+    const DxvkDescriptor**            descriptor,
+    const DxvkDescriptorUpdateRange&  range) {
+    auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
+
+    if (Size & 4u) {
+      clear_nontemporal<4u>(dstPtr);
+      dstPtr += 4u;
+    }
+
+    if (Size & 8u) {
+      clear_nontemporal<8u>(dstPtr);
+      dstPtr += 8u;
+    }
+
+    for (size_t i = 0u; i < Size / 16u; i++)
+      clear_nontemporal<16u>(dstPtr + 16u * i);
   }
 
 
