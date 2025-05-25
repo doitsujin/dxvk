@@ -11,6 +11,7 @@
 
 namespace dxvk {
 
+  class DxvkBuffer;
   class DxvkDevice;
   class DxvkSamplerPool;
 
@@ -225,8 +226,9 @@ namespace dxvk {
    * \brief Global sampler set and layout
    */
   struct DxvkSamplerDescriptorSet {
-    VkDescriptorSet       set     = VK_NULL_HANDLE;
-    VkDescriptorSetLayout layout  = VK_NULL_HANDLE;
+    VkDescriptorSet       set         = VK_NULL_HANDLE;
+    VkDescriptorSetLayout layout      = VK_NULL_HANDLE;
+    VkDeviceAddress       gpuAddress  = 0u;
   };
 
 
@@ -249,9 +251,7 @@ namespace dxvk {
      * \brief Retrieves descriptor set and layout
      * \returns Descriptor set and layout handles
      */
-    DxvkSamplerDescriptorSet getDescriptorSetInfo() const {
-      return { m_set, m_setLayout };
-    }
+    DxvkSamplerDescriptorSet getDescriptorSetInfo() const;
 
     /**
      * \brief Writes sampler descriptor to pool
@@ -270,6 +270,17 @@ namespace dxvk {
     VkDescriptorPool      m_pool      = VK_NULL_HANDLE;
     VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
     VkDescriptorSet       m_set       = VK_NULL_HANDLE;
+
+    Rc<DxvkBuffer>        m_buffer    = nullptr;
+
+    VkDeviceSize          m_descriptorOffset  = 0u;
+    VkDeviceSize          m_descriptorSize    = 0u;
+
+    void initDescriptorLayout(uint32_t descriptorCount);
+
+    void initDescriptorPool(uint32_t descriptorCount);
+
+    void initDescriptorBuffer();
 
   };
 
