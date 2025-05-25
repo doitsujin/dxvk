@@ -18,10 +18,18 @@ namespace dxvk {
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_implicitResolves(device) {
+    // Create descriptor heap or legacy pool object,
+    // depending on feature support.
+    if (device->canUseDescriptorBuffer()) {
+      m_descriptorHeap = new DxvkResourceDescriptorHeap(device.ptr());
+      m_features.set(DxvkContextFeature::DescriptorBuffer);
+    } else {
+      m_descriptorManager = new DxvkDescriptorPoolSet(device.ptr());
+    }
+
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
-    m_descriptorManager = new DxvkDescriptorPoolSet(device.ptr());
 
     // Global barrier for graphics pipelines. This is only used to
     // avoid write-after-read hazards after a render pass, so the
@@ -64,9 +72,6 @@ namespace dxvk {
   
   
   void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
-    if (!m_descriptorPool)
-      m_descriptorPool = m_descriptorManager->getDescriptorPool();
-
     m_cmd = cmdList;
     m_cmd->init();
 
@@ -81,10 +86,7 @@ namespace dxvk {
 
     m_implicitResolves.cleanup(m_trackingId);
 
-    if (m_descriptorPool->shouldSubmit(false)) {
-      m_descriptorPool = m_descriptorManager->getDescriptorPool();
-      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
-    }
+    this->submitDescriptorPool(false);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       // Make sure to emit the submission reason always at the very end
@@ -98,10 +100,7 @@ namespace dxvk {
 
 
   void DxvkContext::endFrame() {
-    if (m_descriptorPool->shouldSubmit(true)) {
-      m_descriptorPool = m_descriptorManager->getDescriptorPool();
-      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
-    }
+    this->submitDescriptorPool(true);
 
     m_renderPassIndex = 0u;
   }
@@ -8130,7 +8129,15 @@ namespace dxvk {
     m_state.cp.pipeline = nullptr;
 
     m_cmd->setTrackingId(++m_trackingId);
-    m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
+
+    if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
+      m_cmd->setDescriptorHeap(m_descriptorHeap);
+    } else {
+      if (!m_descriptorPool)
+        m_descriptorPool = m_descriptorManager->getDescriptorPool();
+
+      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
+    }
   }
 
 
@@ -9123,6 +9130,15 @@ namespace dxvk {
   void DxvkContext::endActiveDebugRegions() {
     for (size_t i = 0; i < m_debugLabelStack.size(); i++)
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+  }
+
+
+  void DxvkContext::submitDescriptorPool(bool endFrame) {
+    // Only relevant for the legacy descriptor model
+    if (m_descriptorPool && m_descriptorPool->shouldSubmit(endFrame)) {
+      m_descriptorPool = m_descriptorManager->getDescriptorPool();
+      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
+    }
   }
 
 }

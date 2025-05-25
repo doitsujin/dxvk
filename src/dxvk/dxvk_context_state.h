@@ -78,6 +78,7 @@ namespace dxvk {
     VariableMultisampleRate,
     DebugUtils,
     DirectMultiDraw,
+    DescriptorBuffer,
     FeatureCount
   };
 
