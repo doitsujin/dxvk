@@ -603,6 +603,20 @@ namespace dxvk {
     }
 
 
+    void cmdSetDescriptorBufferOffsetsEXT(
+            DxvkCmdBuffer             cmdBuffer,
+            VkPipelineBindPoint       pipeline,
+            VkPipelineLayout          layout,
+            uint32_t                  firstSet,
+            uint32_t                  setCount,
+      const uint32_t*                 pBufferIndices,
+      const VkDeviceSize*             pOffsets) {
+      m_vkd->vkCmdSetDescriptorBufferOffsetsEXT(getCmdBuffer(cmdBuffer),
+        pipeline, layout, firstSet, setCount, pBufferIndices, pOffsets);
+    }
+
+
+
     void cmdBindIndexBuffer(
             VkBuffer                buffer,
             VkDeviceSize            offset,
@@ -1313,6 +1327,22 @@ namespace dxvk {
 
       return m_cmdSparseBinds.emplace_back();
     }
+
+    void bindResourcesLegacy(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void bindResourcesDescriptorBuffer(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
 
     void rebindDescriptorBuffers();
 

@@ -478,6 +478,23 @@ namespace dxvk {
     const DxvkDescriptorWrite*          descriptorInfos,
           size_t                        pushDataSize,
     const void*                         pushData) {
+    if (m_device->canUseDescriptorBuffer()) {
+      bindResourcesDescriptorBuffer(cmdBuffer, layout,
+        descriptorCount, descriptorInfos, pushDataSize, pushData);
+    } else {
+      bindResourcesLegacy(cmdBuffer, layout,
+        descriptorCount, descriptorInfos, pushDataSize, pushData);
+    }
+  }
+
+
+  void DxvkCommandList::bindResourcesLegacy(
+          DxvkCmdBuffer                 cmdBuffer,
+    const DxvkPipelineLayout*           layout,
+          uint32_t                      descriptorCount,
+    const DxvkDescriptorWrite*          descriptorInfos,
+          size_t                        pushDataSize,
+    const void*                         pushData) {
     // Update descriptor set as necessary
     auto setLayout = layout->getDescriptorSetLayout(0u);
 
@@ -538,6 +555,121 @@ namespace dxvk {
         layout->getBindPoint(),
         layout->getPipelineLayout(),
         0u, sets.size(), sets.data());
+    }
+
+    // Update push constants
+    DxvkPushDataBlock pushDataBlock = layout->getPushData();
+
+    if (pushDataSize && !pushDataBlock.isEmpty()) {
+      std::array<char, MaxTotalPushDataSize> dataCopy;
+      std::memcpy(dataCopy.data(), pushData,
+        std::min(dataCopy.size(), pushDataSize));
+
+      this->cmdPushConstants(cmdBuffer,
+        layout->getPipelineLayout(),
+        pushDataBlock.getStageMask(),
+        pushDataBlock.getOffset(),
+        pushDataBlock.getSize(),
+        dataCopy.data());
+    }
+  }
+
+
+  void DxvkCommandList::bindResourcesDescriptorBuffer(
+          DxvkCmdBuffer                 cmdBuffer,
+    const DxvkPipelineLayout*           layout,
+          uint32_t                      descriptorCount,
+    const DxvkDescriptorWrite*          descriptorInfos,
+          size_t                        pushDataSize,
+    const void*                         pushData) {
+
+    auto setLayout = layout->getDescriptorSetLayout(0u);
+
+    if (descriptorCount && setLayout && !setLayout->isEmpty()) {
+      auto vk = m_device->vkd();
+
+      // Assume that a descriptor heap is already active and that
+      // we're not recording into a secondary command buffer.
+      if (!canAllocateDescriptors(layout))
+        createDescriptorRange();
+
+      // Populate descriptor arrays with necessary information
+      small_vector<const DxvkDescriptor*, 8u> descriptors;
+      small_vector<DxvkDescriptor, 8u> buffers;
+
+      for (uint32_t i = 0u; i < descriptorCount; i++) {
+        const auto& info = descriptorInfos[i];
+
+        switch (info.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+            auto& descriptor = buffers.emplace_back();
+
+            VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+            bufferInfo.address = info.buffer.gpuAddress;
+            bufferInfo.range = info.buffer.size;
+
+            VkDescriptorGetInfoEXT descriptorInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+            descriptorInfo.type = info.descriptorType;
+
+            if (info.buffer.size) {
+              (info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+                ? descriptorInfo.data.pStorageBuffer
+                : descriptorInfo.data.pUniformBuffer) = &bufferInfo;
+            }
+
+            vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
+              m_device->getDescriptorProperties().getDescriptorTypeInfo(info.descriptorType).size,
+              descriptor.descriptor.data());
+
+            descriptors.push_back(&descriptor);
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+            auto descriptor = info.descriptor;
+
+            if (!descriptor)
+              descriptor = m_device->getDescriptorProperties().getNullDescriptor(info.descriptorType);
+
+            descriptors.push_back(descriptor);
+          } break;
+
+          default:
+            Logger::err(str::format("Unhandled descriptor type ", info.descriptorType));
+        }
+      }
+
+      // Allocate descriptor storage and update the set
+      auto setLayout = layout->getDescriptorSetLayout(0u);
+      auto storage = allocateDescriptors(setLayout);
+
+      setLayout->update(storage.mapPtr, descriptors.data());
+
+      // Bind actual descriptors
+      std::array<uint32_t,     2u> bufferIndices = { };
+      std::array<VkDeviceSize, 2u> bufferOffsets = { };
+
+      uint32_t setCount = 0u;
+
+      if (layout->usesSamplerHeap()) {
+        bufferIndices[setCount] = 0u;
+        bufferOffsets[setCount] = 0u;
+        setCount++;
+      }
+
+      bufferIndices[setCount] = 1u;
+      bufferOffsets[setCount] = storage.offset;
+      setCount++;
+
+      cmdSetDescriptorBufferOffsetsEXT(cmdBuffer,
+        layout->getBindPoint(),
+        layout->getPipelineLayout(),
+        0u, setCount,
+        bufferIndices.data(),
+        bufferOffsets.data());
     }
 
     // Update push constants
