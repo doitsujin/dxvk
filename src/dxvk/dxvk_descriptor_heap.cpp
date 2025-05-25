@@ -76,10 +76,14 @@ namespace dxvk {
     VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getMaxDescriptorSize();
     VkDeviceSize heapSize = descriptorSize * SliceDescriptorCount * SliceCount;
 
-    Rc<DxvkBuffer> gpuBuffer = createGpuBuffer(heapSize, true);
-    Rc<DxvkBuffer> cpuBuffer = gpuBuffer;
+    // On integrated graphics, map the descriptor heap directly. Otherwise, it
+    // is likely beneficial to write to system memory instead and upload the
+    // data to VRAM on the transfer queue.
+    bool isDiscreteGpu = m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 
-    // TODO allocate cpu buffer unless on integrated
+    Rc<DxvkBuffer> gpuBuffer = createGpuBuffer(heapSize, !isDiscreteGpu);
+    Rc<DxvkBuffer> cpuBuffer = isDiscreteGpu ? createCpuBuffer(heapSize) : gpuBuffer;
+
     DxvkResourceDescriptorRange* first = nullptr;
 
     for (uint32_t i = 0u; i < SliceCount; i++) {

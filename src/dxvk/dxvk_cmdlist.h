@@ -1298,6 +1298,7 @@ namespace dxvk {
 
     Rc<DxvkResourceDescriptorHeap>  m_descriptorHeap;
     Rc<DxvkResourceDescriptorRange> m_descriptorRange;
+    VkDeviceSize                    m_descriptorOffset = 0u;
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
 
@@ -1343,6 +1344,15 @@ namespace dxvk {
       const DxvkDescriptorWrite*          descriptorInfos,
             size_t                        pushDataSize,
       const void*                         pushData);
+
+    void emitDescriptorUpload(
+      const Rc<DxvkResourceDescriptorRange>& range,
+            VkDeviceSize                  baseOffset);
+
+    void emitDescriptorUploadBarrier(
+      const Rc<DxvkResourceDescriptorRange>& range);
+
+    void emitDescriptorUseBarrier(VkCommandBuffer cmdBuffer);
 
     void rebindDescriptorBuffers();
 
