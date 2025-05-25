@@ -85,6 +85,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries current allocation offset
+     *
+     * Useful to determine which part of the buffer to copy
+     * when using a dedicated upload buffer.
+     * \returns Current allocation offset
+     */
+    VkDeviceSize getAllocationOffset() const {
+      return m_allocationOffset;
+    }
+
+    /**
      * \brief Queries descriptor heap info
      *
      * Returns the base address of the descriptor heap rather than the
