@@ -6473,8 +6473,13 @@ namespace dxvk {
         dirtySetMask &= countMask;
       } while (dirtySetMask);
     }
+  }
 
-    // Update push data resources
+
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::updatePushDataBindings(const DxvkPipelineBindings* layout) {
+    DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
+
     if (m_descriptorState.hasDirtyVas(layout->getNonemptyStageMask())) {
       auto range = layout->getVaBindings(pipelineLayoutType);
 
@@ -6518,7 +6523,6 @@ namespace dxvk {
       }
     }
 
-    // Update dirty samplers, if any
     if (m_descriptorState.hasDirtySamplers(layout->getNonemptyStageMask())) {
       auto range = layout->getSamplers(pipelineLayoutType);
 
@@ -6545,6 +6549,8 @@ namespace dxvk {
   void DxvkContext::updateComputeShaderResources() {
     this->updateResourceBindings<VK_PIPELINE_BIND_POINT_COMPUTE>(
       m_state.cp.pipeline->getLayout());
+    this->updatePushDataBindings<VK_PIPELINE_BIND_POINT_COMPUTE>(
+      m_state.cp.pipeline->getLayout());
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_COMPUTE_BIT);
   }
@@ -6552,6 +6558,8 @@ namespace dxvk {
   
   void DxvkContext::updateGraphicsShaderResources() {
     this->updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(
+      m_state.gp.pipeline->getLayout());
+    this->updatePushDataBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(
       m_state.gp.pipeline->getLayout());
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_ALL_GRAPHICS);
