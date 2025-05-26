@@ -706,8 +706,14 @@ namespace dxvk {
     const Rc<DxvkResourceDescriptorRange>& range,
           VkDeviceSize                  baseOffset) {
     // Ensure that we actually have something to upload
-    if (!range || !range->hasDedicatedUploadBuffer()
-     || (range->getAllocationOffset() <= baseOffset))
+    if (!range || range->getAllocationOffset() <= baseOffset)
+      return;
+
+    // Always count the used descriptor memory per submission
+    VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
+    addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
+
+    if (!range->hasDedicatedUploadBuffer())
       return;
 
     VkCommandBuffer cmdBuffer = getCmdBuffer(DxvkCmdBuffer::SdmaBuffer);
@@ -718,7 +724,7 @@ namespace dxvk {
     VkBufferCopy2 region = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
     region.srcOffset = info.cpuRange.offset + baseOffset;
     region.dstOffset = info.gpuRange.offset + baseOffset;
-    region.size = range->getAllocationOffset() - baseOffset;
+    region.size = dataSize;
 
     VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
     copyInfo.srcBuffer = info.cpuRange.buffer;
