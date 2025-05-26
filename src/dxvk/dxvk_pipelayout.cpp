@@ -106,7 +106,7 @@ namespace dxvk {
     size_t updateStride = sizeof(DxvkLegacyDescriptor);
     size_t updateOffset = 0u;
 
-    if (m_device->canUseDescriptorBuffer() && m_descriptorBuffer.flags.test(DxvkDescriptorSetLayoutFlag::PushDescriptors)) {
+    if (m_device->canUseDescriptorBuffer() && key.getFlags().test(DxvkDescriptorSetLayoutFlag::PushDescriptors)) {
       updateStride = sizeof(DxvkDescriptor);
       updateOffset = offsetof(DxvkDescriptor, legacy);
     }
@@ -142,14 +142,14 @@ namespace dxvk {
     layoutInfo.pBindings = bindingInfos.data();
 
     if (m_device->canUseDescriptorBuffer()) {
-      if (m_descriptorBuffer.flags.test(DxvkDescriptorSetLayoutFlag::PushDescriptors)) {
+      layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+      if (key.getFlags().test(DxvkDescriptorSetLayoutFlag::PushDescriptors)) {
         layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR;
         m_descriptorBuffer.pushTemplate.reserve(templateInfos.size());
 
         for (size_t i = 0u; i < templateInfos.size(); i++)
           m_descriptorBuffer.pushTemplate.push_back(templateInfos[i]);
-      } else {
-        layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
       }
     }
 
@@ -172,6 +172,9 @@ namespace dxvk {
   void DxvkDescriptorSetLayout::initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key) {
     auto vk = m_device->vkd();
     m_descriptorBuffer.flags = key.getFlags();
+
+    if (key.getFlags().test(DxvkDescriptorSetLayoutFlag::PushDescriptors))
+      return;
 
     // Query size and pad set to fill full cache lines for faster updates
     vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_layout, &m_descriptorBuffer.memorySize);
@@ -201,26 +204,45 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkPipelineLayoutKey&      key)
   : m_device(device), m_flags(key.getFlags()) {
+    initMetadata(key);
+    initPipelineLayout(key);
+  }
+
+
+  DxvkPipelineLayout::~DxvkPipelineLayout() {
     auto vk = m_device->vkd();
 
+    vk->vkDestroyPipelineLayout(vk->device(), m_layout, nullptr);
+    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_descriptorBuffer.pushTemplate, nullptr);
+  }
+
+
+  void DxvkPipelineLayout::initMetadata(
+    const DxvkPipelineLayoutKey&      key) {
     // Determine bind point based on shader stages
     m_bindPoint = (key.getStageMask() == VK_SHADER_STAGE_COMPUTE_BIT)
       ? VK_PIPELINE_BIND_POINT_COMPUTE
       : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    m_pushMask = key.getPushDataMask();
+    m_pushData.blockMask = key.getPushDataMask();
 
-    for (auto i : bit::BitMask(m_pushMask)) {
-      m_pushData[i] = key.getPushDataBlock(i);
-      m_pushDataMerged.merge(m_pushData[i]);
-      m_pushDataMerged.makeAbsolute();
+    for (auto i : bit::BitMask(m_pushData.blockMask)) {
+      m_pushData.blocks[i] = key.getPushDataBlock(i);
+      m_pushData.mergedBlock.merge(m_pushData.blocks[i]);
+      m_pushData.mergedBlock.makeAbsolute();
     }
 
     for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
-      m_setMemorySize += key.getDescriptorSetLayout(i)
+      m_descriptorBuffer.setMemorySize += key.getDescriptorSetLayout(i)
         ? key.getDescriptorSetLayout(i)->getMemorySize()
         : 0u;
     }
+  }
+
+
+  void DxvkPipelineLayout::initPipelineLayout(
+    const DxvkPipelineLayoutKey&      key) {
+    auto vk = m_device->vkd();
 
     // Gather descriptor set layout objects, some of these may be null.
     small_vector<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets + 1u> setLayouts;
@@ -235,8 +257,8 @@ namespace dxvk {
 
     // Set up push constant range, if any
     VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.stageFlags = m_pushDataMerged.getStageMask();
-    pushConstantRange.size = m_pushDataMerged.getSize();
+    pushConstantRange.stageFlags = m_pushData.mergedBlock.getStageMask();
+    pushConstantRange.size = m_pushData.mergedBlock.getSize();
 
     VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
@@ -255,13 +277,16 @@ namespace dxvk {
 
     if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_layout))
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
-  }
 
+    // If there is a set that uses push descriptors, create the update template
+    if (m_device->canUseDescriptorBuffer()) {
+      uint32_t baseSet = m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap) ? 1u : 0u;
 
-  DxvkPipelineLayout::~DxvkPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_layout, nullptr);
+      for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
+        if (m_setLayouts[i] && m_setLayouts[i]->isPushDescriptorSet())
+          m_descriptorBuffer.pushTemplate = m_setLayouts[i]->createPushDescriptorTemplate(m_layout, m_bindPoint, i + baseSet);
+      }
+    }
   }
 
 
