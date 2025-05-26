@@ -375,7 +375,7 @@ namespace dxvk {
     auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
 
     // Descriptor processing needs to know the exact push data offsets
-    auto setLayouts = buildDescriptorSetLayouts(type, flags, builder, manager);
+    auto setLayouts = buildDescriptorSetLayouts(type, device, flags, builder, manager);
 
     // Create the actual pipeline layout
     DxvkPipelineLayoutKey key(type, flags, builder.getStageMask(),
@@ -468,6 +468,7 @@ namespace dxvk {
   small_vector<const DxvkDescriptorSetLayout*, DxvkPipelineBindings::MaxSets>
   DxvkPipelineBindings::buildDescriptorSetLayouts(
           DxvkPipelineLayoutType      type,
+          DxvkDevice*                 device,
           DxvkPipelineLayoutFlags     flags,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
@@ -537,6 +538,13 @@ namespace dxvk {
         layout.bindingMap.addBinding(builder.getSamplerHeapBinding(i), dstMapping);
       }
     }
+
+    // If supported, use push descriptors for the uniform buffer set
+    if (type == DxvkPipelineLayoutType::Merged && (m_nonemptyStageMask & VK_SHADER_STAGE_ALL_GRAPHICS)
+     && setInfos.map[DxvkDescriptorSets::GpBuffers] < setInfos.count
+     && device->canUseDescriptorBuffer()
+     && device->features().extDescriptorBuffer.descriptorBufferPushDescriptors)
+      setLayoutKeys[setInfos.map[DxvkDescriptorSets::GpBuffers]].setFlags(DxvkDescriptorSetLayoutFlag::PushDescriptors);
 
     // Create the actual descriptor set layout objects
     small_vector<const DxvkDescriptorSetLayout*, MaxSets> setLayouts(setInfos.count);
@@ -681,10 +689,8 @@ namespace dxvk {
       }
 
       // Compute mapping from logical set to real set index
-      for (size_t i = 0u; i < MaxSets; i++) {
-        if (setSizes[i])
-          result.map[i] = result.count++;
-      }
+      for (size_t i = 0u; i < MaxSets; i++)
+        result.map[i] = setSizes[i] ? (result.count++) : -1;
 
       // Compute compact mask of all used sets
       result.mask = (1u << result.count) - 1u;

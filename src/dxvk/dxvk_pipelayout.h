@@ -1886,6 +1886,7 @@ namespace dxvk {
     small_vector<const DxvkDescriptorSetLayout*, MaxSets>
     buildDescriptorSetLayouts(
             DxvkPipelineLayoutType      type,
+            DxvkDevice*                 device,
             DxvkPipelineLayoutFlags     flags,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
