@@ -70,25 +70,26 @@ namespace dxvk {
 
 
   DxvkResourceDescriptorRange* DxvkResourceDescriptorHeap::addRanges() {
-    constexpr uint32_t SliceDescriptorCount = env::is32BitHostPlatform() ? (12u << 10u) : (24u << 10u);
-    constexpr uint32_t SliceCount = 8u;
+    // Use a fixed heap size regardless of descriptor size. This avoids
+    // creating unnecessarily large buffers in simple apps on devices
+    // that have pathologically large descriptors.
+    constexpr VkDeviceSize HeapSize = env::is32BitHostPlatform() ? (4ull << 20) : (8ull << 20);
 
-    VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getMaxDescriptorSize();
-    VkDeviceSize heapSize = descriptorSize * SliceDescriptorCount * SliceCount;
+    constexpr VkDeviceSize SliceCount = 8u;
+    constexpr VkDeviceSize SliceSize = HeapSize / SliceCount;
 
     // On integrated graphics, map the descriptor heap directly. Otherwise, it
     // is likely beneficial to write to system memory instead and upload the
     // data to VRAM on the transfer queue.
     bool isDiscreteGpu = m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 
-    Rc<DxvkBuffer> gpuBuffer = createGpuBuffer(heapSize, !isDiscreteGpu);
-    Rc<DxvkBuffer> cpuBuffer = isDiscreteGpu ? createCpuBuffer(heapSize) : gpuBuffer;
+    Rc<DxvkBuffer> gpuBuffer = createGpuBuffer(HeapSize, !isDiscreteGpu);
+    Rc<DxvkBuffer> cpuBuffer = isDiscreteGpu ? createCpuBuffer(HeapSize) : gpuBuffer;
 
     DxvkResourceDescriptorRange* first = nullptr;
 
     for (uint32_t i = 0u; i < SliceCount; i++) {
-      auto& range = m_ranges.emplace_back(this, gpuBuffer, cpuBuffer,
-        descriptorSize * SliceDescriptorCount, i, SliceCount);
+      auto& range = m_ranges.emplace_back(this, gpuBuffer, cpuBuffer, SliceSize, i, SliceCount);
 
       if (!first)
         first = &range;
