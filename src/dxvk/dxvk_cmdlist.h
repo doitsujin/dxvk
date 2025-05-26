@@ -31,13 +31,10 @@ namespace dxvk {
     /** Pointer to view descriptor. Used for all image descriptors
      *  as well as texel buffer descriptors. If \c nullptr, a null
      *  descriptor of the corresponding type will be created. */
-    const DxvkDescriptor* descriptor;
+    const DxvkDescriptor* descriptor = nullptr;
     /** Buffer info, used for storage and uniform buffers. May be
      *  used to build a null descriptor. */
-    DxvkResourceBufferInfo buffer;
-    /** Sampler info. Must be a valid sampler, no null descriptor.
-     *  Must be present for any descriptor type with a sampler. */
-    DxvkSamplerDescriptor sampler;
+    DxvkResourceBufferInfo buffer = { };
   };
 
   
