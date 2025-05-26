@@ -6300,12 +6300,7 @@ namespace dxvk {
               descriptorInfo.buffer.offset = bufferInfo.offset;
               descriptorInfo.buffer.range = bufferInfo.size;
 
-              if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
-                accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
-                  util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-              }
-
-              m_cmd->track(slice.buffer(), DxvkAccess::Read);
+              trackUniformBufferBinding<BindPoint>(binding, slice);
             } else {
               descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
               descriptorInfo.buffer.offset = 0;
@@ -6556,12 +6551,7 @@ namespace dxvk {
               ? descriptorInfo.data.pStorageBuffer
               : descriptorInfo.data.pUniformBuffer) = &bufferInfo;
 
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
-                util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-            }
-
-            m_cmd->track(slice.buffer(), DxvkAccess::Read);
+            trackUniformBufferBinding<BindPoint>(binding, slice);
           }
 
           VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
@@ -6740,12 +6730,7 @@ namespace dxvk {
           if (slice.length()) {
             va = slice.getSliceInfo().gpuAddress;
 
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
-                util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-            }
-
-            m_cmd->track(slice.buffer(), DxvkAccess::Read);
+            trackUniformBufferBinding<BindPoint>(binding, slice);
           }
         } else {
           if (res.bufferView) {
