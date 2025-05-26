@@ -290,9 +290,16 @@ namespace dxvk {
       devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
     }
 
-    // If descriptor buffer support is disabled, don't enable the extensions
-    bool enableDescriptorBuffer = instance->options().enableDescriptorBuffer
-      && m_deviceFeatures.extDescriptorBuffer.descriptorBuffer;
+    // Descriptor buffers only appear to be beneficial on AMD right now
+    bool enableDescriptorBuffer = false;
+
+    if (m_deviceFeatures.extDescriptorBuffer.descriptorBuffer) {
+      enableDescriptorBuffer = matchesDriver(VK_DRIVER_ID_MESA_RADV)
+                            || matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE)
+                            || matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY)
+                            || matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA);
+      applyTristate(enableDescriptorBuffer, instance->options().enableDescriptorBuffer);
+    }
 
     if (!enableDescriptorBuffer)
       devExtensions.extDescriptorBuffer.setMode(DxvkExtMode::Disabled);
