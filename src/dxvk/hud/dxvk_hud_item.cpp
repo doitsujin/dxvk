@@ -896,7 +896,7 @@ namespace dxvk::hud {
     for (uint32_t i = m_stats.memoryTypes.size(); i; i--) {
       const auto& type = m_stats.memoryTypes.at(i - 1);
 
-      if (!type.allocated)
+      if (!type.chunkCount)
         continue;
 
       // Compute layout and gather memory stats
