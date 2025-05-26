@@ -736,10 +736,25 @@ namespace dxvk::hud {
 
 
   void HudDescriptorStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      m_descriptorHeapUsed = m_descriptorHeapMax;
+      m_descriptorHeapMax = 0u;
+
+      m_lastUpdate = time;
+    }
+
     DxvkStatCounters counters = m_device->getStatCounters();
 
     m_descriptorPoolCount = counters.getCtr(DxvkStatCounter::DescriptorPoolCount);
     m_descriptorSetCount  = counters.getCtr(DxvkStatCounter::DescriptorSetCount);
+
+    m_descriptorHeapAlloc = counters.getCtr(DxvkStatCounter::DescriptorHeapSize);
+
+    auto descriptorHeapUsed = counters.getCtr(DxvkStatCounter::DescriptorHeapUsed);
+    m_descriptorHeapMax = std::max(descriptorHeapUsed - m_descriptorHeapPrev, m_descriptorHeapMax);
+    m_descriptorHeapPrev = descriptorHeapUsed;
   }
 
 
@@ -749,13 +764,25 @@ namespace dxvk::hud {
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
-    position.y += 16;
-    renderer.drawText(16, position, 0xff8040ff, "Descriptor pools:");
-    renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorPoolCount));
+    if (m_descriptorPoolCount) {
+      position.y += 16;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor pools:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorPoolCount));
 
-    position.y += 20;
-    renderer.drawText(16, position, 0xff8040ff, "Descriptor sets:");
-    renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorSetCount));
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor sets:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorSetCount));
+    }
+
+    if (m_descriptorHeapAlloc) {
+      position.y += 16;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor heap:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorHeapAlloc >> 20, " MB"));
+
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor usage:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorHeapUsed >> 10, " kB"));
+    }
 
     position.y += 8;
     return position;
