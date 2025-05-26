@@ -603,6 +603,17 @@ namespace dxvk {
     }
 
 
+    void cmdPushDescriptorSetWithTemplate(
+            DxvkCmdBuffer             cmdBuffer,
+            VkDescriptorUpdateTemplate pushTemplate,
+            VkPipelineLayout          layout,
+            uint32_t                  setIndex,
+      const void*                     data) {
+      m_vkd->vkCmdPushDescriptorSetWithTemplateKHR(
+        getCmdBuffer(cmdBuffer), pushTemplate, layout, setIndex, data);
+    }
+
+
     void cmdSetDescriptorBufferOffsetsEXT(
             DxvkCmdBuffer             cmdBuffer,
             VkPipelineBindPoint       pipeline,

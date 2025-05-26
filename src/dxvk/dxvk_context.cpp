@@ -6537,6 +6537,9 @@ namespace dxvk {
           const auto sliceInfo = slice.getSliceInfo();
 
           auto& descriptor = buffers[bufferCount++];
+          descriptor.legacy.buffer.buffer = sliceInfo.buffer;
+          descriptor.legacy.buffer.offset = sliceInfo.offset;
+          descriptor.legacy.buffer.range = sliceInfo.size ? sliceInfo.size : VK_WHOLE_SIZE;
 
           VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
           bufferInfo.address = sliceInfo.gpuAddress;
@@ -6681,15 +6684,28 @@ namespace dxvk {
         }
       }
 
-      // Allocate storage and update set
+      // Write out descriptors to memory or set push descriptors. We will
+      // only ever use push descriptors for pure uniform buffer sets.
       auto setLayout = pipelineLayout->getDescriptorSetLayout(setIndex);
-      auto setStorage = m_cmd->allocateDescriptors(setLayout);
 
-      setLayout->writeDescriptors(setStorage.mapPtr, descriptors.data());
-      bufferOffsets[setIndex] = setStorage.offset;
+      if (setLayout->isPushDescriptorSet()) {
+        uint32_t baseSet = uint32_t(pipelineLayout->usesSamplerHeap());
+
+        m_cmd->cmdPushDescriptorSetWithTemplate(DxvkCmdBuffer::ExecBuffer,
+          pipelineLayout->getPushDescriptorTemplate(),
+          pipelineLayout->getPipelineLayout(),
+          baseSet + setIndex, buffers.data());
+
+        dirtySetMask -= 1u << setIndex;
+      } else {
+        auto setStorage = m_cmd->allocateDescriptors(setLayout);
+
+        setLayout->writeDescriptors(setStorage.mapPtr, descriptors.data());
+        bufferOffsets[setIndex] = setStorage.offset;
+      }
     }
 
-    do {
+    while (dirtySetMask) {
       // Bind consecutive descriptor ranges at once
       uint32_t first = bit::bsf(dirtySetMask);
 
@@ -6706,7 +6722,7 @@ namespace dxvk {
         &bufferIndices[first], &bufferOffsets[first]);
 
       dirtySetMask &= countMask;
-    } while (dirtySetMask);
+    }
   }
 
 
