@@ -25,7 +25,7 @@ namespace dxvk {
     Tristate enableGraphicsPipelineLibrary = Tristate::Auto;
 
     /// Enable descriptor buffer
-    bool enableDescriptorBuffer = false;
+    Tristate enableDescriptorBuffer = Tristate::Auto;
 
     /// Enables pipeline lifetime tracking
     Tristate trackPipelineLifetime = Tristate::Auto;
