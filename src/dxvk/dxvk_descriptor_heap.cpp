@@ -116,6 +116,8 @@ namespace dxvk {
       info.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
     }
 
+    m_device->addStatCtr(DxvkStatCounter::DescriptorHeapSize, info.size);
+    m_device->addStatCtr(DxvkStatCounter::DescriptorHeapCount, 1u);
     return m_device->createBuffer(info, memoryFlags);
   }
 
