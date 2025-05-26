@@ -6319,12 +6319,7 @@ namespace dxvk {
                   if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                     descriptorInfo = descriptor->legacy;
 
-                    if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
-                      accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                        util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                    }
-
-                    m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                    trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
                   } else {
                     auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
                     descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
@@ -6348,13 +6343,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores()) {
-                    accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                  }
-
-                  m_cmd->track(res.imageView->image(), (binding.getAccess() & vk::AccessWriteMask)
-                    ? DxvkAccess::Write : DxvkAccess::Read);
+                  trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
                 } else {
                   descriptorInfo.image.sampler = VK_NULL_HANDLE;
                   descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -6549,12 +6538,7 @@ namespace dxvk {
 
               if (descriptor) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.imageView->hasGfxStores())) {
-                    accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                  }
-
-                  m_cmd->track(res.imageView->image(), DxvkAccess::Read);
+                  trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
                   descriptor = view->getDescriptor(binding.getViewType());
@@ -6570,17 +6554,10 @@ namespace dxvk {
               if (res.imageView)
                 descriptor = res.imageView->getDescriptor(binding.getViewType());
 
-              if (descriptor) {
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.imageView->hasGfxStores()) {
-                  accessImage(DxvkCmdBuffer::ExecBuffer, *res.imageView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.imageView->image(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
+              if (descriptor)
+                trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
+              else
                 descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-              }
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
