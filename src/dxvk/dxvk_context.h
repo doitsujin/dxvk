@@ -2195,6 +2195,20 @@ namespace dxvk {
       m_cmd->track(slice.buffer(), DxvkAccess::Read);
     }
 
+    template<VkPipelineBindPoint BindPoint, bool IsWritable>
+    force_inline void trackBufferViewBinding(const DxvkShaderDescriptor& binding, DxvkBufferView& view) {
+      DxvkAccessOp accessOp = IsWritable ? binding.getAccessOp() : DxvkAccessOp::None;
+
+      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(view.buffer()->hasGfxStores())) {
+        accessBuffer(DxvkCmdBuffer::ExecBuffer, view,
+          util::pipelineStages(binding.getStageMask()), binding.getAccess(), accessOp);
+      }
+
+      DxvkAccess access = IsWritable && (binding.getAccess() & vk::AccessWriteMask)
+        ? DxvkAccess::Write : DxvkAccess::Read;
+      m_cmd->track(view.buffer(), access);
+    }
+
     static uint32_t computePushDataBlockOffset(uint32_t index) {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
     }

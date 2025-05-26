@@ -6372,12 +6372,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                  }
-
-                  m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
+                  trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.bufferView = VK_NULL_HANDLE;
                 }
@@ -6393,13 +6388,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
-                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                  }
-
-                  m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                    ? DxvkAccess::Write : DxvkAccess::Read);
+                  trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.bufferView = VK_NULL_HANDLE;
                 }
@@ -6415,12 +6404,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                  }
-
-                  m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
+                  trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
                   descriptorInfo.buffer.offset = 0;
@@ -6438,13 +6422,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                    accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                      util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                  }
-
-                  m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                    ? DxvkAccess::Write : DxvkAccess::Read);
+                  trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
                   descriptorInfo.buffer.offset = 0;
@@ -6609,66 +6587,40 @@ namespace dxvk {
               if (res.bufferView)
                 descriptor = res.bufferView->getDescriptor(false);
 
-              if (descriptor) {
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                }
-
-                m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
-              } else {
+              if (descriptor)
+                trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+              else
                 descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-              }
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
               if (res.bufferView)
                 descriptor = res.bufferView->getDescriptor(false);
 
-              if (descriptor) {
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || res.bufferView->buffer()->hasGfxStores()) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
+              if (descriptor)
+                trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+              else
                 descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
-              }
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
               if (res.bufferView)
                 descriptor = res.bufferView->getDescriptor(true);
 
-              if (descriptor) {
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
-                }
-
-                m_cmd->track(res.bufferView->buffer(), DxvkAccess::Read);
-              } else {
+              if (descriptor)
+                trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+              else
                 descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-              }
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
               if (res.bufferView)
                 descriptor = res.bufferView->getDescriptor(true);
 
-              if (descriptor) {
-                if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-                  accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                    util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-                }
-
-                m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-                  ? DxvkAccess::Write : DxvkAccess::Read);
-              } else {
+              if (descriptor)
+                trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+              else
                 descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-              }
             } break;
 
             default:
@@ -6736,13 +6688,7 @@ namespace dxvk {
           if (res.bufferView) {
             va = res.bufferView->getSliceInfo().gpuAddress;
 
-            if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(res.bufferView->buffer()->hasGfxStores())) {
-              accessBuffer(DxvkCmdBuffer::ExecBuffer, *res.bufferView,
-                util::pipelineStages(binding.getStageMask()), binding.getAccess(), binding.getAccessOp());
-            }
-
-            m_cmd->track(res.bufferView->buffer(), (binding.getAccess() & vk::AccessWriteMask)
-              ? DxvkAccess::Write : DxvkAccess::Read);
+            trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
           }
         }
 
