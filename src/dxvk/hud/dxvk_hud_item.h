@@ -463,7 +463,7 @@ namespace dxvk::hud {
    * \brief HUD item to display descriptor stats
    */
   class HudDescriptorStatsItem : public HudItem {
-
+    constexpr static int64_t UpdateInterval = 500'000;
   public:
 
     HudDescriptorStatsItem(const Rc<DxvkDevice>& device);
@@ -485,6 +485,14 @@ namespace dxvk::hud {
 
     uint64_t m_descriptorPoolCount = 0;
     uint64_t m_descriptorSetCount  = 0;
+
+    uint64_t m_descriptorHeapCount = 0;
+    uint64_t m_descriptorHeapAlloc = 0;
+    uint64_t m_descriptorHeapUsed  = 0;
+    uint64_t m_descriptorHeapMax   = 0;
+    uint64_t m_descriptorHeapPrev  = 0;
+
+    high_resolution_clock::time_point m_lastUpdate = { };
 
   };
 
