@@ -6237,13 +6237,16 @@ namespace dxvk {
 
 
   template<VkPipelineBindPoint BindPoint>
-  void DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
-    if (m_features.test(DxvkContextFeature::DescriptorBuffer))
-      updateDescriptorBufferBindings<BindPoint>(layout);
-    else
+  bool DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
+    if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
+      if (!updateDescriptorBufferBindings<BindPoint>(layout))
+        return false;
+    } else {
       updateDescriptorSetsBindings<BindPoint>(layout);
+    }
 
     updatePushDataBindings<BindPoint>(layout);
+    return true;
   }
 
 
@@ -6497,20 +6500,24 @@ namespace dxvk {
 
 
   template<VkPipelineBindPoint BindPoint>
-  void DxvkContext::updateDescriptorBufferBindings(const DxvkPipelineBindings* layout) {
+  bool DxvkContext::updateDescriptorBufferBindings(const DxvkPipelineBindings* layout) {
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
+    // Check if there's anything to do; the mask can be empty
+    // in case only unrelated bindings have been updated.
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
     if (unlikely(!dirtySetMask))
-      return;
+      return true;
+
+    // Make sure we have enough space for the set. If this fails, the
+    // caller has to make sure that no secondary command buffer is active.
+    if (!m_cmd->canAllocateDescriptors(pipelineLayout)
+     && !m_cmd->createDescriptorRange())
+      return false;
 
     auto vk = m_device->vkd();
-
-    // TODO handle secondary command buffers appropriately
-    if (!m_cmd->canAllocateDescriptors(pipelineLayout))
-      m_cmd->createDescriptorRange();
 
     // The resource heap is always bound at index 1
     std::array<uint32_t,     DxvkDescriptorSets::SetCount> bufferIndices = { };
@@ -6706,6 +6713,8 @@ namespace dxvk {
 
       dirtySetMask &= countMask;
     } while (dirtySetMask);
+
+    return true;
   }
 
 
@@ -6787,11 +6796,12 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateGraphicsShaderResources() {
-    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(
-      m_state.gp.pipeline->getLayout());
+  bool DxvkContext::updateGraphicsShaderResources() {
+    if (!updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->getLayout()))
+      return false;
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+    return true;
   }
   
   
@@ -7516,7 +7526,17 @@ namespace dxvk {
     }
     
     if (m_descriptorState.hasDirtyResources(VK_SHADER_STAGE_ALL_GRAPHICS)) {
-      this->updateGraphicsShaderResources();
+      if (unlikely(!this->updateGraphicsShaderResources())) {
+        // This can only happen if we were inside a secondary command buffer.
+        // Technically it would be sufficient to only restart the secondary
+        // command buffer, but this should almost never happen in practice
+        // anyway so avoid the complexity and just suspend the render pass.
+        this->spillRenderPass(true);
+
+        m_cmd->createDescriptorRange();
+
+        return this->commitGraphicsState<Indexed, Indirect>();
+      }
 
       if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
         // If implicit resolves are required for any of the shader bindings, we need
