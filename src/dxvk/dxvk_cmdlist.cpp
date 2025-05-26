@@ -658,7 +658,7 @@ namespace dxvk {
       auto setLayout = layout->getDescriptorSetLayout(0u);
       auto storage = allocateDescriptors(setLayout);
 
-      setLayout->update(storage.mapPtr, descriptors.data());
+      setLayout->writeDescriptors(storage.mapPtr, descriptors.data());
 
       // Bind actual descriptors
       std::array<uint32_t,     2u> bufferIndices = { };

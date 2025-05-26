@@ -6685,7 +6685,7 @@ namespace dxvk {
       auto setLayout = pipelineLayout->getDescriptorSetLayout(setIndex);
       auto setStorage = m_cmd->allocateDescriptors(setLayout);
 
-      setLayout->update(setStorage.mapPtr, descriptors.data());
+      setLayout->writeDescriptors(setStorage.mapPtr, descriptors.data());
       bufferOffsets[setIndex] = setStorage.offset;
     }
 

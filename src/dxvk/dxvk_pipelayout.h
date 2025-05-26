@@ -795,6 +795,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Descriptor set layout flags
+   */
+  enum class DxvkDescriptorSetLayoutFlag : uint32_t {
+    /* This set is a push descriptor set. Must only
+     * used when using the descriptor buffer path. */
+    PushDescriptors   = 0u,
+  };
+
+  using DxvkDescriptorSetLayoutFlags = Flags<DxvkDescriptorSetLayoutFlag>;
+
+
+  /**
    * \brief Descriptor set layout key
    *
    * Stores relevant information to look
@@ -806,6 +818,14 @@ namespace dxvk {
 
     DxvkDescriptorSetLayoutKey();
     ~DxvkDescriptorSetLayoutKey();
+
+    /**
+     * \brief Queries descriptor layout flags
+     * \returns Descriptor layout flags
+     */
+    DxvkDescriptorSetLayoutFlags getFlags() const {
+      return m_flags;
+    }
 
     /**
      * \brief Retrieves binding count
@@ -823,6 +843,15 @@ namespace dxvk {
      */
     DxvkDescriptorSetLayoutBinding getBinding(uint32_t index) const {
       return m_bindings[index];
+    }
+
+    /**
+     * \brief Sets flags
+     *
+     * \param [in] flags Flags to add
+     */
+    void setFlags(DxvkDescriptorSetLayoutFlags flags) {
+      m_flags.set(flags);
     }
 
     /**
@@ -850,6 +879,7 @@ namespace dxvk {
 
   private:
 
+    DxvkDescriptorSetLayoutFlags                     m_flags = 0u;
     small_vector<DxvkDescriptorSetLayoutBinding, 32> m_bindings;
 
   };
@@ -895,7 +925,7 @@ namespace dxvk {
      * \returns Descriptor update template
      */
     VkDescriptorUpdateTemplate getSetUpdateTemplate() const {
-      return m_template;
+      return m_legacy.updateTemplate;
     }
 
     /**
@@ -903,7 +933,17 @@ namespace dxvk {
      * \returns Space required in descriptor heap
      */
     VkDeviceSize getMemorySize() const {
-      return m_memorySize;
+      return m_descriptorBuffer.memorySize;
+    }
+
+    /**
+     * \brief Checks whether this is a push descriptor set
+     *
+     * Only relevant on the descriptor buffer path.
+     * \returns \c true for push descriptor sets
+     */
+    bool isPushDescriptorSet() const {
+      return m_descriptorBuffer.flags.test(DxvkDescriptorSetLayoutFlag::PushDescriptors);
     }
 
     /**
@@ -913,23 +953,43 @@ namespace dxvk {
      * \param [in] dst Pointer to descriptor memory
      * \param [in] descriptors Pointer to source descriptor list
      */
-    void update(
+    void writeDescriptors(
             void*                   dst,
       const DxvkDescriptor**        descriptors) const {
-      m_update.update(dst, descriptors);
+      m_descriptorBuffer.updateList.update(dst, descriptors);
     }
+
+    /**
+     * \brief Creates push descriptor template, if applicable
+     *
+     * \param [in] pipelineLayout Pipeline layout handle
+     * \param [in] pipelineType Pipeline bind point
+     * \param [in] setIndex Set within the pipeline layout
+     * \returns Push descriptor update handle
+     */
+    VkDescriptorUpdateTemplate createPushDescriptorTemplate(
+            VkPipelineLayout        pipelineLayout,
+            VkPipelineBindPoint     pipelineType,
+            uint32_t                setIndex) const;
 
   private:
 
-    DxvkDevice*                   m_device;
-    bool                          m_empty     = 0u;
+    DxvkDevice* m_device    = nullptr;
+    bool        m_empty     = 0u;
 
-    VkDeviceSize                  m_memorySize = 0u;
+    VkDescriptorSetLayout m_layout = VK_NULL_HANDLE;
 
-    VkDescriptorSetLayout         m_layout    = VK_NULL_HANDLE;
-    VkDescriptorUpdateTemplate    m_template  = VK_NULL_HANDLE;
+    struct {
+      DxvkDescriptorSetLayoutFlags  flags;
+      VkDeviceSize                  memorySize = 0u;
+      DxvkDescriptorUpdateList      updateList;
 
-    DxvkDescriptorUpdateList      m_update;
+      std::vector<VkDescriptorUpdateTemplateEntry> pushTemplate;
+    } m_descriptorBuffer;
+
+    struct {
+      VkDescriptorUpdateTemplate    updateTemplate  = VK_NULL_HANDLE;
+    } m_legacy;
 
     void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
 
