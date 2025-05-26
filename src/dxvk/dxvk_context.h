@@ -1402,8 +1402,10 @@ namespace dxvk {
     std::vector<DxvkDeferredClear> m_deferredClears;
     std::array<DxvkDeferredResolve, MaxNumRenderTargets + 1u> m_deferredResolves = { };
 
-    std::vector<VkWriteDescriptorSet> m_descriptorWrites;
-    std::vector<DxvkLegacyDescriptor> m_descriptorInfos;
+    struct {
+      std::vector<VkWriteDescriptorSet> writes;
+      std::vector<DxvkLegacyDescriptor> infos;
+    } m_legacyDescriptors;
 
     std::array<Rc<DxvkSampler>, MaxNumSamplerSlots> m_samplers;
     std::array<DxvkBufferSlice, MaxNumUniformBufferSlots> m_uniformBuffers;

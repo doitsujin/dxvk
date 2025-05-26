@@ -6256,7 +6256,7 @@ namespace dxvk {
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
     // Ensure that the arrays we write descriptor info to are big enough
-    if (unlikely(layout->getDescriptorCount() > m_descriptorInfos.size()))
+    if (unlikely(layout->getDescriptorCount() > m_legacyDescriptors.infos.size()))
       this->resizeDescriptorArrays(layout->getDescriptorCount());
 
     // Find out which sets we actually need to update based on the pipeline
@@ -6282,14 +6282,14 @@ namespace dxvk {
           const auto& binding = range.bindings[j];
 
           if (!useDescriptorTemplates) {
-            auto& descriptorWrite = m_descriptorWrites[descriptorCount];
+            auto& descriptorWrite = m_legacyDescriptors.writes[descriptorCount];
             descriptorWrite.dstSet = sets[setIndex];
             descriptorWrite.dstBinding = binding.getBinding();
             descriptorWrite.dstArrayElement = binding.getArrayIndex();
             descriptorWrite.descriptorType = binding.getDescriptorType();
           }
 
-          auto& descriptorInfo = m_descriptorInfos[descriptorCount++];
+          auto& descriptorInfo = m_legacyDescriptors.infos[descriptorCount++];
 
           if (binding.isUniformBuffer()) {
             const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
@@ -6428,7 +6428,7 @@ namespace dxvk {
         if (useDescriptorTemplates) {
           m_cmd->updateDescriptorSetWithTemplate(sets[setIndex],
             pipelineLayout->getDescriptorSetLayout(setIndex)->getSetUpdateTemplate(),
-            &m_descriptorInfos[0]);
+            m_legacyDescriptors.infos.data());
           descriptorCount = 0;
         }
       }
@@ -6436,7 +6436,7 @@ namespace dxvk {
       // Update all descriptors in one go to avoid API call overhead
       if (!useDescriptorTemplates) {
         m_cmd->updateDescriptorSets(descriptorCount,
-          m_descriptorWrites.data());
+          m_legacyDescriptors.writes.data());
       }
 
       do {
@@ -8212,16 +8212,19 @@ namespace dxvk {
 
   void DxvkContext::resizeDescriptorArrays(
           uint32_t                  bindingCount) {
-    m_descriptorInfos.resize(bindingCount);
-    m_descriptorWrites.resize(bindingCount);
+    m_legacyDescriptors.infos.resize(bindingCount);
+    m_legacyDescriptors.writes.resize(bindingCount);
 
     for (uint32_t i = 0; i < bindingCount; i++) {
-      m_descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-      m_descriptorWrites[i].descriptorCount = 1;
-      m_descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-      m_descriptorWrites[i].pImageInfo = &m_descriptorInfos[i].image;
-      m_descriptorWrites[i].pBufferInfo = &m_descriptorInfos[i].buffer;
-      m_descriptorWrites[i].pTexelBufferView = &m_descriptorInfos[i].bufferView;
+      auto& info = m_legacyDescriptors.infos[i];
+
+      auto& write = m_legacyDescriptors.writes[i];
+      write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      write.descriptorCount = 1;
+      write.descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+      write.pImageInfo = &info.image;
+      write.pBufferInfo = &info.buffer;
+      write.pTexelBufferView = &info.bufferView;
     }
   }
 
