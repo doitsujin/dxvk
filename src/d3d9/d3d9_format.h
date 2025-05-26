@@ -156,7 +156,7 @@ namespace dxvk {
 
   /**
    * \brief Format mapping
-   * 
+   *
    * Maps a D3D9 format to a set of Vulkan formats.
    */
   struct D3D9_VK_FORMAT_MAPPING {
@@ -230,6 +230,9 @@ namespace dxvk {
     bool m_dfSupport;
     bool m_x4r4g4b4Support;
     bool m_d16lockableSupport;
+
+    bool m_d32flockableSupport;
+    bool m_d24fs8Support;
   };
 
   inline bool IsFourCCFormat(D3D9Format format) {
