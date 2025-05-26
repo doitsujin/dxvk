@@ -2185,6 +2185,16 @@ namespace dxvk {
 
     void submitDescriptorPool(bool endFrame);
 
+    template<VkPipelineBindPoint BindPoint>
+    force_inline void trackUniformBufferBinding(const DxvkShaderDescriptor& binding, const DxvkBufferSlice& slice) {
+      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
+        accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
+          util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
+      }
+
+      m_cmd->track(slice.buffer(), DxvkAccess::Read);
+    }
+
     static uint32_t computePushDataBlockOffset(uint32_t index) {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
     }
