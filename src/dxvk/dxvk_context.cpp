@@ -6502,102 +6502,99 @@ namespace dxvk {
 
         if (binding.isUniformBuffer()) {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
-          const auto sliceInfo = slice.getSliceInfo();
 
-          auto& descriptor = buffers[bufferCount++];
+          if (likely(slice.length())) {
+            auto sliceInfo = slice.getSliceInfo();
+            auto& descriptor = buffers[bufferCount++];
 
-          VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-          bufferInfo.address = sliceInfo.gpuAddress;
-          bufferInfo.range = sliceInfo.size;
+            VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+            bufferInfo.address = sliceInfo.gpuAddress;
+            bufferInfo.range = sliceInfo.size;
 
-          VkDescriptorGetInfoEXT descriptorInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-          descriptorInfo.type = binding.getDescriptorType();
+            VkDescriptorGetInfoEXT descriptorInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+            descriptorInfo.type = binding.getDescriptorType();
 
-          if (sliceInfo.size) {
             (descriptorInfo.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
               ? descriptorInfo.data.pStorageBuffer
               : descriptorInfo.data.pUniformBuffer) = &bufferInfo;
 
+            VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
+
+            vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
+              descriptorSize, descriptor.descriptor.data());
+
+            descriptors[j] = &descriptor;
+
             trackUniformBufferBinding<BindPoint>(binding, slice);
+          } else {
+            // Null uniform buffers are rare in practice
+            descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(binding.getDescriptorType());
           }
-
-          VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
-
-          vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
-            descriptorSize, descriptor.descriptor.data());
-
-          descriptors[j] = &descriptor;
         } else {
           const auto& res = m_resources[binding.getResourceIndex()];
-          auto& descriptor = descriptors[j];
 
           switch (binding.getDescriptorType()) {
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
-              if (res.imageView)
-                descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-              if (descriptor) {
+              if (res.imageView && likely(descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                   trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
+                  break;
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
-                  descriptor = view->getDescriptor(binding.getViewType());
 
-                  m_cmd->track(view->image(), DxvkAccess::Read);
+                  if (likely(descriptors[j] = view->getDescriptor(binding.getViewType()))) {
+                    m_cmd->track(view->image(), DxvkAccess::Read);
+                    break;
+                  }
                 }
-              } else {
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
               }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-              if (res.imageView)
-                descriptor = res.imageView->getDescriptor(binding.getViewType());
-
-              if (descriptor)
+              if (res.imageView && likely(descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
                 trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
-              else
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+                break;
+              }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(false);
-
-              if (descriptor)
+              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(false))) {
                 trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
-              else
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+                break;
+              }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(false);
-
-              if (descriptor)
+              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(false))) {
                 trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
-              else
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+                break;
+              }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(true);
-
-              if (descriptor)
+              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(true))) {
                 trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
-              else
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+                break;
+              }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-              if (res.bufferView)
-                descriptor = res.bufferView->getDescriptor(true);
-
-              if (descriptor)
+              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(true))) {
                 trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
-              else
-                descriptor = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+                break;
+              }
+
+              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             } break;
 
             default:
