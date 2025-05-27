@@ -195,7 +195,6 @@ namespace dxvk {
       }
     }
 
-    Logger::err(str::format("generic copy: ", alignment, ", ", size));
     return &copyGeneric;
   }
 
@@ -213,10 +212,10 @@ namespace dxvk {
         case 48u: return &padAligned<48u>;
         case 56u: return &padAligned<56u>;
         case 64u: return &padAligned<64u>;
+        default: return &padAlignedAnySize;
       }
     }
 
-    Logger::err(str::format("generic pad: ", alignment, ", ", size));
     return &padGeneric;
   }
 
@@ -296,6 +295,27 @@ namespace dxvk {
     }
 
     for (size_t i = 0u; i < Size / 16u; i++)
+      clear_nontemporal<16u>(dstPtr + 16u * i);
+  }
+
+
+  void DxvkDescriptorUpdateList::padAlignedAnySize(
+          void*                       dst,
+    const DxvkDescriptor**            descriptor,
+    const DxvkDescriptorUpdateRange&  range) {
+    auto dstPtr = reinterpret_cast<char*>(dst) + range.dstOffset;
+
+    if (range.descriptorSize & 4u) {
+      clear_nontemporal<4u>(dstPtr);
+      dstPtr += 4u;
+    }
+
+    if (range.descriptorSize & 8u) {
+      clear_nontemporal<8u>(dstPtr);
+      dstPtr += 8u;
+    }
+
+    for (size_t i = 0u; i < range.descriptorSize / 16u; i++)
       clear_nontemporal<16u>(dstPtr + 16u * i);
   }
 
