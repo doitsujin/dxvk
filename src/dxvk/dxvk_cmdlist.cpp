@@ -245,6 +245,9 @@ namespace dxvk {
     const DxvkTimelineSemaphores&       semaphores,
           DxvkTimelineSemaphoreValues&  timelines,
           uint64_t                      trackedId) {
+    // Wait for pending descriptor copies to finish
+    m_descriptorSync.synchronize();
+
     VkResult status = VK_SUCCESS;
 
     static const std::array<DxvkCmdBuffer, 2> SdmaCmdBuffers =

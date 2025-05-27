@@ -17,11 +17,13 @@ namespace dxvk {
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
+    m_descriptorWorker(device),
     m_implicitResolves(device) {
     // Create descriptor heap or legacy pool object,
     // depending on feature support.
     if (device->canUseDescriptorBuffer()) {
       m_descriptorHeap = new DxvkResourceDescriptorHeap(device.ptr());
+
       m_features.set(DxvkContextFeature::DescriptorBuffer);
     } else {
       m_descriptorManager = new DxvkDescriptorPoolSet(device.ptr());
@@ -130,6 +132,11 @@ namespace dxvk {
   void DxvkContext::flushCommandList(
     const VkDebugUtilsLabelEXT*       reason,
           DxvkSubmitStatus*           status) {
+    // Flush pending descriptor updates and assign the sync
+    // point to the submission
+    if (m_features.test(DxvkContextFeature::DescriptorBuffer))
+      m_cmd->setDescriptorSyncHandle(m_descriptorWorker.getSyncHandle());
+
     // Need to call this before submitting so that the last GPU
     // submission does not happen before the render end signal.
     if (m_endLatencyTracking && m_latencyTracker)
@@ -6489,11 +6496,18 @@ namespace dxvk {
       index = 1u;
 
     // Scratch memory for descriptor updates
-    std::array<DxvkDescriptor, MaxNumUniformBufferSlots> buffers;
-    std::array<const DxvkDescriptor*, MaxNumResourceSlots + MaxNumUniformBufferSlots> descriptors;
-
     for (auto setIndex : bit::BitMask(dirtySetMask)) {
       auto range = layout->getAllDescriptorsInSet(pipelineLayoutType, setIndex);
+
+      auto setLayout = pipelineLayout->getDescriptorSetLayout(setIndex);
+
+      // Allocate descriptor set in memory and query heap offset
+      auto setStorage = m_cmd->allocateDescriptors(setLayout);
+      bufferOffsets[setIndex] = setStorage.offset;
+
+      // Allocate descriptor update entry to write descriptor pointers to
+      auto e = m_descriptorWorker.allocEntry(setLayout, setStorage.mapPtr, range.bindingCount,
+        layout->getUniformBuffersInSet(pipelineLayoutType, setIndex).bindingCount);
 
       size_t bufferCount = 0u;
 
@@ -6502,99 +6516,81 @@ namespace dxvk {
 
         if (binding.isUniformBuffer()) {
           const auto& slice = m_uniformBuffers[binding.getResourceIndex()];
+          auto sliceInfo = slice.getSliceInfo();
 
-          if (likely(slice.length())) {
-            auto sliceInfo = slice.getSliceInfo();
-            auto& descriptor = buffers[bufferCount++];
+          auto& buffer = e.buffers[bufferCount++];
+          buffer.gpuAddress = sliceInfo.gpuAddress;
+          buffer.size = sliceInfo.size;
+          buffer.indexInSet = j;
+          buffer.descriptorType = uint16_t(binding.getDescriptorType());
 
-            VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
-            bufferInfo.address = sliceInfo.gpuAddress;
-            bufferInfo.range = sliceInfo.size;
-
-            VkDescriptorGetInfoEXT descriptorInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
-            descriptorInfo.type = binding.getDescriptorType();
-
-            (descriptorInfo.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-              ? descriptorInfo.data.pStorageBuffer
-              : descriptorInfo.data.pUniformBuffer) = &bufferInfo;
-
-            VkDeviceSize descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
-
-            vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
-              descriptorSize, descriptor.descriptor.data());
-
-            descriptors[j] = &descriptor;
-
+          if (likely(sliceInfo.size))
             trackUniformBufferBinding<BindPoint>(binding, slice);
-          } else {
-            // Null uniform buffers are rare in practice
-            descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(binding.getDescriptorType());
-          }
         } else {
           const auto& res = m_resources[binding.getResourceIndex()];
 
           switch (binding.getDescriptorType()) {
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
-              if (res.imageView && likely(descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
+              if (res.imageView && likely(e.descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                   trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
                   break;
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
 
-                  if (likely(descriptors[j] = view->getDescriptor(binding.getViewType()))) {
+                  if (likely(e.descriptors[j] = view->getDescriptor(binding.getViewType()))) {
                     m_cmd->track(view->image(), DxvkAccess::Read);
                     break;
                   }
                 }
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-              if (res.imageView && likely(descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
+              if (res.imageView && likely(e.descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
                 trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
                 break;
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(false))) {
+              if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(false))) {
                 trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
                 break;
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(false))) {
+              if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(false))) {
                 trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
                 break;
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(true))) {
+              if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(true))) {
                 trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
                 break;
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
             } break;
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-              if (res.bufferView && likely(descriptors[j] = res.bufferView->getDescriptor(true))) {
+              if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(true))) {
                 trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
                 break;
               }
 
-              descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+              e.descriptors[j] = m_device->getDescriptorProperties().getNullDescriptor(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
             } break;
 
             default:
@@ -6602,13 +6598,6 @@ namespace dxvk {
           }
         }
       }
-
-      // Allocate storage and update set
-      auto setLayout = pipelineLayout->getDescriptorSetLayout(setIndex);
-      auto setStorage = m_cmd->allocateDescriptors(setLayout);
-
-      setLayout->update(setStorage.mapPtr, descriptors.data());
-      bufferOffsets[setIndex] = setStorage.offset;
     }
 
     do {
