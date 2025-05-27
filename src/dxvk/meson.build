@@ -80,6 +80,7 @@ dxvk_src = [
   'dxvk_descriptor_heap.cpp',
   'dxvk_descriptor_info.cpp',
   'dxvk_descriptor_pool.cpp',
+  'dxvk_descriptor_worker.cpp',
   'dxvk_device.cpp',
   'dxvk_device_filter.cpp',
   'dxvk_extensions.cpp',
