@@ -25,17 +25,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Buffer slice pair held by a descriptor range
-   *
-   * Both ranges may be identical if there is no dedicated upload buffer.
-   */
-  struct DxvkResourceDescriptorRangeBuffers {
-    DxvkResourceBufferInfo cpuRange = { };
-    DxvkResourceBufferInfo gpuRange = { };
-  };
-
-
-  /**
    * \brief Resource descriptor range
    *
    * Provides a reference-counted descriptor range that is suballocated from
@@ -50,7 +39,6 @@ namespace dxvk {
     DxvkResourceDescriptorRange(
             DxvkResourceDescriptorHeap*         heap,
             Rc<DxvkBuffer>                      gpuBuffer,
-            Rc<DxvkBuffer>                      cpuBuffer,
             VkDeviceSize                        rangeSize,
             VkDeviceSize                        rangeIndex,
             VkDeviceSize                        rangeCount);
@@ -73,22 +61,9 @@ namespace dxvk {
     }
 
     /**
-     * \brief Checks whether a dedicated update buffer is used
-     *
-     * In some cases it may be beneficial to allocate a system memory
-     * buffer and copy that into the VRAM buffer on demand, rather than
-     * writing descriptors directly to the VRAM buffer.
-     * \returns \c true if there is a dedicated upload buffer.
-     */
-    bool hasDedicatedUploadBuffer() const {
-      return m_cpuBuffer != m_gpuBuffer;
-    }
-
-    /**
      * \brief Queries current allocation offset
      *
-     * Useful to determine which part of the buffer to copy
-     * when using a dedicated upload buffer.
+     * Primarily useful for statistics.
      * \returns Current allocation offset
      */
     VkDeviceSize getAllocationOffset() const {
@@ -113,16 +88,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries CPu and GPU buffer ranges
-     *
-     * Useful when uploading descriptors to the GPU.
-     * \returns Ranges of both the GPU and upload buffer.
+     * \brief Queries underlying buffer ranges
+     * \returns Buffer slice covered by the range
      */
-    DxvkResourceDescriptorRangeBuffers getRangeInfo() const {
-      return DxvkResourceDescriptorRangeBuffers {
-        m_cpuBuffer->getSliceInfo(m_rangeOffset, m_rangeSize),
-        m_gpuBuffer->getSliceInfo(m_rangeOffset, m_rangeSize),
-      };
+    DxvkResourceBufferInfo getRangeInfo() const {
+      return m_gpuBuffer->getSliceInfo(m_rangeOffset, m_rangeSize);
     }
 
     /**
@@ -168,7 +138,6 @@ namespace dxvk {
     std::atomic<uint32_t>   m_useCount = { 0u };
 
     Rc<DxvkBuffer>          m_gpuBuffer = nullptr;
-    Rc<DxvkBuffer>          m_cpuBuffer = nullptr;
 
     VkDeviceSize            m_rangeOffset = 0u;
     VkDeviceSize            m_rangeSize   = 0u;
@@ -253,9 +222,7 @@ namespace dxvk {
 
     DxvkResourceDescriptorRange* addRanges();
 
-    Rc<DxvkBuffer> createGpuBuffer(VkDeviceSize baseSize, bool mapped);
-
-    Rc<DxvkBuffer> createCpuBuffer(VkDeviceSize baseSize);
+    Rc<DxvkBuffer> createGpuBuffer(VkDeviceSize baseSize);
 
   };
 

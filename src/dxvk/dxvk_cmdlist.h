@@ -1349,15 +1349,6 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
-    void emitDescriptorUpload(
-      const Rc<DxvkResourceDescriptorRange>& range,
-            VkDeviceSize                  baseOffset);
-
-    void emitDescriptorUploadBarrier(
-      const Rc<DxvkResourceDescriptorRange>& range);
-
-    void emitDescriptorUseBarrier(VkCommandBuffer cmdBuffer);
-
     void rebindDescriptorBuffers();
 
     void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
@@ -1365,6 +1356,10 @@ namespace dxvk {
     void endCommandBuffer(VkCommandBuffer cmdBuffer);
 
     VkCommandBuffer allocateCommandBuffer(DxvkCmdBuffer type);
+
+    void countDescriptorStats(
+      const Rc<DxvkResourceDescriptorRange>& range,
+            VkDeviceSize                  baseOffset);
 
   };
   
