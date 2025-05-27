@@ -254,6 +254,8 @@ namespace dxvk {
     vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_setLayout, &bufferInfo.size);
     vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_setLayout, 0u, &m_descriptorOffset);
 
+    Logger::info(str::format("Creating sampler descriptor heap (", bufferInfo.size >> 10u, " kB)"));
+
     m_buffer = m_device->createBuffer(bufferInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
