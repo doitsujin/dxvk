@@ -164,6 +164,11 @@ namespace dxvk {
       const DxvkDescriptor**            descriptor,
       const DxvkDescriptorUpdateRange&  range);
 
+    static void padAlignedAnySize(
+            void*                       dst,
+      const DxvkDescriptor**            descriptor,
+      const DxvkDescriptorUpdateRange&  range);
+
   };
 
 
