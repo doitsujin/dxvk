@@ -51,6 +51,10 @@ namespace dxvk {
   };
 
 
+  /** Function type to process buffer descriptors */
+  using WriteBufferDescriptorsFn = void (DxvkDevice*, DxvkDescriptor*, uint32_t, const DxvkDescriptorCopyBuffer*);
+
+
   /**
    * \brief Descriptor copy worker
    *
@@ -125,6 +129,8 @@ namespace dxvk {
     Rc<sync::Fence> m_appendFence;
     Rc<sync::Fence> m_consumeFence;
 
+    WriteBufferDescriptorsFn* m_writeBufferDescriptorsFn = nullptr;
+
     struct alignas(CACHE_LINE_SIZE) Block {
       size_t descriptorCount  = 0u;
       size_t bufferCount      = 0u;
@@ -146,9 +152,17 @@ namespace dxvk {
 
     Block* flushBlock();
 
+    WriteBufferDescriptorsFn* getWriteBufferDescriptorFn() const;
+
     void processBlock(Block& block);
 
     void runWorker();
+
+    static void writeBufferDescriptorsGetDescriptorExt(
+            DxvkDevice*               device,
+            DxvkDescriptor*           descriptors,
+            uint32_t                  bufferCount,
+      const DxvkDescriptorCopyBuffer* bufferInfos);
 
   };
 
