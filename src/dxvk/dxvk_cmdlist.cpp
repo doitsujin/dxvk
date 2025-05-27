@@ -391,8 +391,7 @@ namespace dxvk {
     // reset the descriptor range to not keep it alive for too
     // long. Descriptor ranges are tracked when bound.
     if (m_device->canUseDescriptorBuffer()) {
-      emitDescriptorUpload(m_descriptorRange, m_descriptorOffset);
-      emitDescriptorUploadBarrier(m_descriptorRange);
+      countDescriptorStats(m_descriptorRange, m_descriptorOffset);
 
       m_descriptorRange = nullptr;
       m_descriptorHeap = nullptr;
@@ -705,90 +704,8 @@ namespace dxvk {
   }
 
 
-  void DxvkCommandList::emitDescriptorUpload(
-    const Rc<DxvkResourceDescriptorRange>& range,
-          VkDeviceSize                  baseOffset) {
-    // Ensure that we actually have something to upload
-    if (!range || range->getAllocationOffset() <= baseOffset)
-      return;
-
-    // Always count the used descriptor memory per submission
-    VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
-    addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
-
-    if (!range->hasDedicatedUploadBuffer())
-      return;
-
-    VkCommandBuffer cmdBuffer = getCmdBuffer(DxvkCmdBuffer::SdmaBuffer);
-
-    auto vk = m_device->vkd();
-    auto info = range->getRangeInfo();
-
-    VkBufferCopy2 region = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
-    region.srcOffset = info.cpuRange.offset + baseOffset;
-    region.dstOffset = info.gpuRange.offset + baseOffset;
-    region.size = dataSize;
-
-    VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    copyInfo.srcBuffer = info.cpuRange.buffer;
-    copyInfo.dstBuffer = info.gpuRange.buffer;
-    copyInfo.regionCount = 1u;
-    copyInfo.pRegions = &region;
-
-    vk->vkCmdCopyBuffer2(cmdBuffer, &copyInfo);
-  }
-
-
-  void DxvkCommandList::emitDescriptorUploadBarrier(
-    const Rc<DxvkResourceDescriptorRange>& range) {
-    // If we have no sdma buffer, that's a good indication that
-    // we haven't actually uploaded anything. Skip in that case.
-    VkCommandBuffer cmdBuffer = m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::SdmaBuffer)];
-
-    if (!cmdBuffer || !range->hasDedicatedUploadBuffer())
-      return;
-
-    auto vk = m_device->vkd();
-
-    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-    barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-
-    if (!m_device->hasDedicatedTransferQueue()) {
-      barrier.dstStageMask = m_device->getShaderPipelineStages();
-      barrier.dstAccessMask = VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT;
-    }
-
-    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-    depInfo.memoryBarrierCount = 1u;
-    depInfo.pMemoryBarriers = &barrier;
-
-    vk->vkCmdPipelineBarrier2(cmdBuffer, &depInfo);
-  }
-
-
-  void DxvkCommandList::emitDescriptorUseBarrier(VkCommandBuffer cmdBuffer) {
-    // No need to do anything if we have no transfer queue since
-    // the upload barrier already sets all required flags.
-    if (!m_device->hasDedicatedTransferQueue())
-      return;
-
-    auto vk = m_device->vkd();
-
-    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
-    barrier.dstStageMask = m_device->getShaderPipelineStages();
-    barrier.dstAccessMask = VK_ACCESS_2_DESCRIPTOR_BUFFER_READ_BIT_EXT;
-
-    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
-    depInfo.memoryBarrierCount = 1u;
-    depInfo.pMemoryBarriers = &barrier;
-
-    vk->vkCmdPipelineBarrier2(cmdBuffer, &depInfo);
-  }
-
-
   bool DxvkCommandList::createDescriptorRange() {
-    emitDescriptorUpload(m_descriptorRange, m_descriptorOffset);
+    countDescriptorStats(m_descriptorRange, m_descriptorOffset);
 
     auto oldBaseAddress = m_descriptorRange
       ? m_descriptorRange->getHeapInfo().gpuAddress
@@ -909,12 +826,18 @@ namespace dxvk {
       ? m_transferPool->getCommandBuffer(type)
       : m_graphicsPool->getCommandBuffer(type);
 
-    if (type <= DxvkCmdBuffer::InitBuffer && m_device->canUseDescriptorBuffer()) {
-      emitDescriptorUseBarrier(cmdBuffer);
+    if (type <= DxvkCmdBuffer::InitBuffer && m_device->canUseDescriptorBuffer())
       bindDescriptorBuffers(cmdBuffer);
-    }
 
     return cmdBuffer;
+  }
+
+
+  void DxvkCommandList::countDescriptorStats(
+    const Rc<DxvkResourceDescriptorRange>& range,
+          VkDeviceSize                  baseOffset) {
+    VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
+    addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
   }
 
 }
