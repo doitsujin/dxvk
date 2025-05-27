@@ -43,6 +43,28 @@ namespace dxvk {
     if (!m_device->canUseDescriptorBuffer())
       return nullptr;
 
+    // HACK: Hard-code the RDNA2 raw buffer descriptor format for Steam Deck
+    // in order to dodge significant API call overhead on 32-bit winevulkan.
+    if (env::is32BitHostPlatform() && m_device->debugFlags().isClear()) {
+      const auto& props = m_device->properties();
+
+      bool isDeck = props.vk12.driverID == VK_DRIVER_ID_MESA_RADV
+                 && props.core.properties.vendorID == uint16_t(DxvkGpuVendor::Amd)
+                 && (props.core.properties.deviceID == 0x163fu
+                  || props.core.properties.deviceID == 0x1435u);
+
+      // Validate descriptor sizes to make sure we're *actually* a Deck and
+      // not running with any layers that screw around with descriptor data.
+      // This still isn't guaranteed to be reliable.
+      auto uboSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER).size;
+      auto ssboSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER).size;
+
+      if (isDeck && uboSize == 16u && ssboSize == 16u) {
+        Logger::info("Steam Deck detected, using custom buffer descriptors!");
+        return &writeBufferDescriptorsSteamDeck;
+      }
+    }
+
     return &writeBufferDescriptorsGetDescriptorExt;
   }
 
@@ -126,6 +148,29 @@ namespace dxvk {
 
       vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
         descriptorSize, descriptor.descriptor.data());
+    }
+  }
+
+
+  void DxvkDescriptorCopyWorker::writeBufferDescriptorsSteamDeck(
+          DxvkDevice*               device,
+          DxvkDescriptor*           descriptors,
+          uint32_t                  bufferCount,
+    const DxvkDescriptorCopyBuffer* bufferInfos) {
+    for (uint32_t i = 0u; i < bufferCount; i++) {
+      auto& descriptor = descriptors[i];
+      auto& buffer = bufferInfos[i];
+
+      std::array<uint32_t, 4u> rawDescriptor = { };
+
+      if (buffer.size) {
+        rawDescriptor[0u] = uint32_t(buffer.gpuAddress);
+        rawDescriptor[1u] = uint32_t(buffer.gpuAddress >> 32u) & 0xffffu;
+        rawDescriptor[2u] = buffer.size;
+        rawDescriptor[3u] = 0x31016facu; /* don't ask */
+      }
+
+      std::memcpy(descriptor.descriptor.data(), rawDescriptor.data(), sizeof(rawDescriptor));
     }
   }
 

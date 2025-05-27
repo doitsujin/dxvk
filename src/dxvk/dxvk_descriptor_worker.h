@@ -164,6 +164,12 @@ namespace dxvk {
             uint32_t                  bufferCount,
       const DxvkDescriptorCopyBuffer* bufferInfos);
 
+    static void writeBufferDescriptorsSteamDeck(
+            DxvkDevice*               device,
+            DxvkDescriptor*           descriptors,
+            uint32_t                  bufferCount,
+      const DxvkDescriptorCopyBuffer* bufferInfos);
+
   };
 
 }
