@@ -111,6 +111,8 @@ namespace dxvk {
                                       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
+    Logger::info(str::format("Creating resource descriptor heap (", info.size >> 10u, " kB)"));
+
     m_device->addStatCtr(DxvkStatCounter::DescriptorHeapSize, info.size);
     m_device->addStatCtr(DxvkStatCounter::DescriptorHeapCount, 1u);
     return m_device->createBuffer(info, memoryFlags);
