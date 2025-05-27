@@ -71,17 +71,26 @@ namespace dxvk {
     // Use a fixed heap size regardless of descriptor size. This avoids
     // creating unnecessarily large buffers in simple apps on devices
     // that have pathologically large descriptors.
-    constexpr VkDeviceSize HeapSize = env::is32BitHostPlatform() ? (4ull << 20) : (8ull << 20);
-
+    constexpr VkDeviceSize MaxHeapSize = env::is32BitHostPlatform() ? (4ull << 20) : (8ull << 20);
     constexpr VkDeviceSize SliceCount = 8u;
-    constexpr VkDeviceSize SliceSize = HeapSize / SliceCount;
 
-    Rc<DxvkBuffer> gpuBuffer = createGpuBuffer(HeapSize);
+    // Check selected heap size against device capabilities. If the device
+    // gives us indices in place of real descriptors, we might only get a
+    // smaller maximum supported size as well.
+    VkDeviceSize deviceHeapSize = m_device->properties().extDescriptorBuffer.maxResourceDescriptorBufferRange;
+    VkDeviceSize deviceDescriptorAlignment = m_device->getDescriptorProperties().getDescriptorSetAlignment();
+
+    // Ensure that the selected slice size meets all alignment requirements
+    VkDeviceSize sliceSize = std::min(MaxHeapSize, deviceHeapSize) / SliceCount;
+    sliceSize &= ~(deviceDescriptorAlignment - 1u);
+
+    // Create buffer and add ranges all using one slice of that new buffer
+    Rc<DxvkBuffer> buffer = createBuffer(sliceSize * SliceCount);
 
     DxvkResourceDescriptorRange* first = nullptr;
 
     for (uint32_t i = 0u; i < SliceCount; i++) {
-      auto& range = m_ranges.emplace_back(this, gpuBuffer, SliceSize, i, SliceCount);
+      auto& range = m_ranges.emplace_back(this, buffer, sliceSize, i, SliceCount);
 
       if (!first)
         first = &range;
@@ -91,7 +100,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkBuffer> DxvkResourceDescriptorHeap::createGpuBuffer(VkDeviceSize baseSize) {
+  Rc<DxvkBuffer> DxvkResourceDescriptorHeap::createBuffer(VkDeviceSize baseSize) {
     DxvkBufferCreateInfo info = { };
     info.size = baseSize;
     info.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT

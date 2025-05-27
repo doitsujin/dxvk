@@ -222,7 +222,7 @@ namespace dxvk {
 
     DxvkResourceDescriptorRange* addRanges();
 
-    Rc<DxvkBuffer> createGpuBuffer(VkDeviceSize baseSize);
+    Rc<DxvkBuffer> createBuffer(VkDeviceSize baseSize);
 
   };
 
