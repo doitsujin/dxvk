@@ -7,6 +7,7 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_descriptor_heap.h"
 #include "dxvk_descriptor_pool.h"
+#include "dxvk_descriptor_worker.h"
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
@@ -1260,6 +1261,10 @@ namespace dxvk {
       m_trackingId = id;
     }
 
+    void setDescriptorSyncHandle(sync::SyncPoint syncHandle) {
+      m_descriptorSync = std::move(syncHandle);
+    }
+
   private:
     
     DxvkDevice*               m_device;
@@ -1293,6 +1298,7 @@ namespace dxvk {
 
     Rc<DxvkDescriptorPool>    m_descriptorPool;
     Rc<DxvkDescriptorPoolSet> m_descriptorManager;
+    sync::SyncPoint           m_descriptorSync;
 
     Rc<DxvkResourceDescriptorHeap>  m_descriptorHeap;
     Rc<DxvkResourceDescriptorRange> m_descriptorRange;
