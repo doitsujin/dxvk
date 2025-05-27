@@ -269,14 +269,19 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < numAdapters; i++) {
       if (filter.testAdapter(deviceProperties[i])) {
-        result.push_back(new DxvkAdapter(m_vki, adapters[i]));
+        auto adapter = new DxvkAdapter(m_vki, adapters[i]);
 
-        if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-          numDGPU += 1;
-        else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
-          numIGPU += 1;
+        if (filter.testCreatedAdapter(adapter->devicePropertiesExt())) {
+          result.push_back(adapter);
+
+          if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+            numDGPU += 1;
+          else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+            numIGPU += 1;
+        } else {
+          // Se falhar no UUID, descarta
+        }
       }
-    }
     
     std::stable_sort(result.begin(), result.end(),
       [] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
