@@ -5,6 +5,7 @@ namespace dxvk {
 
   DxvkDescriptorCopyWorker::DxvkDescriptorCopyWorker(const Rc<DxvkDevice>& device)
   : m_device        (device),
+    m_vkd           (device->vkd()),
     m_appendFence   (new sync::Fence()),
     m_consumeFence  (new sync::Fence()),
     m_writeBufferDescriptorsFn(getWriteBufferDescriptorFn()) {
@@ -70,8 +71,6 @@ namespace dxvk {
 
 
   void DxvkDescriptorCopyWorker::processBlock(Block& block) {
-    auto vk = m_device->vkd();
-
     // Local memory for uniform buffers descriptors in each set
     std::array<DxvkDescriptor, MaxNumUniformBufferSlots> scratchDescriptors;
 
@@ -82,7 +81,7 @@ namespace dxvk {
     for (uint32_t i = 0u; i < block.rangeCount; i++) {
       const auto& range = block.ranges[i];
 
-      m_writeBufferDescriptorsFn(m_device.ptr(),
+      m_writeBufferDescriptorsFn(this,
         scratchDescriptors.data(), range.bufferCount, e.buffers);
 
       for (uint32_t j = 0u; j < range.bufferCount; j++)
@@ -133,12 +132,10 @@ namespace dxvk {
 
 
   void DxvkDescriptorCopyWorker::writeBufferDescriptorsGetDescriptorExt(
-          DxvkDevice*               device,
+    const DxvkDescriptorCopyWorker* worker,
           DxvkDescriptor*           descriptors,
           uint32_t                  bufferCount,
     const DxvkDescriptorCopyBuffer* bufferInfos) {
-    auto vk = device->vkd();
-
     for (uint32_t i = 0u; i < bufferCount; i++) {
       auto& descriptor = descriptors[i];
       auto& buffer = bufferInfos[i];
@@ -153,16 +150,16 @@ namespace dxvk {
       if (bufferInfo.range)
         descriptorInfo.data.pUniformBuffer = &bufferInfo;
 
-      VkDeviceSize descriptorSize = device->getDescriptorProperties().getDescriptorTypeInfo(descriptorInfo.type).size;
+      VkDeviceSize descriptorSize = worker->m_device->getDescriptorProperties().getDescriptorTypeInfo(descriptorInfo.type).size;
 
-      vk->vkGetDescriptorEXT(vk->device(), &descriptorInfo,
-        descriptorSize, descriptor.descriptor.data());
+      worker->m_vkd->vkGetDescriptorEXT(worker->m_vkd->device(),
+        &descriptorInfo, descriptorSize, descriptor.descriptor.data());
     }
   }
 
 
   void DxvkDescriptorCopyWorker::writeBufferDescriptorsSteamDeck(
-          DxvkDevice*               device,
+    const DxvkDescriptorCopyWorker* worker,
           DxvkDescriptor*           descriptors,
           uint32_t                  bufferCount,
     const DxvkDescriptorCopyBuffer* bufferInfos) {
