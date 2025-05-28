@@ -1,11 +1,12 @@
 #include "dxvk_device_filter.h"
 #include <iomanip>
+#include <sstream>
 
 namespace dxvk {
 
     DxvkDeviceFilter::DxvkDeviceFilter(
       DxvkDeviceFilterFlags flags,
-      const DxvkOptions&          options)
+      const DxvkOptions& options)
       : m_flags(flags) {
       m_matchDeviceName = env::getEnvVar("DXVK_FILTER_DEVICE_NAME");
       m_matchDeviceUUID = env::getEnvVar("DXVK_FILTER_DEVICE_UUID");
@@ -20,17 +21,14 @@ namespace dxvk {
         m_flags.set(DxvkDeviceFilterFlag::MatchDeviceUUID);
     }
 
-    DxvkDeviceFilter::~DxvkDeviceFilter() {}
+    DxvkDeviceFilter::~DxvkDeviceFilter() { }
 
-    /// 🔧 Conversor de UUID mais legível (hexadecimal)
+    /// 🔧 Conversor de UUID legível (hexadecimal, sem hífens)
     std::string convertUUID(const uint8_t uuid[VK_UUID_SIZE]) {
       std::ostringstream stream;
       stream << std::hex << std::setfill('0');
-      for (size_t i = 0; i < VK_UUID_SIZE; ++i) {
-        stream << std::setw(2) << static_cast<int>(uuid[i]);
-        if (i != VK_UUID_SIZE - 1)
-          stream << "-";
-      }
+      for (size_t i = 0; i < VK_UUID_SIZE; ++i)
+        stream << std::setw(2) << static_cast<uint32_t>(uuid[i] & 0xff); // Corrige sinais negativos
       return stream.str();
     }
 
