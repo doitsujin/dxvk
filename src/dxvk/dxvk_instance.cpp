@@ -279,9 +279,10 @@ namespace dxvk {
           else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
             numIGPU += 1;
         } else {
-          // Se falhar no UUID, descarta
+          delete adapter; // Libera se não passar no filtro de UUID// Se falhar no UUID, descarta
         }
       }
+    }
     
     std::stable_sort(result.begin(), result.end(),
       [] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
