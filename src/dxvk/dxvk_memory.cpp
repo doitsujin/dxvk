@@ -1217,15 +1217,15 @@ namespace dxvk {
     VkMemoryPriorityAllocateInfoEXT priorityInfo = { VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT };
 
     if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        // BAR allocation. Give this a low priority since these are typically useful
-        // when when placed in system memory.
-        priorityInfo.priority = 0.0f;
-      } else if (next) {
+      if (next) {
         // Dedicated allocation, may or may not be a shared resource. Assign this the
         // highest priority since this is expected to be a high-bandwidth resource,
-        // such as a render target.
+        // such as a render target or a descriptor heap. The latter may be host-visible.
         priorityInfo.priority = 1.0f;
+      } else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        // Regular HVV allocation. Give this a low priority since these are typically
+        // useful when when placed in system memory.
+        priorityInfo.priority = 0.0f;
       } else {
         // Standard priority for resource allocations
         priorityInfo.priority = 0.5f;
