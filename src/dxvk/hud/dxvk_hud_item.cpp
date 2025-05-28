@@ -740,14 +740,19 @@ namespace dxvk::hud {
   void HudDescriptorStatsItem::update(dxvk::high_resolution_clock::time_point time) {
     uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
 
+    DxvkStatCounters counters = m_device->getStatCounters();
+
     if (ticks >= UpdateInterval) {
+      uint64_t busyTicks = counters.getCtr(DxvkStatCounter::DescriptorCopyBusyTicks);
+
+      m_copyThreadLoad = uint32_t(double(100.0 * (busyTicks - m_copyThreadBusyTicks)) / ticks);
+      m_copyThreadBusyTicks = busyTicks;
+
       m_descriptorHeapUsed = m_descriptorHeapMax;
       m_descriptorHeapMax = 0u;
 
       m_lastUpdate = time;
     }
-
-    DxvkStatCounters counters = m_device->getStatCounters();
 
     m_descriptorPoolCount = counters.getCtr(DxvkStatCounter::DescriptorPoolCount);
     m_descriptorSetCount  = counters.getCtr(DxvkStatCounter::DescriptorSetCount);
@@ -785,6 +790,10 @@ namespace dxvk::hud {
       position.y += 20;
       renderer.drawText(16, position, 0xff8040ff, "Descriptor usage:");
       renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorHeapUsed >> 10, " kB"));
+
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Copy worker:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_copyThreadLoad, "%"));
     }
 
     position.y += 8;

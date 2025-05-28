@@ -492,6 +492,9 @@ namespace dxvk::hud {
     uint64_t m_descriptorHeapMax   = 0;
     uint64_t m_descriptorHeapPrev  = 0;
 
+    uint64_t m_copyThreadBusyTicks = 0;
+    uint32_t m_copyThreadLoad      = 0u;
+
     high_resolution_clock::time_point m_lastUpdate = { };
 
   };
