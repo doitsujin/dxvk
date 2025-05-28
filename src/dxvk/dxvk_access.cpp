@@ -2,8 +2,8 @@
 
 namespace dxvk {
 
-  DxvkObjectTracker::DxvkObjectTracker() {
-    m_head = std::make_unique<List>();
+  DxvkObjectTracker::DxvkObjectTracker()
+    : m_head ( std::make_unique<List>() ) {
     m_next = m_head.get();
   }
 
