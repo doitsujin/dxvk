@@ -1058,8 +1058,15 @@ namespace dxvk {
     }} },
     /* Pirate Huner - Prevents crash              */
     { R"(\\PH\.exe$)", {{
-      { "d3d9.memoryTrackTest",          "True" },
-      { "d3d9.maxAvailableMemory",       "2048" },
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+    }} },
+    /* Battle Engine Aquila - Enables additional  *
+     * graphical features and Nvidia particle fog */
+    { R"(\\BEA\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.customDeviceId",              "0330" },
+      { "d3d9.customDeviceDesc",            "NVIDIA GeForce FX 5900 Ultra" },
     }} },
 
     /**********************************************/
