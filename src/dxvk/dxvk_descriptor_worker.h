@@ -52,7 +52,7 @@ namespace dxvk {
 
 
   /** Function type to process buffer descriptors */
-  using WriteBufferDescriptorsFn = void (DxvkDevice*, DxvkDescriptor*, uint32_t, const DxvkDescriptorCopyBuffer*);
+  using WriteBufferDescriptorsFn = void (const DxvkDescriptorCopyWorker*, DxvkDescriptor*, uint32_t, const DxvkDescriptorCopyBuffer*);
 
 
   /**
@@ -124,7 +124,8 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkDevice> m_device;
+    Rc<DxvkDevice>    m_device;
+    Rc<vk::DeviceFn>  m_vkd;
 
     Rc<sync::Fence> m_appendFence;
     Rc<sync::Fence> m_consumeFence;
@@ -159,13 +160,13 @@ namespace dxvk {
     void runWorker();
 
     static void writeBufferDescriptorsGetDescriptorExt(
-            DxvkDevice*               device,
+      const DxvkDescriptorCopyWorker* worker,
             DxvkDescriptor*           descriptors,
             uint32_t                  bufferCount,
       const DxvkDescriptorCopyBuffer* bufferInfos);
 
     static void writeBufferDescriptorsSteamDeck(
-            DxvkDevice*               device,
+      const DxvkDescriptorCopyWorker* worker,
             DxvkDescriptor*           descriptors,
             uint32_t                  bufferCount,
       const DxvkDescriptorCopyBuffer* bufferInfos);

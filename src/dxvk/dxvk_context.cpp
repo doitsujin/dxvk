@@ -6486,8 +6486,6 @@ namespace dxvk {
      && !m_cmd->createDescriptorRange())
       return false;
 
-    auto vk = m_device->vkd();
-
     // The resource heap is always bound at index 1
     std::array<uint32_t,     DxvkDescriptorSets::SetCount> bufferIndices = { };
     std::array<VkDeviceSize, DxvkDescriptorSets::SetCount> bufferOffsets = { };
