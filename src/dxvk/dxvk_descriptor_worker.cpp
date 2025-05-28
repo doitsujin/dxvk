@@ -115,10 +115,19 @@ namespace dxvk {
       if (append == uint64_t(-1))
         return;
 
+      // Process all blocks that have been queued up
+      auto t0 = dxvk::high_resolution_clock::now();
+
       while (consume < append) {
         processBlock(m_blocks[consume % BlockCount]);
         m_consumeFence->signal(++consume);
       }
+
+      // Update stat counters
+      auto t1 = dxvk::high_resolution_clock::now();
+      auto td = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
+
+      m_device->addStatCtr(DxvkStatCounter::DescriptorCopyBusyTicks, td.count());
     }
   }
 
