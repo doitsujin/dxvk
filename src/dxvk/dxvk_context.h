@@ -1766,7 +1766,7 @@ namespace dxvk {
       const Rc<DxvkImage>&          image,
       const VkImageSubresourceRange& subresources);
 
-    bool updateIndexBufferBinding();
+    void updateIndexBufferBinding();
     void updateVertexBufferBindings();
 
     void updateTransformFeedbackBuffers();

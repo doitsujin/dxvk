@@ -6937,30 +6937,38 @@ namespace dxvk {
   }
 
 
-  bool DxvkContext::updateIndexBufferBinding() {
-    if (unlikely(!m_state.vi.indexBuffer.length()))
-      return false;
-
+  void DxvkContext::updateIndexBufferBinding() {
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
-    auto bufferInfo = m_state.vi.indexBuffer.getSliceInfo();
 
-    VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
-    VkDeviceSize length = bufferInfo.size & ~(align - 1);
+    if (likely(m_state.vi.indexBuffer.length())) {
+      auto bufferInfo = m_state.vi.indexBuffer.getSliceInfo();
 
-    m_cmd->cmdBindIndexBuffer2(
-      bufferInfo.buffer, bufferInfo.offset,
-      length, m_state.vi.indexType);
+      VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
+      VkDeviceSize length = bufferInfo.size & ~(align - 1);
 
-    if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
-      accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
-        VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT, DxvkAccessOp::None);
+      m_cmd->cmdBindIndexBuffer2(
+        bufferInfo.buffer, bufferInfo.offset,
+        length, m_state.vi.indexType);
+
+      if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
+        accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
+          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT, DxvkAccessOp::None);
+      }
+
+      m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      m_renderPassBarrierSrc.access |= VK_ACCESS_INDEX_READ_BIT;
+    } else if (m_device->features().khrMaintenance6.maintenance6) {
+      // Bind null index buffer to read all zeroes, not too useful but well-defined
+      m_cmd->cmdBindIndexBuffer2(VK_NULL_HANDLE, 0, VK_WHOLE_SIZE, m_state.vi.indexType);
+    } else {
+      // Bind dummy buffer that contains all zeroes
+      auto bufferInfo = m_common->dummyResources().bufferInfo();
+
+      m_cmd->cmdBindIndexBuffer2(bufferInfo.buffer,
+        bufferInfo.offset, bufferInfo.size, m_state.vi.indexType);
     }
 
-    m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-    m_renderPassBarrierSrc.access |= VK_ACCESS_INDEX_READ_BIT;
-
     m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
-    return true;
   }
   
   
@@ -7401,10 +7409,8 @@ namespace dxvk {
         this->beginBarrierControlDebugRegion<VK_PIPELINE_BIND_POINT_GRAPHICS>();
     }
 
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
-      if (unlikely(!this->updateIndexBufferBinding()))
-        return false;
-    }
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed)
+      this->updateIndexBufferBinding();
     
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))
       this->updateVertexBufferBindings();
