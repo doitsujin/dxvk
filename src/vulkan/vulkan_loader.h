@@ -468,6 +468,15 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetImageSubresourceLayout2KHR);
     #endif
 
+    #ifdef VK_KHR_maintenance6
+    VULKAN_FN(vkCmdBindDescriptorSets2KHR);
+    VULKAN_FN(vkCmdPushConstants2KHR);
+    VULKAN_FN(vkCmdPushDescriptorSet2KHR);
+    VULKAN_FN(vkCmdPushDescriptorSetWithTemplate2KHR);
+    VULKAN_FN(vkCmdSetDescriptorBufferOffsets2EXT);
+    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplers2EXT);
+    #endif
+
     #ifdef VK_KHR_present_wait
     VULKAN_FN(vkWaitForPresentKHR);
     #endif

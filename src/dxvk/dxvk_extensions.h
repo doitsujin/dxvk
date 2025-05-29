@@ -323,6 +323,7 @@ namespace dxvk {
     DxvkExt khrExternalSemaphoreWin32         = { VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrLoadStoreOpNone                = { VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt khrMaintenance5                   = { VK_KHR_MAINTENANCE_5_EXTENSION_NAME,                      DxvkExtMode::Required };
+    DxvkExt khrMaintenance6                   = { VK_KHR_MAINTENANCE_6_EXTENSION_NAME,                      DxvkExtMode::Optional };
     DxvkExt khrMaintenance7                   = { VK_KHR_MAINTENANCE_7_EXTENSION_NAME,                      DxvkExtMode::Optional };
     DxvkExt khrPipelineLibrary                = { VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt khrPresentId                      = { VK_KHR_PRESENT_ID_EXTENSION_NAME,                         DxvkExtMode::Optional };
