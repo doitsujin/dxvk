@@ -451,6 +451,8 @@ namespace dxvk {
 
     // Enable maintenance features if supported. maintenance5 is required.
     enabledFeatures.khrMaintenance5.maintenance5 = VK_TRUE;
+    enabledFeatures.khrMaintenance6.maintenance6 =
+      m_deviceFeatures.khrMaintenance6.maintenance6;
     enabledFeatures.khrMaintenance7.maintenance7 =
       m_deviceFeatures.khrMaintenance7.maintenance7;
 
@@ -661,6 +663,10 @@ namespace dxvk {
           enabledFeatures.khrMaintenance5 = *reinterpret_cast<const VkPhysicalDeviceMaintenance5FeaturesKHR*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR:
+          enabledFeatures.khrMaintenance6 = *reinterpret_cast<const VkPhysicalDeviceMaintenance6FeaturesKHR*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR:
           enabledFeatures.khrMaintenance7 = *reinterpret_cast<const VkPhysicalDeviceMaintenance7FeaturesKHR*>(f);
           break;
@@ -849,6 +855,11 @@ namespace dxvk {
       m_deviceInfo.khrMaintenance5.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrMaintenance5);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)) {
+      m_deviceInfo.khrMaintenance6.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_PROPERTIES_KHR;
+      m_deviceInfo.khrMaintenance6.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrMaintenance6);
+    }
+
     if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_7_EXTENSION_NAME)) {
       m_deviceInfo.khrMaintenance7.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_PROPERTIES_KHR;
       m_deviceInfo.khrMaintenance7.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrMaintenance7);
@@ -994,6 +1005,11 @@ namespace dxvk {
       m_deviceFeatures.khrMaintenance5.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance5);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_6_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance6.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance6.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance6);
+    }
+
     if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_7_EXTENSION_NAME)) {
       m_deviceFeatures.khrMaintenance7.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_7_FEATURES_KHR;
       m_deviceFeatures.khrMaintenance7.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance7);
@@ -1083,6 +1099,7 @@ namespace dxvk {
       &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrLoadStoreOpNone,
       &devExtensions.khrMaintenance5,
+      &devExtensions.khrMaintenance6,
       &devExtensions.khrMaintenance7,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrPresentId,
@@ -1230,6 +1247,11 @@ namespace dxvk {
     if (devExtensions.khrMaintenance5) {
       enabledFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
       enabledFeatures.khrMaintenance5.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance5);
+    }
+
+    if (devExtensions.khrMaintenance6) {
+      enabledFeatures.khrMaintenance6.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_6_FEATURES_KHR;
+      enabledFeatures.khrMaintenance6.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance6);
     }
 
     if (devExtensions.khrMaintenance7) {
@@ -1410,6 +1432,8 @@ namespace dxvk {
       "\n  extension supported                    : " << (features.khrLoadStoreOpNone ? "1" : "0") <<
       "\n" << VK_KHR_MAINTENANCE_5_EXTENSION_NAME <<
       "\n  maintenance5                           : " << (features.khrMaintenance5.maintenance5 ? "1" : "0") <<
+      "\n" << VK_KHR_MAINTENANCE_6_EXTENSION_NAME <<
+      "\n  maintenance6                           : " << (features.khrMaintenance6.maintenance6 ? "1" : "0") <<
       "\n" << VK_KHR_MAINTENANCE_7_EXTENSION_NAME <<
       "\n  maintenance7                           : " << (features.khrMaintenance7.maintenance7 ? "1" : "0") <<
       "\n" << VK_KHR_PRESENT_ID_EXTENSION_NAME <<
