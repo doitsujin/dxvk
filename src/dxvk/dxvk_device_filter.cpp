@@ -1,4 +1,6 @@
 #include "dxvk_device_filter.h"
+#include <iomanip>
+#include <sstream>
 
 namespace dxvk {
   
@@ -7,17 +9,29 @@ namespace dxvk {
     const DxvkOptions&          options)
   : m_flags(flags) {
     m_matchDeviceName = env::getEnvVar("DXVK_FILTER_DEVICE_NAME");
+    m_matchDeviceUUID = env::getEnvVar("DXVK_FILTER_DEVICE_UUID");
 
     if (m_matchDeviceName.empty())
       m_matchDeviceName = options.deviceFilter;
 
     if (!m_matchDeviceName.empty())
       m_flags.set(DxvkDeviceFilterFlag::MatchDeviceName);
+
+    if (!m_matchDeviceUUID.empty())
+      m_flags.set(DxvkDeviceFilterFlag::MatchDeviceUUID);
   }
   
   
   DxvkDeviceFilter::~DxvkDeviceFilter() {
     
+  }
+
+  static std::string convertUUID(const uint8_t uuid[VK_UUID_SIZE]) {
+    std::ostringstream stream;
+    stream << std::hex << std::setfill('0');
+    for (size_t i = 0; i < VK_UUID_SIZE; ++i)
+      stream << std::setw(2) << static_cast<uint32_t>(uuid[i] & 0xff);
+    return stream.str();
   }
   
   
@@ -42,5 +56,19 @@ namespace dxvk {
 
     return true;
   }
+
   
+  bool DxvkDeviceFilter::testCreatedAdapter(const DxvkDeviceInfo& deviceInfo) const {
+    if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceUUID)) {
+      std::string uuidStr = convertUUID(deviceInfo.vk11.deviceUUID);
+      Logger::debug(str::format("Filtering by device UUID: ", uuidStr));
+      if (uuidStr.find(m_matchDeviceUUID) == std::string::npos) {
+        Logger::warn(str::format("DXVK: Skipping device not matching UUID filter: ", uuidStr));
+        return false;
+      }
+    }
+
+    return true;
+  }
+
 }
