@@ -293,9 +293,14 @@ namespace dxvk {
   VkPipeline DxvkDevice::createBuiltInComputePipeline(
     const DxvkPipelineLayout*             layout,
     const util::DxvkBuiltInShaderStage&   stage) {
+    auto mappingInfo = layout->getMappingInfo();
+
     VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = stage.size;
     moduleInfo.pCode = stage.code;
+
+    if (canUseDescriptorHeap())
+      moduleInfo.pNext = &mappingInfo;
 
     VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
 
@@ -335,6 +340,8 @@ namespace dxvk {
     const util::DxvkBuiltInGraphicsState& state) {
     constexpr size_t MaxStages = 3u;
 
+    auto mappingInfo = layout->getMappingInfo();
+
     // Build shader stage infos
     small_vector<std::pair<VkShaderStageFlagBits, util::DxvkBuiltInShaderStage>, MaxStages> stages;
 
@@ -349,6 +356,9 @@ namespace dxvk {
       info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
       info.codeSize = stages[i].second.size;
       info.pCode = stages[i].second.code;
+
+      if (canUseDescriptorHeap())
+        info.pNext = &mappingInfo;
     }
 
     small_vector<VkPipelineShaderStageCreateInfo, MaxStages> stageInfos;
