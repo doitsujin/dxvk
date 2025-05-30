@@ -42,7 +42,7 @@ namespace dxvk {
     /**
      * \brief Increments ref count
      */
-    void incRef() {
+    force_inline void incRef() {
       m_refs.fetch_add(1u, std::memory_order_acquire);
     }
 
@@ -52,7 +52,7 @@ namespace dxvk {
      * Returns event to the pool if no further
      * references exist for this event.
      */
-    void decRef() {
+    force_inline void decRef() {
       if (m_refs.fetch_sub(1u, std::memory_order_release) == 1u)
         free();
     }

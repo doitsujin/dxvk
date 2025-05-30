@@ -643,12 +643,12 @@ namespace dxvk {
   }
 
 
-  inline void DxvkBufferView::incRef() {
+  force_inline void DxvkBufferView::incRef() {
     m_buffer->incRef();
   }
 
 
-  inline void DxvkBufferView::decRef() {
+  force_inline void DxvkBufferView::decRef() {
     m_buffer->decRef();
   }
 
