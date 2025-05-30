@@ -201,31 +201,51 @@ namespace dxvk {
     auto& descriptor = m_views.emplace(std::piecewise_construct,
       std::tuple(key), std::tuple()).first->second;
 
+    VkImageUsageFlags renderTargetUsage = key.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     VkImageUsageFlags shaderResourceUsage = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
 
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usage };
-    info.image = m_image;
-    info.viewType = key.viewType;
-    info.format = key.format;
-    info.components = key.unpackSwizzle();
-    info.subresourceRange.aspectMask = key.aspects;
-    info.subresourceRange.baseMipLevel = key.mipIndex;
-    info.subresourceRange.levelCount = key.mipCount;
-    info.subresourceRange.baseArrayLayer = key.layerIndex;
-    info.subresourceRange.layerCount = key.layerCount;
+    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usage };
+    viewInfo.image = m_image;
+    viewInfo.viewType = key.viewType;
+    viewInfo.format = key.format;
+    viewInfo.components = key.unpackSwizzle();
+    viewInfo.subresourceRange.aspectMask = key.aspects;
+    viewInfo.subresourceRange.baseMipLevel = key.mipIndex;
+    viewInfo.subresourceRange.levelCount = key.mipCount;
+    viewInfo.subresourceRange.baseArrayLayer = key.layerIndex;
+    viewInfo.subresourceRange.layerCount = key.layerCount;
 
-    descriptor.legacy.image.imageLayout = key.layout;
+    if (renderTargetUsage || !m_device->canUseDescriptorHeap() || m_device->hasCudaInterop()) {
+      descriptor.legacy.image.imageLayout = key.layout;
 
-    VkResult vr = vk->vkCreateImageView(
-      vk->device(), &info, nullptr, &descriptor.legacy.image.imageView);
+      VkResult vr = vk->vkCreateImageView(
+        vk->device(), &viewInfo, nullptr, &descriptor.legacy.image.imageView);
 
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+      if (vr != VK_SUCCESS)
+        throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+    }
 
-    if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
+    if (shaderResourceUsage && m_device->canUseDescriptorHeap()) {
+      VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+      VkImageDescriptorInfoEXT imageInfo = { VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT };
+      imageInfo.pView = &viewInfo;
+      imageInfo.layout = key.layout;
+
+      VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+      info.type = (key.usage == VK_IMAGE_USAGE_STORAGE_BIT)
+        ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      info.data.pImage = &imageInfo;
+
+      VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+      if (vr != VK_SUCCESS)
+        throw DxvkError(str::format("Failed to write Vulkan image view descriptor: ", vr));
+    } else if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
       if (shaderResourceUsage == VK_IMAGE_USAGE_STORAGE_BIT) {
