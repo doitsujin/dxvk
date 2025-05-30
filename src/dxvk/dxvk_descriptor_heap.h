@@ -17,10 +17,10 @@ namespace dxvk {
    * binding the descriptor heap.
    */
   struct DxvkDescriptorHeapBindingInfo {
-    VkBuffer        buffer      = VK_NULL_HANDLE;
-    VkDeviceAddress gpuAddress  = 0u;
-    VkDeviceSize    heapSize    = 0u;
-    VkDeviceSize    bufferSize  = 0u;
+    VkBuffer        buffer        = VK_NULL_HANDLE;
+    VkDeviceAddress gpuAddress    = 0u;
+    VkDeviceSize    reservedSize  = 0u;
+    VkDeviceSize    bufferSize    = 0u;
   };
 
 
@@ -41,7 +41,7 @@ namespace dxvk {
             Rc<DxvkBuffer>                      gpuBuffer,
             VkDeviceSize                        rangeSize,
             VkDeviceSize                        rangeIndex,
-            VkDeviceSize                        rangeCount);
+            VkDeviceSize                        reservedSize);
 
     ~DxvkResourceDescriptorRange();
 
@@ -82,7 +82,7 @@ namespace dxvk {
       DxvkDescriptorHeapBindingInfo result = { };
       result.buffer = m_rangeInfo.buffer;
       result.gpuAddress = m_rangeInfo.gpuAddress - m_rangeInfo.offset;
-      result.heapSize = m_heapSize;
+      result.reservedSize = m_reservedSize;
       result.bufferSize = m_bufferSize;
       return result;
     }
@@ -144,8 +144,8 @@ namespace dxvk {
 
     VkDeviceSize            m_allocationOffset = 0u;
 
-    VkDeviceSize            m_heapSize    = 0u;
-    VkDeviceSize            m_bufferSize  = 0u;
+    VkDeviceSize            m_reservedSize = 0u;
+    VkDeviceSize            m_bufferSize = 0u;
 
     DxvkResourceBufferInfo  m_rangeInfo = { };
 
@@ -215,6 +215,8 @@ namespace dxvk {
 
     DxvkDevice*           m_device    = nullptr;
     std::atomic<uint32_t> m_useCount  = { 0u };
+
+    VkDeviceSize          m_reservedSize = 0u;
 
     std::list<DxvkResourceDescriptorRange> m_ranges;
 
