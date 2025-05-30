@@ -159,6 +159,12 @@ namespace dxvk {
 
     void runWorker();
 
+    static void writeBufferDescriptorsGeneric(
+      const DxvkDescriptorCopyWorker* worker,
+            DxvkDescriptor*           descriptors,
+            uint32_t                  bufferCount,
+      const DxvkDescriptorCopyBuffer* bufferInfos);
+
     static void writeBufferDescriptorsGetDescriptorExt(
       const DxvkDescriptorCopyWorker* worker,
             DxvkDescriptor*           descriptors,

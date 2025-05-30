@@ -9,7 +9,7 @@ namespace dxvk {
     m_appendFence   (new sync::Fence()),
     m_consumeFence  (new sync::Fence()),
     m_writeBufferDescriptorsFn(getWriteBufferDescriptorFn()) {
-    if (m_device->canUseDescriptorBuffer())
+    if (m_device->canUseDescriptorHeap() || m_device->canUseDescriptorBuffer())
       m_thread = std::thread([this] { runWorker(); });
   }
 
@@ -41,9 +41,6 @@ namespace dxvk {
 
 
   WriteBufferDescriptorsFn* DxvkDescriptorCopyWorker::getWriteBufferDescriptorFn() const {
-    if (!m_device->canUseDescriptorBuffer())
-      return nullptr;
-
     // HACK: Hard-code the RDNA2 raw buffer descriptor format for Steam Deck
     // in order to dodge significant API call overhead on 32-bit winevulkan.
     if (env::is32BitHostPlatform() && m_device->debugFlags().isClear()) {
@@ -66,7 +63,13 @@ namespace dxvk {
       }
     }
 
-    return &writeBufferDescriptorsGetDescriptorExt;
+    if (m_device->canUseDescriptorHeap())
+      return &writeBufferDescriptorsGeneric;
+
+    if (m_device->canUseDescriptorBuffer())
+      return &writeBufferDescriptorsGetDescriptorExt;
+
+    return nullptr;
   }
 
 
@@ -127,6 +130,46 @@ namespace dxvk {
       auto td = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
 
       m_device->addStatCtr(DxvkStatCounter::DescriptorCopyBusyTicks, td.count());
+    }
+  }
+
+
+  void DxvkDescriptorCopyWorker::writeBufferDescriptorsGeneric(
+    const DxvkDescriptorCopyWorker* worker,
+          DxvkDescriptor*           descriptors,
+          uint32_t                  bufferCount,
+    const DxvkDescriptorCopyBuffer* bufferInfos) {
+    // Batch API calls to avoid overhead, especially on 32-bit
+    constexpr size_t MaxWrites = 32u;
+
+    small_vector<VkHostAddressRangeEXT, MaxWrites> hostRanges;
+    small_vector<VkDeviceAddressRangeEXT, MaxWrites> bufferRanges;
+    small_vector<VkResourceDescriptorInfoEXT, MaxWrites> writes;
+
+    for (uint32_t i = 0u; i < bufferCount; i++) {
+      auto& buffer = bufferInfos[i];
+
+      hostRanges.push_back(descriptors[i].getHostAddressRange());
+
+      auto& bufferRange = bufferRanges.emplace_back();
+      bufferRange.address = buffer.gpuAddress;
+      bufferRange.size = buffer.size;
+
+      auto& write = writes.emplace_back();
+      write.sType = VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT;
+      write.type = VkDescriptorType(buffer.descriptorType);
+
+      if (buffer.size)
+        write.data.pAddressRange = &bufferRange;
+
+      if (writes.size() == MaxWrites || i + 1u == bufferCount) {
+        worker->m_vkd->vkWriteResourceDescriptorsEXT(worker->m_vkd->device(),
+          writes.size(), writes.data(), hostRanges.data());
+
+        hostRanges.clear();
+        bufferRanges.clear();
+        writes.clear();
+      }
     }
   }
 
