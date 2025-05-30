@@ -983,7 +983,7 @@ namespace dxvk {
       // ca expect these to be long-lived and mapped, and potentially use a dedicated
       // memory type that may have unexpected size restrictions. Also make sure not
       // to ever relocate these buffers since they require a stable GPU address.
-      if (createInfo.usage & DescriptorBufferUsage) {
+      if (createInfo.usage & (DescriptorBufferUsage | DescriptorHeapUsage)) {
         VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
         dedicatedInfo.buffer = buffer;
 
@@ -2035,6 +2035,9 @@ namespace dxvk {
     // set the descriptor heap usage flags themselves since we do not want any
     // non-descriptor allocation to enable those bits.
     VkBufferUsageFlags descriptorHeapUsage = 0u;
+
+    if (m_device->canUseDescriptorHeap())
+      descriptorHeapUsage |= DescriptorHeapUsage;
 
     if (m_device->canUseDescriptorBuffer())
       descriptorHeapUsage |= DescriptorBufferUsage;
