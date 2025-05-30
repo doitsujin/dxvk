@@ -268,12 +268,14 @@ namespace dxvk {
     moduleInfo.codeSize = stage.size;
     moduleInfo.pCode = stage.code;
 
-    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    pipelineInfo.layout = layout->getPipelineLayout();
-    pipelineInfo.basePipelineIndex = -1;
+    VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
 
     if (canUseDescriptorBuffer())
-      pipelineInfo.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &pipelineFlags };
+    pipelineInfo.layout = layout->getPipelineLayout();
+    pipelineInfo.basePipelineIndex = -1;
 
     VkPipelineShaderStageCreateInfo& stageInfo = pipelineInfo.stage;
     stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &moduleInfo };
@@ -416,7 +418,12 @@ namespace dxvk {
     if (state.depthFormat && (depthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
       renderingInfo.stencilAttachmentFormat = state.depthFormat;
 
-    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &renderingInfo };
+    VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &renderingInfo };
+
+    if (canUseDescriptorBuffer())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &pipelineFlags };
     pipelineInfo.stageCount = stageInfos.size();
     pipelineInfo.pStages = stageInfos.data();
     pipelineInfo.pVertexInputState = state.viState ? state.viState : &viState;
@@ -429,9 +436,6 @@ namespace dxvk {
     pipelineInfo.pDynamicState = &dyState;
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
-
-    if (canUseDescriptorBuffer())
-      pipelineInfo.flags |= VK_PIPELINE_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 

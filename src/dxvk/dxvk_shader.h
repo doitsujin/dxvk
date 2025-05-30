@@ -481,8 +481,8 @@ namespace dxvk {
    * Stores a pipeline library handle and the necessary link flags.
    */
   struct DxvkShaderPipelineLibraryHandle {
-    VkPipeline            handle;
-    VkPipelineCreateFlags linkFlags;
+    VkPipeline              handle;
+    VkPipelineCreateFlags2  linkFlags;
   };
 
 
@@ -568,19 +568,19 @@ namespace dxvk {
     DxvkShaderPipelineLibraryHandle compileShaderPipelineLocked();
 
     DxvkShaderPipelineLibraryHandle compileShaderPipeline(
-            VkPipelineCreateFlags                 flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileVertexShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileFragmentShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileComputeShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     SpirvCodeBuffer getShaderCode(
             VkShaderStageFlagBits         stage) const;
