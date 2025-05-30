@@ -791,7 +791,7 @@ namespace dxvk {
     if (!cmdBuffer || !m_descriptorRange)
       return;
 
-    auto samplerInfo = m_device->getSamplerDescriptorSet();
+    auto samplerInfo = m_device->getSamplerDescriptorHeap();
     auto resourceInfo = m_descriptorRange->getHeapInfo();
 
     std::array<VkDescriptorBufferBindingInfoEXT, 2u> heaps = { };

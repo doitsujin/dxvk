@@ -6,6 +6,7 @@
 #include "../util/thread.h"
 
 #include "dxvk_descriptor.h"
+#include "dxvk_descriptor_heap.h"
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 
@@ -228,7 +229,6 @@ namespace dxvk {
   struct DxvkSamplerDescriptorSet {
     VkDescriptorSet       set         = VK_NULL_HANDLE;
     VkDescriptorSetLayout layout      = VK_NULL_HANDLE;
-    VkDeviceAddress       gpuAddress  = 0u;
   };
 
 
@@ -237,21 +237,27 @@ namespace dxvk {
    *
    * Manages a global descriptor pool and set for samplers.
    */
-  class DxvkSamplerDescriptorPool {
+  class DxvkSamplerDescriptorHeap {
 
   public:
 
-    DxvkSamplerDescriptorPool(
+    DxvkSamplerDescriptorHeap(
             DxvkDevice*               device,
             uint32_t                  size);
 
-    ~DxvkSamplerDescriptorPool();
+    ~DxvkSamplerDescriptorHeap();
 
     /**
      * \brief Retrieves descriptor set and layout
      * \returns Descriptor set and layout handles
      */
     DxvkSamplerDescriptorSet getDescriptorSetInfo() const;
+
+    /**
+     * \brief Retrieves descriptor heap info
+     * \returns Sampler heap address and size
+     */
+    DxvkDescriptorHeapBindingInfo getDescriptorHeapInfo() const;
 
     /**
      * \brief Writes sampler descriptor to pool
@@ -265,20 +271,26 @@ namespace dxvk {
 
   private:
 
-    DxvkDevice*           m_device    = nullptr;
+    DxvkDevice* m_device          = nullptr;
+    uint32_t    m_descriptorCount = 0u;
 
-    VkDescriptorPool      m_pool      = VK_NULL_HANDLE;
-    VkDescriptorSetLayout m_setLayout = VK_NULL_HANDLE;
-    VkDescriptorSet       m_set       = VK_NULL_HANDLE;
+    struct {
+      VkDescriptorPool      pool      = VK_NULL_HANDLE;
+      VkDescriptorSetLayout setLayout = VK_NULL_HANDLE;
+      VkDescriptorSet       set       = VK_NULL_HANDLE;
 
-    Rc<DxvkBuffer>        m_buffer    = nullptr;
+    } m_legacy;
 
-    VkDeviceSize          m_descriptorOffset  = 0u;
-    VkDeviceSize          m_descriptorSize    = 0u;
+    struct {
+      Rc<DxvkBuffer>        buffer    = nullptr;
 
-    void initDescriptorLayout(uint32_t descriptorCount);
+      VkDeviceSize          descriptorOffset  = 0u;
+      VkDeviceSize          descriptorSize    = 0u;
+    } m_heap;
 
-    void initDescriptorPool(uint32_t descriptorCount);
+    void initDescriptorLayout();
+
+    void initDescriptorPool();
 
     void initDescriptorBuffer();
 
@@ -330,7 +342,15 @@ namespace dxvk {
      * \returns Global sampler descriptor set and layout
      */
     DxvkSamplerDescriptorSet getDescriptorSetInfo() const {
-      return m_descriptorPool.getDescriptorSetInfo();
+      return m_descriptorHeap.getDescriptorSetInfo();
+    }
+
+    /**
+     * \brief Retrieves descriptor heap info
+     * \returns Sampler heap address and size
+     */
+    DxvkDescriptorHeapBindingInfo getDescriptorHeapInfo() const {
+      return m_descriptorHeap.getDescriptorHeapInfo();
     }
 
     /**
@@ -350,7 +370,7 @@ namespace dxvk {
 
     DxvkDevice* m_device;
 
-    DxvkSamplerDescriptorPool m_descriptorPool;
+    DxvkSamplerDescriptorHeap m_descriptorHeap;
 
     dxvk::mutex m_mutex;
     std::unordered_map<DxvkSamplerKey,
