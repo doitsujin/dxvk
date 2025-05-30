@@ -264,12 +264,12 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkImageView>&&   view) {
-      if (m_resources[slot].bufferView)
+      if (likely(m_resources[slot].imageView != view)) {
         m_resources[slot].bufferView = nullptr;
+        m_resources[slot].imageView = std::move(view);
 
-      m_resources[slot].imageView = std::move(view);
-
-      m_descriptorState.dirtyViews(stages);
+        m_descriptorState.dirtyViews(stages);
+      }
     }
 
     /**
@@ -283,12 +283,12 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkBufferView>&&  view) {
-      if (m_resources[slot].imageView)
+      if (likely(m_resources[slot].bufferView != view)) {
         m_resources[slot].imageView = nullptr;
+        m_resources[slot].bufferView = std::move(view);
 
-      m_resources[slot].bufferView = std::move(view);
-
-      m_descriptorState.dirtyViews(stages);
+        m_descriptorState.dirtyViews(stages);
+      }
     }
 
     /**
@@ -304,9 +304,11 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkSampler>&&     sampler) {
-      m_samplers[slot] = std::move(sampler);
+      if (likely(m_samplers[slot] != sampler)) {
+        m_samplers[slot] = std::move(sampler);
 
-      m_descriptorState.dirtySamplers(stages);
+        m_descriptorState.dirtySamplers(stages);
+      }
     }
 
     /**
