@@ -390,7 +390,7 @@ namespace dxvk {
     // Record commands to upload descriptors if necessary, and
     // reset the descriptor range to not keep it alive for too
     // long. Descriptor ranges are tracked when bound.
-    if (m_device->canUseDescriptorBuffer()) {
+    if (m_device->canUseDescriptorHeap() || m_device->canUseDescriptorBuffer()) {
       countDescriptorStats(m_descriptorRange, m_descriptorOffset);
 
       m_descriptorRange = nullptr;
@@ -722,7 +722,10 @@ namespace dxvk {
         return false;
       }
 
-      rebindDescriptorBuffers();
+      if (m_device->canUseDescriptorHeap())
+        rebindResourceHeap();
+      else if (m_device->canUseDescriptorBuffer())
+        rebindDescriptorBuffers();
     }
 
     m_descriptorOffset = m_descriptorRange->getAllocationOffset();
@@ -733,7 +736,21 @@ namespace dxvk {
 
 
   void DxvkCommandList::beginSecondaryCommandBuffer(
-    const VkCommandBufferInheritanceInfo& inheritanceInfo) {
+          VkCommandBufferInheritanceInfo inheritanceInfo) {
+    VkCommandBufferInheritanceDescriptorHeapInfoEXT heapInheritance = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_DESCRIPTOR_HEAP_INFO_EXT };
+
+    VkBindHeapInfoEXT samplerHeap = { };
+    VkBindHeapInfoEXT resourceHeap = { };
+
+    if (m_device->canUseDescriptorHeap()) {
+      samplerHeap = getHeapBindInfo(m_device->getSamplerDescriptorHeap());
+      resourceHeap = getHeapBindInfo(m_descriptorRange->getHeapInfo());
+
+      heapInheritance.pNext = std::exchange(inheritanceInfo.pNext, &heapInheritance);
+      heapInheritance.pSamplerHeapBindInfo = &samplerHeap;
+      heapInheritance.pResourceHeapBindInfo = &resourceHeap;
+    }
+
     VkCommandBuffer secondary = m_graphicsPool->getSecondaryCommandBuffer(inheritanceInfo);
 
     if (m_device->canUseDescriptorBuffer())
@@ -770,13 +787,28 @@ namespace dxvk {
 
   void DxvkCommandList::setDescriptorHeap(
           Rc<DxvkResourceDescriptorHeap> heap) {
+    // External rendering reapplies state, but we
+    // really want to avoid that for heap binding
+    if (m_descriptorHeap == heap)
+      return;
+
     m_descriptorHeap = std::move(heap);
     m_descriptorRange = m_descriptorHeap->getRange();
     m_descriptorOffset = m_descriptorRange->getAllocationOffset();
 
-    rebindDescriptorBuffers();
+    if (m_device->canUseDescriptorHeap())
+      rebindResourceHeap();
+    else if (m_device->canUseDescriptorBuffer())
+      rebindDescriptorBuffers();
 
     track(m_descriptorRange);
+  }
+
+
+  void DxvkCommandList::rebindResourceHeap() {
+    // Secondary command buffer must not be active when this gets called
+    for (uint32_t i = uint32_t(DxvkCmdBuffer::ExecBuffer); i <= uint32_t(DxvkCmdBuffer::InitBarriers); i++)
+      bindResourceHeap(m_cmd.cmdBuffers[i]);
   }
 
 
@@ -784,6 +816,25 @@ namespace dxvk {
     // Secondary command buffer must not be active when this gets called
     for (uint32_t i = uint32_t(DxvkCmdBuffer::ExecBuffer); i <= uint32_t(DxvkCmdBuffer::InitBuffer); i++)
       bindDescriptorBuffers(m_cmd.cmdBuffers[i]);
+  }
+
+
+  void DxvkCommandList::bindSamplerHeap(VkCommandBuffer cmdBuffer) {
+    auto vk = m_device->vkd();
+
+    VkBindHeapInfoEXT bindInfo = getHeapBindInfo(m_device->getSamplerDescriptorHeap());
+    vk->vkCmdBindSamplerHeapEXT(cmdBuffer, &bindInfo);
+  }
+
+
+  void DxvkCommandList::bindResourceHeap(VkCommandBuffer cmdBuffer) {
+    auto vk = m_device->vkd();
+
+    if (!cmdBuffer || !m_descriptorRange)
+      return;
+
+    VkBindHeapInfoEXT bindInfo = getHeapBindInfo(m_descriptorRange->getHeapInfo());
+    vk->vkCmdBindResourceHeapEXT(cmdBuffer, &bindInfo);
   }
 
 
@@ -827,6 +878,11 @@ namespace dxvk {
     VkCommandBuffer cmdBuffer = (type >= DxvkCmdBuffer::SdmaBuffer)
       ? m_transferPool->getCommandBuffer(type)
       : m_graphicsPool->getCommandBuffer(type);
+
+    if (type <= DxvkCmdBuffer::InitBarriers && m_device->canUseDescriptorHeap()) {
+      bindSamplerHeap(cmdBuffer);
+      bindResourceHeap(cmdBuffer);
+    }
 
     if (type <= DxvkCmdBuffer::InitBuffer && m_device->canUseDescriptorBuffer())
       bindDescriptorBuffers(cmdBuffer);
