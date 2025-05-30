@@ -61,7 +61,7 @@ namespace dxvk {
   bool DxvkDeviceFilter::testCreatedAdapter(const DxvkDeviceInfo& deviceInfo) const {
     if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceUUID)) {
       std::string uuidStr = convertUUID(deviceInfo.vk11.deviceUUID);
-      Logger::info(str::format("UUID usado para filtro: ", uuidStr));
+      Logger::info(str::format("Filtering by device UUID: ", uuidStr));
       if (uuidStr.find(m_matchDeviceUUID) == std::string::npos) {
         Logger::warn(str::format("DXVK: Skipping device not matching UUID filter: ", uuidStr));
         return false;
