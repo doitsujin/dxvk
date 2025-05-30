@@ -1704,8 +1704,9 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
     void updateDescriptorSetsBindings(const DxvkPipelineBindings* layout);
 
-    template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
-    bool updateDescriptorBufferBindings(const DxvkPipelineBindings* layout);
+
+    template<VkPipelineBindPoint BindPoint, DxvkBindingModel Model, bool AlwaysTrack>
+    bool updateDescriptorHeapBindings(const DxvkPipelineBindings* layout);
 
     template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
     void updatePushDataBindings(const DxvkPipelineBindings* layout);
