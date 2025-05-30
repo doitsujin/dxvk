@@ -1285,6 +1285,19 @@ namespace dxvk {
       return m_pushData.blocks[index];
     }
 
+    /**
+     * \brief Queries number of binding mappings
+     *
+     * Used when creating pipelines with descriptor heaps.
+     * \returns Binding mapping count
+     */
+    VkShaderDescriptorSetAndBindingMappingInfoEXT getMappingInfo() const {
+      VkShaderDescriptorSetAndBindingMappingInfoEXT result = { VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT };
+      result.mappingCount = m_mapping.mappings.size();
+      result.pMappings = m_mapping.mappings.data();
+      return result;
+    }
+
   private:
 
     DxvkDevice*             m_device;
@@ -1308,10 +1321,18 @@ namespace dxvk {
       VkDeviceSize      setMemorySize = 0u;
     } m_heap;
 
+    struct {
+      std::vector<VkDescriptorMappingSourcePushIndexEXT>  pushIndex;
+      std::vector<VkDescriptorSetAndBindingMappingEXT>    mappings;
+    } m_mapping;
+
     void initMetadata(
       const DxvkPipelineLayoutKey&      key);
 
     void initPipelineLayout(
+      const DxvkPipelineLayoutKey&      key);
+
+    void initMappings(
       const DxvkPipelineLayoutKey&      key);
 
   };
@@ -1838,6 +1859,7 @@ namespace dxvk {
     buildPushDataBlocks(
             DxvkPipelineLayoutType      type,
             DxvkDevice*                 device,
+      const SetInfos&                   setInfos,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
 
@@ -1845,6 +1867,7 @@ namespace dxvk {
     buildDescriptorSetLayouts(
             DxvkPipelineLayoutType      type,
             DxvkPipelineLayoutFlags     flags,
+      const SetInfos&                   setInfos,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
 
