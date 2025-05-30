@@ -183,6 +183,7 @@ namespace dxvk {
         case   4u: return &copyAligned< 4u>;
         case   8u: return &copyAligned< 8u>;
         case  16u: return &copyAligned<16u>;
+        case  24u: return &copyAligned<24u>;
         case  32u: return &copyAligned<32u>;
         case  48u: return &copyAligned<48u>;
         case  64u: return &copyAligned<64u>;
@@ -323,13 +324,63 @@ namespace dxvk {
 
 
   DxvkDescriptorProperties::DxvkDescriptorProperties(DxvkDevice* device) {
-    if (device->canUseDescriptorBuffer())
+    if (device->canUseDescriptorHeap())
+      initDescriptorHeapProperties(device);
+    else if (device->canUseDescriptorBuffer())
       initDescriptorBufferProperties(device);
   }
 
 
   DxvkDescriptorProperties::~DxvkDescriptorProperties() {
 
+  }
+
+
+  void DxvkDescriptorProperties::initDescriptorHeapProperties(const DxvkDevice* device) {
+    auto vkd = device->vkd();
+    auto vki = device->adapter()->vki();
+
+    // Query tight descriptor sizes for each type, but pad them out to the required
+    // alignment since we have no use for the memory in between descriptors. This
+    // may still be useful on devicesw here raw buffer descriptors are smaller than
+    // texel buffer descriptors.
+    auto properties = device->properties().extDescriptorHeap;
+
+    std::array<std::pair<VkDescriptorType, VkDeviceSize>, 7> types = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLER,              properties.samplerDescriptorAlignment },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,       properties.bufferDescriptorAlignment  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       properties.bufferDescriptorAlignment  },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, properties.imageDescriptorAlignment   },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, properties.imageDescriptorAlignment   },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        properties.imageDescriptorAlignment   },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        properties.imageDescriptorAlignment   },
+    }};
+
+    for (const auto& s : types) {
+      auto type = uint32_t(s.first);
+
+      VkDeviceSize size = vki->vkGetPhysicalDeviceDescriptorSizeEXT(device->adapter()->handle(), s.first);
+      VkDeviceSize alignment = s.second;
+
+      auto& info = m_descriptorTypes[type];
+      info.size       = align(size, alignment);
+      info.alignment  = alignment;
+
+      m_setAlignment = std::max(m_setAlignment, alignment);
+
+      if (s.first != VK_DESCRIPTOR_TYPE_SAMPLER) {
+        VkResourceDescriptorInfoEXT nullInfo = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+        nullInfo.type = s.first;
+
+        VkHostAddressRangeEXT nullData = m_nullDescriptors[type].getHostAddressRange();
+        vkd->vkWriteResourceDescriptorsEXT(vkd->device(), 1u, &nullInfo, &nullData);
+      }
+    }
+
+    // Pad to full cache lines for better write patterns
+    m_setAlignment = std::max<VkDeviceSize>(m_setAlignment, CACHE_LINE_SIZE);
+
+    logDescriptorProperties();
   }
 
 
