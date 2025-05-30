@@ -1196,7 +1196,7 @@ namespace dxvk {
      * \returns Pipeline layout handle
      */
     VkPipelineLayout getPipelineLayout() const {
-      return m_layout;
+      return m_legacy.layout;
     }
 
     /**
@@ -1227,14 +1227,14 @@ namespace dxvk {
      * descriptor range from the resource heap.
      */
     VkDeviceSize getDescriptorMemorySize() const {
-      return m_setMemorySize;
+      return m_heap.setMemorySize;
     }
 
     /**
      * \brief Queries non-empty push data block mask
      */
     uint32_t getPushDataMask() const {
-      return m_pushMask;
+      return m_pushData.blockMask;
     }
 
     /**
@@ -1243,7 +1243,7 @@ namespace dxvk {
      * This block includes all stages and all bytes.
      */
     DxvkPushDataBlock getPushData() const {
-      return m_pushDataMerged;
+      return m_pushData.mergedBlock;
     }
 
     /**
@@ -1253,7 +1253,7 @@ namespace dxvk {
      * \returns Push data block
      */
     DxvkPushDataBlock getPushDataBlock(uint32_t index) const {
-      return m_pushData[index];
+      return m_pushData.blocks[index];
     }
 
   private:
@@ -1263,14 +1263,27 @@ namespace dxvk {
     DxvkPipelineLayoutFlags m_flags;
     VkPipelineBindPoint     m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    uint32_t                                                        m_pushMask = 0u;
-    DxvkPushDataBlock                                               m_pushDataMerged;
-    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
-
-    VkDeviceSize            m_setMemorySize = 0u;
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
-    VkPipelineLayout        m_layout = VK_NULL_HANDLE;
+    struct {
+      VkPipelineLayout  layout = VK_NULL_HANDLE;
+    } m_legacy;
+
+    struct {
+      DxvkPushDataBlock mergedBlock = { };
+      uint32_t          blockMask   = 0u;
+      std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> blocks = { };
+    } m_pushData;
+
+    struct {
+      VkDeviceSize      setMemorySize = 0u;
+    } m_heap;
+
+    void initMetadata(
+      const DxvkPipelineLayoutKey&      key);
+
+    void initPipelineLayout(
+      const DxvkPipelineLayoutKey&      key);
 
   };
 
