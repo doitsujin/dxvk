@@ -516,7 +516,7 @@ namespace dxvk {
      * \param [in] inheritanceInfo Command buffer inheritance info
      */
     void beginSecondaryCommandBuffer(
-      const VkCommandBufferInheritanceInfo& inheritanceInfo);
+            VkCommandBufferInheritanceInfo inheritanceInfo);
 
     /**
      * \brief Ends secondary command buffer
@@ -1339,7 +1339,13 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
+    void rebindResourceHeap();
+
     void rebindDescriptorBuffers();
+
+    void bindSamplerHeap(VkCommandBuffer cmdBuffer);
+
+    void bindResourceHeap(VkCommandBuffer cmdBuffer);
 
     void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
 
@@ -1350,6 +1356,14 @@ namespace dxvk {
     void countDescriptorStats(
       const Rc<DxvkResourceDescriptorRange>& range,
             VkDeviceSize                  baseOffset);
+
+    static VkBindHeapInfoEXT getHeapBindInfo(const DxvkDescriptorHeapBindingInfo& heapInfo) {
+      VkBindHeapInfoEXT bindInfo = { VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT };
+      bindInfo.heapRange.address = heapInfo.gpuAddress;
+      bindInfo.heapRange.size = heapInfo.bufferSize;
+      bindInfo.reservedRangeSize = heapInfo.reservedSize;
+      return bindInfo;
+    }
 
   };
   
