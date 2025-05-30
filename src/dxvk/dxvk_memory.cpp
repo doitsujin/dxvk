@@ -71,7 +71,25 @@ namespace dxvk {
       std::tuple(key), std::tuple()).first->second;
 
     if (key.format) {
-      if (m_device->canUseDescriptorBuffer()) {
+      if (m_device->canUseDescriptorHeap()) {
+        VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+        VkTexelBufferDescriptorInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_TEXEL_BUFFER_DESCRIPTOR_INFO_EXT };
+        bufferInfo.format = key.format;
+        bufferInfo.addressRange.address = m_va + key.offset;
+        bufferInfo.addressRange.size = key.size;
+
+        VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+        info.type = (key.usage == VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+          ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+          : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        info.data.pTexelBuffer = &bufferInfo;
+
+        VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+        if (vr != VK_SUCCESS)
+          throw DxvkError(str::format("Failed to write Vulkan buffer view descriptor: ", vr));
+      } else if (m_device->canUseDescriptorBuffer()) {
         VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
         bufferInfo.address = m_va + key.offset;
         bufferInfo.range = key.size;
@@ -117,7 +135,22 @@ namespace dxvk {
       bufferInfo.offset = key.offset + baseOffset;
       bufferInfo.range = key.size;
 
-      if (m_device->canUseDescriptorBuffer()) {
+      if (m_device->canUseDescriptorHeap()) {
+        VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+        VkDeviceAddressRangeEXT bufferRange = { };
+        bufferRange.address = m_va + key.offset;
+        bufferRange.size = key.size;
+
+        VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        info.data.pAddressRange = &bufferRange;
+
+        VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+        if (vr != VK_SUCCESS)
+          throw DxvkError(str::format("Failed to write Vulkan buffer descriptor: ", vr));
+      } else if (m_device->canUseDescriptorBuffer()) {
         VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
         bufferInfo.address = m_va + key.offset;
         bufferInfo.range = key.size;
