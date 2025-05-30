@@ -50,18 +50,24 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkDescriptorSetLayoutKey& key)
   : m_device(device), m_bindingCount(key.getBindingCount()) {
-    initSetLayout(key);
+    if (device->canUseDescriptorHeap()) {
+      initDescriptorHeapLayout(key);
+    } else {
+      initSetLayout(key);
 
-    if (m_device->canUseDescriptorBuffer())
-      initDescriptorBufferUpdate(key);
+      if (m_device->canUseDescriptorBuffer())
+        initDescriptorBufferUpdate(key);
+    }
   }
 
 
   DxvkDescriptorSetLayout::~DxvkDescriptorSetLayout() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.layout, nullptr);
-    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_legacy.updateTemplate, nullptr);
+    if (!m_device->canUseDescriptorHeap()) {
+      vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.layout, nullptr);
+      vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_legacy.updateTemplate, nullptr);
+    }
   }
 
 
@@ -146,6 +152,70 @@ namespace dxvk {
         auto& e = descriptors.emplace_back();
         e.descriptorType = binding.getDescriptorType();
         e.offset = uint32_t(offset) + j * m_device->getDescriptorProperties().getDescriptorTypeInfo(e.descriptorType).size;
+      }
+    }
+
+    m_heap.update = DxvkDescriptorUpdateList(m_device,
+      m_heap.memorySize, descriptors.size(), descriptors.data());
+  }
+
+
+  void DxvkDescriptorSetLayout::initDescriptorHeapLayout(const DxvkDescriptorSetLayoutKey& key) {
+    // As a small optimization, order descriptors by size alignment from
+    // large to small. This way, we're guaranteed tight packing and Will
+    // only ever have one area of padding at the end of the set.
+    uint32_t typeAlignmentMask = 0u;
+
+    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+      const auto& binding = key.getBinding(i);
+
+      auto size = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
+      size &= -size;
+
+      typeAlignmentMask |= size;
+    }
+
+    // Compute the actual binding layout by iterating over the bindings
+    // until we've processed all unique descriptor size alignments
+    m_heap.bindingLayouts.resize(key.getBindingCount());
+
+    uint32_t offset = 0u;
+
+    while (typeAlignmentMask) {
+      uint32_t msb = (0x80000000u >> bit::lzcnt(typeAlignmentMask));
+
+      for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+        const auto& binding = key.getBinding(i);
+
+        auto type = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType());
+
+        if ((type.size & -type.size) != msb)
+          continue;
+
+        offset = align(offset, type.alignment);
+
+        auto& info = m_heap.bindingLayouts[i];
+        info.descriptorType = binding.getDescriptorType();
+        info.offset = offset;
+
+        offset += type.size * binding.getDescriptorCount();
+      }
+
+      typeAlignmentMask -= msb;
+    }
+
+    m_heap.memorySize = align(offset, m_device->getDescriptorProperties().getDescriptorSetAlignment());
+
+    // Iterate over everything again to create the descriptor update list
+    small_vector<DxvkDescriptorUpdateInfo, 32u> descriptors;
+
+    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+      auto& info = m_heap.bindingLayouts[i];
+
+      for (uint32_t j = 0u; j < key.getBinding(i).getDescriptorCount(); j++) {
+        auto& e = descriptors.emplace_back();
+        e.descriptorType = info.descriptorType;
+        e.offset = info.offset + j * m_device->getDescriptorProperties().getDescriptorTypeInfo(e.descriptorType).size;
       }
     }
 
