@@ -55,7 +55,7 @@ namespace dxvk {
      * \param [in] deviceInfo Information about created device
      * \returns \c true if the device passes the UUID filter
      */
-      bool testCreatedAdapter(
+    bool testCreatedAdapter(
         const DxvkDeviceInfo& deviceInfo) const;
     
   private:
