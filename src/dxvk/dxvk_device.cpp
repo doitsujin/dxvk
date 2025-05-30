@@ -299,6 +299,9 @@ namespace dxvk {
 
     VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
 
+    if (canUseDescriptorHeap())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
     if (canUseDescriptorBuffer())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
@@ -451,6 +454,9 @@ namespace dxvk {
       renderingInfo.stencilAttachmentFormat = state.depthFormat;
 
     VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (canUseDescriptorHeap())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
     if (canUseDescriptorBuffer())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
