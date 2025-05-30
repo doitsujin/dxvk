@@ -8,7 +8,7 @@ namespace dxvk {
           DxvkSamplerPool*        pool,
     const DxvkSamplerKey&         key,
           uint16_t                index)
-  : m_pool(pool), m_key(key), m_index(index) {
+  : m_pool(pool), m_key(key) {
     auto vk = m_pool->m_device->vkd();
 
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
@@ -50,18 +50,12 @@ namespace dxvk {
     if (reductionInfo.reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE)
       reductionInfo.pNext = std::exchange(samplerInfo.pNext, &reductionInfo);
 
-    if (vk->vkCreateSampler(vk->device(),
-        &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
-      throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
-
-    m_pool->m_descriptorHeap.writeDescriptor(m_index, m_sampler);
+    m_descriptor = m_pool->m_descriptorHeap.createSampler(index, &samplerInfo);
   }
 
 
   DxvkSampler::~DxvkSampler() {
-    auto vk = m_pool->m_device->vkd();
-
-    vk->vkDestroySampler(vk->device(), m_sampler, nullptr);
+    m_pool->m_descriptorHeap.freeSampler(m_descriptor);
   }
 
 
@@ -161,21 +155,29 @@ namespace dxvk {
   }
 
 
-  void DxvkSamplerDescriptorHeap::writeDescriptor(
+  DxvkSamplerDescriptor DxvkSamplerDescriptorHeap::createSampler(
           uint16_t              index,
-          VkSampler             sampler) {
+    const VkSamplerCreateInfo*  createInfo) {
     auto vk = m_device->vkd();
+
+    DxvkSamplerDescriptor descriptor = { };
+    descriptor.samplerIndex = index;
+
+    VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler object: ", vr));
 
     if (m_heap.buffer) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
       info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-      info.data.pSampler = &sampler;
+      info.data.pSampler = &descriptor.samplerObject;
 
       vk->vkGetDescriptorEXT(vk->device(), &info, m_heap.descriptorSize,
         m_heap.buffer->mapPtr(m_heap.descriptorOffset + m_heap.descriptorSize * index));
     } else {
       VkDescriptorImageInfo samplerInfo = { };
-      samplerInfo.sampler = sampler;
+      samplerInfo.sampler = descriptor.samplerObject;
 
       VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
       write.dstSet = m_legacy.set;
@@ -186,6 +188,16 @@ namespace dxvk {
 
       vk->vkUpdateDescriptorSets(vk->device(), 1u, &write, 0u, nullptr);
     }
+
+    return descriptor;
+  }
+
+
+  void DxvkSamplerDescriptorHeap::freeSampler(
+          DxvkSamplerDescriptor sampler) {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroySampler(vk->device(), sampler.samplerObject, nullptr);
   }
 
 
@@ -396,7 +408,7 @@ namespace dxvk {
     DxvkSampler* sampler = m_lruHead;
 
     if (sampler) {
-      freeSamplerIndex(sampler->m_index);
+      freeSamplerIndex(sampler->getDescriptor().samplerIndex);
       m_lruHead = sampler->m_lruNext;
 
       if (m_lruHead)

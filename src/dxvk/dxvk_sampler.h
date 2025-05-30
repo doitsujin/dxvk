@@ -188,10 +188,7 @@ namespace dxvk {
      * \returns Sampler handle
      */
     DxvkSamplerDescriptor getDescriptor() const {
-      DxvkSamplerDescriptor result = { };
-      result.samplerObject = m_sampler;
-      result.samplerIndex = m_index;
-      return result;
+      return m_descriptor;
     }
     
     /**
@@ -210,8 +207,7 @@ namespace dxvk {
     DxvkSamplerPool*      m_pool      = nullptr;
     DxvkSamplerKey        m_key       = { };
 
-    VkSampler             m_sampler   = VK_NULL_HANDLE;
-    uint16_t              m_index     = 0u;
+    DxvkSamplerDescriptor m_descriptor = { };
 
     DxvkSampler*          m_lruPrev   = nullptr;
     DxvkSampler*          m_lruNext   = nullptr;
@@ -263,11 +259,19 @@ namespace dxvk {
      * \brief Writes sampler descriptor to pool
      *
      * \param [in] index Sampler index
-     * \param [in] sampler Sampler object
+     * \param [in] createInfo Sampler create info
+     * \returns Sampler descriptor
      */
-    void writeDescriptor(
+    DxvkSamplerDescriptor createSampler(
             uint16_t              index,
-            VkSampler             sampler);
+      const VkSamplerCreateInfo*  createInfo);
+
+    /**
+     * \brief Frees a sampler
+     * \param [in] sampler Sampler descriptor
+     */
+    void freeSampler(
+            DxvkSamplerDescriptor sampler);
 
   private:
 
