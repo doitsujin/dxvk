@@ -205,7 +205,7 @@ namespace dxvk {
     DxvkDescriptorHeapBindingInfo result = { };
     result.buffer = bufferInfo.buffer;
     result.gpuAddress = bufferInfo.gpuAddress;
-    result.heapSize = m_heap.descriptorSize * m_descriptorCount;
+    result.reservedSize = 0u;
     result.bufferSize = bufferInfo.size;
     return result;
   }
