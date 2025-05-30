@@ -31,6 +31,19 @@ namespace dxvk {
     uint64_t reserved;
     /** Actual descriptor data */
     std::array<char, 256u> descriptor;
+
+    /**
+     * \brief Computes host address range for descriptor data
+     *
+     * For use with descriptor heaps.
+     * \returns Host address range info
+     */
+    VkHostAddressRangeEXT getHostAddressRange() {
+      VkHostAddressRangeEXT result = { };
+      result.address = descriptor.data();
+      result.size = descriptor.size();
+      return result;
+    }
   };
 
 

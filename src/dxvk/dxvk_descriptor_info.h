@@ -236,6 +236,8 @@ namespace dxvk {
     std::array<DxvkDescriptorTypeInfo, TypeCount> m_descriptorTypes = { };
     std::array<DxvkDescriptor,         TypeCount> m_nullDescriptors = { };
 
+    void initDescriptorHeapProperties(const DxvkDevice* device);
+
     void initDescriptorBufferProperties(const DxvkDevice* device);
 
     void logDescriptorProperties();
