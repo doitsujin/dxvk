@@ -176,6 +176,7 @@ namespace dxvk {
   enum class DxvkPipelineLayoutType : uint16_t {
     Independent = 0u, ///< Fragment and pre-raster shaders use separate sets
     Merged      = 1u, ///< Fragment and pre-raster shaders use the same sets
+    BuiltIn     = 2u, ///< Built-in pipeline with special push data layout
   };
 
 
