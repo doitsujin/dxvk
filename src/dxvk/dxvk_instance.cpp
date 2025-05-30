@@ -279,7 +279,7 @@ namespace dxvk {
           else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
             numIGPU += 1;
         } else {
-          delete adapter; // Libera se não passar no filtro de UUID// Se falhar no UUID, descarta
+          delete adapter;
         }
       }
     }

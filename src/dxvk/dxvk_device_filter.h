@@ -15,7 +15,7 @@ namespace dxvk {
     enum class DxvkDeviceFilterFlag {
         MatchDeviceName   = 0,
         SkipCpuDevices    = 2,
-        MatchDeviceUUID   = 3,  // 🔥 Adiciona filtro por UUID
+        MatchDeviceUUID   = 3,
     };
 
     using DxvkDeviceFilterFlags = Flags<DxvkDeviceFilterFlag>;

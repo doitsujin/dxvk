@@ -23,12 +23,10 @@ namespace dxvk {
 
     DxvkDeviceFilter::~DxvkDeviceFilter() { }
 
-    /// 🔧 Conversor de UUID legível (hexadecimal, sem hífens)
-    std::string convertUUID(const uint8_t uuid[VK_UUID_SIZE]) {
       std::ostringstream stream;
       stream << std::hex << std::setfill('0');
       for (size_t i = 0; i < VK_UUID_SIZE; ++i)
-        stream << std::setw(2) << static_cast<uint32_t>(uuid[i] & 0xff); // Corrige sinais negativos
+        stream << std::setw(2) << static_cast<uint32_t>(uuid[i] & 0xff);
       return stream.str();
     }
 
@@ -59,7 +57,6 @@ namespace dxvk {
     bool DxvkDeviceFilter::testCreatedAdapter(const DxvkDeviceInfo& deviceInfo) const {
       if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceUUID)) {
         std::string uuidStr = convertUUID(deviceInfo.vk11.deviceUUID);
-        Logger::info(str::format("UUID usado para filtro: ", uuidStr));
         if (uuidStr.find(m_matchDeviceUUID) == std::string::npos) {
           Logger::warn(str::format("DXVK: Skipping device not matching UUID filter: ", uuidStr));
           return false;
