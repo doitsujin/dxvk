@@ -269,7 +269,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < numAdapters; i++) {
       if (filter.testAdapter(deviceProperties[i])) {
-        auto adapter = new DxvkAdapter(m_vki, adapters[i]);
+        Rc<DxvkAdapter> adapter = new DxvkAdapter(m_vki, adapters[i]);
 
         if (filter.testCreatedAdapter(adapter->devicePropertiesExt())) {
           result.push_back(adapter);
@@ -278,9 +278,7 @@ namespace dxvk {
             numDGPU += 1;
           else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
             numIGPU += 1;
-        } else {
-          delete adapter;
-        }
+        } 
       }
     }
     
