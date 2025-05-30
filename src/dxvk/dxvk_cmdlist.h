@@ -961,8 +961,8 @@ namespace dxvk {
 
       m_vkd->vkCmdPipelineBarrier2(getCmdBuffer(cmdBuffer), dependencyInfo);
     }
-    
-    
+
+
     void cmdPushConstants(
             DxvkCmdBuffer           cmdBuffer,
             VkPipelineLayout        layout,
@@ -972,6 +972,13 @@ namespace dxvk {
       const void*                   pValues) {
       m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
         layout, stageFlags, offset, size, pValues);
+    }
+
+
+    void cmdPushData(
+            DxvkCmdBuffer           cmdBuffer,
+      const VkPushDataInfoEXT*      info) {
+      m_vkd->vkCmdPushDataEXT(getCmdBuffer(cmdBuffer), info);
     }
 
 
@@ -1324,6 +1331,14 @@ namespace dxvk {
     }
 
     void bindResourcesLegacy(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void bindResourcesDescriptorHeap(
             DxvkCmdBuffer                 cmdBuffer,
       const DxvkPipelineLayout*           layout,
             uint32_t                      descriptorCount,
