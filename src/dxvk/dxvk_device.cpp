@@ -263,7 +263,7 @@ namespace dxvk {
           VkDeviceSize                    pushDataSize,
           uint32_t                        bindingCount,
     const DxvkDescriptorSetLayoutBinding* bindings) {
-    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged, flags);
+    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::BuiltIn, flags);
 
     if (pushDataSize) {
       key.addStages(pushDataStages);
