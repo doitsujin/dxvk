@@ -1140,6 +1140,10 @@ namespace dxvk {
     constexpr static VkBufferUsageFlags DescriptorBufferUsage =
       VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT |
       VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    // Buffer usage flag for descriptor heaps
+    constexpr static VkBufferUsageFlags DescriptorHeapUsage =
+      VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
