@@ -49,7 +49,7 @@ namespace dxvk {
   DxvkDescriptorSetLayout::DxvkDescriptorSetLayout(
           DxvkDevice*                 device,
     const DxvkDescriptorSetLayoutKey& key)
-  : m_device(device), m_empty(!key.getBindingCount()) {
+  : m_device(device), m_bindingCount(key.getBindingCount()) {
     initSetLayout(key);
 
     if (m_device->canUseDescriptorBuffer())
@@ -137,6 +137,10 @@ namespace dxvk {
 
       VkDeviceSize offset = 0u;
       vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.layout, i, &offset);
+
+      auto& info = m_heap.bindingLayouts.emplace_back();
+      info.descriptorType = binding.getDescriptorType();
+      info.offset = uint32_t(offset);
 
       for (uint32_t j = 0u; j < binding.getDescriptorCount(); j++) {
         auto& e = descriptors.emplace_back();
