@@ -883,7 +883,15 @@ namespace dxvk {
      * \returns \c true if the set layout contains no descriptors
      */
     bool isEmpty() const {
-      return m_empty;
+      return !m_bindingCount;
+    }
+
+    /**
+     * \brif Queries number of bindings in set
+     * \returns Number of bindings
+     */
+    uint32_t getBindingCount() const {
+      return m_bindingCount;
     }
 
     /**
@@ -911,6 +919,19 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries binding type and offset in the set
+     *
+     * Can only be used when not using the legacy binding model.
+     * \param [in] binding Binding index
+     * \returns Binding layout info
+     */
+    DxvkDescriptorUpdateInfo getBindingInfo(uint32_t binding) const {
+      return binding < m_heap.bindingLayouts.size()
+        ? m_heap.bindingLayouts[binding]
+        : DxvkDescriptorUpdateInfo();
+    }
+
+    /**
      * \brief Updates descriptor memory
      *
      * Uses the pre-computed update list to write descriptors.
@@ -926,7 +947,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*                   m_device;
-    bool                          m_empty     = false;
+    uint32_t                      m_bindingCount = 0u;
 
     struct {
       VkDescriptorSetLayout       layout          = VK_NULL_HANDLE;
@@ -936,6 +957,8 @@ namespace dxvk {
     struct {
       VkDeviceSize                memorySize = 0u;
       DxvkDescriptorUpdateList    update;
+
+      small_vector<DxvkDescriptorUpdateInfo, 32> bindingLayouts;
     } m_heap;
 
     void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
