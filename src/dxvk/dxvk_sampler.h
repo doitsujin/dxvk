@@ -243,6 +243,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Border color registration info
+   */
+  struct DxvkBorderColor {
+    VkFormat          format    = VK_FORMAT_UNDEFINED;
+    VkClearColorValue color     = { };
+    uint32_t          useCount  = 0u;
+  };
+
+
+  /**
    * \brief Global sampler set and layout
    */
   struct DxvkSamplerDescriptorSet {
@@ -257,7 +267,7 @@ namespace dxvk {
    * Manages a global descriptor pool and set for samplers.
    */
   class DxvkSamplerDescriptorHeap {
-
+    constexpr static uint32_t InvalidBorderColor = -1u;
   public:
 
     DxvkSamplerDescriptorHeap(
@@ -313,13 +323,32 @@ namespace dxvk {
 
       VkDeviceSize          descriptorOffset  = 0u;
       VkDeviceSize          descriptorSize    = 0u;
+
+      VkDeviceSize          reservedSize      = 0u;
     } m_heap;
+
+    struct {
+      dxvk::mutex                   mutex;
+      std::vector<uint32_t>         indexForSampler;
+      std::vector<DxvkBorderColor>  infos;
+    } m_borderColors;
 
     void initDescriptorLayout();
 
     void initDescriptorPool();
 
-    void initDescriptorBuffer();
+    void initDescriptorHeap();
+
+    uint32_t registerBorderColor(
+      const VkSamplerCustomBorderColorCreateInfoEXT*  borderColor);
+
+    uint32_t allocBorderColor(
+            uint16_t                                  sampler,
+      const VkSamplerCustomBorderColorCreateInfoEXT*  borderColor);
+
+    void freeBorderColor(uint16_t sampler);
+
+    static const VkSamplerCustomBorderColorCreateInfoEXT* findBorderColorInfo(const void* s);
 
   };
 
