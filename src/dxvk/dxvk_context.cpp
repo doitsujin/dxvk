@@ -7325,18 +7325,17 @@ namespace dxvk {
     if (unlikely(pushData.isEmpty()))
       return;
 
-    if ((bit::tzcnt(pushData.getResourceDwordMask() + 1u) * 4u) >= pushData.getSize()) {
-      // All push data comes from resource updates, which means it
-      // is already in the correct layout. Commit directly.
-      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        layout->getPipelineLayout(),
-        pushData.getStageMask(),
-        pushData.getOffset(),
-        pushData.getSize(),
-        &m_state.pc.resourceData[pushData.getOffset()]);
-    } else {
-      // Gather push data for all the different blocks
-      std::array<char, MaxTotalPushDataSize> data;
+    // If all push data comes from resource updates, it is already in
+    // the correct layout, otherwise gather data into a temporary array.
+    std::array<char, MaxTotalPushDataSize> localData;
+
+    VkPushDataInfoEXT pushInfo = { VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT };
+    pushInfo.offset = pushData.getOffset();
+    pushInfo.data.address = &m_state.pc.resourceData[pushData.getOffset()];
+    pushInfo.data.size = pushData.getSize();
+
+    if ((bit::tzcnt(pushData.getResourceDwordMask() + 1u) * 4u) < pushData.getSize()) {
+      pushInfo.data.address = &localData[pushData.getOffset()];
 
       for (auto i : bit::BitMask(layout->getPushDataMask())) {
         auto block = layout->getPushDataBlock(i);
@@ -7348,7 +7347,7 @@ namespace dxvk {
         auto constantData = &m_state.pc.constantData[srcOffset];
         auto resourceData = &m_state.pc.resourceData[dstOffset];
 
-        auto dstData = &data[dstOffset];
+        auto dstData = &localData[dstOffset];
 
         uint32_t rangeOffset = 0u;
 
@@ -7377,13 +7376,14 @@ namespace dxvk {
         std::memcpy(&dstData[rangeOffset],
           &constantData[rangeOffset], blockSize - rangeOffset);
       }
+    }
 
+    if (m_features.test(DxvkContextFeature::DescriptorHeap)) {
+      m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
+    } else {
       m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        layout->getPipelineLayout(),
-        pushData.getStageMask(),
-        pushData.getOffset(),
-        pushData.getSize(),
-        &data[pushData.getOffset()]);
+        layout->getPipelineLayout(), pushData.getStageMask(),
+        pushInfo.offset, pushInfo.data.size, pushInfo.data.address);
     }
   }
   
