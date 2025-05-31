@@ -57,15 +57,16 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
-    bool usesPushConstants = false;
+    uint32_t pushConstantStructId = 0u;
 
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
     std::vector<uint32_t> sampleMaskIds;
+    std::unordered_map<uint32_t, uint32_t> pushConstantTypes;
 
     SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
-    
+
     for (auto ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
         if (ins.arg(2) == spv::DecorationBinding) {
@@ -143,12 +144,35 @@ namespace dxvk {
             m_flags.set(DxvkShaderFlag::ExportsSampleMask);
         }
 
-        if (ins.arg(3) == spv::StorageClassPushConstant)
-          usesPushConstants = true;
+        if (ins.arg(3) == spv::StorageClassPushConstant) {
+          auto type = pushConstantTypes.find(ins.arg(1));
+
+          if (type != pushConstantTypes.end())
+            pushConstantStructId = type->second;
+        }
+      }
+
+      if (ins.opCode() == spv::OpTypePointer) {
+        if (ins.arg(2) == spv::StorageClassPushConstant)
+          pushConstantTypes.insert({ ins.arg(1), ins.arg(3) });
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
       if (ins.opCode() == spv::OpFunction)
+        break;
+    }
+
+    for (auto ins : code) {
+      if (ins.opCode() == spv::OpMemberDecorate
+       && ins.arg(1) == pushConstantStructId
+       && ins.arg(3) == spv::DecorationOffset) {
+        auto& e = m_pushDataOffsets.emplace_back();
+        e.codeOffset = ins.offset() + 4;
+        e.pushOffset = ins.arg(4);
+      }
+
+      // Can exit even earlier here since decorations come up early
+      if (ins.opCode() == spv::OpFunction || ins.opCode() == spv::OpTypeVoid)
         break;
     }
 
@@ -160,9 +184,31 @@ namespace dxvk {
         m_bindingOffsets.push_back(info);
     }
 
-    if (info.pushConstSize && usesPushConstants) {
-      m_layout.addPushConstants(DxvkPushConstantRange(
-        m_info.stage, info.pushConstSize));
+    if (pushConstantStructId) {
+      if (!info.sharedPushData.isEmpty()) {
+        auto stageMask = (info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
+          ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
+
+        m_layout.addPushData(DxvkPushDataBlock(stageMask,
+          info.sharedPushData.getOffset(),
+          info.sharedPushData.getSize(),
+          info.sharedPushData.getAlignment(),
+          info.sharedPushData.getResourceDwordMask()));
+      }
+
+      if (!info.localPushData.isEmpty()) {
+        m_layout.addPushData(DxvkPushDataBlock(info.stage,
+          info.localPushData.getOffset(),
+          info.localPushData.getSize(),
+          info.localPushData.getAlignment(),
+          info.localPushData.getResourceDwordMask()));
+      }
+    }
+
+    if (info.samplerHeap.getStageMask() & info.stage) {
+      m_layout.addSamplerHeap(DxvkShaderBinding(info.stage,
+        info.samplerHeap.getSet(),
+        info.samplerHeap.getBinding()));
     }
 
     // Don't set pipeline library flag if the shader
@@ -185,7 +231,7 @@ namespace dxvk {
     // Remap resource binding IDs
     if (bindings) {
       for (const auto& info : m_bindingOffsets) {
-        auto mappedBinding = bindings->find(DxvkShaderBinding(
+        auto mappedBinding = bindings->mapBinding(DxvkShaderBinding(
           m_info.stage, info.setIndex, info.bindingIndex));
 
         if (mappedBinding) {
@@ -194,6 +240,13 @@ namespace dxvk {
           if (info.setOffset)
             code[info.setOffset] = mappedBinding->getSet();
         }
+      }
+
+      for (const auto& info : m_pushDataOffsets) {
+        uint32_t offset = bindings->mapPushData(m_info.stage, info.pushOffset);
+
+        if (offset < MaxTotalPushDataSize)
+          code[info.codeOffset] = offset;
       }
     }
 
@@ -1387,7 +1440,7 @@ namespace dxvk {
     DxvkShaderPipelineLibraryHandle pipeline = { VK_NULL_HANDLE, 0 };
 
     if (m_compiledOnce && canUsePipelineCacheControl())
-      pipeline = this->compileShaderPipeline(VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
+      pipeline = this->compileShaderPipeline(VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
 
     if (!pipeline.handle)
       pipeline = this->compileShaderPipeline(0);
@@ -1412,7 +1465,7 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::compileShaderPipeline(
-          VkPipelineCreateFlags                 flags) {
+          VkPipelineCreateFlags2                flags) {
     DxvkShaderStageInfo stageInfo(m_device);
     VkShaderStageFlags stageMask = getShaderStages();
 
@@ -1423,7 +1476,7 @@ namespace dxvk {
         auto stage = VkShaderStageFlagBits(stages & -stages);
         auto identifier = getShaderIdentifier(stage);
 
-        if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+        if (flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
           // Fail if we have no idenfitier for whatever reason, caller
           // should fall back to the slow path if this happens
           if (!identifier->identifierSize)
@@ -1460,7 +1513,7 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags         flags) {
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -1514,11 +1567,16 @@ namespace dxvk {
     // Only the view mask is used as input, and since we do not use MultiView, it is always 0
     VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
-    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &rtInfo };
+    VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
+    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
+
+    if (m_device->canUseDescriptorBuffer())
+      flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &flagsInfo };
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
-    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | flags;
     info.stageCount           = stageInfo.getStageCount();
     info.pStages              = stageInfo.getStageInfos();
     info.pTessellationState   = m_shaders.tcs ? &tsInfo : nullptr;
@@ -1540,7 +1598,7 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags         flags) {
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -1602,11 +1660,16 @@ namespace dxvk {
     // Only the view mask is used as input, and since we do not use MultiView, it is always 0
     VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
-    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &rtInfo };
+    VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
+    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
+
+    if (m_device->canUseDescriptorBuffer())
+      flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &flagsInfo };
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
-    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | flags;
     info.stageCount           = stageInfo.getStageCount();
     info.pStages              = stageInfo.getStageInfos();
     info.pDepthStencilState   = &dsInfo;
@@ -1620,7 +1683,7 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+    if (vr && !(flags & VK_PIPELINE_CREATE_2_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create fragment shader pipeline: ", vr));
 
     return vr ? VK_NULL_HANDLE : pipeline;
@@ -1629,12 +1692,17 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags         flags) {
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Compile the compute pipeline as normal
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    info.flags        = flags;
+    VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+    flagsInfo.flags = flags;
+
+    if (m_device->canUseDescriptorBuffer())
+      flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &flagsInfo };
     info.stage        = *stageInfo.getStageInfos();
     info.layout       = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex = -1;

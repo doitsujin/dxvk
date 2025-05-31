@@ -345,6 +345,20 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::constvec2u32(
+          uint32_t                x,
+          uint32_t                y) {
+    std::array<uint32_t, 2> args = {{
+      this->constu32(x), this->constu32(y),
+    }};
+
+    uint32_t scalarTypeId = this->defIntType(32, 0);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 2);
+
+    return this->constComposite(vectorTypeId, args.size(), args.data());
+  }
+
+
   uint32_t SpirvModule::constvec4u32(
           uint32_t                x,
           uint32_t                y,
@@ -1607,7 +1621,20 @@ namespace dxvk {
     m_code.putWord(operand);
     return resultId;
   }
-  
+
+
+  uint32_t SpirvModule::opUConvert(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpUConvert, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
   
   uint32_t SpirvModule::opCompositeConstruct(
           uint32_t                resultType,

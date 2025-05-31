@@ -343,7 +343,8 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice>            m_device;
     Rc<DxvkBuffer>            m_gpuBuffer;
-    Rc<DxvkBufferView>        m_textView;
+    Rc<DxvkBufferView>        m_textWrView;
+    Rc<DxvkBufferView>        m_textRdView;
     Rc<DxvkGpuQuery>          m_query;
 
     const DxvkPipelineLayout* m_computePipelineLayout = nullptr;
@@ -507,7 +508,7 @@ namespace dxvk::hud {
    * \brief HUD item to display descriptor stats
    */
   class HudDescriptorStatsItem : public HudItem {
-
+    constexpr static int64_t UpdateInterval = 500'000;
   public:
 
     HudDescriptorStatsItem(const Rc<DxvkDevice>& device);
@@ -529,6 +530,17 @@ namespace dxvk::hud {
 
     uint64_t m_descriptorPoolCount = 0;
     uint64_t m_descriptorSetCount  = 0;
+
+    uint64_t m_descriptorHeapCount = 0;
+    uint64_t m_descriptorHeapAlloc = 0;
+    uint64_t m_descriptorHeapUsed  = 0;
+    uint64_t m_descriptorHeapMax   = 0;
+    uint64_t m_descriptorHeapPrev  = 0;
+
+    uint64_t m_copyThreadBusyTicks = 0;
+    uint32_t m_copyThreadLoad      = 0u;
+
+    high_resolution_clock::time_point m_lastUpdate = { };
 
   };
 

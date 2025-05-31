@@ -5,7 +5,9 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
+#include "dxvk_descriptor_heap.h"
 #include "dxvk_descriptor_pool.h"
+#include "dxvk_descriptor_worker.h"
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
@@ -31,13 +33,10 @@ namespace dxvk {
     /** Pointer to view descriptor. Used for all image descriptors
      *  as well as texel buffer descriptors. If \c nullptr, a null
      *  descriptor of the corresponding type will be created. */
-    const DxvkDescriptor* descriptor;
+    const DxvkDescriptor* descriptor = nullptr;
     /** Buffer info, used for storage and uniform buffers. May be
      *  used to build a null descriptor. */
-    DxvkResourceBufferInfo buffer;
-    /** Sampler info. Must be a valid sampler, no null descriptor.
-     *  Must be present for any descriptor type with a sampler. */
-    DxvkSamplerDescriptor sampler;
+    DxvkResourceBufferInfo buffer = { };
   };
 
   
@@ -445,7 +444,41 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
-    
+
+    /**
+     * \brief Tries to allocates and bind an empty descriptor range
+     *
+     * This will fail if the base address of the allocated range changes
+     * while a secondary command buffer is currently active. In that case,
+     * the secodary command buffer \e must be ended first.
+     * \returns \c true if a new range was successfully allocated and bound.
+     */
+    bool createDescriptorRange();
+
+    /**
+     * \brief Checks whether current descriptor range can service an allocation
+     *
+     * \param [in] pipelineLayout The pipeline layout
+     * \returns \c true if the current descriptor range has enough space
+     *    to allocate all descriptor sets in the given pipeline layout.
+     */
+    bool canAllocateDescriptors(const DxvkPipelineLayout* layout) const {
+      return m_descriptorRange && m_descriptorRange->testAllocation(layout->getDescriptorMemorySize());
+    }
+
+    /**
+     * \brief Allocates descriptor memory for a given layout
+     *
+     * The caller \e must ensure that enough space is available in the
+     * current descriptor range by calling \c canAllocateDescriptors,
+     * and allocate a new descriptor range if necessary.
+     * \param [in] layout Descriptor set layout
+     * \returns Allocated descriptor heap range
+     */
+    DxvkResourceBufferInfo allocateDescriptors(const DxvkDescriptorSetLayout* layout) const {
+      return m_descriptorRange->alloc(layout->getMemorySize());
+    }
+
     /**
      * \brief Sets resources and push constants
      *
@@ -474,6 +507,38 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
+    /**
+     * \brief Begins a secondary command buffer
+     *
+     * All subsequent commands targeted at the execution command
+     * buffer will be recorded into a secondary command buffer
+     * instead until \c endSecondaryCommandBuffer is called.
+     * \param [in] inheritanceInfo Command buffer inheritance info
+     */
+    void beginSecondaryCommandBuffer(
+      const VkCommandBufferInheritanceInfo& inheritanceInfo);
+
+    /**
+     * \brief Ends secondary command buffer
+     *
+     * Ends current secondary command buffer so that subsequent
+     * execution commands will be recorded into the primary
+     * command buffer again. The secondary command buffer can
+     * be executed manually with \c execCommands.
+     * \returns Command buffer handle
+     */
+    VkCommandBuffer endSecondaryCommandBuffer();
+
+    /**
+     * \brief Records secondary command buffers into primary
+     *
+     * \param [in] count Number of command buffers to execute
+     * \param [in] commandBuffers Command buffer handles
+     */
+    void cmdExecuteCommands(
+            uint32_t                count,
+            VkCommandBuffer*        commandBuffers);
+
 
     void updateDescriptorSets(
             uint32_t                      descriptorWriteCount,
@@ -490,25 +555,6 @@ namespace dxvk {
       const void*                         data) {
       m_vkd->vkUpdateDescriptorSetWithTemplate(m_vkd->device(),
         descriptorSet, descriptorTemplate, data);
-    }
-
-
-    void beginSecondaryCommandBuffer(
-      const VkCommandBufferInheritanceInfo& inheritanceInfo) {
-      m_execBuffer = std::exchange(m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)],
-        m_graphicsPool->getSecondaryCommandBuffer(inheritanceInfo));
-    }
-
-
-    VkCommandBuffer endSecondaryCommandBuffer() {
-      VkCommandBuffer cmd = getCmdBuffer();
-
-      if (m_vkd->vkEndCommandBuffer(cmd))
-        throw DxvkError("DxvkCommandList: Failed to end secondary command buffer");
-
-      m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = m_execBuffer;
-      m_execBuffer = VK_NULL_HANDLE;
-      return cmd;
     }
 
 
@@ -563,6 +609,20 @@ namespace dxvk {
         pipeline, pipelineLayout, firstSet, descriptorSetCount,
         descriptorSets, 0, nullptr);
     }
+
+
+    void cmdSetDescriptorBufferOffsetsEXT(
+            DxvkCmdBuffer             cmdBuffer,
+            VkPipelineBindPoint       pipeline,
+            VkPipelineLayout          layout,
+            uint32_t                  firstSet,
+            uint32_t                  setCount,
+      const uint32_t*                 pBufferIndices,
+      const VkDeviceSize*             pOffsets) {
+      m_vkd->vkCmdSetDescriptorBufferOffsetsEXT(getCmdBuffer(cmdBuffer),
+        pipeline, layout, firstSet, setCount, pBufferIndices, pOffsets);
+    }
+
 
 
     void cmdBindIndexBuffer(
@@ -874,15 +934,6 @@ namespace dxvk {
       const VkDeviceSize*             counterOffsets) {
       m_vkd->vkCmdEndTransformFeedbackEXT(getCmdBuffer(),
         firstBuffer, bufferCount, counterBuffers, counterOffsets);
-    }
-
-
-    void cmdExecuteCommands(
-            uint32_t                count,
-            VkCommandBuffer*        commandBuffers) {
-      m_cmd.execCommands = true;
-
-      m_vkd->vkCmdExecuteCommands(getCmdBuffer(), count, commandBuffers);
     }
 
 
@@ -1202,8 +1253,16 @@ namespace dxvk {
     }
 
 
+    void setDescriptorHeap(
+            Rc<DxvkResourceDescriptorHeap> heap);
+
+
     void setTrackingId(uint64_t id) {
       m_trackingId = id;
+    }
+
+    void setDescriptorSyncHandle(sync::SyncPoint syncHandle) {
+      m_descriptorSync = std::move(syncHandle);
     }
 
   private:
@@ -1239,6 +1298,11 @@ namespace dxvk {
 
     Rc<DxvkDescriptorPool>    m_descriptorPool;
     Rc<DxvkDescriptorPoolSet> m_descriptorManager;
+    sync::SyncPoint           m_descriptorSync;
+
+    Rc<DxvkResourceDescriptorHeap>  m_descriptorHeap;
+    Rc<DxvkResourceDescriptorRange> m_descriptorRange;
+    VkDeviceSize                    m_descriptorOffset = 0u;
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
 
@@ -1269,9 +1333,33 @@ namespace dxvk {
       return m_cmdSparseBinds.emplace_back();
     }
 
+    void bindResourcesLegacy(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void bindResourcesDescriptorBuffer(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void rebindDescriptorBuffers();
+
+    void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
+
     void endCommandBuffer(VkCommandBuffer cmdBuffer);
 
     VkCommandBuffer allocateCommandBuffer(DxvkCmdBuffer type);
+
+    void countDescriptorStats(
+      const Rc<DxvkResourceDescriptorRange>& range,
+            VkDeviceSize                  baseOffset);
 
   };
   

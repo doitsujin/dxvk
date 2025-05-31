@@ -52,8 +52,11 @@ namespace dxvk {
     uint32_t outputMask = 0;
     /// Flat shading input mask
     uint32_t flatShadingInputs = 0;
-    /// Push constant range
-    uint32_t pushConstSize = 0;
+    /// Push data blocks
+    DxvkPushDataBlock sharedPushData;
+    DxvkPushDataBlock localPushData;
+    /// Descriptor set and binding of global sampler heap
+    DxvkShaderBinding samplerHeap;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
@@ -254,6 +257,11 @@ namespace dxvk {
       uint32_t setOffset = 0u;
     };
 
+    struct PushDataOffsets {
+      uint32_t codeOffset = 0u;
+      uint32_t pushOffset = 0u;
+    };
+
     DxvkShaderCreateInfo          m_info;
     SpirvCompressedBuffer         m_code;
     
@@ -268,6 +276,7 @@ namespace dxvk {
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
     std::vector<BindingOffsets>   m_bindingOffsets;
+    std::vector<PushDataOffsets>  m_pushDataOffsets;
 
     DxvkPipelineLayoutBuilder     m_layout;
 
@@ -472,8 +481,8 @@ namespace dxvk {
    * Stores a pipeline library handle and the necessary link flags.
    */
   struct DxvkShaderPipelineLibraryHandle {
-    VkPipeline            handle;
-    VkPipelineCreateFlags linkFlags;
+    VkPipeline              handle;
+    VkPipelineCreateFlags2  linkFlags;
   };
 
 
@@ -559,19 +568,19 @@ namespace dxvk {
     DxvkShaderPipelineLibraryHandle compileShaderPipelineLocked();
 
     DxvkShaderPipelineLibraryHandle compileShaderPipeline(
-            VkPipelineCreateFlags                 flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileVertexShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileFragmentShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileComputeShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags         flags);
+            VkPipelineCreateFlags2        flags);
 
     SpirvCodeBuffer getShaderCode(
             VkShaderStageFlagBits         stage) const;

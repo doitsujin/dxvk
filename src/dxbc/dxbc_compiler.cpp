@@ -33,17 +33,19 @@ namespace dxvk {
     // Set the memory model. This is the same for all shaders.
     m_module.enableCapability(
       spv::CapabilityVulkanMemoryModel);
+    m_module.enableCapability(
+      spv::CapabilityPhysicalStorageBufferAddresses);
 
     m_module.setMemoryModel(
-      spv::AddressingModelLogical,
+      spv::AddressingModelPhysicalStorageBuffer64,
       spv::MemoryModelVulkan);
-    
+
     // Make sure our interface registers are clear
     for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; i++) {
       m_vRegs.at(i) = DxbcRegisterPointer { };
       m_oRegs.at(i) = DxbcRegisterPointer { };
     }
-    
+
     this->emitInit();
   }
   
@@ -245,9 +247,9 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.inputTopology = m_inputTopology;
     info.outputTopology = m_outputTopology;
-
-    if (m_ps.pushConstantId)
-      info.pushConstSize = sizeof(DxbcPushConstants);
+    info.sharedPushData = m_sharedPushData;
+    info.localPushData = m_localPushData;
+    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, DxbcGlobalSamplerSet, 0u);
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
@@ -292,8 +294,8 @@ namespace dxvk {
         return this->emitDclConstantBuffer(ins);
         
       case DxbcOpcode::DclSampler:
-        return this->emitDclSampler(ins);
-      
+        return; /* no op */
+
       case DxbcOpcode::DclStream:
         return this->emitDclStream(ins);
         
@@ -876,41 +878,6 @@ namespace dxvk {
   }
 
 
-  void DxbcCompiler::emitDclSampler(const DxbcShaderInstruction& ins) {
-    // dclSampler takes one operand:
-    //    (dst0) The sampler register to declare
-    const uint32_t samplerId = ins.dst[0].idx[0].offset;
-    
-    // The sampler type is opaque, but we still have to
-    // define a pointer and a variable in oder to use it
-    const uint32_t samplerType = m_module.defSamplerType();
-    const uint32_t samplerPtrType = m_module.defPointerType(
-      samplerType, spv::StorageClassUniformConstant);
-    
-    // Define the sampler variable
-    const uint32_t varId = m_module.newVar(samplerPtrType,
-      spv::StorageClassUniformConstant);
-    m_module.setDebugName(varId,
-      str::format("s", samplerId).c_str());
-    
-    m_samplers.at(samplerId).varId  = varId;
-    m_samplers.at(samplerId).typeId = samplerType;
-    
-    // Compute binding slot index for the sampler
-    auto bindingId = nextBindingId();
-    
-    m_module.decorateDescriptorSet(varId, bindingId.getSet());
-    m_module.decorateBinding(varId, bindingId.getBinding());
-    
-    // Store descriptor info for the shader interface
-    auto& binding = m_bindings.emplace_back();
-    binding.set             = bindingId.getSet();
-    binding.binding         = bindingId.getBinding();
-    binding.resourceIndex   = computeSamplerBinding(m_programInfo.type(), samplerId);
-    binding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
-  }
-  
-  
   void DxbcCompiler::emitDclStream(const DxbcShaderInstruction& ins) {
     if (ins.dst[0].idx[0].offset != 0 && m_moduleInfo.xfb == nullptr)
       Logger::err("Dxbc: Multiple streams not supported");
@@ -1034,18 +1001,16 @@ namespace dxvk {
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
     if (isUav) {
-      DxbcUav uav;
+      auto& uav = m_uavs.at(registerId);
       uav.type          = DxbcResourceType::Typed;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
-      uav.ctrId         = 0;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = imageTypeId;
       uav.structStride  = 0;
       uav.coherence     = getUavCoherence(registerId, ins.controls.uavFlags());
       uav.isRawSsbo     = false;
-      m_uavs.at(registerId) = uav;
     } else {
       DxbcShaderResource res;
       res.type          = DxbcResourceType::Typed;
@@ -1192,18 +1157,16 @@ namespace dxvk {
     m_module.decorateBinding(varId, bindingId.getBinding());
     
     if (isUav) {
-      DxbcUav uav;
+      auto& uav = m_uavs.at(registerId);
       uav.type          = resType;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
-      uav.ctrId         = 0;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = resTypeId;
       uav.structStride  = resStride;
       uav.coherence     = getUavCoherence(registerId, ins.controls.uavFlags());
       uav.isRawSsbo     = useRawSsbo;
-      m_uavs.at(registerId) = uav;
     } else {
       DxbcShaderResource res;
       res.type          = resType;
@@ -1453,33 +1416,20 @@ namespace dxvk {
   
   uint32_t DxbcCompiler::emitDclUavCounter(uint32_t regId) {
     // Declare a structure type which holds the UAV counter
-    if (m_uavCtrStructType == 0) {
-      const uint32_t t_u32    = m_module.defIntType(32, 0);
-      const uint32_t t_struct = m_module.defStructTypeUnique(1, &t_u32);
-      
-      m_module.decorate(t_struct, spv::DecorationBlock);
-      m_module.memberDecorateOffset(t_struct, 0, 0);
-      
-      m_module.setDebugName      (t_struct, "uav_meta");
-      m_module.setDebugMemberName(t_struct, 0, "ctr");
-      
-      m_uavCtrStructType  = t_struct;
-      m_uavCtrPointerType = m_module.defPointerType(
-        t_struct, spv::StorageClassStorageBuffer);
-    }
-    
+    if (!m_uavCtrPointerType)
+      m_uavCtrPointerType = m_module.defPointerType(m_uavCtrStructType, spv::StorageClassStorageBuffer);
+
     // Declare the buffer variable
-    const uint32_t varId = m_module.newVar(
-      m_uavCtrPointerType, spv::StorageClassStorageBuffer);
-    
+    uint32_t varId = m_module.newVar(m_uavCtrPointerType, spv::StorageClassStorageBuffer);
+
     m_module.setDebugName(varId,
-      str::format("u", regId, "_meta").c_str());
-    
+      str::format("u", regId, "_ctr").c_str());
+
     auto bindingId = nextBindingId();
 
     m_module.decorateDescriptorSet(varId, bindingId.getSet());
     m_module.decorateBinding(varId, bindingId.getBinding());
-    
+
     // Declare the storage buffer binding
     auto& binding = m_bindings.emplace_back();
     binding.set               = bindingId.getSet();
@@ -1597,10 +1547,7 @@ namespace dxvk {
 
     // Tightly pack vec2 or scalar arrays if possible. Don't bother with
     // vec3 since we'd rather have properly vectorized loads in that case.
-    if (m_moduleInfo.options.supportsTightIcbPacking && componentCount <= 2u)
-      m_icbComponents = componentCount;
-    else
-      m_icbComponents = 4u;
+    m_icbComponents = componentCount <= 2u ? componentCount : 4u;
 
     // Immediate constant buffer can be read out of bounds, declare
     // it with the maximum possible size and rely on robustness.
@@ -2610,21 +2557,48 @@ namespace dxvk {
     //    (dst1) The UAV whose counter is going to be modified
     const uint32_t registerId = ins.dst[1].idx[0].offset;
     
-    if (m_uavs.at(registerId).ctrId == 0)
-      m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
-    
+    uint32_t prevBlockId = m_module.getBlockId();
+    uint32_t nullCheckIf = 0u;
+    uint32_t nullCheckEnd = 0u;
+
     // Get a pointer to the atomic counter in question
+    uint32_t ctrVarId = m_uavs.at(registerId).ctrId;
+
     DxbcRegisterInfo ptrType;
     ptrType.type.ctype   = DxbcScalarType::Uint32;
     ptrType.type.ccount  = 1;
     ptrType.type.alength = 0;
     ptrType.sclass = spv::StorageClassStorageBuffer;
-    
-    uint32_t zeroId = m_module.consti32(0);
+
+    if (m_uavs.at(registerId).isBdaCounter) {
+      uint32_t memberId = m_module.constu32(m_uavs.at(registerId).ctrId);
+
+      ctrVarId = m_module.opLoad(m_uavCtrBdaType, m_module.opAccessChain(
+        m_module.defPointerType(m_uavCtrBdaType, spv::StorageClassPushConstant),
+        m_pushDataId, 1u, &memberId));
+
+      ptrType.sclass = spv::StorageClassPhysicalStorageBuffer;
+
+      nullCheckIf = m_module.allocateId();
+      nullCheckEnd = m_module.allocateId();
+
+      uint32_t boolType = getScalarTypeId(DxbcScalarType::Bool);
+      uint32_t bvecType = getVectorTypeId({ DxbcScalarType::Bool, 2u });
+      uint32_t uvecType = getVectorTypeId({ DxbcScalarType::Uint32, 2u });
+
+      uint32_t validCond = m_module.opAny(boolType,
+        m_module.opINotEqual(bvecType,
+          m_module.opBitcast(uvecType, ctrVarId),
+          m_module.constvec2u32(0u, 0u)));
+
+      m_module.opSelectionMerge(nullCheckEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(validCond, nullCheckIf, nullCheckEnd);
+      m_module.opLabel(nullCheckIf);
+    }
+
+    uint32_t zeroId = m_module.constu32(0);
     uint32_t ptrId  = m_module.opAccessChain(
-      getPointerTypeId(ptrType),
-      m_uavs.at(registerId).ctrId,
-      1, &zeroId);
+      getPointerTypeId(ptrType), ctrVarId, 1, &zeroId);
     
     // Define memory scope and semantics based on the operands
     uint32_t scope     = spv::ScopeQueueFamily;
@@ -2659,6 +2633,18 @@ namespace dxvk {
           "DxbcCompiler: Unhandled instruction: ",
           ins.op));
         return;
+    }
+
+    if (m_uavs.at(registerId).isBdaCounter) {
+      m_module.opBranch(nullCheckEnd);
+      m_module.opLabel(nullCheckEnd);
+
+      std::array<SpirvPhiLabel, 2u> labels = {{
+        { value.id, nullCheckIf },
+        { zeroId,   prevBlockId },
+      }};
+
+      value.id = m_module.opPhi(getVectorTypeId(value.type), labels.size(), labels.data());
     }
 
     // Store the result
@@ -5303,11 +5289,38 @@ namespace dxvk {
     if (!baseId)
       return 0;
 
+    uint32_t uintTypeId = getScalarTypeId(DxbcScalarType::Uint32);
+
+    uint32_t samplerTypeId = m_module.defSamplerType();
+    uint32_t samplerPtrId = m_module.defPointerType(samplerTypeId, spv::StorageClassUniformConstant);
+
+    uint32_t memberId = m_module.constu32(samplerResource.member);
+
+    uint32_t samplerIndexId = 0u;
+
+    if (m_moduleInfo.options.supports16BitPushData) {
+      uint32_t uint16TypeId = m_module.defIntType(16, 0);
+      uint32_t uint16PtrId = m_module.defPointerType(uint16TypeId, spv::StorageClassPushConstant);
+
+      samplerIndexId = m_module.opUConvert(uintTypeId, m_module.opLoad(uint16TypeId,
+        m_module.opAccessChain(uint16PtrId, m_pushDataId, 1u, &memberId)));
+    } else {
+      uint32_t uintPtrId = m_module.defPointerType(uintTypeId, spv::StorageClassPushConstant);
+
+      samplerIndexId = m_module.opLoad(uintTypeId,
+        m_module.opAccessChain(uintPtrId, m_pushDataId, 1u, &memberId));
+
+      samplerIndexId = m_module.opBitFieldUExtract(uintTypeId, samplerIndexId,
+        m_module.constu32(samplerResource.word * 16u), m_module.constu32(16u));
+    }
+
+    uint32_t sampler = m_module.opLoad(samplerTypeId,
+      m_module.opAccessChain(samplerPtrId, m_samplerHeapId, 1u, &samplerIndexId));
+
     uint32_t sampledImageType = m_module.defSampledImageType(baseId);
 
     return m_module.opSampledImage(sampledImageType,
-      m_module.opLoad(textureResource.imageTypeId, textureResource.varId),
-      m_module.opLoad(samplerResource.typeId,      samplerResource.varId));
+      m_module.opLoad(textureResource.imageTypeId, textureResource.varId), sampler);
   }
   
   
@@ -5773,18 +5786,15 @@ namespace dxvk {
     if (resource.type == DxbcOperandType::Rasterizer) {
       // SPIR-V has no gl_NumSamples equivalent, so we
       // have to work around it using a push constant
-      if (!m_ps.pushConstantId)
-        m_ps.pushConstantId = emitPushConstants();
-
       uint32_t uintTypeId = m_module.defIntType(32, 0);
       uint32_t ptrTypeId = m_module.defPointerType(uintTypeId, spv::StorageClassPushConstant);
-      uint32_t index = m_module.constu32(0);
+      uint32_t index = m_module.constu32(m_ps.rasterizerPushIndex);
 
       DxbcRegisterValue result;
       result.type.ctype  = DxbcScalarType::Uint32;
       result.type.ccount = 1;
       result.id = m_module.opLoad(uintTypeId,
-        m_module.opAccessChain(ptrTypeId, m_ps.pushConstantId, 1, &index));
+        m_module.opAccessChain(ptrTypeId, m_pushDataId, 1, &index));
       return result;
     } else {
       DxbcBufferInfo info = getBufferInfo(resource);
@@ -7014,6 +7024,14 @@ namespace dxvk {
       case DxbcProgramType::ComputeShader:  emitCsInit(); break;
       default: throw DxvkError("Invalid shader stage");
     }
+
+    // Declare push data block
+    emitUavCounterTypes();
+    emitPushData();
+
+    // Needs to be done after push data so we
+    // know which counters to get from where
+    emitUavCounterBindings();
   }
   
   
@@ -7874,21 +7892,198 @@ namespace dxvk {
     m_module.decorate(id, spv::DecorationPatch);
     return id;
   }
-  
-  
-  uint32_t DxbcCompiler::emitPushConstants() {
-    uint32_t uintTypeId = m_module.defIntType(32, 0);
-    uint32_t structTypeId = m_module.defStructTypeUnique(1, &uintTypeId);
 
-    m_module.setDebugName(structTypeId, "pc_t");
-    m_module.setDebugMemberName(structTypeId, 0, "RasterizerSampleCount");
-    m_module.memberDecorateOffset(structTypeId, 0, 0);
+
+  void DxbcCompiler::emitUavCounterTypes() {
+    if (!m_analysis->uavCounterMask)
+      return;
+
+    uint32_t uintTypeId = m_module.defIntType(32, 0);
+
+    m_uavCtrStructType = m_module.defStructTypeUnique(1u, &uintTypeId);
+
+    m_module.decorate(m_uavCtrStructType, spv::DecorationBlock);
+    m_module.memberDecorateOffset(m_uavCtrStructType, 0, 0);
+
+    m_module.setDebugName      (m_uavCtrStructType, "uav_ctr_t");
+    m_module.setDebugMemberName(m_uavCtrStructType, 0, "m");
+  }
+
+
+  void DxbcCompiler::emitUavCounterBindings() {
+    for (uint32_t uav : bit::BitMask(m_analysis->uavCounterMask)) {
+      if (!m_uavs[uav].isBdaCounter)
+        m_uavs[uav].ctrId = emitDclUavCounter(uav);
+    }
+  }
+
+
+  void DxbcCompiler::emitSamplerArray() {
+    m_module.enableCapability(spv::CapabilityRuntimeDescriptorArray);
+
+    uint32_t samplerArray = m_module.defRuntimeArrayTypeUnique(m_module.defSamplerType());
+    uint32_t samplerPtr = m_module.defPointerType(samplerArray, spv::StorageClassUniformConstant);
+
+    m_samplerHeapId = m_module.newVar(samplerPtr, spv::StorageClassUniformConstant);
+    m_module.setDebugName(m_samplerHeapId, "sampler_heap");
+
+    m_module.decorateBinding(m_samplerHeapId, 0u);
+    m_module.decorateDescriptorSet(m_samplerHeapId, DxbcGlobalSamplerSet);
+  }
+
+
+  void DxbcCompiler::emitPushSampler(uint32_t samplerIndex, uint32_t baseMember, uint32_t offset) {
+    auto& sampler = m_samplers.at(samplerIndex);
+    sampler.typeId = m_module.defSamplerType();
+
+    if (m_moduleInfo.options.supports16BitPushData) {
+      sampler.member = baseMember + offset / sizeof(uint16_t);
+      sampler.word = 0u;
+    } else {
+      sampler.member = baseMember + offset / sizeof(uint32_t);
+      sampler.word = (offset % sizeof(uint32_t)) / sizeof(uint16_t);
+    }
+
+    auto& binding = m_bindings.emplace_back();
+    binding.resourceIndex     = computeSamplerBinding(m_programInfo.type(), samplerIndex);
+    binding.descriptorType    = VK_DESCRIPTOR_TYPE_SAMPLER;
+    binding.blockOffset       = MaxSharedPushDataSize + offset;
+    binding.flags.set(DxvkDescriptorFlag::PushData);
+  }
+
+
+  void DxbcCompiler::emitPushData() {
+    small_vector<uint32_t, 32> members;
+    small_vector<uint32_t, 32> offsets;
+    small_vector<std::string, 32> names;
+
+    // Shared push constants
+    uint32_t uintTypeId = m_module.defIntType(32, 0);
+    uint32_t uint16TypeId = 0u;
+    uint32_t sharedOffset = 0u;
+
+    if (m_analysis->usesSampleCount) {
+      members.push_back(uintTypeId);
+      offsets.push_back(sharedOffset);
+      names.push_back("RasterizerSampleCount");
+
+      sharedOffset += sizeof(uint32_t);
+    }
+
+    // Per-stage push constants. In compute shaders, we can use the
+    // entire push constant space since there are no shared blocks.
+    uint32_t localMaxSize = MaxPerStagePushDataSize;
+
+    if (m_programInfo.type() == DxbcProgramType::ComputeShader)
+      localMaxSize = MaxTotalPushDataSize - MaxReservedPushDataSize;
+
+    uint32_t localOffset = 0u;
+    uint32_t localAlign = sizeof(uint32_t);
+
+    // Add sampler indices. Since many drivers do not support 16-bit push
+    // constants, emit them as dwords, but assign two samplers to each dword.
+    uint32_t samplerMask = m_analysis->bindings.samplerMask;
+
+    if (samplerMask) {
+      emitSamplerArray();
+
+      if (m_moduleInfo.options.supports16BitPushData) {
+        m_module.enableCapability(spv::CapabilityInt16);
+        uint16TypeId = m_module.defIntType(16, 0);
+      }
+    }
+
+    uint32_t firstSampler = members.size();
+
+    while (samplerMask) {
+      uint32_t s0 = bit::tzcnt(samplerMask); samplerMask &= samplerMask - 1u;
+      uint32_t s1 = bit::tzcnt(samplerMask); samplerMask &= samplerMask - 1u;
+
+      if (m_moduleInfo.options.supports16BitPushData) {
+        members.push_back(uint16TypeId);
+        members.push_back(uint16TypeId);
+
+        offsets.push_back(MaxSharedPushDataSize + localOffset);
+        offsets.push_back(MaxSharedPushDataSize + localOffset + sizeof(uint16_t));
+
+        names.push_back(str::format("s", s0, "_idx"));
+
+        if (s1 < DxbcSamplersPerStage)
+          names.push_back(str::format("s", s1, "_idx"));
+        else
+          names.push_back("reserved");
+      } else {
+        members.push_back(uintTypeId);
+        offsets.push_back(MaxSharedPushDataSize + localOffset);
+        names.push_back(s1 < DxbcSamplersPerStage
+          ? str::format("s", s0, "_s", s1, "_idx")
+          : str::format("s", s0, "_idx"));
+      }
+
+      emitPushSampler(s0, firstSampler, localOffset);
+
+      if (s1 < DxbcSamplersPerStage)
+        emitPushSampler(s1, firstSampler, localOffset + sizeof(uint16_t));
+
+      localOffset += sizeof(uint32_t);
+    }
+
+    // Add as many UAV counters as we can fit into the push data block
+    if (m_analysis->uavCounterMask && localOffset + sizeof(uint64_t) <= localMaxSize) {
+      m_uavCtrBdaType = m_module.defPointerType(m_uavCtrStructType, spv::StorageClassPhysicalStorageBuffer);
+
+      localAlign = sizeof(uint64_t);
+      localOffset = align(localOffset, localAlign);
+
+      for (uint32_t uav : bit::BitMask(m_analysis->uavCounterMask)) {
+        if (localOffset + sizeof(uint64_t) > localMaxSize)
+          break;
+
+        m_uavs[uav].ctrId = members.size();
+        m_uavs[uav].isBdaCounter = true;
+
+        members.push_back(m_uavCtrBdaType);
+        offsets.push_back(MaxSharedPushDataSize + localOffset);
+        names.push_back(str::format("u", uav, "_ctr"));
+
+        // Declare the actual binding
+        auto& binding = m_bindings.emplace_back();
+        binding.resourceIndex     = computeUavCounterBinding(m_programInfo.type(), uav);
+        binding.descriptorType    = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        binding.access            = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+        binding.blockOffset       = MaxSharedPushDataSize + localOffset;
+        binding.flags.set(DxvkDescriptorFlag::PushData);
+
+        localOffset += sizeof(uint64_t);
+      }
+    }
+
+    // All local members we declared so far are resources
+    uint64_t resourceMask = (1ull << (localOffset / sizeof(uint32_t))) - 1u;
+
+    // Guess we're not using anything?
+    if (members.empty())
+      return;
+
+    // Write back metadata
+    m_sharedPushData = DxvkPushDataBlock(0u, sharedOffset, sizeof(uint32_t), 0u);
+    m_localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, localOffset, localAlign, resourceMask);
+
+    // Declare the actual push constant type and variable
+    uint32_t structTypeId = m_module.defStructTypeUnique(members.size(), members.data());
+    m_module.setDebugName(structTypeId, "push_data_t");
+    m_module.decorate(structTypeId, spv::DecorationBlock);
+
+    for (size_t i = 0u; i < names.size(); i++)
+      m_module.setDebugMemberName(structTypeId, i, names[i].c_str());
+
+    for (size_t i = 0u; i < offsets.size(); i++)
+      m_module.memberDecorateOffset(structTypeId, i, offsets[i]);
 
     uint32_t ptrTypeId = m_module.defPointerType(structTypeId, spv::StorageClassPushConstant);
-    uint32_t varId = m_module.newVar(ptrTypeId, spv::StorageClassPushConstant);
+    m_pushDataId = m_module.newVar(ptrTypeId, spv::StorageClassPushConstant);
 
-    m_module.setDebugName(varId, "pc");
-    return varId;
+    m_module.setDebugName(m_pushDataId, "push_data");
   }
 
 

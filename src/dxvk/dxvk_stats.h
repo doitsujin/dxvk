@@ -32,6 +32,10 @@ namespace dxvk {
     CsChunkCount,             ///< Submitted CS chunks
     DescriptorPoolCount,      ///< Descriptor pool count
     DescriptorSetCount,       ///< Descriptor sets allocated
+    DescriptorHeapCount,      ///< Number of descriptor heaps created
+    DescriptorHeapSize,       ///< Amount of descriptor memory allocated
+    DescriptorHeapUsed,       ///< Amount of descriptor memory used
+    DescriptorCopyBusyTicks,  ///< Descriptor copy busy time in microseconds
 
     NumCounters               ///< Number of counters available
   };

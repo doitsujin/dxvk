@@ -291,7 +291,8 @@ namespace dxvk {
 
     DxvkResourceBufferViewMap(
             DxvkMemoryAllocator*        allocator,
-            VkBuffer                    buffer);
+            VkBuffer                    buffer,
+            VkDeviceAddress             va);
 
     ~DxvkResourceBufferViewMap();
 
@@ -308,8 +309,9 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device          = nullptr;
     VkBuffer          m_buffer          = VK_NULL_HANDLE;
+    VkDeviceAddress   m_va              = 0u;
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkBufferViewKey,
@@ -413,7 +415,7 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device = nullptr;
     VkImage           m_image = VK_NULL_HANDLE;
 
     dxvk::mutex       m_mutex;
@@ -1097,6 +1099,17 @@ namespace dxvk {
 
     // Minimum number of allocations we want to be able to fit into a heap
     constexpr static uint32_t MinAllocationsPerHeap = 7u;
+
+    // Minimal set of buffer usage flags to consider for global buffers
+    constexpr static VkBufferUsageFlags MinGlobalBufferUsage =
+      VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    // Possible buffer usage flags for descriptor buffers
+    constexpr static VkBufferUsageFlags DescriptorBufferUsage =
+      VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT |
+      VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);

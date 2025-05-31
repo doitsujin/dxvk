@@ -109,7 +109,12 @@ namespace dxvk {
       m_shaders.cs->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), DxvkShaderModuleCreateInfo()),
       &scState.scInfo);
 
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (m_device->canUseDescriptorBuffer())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &flags };
     info.stage                = *stageInfo.getStageInfos();
     info.layout               = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex    = -1;

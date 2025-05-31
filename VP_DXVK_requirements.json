@@ -78,14 +78,30 @@
                 "VK_KHR_maintenance5": 1,
             },
             "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "shaderSampledImageArrayDynamicIndexing" : true
+                },
+                "VkPhysicalDeviceVulkan12Features": {
+                    "descriptorIndexing" : true,
+                    "descriptorBindingSampledImageUpdateAfterBind" : true,
+                    "descriptorBindingUpdateUnusedWhilePending" : true,
+                    "descriptorBindingPartiallyBound" : true,
+                    "runtimeDescriptorArray" : true
+                },
                 "VkPhysicalDeviceMaintenance5FeaturesKHR": {
                     "maintenance5": true
+                }
+            },
+            "properties": {
+                "VkPhysicalDeviceProperties": {
+                    "maxPushConstantsSize" : 256
                 }
             }
         },
         "dxvk_common_optional": {
             "extensions": {
                 "VK_KHR_load_store_op_none": 1,
+                "VK_KHR_maintenance6": 1,
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id": 1,
                 "VK_KHR_present_wait": 1,
@@ -97,6 +113,13 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "wideLines": true
+                },
+                "VkPhysicalDeviceVulkan11Features": {
+                    "shaderInt16": true,
+                    "storagePushConstant16": true
+                },
+                "VkPhysicalDeviceMaintenance6FeaturesKHR": {
+                    "maintenance6": true
                 },
                 "VkPhysicalDeviceMaintenance7FeaturesKHR": {
                     "maintenance7": true

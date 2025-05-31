@@ -28,9 +28,11 @@ namespace dxvk {
 
     DxbcUavIndexGraphics        = DxbcSrvTotal,
     DxbcUavIndexCompute         = DxbcUavIndexGraphics + DxbcUavPerPipeline * 2u,
+
+    DxbcGlobalSamplerSet        = 15u,
   };
 
-  
+
   /**
    * \brief Shader binding mask
    *

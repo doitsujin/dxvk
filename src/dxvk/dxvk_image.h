@@ -791,12 +791,12 @@ namespace dxvk {
 
 
 
-  inline void DxvkImageView::incRef() {
+  force_inline void DxvkImageView::incRef() {
     m_image->incRef();
   }
 
 
-  inline void DxvkImageView::decRef() {
+  force_inline void DxvkImageView::decRef() {
     m_image->decRef();
   }
 

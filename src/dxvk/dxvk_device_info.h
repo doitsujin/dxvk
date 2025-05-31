@@ -22,6 +22,7 @@ namespace dxvk {
     VkPhysicalDeviceVulkan13Properties                        vk13;
     VkPhysicalDeviceConservativeRasterizationPropertiesEXT    extConservativeRasterization;
     VkPhysicalDeviceCustomBorderColorPropertiesEXT            extCustomBorderColor;
+    VkPhysicalDeviceDescriptorBufferPropertiesEXT             extDescriptorBuffer;
     VkPhysicalDeviceExtendedDynamicState3PropertiesEXT        extExtendedDynamicState3;
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT      extGraphicsPipelineLibrary;
     VkPhysicalDeviceLineRasterizationPropertiesEXT            extLineRasterization;
@@ -30,6 +31,7 @@ namespace dxvk {
     VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
     VkPhysicalDeviceMaintenance5PropertiesKHR                 khrMaintenance5;
+    VkPhysicalDeviceMaintenance6PropertiesKHR                 khrMaintenance6;
     VkPhysicalDeviceMaintenance7PropertiesKHR                 khrMaintenance7;
   };
 
@@ -51,6 +53,7 @@ namespace dxvk {
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceDepthBiasControlFeaturesEXT               extDepthBiasControl;
+    VkPhysicalDeviceDescriptorBufferFeaturesEXT               extDescriptorBuffer;
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT          extExtendedDynamicState3;
     VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT        extFragmentShaderInterlock;
     VkBool32                                                  extFullScreenExclusive;
@@ -73,6 +76,7 @@ namespace dxvk {
     VkBool32                                                  khrExternalSemaphoreWin32;
     VkBool32                                                  khrLoadStoreOpNone;
     VkPhysicalDeviceMaintenance5FeaturesKHR                   khrMaintenance5;
+    VkPhysicalDeviceMaintenance6FeaturesKHR                   khrMaintenance6;
     VkPhysicalDeviceMaintenance7FeaturesKHR                   khrMaintenance7;
     VkPhysicalDevicePresentIdFeaturesKHR                      khrPresentId;
     VkPhysicalDevicePresentWaitFeaturesKHR                    khrPresentWait;

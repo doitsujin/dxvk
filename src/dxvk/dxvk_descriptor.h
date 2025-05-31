@@ -23,8 +23,14 @@ namespace dxvk {
    *
    * Stores a resource or view descriptor.
    */
-  union DxvkDescriptor {
+  struct DxvkDescriptor {
+    /** Legacy view handle or buffer info, can be passed
+     *  directly to WriteDescriptorSet and friends */
     DxvkLegacyDescriptor legacy;
+    /** Explicit padding to make msvc happy */
+    uint64_t reserved;
+    /** Actual descriptor data */
+    std::array<char, 256u> descriptor;
   };
 
 
@@ -35,6 +41,7 @@ namespace dxvk {
    */
   struct DxvkSamplerDescriptor {
     VkSampler samplerObject = VK_NULL_HANDLE;
+    uint16_t samplerIndex = 0u;
   };
 
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_descriptor_info.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_memory.h"
@@ -23,13 +24,18 @@ namespace dxvk {
 
     DxvkObjects(DxvkDevice* device)
     : m_device          (device),
+      m_descriptorInfo  (device),
       m_memoryManager   (device),
-      m_pipelineManager (device),
       m_samplerPool     (device),
+      m_pipelineManager (device),
       m_eventPool       (device),
       m_queryPool       (device),
       m_dummyResources  (device) {
 
+    }
+
+    DxvkDescriptorProperties& descriptors() {
+      return m_descriptorInfo;
     }
 
     DxvkMemoryAllocator& memoryManager() {
@@ -76,10 +82,12 @@ namespace dxvk {
 
     DxvkDevice*                   m_device;
 
+    DxvkDescriptorProperties      m_descriptorInfo;
+
     DxvkMemoryAllocator           m_memoryManager;
+    DxvkSamplerPool               m_samplerPool;
     DxvkPipelineManager           m_pipelineManager;
 
-    DxvkSamplerPool               m_samplerPool;
     DxvkGpuEventPool              m_eventPool;
     DxvkGpuQueryPool              m_queryPool;
 

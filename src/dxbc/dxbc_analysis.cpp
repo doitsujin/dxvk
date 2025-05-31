@@ -55,11 +55,22 @@ namespace dxvk {
         }
       } break;
 
+      case DxbcInstClass::AtomicCounter: {
+        const uint32_t registerId = ins.dst[1].idx[0].offset;
+        m_analysis->uavCounterMask |= uint64_t(1u) << registerId;
+      } break;
+
       case DxbcInstClass::TextureSample:
       case DxbcInstClass::TextureGather:
       case DxbcInstClass::TextureQueryLod:
       case DxbcInstClass::VectorDeriv: {
         m_analysis->usesDerivatives = true;
+      } break;
+
+      case DxbcInstClass::TextureQueryMs:
+      case DxbcInstClass::TextureQueryMsPos: {
+        if (ins.src[0].type == DxbcOperandType::Rasterizer)
+          m_analysis->usesSampleCount = true;
       } break;
 
       case DxbcInstClass::ControlFlow: {

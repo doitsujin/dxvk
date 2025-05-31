@@ -53,6 +53,35 @@ namespace dxvk::sync {
 
 
   /**
+   * \brief Sync point
+   *
+   * Convenience class that stores a sync
+   * object and a value to wait on.
+   */
+  class SyncPoint {
+
+  public:
+
+    SyncPoint() = default;
+    SyncPoint(Rc<Signal> signal, uint64_t value)
+    : m_signal(std::move(signal)), m_value(value) { }
+
+    void synchronize() {
+      if (m_signal) {
+        m_signal->wait(m_value);
+        m_signal = nullptr;
+      }
+    }
+
+  private:
+
+    Rc<Signal>  m_signal;
+    uint64_t    m_value = 0u;
+
+  };
+
+
+  /**
    * \brief Fence
    *
    * Simple CPU-side fence.

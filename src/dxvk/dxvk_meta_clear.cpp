@@ -104,7 +104,7 @@ namespace dxvk {
           VkDescriptorType        descriptorType) {
     DxvkDescriptorSetLayoutBinding bindInfo = { descriptorType, 1, VK_SHADER_STAGE_COMPUTE_BIT };
 
-    return m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_COMPUTE_BIT,
+    return m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
       sizeof(DxvkMetaClearArgs), 1, &bindInfo);
   }
 

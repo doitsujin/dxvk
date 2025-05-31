@@ -55,9 +55,12 @@ namespace dxvk {
     DxbcClipCullInfo clipCullOut;
 
     DxbcBindingMask bindings = { };
+
+    uint64_t uavCounterMask = 0u;
     
     bool usesDerivatives  = false;
     bool usesKill         = false;
+    bool usesSampleCount  = false;
   };
   
   /**

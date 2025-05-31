@@ -297,9 +297,7 @@ namespace dxvk {
     // Samplers and uniform buffers may be special on some implementations
     // so we should allocate space for a reasonable number of both, but
     // assume that all other descriptor types share pool memory.
-    std::array<VkDescriptorPoolSize, 8> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,                m_maxSets * 1  },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_maxSets / 4  },
+    std::array<VkDescriptorPoolSize, 6> pools = {{
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          m_maxSets / 2  },
       { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          m_maxSets / 64 },
       { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   m_maxSets / 2  },

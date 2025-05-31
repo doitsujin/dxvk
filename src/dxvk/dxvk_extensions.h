@@ -300,6 +300,7 @@ namespace dxvk {
     DxvkExt extCustomBorderColor              = { VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt extDepthClipEnable                = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt extDepthBiasControl               = { VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt extDescriptorBuffer               = { VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt extExtendedDynamicState3          = { VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt extFullScreenExclusive            = { VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt extFragmentShaderInterlock        = { VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,          DxvkExtMode::Optional };
@@ -322,6 +323,7 @@ namespace dxvk {
     DxvkExt khrExternalSemaphoreWin32         = { VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrLoadStoreOpNone                = { VK_KHR_LOAD_STORE_OP_NONE_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt khrMaintenance5                   = { VK_KHR_MAINTENANCE_5_EXTENSION_NAME,                      DxvkExtMode::Required };
+    DxvkExt khrMaintenance6                   = { VK_KHR_MAINTENANCE_6_EXTENSION_NAME,                      DxvkExtMode::Optional };
     DxvkExt khrMaintenance7                   = { VK_KHR_MAINTENANCE_7_EXTENSION_NAME,                      DxvkExtMode::Optional };
     DxvkExt khrPipelineLibrary                = { VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt khrPresentId                      = { VK_KHR_PRESENT_ID_EXTENSION_NAME,                         DxvkExtMode::Optional };

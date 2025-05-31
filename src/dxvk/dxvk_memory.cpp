@@ -38,16 +38,19 @@ namespace dxvk {
 
   DxvkResourceBufferViewMap::DxvkResourceBufferViewMap(
           DxvkMemoryAllocator*        allocator,
-          VkBuffer                    buffer)
-  : m_vkd(allocator->device()->vkd()), m_buffer(buffer) {
+          VkBuffer                    buffer,
+          VkDeviceAddress             va)
+  : m_device(allocator->device()), m_buffer(buffer), m_va(va) {
 
   }
 
 
   DxvkResourceBufferViewMap::~DxvkResourceBufferViewMap() {
+    auto vk = m_device->vkd();
+
     for (const auto& view : m_views) {
       if (view.first.format)
-        m_vkd->vkDestroyBufferView(m_vkd->device(), view.second.legacy.bufferView, nullptr);
+        vk->vkDestroyBufferView(vk->device(), view.second.legacy.bufferView, nullptr);
     }
   }
 
@@ -62,39 +65,74 @@ namespace dxvk {
     if (entry != m_views.end())
       return &entry->second;
 
-    DxvkDescriptor descriptor = { };
+    auto vk = m_device->vkd();
+
+    auto& descriptor = m_views.emplace(std::piecewise_construct,
+      std::tuple(key), std::tuple()).first->second;
 
     if (key.format) {
-      VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
-      flags.usage = key.usage;
+      if (m_device->canUseDescriptorBuffer()) {
+        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+        bufferInfo.address = m_va + key.offset;
+        bufferInfo.range = key.size;
+        bufferInfo.format = key.format;
 
-      VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
-      info.buffer = m_buffer;
-      info.format = key.format;
-      info.offset = key.offset + baseOffset;
-      info.range = key.size;
+        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
-      VkResult vr = m_vkd->vkCreateBufferView(
-        m_vkd->device(), &info, nullptr, &descriptor.legacy.bufferView);
+        if (key.usage == VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+          info.type = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;;
+          info.data.pStorageTexelBuffer = &bufferInfo;
+        } else {
+          info.type = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;;
+          info.data.pUniformTexelBuffer = &bufferInfo;
+        }
 
-      if (vr != VK_SUCCESS) {
-        throw DxvkError(str::format("Failed to create Vulkan buffer view: ", vr,
-          "\n   usage:  0x", std::hex, key.usage,
-          "\n   format: ", key.format,
-          "\n   offset: ", std::dec, key.offset,
-          "\n   size:   ", std::dec, key.size));
+        vk->vkGetDescriptorEXT(vk->device(), &info,
+          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+          descriptor.descriptor.data());
+      } else {
+        VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
+        flags.usage = key.usage;
+
+        VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
+        info.buffer = m_buffer;
+        info.format = key.format;
+        info.offset = key.offset + baseOffset;
+        info.range = key.size;
+
+        VkResult vr = vk->vkCreateBufferView(
+          vk->device(), &info, nullptr, &descriptor.legacy.bufferView);
+
+        if (vr != VK_SUCCESS) {
+          throw DxvkError(str::format("Failed to create Vulkan buffer view: ", vr,
+            "\n   usage:  0x", std::hex, key.usage,
+            "\n   format: ", key.format,
+            "\n   offset: ", std::dec, key.offset,
+            "\n   size:   ", std::dec, key.size));
+        }
       }
     } else {
-      VkDescriptorBufferInfo bufferInfo = descriptor.legacy.buffer;
+      auto& bufferInfo = descriptor.legacy.buffer;
       bufferInfo.buffer = m_buffer;
       bufferInfo.offset = key.offset + baseOffset;
       bufferInfo.range = key.size;
 
-      descriptor.legacy.buffer = bufferInfo;
+      if (m_device->canUseDescriptorBuffer()) {
+        VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
+        bufferInfo.address = m_va + key.offset;
+        bufferInfo.range = key.size;
+
+        VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        info.data.pStorageBuffer = &bufferInfo;
+
+        vk->vkGetDescriptorEXT(vk->device(), &info,
+          m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+          descriptor.descriptor.data());
+      }
     }
 
-    entry = m_views.insert({ key, descriptor }).first;
-    return &entry->second;
+    return &descriptor;
   }
 
 
@@ -103,14 +141,16 @@ namespace dxvk {
   DxvkResourceImageViewMap::DxvkResourceImageViewMap(
           DxvkMemoryAllocator*        allocator,
           VkImage                     image)
-  : m_vkd(allocator->device()->vkd()), m_image(image) {
+  : m_device(allocator->device()), m_image(image) {
 
   }
 
 
   DxvkResourceImageViewMap::~DxvkResourceImageViewMap() {
+    auto vk = m_device->vkd();
+
     for (const auto& view : m_views)
-      m_vkd->vkDestroyImageView(m_vkd->device(), view.second.legacy.image.imageView, nullptr);
+      vk->vkDestroyImageView(vk->device(), view.second.legacy.image.imageView, nullptr);
   }
 
 
@@ -122,6 +162,13 @@ namespace dxvk {
 
     if (entry != m_views.end())
       return &entry->second;
+
+    auto vk = m_device->vkd();
+
+    auto& descriptor = m_views.emplace(std::piecewise_construct,
+      std::tuple(key), std::tuple()).first->second;
+
+    bool isShaderResource = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
@@ -137,17 +184,31 @@ namespace dxvk {
     info.subresourceRange.baseArrayLayer = key.layerIndex;
     info.subresourceRange.layerCount = key.layerCount;
 
-    DxvkDescriptor descriptor = { };
     descriptor.legacy.image.imageLayout = key.layout;
 
-    VkResult vr = m_vkd->vkCreateImageView(
-      m_vkd->device(), &info, nullptr, &descriptor.legacy.image.imageView);
+    VkResult vr = vk->vkCreateImageView(
+      vk->device(), &info, nullptr, &descriptor.legacy.image.imageView);
 
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
 
-    entry = m_views.insert({ key, descriptor }).first;
-    return &entry->second;
+    if (m_device->canUseDescriptorBuffer() && isShaderResource) {
+      VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+
+      if (key.usage == VK_IMAGE_USAGE_STORAGE_BIT) {
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        info.data.pStorageImage = &descriptor.legacy.image;
+      } else {
+        info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        info.data.pSampledImage = &descriptor.legacy.image;
+      }
+
+      vk->vkGetDescriptorEXT(vk->device(), &info,
+        m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
+        descriptor.descriptor.data());
+    }
+
+    return &descriptor;
   }
 
 
@@ -187,7 +248,7 @@ namespace dxvk {
   const DxvkDescriptor* DxvkResourceAllocation::createBufferView(
     const DxvkBufferViewKey&          key) {
     if (unlikely(!m_bufferViews))
-      m_bufferViews = new DxvkResourceBufferViewMap(m_allocator, m_buffer);
+      m_bufferViews = new DxvkResourceBufferViewMap(m_allocator, m_buffer, m_bufferAddress);
 
     return m_bufferViews->createBufferView(key, m_bufferOffset);
   }
@@ -849,6 +910,18 @@ namespace dxvk {
       VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
       vk->vkGetBufferMemoryRequirements2(vk->device(), &requirementInfo, &requirements);
 
+      // When allocating memory for a descriptor heap, use a dedicated allocation. We
+      // ca expect these to be long-lived and mapped, and potentially use a dedicated
+      // memory type that may have unexpected size restrictions. Also make sure not
+      // to ever relocate these buffers since they require a stable GPU address.
+      if (createInfo.usage & DescriptorBufferUsage) {
+        VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+        dedicatedInfo.buffer = buffer;
+
+        if ((allocation = allocateDedicatedMemory(requirements.memoryRequirements, allocationInfo, &dedicatedInfo)))
+          allocation->m_flags.clr(DxvkAllocationFlag::CanMove);
+      }
+
       // If we have an existing global allocation from earlier, make sure it is suitable
       if (!allocation || !(requirements.memoryRequirements.memoryTypeBits & (1u << allocation->m_type->index))
        || (allocation->m_size < requirements.memoryRequirements.size)
@@ -1144,15 +1217,15 @@ namespace dxvk {
     VkMemoryPriorityAllocateInfoEXT priorityInfo = { VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT };
 
     if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        // BAR allocation. Give this a low priority since these are typically useful
-        // when when placed in system memory.
-        priorityInfo.priority = 0.0f;
-      } else if (next) {
+      if (next) {
         // Dedicated allocation, may or may not be a shared resource. Assign this the
         // highest priority since this is expected to be a high-bandwidth resource,
-        // such as a render target.
+        // such as a render target or a descriptor heap. The latter may be host-visible.
         priorityInfo.priority = 1.0f;
+      } else if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        // Regular HVV allocation. Give this a low priority since these are typically
+        // useful when when placed in system memory.
+        priorityInfo.priority = 0.0f;
       } else {
         // Standard priority for resource allocations
         priorityInfo.priority = 0.5f;
@@ -1866,36 +1939,57 @@ namespace dxvk {
       if (getBufferMemoryRequirements(bufferInfo, requirements)) {
         uint32_t typeMask = requirements.memoryRequirements.memoryTypeBits;
 
-        while (typeMask) {
-          uint32_t type = bit::tzcnt(typeMask);
-
+        for (auto type : bit::BitMask(typeMask)) {
           if (type < m_memTypeCount)
             m_memTypes.at(type).bufferUsage |= bufferInfo.usage;
-
-          typeMask &= typeMask - 1;
         }
       }
 
       flags &= ~flag;
     }
 
+    // Figure out which memory types support descriptor heaps and set the device
+    // address flag so that memory allocations correctly enable it too. Do not
+    // set the descriptor heap usage flags themselves since we do not want any
+    // non-descriptor allocation to enable those bits.
+    VkBufferUsageFlags descriptorHeapUsage = 0u;
+
+    if (m_device->canUseDescriptorBuffer())
+      descriptorHeapUsage |= DescriptorBufferUsage;
+
+    while (descriptorHeapUsage) {
+      VkBufferCreateFlags flag = descriptorHeapUsage & -descriptorHeapUsage;
+
+      bufferInfo.usage = flag
+        | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+        | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+      if (getBufferMemoryRequirements(bufferInfo, requirements)) {
+        uint32_t typeMask = requirements.memoryRequirements.memoryTypeBits;
+
+        for (auto type : bit::BitMask(typeMask)) {
+          if (type < m_memTypeCount)
+            m_memTypes.at(type).bufferUsage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+        }
+      }
+
+      descriptorHeapUsage &= ~flag;
+    }
+
     // Only use a minimal set of usage flags for the global buffer if the
     // full combination of flags is not supported for whatever reason.
-    m_globalBufferUsageFlags = ~0u;
+    m_globalBufferUsageFlags = -1;
     m_globalBufferMemoryTypes = 0u;
 
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
       bufferInfo.usage = m_memTypes[i].bufferUsage;
 
-      if (!bufferInfo.usage)
+      if (MinGlobalBufferUsage & ~bufferInfo.usage)
         continue;
 
       if (!getBufferMemoryRequirements(bufferInfo, requirements)
-       || !(requirements.memoryRequirements.memoryTypeBits & (1u << i))) {
-        m_memTypes[i].bufferUsage &= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
-                                  |  VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                  |  VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-      }
+       || !(requirements.memoryRequirements.memoryTypeBits & (1u << i)))
+        m_memTypes[i].bufferUsage &= MinGlobalBufferUsage;
 
       if (m_memTypes[i].bufferUsage) {
         m_globalBufferUsageFlags &= m_memTypes[i].bufferUsage;

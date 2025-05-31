@@ -230,15 +230,20 @@ namespace dxvk {
 
 
   const DxvkPipelineLayout* DxvkDevice::createBuiltInPipelineLayout(
-          VkShaderStageFlags              pushConstantStages,
-          VkDeviceSize                    pushConstantSize,
+          DxvkPipelineLayoutFlags         flags,
+          VkShaderStageFlags              pushDataStages,
+          VkDeviceSize                    pushDataSize,
           uint32_t                        bindingCount,
     const DxvkDescriptorSetLayoutBinding* bindings) {
-    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged);
+    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged, flags);
 
-    if (pushConstantSize) {
-      key.addStages(pushConstantStages);
-      key.addPushConstantRange(DxvkPushConstantRange(pushConstantStages, pushConstantSize));
+    if (pushDataSize) {
+      key.addStages(pushDataStages);
+
+      DxvkPushDataBlock pushData(pushDataStages,
+        0u, pushDataSize, sizeof(uint32_t), 0u);
+
+      key.addPushData(pushData);
     }
 
     if (bindingCount) {
@@ -264,7 +269,12 @@ namespace dxvk {
     moduleInfo.codeSize = stage.size;
     moduleInfo.pCode = stage.code;
 
-    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (canUseDescriptorBuffer())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &pipelineFlags };
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
 
@@ -409,7 +419,12 @@ namespace dxvk {
     if (state.depthFormat && (depthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT))
       renderingInfo.stencilAttachmentFormat = state.depthFormat;
 
-    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &renderingInfo };
+    VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &renderingInfo };
+
+    if (canUseDescriptorBuffer())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &pipelineFlags };
     pipelineInfo.stageCount = stageInfos.size();
     pipelineInfo.pStages = stageInfos.data();
     pipelineInfo.pVertexInputState = state.viState ? state.viState : &viState;

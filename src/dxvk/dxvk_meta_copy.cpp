@@ -206,7 +206,7 @@ namespace dxvk {
     }};
 
     DxvkMetaCopyPipeline pipeline;
-    pipeline.layout = m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_COMPUTE_BIT,
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
       sizeof(DxvkFormattedBufferCopyArgs), bindings.size(), bindings.data());
     pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout,
       util::DxvkBuiltInShaderStage(dxvk_copy_buffer_image, nullptr));
@@ -222,7 +222,7 @@ namespace dxvk {
     }};
 
     DxvkMetaCopyPipeline pipeline = { };
-    pipeline.layout = m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_FRAGMENT_BIT,
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(VkOffset2D), bindings.size(), bindings.data());
 
     VkImageAspectFlags aspect = lookupFormatInfo(key.format)->aspectMask;
@@ -274,7 +274,7 @@ namespace dxvk {
     }};
 
     DxvkMetaCopyPipeline pipeline;
-    pipeline.layout = m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_FRAGMENT_BIT,
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
 
     // We don't support color right now
@@ -362,7 +362,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    pipeline.layout = m_device->createBuiltInPipelineLayout(VK_SHADER_STAGE_COMPUTE_BIT,
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
       sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
 
     if (key.imageViewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {

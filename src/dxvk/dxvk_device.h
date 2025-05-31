@@ -268,6 +268,14 @@ namespace dxvk {
     bool mustTrackPipelineLifetime() const;
 
     /**
+     * \brief Checks whether descriptor buffers can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseDescriptorBuffer() const {
+      return m_features.extDescriptorBuffer.descriptorBuffer;
+    }
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */
@@ -390,15 +398,17 @@ namespace dxvk {
     /**
      * \brief Creates built-in pipeline layout
      *
-     * \param [in] pushConstantStages Push constant stage mask
-     * \param [in] pushConstantSize Push constant size
+     * \param [in] flags Pipeline layout flags
+     * \param [in] pushDataStages Push data stage mask
+     * \param [in] pushDataSize Push data size
      * \param [in] bindingCount Number of resource bindings
      * \param [in] bindings Resource bindings
      * \returns Unique pipeline layout
      */
     const DxvkPipelineLayout* createBuiltInPipelineLayout(
-            VkShaderStageFlags              pushConstantStages,
-            VkDeviceSize                    pushConstantSize,
+            DxvkPipelineLayoutFlags         flags,
+            VkShaderStageFlags              pushDataStages,
+            VkDeviceSize                    pushDataSize,
             uint32_t                        bindingCount,
       const DxvkDescriptorSetLayoutBinding* bindings);
 
@@ -475,11 +485,28 @@ namespace dxvk {
     DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
+     * \brief Queries descriptor properties
+     *
+     * And null descriptors.
+     */
+    const DxvkDescriptorProperties& getDescriptorProperties() {
+      return m_objects.descriptors();
+    }
+
+    /**
      * \brief Queries sampler statistics
      * \returns Sampler stats
      */
     DxvkSamplerStats getSamplerStats() {
       return m_objects.samplerPool().getStats();
+    }
+
+    /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkSamplerDescriptorSet getSamplerDescriptorSet() {
+      return m_objects.samplerPool().getDescriptorSetInfo();
     }
 
     /**

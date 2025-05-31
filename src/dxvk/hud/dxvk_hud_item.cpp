@@ -377,7 +377,7 @@ namespace dxvk::hud {
     descriptors[2u].buffer = drawInfoBuffer;
 
     descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    descriptors[3u].descriptor = m_textView->getDescriptor(false);
+    descriptors[3u].descriptor = m_textWrView->getDescriptor(false);
 
     ComputePushConstants pushConstants = { };
     pushConstants.msPerTick = m_device->properties().core.properties.limits.timestampPeriod / 1000000.0f;
@@ -409,7 +409,7 @@ namespace dxvk::hud {
     renderer.drawText(12, maxPos, 0xff4040ff, "max:");
 
     renderer.drawTextIndirect(ctx, key, drawParamBuffer,
-      drawInfoBuffer, m_textView, 2u);
+      drawInfoBuffer, m_textRdView, 2u);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::InitBuffer);
@@ -480,11 +480,13 @@ namespace dxvk::hud {
 
     DxvkBufferViewKey textViewInfo = { };
     textViewInfo.format = VK_FORMAT_R8_UINT;
-    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
     textViewInfo.offset = bufferLayout.textOffset;
     textViewInfo.size = bufferLayout.textSize;
+    textViewInfo.usage = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    m_textWrView = m_gpuBuffer->createView(textViewInfo);
 
-    m_textView = m_gpuBuffer->createView(textViewInfo);
+    textViewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+    m_textRdView = m_gpuBuffer->createView(textViewInfo);
 
     // Zero-init buffer so we don't display random garbage at the start
     DxvkResourceBufferInfo bufferSlice = m_gpuBuffer->getSliceInfo();
@@ -518,7 +520,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    m_computePipelineLayout = m_device->createBuiltInPipelineLayout(
+    m_computePipelineLayout = m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_COMPUTE_BIT, sizeof(ComputePushConstants),
       bindings.size(), bindings.data());
 
@@ -532,7 +534,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(RenderPushConstants), bindings.size(), bindings.data());
   }
@@ -794,10 +796,31 @@ namespace dxvk::hud {
 
 
   void HudDescriptorStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
     DxvkStatCounters counters = m_device->getStatCounters();
+
+    if (ticks >= UpdateInterval) {
+      uint64_t busyTicks = counters.getCtr(DxvkStatCounter::DescriptorCopyBusyTicks);
+
+      m_copyThreadLoad = uint32_t(double(100.0 * (busyTicks - m_copyThreadBusyTicks)) / ticks);
+      m_copyThreadBusyTicks = busyTicks;
+
+      m_descriptorHeapUsed = m_descriptorHeapMax;
+      m_descriptorHeapMax = 0u;
+
+      m_lastUpdate = time;
+    }
 
     m_descriptorPoolCount = counters.getCtr(DxvkStatCounter::DescriptorPoolCount);
     m_descriptorSetCount  = counters.getCtr(DxvkStatCounter::DescriptorSetCount);
+
+    m_descriptorHeapCount = counters.getCtr(DxvkStatCounter::DescriptorHeapCount);
+    m_descriptorHeapAlloc = counters.getCtr(DxvkStatCounter::DescriptorHeapSize);
+
+    auto descriptorHeapUsed = counters.getCtr(DxvkStatCounter::DescriptorHeapUsed);
+    m_descriptorHeapMax = std::max(descriptorHeapUsed - m_descriptorHeapPrev, m_descriptorHeapMax);
+    m_descriptorHeapPrev = descriptorHeapUsed;
   }
 
 
@@ -807,13 +830,29 @@ namespace dxvk::hud {
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
-    position.y += 16;
-    renderer.drawText(16, position, 0xff8040ff, "Descriptor pools:");
-    renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorPoolCount));
+    if (m_descriptorPoolCount) {
+      position.y += 16;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor pools:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorPoolCount));
 
-    position.y += 20;
-    renderer.drawText(16, position, 0xff8040ff, "Descriptor sets:");
-    renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorSetCount));
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor sets:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorSetCount));
+    }
+
+    if (m_descriptorHeapAlloc) {
+      position.y += 16;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor heaps:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorHeapCount, " (", m_descriptorHeapAlloc >> 20, " MB)"));
+
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Descriptor usage:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_descriptorHeapUsed >> 10, " kB"));
+
+      position.y += 20;
+      renderer.drawText(16, position, 0xff8040ff, "Copy worker:");
+      renderer.drawText(16, { position.x + 216, position.y }, 0xffffffffu, str::format(m_copyThreadLoad, "%"));
+    }
 
     position.y += 8;
     return position;
@@ -924,7 +963,7 @@ namespace dxvk::hud {
     for (uint32_t i = m_stats.memoryTypes.size(); i; i--) {
       const auto& type = m_stats.memoryTypes.at(i - 1);
 
-      if (!type.allocated)
+      if (!type.chunkCount)
         continue;
 
       // Compute layout and gather memory stats
@@ -1124,7 +1163,7 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    return m_device->createBuiltInPipelineLayout(
+    return m_device->createBuiltInPipelineLayout(0u,
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(HudPushConstants), bindings.size(), bindings.data());
   }

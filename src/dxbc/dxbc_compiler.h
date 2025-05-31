@@ -191,8 +191,8 @@ namespace dxvk {
     uint32_t builtinLayer         = 0;
     uint32_t builtinViewportId    = 0;
     uint32_t builtinInnerCoverageId = 0;
-    
-    uint32_t pushConstantId       = 0;
+
+    uint32_t rasterizerPushIndex = 0u;
   };
   
   
@@ -476,6 +476,12 @@ namespace dxvk {
     std::array<DxbcShaderResource, 128> m_textures;
     std::array<DxbcUav,             64> m_uavs;
 
+    uint32_t m_pushDataId = 0u;
+    uint32_t m_samplerHeapId = 0u;
+
+    DxvkPushDataBlock m_sharedPushData;
+    DxvkPushDataBlock m_localPushData;
+
     bool m_hasGloballyCoherentUav = false;
     bool m_hasRasterizerOrderedUav = false;
 
@@ -535,6 +541,7 @@ namespace dxvk {
     // Struct type used for UAV counter buffers
     uint32_t m_uavCtrStructType  = 0;
     uint32_t m_uavCtrPointerType = 0;
+    uint32_t m_uavCtrBdaType = 0;
     
     ////////////////////////////////
     // Function IDs for subroutines
@@ -1218,7 +1225,15 @@ namespace dxvk {
     uint32_t emitBuiltinTessLevelInner(
             spv::StorageClass storageClass);
 
-    uint32_t emitPushConstants();
+    void emitUavCounterTypes();
+
+    void emitUavCounterBindings();
+
+    void emitSamplerArray();
+
+    void emitPushSampler(uint32_t samplerIndex, uint32_t baseMember, uint32_t offset);
+
+    void emitPushData();
 
     ////////////////
     // Misc methods
