@@ -136,14 +136,14 @@ namespace dxvk {
     if (unlikely(rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT))
       return D3DERR_NOTAVAILABLE;
 
-    // NULL RT format hack (supported across all vendors,
-    // and also advertised in D3D8 by modern drivers)
+    // NULL RT format hack (supported across all
+    // vendors, and also advertised in D3D8)
     if (unlikely(rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional))
       return D3D_OK;
 
-    // AMD/Intel's driver hack for RESZ (also advertised
-    // in D3D8 by modern AMD drivers, not advertised
-    // at all by modern Intel drivers)
+    // AMD/Intel's driver hack for RESZ
+    // (also advertised in D3D8 by AMD drivers,
+    // not advertised at all by modern Intel drivers)
     if (unlikely(rt && CheckFormat == D3D9Format::RESZ && surface))
       return isAmd
         ? D3D_OK
@@ -155,8 +155,8 @@ namespace dxvk {
         ? D3D_OK
         : D3DERR_NOTAVAILABLE;
 
-    // Nvidia's driver hack for SSAA
-    // (supported on modern Nvidia drivers)
+    // Nvidia's driver hack for SSAA (supported on Nvidia
+    // drivers, ever since the GeForce 6 series)
     if (unlikely(CheckFormat == D3D9Format::SSAA && surface)) {
       if (!isD3D8Compatible && isNvidia)
         Logger::warn("D3D9Adapter::CheckDeviceFormat: Transparency supersampling (SSAA) is unsupported");
@@ -164,6 +164,7 @@ namespace dxvk {
     }
 
     // Nvidia specific depth bounds test hack
+    // (supported ever since the GeForce 6 series)
     if (unlikely(CheckFormat == D3D9Format::NVDB && surface))
       return (!isD3D8Compatible &&
               m_adapter->features().core.features.depthBounds && isNvidia)
@@ -178,14 +179,15 @@ namespace dxvk {
       return D3DERR_NOTAVAILABLE;
     }
 
-    // AMD specific INST hack
+    // AMD specific INST (geometry instancing)
+    // hack for SM2-only capable cards
     if (unlikely(CheckFormat == D3D9Format::INST && surface))
       return (!isD3D8Compatible && isAmd)
         ? D3D_OK
         : D3DERR_NOTAVAILABLE;
 
-    // AMD/Nvidia CENT(roid) hack (not advertised by
-    // either AMD or Nvidia modern drivers)
+    // AMD/Nvidia CENT(roid) hack (not advertised
+    // by either AMD or Nvidia drivers)
     if (unlikely(CheckFormat == D3D9Format::CENT && surface))
       return D3DERR_NOTAVAILABLE;
 
@@ -250,7 +252,7 @@ namespace dxvk {
     // Check if this is a power of two...
     if (sampleCount & (sampleCount - 1))
       return D3DERR_NOTAVAILABLE;
-    
+
     // Therefore...
     VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
 
@@ -643,7 +645,7 @@ namespace dxvk {
     pCaps->MaxNpatchTessellationLevel = 0.0f;
     // Reserved for... something
     pCaps->Reserved5                  = 0;
-    // Master adapter for us is adapter 0, atm... 
+    // Master adapter for us is adapter 0, atm...
     pCaps->MasterAdapterOrdinal       = 0;
     // The group of adapters this one is in
     pCaps->AdapterOrdinalInGroup      = 0;
@@ -892,11 +894,11 @@ namespace dxvk {
       [](const D3DDISPLAYMODEEX& a, const D3DDISPLAYMODEEX& b) {
         if (a.Width < b.Width)   return true;
         if (a.Width > b.Width)   return false;
-        
+
         if (a.Height < b.Height) return true;
         if (a.Height > b.Height) return false;
-        
-        return b.RefreshRate < a.RefreshRate;
+
+        return a.RefreshRate > b.RefreshRate;
     });
   }
 
