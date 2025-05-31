@@ -26,6 +26,9 @@ namespace dxvk {
     supportsTypedUavLoadR32 = (r32Features & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT);
     supportsRawAccessChains = device->features().nvRawAccessChains.shaderRawAccessChains;
 
+    // Raw access chains are currently broken with byte-address SSBO and descriptor buffers
+    rawAccessChainsOnlyStructured = device->canUseDescriptorBuffer();
+
     switch (device->config().useRawSsbo) {
       case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;
       case Tristate::True:  minSsboAlignment =  4u; break;
