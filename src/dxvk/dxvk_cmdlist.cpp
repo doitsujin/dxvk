@@ -609,7 +609,10 @@ namespace dxvk {
 
       // Populate descriptor arrays with necessary information
       small_vector<const DxvkDescriptor*, 8u> descriptors;
+      descriptors.reserve(descriptorCount);
+
       small_vector<DxvkDescriptor, 8u> buffers;
+      buffers.reserve(descriptorCount);
 
       for (uint32_t i = 0u; i < descriptorCount; i++) {
         const auto& info = descriptorInfos[i];
