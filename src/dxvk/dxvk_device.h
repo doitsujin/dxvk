@@ -766,6 +766,8 @@ namespace dxvk {
 
     void determineShaderOptions();
 
+    void logBindingModel();
+
   };
   
 }
