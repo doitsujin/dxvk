@@ -39,6 +39,8 @@ namespace dxvk {
 
     if (env::getEnvVar("DXVK_SHADER_CACHE") != "0" && DxvkShader::getShaderDumpPath().empty())
       m_shaderCache = DxvkShaderCache::getInstance();
+
+    logBindingModel();
   }
   
   
@@ -878,6 +880,18 @@ namespace dxvk {
         m_features.vk12.shaderUniformTexelBufferArrayNonUniformIndexing &&
         m_features.vk12.shaderStorageTexelBufferArrayNonUniformIndexing)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
+  }
+
+
+  void DxvkDevice::logBindingModel() {
+    const char* descriptorModel = "Legacy";
+
+    if (canUseDescriptorHeap())
+      descriptorModel = "Descriptor heap";
+    else if (canUseDescriptorBuffer())
+      descriptorModel = "Descriptor buffer";
+
+    Logger::info(str::format("Binding model: ", descriptorModel));
   }
 
 }
