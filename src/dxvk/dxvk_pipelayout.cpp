@@ -187,9 +187,7 @@ namespace dxvk {
 
     for (auto i : bit::BitMask(m_pushData.blockMask)) {
       m_pushData.blocks[i] = key.getPushDataBlock(i);
-
       m_pushData.mergedBlock.merge(m_pushData.blocks[i]);
-      m_pushData.mergedBlock.makeAbsolute();
     }
   }
 
