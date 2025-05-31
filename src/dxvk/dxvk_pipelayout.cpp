@@ -324,6 +324,7 @@ namespace dxvk {
       entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
 
       auto& samplers = entry.sourceData.constantOffset;
+      samplers.heapOffset = m_device->getSamplerDescriptorHeap().reservedSize;
       samplers.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
     }
 
