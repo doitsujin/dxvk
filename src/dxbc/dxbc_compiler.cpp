@@ -2884,7 +2884,8 @@ namespace dxvk {
 
     uint32_t sparseFeedbackId = 0;
 
-    bool useRawAccessChains = m_hasRawAccessChains && isSsbo && !imageOperands.sparse;
+    bool useRawAccessChains = m_hasRawAccessChains && isSsbo && !imageOperands.sparse
+      && (isStructured || !m_moduleInfo.options.rawAccessChainsOnlyStructured);
 
     DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
     DxbcRegisterValue offset = index;
@@ -3097,7 +3098,8 @@ namespace dxvk {
     }
 
     // Compute flat element index as necessary
-    bool useRawAccessChains = isSsbo && m_hasRawAccessChains;
+    bool useRawAccessChains = isSsbo && m_hasRawAccessChains
+      && (isStructured || !m_moduleInfo.options.rawAccessChainsOnlyStructured);
 
     DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
     DxbcRegisterValue offset = index;
