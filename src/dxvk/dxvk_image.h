@@ -360,7 +360,7 @@ namespace dxvk {
     uint32_t m_rtBindingFrameId    = 0;
     uint32_t m_rtBindingFrameCount = 0;
 
-    VkImageView createView(VkImageViewType type) const;
+    const DxvkDescriptor* createView(VkImageViewType type) const;
 
     void updateViews();
 

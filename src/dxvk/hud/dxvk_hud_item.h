@@ -253,42 +253,6 @@ namespace dxvk::hud {
   };
 
 
-   /**
-   * \brief HUD item to display render latency
-   */
-  class HudRenderLatencyItem : public HudItem {
-    constexpr static int64_t UpdateInterval = 500'000;
-  public:
-
-    HudRenderLatencyItem();
-
-    ~HudRenderLatencyItem();
-
-    void updateLatencyTracker( const Rc<DxvkLatencyTracker>& tracker ) {
-      m_tracker = tracker;
-    }
-
-    void update(dxvk::high_resolution_clock::time_point time);
-
-    HudPos render(
-      const DxvkContextObjects& ctx,
-      const HudPipelineKey&     key,
-      const HudOptions&         options,
-            HudRenderer&        renderer,
-            HudPos              position);
-
-  private:
-
-    Rc<DxvkLatencyTracker> m_tracker;
-
-    dxvk::high_resolution_clock::time_point m_lastUpdate
-      = dxvk::high_resolution_clock::now();
-
-    std::string m_latency;
-
-  };
-
-
   /**
    * \brief HUD item to display the frame rate
    */

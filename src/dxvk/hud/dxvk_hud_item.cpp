@@ -213,64 +213,6 @@ namespace dxvk::hud {
     return position;
   }
 
-
-  HudRenderLatencyItem::HudRenderLatencyItem() { }
-  HudRenderLatencyItem::~HudRenderLatencyItem() { }
-
-  void HudRenderLatencyItem::update(dxvk::high_resolution_clock::time_point time) {
-    // we cannot measure latency when fps-limiting is performed in Presenter::runFrameThread()
-    // because it's interfering with getting the right timestamp from vkWaitForPresent()
-    // if we truely wanted to measure it, we would need one additional thread
-    if (FpsLimiter::m_isActive) {
-      m_latency = "N/A";
-      return;
-    }
-
-    const Rc<DxvkLatencyTracker> tracker = m_tracker;
-    const FramePacer* framePacer = dynamic_cast<FramePacer*>( tracker.ptr() );
-    if (!framePacer)
-      return;
-
-    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
-
-    if (elapsed.count() >= UpdateInterval) {
-      m_lastUpdate = time;
-
-      LatencyMarkersReader reader = framePacer->m_latencyMarkersStorage.getReader(100);
-      const LatencyMarkers* markers;
-      uint32_t count = 0;
-      uint64_t totalLatency = 0;
-      while (reader.getNext(markers)) {
-        totalLatency += markers->presentFinished;
-        ++count;
-      }
-
-      if (!count)
-        return;
-
-      uint64_t latency = totalLatency / count;
-      m_latency = str::format(latency / 1000, ".", (latency/100) % 10, " ms");
-    }
-  }
-
-
-  HudPos HudRenderLatencyItem::render(
-    const DxvkContextObjects& ctx,
-    const HudPipelineKey&     key,
-    const HudOptions&         options,
-          HudRenderer&        renderer,
-          HudPos              position) {
-
-    position.y += 12;
-    renderer.drawText(16, position, 0xff4040ffu, "Render latency:");
-    renderer.drawText(16, { position.x + 195, position.y },
-      0xffffffffu, m_latency);
-
-    position.y += 8;
-    return position;
-  }
-
-
   HudFrameTimeItem::HudFrameTimeItem(const Rc<DxvkDevice>& device, HudRenderer* renderer)
   : m_device            (device),
     m_gfxPipelineLayout (createPipelineLayout()) {

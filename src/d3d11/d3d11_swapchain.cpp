@@ -295,9 +295,6 @@ namespace dxvk {
     if (m_latencyHud)
       m_latencyHud->accumulateStats(latencyStats);
 
-    if (m_renderLatencyHud)
-      m_renderLatencyHud->updateLatencyTracker(m_latency);
-
     return hr;
   }
 
@@ -609,7 +606,6 @@ namespace dxvk {
         FramePacer* framePacer = dynamic_cast<FramePacer*>(m_latency.ptr());
         if (framePacer) {
           int32_t fpsItemPos = hud->getItemPos<hud::HudFpsItem>();
-          m_renderLatencyHud = hud->addItem<hud::HudRenderLatencyItem>("renderlatency", fpsItemPos+1);
         }
       }
     }
