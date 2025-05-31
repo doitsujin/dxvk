@@ -296,8 +296,8 @@ namespace dxvk {
     if (m_deviceFeatures.extDescriptorBuffer.descriptorBuffer) {
       enableDescriptorBuffer = matchesDriver(VK_DRIVER_ID_MESA_RADV)
                             || matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE)
-                            || matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY)
-                            || matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA);
+                            || matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY);
+
       applyTristate(enableDescriptorBuffer, instance->options().enableDescriptorBuffer);
     }
 
