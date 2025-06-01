@@ -907,7 +907,8 @@ namespace dxvk {
     bool promoteToSsbo = isUav && resourceType == DxbcResourceDim::Buffer
       && m_analysis->uavInfos[registerId].accessAtomicOp
       && !m_analysis->uavInfos[registerId].sparseFeedback
-      && m_moduleInfo.options.minSsboAlignment <= sizeof(uint32_t);
+      && (m_moduleInfo.options.minSsboAlignment <= sizeof(uint32_t)
+       || m_moduleInfo.options.supportsRawAccessChains);
 
     // Defines the type of a read operation. DXBC has the ability
     // to define four different types whereas SPIR-V only allows
