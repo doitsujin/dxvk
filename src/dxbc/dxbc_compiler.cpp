@@ -902,6 +902,13 @@ namespace dxvk {
     // Defines the type of the resource (texture2D, ...)
     const DxbcResourceDim resourceType = ins.controls.resourceDim();
     
+    // If the resource is a UAV with atomic access, emit a raw SSBO
+    // instead of a texel buffer since the format has to be R32 anyways.
+    bool promoteToSsbo = isUav && resourceType == DxbcResourceDim::Buffer
+      && m_analysis->uavInfos[registerId].accessAtomicOp
+      && !m_analysis->uavInfos[registerId].sparseFeedback
+      && m_moduleInfo.options.minSsboAlignment <= sizeof(uint32_t);
+
     // Defines the type of a read operation. DXBC has the ability
     // to define four different types whereas SPIR-V only allows
     // one, but in practice this should not be much of a problem.
@@ -939,9 +946,11 @@ namespace dxvk {
     // Declare additional capabilities if necessary
     switch (resourceType) {
       case DxbcResourceDim::Buffer:
-        m_module.enableCapability(isUav
-          ? spv::CapabilityImageBuffer
-          : spv::CapabilitySampledBuffer);
+        if (!promoteToSsbo) {
+          m_module.enableCapability(isUav
+            ? spv::CapabilityImageBuffer
+            : spv::CapabilitySampledBuffer);
+        }
         break;
       
       case DxbcResourceDim::Texture1D:
@@ -976,17 +985,38 @@ namespace dxvk {
     // We do not know whether the image is going to be used as
     // a color image or a depth image yet, but we can pick the
     // correct type when creating a sampled image object.
-    const uint32_t imageTypeId = m_module.defImageType(sampledTypeId,
-      typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
-      imageFormat);
-    
-    // We'll declare the texture variable with the color type
-    // and decide which one to use when the texture is sampled.
-    const uint32_t resourcePtrType = m_module.defPointerType(
-      imageTypeId, spv::StorageClassUniformConstant);
-    
-    const uint32_t varId = m_module.newVar(resourcePtrType,
-      spv::StorageClassUniformConstant);
+    uint32_t imageTypeId = 0u;
+    uint32_t varId = 0u;
+
+    if (promoteToSsbo) {
+      uint32_t elemType   = getScalarTypeId(sampledType);
+      imageTypeId = m_module.defPointerType(elemType, spv::StorageClassStorageBuffer);
+
+      uint32_t arrayType  = m_module.defRuntimeArrayTypeUnique(elemType);
+      m_module.decorateArrayStride(arrayType, sizeof(uint32_t));
+
+      uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
+      m_module.decorate(structType, spv::DecorationBlock);
+      m_module.memberDecorateOffset(structType, 0, 0);
+
+      m_module.setDebugName(structType,
+        str::format(isUav ? "u" : "t", registerId, "_t").c_str());
+
+      uint32_t ptrType = m_module.defPointerType(structType, spv::StorageClassStorageBuffer);
+      varId = m_module.newVar(ptrType, spv::StorageClassStorageBuffer);
+    } else {
+      imageTypeId = m_module.defImageType(sampledTypeId,
+        typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+        imageFormat);
+
+      // We'll declare the texture variable with the color type
+      // and decide which one to use when the texture is sampled.
+      uint32_t ptrType = m_module.defPointerType(
+        imageTypeId, spv::StorageClassUniformConstant);
+
+      varId = m_module.newVar(ptrType,
+        spv::StorageClassUniformConstant);
+    }
     
     m_module.setDebugName(varId,
       str::format(isUav ? "u" : "t", registerId).c_str());
@@ -1010,7 +1040,7 @@ namespace dxvk {
       uav.imageTypeId   = imageTypeId;
       uav.structStride  = 0;
       uav.coherence     = getUavCoherence(registerId, ins.controls.uavFlags());
-      uav.isRawSsbo     = false;
+      uav.isRawSsbo     = promoteToSsbo;
     } else {
       DxbcShaderResource res;
       res.type          = DxbcResourceType::Typed;
@@ -1052,9 +1082,13 @@ namespace dxvk {
       binding.flags.set(DxvkDescriptorFlag::Multisampled);
 
     if (isUav) {
-      binding.descriptorType = resourceType == DxbcResourceDim::Buffer
-        ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-        : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      if (promoteToSsbo) {
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      } else {
+        binding.descriptorType = resourceType == DxbcResourceDim::Buffer
+          ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+          : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      }
       binding.access = m_analysis->uavInfos[registerId].accessFlags;
 
       if (!m_analysis->uavInfos[registerId].nonInvariantAccess)
@@ -4195,9 +4229,35 @@ namespace dxvk {
       resultTypeId = getSparseResultTypeId(texelTypeId);
 
     // Load source value from the UAV
-    resultId = m_module.opImageRead(resultTypeId,
-      m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
-      texCoord.id, imageOperands);
+    if (uavInfo.isRawSsbo) {
+      uint32_t scalarType = getScalarTypeId(uavInfo.sampledType);
+
+      std::array<uint32_t, 2u> indices = { };
+      indices[0] = m_module.constu32(0u);
+      indices[1] = texCoord.id;
+
+      uint32_t ptrId = m_module.opAccessChain(
+        m_module.defPointerType(scalarType, spv::StorageClassStorageBuffer),
+        uavInfo.varId, indices.size(), indices.data());
+
+      resultId = m_module.opLoad(scalarType, ptrId);
+
+      uint32_t zeroId = 0;
+
+      switch (uavInfo.sampledType) {
+        default:
+        case DxbcScalarType::Uint32: zeroId = m_module.constu32(0); break;
+        case DxbcScalarType::Sint32: zeroId = m_module.consti32(0); break;
+        case DxbcScalarType::Float32: zeroId = m_module.constf32(0.0f); break;
+      }
+
+      std::array<uint32_t, 4u> components = { resultId, zeroId, zeroId, zeroId };
+      resultId = m_module.opCompositeConstruct(resultTypeId, components.size(), components.data());
+    } else {
+      resultId = m_module.opImageRead(resultTypeId,
+        m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
+        texCoord.id, imageOperands);
+    }
     
     // Apply component swizzle and mask
     DxbcRegisterValue uavValue;
@@ -4235,17 +4295,31 @@ namespace dxvk {
 
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(ins.src[0], uavInfo.image);
-    
+
     // Load the value that will be written to the image. We'll
     // have to cast it to the component type of the image.
-    const DxbcRegisterValue texValue = emitRegisterBitcast(
-      emitRegisterLoad(ins.src[1], DxbcRegMask(true, true, true, true)),
+    DxbcRegisterValue texValue = emitRegisterBitcast(
+      emitRegisterLoad(ins.src[1], DxbcRegMask(true, !uavInfo.isSsbo, !uavInfo.isSsbo, !uavInfo.isSsbo)),
       uavInfo.stype);
-    
-    // Write the given value to the image
-    m_module.opImageWrite(
-      m_module.opLoad(uavInfo.typeId, uavInfo.varId),
-      texCoord.id, texValue.id, imageOperands);
+
+    // Write the given value to the resource
+    if (uavInfo.isSsbo) {
+      uint32_t scalarType = getScalarTypeId(uavInfo.stype);
+
+      std::array<uint32_t, 2u> indices = { };
+      indices[0] = m_module.constu32(0u);
+      indices[1] = texCoord.id;
+
+      uint32_t ptrId = m_module.opAccessChain(
+        m_module.defPointerType(scalarType, spv::StorageClassStorageBuffer),
+        uavInfo.varId, indices.size(), indices.data());
+
+      m_module.opStore(ptrId, texValue.id);
+    } else {
+      m_module.opImageWrite(
+        m_module.opLoad(uavInfo.typeId, uavInfo.varId),
+        texCoord.id, texValue.id, imageOperands);
+    }
   }
   
   
