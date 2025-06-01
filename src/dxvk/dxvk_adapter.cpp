@@ -366,7 +366,6 @@ namespace dxvk {
 
     // Used for better constant array packing in some cases
     enabledFeatures.vk12.uniformBufferStandardLayout = VK_TRUE;
-    enabledFeatures.vk12.scalarBlockLayout = VK_TRUE;
 
     // Required internally
     enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
