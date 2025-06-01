@@ -6486,10 +6486,14 @@ namespace dxvk {
     // need to re-allocate all sets too.
     if (!m_cmd->canAllocateDescriptors(pipelineLayout)) {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT);
-      dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
       if (!m_cmd->createDescriptorRange())
         return false;
+
+      if (pipelineLayout->usesSamplerHeap())
+        updateSamplerSet<BindPoint>(pipelineLayout);
+
+      dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
     }
 
     // The resource heap is always bound at index 1
