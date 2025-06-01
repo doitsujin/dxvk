@@ -839,8 +839,10 @@ namespace dxvk {
   void DxvkCommandList::countDescriptorStats(
     const Rc<DxvkResourceDescriptorRange>& range,
           VkDeviceSize                  baseOffset) {
-    VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
-    addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
+    if (range) {
+      VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
+      addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
+    }
   }
 
 }
