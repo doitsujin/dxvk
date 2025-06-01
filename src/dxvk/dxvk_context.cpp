@@ -6480,11 +6480,17 @@ namespace dxvk {
     if (unlikely(!dirtySetMask))
       return true;
 
-    // Make sure we have enough space for the set. If this fails, the
-    // caller has to make sure that no secondary command buffer is active.
-    if (!m_cmd->canAllocateDescriptors(pipelineLayout)
-     && !m_cmd->createDescriptorRange())
-      return false;
+    // Make sure we have enough space for the set. If this fails, the caller
+    // has to make sure that no secondary command buffer is active. If we
+    // allocate a new descriptor range and potentially re-bind the heap, we
+    // need to re-allocate all sets too.
+    if (!m_cmd->canAllocateDescriptors(pipelineLayout)) {
+      m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT);
+      dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
+
+      if (!m_cmd->createDescriptorRange())
+        return false;
+    }
 
     // The resource heap is always bound at index 1
     std::array<uint32_t,     DxvkDescriptorSets::SetCount> bufferIndices = { };
