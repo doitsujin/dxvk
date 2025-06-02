@@ -101,7 +101,6 @@ namespace dxvk {
 
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
       auto adapter = m_instance->enumAdapters(i);
-      adapter->logAdapterInfo();
 
       // Remove all monitors that are associated
       // with the current adapter from the list.

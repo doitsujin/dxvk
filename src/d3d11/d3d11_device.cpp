@@ -1848,12 +1848,6 @@ namespace dxvk {
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
     const Rc<DxvkInstance>& Instance,
     const Rc<DxvkAdapter>&  Adapter) {
-    // Check whether baseline features are supported by the device    
-    DxvkDeviceFeatures features = GetDeviceFeatures(Adapter);
-    
-    if (!Adapter->checkFeatureSupport(features))
-      return D3D_FEATURE_LEVEL();
-
     // The feature level override always takes precedence
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
       { "12_1", D3D_FEATURE_LEVEL_12_1 },
