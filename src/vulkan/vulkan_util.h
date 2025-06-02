@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <utility>
 
 #include "vulkan_loader.h"
@@ -196,26 +197,6 @@ namespace dxvk::vk {
     }
   }
 
-  template<typename T>
-  struct ChainStruct {
-    VkStructureType sType;
-    T*              pNext;
-  };
-
-  template<typename T>
-  void removeStructFromPNextChain(T** ppNext, VkStructureType sType) {
-    while (*ppNext) {
-      auto pStruct = reinterpret_cast<ChainStruct<T>*>(*ppNext);
-
-      if (pStruct->sType == sType) {
-        *ppNext = pStruct->pNext;
-        return;
-      }
-
-      ppNext = &pStruct->pNext;
-    }
-  }
-
 
   inline uint64_t getObjectHandle(uint64_t handle) {
     return handle;
@@ -272,6 +253,47 @@ namespace dxvk::vk {
     label.pLabelName = text;
     return label;
   }
+
+
+  inline const void* scanChain(const void* pNext, VkStructureType sType) {
+    auto chain = reinterpret_cast<const VkBaseInStructure*>(pNext);
+
+    while (chain && chain->sType != sType)
+      chain = chain->pNext;
+
+    return chain;
+  }
+
+  inline void* scanChain(void* pNext, VkStructureType sType) {
+    auto chain = reinterpret_cast<VkBaseOutStructure*>(pNext);
+
+    while (chain && chain->sType != sType)
+      chain = chain->pNext;
+
+    return chain;
+  }
+
+  template<typename Fn>
+  inline void iterChain(void* pNext, const Fn& fn) {
+    auto chain = reinterpret_cast<const VkBaseInStructure*>(pNext);
+
+    while (chain) {
+      fn(chain);
+      chain = chain->pNext;
+    }
+  }
+
+  inline VkExtensionProperties makeExtension(const char* name) {
+    VkExtensionProperties result = { };
+    std::strncpy(result.extensionName, name, sizeof(result.extensionName) - 1u);
+    return result;
+  }
+
+  struct SortExtension {
+    inline bool operator () (const VkExtensionProperties& a, const VkExtensionProperties& b) const {
+      return std::strncmp(a.extensionName, b.extensionName, sizeof(a.extensionName)) < 0;
+    }
+  };
 
 }
 
