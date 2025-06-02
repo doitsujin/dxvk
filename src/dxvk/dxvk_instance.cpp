@@ -83,7 +83,7 @@ namespace dxvk {
 
   Rc<DxvkAdapter> DxvkInstance::findAdapterByLuid(const void* luid) const {
     for (const auto& adapter : m_adapters) {
-      const auto& vk11 = adapter->devicePropertiesExt().vk11;
+      const auto& vk11 = adapter->deviceProperties().vk11;
 
       if (vk11.deviceLUIDValid && !std::memcmp(luid, vk11.deviceLUID, VK_LUID_SIZE))
         return adapter;
@@ -97,8 +97,8 @@ namespace dxvk {
     for (const auto& adapter : m_adapters) {
       const auto& props = adapter->deviceProperties();
 
-      if (props.vendorID == vendorId
-       && props.deviceID == deviceId)
+      if (props.core.properties.vendorID == vendorId
+       && props.core.properties.deviceID == deviceId)
         return adapter;
     }
 
@@ -271,7 +271,7 @@ namespace dxvk {
       if (filter.testAdapter(deviceProperties[i])) {
         Rc<DxvkAdapter> adapter = new DxvkAdapter(*this, adapters[i]);
 
-        if (filter.testCreatedAdapter(adapter->devicePropertiesExt())) {
+        if (filter.testCreatedAdapter(adapter->deviceProperties())) {
           result.push_back(adapter);
 
           if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
@@ -294,8 +294,8 @@ namespace dxvk {
         uint32_t bRank = deviceTypes.size();
 
         for (uint32_t i = 0; i < std::min(aRank, bRank); i++) {
-          if (a->deviceProperties().deviceType == deviceTypes[i]) aRank = i;
-          if (b->deviceProperties().deviceType == deviceTypes[i]) bRank = i;
+          if (a->deviceProperties().core.properties.deviceType == deviceTypes[i]) aRank = i;
+          if (b->deviceProperties().core.properties.deviceType == deviceTypes[i]) bRank = i;
         }
 
         return aRank < bRank;

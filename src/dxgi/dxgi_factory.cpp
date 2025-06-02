@@ -105,7 +105,7 @@ namespace dxvk {
 
       // Remove all monitors that are associated
       // with the current adapter from the list.
-      const auto& vk11 = adapter->devicePropertiesExt().vk11;
+      const auto& vk11 = adapter->deviceProperties().vk11;
 
       if (vk11.deviceLUIDValid) {
         auto luid = reinterpret_cast<const LUID*>(&vk11.deviceLUID);

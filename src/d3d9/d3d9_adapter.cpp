@@ -255,8 +255,8 @@ namespace dxvk {
     // Therefore...
     VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
 
-    auto availableFlags = m_adapter->deviceProperties().limits.framebufferColorSampleCounts
-                        & m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
+    auto availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferColorSampleCounts
+                        & m_adapter->deviceProperties().core.properties.limits.framebufferDepthSampleCounts;
 
     if (!(availableFlags & sampleFlags))
       return D3DERR_NOTAVAILABLE;
@@ -340,7 +340,7 @@ namespace dxvk {
     auto& options = m_parent->GetOptions();
 
     const uint32_t maxShaderModel = m_parent->IsD3D8Compatible() ? std::min(1u, options.shaderModel) : options.shaderModel;
-    const VkPhysicalDeviceLimits& limits = m_adapter->deviceProperties().limits;
+    const auto& limits = m_adapter->deviceProperties().core.properties.limits;
 
     // TODO: Actually care about what the adapter supports here.
     // ^ For Intel and older cards most likely here.
@@ -794,7 +794,7 @@ namespace dxvk {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto& vk11 = m_adapter->devicePropertiesExt().vk11;
+    auto& vk11 = m_adapter->deviceProperties().vk11;
 
     if (vk11.deviceLUIDValid)
       *pLUID = bit::cast<LUID>(vk11.deviceLUID);
@@ -907,10 +907,10 @@ namespace dxvk {
 
     const auto& props = m_adapter->deviceProperties();
 
-    m_deviceGuid   = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
-    m_vendorId     = props.vendorID;
-    m_deviceId     = props.deviceID;
-    m_deviceDesc   = props.deviceName;
+    m_deviceGuid   = bit::cast<GUID>(props.vk11.deviceUUID);
+    m_vendorId     = props.core.properties.vendorID;
+    m_deviceId     = props.core.properties.deviceID;
+    m_deviceDesc   = props.core.properties.deviceName;
 
     // Custom Vendor ID / Device ID / Device Description
     if (options.customVendorId >= 0)
@@ -946,7 +946,7 @@ namespace dxvk {
         fallbackDesc   = "NVIDIA GeForce RTX 3060";
       }
 
-      bool hideNvidiaGpu = m_adapter->devicePropertiesExt().vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+      bool hideNvidiaGpu = props.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
         ? options.hideNvidiaGpu : options.hideNvkGpu;
 
       bool hideGpu = (m_vendorId == uint32_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)

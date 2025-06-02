@@ -188,7 +188,10 @@ namespace dxvk {
         if (!this->waitVrKeyReady())
             return DxvkNameSet();
 
-        sprintf(name, "PCIID:%04x:%04x", adapter->deviceProperties().vendorID, adapter->deviceProperties().deviceID);
+        sprintf(name, "PCIID:%04x:%04x",
+          adapter->deviceProperties().core.properties.vendorID,
+          adapter->deviceProperties().core.properties.deviceID);
+
         len = 0;
         if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, nullptr, &len)))
         {

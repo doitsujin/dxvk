@@ -13,7 +13,7 @@ namespace dxvk {
     const Rc<DxvkAdapter> adapter = device->adapter();
 
     const DxvkDeviceFeatures& devFeatures = device->features();
-    const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
+    const DxvkDeviceInfo& devInfo = device->properties();
 
     useDepthClipWorkaround
       = !devFeatures.extDepthClipEnable.depthClipEnable;
