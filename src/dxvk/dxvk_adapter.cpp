@@ -312,11 +312,6 @@ namespace dxvk {
     if (disableNvLowLatency2)
       devExtensions.nvLowLatency2.setMode(DxvkExtMode::Disabled);
 
-    // If we don't have pageable device memory support, at least use
-    // the legacy AMD extension to ensure we can oversubscribe VRAM
-    if (!m_deviceExtensions.supports(devExtensions.extPageableDeviceLocalMemory.name()))
-      devExtensions.amdMemoryOverallocationBehaviour.setMode(DxvkExtMode::Optional);
-
     // Proprietary qcom is broken and will fail device creation if we
     // enable EXT_multi_draw, despite advertizing it as supported.
     if (m_deviceInfo.vk12.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY)
@@ -508,10 +503,6 @@ namespace dxvk {
     this->logNameList(extensionNameList);
     this->logFeatures(enabledFeatures);
 
-    // Report the desired overallocation behaviour to the driver
-    VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo = { VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD };
-    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
-
     // Create the requested queues
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -542,9 +533,6 @@ namespace dxvk {
     info.ppEnabledExtensionNames    = extensionNameList.names();
     info.pEnabledFeatures           = &enabledFeatures.core.features;
 
-    if (devExtensions.amdMemoryOverallocationBehaviour)
-      overallocInfo.pNext = std::exchange(info.pNext, &overallocInfo);
-    
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
 
@@ -1104,7 +1092,6 @@ namespace dxvk {
   std::vector<DxvkExt*> DxvkAdapter::getExtensionList(
           DxvkDeviceExtensions&   devExtensions) {
     return {{
-      &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.extAttachmentFeedbackLoopLayout,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
