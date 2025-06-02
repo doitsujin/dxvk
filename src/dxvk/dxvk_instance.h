@@ -167,8 +167,8 @@ namespace dxvk {
     * both DXVK and any extension providers.
     * \returns Instance extension name list
     */
-    const DxvkNameList& extensionNameList() const {
-      return m_extensionNames;
+    DxvkExtensionList getExtensionList() const {
+      return m_extensionList;
     }
 
     /**
@@ -189,6 +189,7 @@ namespace dxvk {
     DxvkInstanceExtensions  m_extensions;
     DxvkNameSet             m_extensionSet;
     DxvkNameList            m_extensionNames;
+    DxvkExtensionList       m_extensionList;
     DxvkDebugFlags          m_debugFlags = 0u;
 
     VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
