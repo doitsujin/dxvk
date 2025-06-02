@@ -20,10 +20,11 @@ namespace dxvk {
 
 
   DxvkAdapter::DxvkAdapter(
-    const Rc<vk::InstanceFn>& vki,
+          DxvkInstance&       instance,
           VkPhysicalDevice    handle)
-  : m_vki           (vki),
-    m_handle        (handle) {
+  : m_instance      (&instance),
+    m_handle        (handle),
+    m_capabilities  (instance, handle, nullptr) {
     this->queryExtensions();
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
@@ -36,14 +37,21 @@ namespace dxvk {
   DxvkAdapter::~DxvkAdapter() {
     
   }
-  
+
+
+  Rc<vk::InstanceFn> DxvkAdapter::vki() const {
+    return m_instance->vki();
+  }
+
   
   DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
+    auto vk = m_instance->vki();
+
     VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT };
     VkPhysicalDeviceMemoryProperties2 memProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
     memProps.pNext = m_hasMemoryBudget ? &memBudget : nullptr;
 
-    m_vki->vkGetPhysicalDeviceMemoryProperties2(m_handle, &memProps);
+    vk->vkGetPhysicalDeviceMemoryProperties2(m_handle, &memProps);
     
     DxvkAdapterMemoryInfo info = { };
     info.heapCount = memProps.memoryProperties.memoryHeapCount;
@@ -71,16 +79,20 @@ namespace dxvk {
 
 
   VkPhysicalDeviceMemoryProperties DxvkAdapter::memoryProperties() const {
-    VkPhysicalDeviceMemoryProperties memoryProperties;
-    m_vki->vkGetPhysicalDeviceMemoryProperties(m_handle, &memoryProperties);
+    auto vk = m_instance->vki();
+
+    VkPhysicalDeviceMemoryProperties memoryProperties = { };
+    vk->vkGetPhysicalDeviceMemoryProperties(m_handle, &memoryProperties);
     return memoryProperties;
   }
   
   
   DxvkFormatFeatures DxvkAdapter::getFormatFeatures(VkFormat format) const {
+    auto vk = m_instance->vki();
+
     VkFormatProperties3 properties3 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3 };
     VkFormatProperties2 properties2 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, &properties3 };
-    m_vki->vkGetPhysicalDeviceFormatProperties2(m_handle, format, &properties2);
+    vk->vkGetPhysicalDeviceFormatProperties2(m_handle, format, &properties2);
 
     DxvkFormatFeatures result;
     result.optimal = properties3.optimalTilingFeatures;
@@ -92,6 +104,8 @@ namespace dxvk {
 
   std::optional<DxvkFormatLimits> DxvkAdapter::getFormatLimits(
     const DxvkFormatQuery&          query) const {
+    auto vk = m_instance->vki();
+
     VkPhysicalDeviceExternalImageFormatInfo externalInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
     externalInfo.handleType = query.handleType;
 
@@ -111,8 +125,7 @@ namespace dxvk {
     if (externalInfo.handleType)
       externalProperties.pNext = std::exchange(properties.pNext, &externalProperties);
 
-    VkResult vr = m_vki->vkGetPhysicalDeviceImageFormatProperties2(
-      m_handle, &info, &properties);
+    VkResult vr = vk->vkGetPhysicalDeviceImageFormatProperties2(m_handle, &info, &properties);
 
     if (vr != VK_SUCCESS)
       return std::nullopt;
@@ -275,6 +288,8 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(
     const Rc<DxvkInstance>&   instance,
           DxvkDeviceFeatures  enabledFeatures) {
+    auto vk = m_instance->vki();
+
     DxvkDeviceExtensions devExtensions;
     auto devExtensionList = getExtensionList(devExtensions);
 
@@ -534,7 +549,7 @@ namespace dxvk {
     info.pEnabledFeatures           = &enabledFeatures.core.features;
 
     VkDevice device = VK_NULL_HANDLE;
-    VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
+    VkResult vr = vk->vkCreateDevice(m_handle, &info, nullptr, &device);
 
     if (vr != VK_SUCCESS && enableCudaInterop) {
       // Enabling certain Vulkan extensions can cause device creation to fail on
@@ -549,13 +564,13 @@ namespace dxvk {
       info.enabledExtensionCount      = extensionNameList.count();
       info.ppEnabledExtensionNames    = extensionNameList.names();
 
-      vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
+      vr = vk->vkCreateDevice(m_handle, &info, nullptr, &device);
     }
 
     if (vr != VK_SUCCESS)
       throw DxvkError("DxvkAdapter: Failed to create device");
     
-    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, true, device);
+    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(vk, true, device);
 
     DxvkDeviceQueueSet queues = { };
     queues.graphics = getDeviceQueue(vkd, queueFamilies.graphics, 0);
@@ -569,6 +584,8 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::importDevice(
     const Rc<DxvkInstance>&   instance,
     const DxvkDeviceImportInfo& args) {
+    auto vk = m_instance->vki();
+
     DxvkDeviceExtensions devExtensions;
     auto devExtensionList = getExtensionList(devExtensions);
 
@@ -717,7 +734,7 @@ namespace dxvk {
     this->logFeatures(enabledFeatures);
 
     // Create device loader
-    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, false, args.device);
+    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(vk, false, args.device);
 
     // We only support one queue when importing devices, and no sparse.
     DxvkDeviceQueueSet queues = { };
@@ -795,17 +812,20 @@ namespace dxvk {
   
   
   void DxvkAdapter::queryExtensions() {
-    m_deviceExtensions = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
+    auto vk = m_instance->vki();
+    m_deviceExtensions = DxvkNameSet::enumDeviceExtensions(vk, m_handle);
   }
 
 
   void DxvkAdapter::queryDeviceInfo() {
+    auto vk = m_instance->vki();
+
     m_deviceInfo = DxvkDeviceInfo();
     m_deviceInfo.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
     m_deviceInfo.core.pNext = nullptr;
 
     // Query info now so that we have basic device properties available
-    m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
+    vk->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
 
     m_deviceInfo.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
     m_deviceInfo.vk11.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk11);
@@ -882,7 +902,7 @@ namespace dxvk {
     }
 
     // Query full device properties for all enabled extensions
-    m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
+    vk->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
     // Some drivers reports the driver version in a slightly different format
     m_deviceInfo.driverVersion = decodeDriverVersion(
@@ -891,6 +911,8 @@ namespace dxvk {
 
 
   void DxvkAdapter::queryDeviceFeatures() {
+    auto vk = m_instance->vki();
+
     m_deviceFeatures = DxvkDeviceFeatures();
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     m_deviceFeatures.core.pNext = nullptr;
@@ -1062,17 +1084,19 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME))
       m_deviceFeatures.nvxImageViewHandle = VK_TRUE;
 
-    m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
+    vk->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
   }
 
 
   void DxvkAdapter::queryDeviceQueues() {
     uint32_t numQueueFamilies = 0;
-    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
+    auto vk = m_instance->vki();
+
+    vk->vkGetPhysicalDeviceQueueFamilyProperties(
       m_handle, &numQueueFamilies, nullptr);
     
     m_queueFamilies.resize(numQueueFamilies);
-    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
+    vk->vkGetPhysicalDeviceQueueFamilyProperties(
       m_handle, &numQueueFamilies, m_queueFamilies.data());
   }
 

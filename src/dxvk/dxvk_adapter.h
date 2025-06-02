@@ -95,7 +95,7 @@ namespace dxvk {
   public:
     
     DxvkAdapter(
-      const Rc<vk::InstanceFn>& vki,
+            DxvkInstance&       instance,
             VkPhysicalDevice    handle);
     ~DxvkAdapter();
     
@@ -103,9 +103,7 @@ namespace dxvk {
      * \brief Vulkan instance functions
      * \returns Vulkan instance functions
      */
-    Rc<vk::InstanceFn> vki() const {
-      return m_vki;
-    }
+    Rc<vk::InstanceFn> vki() const;
     
     /**
      * \brief Physical device handle
@@ -316,8 +314,10 @@ namespace dxvk {
 
   private:
     
-    Rc<vk::InstanceFn>  m_vki;
-    VkPhysicalDevice    m_handle;
+    DxvkInstance*           m_instance  = nullptr;
+    VkPhysicalDevice        m_handle    = VK_NULL_HANDLE;
+
+    DxvkDeviceCapabilities  m_capabilities;
 
     DxvkNameSet         m_extraExtensions;
     DxvkNameSet         m_deviceExtensions;
