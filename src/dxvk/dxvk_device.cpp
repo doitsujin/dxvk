@@ -19,7 +19,7 @@ namespace dxvk {
     m_debugFlags        (instance->debugFlags()),
     m_queues            (queues),
     m_features          (features),
-    m_properties        (adapter->devicePropertiesExt()),
+    m_properties        (adapter->deviceProperties()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
     m_submissionQueue   (this, queueCallback) {

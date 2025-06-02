@@ -78,15 +78,6 @@ namespace dxvk {
   }
 
 
-  VkPhysicalDeviceMemoryProperties DxvkAdapter::memoryProperties() const {
-    auto vk = m_instance->vki();
-
-    VkPhysicalDeviceMemoryProperties memoryProperties = { };
-    vk->vkGetPhysicalDeviceMemoryProperties(m_handle, &memoryProperties);
-    return memoryProperties;
-  }
-  
-  
   DxvkFormatFeatures DxvkAdapter::getFormatFeatures(VkFormat format) const {
     auto vk = m_instance->vki();
 
@@ -776,7 +767,7 @@ namespace dxvk {
   
   
   void DxvkAdapter::logAdapterInfo() const {
-    const auto deviceInfo = this->devicePropertiesExt();
+    const auto deviceInfo = this->deviceProperties();
     const auto memoryInfo = this->memoryProperties();
     
     Logger::info(str::format(deviceInfo.core.properties.deviceName, ":",

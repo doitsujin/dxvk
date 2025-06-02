@@ -15,7 +15,7 @@ namespace dxvk {
     const D3D11Options&         Options,
           D3D_FEATURE_LEVEL     FeatureLevel)
   : m_features    (Adapter->features()),
-    m_properties  (Adapter->devicePropertiesExt()) {
+    m_properties  (Adapter->deviceProperties()) {
     // Assume no TBDR. DXVK does not optimize for TBDR architectures
     // anyway, and D3D11 does not really provide meaningful support.
     m_architectureInfo.TileBasedDeferredRenderer          = FALSE;

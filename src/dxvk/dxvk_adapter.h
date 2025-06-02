@@ -120,20 +120,8 @@ namespace dxvk {
      * properties of the Vulkan physical device.
      * \returns Physical device core properties
      */
-    const VkPhysicalDeviceProperties& deviceProperties() const {
-      return m_deviceInfo.core.properties;
-    }
-
-    /**
-     * \brief Device info
-     * 
-     * Returns a read-only reference to the full
-     * device info structure, including extended
-     * properties.
-     * \returns Device info struct
-     */
-    const DxvkDeviceInfo& devicePropertiesExt() const {
-      return m_deviceInfo;
+    const DxvkDeviceInfo& deviceProperties() const {
+      return m_capabilities.getProperties();
     }
     
     /**
@@ -143,9 +131,20 @@ namespace dxvk {
      * \returns Device features
      */
     const DxvkDeviceFeatures& features() const {
-      return m_deviceFeatures;
+      return m_capabilities.getFeatures();
     }
     
+    /**
+     * \brief Memory properties
+     *
+     * Queries the memory types and memory heaps of
+     * the device. This is useful for memory allocators.
+     * \returns Device memory properties
+     */
+    const VkPhysicalDeviceMemoryProperties& memoryProperties() const {
+      return m_capabilities.getMemoryInfo();
+    }
+
     /**
      * \brief Retrieves memory heap info
      * 
@@ -157,15 +156,6 @@ namespace dxvk {
      */
     DxvkAdapterMemoryInfo getMemoryHeapInfo() const;
     
-    /**
-     * \brief Memory properties
-     * 
-     * Queries the memory types and memory heaps of
-     * the device. This is useful for memory allocators.
-     * \returns Device memory properties
-     */
-    VkPhysicalDeviceMemoryProperties memoryProperties() const;
-
     /**
      * \brief Queries format feature support
      *
