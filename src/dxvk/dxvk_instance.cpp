@@ -269,7 +269,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < numAdapters; i++) {
       if (filter.testAdapter(deviceProperties[i])) {
-        Rc<DxvkAdapter> adapter = new DxvkAdapter(m_vki, adapters[i]);
+        Rc<DxvkAdapter> adapter = new DxvkAdapter(*this, adapters[i]);
 
         if (filter.testCreatedAdapter(adapter->devicePropertiesExt())) {
           result.push_back(adapter);
