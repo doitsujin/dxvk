@@ -697,8 +697,6 @@ namespace dxvk {
       return m_dxvkDevice->getShaderPipelineStages();
     }
 
-    static DxvkDeviceFeatures GetDeviceFeatures(const Rc<DxvkAdapter>& adapter);
-
     /**
      * \brief Returns whether the Vulkan device supports the required features for ProcessVertices
      */
