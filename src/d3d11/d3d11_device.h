@@ -479,9 +479,6 @@ namespace dxvk {
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
     
-    static DxvkDeviceFeatures GetDeviceFeatures(
-      const Rc<DxvkAdapter>&  Adapter);
-
     DxvkBarrierControlFlags GetOptionsBarrierControlFlags() {
       DxvkBarrierControlFlags barrierControl = 0u;
 
