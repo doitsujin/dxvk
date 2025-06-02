@@ -89,8 +89,7 @@ extern "C" {
     try {
       Logger::info(str::format("D3D11InternalCreateDevice: Using feature level ", devFeatureLevel));
 
-      DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(dxvkAdapter);
-      Rc<DxvkDevice> dxvkDevice = dxvkAdapter->createDevice(dxvkInstance, deviceFeatures);
+      Rc<DxvkDevice> dxvkDevice = dxvkAdapter->createDevice();
 
       Com<D3D11DXGIDevice> device = new D3D11DXGIDevice(
         pAdapter, nullptr, nullptr,
@@ -417,7 +416,7 @@ extern "C" {
           Logger::err(str::format("Failed to lock vkd3d-proton device queue: ", hr));
       };
 
-      Rc<DxvkDevice> dxvkDevice = dxvkAdapter->importDevice(dxvkInstance, deviceInfo);
+      Rc<DxvkDevice> dxvkDevice = dxvkAdapter->importDevice(deviceInfo);
 
       // Create and return the actual D3D11 device
       Com<D3D11DXGIDevice> device = new D3D11DXGIDevice(

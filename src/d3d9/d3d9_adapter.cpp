@@ -46,7 +46,6 @@ namespace dxvk {
     m_displayIndex    (DisplayIndex),
     m_modeCacheFormat (D3D9Format::Unknown),
     m_d3d9Formats     (this, Adapter, m_parent->GetOptions()) {
-    m_adapter->logAdapterInfo();
     CacheIdentifierInfo();
   }
 
