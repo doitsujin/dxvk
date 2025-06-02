@@ -5262,7 +5262,8 @@ namespace dxvk {
     
     if (modifiers.saturate) {
       DxbcRegMask mask;
-      DxbcRegisterValue vec0, vec1;
+      DxbcRegisterValue vec0 = { };
+      DxbcRegisterValue vec1 = { };
 
       if (value.type.ctype == DxbcScalarType::Float32) {
         mask = DxbcRegMask::firstN(value.type.ccount);
