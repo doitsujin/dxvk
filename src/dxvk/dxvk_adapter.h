@@ -5,6 +5,7 @@
 
 #include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
+#include "dxvk_extension_provider.h"
 #include "dxvk_include.h"
 #include "dxvk_format.h"
 
@@ -198,7 +199,7 @@ namespace dxvk {
      * This is used for OpenVR support.
      */
     void enableExtensions(
-      const DxvkNameSet&        extensions);
+      const DxvkExtensionList&  extensions);
     
     /**
      * \brief Creates a DXVK device

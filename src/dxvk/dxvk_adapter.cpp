@@ -129,11 +129,9 @@ namespace dxvk {
   }
 
 
-  void DxvkAdapter::enableExtensions(const DxvkNameSet& extensions) {
-    auto list = extensions.toNameList();
-
-    for (uint32_t i = 0u; i < list.count(); i++)
-      m_extraExtensions.push_back(vk::makeExtension(list.name(i)));
+  void DxvkAdapter::enableExtensions(const DxvkExtensionList& extensions) {
+    for (const auto& ext : extensions)
+      m_extraExtensions.push_back(ext);
   }
 
 

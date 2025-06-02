@@ -164,8 +164,10 @@ namespace dxvk {
       if (!extensionsAvailable.enableExtensions(extensionInfos.size(), extensionInfos.data(), &m_extensionSet))
         throw DxvkError("DxvkInstance: Required instance extensions not supported");
 
-      for (const auto& provider : m_extProviders)
-        m_extensionSet.merge(provider->getInstanceExtensions());
+      for (const auto& provider : m_extProviders) {
+        for (const auto& ext : provider->getInstanceExtensions())
+          m_extensionSet.add(ext.extensionName);
+      }
 
       // Generate list of extensions to enable
       m_extensionNames = m_extensionSet.toNameList();
@@ -215,6 +217,9 @@ namespace dxvk {
       if (m_vki->vkCreateDebugUtilsMessengerEXT(m_vki->instance(), &messengerInfo, nullptr, &m_messenger))
         Logger::err("DxvkInstance::createInstance: Failed to create debug messenger, proceeding without.");
     }
+
+    for (uint32_t i = 0u; i < m_extensionNames.count(); i++)
+      m_extensionList.push_back(vk::makeExtension(m_extensionNames.name(i)));
 
     // Write back debug flags
     m_debugFlags = debugFlags;
