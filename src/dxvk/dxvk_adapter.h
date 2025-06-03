@@ -4,7 +4,6 @@
 #include <optional>
 
 #include "dxvk_device_info.h"
-#include "dxvk_extensions.h"
 #include "dxvk_extension_provider.h"
 #include "dxvk_include.h"
 #include "dxvk_format.h"

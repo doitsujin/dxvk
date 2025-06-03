@@ -1,7 +1,6 @@
 #pragma once
 
 #include "dxvk_include.h"
-#include "dxvk_extensions.h"
 
 #include <vector>
 #include <string>
