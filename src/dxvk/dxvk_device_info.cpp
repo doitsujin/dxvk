@@ -418,7 +418,10 @@ namespace dxvk {
     if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer) {
       bool enableDescriptorBuffer = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY;
+                                 || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY
+                                 || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
+                                 || m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
+
       applyTristate(enableDescriptorBuffer, instance.options().enableDescriptorBuffer);
 
       if (!enableDescriptorBuffer)
