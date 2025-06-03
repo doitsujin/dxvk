@@ -421,7 +421,8 @@ namespace dxvk {
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS;
+                                 || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS
+                                 || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE;
 
       applyTristate(enableDescriptorBuffer, instance.options().enableDescriptorBuffer);
 
