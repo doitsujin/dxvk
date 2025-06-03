@@ -299,11 +299,30 @@ namespace dxvk {
     bool mustTrackPipelineLifetime() const;
 
     /**
+     * \brief Checks whether descriptor heaps can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseDescriptorHeap() const {
+      return m_features.extDescriptorHeap.descriptorHeap;
+    }
+
+    /**
      * \brief Checks whether descriptor buffers can be used
      * \returns \c true if all required features are supported.
      */
     bool canUseDescriptorBuffer() const {
-      return m_features.extDescriptorBuffer.descriptorBuffer;
+      return m_features.extDescriptorBuffer.descriptorBuffer && !canUseDescriptorHeap();
+    }
+
+    /**
+     * \brief Checks whether CUDA interop is enabled
+     *
+     * Relevant for descriptor heap usage since CUDA interop still
+     * needs legacy image view and sampler handles.
+     * \returns \c true if all required features are supported.
+     */
+    bool hasCudaInterop() const {
+      return m_features.nvxImageViewHandle;
     }
 
     /**
