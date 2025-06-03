@@ -5,7 +5,6 @@
 #include "dxvk_compute.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
-#include "dxvk_extensions.h"
 #include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"

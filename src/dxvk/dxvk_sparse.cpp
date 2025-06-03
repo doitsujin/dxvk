@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <sstream>
 
 #include "dxvk_buffer.h"
