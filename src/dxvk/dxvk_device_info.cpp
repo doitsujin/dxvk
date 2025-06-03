@@ -23,6 +23,7 @@ namespace dxvk {
     HANDLE_EXT(extDepthClipEnable);                \
     HANDLE_EXT(extDepthBiasControl);               \
     HANDLE_EXT(extDescriptorBuffer);               \
+    HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extFragmentShaderInterlock);        \
     HANDLE_EXT(extFullScreenExclusive);            \
@@ -70,6 +71,7 @@ namespace dxvk {
     HANDLE_EXT(extConservativeRasterization);      \
     HANDLE_EXT(extCustomBorderColor);              \
     HANDLE_EXT(extDescriptorBuffer);               \
+    HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
     HANDLE_EXT(extLineRasterization);              \
@@ -455,6 +457,25 @@ namespace dxvk {
 
   void DxvkDeviceCapabilities::disableUnusedFeatures(
     const DxvkInstance&               instance) {
+    if (m_featuresSupported.extDescriptorHeap.descriptorHeap) {
+      // Only enable descriptor heaps on drivers that are either known to work,
+      // or are maintained well enough that any issues are likely to get fixed
+      bool enableDescriptorHeap = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
+
+      applyTristate(enableDescriptorHeap, instance.options().enableDescriptorHeap);
+
+      if (!enableDescriptorHeap)
+        m_featuresSupported.extDescriptorHeap.descriptorHeap = VK_FALSE;
+    }
+
+    // Descriptor heap deprecates descriptor buffer
+    if (m_featuresSupported.extDescriptorHeap.descriptorHeap)
+      m_featuresSupported.extDescriptorBuffer.descriptorBuffer = VK_FALSE;
+
     // Descriptor buffers cause perf regressions on some GPUs
     if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer) {
       bool enableDescriptorBuffer = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
@@ -685,7 +706,7 @@ namespace dxvk {
       }
     }
 
-    if (m_properties.core.properties.limits.maxPushConstantsSize < MaxTotalPushDataSize)
+    if (!m_featuresEnabled.extDescriptorHeap.descriptorHeap && m_properties.core.properties.limits.maxPushConstantsSize < MaxTotalPushDataSize)
       return str::format("Device does not support ", MaxTotalPushDataSize, " of push data");
 
     return std::nullopt;
@@ -851,8 +872,11 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extDepthBiasControl, floatRepresentation, false),
       ENABLE_EXT_FEATURE(extDepthBiasControl, depthBiasExact, false),
 
-      /* Descriptor buffers for a more efficient binding model */
+      /* Deprecated, used when descriptor heap is unavailable */
       ENABLE_EXT_FEATURE(extDescriptorBuffer, descriptorBuffer, false),
+
+      /* Descriptor heaps for a more efficient binding model */
+      ENABLE_EXT_FEATURE(extDescriptorHeap, descriptorHeap, false),
 
       /* Dynamic state to further improve the graphics_pipeline_library experience */
       ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3AlphaToCoverageEnable, false),
