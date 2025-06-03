@@ -147,6 +147,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether the adapter is usable for DXVK
+     *
+     * \param [out] error Detailed error message on error
+     * \returns \c true if the adapter supports required features
+     */
+    bool isCompatible(std::string& error);
+
+    /**
      * \brief Retrieves memory heap info
      * 
      * Returns properties of all available memory heaps,
