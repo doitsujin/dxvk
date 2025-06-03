@@ -54,6 +54,7 @@ namespace dxvk {
     HANDLE_EXT(khrPresentWait);                    \
     HANDLE_EXT(khrPresentWait2);                   \
     HANDLE_EXT(khrShaderFloatControls2);           \
+    HANDLE_EXT(khrShaderUntypedPointers);          \
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMaintenance1);          \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
@@ -943,6 +944,9 @@ namespace dxvk {
 
       /* Used for shader compilation in addition to regular float_controls features */
       ENABLE_EXT_FEATURE(khrShaderFloatControls2, shaderFloatControls2, false),
+
+      /* Untyped pointers, dependency for descriptor heaps */
+      ENABLE_EXT_FEATURE(khrShaderUntypedPointers, shaderUntypedPointers, false),
 
       /* Swapchain, needed for presentation */
       ENABLE_EXT(khrSwapchain, true),
