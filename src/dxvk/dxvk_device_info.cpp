@@ -55,6 +55,7 @@ namespace dxvk {
     HANDLE_EXT(khrPresentWait2);                   \
     HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrShaderSubgroupUniformControlFlow);\
+    HANDLE_EXT(khrShaderUntypedPointers);          \
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMaintenance1);          \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
@@ -946,6 +947,9 @@ namespace dxvk {
 
       /* Subgroup uniform control flow for some built-in shaders */
       ENABLE_EXT_FEATURE(khrShaderSubgroupUniformControlFlow, shaderSubgroupUniformControlFlow, false),
+
+      /* Untyped pointers, dependency for descriptor heaps */
+      ENABLE_EXT_FEATURE(khrShaderUntypedPointers, shaderUntypedPointers, false),
 
       /* Swapchain, needed for presentation */
       ENABLE_EXT(khrSwapchain, true),
