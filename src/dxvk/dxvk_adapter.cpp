@@ -39,6 +39,17 @@ namespace dxvk {
   }
 
   
+  bool DxvkAdapter::isCompatible(std::string& error) {
+    std::array<char, 1024u> message = { };
+
+    if (m_capabilities.isSuitable(message.size(), message.data()))
+      return true;
+
+    error = std::string(message.data());
+    return false;
+  }
+
+
   DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
     bool hasMemoryBudget = m_capabilities.getFeatures().extMemoryBudget;
 

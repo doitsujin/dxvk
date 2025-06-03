@@ -62,10 +62,6 @@ namespace dxvk::vk {
     return sym(nullptr, name);
   }
 
-  bool LibraryLoader::valid() const {
-    return m_getInstanceProcAddr != nullptr;
-  }
-  
   
   InstanceLoader::InstanceLoader(const Rc<LibraryLoader>& library, bool owned, VkInstance instance)
   : m_library(library), m_instance(instance), m_owned(owned) { }
