@@ -154,10 +154,10 @@ namespace dxvk {
 
     // Get device features to enable
     size_t featureBlobSize = 0u;
-    m_capabilities.queryDevcieFeatures(&featureBlobSize, nullptr);
+    m_capabilities.queryDeviceFeatures(&featureBlobSize, nullptr);
 
     std::vector<char> featureBlob(featureBlobSize);
-    m_capabilities.queryDevcieFeatures(&featureBlobSize, featureBlob.data());
+    m_capabilities.queryDeviceFeatures(&featureBlobSize, featureBlob.data());
 
     auto features = reinterpret_cast<const VkPhysicalDeviceFeatures2*>(featureBlob.data());
 

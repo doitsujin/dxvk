@@ -153,7 +153,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkDeviceCapabilities::queryDevcieFeatures(
+  bool DxvkDeviceCapabilities::queryDeviceFeatures(
           size_t*                     size,
           void*                       data) const {
     if (!data) {

@@ -272,7 +272,7 @@ namespace dxvk {
      * \param [out] data Pointer to meory blob of \c size bytes
      * \returns \c true on success, \c false if the blob at \c data is too small.
      */
-    bool queryDevcieFeatures(
+    bool queryDeviceFeatures(
             size_t*                     size,
             void*                       data) const;
 
