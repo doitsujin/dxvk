@@ -6602,16 +6602,13 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::BindFramebuffer() {
+    constexpr size_t DsvIndex = caps::MaxSimultaneousRenderTargets;
+
     m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
 
     DxvkRenderTargets attachments;
 
     bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
-
-    // D3D9 doesn't have the concept of a framebuffer object,
-    // so we'll just create a new one every time the render
-    // target bindings are updated. Set up the attachments.
-    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
     // Some games break if render targets that get disabled using the color write mask
     // end up shrinking the render area. So we don't bind those.
@@ -6619,84 +6616,74 @@ namespace dxvk {
     // But we want to minimize frame buffer changes because those
     // break up the current render pass. So we dont unbind for disabled color write masks
     // if the RT has the same size or is bigger than the smallest active RT.
+    std::array<VkExtent2D, DsvIndex + 1u> rtExtents = { };
+    std::array<VkSampleCountFlags, DsvIndex + 1u> rtSampleCounts = { };
 
-    uint32_t boundMask = 0u;
-    uint32_t anyColorWriteMask = 0u;
-    uint32_t limitsRenderAreaMask = 0u;
+    VkSampleCountFlags sampleCount = 0u;
+
     VkExtent2D renderArea = { ~0u, ~0u };
+
     for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
       if (!HasRenderTargetBound(i))
         continue;
 
-      const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
+      bool writesRenderTarget = (m_psShaderMasks.rtMask & (1u << i)) &&
+        (m_state.renderStates[ColorWriteIndex(i)] & 0xfu);
 
-      // Dont bind it if the sample count doesnt match
-      if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
-        sampleCount = rtImageInfo.sampleCount;
-      else if (unlikely(sampleCount != rtImageInfo.sampleCount))
+      if (!writesRenderTarget)
         continue;
 
-      // Dont bind it if the pixel shader doesnt write to it
-      if (!(m_psShaderMasks.rtMask & (1 << i)))
-        continue;
+      rtExtents[i] = m_state.renderTargets[i]->GetSurfaceExtent();
+      rtSampleCounts[i] = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info().sampleCount;
 
-      boundMask |= 1 << i;
+      if (!sampleCount)
+        sampleCount = rtSampleCounts[i];
 
-      VkExtent2D rtExtent = m_state.renderTargets[i]->GetSurfaceExtent();
-      bool rtLimitsRenderArea = rtExtent.width < renderArea.width || rtExtent.height < renderArea.height;
-      limitsRenderAreaMask |= rtLimitsRenderArea << i;
-
-      // It will only get bound if its not smaller than the others.
-      // So RTs with a disabled color write mask will never impact the render area.
-      if (m_state.renderStates[ColorWriteIndex(i)] == 0)
-        continue;
-
-      anyColorWriteMask |= 1 << i;
-
-      if (rtExtent.width < renderArea.width && rtExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 1 << i;
-      }
-
-      renderArea.width = std::min(renderArea.width, rtExtent.width);
-      renderArea.height = std::min(renderArea.height, rtExtent.height);
-    }
-
-    bool dsvBound = false;
-    if (m_state.depthStencil != nullptr) {
-      // We only need to skip binding the DSV if it would shrink the render area
-      // despite not being used, otherwise we might end up with unnecessary render pass spills
-      bool anyDSStateEnabled = m_state.renderStates[D3DRS_ZENABLE]
-        || m_state.renderStates[D3DRS_ZWRITEENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE]
-        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
-
-      VkExtent2D dsvExtent = m_state.depthStencil->GetSurfaceExtent();
-      bool dsvLimitsRenderArea = dsvExtent.width < renderArea.width || dsvExtent.height < renderArea.height;
-
-      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
-      const bool sampleCountMatches = sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount;
-
-      dsvBound = sampleCountMatches && (anyDSStateEnabled || !dsvLimitsRenderArea);
-      if (sampleCountMatches && anyDSStateEnabled && dsvExtent.width < renderArea.width && dsvExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 0u;
+      if (sampleCount & rtSampleCounts[i]) {
+        renderArea.width = std::min(renderArea.width, rtExtents[i].width);
+        renderArea.height = std::min(renderArea.height, rtExtents[i].height);
       }
     }
 
-    // We only need to skip binding the RT if it would shrink the render area
-    // despite not having color writes enabled,
-    // otherwise we might end up with unnecessary render pass spills
-    boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
-    for (uint32_t i : bit::BitMask(boundMask))
-      attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
+    bool usesDepthBuffer = (m_state.depthStencil != nullptr) && (
+      m_state.renderStates[D3DRS_ZENABLE] ||
+      m_state.renderStates[D3DRS_STENCILENABLE] ||
+      m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB));
 
-    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+    if (usesDepthBuffer) {
+      rtExtents[DsvIndex] = m_state.depthStencil->GetSurfaceExtent();
+      rtSampleCounts[DsvIndex] = m_state.depthStencil->GetCommonTexture()->GetImage()->info().sampleCount;
 
-    if (dsvBound)
+      if (!sampleCount)
+        sampleCount = rtSampleCounts[DsvIndex];
+
+      if (sampleCount & rtSampleCounts[DsvIndex]) {
+        renderArea.width = std::min(renderArea.width, rtExtents[DsvIndex].width);
+        renderArea.height = std::min(renderArea.height, rtExtents[DsvIndex].height);
+      }
+    }
+
+    // Based on the render area and sample count of actively used render targets,
+    // bind any render target that does not further restrict the render area.
+    bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
+      if (HasRenderTargetBound(i)
+       && rtExtents[i].width >= renderArea.width
+       && rtExtents[i].height >= renderArea.height
+       && rtSampleCounts[i] == sampleCount)
+        attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
+    }
+
+    if (m_state.depthStencil != nullptr
+     && rtExtents[DsvIndex].width >= renderArea.width
+     && rtExtents[DsvIndex].height >= renderArea.height
+     && rtSampleCounts[DsvIndex] == sampleCount)
       attachments.depth.view = m_state.depthStencil->GetDepthStencilView(depthWrite);
 
+    // Work out feedback loop layouts based on bound render targets
     VkImageAspectFlags feedbackLoopAspects = 0u;
+
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       if (m_activeHazardsRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
