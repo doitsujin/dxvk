@@ -8,7 +8,6 @@
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
 #include "dxvk_pipemanager.h"
-#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -18,7 +17,6 @@ namespace dxvk {
           DxvkComputePipelineShaders  shaders,
           DxvkShaderPipelineLibrary*  library)
   : m_device        (device),
-    m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_library       (library),
     m_libraryHandle (VK_NULL_HANDLE),
