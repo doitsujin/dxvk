@@ -2256,7 +2256,6 @@ namespace dxvk {
       const bool     isIntel             = vendorId == uint32_t(DxvkGpuVendor::Intel);
 
       const bool     oldClipPlaneEnabled = IsClipPlaneEnabled();
-      const bool     oldDepthBiasEnabled = IsDepthBiasEnabled();
       const bool     oldATOC             = !m_isD3D8Compatible ? IsAlphaToCoverageEnabled() : false;
       const bool     oldNVDB             = !m_isD3D8Compatible ? states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB) : false;
       const bool     oldAlphaTest        = IsAlphaTestEnabled();
@@ -2448,14 +2447,7 @@ namespace dxvk {
 
         case D3DRS_DEPTHBIAS:
         case D3DRS_SLOPESCALEDEPTHBIAS: {
-          const bool depthBiasEnabled = IsDepthBiasEnabled();
-
-          if (depthBiasEnabled != oldDepthBiasEnabled)
-            m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
-
-          if (depthBiasEnabled)
-            m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
-
+          m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
           break;
         }
         case D3DRS_CULLMODE:
@@ -6955,7 +6947,6 @@ namespace dxvk {
 
     DxvkRasterizerState state = { };
     state.setCullMode(DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE])));
-    state.setDepthBias(IsDepthBiasEnabled());
     state.setDepthClip(true);
     state.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
     state.setPolygonMode(DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE])));

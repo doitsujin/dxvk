@@ -33,18 +33,15 @@ namespace dxvk {
     // In the backend we treat depth bias as a dynamic state because
     // some games like to put random/uninitialized numbers here, but
     // we do not need to enable it in case the parameters are both 0.
-    m_state.setDepthBias(desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f);
     m_state.setDepthClip(desc.DepthClipEnable);
     m_state.setConservativeMode(DecodeConservativeRasterizationMode(desc.ConservativeRaster));
     m_state.setSampleCount(desc.ForcedSampleCount);
     m_state.setFlatShading(false);
     m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
 
-    if (m_state.depthBias()) {
-      m_depthBias.depthBiasConstant = float(desc.DepthBias);
-      m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
-      m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
-    }
+    m_depthBias.depthBiasConstant = float(desc.DepthBias);
+    m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
+    m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
 
     // Set up line rasterization mode
     const auto& features = device->GetDXVKDevice()->features();
