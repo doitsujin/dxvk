@@ -682,17 +682,7 @@ namespace dxvk {
   DxvkGraphicsPipelineFragmentShaderState::DxvkGraphicsPipelineFragmentShaderState(
     const DxvkDevice*                     device,
     const DxvkGraphicsPipelineStateInfo&  state) {
-    VkImageAspectFlags dsReadOnlyAspects = state.rt.getDepthStencilReadOnlyAspects();
 
-    bool enableDepthWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
-    bool enableStencilWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
-
-    dsInfo.depthTestEnable        = state.ds.enableDepthTest();
-    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && enableDepthWrites;
-    dsInfo.depthCompareOp         = state.ds.depthCompareOp();
-    dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
-    dsInfo.front                  = state.dsFront.state(enableStencilWrites);
-    dsInfo.back                   = state.dsBack.state(enableStencilWrites);
   }
 
 
@@ -785,8 +775,19 @@ namespace dxvk {
     if (state.useDynamicBlendConstants())
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
 
-    if (state.useDynamicStencilRef())
+    if (state.useDynamicDepthTest()) {
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE;
+    }
+
+    if (state.useDynamicStencilTest()) {
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
+    }
 
     if (dyInfo.dynamicStateCount)
       dyInfo.pDynamicStates = dyStates.data();
@@ -1512,35 +1513,7 @@ namespace dxvk {
       }
     }
 
-    // Check depth buffer access
-    auto depthFormat = state.rt.getDepthStencilFormat();
-
-    if (depthFormat) {
-      auto dsReadable = lookupFormatInfo(depthFormat)->aspectMask;
-      auto dsWritable = dsReadable & ~state.rt.getDepthStencilReadOnlyAspects();
-
-      if (dsReadable & VK_IMAGE_ASPECT_DEPTH_BIT) {
-        if (state.ds.enableDepthTest()) {
-          result.trackDepthRead();
-
-          if (state.ds.enableDepthWrite() && (dsWritable & VK_IMAGE_ASPECT_DEPTH_BIT))
-            result.trackDepthWrite();
-        }
-      }
-
-      if (dsReadable & VK_IMAGE_ASPECT_STENCIL_BIT) {
-        if (state.ds.enableStencilTest()) {
-          auto f = state.dsFront.state(dsWritable & VK_IMAGE_ASPECT_STENCIL_BIT);
-          auto b = state.dsBack.state(dsWritable & VK_IMAGE_ASPECT_STENCIL_BIT);
-
-          result.trackStencilRead();
-
-          if (f.writeMask | b.writeMask)
-            result.trackStencilWrite();
-        }
-      }
-    }
-
+    // Depth buffer access is tracked by the command list
     return result;
   }
 
@@ -1702,29 +1675,6 @@ namespace dxvk {
 
     sstr << "Sample count: " << sampleCount << " [0x" << std::hex << state.ms.sampleMask() << std::dec << "]" << std::endl
          << "  alphaToCoverage: " << (state.ms.enableAlphaToCoverage() ? "yes" : "no") << std::endl;
-
-    // Log depth-stencil state
-    sstr << "Depth test:        ";
-
-    if (state.ds.enableDepthTest())
-      sstr << "yes [write: " << (state.ds.enableDepthWrite() ? "yes" : "no") << ", op: " << state.ds.depthCompareOp() << "]" << std::endl;
-    else
-      sstr << "no" << std::endl;
-
-    sstr << "Stencil test:      " << (state.ds.enableStencilTest() ? "yes" : "no") << std::endl;
-
-    if (state.ds.enableStencilTest()) {
-      std::array<VkStencilOpState, 2> states = {{
-        state.dsFront.state(true),
-        state.dsBack.state(true),
-      }};
-
-      for (size_t i = 0; i < states.size(); i++) {
-        sstr << std::hex << (i ? "  back:  " : "  front: ")
-             << "[c=0x" << states[i].compareMask << ",w=0x" << states[i].writeMask << ",op=" << states[i].compareOp << "] "
-             << "fail=" << states[i].failOp << ",pass=" << states[i].passOp << ",depthFail=" << states[i].depthFailOp << std::dec << std::endl;
-      }
-    }
 
     // Log logic op state
     sstr << "Logic op:          ";

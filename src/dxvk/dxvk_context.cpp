@@ -2891,7 +2891,8 @@ namespace dxvk {
       rs.lineMode());
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState,
+                  DxvkContextFlag::GpDirtyDepthClip);
       m_state.gp.state.rs = rsInfo;
     }
   }
@@ -2910,35 +2911,17 @@ namespace dxvk {
   
   
   void DxvkContext::setDepthStencilState(const DxvkDepthStencilState& ds) {
-    m_state.gp.state.ds = DxvkDsInfo(
-      ds.depthTest(),
-      ds.depthWrite(),
-      ds.stencilTest(),
-      ds.depthCompareOp());
+    if (m_state.dyn.depthStencilState.depthTest() != ds.depthTest()
+     || m_state.dyn.depthStencilState.depthWrite() != ds.depthWrite()
+     || m_state.dyn.depthStencilState.depthCompareOp() != ds.depthCompareOp())
+      m_flags.set(DxvkContextFlag::GpDirtyDepthTest);
 
-    DxvkStencilOp front = ds.stencilOpFront();
+    if (m_state.dyn.depthStencilState.stencilTest() != ds.stencilTest()
+     || !m_state.dyn.depthStencilState.stencilOpFront().eq(ds.stencilOpFront())
+     || !m_state.dyn.depthStencilState.stencilOpBack().eq(ds.stencilOpBack()))
+      m_flags.set(DxvkContextFlag::GpDirtyStencilTest);
 
-    m_state.gp.state.dsFront = DxvkDsStencilOp(
-      front.failOp(),
-      front.passOp(),
-      front.depthFailOp(),
-      front.compareOp(),
-      front.compareMask(),
-      front.writeMask());
-
-    DxvkStencilOp back = ds.stencilOpBack();
-
-    m_state.gp.state.dsBack = DxvkDsStencilOp(
-      back.failOp(),
-      back.passOp(),
-      back.depthFailOp(),
-      back.compareOp(),
-      back.compareMask(),
-      back.writeMask());
-
-    m_flags.set(
-      DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyDepthStencilState);
+    m_state.dyn.depthStencilState = ds;
   }
   
   
@@ -5422,13 +5405,15 @@ namespace dxvk {
         DxvkContextFlag::GpDirtyIndexBuffer,
         DxvkContextFlag::GpDirtyXfbBuffers,
         DxvkContextFlag::GpDirtyBlendConstants,
+        DxvkContextFlag::GpDirtyStencilTest,
         DxvkContextFlag::GpDirtyStencilRef,
         DxvkContextFlag::GpDirtyMultisampleState,
         DxvkContextFlag::GpDirtyRasterizerState,
         DxvkContextFlag::GpDirtyViewport,
         DxvkContextFlag::GpDirtyDepthBias,
         DxvkContextFlag::GpDirtyDepthBounds,
-        DxvkContextFlag::GpDirtyDepthStencilState);
+        DxvkContextFlag::GpDirtyDepthClip,
+        DxvkContextFlag::GpDirtyDepthTest);
 
       m_flags.clr(
         DxvkContextFlag::GpRenderPassSuspended,
@@ -5998,13 +5983,15 @@ namespace dxvk {
                 DxvkContextFlag::GpDirtyIndexBuffer,
                 DxvkContextFlag::GpDirtyXfbBuffers,
                 DxvkContextFlag::GpDirtyBlendConstants,
+                DxvkContextFlag::GpDirtyStencilTest,
                 DxvkContextFlag::GpDirtyStencilRef,
                 DxvkContextFlag::GpDirtyMultisampleState,
                 DxvkContextFlag::GpDirtyRasterizerState,
                 DxvkContextFlag::GpDirtyViewport,
                 DxvkContextFlag::GpDirtyDepthBias,
                 DxvkContextFlag::GpDirtyDepthBounds,
-                DxvkContextFlag::GpDirtyDepthStencilState);
+                DxvkContextFlag::GpDirtyDepthClip,
+                DxvkContextFlag::GpDirtyDepthTest);
 
     m_flags.clr(DxvkContextFlag::GpHasPushData);
 
@@ -6052,10 +6039,11 @@ namespace dxvk {
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
     m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
-                DxvkContextFlag::GpDynamicDepthStencilState,
                 DxvkContextFlag::GpDynamicDepthBias,
                 DxvkContextFlag::GpDynamicDepthBounds,
-                DxvkContextFlag::GpDynamicStencilRef,
+                DxvkContextFlag::GpDynamicDepthClip,
+                DxvkContextFlag::GpDynamicDepthTest,
+                DxvkContextFlag::GpDynamicStencilTest,
                 DxvkContextFlag::GpDynamicMultisampleState,
                 DxvkContextFlag::GpDynamicRasterizerState,
                 DxvkContextFlag::GpHasPushData,
@@ -6086,10 +6074,13 @@ namespace dxvk {
     // For pipelines created from graphics pipeline libraries, we need to
     // apply a bunch of dynamic state that is otherwise static or unused
     if (pipelineInfo.type == DxvkGraphicsPipelineType::BasePipeline) {
-      m_flags.set(DxvkContextFlag::GpDynamicDepthStencilState,
-                  DxvkContextFlag::GpDynamicDepthBias,
-                  DxvkContextFlag::GpDynamicStencilRef,
+      m_flags.set(DxvkContextFlag::GpDynamicDepthBias,
+                  DxvkContextFlag::GpDynamicDepthTest,
+                  DxvkContextFlag::GpDynamicStencilTest,
                   DxvkContextFlag::GpIndependentSets);
+
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
+        m_flags.set(DxvkContextFlag::GpDynamicDepthClip);
 
       if (m_device->features().core.features.depthBounds)
         m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
@@ -6101,18 +6092,25 @@ namespace dxvk {
           : DxvkContextFlag::GpDirtyMultisampleState);
        }
     } else {
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
+        m_flags.set(DxvkContextFlag::GpDirtyDepthClip);
+
       if (m_device->features().core.features.depthBounds) {
         m_flags.set(m_state.gp.state.useDynamicDepthBounds()
           ? DxvkContextFlag::GpDynamicDepthBounds
           : DxvkContextFlag::GpDirtyDepthBounds);
       }
 
-      m_flags.set(m_state.gp.state.useDynamicStencilRef()
-        ? DxvkContextFlag::GpDynamicStencilRef
-        : DxvkContextFlag::GpDirtyStencilRef);
+      m_flags.set(m_state.gp.state.useDynamicDepthTest()
+        ? DxvkContextFlag::GpDynamicDepthTest
+        : DxvkContextFlag::GpDirtyDepthTest);
+
+      m_flags.set(m_state.gp.state.useDynamicStencilTest()
+        ? DxvkContextFlags(DxvkContextFlag::GpDynamicStencilTest)
+        : DxvkContextFlags(DxvkContextFlag::GpDirtyStencilTest,
+                           DxvkContextFlag::GpDirtyStencilRef));
 
       m_flags.set(
-        DxvkContextFlag::GpDirtyDepthStencilState,
         DxvkContextFlag::GpDirtyMultisampleState);
     }
 
@@ -7115,32 +7113,11 @@ namespace dxvk {
       m_cmd->cmdSetScissor(m_state.vp.viewportCount, clampedScissors.data());
     }
 
-    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthStencilState,
-                             DxvkContextFlag::GpDynamicDepthStencilState))) {
-      m_flags.clr(DxvkContextFlag::GpDirtyDepthStencilState);
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthClip,
+                             DxvkContextFlag::GpDynamicDepthClip))) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDepthClip);
 
-      // Make sure to not enable writes to aspects that cannot be
-      // written in the current depth-stencil attachment layout.
-      // This mirrors what we do for monolithic pipelines.
-      VkImageAspectFlags dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
-
-      bool enableDepthWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
-      bool enableStencilWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
-
-      m_cmd->cmdSetDepthState(
-        m_state.gp.state.ds.enableDepthTest(),
-        m_state.gp.state.ds.enableDepthWrite() && enableDepthWrites,
-        m_state.gp.state.ds.depthCompareOp());
-
-      m_cmd->cmdSetStencilState(
-        m_state.gp.state.ds.enableStencilTest(),
-        m_state.gp.state.dsFront.state(enableStencilWrites),
-        m_state.gp.state.dsBack.state(enableStencilWrites));
-
-      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
-        m_cmd->cmdSetDepthClipState(
-          m_state.gp.state.rs.depthClipEnable());
-      }
+      m_cmd->cmdSetDepthClipState(m_state.gp.state.rs.depthClipEnable());
     }
 
     if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyMultisampleState,
@@ -7180,12 +7157,75 @@ namespace dxvk {
         m_state.dyn.frontFace);
     }
 
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthTest,
+                             DxvkContextFlag::GpDynamicDepthTest))) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDepthTest);
+
+      auto dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
+      bool writable = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
+
+      if (m_state.dyn.depthStencilState.depthTest()) {
+        bool written = writable &&
+          m_state.dyn.depthStencilState.depthTest() &&
+          m_state.dyn.depthStencilState.depthWrite();
+
+        m_cmd->cmdSetDepthTest(VK_TRUE);
+        m_cmd->cmdSetDepthWrite(written);
+        m_cmd->cmdSetDepthCompareOp(m_state.dyn.depthStencilState.depthCompareOp());
+
+        if (written)
+          m_state.om.attachmentMask.trackDepthWrite();
+
+        m_state.om.attachmentMask.trackDepthRead();
+      } else {
+        m_cmd->cmdSetDepthTest(VK_FALSE);
+        m_cmd->cmdSetDepthWrite(VK_FALSE);
+        m_cmd->cmdSetDepthCompareOp(VK_COMPARE_OP_ALWAYS);
+      }
+    }
+
+    if (m_flags.all(DxvkContextFlag::GpDirtyStencilTest,
+                    DxvkContextFlag::GpDynamicStencilTest)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyStencilTest);
+
+      if (m_state.dyn.depthStencilState.stencilTest()) {
+        auto dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
+        bool writable = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
+
+        auto front = convertStencilOp(m_state.dyn.depthStencilState.stencilOpFront(), writable);
+        auto back = convertStencilOp(m_state.dyn.depthStencilState.stencilOpBack(), writable);
+
+        m_cmd->cmdSetStencilTest(VK_TRUE);
+
+        m_cmd->cmdSetStencilOp(VK_STENCIL_FACE_FRONT_BIT, front);
+        m_cmd->cmdSetStencilOp(VK_STENCIL_FACE_BACK_BIT, back);
+
+        m_cmd->cmdSetStencilCompareMask(VK_STENCIL_FACE_FRONT_BIT, front.compareMask);
+        m_cmd->cmdSetStencilCompareMask(VK_STENCIL_FACE_BACK_BIT, back.compareMask);
+
+        m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_FRONT_BIT, front.writeMask);
+        m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_BACK_BIT, back.writeMask);
+
+        if (front.writeMask | back.writeMask)
+          m_state.om.attachmentMask.trackStencilWrite();
+
+        m_state.om.attachmentMask.trackStencilRead();
+      } else {
+        VkStencilOpState state = { };
+        state.compareOp = VK_COMPARE_OP_ALWAYS;
+
+        m_cmd->cmdSetStencilTest(VK_FALSE);
+        m_cmd->cmdSetStencilOp(VK_STENCIL_FACE_FRONT_AND_BACK, state);
+        m_cmd->cmdSetStencilCompareMask(VK_STENCIL_FACE_FRONT_AND_BACK, 0u);
+        m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_FRONT_AND_BACK, 0u);
+      }
+    }
+
     if (m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
-                    DxvkContextFlag::GpDynamicStencilRef)) {
+                    DxvkContextFlag::GpDynamicStencilTest)) {
       m_flags.clr(DxvkContextFlag::GpDirtyStencilRef);
 
-      m_cmd->cmdSetStencilReference(
-        VK_STENCIL_FRONT_AND_BACK,
+      m_cmd->cmdSetStencilReference(VK_STENCIL_FRONT_AND_BACK,
         m_state.dyn.stencilReference);
     }
     
@@ -8261,13 +8301,15 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::GpDirtyXfbBuffers,
       DxvkContextFlag::GpDirtyBlendConstants,
+      DxvkContextFlag::GpDirtyStencilTest,
       DxvkContextFlag::GpDirtyStencilRef,
       DxvkContextFlag::GpDirtyMultisampleState,
       DxvkContextFlag::GpDirtyRasterizerState,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds,
-      DxvkContextFlag::GpDirtyDepthStencilState,
+      DxvkContextFlag::GpDirtyDepthClip,
+      DxvkContextFlag::GpDirtyDepthTest,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::DirtyDrawBuffer);
 
@@ -9166,6 +9208,24 @@ namespace dxvk {
     // If the image hasn't been used yet or all uses are
     // reads, we can use it in the init command buffer
     return !image->isTracked(m_trackingId, access);
+  }
+
+
+  VkStencilOpState DxvkContext::convertStencilOp(
+    const DxvkStencilOp&            op,
+          bool                      writable) {
+    VkStencilOpState result = { };
+    result.compareOp = op.compareOp();
+    result.compareMask = op.compareMask();
+
+    if (writable) {
+      result.failOp = op.failOp();
+      result.passOp = op.passOp();
+      result.depthFailOp = op.depthFailOp();
+      result.writeMask = op.writeMask();
+    }
+
+    return result;
   }
 
 

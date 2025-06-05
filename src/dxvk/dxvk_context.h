@@ -2234,6 +2234,10 @@ namespace dxvk {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
     }
 
+    static VkStencilOpState convertStencilOp(
+      const DxvkStencilOp&            op,
+            bool                      writable);
+
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,
             VkFormat                  bufferFormat);

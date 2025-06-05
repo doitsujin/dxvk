@@ -327,6 +327,10 @@ namespace dxvk {
       m_writeMask = mask;
     }
 
+    bool eq(const DxvkStencilOp& other) const {
+      return !std::memcmp(this, &other, sizeof(*this));
+    }
+
     bool normalize(VkCompareOp depthOp);
 
   private:
