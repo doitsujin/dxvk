@@ -1054,15 +1054,13 @@ namespace dxvk {
     void cmdSetDepthBounds(
             float                   minDepthBounds,
             float                   maxDepthBounds) {
-      m_vkd->vkCmdSetDepthBounds(getCmdBuffer(),
-        minDepthBounds,
-        maxDepthBounds);
-    }
+      auto cmdBuffer = getCmdBuffer();
 
+      m_vkd->vkCmdSetDepthBoundsTestEnable(cmdBuffer,
+        minDepthBounds > 0.0f || maxDepthBounds < 1.0f);
 
-    void cmdSetDepthBoundsState(
-            VkBool32                depthBoundsTestEnable) {
-      m_vkd->vkCmdSetDepthBoundsTestEnable(getCmdBuffer(), depthBoundsTestEnable);
+      m_vkd->vkCmdSetDepthBounds(cmdBuffer,
+        minDepthBounds, maxDepthBounds);
     }
 
 

@@ -2800,11 +2800,6 @@ namespace dxvk {
       m_state.dyn.depthBounds = depthBounds;
       m_flags.set(DxvkContextFlag::GpDirtyDepthBounds);
     }
-
-    if (m_state.gp.state.ds.enableDepthBoundsTest() != depthBounds.enableDepthBounds) {
-      m_state.gp.state.ds.setEnableDepthBoundsTest(depthBounds.enableDepthBounds);
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
   }
   
   
@@ -2918,7 +2913,6 @@ namespace dxvk {
     m_state.gp.state.ds = DxvkDsInfo(
       ds.depthTest(),
       ds.depthWrite(),
-      m_state.gp.state.ds.enableDepthBoundsTest(),
       ds.stencilTest(),
       ds.depthCompareOp());
 
@@ -6107,9 +6101,11 @@ namespace dxvk {
           : DxvkContextFlag::GpDirtyMultisampleState);
        }
     } else {
-      m_flags.set(m_state.gp.state.useDynamicDepthBounds()
-        ? DxvkContextFlag::GpDynamicDepthBounds
-        : DxvkContextFlag::GpDirtyDepthBounds);
+      if (m_device->features().core.features.depthBounds) {
+        m_flags.set(m_state.gp.state.useDynamicDepthBounds()
+          ? DxvkContextFlag::GpDynamicDepthBounds
+          : DxvkContextFlag::GpDirtyDepthBounds);
+      }
 
       m_flags.set(m_state.gp.state.useDynamicStencilRef()
         ? DxvkContextFlag::GpDynamicStencilRef
@@ -7136,13 +7132,6 @@ namespace dxvk {
         m_state.gp.state.ds.enableDepthWrite() && enableDepthWrites,
         m_state.gp.state.ds.depthCompareOp());
 
-      if (m_device->features().core.features.depthBounds) {
-        m_cmd->cmdSetDepthBoundsState(
-          m_state.gp.state.ds.enableDepthBoundsTest());
-
-        m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
-      }
-
       m_cmd->cmdSetStencilState(
         m_state.gp.state.ds.enableStencilTest(),
         m_state.gp.state.dsFront.state(enableStencilWrites),
@@ -7231,6 +7220,10 @@ namespace dxvk {
       m_cmd->cmdSetDepthBounds(
         m_state.dyn.depthBounds.minDepthBounds,
         m_state.dyn.depthBounds.maxDepthBounds);
+
+      if (m_state.dyn.depthBounds.minDepthBounds > 0.0f
+       || m_state.dyn.depthBounds.maxDepthBounds < 1.0f)
+        m_state.om.attachmentMask.trackDepthRead();
     }
   }
 

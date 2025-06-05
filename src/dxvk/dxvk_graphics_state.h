@@ -335,12 +335,10 @@ namespace dxvk {
     DxvkDsInfo(
             VkBool32 enableDepthTest,
             VkBool32 enableDepthWrite,
-            VkBool32 enableDepthBoundsTest,
             VkBool32 enableStencilTest,
             VkCompareOp depthCompareOp)
     : m_enableDepthTest       (uint16_t(enableDepthTest)),
       m_enableDepthWrite      (uint16_t(enableDepthWrite)),
-      m_enableDepthBoundsTest (uint16_t(enableDepthBoundsTest)),
       m_enableStencilTest     (uint16_t(enableStencilTest)),
       m_depthCompareOp        (uint16_t(depthCompareOp)),
       m_reserved              (0) { }
@@ -353,10 +351,6 @@ namespace dxvk {
       return VkBool32(m_enableDepthWrite);
     }
 
-    VkBool32 enableDepthBoundsTest() const {
-      return VkBool32(m_enableDepthBoundsTest);
-    }
-
     VkBool32 enableStencilTest() const {
       return VkBool32(m_enableStencilTest);
     }
@@ -365,18 +359,13 @@ namespace dxvk {
       return VkCompareOp(m_depthCompareOp);
     }
 
-    void setEnableDepthBoundsTest(VkBool32 enableDepthBoundsTest) {
-      m_enableDepthBoundsTest = VkBool32(enableDepthBoundsTest);
-    }
-
   private:
 
     uint16_t m_enableDepthTest        : 1;
     uint16_t m_enableDepthWrite       : 1;
-    uint16_t m_enableDepthBoundsTest  : 1;
     uint16_t m_enableStencilTest      : 1;
     uint16_t m_depthCompareOp         : 3;
-    uint16_t m_reserved               : 9;
+    uint16_t m_reserved               : 10;
 
   };
 
@@ -764,7 +753,7 @@ namespace dxvk {
     }
 
     bool useDynamicDepthBounds() const {
-      return ds.enableDepthBoundsTest();
+      return rt.getDepthStencilFormat();
     }
 
     bool useDynamicVertexStrides() const {

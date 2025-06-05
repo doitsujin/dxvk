@@ -140,10 +140,9 @@ namespace dxvk {
           FLOAT                   MaxDepthBounds) {
     D3D10DeviceLock lock = m_ctx->LockContext();
 
-    DxvkDepthBounds db;
-    db.enableDepthBounds  = Enable;
-    db.minDepthBounds     = MinDepthBounds;
-    db.maxDepthBounds     = MaxDepthBounds;
+    DxvkDepthBounds db = { };
+    db.minDepthBounds = Enable ? MinDepthBounds : 0.0f;
+    db.maxDepthBounds = Enable ? MaxDepthBounds : 1.0f;
     
     m_ctx->EmitCs([cDepthBounds = db] (DxvkContext* ctx) {
       ctx->setDepthBounds(cDepthBounds);
