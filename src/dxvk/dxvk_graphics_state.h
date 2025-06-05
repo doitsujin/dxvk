@@ -321,108 +321,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Packed depth-stencil metadata
-   *
-   * Stores some flags and the depth-compare op in
-   * two bytes. Stencil ops are stored separately.
-   */
-  class DxvkDsInfo {
-
-  public:
-
-    DxvkDsInfo() = default;
-
-    DxvkDsInfo(
-            VkBool32 enableDepthTest,
-            VkBool32 enableDepthWrite,
-            VkBool32 enableStencilTest,
-            VkCompareOp depthCompareOp)
-    : m_enableDepthTest       (uint16_t(enableDepthTest)),
-      m_enableDepthWrite      (uint16_t(enableDepthWrite)),
-      m_enableStencilTest     (uint16_t(enableStencilTest)),
-      m_depthCompareOp        (uint16_t(depthCompareOp)),
-      m_reserved              (0) { }
-    
-    VkBool32 enableDepthTest() const {
-      return VkBool32(m_enableDepthTest);
-    }
-
-    VkBool32 enableDepthWrite() const {
-      return VkBool32(m_enableDepthWrite);
-    }
-
-    VkBool32 enableStencilTest() const {
-      return VkBool32(m_enableStencilTest);
-    }
-
-    VkCompareOp depthCompareOp() const {
-      return VkCompareOp(m_depthCompareOp);
-    }
-
-  private:
-
-    uint16_t m_enableDepthTest        : 1;
-    uint16_t m_enableDepthWrite       : 1;
-    uint16_t m_enableStencilTest      : 1;
-    uint16_t m_depthCompareOp         : 3;
-    uint16_t m_reserved               : 10;
-
-  };
-
-
-  /**
-   * \brief Packed stencil op
-   *
-   * Stores various stencil op parameters
-   * for one single face in four bytes.
-   */
-  class DxvkDsStencilOp {
-
-  public:
-
-    DxvkDsStencilOp() = default;
-
-    DxvkDsStencilOp(
-            VkStencilOp           failOp,
-            VkStencilOp           passOp,
-            VkStencilOp           depthFailOp,
-            VkCompareOp           compareOp,
-            uint8_t               compareMask,
-            uint8_t               writeMask)
-    : m_failOp      (uint32_t(failOp)),
-      m_passOp      (uint32_t(passOp)),
-      m_depthFailOp (uint32_t(depthFailOp)),
-      m_compareOp   (uint32_t(compareOp)),
-      m_reserved    (0),
-      m_compareMask (uint32_t(compareMask)),
-      m_writeMask   (uint32_t(writeMask)) { }
-    
-    VkStencilOpState state(bool write) const {
-      VkStencilOpState result;
-      result.failOp      = VkStencilOp(m_failOp);
-      result.passOp      = VkStencilOp(m_passOp);
-      result.depthFailOp = VkStencilOp(m_depthFailOp);
-      result.compareOp   = VkCompareOp(m_compareOp);
-      result.compareMask = m_compareMask;
-      result.writeMask   = write ? m_writeMask : 0;
-      result.reference   = 0;
-      return result;
-    }
-
-  private:
-
-    uint32_t m_failOp                 : 3;
-    uint32_t m_passOp                 : 3;
-    uint32_t m_depthFailOp            : 3;
-    uint32_t m_compareOp              : 3;
-    uint32_t m_reserved               : 4;
-    uint32_t m_compareMask            : 8;
-    uint32_t m_writeMask              : 8;
-
-  };
-
-
-  /**
    * \brief Packed output merger metadata
    *
    * Stores the logic op state in two bytes.
@@ -748,11 +646,15 @@ namespace dxvk {
       return !bit::bcmpeq(this, &other);
     }
 
-    bool useDynamicStencilRef() const {
-      return ds.enableStencilTest();
+    bool useDynamicStencilTest() const {
+      return rt.getDepthStencilFormat();
     }
 
     bool useDynamicDepthBounds() const {
+      return rt.getDepthStencilFormat();
+    }
+
+    bool useDynamicDepthTest() const {
       return rt.getDepthStencilFormat();
     }
 
@@ -804,12 +706,9 @@ namespace dxvk {
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
     DxvkMsInfo              ms;
-    DxvkDsInfo              ds;
     DxvkOmInfo              om;
     DxvkRtInfo              rt;
     DxvkScInfo              sc;
-    DxvkDsStencilOp         dsFront;
-    DxvkDsStencilOp         dsBack;
     DxvkOmAttachmentSwizzle omSwizzle         [DxvkLimits::MaxNumRenderTargets];
     DxvkOmAttachmentBlend   omBlend           [DxvkLimits::MaxNumRenderTargets];
     DxvkIlAttribute         ilAttributes      [DxvkLimits::MaxNumVertexAttributes];

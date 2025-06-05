@@ -34,19 +34,22 @@ namespace dxvk {
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
     GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
     GpDirtyBlendConstants,      ///< Blend constants have changed
-    GpDirtyDepthStencilState,   ///< Depth-stencil state has changed
     GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyDepthBounds,         ///< Depth bounds have changed
+    GpDirtyDepthClip,           ///< Depth clip state has changed
+    GpDirtyDepthTest,           ///< Depth test state has changed
+    GpDirtyStencilTest,         ///< Stencil test state other than reference has changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyMultisampleState,    ///< Multisample state has changed
     GpDirtyRasterizerState,     ///< Cull mode and front face have changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDirtySpecConstants,       ///< Graphics spec constants are out of date
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
-    GpDynamicDepthStencilState, ///< Depth-stencil state is dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
-    GpDynamicStencilRef,        ///< Stencil reference is dynamic
+    GpDynamicDepthClip,         ///< Depth clip state is dynamic
+    GpDynamicDepthTest,         ///< Depth test is dynamic
+    GpDynamicStencilTest,       ///< Stencil test state is dynamic
     GpDynamicMultisampleState,  ///< Multisample state is dynamic
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
@@ -181,6 +184,7 @@ namespace dxvk {
     DxvkDepthBias               depthBias               = { 0.0f, 0.0f, 0.0f };
     DxvkDepthBiasRepresentation depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
     DxvkDepthBounds             depthBounds             = { 0.0f, 1.0f };
+    DxvkDepthStencilState       depthStencilState       = { };
     uint32_t                    stencilReference        = 0;
     VkCullModeFlags             cullMode                = VK_CULL_MODE_BACK_BIT;
     VkFrontFace                 frontFace               = VK_FRONT_FACE_CLOCKWISE;
