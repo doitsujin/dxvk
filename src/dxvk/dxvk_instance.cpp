@@ -56,9 +56,6 @@ namespace dxvk {
     if (!initVulkanInstance(args, flags))
       throw DxvkError("Failed to initialize DXVK.");
 
-    for (const auto& provider : m_extProviders)
-      provider->initDeviceExtensions(this);
-
     if (!initAdapters())
       throw DxvkError("Failed to initialize DXVK.");
   }
@@ -310,11 +307,6 @@ namespace dxvk {
         else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
           numIGPU += 1;
 
-        for (const auto& provider : m_extProviders) {
-          adapter->enableExtensions(
-            provider->getDeviceExtensions(i));
-        }
-
         m_adapters.push_back(std::move(adapter));
       }
     }
@@ -350,6 +342,12 @@ namespace dxvk {
         VK_API_VERSION_MAJOR(DxvkVulkanApiVersion), ".",
         VK_API_VERSION_MINOR(DxvkVulkanApiVersion), " capable setup is required."));
       return false;
+    }
+
+    for (const auto& provider : m_extProviders) {
+      provider->initDeviceExtensions(this);
+      for (uint32_t i = 0; enumAdapters(i) != nullptr; i++)
+        enumAdapters(i)->enableExtensions(provider->getDeviceExtensions(i));
     }
 
     if (numDGPU == 1u && numIGPU == 1u)
