@@ -690,7 +690,6 @@ namespace dxvk {
     dsInfo.depthTestEnable        = state.ds.enableDepthTest();
     dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && enableDepthWrites;
     dsInfo.depthCompareOp         = state.ds.depthCompareOp();
-    dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
     dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
     dsInfo.front                  = state.dsFront.state(enableStencilWrites);
     dsInfo.back                   = state.dsBack.state(enableStencilWrites);
@@ -778,8 +777,10 @@ namespace dxvk {
     if (state.useDynamicVertexStrides())
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
 
-    if (state.useDynamicDepthBounds())
+    if (state.useDynamicDepthBounds() && device->features().core.features.depthBounds) {
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE;
+    }
 
     if (state.useDynamicBlendConstants())
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
@@ -1519,9 +1520,6 @@ namespace dxvk {
       auto dsWritable = dsReadable & ~state.rt.getDepthStencilReadOnlyAspects();
 
       if (dsReadable & VK_IMAGE_ASPECT_DEPTH_BIT) {
-        if (state.ds.enableDepthBoundsTest())
-          result.trackDepthRead();
-
         if (state.ds.enableDepthTest()) {
           result.trackDepthRead();
 
@@ -1610,10 +1608,6 @@ namespace dxvk {
        && !m_device->properties().extConservativeRasterization.primitiveUnderestimation)
         return false;
     }
-
-    // Validate depth-stencil state
-    if (state.ds.enableDepthBoundsTest() && !m_device->features().core.features.depthBounds)
-      return false;
 
     // Validate render target format support
     VkFormat depthFormat = state.rt.getDepthStencilFormat();
@@ -1717,8 +1711,7 @@ namespace dxvk {
     else
       sstr << "no" << std::endl;
 
-    sstr << "Depth bounds test: " << (state.ds.enableDepthBoundsTest() ? "yes" : "no") << std::endl
-         << "Stencil test:      " << (state.ds.enableStencilTest() ? "yes" : "no") << std::endl;
+    sstr << "Stencil test:      " << (state.ds.enableStencilTest() ? "yes" : "no") << std::endl;
 
     if (state.ds.enableStencilTest()) {
       std::array<VkStencilOpState, 2> states = {{

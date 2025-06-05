@@ -7363,9 +7363,10 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyDepthBounds);
 
       DxvkDepthBounds db = { };
-      db.enableDepthBounds  = (m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB));
+      db.minDepthBounds = 0.0f;
+      db.maxDepthBounds = 1.0f;
 
-      if (db.enableDepthBounds) {
+      if (m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB)) {
         db.minDepthBounds = std::clamp(bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_Z]), 0.0f, 1.0f);
         db.maxDepthBounds = std::clamp(bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_W]), 0.0f, 1.0f);
       }

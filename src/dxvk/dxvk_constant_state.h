@@ -79,19 +79,16 @@ namespace dxvk {
    * Stores depth bounds values.
    */
   struct DxvkDepthBounds {
-    VkBool32            enableDepthBounds;
-    float               minDepthBounds;
-    float               maxDepthBounds;
+    float minDepthBounds;
+    float maxDepthBounds;
 
     bool operator == (const DxvkDepthBounds& other) const {
-      return enableDepthBounds == other.enableDepthBounds
-          && minDepthBounds == other.minDepthBounds
+      return minDepthBounds == other.minDepthBounds
           && maxDepthBounds == other.maxDepthBounds;
     }
 
     bool operator != (const DxvkDepthBounds& other) const {
-      return enableDepthBounds != other.enableDepthBounds
-          || minDepthBounds != other.minDepthBounds
+      return minDepthBounds != other.minDepthBounds
           || maxDepthBounds != other.maxDepthBounds;
     }
   };
