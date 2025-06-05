@@ -1016,12 +1016,6 @@ namespace dxvk {
     }
     
 
-    void cmdSetDepthBiasState(
-            VkBool32                depthBiasEnable) {
-      m_vkd->vkCmdSetDepthBiasEnable(getCmdBuffer(), depthBiasEnable);
-    }
-
-
     void cmdSetDepthClipState(
             VkBool32                depthClipEnable) {
       m_vkd->vkCmdSetDepthClipEnableEXT(getCmdBuffer(), depthClipEnable);
@@ -1032,7 +1026,13 @@ namespace dxvk {
             float                   depthBiasConstantFactor,
             float                   depthBiasClamp,
             float                   depthBiasSlopeFactor) {
-      m_vkd->vkCmdSetDepthBias(getCmdBuffer(),
+      auto cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetDepthBiasEnable(cmdBuffer,
+        depthBiasConstantFactor != 0.0f ||
+        depthBiasSlopeFactor != 0.0f);
+
+      m_vkd->vkCmdSetDepthBias(cmdBuffer,
         depthBiasConstantFactor,
         depthBiasClamp,
         depthBiasSlopeFactor);
@@ -1040,8 +1040,14 @@ namespace dxvk {
 
 
     void cmdSetDepthBias2(
-      const VkDepthBiasInfoEXT     *depthBiasInfo) {
-      m_vkd->vkCmdSetDepthBias2EXT(getCmdBuffer(), depthBiasInfo);
+      const VkDepthBiasInfoEXT*     depthBiasInfo) {
+      auto cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetDepthBiasEnable(cmdBuffer,
+        depthBiasInfo->depthBiasConstantFactor != 0.0f ||
+        depthBiasInfo->depthBiasSlopeFactor != 0.0f);
+
+      m_vkd->vkCmdSetDepthBias2EXT(cmdBuffer, depthBiasInfo);
     }
 
 

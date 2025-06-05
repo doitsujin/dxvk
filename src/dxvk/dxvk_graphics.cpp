@@ -553,7 +553,6 @@ namespace dxvk {
     // Set up basic rasterization state
     rsInfo.depthClampEnable         = VK_TRUE;
     rsInfo.polygonMode              = state.rs.polygonMode();
-    rsInfo.depthBiasEnable          = state.rs.depthBiasEnable();
     rsInfo.lineWidth                = 1.0f;
 
     // Set up rasterized stream depending on geometry shader state.
@@ -769,25 +768,24 @@ namespace dxvk {
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
 
-    if (state.useDynamicVertexStrides())
-      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
-
-    if (state.useDynamicDepthBias())
-      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
-    
-    if (state.useDynamicDepthBounds())
-      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
-    
-    if (state.useDynamicBlendConstants())
-      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
-    
-    if (state.useDynamicStencilRef())
-      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
-
     if (!flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
     }
+
+    if (state.useDynamicVertexStrides())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+
+    if (state.useDynamicDepthBounds())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+
+    if (state.useDynamicBlendConstants())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+
+    if (state.useDynamicStencilRef())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
 
     if (dyInfo.dynamicStateCount)
       dyInfo.pDynamicStates = dyStates.data();
@@ -1697,7 +1695,6 @@ namespace dxvk {
     // Log rasterizer state
     sstr << "Rasterizer state:" << std::endl
          << "  depth clip:      " << (state.rs.depthClipEnable() ? "yes" : "no") << std::endl
-         << "  depth bias:      " << (state.rs.depthBiasEnable() ? "yes" : "no") << std::endl
          << "  polygon mode:    " << state.rs.polygonMode() << std::endl
          << "  conservative:    " << (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT ? "no" : "yes") << std::endl;
 

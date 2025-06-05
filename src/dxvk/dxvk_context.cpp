@@ -2889,7 +2889,6 @@ namespace dxvk {
 
     DxvkRsInfo rsInfo(
       rs.depthClip(),
-      rs.depthBias(),
       rs.polygonMode(),
       rs.sampleCount(),
       rs.conservativeMode(),
@@ -2898,12 +2897,6 @@ namespace dxvk {
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-
-      // Since depth bias enable is only dynamic for base pipelines,
-      // it is applied as part of the dynamic depth-stencil state
-      if (m_state.gp.state.rs.depthBiasEnable() != rs.depthBias())
-        m_flags.set(DxvkContextFlag::GpDirtyDepthStencilState);
-
       m_state.gp.state.rs = rsInfo;
     }
   }
@@ -6079,8 +6072,10 @@ namespace dxvk {
       : DxvkContextFlag::GpDirtyBlendConstants);
     
     m_flags.set((!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
-      ? DxvkContextFlag::GpDynamicRasterizerState
-      : DxvkContextFlag::GpDirtyRasterizerState);
+      ? DxvkContextFlags(DxvkContextFlag::GpDynamicRasterizerState,
+                         DxvkContextFlag::GpDynamicDepthBias)
+      : DxvkContextFlags(DxvkContextFlag::GpDirtyRasterizerState,
+                         DxvkContextFlag::GpDirtyDepthBias));
 
     // Retrieve and bind actual Vulkan pipeline handle
     auto pipelineInfo = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
@@ -6097,11 +6092,10 @@ namespace dxvk {
     // For pipelines created from graphics pipeline libraries, we need to
     // apply a bunch of dynamic state that is otherwise static or unused
     if (pipelineInfo.type == DxvkGraphicsPipelineType::BasePipeline) {
-      m_flags.set(
-        DxvkContextFlag::GpDynamicDepthStencilState,
-        DxvkContextFlag::GpDynamicDepthBias,
-        DxvkContextFlag::GpDynamicStencilRef,
-        DxvkContextFlag::GpIndependentSets);
+      m_flags.set(DxvkContextFlag::GpDynamicDepthStencilState,
+                  DxvkContextFlag::GpDynamicDepthBias,
+                  DxvkContextFlag::GpDynamicStencilRef,
+                  DxvkContextFlag::GpIndependentSets);
 
       if (m_device->features().core.features.depthBounds)
         m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
@@ -6113,10 +6107,6 @@ namespace dxvk {
           : DxvkContextFlag::GpDirtyMultisampleState);
        }
     } else {
-      m_flags.set(m_state.gp.state.useDynamicDepthBias()
-        ? DxvkContextFlag::GpDynamicDepthBias
-        : DxvkContextFlag::GpDirtyDepthBias);
-
       m_flags.set(m_state.gp.state.useDynamicDepthBounds()
         ? DxvkContextFlag::GpDynamicDepthBounds
         : DxvkContextFlag::GpDirtyDepthBounds);
@@ -7157,9 +7147,6 @@ namespace dxvk {
         m_state.gp.state.ds.enableStencilTest(),
         m_state.gp.state.dsFront.state(enableStencilWrites),
         m_state.gp.state.dsBack.state(enableStencilWrites));
-
-      m_cmd->cmdSetDepthBiasState(
-        m_state.gp.state.rs.depthBiasEnable());
 
       if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
         m_cmd->cmdSetDepthClipState(
