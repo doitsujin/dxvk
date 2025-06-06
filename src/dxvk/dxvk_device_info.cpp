@@ -576,6 +576,9 @@ namespace dxvk {
 
   void DxvkDeviceCapabilities::enableQueue(
           DxvkDeviceQueueIndex        queue) {
+    if (queue.family == VK_QUEUE_FAMILY_IGNORED)
+      return;
+
     for (auto& q : m_queuesEnabled) {
       if (q.queueFamilyIndex == queue.family) {
         q.queueCount = queue.index + 1u;

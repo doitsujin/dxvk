@@ -224,10 +224,8 @@ namespace dxvk {
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateDevice(m_handle, &deviceInfo, nullptr, &device);
 
-    if (vr) {
-      Logger::err(str::format("Failed to create Vulkan device: ", vr));
-      return nullptr;
-    }
+    if (vr)
+      throw DxvkError(str::format("Failed to create Vulkan device: ", vr));
 
     Rc<vk::DeviceFn> vkd = new vk::DeviceFn(vk, true, device);
 
