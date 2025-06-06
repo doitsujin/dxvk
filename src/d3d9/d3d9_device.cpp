@@ -6673,91 +6673,44 @@ namespace dxvk {
 
     // Some games break if render targets that get disabled using the color write mask
     // end up shrinking the render area. So we don't bind those.
+    // We also rely on this behavior to resolve hazards without having to resort to FEEDBACK_LOOP_LAYOUT.
     // (This impacted Dead Space 1.)
-    // But we want to minimize frame buffer changes because those
-    // break up the current render pass. So we dont unbind for disabled color write masks
-    // if the RT has the same size or is bigger than the smallest active RT.
 
-    uint32_t boundMask = 0u;
-    uint32_t anyColorWriteMask = 0u;
-    uint32_t limitsRenderAreaMask = 0u;
-    VkExtent2D renderArea = { ~0u, ~0u };
     for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
       if (!HasRenderTargetBound(i))
         continue;
 
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
-      // Dont bind it if the sample count doesnt match
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
         sampleCount = rtImageInfo.sampleCount;
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
-      // Dont bind it if the pixel shader doesnt write to it
-      if (!(m_psShaderMasks.rtMask & (1 << i)))
-        continue;
-
-      boundMask |= 1 << i;
-
-      VkExtent2D rtExtent = m_state.renderTargets[i]->GetSurfaceExtent();
-      bool rtLimitsRenderArea = rtExtent.width < renderArea.width || rtExtent.height < renderArea.height;
-      limitsRenderAreaMask |= rtLimitsRenderArea << i;
-
-      // It will only get bound if its not smaller than the others.
-      // So RTs with a disabled color write mask will never impact the render area.
       if (m_state.renderStates[ColorWriteIndex(i)] == 0)
         continue;
 
-      anyColorWriteMask |= 1 << i;
+      if (!(m_psShaderMasks.rtMask & (1 << i)))
+        continue;
 
-      if (rtExtent.width < renderArea.width && rtExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 1 << i;
-      }
-
-      renderArea.width = std::min(renderArea.width, rtExtent.width);
-      renderArea.height = std::min(renderArea.height, rtExtent.height);
-    }
-
-    bool dsvBound = false;
-    if (m_state.depthStencil != nullptr) {
-      // We only need to skip binding the DSV if it would shrink the render area
-      // despite not being used, otherwise we might end up with unnecessary render pass spills
-      bool anyDSStateEnabled = m_state.renderStates[D3DRS_ZENABLE]
-        || m_state.renderStates[D3DRS_ZWRITEENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE]
-        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
-
-      VkExtent2D dsvExtent = m_state.depthStencil->GetSurfaceExtent();
-      bool dsvLimitsRenderArea = dsvExtent.width < renderArea.width || dsvExtent.height < renderArea.height;
-
-      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
-      const bool sampleCountMatches = sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount;
-
-      dsvBound = sampleCountMatches && (anyDSStateEnabled || !dsvLimitsRenderArea);
-      if (sampleCountMatches && anyDSStateEnabled && dsvExtent.width < renderArea.width && dsvExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 0u;
-      }
-    }
-
-    // We only need to skip binding the RT if it would shrink the render area
-    // despite not having color writes enabled,
-    // otherwise we might end up with unnecessary render pass spills
-    boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
-    for (uint32_t i : bit::BitMask(boundMask)) {
       attachments.color[i] = {
         m_state.renderTargets[i]->GetRenderTargetView(srgb),
         m_state.renderTargets[i]->GetRenderTargetLayout(m_hazardLayout) };
     }
 
-    if (dsvBound) {
+    if (m_state.depthStencil != nullptr &&
+      (m_state.renderStates[D3DRS_ZENABLE]
+        || m_state.renderStates[D3DRS_ZWRITEENABLE]
+        || m_state.renderStates[D3DRS_STENCILENABLE]
+        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB))) {
+      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
       const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
-      attachments.depth = {
-        m_state.depthStencil->GetDepthStencilView(),
-        m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
+      if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
+        attachments.depth = {
+          m_state.depthStencil->GetDepthStencilView(),
+          m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
+      }
     }
 
     VkImageAspectFlags feedbackLoopAspects = 0u;
