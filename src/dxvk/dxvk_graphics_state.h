@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_format.h"
 #include "dxvk_limits.h"
 
 #include <cstring>
@@ -646,7 +647,7 @@ namespace dxvk {
       return !bit::bcmpeq(this, &other);
     }
 
-    bool useDynamicStencilTest() const {
+    bool useDynamicDepthTest() const {
       return rt.getDepthStencilFormat();
     }
 
@@ -654,8 +655,9 @@ namespace dxvk {
       return rt.getDepthStencilFormat();
     }
 
-    bool useDynamicDepthTest() const {
-      return rt.getDepthStencilFormat();
+    bool useDynamicStencilTest() const {
+      auto format = rt.getDepthStencilFormat();
+      return format && (lookupFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
     }
 
     bool useDynamicVertexStrides() const {
