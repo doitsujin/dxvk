@@ -2919,8 +2919,12 @@ namespace dxvk {
 
     uint32_t sparseFeedbackId = 0;
 
-    bool useRawAccessChains = m_hasRawAccessChains && isSsbo && !imageOperands.sparse
-      && (isStructured || !m_moduleInfo.options.rawAccessChainsOnlyStructured);
+    bool useRawAccessChains = m_hasRawAccessChains && isSsbo && !imageOperands.sparse;
+
+    if (useRawAccessChains && m_moduleInfo.options.rawAccessChainBug) {
+      std::array<uint32_t, 2u> indices = { m_module.constu32(0), m_module.constu32(0) };
+      m_module.opAccessChain(bufferInfo.typeId, bufferInfo.varId, indices.size(), indices.data());
+    }
 
     DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
     DxbcRegisterValue offset = index;
@@ -3133,8 +3137,12 @@ namespace dxvk {
     }
 
     // Compute flat element index as necessary
-    bool useRawAccessChains = isSsbo && m_hasRawAccessChains
-      && (isStructured || !m_moduleInfo.options.rawAccessChainsOnlyStructured);
+    bool useRawAccessChains = isSsbo && m_hasRawAccessChains;
+
+    if (useRawAccessChains && m_moduleInfo.options.rawAccessChainBug) {
+      std::array<uint32_t, 2u> indices = { m_module.constu32(0), m_module.constu32(0) };
+      m_module.opAccessChain(bufferInfo.typeId, bufferInfo.varId, indices.size(), indices.data());
+    }
 
     DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
     DxbcRegisterValue offset = index;
