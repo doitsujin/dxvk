@@ -3645,7 +3645,6 @@ namespace dxvk {
       // D3D9 doesn't actually unbind any vertex buffer when passing null.
       // Operation Flashpoint: Red River relies on this behavior.
       needsUpdate = false;
-      vbo.offset = 0;
     }
 
     if (needsUpdate)
