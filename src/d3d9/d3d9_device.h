@@ -181,6 +181,20 @@ namespace dxvk {
     uint32_t lastHazardDS = 0;
   };
 
+  struct D3D9RTSlotTracking {
+    /* D3D9 allows rendering to 4 render targets at the same time.
+     * So all RT bit masks only use the first 4 bits. */
+
+    /** Whether a render target is a D3D9Texture rather than just a D3D9Surface.
+      * Textures can be bound for sampling so there can be a feedback loop if this
+      * RT is also bound for sampling. */
+    uint8_t canBeSampled = 0;
+
+    /** Whether the alpha channel of the format of this RT needs to be manually handled
+      * as part of the blend state. */
+    uint8_t hasAlphaSwizzle = 0;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -1597,8 +1611,7 @@ namespace dxvk {
 
     D3D9TextureSlotTracking         m_textureSlotTracking;
 
-    uint32_t                        m_activeRTsWhichAreTextures : 4;
-    uint32_t                        m_alphaSwizzleRTs : 4;
+    D3D9RTSlotTracking              m_rtSlotTracking;
 
     uint32_t                        m_activeVertexBuffers                = 0;
     uint32_t                        m_activeVertexBuffersToUpload        = 0;
