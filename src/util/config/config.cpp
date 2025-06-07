@@ -113,13 +113,6 @@ namespace dxvk {
     { R"(\\nioh\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-    /* Quantum Break: Mever initializes shared    *
-     * memory in one of its compute shaders.      *
-     * Also loves using MAP_WRITE on the same     *
-     * set of resources multiple times per frame. */
-    { R"(\\QuantumBreak\.exe$)", {{
-      { "d3d11.zeroInitWorkgroupMemory",    "True" },
-    }} },
     /* Anno 2205: Random crashes with state cache */
     { R"(\\anno2205\.exe$)", {{
       { "dxvk.enableStateCache",            "False" },
@@ -458,11 +451,6 @@ namespace dxvk {
      * Too fast above 60fps                        */
     { R"(\\Varstray_steam(_demo)?\.exe$)", {{
       { "dxgi.maxFrameRate",                "60" },
-    }} },
-    /* Far Cry 5 and New Dawn                      *
-     * Invisible terrain on Intel                  */
-    { R"(\\FarCry(5|NewDawn)\.exe$)", {{
-      { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
     /* Watch Dogs 2 - ships broken compute shaders *
      * with no barriers when they are needed       */
