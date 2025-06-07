@@ -195,6 +195,19 @@ namespace dxvk {
     uint8_t hasAlphaSwizzle = 0;
   };
 
+  struct D3D9VBSlotTracking {
+    /* D3D9 allows using 16 vertex buffers ('streams'). */
+
+    /** Whether there's a vertex buffer bound to the slot */
+    uint16_t bound = 0;
+
+    /** Whether the vertex buffer at each slot needs to be uploaded at draw time */
+    uint16_t needsUpload = 0;
+
+    /** Whether the vertex buffer for each slot gets copied at draw time to act like DrawUP */
+    uint16_t uploadPerDraw = 0;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -1613,9 +1626,7 @@ namespace dxvk {
 
     D3D9RTSlotTracking              m_rtSlotTracking;
 
-    uint32_t                        m_activeVertexBuffers                = 0;
-    uint32_t                        m_activeVertexBuffersToUpload        = 0;
-    uint32_t                        m_activeVertexBuffersToUploadPerDraw = 0;
+    D3D9VBSlotTracking              m_vbSlotTracking;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
 
