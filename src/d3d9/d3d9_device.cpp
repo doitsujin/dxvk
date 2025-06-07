@@ -1819,7 +1819,7 @@ namespace dxvk {
       });
     }
 
-    for (uint32_t i : bit::BitMask(~m_activeVertexBuffers & ((1 << 16) - 1))) {
+    for (uint32_t i : bit::BitMask(~static_cast<uint32_t>(m_vbSlotTracking.bound) & ((1 << 16) - 1))) {
       if (m_state.vertexBuffers[i].vertexBuffer == nullptr) {
         EmitCs([cIndex = i](DxvkContext* ctx) {
           ctx->bindVertexBuffer(cIndex, DxvkBufferSlice(), 0);
@@ -3618,9 +3618,9 @@ namespace dxvk {
       vbo.vertexBuffer = buffer;
 
     const uint32_t bit = 1u << StreamNumber;
-    m_activeVertexBuffers &= ~bit;
-    m_activeVertexBuffersToUploadPerDraw &= ~bit;
-    m_activeVertexBuffersToUpload &= ~bit;
+    m_vbSlotTracking.bound &= ~bit;
+    m_vbSlotTracking.uploadPerDraw &= ~bit;
+    m_vbSlotTracking.needsUpload &= ~bit;
 
     if (buffer != nullptr) {
       needsUpdate |= vbo.offset != OffsetInBytes
@@ -3630,11 +3630,11 @@ namespace dxvk {
       vbo.stride = Stride;
 
       const D3D9CommonBuffer* commonBuffer = GetCommonBuffer(buffer);
-      m_activeVertexBuffers |= bit;
+      m_vbSlotTracking.bound |= bit;
       if (commonBuffer->DoPerDrawUpload() || CanOnlySWVP())
-        m_activeVertexBuffersToUploadPerDraw |= bit;
+        m_vbSlotTracking.uploadPerDraw |= bit;
       if (commonBuffer->NeedsUpload()) {
-        m_activeVertexBuffersToUpload |= bit;
+        m_vbSlotTracking.needsUpload |= bit;
       }
     } else {
       // D3D9 doesn't actually unbind any vertex buffer when passing null.
@@ -3707,9 +3707,9 @@ namespace dxvk {
     m_state.streamFreq[StreamNumber] = Setting;
 
     if (instanced)
-      m_instancedData |=   1u << StreamNumber;
+      m_vbSlotTracking.instanced |=   1u << StreamNumber;
     else
-      m_instancedData &= ~(1u << StreamNumber);
+      m_vbSlotTracking.instanced &= ~(1u << StreamNumber);
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -5322,10 +5322,10 @@ namespace dxvk {
     if (updateDirtyRange) {
       pResource->DirtyRange().Conjoin(lockRange);
 
-      for (uint32_t i : bit::BitMask(m_activeVertexBuffers)) {
+      for (uint32_t i : bit::BitMask(static_cast<uint32_t>(m_vbSlotTracking.bound))) {
         auto commonBuffer = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
         if (commonBuffer == pResource) {
-          m_activeVertexBuffersToUpload |= 1 << i;
+          m_vbSlotTracking.needsUpload |= 1 << i;
         }
       }
     }
@@ -5480,8 +5480,8 @@ namespace dxvk {
           bool*                   pDynamicVBOs,
           bool*                   pDynamicIBO
   ) {
-    const uint32_t usedBuffersMask = (m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u) & m_activeVertexBuffers;
-    bool dynamicSysmemVBOs = usedBuffersMask == m_activeVertexBuffersToUploadPerDraw;
+    const uint32_t usedBuffersMask = (m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u) & static_cast<uint32_t>(m_vbSlotTracking.bound);
+    bool dynamicSysmemVBOs = usedBuffersMask == m_vbSlotTracking.uploadPerDraw;
 
     D3D9CommonBuffer* ibo = GetCommonBuffer(m_state.indices);
     bool dynamicSysmemIBO = NumIndices != 0 && ibo != nullptr && (ibo->DoPerDrawUpload() || CanOnlySWVP());
@@ -5496,7 +5496,7 @@ namespace dxvk {
 
     uint32_t vertexBuffersToUpload;
     if (likely(dynamicSysmemVBOs))
-      vertexBuffersToUpload = m_activeVertexBuffersToUploadPerDraw & usedBuffersMask;
+      vertexBuffersToUpload = m_vbSlotTracking.uploadPerDraw & usedBuffersMask;
     else
       vertexBuffersToUpload = 0;
 
@@ -7261,13 +7261,13 @@ namespace dxvk {
 
     if (likely(UploadVBOs)) {
       const uint32_t usedBuffersMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u;
-      const uint32_t buffersToUpload = m_activeVertexBuffersToUpload & usedBuffersMask;
+      const uint32_t buffersToUpload = m_vbSlotTracking.needsUpload & usedBuffersMask;
       for (uint32_t bufferIdx : bit::BitMask(buffersToUpload)) {
         auto* vbo = GetCommonBuffer(m_state.vertexBuffers[bufferIdx].vertexBuffer);
         if (likely(vbo != nullptr && vbo->NeedsUpload()))
           FlushBuffer(vbo);
       }
-      m_activeVertexBuffersToUpload &= ~buffersToUpload;
+      m_vbSlotTracking.needsUpload &= ~buffersToUpload;
     }
 
     const uint32_t usedSamplerMask = PSShaderMasks().samplerMask | VSShaderMasks().samplerMask;
@@ -7540,7 +7540,7 @@ namespace dxvk {
         &cIaState         = m_iaState,
         cVertexDecl       = std::move(vertexDecl),
         cVertexShader     = std::move(vertexShader),
-        cStreamsInstanced = m_instancedData,
+        cStreamsInstanced = m_vbSlotTracking.instanced,
         cStreamFreq       = streamFreq
       ] (DxvkContext* ctx) {
         cIaState.streamsInstanced = cStreamsInstanced;
