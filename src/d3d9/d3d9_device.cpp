@@ -188,11 +188,6 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
 
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
-
-    // Bitfields can't be initialized in header.
-    m_activeRTsWhichAreTextures = 0;
-    m_alphaSwizzleRTs = 0;
-    m_textureSlotTracking.lastHazardRT = 0;
   }
 
 
@@ -1674,19 +1669,19 @@ namespace dxvk {
 
     // Update render target alpha swizzle bitmask if we need to fix up the alpha channel
     // for XRGB formats
-    uint32_t originalAlphaSwizzleRTs = m_alphaSwizzleRTs;
+    uint32_t originalAlphaSwizzleRTs = m_rtSlotTracking.hasAlphaSwizzle;
 
-    m_alphaSwizzleRTs &= ~(1 << RenderTargetIndex);
+    m_rtSlotTracking.hasAlphaSwizzle &= ~(1 << RenderTargetIndex);
 
     if (rt != nullptr) {
       if (texInfo->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE)
-        m_alphaSwizzleRTs |= 1 << RenderTargetIndex;
+        m_rtSlotTracking.hasAlphaSwizzle |= 1 << RenderTargetIndex;
 
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
     }
 
-    if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
+    if (originalAlphaSwizzleRTs != m_rtSlotTracking.hasAlphaSwizzle)
       m_flags.set(D3D9DeviceFlag::DirtyBlendState);
 
     if (RenderTargetIndex == 0) {
@@ -6158,12 +6153,12 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTsWhichAreTextures &= ~bit;
+    m_rtSlotTracking.canBeSampled &= ~bit;
 
     if (HasRenderTargetBound(index) &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
         m_state.renderStates[ColorWriteIndex(index)] != 0)
-      m_activeRTsWhichAreTextures |= bit;
+      m_rtSlotTracking.canBeSampled |= bit;
 
     UpdateActiveHazardsRT(bit);
   }
@@ -6260,7 +6255,7 @@ namespace dxvk {
 
   inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     auto masks = PSShaderMasks();
-    masks.rtMask      &= m_activeRTsWhichAreTextures;
+    masks.rtMask      &= m_rtSlotTracking.canBeSampled;
     masks.samplerMask &= m_textureSlotTracking.rtUsage & texMask;
 
     m_textureSlotTracking.hazardRT = m_textureSlotTracking.hazardRT & (~texMask);
@@ -6888,7 +6883,7 @@ namespace dxvk {
     EmitCs([
       cMode       = mode,
       cWriteMasks = writeMasks,
-      cAlphaMasks = m_alphaSwizzleRTs
+      cAlphaMasks = m_rtSlotTracking.hasAlphaSwizzle
     ](DxvkContext* ctx) {
       for (uint32_t i = 0; i < 4; i++) {
         DxvkBlendMode mode = cMode;
