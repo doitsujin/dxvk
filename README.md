@@ -99,20 +99,7 @@ On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will 
 
 In games that load their shaders during loading screens or in the menu, this can lead to prolonged periods of very high CPU utilization, especially on weaker CPUs. For affected games it is recommended to wait for shader compilation to finish before starting the game to avoid stutter and low performance. Shader compiler activity can be monitored with `DXVK_HUD=compiler`.
 
-This feature largely replaces the state cache.
-
 **Note:** Games which only load their D3D shaders at draw time (e.g. most Unreal Engine games) will still exhibit some stutter, although it should still be less severe than without this feature.
-
-### State cache
-DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
-
-The following environment variables can be used to control the cache:
-- `DXVK_STATE_CACHE`: Controls the state cache. The following values are supported:
-  - `disable`: Disables the cache entirely.
-  - `reset`: Clears the cache file.
-- `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
-
-This feature is mostly only relevant on systems without support for `VK_EXT_graphics_pipeline_library`
 
 ## Build instructions
 
