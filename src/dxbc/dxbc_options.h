@@ -34,9 +34,6 @@ namespace dxvk {
     /// for the binding to work properly
     bool rawAccessChainBug = false;
 
-    /// Clear thread-group shared memory to zero
-    bool zeroInitWorkgroupMemory = false;
-
     /// Declare vertex positions as invariant
     bool invariantPosition = false;
 
