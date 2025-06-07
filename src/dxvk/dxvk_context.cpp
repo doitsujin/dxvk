@@ -6953,6 +6953,8 @@ namespace dxvk {
 
       m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
       m_renderPassBarrierSrc.access |= VK_ACCESS_INDEX_READ_BIT;
+
+      m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
     } else if (m_device->features().khrMaintenance6.maintenance6) {
       // Bind null index buffer to read all zeroes, not too useful but well-defined
       m_cmd->cmdBindIndexBuffer2(VK_NULL_HANDLE, 0, VK_WHOLE_SIZE, m_state.vi.indexType);
@@ -6963,8 +6965,6 @@ namespace dxvk {
       m_cmd->cmdBindIndexBuffer2(bufferInfo.buffer,
         bufferInfo.offset, bufferInfo.size, m_state.vi.indexType);
     }
-
-    m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
   }
   
   
