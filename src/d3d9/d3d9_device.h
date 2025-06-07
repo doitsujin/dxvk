@@ -109,6 +109,78 @@ namespace dxvk {
     void*           mapPtr = nullptr;
   };
 
+  struct D3D9TextureSlotTracking {
+    /* Pixel shaders can access 16 textures/samplers.
+     * Then there's 1 dmap texture/sampler.
+     * Vertex shaders can use 4 textures/samplers.
+     * So unless otherwise noted most bitmasks use 21 bits
+     * and each bit is one texture/sampler slot.
+     * See RemapSamplerState(), IsPSSampler(), IsVSSampler() in d3d9_util.h */
+
+    /** Whether the format of the texture currently bound to each slot is a format that gets fetched in comparison mode. */
+    uint32_t depth = 0;
+
+    /** If a depth texture format isn't supported, we fall back to D32F.
+     * We'll need to clamp the reference value if the original format was an unorm format.
+     * This tracks the texture/sampler slots for which this kind of adjusting needs to be done. */
+    uint32_t drefClamp = 0;
+
+    /** Used to store the type of each bound pixel shader texture.
+     * This is used to generate fixed function shader code
+     * and for PS 1.1 shaders which do not provide this information in the shader bytecode.
+     * SM 1.1 and fixed function doesn't allow sampling textures in the VS, so we only need the 16 PS slots.
+     * There's 3 texture types, so every texture/sampler slot uses 2 bits. */
+    uint32_t textureType = 0;
+
+    /** Whether the type of the texture currently bound to each slot matches the texture type that the shader expects */
+    uint32_t mismatchingTextureType = 0;
+
+    /** Whether projected texture lookup is enabled for each texture/sampler slot. This is only used for generating fixed function shaders. */
+    uint32_t projected = 0;
+
+    /** Whether sampler slots whose state has been changed and bindings in the backend need to be updated */
+    uint32_t samplerStateDirty = 0;
+
+    /** Whether Fetch 4 is enabled for a sampler slot.
+     * This just means the application enabled it using the sampler state.
+     * It does not mean Fetch 4 is actually active, as that depends on other factors
+     * such as the sampling mode and the texture format. */
+    uint32_t fetch4SamplerState = 0;
+
+    /** Whether Fetch 4 is active. */
+    uint32_t fetch4 = 0;
+
+    /** Whether the texture bound to a slot has been changed and bindings in the backend need to be updated */
+    uint32_t textureDirty = 0;
+
+    /** Whether the texture bound to a slot has D3DUSAGE_RENDERTARGET */
+    uint32_t rtUsage = 0;
+
+    /** Whether the texture bound to a slot has D3DUSAGE_DEPTHSTENCIL */
+    uint32_t dsUsage = 0;
+
+    /** Whether the texture bound to a slot is also bound as a render target */
+    uint32_t hazardRT = 0;
+
+    /** Whether the texture bound to a slot is also bound as the depth stencil view */
+    uint32_t hazardDS = 0;
+
+    /** Whether there's a texture bound to a slot */
+    uint32_t bound = 0;
+
+    /** Whether there's a texture bound to a slot that needs to be uploaded at draw time */
+    uint32_t needsUpload = 0;
+
+    /** Whether there's a texture bound to a slot that needs to have its mip maps generated */
+    uint32_t needsMipGen = 0;
+
+    /** `hazardRT` the last time PrepareDraw was called. Used to check if it changed.  */
+    uint32_t lastHazardRT = 0;
+
+    /** `hazardDS` the last time PrepareDraw was called Used to check if it changed. */
+    uint32_t lastHazardDS = 0;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -1520,50 +1592,17 @@ namespace dxvk {
     D3D9InputAssemblyState          m_iaState;
 
     D3D9DeviceFlags                 m_flags;
-    // Last state of depth textures. Doesn't update when NULL is bound.
-    // & with m_activeTextures to normalize.
+
     uint32_t                        m_instancedData = 0;
 
-    uint32_t                        m_depthTextures = 0;
-    uint32_t                        m_drefClamp = 0;
-    uint32_t                        m_textureTypes = 0;
-    uint32_t                        m_mismatchingTextureTypes = 0;
-    uint32_t                        m_projectionBitfield  = 0;
-
-    // Used to track whether sampler slots whose state has been changed and bindings in the backend need to be updated
-    uint32_t                        m_dirtySamplerStates = 0;
-    /**
-     * Used to track the texture slots that have been changed and bindings in the backend need to be updated
-     */
-    uint32_t                        m_dirtyTextures      = 0;
+    D3D9TextureSlotTracking         m_textureSlotTracking;
 
     uint32_t                        m_activeRTsWhichAreTextures : 4;
     uint32_t                        m_alphaSwizzleRTs : 4;
-    uint32_t                        m_lastHazardsRT   : 4;
-
-    uint32_t                        m_activeTextureRTs       = 0;
-    uint32_t                        m_activeTextureDSs       = 0;
-    uint32_t                        m_activeHazardsRT        = 0;
-    uint32_t                        m_activeHazardsDS        = 0;
-    uint32_t                        m_activeTextures         = 0;
-    uint32_t                        m_activeTexturesToUpload = 0;
-    uint32_t                        m_activeTexturesToGen    = 0;
 
     uint32_t                        m_activeVertexBuffers                = 0;
     uint32_t                        m_activeVertexBuffersToUpload        = 0;
     uint32_t                        m_activeVertexBuffersToUploadPerDraw = 0;
-
-    // m_fetch4Enabled is whether fetch4 is currently enabled
-    // from the application.
-    //
-    // m_fetch4 is whether it should be enabled in the shader
-    // ie. are we in a correct state to use it
-    // (enabled + texture supports it + point sampled)
-    uint32_t                        m_fetch4Enabled = 0;
-    uint32_t                        m_fetch4        = 0;
-
-    uint32_t                        m_lastHazardsDS = 0;
-    uint32_t                        m_lastSamplerTypesFF = 0;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
 
