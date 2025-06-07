@@ -929,19 +929,7 @@ namespace dxvk {
   uint32_t SpirvModule::newVar(
           uint32_t                pointerType,
           spv::StorageClass       storageClass) {
-    uint32_t resultId = this->allocateId();
-    
-    if (isInterfaceVar(storageClass))
-      m_interfaceVars.push_back(resultId);
-
-    auto& code = storageClass != spv::StorageClassFunction
-      ? m_variables : m_code;
-
-    code.putIns  (spv::OpVariable, 4);
-    code.putWord (pointerType);
-    code.putWord (resultId);
-    code.putWord (storageClass);
-    return resultId;
+    return newVarInit(pointerType, storageClass, 0u);
   }
   
   
@@ -957,11 +945,14 @@ namespace dxvk {
     auto& code = storageClass != spv::StorageClassFunction
       ? m_variables : m_code;
     
-    code.putIns  (spv::OpVariable, 5);
+    code.putIns  (spv::OpVariable, 4u + (initialValue ? 1u : 0u));
     code.putWord (pointerType);
     code.putWord (resultId);
     code.putWord (storageClass);
-    code.putWord (initialValue);
+
+    if (initialValue)
+      code.putWord(initialValue);
+
     return resultId;
   }
   
