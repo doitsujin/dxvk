@@ -36,7 +36,6 @@ namespace dxvk {
     }
     
     invariantPosition        = options.invariantPosition;
-    zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     forceComputeUavBarriers  = options.forceComputeUavBarriers;
     disableMsaa              = options.disableMsaa;

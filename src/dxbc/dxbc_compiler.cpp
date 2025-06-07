@@ -6380,93 +6380,6 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitInitWorkgroupMemory() {
-    bool hasTgsm = false;
-
-    SpirvMemoryOperands memoryOperands;
-    memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
-
-    for (uint32_t i = 0; i < m_gRegs.size(); i++) {
-      if (!m_gRegs[i].varId)
-        continue;
-      
-      if (!m_cs.builtinLocalInvocationIndex) {
-        m_cs.builtinLocalInvocationIndex = emitNewBuiltinVariable({
-          { DxbcScalarType::Uint32, 1, 0 },
-          spv::StorageClassInput },
-          spv::BuiltInLocalInvocationIndex,
-          "vThreadIndexInGroup");
-      }
-
-      uint32_t intTypeId = getScalarTypeId(DxbcScalarType::Uint32);
-      uint32_t ptrTypeId = m_module.defPointerType(
-        intTypeId, spv::StorageClassWorkgroup);
-
-      uint32_t numElements = m_gRegs[i].type == DxbcResourceType::Structured
-        ? m_gRegs[i].elementCount * m_gRegs[i].elementStride / 4
-        : m_gRegs[i].elementCount / 4;
-      
-      uint32_t numThreads = m_cs.workgroupSizeX *
-        m_cs.workgroupSizeY * m_cs.workgroupSizeZ;
-      
-      uint32_t numElementsPerThread = numElements / numThreads;
-      uint32_t numElementsRemaining = numElements % numThreads;
-
-      uint32_t threadId = m_module.opLoad(
-        intTypeId, m_cs.builtinLocalInvocationIndex);
-      uint32_t zeroId = m_module.constu32(0);
-
-      for (uint32_t e = 0; e < numElementsPerThread; e++) {
-        uint32_t ofsId = m_module.opIAdd(intTypeId, threadId,
-          m_module.constu32(numThreads * e));
-        
-        uint32_t ptrId = m_module.opAccessChain(
-          ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
-
-        m_module.opStore(ptrId, zeroId, memoryOperands);
-      }
-
-      if (numElementsRemaining) {
-        uint32_t condition = m_module.opULessThan(
-          m_module.defBoolType(), threadId,
-          m_module.constu32(numElementsRemaining));
-        
-        DxbcConditional cond;
-        cond.labelIf  = m_module.allocateId();
-        cond.labelEnd = m_module.allocateId();
-
-        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-        m_module.opBranchConditional(condition, cond.labelIf, cond.labelEnd);
-
-        m_module.opLabel(cond.labelIf);
-
-        uint32_t ofsId = m_module.opIAdd(intTypeId, threadId,
-          m_module.constu32(numThreads * numElementsPerThread));
-        
-        uint32_t ptrId = m_module.opAccessChain(
-          ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
-        
-        m_module.opStore(ptrId, zeroId, memoryOperands);
-
-        m_module.opBranch(cond.labelEnd);
-        m_module.opLabel (cond.labelEnd);
-      }
-
-      hasTgsm = true;
-    }
-
-    if (hasTgsm) {
-      m_module.opControlBarrier(
-        m_module.constu32(spv::ScopeWorkgroup),
-        m_module.constu32(spv::ScopeWorkgroup),
-        m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
-                        | spv::MemorySemanticsAcquireReleaseMask
-                        | spv::MemorySemanticsMakeAvailableMask
-                        | spv::MemorySemanticsMakeVisibleMask));
-    }
-  }
-
-
   DxbcRegisterValue DxbcCompiler::emitVsSystemValueLoad(
           DxbcSystemValue         sv,
           DxbcRegMask             mask) {
@@ -7370,9 +7283,6 @@ namespace dxvk {
   void DxbcCompiler::emitCsFinalize() {
     this->emitMainFunctionBegin();
 
-    if (m_moduleInfo.options.zeroInitWorkgroupMemory)
-      this->emitInitWorkgroupMemory();
-
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_cs.functionId, 0, nullptr);
@@ -7855,8 +7765,15 @@ namespace dxvk {
 
 
   uint32_t DxbcCompiler::emitNewVariable(const DxbcRegisterInfo& info) {
-    const uint32_t ptrTypeId = this->getPointerTypeId(info);
-    return m_module.newVar(ptrTypeId, info.sclass);
+    const uint32_t ptrTypeId = getPointerTypeId(info);
+
+    uint32_t initializer = 0u;
+
+    if (info.sclass == spv::StorageClassPrivate
+     || info.sclass == spv::StorageClassWorkgroup)
+      initializer = m_module.constNull(getArrayTypeId(info.type));
+
+    return m_module.newVarInit(ptrTypeId, info.sclass, initializer);
   }
   
   
