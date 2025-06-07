@@ -99,7 +99,6 @@ namespace dxvk {
    *
    * The displacement map sampler is part of a fixed function feature,
    * so it does not belong to the vertex shader.
-   * Use IsDMAPSampler to check for that.
    *
    * @param Sampler Sampler index (according to our internal way of storing samplers)
    */
@@ -112,21 +111,11 @@ namespace dxvk {
    *
    * The displacement map sampler is part of a fixed function feature,
    * so (unlike in RemapStateSamplerShader) it does not belong to the pixel shader.
-   * Use IsDMAPSampler to check for that.
    *
    * @param Sampler Sampler index (according to our internal way of storing samplers)
    */
   inline bool IsPSSampler(uint32_t Sampler) {
     return Sampler <= caps::MaxTexturesPS;
-  }
-
-  /**
-   * @brief Returns whether the sampler is the displacement map sampler
-   *
-   * @param Sampler Sampler index (according to our internal way of storing samplers)
-   */
-  inline bool IsDMAPSampler(uint32_t Sampler) {
-    return Sampler > caps::MaxTexturesPS;
   }
 
   /**

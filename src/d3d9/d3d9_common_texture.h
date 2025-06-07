@@ -203,6 +203,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Cube
+     * \returns Whether the texture is a cube map
+     */
+    bool IsCube() const {
+      return m_type == D3DRTYPE_CUBETEXTURE;
+    }
+
+    /**
      * \brief Dref Clamp
      * \returns Whether the texture emulates an UNORM format with D32f
      */
