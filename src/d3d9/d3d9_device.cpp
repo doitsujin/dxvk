@@ -494,6 +494,14 @@ namespace dxvk {
       m_implicitSwapchain->DestroyBackBuffers();
       m_autoDepthStencil = nullptr;
 
+      // Unbind all buffers that were still bound to the backend to avoid leaks.
+      EmitCs([](DxvkContext* ctx) {
+        ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
+        for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+          ctx->bindVertexBuffer(i, DxvkBufferSlice(), 0);
+        }
+      });
+
       // Tests show that regular D3D9 ends the scene in Reset
       // while D3D9Ex doesn't.
       // Observed in Empires: Dawn of the Modern World (D3D8)
@@ -533,14 +541,6 @@ namespace dxvk {
       }
       return hr;
     }
-
-    // Unbind all buffers that were still bound to the backend to avoid leaks.
-    EmitCs([](DxvkContext* ctx) {
-      ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
-      for (uint32_t i = 0; i < caps::MaxStreams; i++) {
-        ctx->bindVertexBuffer(i, DxvkBufferSlice(), 0);
-      }
-    });
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
