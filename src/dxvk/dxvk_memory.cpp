@@ -1209,6 +1209,12 @@ namespace dxvk {
     // Preemptively free some unused allocations to reduce memory waste
     freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
 
+    // If we're exceeding vram budget on a dedicated GPU, fall back to system memory.
+    if (m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+     && (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) && !next
+     && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget))
+      return DxvkDeviceMemory();
+
     VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, next };
     memoryInfo.allocationSize = size;
     memoryInfo.memoryTypeIndex = type.index;
