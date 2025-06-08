@@ -708,33 +708,6 @@ namespace dxvk {
           return createAllocation(type, selectedPool, address, size, allocationInfo);
       }
 
-      // If the memory type is host-visible, try to find an existing chunk
-      // in the other memory pool of the memory type and move over.
-      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        auto& oppositePool = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-          ? type.devicePool
-          : type.mappedPool;
-
-        int32_t freeChunkIndex = findEmptyChunkInPool(oppositePool,
-          size, selectedPool.maxChunkSize);
-
-        if (freeChunkIndex >= 0) {
-          uint32_t poolChunkIndex = selectedPool.pageAllocator.addChunk(oppositePool.chunks[freeChunkIndex].memory.size);
-          selectedPool.chunks.resize(std::max<size_t>(selectedPool.chunks.size(), poolChunkIndex + 1u));
-          selectedPool.chunks[poolChunkIndex] = oppositePool.chunks[freeChunkIndex];
-
-          oppositePool.pageAllocator.removeChunk(freeChunkIndex);
-          oppositePool.chunks[freeChunkIndex] = DxvkMemoryChunk();
-
-          mapDeviceMemory(selectedPool.chunks[poolChunkIndex].memory, allocationInfo.properties);
-
-          address = selectedPool.alloc(size, requirements.alignment);
-
-          if (likely(address >= 0))
-            return createAllocation(type, selectedPool, address, size, allocationInfo);
-        }
-      }
-
       // If the allocation is very large, use a dedicated allocation instead
       // of creating a new chunk. This way we avoid excessive fragmentation,
       // especially when a multiple such resources are created at once.
