@@ -2570,17 +2570,25 @@ namespace dxvk {
             }
 
             // COPM (Nvidia specific)
+            // UE3 calls this MinimalNVIDIADriverShaderOptimization
             if (unlikely(Value == uint32_t(D3D9Format::COPM) &&
                          vendorId == nvidiaVendorId)) {
-              // UE3 calls this MinimalNVIDIADriverShaderOptimization
-              Logger::info("D3D9DeviceEx::SetRenderState: MinimalNVIDIADriverShaderOptimization is unsupported");
+              static bool s_copmErrorShown;
+
+              if (!std::exchange(s_copmErrorShown, true))
+                Logger::info("D3D9DeviceEx::SetRenderState: MinimalNVIDIADriverShaderOptimization is unsupported");
+
               break;
             }
 
             // SSAA (Nvidia specific)
             if (unlikely(Value == uint32_t(D3D9Format::SSAA) &&
                          vendorId == nvidiaVendorId)) {
-              Logger::warn("D3D9DeviceEx::SetRenderState: Transparency supersampling (SSAA) is unsupported");
+              static bool s_ssaaErrorShown;
+
+              if (!std::exchange(s_ssaaErrorShown, true))
+                Logger::warn("D3D9DeviceEx::SetRenderState: Transparency supersampling (SSAA) is unsupported");
+
               break;
             }
           }
