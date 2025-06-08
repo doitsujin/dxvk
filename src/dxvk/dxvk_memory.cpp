@@ -575,9 +575,15 @@ namespace dxvk {
           Rc<DxvkPagedResource>&&     resource,
     const DxvkResourceAllocation*     allocation,
           DxvkAllocationModes         mode) {
+    DxvkResourceMemoryInfo key = { };
+    key.offset = resource->cookie();
+
+    if (allocation)
+      key = allocation->getMemoryInfo();
+
     std::lock_guard lock(m_mutex);
     m_entries.emplace(std::piecewise_construct,
-      std::forward_as_tuple(allocation->getMemoryInfo()),
+      std::forward_as_tuple(key),
       std::forward_as_tuple(std::move(resource), mode));
   }
 
