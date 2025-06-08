@@ -2152,6 +2152,15 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::requestMakeResident(
+          DxvkPagedResource*          resource) {
+    std::lock_guard lock(m_resourceMutex);
+
+    m_relocations.addResource(resource, nullptr,
+      DxvkAllocationMode::NoFallback);
+  }
+
+
   void DxvkMemoryAllocator::lockResourceGpuAddress(
     const Rc<DxvkResourceAllocation>& allocation) {
     if (allocation->m_flags.test(DxvkAllocationFlag::CanMove)) {

@@ -16,8 +16,14 @@ namespace dxvk {
   }
 
 
+  void DxvkPagedResource::makeResourceResident() {
+    m_allocator->requestMakeResident(this);
+  }
+
+
   DxvkResourceRef::~DxvkResourceRef() {
     auto resource = reinterpret_cast<DxvkPagedResource*>(m_ptr & ~AccessMask);
+    resource->requestResidency();
     resource->release(DxvkAccess(m_ptr & AccessMask));
   }
 

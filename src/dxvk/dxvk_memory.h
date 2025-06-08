@@ -1288,6 +1288,15 @@ namespace dxvk {
             DxvkPagedResource*          resource);
 
     /**
+     * \brief Requests to make a resource resident
+     *
+     * Attempts to move an evicted resource back to VRAM.
+     * \param [in] resource Resource to relocate
+     */
+    void requestMakeResident(
+            DxvkPagedResource*          resource);
+
+    /**
      * \brief Locks an allocation in place
      *
      * Ensures that the resource is marked as immovable so
