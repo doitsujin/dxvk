@@ -2295,9 +2295,14 @@ namespace dxvk {
     if (pool.pageAllocator.chunkIsAvailable(chunkIndex))
       return;
 
-    DxvkAllocationModes mode(
-      DxvkAllocationMode::NoAllocation,
-      DxvkAllocationMode::NoFallback);
+    // Set allocation modes depending pn whether the memory type
+    // is a device-local type or a fallback system memory type.
+    DxvkAllocationModes mode(DxvkAllocationMode::NoAllocation);
+
+    if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+      mode.set(DxvkAllocationMode::NoFallback);
+    else
+      mode.set(DxvkAllocationMode::NoDeviceMemory);
 
     // Iterate over the chunk's allocation list and look up resources
     std::unique_lock lock(m_resourceMutex);
@@ -2546,11 +2551,11 @@ namespace dxvk {
       // do anything about mapped allocations since we rely on pointer
       // stability there.
       for (uint32_t i = 0; i < m_memTypeCount; i++) {
-        if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-          moveDefragChunk(m_memTypes[i]);
-          pickDefragChunk(m_memTypes[i]);
+        moveDefragChunk(m_memTypes[i]);
+        pickDefragChunk(m_memTypes[i]);
+
+        if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
           evictResources(m_memTypes[i]);
-        }
       }
     }
   }
