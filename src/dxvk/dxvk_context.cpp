@@ -7971,7 +7971,7 @@ namespace dxvk {
       invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
 
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copy);
-      m_cmd->track(info.buffer, DxvkAccess::Write);
+      m_cmd->track(info.buffer, DxvkAccess::Move);
 
       memoryBarrier.dstStageMask |= info.buffer->info().stages;
       memoryBarrier.dstAccessMask |= info.buffer->info().access;
@@ -8067,7 +8067,7 @@ namespace dxvk {
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
-      m_cmd->track(info.image, DxvkAccess::Write);
+      m_cmd->track(info.image, DxvkAccess::Move);
     }
 
     if (!imageBarriers.empty()) {
