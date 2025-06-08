@@ -435,8 +435,8 @@ namespace dxvk {
 
   public:
 
-    DxvkPagedResource()
-    : m_cookie(++s_cookie) { }
+    DxvkPagedResource(DxvkMemoryAllocator& allocator)
+    : m_allocator(&allocator), m_cookie(++s_cookie) { }
 
     virtual ~DxvkPagedResource();
 
@@ -654,6 +654,10 @@ namespace dxvk {
      * \returns The resource debug name
      */
     virtual const char* getDebugName() const = 0;
+
+  protected:
+
+    DxvkMemoryAllocator*  m_allocator = nullptr;
 
   private:
 

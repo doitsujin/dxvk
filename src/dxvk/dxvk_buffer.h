@@ -391,7 +391,6 @@ namespace dxvk {
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
-    DxvkMemoryAllocator*        m_allocator     = nullptr;
     VkMemoryPropertyFlags       m_properties    = 0u;
     VkShaderStageFlags          m_shaderStages  = 0u;
     DxvkSharingModeInfo         m_sharingMode   = { };
