@@ -18,6 +18,7 @@ namespace dxvk {
     None    = 0,
     Read    = 1,
     Write   = 2,
+    Move    = 3,
   };
 
   using DxvkAccessFlags = Flags<DxvkAccess>;
