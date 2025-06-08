@@ -2244,6 +2244,8 @@ namespace dxvk {
     if (!m_device->features().extMemoryBudget)
       return;
 
+    VkDeviceSize maxBudget = m_device->config().maxMemoryBudget;
+
     VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT };
     VkPhysicalDeviceMemoryProperties2 memInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2, &memBudget };
 
@@ -2259,6 +2261,9 @@ namespace dxvk {
                      internal = std::min(memBudget.heapBudget[i], internal);
 
         m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i] - internal, m_memHeaps[i].properties.size);
+
+        if (maxBudget && (m_memHeaps[i].properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))
+          m_memHeaps[i].memoryBudget = std::min(m_memHeaps[i].memoryBudget, maxBudget);
       }
     }
   }
