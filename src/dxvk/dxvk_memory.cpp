@@ -2494,9 +2494,29 @@ namespace dxvk {
         if (!resource)
           continue;
 
-        if (resource->requestEviction() && (heapUsage + minUnusedMemory > heapBudget + memoryEvicted)) {
+        bool evicted = resource->requestEviction();
+
+        if (evicted && (heapUsage + minUnusedMemory > heapBudget + memoryEvicted)) {
           m_relocations.addResource(std::move(resource), a, DxvkAllocationMode::NoDeviceMemory);
           memoryEvicted += a->getMemoryInfo().size;
+        }
+
+        if (!evicted && memoryEvicted) {
+          // Relocate other resources within the chunk to reduce fragmentation
+          m_relocations.addResource(std::move(resource), a, DxvkAllocationModes(
+            DxvkAllocationMode::NoFallback, DxvkAllocationMode::NoAllocation));
+        }
+      }
+
+      // Relocate resource in the chunk we evicted from, and override any
+      // chunk that defragmentation may have picked. This greatly reduces
+      // fragmentation caused evicting a subset of resources from the chunk.
+      if (memoryEvicted) {
+        pool.pageAllocator.killChunk(chunkIndex);
+
+        for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
+          if (i != chunkIndex && pool.pageAllocator.pagesUsed(i))
+            pool.pageAllocator.reviveChunk(i);
         }
       }
     }
