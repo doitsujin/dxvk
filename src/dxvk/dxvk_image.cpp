@@ -7,10 +7,10 @@ namespace dxvk {
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
-          DxvkMemoryAllocator&  memAlloc,
+          DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&memAlloc),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
@@ -47,10 +47,10 @@ namespace dxvk {
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
           VkImage               imageHandle,
-          DxvkMemoryAllocator&  memAlloc,
+          DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&memAlloc),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo),
