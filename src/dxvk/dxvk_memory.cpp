@@ -609,6 +609,8 @@ namespace dxvk {
       heap.index = i;
       heap.memoryBudget = memInfo.memoryHeaps[i].size;
       heap.properties = memInfo.memoryHeaps[i];
+      heap.enforceBudget = !m_device->isUnifiedMemoryArchitecture()
+        && m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     }
 
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
@@ -1199,9 +1201,7 @@ namespace dxvk {
     freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
 
     // If we're exceeding vram budget on a dedicated GPU, fall back to system memory.
-    if (m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-     && (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) && !next
-     && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget)) {
+    if (!next && type.heap->enforceBudget && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget)) {
       type.heap->enableEviction = true;
       return DxvkDeviceMemory();
     }
