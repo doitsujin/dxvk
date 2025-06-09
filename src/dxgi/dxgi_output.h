@@ -129,9 +129,10 @@ namespace dxvk {
 
   private:
     
+    Com<DxgiFactory> m_factory;
+    Com<DxgiAdapter> m_adapter;
     DxgiMonitorInfo* m_monitorInfo = nullptr;
-    Com<DxgiAdapter> m_adapter = nullptr;
-    HMONITOR         m_monitor = nullptr;
+    HMONITOR         m_monitor     = nullptr;
 
     wsi::WsiDisplayMetadata m_metadata = {};
 
