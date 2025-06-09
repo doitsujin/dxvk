@@ -675,10 +675,18 @@ namespace dxvk {
     const DxvkAllocationInfo&               allocationInfo) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
+    // If we're allocating device-local memory, only consider memory types from
+    // the first reported heap. This way, we avoid falling back to HVV on systems
+    // without resizeable BAR by accident.
+    uint32_t memoryTypeMask = requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties);
+
+    if (memoryTypeMask && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+      memoryTypeMask &= m_memTypes[bit::tzcnt(memoryTypeMask)].heap->memoryTypes;
+
     // Ensure the allocation size is also aligned
     VkDeviceSize size = align(requirements.size, requirements.alignment);
 
-    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties))) {
+    for (auto typeIndex : bit::BitMask(memoryTypeMask)) {
       auto& type = m_memTypes[typeIndex];
 
       // Use correct memory pool depending on property flags. This way we avoid
