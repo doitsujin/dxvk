@@ -859,32 +859,15 @@ namespace dxvk {
 
     auto& options = m_parent->GetOptions();
 
-    // Walk over all modes that the display supports and
-    // return those that match the requested format etc.
-    wsi::WsiMode devMode = { };
+    // Filter the modes considering the config option filters.
+    FilterModesByFormat(Format, true);
 
-    uint32_t modeIndex = 0;
-
-    const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
-
-    while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
-      // Skip interlaced modes altogether
-      if (devMode.interlaced)
-        continue;
-
-      // Skip modes with incompatible formats
-      if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
-        continue;
-
-      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
-        continue;
-
-      D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
-      // Fix up the D3DFORMAT to match what we are enumerating
-      mode.Format = static_cast<D3DFORMAT>(Format);
-
-      if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
-        m_modes.push_back(mode);
+    // If no modes are returned based on the previous filtered
+    // search, then fall back to an unfiltered search.
+    if (unlikely((!options.forceAspectRatio.empty() || options.forceRefreshRate) &&
+                 !m_modes.size())) {
+      Logger::warn("D3D9Adapter::CacheModes: No modes were found. Discarding filters.");
+      FilterModesByFormat(Format, false);
     }
 
     // Sort display modes by width, height and refresh rate (descending), in that order.
@@ -900,6 +883,48 @@ namespace dxvk {
 
         return a.RefreshRate > b.RefreshRate;
     });
+  }
+
+
+  void D3D9Adapter::FilterModesByFormat(
+       D3D9Format Format,
+       const bool ApplyOptionsFilters) {
+    auto& options = m_parent->GetOptions();
+
+    const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
+
+    // Walk over all modes that the display supports and
+    // return those that match the requested format etc.
+    wsi::WsiMode devMode = { };
+
+    uint32_t modeIndex = 0;
+
+    while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
+      // Skip interlaced modes altogether
+      if (devMode.interlaced)
+        continue;
+
+      // Skip modes with incompatible formats
+      if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
+        continue;
+
+      if (ApplyOptionsFilters &&
+          !forcedRatio.undefined() &&
+          Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+        continue;
+
+      if (ApplyOptionsFilters &&
+          options.forceRefreshRate &&
+          devMode.refreshRate.numerator / devMode.refreshRate.denominator != options.forceRefreshRate)
+        continue;
+
+      D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
+      // Fix up the D3DFORMAT to match what we are enumerating
+      mode.Format = static_cast<D3DFORMAT>(Format);
+
+      if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
+        m_modes.push_back(mode);
+    }
   }
 
 
