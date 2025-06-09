@@ -459,21 +459,16 @@ namespace dxvk {
               && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;
 
-    // Valid fullscreen presentation intervals must be known values.
-    if (unlikely(!pPresentationParameters->Windowed
-            && !(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_TWO
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_THREE
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_FOUR
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
-      return D3DERR_INVALIDCALL;
-
-    // In windowed mode, only a subset of the presentation interval flags can be used.
-    if (unlikely(pPresentationParameters->Windowed
-            && !(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
-              || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
+    // Valid presentation intervals must be known values. Native D3D9
+    // does not allow anything besides D3DPRESENT_INTERVAL_DEFAULT,
+    // D3DPRESENT_INTERVAL_ONE and D3DPRESENT_INTERVAL_IMMEDIATE in windowed mode,
+    // however that can interfere with apitrace playback, so we'll be a bit more lax.
+    if (unlikely(!(pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_DEFAULT
+                || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_ONE
+                || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_TWO
+                || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_THREE
+                || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_FOUR
+                || pPresentationParameters->PresentationInterval == D3DPRESENT_INTERVAL_IMMEDIATE)))
       return D3DERR_INVALIDCALL;
 
     return D3D_OK;
