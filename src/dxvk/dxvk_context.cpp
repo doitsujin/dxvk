@@ -388,7 +388,7 @@ namespace dxvk {
       // Suspend works here because we'll end up with one of these scenarios:
       // 1) The render pass gets ended for good, in which case we emit barriers
       // 2) The clear gets folded into render pass ops, so the layout is correct
-      // 3) The clear gets executed separately, in which case updateFramebuffer
+      // 3) The clear gets executed separately, in which case updateRenderTargets
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
@@ -1502,7 +1502,7 @@ namespace dxvk {
         found = m_state.om.framebufferInfo.getAttachment(i).view->image() == image;
 
       if (found) {
-        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+        m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
 
         spillRenderPass(true);
 
@@ -4084,7 +4084,7 @@ namespace dxvk {
           VkExtent3D            extent,
           VkImageAspectFlags    aspect,
           VkClearValue          value) {
-    this->updateFramebuffer();
+    this->updateRenderTargets();
 
     VkPipelineStageFlags clearStages = 0;
     VkAccessFlags clearAccess = 0;
@@ -6699,29 +6699,46 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::updateFramebuffer() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
+  void DxvkContext::updateRenderTargets() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyRenderTargets)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyRenderTargets);
+
+      if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+        // Only interrupt an active render pass if the render targets have actually
+        // changed since the last update. There are cases where client APIs cannot
+        // know in advance that consecutive draws use the same set of render targets.
+        if (m_state.om.renderTargets == m_state.om.framebufferInfo.attachments())
+          return;
+      }
+
+      // End active render pass and reset load/store ops for the new render targets.
+      DxvkFramebufferInfo fbInfo = makeFramebufferInfo(m_state.om.renderTargets);
 
       this->spillRenderPass(true);
 
-      DxvkFramebufferInfo fbInfo = makeFramebufferInfo(m_state.om.renderTargets);
-      this->updateRenderTargetLayouts(fbInfo, m_state.om.framebufferInfo);
+      this->resetRenderPassOps(
+        m_state.om.renderTargets,
+        m_state.om.renderPassOps);
+
+      this->updateRenderTargetLayouts(fbInfo,
+        m_state.om.framebufferInfo);
 
       // Update relevant graphics pipeline state
       m_state.gp.state.ms.setSampleCount(fbInfo.getSampleCount());
       m_state.gp.state.rt = fbInfo.getRtInfo();
-      m_state.om.framebufferInfo = fbInfo;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        const Rc<DxvkImageView>& attachment = fbInfo.getColorTarget(i).view;
+        const auto& attachment = fbInfo.getColorTarget(i).view;
 
-        VkComponentMapping mapping = attachment != nullptr
-          ? util::invertComponentMapping(attachment->info().unpackSwizzle())
-          : VkComponentMapping();
+        VkComponentMapping mapping = VkComponentMapping();
+
+        if (attachment)
+          mapping = util::invertComponentMapping(attachment->info().unpackSwizzle());
 
         m_state.gp.state.omSwizzle[i] = DxvkOmAttachmentSwizzle(mapping);
       }
+
+      m_state.om.framebufferInfo = std::move(fbInfo);
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     } else if (m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
@@ -7394,9 +7411,9 @@ namespace dxvk {
     }
 
     // End render pass if there are pending resolves
-    if (m_flags.any(DxvkContextFlag::GpDirtyFramebuffer,
+    if (m_flags.any(DxvkContextFlag::GpDirtyRenderTargets,
                     DxvkContextFlag::GpRenderPassNeedsFlush))
-      this->updateFramebuffer();
+      this->updateRenderTargets();
 
     if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
       // If transform feedback is active and there is a chance that we might
@@ -8294,7 +8311,7 @@ namespace dxvk {
       DxvkContextFlag::GpIndependentSets);
 
     m_flags.set(
-      DxvkContextFlag::GpDirtyFramebuffer,
+      DxvkContextFlag::GpDirtyRenderTargets,
       DxvkContextFlag::GpDirtyPipeline,
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers,

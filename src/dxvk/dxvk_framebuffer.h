@@ -205,15 +205,6 @@ namespace dxvk {
     int32_t findAttachment(const Rc<DxvkImageView>& view) const;
 
     /**
-     * \brief Checks whether the framebuffer's targets match
-     *
-     * \param [in] renderTargets Render targets to check
-     * \returns \c true if the render targets are the same
-     *          as the ones used for this framebuffer object.
-     */
-    bool hasTargets(const DxvkRenderTargets& renderTargets);
-
-    /**
      * \brief Checks whether view and framebuffer sizes match
      *
      * Tests whether the size of the framebuffer is the same

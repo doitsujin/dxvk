@@ -42,16 +42,6 @@ namespace dxvk {
   }
 
 
-  bool DxvkFramebufferInfo::hasTargets(const DxvkRenderTargets& renderTargets) {
-    bool eq = m_renderTargets.depth.view   == renderTargets.depth.view;
-
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++)
-      eq &= m_renderTargets.color[i].view   == renderTargets.color[i].view;
-
-    return eq;
-  }
-
-
   bool DxvkFramebufferInfo::isFullSize(const Rc<DxvkImageView>& view) const {
     return m_renderSize.width  == view->mipLevelExtent(0).width
         && m_renderSize.height == view->mipLevelExtent(0).height

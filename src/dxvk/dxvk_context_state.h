@@ -27,7 +27,7 @@ namespace dxvk {
     GpRenderPassSideEffects,    ///< Render pass has side effects
     GpRenderPassNeedsFlush,     ///< Render pass has pending resolves or discards
     GpXfbActive,                ///< Transform feedback is enabled
-    GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
+    GpDirtyRenderTargets,       ///< Bound render targets are out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
