@@ -146,13 +146,14 @@ namespace dxvk {
             VkImageAspectFlags    feedbackLoop) {
       if (likely(m_state.om.renderTargets != targets)) {
         m_state.om.renderTargets = std::move(targets);
-
-        if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
-          m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
-          m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-        }
-
         m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
+      }
+
+      if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
+        m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
+
+        m_flags.set(DxvkContextFlag::GpDirtyRenderTargets,
+                    DxvkContextFlag::GpDirtyPipelineState);
       }
     }
 
