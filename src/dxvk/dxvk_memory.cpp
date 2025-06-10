@@ -2270,8 +2270,16 @@ namespace dxvk {
 
         m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i] - internal, m_memHeaps[i].properties.size);
 
-        if (maxBudget && (m_memHeaps[i].properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT))
-          m_memHeaps[i].memoryBudget = std::min(m_memHeaps[i].memoryBudget, maxBudget);
+        if (m_memHeaps[i].properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+          // Keep a small amount of the budget unused. This avoids problematic behaviour
+          // in some drivers when maxing out the budget, and allows small driver-internal
+          // allocations to succeed while giving us time to evict more resources.
+          VkDeviceSize reservedSize = std::clamp<VkDeviceSize>(m_memHeaps[i].properties.size / 100u, MinChunkSize, MaxChunkSize);
+          m_memHeaps[i].memoryBudget -= std::min(reservedSize, m_memHeaps[i].memoryBudget);
+
+          if (maxBudget)
+            m_memHeaps[i].memoryBudget = std::min(m_memHeaps[i].memoryBudget, maxBudget);
+        }
       }
     }
   }
