@@ -264,7 +264,7 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkImageView>&&   view) {
-      if (likely(m_resources[slot].imageView != view)) {
+      if (likely(m_resources[slot].imageView != view || m_resources[slot].bufferView)) {
         m_resources[slot].bufferView = nullptr;
         m_resources[slot].imageView = std::move(view);
 
@@ -283,7 +283,7 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkBufferView>&&  view) {
-      if (likely(m_resources[slot].bufferView != view)) {
+      if (likely(m_resources[slot].bufferView != view || m_resources[slot].imageView)) {
         m_resources[slot].imageView = nullptr;
         m_resources[slot].bufferView = std::move(view);
 
