@@ -17,13 +17,18 @@ namespace dxvk {
   */
   class D3D8Interface final : public ComObjectClamp<IDirect3D8> {
 
+    // These must be valid render target formats, and as per the
+    // D3D8 documentation: "Render target formats are restricted to
+    // D3DFMT_X1R5G5B5, D3DFMT_R5G6B5, D3DFMT_X8R8G8B8, and D3DFMT_A8R8G8B8."
+    //
+    // Additionally, the documentation states: "Applications should not
+    // specify a DisplayFormat that contains an alpha channel."
+    //
+    // While D3DFMT_X1R5G5B5 is technically valid, no drivers list
+    // modes for it, therefore including it in caching queries is redundant.
     static constexpr d3d9::D3DFORMAT ADAPTER_FORMATS[] = {
-      d3d9::D3DFMT_A1R5G5B5,
-      //d3d9::D3DFMT_A2R10G10B10, (not in D3D8)
-      d3d9::D3DFMT_A8R8G8B8,
-      d3d9::D3DFMT_R5G6B5,
-      d3d9::D3DFMT_X1R5G5B5,
-      d3d9::D3DFMT_X8R8G8B8
+      d3d9::D3DFMT_X8R8G8B8,
+      d3d9::D3DFMT_R5G6B5
     };
 
   public:
