@@ -25,7 +25,10 @@ namespace dxvk {
    * \brief Framebuffer attachment
    */
   struct DxvkAttachment {
-    Rc<DxvkImageView> view    = nullptr;
+    Rc<DxvkImageView> view = nullptr;
+
+    bool operator == (const DxvkAttachment& other) const { return view == other.view; }
+    bool operator != (const DxvkAttachment& other) const { return view != other.view; }
   };
   
   
@@ -38,6 +41,19 @@ namespace dxvk {
   struct DxvkRenderTargets {
     DxvkAttachment depth;
     DxvkAttachment color[MaxNumRenderTargets];
+
+    bool operator == (const DxvkRenderTargets& other) const {
+      bool eq = depth == other.depth;
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++)
+        eq = color[i] == other.color[i];
+
+      return eq;
+    }
+
+    bool operator != (const DxvkRenderTargets& other) const {
+      return !(this->operator == (other));
+    }
   };
 
 
