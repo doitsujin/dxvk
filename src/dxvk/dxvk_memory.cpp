@@ -2342,6 +2342,9 @@ namespace dxvk {
           DxvkMemoryType&       type) {
     auto& pool = type.devicePool;
 
+    if (pool.chunks.empty())
+      return;
+
     // Only engage defragmentation at all if we have a significant
     // amount of memory wasted, or if we're under memory pressure.
     auto heapStats = getMemoryStats(type.heap->index);
@@ -2361,7 +2364,12 @@ namespace dxvk {
 
       uint32_t pagesPerChunk = pool.nextChunkSize / DxvkPageAllocator::PageSize;
 
-      if (pagesUsed + pagesUsed / 8u + pagesPerChunk >= pagesTotal)
+      // Allow for more "wasted" system memory since it's usually less of an issue
+      uint32_t tolerance = (type.heap->properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        ? pagesUsed / 8u
+        : pagesUsed / 3u;
+
+      if (pagesUsed + tolerance + pagesPerChunk >= pagesTotal)
         return;
     }
 
