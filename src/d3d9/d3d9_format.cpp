@@ -268,15 +268,9 @@ namespace dxvk {
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
-      case D3D9Format::D32_LOCKABLE: return {
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+      case D3D9Format::D32_LOCKABLE: return {}; // Unsupported (everywhere)
 
-      case D3D9Format::S8_LOCKABLE: return {
-        VK_FORMAT_S8_UINT,
-        VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_STENCIL_BIT };
+      case D3D9Format::S8_LOCKABLE: return {}; // Unsupported (everywhere)
 
       case D3D9Format::L16: return {
         VK_FORMAT_R16_UNORM,
