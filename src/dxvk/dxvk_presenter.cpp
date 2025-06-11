@@ -1180,7 +1180,9 @@ namespace dxvk {
       m_vkd->vkDestroyFence(m_vkd->device(), sem.fence, nullptr);
     }
 
-    m_vkd->vkDestroySwapchainKHR(m_vkd->device(), m_swapchain, nullptr);
+    // The conditional is here because some third party layers don't properly handle null swapchains
+    if (m_swapchain)
+      m_vkd->vkDestroySwapchainKHR(m_vkd->device(), m_swapchain, nullptr);
 
     m_images.clear();
     m_semaphores.clear();
