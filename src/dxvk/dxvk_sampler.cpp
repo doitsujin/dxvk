@@ -398,10 +398,6 @@ namespace dxvk {
 
     // Don't need an atomic add for these
     m_samplersLive.store(m_samplersLive.load() - 1u);
-
-    // Try to keep some samplers available for subsequent allocations
-    if (m_samplers.size() > MinSamplerCount)
-      destroyLeastRecentlyUsedSampler();
   }
 
 
