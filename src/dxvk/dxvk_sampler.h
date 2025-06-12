@@ -324,9 +324,6 @@ namespace dxvk {
     // Lower limit for sampler counts in Vulkan.
     constexpr static uint32_t MaxSamplerCount = 2048u;
 
-    // Minimum number of samplers to keep alive.
-    constexpr static uint32_t MinSamplerCount = 1024u;
-
     DxvkSamplerPool(DxvkDevice* device);
 
     ~DxvkSamplerPool();
