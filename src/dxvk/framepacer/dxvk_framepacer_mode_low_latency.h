@@ -45,7 +45,7 @@ namespace dxvk {
     LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options)
     : FramePacerMode(mode, storage),
       m_lowLatencyOffset(getLowLatencyOffset(options)),
-      m_allowCpuFramesOverlap(getLowLatencyAllowCpuFramesOverlap(options)) {
+      m_allowCpuFramesOverlap(options.lowLatencyAllowCpuFramesOverlap) {
       Logger::info( str::format("Using lowLatencyOffset: ", m_lowLatencyOffset) );
       Logger::info( str::format("Using lowLatencyAllowCpuFramesOverlap: ", m_allowCpuFramesOverlap) );
     }
