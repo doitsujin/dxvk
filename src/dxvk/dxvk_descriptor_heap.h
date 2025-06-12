@@ -16,7 +16,7 @@ namespace dxvk {
    * Stores buffer properties for the purpose of
    * binding the descriptor heap.
    */
-  struct DxvkResourceDescriptorHeapBindingInfo {
+  struct DxvkDescriptorHeapBindingInfo {
     VkBuffer        buffer      = VK_NULL_HANDLE;
     VkDeviceAddress gpuAddress  = 0u;
     VkDeviceSize    heapSize    = 0u;
@@ -78,8 +78,8 @@ namespace dxvk {
      * buffer once.
      * \returns Buffer slice for descriptor heap binding
      */
-    DxvkResourceDescriptorHeapBindingInfo getHeapInfo() const {
-      DxvkResourceDescriptorHeapBindingInfo result = { };
+    DxvkDescriptorHeapBindingInfo getHeapInfo() const {
+      DxvkDescriptorHeapBindingInfo result = { };
       result.buffer = m_rangeInfo.buffer;
       result.gpuAddress = m_rangeInfo.gpuAddress - m_rangeInfo.offset;
       result.heapSize = m_heapSize;

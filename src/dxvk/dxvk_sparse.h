@@ -426,6 +426,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Resource residency status
+   */
+  enum class DxvkResourceResidency : uint32_t {
+    Resident  = 0u, ///< Resource is resident in desired memory type
+    Demoted   = 1u, ///< Resource is likely unused and may get evicted
+    Evicted   = 2u, ///< Resource got evicted to system memory
+  };
+
+
+  /**
    * \brief Paged resource
    *
    * Base class for memory-backed resources that may
@@ -435,8 +445,8 @@ namespace dxvk {
 
   public:
 
-    DxvkPagedResource()
-    : m_cookie(++s_cookie) { }
+    DxvkPagedResource(DxvkMemoryAllocator& allocator)
+    : m_allocator(&allocator), m_cookie(++s_cookie) { }
 
     virtual ~DxvkPagedResource();
 
@@ -612,6 +622,47 @@ namespace dxvk {
     }
 
     /**
+     * \brief Requests eviction
+     *
+     * If the resource is currently resident, this will update its
+     * status to \c Demoted and return \c false. If the status is
+     * already \c Demoted, then this will return \c true, indicating
+     * that the resource has not been used since the last call.
+     * \returns \c true if the resource can be evicted
+     */
+    bool requestEviction() {
+      DxvkResourceResidency status = m_residency.load(std::memory_order_acquire);
+
+      if (status == DxvkResourceResidency::Resident && m_residency.compare_exchange_strong(
+          status, DxvkResourceResidency::Demoted, std::memory_order_release))
+        return false;
+
+      return status == DxvkResourceResidency::Demoted;
+    }
+
+    /**
+     * \brief Requests the resource to be made resident
+     *
+     * If the resource has been demoted, its status will be changed back to
+     * \c Resident so that it will not be evicted. Otherwise, if the resource
+     * has already been evicted, it will be queued up to be streamed back into
+     * video memory.
+     */
+    void requestResidency() {
+      DxvkResourceResidency status = m_residency.load(std::memory_order_acquire);
+
+      if (likely(status == DxvkResourceResidency::Resident))
+        return;
+
+      if (status == DxvkResourceResidency::Demoted && m_residency.compare_exchange_strong(
+          status, DxvkResourceResidency::Resident, std::memory_order_release))
+        return;
+
+      if (status == DxvkResourceResidency::Evicted)
+        makeResourceResident();
+    }
+
+    /**
      * \brief Queries sparse page table
      *
      * Should be removed once storage objects can
@@ -655,13 +706,32 @@ namespace dxvk {
      */
     virtual const char* getDebugName() const = 0;
 
+  protected:
+
+    DxvkMemoryAllocator*  m_allocator = nullptr;
+
+    /**
+     * \brief Updates residency status
+     *
+     * Must be called whenever the backing storage
+     * for a residency-tracked resource changes.
+     * \param [in] residency New residency status
+     */
+    void updateResidencyStatus(DxvkResourceResidency residency) {
+      m_residency.store(residency, std::memory_order_release);
+    }
+
   private:
 
     std::atomic<uint64_t> m_useCount = { 0u };
     uint64_t              m_trackId = { 0u };
     uint64_t              m_cookie = { 0u };
 
+    std::atomic<DxvkResourceResidency> m_residency = { DxvkResourceResidency::Resident };
+
     bool                  m_hasGfxStores = false;
+
+    void makeResourceResident();
 
     static constexpr uint64_t getIncrement(DxvkAccess access) {
       return uint64_t(1u) << (uint32_t(access) * 20u);

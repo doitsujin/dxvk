@@ -100,6 +100,10 @@ namespace dxvk {
 
     void CacheModes(D3D9Format Format);
 
+    void FilterModesByFormat(
+          D3D9Format Format,
+          const bool ApplyOptionsFilter);
+
     void CacheIdentifierInfo();
 
     D3D9InterfaceEx*              m_parent;

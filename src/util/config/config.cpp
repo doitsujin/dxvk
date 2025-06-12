@@ -60,7 +60,7 @@ namespace dxvk {
     /* D3D11 GAMES                                */
     /**********************************************/
 
-    /* Batman Arkham Knight - doesn't like intel vendor id 
+    /* Batman Arkham Knight - doesn't like intel vendor id
       (refuses to boot if vendor isn't 0x10de or 0x1002)  */
     { R"(\\BatmanAK\.exe$)", {{
       { "dxgi.hideIntelGpu",                "True" },
@@ -112,13 +112,6 @@ namespace dxvk {
     /* Nioh: Apparently the same as the Atelier games  */
     { R"(\\nioh\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
-    }} },
-    /* Quantum Break: Mever initializes shared    *
-     * memory in one of its compute shaders.      *
-     * Also loves using MAP_WRITE on the same     *
-     * set of resources multiple times per frame. */
-    { R"(\\QuantumBreak\.exe$)", {{
-      { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
     /* Anno 2205: Random crashes with state cache */
     { R"(\\anno2205\.exe$)", {{
@@ -434,12 +427,12 @@ namespace dxvk {
     { R"(\\EDF6\.exe$)", {{
       { "d3d11.enableContextLock",          "True" },
     }} },
-    /* Kena: Bridge of Spirits: intel water       * 
+    /* Kena: Bridge of Spirits: intel water       *
      * flickering issues                          */
     { R"(\\Kena-Win64-Shipping\.exe$)", {{
       { "dxgi.hideIntelGpu",                 "True" },
     }} },
-    /* GTA Definitive Edition trilogy             * 
+    /* GTA Definitive Edition trilogy             *
      * Static ags crash with HDR support          */
     { R"(\\(LibertyCity|ViceCity|SanAndreas)\.exe$)", {{
       { "dxgi.enableUe4Workarounds",        "True" },
@@ -459,11 +452,6 @@ namespace dxvk {
     { R"(\\Varstray_steam(_demo)?\.exe$)", {{
       { "dxgi.maxFrameRate",                "60" },
     }} },
-    /* Far Cry 5 and New Dawn                      *
-     * Invisible terrain on Intel                  */
-    { R"(\\FarCry(5|NewDawn)\.exe$)", {{
-      { "d3d11.zeroInitWorkgroupMemory",    "True" },
-    }} },
     /* Watch Dogs 2 - ships broken compute shaders *
      * with no barriers when they are needed       */
     { R"(\\WatchDogs2\.exe$)", {{
@@ -472,6 +460,11 @@ namespace dxvk {
     /* Rocketbirds 2: Ignores row pitch for mapped *
      * images, corrupting intro video              */
     { R"(\\Rocketbirds 2\\Game\.exe$)", {{
+      { "d3d11.disableDirectImageMapping",  "True" },
+    }} },
+    /* LEGO City Undercover                        *
+     * Fixes graphical corruption on cutscenes     */
+    { R"(\\LEGOLCUR_DX11\.exe$)", {{
       { "d3d11.disableDirectImageMapping",  "True" },
     }} },
 
@@ -935,17 +928,17 @@ namespace dxvk {
     }} },
     /* STAR WARS: The Force Unleashed            *
      * Prevents black screen on each alt-tab     */
-    { R"(\\SWTFU\.exe$)", {{ 
+    { R"(\\SWTFU\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Fallout New Vegas - Various visual issues *
      * with mods such as New Vegas Reloaded      */
-    { R"(\\FalloutNV\.exe$)", {{ 
+    { R"(\\FalloutNV\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
     /* Dungeons and Dragons: Dragonshard         *
      * Massive FPS decreases in some scenes      */
-    { R"(\\Dragonshard\.exe$)", {{ 
+    { R"(\\Dragonshard\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Battle for Middle-earth 2 and expansion   *
@@ -1057,8 +1050,15 @@ namespace dxvk {
     }} },
     /* Pirate Huner - Prevents crash              */
     { R"(\\PH\.exe$)", {{
-      { "d3d9.memoryTrackTest",          "True" },
-      { "d3d9.maxAvailableMemory",       "2048" },
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+    }} },
+    /* Battle Engine Aquila - Enables additional  *
+     * graphical features and Nvidia particle fog */
+    { R"(\\BEA\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.customDeviceId",              "0330" },
+      { "d3d9.customDeviceDesc",            "NVIDIA GeForce FX 5900 Ultra" },
     }} },
 
     /**********************************************/

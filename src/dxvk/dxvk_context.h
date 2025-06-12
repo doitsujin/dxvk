@@ -144,25 +144,16 @@ namespace dxvk {
     void bindRenderTargets(
             DxvkRenderTargets&&   targets,
             VkImageAspectFlags    feedbackLoop) {
-      m_state.om.renderTargets = std::move(targets);
+      if (likely(m_state.om.renderTargets != targets)) {
+        m_state.om.renderTargets = std::move(targets);
+        m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
+      }
 
       if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
         m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
-        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-      }
 
-      this->resetRenderPassOps(
-        m_state.om.renderTargets,
-        m_state.om.renderPassOps);
-
-      if (!m_state.om.framebufferInfo.hasTargets(m_state.om.renderTargets)) {
-        // Create a new framebuffer object next
-        // time we start rendering something
-        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
-      } else {
-        // Don't redundantly spill the render pass if
-        // the same render targets are bound again
-        m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
+        m_flags.set(DxvkContextFlag::GpDirtyRenderTargets,
+                    DxvkContextFlag::GpDirtyPipelineState);
       }
     }
 
@@ -264,7 +255,7 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkImageView>&&   view) {
-      if (likely(m_resources[slot].imageView != view)) {
+      if (likely(m_resources[slot].imageView != view || m_resources[slot].bufferView)) {
         m_resources[slot].bufferView = nullptr;
         m_resources[slot].imageView = std::move(view);
 
@@ -283,7 +274,7 @@ namespace dxvk {
             VkShaderStageFlags    stages,
             uint32_t              slot,
             Rc<DxvkBufferView>&&  view) {
-      if (likely(m_resources[slot].bufferView != view)) {
+      if (likely(m_resources[slot].bufferView != view || m_resources[slot].imageView)) {
         m_resources[slot].imageView = nullptr;
         m_resources[slot].bufferView = std::move(view);
 
@@ -1732,7 +1723,7 @@ namespace dxvk {
     DxvkFramebufferInfo makeFramebufferInfo(
       const DxvkRenderTargets&      renderTargets);
 
-    void updateFramebuffer(bool isDraw = false);
+    void updateRenderTargets(bool isDraw = false);
     
     void applyRenderTargetLoadLayouts();
 
@@ -2235,6 +2226,10 @@ namespace dxvk {
     static uint32_t computePushDataBlockOffset(uint32_t index) {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
     }
+
+    static VkStencilOpState convertStencilOp(
+      const DxvkStencilOp&            op,
+            bool                      writable);
 
     static bool formatsAreCopyCompatible(
             VkFormat                  imageFormat,

@@ -5,7 +5,6 @@
 #include "dxvk_compute.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
-#include "dxvk_extensions.h"
 #include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
@@ -507,6 +506,14 @@ namespace dxvk {
      */
     DxvkSamplerDescriptorSet getSamplerDescriptorSet() {
       return m_objects.samplerPool().getDescriptorSetInfo();
+    }
+
+    /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkDescriptorHeapBindingInfo getSamplerDescriptorHeap() {
+      return m_objects.samplerPool().getDescriptorHeapInfo();
     }
 
     /**

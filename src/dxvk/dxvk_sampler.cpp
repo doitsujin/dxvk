@@ -8,7 +8,7 @@ namespace dxvk {
           DxvkSamplerPool*        pool,
     const DxvkSamplerKey&         key,
           uint16_t                index)
-  : m_pool(pool), m_key(key), m_index(index) {
+  : m_pool(pool), m_key(key) {
     auto vk = m_pool->m_device->vkd();
 
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
@@ -50,18 +50,12 @@ namespace dxvk {
     if (reductionInfo.reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE)
       reductionInfo.pNext = std::exchange(samplerInfo.pNext, &reductionInfo);
 
-    if (vk->vkCreateSampler(vk->device(),
-        &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
-      throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
-
-    m_pool->m_descriptorPool.writeDescriptor(m_index, m_sampler);
+    m_descriptor = m_pool->m_descriptorHeap.createSampler(index, &samplerInfo);
   }
 
 
   DxvkSampler::~DxvkSampler() {
-    auto vk = m_pool->m_device->vkd();
-
-    vk->vkDestroySampler(vk->device(), m_sampler, nullptr);
+    m_pool->m_descriptorHeap.freeSampler(m_descriptor);
   }
 
 
@@ -120,57 +114,73 @@ namespace dxvk {
 
 
 
-  DxvkSamplerDescriptorPool::DxvkSamplerDescriptorPool(
+  DxvkSamplerDescriptorHeap::DxvkSamplerDescriptorHeap(
           DxvkDevice*               device,
           uint32_t                  size)
-  : m_device(device) {
-    initDescriptorLayout(size);
+  : m_device(device), m_descriptorCount(size) {
+    initDescriptorLayout();
 
     if (device->canUseDescriptorBuffer())
       initDescriptorBuffer();
     else
-      initDescriptorPool(size);
+      initDescriptorPool();
   }
 
 
-  DxvkSamplerDescriptorPool::~DxvkSamplerDescriptorPool() {
+  DxvkSamplerDescriptorHeap::~DxvkSamplerDescriptorHeap() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyDescriptorPool(vk->device(), m_pool, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
+    vk->vkDestroyDescriptorPool(vk->device(), m_legacy.pool, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.setLayout, nullptr);
   }
 
 
-  DxvkSamplerDescriptorSet DxvkSamplerDescriptorPool::getDescriptorSetInfo() const {
+  DxvkSamplerDescriptorSet DxvkSamplerDescriptorHeap::getDescriptorSetInfo() const {
     DxvkSamplerDescriptorSet result = { };
-    result.set = m_set;
-    result.layout = m_setLayout;
-
-    if (m_buffer)
-      result.gpuAddress = m_buffer->getSliceInfo().gpuAddress;
-
+    result.set = m_legacy.set;
+    result.layout = m_legacy.setLayout;
     return result;
   }
 
 
-  void DxvkSamplerDescriptorPool::writeDescriptor(
+  DxvkDescriptorHeapBindingInfo DxvkSamplerDescriptorHeap::getDescriptorHeapInfo() const {
+    auto bufferInfo = m_heap.buffer->getSliceInfo();
+
+    DxvkDescriptorHeapBindingInfo result = { };
+    result.buffer = bufferInfo.buffer;
+    result.gpuAddress = bufferInfo.gpuAddress;
+    result.heapSize = m_heap.descriptorSize * m_descriptorCount;
+    result.bufferSize = bufferInfo.size;
+    return result;
+  }
+
+
+  DxvkSamplerDescriptor DxvkSamplerDescriptorHeap::createSampler(
           uint16_t              index,
-          VkSampler             sampler) {
+    const VkSamplerCreateInfo*  createInfo) {
     auto vk = m_device->vkd();
 
-    if (m_buffer) {
+    DxvkSamplerDescriptor descriptor = { };
+    descriptor.samplerIndex = index;
+
+    VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler object: ", vr));
+
+    if (m_heap.buffer) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
       info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-      info.data.pSampler = &sampler;
+      info.data.pSampler = &descriptor.samplerObject;
 
-      vk->vkGetDescriptorEXT(vk->device(), &info, m_descriptorSize,
-        m_buffer->mapPtr(m_descriptorOffset + m_descriptorSize * index));
+      vk->vkGetDescriptorEXT(vk->device(), &info, m_heap.descriptorSize,
+        m_heap.buffer->mapPtr(m_heap.descriptorOffset + m_heap.descriptorSize * index));
     } else {
       VkDescriptorImageInfo samplerInfo = { };
-      samplerInfo.sampler = sampler;
+      samplerInfo.sampler = descriptor.samplerObject;
 
       VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-      write.dstSet = m_set;
+      write.dstSet = m_legacy.set;
       write.dstArrayElement = index;
       write.descriptorCount = 1u;
       write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
@@ -178,15 +188,25 @@ namespace dxvk {
 
       vk->vkUpdateDescriptorSets(vk->device(), 1u, &write, 0u, nullptr);
     }
+
+    return descriptor;
   }
 
 
-  void DxvkSamplerDescriptorPool::initDescriptorLayout(uint32_t descriptorCount) {
+  void DxvkSamplerDescriptorHeap::freeSampler(
+          DxvkSamplerDescriptor sampler) {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroySampler(vk->device(), sampler.samplerObject, nullptr);
+  }
+
+
+  void DxvkSamplerDescriptorHeap::initDescriptorLayout() {
     auto vk = m_device->vkd();
 
     VkDescriptorSetLayoutBinding binding = { };
     binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-    binding.descriptorCount = descriptorCount;
+    binding.descriptorCount = m_descriptorCount;
     binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
 
     VkDescriptorBindingFlags bindingFlags = 0u;
@@ -208,19 +228,19 @@ namespace dxvk {
     layoutInfo.bindingCount = 1u;
     layoutInfo.pBindings = &binding;
 
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_setLayout);
+    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.setLayout);
 
     if (vr)
       throw DxvkError(str::format("Failed to create sampler descriptor set layout: ", vr));
   }
 
 
-  void DxvkSamplerDescriptorPool::initDescriptorPool(uint32_t descriptorCount) {
+  void DxvkSamplerDescriptorHeap::initDescriptorPool() {
     auto vk = m_device->vkd();
 
     VkDescriptorPoolSize poolSize = { };
     poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-    poolSize.descriptorCount = descriptorCount;
+    poolSize.descriptorCount = m_descriptorCount;
 
     VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
@@ -228,22 +248,22 @@ namespace dxvk {
     poolInfo.poolSizeCount = 1u;
     poolInfo.pPoolSizes = &poolSize;
 
-    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &poolInfo, nullptr, &m_pool);
+    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &poolInfo, nullptr, &m_legacy.pool);
 
     if (vr)
       throw DxvkError(str::format("Failed to create sampler pool: ", vr));
 
     VkDescriptorSetAllocateInfo setInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-    setInfo.descriptorPool = m_pool;
+    setInfo.descriptorPool = m_legacy.pool;
     setInfo.descriptorSetCount = 1u;
-    setInfo.pSetLayouts = &m_setLayout;
+    setInfo.pSetLayouts = &m_legacy.setLayout;
 
-    if ((vr = vk->vkAllocateDescriptorSets(vk->device(), &setInfo, &m_set)))
+    if ((vr = vk->vkAllocateDescriptorSets(vk->device(), &setInfo, &m_legacy.set)))
       throw DxvkError(str::format("Failed to allocate sampler descriptor set: ", vr));
   }
 
 
-  void DxvkSamplerDescriptorPool::initDescriptorBuffer() {
+  void DxvkSamplerDescriptorHeap::initDescriptorBuffer() {
     auto vk = m_device->vkd();
 
     DxvkBufferCreateInfo bufferInfo = { };
@@ -251,24 +271,24 @@ namespace dxvk {
                      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferInfo.debugName = "Sampler heap";
 
-    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_setLayout, &bufferInfo.size);
-    vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_setLayout, 0u, &m_descriptorOffset);
+    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.setLayout, &bufferInfo.size);
+    vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.setLayout, 0u, &m_heap.descriptorOffset);
 
     Logger::info(str::format("Creating sampler descriptor heap (", bufferInfo.size >> 10u, " kB)"));
 
-    m_buffer = m_device->createBuffer(bufferInfo,
+    m_heap.buffer = m_device->createBuffer(bufferInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    m_descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
+    m_heap.descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
   }
 
 
 
 
   DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
-  : m_device(device), m_descriptorPool(device, MaxSamplerCount) {
+  : m_device(device), m_descriptorHeap(device, MaxSamplerCount) {
     // Populate free list in reverse order. Sampler index 0 is
     // reserved for the default sampler, so skip that.
     for (uint16_t i = MaxSamplerCount; i; i--)
@@ -388,7 +408,7 @@ namespace dxvk {
     DxvkSampler* sampler = m_lruHead;
 
     if (sampler) {
-      freeSamplerIndex(sampler->m_index);
+      freeSamplerIndex(sampler->getDescriptor().samplerIndex);
       m_lruHead = sampler->m_lruNext;
 
       if (m_lruHead)

@@ -575,9 +575,15 @@ namespace dxvk {
           Rc<DxvkPagedResource>&&     resource,
     const DxvkResourceAllocation*     allocation,
           DxvkAllocationModes         mode) {
+    DxvkResourceMemoryInfo key = { };
+    key.offset = resource->cookie();
+
+    if (allocation)
+      key = allocation->getMemoryInfo();
+
     std::lock_guard lock(m_mutex);
     m_entries.emplace(std::piecewise_construct,
-      std::forward_as_tuple(allocation->getMemoryInfo()),
+      std::forward_as_tuple(key),
       std::forward_as_tuple(std::move(resource), mode));
   }
 
@@ -603,6 +609,8 @@ namespace dxvk {
       heap.index = i;
       heap.memoryBudget = memInfo.memoryHeaps[i].size;
       heap.properties = memInfo.memoryHeaps[i];
+      heap.enforceBudget = !m_device->isUnifiedMemoryArchitecture()
+        && m_device->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
     }
 
     for (uint32_t i = 0; i < m_memTypeCount; i++) {
@@ -667,10 +675,18 @@ namespace dxvk {
     const DxvkAllocationInfo&               allocationInfo) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
+    // If we're allocating device-local memory, only consider memory types from
+    // the first reported heap. This way, we avoid falling back to HVV on systems
+    // without resizeable BAR by accident.
+    uint32_t memoryTypeMask = requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties);
+
+    if (memoryTypeMask && (allocationInfo.properties & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+      memoryTypeMask &= m_memTypes[bit::tzcnt(memoryTypeMask)].heap->memoryTypes;
+
     // Ensure the allocation size is also aligned
     VkDeviceSize size = align(requirements.size, requirements.alignment);
 
-    for (auto typeIndex : bit::BitMask(requirements.memoryTypeBits & getMemoryTypeMask(allocationInfo.properties))) {
+    for (auto typeIndex : bit::BitMask(memoryTypeMask)) {
       auto& type = m_memTypes[typeIndex];
 
       // Use correct memory pool depending on property flags. This way we avoid
@@ -700,33 +716,6 @@ namespace dxvk {
 
         if (address >= 0)
           return createAllocation(type, selectedPool, address, size, allocationInfo);
-      }
-
-      // If the memory type is host-visible, try to find an existing chunk
-      // in the other memory pool of the memory type and move over.
-      if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-        auto& oppositePool = (allocationInfo.properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-          ? type.devicePool
-          : type.mappedPool;
-
-        int32_t freeChunkIndex = findEmptyChunkInPool(oppositePool,
-          size, selectedPool.maxChunkSize);
-
-        if (freeChunkIndex >= 0) {
-          uint32_t poolChunkIndex = selectedPool.pageAllocator.addChunk(oppositePool.chunks[freeChunkIndex].memory.size);
-          selectedPool.chunks.resize(std::max<size_t>(selectedPool.chunks.size(), poolChunkIndex + 1u));
-          selectedPool.chunks[poolChunkIndex] = oppositePool.chunks[freeChunkIndex];
-
-          oppositePool.pageAllocator.removeChunk(freeChunkIndex);
-          oppositePool.chunks[freeChunkIndex] = DxvkMemoryChunk();
-
-          mapDeviceMemory(selectedPool.chunks[poolChunkIndex].memory, allocationInfo.properties);
-
-          address = selectedPool.alloc(size, requirements.alignment);
-
-          if (likely(address >= 0))
-            return createAllocation(type, selectedPool, address, size, allocationInfo);
-        }
       }
 
       // If the allocation is very large, use a dedicated allocation instead
@@ -820,6 +809,9 @@ namespace dxvk {
       if (unlikely(createInfo.usage & ~m_globalBufferUsageFlags))
         memoryRequirements.memoryTypeBits = findGlobalBufferMemoryTypeMask(createInfo.usage);
 
+      if (unlikely(allocationInfo.mode.test(DxvkAllocationMode::NoDeviceMemory)))
+        memoryRequirements.memoryTypeBits &= ~getMemoryTypeMask(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
       if (likely(memoryRequirements.memoryTypeBits)) {
         bool allowSuballocation = true;
 
@@ -909,6 +901,9 @@ namespace dxvk {
 
       VkMemoryRequirements2 requirements = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
       vk->vkGetBufferMemoryRequirements2(vk->device(), &requirementInfo, &requirements);
+
+      if (unlikely(allocationInfo.mode.test(DxvkAllocationMode::NoDeviceMemory)))
+        requirements.memoryRequirements.memoryTypeBits &= ~getMemoryTypeMask(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       // When allocating memory for a descriptor heap, use a dedicated allocation. We
       // ca expect these to be long-lived and mapped, and potentially use a dedicated
@@ -1019,6 +1014,10 @@ namespace dxvk {
     Rc<DxvkResourceAllocation> allocation;
 
     if (!(createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
+      // Force the resource to go into a system memory type if requested
+      if (unlikely(allocationInfo.mode.test(DxvkAllocationMode::NoDeviceMemory)))
+        requirements.memoryRequirements.memoryTypeBits &= ~getMemoryTypeMask(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
       // If a dedicated allocation is at least preferred for this resource, try this first
       if (!allocation && dedicatedRequirements.prefersDedicatedAllocation
        && !allocationInfo.mode.test(DxvkAllocationMode::NoAllocation)) {
@@ -1208,6 +1207,12 @@ namespace dxvk {
 
     // Preemptively free some unused allocations to reduce memory waste
     freeEmptyChunksInHeap(*type.heap, size, high_resolution_clock::now());
+
+    // If we're exceeding vram budget on a dedicated GPU, fall back to system memory.
+    if (!next && type.heap->enforceBudget && (getMemoryStats(type.heap->index).memoryAllocated + size > type.heap->memoryBudget)) {
+      type.heap->enableEviction = true;
+      return DxvkDeviceMemory();
+    }
 
     VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, next };
     memoryInfo.allocationSize = size;
@@ -2140,6 +2145,15 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::requestMakeResident(
+          DxvkPagedResource*          resource) {
+    std::lock_guard lock(m_resourceMutex);
+
+    m_relocations.addResource(resource, nullptr,
+      DxvkAllocationMode::NoFallback);
+  }
+
+
   void DxvkMemoryAllocator::lockResourceGpuAddress(
     const Rc<DxvkResourceAllocation>& allocation) {
     if (allocation->m_flags.test(DxvkAllocationFlag::CanMove)) {
@@ -2238,6 +2252,8 @@ namespace dxvk {
     if (!m_device->features().extMemoryBudget)
       return;
 
+    VkDeviceSize maxBudget = m_device->config().maxMemoryBudget;
+
     VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT };
     VkPhysicalDeviceMemoryProperties2 memInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2, &memBudget };
 
@@ -2253,6 +2269,17 @@ namespace dxvk {
                      internal = std::min(memBudget.heapBudget[i], internal);
 
         m_memHeaps[i].memoryBudget = std::min(memBudget.heapBudget[i] - internal, m_memHeaps[i].properties.size);
+
+        if (m_memHeaps[i].properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+          // Keep a small amount of the budget unused. This avoids problematic behaviour
+          // in some drivers when maxing out the budget, and allows small driver-internal
+          // allocations to succeed while giving us time to evict more resources.
+          VkDeviceSize reservedSize = std::clamp<VkDeviceSize>(m_memHeaps[i].properties.size / 100u, MinChunkSize, MaxChunkSize);
+          m_memHeaps[i].memoryBudget -= std::min(reservedSize, m_memHeaps[i].memoryBudget);
+
+          if (maxBudget)
+            m_memHeaps[i].memoryBudget = std::min(m_memHeaps[i].memoryBudget, maxBudget);
+        }
       }
     }
   }
@@ -2284,9 +2311,14 @@ namespace dxvk {
     if (pool.pageAllocator.chunkIsAvailable(chunkIndex))
       return;
 
-    DxvkAllocationModes mode(
-      DxvkAllocationMode::NoAllocation,
-      DxvkAllocationMode::NoFallback);
+    // Set allocation modes depending pn whether the memory type
+    // is a device-local type or a fallback system memory type.
+    DxvkAllocationModes mode(DxvkAllocationMode::NoAllocation);
+
+    if (type.properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+      mode.set(DxvkAllocationMode::NoFallback);
+    else
+      mode.set(DxvkAllocationMode::NoDeviceMemory);
 
     // Iterate over the chunk's allocation list and look up resources
     std::unique_lock lock(m_resourceMutex);
@@ -2318,6 +2350,9 @@ namespace dxvk {
           DxvkMemoryType&       type) {
     auto& pool = type.devicePool;
 
+    if (pool.chunks.empty())
+      return;
+
     // Only engage defragmentation at all if we have a significant
     // amount of memory wasted, or if we're under memory pressure.
     auto heapStats = getMemoryStats(type.heap->index);
@@ -2337,7 +2372,12 @@ namespace dxvk {
 
       uint32_t pagesPerChunk = pool.nextChunkSize / DxvkPageAllocator::PageSize;
 
-      if (pagesUsed + pagesUsed / 8u + pagesPerChunk >= pagesTotal)
+      // Allow for more "wasted" system memory since it's usually less of an issue
+      uint32_t tolerance = (type.heap->properties.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        ? pagesUsed / 8u
+        : pagesUsed / 3u;
+
+      if (pagesUsed + tolerance + pagesPerChunk >= pagesTotal)
         return;
     }
 
@@ -2413,6 +2453,100 @@ namespace dxvk {
   }
 
 
+  void DxvkMemoryAllocator::evictResources(
+          DxvkMemoryType&       type) {
+    auto& pool = type.devicePool;
+
+    // Doing this on integrated graphics would be harmful, so don't'
+    if (pool.chunks.empty() || !type.heap->enableEviction)
+      return;
+
+    // Work out how much memory we should ideally leave unused
+    VkDeviceSize minUnusedMemory = 2u * pool.maxChunkSize;
+
+    // Account for mapped memory types on the same heap where we may not be
+    // able to move any resources, and count their total allocated amount.
+    VkDeviceSize heapUsage = type.stats.memoryUsed;
+
+    for (auto i : bit::BitMask(type.heap->memoryTypes & ~(1u << type.index)))
+      heapUsage += m_memTypes[i].stats.memoryAllocated;
+
+    // If we're within budget with some headroom already, don't evict anything.
+    VkDeviceSize heapBudget = getMemoryStats(type.heap->index).memoryBudget;
+
+    if (heapUsage + minUnusedMemory <= heapBudget)
+      return;
+
+    // Check the old previous chunk to evict unused resources right
+    // away, and then advance to the next available chunk if possible
+    std::array<uint32_t, 2u> chunkIndices = { pool.nextEvictChunk, ~0u };
+
+    for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
+      pool.nextEvictChunk += 1u;
+      pool.nextEvictChunk %= pool.chunks.size();
+
+      if (pool.pageAllocator.chunkIsAvailable(pool.nextEvictChunk))
+        break;
+    }
+
+    chunkIndices[1u] = pool.nextEvictChunk;
+
+    for (auto chunkIndex : chunkIndices) {
+      // Ensure we actually have a valid, live chunk to work with
+      if (chunkIndex >= pool.chunks.size() || !pool.pageAllocator.chunkIsAvailable(chunkIndex))
+        continue;
+
+      auto& chunk = pool.chunks[chunkIndex];
+
+      // Scan resources and mark everything for eviction. If a demoted
+      // resource hasn't been reactivated, evict it to system memory.
+      VkDeviceSize memoryEvicted = 0u;
+
+      for (auto a = chunk.allocationList; a; a = a->m_nextInChunk) {
+        if (!a->flags().test(DxvkAllocationFlag::CanMove))
+          continue;
+
+        // Look up resource by its cookie
+        auto entry = m_resourceMap.find(a->m_resourceCookie);
+
+        if (entry == m_resourceMap.end())
+          continue;
+
+        // Try to acquire resource and request its eviction
+        auto resource = entry->second->tryAcquire();
+
+        if (!resource)
+          continue;
+
+        bool evicted = resource->requestEviction();
+
+        if (evicted && (heapUsage + minUnusedMemory > heapBudget + memoryEvicted)) {
+          m_relocations.addResource(std::move(resource), a, DxvkAllocationMode::NoDeviceMemory);
+          memoryEvicted += a->getMemoryInfo().size;
+        }
+
+        if (!evicted && memoryEvicted) {
+          // Relocate other resources within the chunk to reduce fragmentation
+          m_relocations.addResource(std::move(resource), a, DxvkAllocationModes(
+            DxvkAllocationMode::NoFallback, DxvkAllocationMode::NoAllocation));
+        }
+      }
+
+      // Relocate resource in the chunk we evicted from, and override any
+      // chunk that defragmentation may have picked. This greatly reduces
+      // fragmentation caused evicting a subset of resources from the chunk.
+      if (memoryEvicted) {
+        pool.pageAllocator.killChunk(chunkIndex);
+
+        for (uint32_t i = 0u; i < pool.chunks.size(); i++) {
+          if (i != chunkIndex && pool.pageAllocator.pagesUsed(i))
+            pool.pageAllocator.reviveChunk(i);
+        }
+      }
+    }
+  }
+
+
   void DxvkMemoryAllocator::performTimedTasks() {
     static constexpr auto Interval = std::chrono::milliseconds(500u);
 
@@ -2461,10 +2595,11 @@ namespace dxvk {
       // do anything about mapped allocations since we rely on pointer
       // stability there.
       for (uint32_t i = 0; i < m_memTypeCount; i++) {
-        if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
-          moveDefragChunk(m_memTypes[i]);
-          pickDefragChunk(m_memTypes[i]);
-        }
+        moveDefragChunk(m_memTypes[i]);
+        pickDefragChunk(m_memTypes[i]);
+
+        if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+          evictResources(m_memTypes[i]);
       }
     }
   }

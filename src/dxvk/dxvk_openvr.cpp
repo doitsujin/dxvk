@@ -33,19 +33,19 @@ namespace dxvk {
   }
   
   
-  DxvkNameSet VrInstance::getInstanceExtensions() {
+  DxvkExtensionList VrInstance::getInstanceExtensions() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     return m_insExtensions;
   }
 
 
-  DxvkNameSet VrInstance::getDeviceExtensions(uint32_t adapterId) {
+  DxvkExtensionList VrInstance::getDeviceExtensions(uint32_t adapterId) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     if (adapterId < m_devExtensions.size())
       return m_devExtensions[adapterId];
     
-    return DxvkNameSet();
+    return DxvkExtensionList();
   }
 
 
@@ -140,7 +140,7 @@ namespace dxvk {
     return value == 1;
   }
 
-  DxvkNameSet VrInstance::queryInstanceExtensions() const {
+  DxvkExtensionList VrInstance::queryInstanceExtensions() const {
     std::vector<char> extensionList;
     DWORD len;
 
@@ -150,19 +150,19 @@ namespace dxvk {
         DWORD type;
 
         if (!this->waitVrKeyReady())
-            return DxvkNameSet();
+            return DxvkExtensionList();
 
         len = 0;
         if ((status = RegQueryValueExA(m_vr_key, "openvr_vulkan_instance_extensions", nullptr, &type, nullptr, &len)))
         {
             Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkNameSet();
+            return DxvkExtensionList();
         }
         extensionList.resize(len);
         if ((status = RegQueryValueExA(m_vr_key, "openvr_vulkan_instance_extensions", nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len)))
         {
             Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkNameSet();
+            return DxvkExtensionList();
         }
     }
     else
@@ -175,7 +175,7 @@ namespace dxvk {
   }
   
   
-  DxvkNameSet VrInstance::queryDeviceExtensions(Rc<DxvkAdapter> adapter) const {
+  DxvkExtensionList VrInstance::queryDeviceExtensions(Rc<DxvkAdapter> adapter) const {
     std::vector<char> extensionList;
     DWORD len;
 
@@ -186,20 +186,23 @@ namespace dxvk {
         DWORD type;
 
         if (!this->waitVrKeyReady())
-            return DxvkNameSet();
+            return DxvkExtensionList();
 
-        sprintf(name, "PCIID:%04x:%04x", adapter->deviceProperties().vendorID, adapter->deviceProperties().deviceID);
+        sprintf(name, "PCIID:%04x:%04x",
+          adapter->deviceProperties().core.properties.vendorID,
+          adapter->deviceProperties().core.properties.deviceID);
+
         len = 0;
         if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, nullptr, &len)))
         {
             Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkNameSet();
+            return DxvkExtensionList();
         }
         extensionList.resize(len);
         if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len)))
         {
             Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkNameSet();
+            return DxvkExtensionList();
         }
     }
     else
@@ -212,14 +215,14 @@ namespace dxvk {
   }
   
   
-  DxvkNameSet VrInstance::parseExtensionList(const std::string& str) const {
-    DxvkNameSet result;
+  DxvkExtensionList VrInstance::parseExtensionList(const std::string& str) const {
+    DxvkExtensionList result;
     
     std::stringstream strstream(str);
     std::string       section;
     
     while (std::getline(strstream, section, ' '))
-      result.add(section.c_str());
+      result.push_back(vk::makeExtension(section.c_str()));
     
     return result;
   }

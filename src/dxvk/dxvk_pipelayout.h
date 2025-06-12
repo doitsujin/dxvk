@@ -887,7 +887,7 @@ namespace dxvk {
      * \returns Descriptor set layout
      */
     VkDescriptorSetLayout getSetLayout() const {
-      return m_layout;
+      return m_legacy.layout;
     }
 
     /**
@@ -895,7 +895,7 @@ namespace dxvk {
      * \returns Descriptor update template
      */
     VkDescriptorUpdateTemplate getSetUpdateTemplate() const {
-      return m_template;
+      return m_legacy.updateTemplate;
     }
 
     /**
@@ -903,7 +903,7 @@ namespace dxvk {
      * \returns Space required in descriptor heap
      */
     VkDeviceSize getMemorySize() const {
-      return m_memorySize;
+      return m_heap.memorySize;
     }
 
     /**
@@ -916,20 +916,23 @@ namespace dxvk {
     void update(
             void*                   dst,
       const DxvkDescriptor**        descriptors) const {
-      m_update.update(dst, descriptors);
+      m_heap.update.update(dst, descriptors);
     }
 
   private:
 
     DxvkDevice*                   m_device;
-    bool                          m_empty     = 0u;
+    bool                          m_empty     = false;
 
-    VkDeviceSize                  m_memorySize = 0u;
+    struct {
+      VkDescriptorSetLayout       layout          = VK_NULL_HANDLE;
+      VkDescriptorUpdateTemplate  updateTemplate  = VK_NULL_HANDLE;
+    } m_legacy;
 
-    VkDescriptorSetLayout         m_layout    = VK_NULL_HANDLE;
-    VkDescriptorUpdateTemplate    m_template  = VK_NULL_HANDLE;
-
-    DxvkDescriptorUpdateList      m_update;
+    struct {
+      VkDeviceSize                memorySize = 0u;
+      DxvkDescriptorUpdateList    update;
+    } m_heap;
 
     void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
 
@@ -1193,7 +1196,7 @@ namespace dxvk {
      * \returns Pipeline layout handle
      */
     VkPipelineLayout getPipelineLayout() const {
-      return m_layout;
+      return m_legacy.layout;
     }
 
     /**
@@ -1224,14 +1227,14 @@ namespace dxvk {
      * descriptor range from the resource heap.
      */
     VkDeviceSize getDescriptorMemorySize() const {
-      return m_setMemorySize;
+      return m_heap.setMemorySize;
     }
 
     /**
      * \brief Queries non-empty push data block mask
      */
     uint32_t getPushDataMask() const {
-      return m_pushMask;
+      return m_pushData.blockMask;
     }
 
     /**
@@ -1240,7 +1243,7 @@ namespace dxvk {
      * This block includes all stages and all bytes.
      */
     DxvkPushDataBlock getPushData() const {
-      return m_pushDataMerged;
+      return m_pushData.mergedBlock;
     }
 
     /**
@@ -1250,7 +1253,7 @@ namespace dxvk {
      * \returns Push data block
      */
     DxvkPushDataBlock getPushDataBlock(uint32_t index) const {
-      return m_pushData[index];
+      return m_pushData.blocks[index];
     }
 
   private:
@@ -1260,14 +1263,27 @@ namespace dxvk {
     DxvkPipelineLayoutFlags m_flags;
     VkPipelineBindPoint     m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    uint32_t                                                        m_pushMask = 0u;
-    DxvkPushDataBlock                                               m_pushDataMerged;
-    std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
-
-    VkDeviceSize            m_setMemorySize = 0u;
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
-    VkPipelineLayout        m_layout = VK_NULL_HANDLE;
+    struct {
+      VkPipelineLayout  layout = VK_NULL_HANDLE;
+    } m_legacy;
+
+    struct {
+      DxvkPushDataBlock mergedBlock = { };
+      uint32_t          blockMask   = 0u;
+      std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> blocks = { };
+    } m_pushData;
+
+    struct {
+      VkDeviceSize      setMemorySize = 0u;
+    } m_heap;
+
+    void initMetadata(
+      const DxvkPipelineLayoutKey&      key);
+
+    void initPipelineLayout(
+      const DxvkPipelineLayoutKey&      key);
 
   };
 

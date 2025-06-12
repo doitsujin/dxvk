@@ -609,7 +609,10 @@ namespace dxvk {
 
       // Populate descriptor arrays with necessary information
       small_vector<const DxvkDescriptor*, 8u> descriptors;
+      descriptors.reserve(descriptorCount);
+
       small_vector<DxvkDescriptor, 8u> buffers;
+      buffers.reserve(descriptorCount);
 
       for (uint32_t i = 0u; i < descriptorCount; i++) {
         const auto& info = descriptorInfos[i];
@@ -791,7 +794,7 @@ namespace dxvk {
     if (!cmdBuffer || !m_descriptorRange)
       return;
 
-    auto samplerInfo = m_device->getSamplerDescriptorSet();
+    auto samplerInfo = m_device->getSamplerDescriptorHeap();
     auto resourceInfo = m_descriptorRange->getHeapInfo();
 
     std::array<VkDescriptorBufferBindingInfoEXT, 2u> heaps = { };
@@ -836,8 +839,10 @@ namespace dxvk {
   void DxvkCommandList::countDescriptorStats(
     const Rc<DxvkResourceDescriptorRange>& range,
           VkDeviceSize                  baseOffset) {
-    VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
-    addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
+    if (range) {
+      VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
+      addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
+    }
   }
 
 }

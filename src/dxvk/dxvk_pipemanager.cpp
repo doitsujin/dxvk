@@ -2,7 +2,6 @@
 
 #include "dxvk_device.h"
 #include "dxvk_pipemanager.h"
-#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -174,8 +173,7 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(
           DxvkDevice*         device)
   : m_device    (device),
-    m_workers   (device),
-    m_stateCache(device, this, &m_workers) {
+    m_workers   (device) {
     Logger::info(str::format("DXVK: Graphics pipeline libraries ",
       (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
 
@@ -246,17 +244,6 @@ namespace dxvk {
           // Don't dispatch the pipeline library to a worker thread
           // since it should be compiled on demand anyway.
           vsLibrary = createPipelineLibraryLocked(vsKey);
-
-          // Register the pipeline library with the state cache
-          // so that subsequent runs can still compile it early
-          DxvkStateCacheKey shaderKeys;
-          shaderKeys.vs = shaders.vs->getShaderKey();
-
-          if (shaders.tcs != nullptr) shaderKeys.tcs = shaders.tcs->getShaderKey();
-          if (shaders.tes != nullptr) shaderKeys.tes = shaders.tes->getShaderKey();
-          if (shaders.gs  != nullptr) shaderKeys.gs  = shaders.gs->getShaderKey();
-
-          m_stateCache.addPipelineLibrary(shaderKeys);
         }
       }
 
@@ -326,8 +313,6 @@ namespace dxvk {
       auto library = createShaderPipelineLibrary(key);
       m_workers.compilePipelineLibrary(library, DxvkPipelinePriority::Normal);
     }
-
-    m_stateCache.registerShader(shader);
   }
 
 
@@ -362,7 +347,6 @@ namespace dxvk {
 
   void DxvkPipelineManager::stopWorkerThreads() {
     m_workers.stopWorkers();
-    m_stateCache.stopWorkers();
   }
 
 

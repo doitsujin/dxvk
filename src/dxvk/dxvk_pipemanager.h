@@ -7,7 +7,6 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_graphics.h"
-#include "dxvk_state_cache.h"
 
 namespace dxvk {
 
@@ -286,7 +285,6 @@ namespace dxvk {
     
     DxvkDevice*               m_device;
     DxvkPipelineWorkers       m_workers;
-    DxvkStateCache            m_stateCache;
     DxvkPipelineStats         m_stats;
     
     dxvk::mutex m_mutex;

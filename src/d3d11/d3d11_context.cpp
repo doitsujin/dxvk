@@ -3402,13 +3402,12 @@ namespace dxvk {
         cDepthBias  = m_state.rs.state->GetDepthBias()
       ] (DxvkContext* ctx) {
         ctx->setRasterizerState(cState);
-
-        if (cState.depthBias())
-          ctx->setDepthBias(cDepthBias);
+        ctx->setDepthBias(cDepthBias);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
         ctx->setRasterizerState(InitDefaultRasterizerState());
+        ctx->setDepthBias(DxvkDepthBias());
       });
     }
   }
@@ -4810,6 +4809,7 @@ namespace dxvk {
       ctx->setInputAssemblyState(InitDefaultPrimitiveTopology());
       ctx->setDepthStencilState(InitDefaultDepthStencilState());
       ctx->setRasterizerState(InitDefaultRasterizerState());
+      ctx->setDepthBias(DxvkDepthBias());
       ctx->setLogicOpState(InitDefaultLogicOpState());
       ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
 
@@ -5874,7 +5874,6 @@ namespace dxvk {
     rsState.setCullMode(VK_CULL_MODE_BACK_BIT);
     rsState.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
     rsState.setDepthClip(true);
-    rsState.setDepthBias(false);
     rsState.setConservativeMode(VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
     rsState.setSampleCount(0);
     rsState.setFlatShading(false);

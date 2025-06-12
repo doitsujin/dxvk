@@ -13,7 +13,7 @@ namespace dxvk {
     const Rc<DxvkAdapter> adapter = device->adapter();
 
     const DxvkDeviceFeatures& devFeatures = device->features();
-    const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
+    const DxvkDeviceInfo& devInfo = device->properties();
 
     useDepthClipWorkaround
       = !devFeatures.extDepthClipEnable.depthClipEnable;
@@ -26,6 +26,9 @@ namespace dxvk {
     supportsTypedUavLoadR32 = (r32Features & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT);
     supportsRawAccessChains = device->features().nvRawAccessChains.shaderRawAccessChains;
 
+    // Raw access chains are currently broken with byte-address SSBO and descriptor buffers
+    rawAccessChainBug = supportsRawAccessChains && device->canUseDescriptorBuffer();
+
     switch (device->config().useRawSsbo) {
       case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;
       case Tristate::True:  minSsboAlignment =  4u; break;
@@ -33,7 +36,6 @@ namespace dxvk {
     }
     
     invariantPosition        = options.invariantPosition;
-    zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     forceComputeUavBarriers  = options.forceComputeUavBarriers;
     disableMsaa              = options.disableMsaa;

@@ -9,14 +9,27 @@
 
 namespace dxvk {
 
+  constexpr uint32_t DxvkVulkanApiVersion = VK_API_VERSION_1_3;
+
   /**
    * \brief Vulkan instance creation parameters
    */
   struct DxvkInstanceImportInfo {
-    PFN_vkGetInstanceProcAddr loaderProc;
-    VkInstance instance;
-    uint32_t extensionCount;
-    const char** extensionNames;
+    PFN_vkGetInstanceProcAddr loaderProc      = nullptr;
+    VkInstance                instance        = VK_NULL_HANDLE;
+    uint32_t                  extensionCount  = 0u;
+    const char**              extensionNames  = nullptr;
+  };
+
+
+  /**
+   * \brief Instance extension properties
+   */
+  struct DxvkInstanceExtensionInfo {
+    VkExtensionProperties extDebugUtils               = vk::makeExtension(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    VkExtensionProperties extSurfaceMaintenance1      = vk::makeExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
+    VkExtensionProperties khrGetSurfaceCapabilities2  = vk::makeExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
+    VkExtensionProperties khrSurface                  = vk::makeExtension(VK_KHR_SURFACE_EXTENSION_NAME);
   };
 
 
@@ -150,23 +163,15 @@ namespace dxvk {
     }
 
     /**
-     * \brief Enabled instance extensions
-     * \returns Enabled instance extensions
+     * \brief Instance extension list
+     *
+     * Returns the list of extensions that the
+     * instance was created with, provided by
+     * both DXVK and any extension providers.
+     * \returns Instance extension name list
      */
-    const DxvkInstanceExtensions& extensions() const {
-      return m_extensions;
-    }
-
-   /**
-    * \brief Instance extension name list
-    * 
-    * Returns the list of extensions that the
-    * instance was created with, provided by
-    * both DXVK and any extension providers.
-    * \returns Instance extension name list
-    */
-    const DxvkNameList& extensionNameList() const {
-      return m_extensionNames;
+    DxvkExtensionList getExtensionList() const {
+      return m_extensionList;
     }
 
     /**
@@ -179,38 +184,33 @@ namespace dxvk {
     
   private:
 
-    Config                  m_config;
-    DxvkOptions             m_options;
+    Config                    m_config;
+    DxvkOptions               m_options;
 
-    Rc<vk::LibraryFn>       m_vkl;
-    Rc<vk::InstanceFn>      m_vki;
-    DxvkInstanceExtensions  m_extensions;
-    DxvkNameSet             m_extensionSet;
-    DxvkNameList            m_extensionNames;
-    DxvkDebugFlags          m_debugFlags = 0u;
+    Rc<vk::LibraryFn>         m_vkl = nullptr;
+    Rc<vk::InstanceFn>        m_vki = nullptr;
 
-    VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
+    DxvkInstanceExtensionInfo m_extensionInfo;
+    DxvkExtensionList         m_extensionList;
+
+    DxvkDebugFlags            m_debugFlags = 0u;
+
+    VkDebugUtilsMessengerEXT  m_messenger = VK_NULL_HANDLE;
 
     std::vector<DxvkExtensionProvider*> m_extProviders;
     std::vector<Rc<DxvkAdapter>> m_adapters;
-    
-    void createLibraryLoader(
+
+    bool initVulkanLoader(
       const DxvkInstanceImportInfo& args);
 
-    void createInstanceLoader(
+    bool initVulkanInstance(
       const DxvkInstanceImportInfo& args,
             DxvkInstanceFlags       flags);
 
-    std::vector<DxvkExt*> getExtensionList(
-            DxvkInstanceExtensions& ext,
-            bool                    withDebug);
+    bool initAdapters();
 
-    DxvkNameSet getExtensionSet(
-      const DxvkNameList& extensions);
-
-    std::vector<Rc<DxvkAdapter>> queryAdapters();
-    
-    static void logNameList(const DxvkNameList& names);
+    static std::vector<VkExtensionProperties*> getExtensionList(
+            DxvkInstanceExtensionInfo& extensions);
 
     static VkBool32 VKAPI_CALL debugCallback(
             VkDebugUtilsMessageSeverityFlagBitsEXT  messageSeverity,

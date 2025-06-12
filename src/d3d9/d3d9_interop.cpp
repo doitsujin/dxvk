@@ -14,7 +14,7 @@ namespace dxvk {
 
   D3D9VkInteropInterface::D3D9VkInteropInterface(
           D3D9InterfaceEx*      pInterface)
-    : m_interface(pInterface) {
+  : m_interface(pInterface), m_extensions(pInterface->GetInstance()->getExtensionList()) {
 
   }
 
@@ -52,23 +52,20 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::GetInstanceExtensions(
-          UINT* pExtensionCount,
-    const char** ppExtensions) {
+          UINT* pExtensionCount, const char** ppExtensions) {
     if (pExtensionCount == nullptr)
       return D3DERR_INVALIDCALL;
 
-    const DxvkNameList& extensions = m_interface->GetInstance()->extensionNameList();
-
-    if (ppExtensions == nullptr) {
-      *pExtensionCount = extensions.count();
+    if (!ppExtensions) {
+      *pExtensionCount = m_extensions.size();
       return D3D_OK;
     }
 
-    // Write 
     UINT count = 0;
     UINT maxCount = *pExtensionCount;
-    for (uint32_t i = 0; i < extensions.count() && i < maxCount; i++) {
-      ppExtensions[i] = extensions.name(i);
+
+    for (uint32_t i = 0; i < m_extensions.size() && i < maxCount; i++) {
+      ppExtensions[i] = m_extensions[i].extensionName;
       count++;
     }
 

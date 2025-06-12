@@ -46,7 +46,6 @@ namespace dxvk {
     m_displayIndex    (DisplayIndex),
     m_modeCacheFormat (D3D9Format::Unknown),
     m_d3d9Formats     (this, Adapter, m_parent->GetOptions()) {
-    m_adapter->logAdapterInfo();
     CacheIdentifierInfo();
   }
 
@@ -137,14 +136,14 @@ namespace dxvk {
     if (unlikely(rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT))
       return D3DERR_NOTAVAILABLE;
 
-    // NULL RT format hack (supported across all vendors,
-    // and also advertised in D3D8 by modern drivers)
+    // NULL RT format hack (supported across all
+    // vendors, and also advertised in D3D8)
     if (unlikely(rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional))
       return D3D_OK;
 
-    // AMD/Intel's driver hack for RESZ (also advertised
-    // in D3D8 by modern AMD drivers, not advertised
-    // at all by modern Intel drivers)
+    // AMD/Intel's driver hack for RESZ
+    // (also advertised in D3D8 by AMD drivers,
+    // not advertised at all by modern Intel drivers)
     if (unlikely(rt && CheckFormat == D3D9Format::RESZ && surface))
       return isAmd
         ? D3D_OK
@@ -156,8 +155,8 @@ namespace dxvk {
         ? D3D_OK
         : D3DERR_NOTAVAILABLE;
 
-    // Nvidia's driver hack for SSAA
-    // (supported on modern Nvidia drivers)
+    // Nvidia's driver hack for SSAA (supported on Nvidia
+    // drivers, ever since the GeForce 6 series)
     if (unlikely(CheckFormat == D3D9Format::SSAA && surface)) {
       if (!isD3D8Compatible && isNvidia)
         Logger::warn("D3D9Adapter::CheckDeviceFormat: Transparency supersampling (SSAA) is unsupported");
@@ -165,6 +164,7 @@ namespace dxvk {
     }
 
     // Nvidia specific depth bounds test hack
+    // (supported ever since the GeForce 6 series)
     if (unlikely(CheckFormat == D3D9Format::NVDB && surface))
       return (!isD3D8Compatible &&
               m_adapter->features().core.features.depthBounds && isNvidia)
@@ -179,14 +179,15 @@ namespace dxvk {
       return D3DERR_NOTAVAILABLE;
     }
 
-    // AMD specific INST hack
+    // AMD specific INST (geometry instancing)
+    // hack for SM2-only capable cards
     if (unlikely(CheckFormat == D3D9Format::INST && surface))
       return (!isD3D8Compatible && isAmd)
         ? D3D_OK
         : D3DERR_NOTAVAILABLE;
 
-    // AMD/Nvidia CENT(roid) hack (not advertised by
-    // either AMD or Nvidia modern drivers)
+    // AMD/Nvidia CENT(roid) hack (not advertised
+    // by either AMD or Nvidia drivers)
     if (unlikely(CheckFormat == D3D9Format::CENT && surface))
       return D3DERR_NOTAVAILABLE;
 
@@ -251,12 +252,12 @@ namespace dxvk {
     // Check if this is a power of two...
     if (sampleCount & (sampleCount - 1))
       return D3DERR_NOTAVAILABLE;
-    
+
     // Therefore...
     VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
 
-    auto availableFlags = m_adapter->deviceProperties().limits.framebufferColorSampleCounts
-                        & m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
+    auto availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferColorSampleCounts
+                        & m_adapter->deviceProperties().core.properties.limits.framebufferDepthSampleCounts;
 
     if (!(availableFlags & sampleFlags))
       return D3DERR_NOTAVAILABLE;
@@ -340,7 +341,7 @@ namespace dxvk {
     auto& options = m_parent->GetOptions();
 
     const uint32_t maxShaderModel = m_parent->IsD3D8Compatible() ? std::min(1u, options.shaderModel) : options.shaderModel;
-    const VkPhysicalDeviceLimits& limits = m_adapter->deviceProperties().limits;
+    const auto& limits = m_adapter->deviceProperties().core.properties.limits;
 
     // TODO: Actually care about what the adapter supports here.
     // ^ For Intel and older cards most likely here.
@@ -644,7 +645,7 @@ namespace dxvk {
     pCaps->MaxNpatchTessellationLevel = 0.0f;
     // Reserved for... something
     pCaps->Reserved5                  = 0;
-    // Master adapter for us is adapter 0, atm... 
+    // Master adapter for us is adapter 0, atm...
     pCaps->MasterAdapterOrdinal       = 0;
     // The group of adapters this one is in
     pCaps->AdapterOrdinalInGroup      = 0;
@@ -794,7 +795,7 @@ namespace dxvk {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto& vk11 = m_adapter->devicePropertiesExt().vk11;
+    auto& vk11 = m_adapter->deviceProperties().vk11;
 
     if (vk11.deviceLUIDValid)
       *pLUID = bit::cast<LUID>(vk11.deviceLUID);
@@ -858,13 +859,45 @@ namespace dxvk {
 
     auto& options = m_parent->GetOptions();
 
+    // Filter the modes considering the config option filters.
+    FilterModesByFormat(Format, true);
+
+    // If no modes are returned based on the previous filtered
+    // search, then fall back to an unfiltered search.
+    if (unlikely((!options.forceAspectRatio.empty() || options.forceRefreshRate) &&
+                 !m_modes.size())) {
+      Logger::warn("D3D9Adapter::CacheModes: No modes were found. Discarding filters.");
+      FilterModesByFormat(Format, false);
+    }
+
+    // Sort display modes by width, height and refresh rate (descending), in that order.
+    // Some games rely on correct ordering, e.g. Prince of Persia (2008) expects the highest
+    // refresh rate to be listed first for a particular resolution.
+    std::sort(m_modes.begin(), m_modes.end(),
+      [](const D3DDISPLAYMODEEX& a, const D3DDISPLAYMODEEX& b) {
+        if (a.Width < b.Width)   return true;
+        if (a.Width > b.Width)   return false;
+
+        if (a.Height < b.Height) return true;
+        if (a.Height > b.Height) return false;
+
+        return a.RefreshRate > b.RefreshRate;
+    });
+  }
+
+
+  void D3D9Adapter::FilterModesByFormat(
+       D3D9Format Format,
+       const bool ApplyOptionsFilters) {
+    auto& options = m_parent->GetOptions();
+
+    const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
+
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     wsi::WsiMode devMode = { };
 
     uint32_t modeIndex = 0;
-
-    const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
     while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
@@ -875,7 +908,14 @@ namespace dxvk {
       if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+      if (ApplyOptionsFilters &&
+          !forcedRatio.undefined() &&
+          Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+        continue;
+
+      if (ApplyOptionsFilters &&
+          options.forceRefreshRate &&
+          devMode.refreshRate.numerator / devMode.refreshRate.denominator != options.forceRefreshRate)
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
@@ -885,20 +925,6 @@ namespace dxvk {
       if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
         m_modes.push_back(mode);
     }
-
-    // Sort display modes by width, height and refresh rate (descending), in that order.
-    // Some games rely on correct ordering, e.g. Prince of Persia (2008) expects the highest
-    // refresh rate to be listed first for a particular resolution.
-    std::sort(m_modes.begin(), m_modes.end(),
-      [](const D3DDISPLAYMODEEX& a, const D3DDISPLAYMODEEX& b) {
-        if (a.Width < b.Width)   return true;
-        if (a.Width > b.Width)   return false;
-        
-        if (a.Height < b.Height) return true;
-        if (a.Height > b.Height) return false;
-        
-        return b.RefreshRate < a.RefreshRate;
-    });
   }
 
 
@@ -907,10 +933,10 @@ namespace dxvk {
 
     const auto& props = m_adapter->deviceProperties();
 
-    m_deviceGuid   = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
-    m_vendorId     = props.vendorID;
-    m_deviceId     = props.deviceID;
-    m_deviceDesc   = props.deviceName;
+    m_deviceGuid   = bit::cast<GUID>(props.vk11.deviceUUID);
+    m_vendorId     = props.core.properties.vendorID;
+    m_deviceId     = props.core.properties.deviceID;
+    m_deviceDesc   = props.core.properties.deviceName;
 
     // Custom Vendor ID / Device ID / Device Description
     if (options.customVendorId >= 0)
@@ -946,7 +972,7 @@ namespace dxvk {
         fallbackDesc   = "NVIDIA GeForce RTX 3060";
       }
 
-      bool hideNvidiaGpu = m_adapter->devicePropertiesExt().vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+      bool hideNvidiaGpu = props.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
         ? options.hideNvidiaGpu : options.hideNvkGpu;
 
       bool hideGpu = (m_vendorId == uint32_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)

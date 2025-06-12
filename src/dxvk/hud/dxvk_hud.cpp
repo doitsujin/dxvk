@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 
 #include "dxvk_hud.h"

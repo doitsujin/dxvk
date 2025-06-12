@@ -11,8 +11,8 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
           DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&allocator),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
@@ -41,8 +41,8 @@ namespace dxvk {
     const DxvkBufferImportInfo& importInfo,
           DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&allocator),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),

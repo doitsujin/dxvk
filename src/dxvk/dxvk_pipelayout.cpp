@@ -60,8 +60,8 @@ namespace dxvk {
   DxvkDescriptorSetLayout::~DxvkDescriptorSetLayout() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_layout, nullptr);
-    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_template, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.layout, nullptr);
+    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_legacy.updateTemplate, nullptr);
   }
 
 
@@ -108,7 +108,7 @@ namespace dxvk {
     if (m_device->canUseDescriptorBuffer())
       layoutInfo.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
 
-    if (vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS)
+    if (vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.layout))
       throw DxvkError("DxvkDescriptorSetLayout: Failed to create descriptor set layout");
 
     if (layoutInfo.bindingCount && !m_device->canUseDescriptorBuffer()) {
@@ -116,9 +116,9 @@ namespace dxvk {
       templateInfo.descriptorUpdateEntryCount = templateInfos.size();
       templateInfo.pDescriptorUpdateEntries = templateInfos.data();
       templateInfo.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
-      templateInfo.descriptorSetLayout = m_layout;
+      templateInfo.descriptorSetLayout = m_legacy.layout;
 
-      if (vk->vkCreateDescriptorUpdateTemplate(vk->device(), &templateInfo, nullptr, &m_template) != VK_SUCCESS)
+      if (vk->vkCreateDescriptorUpdateTemplate(vk->device(), &templateInfo, nullptr, &m_legacy.updateTemplate))
         throw DxvkError("DxvkDescriptorSetLayout: Failed to create descriptor update template");
     }
   }
@@ -127,8 +127,8 @@ namespace dxvk {
   void DxvkDescriptorSetLayout::initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key) {
     auto vk = m_device->vkd();
 
-    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_layout, &m_memorySize);
-    m_memorySize = align(m_memorySize, m_device->getDescriptorProperties().getDescriptorSetAlignment());
+    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.layout, &m_heap.memorySize);
+    m_heap.memorySize = align(m_heap.memorySize, m_device->getDescriptorProperties().getDescriptorSetAlignment());
 
     small_vector<DxvkDescriptorUpdateInfo, 32u> descriptors;
 
@@ -136,7 +136,7 @@ namespace dxvk {
       const auto& binding = key.getBinding(i);
 
       VkDeviceSize offset = 0u;
-      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_layout, i, &offset);
+      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.layout, i, &offset);
 
       for (uint32_t j = 0u; j < binding.getDescriptorCount(); j++) {
         auto& e = descriptors.emplace_back();
@@ -145,8 +145,8 @@ namespace dxvk {
       }
     }
 
-    m_update = DxvkDescriptorUpdateList(m_device,
-      m_memorySize, descriptors.size(), descriptors.data());
+    m_heap.update = DxvkDescriptorUpdateList(m_device,
+      m_heap.memorySize, descriptors.size(), descriptors.data());
   }
 
 
@@ -154,26 +154,47 @@ namespace dxvk {
           DxvkDevice*                 device,
     const DxvkPipelineLayoutKey&      key)
   : m_device(device), m_flags(key.getFlags()) {
+    initMetadata(key);
+    initPipelineLayout(key);
+  }
+
+
+  DxvkPipelineLayout::~DxvkPipelineLayout() {
     auto vk = m_device->vkd();
 
+    vk->vkDestroyPipelineLayout(vk->device(), m_legacy.layout, nullptr);
+  }
+
+
+  void DxvkPipelineLayout::initMetadata(
+    const DxvkPipelineLayoutKey&      key) {
     // Determine bind point based on shader stages
     m_bindPoint = (key.getStageMask() == VK_SHADER_STAGE_COMPUTE_BIT)
       ? VK_PIPELINE_BIND_POINT_COMPUTE
       : VK_PIPELINE_BIND_POINT_GRAPHICS;
 
-    m_pushMask = key.getPushDataMask();
-
-    for (auto i : bit::BitMask(m_pushMask)) {
-      m_pushData[i] = key.getPushDataBlock(i);
-      m_pushDataMerged.merge(m_pushData[i]);
-      m_pushDataMerged.makeAbsolute();
-    }
-
+    // Get set layouts from pipeline layout key and compute memory size
     for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
-      m_setMemorySize += key.getDescriptorSetLayout(i)
+      m_setLayouts[i] = key.getDescriptorSetLayout(i);
+
+      m_heap.setMemorySize += key.getDescriptorSetLayout(i)
         ? key.getDescriptorSetLayout(i)->getMemorySize()
         : 0u;
     }
+
+    // Compute merged push data block from all used blocks
+    m_pushData.blockMask = key.getPushDataMask();
+
+    for (auto i : bit::BitMask(m_pushData.blockMask)) {
+      m_pushData.blocks[i] = key.getPushDataBlock(i);
+      m_pushData.mergedBlock.merge(m_pushData.blocks[i]);
+    }
+  }
+
+
+  void DxvkPipelineLayout::initPipelineLayout(
+    const DxvkPipelineLayoutKey&      key) {
+    auto vk = m_device->vkd();
 
     // Gather descriptor set layout objects, some of these may be null.
     small_vector<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets + 1u> setLayouts;
@@ -181,15 +202,13 @@ namespace dxvk {
     if (m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap))
       setLayouts.push_back(m_device->getSamplerDescriptorSet().layout);
 
-    for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
-      m_setLayouts[i] = key.getDescriptorSetLayout(i);
+    for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++)
       setLayouts.push_back(m_setLayouts[i] ? m_setLayouts[i]->getSetLayout() : VK_NULL_HANDLE);
-    }
 
     // Set up push constant range, if any
     VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.stageFlags = m_pushDataMerged.getStageMask();
-    pushConstantRange.size = m_pushDataMerged.getSize();
+    pushConstantRange.stageFlags = m_pushData.mergedBlock.getStageMask();
+    pushConstantRange.size = m_pushData.mergedBlock.getSize();
 
     VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
 
@@ -206,15 +225,8 @@ namespace dxvk {
       layoutInfo.pPushConstantRanges = &pushConstantRange;
     }
 
-    if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_layout))
+    if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.layout))
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
-  }
-
-
-  DxvkPipelineLayout::~DxvkPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_layout, nullptr);
   }
 
 

@@ -4,7 +4,7 @@
 #include <optional>
 
 #include "dxvk_device_info.h"
-#include "dxvk_extensions.h"
+#include "dxvk_extension_provider.h"
 #include "dxvk_include.h"
 #include "dxvk_format.h"
 
@@ -74,13 +74,13 @@ namespace dxvk {
    * \brief Device import info
    */
   struct DxvkDeviceImportInfo {
-    VkDevice device;
-    VkQueue queue;
-    uint32_t queueFamily;
-    uint32_t extensionCount;
-    const char** extensionNames;
-    const VkPhysicalDeviceFeatures2* features;
-    DxvkQueueCallback queueCallback;
+    VkDevice          device          = VK_NULL_HANDLE;
+    VkQueue           queue           = VK_NULL_HANDLE;
+    uint32_t          queueFamily     = VK_QUEUE_FAMILY_IGNORED;
+    uint32_t          extensionCount  = 0u;
+    const char**      extensionNames  = nullptr;
+    const VkPhysicalDeviceFeatures2* features = nullptr;
+    DxvkQueueCallback queueCallback   = { };
   };
 
   /**
@@ -95,7 +95,7 @@ namespace dxvk {
   public:
     
     DxvkAdapter(
-      const Rc<vk::InstanceFn>& vki,
+            DxvkInstance&       instance,
             VkPhysicalDevice    handle);
     ~DxvkAdapter();
     
@@ -103,9 +103,7 @@ namespace dxvk {
      * \brief Vulkan instance functions
      * \returns Vulkan instance functions
      */
-    Rc<vk::InstanceFn> vki() const {
-      return m_vki;
-    }
+    Rc<vk::InstanceFn> vki() const;
     
     /**
      * \brief Physical device handle
@@ -122,20 +120,8 @@ namespace dxvk {
      * properties of the Vulkan physical device.
      * \returns Physical device core properties
      */
-    const VkPhysicalDeviceProperties& deviceProperties() const {
-      return m_deviceInfo.core.properties;
-    }
-
-    /**
-     * \brief Device info
-     * 
-     * Returns a read-only reference to the full
-     * device info structure, including extended
-     * properties.
-     * \returns Device info struct
-     */
-    const DxvkDeviceInfo& devicePropertiesExt() const {
-      return m_deviceInfo;
+    const DxvkDeviceInfo& deviceProperties() const {
+      return m_capabilities.getProperties();
     }
     
     /**
@@ -145,9 +131,28 @@ namespace dxvk {
      * \returns Device features
      */
     const DxvkDeviceFeatures& features() const {
-      return m_deviceFeatures;
+      return m_capabilities.getFeatures();
     }
     
+    /**
+     * \brief Memory properties
+     *
+     * Queries the memory types and memory heaps of
+     * the device. This is useful for memory allocators.
+     * \returns Device memory properties
+     */
+    const VkPhysicalDeviceMemoryProperties& memoryProperties() const {
+      return m_capabilities.getMemoryInfo().core.memoryProperties;
+    }
+
+    /**
+     * \brief Checks whether the adapter is usable for DXVK
+     *
+     * \param [out] error Detailed error message on error
+     * \returns \c true if the adapter supports required features
+     */
+    bool isCompatible(std::string& error);
+
     /**
      * \brief Retrieves memory heap info
      * 
@@ -159,15 +164,6 @@ namespace dxvk {
      */
     DxvkAdapterMemoryInfo getMemoryHeapInfo() const;
     
-    /**
-     * \brief Memory properties
-     * 
-     * Queries the memory types and memory heaps of
-     * the device. This is useful for memory allocators.
-     * \returns Device memory properties
-     */
-    VkPhysicalDeviceMemoryProperties memoryProperties() const;
-
     /**
      * \brief Queries format feature support
      *
@@ -210,29 +206,23 @@ namespace dxvk {
      * This is used for OpenVR support.
      */
     void enableExtensions(
-      const DxvkNameSet&        extensions);
+      const DxvkExtensionList&  extensions);
     
     /**
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
-     * \param [in] instance Parent instance
-     * \param [in] enabledFeatures Device features
      * \returns Device handle
      */
-    Rc<DxvkDevice> createDevice(
-      const Rc<DxvkInstance>&   instance,
-            DxvkDeviceFeatures  enabledFeatures);
+    Rc<DxvkDevice> createDevice();
     
     /**
      * \brief Imports a foreign device
      * 
-     * \param [in] instance Parent instance
      * \param [in] args Device import info
      * \returns Device handle
      */
     Rc<DxvkDevice> importDevice(
-      const Rc<DxvkInstance>&   instance,
       const DxvkDeviceImportInfo& args);
     
     /**
@@ -269,14 +259,6 @@ namespace dxvk {
      */
     bool matchesDriver(
             VkDriverIdKHR       driver) const;
-    
-    /**
-     * \brief Logs DXVK adapter info
-     * 
-     * May be useful for bug reports
-     * and general troubleshooting.
-     */
-    void logAdapterInfo() const;
     
     /**
      * \brief Checks whether this is a UMA system
@@ -316,45 +298,17 @@ namespace dxvk {
 
   private:
     
-    Rc<vk::InstanceFn>  m_vki;
-    VkPhysicalDevice    m_handle;
+    DxvkInstance*           m_instance  = nullptr;
+    VkPhysicalDevice        m_handle    = VK_NULL_HANDLE;
 
-    DxvkNameSet         m_extraExtensions;
-    DxvkNameSet         m_deviceExtensions;
-    DxvkDeviceInfo      m_deviceInfo;
-    DxvkDeviceFeatures  m_deviceFeatures;
+    DxvkDeviceCapabilities  m_capabilities;
 
-    bool                m_hasMemoryBudget;
+    std::vector<VkExtensionProperties> m_extraExtensions;
 
     Rc<DxvkAdapter>     m_linkedIGPUAdapter;
     bool                m_linkedToDGPU = false;
 
-    std::vector<VkQueueFamilyProperties> m_queueFamilies;
-
     std::array<DxvkAdapterMemoryStats, VK_MAX_MEMORY_HEAPS> m_memoryStats = { };
-
-    void queryExtensions();
-    void queryDeviceInfo();
-    void queryDeviceFeatures();
-    void queryDeviceQueues();
-
-    uint32_t findQueueFamily(
-            VkQueueFlags          mask,
-            VkQueueFlags          flags) const;
-    
-    std::vector<DxvkExt*> getExtensionList(
-            DxvkDeviceExtensions&   devExtensions);
-
-    static void initFeatureChain(
-            DxvkDeviceFeatures&   enabledFeatures,
-      const DxvkDeviceExtensions& devExtensions,
-      const DxvkInstanceExtensions& insExtensions);
-
-    static void logNameList(const DxvkNameList& names);
-    static void logFeatures(const DxvkDeviceFeatures& features);
-    static void logQueueFamilies(const DxvkAdapterQueueIndices& queues);
-    
-    static Version decodeDriverVersion(VkDriverId driverId, uint32_t version);
 
   };
   

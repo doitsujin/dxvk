@@ -79,19 +79,16 @@ namespace dxvk {
    * Stores depth bounds values.
    */
   struct DxvkDepthBounds {
-    VkBool32            enableDepthBounds;
-    float               minDepthBounds;
-    float               maxDepthBounds;
+    float minDepthBounds;
+    float maxDepthBounds;
 
     bool operator == (const DxvkDepthBounds& other) const {
-      return enableDepthBounds == other.enableDepthBounds
-          && minDepthBounds == other.minDepthBounds
+      return minDepthBounds == other.minDepthBounds
           && maxDepthBounds == other.maxDepthBounds;
     }
 
     bool operator != (const DxvkDepthBounds& other) const {
-      return enableDepthBounds != other.enableDepthBounds
-          || minDepthBounds != other.minDepthBounds
+      return minDepthBounds != other.minDepthBounds
           || maxDepthBounds != other.maxDepthBounds;
     }
   };
@@ -178,10 +175,6 @@ namespace dxvk {
       return m_depthClipEnable;
     }
 
-    bool depthBias() const {
-      return m_depthBiasEnable;
-    }
-
     VkConservativeRasterizationModeEXT conservativeMode() const {
       return VkConservativeRasterizationModeEXT(m_conservativeMode);
     }
@@ -199,31 +192,27 @@ namespace dxvk {
     }
 
     void setPolygonMode(VkPolygonMode mode) {
-      m_polygonMode = uint32_t(mode);
+      m_polygonMode = uint16_t(mode);
     }
 
     void setCullMode(VkCullModeFlags mode) {
-      m_cullMode = uint32_t(mode);
+      m_cullMode = uint16_t(mode);
     }
 
     void setFrontFace(VkFrontFace face) {
-      m_frontFace = uint32_t(face);
+      m_frontFace = uint16_t(face);
     }
 
     void setDepthClip(bool enable) {
       m_depthClipEnable = enable;
     }
 
-    void setDepthBias(bool enable) {
-      m_depthBiasEnable = enable;
-    }
-
     void setConservativeMode(VkConservativeRasterizationModeEXT mode) {
-      m_conservativeMode = uint32_t(mode);
+      m_conservativeMode = uint16_t(mode);
     }
 
     void setSampleCount(VkSampleCountFlags count) {
-      m_sampleCount = uint32_t(count);
+      m_sampleCount = uint16_t(count);
     }
 
     void setFlatShading(bool enable) {
@@ -231,21 +220,19 @@ namespace dxvk {
     }
 
     void setLineMode(VkLineRasterizationModeEXT mode) {
-      m_lineMode = uint32_t(mode);
+      m_lineMode = uint16_t(mode);
     }
 
   private:
 
-    uint32_t m_polygonMode       : 2;
-    uint32_t m_cullMode          : 2;
-    uint32_t m_frontFace         : 1;
-    uint32_t m_depthClipEnable   : 1;
-    uint32_t m_depthBiasEnable   : 1;
-    uint32_t m_conservativeMode  : 2;
-    uint32_t m_sampleCount       : 5;
-    uint32_t m_flatShading       : 1;
-    uint32_t m_lineMode          : 2;
-    uint32_t m_reserved          : 15;
+    uint16_t m_polygonMode       : 2;
+    uint16_t m_cullMode          : 2;
+    uint16_t m_frontFace         : 1;
+    uint16_t m_depthClipEnable   : 1;
+    uint16_t m_conservativeMode  : 2;
+    uint16_t m_sampleCount       : 5;
+    uint16_t m_flatShading       : 1;
+    uint16_t m_lineMode          : 2;
 
   };
   
@@ -338,6 +325,10 @@ namespace dxvk {
 
     void setWriteMask(uint8_t mask) {
       m_writeMask = mask;
+    }
+
+    bool eq(const DxvkStencilOp& other) const {
+      return !std::memcmp(this, &other, sizeof(*this));
     }
 
     bool normalize(VkCompareOp depthOp);

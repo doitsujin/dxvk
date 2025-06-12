@@ -3,6 +3,8 @@
 #include "../util/config/config.h"
 #include "dxvk_include.h"
 
+#include "../vulkan/vulkan_loader.h"
+
 namespace dxvk {
 
   struct DxvkOptions {
@@ -83,6 +85,9 @@ namespace dxvk {
     /// Determines whether a frame is allowed to begin before finishing processing
     /// the cpu-part of the previous one, when low-latency frame pacing is used.
     bool lowLatencyAllowCpuFramesOverlap;
+	
+    /// Overrides memory budget for DXVK
+    VkDeviceSize maxMemoryBudget = 0u;
 
     // Device name
     std::string deviceFilter;

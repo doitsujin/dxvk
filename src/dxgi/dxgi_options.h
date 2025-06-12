@@ -55,6 +55,9 @@ namespace dxvk {
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
+
+    /// Forced refresh rate, disable other modes
+    uint32_t forceRefreshRate;
   };
   
 }

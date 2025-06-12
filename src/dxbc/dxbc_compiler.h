@@ -1068,8 +1068,6 @@ namespace dxvk {
     void emitOutputSetup();
     void emitOutputDepthClamp();
     
-    void emitInitWorkgroupMemory();
-
     //////////////////////////////////////////
     // System value load methods (per shader)
     DxbcRegisterValue emitVsSystemValueLoad(

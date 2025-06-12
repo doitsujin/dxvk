@@ -15,7 +15,7 @@ namespace dxvk {
     const D3D11Options&         Options,
           D3D_FEATURE_LEVEL     FeatureLevel)
   : m_features    (Adapter->features()),
-    m_properties  (Adapter->devicePropertiesExt()) {
+    m_properties  (Adapter->deviceProperties()) {
     // Assume no TBDR. DXVK does not optimize for TBDR architectures
     // anyway, and D3D11 does not really provide meaningful support.
     m_architectureInfo.TileBasedDeferredRenderer          = FALSE;
@@ -108,7 +108,7 @@ namespace dxvk {
     m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess = 40;
 
     // Marker support only depends on the debug utils extension
-    m_marker.Profile = static_cast<bool>(Instance->extensions().extDebugUtils);
+    m_marker.Profile = !Instance->debugFlags().isClear();
 
     // DXVK will keep all shaders in memory once created, and all Vulkan
     // drivers that we know of that can run DXVK have an on-disk cache.
