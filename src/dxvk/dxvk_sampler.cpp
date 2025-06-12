@@ -85,7 +85,8 @@ namespace dxvk {
     }
 
     // If custom border colors are supported, use that
-    if (m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
+    if (m_pool->m_device->features().extCustomBorderColor.customBorderColors
+     && m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
       return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
 
     // Otherwise, use the sum of absolute differences to find the
