@@ -6703,7 +6703,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyRenderTargets)) {
       m_flags.clr(DxvkContextFlag::GpDirtyRenderTargets);
 
-      if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      if (m_flags.test(DxvkContextFlag::GpRenderPassBound) && !m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
         // Only interrupt an active render pass if the render targets have actually
         // changed since the last update. There are cases where client APIs cannot
         // know in advance that consecutive draws use the same set of render targets.
