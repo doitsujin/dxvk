@@ -304,8 +304,6 @@ namespace dxvk {
    * \brief Sampler statistics
    */
   struct DxvkSamplerStats {
-    /// Number of sampler objects created
-    uint32_t totalCount = 0u;
     /// Number of samplers currently in use
     uint32_t liveCount = 0u;
   };
@@ -361,7 +359,6 @@ namespace dxvk {
      */
     DxvkSamplerStats getStats() const {
       DxvkSamplerStats stats = { };
-      stats.totalCount = m_samplersTotal.load();
       stats.liveCount = m_samplersLive.load();
       return stats;
     }
@@ -388,7 +385,6 @@ namespace dxvk {
     int32_t m_lruTail = -1;
 
     std::atomic<uint32_t> m_samplersLive = { 0u };
-    std::atomic<uint32_t> m_samplersTotal = { 0u };
 
     Rc<DxvkSampler> m_default = nullptr;
 
