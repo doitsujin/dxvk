@@ -368,7 +368,6 @@ namespace dxvk {
     m_samplerLut.insert_or_assign(key, samplerIndex);
 
     // Update statistics
-    m_samplersTotal.store(m_samplerLut.size(), std::memory_order_relaxed);
     m_samplersLive.store(m_samplersLive.load() + 1u, std::memory_order_relaxed);
     return &sampler.object.value();
   }
