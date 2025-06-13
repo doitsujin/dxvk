@@ -165,6 +165,14 @@ namespace dxvk {
     /** Whether the texture bound to a slot is also bound as the depth stencil view */
     uint32_t hazardDS = 0;
 
+    /** Whether the texture bound to a slot is also bound as a render target
+     * but the render target isn't actually used for writing. */
+    uint32_t unusedHazardRT = 0;
+
+    /** Whether the texture bound to a slot is also bound as the depth stencil surface
+     * but the depth stencil surface isn't actually used. */
+    uint32_t unusedHazardDS = 0;
+
     /** Whether there's a texture bound to a slot */
     uint32_t bound = 0;
 
@@ -173,12 +181,6 @@ namespace dxvk {
 
     /** Whether there's a texture bound to a slot that needs to have its mip maps generated */
     uint32_t needsMipGen = 0;
-
-    /** `hazardRT` the last time PrepareDraw was called. Used to check if it changed.  */
-    uint32_t lastHazardRT = 0;
-
-    /** `hazardDS` the last time PrepareDraw was called Used to check if it changed. */
-    uint32_t lastHazardDS = 0;
   };
 
   struct D3D9RTSlotTracking {
@@ -938,11 +940,11 @@ namespace dxvk {
 
     void UpdateTextureBitmasks(uint32_t index, DWORD combinedUsage);
 
-    void UpdateActiveHazardsRT(uint32_t rtMask);
+    void UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask);
 
     void UpdateActiveHazardsDS(uint32_t texMask);
 
-    void MarkRenderHazards();
+    void ResolveHazards();
 
     void UpdateActiveFetch4(uint32_t stateSampler);
 
