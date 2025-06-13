@@ -109,6 +109,9 @@ namespace dxvk {
     /// Forced refresh rate, disable other modes
     uint32_t forceRefreshRate;
 
+    /// Restrict modes based on height
+    std::string forceModeHeights;
+
     /// Always use a spec constant to determine sampler type (instead of just in PS 1.x)
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
