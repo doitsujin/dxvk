@@ -698,6 +698,10 @@ namespace dxvk {
     if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
       return;
 
+    // The backend will ignore the view layout anyway for images
+    // that have GENERAL (or FEEDBACK_LOOP) as their layout.
+    // This will always be the case for images that can be sampled.
+    // So just pick UNDEFINED here.
     m_sampleView.Color = CreateView(AllLayers, Lod,
       VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, false);
 

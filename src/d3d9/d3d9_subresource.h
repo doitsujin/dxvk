@@ -92,6 +92,10 @@ namespace dxvk {
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
       if (unlikely(!view && !IsNull())) {
+        // The backend will ignore the view layout anyway for images
+        // that have GENERAL (or FEEDBACK_LOOP) as their layout.
+        // Because of that, we don't need to pay special attention here
+        // to whether the image was transitioned because of a feedback loop.
         view = m_texture->CreateView(m_face, m_mipLevel,
           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -107,6 +111,10 @@ namespace dxvk {
         : m_dsvReadOnly;
 
       if (unlikely(!view)) {
+        // The backend will ignore the view layout anyway for images
+        // that have GENERAL (or FEEDBACK_LOOP) as their layout.
+        // Because of that, we don't need to pay special attention here
+        // to whether the image was transitioned because of a feedback loop.
         VkImageLayout layout = Writable
           ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
           : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
