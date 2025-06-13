@@ -13,9 +13,6 @@ namespace dxvk {
     /// Enable debug utils
     bool enableDebugUtils = false;
 
-    /// Enable state cache
-    bool enableStateCache = true;
-
     /// Enable memory defragmentation
     Tristate enableMemoryDefrag = Tristate::Auto;
 

@@ -113,10 +113,6 @@ namespace dxvk {
     { R"(\\nioh\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-    /* Anno 2205: Random crashes with state cache */
-    { R"(\\anno2205\.exe$)", {{
-      { "dxvk.enableStateCache",            "False" },
-    }} },
     /* Anno 1800: Poor performance without this   */
     { R"(\\Anno1800\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "c"    },
