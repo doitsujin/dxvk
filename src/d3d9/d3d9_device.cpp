@@ -4230,6 +4230,11 @@ namespace dxvk {
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
+    // Because they are always lockable, image surfaces / offscreen plain surfaces
+    // are restricted to using lockable depth stencil formats.
+    if (IsDepthStencilFormat(desc.Format) && !IsLockableDepthStencilFormat(desc.Format))
+      return D3DERR_INVALIDCALL;
+
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
