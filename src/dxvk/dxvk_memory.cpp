@@ -2584,13 +2584,7 @@ namespace dxvk {
         m_memTypes[i].sharedCache->cleanupUnusedFromLockedAllocator(currentTime);
     }
 
-    // For unknown reasons, defragmentation seems to break Genshin Impact and
-    // possibly other games on ANV while working fine on other drivers even in
-    // a stress-test scenario, see https://github.com/doitsujin/dxvk/issues/4395.
-    bool enableDefrag = !m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA);
-    applyTristate(enableDefrag, m_device->config().enableMemoryDefrag);
-
-    if (enableDefrag) {
+    if (enableDefrag()) {
       // Periodically defragment device-local memory types. We cannot
       // do anything about mapped allocations since we rely on pointer
       // stability there.
@@ -2601,6 +2595,25 @@ namespace dxvk {
         if (m_memTypes[i].properties.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
           evictResources(m_memTypes[i]);
       }
+    }
+  }
+
+
+  bool DxvkMemoryAllocator::enableDefrag() const {
+    auto option = m_device->config().enableMemoryDefrag;
+
+    if (option == Tristate::Auto) {
+      // For unknown reasons, defragmentation seems to break Genshin Impact and
+      // possibly other games on ANV while working fine on other drivers even in
+      // a stress-test scenario, see https://github.com/doitsujin/dxvk/issues/4395.
+      // This issue does not seem to affect Battlemage GPUs, which have a minimum
+      // reported subgroup size of 16 as opposed to 8.
+      if (m_device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA))
+        return m_device->properties().vk13.minSubgroupSize >= 16u;
+
+      return true;
+    } else {
+      return option == Tristate::True;
     }
   }
 
