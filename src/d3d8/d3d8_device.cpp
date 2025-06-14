@@ -331,6 +331,9 @@ namespace dxvk {
     if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     // Nvidia & Intel workaround for The Lord of the Rings: The Fellowship of the Ring
     if (m_d3d8Options.placeP8InScratch && Format == D3DFMT_P8)
       Pool = D3DPOOL_SCRATCH;
@@ -371,6 +374,9 @@ namespace dxvk {
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DVolumeTexture9> pVolume9 = nullptr;
     HRESULT res = GetD3D9()->CreateVolumeTexture(
       Width, Height, Depth, Levels,
@@ -401,6 +407,9 @@ namespace dxvk {
     InitReturnPtr(ppCubeTexture);
 
     if (unlikely(ppCubeTexture == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DCubeTexture9> pCube9 = nullptr;
@@ -514,6 +523,9 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DSurface9> pSurf9 = nullptr;
     HRESULT res = GetD3D9()->CreateDepthStencilSurface(
       Width,
@@ -546,10 +558,17 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    D3DPOOL pool = isUnsupportedSurfaceFormat(Format) ? D3DPOOL_SCRATCH : D3DPOOL_SYSTEMMEM;
+    // CreateImageSurface is generally guaranteed to succeed even with unsupported
+    // formats, however D3D9 exclusive formats fail on native D3D8.
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
+    HRESULT res = m_parent->CheckDeviceFormat(0, D3DDEVTYPE_HAL, m_presentParams.BackBufferFormat,
+                                              0, D3DRTYPE_SURFACE, Format);
+    D3DPOOL pool = FAILED(res) ? D3DPOOL_SCRATCH : D3DPOOL_SYSTEMMEM;
 
     Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
-    HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
+    res = GetD3D9()->CreateOffscreenPlainSurface(
       Width,
       Height,
       d3d9::D3DFORMAT(Format),
@@ -794,14 +813,15 @@ namespace dxvk {
             case d3d9::D3DPOOL_SCRATCH: {
               // SCRATCH -> DEFAULT: memcpy to a SYSTEMMEM temporary buffer and use UpdateSurface
 
+              HRESULT res = m_parent->CheckDeviceFormat(0, D3DDEVTYPE_HAL, m_presentParams.BackBufferFormat,
+                                                        0, D3DRTYPE_SURFACE, D3DFORMAT(srcDesc.Format));
               // UpdateSurface will not work on surface formats unsupported by D3DPOOL_DEFAULT
-              if (unlikely(isUnsupportedSurfaceFormat(D3DFORMAT(srcDesc.Format)))) {
+              if (unlikely(FAILED(res)))
                 return logError(D3DERR_INVALIDCALL);
-              }
 
               Com<IDirect3DSurface8> pTempImageSurface;
               // The temporary image surface is guaranteed to end up in SYSTEMMEM for supported formats
-              HRESULT res = CreateImageSurface(
+              res = CreateImageSurface(
                 srcDesc.Width,
                 srcDesc.Height,
                 D3DFORMAT(srcDesc.Format),

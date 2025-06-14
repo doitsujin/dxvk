@@ -176,7 +176,7 @@ namespace dxvk {
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
           VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE },
         { D3D9ConversionFormat_W11V11U10,
-        // can't use B10G11R11 bc this is a snorm type
+        // can't use B10G11R11 because this is a snorm type
           VK_FORMAT_R16G16B16A16_SNORM } };
 
       case D3D9Format::UYVY: return {
@@ -343,10 +343,7 @@ namespace dxvk {
 
       case D3D9Format::A1: return {}; // Unsupported
 
-      case D3D9Format::A2B10G10R10_XR_BIAS: return {
-        VK_FORMAT_A2B10G10R10_SNORM_PACK32,
-        VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_COLOR_BIT };
+      case D3D9Format::A2B10G10R10_XR_BIAS: return {}; // Unsupported
 
       case D3D9Format::BINARYBUFFER: return {
         VK_FORMAT_R8_UINT,
@@ -458,11 +455,12 @@ namespace dxvk {
   }
 
   D3D9VkFormatTable::D3D9VkFormatTable(
-          D3D9Adapter*     pParent,
-    const Rc<DxvkAdapter>& adapter,
-    const D3D9Options&     options) {
+            D3D9Adapter*     pParent,
+      const Rc<DxvkAdapter>& adapter,
+      const D3D9Options&     options)
+    : m_parent (pParent) {
 
-    const uint32_t vendorId = pParent->GetVendorId();
+    const uint32_t vendorId = m_parent->GetVendorId();
     const bool     isNvidia = vendorId == uint32_t(DxvkGpuVendor::Nvidia);
     const bool     isAmd    = vendorId == uint32_t(DxvkGpuVendor::Amd);
     const bool     isIntel  = vendorId == uint32_t(DxvkGpuVendor::Intel);
@@ -509,6 +507,10 @@ namespace dxvk {
     if (Format == D3D9Format::X4R4G4B4 && !m_x4r4g4b4Support)
       return D3D9_VK_FORMAT_MAPPING();
 
+    // W11V11U10 is only supported by d3d8
+    if (Format == D3D9Format::W11V11U10 && !m_parent->IsD3D8Compatible())
+      return D3D9_VK_FORMAT_MAPPING();
+
     if (Format == D3D9Format::D16_LOCKABLE && !m_d16lockableSupport)
       return D3D9_VK_FORMAT_MAPPING();
 
@@ -536,13 +538,21 @@ namespace dxvk {
 
   const DxvkFormatInfo* D3D9VkFormatTable::GetUnsupportedFormatInfo(
     D3D9Format            Format) const {
-    static const DxvkFormatInfo r8b8g8      = { 3, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo r3g3b2      = { 1, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo a8r3g3b2    = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo a8p8        = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo p8          = { 1, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo cxv8u8      = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
-    static const DxvkFormatInfo unknown     = {};
+    static const DxvkFormatInfo r8b8g8        = { 3, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo r3g3b2        = { 1, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo x4r4g4b4      = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo a8r3g3b2      = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo a8p8          = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo p8            = { 1, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo w11v11u10     = { 4, VK_IMAGE_ASPECT_COLOR_BIT };
+    static const DxvkFormatInfo cxv8u8        = { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+    // Unsupported and potentially unsupported lockable depth formats need to be
+    // listed here in order to allow for the creation of offscreen plain surfaces
+    static const DxvkFormatInfo d16_lockable  = { 2, VK_IMAGE_ASPECT_DEPTH_BIT };
+    static const DxvkFormatInfo d32f_lockable = { 4, VK_IMAGE_ASPECT_DEPTH_BIT };
+    static const DxvkFormatInfo d32_lockable  = { 4, VK_IMAGE_ASPECT_DEPTH_BIT };
+    static const DxvkFormatInfo s8_lockable   = { 1, VK_IMAGE_ASPECT_STENCIL_BIT };
+    static const DxvkFormatInfo unknown       = {};
 
     switch (Format) {
       case D3D9Format::R8G8B8:
@@ -550,6 +560,10 @@ namespace dxvk {
 
       case D3D9Format::R3G3B2:
         return &r3g3b2;
+
+      // potentially unsupported through a config option
+      case D3D9Format::X4R4G4B4:
+        return &x4r4g4b4;
 
       case D3D9Format::A8R3G3B2:
         return &a8r3g3b2;
@@ -560,6 +574,10 @@ namespace dxvk {
       case D3D9Format::P8:
         return &p8;
 
+      // only supported by d3d8
+      case D3D9Format::W11V11U10:
+        return &w11v11u10;
+
       // MULTI2_ARGB8 -> Don't have a clue what this is.
 
       case D3D9Format::CxV8U8:
@@ -568,6 +586,28 @@ namespace dxvk {
       // A1 -> Doesn't map nicely here cause it's not byte aligned.
       // Gonna just pretend that doesn't exist until something
       // depends on that.
+
+      // only supported on AMD
+      case D3D9Format::D16_LOCKABLE:
+        return &d16_lockable;
+
+      // unsupported on Intel
+      case D3D9Format::D32F_LOCKABLE:
+        return &d32f_lockable;
+
+      // only considered on d3d9Ex interfaces
+      case D3D9Format::D32_LOCKABLE:
+        if (m_parent->IsExtended())
+          return &d32_lockable;
+
+        [[fallthrough]];
+
+      // only considered on d3d9Ex interfaces
+      case D3D9Format::S8_LOCKABLE:
+        if (m_parent->IsExtended())
+          return &s8_lockable;
+
+        [[fallthrough]];
 
       default:
         return &unknown;
@@ -578,7 +618,7 @@ namespace dxvk {
   bool D3D9VkFormatTable::CheckImageFormatSupport(
     const Rc<DxvkAdapter>&      Adapter,
           VkFormat              Format,
-          VkFormatFeatureFlags2  Features) const {
+          VkFormatFeatureFlags2 Features) const {
     DxvkFormatFeatures supported = Adapter->getFormatFeatures(Format);
 
     return (supported.linear  & Features) == Features
