@@ -87,6 +87,12 @@ namespace dxvk {
         DWORD           Usage,
         D3DRESOURCETYPE RType,
         D3DFORMAT       CheckFormat) {
+      if (unlikely(isD3D9ExclusiveFormat(CheckFormat)))
+        return D3DERR_NOTAVAILABLE;
+
+      if (unlikely((Usage & D3DUSAGE_RENDERTARGET) && !isRenderTargetFormat(CheckFormat)))
+        return D3DERR_NOTAVAILABLE;
+
       return m_d3d9->CheckDeviceFormat(
         Adapter,
         (d3d9::D3DDEVTYPE)DeviceType,
@@ -120,16 +126,20 @@ namespace dxvk {
         D3DFORMAT AdapterFormat,
         D3DFORMAT RenderTargetFormat,
         D3DFORMAT DepthStencilFormat) {
-      if (isSupportedDepthStencilFormat(DepthStencilFormat))
-        return m_d3d9->CheckDepthStencilMatch(
-          Adapter,
-          (d3d9::D3DDEVTYPE)DeviceType,
-          (d3d9::D3DFORMAT)AdapterFormat,
-          (d3d9::D3DFORMAT)RenderTargetFormat,
-          (d3d9::D3DFORMAT)DepthStencilFormat
-        );
+      if (unlikely(isD3D9ExclusiveFormat(RenderTargetFormat)
+                || isD3D9ExclusiveFormat(DepthStencilFormat)))
+        return D3DERR_NOTAVAILABLE;
 
-      return D3DERR_NOTAVAILABLE;
+      if (unlikely(!isRenderTargetFormat(RenderTargetFormat)))
+        return D3DERR_NOTAVAILABLE;
+
+      return m_d3d9->CheckDepthStencilMatch(
+        Adapter,
+        (d3d9::D3DDEVTYPE)DeviceType,
+        (d3d9::D3DFORMAT)AdapterFormat,
+        (d3d9::D3DFORMAT)RenderTargetFormat,
+        (d3d9::D3DFORMAT)DepthStencilFormat
+      );
     }
 
     HRESULT STDMETHODCALLTYPE GetDeviceCaps(
