@@ -21,6 +21,8 @@ namespace dxvk {
             UINT             Ordinal,
             UINT             DisplayIndex);
 
+    ~D3D9Adapter();
+
     HRESULT GetAdapterIdentifier(
             DWORD                   Flags,
             D3DADAPTER_IDENTIFIER9* pIdentifier);
@@ -84,12 +86,16 @@ namespace dxvk {
     }
 
     D3D9_VK_FORMAT_MAPPING GetFormatMapping(D3D9Format Format) const {
-      return m_d3d9Formats.GetFormatMapping(Format);
+      return m_d3d9Formats->GetFormatMapping(Format);
     }
 
     const DxvkFormatInfo* GetUnsupportedFormatInfo(D3D9Format Format) const {
-      return m_d3d9Formats.GetUnsupportedFormatInfo(Format);
+      return m_d3d9Formats->GetUnsupportedFormatInfo(Format);
     }
+
+    bool IsExtended() const;
+
+    bool IsD3D8Compatible() const;
 
   private:
 
@@ -121,7 +127,7 @@ namespace dxvk {
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format                    m_modeCacheFormat;
 
-    const D3D9VkFormatTable       m_d3d9Formats;
+    const D3D9VkFormatTable*      m_d3d9Formats;
 
   };
 
