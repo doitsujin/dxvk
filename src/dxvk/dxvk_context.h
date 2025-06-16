@@ -1723,7 +1723,7 @@ namespace dxvk {
     DxvkFramebufferInfo makeFramebufferInfo(
       const DxvkRenderTargets&      renderTargets);
 
-    void updateRenderTargets(bool isDraw = false);
+    void updateRenderTargets();//bool isDraw = false
     
     void applyRenderTargetLoadLayouts();
 

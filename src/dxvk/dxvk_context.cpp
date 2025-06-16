@@ -6754,10 +6754,6 @@ namespace dxvk {
         m_state.gp.state.omSwizzle[i] = DxvkOmAttachmentSwizzle(mapping);
       }
 
-      if (isDraw) {
-        for (uint32_t i = 0; i < fbInfo.numAttachments(); i++)
-          fbInfo.getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
-      }
       m_state.om.framebufferInfo = std::move(fbInfo);
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
