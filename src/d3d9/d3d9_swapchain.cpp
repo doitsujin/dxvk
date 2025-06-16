@@ -1077,7 +1077,6 @@ namespace dxvk {
         }
       }
 
-      hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
       hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
       hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 

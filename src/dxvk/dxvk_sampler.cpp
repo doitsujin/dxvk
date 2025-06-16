@@ -60,7 +60,7 @@ namespace dxvk {
 
 
   void DxvkSampler::release() {
-    m_pool->releaseSampler(this);
+    m_pool->releaseSampler(m_descriptor.samplerIndex);
   }
 
 
@@ -85,7 +85,8 @@ namespace dxvk {
     }
 
     // If custom border colors are supported, use that
-    if (m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
+    if (m_pool->m_device->features().extCustomBorderColor.customBorderColors
+     && m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
       return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
 
     // Otherwise, use the sum of absolute differences to find the
@@ -289,10 +290,16 @@ namespace dxvk {
 
   DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
   : m_device(device), m_descriptorHeap(device, MaxSamplerCount) {
-    // Populate free list in reverse order. Sampler index 0 is
-    // reserved for the default sampler, so skip that.
-    for (uint16_t i = MaxSamplerCount; i; i--)
-      m_freeList.push_back(i);
+    // Set up LRU list as a sort-of free list to allocate fresh samplers
+    m_lruHead = 0u;
+    m_lruTail = MaxSamplerCount - 1u;
+
+    for (uint32_t i = 0u; i < MaxSamplerCount; i++) {
+      if (i)
+        m_samplers[i].lruPrev = i - 1u;
+      if (i + 1u < MaxSamplerCount)
+        m_samplers[i].lruNext = i + 1u;
+    }
 
     // Default sampler, implicitly used for null descriptors or when creating
     // additional samplers fails for any reason. Keep a persistent reference
@@ -306,138 +313,125 @@ namespace dxvk {
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     defaultKey.setReduction(VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE);
 
-    m_default = &m_samplers.emplace(std::piecewise_construct,
-      std::forward_as_tuple(defaultKey),
-      std::forward_as_tuple(this, defaultKey, 0u)).first->second;
+    m_default = createSampler(defaultKey);
   }
 
 
   DxvkSamplerPool::~DxvkSamplerPool() {
-    m_default = nullptr;
-    m_samplers.clear();
+
   }
 
 
   Rc<DxvkSampler> DxvkSamplerPool::createSampler(const DxvkSamplerKey& key) {
     std::unique_lock lock(m_mutex);
-    auto entry = m_samplers.find(key);
+    auto entry = m_samplerLut.find(key);
 
-    if (entry != m_samplers.end()) {
-      DxvkSampler* sampler = &entry->second;
+    if (entry != m_samplerLut.end()) {
+      auto& sampler = m_samplers.at(entry->second);
 
       // Remove the sampler from the LRU list if it's in there. Due
       // to the way releasing samplers is implemented upon reaching
       // a ref count of 0, it is possible that we reach this before
       // the releasing thread inserted the list into the LRU list.
-      if (!sampler->m_refCount.fetch_add(1u, std::memory_order_acquire)) {
-        if (sampler->m_lruPrev)
-          sampler->m_lruPrev->m_lruNext = sampler->m_lruNext;
-        else if (m_lruHead == sampler)
-          m_lruHead = sampler->m_lruNext;
+      if (!sampler.object->m_refCount.fetch_add(1u, std::memory_order_acquire)) {
+        removeLru(sampler, entry->second);
 
-        if (sampler->m_lruNext)
-          sampler->m_lruNext->m_lruPrev = sampler->m_lruPrev;
-        else if (m_lruTail == sampler)
-          m_lruTail = sampler->m_lruPrev;
-
-        sampler->m_lruPrev = nullptr;
-        sampler->m_lruNext = nullptr;
-
-        m_samplersLive.store(m_samplersLive.load() + 1u);
+        m_samplersLive.store(m_samplersLive.load() + 1u, std::memory_order_relaxed);
       }
 
       // We already took a reference, forward the pointer as-is
-      return Rc<DxvkSampler>::unsafeCreate(sampler);
+      return Rc<DxvkSampler>::unsafeCreate(&sampler.object.value());
     }
 
-    // If we're spamming sampler allocations, we might need
-    // to clean up unused ones here to stay within the limit
-    uint16_t samplerIndex = allocateSamplerIndex();
-
-    if (samplerIndex) {
-      DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
-        std::forward_as_tuple(key),
-        std::forward_as_tuple(this, key, samplerIndex)).first->second;
-
-      m_samplersTotal.store(m_samplers.size());
-      m_samplersLive.store(m_samplersLive.load() + 1u);
-      return sampler;
-    } else {
+    // If there are no samplers we can allocate, fall back to the default
+    if (m_lruHead < 0) {
       Logger::err("Failed to allocate sampler, using default one.");
       return m_default;
     }
+
+    // Use the least recently used sampler entry. This may be a previously
+    // unused sampler, or an object that has not yet been initialized.
+    int32_t samplerIndex = m_lruHead;
+
+    // Destroy existing sampler and remove the corresponding LUT entry
+    auto& sampler = m_samplers.at(samplerIndex);
+
+    if (sampler.object) {
+      m_samplerLut.erase(sampler.object->key());
+      sampler.object.reset();
+    }
+
+    removeLru(sampler, samplerIndex);
+
+    // Create new sampler object and set up the corresponding LUT entry
+    sampler.object.emplace(this, key, uint16_t(samplerIndex));
+    m_samplerLut.insert_or_assign(key, samplerIndex);
+
+    // Update statistics
+    m_samplersLive.store(m_samplersLive.load() + 1u, std::memory_order_relaxed);
+    return &sampler.object.value();
   }
 
 
-  void DxvkSamplerPool::releaseSampler(DxvkSampler* sampler) {
+  void DxvkSamplerPool::releaseSampler(int32_t index) {
     std::unique_lock lock(m_mutex);
+
+    // Always decrement live counter here since it will be incremented
+    // again whenever the sampler is reacquired.
+    m_samplersLive.store(m_samplersLive.load() - 1u);
 
     // Back off if another thread has re-aquired the sampler. This is
     // safe since the ref count can only be incremented from zero when
     // the pool is locked.
-    if (sampler->m_refCount.load())
+    auto& sampler = m_samplers.at(index);
+
+    if (sampler.object->m_refCount.load(std::memory_order_relaxed))
       return;
 
     // It is also possible that two threads end up here while the ref
     // count is zero. Make sure to not add the sampler to the LRU list
     // more than once in that case.
-    if (sampler->m_lruPrev || m_lruHead == sampler)
+    if (samplerIsInLruList(sampler, index))
       return;
 
-    // Add sampler to the end of the LRU list
-    sampler->m_lruPrev = m_lruTail;
-    sampler->m_lruNext = nullptr;
+    // Add sampler to the end of the LRU list, but keep the sampler
+    // object itself as well as the look-up table entry intact in
+    // case the app wants to recreate the same sampler later.
+    appendLru(sampler, index);
+  }
 
-    if (m_lruTail)
-      m_lruTail->m_lruNext = sampler;
+
+  void DxvkSamplerPool::appendLru(SamplerEntry& sampler, int32_t index) {
+    sampler.lruPrev = m_lruTail;
+    sampler.lruNext = -1;
+
+    if (m_lruTail >= 0)
+      m_samplers.at(m_lruTail).lruNext = index;
     else
-      m_lruHead = sampler;
+      m_lruHead = index;
 
-    m_lruTail = sampler;
-
-    // Don't need an atomic add for these
-    m_samplersLive.store(m_samplersLive.load() - 1u);
-
-    // Try to keep some samplers available for subsequent allocations
-    if (m_samplers.size() > MinSamplerCount)
-      destroyLeastRecentlyUsedSampler();
+    m_lruTail = index;
   }
 
 
-  void DxvkSamplerPool::destroyLeastRecentlyUsedSampler() {
-    DxvkSampler* sampler = m_lruHead;
+  void DxvkSamplerPool::removeLru(SamplerEntry& sampler, int32_t index) {
+    if (sampler.lruPrev >= 0)
+      m_samplers.at(sampler.lruPrev).lruNext = sampler.lruNext;
+    else if (m_lruHead == index)
+      m_lruHead = sampler.lruNext;
 
-    if (sampler) {
-      freeSamplerIndex(sampler->getDescriptor().samplerIndex);
-      m_lruHead = sampler->m_lruNext;
+    if (sampler.lruNext >= 0)
+      m_samplers.at(sampler.lruNext).lruPrev = sampler.lruPrev;
+    else if (m_lruTail == index)
+      m_lruTail = sampler.lruPrev;
 
-      if (m_lruHead)
-        m_lruHead->m_lruPrev = nullptr;
-      else
-        m_lruTail = nullptr;
-
-      m_samplers.erase(sampler->key());
-      m_samplersTotal.store(m_samplers.size());
-    }
+    sampler.lruPrev = -1;
+    sampler.lruNext = -1;
   }
 
 
-  uint16_t DxvkSamplerPool::allocateSamplerIndex() {
-    if (m_freeList.empty()) {
-      destroyLeastRecentlyUsedSampler();
-
-      if (m_freeList.empty())
-        return 0u;
-    }
-
-    uint16_t index = m_freeList.back();
-    m_freeList.pop_back();
-    return index;
-  }
-
-
-  void DxvkSamplerPool::freeSamplerIndex(uint16_t index) {
-    m_freeList.push_back(index);
+  bool DxvkSamplerPool::samplerIsInLruList(SamplerEntry& sampler, int32_t index) const {
+    return sampler.lruPrev >= 0 || m_lruHead == index;
   }
 
 }

@@ -14,7 +14,6 @@ namespace dxvk {
       enableAsync = config.getOption<bool>("dxvk.enableAsync", true);
     
     enableDebugUtils      = config.getOption<bool>    ("dxvk.enableDebugUtils",       false);
-    enableStateCache      = config.getOption<bool>    ("dxvk.enableStateCache",       true);
     enableMemoryDefrag    = config.getOption<Tristate>("dxvk.enableMemoryDefrag",     Tristate::Auto);
     numCompilerThreads    = config.getOption<int32_t> ("dxvk.numCompilerThreads",     0);
     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);

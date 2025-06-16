@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+#include <memory>
 #include <unordered_map>
 
 #include "../util/util_bit.h"
@@ -209,9 +211,6 @@ namespace dxvk {
 
     DxvkSamplerDescriptor m_descriptor = { };
 
-    DxvkSampler*          m_lruPrev   = nullptr;
-    DxvkSampler*          m_lruNext   = nullptr;
-
     void release();
 
     VkBorderColor determineBorderColorType() const;
@@ -305,8 +304,6 @@ namespace dxvk {
    * \brief Sampler statistics
    */
   struct DxvkSamplerStats {
-    /// Number of sampler objects created
-    uint32_t totalCount = 0u;
     /// Number of samplers currently in use
     uint32_t liveCount = 0u;
   };
@@ -323,9 +320,6 @@ namespace dxvk {
 
     // Lower limit for sampler counts in Vulkan.
     constexpr static uint32_t MaxSamplerCount = 2048u;
-
-    // Minimum number of samplers to keep alive.
-    constexpr static uint32_t MinSamplerCount = 1024u;
 
     DxvkSamplerPool(DxvkDevice* device);
 
@@ -365,38 +359,42 @@ namespace dxvk {
      */
     DxvkSamplerStats getStats() const {
       DxvkSamplerStats stats = { };
-      stats.totalCount = m_samplersTotal.load();
       stats.liveCount = m_samplersLive.load();
       return stats;
     }
 
   private:
 
-    DxvkDevice* m_device;
+    struct SamplerEntry {
+      int32_t lruPrev = -1;
+      int32_t lruNext = -1;
+      std::optional<DxvkSampler> object;
+    };
+
+    DxvkDevice* m_device = nullptr;
 
     DxvkSamplerDescriptorHeap m_descriptorHeap;
 
     dxvk::mutex m_mutex;
-    std::unordered_map<DxvkSamplerKey,
-      DxvkSampler, DxvkHash, DxvkEq> m_samplers;
 
-    small_vector<uint16_t, MaxSamplerCount> m_freeList;
+    std::array<SamplerEntry, MaxSamplerCount> m_samplers;
+
+    std::unordered_map<DxvkSamplerKey, int32_t, DxvkHash, DxvkEq> m_samplerLut;
+
+    int32_t m_lruHead = -1;
+    int32_t m_lruTail = -1;
+
+    std::atomic<uint32_t> m_samplersLive = { 0u };
 
     Rc<DxvkSampler> m_default = nullptr;
 
-    DxvkSampler* m_lruHead = nullptr;
-    DxvkSampler* m_lruTail = nullptr;
+    void releaseSampler(int32_t index);
 
-    std::atomic<uint32_t> m_samplersLive = { 0u };
-    std::atomic<uint32_t> m_samplersTotal = { 0u };
+    void appendLru(SamplerEntry& sampler, int32_t index);
 
-    void releaseSampler(DxvkSampler* sampler);
+    void removeLru(SamplerEntry& sampler, int32_t index);
 
-    void destroyLeastRecentlyUsedSampler();
-
-    uint16_t allocateSamplerIndex();
-
-    void freeSamplerIndex(uint16_t index);
+    bool samplerIsInLruList(SamplerEntry& sampler, int32_t index) const;
 
   };
 
