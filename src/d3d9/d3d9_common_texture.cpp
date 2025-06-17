@@ -166,8 +166,9 @@ namespace dxvk {
        || (blockSize.Height && (pDesc->Height & (blockSize.Height - 1))))
         return D3DERR_INVALIDCALL;
     }
-    
-    if (FAILED(DecodeMultiSampleType(pDevice->GetDXVKDevice(), pDesc->MultiSample, pDesc->MultisampleQuality, nullptr)))
+
+    VkSampleCountFlagBits sampleCount;
+    if (FAILED(DecodeMultiSampleType(pDevice->GetDXVKDevice(), pDesc->MultiSample, pDesc->MultisampleQuality, &sampleCount)))
       return D3DERR_INVALIDCALL;
 
     // Using MANAGED pool with DYNAMIC usage is illegal
@@ -240,6 +241,10 @@ namespace dxvk {
        || pDesc->Format == D3D9Format::S8_LOCKABLE)
         return D3DERR_INVALIDCALL;
     }
+
+    // A multisample RT/DS must not be lockable
+    if (pDesc->IsLockable && sampleCount > VK_SAMPLE_COUNT_1_BIT)
+        return D3DERR_INVALIDCALL;
 
     return D3D_OK;
   }
