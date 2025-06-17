@@ -1344,28 +1344,24 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    auto EmitResolveCS = [&](const Rc<DxvkImage>& resolveDst, bool intermediate) {
-      VkImageResolve region;
-      region.srcSubresource = blitInfo.srcSubresource;
-      region.srcOffset      = intermediate ? VkOffset3D { 0, 0, 0 }  : blitInfo.srcOffsets[0];
-      region.dstSubresource = intermediate ? blitInfo.srcSubresource : blitInfo.dstSubresource;
-      region.dstOffset      = intermediate ? VkOffset3D { 0, 0, 0 }  : blitInfo.dstOffsets[0];
-      region.extent         = intermediate ? resolveDst->mipLevelExtent(blitInfo.srcSubresource.mipLevel) : srcCopyExtent;
-
-      EmitCs([
-        cDstImage    = resolveDst,
-        cSrcImage    = srcImage,
-        cRegion      = region
-      ] (DxvkContext* ctx) {
-        // Deliberately use AVERAGE even for depth resolves here
-        ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
-          VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-      });
-    };
-
     if (fastPath) {
       if (needsResolve) {
-        EmitResolveCS(dstImage, false);
+        VkImageResolve region;
+        region.srcSubresource = blitInfo.srcSubresource;
+        region.srcOffset      = blitInfo.srcOffsets[0];
+        region.dstSubresource = blitInfo.dstSubresource;
+        region.dstOffset      = blitInfo.dstOffsets[0];
+        region.extent         = srcCopyExtent;
+
+        EmitCs([
+          cDstImage    = dstImage,
+          cSrcImage    = srcImage,
+          cRegion      = region
+        ] (DxvkContext* ctx) {
+          // Deliberately use AVERAGE even for depth resolves here
+          ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
+            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+        });
       } else {
         EmitCs([
           cDstImage  = dstImage,
@@ -1384,13 +1380,6 @@ namespace dxvk {
       }
     }
     else {
-      if (needsResolve) {
-        auto resolveSrc = srcTextureInfo->GetResolveImage();
-
-        EmitResolveCS(resolveSrc, true);
-        srcImage = resolveSrc;
-      }
-
       DxvkImageViewKey dstViewInfo;
       dstViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       dstViewInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
