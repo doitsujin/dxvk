@@ -1074,8 +1074,15 @@ namespace dxvk {
           uint32_t                  numSupported,
     const VkPresentModeKHR*         pSupported,
           uint32_t                  syncInterval) {
-    std::array<VkPresentModeKHR, 2> desired = { };
+    std::array<VkPresentModeKHR, 3> desired = { };
     uint32_t numDesired = 0;
+
+    FramePacer* pacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+    if (pacer) {
+      uint32_t desiredMode;
+      if (pacer->getFramePacerMode()->getDesiredPresentMode(desiredMode))
+        desired[numDesired++] = (VkPresentModeKHR) desiredMode;
+    }
 
     Tristate tearFree = m_device->config().tearFree;
 

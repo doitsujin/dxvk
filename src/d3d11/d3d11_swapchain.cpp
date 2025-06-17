@@ -528,6 +528,7 @@ namespace dxvk {
     m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
 
     m_latency = m_device->createLatencyTracker(m_presenter);
+    m_presenter->registerLatencyTracker(m_latency);
 
     Com<D3D11ReflexDevice> reflex = GetReflexDevice();
     reflex->RegisterLatencyTracker(m_latency);

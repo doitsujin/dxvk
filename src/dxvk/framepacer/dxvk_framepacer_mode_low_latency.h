@@ -42,7 +42,7 @@ namespace dxvk {
     using time_point = high_resolution_clock::time_point;
   public:
 
-    LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options)
+    LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options, float refreshRate = 10000)
     : FramePacerMode(mode, storage),
       m_lowLatencyOffset(getLowLatencyOffset(options)),
       m_allowCpuFramesOverlap(options.lowLatencyAllowCpuFramesOverlap) {
@@ -52,6 +52,7 @@ namespace dxvk {
 
     ~LowLatencyMode() {}
 
+    bool getDesiredPresentMode( uint32_t& presentMode ) const override;
 
     void startFrame( uint64_t frameId ) override {
       using std::chrono::duration_cast;
