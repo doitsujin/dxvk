@@ -37,19 +37,22 @@ namespace dxvk {
   struct DxvkMetaBlitPipelineKey {
     VkImageViewType       viewType;
     VkFormat              viewFormat;
-    VkSampleCountFlagBits samples;
+    VkSampleCountFlagBits srcSamples;
+    VkSampleCountFlagBits dstSamples;
     
     bool eq(const DxvkMetaBlitPipelineKey& other) const {
       return this->viewType   == other.viewType
           && this->viewFormat == other.viewFormat
-          && this->samples    == other.samples;
+          && this->srcSamples    == other.srcSamples
+          && this->dstSamples    == other.dstSamples;
     }
     
     size_t hash() const {
       DxvkHashState result;
       result.add(uint32_t(this->viewType));
       result.add(uint32_t(this->viewFormat));
-      result.add(uint32_t(this->samples));
+      result.add(uint32_t(this->srcSamples));
+      result.add(uint32_t(this->dstSamples));
       return result;
     }
   };
@@ -112,7 +115,8 @@ namespace dxvk {
     DxvkMetaBlitPipeline getPipeline(
             VkImageViewType       viewType,
             VkFormat              viewFormat,
-            VkSampleCountFlagBits samples);
+            VkSampleCountFlagBits srcSamples,
+            VkSampleCountFlagBits dstSamples);
     
   private:
 
@@ -135,7 +139,8 @@ namespace dxvk {
     VkPipeline createPipeline(
             VkImageViewType             imageViewType,
             VkFormat                    format,
-            VkSampleCountFlagBits       samples) const;
+            VkSampleCountFlagBits       srcSamples,
+            VkSampleCountFlagBits       dstSamples) const;
     
   };
   
