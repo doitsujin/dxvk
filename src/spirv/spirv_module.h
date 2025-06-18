@@ -1308,6 +1308,7 @@ namespace dxvk {
     SpirvCodeBuffer m_variables;
     SpirvCodeBuffer m_code;
 
+    std::unordered_set<uint32_t> m_uniqueTypes;
     std::unordered_set<uint32_t> m_lateConsts;
 
     std::vector<uint32_t> m_interfaceVars;

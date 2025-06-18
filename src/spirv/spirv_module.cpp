@@ -819,6 +819,8 @@ namespace dxvk {
     m_typeConstDefs.putWord(resultId);
     m_typeConstDefs.putWord(typeId);
     m_typeConstDefs.putWord(length);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -839,6 +841,8 @@ namespace dxvk {
     m_typeConstDefs.putIns (spv::OpTypeRuntimeArray, 3);
     m_typeConstDefs.putWord(resultId);
     m_typeConstDefs.putWord(typeId);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -876,6 +880,8 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < memberCount; i++)
       m_typeConstDefs.putWord(memberTypes[i]);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -3869,7 +3875,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < argCount && match; i++)
         match &= ins.arg(2 + i) == argIds[i];
       
-      if (match)
+      if (match && m_uniqueTypes.find(ins.arg(1)) == m_uniqueTypes.end())
         return ins.arg(1);
     }
     
