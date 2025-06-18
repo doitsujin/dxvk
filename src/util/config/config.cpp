@@ -1222,6 +1222,12 @@ namespace dxvk {
     { R"(\\bin\\trainz\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* A.I.M.: Artificial Intelligence Machine    *
+     * Fixes black screen after the options       *
+     * window is closed or on alt-tab             */
+     { R"(\\AIM\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
   };
 
 
