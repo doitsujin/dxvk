@@ -343,8 +343,8 @@ namespace dxvk {
 
       copyFeature(deviceInfo->pNext, nullptr, &m_featuresSupported.core);
 
-      #define HANDLE_CORE(name) copyFeature(&deviceInfo->pNext, nullptr, &m_featuresSupported.name)
-      #define HANDLE_EXT(name) copyFeature(&deviceInfo->pNext, &m_extensionsSupported.name, &m_featuresSupported.name)
+      #define HANDLE_CORE(name) copyFeature(deviceInfo->pNext, nullptr, &m_featuresSupported.name)
+      #define HANDLE_EXT(name) copyFeature(deviceInfo->pNext, &m_extensionsSupported.name, &m_featuresSupported.name)
 
       CORE_VERSIONS
       EXTENSIONS_WITH_FEATURES
