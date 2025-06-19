@@ -796,12 +796,6 @@ namespace dxvk {
 
     pPresentParams->BackBufferCount    = std::max(pPresentParams->BackBufferCount, 1u);
 
-    const int32_t forcedMSAA = m_parent->GetOptions()->forceSwapchainMSAA;
-    if (forcedMSAA != -1) {
-      pPresentParams->MultiSampleType    = D3DMULTISAMPLE_TYPE(forcedMSAA);
-      pPresentParams->MultiSampleQuality = 0;
-    }
-
     if (pPresentParams->Windowed) {
       wsi::getWindowSize(pPresentParams->hDeviceWindow,
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
