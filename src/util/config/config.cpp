@@ -1056,6 +1056,13 @@ namespace dxvk {
       { "d3d9.customDeviceId",              "0330" },
       { "d3d9.customDeviceDesc",            "NVIDIA GeForce FX 5900 Ultra" },
     }} },
+    /* Astebreed - Will crash on any graphical    *
+     * options or preset changes otherwise. Also, *
+     * game speed is too fast above 60 fps.       */
+    { R"(\\Astebreed\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
