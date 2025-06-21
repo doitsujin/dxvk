@@ -127,6 +127,8 @@ namespace dxvk {
 
     std::unique_ptr<const D3D9VkFormatTable> m_d3d9Formats;
 
+    std::vector<uint32_t>         m_forcedModeHeights;
+
   };
 
 }
