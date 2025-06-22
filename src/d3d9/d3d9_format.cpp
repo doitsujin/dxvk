@@ -343,7 +343,7 @@ namespace dxvk {
 
       case D3D9Format::A1: return {}; // Unsupported
 
-      case D3D9Format::A2B10G10R10_XR_BIAS: return {}; // Unsupported
+      case D3D9Format::A2B10G10R10_XR_BIAS: return {}; // Unsupported (everywhere)
 
       case D3D9Format::BINARYBUFFER: return {
         VK_FORMAT_R8_UINT,
@@ -423,9 +423,28 @@ namespace dxvk {
 
       case D3D9Format::RAWZ: return {}; // Unsupported
 
-      case D3D9Format::R16:  return {}; // Unsupported
+      // EXT1, FXT1, GXT1 and HXT1 are checked for support
+      // by D3D9 SAGE engine games (e.g. Command & Conquer 3)
 
-      case D3D9Format::AL16: return {}; // Unsupported
+      case D3D9Format::EXT1: return {}; // Unsupported (everywhere)
+
+      case D3D9Format::FXT1: return {}; // Unsupported (everywhere)
+
+      case D3D9Format::GXT1: return {}; // Unsupported (everywhere)
+
+      case D3D9Format::HXT1: return {}; // Unsupported (everywhere)
+
+      // AL16 and R16 FOURCCs are often checked for support by
+      // various D3D8 and early D3D9 games. AR16 and L16 (FOURCC)
+      // are also checked for support, but to a lesser extent.
+
+      case D3D9Format::AL16: return {}; // Unsupported (everywhere)
+
+      case D3D9Format::AR16: return {}; // Unsupported (everywhere)
+
+      case D3D9Format::R16:  return {}; // Unsupported (everywhere)
+
+      case D3D9Format::L16_FOURCC:  return {}; // Unsupported (everywhere)
 
       default:
         Logger::warn(str::format("ConvertFormat: Unknown format encountered: ", Format));
