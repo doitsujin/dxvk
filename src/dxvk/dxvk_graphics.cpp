@@ -1147,10 +1147,6 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Error, state);
       return;
     }
-
-    //Write pipeline to state cache
-    if (gplAsyncCache)
-      this->writePipelineStateToCache(state);
   }
 
 

@@ -7429,7 +7429,7 @@ namespace dxvk {
     // End render pass if there are pending resolves
     if (m_flags.any(DxvkContextFlag::GpDirtyRenderTargets,
                     DxvkContextFlag::GpRenderPassNeedsFlush))
-      this->updateRenderTargets(true);
+      this->updateRenderTargets();
 
     if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
       // If transform feedback is active and there is a chance that we might
