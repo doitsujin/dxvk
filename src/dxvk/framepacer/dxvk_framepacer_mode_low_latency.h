@@ -42,12 +42,18 @@ namespace dxvk {
     using time_point = high_resolution_clock::time_point;
   public:
 
-    LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options, float refreshRate = 10000)
+    LowLatencyMode(Mode mode, LatencyMarkersStorage* storage, const DxvkOptions& options, int refreshRate = 0)
     : FramePacerMode(mode, storage),
       m_lowLatencyOffset(getLowLatencyOffset(options)),
       m_allowCpuFramesOverlap(options.lowLatencyAllowCpuFramesOverlap) {
       Logger::info( str::format("Using lowLatencyOffset: ", m_lowLatencyOffset) );
       Logger::info( str::format("Using lowLatencyAllowCpuFramesOverlap: ", m_allowCpuFramesOverlap) );
+
+      if (refreshRate > 0) {
+        m_vrrRefreshInterval = 1'000'000 / refreshRate;
+        Logger::info( str::format("Using vrr refresh rate: ", refreshRate) );
+      }
+
     }
 
     ~LowLatencyMode() {}
@@ -55,6 +61,7 @@ namespace dxvk {
     bool getDesiredPresentMode( uint32_t& presentMode ) const override;
 
     void startFrame( uint64_t frameId ) override {
+
       using std::chrono::duration_cast;
 
       if (!m_allowCpuFramesOverlap)
@@ -68,8 +75,15 @@ namespace dxvk {
         return;
 
       if (finishedId == frameId-1) {
-        // we are the only in-flight frame, nothing to do other then to apply fps-limiter if needed
-        m_lastStart = sleepFor( now, 0 );
+        // we are the only in-flight frame, nothing to do other then
+        // to sync to v-blank and apply fps-limiter if needed
+        int32_t delay = 0;
+        if (m_mode == LOW_LATENCY_VRR) {
+          const SyncProps props = getSyncPrediction();
+          delay = std::max(delay, getVrrDelay(frameId, props, now));
+        }
+
+        m_lastStart = sleepFor( now, delay );
         return;
       }
 
@@ -97,6 +111,10 @@ namespace dxvk {
       int32_t cpuDelay = cpuReadyPrediction - props.csStart;
 
       int32_t delay = std::max(gpuDelay, cpuDelay) + m_lowLatencyOffset;
+
+      if (m_mode == LOW_LATENCY_VRR) {
+        delay = std::max(delay, getVrrDelay(frameId, props, now));
+      }
 
       m_lastStart = sleepFor( now, delay );
 
@@ -231,6 +249,16 @@ namespace dxvk {
     }
 
 
+    int32_t getVrrDelay( uint64_t frameId, const SyncProps& props, const time_point& now ) {
+      uint64_t frameFinishedId = m_latencyMarkersStorage->getTimeline()->frameFinished.load();
+      int32_t lastVBlank = std::chrono::duration_cast<microseconds> (
+        m_latencyMarkersStorage->getConstMarkers(frameFinishedId)->end - now ).count();
+
+      int32_t targetVBlank = lastVBlank + (frameId - frameFinishedId) * m_vrrRefreshInterval;
+      return targetVBlank - props.optimizedGpuTime - props.cpuUntilGpuStart;
+    }
+
+
     int32_t getLowLatencyOffset( const DxvkOptions& options );
     bool getLowLatencyAllowCpuFramesOverlap( const DxvkOptions& options );
 
@@ -238,6 +266,8 @@ namespace dxvk {
     const bool    m_allowCpuFramesOverlap;
 
     Sleep::TimePoint m_lastStart = { high_resolution_clock::now() };
+    int32_t m_vrrRefreshInterval = { 0 };
+
     std::array<SyncProps, 16> m_props;
     std::atomic<uint64_t> m_propsFinished = { 0 };
 

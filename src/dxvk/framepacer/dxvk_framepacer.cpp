@@ -8,6 +8,10 @@
 
 namespace dxvk {
 
+  int getRefreshRate( std::string s ) {
+    return std::abs( std::atoi( s.substr(16).c_str() ) );
+  }
+
 
   FramePacer::FramePacer( const DxvkOptions& options, uint64_t firstFrameId ) {
     // we'll default to LOW_LATENCY in the draft-PR for now, for demonstration purposes,
@@ -16,17 +20,24 @@ namespace dxvk {
     // for its higher fps throughput and less susceptibility to short-term time inconsistencies.
     // which mode being smoother depends on the game.
     FramePacerMode::Mode mode = FramePacerMode::LOW_LATENCY;
+    int refreshRate = 0;
 
     std::string configStr = env::getEnvVar("DXVK_FRAME_PACE");
 
     if (configStr.find("max-frame-latency") != std::string::npos) {
       mode = FramePacerMode::MAX_FRAME_LATENCY;
+    } else if (configStr.find("low-latency-vrr-") != std::string::npos) {
+      mode = FramePacerMode::LOW_LATENCY_VRR;
+      refreshRate = getRefreshRate(configStr);
     } else if (configStr.find("low-latency") != std::string::npos) {
       mode = FramePacerMode::LOW_LATENCY;
     } else if (configStr.find("min-latency") != std::string::npos) {
       mode = FramePacerMode::MIN_LATENCY;
     } else if (options.framePace.find("max-frame-latency") != std::string::npos) {
       mode = FramePacerMode::MAX_FRAME_LATENCY;
+    } else if (options.framePace.find("low-latency-vrr-") != std::string::npos) {
+      mode = FramePacerMode::LOW_LATENCY_VRR;
+      refreshRate = getRefreshRate(options.framePace);
     } else if (options.framePace.find("low-latency") != std::string::npos) {
       mode = FramePacerMode::LOW_LATENCY;
     } else if (options.framePace.find("min-latency") != std::string::npos) {
@@ -48,6 +59,13 @@ namespace dxvk {
         GpuFlushTracker::m_minPendingSubmissions = 1;
         GpuFlushTracker::m_minChunkCount = 1;
         m_mode = std::make_unique<LowLatencyMode>(mode, &m_latencyMarkersStorage, options);
+        break;
+
+      case FramePacerMode::LOW_LATENCY_VRR:
+        Logger::info( "Frame pace: low-latency-vrr" );
+        GpuFlushTracker::m_minPendingSubmissions = 1;
+        GpuFlushTracker::m_minChunkCount = 1;
+        m_mode = std::make_unique<LowLatencyMode>(mode, &m_latencyMarkersStorage, options, refreshRate);
         break;
 
       case FramePacerMode::MIN_LATENCY:
