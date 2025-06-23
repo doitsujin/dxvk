@@ -76,22 +76,14 @@ namespace dxvk {
       return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
-    inline const Rc<DxvkImageView>& GetImageView(bool Srgb) {
-      Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
-
-      if (unlikely(!view && !IsNull())) {
-        view = m_texture->CreateView(m_face, m_mipLevel,
-          VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
-          Srgb && m_isSrgbCompatible);
-      }
-
-      return view;
-    }
-
     inline const Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
       if (unlikely(!view && !IsNull())) {
+        // The backend will ignore the view layout anyway for images
+        // that have GENERAL (or FEEDBACK_LOOP) as their layout.
+        // Because of that, we don't need to pay special attention here
+        // to whether the image was transitioned because of a feedback loop.
         view = m_texture->CreateView(m_face, m_mipLevel,
           VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -107,6 +99,10 @@ namespace dxvk {
         : m_dsvReadOnly;
 
       if (unlikely(!view)) {
+        // The backend will ignore the view layout anyway for images
+        // that have GENERAL (or FEEDBACK_LOOP) as their layout.
+        // Because of that, we don't need to pay special attention here
+        // to whether the image was transitioned because of a feedback loop.
         VkImageLayout layout = Writable
           ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
           : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
@@ -130,7 +126,6 @@ namespace dxvk {
       // Only used for swap chain back buffers that don't
       // have a container and all have identical properties
       std::swap(m_texture,          Other->m_texture);
-      std::swap(m_sampleView,       Other->m_sampleView);
       std::swap(m_renderTargetView, Other->m_renderTargetView);
     }
 
@@ -145,8 +140,7 @@ namespace dxvk {
     UINT                    m_mipLevel         : 16;
     UINT                    m_isSrgbCompatible : 1;
     UINT                    m_isNull           : 1;
-  
-    D3D9ColorView           m_sampleView;
+
     D3D9ColorView           m_renderTargetView;
 
     Rc<DxvkImageView>       m_dsvReadWrite;

@@ -4,6 +4,7 @@
 #include "d3d9_bridge.h"
 #include "d3d9_swapchain.h"
 #include "d3d9_surface.h"
+#include "d3d9_format.h"
 
 namespace dxvk {
 
@@ -86,6 +87,11 @@ namespace dxvk {
       m_device->MarkTextureMipsDirty(dstTextureInfo);
 
     return D3D_OK;
+  }
+
+  bool DxvkD3D8Bridge::IsSupportedSurfaceFormat(D3DFORMAT Format) {
+    auto mapping = m_device->LookupFormat(EnumerateFormat(Format));
+    return mapping.IsValid();
   }
 
   DxvkD3D8InterfaceBridge::DxvkD3D8InterfaceBridge(D3D9InterfaceEx* pObject)

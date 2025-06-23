@@ -113,9 +113,6 @@ namespace dxvk {
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
 
-    /// Forces an MSAA level on the swapchain
-    int32_t forceSwapchainMSAA;
-
     /// Forces sample rate shading
     bool forceSampleRateShading;
 

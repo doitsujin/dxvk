@@ -19,6 +19,7 @@ IDxvkD3D8Bridge : public IUnknown {
   // D3D8 keeps D3D9 objects contained in a namespace.
   #ifdef DXVK_D3D9_NAMESPACE
     using IDirect3DSurface9 = d3d9::IDirect3DSurface9;
+    using D3DFORMAT = d3d9::D3DFORMAT;
   #endif
 
   /**
@@ -34,6 +35,13 @@ IDxvkD3D8Bridge : public IUnknown {
       IDirect3DSurface9*        pSrcSurface,
       const RECT*               pSrcRect,
       const POINT*              pDestPoint) = 0;
+
+  /**
+   * \brief Checks if a particular surface format is supported by D3D9
+   *
+   * \param [in] Format D3DFORMAT value to be checked
+   */
+  virtual bool IsSupportedSurfaceFormat(D3DFORMAT Format) = 0;
 };
 
 /**
@@ -83,6 +91,8 @@ namespace dxvk {
         IDirect3DSurface9*        pSrcSurface,
         const RECT*               pSrcRect,
         const POINT*              pDestPoint);
+
+    bool IsSupportedSurfaceFormat(D3DFORMAT Format);
 
   private:
 

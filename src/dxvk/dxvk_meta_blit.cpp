@@ -9,6 +9,7 @@
 #include <dxvk_blit_frag_1d.h>
 #include <dxvk_blit_frag_2d.h>
 #include <dxvk_blit_frag_3d.h>
+#include <dxvk_blit_frag_2d_ms.h>
 
 namespace dxvk {
   
@@ -30,13 +31,15 @@ namespace dxvk {
   DxvkMetaBlitPipeline DxvkMetaBlitObjects::getPipeline(
           VkImageViewType       viewType,
           VkFormat              viewFormat,
-          VkSampleCountFlagBits samples) {
+          VkSampleCountFlagBits srcSamples,
+          VkSampleCountFlagBits dstSamples) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaBlitPipelineKey key;
     key.viewType   = viewType;
     key.viewFormat = viewFormat;
-    key.samples    = samples;
+    key.srcSamples = srcSamples;
+    key.dstSamples = dstSamples;
 
     auto entry = m_pipelines.find(key);
     if (entry != m_pipelines.end())
@@ -52,7 +55,7 @@ namespace dxvk {
     const DxvkMetaBlitPipelineKey& key) {
     DxvkMetaBlitPipeline pipeline = { };
     pipeline.layout   = m_layout;
-    pipeline.pipeline = createPipeline(key.viewType, key.viewFormat, key.samples);
+    pipeline.pipeline = createPipeline(key.viewType, key.viewFormat, key.srcSamples, key.dstSamples);
     return pipeline;
   }
   
@@ -68,8 +71,18 @@ namespace dxvk {
   VkPipeline DxvkMetaBlitObjects::createPipeline(
           VkImageViewType             imageViewType,
           VkFormat                    format,
-          VkSampleCountFlagBits       samples) const {
+          VkSampleCountFlagBits       srcSamples,
+          VkSampleCountFlagBits       dstSamples) const {
     util::DxvkBuiltInGraphicsState state = { };
+
+    VkSpecializationMapEntry specMap = { };
+    specMap.size = sizeof(VkSampleCountFlagBits);
+
+    VkSpecializationInfo specInfo = { };
+    specInfo.mapEntryCount = 1;
+    specInfo.pMapEntries = &specMap;
+    specInfo.dataSize = sizeof(VkSampleCountFlagBits);
+    specInfo.pData = &srcSamples;
 
     if (m_device->features().vk12.shaderOutputLayer) {
       state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
@@ -78,15 +91,23 @@ namespace dxvk {
       state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
     }
 
-    switch (imageViewType) {
-      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_1d, nullptr); break;
-      case VK_IMAGE_VIEW_TYPE_2D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_2d, nullptr); break;
-      case VK_IMAGE_VIEW_TYPE_3D:       state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_3d, nullptr); break;
-      default: throw DxvkError("DxvkMetaBlitObjects: Invalid view type");
+    if (srcSamples != VK_SAMPLE_COUNT_1_BIT) {
+      if (imageViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_2d_ms, &specInfo);
+      } else {
+        throw DxvkError("DxvkMetaBlitObjects: Invalid view type for multisampled image");
+      }
+    } else {
+      switch (imageViewType) {
+        case VK_IMAGE_VIEW_TYPE_1D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_1d, nullptr); break;
+        case VK_IMAGE_VIEW_TYPE_2D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_2d, nullptr); break;
+        case VK_IMAGE_VIEW_TYPE_3D:       state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_3d, nullptr); break;
+        default: throw DxvkError("DxvkMetaBlitObjects: Invalid view type");
+      }
     }
 
     state.colorFormat = format;
-    state.sampleCount = samples;
+    state.sampleCount = dstSamples;
 
     return m_device->createBuiltInGraphicsPipeline(m_layout, state);
   }

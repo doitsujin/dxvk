@@ -1344,28 +1344,24 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    auto EmitResolveCS = [&](const Rc<DxvkImage>& resolveDst, bool intermediate) {
-      VkImageResolve region;
-      region.srcSubresource = blitInfo.srcSubresource;
-      region.srcOffset      = intermediate ? VkOffset3D { 0, 0, 0 }  : blitInfo.srcOffsets[0];
-      region.dstSubresource = intermediate ? blitInfo.srcSubresource : blitInfo.dstSubresource;
-      region.dstOffset      = intermediate ? VkOffset3D { 0, 0, 0 }  : blitInfo.dstOffsets[0];
-      region.extent         = intermediate ? resolveDst->mipLevelExtent(blitInfo.srcSubresource.mipLevel) : srcCopyExtent;
-
-      EmitCs([
-        cDstImage    = resolveDst,
-        cSrcImage    = srcImage,
-        cRegion      = region
-      ] (DxvkContext* ctx) {
-        // Deliberately use AVERAGE even for depth resolves here
-        ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
-          VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-      });
-    };
-
     if (fastPath) {
       if (needsResolve) {
-        EmitResolveCS(dstImage, false);
+        VkImageResolve region;
+        region.srcSubresource = blitInfo.srcSubresource;
+        region.srcOffset      = blitInfo.srcOffsets[0];
+        region.dstSubresource = blitInfo.dstSubresource;
+        region.dstOffset      = blitInfo.dstOffsets[0];
+        region.extent         = srcCopyExtent;
+
+        EmitCs([
+          cDstImage    = dstImage,
+          cSrcImage    = srcImage,
+          cRegion      = region
+        ] (DxvkContext* ctx) {
+          // Deliberately use AVERAGE even for depth resolves here
+          ctx->resolveImage(cDstImage, cSrcImage, cRegion, cSrcImage->info().format,
+            VK_RESOLVE_MODE_AVERAGE_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+        });
       } else {
         EmitCs([
           cDstImage  = dstImage,
@@ -1384,13 +1380,6 @@ namespace dxvk {
       }
     }
     else {
-      if (needsResolve) {
-        auto resolveSrc = srcTextureInfo->GetResolveImage();
-
-        EmitResolveCS(resolveSrc, true);
-        srcImage = resolveSrc;
-      }
-
       DxvkImageViewKey dstViewInfo;
       dstViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       dstViewInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -3858,26 +3847,17 @@ namespace dxvk {
       m_textureSlotTracking.mismatchingTextureType &= ~newShaderMasks.samplerMask;
     }
 
-    // If we have any RTs we would have bound to the the FB
-    // not in the new shader mask, mark the framebuffer as dirty
-    // so we unbind them.
-    uint32_t boundMask = 0u;
-    uint32_t anyColorWriteMask = 0u;
-    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
-      boundMask |= HasRenderTargetBound(i) << i;
-      anyColorWriteMask |= (m_state.renderStates[ColorWriteIndex(i)] != 0) << i;
-    }
+    // Check whether the color output mask or the mask of the used samplers
+    // forces us to deal with hazards in a different way.
+    if (likely(oldShaderMasks.samplerMask != newShaderMasks.samplerMask ||
+      oldShaderMasks.rtMask != newShaderMasks.rtMask))
+      UpdateActiveHazardsRT(
+        oldShaderMasks.rtMask | newShaderMasks.rtMask,
+        oldShaderMasks.samplerMask | newShaderMasks.samplerMask
+      );
 
-    uint32_t oldUseMask = boundMask & anyColorWriteMask & oldShaderMasks.rtMask;
-    uint32_t newUseMask = boundMask & anyColorWriteMask & newShaderMasks.rtMask;
-    if (oldUseMask != newUseMask)
-      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-
-    if (oldShaderMasks.samplerMask != newShaderMasks.samplerMask ||
-        oldShaderMasks.rtMask != newShaderMasks.rtMask) {
-      UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
-      UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
-    }
+    if (likely(oldShaderMasks.samplerMask != newShaderMasks.samplerMask))
+      UpdateActiveHazardsDS(oldShaderMasks.samplerMask | newShaderMasks.samplerMask);
 
     return D3D_OK;
   }
@@ -4249,6 +4229,11 @@ namespace dxvk {
     desc.IsAttachmentOnly   = TRUE;
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
+
+    // Because they are always lockable, image surfaces / offscreen plain surfaces
+    // are restricted to using lockable depth stencil formats.
+    if (IsDepthStencilFormat(desc.Format) && !IsLockableDepthStencilFormat(desc.Format))
+      return D3DERR_INVALIDCALL;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
@@ -6156,11 +6141,10 @@ namespace dxvk {
     m_rtSlotTracking.canBeSampled &= ~bit;
 
     if (HasRenderTargetBound(index) &&
-        m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
-        m_state.renderStates[ColorWriteIndex(index)] != 0)
+      m_state.renderTargets[index]->GetBaseTexture() != nullptr)
       m_rtSlotTracking.canBeSampled |= bit;
 
-    UpdateActiveHazardsRT(bit);
+    UpdateActiveHazardsRT(bit, std::numeric_limits<uint32_t>::max());
   }
 
   template <uint32_t Index>
@@ -6182,9 +6166,9 @@ namespace dxvk {
 
     m_textureSlotTracking.rtUsage                &= ~bit;
     m_textureSlotTracking.dsUsage                &= ~bit;
-    m_textureSlotTracking.bound                   &= ~bit;
-    m_textureSlotTracking.needsUpload             &= ~bit;
-    m_textureSlotTracking.needsMipGen             &= ~bit;
+    m_textureSlotTracking.bound                  &= ~bit;
+    m_textureSlotTracking.needsUpload            &= ~bit;
+    m_textureSlotTracking.needsMipGen            &= ~bit;
     m_textureSlotTracking.mismatchingTextureType &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
@@ -6245,22 +6229,35 @@ namespace dxvk {
         UpdateActiveFetch4(index);
     }
 
-    if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
-      UpdateActiveHazardsRT(bit);
+    if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET)) {
+      UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max(), bit);
+    } else {
+      m_textureSlotTracking.hazardRT             &= ~bit;
+      m_textureSlotTracking.unresolvableHazardRT &= ~bit;
+    }
 
-    if (unlikely(combinedUsage & D3DUSAGE_DEPTHSTENCIL))
+    if (unlikely(combinedUsage & D3DUSAGE_DEPTHSTENCIL)) {
       UpdateActiveHazardsDS(bit);
+    } else {
+      m_textureSlotTracking.hazardDS             &= ~bit;
+      m_textureSlotTracking.unresolvableHazardDS &= ~bit;
+    }
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
-    auto masks = PSShaderMasks();
-    masks.rtMask      &= m_rtSlotTracking.canBeSampled;
-    masks.samplerMask &= m_textureSlotTracking.rtUsage & texMask;
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask) {
+    uint32_t oldHazardMask = m_textureSlotTracking.hazardRT;
+    m_textureSlotTracking.hazardRT             &= ~texMask;
+    m_textureSlotTracking.unresolvableHazardRT &= ~texMask;
 
-    m_textureSlotTracking.hazardRT = m_textureSlotTracking.hazardRT & (~texMask);
-    for (uint32_t rtIdx : bit::BitMask(masks.rtMask)) {
-      for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
+    auto psMasks = PSShaderMasks();
+    rtMask  &= m_rtSlotTracking.canBeSampled & ((1u << caps::MaxTextures) - 1);
+    texMask &= m_textureSlotTracking.rtUsage & psMasks.samplerMask & ((1u << caps::MaxSimultaneousTextures) - 1);
+
+    for (uint32_t rtIdx : bit::BitMask(rtMask)) {
+      bool anyColorWrite = m_state.renderStates[ColorWriteIndex(rtIdx)] != 0;
+      bool shaderWritesToRt = (psMasks.rtMask & (1 << rtIdx)) != 0;
+      for (uint32_t samplerIdx : bit::BitMask(texMask)) {
         D3D9Surface* rtSurf = m_state.renderTargets[rtIdx].ptr();
 
         IDirect3DBaseTexture9* rtBase  = rtSurf->GetBaseTexture();
@@ -6274,39 +6271,69 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
+        // We can resolve the hazard by unbinding the RT.
         m_textureSlotTracking.hazardRT |= 1 << samplerIdx;
+
+        if (unlikely(anyColorWrite && shaderWritesToRt)) {
+          // We have to bind the RT, so we need FEEDBACK_LOOP_LAYOUT.
+          m_textureSlotTracking.unresolvableHazardRT |= 1 << samplerIdx;
+        }
       }
+    }
+
+    // Only dirty the framebuffer if we need to make changes for a new hazard
+    if (unlikely(m_textureSlotTracking.hazardRT & ~oldHazardMask) != 0) {
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
     }
   }
 
 
   inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
+    uint32_t oldHazardMask = m_textureSlotTracking.hazardDS;
+    m_textureSlotTracking.hazardDS             &= ~texMask;
+    m_textureSlotTracking.unresolvableHazardDS &= ~texMask;
+
+    if (m_state.depthStencil == nullptr ||
+        m_state.depthStencil->GetBaseTexture() == nullptr)
+      return;
+
     auto masks = PSShaderMasks();
-    masks.samplerMask &= m_textureSlotTracking.dsUsage & texMask;
+    masks.samplerMask &= m_textureSlotTracking.dsUsage & texMask & ((1u << caps::MaxTextures) - 1);
 
-    m_textureSlotTracking.hazardDS = m_textureSlotTracking.hazardDS & (~texMask);
-    if (m_state.depthStencil != nullptr &&
-        m_state.depthStencil->GetBaseTexture() != nullptr) {
-      for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
-        IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
-        IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
+    bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
+      || m_state.renderStates[D3DRS_STENCILENABLE]
+      || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
 
-        if (likely(dsBase != texBase))
-          continue;
+    for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
+      IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
+      IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
-        m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
+      if (likely(dsBase != texBase))
+        continue;
+
+      // We can resolve the hazard by unbinding the DS.
+      m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
+
+      if (unlikely(usesDepthBuffer)) {
+        // We have to bind the DS, so we need FEEDBACK_LOOP_LAYOUT.
+        m_textureSlotTracking.unresolvableHazardDS |= 1 << samplerIdx;
       }
+    }
+
+    // Only dirty the framebuffer if we need to make changes for a new hazard
+    if (unlikely(m_textureSlotTracking.hazardDS & ~oldHazardMask) != 0) {
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
     }
   }
 
 
-  void D3D9DeviceEx::MarkRenderHazards() {
+  void D3D9DeviceEx::EmitFeedbackLoopBarriers() {
     struct {
       uint8_t RT : 1;
       uint8_t DS : 1;
     } hazardState;
-    hazardState.RT = m_textureSlotTracking.hazardRT != 0;
-    hazardState.DS = m_textureSlotTracking.hazardDS != 0;
+    hazardState.RT = m_textureSlotTracking.unresolvableHazardRT != 0;
+    hazardState.DS = m_textureSlotTracking.unresolvableHazardDS != 0;
 
     EmitCs([
       cHazardState = hazardState
@@ -6330,19 +6357,9 @@ namespace dxvk {
         VK_ACCESS_SHADER_READ_BIT);
     });
 
-    for (uint32_t samplerIdx : bit::BitMask(m_textureSlotTracking.hazardRT)) {
+    for (uint32_t samplerIdx : bit::BitMask(m_textureSlotTracking.unresolvableHazardRT | m_textureSlotTracking.unresolvableHazardDS)) {
       // Guaranteed to not be nullptr...
       auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
-      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
-        TransitionImage(tex, m_hazardLayout);
-        m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-      }
-    }
-
-    bool zWriteEnabled = m_state.renderStates[D3DRS_ZWRITEENABLE];
-    if (m_textureSlotTracking.hazardDS != 0 && zWriteEnabled) {
-      // Guaranteed to not be nullptr...
-      auto tex = m_state.depthStencil->GetCommonTexture();
       if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -6618,107 +6635,132 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::BindFramebuffer() {
+    constexpr size_t DsvIndex = caps::MaxSimultaneousRenderTargets;
+
     m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
 
     DxvkRenderTargets attachments;
 
     bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
 
-    // D3D9 doesn't have the concept of a framebuffer object,
-    // so we'll just create a new one every time the render
-    // target bindings are updated. Set up the attachments.
-    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
-
     // Some games break if render targets that get disabled using the color write mask
     // end up shrinking the render area. So we don't bind those.
     // (This impacted Dead Space 1.)
+    // We also unbind render targets if they aren't used for rendering but get sampled.
     // But we want to minimize frame buffer changes because those
     // break up the current render pass. So we dont unbind for disabled color write masks
     // if the RT has the same size or is bigger than the smallest active RT.
+    std::array<VkExtent2D, DsvIndex + 1u> rtExtents = { };
+    std::array<VkSampleCountFlags, DsvIndex + 1u> rtSampleCounts = { };
 
-    const D3D9ShaderMasks psShaderMasks = PSShaderMasks();
+    const auto& psMasks = PSShaderMasks();
 
-    uint32_t boundMask = 0u;
-    uint32_t anyColorWriteMask = 0u;
-    uint32_t limitsRenderAreaMask = 0u;
+    VkSampleCountFlags sampleCount = 0u;
+
     VkExtent2D renderArea = { ~0u, ~0u };
+
     for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
       if (!HasRenderTargetBound(i))
         continue;
 
-      const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
+      // Check if the render target is also bound as a texture for sampling.
+      // If that's the case, check whether we can skip binding the render target
+      // because writing to it is disabled anyway
+      // (using the color write mask or by the current pixel shader).
+      bool hasHazard = false;
+      for (uint32_t samplerIdx : bit::BitMask(m_textureSlotTracking.hazardRT)) {
+        D3D9Surface* rtSurf = m_state.renderTargets[i].ptr();
 
-      // Dont bind it if the sample count doesnt match
-      if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
-        sampleCount = rtImageInfo.sampleCount;
-      else if (unlikely(sampleCount != rtImageInfo.sampleCount))
-        continue;
+        IDirect3DBaseTexture9* rtBase  = rtSurf->GetBaseTexture();
+        IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
-      // Dont bind it if the pixel shader doesnt write to it
-      if (!(psShaderMasks.rtMask & (1 << i)))
-        continue;
-
-      boundMask |= 1 << i;
-
-      VkExtent2D rtExtent = m_state.renderTargets[i]->GetSurfaceExtent();
-      bool rtLimitsRenderArea = rtExtent.width < renderArea.width || rtExtent.height < renderArea.height;
-      limitsRenderAreaMask |= rtLimitsRenderArea << i;
-
-      // It will only get bound if its not smaller than the others.
-      // So RTs with a disabled color write mask will never impact the render area.
-      if (m_state.renderStates[ColorWriteIndex(i)] == 0)
-        continue;
-
-      anyColorWriteMask |= 1 << i;
-
-      if (rtExtent.width < renderArea.width && rtExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 1 << i;
+        if (likely(rtSurf->GetMipLevel() == 0 && rtBase == texBase)) {
+          hasHazard = true;
+          break;
+        }
       }
 
-      renderArea.width = std::min(renderArea.width, rtExtent.width);
-      renderArea.height = std::min(renderArea.height, rtExtent.height);
-    }
+      const uint32_t rtBit = 1u << i;
+      const bool writtenTo = (psMasks.rtMask & rtBit) != 0
+          && m_state.renderStates[ColorWriteIndex(i)] != 0;
 
-    bool dsvBound = false;
-    if (m_state.depthStencil != nullptr) {
-      // We only need to skip binding the DSV if it would shrink the render area
-      // despite not being used, otherwise we might end up with unnecessary render pass spills
-      bool anyDSStateEnabled = m_state.renderStates[D3DRS_ZENABLE]
-        || m_state.renderStates[D3DRS_ZWRITEENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE]
-        || m_nvdbEnabled;
+      // The texture is bound for sampling and as an RT but the RT isn't actually used for writing.
+      // Not assigning an extent to rtExtents[i] will lead to it getting skipped when we get to binding the rt.
+      if (hasHazard && !writtenTo)
+        continue;
 
-      VkExtent2D dsvExtent = m_state.depthStencil->GetSurfaceExtent();
-      bool dsvLimitsRenderArea = dsvExtent.width < renderArea.width || dsvExtent.height < renderArea.height;
+      rtExtents[i] = m_state.renderTargets[i]->GetSurfaceExtent();
+      rtSampleCounts[i] = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info().sampleCount;
 
-      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
-      const bool sampleCountMatches = sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount;
+      // If writing to the RT is disabled it shouldn't impact the render area.
+      if (!writtenTo)
+        continue;
 
-      dsvBound = sampleCountMatches && (anyDSStateEnabled || !dsvLimitsRenderArea);
-      if (sampleCountMatches && anyDSStateEnabled && dsvExtent.width < renderArea.width && dsvExtent.height < renderArea.height) {
-        // It's smaller on both axis, so the previous RTs no longer limit the size
-        limitsRenderAreaMask = 0u;
+      if (sampleCount == 0)
+        sampleCount = rtSampleCounts[i];
+
+      if (sampleCount & rtSampleCounts[i]) {
+        renderArea.width = std::min(renderArea.width, rtExtents[i].width);
+        renderArea.height = std::min(renderArea.height, rtExtents[i].height);
       }
     }
 
-    // We only need to skip binding the RT if it would shrink the render area
-    // despite not having color writes enabled,
-    // otherwise we might end up with unnecessary render pass spills
-    boundMask &= (anyColorWriteMask | ~limitsRenderAreaMask);
-    for (uint32_t i : bit::BitMask(boundMask))
-      attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
+    // Similarly check if the DSV is bound for sampling and as a DSV
+    // and whether it is actually required.
+    bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
+      || m_state.renderStates[D3DRS_STENCILENABLE]
+      || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
 
-    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+    if (m_state.depthStencil != nullptr && (m_textureSlotTracking.hazardDS == 0 || usesDepthBuffer)) {
+      rtExtents[DsvIndex] = m_state.depthStencil->GetSurfaceExtent();
+      rtSampleCounts[DsvIndex] = m_state.depthStencil->GetCommonTexture()->GetImage()->info().sampleCount;
+      if (usesDepthBuffer) {
+        if (sampleCount == 0)
+          sampleCount = rtSampleCounts[DsvIndex];
 
-    if (dsvBound)
+        if (sampleCount & rtSampleCounts[DsvIndex]) {
+          renderArea.width = std::min(renderArea.width, rtExtents[DsvIndex].width);
+          renderArea.height = std::min(renderArea.height, rtExtents[DsvIndex].height);
+        }
+      }
+    }
+
+    // We've skipped all render targets because they'd needlessly impact the render area.
+    // Just pick one and use the extents for the render area and sample count
+    for (uint32_t i = 0; i < rtExtents.size() && sampleCount == 0; i++) {
+      if (rtSampleCounts[i] == 0)
+        continue;
+
+      sampleCount = rtSampleCounts[i];
+      renderArea.width = rtExtents[i].width;
+      renderArea.height = rtExtents[i].height;
+    }
+
+    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
+      if (HasRenderTargetBound(i)
+        && rtExtents[i].width >= renderArea.width
+        && rtExtents[i].height >= renderArea.height
+        && rtSampleCounts[i] == sampleCount)
+          attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
+    }
+
+    // Based on the render area and sample count of actively used render targets,
+    // bind any render target that does not further restrict the render area.
+    bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+    if (m_state.depthStencil != nullptr
+     && rtExtents[DsvIndex].width >= renderArea.width
+     && rtExtents[DsvIndex].height >= renderArea.height
+     && rtSampleCounts[DsvIndex] == sampleCount)
       attachments.depth.view = m_state.depthStencil->GetDepthStencilView(depthWrite);
 
+    // Work out feedback loop layouts based on bound render targets
     VkImageAspectFlags feedbackLoopAspects = 0u;
+
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
-      if (m_textureSlotTracking.hazardRT != 0)
+      if (m_textureSlotTracking.unresolvableHazardRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-      if (m_textureSlotTracking.hazardDS != 0 && depthWrite)
+      if (m_textureSlotTracking.unresolvableHazardDS != 0 && depthWrite)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
@@ -7249,15 +7291,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadVBOs, bool UploadIBO) {
-    if (unlikely(m_textureSlotTracking.hazardRT != 0 || m_textureSlotTracking.hazardDS != 0))
-      MarkRenderHazards();
-
-    if (unlikely((!m_textureSlotTracking.lastHazardDS) != (!m_textureSlotTracking.hazardDS))
-     || unlikely((!m_textureSlotTracking.lastHazardRT) != (!m_textureSlotTracking.hazardRT))) {
-      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-      m_textureSlotTracking.lastHazardDS = m_textureSlotTracking.hazardDS;
-      m_textureSlotTracking.lastHazardRT = m_textureSlotTracking.hazardRT;
-    }
+    if (unlikely(m_textureSlotTracking.unresolvableHazardRT != 0 || m_textureSlotTracking.unresolvableHazardDS != 0))
+      EmitFeedbackLoopBarriers();
 
     if (likely(UploadVBOs)) {
       const uint32_t usedBuffersMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetStreamMask() : ~0u;

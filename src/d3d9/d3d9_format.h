@@ -114,13 +114,15 @@ namespace dxvk {
     R2VB = MAKEFOURCC('R', '2', 'V', 'B'),
     COPM = MAKEFOURCC('C', 'O', 'P', 'M'),
     SSAA = MAKEFOURCC('S', 'S', 'A', 'A'),
-    AL16 = MAKEFOURCC('A', 'L', '1', '6'),
-    R16  = MAKEFOURCC(' ', 'R', '1', '6'),
 
     EXT1 = MAKEFOURCC('E', 'X', 'T', '1'),
     FXT1 = MAKEFOURCC('F', 'X', 'T', '1'),
     GXT1 = MAKEFOURCC('G', 'X', 'T', '1'),
     HXT1 = MAKEFOURCC('H', 'X', 'T', '1'),
+    AL16 = MAKEFOURCC('A', 'L', '1', '6'),
+    AR16 = MAKEFOURCC('A', 'R', '1', '6'),
+    R16  = MAKEFOURCC(' ', 'R', '1', '6'),
+    L16_FOURCC = MAKEFOURCC(' ', 'L', '1', '6'),
   };
 
   inline D3D9Format EnumerateFormat(D3DFORMAT format) {
@@ -221,8 +223,10 @@ namespace dxvk {
 
     bool CheckImageFormatSupport(
       const Rc<DxvkAdapter>&      Adapter,
-      VkFormat              Format,
-      VkFormatFeatureFlags2 Features) const;
+            VkFormat              Format,
+            VkFormatFeatureFlags2 Features) const;
+
+    D3D9Adapter* m_parent = nullptr;
 
     bool m_d24s8Support;
     bool m_d16s8Support;
