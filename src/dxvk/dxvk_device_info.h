@@ -316,6 +316,8 @@ namespace dxvk {
 
     DxvkDeviceQueueMapping                m_queueMapping = { };
 
+    bool                                  m_hasMeshShader = false;
+
     std::vector<const VkExtensionProperties*> m_extensionList;
 
     std::vector<VkQueueFamilyProperties2> m_queuesAvailable;
