@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_framepacer_mode.h"
+#include "dxvk_presentation_latency.h"
 #include "../dxvk_options.h"
 #include "../../util/log/log.h"
 #include "../../util/util_string.h"
@@ -81,6 +82,7 @@ namespace dxvk {
         if (m_mode == LOW_LATENCY_VRR) {
           const SyncProps props = getSyncPrediction();
           delay = std::max(delay, getVrrDelay(frameId, props, now));
+          delay += m_lowLatencyOffset;
         }
 
         m_lastStart = sleepFor( now, delay );
@@ -110,12 +112,13 @@ namespace dxvk {
         m->start + microseconds(props.csFinished) - now).count();
       int32_t cpuDelay = cpuReadyPrediction - props.csStart;
 
-      int32_t delay = std::max(gpuDelay, cpuDelay) + m_lowLatencyOffset;
+      int32_t delay = std::max(gpuDelay, cpuDelay);
 
       if (m_mode == LOW_LATENCY_VRR) {
         delay = std::max(delay, getVrrDelay(frameId, props, now));
       }
 
+      delay += m_lowLatencyOffset;
       m_lastStart = sleepFor( now, delay );
 
     }
@@ -177,20 +180,15 @@ namespace dxvk {
     }
 
 
-    Sleep::TimePoint sleepFor( const Sleep::TimePoint t, int32_t delay ) {
+    void endFrame( uint64_t frameId ) override {
 
-      // account for the fps limit and ensure we won't sleep too long, just in case
-      int32_t frametime = std::chrono::duration_cast<microseconds>( t - m_lastStart ).count();
-      int32_t frametimeDiff = std::max( 0, m_fpsLimitFrametime.load() - frametime );
-      delay = std::max( delay, frametimeDiff );
-      int32_t maxDelay = std::max( m_fpsLimitFrametime.load(), 20000 );
-      delay = std::max( 0, std::min( delay, maxDelay ) );
-
-      Sleep::TimePoint nextStart = t + microseconds(delay);
-      Sleep::sleepUntil( t, nextStart );
-      return nextStart;
+      if (m_mode == LOW_LATENCY_VRR) {
+        const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId);
+        m_presentationLatency.push( m->presentFinished - m->gpuFinished );
+      }
 
     }
+
 
 
   private:
@@ -253,9 +251,29 @@ namespace dxvk {
       uint64_t frameFinishedId = m_latencyMarkersStorage->getTimeline()->frameFinished.load();
       int32_t lastVBlank = std::chrono::duration_cast<microseconds> (
         m_latencyMarkersStorage->getConstMarkers(frameFinishedId)->end - now ).count();
+      int32_t presentLatency = m_presentationLatency.getMedian();
 
-      int32_t targetVBlank = lastVBlank + (frameId - frameFinishedId) * m_vrrRefreshInterval;
+      int32_t targetVBlank = lastVBlank
+        + (frameId - frameFinishedId) * m_vrrRefreshInterval
+        - presentLatency;
+
       return targetVBlank - props.optimizedGpuTime - props.cpuUntilGpuStart;
+    }
+
+
+    Sleep::TimePoint sleepFor( const Sleep::TimePoint t, int32_t delay ) {
+
+      // account for the fps limit and ensure we won't sleep too long, just in case
+      int32_t frametime = std::chrono::duration_cast<microseconds>( t - m_lastStart ).count();
+      int32_t frametimeDiff = std::max( 0, m_fpsLimitFrametime.load() - frametime );
+      delay = std::max( delay, frametimeDiff );
+      int32_t maxDelay = std::max( m_fpsLimitFrametime.load(), 20000 );
+      delay = std::max( 0, std::min( delay, maxDelay ) );
+
+      Sleep::TimePoint nextStart = t + microseconds(delay);
+      Sleep::sleepUntil( t, nextStart );
+      return nextStart;
+
     }
 
 
@@ -267,6 +285,7 @@ namespace dxvk {
 
     Sleep::TimePoint m_lastStart = { high_resolution_clock::now() };
     int32_t m_vrrRefreshInterval = { 0 };
+    PresentationLatency m_presentationLatency;
 
     std::array<SyncProps, 16> m_props;
     std::atomic<uint64_t> m_propsFinished = { 0 };
