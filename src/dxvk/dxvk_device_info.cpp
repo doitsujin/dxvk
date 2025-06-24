@@ -319,6 +319,12 @@ namespace dxvk {
         return !std::strcmp(ext.extensionName, VK_EXT_MESH_SHADER_EXTENSION_NAME);
       }) != extensions.end();
 
+    // HACK: Use fmask extension to detect pre-RDNA3 hardware.
+    m_hasFmask = std::find_if(extensions.begin(), extensions.end(),
+      [] (const VkExtensionProperties& ext) {
+        return !std::strcmp(ext.extensionName, VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME);
+      }) != extensions.end();
+
     // Use the supported spec version as a way to indicate extension support.
     // We may ignore certain extensions if the spec version is too old.
     for (const auto& f : getFeatureList()) {
@@ -424,8 +430,6 @@ namespace dxvk {
     // Descriptor buffers cause perf regressions on some GPUs
     if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer) {
       bool enableDescriptorBuffer = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE;
@@ -433,6 +437,12 @@ namespace dxvk {
       // Pascal reportedly sees massive perf drops with descriptor buffer
       if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
         enableDescriptorBuffer = m_hasMeshShader;
+
+      // On RDNA2 and older, descriptor buffer implicitly disables fmask
+      // on amdvlk, which makes MSAA performance unusable on these GPUs.
+      if (m_properties.vk12.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE
+       || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
+        enableDescriptorBuffer = !m_hasFmask;
 
       applyTristate(enableDescriptorBuffer, instance.options().enableDescriptorBuffer);
 
