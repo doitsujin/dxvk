@@ -56,26 +56,7 @@ namespace dxvk {
       return result;
     }
   };
-  
-  /**
-   * \brief Blit render pass key
-   */
-  struct DxvkMetaBlitRenderPassKey {
-    VkFormat              viewFormat;
-    VkSampleCountFlagBits samples;
-    
-    bool eq(const DxvkMetaBlitRenderPassKey& other) const {
-      return this->viewFormat == other.viewFormat
-          && this->samples    == other.samples;
-    }
-    
-    size_t hash() const {
-      DxvkHashState result;
-      result.add(uint32_t(this->viewFormat));
-      result.add(uint32_t(this->samples));
-      return result;
-    }
-  };
+
   
   /**
    * \brief Blit pipeline
