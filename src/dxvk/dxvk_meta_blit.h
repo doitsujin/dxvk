@@ -112,17 +112,11 @@ namespace dxvk {
       DxvkMetaBlitPipeline,
       DxvkHash, DxvkEq> m_pipelines;
     
-    DxvkMetaBlitPipeline createPipeline(
-      const DxvkMetaBlitPipelineKey&    key);
-
     const DxvkPipelineLayout* createPipelineLayout() const;
     
-    VkPipeline createPipeline(
-            VkImageViewType             imageViewType,
-            VkFormat                    format,
-            VkSampleCountFlagBits       srcSamples,
-            VkSampleCountFlagBits       dstSamples) const;
-    
+    DxvkMetaBlitPipeline createPipeline(
+      const DxvkMetaBlitPipelineKey& key) const;
+
   };
   
 }

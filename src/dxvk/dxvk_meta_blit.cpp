@@ -51,15 +51,6 @@ namespace dxvk {
   }
 
 
-  DxvkMetaBlitPipeline DxvkMetaBlitObjects::createPipeline(
-    const DxvkMetaBlitPipelineKey& key) {
-    DxvkMetaBlitPipeline pipeline = { };
-    pipeline.layout   = m_layout;
-    pipeline.pipeline = createPipeline(key.viewType, key.viewFormat, key.srcSamples, key.dstSamples);
-    return pipeline;
-  }
-  
-  
   const DxvkPipelineLayout* DxvkMetaBlitObjects::createPipelineLayout() const {
     DxvkDescriptorSetLayoutBinding binding = { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT };
 
@@ -68,11 +59,8 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkMetaBlitObjects::createPipeline(
-          VkImageViewType             imageViewType,
-          VkFormat                    format,
-          VkSampleCountFlagBits       srcSamples,
-          VkSampleCountFlagBits       dstSamples) const {
+  DxvkMetaBlitPipeline DxvkMetaBlitObjects::createPipeline(
+    const DxvkMetaBlitPipelineKey&    key) const {
     util::DxvkBuiltInGraphicsState state = { };
 
     VkSpecializationMapEntry specMap = { };
@@ -82,7 +70,7 @@ namespace dxvk {
     specInfo.mapEntryCount = 1;
     specInfo.pMapEntries = &specMap;
     specInfo.dataSize = sizeof(VkSampleCountFlagBits);
-    specInfo.pData = &srcSamples;
+    specInfo.pData = &key.srcSamples;
 
     if (m_device->features().vk12.shaderOutputLayer) {
       state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
@@ -91,14 +79,14 @@ namespace dxvk {
       state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
     }
 
-    if (srcSamples != VK_SAMPLE_COUNT_1_BIT) {
-      if (imageViewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+    if (key.srcSamples != VK_SAMPLE_COUNT_1_BIT) {
+      if (key.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
         state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_2d_ms, &specInfo);
       } else {
         throw DxvkError("DxvkMetaBlitObjects: Invalid view type for multisampled image");
       }
     } else {
-      switch (imageViewType) {
+      switch (key.viewType) {
         case VK_IMAGE_VIEW_TYPE_1D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_1d, nullptr); break;
         case VK_IMAGE_VIEW_TYPE_2D_ARRAY: state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_2d, nullptr); break;
         case VK_IMAGE_VIEW_TYPE_3D:       state.fs = util::DxvkBuiltInShaderStage(dxvk_blit_frag_3d, nullptr); break;
@@ -106,10 +94,10 @@ namespace dxvk {
       }
     }
 
-    state.colorFormat = format;
-    state.sampleCount = dstSamples;
+    state.colorFormat = key.viewFormat;
+    state.sampleCount = key.dstSamples;
 
-    return m_device->createBuiltInGraphicsPipeline(m_layout, state);
+    return { m_layout, m_device->createBuiltInGraphicsPipeline(m_layout, state) };
   }
   
 }
