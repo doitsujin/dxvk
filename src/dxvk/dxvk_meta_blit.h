@@ -39,12 +39,14 @@ namespace dxvk {
     VkFormat              viewFormat;
     VkSampleCountFlagBits srcSamples;
     VkSampleCountFlagBits dstSamples;
+    VkBool32              pointFilter;
     
     bool eq(const DxvkMetaBlitPipelineKey& other) const {
-      return this->viewType   == other.viewType
-          && this->viewFormat == other.viewFormat
-          && this->srcSamples    == other.srcSamples
-          && this->dstSamples    == other.dstSamples;
+      return this->viewType     == other.viewType
+          && this->viewFormat   == other.viewFormat
+          && this->srcSamples   == other.srcSamples
+          && this->dstSamples   == other.dstSamples
+          && this->pointFilter  == other.pointFilter;
     }
     
     size_t hash() const {
@@ -53,6 +55,7 @@ namespace dxvk {
       result.add(uint32_t(this->viewFormat));
       result.add(uint32_t(this->srcSamples));
       result.add(uint32_t(this->dstSamples));
+      result.add(uint32_t(this->pointFilter));
       return result;
     }
   };
@@ -90,14 +93,17 @@ namespace dxvk {
      * 
      * \param [in] viewType Source image view type
      * \param [in] viewFormat Image view format
-     * \param [in] samples Target sample count
+     * \param [in] srcSamples Source sample count
+     * \param [in] dstSamples Target sample count
+     * \param [in] filter What type of filter to use
      * \returns The blit pipeline
      */
     DxvkMetaBlitPipeline getPipeline(
             VkImageViewType       viewType,
             VkFormat              viewFormat,
             VkSampleCountFlagBits srcSamples,
-            VkSampleCountFlagBits dstSamples);
+            VkSampleCountFlagBits dstSamples,
+            VkFilter              filter);
     
   private:
 
