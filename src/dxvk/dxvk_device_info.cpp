@@ -720,7 +720,7 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, shaderFloat64, false),
       ENABLE_FEATURE(core.features, shaderImageGatherExtended, true),
       ENABLE_FEATURE(core.features, shaderInt16, false),
-      ENABLE_FEATURE(core.features, shaderInt64, false),
+      ENABLE_FEATURE(core.features, shaderInt64, true),
       ENABLE_FEATURE(core.features, shaderSampledImageArrayDynamicIndexing, true),
       ENABLE_FEATURE(core.features, sparseBinding, false),
       ENABLE_FEATURE(core.features, sparseResidencyBuffer, false),
