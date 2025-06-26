@@ -183,9 +183,10 @@ namespace dxvk {
     bool                      m_latencyTracking = false;
     Rc<DxvkLatencyTracker>    m_latencyTracker = nullptr;
 
-    Rc<hud::HudClientApiItem>     m_apiHud;
-    Rc<hud::HudLatencyItem>       m_latencyHud;
-    Rc<hud::HudRenderLatencyItem> m_renderLatencyHud;
+    Rc<hud::HudClientApiItem>       m_apiHud;
+    Rc<hud::HudLatencyItem>         m_latencyHud;
+    Rc<hud::HudRenderLatencyItem>   m_renderLatencyHud;
+    Rc<hud::HudPresentLatencyItem>  m_presentLatencyHud;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool m_unlockAdditionalFormats = false;
