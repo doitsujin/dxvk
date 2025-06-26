@@ -31,6 +31,10 @@ namespace dxvk {
       mode = FramePacerMode::LOW_LATENCY;
     } else if (options.framePace.find("min-latency") != std::string::npos) {
       mode = FramePacerMode::MIN_LATENCY;
+    } else if (!configStr.empty()) {
+      Logger::warn( str::format( "DXVK_FRAME_PACE=", configStr, " unknown" ));
+    } else if (!options.framePace.empty()) {
+      Logger::warn( str::format( "dxvk.framePace = ", options.framePace, " unknown" ));
     }
 
     switch (mode) {
