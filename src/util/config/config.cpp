@@ -1075,6 +1075,10 @@ namespace dxvk {
       { "d3d9.countLosableResources",      "False" },
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* Dungeon Lords - Crash when saving game     */
+    { R"(\\(DLSteamEdition|dlords)\.exe$)", {{
+      { "d3d9.textureMemory",                  "0" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
