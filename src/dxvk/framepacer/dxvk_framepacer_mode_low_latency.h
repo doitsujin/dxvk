@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dxvk_framepacer_mode.h"
-#include "dxvk_presentation_latency.h"
+#include "dxvk_presentation_stats.h"
 #include "../dxvk_options.h"
 #include "../../util/log/log.h"
 #include "../../util/util_string.h"
@@ -184,7 +184,7 @@ namespace dxvk {
 
       if (m_mode == LOW_LATENCY_VRR) {
         const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId);
-        m_presentationLatency.push( m->presentFinished - m->gpuFinished );
+        m_presentationStats.push( m->end, m->presentFinished - m->gpuFinished );
       }
 
     }
@@ -251,7 +251,14 @@ namespace dxvk {
       uint64_t frameFinishedId = m_latencyMarkersStorage->getTimeline()->frameFinished.load();
       int32_t lastVBlank = std::chrono::duration_cast<microseconds> (
         m_latencyMarkersStorage->getConstMarkers(frameFinishedId)->end - now ).count();
-      int32_t presentLatency = m_presentationLatency.getMedian();
+
+      // Presentation latency should be fairly stable, but drivers may report back
+      // different levels of latency (Nvidia reports very low latencies on x11 flip compared
+      // to Wayland). We take the median within a recent time window to adjust to that.
+
+      // Presentation latency may vary though for other reasons, like when compiling shaders
+      // on all cpu cores we will get thread starvation and higher latency.
+      int32_t presentLatency = m_presentationStats.getMedian();
 
       int32_t targetVBlank = lastVBlank
         + (frameId - frameFinishedId) * m_vrrRefreshInterval
@@ -285,7 +292,7 @@ namespace dxvk {
 
     Sleep::TimePoint m_lastStart = { high_resolution_clock::now() };
     int32_t m_vrrRefreshInterval = { 0 };
-    PresentationLatency m_presentationLatency;
+    PresentationStats m_presentationStats;
 
     std::array<SyncProps, 16> m_props;
     std::atomic<uint64_t> m_propsFinished = { 0 };
