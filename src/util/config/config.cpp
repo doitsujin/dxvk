@@ -1063,6 +1063,10 @@ namespace dxvk {
       { "d3d9.countLosableResources",      "False" },
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* Dungeon Lords - Crash when saving game     */
+    { R"(\\(DLSteamEdition|dlords)\.exe$)", {{
+      { "d3d9.textureMemory",                  "0" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
@@ -1232,8 +1236,14 @@ namespace dxvk {
     /* A.I.M.: Artificial Intelligence Machine    *
      * Fixes black screen after the options       *
      * window is closed or on alt-tab             */
-     { R"(\\AIM\.exe$)", {{
+    { R"(\\AIM\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+    /* Star Trek: Starfleet Command III           *
+     * The GOG release ships with a D3D8 to D3D9  *
+     * wrapper that leaks several surfaces.       */
+    { R"(\\SFC3\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
     }} },
   };
 

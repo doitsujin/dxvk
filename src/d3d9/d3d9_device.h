@@ -1272,6 +1272,10 @@ namespace dxvk {
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
 
+    bool Is9On12Device() const {
+      return m_d3d9On12Args.Enable9On12;
+    }
+
   private:
 
     template<bool AllowFlush = true, typename Cmd>
@@ -1692,6 +1696,7 @@ namespace dxvk {
     Direct3DState9                  m_state;
 
     D3D9VkInteropDevice             m_d3d9Interop;
+    D3D9ON12_ARGS                   m_d3d9On12Args = { };
     D3D9On12                        m_d3d9On12;
     DxvkD3D8Bridge                  m_d3d8Bridge;
 

@@ -37,6 +37,7 @@ namespace dxvk {
 
   D3D9Adapter::D3D9Adapter(
           D3D9InterfaceEx* pParent,
+    const D3D9ON12_ARGS*   p9On12Args,
           Rc<DxvkAdapter>  Adapter,
           UINT             Ordinal,
           UINT             DisplayIndex)
@@ -49,6 +50,9 @@ namespace dxvk {
     // D3D9VkFormatTable needs to be constructed after we've cached the
     // identifier info and determined the proper vendorID to be used.
     m_d3d9Formats = std::make_unique<D3D9VkFormatTable>(this, Adapter, m_parent->GetOptions());
+
+    if (p9On12Args)
+      m_9On12Args = *p9On12Args;
   }
 
 
@@ -246,7 +250,9 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto dst = ConvertFormatUnfixed(SurfaceFormat);
-    if (dst.FormatColor == VK_FORMAT_UNDEFINED)
+    // Wargame: European Escalation expects NULL format
+    // checks to succeed, otherwise it will crash
+    if (SurfaceFormat != D3D9Format::NULL_FORMAT && dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     if (MultiSampleType != D3DMULTISAMPLE_NONE
