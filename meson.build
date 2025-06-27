@@ -26,6 +26,12 @@ compiler_args = [
   '-Wno-extern-c-compat',
   '-Wno-unused-const-variable',
   '-Wno-missing-braces',
+  '/GF',
+  '/MT',
+	'/Gy',
+	'/Qpar',
+	'/arch:AVX512',
+	'/vlen=512',
 ]
 
 link_args = []
@@ -61,6 +67,12 @@ if platform == 'windows'
   compiler_args += [
     '-DNOMINMAX',
     '-D_WIN32_WINNT=0xa00',
+	'/GF',
+	'/MT',
+	'/Gy',
+	'/Qpar',
+	'/arch:AVX512',
+	'/vlen=512',
   ]
 
   if not dxvk_is_msvc
