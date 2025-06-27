@@ -1067,6 +1067,11 @@ namespace dxvk {
     { R"(\\(DLSteamEdition|dlords)\.exe$)", {{
       { "d3d9.textureMemory",                  "0" },
     }} },
+    /* Test Drive Unlimited 2                     *
+     * Loss of input on alt-tab                   */
+    { R"(\\TestDrive2\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
