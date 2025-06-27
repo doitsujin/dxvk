@@ -699,7 +699,9 @@ namespace dxvk {
     uint32_t flHi = (featureLevel >> 12);
     uint32_t flLo = (featureLevel >> 8) & 0x7;
 
-    return str::format("D3D", apiVersion, " FL", flHi, "_", flLo);
+    bool is11On12 = m_parent->Is11on12Device();
+
+    return str::format("D3D", apiVersion, (is11On12 ? "On12" : ""), " FL", flHi, "_", flLo);
   }
 
 }
