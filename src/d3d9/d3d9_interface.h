@@ -19,7 +19,10 @@ namespace dxvk {
 
   public:
 
-    D3D9InterfaceEx(bool bExtended);
+    D3D9InterfaceEx(
+              bool           bExtended,
+        const D3D9ON12_ARGS* pOverrideList,
+              uint32_t       OverrideCount);
 
     ~D3D9InterfaceEx();
 
@@ -159,6 +162,11 @@ namespace dxvk {
     std::vector<D3D9Adapter>      m_adapters;
 
     D3D9VkInteropInterface        m_d3d9Interop;
+
+    static const D3D9ON12_ARGS* Find9On12Args(
+      const Rc<DxvkAdapter>& Adapter,
+      const D3D9ON12_ARGS*   pOverrides,
+            uint32_t         OverrideCount);
 
   };
 
