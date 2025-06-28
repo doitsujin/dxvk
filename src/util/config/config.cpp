@@ -463,6 +463,11 @@ namespace dxvk {
     { R"(\\LEGOLCUR_DX11\.exe$)", {{
       { "d3d11.disableDirectImageMapping",  "True" },
     }} },
+    /* Wargame: European Escalation: Broken gamma   *
+     * ramp when nvapi is available for some reason */
+    { R"(\\Wargame European Escalation\\WarGame\.exe$)", {{
+      { "dxgi.hideNvidiaGpu",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
