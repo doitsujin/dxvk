@@ -136,6 +136,8 @@ namespace dxvk {
 
     wsi::WsiDisplayMetadata m_metadata = {};
 
+    D3DDestructionNotifier m_destructionNotifier;
+
     static void FilterModesByDesc(
             std::vector<DXGI_MODE_DESC1>& Modes,
       const DXGI_MODE_DESC1&              TargetMode);

@@ -124,6 +124,8 @@ namespace dxvk {
     std::unordered_map<DWORD, HANDLE> m_eventMap;
     dxvk::thread                      m_eventThread;
 
+    D3DDestructionNotifier m_destructionNotifier;
+
     DXGI_ADAPTER_DESC3 GetAdapterDesc() const;
 
     void runEventThread();
