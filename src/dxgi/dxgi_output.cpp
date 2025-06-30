@@ -27,7 +27,8 @@ namespace dxvk {
   : m_factory     ( factory ),
     m_adapter     ( adapter ),
     m_monitorInfo ( factory->GetMonitorInfo() ),
-    m_monitor     ( monitor ) {
+    m_monitor     ( monitor ),
+    m_destructionNotifier(this) {
     CacheMonitorData();
   }
   
@@ -53,6 +54,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIOutput5)
      || riid == __uuidof(IDXGIOutput6)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
     
