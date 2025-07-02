@@ -114,6 +114,8 @@ namespace dxvk {
     R2VB = MAKEFOURCC('R', '2', 'V', 'B'),
     COPM = MAKEFOURCC('C', 'O', 'P', 'M'),
     SSAA = MAKEFOURCC('S', 'S', 'A', 'A'),
+    NVHS = MAKEFOURCC('N', 'V', 'H', 'S'),
+    NVHU = MAKEFOURCC('N', 'V', 'H', 'U'),
 
     EXT1 = MAKEFOURCC('E', 'X', 'T', '1'),
     FXT1 = MAKEFOURCC('F', 'X', 'T', '1'),

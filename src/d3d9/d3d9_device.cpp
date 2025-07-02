@@ -655,15 +655,15 @@ namespace dxvk {
     try {
       void* initialData = nullptr;
 
-      // On Windows Vista (so most likely D3D9Ex), pSharedHandle can be used to pass initial data for a texture,
-      // but only for a very specific type of texture.
-      if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr) {
+      // On Windows Vista (so most likely D3D9Ex), pSharedHandle can be used to pass initial data
+      // for a texture, but only for a very specific type of texture.
+      if (unlikely(pSharedHandle != nullptr && Pool == D3DPOOL_SYSTEMMEM && Levels == 1)) {
         initialData = *(reinterpret_cast<void**>(pSharedHandle));
         pSharedHandle = nullptr;
       }
 
       // Shared textures have to be in POOL_DEFAULT
-      if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
+      if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
         return D3DERR_INVALIDCALL;
 
       const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, IsExtended(), pSharedHandle);
@@ -698,7 +698,10 @@ namespace dxvk {
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (pSharedHandle)
+    if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSharedHandle))
         Logger::err("CreateVolumeTexture: Shared volume textures not supported");
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -756,7 +759,10 @@ namespace dxvk {
     if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (pSharedHandle)
+    if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSharedHandle))
         Logger::err("CreateCubeTexture: Shared cube textures not supported");
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -813,7 +819,10 @@ namespace dxvk {
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (pSharedHandle)
+    if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
+      return D3DERR_NOTAVAILABLE;
+
+    if (unlikely(pSharedHandle))
         Logger::err("CreateVertexBuffer: Shared vertex buffers not supported");
 
     D3D9_BUFFER_DESC desc;
@@ -857,7 +866,10 @@ namespace dxvk {
     if (unlikely(ppIndexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (pSharedHandle)
+    if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
+      return D3DERR_NOTAVAILABLE;
+
+    if (unlikely(pSharedHandle))
         Logger::err("CreateIndexBuffer: Shared index buffers not supported");
 
     D3D9_BUFFER_DESC desc;
@@ -4239,18 +4251,28 @@ namespace dxvk {
 
     // Because they are always lockable, image surfaces / offscreen plain surfaces
     // are restricted to using lockable depth stencil formats.
-    if (IsDepthStencilFormat(desc.Format) && !IsLockableDepthStencilFormat(desc.Format))
+    if (unlikely(IsDepthStencilFormat(desc.Format) && !IsLockableDepthStencilFormat(desc.Format)))
       return D3DERR_INVALIDCALL;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
-    if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
-      return D3DERR_INVALIDCALL;
-
     try {
+      void* initialData = nullptr;
+
+      // On Windows Vista (so most likely D3D9Ex), pSharedHandle can be used to pass initial data
+      // for an offscreen plain surface, but only for a very specific type of offscreen plain surface.
+      if (unlikely(pSharedHandle != nullptr && Pool == D3DPOOL_SYSTEMMEM)) {
+        initialData = *(reinterpret_cast<void**>(pSharedHandle));
+        pSharedHandle = nullptr;
+      }
+
+      // Shared offscreen plain surfaces have to be in POOL_DEFAULT
+      if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
+        return D3DERR_INVALIDCALL;
+
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
-      m_initializer->InitTexture(surface->GetCommonTexture());
+      m_initializer->InitTexture(surface->GetCommonTexture(), initialData);
       *ppSurface = surface.ref();
 
       if (desc.Pool == D3DPOOL_DEFAULT)
@@ -6307,9 +6329,11 @@ namespace dxvk {
     auto masks = PSShaderMasks();
     masks.samplerMask &= m_textureSlotTracking.dsUsage & texMask & ((1u << caps::MaxTextures) - 1);
 
-    bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
+    const bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
       || m_state.renderStates[D3DRS_STENCILENABLE]
-      || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+      || m_nvdbEnabled;
+
+    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
     for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
       IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
@@ -6322,8 +6346,13 @@ namespace dxvk {
       m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
 
       if (unlikely(usesDepthBuffer)) {
-        // We have to bind the DS, so we need FEEDBACK_LOOP_LAYOUT.
-        m_textureSlotTracking.unresolvableHazardDS |= 1 << samplerIdx;
+        if (!depthWrite) {
+          // We can resolve it by transitioning to DEPTH_ATTACHMENT_READONLY
+          m_textureSlotTracking.textureDirty |= 1 << samplerIdx;
+        } else {
+          // We have to bind the DS as writable, so we need FEEDBACK_LOOP_LAYOUT.
+          m_textureSlotTracking.unresolvableHazardDS |= 1 << samplerIdx;
+        }
       }
     }
 
@@ -6714,11 +6743,13 @@ namespace dxvk {
 
     // Similarly check if the DSV is bound for sampling and as a DSV
     // and whether it is actually required.
-    bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
+    const bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
       || m_state.renderStates[D3DRS_STENCILENABLE]
-      || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+      || m_nvdbEnabled;
 
-    if (m_state.depthStencil != nullptr && (m_textureSlotTracking.hazardDS == 0 || usesDepthBuffer)) {
+    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+    if (m_state.depthStencil != nullptr && (m_textureSlotTracking.hazardDS == 0 || usesDepthBuffer || !depthWrite)) {
       rtExtents[DsvIndex] = m_state.depthStencil->GetSurfaceExtent();
       rtSampleCounts[DsvIndex] = m_state.depthStencil->GetCommonTexture()->GetImage()->info().sampleCount;
       if (usesDepthBuffer) {
@@ -6753,13 +6784,16 @@ namespace dxvk {
 
     // Based on the render area and sample count of actively used render targets,
     // bind any render target that does not further restrict the render area.
-    bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
     if (m_state.depthStencil != nullptr
      && rtExtents[DsvIndex].width >= renderArea.width
      && rtExtents[DsvIndex].height >= renderArea.height
-     && rtSampleCounts[DsvIndex] == sampleCount)
-      attachments.depth.view = m_state.depthStencil->GetDepthStencilView(depthWrite);
+     && rtSampleCounts[DsvIndex] == sampleCount) {
+      // If the texture is bound for sampling and for depth testing but depth write is disabled,
+      // use the readonly layout.
+      const bool readOnly = !depthWrite && m_textureSlotTracking.hazardDS != 0;
+      attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!readOnly);
+    }
 
     // Work out feedback loop layouts based on bound render targets
     VkImageAspectFlags feedbackLoopAspects = 0u;
@@ -7219,9 +7253,28 @@ namespace dxvk {
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
 
+    Rc<DxvkImageView> imageView;
+
+    if (unlikely(m_textureSlotTracking.hazardDS & (1u << slot))) {
+      const bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
+        || m_state.renderStates[D3DRS_STENCILENABLE]
+        || m_nvdbEnabled;
+
+      const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+      if (usesDepthBuffer && !depthWrite) {
+        // The texture is also bound as the depth buffer but not written to. Bind it as readonly.
+        imageView = commonTex->GetDepthReadOnlySampleView();
+      } else {
+        imageView = commonTex->GetSampleView(srgb);
+      }
+    } else {
+      imageView = commonTex->GetSampleView(srgb);
+    }
+
     EmitCs([
       cSlot = slot,
-      cImageView = commonTex->GetSampleView(srgb)
+      cImageView = std::move(imageView)
     ](DxvkContext* ctx) mutable {
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
       ctx->bindResourceImageView(stage, cSlot, std::move(cImageView));

@@ -31,10 +31,6 @@ namespace dxvk {
       AddDirtyBox(nullptr, i);
     }
 
-    if (m_desc.Pool != D3DPOOL_DEFAULT && pSharedHandle) {
-      throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
-    }
-
     if (IsPoolManaged(m_desc.Pool)) {
       SetAllNeedUpload();
     }
@@ -713,6 +709,11 @@ namespace dxvk {
     if (IsSrgbCompatible()) {
       m_sampleView.Srgb = CreateView(AllLayers, Lod,
         VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, true);
+    }
+
+    if (IsDepthStencil() && GetType() != D3DRTYPE_SURFACE) {
+      m_sampleView.DepthReadOnly = CreateView(AllLayers, Lod,
+        VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL, false);
     }
   }
 

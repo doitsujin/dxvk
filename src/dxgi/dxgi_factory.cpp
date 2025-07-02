@@ -84,7 +84,8 @@ namespace dxvk {
     m_options         (m_instance->config()),
     m_monitorInfo     (this, m_options),
     m_flags           (Flags),
-    m_monitorFallback (false) {
+    m_monitorFallback (false),
+    m_destructionNotifier(this) {
     // Be robust against situations where some monitors are not
     // associated with any adapter. This can happen if device
     // filter options are used.
@@ -163,6 +164,11 @@ namespace dxvk {
 
     if (riid == __uuidof(IDXGIVkMonitorInfo)) {
       *ppvObject = ref(&m_monitorInfo);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
     
@@ -521,9 +527,11 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
 
-    wsi::getWindowSize(hWnd,
-      desc.Width  ? nullptr : &desc.Width,
-      desc.Height ? nullptr : &desc.Height);
+    if (hWnd) {
+      wsi::getWindowSize(hWnd,
+        desc.Width  ? nullptr : &desc.Width,
+        desc.Height ? nullptr : &desc.Height);
+    }
 
     // If necessary, set up a default set of
     // fullscreen parameters for the swap chain

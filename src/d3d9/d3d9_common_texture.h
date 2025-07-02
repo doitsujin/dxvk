@@ -64,6 +64,7 @@ namespace dxvk {
 
     Rc<DxvkImageView> Color;
     Rc<DxvkImageView> Srgb;
+    Rc<DxvkImageView> DepthReadOnly;
   };
 
   template <typename T>
@@ -351,6 +352,10 @@ namespace dxvk {
 
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
+    }
+
+    const Rc<DxvkImageView>& GetDepthReadOnlySampleView() const {
+      return m_sampleView.DepthReadOnly;
     }
 
     Rc<DxvkImageView> CreateView(
