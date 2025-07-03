@@ -1227,11 +1227,14 @@ namespace dxvk {
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
     /* Tom Clancy's Splinter Cell                 *
-     * Fixes shadow buffers and alt-tab           */
+     * Fixes shadow buffers, broken physics       *
+     * above 60 FPS and game freezing on alt-tab  */
     { R"(\\splintercell\.exe$)", {{
+      { "d3d9.hideAmdGpu",                  "True" },
+      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d8.scaleDref",                     "24" },
       { "d3d8.shadowPerspectiveDivide",     "True" },
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Trainz v1.3 (2001)                         *
      * Fixes black screen after alt-tab           */
