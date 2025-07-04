@@ -4,6 +4,30 @@
 #include "../vulkan/vulkan_loader.h"
 
 /**
+ * \brief Queue family and handle
+ */
+struct D3D9VkDeviceQueue {
+  uint32_t family = VK_QUEUE_FAMILY_IGNORED;
+  VkQueue  queue  = VK_NULL_HANDLE;
+};
+
+/**
+ * \brief D3D9 VkDevice import info
+ */
+struct D3D9VkDeviceImportInfo {
+    VkDevice                          device          = VK_NULL_HANDLE;
+    D3D9VkDeviceQueue                 graphicsQueue   = {};
+    uint32_t                          extensionCount  = 0u;
+    const char**                      extensionNames  = nullptr;
+    const VkPhysicalDeviceFeatures2*  features        = nullptr;
+    D3DDEVTYPE                        deviceType      = D3DDEVTYPE_HAL;
+    HWND                              focusWindow     = NULL;
+    DWORD                             behaviorFlags   = 0u;
+    D3DPRESENT_PARAMETERS*            presentParams   = nullptr;
+    D3DDISPLAYMODEEX*                 fullscreenMode  = nullptr;
+};
+
+/**
  * \brief D3D9 interface for Vulkan interop
  *
  * Provides access to the instance and physical device
@@ -115,6 +139,23 @@ ID3D9VkInteropInterface1 : public ID3D9VkInteropInterface {
           UINT                        Adapter,
           size_t*                     Size,
           void*                       Data) = 0;
+
+  /**
+   * \brief Create a D3D9 device for an existing Vulkan device.
+   * 
+   * The device must have been created with the following rules:
+   * - All extensions returned by \c QueryDeviceExtensions \e must be enabled
+   * - The \c graphicsQueue \e must support both graphics and compute operations
+   * - All features returned by \c QueryDeviceFeatures \e must be enabled
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in] pInfo Info about the created device
+   * \param [out] ppReturnedDevice The D3D9 device
+   */
+  virtual HRESULT STDMETHODCALLTYPE ImportDevice(
+          UINT                     Adapter,
+          D3D9VkDeviceImportInfo*  pInfo,
+          IDirect3DDevice9Ex**     ppReturnedDevice) = 0;
 };
 
 /**

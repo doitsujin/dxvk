@@ -55,6 +55,11 @@ namespace dxvk {
             size_t*                   Size,
             void*                     Data);
 
+    HRESULT STDMETHODCALLTYPE ImportDevice(
+          UINT                        Adapter,
+          D3D9VkDeviceImportInfo*     pInfo,
+          IDirect3DDevice9Ex**        ppReturnedDevice);
+
   private:
 
     D3D9InterfaceEx* m_interface;
