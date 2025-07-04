@@ -73,6 +73,60 @@ namespace dxvk {
     return (count < maxCount) ? D3DERR_MOREDATA : D3D_OK;
   }
 
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceExtensions(
+         UINT                      Adapter,
+         uint32_t*                 Count,
+         VkExtensionProperties*    Extensions) {
+    if (unlikely(Count == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceExtensions(Count, Extensions))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceQueues(
+        UINT                      Adapter,
+        uint32_t*                 Count,
+        VkDeviceQueueCreateInfo*  Queues) {
+    if (unlikely(Count == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceQueues(Count, Queues))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceFeatures(
+        UINT                      Adapter,
+        size_t*                   Size,
+        void*                     Data) {
+    if (unlikely(Size == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceFeatures(Size, Data))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
   ////////////////////////////////
   // Texture Interop
   ///////////////////////////////

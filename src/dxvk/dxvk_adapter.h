@@ -112,6 +112,14 @@ namespace dxvk {
     VkPhysicalDevice handle() const {
       return m_handle;
     }
+
+    /**
+     * \brief Device capability info
+     * \returns The device capabilities object
+     */
+    const DxvkDeviceCapabilities& capabilities() const {
+      return m_capabilities;
+    }
     
     /**
      * \brief Physical device properties
