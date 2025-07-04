@@ -48,6 +48,73 @@ ID3D9VkInteropInterface1 : public ID3D9VkInteropInterface {
   virtual HRESULT STDMETHODCALLTYPE GetInstanceExtensions(
           UINT*                       pExtensionCount,
     const char**                      ppExtensions) = 0;
+
+  /**
+   * \brief Queries required extensions
+   *
+   * All returned extensions \e must be enabled when
+   * using an external Vulkan device for DXVK.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Count Number of extensions
+   * \param [out] Extensions Extension properties, optional
+   * \returns \c D3D_OK on success, or if Extensions is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Count is nullptr
+   * \returns \c D3DERR_MOREDATA if the extension array is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceExtensions(
+          UINT                        Adapter,
+          uint32_t*                   Count,
+          VkExtensionProperties*      Extensions) = 0;
+
+  /**
+   * \brief Queries device queue create infos
+   *
+   * Writes an array of queues that can be used to create a Vulkan device
+   * compatible with DXVK. Applications are free to add or remove queues
+   * as they wish, however disabling queues may reduce performance, and at
+   * least one queue \e must support both graphics and, compute operations.
+   * For each written member of \c queues, if \c pQueuePriorities is non-null,
+   * it must point to an array of \c queueCount floats that can be \e written.
+   * As a result, this function needs to be called up to three times to query
+   * queue properties.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Count Number of queues to enable
+   * \param [out] Queues Queue properties
+   * \returns \c D3D_OK on success, or if Queues is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Count is nullptr
+   * \returns \c D3DERR_MOREDATA if if the queue array is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceQueues(
+          UINT                        Adapter,
+          uint32_t*                   Count,
+          VkDeviceQueueCreateInfo*    Queues) = 0;
+
+  /**
+   * \brief Queries required device features
+   *
+   * Returns a blob of memory containing feature structs, led by a single
+   * \c VkPhysicalDeviceFeatures2 structure at the start. The \c pNext
+   * chain includes all feature structs that are both known to DXVK and
+   * supported by the device. Applications can enable additional features
+   * by scanning feature structs by their \c sType, and change the \c pNext
+   * chain to insert feature structs that DXVK is not aware of.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Size Memory data size, in bytes
+   * \param [out] Data Pointer to meory blob of \c Size bytes
+   * \returns \c D3D_OK on success, or if Data is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Size is nullptr
+   * \returns \c D3DERR_MOREDATA if the blob at \c Data is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceFeatures(
+          UINT                        Adapter,
+          size_t*                     Size,
+          void*                       Data) = 0;
 };
 
 /**
