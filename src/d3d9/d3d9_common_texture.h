@@ -51,6 +51,7 @@ namespace dxvk {
 
     // Additional parameters for ID3D9VkInteropDevice
     VkImageUsageFlags   ImageUsage = 0;
+    bool                IsStableAddress = false;
   };
 
   struct D3D9ColorView {
