@@ -1016,7 +1016,7 @@ namespace dxvk {
     desc.Pool               = D3DPOOL_DEFAULT;
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
-    desc.IsBackBuffer       = TRUE;
+    desc.IsShared           = TRUE;
     // The texture will get sampled for presentation.
     desc.IsAttachmentOnly   = FALSE;
     // we cannot respect D3DPRESENTFLAG_LOCKABLE_BACKBUFFER here because
