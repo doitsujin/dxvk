@@ -1253,6 +1253,14 @@ namespace dxvk {
     { R"(\\SFC3\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
     }} },
+    /* GTR - FIA GT Racing Game                   *                  
+     * Vram complaint & restricted resolutions    *
+     * Performance                                */
+    { R"(\\GTR (- FIA GT Rac(e)?ing Game|Demo)\\(GTR(Demo)?|(3D)?Config)\.exe$)", {{
+      { "d3d9.maxAvailableMemory",         "1024" },
+      { "d3d9.memoryTrackTest",            "True" },
+      { "d3d9.cachedDynamicBuffers",       "True" },
+    }} },
   };
 
 
