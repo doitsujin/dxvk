@@ -330,28 +330,29 @@ namespace dxvk {
 
   Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const {
     DxvkImageCreateInfo imageInfo;
-    imageInfo.type            = GetImageTypeFromResourceType(ResourceType);
-    imageInfo.format          = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
-                              ? m_mapping.ConversionFormatInfo.FormatColor
-                              : m_mapping.FormatColor;
-    imageInfo.flags           = 0;
-    imageInfo.sampleCount     = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.extent.width    = m_desc.Width;
-    imageInfo.extent.height   = m_desc.Height;
-    imageInfo.extent.depth    = m_desc.Depth;
-    imageInfo.numLayers       = m_desc.ArraySize;
-    imageInfo.mipLevels       = m_desc.MipLevels;
-    imageInfo.usage           = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                              | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                              | m_desc.ImageUsage;
-    imageInfo.stages          = VK_PIPELINE_STAGE_TRANSFER_BIT
-                              | m_device->GetEnabledShaderStages();
-    imageInfo.access          = VK_ACCESS_TRANSFER_READ_BIT
-                              | VK_ACCESS_TRANSFER_WRITE_BIT
-                              | VK_ACCESS_SHADER_READ_BIT;
-    imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
-    imageInfo.shared          = m_desc.IsShared;
+    imageInfo.type             = GetImageTypeFromResourceType(ResourceType);
+    imageInfo.format           = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
+                               ? m_mapping.ConversionFormatInfo.FormatColor
+                               : m_mapping.FormatColor;
+    imageInfo.flags            = 0;
+    imageInfo.sampleCount      = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width     = m_desc.Width;
+    imageInfo.extent.height    = m_desc.Height;
+    imageInfo.extent.depth     = m_desc.Depth;
+    imageInfo.numLayers        = m_desc.ArraySize;
+    imageInfo.mipLevels        = m_desc.MipLevels;
+    imageInfo.usage            = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                               | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                               | m_desc.ImageUsage;
+    imageInfo.stages           = VK_PIPELINE_STAGE_TRANSFER_BIT
+                               | m_device->GetEnabledShaderStages();
+    imageInfo.access           = VK_ACCESS_TRANSFER_READ_BIT
+                               | VK_ACCESS_TRANSFER_WRITE_BIT
+                               | VK_ACCESS_SHADER_READ_BIT;
+    imageInfo.tiling           = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout           = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.shared           = m_desc.IsShared;
+    imageInfo.stableGpuAddress = m_desc.IsStableAddress;
 
     if (pSharedHandle) {
       imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
