@@ -313,7 +313,7 @@ namespace dxvk {
     desc.Discard            = params->Discard;
     desc.MultiSample        = params->MultiSample;
     desc.MultisampleQuality = params->MultiSampleQuality;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = params->IsAttachmentOnly;
     desc.IsLockable         = params->IsLockable;
     desc.ImageUsage         = params->ImageUsage;

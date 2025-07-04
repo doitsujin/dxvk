@@ -351,7 +351,7 @@ namespace dxvk {
                               | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
-    imageInfo.shared          = m_desc.IsBackBuffer;
+    imageInfo.shared          = m_desc.IsShared;
 
     if (pSharedHandle) {
       imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
