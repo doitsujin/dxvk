@@ -1077,6 +1077,11 @@ namespace dxvk {
     { R"(\\TestDrive2\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* AquaNox 2: Does not start if too many      *
+     * modes/resolutions are advertised           */
+    { R"(\\AN2\.dat$)", {{
+      { "d3d9.modeCountCompatibility",      "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
@@ -1265,6 +1270,11 @@ namespace dxvk {
       { "d3d9.maxAvailableMemory",         "1024" },
       { "d3d9.memoryTrackTest",            "True" },
       { "d3d9.cachedDynamicBuffers",       "True" },
+    }} },
+    /* AquaNox: Does not start if too many        *
+     * modes/resolutions are advertised           */
+    { R"(\\Aqua\.exe$)", {{
+      { "d3d9.modeCountCompatibility",      "True" },
     }} },
   };
 
