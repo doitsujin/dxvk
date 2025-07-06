@@ -182,9 +182,17 @@ namespace dxvk {
 
     void endFrame( uint64_t frameId ) override {
 
-      if (m_mode == LOW_LATENCY_VRR) {
-        const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId);
-        m_presentationStats.push( m->end, m->presentFinished - m->gpuFinished );
+      if (m_mode == LOW_LATENCY_VRR && frameId > 100) {
+        const LatencyMarkers* m1 = m_latencyMarkersStorage->getConstMarkers(frameId-1);
+        const LatencyMarkers* m2 = m_latencyMarkersStorage->getConstMarkers(frameId);
+
+        int32_t gpuFinishedInterval = std::chrono::duration_cast<microseconds>(
+          (m2->start + microseconds(m2->gpuFinished)) - (m1->start + microseconds(m1->gpuFinished))).count();
+
+        // Only push values where we probably weren't running into v-sync buffering.
+        // Otherwise we can get a presentation stats median drift due to feedback loop.
+        if (gpuFinishedInterval >= 0.99 * m_vrrRefreshInterval)
+          m_presentationStats.push( m2->end, m2->presentFinished - m2->gpuFinished );
       }
 
     }
