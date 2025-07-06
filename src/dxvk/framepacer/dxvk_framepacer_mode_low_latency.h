@@ -71,55 +71,71 @@ namespace dxvk {
       m_fenceGpuStart.wait( frameId-1 );
 
       time_point now = high_resolution_clock::now();
-      uint64_t finishedId = m_latencyMarkersStorage->getTimeline()->gpuFinished.load();
-      if (finishedId <= DXGI_MAX_SWAP_CHAIN_BUFFERS+1ull)
-        return;
+      time_point nextStart { };
 
-      if (finishedId == frameId-1) {
-        // we are the only in-flight frame, nothing to do other then
-        // to sync to v-blank and apply fps-limiter if needed
-        int32_t delay = 0;
-        if (m_mode == LOW_LATENCY_VRR) {
-          const SyncProps props = getSyncPrediction();
-          delay = std::max(delay, getVrrDelay(frameId, props, now));
-          delay += m_lowLatencyOffset;
+      for (int i=0; i<2; ++i) {
+        // We run this loop twice since there may be new information available
+        // after the first sleep that lead to a second sleep.
+        // While this may not happen that often, this is very relevant in certain situations
+        // in which this can lead to up to 20% latency reduction. This may not only happen
+        // for single frames, but the time span of this situation can be a second or more.
+
+        // Note: This works as is, because Sleep::sleepUntil doesn't work how it's advertised. It reads:
+        // "Convenience function that sleeps for the time difference between t1 and t0.",
+        // but it seems to just sleep until t1, regardless of t0, which is exactly what we need.
+
+        uint64_t finishedId = m_latencyMarkersStorage->getTimeline()->gpuFinished.load();
+        if (finishedId <= DXGI_MAX_SWAP_CHAIN_BUFFERS+1ull)
+          return;
+
+        if (finishedId == frameId-1) {
+          // we are the only in-flight frame, nothing to do other then
+          // to sync to v-blank and apply fps-limiter if needed
+          int32_t delay = 0;
+          if (m_mode == LOW_LATENCY_VRR) {
+            const SyncProps props = getSyncPrediction();
+            delay = std::max(delay, getVrrDelay(frameId, props, now));
+            delay += m_lowLatencyOffset;
+          }
+
+          nextStart = sleepFor( now, delay );
+          continue;
         }
 
-        m_lastStart = sleepFor( now, delay );
-        return;
+        if (finishedId != frameId-2) {
+          Logger::err( str::format("internal error during low-latency frame pacing: expected finished frameId=",
+            frameId-2, ", got: ", finishedId) );
+        }
+
+        const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId-1);
+
+        // estimate the target gpu sync point for this frame
+        // and calculate backwards when we want to start this frame
+
+        const SyncProps props = getSyncPrediction();
+        int32_t lastFrameStart = duration_cast<microseconds>( m->start - now ).count();
+        int32_t gpuReadyPrediction = lastFrameStart
+          + std::max( props.cpuUntilGpuStart, m->gpuStart )
+          + props.optimizedGpuTime;
+
+        int32_t targetGpuSync = gpuReadyPrediction + props.gpuSync;
+        int32_t gpuDelay = targetGpuSync - props.cpuUntilGpuSync;
+
+        int32_t cpuReadyPrediction = duration_cast<microseconds>(
+          m->start + microseconds(props.csFinished) - now).count();
+        int32_t cpuDelay = cpuReadyPrediction - props.csStart;
+
+        int32_t delay = std::max(gpuDelay, cpuDelay);
+
+        if (m_mode == LOW_LATENCY_VRR) {
+          delay = std::max(delay, getVrrDelay(frameId, props, now));
+        }
+
+        delay += m_lowLatencyOffset;
+        nextStart = sleepFor( now, delay );
       }
 
-      if (finishedId != frameId-2) {
-        Logger::err( str::format("internal error during low-latency frame pacing: expected finished frameId=",
-          frameId-2, ", got: ", finishedId) );
-      }
-
-      const LatencyMarkers* m = m_latencyMarkersStorage->getConstMarkers(frameId-1);
-
-      // estimate the target gpu sync point for this frame
-      // and calculate backwards when we want to start this frame
-
-      const SyncProps props = getSyncPrediction();
-      int32_t lastFrameStart = duration_cast<microseconds>( m->start - now ).count();
-      int32_t gpuReadyPrediction = lastFrameStart
-        + std::max( props.cpuUntilGpuStart, m->gpuStart )
-        + props.optimizedGpuTime;
-
-      int32_t targetGpuSync = gpuReadyPrediction + props.gpuSync;
-      int32_t gpuDelay = targetGpuSync - props.cpuUntilGpuSync;
-
-      int32_t cpuReadyPrediction = duration_cast<microseconds>(
-        m->start + microseconds(props.csFinished) - now).count();
-      int32_t cpuDelay = cpuReadyPrediction - props.csStart;
-
-      int32_t delay = std::max(gpuDelay, cpuDelay);
-
-      if (m_mode == LOW_LATENCY_VRR) {
-        delay = std::max(delay, getVrrDelay(frameId, props, now));
-      }
-
-      delay += m_lowLatencyOffset;
-      m_lastStart = sleepFor( now, delay );
+      m_lastStart = nextStart;
 
     }
 
