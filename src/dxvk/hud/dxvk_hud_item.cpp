@@ -276,9 +276,14 @@ namespace dxvk::hud {
     }
 
     const Rc<DxvkLatencyTracker> tracker = m_tracker;
-    const FramePacer* framePacer = dynamic_cast<FramePacer*>( tracker.ptr() );
+    FramePacer* framePacer = dynamic_cast<FramePacer*>( tracker.ptr() );
     if (!framePacer)
       return;
+
+    if (framePacer->getFramePacerMode()->getPresentMode() == VK_PRESENT_MODE_MAILBOX_KHR) {
+      m_latency = "N/A";
+      return;
+    }
 
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
