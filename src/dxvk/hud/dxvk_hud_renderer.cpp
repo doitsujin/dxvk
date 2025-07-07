@@ -33,10 +33,8 @@ namespace dxvk::hud {
 
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
   : m_device              (device),
-    m_textSetLayout       (createSetLayout()),
     m_textPipelineLayout  (createPipelineLayout()) {
-    createShaderModule(m_textVs, VK_SHADER_STAGE_VERTEX_BIT, sizeof(hud_text_vert), hud_text_vert);
-    createShaderModule(m_textFs, VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(hud_text_frag), hud_text_frag);
+
   }
   
   
@@ -45,21 +43,15 @@ namespace dxvk::hud {
 
     for (const auto& p : m_textPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_textVs.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_textFs.stageInfo.module, nullptr);
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_textPipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_textSetLayout, nullptr);
   }
   
   
   void HudRenderer::beginFrame(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
     const HudOptions&         options) {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xf0c0dc, "HUD"));
     }
 
@@ -73,6 +65,7 @@ namespace dxvk::hud {
     m_pushConstants.surfaceSize = { extent.width, extent.height };
     m_pushConstants.opacity = options.opacity;
     m_pushConstants.scale = options.scale;
+    m_pushConstants.sampler = m_fontSampler->getDescriptor().samplerIndex;
 
     VkViewport viewport = { };
     viewport.x = 0.0f;
@@ -86,15 +79,15 @@ namespace dxvk::hud {
     scissor.offset = { 0u, 0u };
     scissor.extent = { extent.width, extent.height };
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetViewport(1, &viewport);
+    ctx->cmdSetScissor(1, &scissor);
   }
   
   
   void HudRenderer::endFrame(
-    const DxvkContextObjects& ctx) {
+    const Rc<DxvkCommandList>&ctx) {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
@@ -120,7 +113,7 @@ namespace dxvk::hud {
 
 
   void HudRenderer::flushDraws(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
     const HudOptions&         options) {
     if (m_textDraws.empty())
@@ -167,7 +160,7 @@ namespace dxvk::hud {
     } else {
       // Discard and invalidate buffer so we can safely update it
       auto storage = m_textBuffer->assignStorage(Rc<DxvkResourceAllocation>(m_textBuffer->allocateStorage()));
-      ctx.cmd->track(std::move(storage));
+      ctx->track(std::move(storage));
     }
 
     // Upload aligned text data in such a way that we write full cache lines
@@ -194,18 +187,18 @@ namespace dxvk::hud {
     std::memset(m_textBuffer->mapPtr(drawArgOffset + drawArgWriteSize), 0, drawArgsSize - drawArgWriteSize);
 
     // Draw the actual text
-    VkDescriptorBufferInfo textBufferDescriptor = m_textBuffer->getDescriptor(textSizeAligned, drawInfoSize).buffer;
-    VkDescriptorBufferInfo drawBufferDescriptor = m_textBuffer->getDescriptor(drawArgOffset, drawArgWriteSize).buffer;
+    DxvkResourceBufferInfo textBufferInfo = m_textBuffer->getSliceInfo(textSizeAligned, drawInfoSize);
+    DxvkResourceBufferInfo drawBufferInfo = m_textBuffer->getSliceInfo(drawArgOffset, drawArgWriteSize);
 
     drawTextIndirect(ctx, getPipelineKey(dstView),
-      drawBufferDescriptor, textBufferDescriptor,
-      m_textBufferView->handle(), m_textDraws.size());
+      drawBufferInfo, textBufferInfo,
+      m_textBufferView, m_textDraws.size());
 
     // Ensure all used resources are kept alive
-    ctx.cmd->track(m_textBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontTexture, DxvkAccess::Read);
-    ctx.cmd->track(m_fontSampler);
+    ctx->track(m_textBuffer, DxvkAccess::Read);
+    ctx->track(m_fontBuffer, DxvkAccess::Read);
+    ctx->track(m_fontTexture, DxvkAccess::Read);
+    ctx->track(m_fontSampler);
 
     // Reset internal text buffers
     m_textDraws.clear();
@@ -214,53 +207,38 @@ namespace dxvk::hud {
 
 
   void HudRenderer::drawTextIndirect(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
-    const VkDescriptorBufferInfo& drawArgs,
-    const VkDescriptorBufferInfo& drawInfos,
-          VkBufferView        text,
+    const DxvkResourceBufferInfo& drawArgs,
+    const DxvkResourceBufferInfo& drawInfos,
+    const Rc<DxvkBufferView>& textView,
           uint32_t            drawCount) {
     // Bind the correct pipeline for the swap chain
     VkPipeline pipeline = getPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
       VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     // Bind resources
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_textSetLayout);
+    std::array<DxvkDescriptorWrite, 4u> descriptors = { };
+    descriptors[0u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[0u].buffer = m_fontBuffer->getSliceInfo();
 
-    VkDescriptorBufferInfo fontBufferDescriptor = m_fontBuffer->getDescriptor(0, m_fontBuffer->info().size).buffer;
+    descriptors[1u].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    descriptors[1u].buffer = drawInfos;
 
-    VkDescriptorImageInfo fontTextureDescriptor = { };
-    fontTextureDescriptor.sampler = m_fontSampler->handle();
-    fontTextureDescriptor.imageView = m_fontTextureView->handle();
-    fontTextureDescriptor.imageLayout = m_fontTexture->info().layout;
+    descriptors[2u].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    descriptors[2u].descriptor = textView->getDescriptor(false);
 
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &fontBufferDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, nullptr, &drawInfos },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, nullptr, nullptr, &text },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &fontTextureDescriptor },
-    }};
+    descriptors[3u].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    descriptors[3u].descriptor = m_fontTextureView->getDescriptor();
 
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(),
-      descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_textPipelineLayout,
-      set, 0, nullptr);
-
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, m_textPipelineLayout,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(m_pushConstants), &m_pushConstants);
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_textPipelineLayout, descriptors.size(), descriptors.data(),
+      sizeof(m_pushConstants), &m_pushConstants);
 
     // Emit the actual draw call
-    ctx.cmd->cmdDrawIndirect(drawArgs.buffer, drawArgs.offset,
+    ctx->cmdDrawIndirect(drawArgs.buffer, drawArgs.offset,
       drawCount, sizeof(VkDrawIndirectCommand));
   }
 
@@ -296,33 +274,6 @@ namespace dxvk::hud {
     specInfo.dataSize = sizeof(*constants);
     specInfo.pData = constants;
     return specInfo;
-  }
-
-
-  void HudRenderer::createShaderModule(
-          HudShaderModule&    shader,
-          VkShaderStageFlagBits stage,
-          size_t              size,
-    const uint32_t*           code) const {
-    shader.moduleInfo.codeSize = size;
-    shader.moduleInfo.pCode = code;
-
-    shader.stageInfo.stage = stage;
-    shader.stageInfo.pName = "main";
-
-    if (m_device->features().khrMaintenance5.maintenance5
-     || m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      shader.stageInfo.pNext = &shader.moduleInfo;
-      return;
-    }
-
-    auto vk = m_device->vkd();
-
-    VkResult vr = vk->vkCreateShaderModule(vk->device(),
-      &shader.moduleInfo, nullptr, &shader.stageInfo.module);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit shader module: ", vr));
   }
 
 
@@ -389,7 +340,7 @@ namespace dxvk::hud {
 
 
   void HudRenderer::uploadFontResources(
-    const DxvkContextObjects& ctx) {
+    const Rc<DxvkCommandList>&ctx) {
     size_t bufferDataSize = sizeof(HudFontGpuData);
     size_t textureDataSize = g_hudFont.width * g_hudFont.height;
 
@@ -421,8 +372,8 @@ namespace dxvk::hud {
     std::memcpy(uploadBuffer->mapPtr(0), &glyphData, bufferDataSize);
     std::memcpy(uploadBuffer->mapPtr(bufferDataSize), g_hudFont.texture, textureDataSize);
 
-    auto uploadSlice = uploadBuffer->getSliceHandle();
-    auto fontSlice = m_fontBuffer->getSliceHandle();
+    auto uploadSlice = uploadBuffer->getSliceInfo();
+    auto fontSlice = m_fontBuffer->getSliceInfo();
 
     VkImageMemoryBarrier2 imageBarrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     imageBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -438,7 +389,7 @@ namespace dxvk::hud {
     depInfo.imageMemoryBarrierCount = 1u;
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
     m_fontTexture->trackInitialization(imageBarrier.subresourceRange);
 
     VkBufferCopy2 bufferRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
@@ -447,12 +398,12 @@ namespace dxvk::hud {
     bufferRegion.size = bufferDataSize;
 
     VkCopyBufferInfo2 bufferCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
-    bufferCopy.srcBuffer = uploadSlice.handle;
-    bufferCopy.dstBuffer = fontSlice.handle;
+    bufferCopy.srcBuffer = uploadSlice.buffer;
+    bufferCopy.dstBuffer = fontSlice.buffer;
     bufferCopy.regionCount = 1;
     bufferCopy.pRegions = &bufferRegion;
 
-    ctx.cmd->cmdCopyBuffer(DxvkCmdBuffer::InitBuffer, &bufferCopy);
+    ctx->cmdCopyBuffer(DxvkCmdBuffer::InitBuffer, &bufferCopy);
 
     VkBufferImageCopy2 imageRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
     imageRegion.bufferOffset = uploadSlice.offset + bufferDataSize;
@@ -461,13 +412,13 @@ namespace dxvk::hud {
     imageRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 imageCopy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    imageCopy.srcBuffer = uploadSlice.handle;
+    imageCopy.srcBuffer = uploadSlice.buffer;
     imageCopy.dstImage = m_fontTexture->handle();
     imageCopy.dstImageLayout = m_fontTexture->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     imageCopy.regionCount = 1;
     imageCopy.pRegions = &imageRegion;
 
-    ctx.cmd->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &imageCopy);
+    ctx->cmdCopyBufferToImage(DxvkCmdBuffer::InitBuffer, &imageCopy);
 
     VkMemoryBarrier2 memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
     memoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -493,59 +444,25 @@ namespace dxvk::hud {
     depInfo.imageMemoryBarrierCount = 1u;
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
 
-    ctx.cmd->track(uploadBuffer, DxvkAccess::Read);
-    ctx.cmd->track(m_fontBuffer, DxvkAccess::Write);
-    ctx.cmd->track(m_fontTexture, DxvkAccess::Write);
+    ctx->track(uploadBuffer, DxvkAccess::Read);
+    ctx->track(m_fontBuffer, DxvkAccess::Write);
+    ctx->track(m_fontTexture, DxvkAccess::Write);
   }
 
 
-  VkDescriptorSetLayout HudRenderer::createSetLayout() {
-    auto vk = m_device->vkd();
-
-    static const std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 2, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   1, VK_SHADER_STAGE_VERTEX_BIT   },
-      { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+  const DxvkPipelineLayout* HudRenderer::createPipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 4> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,          1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,    1, VK_SHADER_STAGE_VERTEX_BIT   },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,           1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD descriptor set layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipelineLayout HudRenderer::createPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConstantRange = { };
-    pushConstantRange.offset = 0u;
-    pushConstantRange.size = sizeof(HudPushConstants);
-    pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1;
-    info.pSetLayouts = &m_textSetLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges = &pushConstantRange;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create HUD descriptor set layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(HudPushConstants), bindings.size(), bindings.data());
   }
 
 
@@ -555,34 +472,6 @@ namespace dxvk::hud {
 
     HudSpecConstants specConstants = getSpecConstants(key);
     VkSpecializationInfo specInfo = getSpecInfo(&specConstants);
-
-    std::array<VkPipelineShaderStageCreateInfo, 2> stages = { };
-    stages[0] = m_textVs.stageInfo;
-    stages[1] = m_textFs.stageInfo;
-    stages[1].pSpecializationInfo = &specInfo;
-
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtInfo.colorAttachmentCount = 1;
-    rtInfo.pColorAttachmentFormats = &key.format;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
-    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    constexpr uint32_t sampleMask = 0x1;
-
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &sampleMask;
 
     VkPipelineColorBlendAttachmentState cbAttachment = { };
     cbAttachment.blendEnable = VK_TRUE;
@@ -596,40 +485,13 @@ namespace dxvk::hud {
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo cbOpaqueState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbOpaqueState.attachmentCount = 1;
-    cbOpaqueState.pAttachments = &cbAttachment;
+    util::DxvkBuiltInGraphicsState state;
+    state.vs = util::DxvkBuiltInShaderStage(hud_text_vert, nullptr);
+    state.fs = util::DxvkBuiltInShaderStage(hud_text_frag, &specInfo);
+    state.colorFormat = key.format;
+    state.cbAttachment = &cbAttachment;
 
-    static const std::array<VkDynamicState, 2> dynStates = {
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    VkGraphicsPipelineCreateInfo blitInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
-    blitInfo.stageCount = stages.size();
-    blitInfo.pStages = stages.data();
-    blitInfo.pVertexInputState = &viState;
-    blitInfo.pInputAssemblyState = &iaState;
-    blitInfo.pViewportState = &vpState;
-    blitInfo.pRasterizationState = &rsState;
-    blitInfo.pMultisampleState = &msState;
-    blitInfo.pColorBlendState = &cbOpaqueState;
-    blitInfo.pDynamicState = &dynState;
-    blitInfo.layout = m_textPipelineLayout;
-    blitInfo.basePipelineIndex = -1;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
-      1, &blitInfo, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit pipeline: ", vr));
-
-    return pipeline;
+    return m_device->createBuiltInGraphicsPipeline(m_textPipelineLayout, state);
   }
 
 

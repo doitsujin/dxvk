@@ -42,6 +42,9 @@ namespace dxvk {
     /// Whether or not we can rely on robustness2 to handle oob constant access
     bool robustness2Supported;
 
+    /// Whether or not we need to use custom sincos
+    bool sincosEmulation = false;
+
     /// Whether runtime to apply Dref scaling for depth textures of specified bit depth
     /// (24: D24S8, 16: D16, 0: Disabled). This allows compatability with games
     /// that expect a different depth test range, which was typically a D3D8 quirk on

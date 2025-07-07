@@ -51,8 +51,8 @@ namespace dxvk {
      * \param [in] pass Render pass index
      * \returns Source image view handle for the given pass
      */
-    VkImageView getSrcViewHandle(uint32_t passId) const {
-      return m_passes[passId].src->handle();
+    Rc<DxvkImageView> getSrcView(uint32_t passId) const {
+      return m_passes[passId].src;
     }
 
     /**
@@ -61,8 +61,8 @@ namespace dxvk {
      * \param [in] pass Render pass index
      * \returns Destination image view handle for the given pass
      */
-    VkImageView getDstViewHandle(uint32_t passId) const {
-      return m_passes[passId].dst->handle();
+    Rc<DxvkImageView> getDstView(uint32_t passId) const {
+      return m_passes[passId].dst;
     }
 
     /**

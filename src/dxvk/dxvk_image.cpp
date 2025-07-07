@@ -7,10 +7,10 @@ namespace dxvk {
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
-          DxvkMemoryAllocator&  memAlloc,
+          DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&memAlloc),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo) {
@@ -47,10 +47,10 @@ namespace dxvk {
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
           VkImage               imageHandle,
-          DxvkMemoryAllocator&  memAlloc,
+          DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&memAlloc),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo),
@@ -280,6 +280,14 @@ namespace dxvk {
     if (invalidateViews)
       m_version += 1u;
 
+    if (!(m_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+      auto common = m_properties & m_storage->getMemoryProperties();
+
+      updateResidencyStatus((common & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        ? DxvkResourceResidency::Resident
+        : DxvkResourceResidency::Evicted);
+    }
+
     return old;
   }
 
@@ -439,6 +447,34 @@ namespace dxvk {
     const DxvkImageViewKey&         key)
   : m_image   (image),
     m_key     (key) {
+    // If the view does not define a layout, figure out a suitable
+    // layout based on image view usage and image prperties. This
+    // will be good enough in most situations.
+    if (!m_key.layout) {
+      switch (m_key.usage) {
+        case VK_IMAGE_USAGE_SAMPLED_BIT:
+          m_key.layout = (m_image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+            ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+          break;
+
+        case VK_IMAGE_USAGE_STORAGE_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_GENERAL;
+          break;
+
+        case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+          break;
+
+        case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
+          m_key.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+          break;
+
+        default:
+          break;
+      }
+    }
+
     updateProperties();
   }
 
@@ -448,7 +484,7 @@ namespace dxvk {
   }
 
 
-  VkImageView DxvkImageView::createView(VkImageViewType type) const {
+  const DxvkDescriptor* DxvkImageView::createView(VkImageViewType type) const {
     constexpr VkImageUsageFlags ViewUsage =
       VK_IMAGE_USAGE_SAMPLED_BIT |
       VK_IMAGE_USAGE_STORAGE_BIT |
@@ -459,10 +495,10 @@ namespace dxvk {
     // objects so that some internal APIs can be more consistent.
     DxvkImageViewKey key = m_key;
     key.viewType = type;
-    key.usage &= ViewUsage;
+    key.layout = getLayout();
 
-    if (!key.usage)
-      return VK_NULL_HANDLE;
+    if (!(key.usage & ViewUsage))
+      return nullptr;
 
     // Only use one layer for non-arrayed view types
     if (type == VK_IMAGE_VIEW_TYPE_1D || type == VK_IMAGE_VIEW_TYPE_2D)
@@ -472,20 +508,20 @@ namespace dxvk {
       case VK_IMAGE_TYPE_1D: {
         // Trivial, just validate that view types are compatible
         if (type != VK_IMAGE_VIEW_TYPE_1D && type != VK_IMAGE_VIEW_TYPE_1D_ARRAY)
-          return VK_NULL_HANDLE;
+          return nullptr;
       } break;
 
       case VK_IMAGE_TYPE_2D: {
         if (type == VK_IMAGE_VIEW_TYPE_CUBE || type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
           // Ensure that the image is compatible with cube maps
           if (key.layerCount < 6 || !(m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT))
-            return VK_NULL_HANDLE;
+            return nullptr;
 
           // Adjust layer count to make sure it's a multiple of 6
           key.layerCount = type == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY
             ? key.layerCount - key.layerCount % 6u : 6u;
         } else if (type != VK_IMAGE_VIEW_TYPE_2D && type != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
-          return VK_NULL_HANDLE;
+          return nullptr;
         }
       } break;
 
@@ -493,25 +529,25 @@ namespace dxvk {
         if (type == VK_IMAGE_VIEW_TYPE_2D || type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
           // Ensure that the image is actually compatible with 2D views
           if (!(m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT))
-            return VK_NULL_HANDLE;
+            return nullptr;
 
           // In case the view's native type is 3D, we can only create 2D compat
           // views if there is only one mip and with the full set of array layers.
           if (m_key.viewType == VK_IMAGE_VIEW_TYPE_3D) {
             if (m_key.mipCount != 1u)
-              return VK_NULL_HANDLE;
+              return nullptr;
 
             key.layerIndex = 0u;
             key.layerCount = type == VK_IMAGE_VIEW_TYPE_2D_ARRAY
               ? m_image->mipLevelExtent(key.mipIndex).depth : 1u;
           }
         } else if (type != VK_IMAGE_VIEW_TYPE_3D) {
-          return VK_NULL_HANDLE;
+          return nullptr;
         }
       } break;
 
       default:
-        return VK_NULL_HANDLE;
+        return nullptr;
     }
 
     // We need to expose RT and UAV swizzles to the backend,
@@ -538,7 +574,6 @@ namespace dxvk {
 
 
   void DxvkImageView::updateProperties() {
-    m_properties.layout = m_image->info().layout;
     m_properties.samples = m_image->info().sampleCount;
     m_properties.access = m_image->info().access;
   }

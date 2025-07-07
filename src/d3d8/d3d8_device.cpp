@@ -331,6 +331,9 @@ namespace dxvk {
     if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     // Nvidia & Intel workaround for The Lord of the Rings: The Fellowship of the Ring
     if (m_d3d8Options.placeP8InScratch && Format == D3DFMT_P8)
       Pool = D3DPOOL_SCRATCH;
@@ -371,6 +374,9 @@ namespace dxvk {
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DVolumeTexture9> pVolume9 = nullptr;
     HRESULT res = GetD3D9()->CreateVolumeTexture(
       Width, Height, Depth, Levels,
@@ -401,6 +407,9 @@ namespace dxvk {
     InitReturnPtr(ppCubeTexture);
 
     if (unlikely(ppCubeTexture == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DCubeTexture9> pCube9 = nullptr;
@@ -481,6 +490,12 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(!isRenderTargetFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DSurface9> pSurf9 = nullptr;
     HRESULT res = GetD3D9()->CreateRenderTarget(
       Width,
@@ -512,6 +527,9 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
       return D3DERR_INVALIDCALL;
 
     Com<d3d9::IDirect3DSurface9> pSurf9 = nullptr;
@@ -546,7 +564,13 @@ namespace dxvk {
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    D3DPOOL pool = isUnsupportedSurfaceFormat(Format) ? D3DPOOL_SCRATCH : D3DPOOL_SYSTEMMEM;
+    // CreateImageSurface is generally guaranteed to succeed even with unsupported
+    // formats, however D3D9 exclusive formats fail on native D3D8.
+    if (unlikely(isD3D9ExclusiveFormat(Format)))
+      return D3DERR_INVALIDCALL;
+
+    const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(d3d9::D3DFORMAT(Format));
+    D3DPOOL pool = isSupportedSurfaceFormat ? D3DPOOL_SYSTEMMEM : D3DPOOL_SCRATCH;
 
     Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
     HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
@@ -794,10 +818,10 @@ namespace dxvk {
             case d3d9::D3DPOOL_SCRATCH: {
               // SCRATCH -> DEFAULT: memcpy to a SYSTEMMEM temporary buffer and use UpdateSurface
 
+              const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(srcDesc.Format);
               // UpdateSurface will not work on surface formats unsupported by D3DPOOL_DEFAULT
-              if (unlikely(isUnsupportedSurfaceFormat(D3DFORMAT(srcDesc.Format)))) {
+              if (unlikely(!isSupportedSurfaceFormat))
                 return logError(D3DERR_INVALIDCALL);
-              }
 
               Com<IDirect3DSurface8> pTempImageSurface;
               // The temporary image surface is guaranteed to end up in SYSTEMMEM for supported formats
@@ -1713,7 +1737,10 @@ namespace dxvk {
       // TODO: Implement D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
       // and advertise support with D3DPRASTERCAPS_PAT once that is done
       case D3DRS_LINEPATTERN:
-        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
+        static bool s_linePatternErrorShown;
+
+        if (!std::exchange(s_linePatternErrorShown, true))
+          Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
@@ -1745,7 +1772,10 @@ namespace dxvk {
 
       // TODO: Implement D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
-        Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
+        static bool s_patchSegmentsErrorShown;
+
+        if (!std::exchange(s_patchSegmentsErrorShown, true))
+          Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
         m_patchSegments = bit::cast<float>(Value);
         return D3D_OK;
     }

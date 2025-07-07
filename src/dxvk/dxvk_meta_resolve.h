@@ -18,9 +18,8 @@ namespace dxvk {
    * that is used for fragment shader resolve.
    */
   struct DxvkMetaResolvePipeline {
-    VkDescriptorSetLayout dsetLayout;
-    VkPipelineLayout      pipeLayout;
-    VkPipeline            pipeHandle;
+    const DxvkPipelineLayout* layout   = nullptr;
+    VkPipeline                pipeline = VK_NULL_HANDLE;
   };
 
   /**
@@ -30,10 +29,10 @@ namespace dxvk {
    * on the copy operation they support.
    */
   struct DxvkMetaResolvePipelineKey {
-    VkFormat                  format;
-    VkSampleCountFlagBits     samples;
-    VkResolveModeFlagBits     modeD;
-    VkResolveModeFlagBits     modeS;
+    VkFormat                  format  = VK_FORMAT_UNDEFINED;
+    VkSampleCountFlagBits     samples = VK_SAMPLE_COUNT_1_BIT;
+    VkResolveModeFlagBits     modeD   = VK_RESOLVE_MODE_NONE;
+    VkResolveModeFlagBits     modeS   = VK_RESOLVE_MODE_NONE;
 
     bool eq(const DxvkMetaResolvePipelineKey& other) const {
       return this->format  == other.format
@@ -82,7 +81,7 @@ namespace dxvk {
 
   public:
 
-    DxvkMetaResolveObjects(const DxvkDevice* device);
+    DxvkMetaResolveObjects(DxvkDevice* device);
     ~DxvkMetaResolveObjects();
 
     /**
@@ -102,15 +101,7 @@ namespace dxvk {
 
   private:
 
-    Rc<vk::DeviceFn> m_vkd;
-
-    VkShaderModule m_shaderVert  = VK_NULL_HANDLE;
-    VkShaderModule m_shaderGeom  = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFragF = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFragU = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFragI = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFragD = VK_NULL_HANDLE;
-    VkShaderModule m_shaderFragDS = VK_NULL_HANDLE;
+    DxvkDevice* m_device = nullptr;
 
     dxvk::mutex m_mutex;
 
@@ -118,23 +109,10 @@ namespace dxvk {
       DxvkMetaResolvePipelineKey,
       DxvkMetaResolvePipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
-    VkShaderModule createShaderModule(
-      const SpirvCodeBuffer&          code) const;
-    
+
     DxvkMetaResolvePipeline createPipeline(
       const DxvkMetaResolvePipelineKey& key);
 
-    VkDescriptorSetLayout createDescriptorSetLayout(
-      const DxvkMetaResolvePipelineKey& key);
-    
-    VkPipelineLayout createPipelineLayout(
-            VkDescriptorSetLayout  descriptorSetLayout);
-    
-    VkPipeline createPipelineObject(
-      const DxvkMetaResolvePipelineKey& key,
-            VkPipelineLayout       pipelineLayout);
-    
   };
 
 }

@@ -22,7 +22,8 @@ namespace dxvk {
     m_presentId (0u),
     m_presenter (pPresenter),
     m_monitor   (wsi::getWindowMonitor(m_window)),
-    m_is_d3d12(SUCCEEDED(pDevice->QueryInterface(__uuidof(ID3D12CommandQueue), reinterpret_cast<void**>(&Com<ID3D12CommandQueue>())))) {
+    m_is_d3d12(SUCCEEDED(pDevice->QueryInterface(__uuidof(ID3D12CommandQueue), reinterpret_cast<void**>(&Com<ID3D12CommandQueue>())))),
+    m_destructionNotifier(this) {
 
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
@@ -85,6 +86,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGISwapChain3)
      || riid == __uuidof(IDXGISwapChain4)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
     
@@ -355,7 +361,7 @@ namespace dxvk {
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
     HRESULT hr = S_OK;
 
-    if (wsi::isWindow(m_window)) {
+    if (wsi::isWindow(m_window) || !m_window) {
       std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
       hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
     }
@@ -414,7 +420,7 @@ namespace dxvk {
           UINT                      SwapChainFlags,
     const UINT*                     pCreationNodeMask,
           IUnknown* const*          ppPresentQueue) {
-    if (!wsi::isWindow(m_window))
+    if (m_window && !wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
     constexpr UINT PreserveFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
@@ -426,9 +432,11 @@ namespace dxvk {
     m_desc.Width  = Width;
     m_desc.Height = Height;
     
-    wsi::getWindowSize(m_window,
-      m_desc.Width  ? nullptr : &m_desc.Width,
-      m_desc.Height ? nullptr : &m_desc.Height);
+    if (m_window) {
+      wsi::getWindowSize(m_window,
+        m_desc.Width  ? nullptr : &m_desc.Width,
+        m_desc.Height ? nullptr : &m_desc.Height);
+    }
     
     if (BufferCount != 0)
       m_desc.BufferCount = BufferCount;

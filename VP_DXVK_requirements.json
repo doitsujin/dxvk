@@ -73,10 +73,35 @@
                 }
             }
         },
+        "dxvk_common_required": {
+            "extensions": {
+                "VK_KHR_maintenance5": 1,
+            },
+            "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "shaderSampledImageArrayDynamicIndexing" : true
+                },
+                "VkPhysicalDeviceVulkan12Features": {
+                    "descriptorIndexing" : true,
+                    "descriptorBindingSampledImageUpdateAfterBind" : true,
+                    "descriptorBindingUpdateUnusedWhilePending" : true,
+                    "descriptorBindingPartiallyBound" : true,
+                    "runtimeDescriptorArray" : true
+                },
+                "VkPhysicalDeviceMaintenance5FeaturesKHR": {
+                    "maintenance5": true
+                }
+            },
+            "properties": {
+                "VkPhysicalDeviceProperties": {
+                    "maxPushConstantsSize" : 256
+                }
+            }
+        },
         "dxvk_common_optional": {
             "extensions": {
                 "VK_KHR_load_store_op_none": 1,
-                "VK_KHR_maintenance5": 1,
+                "VK_KHR_maintenance6": 1,
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id": 1,
                 "VK_KHR_present_wait": 1,
@@ -89,8 +114,12 @@
                 "VkPhysicalDeviceFeatures": {
                     "wideLines": true
                 },
-                "VkPhysicalDeviceMaintenance5FeaturesKHR": {
-                    "maintenance5": true
+                "VkPhysicalDeviceVulkan11Features": {
+                    "shaderInt16": true,
+                    "storagePushConstant16": true
+                },
+                "VkPhysicalDeviceMaintenance6FeaturesKHR": {
+                    "maintenance6": true
                 },
                 "VkPhysicalDeviceMaintenance7FeaturesKHR": {
                     "maintenance7": true
@@ -331,6 +360,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "d3d9_baseline"
             ]
         },
@@ -344,6 +374,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "dxvk_common_optional",
                 "d3d9_baseline",
                 "d3d9_optional"
@@ -359,6 +390,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "d3d11_baseline"
             ]
         },
@@ -372,6 +404,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "d3d11_baseline",
                 "d3d11_level11_0"
             ]
@@ -386,6 +419,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "d3d11_baseline",
                 "d3d11_level11_0",
                 "d3d11_level11_1"
@@ -401,6 +435,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "dxvk_common_optional",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
@@ -419,6 +454,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
+                "dxvk_common_required",
                 "dxvk_common_optional",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
@@ -447,6 +483,18 @@
         }
     },
     "history": [
+        {
+            "revision": 6,
+            "date": "2025-03-24",
+            "author": "Philip Rebohle",
+            "comment": "Add maintenance5 to required extensions"
+        },
+        {
+            "revision": 5,
+            "date": "2025-03-16",
+            "author": "Philip Rebohle",
+            "comment": "Update profile with extensions used in 2.6"
+        },
         {
             "revision": 4,
             "date": "2022-12-18",

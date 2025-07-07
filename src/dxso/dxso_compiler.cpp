@@ -229,8 +229,9 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    info.pushConstSize = sizeof(D3D9RenderStateInfo);
+    info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
+    info.localPushData = m_samplerPushData;
+    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
@@ -306,12 +307,13 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_cBuffer, 0);
     m_module.decorateBinding(m_cBuffer, bindingId);
 
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
   }
 
   template<DxsoConstantBufferType ConstantBufferType>
@@ -393,17 +395,17 @@ namespace dxvk {
     if (asSsbo)
       m_module.decorate(constantBufferId, spv::DecorationNonWritable);
 
-    DxvkBindingInfo binding = { };
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
     binding.descriptorType  = asSsbo
       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access          = asSsbo
       ? VK_ACCESS_SHADER_READ_BIT
       : VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
     return constantBufferId;
   }
@@ -461,7 +463,7 @@ namespace dxvk {
     m_vs.functionId = m_module.allocateId();
     m_module.setDebugName(m_vs.functionId, "vs_main");
 
-    this->setupRenderStateInfo();
+    this->setupRenderStateInfo(caps::MaxTexturesVS + 1u);
 
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
@@ -484,12 +486,13 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_ps.sharedState, 0);
     m_module.decorateBinding(m_ps.sharedState, bindingId);
 
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
   }
 
 
@@ -506,7 +509,7 @@ namespace dxvk {
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
 
-    this->setupRenderStateInfo();
+    this->setupRenderStateInfo(caps::MaxTexturesPS);
     this->emitPsSharedConstants();
 
     m_specUbo = SetupSpecUBO(m_module, m_bindings);
@@ -688,6 +691,9 @@ namespace dxvk {
           DxsoTextureType type) {
     m_usedSamplers |= (1u << idx);
 
+    if (!m_samplerArray)
+      m_samplerArray = SetupSamplerArray(m_module);
+
     VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
     auto DclSampler = [this, &viewType](
@@ -733,18 +739,19 @@ namespace dxvk {
         dimensionality, depth ? 1 : 0, 0, 0, 1,
         spv::ImageFormatUnknown);
 
-      sampler.typeId = m_module.defSampledImageType(sampler.imageTypeId);
-
-      sampler.varId = m_module.newVar(
+      sampler.imageVarId = m_module.newVar(
         m_module.defPointerType(
-          sampler.typeId, spv::StorageClassUniformConstant),
+          sampler.imageTypeId, spv::StorageClassUniformConstant),
         spv::StorageClassUniformConstant);
 
-      std::string name = str::format("s", idx, suffix, depth ? "_shadow" : "");
-      m_module.setDebugName(sampler.varId, name.c_str());
+      sampler.sampledTypeId = m_module.defSampledImageType(sampler.imageTypeId);
+      sampler.samplerIndex = idx;
 
-      m_module.decorateDescriptorSet(sampler.varId, 0);
-      m_module.decorateBinding      (sampler.varId, bindingId);
+      std::string name = str::format("t", idx, suffix, depth ? "_shadow" : "");
+      m_module.setDebugName(sampler.imageVarId, name.c_str());
+
+      m_module.decorateDescriptorSet(sampler.imageVarId, 0);
+      m_module.decorateBinding      (sampler.imageVarId, bindingId);
     };
 
     const uint32_t binding = computeResourceSlotId(m_programInfo.type(),
@@ -783,12 +790,19 @@ namespace dxvk {
 
     m_samplers[idx].type = type;
 
-    // Store descriptor info for the shader interface
-    DxvkBindingInfo bindingInfo = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-    bindingInfo.resourceBinding = binding;
-    bindingInfo.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
-    bindingInfo.access          = VK_ACCESS_SHADER_READ_BIT;
-    m_bindings.push_back(bindingInfo);
+    auto& imageBinding = m_bindings.emplace_back();
+    imageBinding.set             = 0u;
+    imageBinding.binding         = binding;
+    imageBinding.resourceIndex   = binding;
+    imageBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imageBinding.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
+    imageBinding.access          = VK_ACCESS_SHADER_READ_BIT;
+
+    auto& samplerBinding = m_bindings.emplace_back();
+    samplerBinding.resourceIndex  = binding;
+    samplerBinding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    samplerBinding.blockOffset    = GetPushSamplerOffset(idx);
+    samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
   }
 
 
@@ -2114,11 +2128,17 @@ namespace dxvk {
         std::array<uint32_t, 4> sincosVectorIndices = { 0, 0, 0, 0 };
 
         uint32_t index = 0;
+        uint32_t type = m_module.defFloatType(32);
+        uint32_t sincos = m_module.opSinCos(src0, !m_moduleInfo.options.sincosEmulation);
+
+        uint32_t sinIndex = 0u;
+        uint32_t cosIndex = 1u;
+
         if (mask[0])
-          sincosVectorIndices[index++] = m_module.opCos(scalarTypeId, src0);
+          sincosVectorIndices[index++] = m_module.opCompositeExtract(type, sincos, 1u, &cosIndex);
 
         if (mask[1])
-          sincosVectorIndices[index++] = m_module.opSin(scalarTypeId, src0);
+          sincosVectorIndices[index++] = m_module.opCompositeExtract(type, sincos, 1u, &sinIndex);
 
         for (; index < result.type.ccount; index++) {
           if (sincosVectorIndices[index] == 0)
@@ -2844,7 +2864,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     }
 
     // SM < 1.x does not have dcl sampler type.
-    if (m_programInfo.majorVersion() < 2 && m_samplers[samplerIdx].color[SamplerTypeTexture2D].varId == 0)
+    if (m_programInfo.majorVersion() < 2 && !m_samplers[samplerIdx].color[SamplerTypeTexture2D].imageVarId)
       emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
@@ -3137,7 +3157,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
        (operands.flags & spv::ImageOperandsLodMask)
     || (operands.flags & spv::ImageOperandsGradMask);
 
-    const uint32_t sampledImage = m_module.opLoad(samplerInfo.typeId, samplerInfo.varId);
+    uint32_t image = m_module.opLoad(samplerInfo.imageTypeId, samplerInfo.imageVarId);
+    uint32_t sampler = LoadSampler(m_module, m_samplerArray, m_rsBlock, m_rsFirstSampler, samplerInfo.samplerIndex);
+
+    uint32_t sampledImage = m_module.opSampledImage(samplerInfo.sampledTypeId, image, sampler);
 
     uint32_t val;
 
@@ -3509,12 +3532,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.decorateDescriptorSet(clipPlaneBlock, 0);
     m_module.decorateBinding      (clipPlaneBlock, bindingId);
     
-    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
-    binding.resourceBinding = bindingId;
-    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    auto& binding = m_bindings.emplace_back();
+    binding.set             = 0u;
+    binding.binding         = bindingId;
+    binding.resourceIndex   = bindingId;
+    binding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    binding.uboSet          = VK_TRUE;
-    m_bindings.push_back(binding);
+    binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
     // Declare output array for clip distances
     uint32_t clipDistArray = m_module.newVar(
@@ -3569,8 +3593,16 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   }
 
 
-  void DxsoCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+  void DxsoCompiler::setupRenderStateInfo(uint32_t samplerCount) {
+    auto blockInfo = SetupRenderStateBlock(m_module, (1u << samplerCount) - 1u);
+
+    m_rsBlock = blockInfo.first;
+    m_rsFirstSampler = blockInfo.second;
+
+    uint32_t samplerDwordCount = (samplerCount + 1u) / 2u;
+
+    m_samplerPushData = DxvkPushDataBlock(m_programInfo.shaderStage(), GetPushSamplerOffset(0u),
+      samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
   }
 
 

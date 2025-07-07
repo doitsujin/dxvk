@@ -691,114 +691,65 @@ namespace dxvk {
     auto vov = dynamic_cast<D3D11VideoProcessorOutputView*>(pView);
 
     // Retrieve underlying resource view
-    Rc<DxvkBufferView> bufView;
-    Rc<DxvkImageView>  imgView;
+    if (dsv) {
+      Rc<DxvkImageView> imgView = dsv->GetImageView();
 
-    if (dsv != nullptr)
-      imgView = dsv->GetImageView();
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
+    } else if (rtv) {
+      Rc<DxvkImageView> imgView = rtv->GetImageView();
 
-    if (rtv != nullptr)
-      imgView = rtv->GetImageView();
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
+    } else if (uav) {
+      Rc<DxvkImageView> imgView = uav->GetImageView();
+      Rc<DxvkBufferView> bufView = uav->GetBufferView();
 
-    if (uav != nullptr) {
-      bufView = uav->GetBufferView();
-      imgView = uav->GetImageView();
-    }
+      if (imgView)
+        ClearImageView(std::move(imgView), Color, pRect, NumRects);
 
-    if (vov != nullptr)
-      imgView = vov->GetView();
+      if (bufView)
+        ClearBufferView(std::move(bufView), Color, pRect, NumRects);
+    } else if (vov) {
+      auto views = vov->GetCommon().GetViews();
+      auto shadow = vov->GetCommon().GetShadow();
 
-    // 3D views are unsupported
-    if (imgView != nullptr
-     && imgView->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
-      return;
+      // If we have to assume that the image is only partially cleared,
+      // make sure to properly sync it with the shadow image.
+      VkImageSubresourceLayers imageLayers = vov->GetCommon().GetImageSubresource();
 
-    // Query the view format. We'll have to convert
-    // the clear color based on the format's data type.
-    VkFormat format = VK_FORMAT_UNDEFINED;
+      VkImageSubresourceLayers shadowLayers = { };
+      shadowLayers.aspectMask = imageLayers.aspectMask;
+      shadowLayers.layerCount = imageLayers.layerCount;
 
-    if (bufView != nullptr)
-      format = bufView->info().format;
+      if (shadow && NumRects)
+        SyncImage(shadow, shadowLayers, vov->GetCommon().GetImage(), imageLayers);
 
-    if (imgView != nullptr)
-      format = imgView->info().format;
+      // Assume that planar video formats use Y - Cb - Cr
+      // order for the purpose of mapping color components.
+      uint32_t component = 0u;
+      FLOAT planeColor[4] = { };
 
-    if (format == VK_FORMAT_UNDEFINED)
-      return;
+      for (uint32_t i = 0u; i < views.size(); i++) {
+        if (!views[i])
+          break;
 
-    // We'll need the format info to determine the buffer
-    // element size, and we also need it for depth images.
-    const DxvkFormatInfo* formatInfo = lookupFormatInfo(format);
+        // Extract relevant color components from the clear color
+        // and shift the input array accordingly.
+        uint32_t n = bit::popcnt(views[i]->formatInfo()->componentMask);
 
-    // Convert the clear color format. ClearView takes
-    // the clear value for integer formats as a set of
-    // integral floats, so we'll have to convert.
-    VkClearValue        clearValue  = ConvertColorValue(Color, formatInfo);
-    VkImageAspectFlags  clearAspect = formatInfo->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
+        for (uint32_t c = 0u; c < 4u; c++)
+          planeColor[c] = c < n && component + c < 4u ? Color[c] : 0.0f;
 
-    // Clear all the rectangles that are specified
-    for (uint32_t i = 0; i < NumRects || i < 1; i++) {
-      if (NumRects) {
-        if (pRect[i].left >= pRect[i].right
-         || pRect[i].top >= pRect[i].bottom)
-          continue;
+        component += n;
+
+        // Perform the actual clear. Rects will be adjusted by called method.
+        ClearImageView(std::move(views[i]), planeColor, pRect, NumRects);
       }
 
-      if (bufView != nullptr) {
-        VkDeviceSize offset = 0;
-        VkDeviceSize length = bufView->info().size / formatInfo->elementSize;
-
-        if (NumRects) {
-          offset = pRect[i].left;
-          length = pRect[i].right - pRect[i].left;
-        }
-
-        EmitCs([
-          cBufferView   = bufView,
-          cRangeOffset  = offset,
-          cRangeLength  = length,
-          cClearValue   = clearValue
-        ] (DxvkContext* ctx) {
-          ctx->clearBufferView(
-            cBufferView,
-            cRangeOffset,
-            cRangeLength,
-            cClearValue.color);
-        });
-      }
-
-      if (imgView != nullptr) {
-        VkOffset3D offset = { 0, 0, 0 };
-        VkExtent3D extent = imgView->mipLevelExtent(0);
-
-        if (NumRects) {
-          offset = { pRect[i].left, pRect[i].top, 0 };
-          extent = {
-            uint32_t(pRect[i].right - pRect[i].left),
-            uint32_t(pRect[i].bottom - pRect[i].top), 1 };
-        }
-
-        EmitCs([
-          cImageView    = imgView,
-          cAreaOffset   = offset,
-          cAreaExtent   = extent,
-          cClearAspect  = clearAspect,
-          cClearValue   = clearValue
-        ] (DxvkContext* ctx) {
-          const VkImageUsageFlags rtUsage =
-            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-          bool isFullSize = cImageView->mipLevelExtent(0) == cAreaExtent;
-
-          if ((cImageView->info().usage & rtUsage) && isFullSize) {
-            ctx->clearRenderTarget(cImageView, cClearAspect, cClearValue, 0u);
-          } else {
-            ctx->clearImageView(cImageView, cAreaOffset, cAreaExtent,
-              cClearAspect, cClearValue);
-          }
-        });
-      }
+      // If the video view has a shadow image, copy it back to the base image
+      if (shadow)
+        SyncImage(vov->GetCommon().GetImage(), imageLayers, shadow, shadowLayers);
     }
   }
 
@@ -927,9 +878,6 @@ namespace dxvk {
         ctx->resolveImage(cDstImage, cSrcImage, region, format,
           getDefaultResolveMode(format), VK_RESOLVE_MODE_NONE);
       });
-
-      if constexpr (!IsDeferred)
-        GetTypedContext()->m_hasPendingMsaaResolve = false;
     }
 
     if (dstTextureInfo->HasSequenceNumber())
@@ -3454,13 +3402,12 @@ namespace dxvk {
         cDepthBias  = m_state.rs.state->GetDepthBias()
       ] (DxvkContext* ctx) {
         ctx->setRasterizerState(cState);
-
-        if (cState.depthBias())
-          ctx->setDepthBias(cDepthBias);
+        ctx->setDepthBias(cDepthBias);
       });
     } else {
       EmitCs([] (DxvkContext* ctx) {
         ctx->setRasterizerState(InitDefaultRasterizerState());
+        ctx->setDepthBias(DxvkDepthBias());
       });
     }
   }
@@ -3483,7 +3430,8 @@ namespace dxvk {
     EmitCs([
       cPushConstants = pc
     ] (DxvkContext* ctx) {
-      ctx->pushConstants(0, sizeof(cPushConstants), &cPushConstants);
+      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
+        0, sizeof(cPushConstants), &cPushConstants);
     });
   }
 
@@ -3705,17 +3653,13 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     for (UINT i = 0; i < m_state.om.rtvs.size(); i++) {
       if (m_state.om.rtvs[i] != nullptr) {
-        attachments.color[i] = {
-          m_state.om.rtvs[i]->GetImageView(),
-          m_state.om.rtvs[i]->GetRenderLayout() };
+        attachments.color[i].view = m_state.om.rtvs[i]->GetImageView();
         sampleCount = m_state.om.rtvs[i]->GetSampleCount();
       }
     }
 
     if (m_state.om.dsv != nullptr) {
-      attachments.depth = {
-        m_state.om.dsv->GetImageView(),
-        m_state.om.dsv->GetRenderLayout() };
+      attachments.depth.view = m_state.om.dsv->GetImageView();
       sampleCount = m_state.om.dsv->GetSampleCount();
 
       if (m_device->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
@@ -4058,6 +4002,110 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ClearImageView(
+          Rc<DxvkImageView>                 View,
+    const FLOAT                             Color[4],
+    const D3D11_RECT*                       pRects,
+          UINT                              NumRects) {
+    // 3D views are unsupported
+    if (View->info().viewType == VK_IMAGE_VIEW_TYPE_3D)
+      return;
+
+    // Convert clear value
+    auto clearValue = ConvertColorValue(Color, View->formatInfo());
+
+    VkExtent3D extent3D = View->mipLevelExtent(0);
+    VkExtent2D extent2D = { extent3D.width, extent3D.height };
+
+    // Figure out which plane we're clearing for subsampling
+    const DxvkPlaneFormatInfo* plane = nullptr;
+    auto imageFormatInfo = View->image()->formatInfo();
+
+    if (imageFormatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+      plane = &imageFormatInfo->planes[vk::getPlaneIndex(View->info().aspects)];
+
+    // Clear all non-empty rectangles
+    EmitCsCmd<VkRect2D>(D3D11CmdType::None, std::max(NumRects, 1u), [
+      cView       = std::move(View),
+      cClearValue = clearValue
+    ] (DxvkContext* ctx, const VkRect2D* rects, size_t count) {
+      constexpr VkImageUsageFlags rtUsage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      VkImageAspectFlags clearAspect = cView->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
+
+      for (size_t i = 0; i < count; i++) {
+        VkOffset3D offset = { rects[i].offset.x, rects[i].offset.y, 0 };
+        VkExtent3D extent = { rects[i].extent.width, rects[i].extent.height, 1u };
+
+        if (extent.width && extent.height) {
+          bool isFullSize = cView->mipLevelExtent(0) == extent;
+
+          if ((cView->info().usage & rtUsage) && isFullSize)
+            ctx->clearRenderTarget(cView, clearAspect, cClearValue, 0u);
+          else
+            ctx->clearImageView(cView, offset, extent, clearAspect, cClearValue);
+        }
+      }
+    });
+
+    if (NumRects) {
+      for (uint32_t i = 0; i < NumRects; i++) {
+        D3D11_RECT subsampledRect = pRects[i];
+
+        if (plane) {
+          subsampledRect.left   /= plane->blockSize.width;
+          subsampledRect.top    /= plane->blockSize.height;
+          subsampledRect.right  /= plane->blockSize.width;
+          subsampledRect.bottom /= plane->blockSize.height;
+        }
+
+        new (m_csData->at(i)) VkRect2D(ConvertRect(subsampledRect, extent2D));
+      }
+    } else {
+      auto vkRect = new (m_csData->first()) VkRect2D();
+      vkRect->offset = VkOffset2D { 0, 0 };
+      vkRect->extent = extent2D;
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ClearBufferView(
+          Rc<DxvkBufferView>                View,
+    const FLOAT                             Color[4],
+    const D3D11_RECT*                       pRects,
+          UINT                              NumRects) {
+    // Convert clear value
+    auto formatInfo = View->formatInfo();
+    auto clearValue = ConvertColorValue(Color, formatInfo);
+
+    // Just pass the rectangles through, even though we only need one dimension
+    VkExtent2D extent2D = { uint32_t(View->info().size / formatInfo->elementSize), 1u };
+
+    EmitCsCmd<VkRect2D>(D3D11CmdType::None, std::max(NumRects, 1u), [
+      cView       = std::move(View),
+      cClearValue = clearValue
+    ] (DxvkContext* ctx, const VkRect2D* rects, size_t count) {
+      for (size_t i = 0; i < count; i++) {
+        if (rects[i].extent.width) {
+          ctx->clearBufferView(cView,
+            rects[i].offset.x, rects[i].extent.width,
+            cClearValue.color);
+        }
+      }
+    });
+
+    if (NumRects) {
+      for (uint32_t i = 0; i < NumRects; i++)
+        new (m_csData->at(i)) VkRect2D(ConvertRect(pRects[i], extent2D));
+    } else {
+      auto vkRect = new (m_csData->first()) VkRect2D();
+      vkRect->offset = VkOffset2D { 0, 0 };
+      vkRect->extent = extent2D;
+    }
+  }
+
+
+  template<typename ContextType>
   VkClearValue D3D11CommonContext<ContextType>::ConvertColorValue(
     const FLOAT                             Color[4],
     const DxvkFormatInfo*                   pFormatInfo) {
@@ -4077,6 +4125,27 @@ namespace dxvk {
       result.depthStencil.stencil = 0;
     }
 
+    return result;
+  }
+
+
+  template<typename ContextType>
+  VkRect2D D3D11CommonContext<ContextType>::ConvertRect(
+          D3D11_RECT                        Rect,
+          VkExtent2D                        Extent) {
+    Rect.left   = std::max<int32_t>(Rect.left,   0);
+    Rect.top    = std::max<int32_t>(Rect.top,    0);
+    Rect.right  = std::min<int32_t>(Rect.right,  Extent.width);
+    Rect.bottom = std::min<int32_t>(Rect.bottom, Extent.height);
+
+    if (Rect.left >= Rect.right || Rect.top >= Rect.bottom)
+      return VkRect2D();
+
+    VkRect2D result = { };
+    result.offset.x = Rect.left;
+    result.offset.y = Rect.top;
+    result.extent.width = Rect.right - Rect.left;
+    result.extent.height = Rect.bottom - Rect.top;
     return result;
   }
 
@@ -4740,6 +4809,7 @@ namespace dxvk {
       ctx->setInputAssemblyState(InitDefaultPrimitiveTopology());
       ctx->setDepthStencilState(InitDefaultDepthStencilState());
       ctx->setRasterizerState(InitDefaultRasterizerState());
+      ctx->setDepthBias(DxvkDepthBias());
       ctx->setLogicOpState(InitDefaultLogicOpState());
       ctx->setMultisampleState(InitDefaultMultisampleState(D3D11_DEFAULT_SAMPLE_MASK));
 
@@ -4821,7 +4891,7 @@ namespace dxvk {
       // Initialize push constants
       DxbcPushConstants pc;
       pc.rasterizerSampleCount = 1;
-      ctx->pushConstants(0, sizeof(pc), &pc);
+      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pc), &pc);
     });
   }
 
@@ -5241,7 +5311,6 @@ namespace dxvk {
       return;
 
     bool needsUpdate = false;
-    bool isMultisampled = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -5261,9 +5330,6 @@ namespace dxvk {
 
           if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
             ResolveOmUavHazards(rtv);
-
-          if (rtv && rtv->GetSampleCount() > 1u)
-            isMultisampled = true;
         }
       }
 
@@ -5273,9 +5339,6 @@ namespace dxvk {
         m_state.om.dsv = dsv;
         needsUpdate = true;
         ResolveOmSrvHazards(dsv);
-
-        if (dsv && dsv->GetSampleCount() > 1u)
-          isMultisampled = true;
       }
 
       m_state.om.maxRtv = NumRTVs;
@@ -5320,15 +5383,8 @@ namespace dxvk {
     if (needsUpdate) {
       BindFramebuffer();
 
-      if constexpr (!IsDeferred) {
-        // Doing this makes it less likely to flush during render passes
-        auto imm = GetTypedContext();
-
-        if (!imm->m_hasPendingMsaaResolve || !m_device->perfHints().preferRenderPassOps)
-          imm->ConsiderFlush(GpuFlushType::ImplicitMediumHint);
-
-        imm->m_hasPendingMsaaResolve |= isMultisampled;
-      }
+      if constexpr (!IsDeferred)
+        GetTypedContext()->NotifyRenderPassBoundary();
     }
   }
 
@@ -5350,6 +5406,26 @@ namespace dxvk {
 
       BindDrawBuffers(argBuffer, cntBuffer);
     }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::SyncImage(
+    const Rc<DxvkImage>&                    DstImage,
+    const VkImageSubresourceLayers&         DstLayers,
+    const Rc<DxvkImage>&                    SrcImage,
+    const VkImageSubresourceLayers&         SrcLayers) {
+    EmitCs([
+      cDstImage = DstImage,
+      cDstLayers = DstLayers,
+      cSrcImage = SrcImage,
+      cSrcLayers = SrcLayers
+    ] (DxvkContext* ctx) {
+      ctx->copyImage(
+        cDstImage, cDstLayers, VkOffset3D(),
+        cSrcImage, cSrcLayers, VkOffset3D(),
+        cDstImage->mipLevelExtent(cDstLayers.mipLevel));
+    });
   }
 
 
@@ -5698,7 +5774,8 @@ namespace dxvk {
       }
 
       // Otherwise we can't really do anything fancy, so just do a GPU copy
-      context->UpdateBuffer(bufferResource, offset, length, pSrcData);
+      if (likely(length))
+        context->UpdateBuffer(bufferResource, offset, length, pSrcData);
     } else {
       D3D11CommonTexture* textureResource = GetCommonTexture(pDstResource);
 
@@ -5797,7 +5874,6 @@ namespace dxvk {
     rsState.setCullMode(VK_CULL_MODE_BACK_BIT);
     rsState.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
     rsState.setDepthClip(true);
-    rsState.setDepthBias(false);
     rsState.setConservativeMode(VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
     rsState.setSampleCount(0);
     rsState.setFlatShading(false);

@@ -21,6 +21,10 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device,
             UINT            ContextFlags);
     
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                      riid,
+            void**                      ppvObject);
+
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*         pAsync,
             void*                       pData,
@@ -89,6 +93,8 @@ namespace dxvk {
 
     // Chunk ID within the current command list
     uint64_t m_chunkId = 0ull;
+
+    D3DDestructionNotifier m_destructionNotifier;
 
     HRESULT MapBuffer(
             ID3D11Resource*               pResource,

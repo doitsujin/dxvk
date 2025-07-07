@@ -19,12 +19,12 @@ namespace dxvk {
     /** GPU command that applications are likely to synchronize
      *  with soon has been recorded into the command list */
     ImplicitStrongHint      = 2,
-    /** A render pass boundary is likely to occur and a flush
-     *  should be recorded if the command list is large enough. */
-    ImplicitMediumHint      = 3,
     /** GPU commands have been recorded and a flush should be
      *  performed if the current command list is large enough. */
-    ImplicitWeakHint        = 4,
+    ImplicitWeakHint        = 3,
+
+    /** No flush. Must be the highest enum value. */
+    None                    = ~0u
   };
 
 
@@ -39,6 +39,19 @@ namespace dxvk {
   public:
 
     GpuFlushTracker(GpuFlushType maxAllowed);
+
+    /**
+     * \brief Queries type of last missed submission request
+     *
+     * If \c considerFlush has returned \c false, the strongest request type
+     * will be tracked so that a submission can be performed as soon as the
+     * corresponding heuristic allows it.
+     * \returns Missed submission request type, or \c GpuFlushType::None if
+     *    no submission request has been missed.
+     */
+    GpuFlushType getPendingType() const {
+      return m_lastMissedType;
+    }
 
     /**
      * \brief Checks whether a context flush should be performed
@@ -72,7 +85,7 @@ namespace dxvk {
   private:
 
     GpuFlushType  m_maxType               = GpuFlushType::ImplicitWeakHint;
-    GpuFlushType  m_lastMissedType        = GpuFlushType::ImplicitWeakHint;
+    GpuFlushType  m_lastMissedType        = GpuFlushType::None;
 
     uint64_t      m_lastFlushChunkId      = 0ull;
     uint64_t      m_lastFlushSubmissionId = 0ull;

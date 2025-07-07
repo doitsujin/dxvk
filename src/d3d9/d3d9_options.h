@@ -22,6 +22,19 @@ namespace dxvk {
     int32_t customDeviceId;
     std::string customDeviceDesc;
 
+    /// Reports Nvidia GPUs running on the proprietary driver as a different
+    /// vendor (usually AMD)
+    bool hideNvidiaGpu;
+
+    /// Reports Nvidia GPUs running on NVK as a different vendor (usually AMD)
+    bool hideNvkGpu;
+
+    /// Reports AMD GPUs as a different vendor (usually Nvidia)
+    bool hideAmdGpu;
+
+    /// Reports Intel GPUs as a different vendor (usually AMD)
+    bool hideIntelGpu;
+
     /// Present interval. Overrides the value
     /// in D3DPRESENT_PARAMS used in swapchain present.
     int32_t presentInterval;
@@ -74,9 +87,6 @@ namespace dxvk {
     /// Support X4R4G4B4
     bool supportX4R4G4B4;
 
-    /// Support D16_LOCKABLE
-    bool supportD16Lockable;
-
     /// Use D32f for D24
     bool useD32forD24;
 
@@ -93,18 +103,15 @@ namespace dxvk {
     /// failing resource allocation.
     bool memoryTrackTest;
 
-    /// Support VCACHE query
-    bool supportVCache;
-
     /// Forced aspect ratio, disable other modes
     std::string forceAspectRatio;
+
+    /// Forced refresh rate, disable other modes
+    uint32_t forceRefreshRate;
 
     /// Always use a spec constant to determine sampler type (instead of just in PS 1.x)
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
-
-    /// Forces an MSAA level on the swapchain
-    int32_t forceSwapchainMSAA;
 
     /// Forces sample rate shading
     bool forceSampleRateShading;
@@ -151,6 +158,9 @@ namespace dxvk {
 
     /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
     int32_t drefScaling;
+
+    /// Enable slow sincos emulation
+    bool sincosEmulation;
 
     /// Add an extra front buffer to make GetFrontBufferData() work correctly when the swapchain only has a single buffer
     bool extraFrontbuffer;

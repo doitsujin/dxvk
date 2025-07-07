@@ -7,6 +7,7 @@
   #define DLLEXPORT
 #endif
 
+#include "../util/com/com_destruction_notifier.h"
 #include "../util/com/com_guid.h"
 #include "../util/com/com_object.h"
 #include "../util/com/com_pointer.h"

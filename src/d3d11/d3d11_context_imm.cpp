@@ -21,7 +21,8 @@ namespace dxvk {
     m_flushTracker(GetMaxFlushType(pParent, Device)),
     m_stagingBufferFence(new sync::Fence(0)),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
-    m_videoContext(this, Device) {
+    m_videoContext(this, Device),
+    m_destructionNotifier(this) {
     EmitCs([
       cDevice                 = m_device,
       cBarrierControlFlags    = pParent->GetOptionsBarrierControlFlags()
@@ -59,6 +60,11 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D11VideoContext)) {
       *ppvObject = ref(&m_videoContext);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 
@@ -1170,9 +1176,6 @@ namespace dxvk {
     // Notify the device that the context has been flushed,
     // this resets some resource initialization heuristics.
     m_parent->NotifyContextFlush();
-
-    // No point in tracking this across submissions
-    m_hasPendingMsaaResolve = false;
   }
 
 
@@ -1205,6 +1208,22 @@ namespace dxvk {
   }
 
 
+  void D3D11ImmediateContext::NotifyRenderPassBoundary() {
+    if (m_device->perfHints().preferRenderPassOps) {
+      // On tilers, we want to avoid submitting during a render pass or a sequence
+      // of render passes as much as possible, but if a submission request has been
+      // rejected before, we should do it now in order to avoid read-back delays.
+      GpuFlushType pending = m_flushTracker.getPendingType();
+
+      if (pending != GpuFlushType::None)
+        ExecuteFlush(pending, nullptr, false);
+    } else {
+      // Doing this makes it less likely to flush during render passes
+      ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+    }
+  }
+
+
   DxvkStagingBufferStats D3D11ImmediateContext::GetStagingMemoryStatistics() {
     DxvkStagingBufferStats stats = m_staging.getStatistics();
     stats.allocatedTotal += m_discardMemoryCounter;
@@ -1219,7 +1238,7 @@ namespace dxvk {
     if (pParent->GetOptions()->reproducibleCommandStream)
       return GpuFlushType::ExplicitFlush;
     else if (Device->perfHints().preferRenderPassOps)
-      return GpuFlushType::ImplicitMediumHint;
+      return GpuFlushType::ImplicitStrongHint;
     else
       return GpuFlushType::ImplicitWeakHint;
   }

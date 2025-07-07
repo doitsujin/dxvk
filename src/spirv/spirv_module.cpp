@@ -345,6 +345,20 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::constvec2u32(
+          uint32_t                x,
+          uint32_t                y) {
+    std::array<uint32_t, 2> args = {{
+      this->constu32(x), this->constu32(y),
+    }};
+
+    uint32_t scalarTypeId = this->defIntType(32, 0);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 2);
+
+    return this->constComposite(vectorTypeId, args.size(), args.data());
+  }
+
+
   uint32_t SpirvModule::constvec4u32(
           uint32_t                x,
           uint32_t                y,
@@ -805,6 +819,8 @@ namespace dxvk {
     m_typeConstDefs.putWord(resultId);
     m_typeConstDefs.putWord(typeId);
     m_typeConstDefs.putWord(length);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -825,6 +841,8 @@ namespace dxvk {
     m_typeConstDefs.putIns (spv::OpTypeRuntimeArray, 3);
     m_typeConstDefs.putWord(resultId);
     m_typeConstDefs.putWord(typeId);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -862,6 +880,8 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < memberCount; i++)
       m_typeConstDefs.putWord(memberTypes[i]);
+
+    m_uniqueTypes.insert(resultId);
     return resultId;
   }
   
@@ -915,19 +935,7 @@ namespace dxvk {
   uint32_t SpirvModule::newVar(
           uint32_t                pointerType,
           spv::StorageClass       storageClass) {
-    uint32_t resultId = this->allocateId();
-    
-    if (isInterfaceVar(storageClass))
-      m_interfaceVars.push_back(resultId);
-
-    auto& code = storageClass != spv::StorageClassFunction
-      ? m_variables : m_code;
-
-    code.putIns  (spv::OpVariable, 4);
-    code.putWord (pointerType);
-    code.putWord (resultId);
-    code.putWord (storageClass);
-    return resultId;
+    return newVarInit(pointerType, storageClass, 0u);
   }
   
   
@@ -943,11 +951,14 @@ namespace dxvk {
     auto& code = storageClass != spv::StorageClassFunction
       ? m_variables : m_code;
     
-    code.putIns  (spv::OpVariable, 5);
+    code.putIns  (spv::OpVariable, 4u + (initialValue ? 1u : 0u));
     code.putWord (pointerType);
     code.putWord (resultId);
     code.putWord (storageClass);
-    code.putWord (initialValue);
+
+    if (initialValue)
+      code.putWord(initialValue);
+
     return resultId;
   }
   
@@ -1607,7 +1618,20 @@ namespace dxvk {
     m_code.putWord(operand);
     return resultId;
   }
-  
+
+
+  uint32_t SpirvModule::opUConvert(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpUConvert, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
   
   uint32_t SpirvModule::opCompositeConstruct(
           uint32_t                resultType,
@@ -3762,6 +3786,81 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::opSinCos(
+          uint32_t                x,
+          bool                    useBuiltIn) {
+    // We only operate on 32-bit floats here
+    uint32_t floatType = defFloatType(32);
+    uint32_t resultType = defVectorType(floatType, 2u);
+
+    if (useBuiltIn) {
+      std::array<uint32_t, 2> members = { opSin(floatType, x), opCos(floatType, x) };
+      return opCompositeConstruct(resultType, members.size(), members.data());
+    } else {
+      uint32_t uintType = defIntType(32, false);
+      uint32_t sintType = defIntType(32, true);
+      uint32_t boolType = defBoolType();
+
+      // Normalize input to multiple of pi/4
+      uint32_t xNorm = opFMul(floatType, opFAbs(floatType, x), constf32(4.0 / pi));
+
+      uint32_t xTrunc = opTrunc(floatType, xNorm);
+      uint32_t xFract = opFSub(floatType, xNorm, xTrunc);
+
+      uint32_t xInt = opConvertFtoU(uintType, xTrunc);
+
+      // Mirror input along x axis as necessary
+      uint32_t mirror = opINotEqual(boolType, opBitwiseAnd(uintType, xInt, constu32(1u)), constu32(0u));
+      xFract = opSelect(floatType, mirror, opFSub(floatType, constf32(1.0f), xFract), xFract);
+
+      // Compute taylor series for fractional part
+      uint32_t xFract_2 = opFMul(floatType, xFract, xFract);
+      uint32_t xFract_4 = opFMul(floatType, xFract_2, xFract_2);
+      uint32_t xFract_6 = opFMul(floatType, xFract_4, xFract_2);
+
+      uint32_t taylor = opFMul(floatType, xFract_6, constf32(-sincosTaylorFactor(7)));
+      decorate(taylor, spv::DecorationNoContraction);
+
+      taylor = opFFma(floatType, xFract_4, constf32(sincosTaylorFactor(5)), taylor);
+      decorate(taylor, spv::DecorationNoContraction);
+
+      taylor = opFFma(floatType, xFract_2, constf32(-sincosTaylorFactor(3)), taylor);
+      decorate(taylor, spv::DecorationNoContraction);
+
+      taylor = opFAdd(floatType, constf32(sincosTaylorFactor(1)), taylor);
+      decorate(taylor, spv::DecorationNoContraction);
+
+      taylor = opFMul(floatType, taylor, xFract);
+      decorate(taylor, spv::DecorationNoContraction);
+
+      // Compute co-function based on sin^2 + cos^2 = 1
+      uint32_t coFunc = opSqrt(floatType, opFSub(floatType, constf32(1.0f), opFMul(floatType, taylor, taylor)));
+
+      // Determine whether the taylor series was used for sine or cosine and assign the correct result
+      uint32_t funcIsSin = opIEqual(boolType, opBitwiseAnd(uintType, opIAdd(uintType, xInt, constu32(1u)), constu32(2u)), constu32(0u));
+
+      uint32_t sin = opSelect(floatType, funcIsSin, taylor, coFunc);
+      uint32_t cos = opSelect(floatType, funcIsSin, coFunc, taylor);
+
+      // Determine whether sine is negative. Interpret the input as a
+      // signed integer in order to propagate signed zeroes properly.
+      uint32_t inputNeg = opSLessThan(boolType, opBitcast(sintType, x), consti32(0));
+
+      uint32_t sinNeg = opINotEqual(boolType, opBitwiseAnd(uintType, xInt, constu32(4u)), constu32(0u));
+               sinNeg = opLogicalNotEqual(boolType, sinNeg, inputNeg);
+
+      // Determine whether cosine is negative
+      uint32_t cosNeg = opINotEqual(boolType, opBitwiseAnd(uintType, opIAdd(uintType, xInt, constu32(2u)), constu32(4u)), constu32(0u));
+
+      sin = opSelect(floatType, sinNeg, opFNegate(floatType, sin), sin);
+      cos = opSelect(floatType, cosNeg, opFNegate(floatType, cos), cos);
+
+      std::array<uint32_t, 2> members = { sin, cos };
+      return opCompositeConstruct(resultType, members.size(), members.data());
+    }
+  }
+
+
   uint32_t SpirvModule::defType(
           spv::Op                 op, 
           uint32_t                argCount,
@@ -3776,7 +3875,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < argCount && match; i++)
         match &= ins.arg(2 + i) == argIds[i];
       
-      if (match)
+      if (match && m_uniqueTypes.find(ins.arg(1)) == m_uniqueTypes.end())
         return ins.arg(1);
     }
     

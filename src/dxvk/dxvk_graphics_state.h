@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_format.h"
 #include "dxvk_limits.h"
 
 #include <cstring>
@@ -219,14 +220,12 @@ namespace dxvk {
 
     DxvkRsInfo(
             VkBool32              depthClipEnable,
-            VkBool32              depthBiasEnable,
             VkPolygonMode         polygonMode,
             VkSampleCountFlags    sampleCount,
             VkConservativeRasterizationModeEXT conservativeMode,
             VkBool32              flatShading,
             VkLineRasterizationModeEXT lineMode)
     : m_depthClipEnable (uint16_t(depthClipEnable)),
-      m_depthBiasEnable (uint16_t(depthBiasEnable)),
       m_polygonMode     (uint16_t(polygonMode)),
       m_sampleCount     (uint16_t(sampleCount)),
       m_conservativeMode(uint16_t(conservativeMode)),
@@ -236,10 +235,6 @@ namespace dxvk {
     
     VkBool32 depthClipEnable() const {
       return VkBool32(m_depthClipEnable);
-    }
-
-    VkBool32 depthBiasEnable() const {
-      return VkBool32(m_depthBiasEnable);
     }
 
     VkPolygonMode polygonMode() const {
@@ -269,13 +264,12 @@ namespace dxvk {
   private:
 
     uint16_t m_depthClipEnable        : 1;
-    uint16_t m_depthBiasEnable        : 1;
     uint16_t m_polygonMode            : 2;
     uint16_t m_sampleCount            : 5;
     uint16_t m_conservativeMode       : 2;
     uint16_t m_flatShading            : 1;
     uint16_t m_lineMode               : 2;
-    uint16_t m_reserved               : 2;
+    uint16_t m_reserved               : 3;
   
   };
 
@@ -323,119 +317,6 @@ namespace dxvk {
     uint16_t m_enableAlphaToCoverage  : 1;
     uint16_t m_reserved               : 10;
     uint16_t m_sampleMask;
-
-  };
-
-
-  /**
-   * \brief Packed depth-stencil metadata
-   *
-   * Stores some flags and the depth-compare op in
-   * two bytes. Stencil ops are stored separately.
-   */
-  class DxvkDsInfo {
-
-  public:
-
-    DxvkDsInfo() = default;
-
-    DxvkDsInfo(
-            VkBool32 enableDepthTest,
-            VkBool32 enableDepthWrite,
-            VkBool32 enableDepthBoundsTest,
-            VkBool32 enableStencilTest,
-            VkCompareOp depthCompareOp)
-    : m_enableDepthTest       (uint16_t(enableDepthTest)),
-      m_enableDepthWrite      (uint16_t(enableDepthWrite)),
-      m_enableDepthBoundsTest (uint16_t(enableDepthBoundsTest)),
-      m_enableStencilTest     (uint16_t(enableStencilTest)),
-      m_depthCompareOp        (uint16_t(depthCompareOp)),
-      m_reserved              (0) { }
-    
-    VkBool32 enableDepthTest() const {
-      return VkBool32(m_enableDepthTest);
-    }
-
-    VkBool32 enableDepthWrite() const {
-      return VkBool32(m_enableDepthWrite);
-    }
-
-    VkBool32 enableDepthBoundsTest() const {
-      return VkBool32(m_enableDepthBoundsTest);
-    }
-
-    VkBool32 enableStencilTest() const {
-      return VkBool32(m_enableStencilTest);
-    }
-
-    VkCompareOp depthCompareOp() const {
-      return VkCompareOp(m_depthCompareOp);
-    }
-
-    void setEnableDepthBoundsTest(VkBool32 enableDepthBoundsTest) {
-      m_enableDepthBoundsTest = VkBool32(enableDepthBoundsTest);
-    }
-
-  private:
-
-    uint16_t m_enableDepthTest        : 1;
-    uint16_t m_enableDepthWrite       : 1;
-    uint16_t m_enableDepthBoundsTest  : 1;
-    uint16_t m_enableStencilTest      : 1;
-    uint16_t m_depthCompareOp         : 3;
-    uint16_t m_reserved               : 9;
-
-  };
-
-
-  /**
-   * \brief Packed stencil op
-   *
-   * Stores various stencil op parameters
-   * for one single face in four bytes.
-   */
-  class DxvkDsStencilOp {
-
-  public:
-
-    DxvkDsStencilOp() = default;
-
-    DxvkDsStencilOp(
-            VkStencilOp           failOp,
-            VkStencilOp           passOp,
-            VkStencilOp           depthFailOp,
-            VkCompareOp           compareOp,
-            uint8_t               compareMask,
-            uint8_t               writeMask)
-    : m_failOp      (uint32_t(failOp)),
-      m_passOp      (uint32_t(passOp)),
-      m_depthFailOp (uint32_t(depthFailOp)),
-      m_compareOp   (uint32_t(compareOp)),
-      m_reserved    (0),
-      m_compareMask (uint32_t(compareMask)),
-      m_writeMask   (uint32_t(writeMask)) { }
-    
-    VkStencilOpState state(bool write) const {
-      VkStencilOpState result;
-      result.failOp      = VkStencilOp(m_failOp);
-      result.passOp      = VkStencilOp(m_passOp);
-      result.depthFailOp = VkStencilOp(m_depthFailOp);
-      result.compareOp   = VkCompareOp(m_compareOp);
-      result.compareMask = m_compareMask;
-      result.writeMask   = write ? m_writeMask : 0;
-      result.reference   = 0;
-      return result;
-    }
-
-  private:
-
-    uint32_t m_failOp                 : 3;
-    uint32_t m_passOp                 : 3;
-    uint32_t m_depthFailOp            : 3;
-    uint32_t m_compareOp              : 3;
-    uint32_t m_reserved               : 4;
-    uint32_t m_compareMask            : 8;
-    uint32_t m_writeMask              : 8;
 
   };
 
@@ -766,16 +647,17 @@ namespace dxvk {
       return !bit::bcmpeq(this, &other);
     }
 
-    bool useDynamicStencilRef() const {
-      return ds.enableStencilTest();
-    }
-
-    bool useDynamicDepthBias() const {
-      return rs.depthBiasEnable();
+    bool useDynamicDepthTest() const {
+      return rt.getDepthStencilFormat();
     }
 
     bool useDynamicDepthBounds() const {
-      return ds.enableDepthBoundsTest();
+      return rt.getDepthStencilFormat();
+    }
+
+    bool useDynamicStencilTest() const {
+      auto format = rt.getDepthStencilFormat();
+      return format && (lookupFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT);
     }
 
     bool useDynamicVertexStrides() const {
@@ -826,12 +708,9 @@ namespace dxvk {
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
     DxvkMsInfo              ms;
-    DxvkDsInfo              ds;
     DxvkOmInfo              om;
     DxvkRtInfo              rt;
     DxvkScInfo              sc;
-    DxvkDsStencilOp         dsFront;
-    DxvkDsStencilOp         dsBack;
     DxvkOmAttachmentSwizzle omSwizzle         [DxvkLimits::MaxNumRenderTargets];
     DxvkOmAttachmentBlend   omBlend           [DxvkLimits::MaxNumRenderTargets];
     DxvkIlAttribute         ilAttributes      [DxvkLimits::MaxNumVertexAttributes];

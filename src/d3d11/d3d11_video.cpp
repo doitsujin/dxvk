@@ -12,7 +12,7 @@ namespace dxvk {
           D3D11Device*            pDevice,
     const D3D11_VIDEO_PROCESSOR_CONTENT_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorEnumerator>(pDevice),
-    m_desc(Desc) {
+    m_desc(Desc), m_destructionNotifier(this) {
 
   }
 
@@ -29,6 +29,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11VideoProcessorEnumerator)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 
@@ -119,7 +124,8 @@ namespace dxvk {
           D3D11VideoProcessorEnumerator*  pEnumerator,
           UINT                            RateConversionIndex)
   : D3D11DeviceChild<ID3D11VideoProcessor>(pDevice),
-    m_enumerator(pEnumerator), m_rateConversionIndex(RateConversionIndex) {
+    m_enumerator(pEnumerator), m_rateConversionIndex(RateConversionIndex),
+    m_destructionNotifier(this) {
 
   }
 
@@ -136,6 +142,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11VideoProcessor)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
 
@@ -162,44 +173,71 @@ namespace dxvk {
 
 
 
-  D3D11VideoProcessorInputView::D3D11VideoProcessorInputView(
+  D3D11VideoProcessorView::D3D11VideoProcessorView(
           D3D11Device*            pDevice,
           ID3D11Resource*         pResource,
-    const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC& Desc)
-  : D3D11DeviceChild<ID3D11VideoProcessorInputView>(pDevice),
-    m_resource(pResource), m_desc(Desc) {
+          DxvkImageViewKey        viewInfo)
+  : m_resource(pResource), m_image(GetCommonTexture(pResource)->GetImage()) {
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
-
-    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
 
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
     DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
 
     VkImageAspectFlags aspectMask = lookupFormatInfo(formatInfo.Format)->aspectMask;
 
-    DxvkImageViewKey viewInfo;
     viewInfo.format = formatInfo.Format;
-    viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
+    viewInfo.aspects = aspectMask;
 
-    switch (m_desc.ViewDimension) {
-      case D3D11_VPIV_DIMENSION_TEXTURE2D:
-        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
-        viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = m_desc.Texture2D.ArraySlice;
-        viewInfo.layerCount = 1;
-        break;
+    m_layers.aspectMask = aspectMask;
+    m_layers.baseArrayLayer = viewInfo.layerIndex;
+    m_layers.layerCount = viewInfo.layerCount;
+    m_layers.mipLevel = viewInfo.mipIndex;
 
-      case D3D11_VPIV_DIMENSION_UNKNOWN:
-        throw DxvkError("Invalid view dimension");
+    // Create shadow image if we know that the base image is incompatible
+    // with the required usage flags and cannot be relocated.
+    if (m_image->info().shared && (m_image->info().usage & viewInfo.usage) != viewInfo.usage) {
+      DxvkImageCreateInfo imageInfo = { };
+      imageInfo.type = m_image->info().type;
+      imageInfo.format = viewInfo.format;
+      imageInfo.sampleCount = m_image->info().sampleCount;
+      imageInfo.extent = m_image->mipLevelExtent(viewInfo.mipIndex);
+      imageInfo.numLayers = viewInfo.layerCount;
+      imageInfo.mipLevels = viewInfo.mipCount;
+      imageInfo.usage = viewInfo.usage | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+      imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+      imageInfo.debugName = "Video shadow image";
+
+      if (viewInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        imageInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      }
+
+      if (viewInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+
+        if (imageInfo.layout != VK_IMAGE_LAYOUT_GENERAL)
+          imageInfo.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      }
+
+      if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT) {
+        imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
+                        |  VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+      }
+
+      m_shadow = pDevice->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      viewInfo.layerIndex = 0u;
+      viewInfo.mipIndex = 0u;
     }
 
-    m_subresources.aspectMask = aspectMask;
-    m_subresources.baseArrayLayer = viewInfo.layerIndex;
-    m_subresources.layerCount = viewInfo.layerCount;
-    m_subresources.mipLevel = viewInfo.mipIndex;
+    if (viewInfo.usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      viewInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
       viewInfo.aspects = vk::getNextAspect(aspectMask);
@@ -207,19 +245,19 @@ namespace dxvk {
       if (viewInfo.aspects != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = dxvkImage->createView(viewInfo);
+      m_views[i] = (m_shadow ? m_shadow : m_image)->createView(viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
   }
 
 
-  D3D11VideoProcessorInputView::~D3D11VideoProcessorInputView() {
+  D3D11VideoProcessorView::~D3D11VideoProcessorView() {
 
   }
 
 
-  bool D3D11VideoProcessorInputView::IsYCbCrFormat(DXGI_FORMAT Format) {
+  bool D3D11VideoProcessorView::IsYCbCrFormat(DXGI_FORMAT Format) {
     static const std::array<DXGI_FORMAT, 3> s_formats = {{
       DXGI_FORMAT_NV12,
       DXGI_FORMAT_YUY2,
@@ -227,6 +265,23 @@ namespace dxvk {
     }};
 
     return std::find(s_formats.begin(), s_formats.end(), Format) != s_formats.end();
+  }
+
+
+
+  D3D11VideoProcessorInputView::D3D11VideoProcessorInputView(
+          D3D11Device*            pDevice,
+          ID3D11Resource*         pResource,
+    const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC& Desc)
+  : D3D11DeviceChild<ID3D11VideoProcessorInputView>(pDevice),
+    m_common(pDevice, pResource, CreateViewInfo(Desc)),
+    m_desc(Desc), m_destructionNotifier(this) {
+
+  }
+
+
+  D3D11VideoProcessorInputView::~D3D11VideoProcessorInputView() {
+
   }
 
 
@@ -241,6 +296,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorInputView), riid)) {
       Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));
@@ -252,7 +312,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D11VideoProcessorInputView::GetResource(
           ID3D11Resource**        ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = m_common.GetResource();
   }
 
 
@@ -262,47 +322,36 @@ namespace dxvk {
   }
 
 
+  DxvkImageViewKey D3D11VideoProcessorInputView::CreateViewInfo(
+    const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC& Desc) {
+    DxvkImageViewKey viewInfo = { };
+    viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    switch (Desc.ViewDimension) {
+      case D3D11_VPIV_DIMENSION_TEXTURE2D:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = Desc.Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = Desc.Texture2D.ArraySlice;
+        viewInfo.layerCount = 1;
+        break;
+
+      case D3D11_VPIV_DIMENSION_UNKNOWN:
+        throw DxvkError("Invalid view dimension");
+    }
+
+    return viewInfo;
+  }
+
 
   D3D11VideoProcessorOutputView::D3D11VideoProcessorOutputView(
           D3D11Device*            pDevice,
           ID3D11Resource*         pResource,
     const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc)
   : D3D11DeviceChild<ID3D11VideoProcessorOutputView>(pDevice),
-    m_resource(pResource), m_desc(Desc) {
-    D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
-    GetCommonResourceDesc(pResource, &resourceDesc);
+    m_common(pDevice, pResource, CreateViewInfo(Desc)),
+    m_desc(Desc), m_destructionNotifier(this) {
 
-    DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
-      resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
-
-    DxvkImageViewKey viewInfo;
-    viewInfo.format = formatInfo.Format;
-    viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(formatInfo.Swizzle);
-    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    switch (m_desc.ViewDimension) {
-      case D3D11_VPOV_DIMENSION_TEXTURE2D:
-        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.mipIndex   = m_desc.Texture2D.MipSlice;
-        viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = 0;
-        viewInfo.layerCount = 1;
-        break;
-
-      case D3D11_VPOV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.mipIndex   = m_desc.Texture2DArray.MipSlice;
-        viewInfo.mipCount   = 1;
-        viewInfo.layerIndex = m_desc.Texture2DArray.FirstArraySlice;
-        viewInfo.layerCount = m_desc.Texture2DArray.ArraySize;
-        break;
-
-      case D3D11_VPOV_DIMENSION_UNKNOWN:
-        throw DxvkError("Invalid view dimension");
-    }
-
-    m_view = GetCommonTexture(pResource)->GetImage()->createView(viewInfo);
   }
 
 
@@ -322,6 +371,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorOutputView), riid)) {
       Logger::warn("D3D11VideoProcessorOutputView::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));
@@ -333,7 +387,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D11VideoProcessorOutputView::GetResource(
           ID3D11Resource**        ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = m_common.GetResource();
   }
 
 
@@ -341,6 +395,37 @@ namespace dxvk {
           D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC* pDesc) {
     *pDesc = m_desc;
   }
+
+
+  DxvkImageViewKey D3D11VideoProcessorOutputView::CreateViewInfo(
+    const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC& Desc) {
+    DxvkImageViewKey viewInfo = { };
+    viewInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    switch (Desc.ViewDimension) {
+      case D3D11_VPOV_DIMENSION_TEXTURE2D:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.mipIndex   = Desc.Texture2D.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = 0;
+        viewInfo.layerCount = 1;
+        break;
+
+      case D3D11_VPOV_DIMENSION_TEXTURE2DARRAY:
+        viewInfo.viewType   = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.mipIndex   = Desc.Texture2DArray.MipSlice;
+        viewInfo.mipCount   = 1;
+        viewInfo.layerIndex = Desc.Texture2DArray.FirstArraySlice;
+        viewInfo.layerCount = Desc.Texture2DArray.ArraySize;
+        break;
+
+      case D3D11_VPOV_DIMENSION_UNKNOWN:
+        throw DxvkError("Invalid view dimension");
+    }
+
+    return viewInfo;
+  }
+
 
 
 
@@ -1018,28 +1103,56 @@ namespace dxvk {
     });
 
     auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
+
+    auto& outputView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetCommon();
+    auto views = outputView.GetViews();
+
     bool hasStreamsEnabled = false;
 
-    // Resetting and restoring all context state incurs
-    // a lot of overhead, so only do it as necessary
-    for (uint32_t i = 0; i < StreamCount; i++) {
-      auto streamState = videoProcessor->GetStreamState(i);
+    m_dstIsYCbCr = outputView.IsYCbCr();
 
-      if (!pStreams[i].Enable || !streamState)
+    for (uint32_t vi = 0; vi < views.size(); vi++) {
+      if (!views[vi])
         continue;
 
-      if (!hasStreamsEnabled) {
-        m_ctx->ResetDirtyTracking();
-        m_ctx->ResetCommandListState();
+      bool outputBound = false;
 
-        BindOutputView(pOutputView);
-        hasStreamsEnabled = true;
+      // Resetting and restoring all context state incurs
+      // a lot of overhead, so only do it as necessary
+      for (uint32_t i = 0; i < StreamCount; i++) {
+        auto streamState = videoProcessor->GetStreamState(i);
+
+        if (!pStreams[i].Enable || !streamState)
+          continue;
+
+        if (!hasStreamsEnabled) {
+          m_ctx->ResetDirtyTracking();
+          m_ctx->ResetCommandListState();
+
+          CopyBaseImageToShadow(outputView);
+
+          hasStreamsEnabled = true;
+        }
+
+        if (!outputBound) {
+          BindOutputView(views[vi], views[0]);
+          outputBound = true;
+        }
+
+        if (!views[1])
+          m_exportMode = ExportRGBA;
+        else if (!vi)
+          m_exportMode = ExportY;
+        else
+          m_exportMode = ExportCbCr;
+
+        BlitStream(streamState, &pStreams[i]);
       }
-
-      BlitStream(streamState, &pStreams[i]);
     }
 
     if (hasStreamsEnabled) {
+      CopyShadowToBaseImage(outputView);
+
       UnbindResources();
 
       m_ctx->RestoreCommandListState();
@@ -1179,10 +1292,18 @@ namespace dxvk {
 
 
   void D3D11VideoContext::BindOutputView(
-          ID3D11VideoProcessorOutputView* pOutputView) {
-    auto dxvkView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetView();
+          Rc<DxvkImageView>               View,
+          Rc<DxvkImageView>               FirstView) {
+    VkExtent3D viewExtent = View->mipLevelExtent(0);
+    m_dstExtent = { viewExtent.width, viewExtent.height };
 
-    m_ctx->EmitCs([this, cView = dxvkView] (DxvkContext* ctx) {
+    VkExtent3D firstExtent = FirstView->mipLevelExtent(0);
+    m_dstSizeFact[0] = (float) viewExtent.width  / (float) firstExtent.width;
+    m_dstSizeFact[1] = (float) viewExtent.height / (float) firstExtent.height;
+
+    m_ctx->EmitCs([
+      cView   = std::move(View)
+    ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1192,16 +1313,12 @@ namespace dxvk {
 
       DxvkRenderTargets rt;
       rt.color[0].view = cView;
-      rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       ctx->bindRenderTargets(std::move(rt), 0u);
 
       DxvkInputAssemblyState iaState(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, false);
       ctx->setInputAssemblyState(iaState);
     });
-
-    VkExtent3D viewExtent = dxvkView->mipLevelExtent(0);
-    m_dstExtent = { viewExtent.width, viewExtent.height };
   }
 
 
@@ -1219,13 +1336,20 @@ namespace dxvk {
     if (pStream->InputFrameOrField)
       Logger::err("D3D11VideoContext: Ignoring non-zero InputFrameOrField");
 
-    auto view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface);
+    auto& view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface)->GetCommon();
+
+    CopyBaseImageToShadow(view);
 
     m_ctx->EmitCs([this,
       cStreamState  = *pStreamState,
-      cImage        = view->GetImage(),
-      cViews        = view->GetViews(),
-      cIsYCbCr      = view->IsYCbCr()
+      cImage        = view.GetImage(),
+      cViews        = view.GetViews(),
+      cSrcIsYCbCr   = view.IsYCbCr(),
+      cDstIsYCbCr   = m_dstIsYCbCr,
+      cDstExtent    = m_dstExtent,
+      cDstSizeFactX = m_dstSizeFact[0],
+      cDstSizeFactY = m_dstSizeFact[1],
+      cExportMode   = m_exportMode
     ] (DxvkContext* ctx) {
       DxvkImageUsageInfo usage = { };
       usage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1237,20 +1361,20 @@ namespace dxvk {
       VkViewport viewport;
       viewport.x        = 0.0f;
       viewport.y        = 0.0f;
-      viewport.width    = float(m_dstExtent.width);
-      viewport.height   = float(m_dstExtent.height);
+      viewport.width    = float(cDstExtent.width);
+      viewport.height   = float(cDstExtent.height);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
 
       VkRect2D scissor;
       scissor.offset = { 0, 0 };
-      scissor.extent = m_dstExtent;
+      scissor.extent = cDstExtent;
 
       if (cStreamState.dstRectEnabled) {
-        viewport.x      = float(cStreamState.dstRect.left);
-        viewport.y      = float(cStreamState.dstRect.top);
-        viewport.width  = float(cStreamState.dstRect.right) - viewport.x;
-        viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
+        viewport.x      = cDstSizeFactX * float(cStreamState.dstRect.left);
+        viewport.y      = cDstSizeFactY * float(cStreamState.dstRect.top);
+        viewport.width  = cDstSizeFactX * float(cStreamState.dstRect.right) - viewport.x;
+        viewport.height = cDstSizeFactY * float(cStreamState.dstRect.bottom) - viewport.y;
       }
 
       VkExtent3D viewExtent = cViews[0]->mipLevelExtent(0);
@@ -1278,8 +1402,9 @@ namespace dxvk {
       uboData.yMin = 0.0f;
       uboData.yMax = 1.0f;
       uboData.isPlanar = cViews[1] != nullptr;
+      uboData.exportMode = cExportMode;
 
-      if (cIsYCbCr)
+      if (cSrcIsYCbCr && !cDstIsYCbCr)
         ApplyYCbCrMatrix(uboData.colorMatrix, cStreamState.colorSpace.YCbCr_Matrix);
 
       if (cStreamState.colorSpace.Nominal_Range) {
@@ -1315,6 +1440,40 @@ namespace dxvk {
   }
 
 
+  void D3D11VideoContext::CopyBaseImageToShadow(
+    const D3D11VideoProcessorView&        View) {
+    auto shadow = View.GetShadow();
+
+    if (!shadow)
+      return;
+
+    VkImageSubresourceLayers imageLayers = View.GetImageSubresource();
+
+    VkImageSubresourceLayers shadowLayers = { };
+    shadowLayers.aspectMask = imageLayers.aspectMask;
+    shadowLayers.layerCount = imageLayers.layerCount;
+
+    m_ctx->SyncImage(shadow, shadowLayers, View.GetImage(), imageLayers);
+  }
+
+
+  void D3D11VideoContext::CopyShadowToBaseImage(
+    const D3D11VideoProcessorView&        View) {
+    auto shadow = View.GetShadow();
+
+    if (!shadow)
+      return;
+
+    VkImageSubresourceLayers imageLayers = View.GetImageSubresource();
+
+    VkImageSubresourceLayers shadowLayers = { };
+    shadowLayers.aspectMask = imageLayers.aspectMask;
+    shadowLayers.layerCount = imageLayers.layerCount;
+
+    m_ctx->SyncImage(View.GetImage(), imageLayers, shadow, shadowLayers);
+  }
+
+
   void D3D11VideoContext::CreateUniformBuffer() {
     DxvkBufferCreateInfo bufferInfo;
     bufferInfo.size = sizeof(UboData);
@@ -1332,9 +1491,9 @@ namespace dxvk {
     SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
     const std::array<DxvkBindingInfo, 3> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_UNIFORM_READ_BIT, DxvkAccessOp::None, true },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { 0u, 0u, 0u, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_ACCESS_UNIFORM_READ_BIT, DxvkDescriptorFlag::UniformBuffer },
+      { 0u, 1u, 1u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
+      { 0u, 2u, 2u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;

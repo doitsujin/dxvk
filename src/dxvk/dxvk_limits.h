@@ -11,13 +11,18 @@ namespace dxvk {
     MaxNumXfbBuffers            =     4,
     MaxNumXfbStreams            =     4,
     MaxNumViewports             =    16,
-    MaxNumResourceSlots         =  1216,
+    MaxNumUniformBufferSlots    =   128,
+    MaxNumSamplerSlots          =   128,
+    MaxNumResourceSlots         =  1024,
     MaxNumQueuedCommandBuffers  =    32,
     MaxNumQueryCountPerPool     =   128,
     MaxNumSpecConstants         =    12,
     MaxUniformBufferSize        = 65536,
     MaxVertexBindingStride      =  2048,
-    MaxPushConstantSize         =   128,
+    MaxTotalPushDataSize        =   256,
+    MaxSharedPushDataSize       =    64,
+    MaxPerStagePushDataSize     =    32,
+    MaxReservedPushDataSize     =    32,
   };
   
 }

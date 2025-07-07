@@ -63,7 +63,9 @@ namespace dxvk {
   : m_factory (factory),
     m_adapter (adapter),
     m_interop (this),
-    m_index   (index) {
+    m_index   (index),
+    m_desc    (GetAdapterDesc()),
+    m_destructionNotifier(this) {
     
   }
   
@@ -100,6 +102,11 @@ namespace dxvk {
 
     if (riid == __uuidof(IDXGIVkInteropAdapter)) {
       *ppvObject = ref(&m_interop);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
       return S_OK;
     }
     
@@ -152,7 +159,7 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return E_INVALIDARG;
 
-    const auto& deviceId = m_adapter->devicePropertiesExt().vk11;
+    const auto& deviceId = m_adapter->deviceProperties().vk11;
 
     std::array<const LUID*, 2> adapterLUIDs = { };
     uint32_t numLUIDs = 0;
@@ -167,7 +174,7 @@ namespace dxvk {
 
     // If either LUID is not valid, enumerate all monitors.
     if (numLUIDs && linkedAdapter != nullptr) {
-      const auto& deviceId = linkedAdapter->devicePropertiesExt().vk11;
+      const auto& deviceId = linkedAdapter->deviceProperties().vk11;
 
       if (deviceId.deviceLUIDValid)
         adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
@@ -193,23 +200,16 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
 
-    DXGI_ADAPTER_DESC3 desc;
-    HRESULT hr = GetDesc3(&desc);
-    
-    if (SUCCEEDED(hr)) {
-      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
-      
-      pDesc->VendorId               = desc.VendorId;
-      pDesc->DeviceId               = desc.DeviceId;
-      pDesc->SubSysId               = desc.SubSysId;
-      pDesc->Revision               = desc.Revision;
-      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
-      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
-      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
-      pDesc->AdapterLuid            = desc.AdapterLuid;
-    }
-    
-    return hr;
+    std::memcpy(pDesc->Description, m_desc.Description, sizeof(pDesc->Description));
+    pDesc->VendorId               = m_desc.VendorId;
+    pDesc->DeviceId               = m_desc.DeviceId;
+    pDesc->SubSysId               = m_desc.SubSysId;
+    pDesc->Revision               = m_desc.Revision;
+    pDesc->DedicatedVideoMemory   = m_desc.DedicatedVideoMemory;
+    pDesc->DedicatedSystemMemory  = m_desc.DedicatedSystemMemory;
+    pDesc->SharedSystemMemory     = m_desc.SharedSystemMemory;
+    pDesc->AdapterLuid            = m_desc.AdapterLuid;
+    return S_OK;
   }
   
   
@@ -217,24 +217,17 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
 
-    DXGI_ADAPTER_DESC3 desc;
-    HRESULT hr = GetDesc3(&desc);
-    
-    if (SUCCEEDED(hr)) {
-      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
-      
-      pDesc->VendorId               = desc.VendorId;
-      pDesc->DeviceId               = desc.DeviceId;
-      pDesc->SubSysId               = desc.SubSysId;
-      pDesc->Revision               = desc.Revision;
-      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
-      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
-      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
-      pDesc->AdapterLuid            = desc.AdapterLuid;
-      pDesc->Flags                  = desc.Flags;
-    }
-    
-    return hr;
+    std::memcpy(pDesc->Description, m_desc.Description, sizeof(pDesc->Description));
+    pDesc->VendorId               = m_desc.VendorId;
+    pDesc->DeviceId               = m_desc.DeviceId;
+    pDesc->SubSysId               = m_desc.SubSysId;
+    pDesc->Revision               = m_desc.Revision;
+    pDesc->DedicatedVideoMemory   = m_desc.DedicatedVideoMemory;
+    pDesc->DedicatedSystemMemory  = m_desc.DedicatedSystemMemory;
+    pDesc->SharedSystemMemory     = m_desc.SharedSystemMemory;
+    pDesc->AdapterLuid            = m_desc.AdapterLuid;
+    pDesc->Flags                  = m_desc.Flags;
+    return S_OK;
   }
   
   
@@ -242,26 +235,19 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
 
-    DXGI_ADAPTER_DESC3 desc;
-    HRESULT hr = GetDesc3(&desc);
-    
-    if (SUCCEEDED(hr)) {
-      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
-      
-      pDesc->VendorId               = desc.VendorId;
-      pDesc->DeviceId               = desc.DeviceId;
-      pDesc->SubSysId               = desc.SubSysId;
-      pDesc->Revision               = desc.Revision;
-      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
-      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
-      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
-      pDesc->AdapterLuid            = desc.AdapterLuid;
-      pDesc->Flags                  = desc.Flags;
-      pDesc->GraphicsPreemptionGranularity = desc.GraphicsPreemptionGranularity;
-      pDesc->ComputePreemptionGranularity  = desc.ComputePreemptionGranularity;
-    }
-    
-    return hr;
+    std::memcpy(pDesc->Description, m_desc.Description, sizeof(pDesc->Description));
+    pDesc->VendorId               = m_desc.VendorId;
+    pDesc->DeviceId               = m_desc.DeviceId;
+    pDesc->SubSysId               = m_desc.SubSysId;
+    pDesc->Revision               = m_desc.Revision;
+    pDesc->DedicatedVideoMemory   = m_desc.DedicatedVideoMemory;
+    pDesc->DedicatedSystemMemory  = m_desc.DedicatedSystemMemory;
+    pDesc->SharedSystemMemory     = m_desc.SharedSystemMemory;
+    pDesc->AdapterLuid            = m_desc.AdapterLuid;
+    pDesc->Flags                  = m_desc.Flags;
+    pDesc->GraphicsPreemptionGranularity = m_desc.GraphicsPreemptionGranularity;
+    pDesc->ComputePreemptionGranularity  = m_desc.ComputePreemptionGranularity;
+    return S_OK;
   }
   
   
@@ -270,138 +256,7 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
     
-    const DxgiOptions* options = m_factory->GetOptions();
-    
-    auto deviceProp = m_adapter->deviceProperties();
-    auto memoryProp = m_adapter->memoryProperties();
-    auto vk11       = m_adapter->devicePropertiesExt().vk11;
-    auto vk12       = m_adapter->devicePropertiesExt().vk12;
-
-    // Custom Vendor / Device ID
-    if (options->customVendorId >= 0)
-      deviceProp.vendorID = options->customVendorId;
-    
-    if (options->customDeviceId >= 0)
-      deviceProp.deviceID = options->customDeviceId;
-
-    std::string description = options->customDeviceDesc.empty()
-      ? std::string(deviceProp.deviceName)
-      : options->customDeviceDesc;
-
-    if (options->customVendorId < 0) {
-      uint16_t fallbackVendor = 0xdead;
-      uint16_t fallbackDevice = 0xbeef;
-
-      if (!options->hideAmdGpu) {
-        // AMD RX 6700XT
-        fallbackVendor = uint16_t(DxvkGpuVendor::Amd);
-        fallbackDevice = 0x73df;
-      } else if (!options->hideNvidiaGpu) {
-        // Nvidia RTX 3060
-        fallbackVendor = uint16_t(DxvkGpuVendor::Nvidia);
-        fallbackDevice = 0x2487;
-      }
-
-      bool hideNvidiaGpu = vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
-        ? options->hideNvidiaGpu : options->hideNvkGpu;
-
-      bool hideGpu = (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
-                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
-                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
-
-      if (hideGpu) {
-        deviceProp.vendorID = fallbackVendor;
-
-        if (options->customDeviceId < 0)
-          deviceProp.deviceID = fallbackDevice;
-
-        Logger::info(str::format("DXGI: Hiding actual GPU, reporting vendor ID 0x", std::hex, deviceProp.vendorID, ", device ID ", deviceProp.deviceID));
-      }
-    }
-    
-    // Convert device name
-    std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-
-    str::transcodeString(pDesc->Description,
-      sizeof(pDesc->Description) / sizeof(pDesc->Description[0]) - 1,
-      description.c_str(), description.size());
-    
-    // Get amount of video memory based on the Vulkan heaps
-    VkDeviceSize deviceMemory = 0;
-    VkDeviceSize sharedMemory = 0;
-    
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
-      VkMemoryHeap heap = memoryProp.memoryHeaps[i];
-      
-      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
-        // In general we'll have one large device-local heap, and an additional
-        // smaller heap on dGPUs in case ReBAR is not supported. Assume that
-        // the largest available heap is the total amount of available VRAM.
-        deviceMemory = std::max(heap.size, deviceMemory);
-      } else {
-        // This is typically plain sysmem, don't care too much about limits here
-        sharedMemory += heap.size;
-      }
-    }
-
-    // This can happen on integrated GPUs with one memory heap, over-report
-    // here since some games may be allergic to reporting no shared memory.
-    if (!sharedMemory)
-      sharedMemory = deviceMemory;
-
-    // Some games will default to the GPU with the highest amount of dedicated memory,
-    // which can be an integrated GPU on some systems. Report available memory as shared
-    // memory and a small amount as dedicated carve-out if a dedicated GPU is present,
-    // otherwise report memory normally to not unnecessarily confuse games on Deck.
-    if ((m_adapter->isLinkedToDGPU() && deviceProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)) {
-      sharedMemory = std::max(sharedMemory, deviceMemory);
-      deviceMemory = 512ull << 20;
-    }
-
-    // Make sure to never return exact powers of two outside the 32-bit range
-    // because some games don't understand the concept of actually having VRAM
-    constexpr VkDeviceSize adjustment = 32ull << 20;
-
-    if (deviceMemory && !(deviceMemory & 0xffffffffull))
-      deviceMemory -= adjustment;
-
-    if (sharedMemory && !(sharedMemory & 0xffffffffull))
-      sharedMemory -= adjustment;
-
-    // Some games are silly and need their memory limited
-    if (options->maxDeviceMemory > 0
-     && options->maxDeviceMemory < deviceMemory)
-      deviceMemory = options->maxDeviceMemory;
-
-    if (options->maxSharedMemory > 0
-     && options->maxSharedMemory < sharedMemory)
-      sharedMemory = options->maxSharedMemory;
-
-    if (env::is32BitHostPlatform()) {
-      // The value returned by DXGI is a 32-bit value
-      // on 32-bit platforms, so we need to clamp it
-      VkDeviceSize maxMemory = 0xC0000000;
-      deviceMemory = std::min(deviceMemory, maxMemory);
-      sharedMemory = std::min(sharedMemory, maxMemory);
-    }
-    
-    pDesc->VendorId                       = deviceProp.vendorID;
-    pDesc->DeviceId                       = deviceProp.deviceID;
-    pDesc->SubSysId                       = 0;
-    pDesc->Revision                       = 0;
-    pDesc->DedicatedVideoMemory           = deviceMemory;
-    pDesc->DedicatedSystemMemory          = 0;
-    pDesc->SharedSystemMemory             = sharedMemory;
-    pDesc->AdapterLuid                    = LUID { 0, 0 };
-    pDesc->Flags                          = DXGI_ADAPTER_FLAG3_NONE;
-    pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
-    pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
-
-    if (vk11.deviceLUIDValid)
-      std::memcpy(&pDesc->AdapterLuid, vk11.deviceLUID, VK_LUID_SIZE);
-    else
-      pDesc->AdapterLuid = GetAdapterLUID(m_index);
-
+    *pDesc = m_desc;
     return S_OK;
   }
 
@@ -519,6 +374,143 @@ namespace dxvk {
 
   Rc<DxvkInstance> STDMETHODCALLTYPE DxgiAdapter::GetDXVKInstance() {
     return m_factory->GetDXVKInstance();
+  }
+
+
+  DXGI_ADAPTER_DESC3 DxgiAdapter::GetAdapterDesc() const {
+    DXGI_ADAPTER_DESC3 desc = { };
+
+    const DxgiOptions* options = m_factory->GetOptions();
+
+    auto deviceProp = m_adapter->deviceProperties();
+    auto memoryProp = m_adapter->memoryProperties();
+
+    // Custom Vendor / Device ID
+    if (options->customVendorId >= 0)
+      deviceProp.core.properties.vendorID = options->customVendorId;
+
+    if (options->customDeviceId >= 0)
+      deviceProp.core.properties.deviceID = options->customDeviceId;
+
+    std::string description = options->customDeviceDesc.empty()
+      ? std::string(deviceProp.core.properties.deviceName)
+      : options->customDeviceDesc;
+
+    if (options->customVendorId < 0) {
+      uint16_t fallbackVendor = 0xdead;
+      uint16_t fallbackDevice = 0xbeef;
+
+      if (!options->hideAmdGpu) {
+        // AMD RX 6700 XT
+        fallbackVendor = uint16_t(DxvkGpuVendor::Amd);
+        fallbackDevice = 0x73df;
+      } else if (!options->hideNvidiaGpu) {
+        // Nvidia RTX 3060
+        fallbackVendor = uint16_t(DxvkGpuVendor::Nvidia);
+        fallbackDevice = 0x2487;
+      }
+
+      bool hideNvidiaGpu = deviceProp.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+        ? options->hideNvidiaGpu : options->hideNvkGpu;
+
+      bool hideGpu = (deviceProp.core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
+                  || (deviceProp.core.properties.vendorID == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
+                  || (deviceProp.core.properties.vendorID == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
+
+      if (hideGpu) {
+        deviceProp.core.properties.vendorID = fallbackVendor;
+
+        if (options->customDeviceId < 0)
+          deviceProp.core.properties.deviceID = fallbackDevice;
+
+        Logger::info(str::format("DXGI: Hiding actual GPU, reporting:\n",
+                                 "  vendor ID: 0x", std::hex, deviceProp.core.properties.vendorID, "\n",
+                                 "  device ID: 0x", std::hex, deviceProp.core.properties.deviceID, "\n"));
+      }
+    }
+
+    // Convert device name
+    str::transcodeString(desc.Description,
+      sizeof(desc.Description) / sizeof(desc.Description[0]) - 1,
+      description.c_str(), description.size());
+
+    // Get amount of video memory based on the Vulkan heaps
+    VkDeviceSize deviceMemory = 0;
+    VkDeviceSize sharedMemory = 0;
+
+    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
+      VkMemoryHeap heap = memoryProp.memoryHeaps[i];
+
+      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+        // In general we'll have one large device-local heap, and an additional
+        // smaller heap on dGPUs in case ReBAR is not supported. Assume that
+        // the largest available heap is the total amount of available VRAM.
+        deviceMemory = std::max(heap.size, deviceMemory);
+      } else {
+        // This is typically plain sysmem, don't care too much about limits here
+        sharedMemory += heap.size;
+      }
+    }
+
+    // This can happen on integrated GPUs with one memory heap, over-report
+    // here since some games may be allergic to reporting no shared memory.
+    if (!sharedMemory)
+      sharedMemory = deviceMemory;
+
+    // Some games will default to the GPU with the highest amount of dedicated memory,
+    // which can be an integrated GPU on some systems. Report available memory as shared
+    // memory and a small amount as dedicated carve-out if a dedicated GPU is present,
+    // otherwise report memory normally to not unnecessarily confuse games on Deck.
+    if ((m_adapter->isLinkedToDGPU() && deviceProp.core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)) {
+      sharedMemory = std::max(sharedMemory, deviceMemory);
+      deviceMemory = 512ull << 20;
+    }
+
+    // Make sure to never return exact powers of two outside the 32-bit range
+    // because some games don't understand the concept of actually having VRAM
+    constexpr VkDeviceSize adjustment = 32ull << 20;
+
+    if (deviceMemory && !(deviceMemory & 0xffffffffull))
+      deviceMemory -= adjustment;
+
+    if (sharedMemory && !(sharedMemory & 0xffffffffull))
+      sharedMemory -= adjustment;
+
+    // Some games are silly and need their memory limited
+    if (options->maxDeviceMemory > 0
+     && options->maxDeviceMemory < deviceMemory)
+      deviceMemory = options->maxDeviceMemory;
+
+    if (options->maxSharedMemory > 0
+     && options->maxSharedMemory < sharedMemory)
+      sharedMemory = options->maxSharedMemory;
+
+    if (env::is32BitHostPlatform()) {
+      // The value returned by DXGI is a 32-bit value
+      // on 32-bit platforms, so we need to clamp it
+      VkDeviceSize maxMemory = 0xC0000000;
+      deviceMemory = std::min(deviceMemory, maxMemory);
+      sharedMemory = std::min(sharedMemory, maxMemory);
+    }
+
+    desc.VendorId                       = deviceProp.core.properties.vendorID;
+    desc.DeviceId                       = deviceProp.core.properties.deviceID;
+    desc.SubSysId                       = 0;
+    desc.Revision                       = 0;
+    desc.DedicatedVideoMemory           = deviceMemory;
+    desc.DedicatedSystemMemory          = 0;
+    desc.SharedSystemMemory             = sharedMemory;
+    desc.AdapterLuid                    = LUID { 0, 0 };
+    desc.Flags                          = DXGI_ADAPTER_FLAG3_NONE;
+    desc.GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
+    desc.ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
+
+    if (deviceProp.vk11.deviceLUIDValid)
+      std::memcpy(&desc.AdapterLuid, deviceProp.vk11.deviceLUID, VK_LUID_SIZE);
+    else
+      desc.AdapterLuid = GetAdapterLUID(m_index);
+
+    return desc;
   }
 
 

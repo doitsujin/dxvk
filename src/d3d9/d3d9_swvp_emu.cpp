@@ -117,6 +117,18 @@ namespace dxvk {
 
       uint32_t vec4_singular_array_t = m_module.defArrayType(vec4_t, m_module.constu32(1));
 
+      uint32_t push_const_t = m_module.defStructTypeUnique(1, &uint_t);
+      m_module.decorate(push_const_t, spv::DecorationBlock);
+      m_module.setDebugName(push_const_t, "pc_t");
+      m_module.setDebugMemberName(push_const_t, 0, "offset");
+      m_module.memberDecorateOffset(push_const_t, 0, MaxSharedPushDataSize);
+
+      uint32_t push_const_uint_ptr_t = m_module.defPointerType(uint_t, spv::StorageClassPushConstant);
+      uint32_t push_const_ptr_t = m_module.defPointerType(push_const_t, spv::StorageClassPushConstant);
+
+      uint32_t pushConst = m_module.newVar(push_const_ptr_t, spv::StorageClassPushConstant);
+      m_module.setDebugName(pushConst, "pc");
+
       // Setup the buffer
       uint32_t bufferSlot = getSWVPBufferSlot();
 
@@ -131,12 +143,12 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
+      m_bufferBinding = { };
+      m_bufferBinding.set             = 0u;
+      m_bufferBinding.binding         = bufferSlot;
+      m_bufferBinding.resourceIndex   = bufferSlot;
       m_bufferBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      m_bufferBinding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      m_bufferBinding.resourceBinding = bufferSlot;
-      m_bufferBinding.stage           = VK_SHADER_STAGE_GEOMETRY_BIT;
       m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
-      m_bufferBinding.uboSet          = VK_TRUE;
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
@@ -155,9 +167,15 @@ namespace dxvk {
 
       uint32_t vertexSize       = m_module.constu32(size / sizeof(uint32_t));
 
-      //The offset of this vertex from the beginning of the buffer
-      uint32_t thisVertexOffset = m_module.opIMul(uint_t, vertexSize, primitiveId);
+      // The offset of this vertex from the beginning of the buffer
+      uint32_t pushConstIndex = m_module.constu32(0u);
 
+      uint32_t globalOffset = m_module.opLoad(uint_t, m_module.opAccessChain(
+        push_const_uint_ptr_t, pushConst, 1, &pushConstIndex));
+               globalOffset = m_module.opShiftRightLogical(uint_t, globalOffset, m_module.constu32(2u));
+
+      uint32_t thisVertexOffset = m_module.opIMul(uint_t, vertexSize, primitiveId);
+               thisVertexOffset = m_module.opIAdd(uint_t, thisVertexOffset, globalOffset);
 
       for (uint32_t i = 0; i < elements.size(); i++) {
         const auto& element = elements[i];
@@ -292,6 +310,7 @@ namespace dxvk {
       info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
+      info.localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, sizeof(D3D9SwvpEmuArgs), 4u, 0u);
       info.inputMask = m_inputMask;
       info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 

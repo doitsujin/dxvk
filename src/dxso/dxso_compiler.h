@@ -102,10 +102,11 @@ namespace dxvk {
   struct DxsoSamplerInfo {
     uint32_t dimensions = 0;
 
-    uint32_t varId = 0;
-    uint32_t typeId = 0;
-
+    uint32_t imageVarId = 0;
     uint32_t imageTypeId = 0;
+
+    uint32_t sampledTypeId = 0u;
+    uint32_t samplerIndex = 0u;
   };
 
   enum DxsoSamplerType : uint32_t {
@@ -364,7 +365,13 @@ namespace dxvk {
     uint32_t m_specUbo = 0;
 
     uint32_t m_rsBlock = 0;
+    uint32_t m_rsFirstSampler = 0u;
+
+    uint32_t m_samplerArray = 0u;
+
     uint32_t m_mainFuncLabel = 0;
+
+    DxvkPushDataBlock m_samplerPushData;
 
     //////////////////////////////////////
     // Common function definition methods
@@ -681,7 +688,7 @@ namespace dxvk {
     void emitInputSetup();
 
     void emitVsClipping();
-    void setupRenderStateInfo();
+    void setupRenderStateInfo(uint32_t samplerCount);
     void emitFog();
     void emitPsProcessing();
     void emitOutputDepthClamp();

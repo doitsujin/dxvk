@@ -3,6 +3,8 @@
 #include "d3d9_interfaces.h"
 #include "d3d9_multithread.h"
 
+#include "../dxvk/dxvk_extension_provider.h"
+
 namespace dxvk {
 
   class D3D9InterfaceEx;
@@ -41,6 +43,7 @@ namespace dxvk {
   private:
 
     D3D9InterfaceEx* m_interface;
+    DxvkExtensionList m_extensions = { };
 
   };
 

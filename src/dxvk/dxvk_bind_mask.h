@@ -3,7 +3,7 @@
 #include <type_traits>
 
 #include "dxvk_buffer.h"
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_image.h"
 #include "dxvk_limits.h"
 #include "dxvk_sampler.h"
@@ -176,20 +176,6 @@ namespace dxvk {
         return slot;
     }
     
-  };
-
-  /**
-   * \brief Bound shader resources
-   * 
-   * Stores the resources bound to a binding
-   * slot in DXVK. These are used to create
-   * descriptor sets.
-   */
-  struct DxvkShaderResourceSlot {
-    Rc<DxvkSampler>    sampler;
-    Rc<DxvkImageView>  imageView;
-    Rc<DxvkBufferView> bufferView;
-    DxvkBufferSlice    bufferSlice;
   };
   
 }

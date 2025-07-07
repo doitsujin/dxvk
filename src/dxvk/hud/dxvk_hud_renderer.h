@@ -44,6 +44,7 @@ namespace dxvk::hud {
     VkExtent2D surfaceSize;
     float opacity;
     float scale;
+    uint32_t sampler;
   };
 
 
@@ -77,15 +78,6 @@ namespace dxvk::hud {
 
 
   /**
-   * \brief Shader module info
-   */
-  struct HudShaderModule {
-    VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
-  };
-
-
-  /**
    * \brief Text renderer for the HUD
    * 
    * Can be used by the presentation backend to
@@ -101,12 +93,12 @@ namespace dxvk::hud {
     ~HudRenderer();
 
     void beginFrame(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView,
       const HudOptions&         options);
 
     void endFrame(
-      const DxvkContextObjects& ctx);
+      const Rc<DxvkCommandList>&ctx);
 
     void drawText(
             uint32_t            size,
@@ -115,15 +107,15 @@ namespace dxvk::hud {
       const std::string&        text);
 
     void drawTextIndirect(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
-      const VkDescriptorBufferInfo& drawArgs,
-      const VkDescriptorBufferInfo& drawInfos,
-            VkBufferView        text,
+      const DxvkResourceBufferInfo& drawArgs,
+      const DxvkResourceBufferInfo& drawInfos,
+      const Rc<DxvkBufferView>& textView,
             uint32_t            drawCount);
 
     void flushDraws(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView,
       const HudOptions&         options);
 
@@ -137,12 +129,6 @@ namespace dxvk::hud {
 
     VkSpecializationInfo getSpecInfo(
       const HudSpecConstants*   constants) const;
-
-    void createShaderModule(
-            HudShaderModule&    shader,
-            VkShaderStageFlagBits stage,
-            size_t              size,
-      const uint32_t*           code) const;
 
   private:
 
@@ -159,11 +145,7 @@ namespace dxvk::hud {
     std::vector<HudTextDrawInfo>  m_textDraws;
     std::vector<char>             m_textData;
 
-    HudShaderModule         m_textVs;
-    HudShaderModule         m_textFs;
-
-    VkDescriptorSetLayout   m_textSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout        m_textPipelineLayout = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* m_textPipelineLayout = nullptr;
 
     HudPushConstants        m_pushConstants = { };
 
@@ -173,11 +155,9 @@ namespace dxvk::hud {
     void createFontResources();
 
     void uploadFontResources(
-      const DxvkContextObjects& ctx);
+      const Rc<DxvkCommandList>&ctx);
 
-    VkDescriptorSetLayout createSetLayout();
-
-    VkPipelineLayout createPipelineLayout();
+    const DxvkPipelineLayout* createPipelineLayout();
 
     VkPipeline createPipeline(
       const HudPipelineKey&     key);

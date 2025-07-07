@@ -131,12 +131,12 @@ namespace dxvk {
     VkDeviceSize            m_discardMemoryCounter = 0u;
     VkDeviceSize            m_discardMemoryOnFlush = 0u;
 
-    bool                    m_hasPendingMsaaResolve = false;
-
     D3D10Multithread        m_multithread;
     D3D11VideoContext       m_videoContext;
 
     Com<D3D11DeviceContextState, false> m_stateObject;
+
+    D3DDestructionNotifier  m_destructionNotifier;
 
     std::string             m_flushReason;
 
@@ -211,6 +211,8 @@ namespace dxvk {
 
     void ThrottleDiscard(
             VkDeviceSize                Size);
+
+    void NotifyRenderPassBoundary();
 
     DxvkStagingBufferStats GetStagingMemoryStatistics();
 

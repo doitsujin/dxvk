@@ -81,6 +81,7 @@ The `DXVK_FRAME_RATE` environment variable can be used to limit the frame rate. 
 ### Device filter
 Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
 - `DXVK_FILTER_DEVICE_NAME="Device Name"` Selects devices with a matching Vulkan device name, which can be retrieved with tools such as `vulkaninfo`. Matches on substrings, so "VEGA" or "AMD RADV VEGA10" is supported if the full device name is "AMD RADV VEGA10 (LLVM 9.0.0)", for example. If the substring matches more than one device, the first device matched will be used.
+- `DXVK_FILTER_DEVICE_UUID="00000000000000000000000000000001"` Selects a device by matching its Vulkan device UUID, which can also be retrieved using tools such as `vulkaninfo`. The UUID must be a 32-character hexadecimal string with no dashes. This method provides more precise selection, especially when using multiple identical GPUs.
 
 **Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
 
@@ -98,20 +99,7 @@ On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will 
 
 In games that load their shaders during loading screens or in the menu, this can lead to prolonged periods of very high CPU utilization, especially on weaker CPUs. For affected games it is recommended to wait for shader compilation to finish before starting the game to avoid stutter and low performance. Shader compiler activity can be monitored with `DXVK_HUD=compiler`.
 
-This feature largely replaces the state cache.
-
 **Note:** Games which only load their D3D shaders at draw time (e.g. most Unreal Engine games) will still exhibit some stutter, although it should still be less severe than without this feature.
-
-### State cache
-DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
-
-The following environment variables can be used to control the cache:
-- `DXVK_STATE_CACHE`: Controls the state cache. The following values are supported:
-  - `disable`: Disables the cache entirely.
-  - `reset`: Clears the cache file.
-- `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
-
-This feature is mostly only relevant on systems without support for `VK_EXT_graphics_pipeline_library`
 
 ## Build instructions
 

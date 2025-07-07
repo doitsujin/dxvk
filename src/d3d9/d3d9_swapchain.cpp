@@ -798,12 +798,6 @@ namespace dxvk {
 
     pPresentParams->BackBufferCount    = std::max(pPresentParams->BackBufferCount, 1u);
 
-    const int32_t forcedMSAA = m_parent->GetOptions()->forceSwapchainMSAA;
-    if (forcedMSAA != -1) {
-      pPresentParams->MultiSampleType    = D3DMULTISAMPLE_TYPE(forcedMSAA);
-      pPresentParams->MultiSampleQuality = 0;
-    }
-
     if (pPresentParams->Windowed) {
       wsi::getWindowSize(pPresentParams->hDeviceWindow,
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
@@ -834,7 +828,7 @@ namespace dxvk {
     VkResult status = VK_SUCCESS;
 
     Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-    Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
+    Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetCommonTexture()->GetSampleView(false);
 
     // Presentation semaphores and WSI swap chain image
     PresenterSync sync = { };
@@ -1031,6 +1025,7 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
+    // The texture will get sampled for presentation.
     desc.IsAttachmentOnly   = FALSE;
     // we cannot respect D3DPRESENTFLAG_LOCKABLE_BACKBUFFER here because
     // we might need to lock for the BlitGDI fallback path
@@ -1085,7 +1080,6 @@ namespace dxvk {
         }
       }
 
-      hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
       hud->addItem<hud::HudFixedFunctionShaders>("ffshaders", -1, m_parent);
       hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 
@@ -1376,6 +1370,9 @@ namespace dxvk {
 
 
   std::string D3D9SwapChainEx::GetApiName() {
+    if (this->GetParent()->Is9On12Device())
+      return this->GetParent()->IsExtended() ? "D3D9On12Ex" : "D3D9On12";
+
     return this->GetParent()->IsD3D8Compatible() ? "D3D8" :
            this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }

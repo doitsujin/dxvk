@@ -113,6 +113,8 @@ namespace dxvk {
 
     std::atomic<uint32_t> m_resetCtr = { 0u };
 
+    D3DDestructionNotifier m_destructionNotifier;
+
     UINT64 GetTimestampQueryFrequency() const;
     
   };

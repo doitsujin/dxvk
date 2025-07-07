@@ -89,6 +89,8 @@ namespace dxvk {
     Rc<DxvkImageView>                 m_imageView;
     Rc<DxvkBufferView>                m_counterView;
 
+    D3DDestructionNotifier            m_destructionNotifier;
+
     Rc<DxvkBufferView> CreateCounterBufferView();
     
   };

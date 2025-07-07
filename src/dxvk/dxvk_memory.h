@@ -6,6 +6,7 @@
 #include "dxvk_access.h"
 #include "dxvk_adapter.h"
 #include "dxvk_allocator.h"
+#include "dxvk_descriptor.h"
 #include "dxvk_hash.h"
 
 #include "../util/util_time.h"
@@ -116,6 +117,8 @@ namespace dxvk {
     VkDeviceSize maxChunkSize = MaxChunkSize;
     /// Next chunk to relocate for defragmentation
     uint32_t nextDefragChunk = ~0u;
+    /// Next chunk to evict resources from
+    uint32_t nextEvictChunk = ~0u;
 
     force_inline int64_t alloc(uint64_t size, uint64_t align) {
       if (size <= DxvkPoolAllocator::MaxSize)
@@ -144,6 +147,8 @@ namespace dxvk {
     uint32_t          memoryTypes   = 0u;
     VkDeviceSize      memoryBudget  = 0u;
     VkMemoryHeap      properties    = { };
+    bool              enforceBudget = false;
+    bool              enableEviction = false;
   };
 
 
@@ -255,8 +260,9 @@ namespace dxvk {
   struct DxvkBufferViewKey {
     /// Buffer view format
     VkFormat format = VK_FORMAT_UNDEFINED;
-    /// View usage. Must include one or both texel buffer flags.
-    VkBufferUsageFlags usage = 0u;
+    /// View usage. Must include one or both texel buffer flags for
+    /// formatted views, or the storage buffer bit for raw views.
+    VkBufferUsageFlagBits usage = VkBufferUsageFlagBits(0u);
     /// Buffer offset, in bytes
     VkDeviceSize offset = 0u;
     /// Buffer view size, in bytes
@@ -289,7 +295,8 @@ namespace dxvk {
 
     DxvkResourceBufferViewMap(
             DxvkMemoryAllocator*        allocator,
-            VkBuffer                    buffer);
+            VkBuffer                    buffer,
+            VkDeviceAddress             va);
 
     ~DxvkResourceBufferViewMap();
 
@@ -300,19 +307,19 @@ namespace dxvk {
      * \param [in] baseOffset Buffer offset
      * \returns Buffer view handle
      */
-    VkBufferView createBufferView(
+    const DxvkDescriptor* createBufferView(
       const DxvkBufferViewKey&          key,
             VkDeviceSize                baseOffset);
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device          = nullptr;
     VkBuffer          m_buffer          = VK_NULL_HANDLE;
-    bool              m_passBufferUsage = false;
+    VkDeviceAddress   m_va              = 0u;
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkBufferViewKey,
-      VkBufferView, DxvkHash, DxvkEq> m_views;
+      DxvkDescriptor, DxvkHash, DxvkEq> m_views;
 
   };
 
@@ -327,9 +334,11 @@ namespace dxvk {
     /// View type
     VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     /// View usage flags
-    VkImageUsageFlags usage = 0u;
+    VkImageUsageFlagBits usage = VkImageUsageFlagBits(0u);
     /// View format
     VkFormat format = VK_FORMAT_UNDEFINED;
+    /// Image layout that the view will be used as
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
     /// Aspect flags to include in this view
     VkImageAspectFlags aspects = 0u;
     /// First mip
@@ -348,6 +357,7 @@ namespace dxvk {
       hash.add(uint32_t(viewType));
       hash.add(uint32_t(usage));
       hash.add(uint32_t(format));
+      hash.add(uint32_t(layout));
       hash.add(uint32_t(aspects));
       hash.add(uint32_t(mipIndex) | (uint32_t(mipCount) << 16));
       hash.add(uint32_t(layerIndex) | (uint32_t(layerCount) << 16));
@@ -359,6 +369,7 @@ namespace dxvk {
       return viewType == other.viewType
           && usage == other.usage
           && format == other.format
+          && layout == other.layout
           && aspects == other.aspects
           && mipIndex == other.mipIndex
           && mipCount == other.mipCount
@@ -401,19 +412,19 @@ namespace dxvk {
      * \brief Creates an image view
      *
      * \param [in] key View properties
-     * \returns Image view handle
+     * \returns Pointer to descriptor info
      */
-    VkImageView createImageView(
+    const DxvkDescriptor* createImageView(
       const DxvkImageViewKey&           key);
 
   private:
 
-    Rc<vk::DeviceFn>  m_vkd;
+    DxvkDevice*       m_device = nullptr;
     VkImage           m_image = VK_NULL_HANDLE;
 
     dxvk::mutex       m_mutex;
     std::unordered_map<DxvkImageViewKey,
-      VkImageView, DxvkHash, DxvkEq> m_views;
+      DxvkDescriptor, DxvkHash, DxvkEq> m_views;
 
   };
 
@@ -602,7 +613,7 @@ namespace dxvk {
      * \param [in] key View properties
      * \returns Buffer view handle
      */
-    VkBufferView createBufferView(
+    const DxvkDescriptor* createBufferView(
       const DxvkBufferViewKey&          key);
 
     /**
@@ -611,7 +622,7 @@ namespace dxvk {
      * \param [in] key View properties
      * \returns Image view handle
      */
-    VkImageView createImageView(
+    const DxvkDescriptor* createImageView(
       const DxvkImageViewKey&           key);
 
   private:
@@ -961,6 +972,8 @@ namespace dxvk {
     NoAllocation    = 1,
     /// Avoid using a dedicated allocation for this resource
     NoDedicated     = 2,
+    /// Do not use device memory. Used to evict resources.
+    NoDeviceMemory  = 3,
 
     eFlagEnum
   };
@@ -1092,6 +1105,17 @@ namespace dxvk {
 
     // Minimum number of allocations we want to be able to fit into a heap
     constexpr static uint32_t MinAllocationsPerHeap = 7u;
+
+    // Minimal set of buffer usage flags to consider for global buffers
+    constexpr static VkBufferUsageFlags MinGlobalBufferUsage =
+      VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    // Possible buffer usage flags for descriptor buffers
+    constexpr static VkBufferUsageFlags DescriptorBufferUsage =
+      VK_BUFFER_USAGE_RESOURCE_DESCRIPTOR_BUFFER_BIT_EXT |
+      VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
   public:
     
     DxvkMemoryAllocator(DxvkDevice* device);
@@ -1267,6 +1291,15 @@ namespace dxvk {
      * \param [in] resource Resource to remove
      */
     void unregisterResource(
+            DxvkPagedResource*          resource);
+
+    /**
+     * \brief Requests to make a resource resident
+     *
+     * Attempts to move an evicted resource back to VRAM.
+     * \param [in] resource Resource to relocate
+     */
+    void requestMakeResident(
             DxvkPagedResource*          resource);
 
     /**
@@ -1451,8 +1484,13 @@ namespace dxvk {
     void pickDefragChunk(
             DxvkMemoryType&       type);
 
+    void evictResources(
+            DxvkMemoryType&       type);
+
     void performTimedTasksLocked(
             high_resolution_clock::time_point currentTime);
+
+    bool enableDefrag() const;
 
   };
   

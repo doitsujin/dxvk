@@ -13,12 +13,6 @@ namespace dxvk {
   struct D3D11Options {
     D3D11Options(const Config& config);
 
-    /// Zero-initialize workgroup memory
-    ///
-    /// Workargound for games that don't initialize
-    /// TGSM in compute shaders before reading it.
-    bool zeroInitWorkgroupMemory = false;
-
     /// Force thread-group shared memory accesses to be volatile
     ///
     /// Workaround for compute shaders that read and
@@ -109,6 +103,13 @@ namespace dxvk {
     /// don't change between runs. Useful for comparative benchmarking,
     /// can negatively affect performance.
     bool reproducibleCommandStream = false;
+
+    /// Whether to force a staging buffer for mapped images.
+    /// Some games are broken and ignore row pitch.
+    bool disableDirectImageMapping = false;
+
+    /// Whether to use sincos emulation
+    Tristate sincosEmulation = Tristate::Auto;
 
     /// Shader dump path
     std::string shaderDumpPath;

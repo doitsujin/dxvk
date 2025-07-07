@@ -30,8 +30,9 @@ namespace dxvk {
     /// Determines whether raw access chains are supported
     bool supportsRawAccessChains = false;
 
-    /// Clear thread-group shared memory to zero
-    bool zeroInitWorkgroupMemory = false;
+    /// Whether raw access require a normal access chain
+    /// for the binding to work properly
+    bool rawAccessChainBug = false;
 
     /// Declare vertex positions as invariant
     bool invariantPosition = false;
@@ -53,12 +54,14 @@ namespace dxvk {
     // Enable per-sample interlock if supported
     bool enableSampleShadingInterlock = false;
 
-    /// Use tightly packed arrays for immediate
-    /// constant buffers if possible
-    bool supportsTightIcbPacking = false;
-
     /// Whether exporting point size is required
-    bool needsPointSizeExport = true;
+    bool needsPointSizeExport = false;
+
+    /// Whether to enable sincos emulation
+    bool sincosEmulation = false;
+
+    /// Whether device suppors 16-bit push constants
+    bool supports16BitPushData = false;
 
     /// Float control flags
     DxbcFloatControlFlags floatControl;

@@ -15,7 +15,6 @@
 namespace dxvk {
   
   class DxvkDevice;
-  class DxvkStateCache;
   class DxvkPipelineManager;
   class DxvkPipelineWorkers;
 
@@ -225,7 +224,7 @@ namespace dxvk {
             DxvkGraphicsPipelineFlags       flags);
 
     VkPipelineDynamicStateCreateInfo  dyInfo    = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    std::array<VkDynamicState, 12>    dyStates  = { };
+    std::array<VkDynamicState, 20>    dyStates  = { };
 
     bool eq(const DxvkGraphicsPipelineDynamicState& other) const;
 
@@ -492,7 +491,6 @@ namespace dxvk {
             DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkGraphicsPipelineShaders shaders,
-            DxvkBindingLayoutObjects*   layout,
             DxvkShaderPipelineLibrary*  vsLibrary,
             DxvkShaderPipelineLibrary*  fsLibrary);
 
@@ -515,15 +513,11 @@ namespace dxvk {
     }
     
     /**
-     * \brief Pipeline layout
-     * 
-     * Stores the pipeline layout and the descriptor set
-     * layout, as well as information on the resource
-     * slots used by the pipeline.
+     * \brief Queries pipeline layout
      * \returns Pipeline layout
      */
-    DxvkBindingLayoutObjects* getBindings() const {
-      return m_bindings;
+    const DxvkPipelineBindings* getLayout() const {
+      return &m_layout;
     }
 
     /**
@@ -604,11 +598,10 @@ namespace dxvk {
     DxvkDevice*                 m_device;    
     DxvkPipelineManager*        m_manager;
     DxvkPipelineWorkers*        m_workers;
-    DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;
 
     DxvkGraphicsPipelineShaders m_shaders;
-    DxvkBindingLayoutObjects*   m_bindings;
+    DxvkPipelineBindings        m_layout;
     DxvkGlobalPipelineBarrier   m_barrier;
     DxvkGraphicsPipelineFlags   m_flags;
 
@@ -678,10 +671,9 @@ namespace dxvk {
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state,
             bool                           trusted) const;
-    
-    void writePipelineStateToCache(
-      const DxvkGraphicsPipelineStateInfo& state) const;
-    
+
+    DxvkPipelineLayoutBuilder buildPipelineLayout() const;
+
     void logPipelineState(
             LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;

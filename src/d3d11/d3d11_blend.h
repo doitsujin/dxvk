@@ -66,6 +66,8 @@ namespace dxvk {
 
     D3D10BlendState               m_d3d10;
 
+    D3DDestructionNotifier        m_destructionNotifier;
+
     static DxvkBlendMode DecodeBlendMode(
       const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc);
     

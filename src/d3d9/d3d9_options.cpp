@@ -33,14 +33,14 @@ namespace dxvk {
     const Rc<DxvkAdapter> adapter = device != nullptr ? device->adapter() : nullptr;
 
     // Fetch these as a string representing a hexadecimal number and parse it.
-    this->customVendorId        = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));
-    this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
-    this->customDeviceDesc      =            config.getOption<std::string>("d3d9.customDeviceDesc");
+    this->customVendorId                = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));
+    this->customDeviceId                = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
+    this->customDeviceDesc              = config.getOption<std::string> ("d3d9.customDeviceDesc");
 
-    const uint32_t vendorId = this->customVendorId != -1
-      ? this->customVendorId
-      : (adapter != nullptr ? adapter->deviceProperties().vendorID : 0);
-
+    this->hideNvidiaGpu                 = config.getOption<Tristate>    ("d3d9.hideNvidiaGpu",                 Tristate::Auto) == Tristate::True;
+    this->hideNvkGpu                    = config.getOption<Tristate>    ("d3d9.hideNvkGpu",                    Tristate::Auto) == Tristate::True;
+    this->hideAmdGpu                    = config.getOption<Tristate>    ("d3d9.hideAmdGpu",                    Tristate::Auto) == Tristate::True;
+    this->hideIntelGpu                  = config.getOption<Tristate>    ("d3d9.hideIntelGpu",                  Tristate::True) == Tristate::True;
     this->maxFrameLatency               = config.getOption<int32_t>     ("d3d9.maxFrameLatency",               0);
     this->maxFrameRate                  = config.getOption<int32_t>     ("d3d9.maxFrameRate",                  0);
     this->presentInterval               = config.getOption<int32_t>     ("d3d9.presentInterval",               -1);
@@ -54,16 +54,14 @@ namespace dxvk {
     this->maxAvailableMemory            = config.getOption<int32_t>     ("d3d9.maxAvailableMemory",            4096);
     this->supportDFFormats              = config.getOption<bool>        ("d3d9.supportDFFormats",              true);
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
-    this->supportD16Lockable            = config.getOption<bool>        ("d3d9.supportD16Lockable",            false);
     this->useD32forD24                  = config.getOption<bool>        ("d3d9.useD32forD24",                  false);
     this->disableA8RT                   = config.getOption<bool>        ("d3d9.disableA8RT",                   false);
     this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             true);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
-    this->supportVCache                 = config.getOption<bool>        ("d3d9.supportVCache",                 vendorId == uint32_t(DxvkGpuVendor::Nvidia));
     this->forceSamplerTypeSpecConstants = config.getOption<bool>        ("d3d9.forceSamplerTypeSpecConstants", false);
-    this->forceSwapchainMSAA            = config.getOption<int32_t>     ("d3d9.forceSwapchainMSAA",            -1);
     this->forceSampleRateShading        = config.getOption<bool>        ("d3d9.forceSampleRateShading",        false);
     this->forceAspectRatio              = config.getOption<std::string> ("d3d9.forceAspectRatio",              "");
+    this->forceRefreshRate              = config.getOption<int32_t>     ("d3d9.forceRefreshRate",              0u);
     this->enumerateByDisplays           = config.getOption<bool>        ("d3d9.enumerateByDisplays",           true);
     this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
@@ -87,19 +85,24 @@ namespace dxvk {
 
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
-      d3d9FloatEmulation = D3D9FloatEmulation::Strict;
+      this->d3d9FloatEmulation = D3D9FloatEmulation::Strict;
     } else if (floatEmulation == "false") {
-      d3d9FloatEmulation = D3D9FloatEmulation::Disabled;
+      this->d3d9FloatEmulation = D3D9FloatEmulation::Disabled;
     } else if (floatEmulation == "true") {
-      d3d9FloatEmulation = D3D9FloatEmulation::Enabled;
+      this->d3d9FloatEmulation = D3D9FloatEmulation::Enabled;
     } else {
       bool hasMulz = adapter != nullptr
                   && (adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
                    || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
                    || adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE, Version(2, 0, 316), Version())
                    || adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(565, 57, 1), Version()));
-      d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
+      this->d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
+
+    // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
+    this->sincosEmulation = adapter && (adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                                     || adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS));
+    applyTristate(this->sincosEmulation, config.getOption<Tristate>("d3d9.sincosEmulation", Tristate::Auto));
 
     this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
   }

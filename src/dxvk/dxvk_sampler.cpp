@@ -1,3 +1,4 @@
+#include "dxvk_buffer.h"
 #include "dxvk_sampler.h"
 #include "dxvk_device.h"
 
@@ -5,7 +6,8 @@ namespace dxvk {
     
   DxvkSampler::DxvkSampler(
           DxvkSamplerPool*        pool,
-    const DxvkSamplerKey&         key)
+    const DxvkSamplerKey&         key,
+          uint16_t                index)
   : m_pool(pool), m_key(key) {
     auto vk = m_pool->m_device->vkd();
 
@@ -48,21 +50,17 @@ namespace dxvk {
     if (reductionInfo.reductionMode != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE)
       reductionInfo.pNext = std::exchange(samplerInfo.pNext, &reductionInfo);
 
-    if (vk->vkCreateSampler(vk->device(),
-        &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
-      throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
+    m_descriptor = m_pool->m_descriptorHeap.createSampler(index, &samplerInfo);
   }
 
 
   DxvkSampler::~DxvkSampler() {
-    auto vk = m_pool->m_device->vkd();
-
-    vk->vkDestroySampler(vk->device(), m_sampler, nullptr);
+    m_pool->m_descriptorHeap.freeSampler(m_descriptor);
   }
 
 
   void DxvkSampler::release() {
-    m_pool->releaseSampler(this);
+    m_pool->releaseSampler(m_descriptor.samplerIndex);
   }
 
 
@@ -87,7 +85,8 @@ namespace dxvk {
     }
 
     // If custom border colors are supported, use that
-    if (m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
+    if (m_pool->m_device->features().extCustomBorderColor.customBorderColors
+     && m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
       return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
 
     // Otherwise, use the sum of absolute differences to find the
@@ -116,114 +115,323 @@ namespace dxvk {
 
 
 
-  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
-  : m_device(device) {
+  DxvkSamplerDescriptorHeap::DxvkSamplerDescriptorHeap(
+          DxvkDevice*               device,
+          uint32_t                  size)
+  : m_device(device), m_descriptorCount(size) {
+    initDescriptorLayout();
 
+    if (device->canUseDescriptorBuffer())
+      initDescriptorBuffer();
+    else
+      initDescriptorPool();
+  }
+
+
+  DxvkSamplerDescriptorHeap::~DxvkSamplerDescriptorHeap() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyDescriptorPool(vk->device(), m_legacy.pool, nullptr);
+    vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.setLayout, nullptr);
+  }
+
+
+  DxvkSamplerDescriptorSet DxvkSamplerDescriptorHeap::getDescriptorSetInfo() const {
+    DxvkSamplerDescriptorSet result = { };
+    result.set = m_legacy.set;
+    result.layout = m_legacy.setLayout;
+    return result;
+  }
+
+
+  DxvkDescriptorHeapBindingInfo DxvkSamplerDescriptorHeap::getDescriptorHeapInfo() const {
+    auto bufferInfo = m_heap.buffer->getSliceInfo();
+
+    DxvkDescriptorHeapBindingInfo result = { };
+    result.buffer = bufferInfo.buffer;
+    result.gpuAddress = bufferInfo.gpuAddress;
+    result.heapSize = m_heap.descriptorSize * m_descriptorCount;
+    result.bufferSize = bufferInfo.size;
+    return result;
+  }
+
+
+  DxvkSamplerDescriptor DxvkSamplerDescriptorHeap::createSampler(
+          uint16_t              index,
+    const VkSamplerCreateInfo*  createInfo) {
+    auto vk = m_device->vkd();
+
+    DxvkSamplerDescriptor descriptor = { };
+    descriptor.samplerIndex = index;
+
+    VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler object: ", vr));
+
+    if (m_heap.buffer) {
+      VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
+      info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+      info.data.pSampler = &descriptor.samplerObject;
+
+      vk->vkGetDescriptorEXT(vk->device(), &info, m_heap.descriptorSize,
+        m_heap.buffer->mapPtr(m_heap.descriptorOffset + m_heap.descriptorSize * index));
+    } else {
+      VkDescriptorImageInfo samplerInfo = { };
+      samplerInfo.sampler = descriptor.samplerObject;
+
+      VkWriteDescriptorSet write = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      write.dstSet = m_legacy.set;
+      write.dstArrayElement = index;
+      write.descriptorCount = 1u;
+      write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+      write.pImageInfo = &samplerInfo;
+
+      vk->vkUpdateDescriptorSets(vk->device(), 1u, &write, 0u, nullptr);
+    }
+
+    return descriptor;
+  }
+
+
+  void DxvkSamplerDescriptorHeap::freeSampler(
+          DxvkSamplerDescriptor sampler) {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroySampler(vk->device(), sampler.samplerObject, nullptr);
+  }
+
+
+  void DxvkSamplerDescriptorHeap::initDescriptorLayout() {
+    auto vk = m_device->vkd();
+
+    VkDescriptorSetLayoutBinding binding = { };
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+    binding.descriptorCount = m_descriptorCount;
+    binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT;
+
+    VkDescriptorBindingFlags bindingFlags = 0u;
+
+    if (!m_device->canUseDescriptorBuffer()) {
+      bindingFlags |= VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT
+                   |  VK_DESCRIPTOR_BINDING_UPDATE_UNUSED_WHILE_PENDING_BIT
+                   |  VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT;
+    }
+
+    VkDescriptorSetLayoutBindingFlagsCreateInfo layoutFlags = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+    layoutFlags.bindingCount = 1u;
+    layoutFlags.pBindingFlags = &bindingFlags;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, &layoutFlags };
+    layoutInfo.flags = m_device->canUseDescriptorBuffer()
+      ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT
+      : VK_DESCRIPTOR_SET_LAYOUT_CREATE_UPDATE_AFTER_BIND_POOL_BIT;
+    layoutInfo.bindingCount = 1u;
+    layoutInfo.pBindings = &binding;
+
+    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.setLayout);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler descriptor set layout: ", vr));
+  }
+
+
+  void DxvkSamplerDescriptorHeap::initDescriptorPool() {
+    auto vk = m_device->vkd();
+
+    VkDescriptorPoolSize poolSize = { };
+    poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    poolSize.descriptorCount = m_descriptorCount;
+
+    VkDescriptorPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_UPDATE_AFTER_BIND_BIT;
+    poolInfo.maxSets = 1u;
+    poolInfo.poolSizeCount = 1u;
+    poolInfo.pPoolSizes = &poolSize;
+
+    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &poolInfo, nullptr, &m_legacy.pool);
+
+    if (vr)
+      throw DxvkError(str::format("Failed to create sampler pool: ", vr));
+
+    VkDescriptorSetAllocateInfo setInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    setInfo.descriptorPool = m_legacy.pool;
+    setInfo.descriptorSetCount = 1u;
+    setInfo.pSetLayouts = &m_legacy.setLayout;
+
+    if ((vr = vk->vkAllocateDescriptorSets(vk->device(), &setInfo, &m_legacy.set)))
+      throw DxvkError(str::format("Failed to allocate sampler descriptor set: ", vr));
+  }
+
+
+  void DxvkSamplerDescriptorHeap::initDescriptorBuffer() {
+    auto vk = m_device->vkd();
+
+    DxvkBufferCreateInfo bufferInfo = { };
+    bufferInfo.usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT
+                     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferInfo.debugName = "Sampler heap";
+
+    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.setLayout, &bufferInfo.size);
+    vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.setLayout, 0u, &m_heap.descriptorOffset);
+
+    Logger::info(str::format("Creating sampler descriptor heap (", bufferInfo.size >> 10u, " kB)"));
+
+    m_heap.buffer = m_device->createBuffer(bufferInfo,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    m_heap.descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
+  }
+
+
+
+
+  DxvkSamplerPool::DxvkSamplerPool(DxvkDevice* device)
+  : m_device(device), m_descriptorHeap(device, MaxSamplerCount) {
+    // Set up LRU list as a sort-of free list to allocate fresh samplers
+    m_lruHead = 0u;
+    m_lruTail = MaxSamplerCount - 1u;
+
+    for (uint32_t i = 0u; i < MaxSamplerCount; i++) {
+      if (i)
+        m_samplers[i].lruPrev = i - 1u;
+      if (i + 1u < MaxSamplerCount)
+        m_samplers[i].lruNext = i + 1u;
+    }
+
+    // Default sampler, implicitly used for null descriptors or when creating
+    // additional samplers fails for any reason. Keep a persistent reference
+    // so that this sampler does not accidentally get recycled.
+    DxvkSamplerKey defaultKey;
+    defaultKey.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_MIPMAP_MODE_LINEAR);
+    defaultKey.setLodRange(-256.0f, 256.0f, 0.0f);
+    defaultKey.setAddressModes(
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    defaultKey.setReduction(VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE);
+
+    m_default = createSampler(defaultKey);
   }
 
 
   DxvkSamplerPool::~DxvkSamplerPool() {
-    m_samplers.clear();
+
   }
 
 
   Rc<DxvkSampler> DxvkSamplerPool::createSampler(const DxvkSamplerKey& key) {
     std::unique_lock lock(m_mutex);
-    auto entry = m_samplers.find(key);
+    auto entry = m_samplerLut.find(key);
 
-    if (entry != m_samplers.end()) {
-      DxvkSampler* sampler = &entry->second;
+    if (entry != m_samplerLut.end()) {
+      auto& sampler = m_samplers.at(entry->second);
 
       // Remove the sampler from the LRU list if it's in there. Due
       // to the way releasing samplers is implemented upon reaching
       // a ref count of 0, it is possible that we reach this before
       // the releasing thread inserted the list into the LRU list.
-      if (!sampler->m_refCount.fetch_add(1u, std::memory_order_acquire)) {
-        if (sampler->m_lruPrev)
-          sampler->m_lruPrev->m_lruNext = sampler->m_lruNext;
-        else if (m_lruHead == sampler)
-          m_lruHead = sampler->m_lruNext;
+      if (!sampler.object->m_refCount.fetch_add(1u, std::memory_order_acquire)) {
+        removeLru(sampler, entry->second);
 
-        if (sampler->m_lruNext)
-          sampler->m_lruNext->m_lruPrev = sampler->m_lruPrev;
-        else if (m_lruTail == sampler)
-          m_lruTail = sampler->m_lruPrev;
-
-        sampler->m_lruPrev = nullptr;
-        sampler->m_lruNext = nullptr;
-
-        m_samplersLive.store(m_samplersLive.load() + 1u);
+        m_samplersLive.store(m_samplersLive.load() + 1u, std::memory_order_relaxed);
       }
 
       // We already took a reference, forward the pointer as-is
-      return Rc<DxvkSampler>::unsafeCreate(sampler);
+      return Rc<DxvkSampler>::unsafeCreate(&sampler.object.value());
     }
 
-    // If we're spamming sampler allocations, we might need
-    // to clean up unused ones here to stay within the limit
-    if (m_samplers.size() >= MaxSamplerCount)
-      destroyLeastRecentlyUsedSampler();
+    // If there are no samplers we can allocate, fall back to the default
+    if (m_lruHead < 0) {
+      Logger::err("Failed to allocate sampler, using default one.");
+      return m_default;
+    }
 
-    // Create new sampler object
-    DxvkSampler* sampler = &m_samplers.emplace(std::piecewise_construct,
-      std::forward_as_tuple(key),
-      std::forward_as_tuple(this, key)).first->second;
+    // Use the least recently used sampler entry. This may be a previously
+    // unused sampler, or an object that has not yet been initialized.
+    int32_t samplerIndex = m_lruHead;
 
-    m_samplersTotal.store(m_samplers.size());
-    m_samplersLive.store(m_samplersLive.load() + 1u);
-    return sampler;
+    // Destroy existing sampler and remove the corresponding LUT entry
+    auto& sampler = m_samplers.at(samplerIndex);
+
+    if (sampler.object) {
+      m_samplerLut.erase(sampler.object->key());
+      sampler.object.reset();
+    }
+
+    removeLru(sampler, samplerIndex);
+
+    // Create new sampler object and set up the corresponding LUT entry
+    sampler.object.emplace(this, key, uint16_t(samplerIndex));
+    m_samplerLut.insert_or_assign(key, samplerIndex);
+
+    // Update statistics
+    m_samplersLive.store(m_samplersLive.load() + 1u, std::memory_order_relaxed);
+    return &sampler.object.value();
   }
 
 
-  void DxvkSamplerPool::releaseSampler(DxvkSampler* sampler) {
+  void DxvkSamplerPool::releaseSampler(int32_t index) {
     std::unique_lock lock(m_mutex);
+
+    // Always decrement live counter here since it will be incremented
+    // again whenever the sampler is reacquired.
+    m_samplersLive.store(m_samplersLive.load() - 1u);
 
     // Back off if another thread has re-aquired the sampler. This is
     // safe since the ref count can only be incremented from zero when
     // the pool is locked.
-    if (sampler->m_refCount.load())
+    auto& sampler = m_samplers.at(index);
+
+    if (sampler.object->m_refCount.load(std::memory_order_relaxed))
       return;
 
     // It is also possible that two threads end up here while the ref
     // count is zero. Make sure to not add the sampler to the LRU list
     // more than once in that case.
-    if (sampler->m_lruPrev || m_lruHead == sampler)
+    if (samplerIsInLruList(sampler, index))
       return;
 
-    // Add sampler to the end of the LRU list
-    sampler->m_lruPrev = m_lruTail;
-    sampler->m_lruNext = nullptr;
-
-    if (m_lruTail)
-      m_lruTail->m_lruNext = sampler;
-    else
-      m_lruHead = sampler;
-
-    m_lruTail = sampler;
-
-    // Don't need an atomic add for these
-    m_samplersLive.store(m_samplersLive.load() - 1u);
-
-    // Try to keep some samplers available for subsequent allocations
-    if (m_samplers.size() > MinSamplerCount)
-      destroyLeastRecentlyUsedSampler();
+    // Add sampler to the end of the LRU list, but keep the sampler
+    // object itself as well as the look-up table entry intact in
+    // case the app wants to recreate the same sampler later.
+    appendLru(sampler, index);
   }
 
 
-  void DxvkSamplerPool::destroyLeastRecentlyUsedSampler() {
-    DxvkSampler* sampler = m_lruHead;
+  void DxvkSamplerPool::appendLru(SamplerEntry& sampler, int32_t index) {
+    sampler.lruPrev = m_lruTail;
+    sampler.lruNext = -1;
 
-    if (sampler) {
-      m_lruHead = sampler->m_lruNext;
+    if (m_lruTail >= 0)
+      m_samplers.at(m_lruTail).lruNext = index;
+    else
+      m_lruHead = index;
 
-      if (m_lruHead)
-        m_lruHead->m_lruPrev = nullptr;
-      else
-        m_lruTail = nullptr;
+    m_lruTail = index;
+  }
 
-      m_samplers.erase(sampler->key());
-      m_samplersTotal.store(m_samplers.size());
-    }
+
+  void DxvkSamplerPool::removeLru(SamplerEntry& sampler, int32_t index) {
+    if (sampler.lruPrev >= 0)
+      m_samplers.at(sampler.lruPrev).lruNext = sampler.lruNext;
+    else if (m_lruHead == index)
+      m_lruHead = sampler.lruNext;
+
+    if (sampler.lruNext >= 0)
+      m_samplers.at(sampler.lruNext).lruPrev = sampler.lruPrev;
+    else if (m_lruTail == index)
+      m_lruTail = sampler.lruPrev;
+
+    sampler.lruPrev = -1;
+    sampler.lruNext = -1;
+  }
+
+
+  bool DxvkSamplerPool::samplerIsInLruList(SamplerEntry& sampler, int32_t index) const {
+    return sampler.lruPrev >= 0 || m_lruHead == index;
   }
 
 }

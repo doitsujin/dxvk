@@ -1899,12 +1899,6 @@ namespace dxvk {
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
     const Rc<DxvkInstance>& Instance,
     const Rc<DxvkAdapter>&  Adapter) {
-    // Check whether baseline features are supported by the device    
-    DxvkDeviceFeatures features = GetDeviceFeatures(Adapter);
-    
-    if (!Adapter->checkFeatureSupport(features))
-      return D3D_FEATURE_LEVEL();
-
     // The feature level override always takes precedence
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
       { "12_1", D3D_FEATURE_LEVEL_12_1 },
@@ -1930,84 +1924,6 @@ namespace dxvk {
 
     // Otherwise, check the actually available device features
     return D3D11DeviceFeatures::GetMaxFeatureLevel(Instance, Adapter);
-  }
-  
-  
-  DxvkDeviceFeatures D3D11Device::GetDeviceFeatures(
-    const Rc<DxvkAdapter>&  Adapter) {
-    DxvkDeviceFeatures supported = Adapter->features();
-    DxvkDeviceFeatures enabled   = {};
-
-    // Required for feature level 10_1
-    enabled.core.features.depthBiasClamp                          = VK_TRUE;
-    enabled.core.features.depthClamp                              = VK_TRUE;
-    enabled.core.features.dualSrcBlend                            = VK_TRUE;
-    enabled.core.features.fillModeNonSolid                        = VK_TRUE;
-    enabled.core.features.fullDrawIndexUint32                     = VK_TRUE;
-    enabled.core.features.geometryShader                          = VK_TRUE;
-    enabled.core.features.imageCubeArray                          = VK_TRUE;
-    enabled.core.features.independentBlend                        = VK_TRUE;
-    enabled.core.features.multiViewport                           = VK_TRUE;
-    enabled.core.features.occlusionQueryPrecise                   = VK_TRUE;
-    enabled.core.features.pipelineStatisticsQuery                 = supported.core.features.pipelineStatisticsQuery;
-    enabled.core.features.sampleRateShading                       = VK_TRUE;
-    enabled.core.features.samplerAnisotropy                       = supported.core.features.samplerAnisotropy;
-    enabled.core.features.shaderClipDistance                      = VK_TRUE;
-    enabled.core.features.shaderCullDistance                      = VK_TRUE;
-    enabled.core.features.shaderImageGatherExtended               = VK_TRUE;
-    enabled.core.features.textureCompressionBC                    = VK_TRUE;
-
-    enabled.vk12.samplerMirrorClampToEdge                         = VK_TRUE;
-
-    enabled.vk13.shaderDemoteToHelperInvocation                   = VK_TRUE;
-
-    enabled.extCustomBorderColor.customBorderColors               = supported.extCustomBorderColor.customBorderColorWithoutFormat;
-    enabled.extCustomBorderColor.customBorderColorWithoutFormat   = supported.extCustomBorderColor.customBorderColorWithoutFormat;
-
-    enabled.extTransformFeedback.transformFeedback                = VK_TRUE;
-    enabled.extTransformFeedback.geometryStreams                  = VK_TRUE;
-
-    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
-    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
-
-    // Required for Feature Level 11_0
-    enabled.core.features.drawIndirectFirstInstance               = supported.core.features.drawIndirectFirstInstance;
-    enabled.core.features.fragmentStoresAndAtomics                = supported.core.features.fragmentStoresAndAtomics;
-    enabled.core.features.tessellationShader                      = supported.core.features.tessellationShader;
-
-    // Required for Feature Level 11_1
-    enabled.core.features.logicOp                                 = supported.core.features.logicOp;
-    enabled.core.features.vertexPipelineStoresAndAtomics          = supported.core.features.vertexPipelineStoresAndAtomics;
-
-    // Required for Feature Level 12_0
-    enabled.core.features.sparseBinding                           = supported.core.features.sparseBinding;
-    enabled.core.features.sparseResidencyBuffer                   = supported.core.features.sparseResidencyBuffer;
-    enabled.core.features.sparseResidencyImage2D                  = supported.core.features.sparseResidencyImage2D;
-    enabled.core.features.sparseResidencyImage3D                  = supported.core.features.sparseResidencyImage3D;
-    enabled.core.features.sparseResidency2Samples                 = supported.core.features.sparseResidency2Samples;
-    enabled.core.features.sparseResidency4Samples                 = supported.core.features.sparseResidency4Samples;
-    enabled.core.features.sparseResidency8Samples                 = supported.core.features.sparseResidency8Samples;
-    enabled.core.features.sparseResidency16Samples                = supported.core.features.sparseResidency16Samples;
-    enabled.core.features.sparseResidencyAliased                  = supported.core.features.sparseResidencyAliased;
-    enabled.core.features.shaderResourceResidency                 = supported.core.features.shaderResourceResidency;
-    enabled.core.features.shaderResourceMinLod                    = supported.core.features.shaderResourceMinLod;
-    enabled.vk12.samplerFilterMinmax                              = supported.vk12.samplerFilterMinmax;
-
-    // Required for Feature Level 12_1
-    enabled.extFragmentShaderInterlock.fragmentShaderSampleInterlock = supported.extFragmentShaderInterlock.fragmentShaderSampleInterlock;
-    enabled.extFragmentShaderInterlock.fragmentShaderPixelInterlock  = supported.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
-
-    // Optional in any feature level
-    enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
-    enabled.core.features.shaderFloat64                           = supported.core.features.shaderFloat64;
-    enabled.core.features.shaderInt64                             = supported.core.features.shaderInt64;
-
-    // Depth bias control
-    enabled.extDepthBiasControl.depthBiasControl                                = supported.extDepthBiasControl.depthBiasControl;
-    enabled.extDepthBiasControl.depthBiasExact                                  = supported.extDepthBiasControl.depthBiasExact;
-    enabled.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation = supported.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation;
-
-    return enabled;
   }
   
   
@@ -2466,6 +2382,38 @@ namespace dxvk {
   }
 
 
+  bool D3D11Device::LockImage(
+    const Rc<DxvkImage>&            Image,
+          VkImageUsageFlags         Usage) {
+    bool feedback = false;
+
+    auto chunk = AllocCsChunk(DxvkCsChunkFlag::SingleUse);
+
+    chunk->push([
+      cImage  = Image,
+      cUsage  = Usage,
+      &feedback
+    ] (DxvkContext* ctx) {
+      DxvkImageUsageInfo usageInfo;
+      usageInfo.usage = cUsage;
+      usageInfo.stableGpuAddress = VK_TRUE;
+
+      feedback = ctx->ensureImageCompatibility(cImage, usageInfo);
+    });
+
+    m_context->InjectCsChunk(DxvkCsQueue::HighPriority, std::move(chunk), true);
+
+    if (!feedback) {
+      Logger::err(str::format("Failed to lock image:"
+        "\n  Image format:  ", Image->info().format,
+        "\n  Image usage:   ", std::hex, Image->info().usage,
+        "\n  Desired usage: ", std::hex, Usage));
+    }
+
+    return feedback;
+  }
+
+
 
   D3D11DeviceExt::D3D11DeviceExt(
           D3D11DXGIDevice*        pContainer,
@@ -2514,8 +2462,7 @@ namespace dxvk {
         return deviceFeatures.nvxImageViewHandle;
 
       case D3D11_VK_NVX_BINARY_IMPORT:
-        return deviceFeatures.nvxBinaryImport
-            && deviceFeatures.vk12.bufferDeviceAddress;
+        return deviceFeatures.nvxBinaryImport;
 
       default:
         return false;
@@ -2548,7 +2495,7 @@ namespace dxvk {
 
     VkImageViewHandleInfoNVX imageViewHandleInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_HANDLE_INFO_NVX };
     imageViewHandleInfo.imageView = pIV->handle();
-    imageViewHandleInfo.sampler = pDSS->handle();
+    imageViewHandleInfo.sampler = pDSS->getDescriptor().samplerObject;
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
     // note: there's no implicit lifetime management here; it's up to the
@@ -2655,7 +2602,7 @@ namespace dxvk {
       Rc<DxvkBuffer> dxvkBuffer = GetCommonBuffer(pResource)->GetBuffer();
       LockBuffer(dxvkBuffer);
 
-      *gpuVAStart = dxvkBuffer->gpuAddress();
+      *gpuVAStart = dxvkBuffer->getSliceInfo().gpuAddress;
       *gpuVASize = dxvkBuffer->info().size;
     } else {
       Logger::warn(str::format("GetResourceHandleGPUVirtualAddressAndSize(): Unsupported resource type: ", resourceDesc.Dim));
@@ -2813,32 +2760,7 @@ namespace dxvk {
     if (!Image->canRelocate() && (Image->info().usage & Usage))
       return true;
 
-    bool feedback = false;
-
-    auto chunk = m_device->AllocCsChunk(DxvkCsChunkFlag::SingleUse);
-
-    chunk->push([
-      cImage  = Image,
-      cUsage  = Usage,
-      &feedback
-    ] (DxvkContext* ctx) {
-      DxvkImageUsageInfo usageInfo;
-      usageInfo.usage = cUsage;
-      usageInfo.stableGpuAddress = VK_TRUE;
-
-      feedback = ctx->ensureImageCompatibility(cImage, usageInfo);
-    });
-
-    m_device->GetContext()->InjectCsChunk(DxvkCsQueue::HighPriority, std::move(chunk), true);
-
-    if (!feedback) {
-      Logger::err(str::format("Failed to lock image:"
-        "\n  Image format:  ", Image->info().format,
-        "\n  Image usage:   ", std::hex, Image->info().usage,
-        "\n  Desired usage: ", std::hex, Usage));
-    }
-
-    return feedback;
+    return m_device->LockImage(Image, Usage);
   }
 
 
@@ -3355,7 +3277,8 @@ namespace dxvk {
     m_d3d11Reflex   (this, &m_d3d11Device),
     m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
     m_metaDevice    (this),
-    m_dxvkFactory   (this, &m_d3d11Device) {
+    m_dxvkFactory   (this, &m_d3d11Device),
+    m_destructionNotifier(this) {
 
   }
   
@@ -3442,6 +3365,11 @@ namespace dxvk {
       Com<ID3D11DeviceContext> context;
       m_d3d11Device.GetImmediateContext(&context);
       return context->QueryInterface(riid, ppvObject);
+    }
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
     }
 
     if (riid == __uuidof(ID3D11Debug))

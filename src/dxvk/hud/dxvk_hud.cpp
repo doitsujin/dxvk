@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 
 #include "dxvk_hud.h"
@@ -40,7 +41,7 @@ namespace dxvk::hud {
 
 
   void Hud::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView) {
     if (empty())
       return;

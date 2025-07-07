@@ -45,7 +45,6 @@ namespace dxvk {
         return chunkCount >= m_minChunkCount;
       }
 
-      case GpuFlushType::ImplicitMediumHint:
       case GpuFlushType::ImplicitWeakHint: {
         // Aim for a higher number of chunks per submission with
         // a weak hint in order to avoid submitting too often.
@@ -69,6 +68,9 @@ namespace dxvk {
         uint32_t threshold = std::min(m_maxChunkCount.load(), pendingSubmissions * m_minChunkCount.load());
         return chunkCount >= threshold;
       }
+
+      case GpuFlushType::None:
+        return false;
     }
 
     // Should be unreachable
@@ -79,7 +81,7 @@ namespace dxvk {
   void GpuFlushTracker::notifyFlush(
           uint64_t              chunkId,
           uint64_t              submissionId) {
-    m_lastMissedType = GpuFlushType::ImplicitWeakHint;
+    m_lastMissedType = GpuFlushType::None;
 
     m_lastFlushChunkId = chunkId;
     m_lastFlushSubmissionId = submissionId;

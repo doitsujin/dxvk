@@ -11,8 +11,8 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
           DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&allocator),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
@@ -27,6 +27,9 @@ namespace dxvk {
       m_info.debugName = nullptr;
     }
 
+    // Unconditionally enable BDA usage
+    m_info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+
     // Create and assign actual buffer resource
     assignStorage(allocateStorage());
   }
@@ -38,8 +41,8 @@ namespace dxvk {
     const DxvkBufferImportInfo& importInfo,
           DxvkMemoryAllocator&  allocator,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd           (device->vkd()),
-    m_allocator     (&allocator),
+  : DxvkPagedResource(allocator),
+    m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_sharingMode   (device->getSharingMode()),
@@ -134,6 +137,24 @@ namespace dxvk {
 
   std::string DxvkBuffer::createDebugName(const char* name) const {
     return str::format(vk::isValidDebugName(name) ? name : "Buffer", " (", cookie(), ")");
+  }
+
+
+
+
+  void DxvkBufferView::updateViews() {
+    if (likely(m_key.format))
+      m_formatted = m_buffer->m_storage->createBufferView(m_key);
+
+    if (likely(m_buffer->info().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
+      DxvkBufferViewKey rawKey = m_key;
+      rawKey.format = VK_FORMAT_UNDEFINED;
+      rawKey.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+      m_raw = m_buffer->m_storage->createBufferView(rawKey);
+    }
+
+    m_version = m_buffer->m_version;
   }
 
 }

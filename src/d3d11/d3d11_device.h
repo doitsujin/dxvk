@@ -471,13 +471,14 @@ namespace dxvk {
 
     bool Is11on12Device() const;
 
+    bool LockImage(
+      const Rc<DxvkImage>&            Image,
+            VkImageUsageFlags         Usage);
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
     
-    static DxvkDeviceFeatures GetDeviceFeatures(
-      const Rc<DxvkAdapter>&  Adapter);
-
     DxvkBarrierControlFlags GetOptionsBarrierControlFlags() {
       DxvkBarrierControlFlags barrierControl = 0u;
 
@@ -987,6 +988,8 @@ namespace dxvk {
     DXGIDXVKDevice      m_metaDevice;
     
     DXGIVkSwapChainFactory   m_dxvkFactory;
+
+    D3DDestructionNotifier   m_destructionNotifier;
     
     uint32_t m_frameLatency = DefaultFrameLatency;
 

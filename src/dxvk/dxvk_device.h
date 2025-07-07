@@ -5,7 +5,6 @@
 #include "dxvk_compute.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
-#include "dxvk_extensions.h"
 #include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
@@ -268,6 +267,14 @@ namespace dxvk {
     bool mustTrackPipelineLifetime() const;
 
     /**
+     * \brief Checks whether descriptor buffers can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseDescriptorBuffer() const {
+      return m_features.extDescriptorBuffer.descriptorBuffer;
+    }
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */
@@ -388,6 +395,43 @@ namespace dxvk {
     Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
+     * \brief Creates built-in pipeline layout
+     *
+     * \param [in] flags Pipeline layout flags
+     * \param [in] pushDataStages Push data stage mask
+     * \param [in] pushDataSize Push data size
+     * \param [in] bindingCount Number of resource bindings
+     * \param [in] bindings Resource bindings
+     * \returns Unique pipeline layout
+     */
+    const DxvkPipelineLayout* createBuiltInPipelineLayout(
+            DxvkPipelineLayoutFlags         flags,
+            VkShaderStageFlags              pushDataStages,
+            VkDeviceSize                    pushDataSize,
+            uint32_t                        bindingCount,
+      const DxvkDescriptorSetLayoutBinding* bindings);
+
+    /**
+     * \brief Creates built-in compute pipeline
+     *
+     * \param [in] layout Pipeline layout
+     * \param [in] stage Shader stage info
+     */
+    VkPipeline createBuiltInComputePipeline(
+      const DxvkPipelineLayout*             layout,
+      const util::DxvkBuiltInShaderStage&   stage);
+
+    /**
+     * \brief Creates built-in graphics pipeline
+     *
+     * \param [in] layout Pipeline layout
+     * \param [in] state Pipeline state
+     */
+    VkPipeline createBuiltInGraphicsPipeline(
+      const DxvkPipelineLayout*             layout,
+      const util::DxvkBuiltInGraphicsState& state);
+
+    /**
      * \brief Imports a buffer
      *
      * \param [in] createInfo Buffer create info
@@ -440,11 +484,36 @@ namespace dxvk {
     DxvkSharedAllocationCacheStats getMemoryAllocationStats(DxvkMemoryAllocationStats& stats);
 
     /**
+     * \brief Queries descriptor properties
+     *
+     * And null descriptors.
+     */
+    const DxvkDescriptorProperties& getDescriptorProperties() {
+      return m_objects.descriptors();
+    }
+
+    /**
      * \brief Queries sampler statistics
      * \returns Sampler stats
      */
     DxvkSamplerStats getSamplerStats() {
       return m_objects.samplerPool().getStats();
+    }
+
+    /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkSamplerDescriptorSet getSamplerDescriptorSet() {
+      return m_objects.samplerPool().getDescriptorSetInfo();
+    }
+
+    /**
+     * \brief Queries sampler descriptor set
+     * \returns Global sampler set and layout
+     */
+    DxvkDescriptorHeapBindingInfo getSamplerDescriptorHeap() {
+      return m_objects.samplerPool().getDescriptorHeapInfo();
     }
 
     /**

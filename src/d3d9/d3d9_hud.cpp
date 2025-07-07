@@ -2,33 +2,6 @@
 
 namespace dxvk::hud {
 
-  HudSamplerCount::HudSamplerCount(D3D9DeviceEx* device)
-    : m_device       (device)
-    , m_samplerCount ("0"){
-
-  }
-
-
-  void HudSamplerCount::update(dxvk::high_resolution_clock::time_point time) {
-    DxvkSamplerStats stats = m_device->GetDXVKDevice()->getSamplerStats();
-    m_samplerCount = str::format(stats.totalCount);
-  }
-
-
-  HudPos HudSamplerCount::render(
-    const DxvkContextObjects& ctx,
-    const HudPipelineKey&     key,
-    const HudOptions&         options,
-          HudRenderer&        renderer,
-          HudPos              position) {
-    position.y += 16;
-    renderer.drawText(16, position, 0xffc0ff00u, "Samplers:");
-    renderer.drawText(16, { position.x + 120, position.y }, 0xffffffffu, m_samplerCount);
-
-    position.y += 8;
-    return position;
-  }
-
   HudTextureMemory::HudTextureMemory(D3D9DeviceEx* device)
   : m_device          (device)
   , m_allocatedString ("")
@@ -57,7 +30,7 @@ namespace dxvk::hud {
 
 
   HudPos HudTextureMemory::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -89,7 +62,7 @@ namespace dxvk::hud {
 
 
   HudPos HudFixedFunctionShaders::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
@@ -127,7 +100,7 @@ namespace dxvk::hud {
 
 
   HudPos HudSWVPState::render(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,

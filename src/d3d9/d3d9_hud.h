@@ -6,32 +6,6 @@
 namespace dxvk::hud {
 
   /**
-   * \brief HUD item to display sampler count
-   */
-  class HudSamplerCount : public HudItem {
-
-  public:
-
-    HudSamplerCount(D3D9DeviceEx* device);
-
-    void update(dxvk::high_resolution_clock::time_point time);
-
-    HudPos render(
-      const DxvkContextObjects& ctx,
-      const HudPipelineKey&     key,
-      const HudOptions&         options,
-            HudRenderer&        renderer,
-            HudPos              position);
-
-  private:
-
-    D3D9DeviceEx* m_device;
-
-    std::string m_samplerCount;
-
-  };
-
-  /**
    * \brief HUD item to display unmappable memory
    */
   class HudTextureMemory : public HudItem {
@@ -43,7 +17,7 @@ namespace dxvk::hud {
     void update(dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
             HudRenderer&        renderer,
@@ -78,7 +52,7 @@ namespace dxvk::hud {
     void update(dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
             HudRenderer&        renderer,
@@ -105,7 +79,7 @@ namespace dxvk::hud {
     void update(dxvk::high_resolution_clock::time_point time);
 
     HudPos render(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const HudPipelineKey&     key,
       const HudOptions&         options,
             HudRenderer&        renderer,

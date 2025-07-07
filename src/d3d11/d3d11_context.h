@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <type_traits>
 #include <vector>
 
@@ -918,10 +919,26 @@ namespace dxvk {
             UINT                              Slot,
             D3D11UnorderedAccessView*         pUav);
 
+    void ClearImageView(
+            Rc<DxvkImageView>                 View,
+      const FLOAT                             Color[4],
+      const D3D11_RECT*                       pRects,
+            UINT                              NumRects);
+
+    void ClearBufferView(
+            Rc<DxvkBufferView>                View,
+      const FLOAT                             Color[4],
+      const D3D11_RECT*                       pRects,
+            UINT                              NumRects);
+
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
       const DxvkFormatInfo*                   pFormatInfo);
-    
+
+    VkRect2D ConvertRect(
+            D3D11_RECT                        Rect,
+            VkExtent2D                        Extent);
+
     void CopyBuffer(
             D3D11Buffer*                      pDstBuffer,
             VkDeviceSize                      DstOffset,
@@ -1089,6 +1106,12 @@ namespace dxvk {
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
+
+    void SyncImage(
+      const Rc<DxvkImage>&                    DstImage,
+      const VkImageSubresourceLayers&         DstLayers,
+      const Rc<DxvkImage>&                    SrcImage,
+      const VkImageSubresourceLayers&         SrcLayers);
 
     bool TestRtvUavHazards(
             UINT                              NumRTVs,

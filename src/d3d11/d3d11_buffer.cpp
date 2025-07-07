@@ -12,12 +12,14 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
     m_resource    (this, pDevice),
-    m_d3d10       (this) {
+    m_d3d10       (this),
+    m_destructionNotifier(this) {
     DxvkBufferCreateInfo info;
     info.flags  = 0;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -82,10 +84,6 @@ namespace dxvk {
       if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         info.access |= VK_ACCESS_HOST_WRITE_BIT;
     }
-
-    // Always enable BDA usage if available so that CUDA interop can work
-    if (m_parent->GetDXVKDevice()->features().vk12.bufferDeviceAddress)
-      info.usage |= VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
 
     if (p11on12Info) {
       m_11on12 = *p11on12Info;
@@ -159,7 +157,12 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11Buffer), riid)) {
       Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

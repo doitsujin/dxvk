@@ -45,6 +45,8 @@ namespace dxvk {
     D3D11_DEPTH_STENCIL_DESC  m_desc;
     DxvkDepthStencilState     m_state = { };
     D3D10DepthStencilState    m_d3d10;
+
+    D3DDestructionNotifier    m_destructionNotifier;
     
     DxvkStencilOp DecodeStencilOpState(
       const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,

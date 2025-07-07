@@ -18,7 +18,7 @@ namespace dxvk {
     void Flush();
 
     void ConvertFormat(
-      const DxvkContextObjects&           ctx,
+      const Rc<DxvkCommandList>&          ctx,
             D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
       const Rc<DxvkImage>&                dstImage,
             VkImageSubresourceLayers      dstSubresource,
@@ -27,7 +27,7 @@ namespace dxvk {
   private:
 
     void ConvertGenericFormat(
-      const DxvkContextObjects&           ctx,
+      const Rc<DxvkCommandList>&          ctx,
             D3D9_CONVERSION_FORMAT_INFO   videoFormat,
       const Rc<DxvkImage>&                dstImage,
             VkImageSubresourceLayers      dstSubresource,
@@ -42,16 +42,13 @@ namespace dxvk {
 
     void InitPipelines();
 
-    VkDescriptorSetLayout CreateSetLayout();
-
-    VkPipelineLayout CreatePipelineLayout();
+    const DxvkPipelineLayout* CreatePipelineLayout();
 
     VkPipeline CreatePipeline(size_t size, const uint32_t* code, uint32_t specConstant);
 
-    Rc<DxvkDevice>        m_device;
+    Rc<DxvkDevice>            m_device;
 
-    VkDescriptorSetLayout m_setLayout       = VK_NULL_HANDLE;
-    VkPipelineLayout      m_pipelineLayout  = VK_NULL_HANDLE;
+    const DxvkPipelineLayout* m_layout = nullptr;
 
     std::array<VkPipeline, D3D9ConversionFormat_Count> m_pipelines = { };
 

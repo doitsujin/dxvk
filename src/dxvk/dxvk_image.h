@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dxvk_descriptor.h"
+#include "dxvk_descriptor_pool.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_sparse.h"
@@ -139,6 +139,28 @@ namespace dxvk {
     void decRef();
 
     /**
+     * \brief Image view descriptor for the default type
+     *
+     * The default view type is guaranteed to be
+     * supported by the image view, and should be
+     * preferred over picking a different type.
+     * \returns Image view handle
+     */
+    const DxvkDescriptor* getDescriptor() {
+      return getDescriptor(m_key.viewType);
+    }
+
+    /**
+     * \brief Image view handle for a given view type
+     *
+     * If the view does not support the requested image
+     * view type, \c VK_NULL_HANDLE will be returned.
+     * \param [in] viewType The requested view type
+     * \returns The image view handle
+     */
+    const DxvkDescriptor* getDescriptor(VkImageViewType viewType);
+
+    /**
      * \brief Image view handle for the default type
      *
      * The default view type is guaranteed to be
@@ -158,7 +180,10 @@ namespace dxvk {
      * \param [in] viewType The requested view type
      * \returns The image view handle
      */
-    VkImageView handle(VkImageViewType viewType);
+    VkImageView handle(VkImageViewType viewType) {
+      auto descriptor = getDescriptor(viewType);
+      return likely(descriptor) ? descriptor->legacy.image.imageView : VK_NULL_HANDLE;
+    }
 
     /**
      * \brief Image view type
@@ -234,27 +259,6 @@ namespace dxvk {
     VkImageSubresourceRange imageSubresources() const;
 
     /**
-     * \brief Picks an image layout
-     * \see DxvkImage::pickLayout
-     */
-    VkImageLayout pickLayout(VkImageLayout layout) const;
-
-    /**
-     * \brief Retrieves descriptor info
-     * 
-     * \param [in] type Exact view type
-     * \param [in] layout Image layout
-     * \returns Image descriptor
-     */
-    DxvkDescriptorInfo getDescriptor(VkImageViewType type, VkImageLayout layout) {
-      DxvkDescriptorInfo result;
-      result.image.sampler = VK_NULL_HANDLE;
-      result.image.imageView = handle(type);
-      result.image.imageLayout = layout;
-      return result;
-    }
-
-    /**
      * \brief Checks whether this view matches another
      *
      * \param [in] view The other view to check
@@ -288,14 +292,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries the default image layout
+     * \brief Queries the view layout
      *
-     * Used when binding the view as a descriptor.
-     * \returns Default image layout
+     * If no layout was explicitly specified for the view, this
+     * will return a suitable layout for the given usage.
+     * \returns Image view layout
      */
-    VkImageLayout defaultLayout() const {
-      return m_properties.layout;
-    }
+    VkImageLayout getLayout() const;
 
     /**
      * \brief Checks whether the image is multisampled
@@ -307,6 +310,8 @@ namespace dxvk {
 
     /**
      * \brief Checks whether the image has graphics stores
+     *
+     * This may include attachment access for render passes.
      * \returns \c true if the image has graphics pipeline stores
      */
     bool hasGfxStores() const;
@@ -320,9 +325,9 @@ namespace dxvk {
 
     DxvkImageViewImageProperties m_properties = { };
 
-    std::array<VkImageView, ViewCount> m_views = { };
+    std::array<const DxvkDescriptor*, ViewCount> m_views = { };
 
-    VkImageView createView(VkImageViewType type) const;
+    const DxvkDescriptor* createView(VkImageViewType type) const;
 
     void updateViews();
 
@@ -346,7 +351,7 @@ namespace dxvk {
     DxvkImage(
             DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
-            DxvkMemoryAllocator&  memAlloc,
+            DxvkMemoryAllocator&  allocator,
             VkMemoryPropertyFlags memFlags);
     
     /**
@@ -361,7 +366,7 @@ namespace dxvk {
             DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
             VkImage               imageHandle,
-            DxvkMemoryAllocator&  memAlloc,
+            DxvkMemoryAllocator&  allocator,
             VkMemoryPropertyFlags memFlags);
     
     /**
@@ -695,7 +700,6 @@ namespace dxvk {
   private:
 
     Rc<vk::DeviceFn>            m_vkd;
-    DxvkMemoryAllocator*        m_allocator   = nullptr;
     VkMemoryPropertyFlags       m_properties  = 0u;
     VkShaderStageFlags          m_shaderStages = 0u;
 
@@ -753,12 +757,12 @@ namespace dxvk {
 
 
 
-  inline void DxvkImageView::incRef() {
+  force_inline void DxvkImageView::incRef() {
     m_image->incRef();
   }
 
 
-  inline void DxvkImageView::decRef() {
+  force_inline void DxvkImageView::decRef() {
     m_image->decRef();
   }
 
@@ -786,12 +790,7 @@ namespace dxvk {
   }
 
 
-  inline VkImageLayout DxvkImageView::pickLayout(VkImageLayout layout) const {
-    return m_image->pickLayout(layout);
-  }
-
-
-  inline VkImageView DxvkImageView::handle(VkImageViewType viewType) {
+  inline const DxvkDescriptor* DxvkImageView::getDescriptor(VkImageViewType viewType) {
     viewType = viewType != VK_IMAGE_VIEW_TYPE_MAX_ENUM ? viewType : m_key.viewType;
 
     if (unlikely(m_version < m_image->m_version))
@@ -804,8 +803,13 @@ namespace dxvk {
   }
 
 
+  inline VkImageLayout DxvkImageView::getLayout() const {
+    return m_image->pickLayout(m_key.layout);
+  }
+
+
   inline bool DxvkImageView::hasGfxStores() const {
-    return (m_properties.access & VK_ACCESS_SHADER_WRITE_BIT)
+    return (m_properties.access & (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT))
         && (m_image->hasGfxStores());
   }
 

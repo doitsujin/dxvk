@@ -8,6 +8,7 @@
 
 #include "../dxso/dxso_isgn.h"
 
+#include <utility>
 #include <unordered_map>
 
 namespace dxvk {
@@ -56,14 +57,32 @@ namespace dxvk {
     return 1.0f / (float(1 << bitDepth) - 1.0f);
   }
 
+  constexpr uint32_t GetGlobalSamplerSetIndex() {
+    // arbitrary, but must not conflict with bindings
+    return 15u;
+  }
+
+  constexpr uint32_t GetPushSamplerOffset(uint32_t samplerIndex) {
+    // Must not conflict with render state block
+    return MaxSharedPushDataSize + sizeof(uint16_t) * samplerIndex;
+  }
+
   // Returns new oFog if VS
   // Returns new oColor if PS
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
   void DoFixedFunctionAlphaTest(SpirvModule& spvModule, const D3D9AlphaTestContext& ctx);
 
-  // Returns a render state block
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule);
+  // Returns a render state block, as well as the index of the
+  // first sampler member.
+  std::pair<uint32_t, uint32_t> SetupRenderStateBlock(SpirvModule& spvModule, uint32_t samplerMask);
+
+  // Returns a global sampler descriptor array
+  uint32_t SetupSamplerArray(SpirvModule& spvModule);
+
+  // Common code to load a sampler from the sampler array
+  uint32_t LoadSampler(SpirvModule& spvModule, uint32_t descriptorId,
+    uint32_t pushBlockId, uint32_t pushMember, uint32_t samplerIndex);
 
   struct D3D9PointSizeInfoVS {
     uint32_t defaultValue;

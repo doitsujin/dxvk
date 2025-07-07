@@ -12,7 +12,7 @@ namespace dxvk {
     const Rc<DxvkAdapter> adapter = device->adapter();
 
     const DxvkDeviceFeatures& devFeatures = device->features();
-    const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
+    const DxvkDeviceInfo& devInfo = adapter->deviceProperties();
 
     // Apply shader-related options
     strictConstantCopies = options.strictConstantCopies;
@@ -29,6 +29,7 @@ namespace dxvk {
 
     robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
 
+    sincosEmulation     = options.sincosEmulation;
     drefScaling         = options.drefScaling;
   }
 

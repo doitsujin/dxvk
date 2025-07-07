@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*                    device,
     const D3D11_RASTERIZER_DESC2&         desc)
   : D3D11StateObject<ID3D11RasterizerState2>(device),
-    m_desc(desc), m_d3d10(this) {
+    m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
     switch (desc.FillMode) {
@@ -33,18 +33,15 @@ namespace dxvk {
     // In the backend we treat depth bias as a dynamic state because
     // some games like to put random/uninitialized numbers here, but
     // we do not need to enable it in case the parameters are both 0.
-    m_state.setDepthBias(desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f);
     m_state.setDepthClip(desc.DepthClipEnable);
     m_state.setConservativeMode(DecodeConservativeRasterizationMode(desc.ConservativeRaster));
     m_state.setSampleCount(desc.ForcedSampleCount);
     m_state.setFlatShading(false);
     m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
 
-    if (m_state.depthBias()) {
-      m_depthBias.depthBiasConstant = float(desc.DepthBias);
-      m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
-      m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
-    }
+    m_depthBias.depthBiasConstant = float(desc.DepthBias);
+    m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
+    m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
 
     // Set up line rasterization mode
     const auto& features = device->GetDXVKDevice()->features();
@@ -84,7 +81,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
-    
+
+    if (riid == __uuidof(ID3DDestructionNotifier)) {
+      *ppvObject = ref(&m_destructionNotifier);
+      return S_OK;
+    }
+
     if (logQueryInterfaceError(__uuidof(ID3D11RasterizerState), riid)) {
       Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
       Logger::warn(str::format(riid));

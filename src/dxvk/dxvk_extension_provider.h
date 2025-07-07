@@ -1,7 +1,6 @@
 #pragma once
 
 #include "dxvk_include.h"
-#include "dxvk_extensions.h"
 
 #include <vector>
 #include <string>
@@ -10,6 +9,8 @@ namespace dxvk {
 
   class DxvkInstance;
   class DxvkExtensionProvider;
+
+  using DxvkExtensionList = std::vector<VkExtensionProperties>;
 
   /**
    * \brief Extension provider base
@@ -31,7 +32,7 @@ namespace dxvk {
      * \brief Query instance extensions
      * \returns Instance extensions
      */
-    virtual DxvkNameSet getInstanceExtensions() = 0;
+    virtual DxvkExtensionList getInstanceExtensions() = 0;
 
     /**
      * \brief Query device extensions
@@ -41,7 +42,7 @@ namespace dxvk {
      * the same across multiple Vulkan instances.
      * \param [in] adapterId Adapter index
      */
-    virtual DxvkNameSet getDeviceExtensions(
+    virtual DxvkExtensionList getDeviceExtensions(
             uint32_t      adapterId) = 0;
     
     /**

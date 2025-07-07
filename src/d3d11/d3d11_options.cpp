@@ -13,7 +13,6 @@ namespace dxvk {
   }
 
   D3D11Options::D3D11Options(const Config& config) {
-    this->zeroInitWorkgroupMemory  = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
     this->forceVolatileTgsmAccess = config.getOption<bool>("d3d11.forceVolatileTgsmAccess", false);
     this->forceComputeUavBarriers = config.getOption<bool>("d3d11.forceComputeUavBarriers", false);
     this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);
@@ -31,6 +30,8 @@ namespace dxvk {
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
     this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
+    this->disableDirectImageMapping = config.getOption<bool>("d3d11.disableDirectImageMapping", false);
+    this->sincosEmulation       = config.getOption<Tristate>("d3d11.sincosEmulation", Tristate::Auto);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);

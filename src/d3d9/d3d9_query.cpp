@@ -256,7 +256,7 @@ namespace dxvk {
     Rc<DxvkDevice>  device  = m_parent->GetDXVKDevice();
     Rc<DxvkAdapter> adapter = device->adapter();
 
-    VkPhysicalDeviceLimits limits = adapter->deviceProperties().limits;
+    const auto& limits = adapter->deviceProperties().core.properties.limits;
     return uint64_t(1'000'000'000.0f / limits.timestampPeriod);
   }
 
@@ -314,7 +314,7 @@ namespace dxvk {
   HRESULT D3D9Query::QuerySupported(D3D9DeviceEx* pDevice, D3DQUERYTYPE QueryType) {
     switch (QueryType) {
       case D3DQUERYTYPE_VCACHE:
-        if (!pDevice->GetOptions()->supportVCache)
+        if (!pDevice->SupportsVCacheQuery())
           return D3DERR_NOTAVAILABLE;
 
         return D3D_OK;

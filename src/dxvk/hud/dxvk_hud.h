@@ -37,7 +37,7 @@ namespace dxvk::hud {
      * \param [in] dstView Swap chain image view
      */
     void render(
-      const DxvkContextObjects& ctx,
+      const Rc<DxvkCommandList>&ctx,
       const Rc<DxvkImageView>&  dstView);
 
     /**

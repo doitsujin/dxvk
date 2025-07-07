@@ -8,7 +8,6 @@
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
 #include "dxvk_pipemanager.h"
-#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -16,15 +15,13 @@ namespace dxvk {
           DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
           DxvkComputePipelineShaders  shaders,
-          DxvkBindingLayoutObjects*   layout,
           DxvkShaderPipelineLibrary*  library)
   : m_device        (device),
-    m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_library       (library),
     m_libraryHandle (VK_NULL_HANDLE),
     m_shaders       (std::move(shaders)),
-    m_bindings      (layout),
+    m_layout        (device, pipeMgr, m_shaders.cs->getLayout()),
     m_debugName     (createDebugName()) {
 
   }
@@ -107,12 +104,17 @@ namespace dxvk {
     
     DxvkShaderStageInfo stageInfo(m_device);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
-      m_shaders.cs->getCode(m_bindings, DxvkShaderModuleCreateInfo()),
+      m_shaders.cs->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), DxvkShaderModuleCreateInfo()),
       &scState.scInfo);
 
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (m_device->canUseDescriptorBuffer())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &flags };
     info.stage                = *stageInfo.getStageInfos();
-    info.layout               = m_bindings->getPipelineLayout(false);
+    info.layout               = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;

@@ -13,7 +13,6 @@
 namespace dxvk {
   
   class DxvkDevice;
-  class DxvkStateCache;
   class DxvkPipelineManager;
   struct DxvkPipelineStats;
 
@@ -65,7 +64,6 @@ namespace dxvk {
             DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkComputePipelineShaders  shaders,
-            DxvkBindingLayoutObjects*   layout,
             DxvkShaderPipelineLibrary*  library);
 
     ~DxvkComputePipeline();
@@ -79,15 +77,11 @@ namespace dxvk {
     }
     
     /**
-     * \brief Pipeline layout
-     * 
-     * Stores the pipeline layout and the descriptor set
-     * layouts, as well as information on the resource
-     * slots used by the pipeline.
+     * \brief Queries pipeline layout
      * \returns Pipeline layout
      */
-    DxvkBindingLayoutObjects* getBindings() const {
-      return m_bindings;
+    const DxvkPipelineBindings* getLayout() const {
+      return &m_layout;
     }
 
     /**
@@ -133,14 +127,13 @@ namespace dxvk {
   private:
     
     DxvkDevice*                 m_device;    
-    DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;
 
     DxvkShaderPipelineLibrary*  m_library;
     VkPipeline                  m_libraryHandle;
 
     DxvkComputePipelineShaders  m_shaders;
-    DxvkBindingLayoutObjects*   m_bindings;
+    DxvkPipelineBindings        m_layout;
     
     std::string                 m_debugName;
 

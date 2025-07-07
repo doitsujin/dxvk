@@ -5,6 +5,9 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
+#include "dxvk_descriptor_heap.h"
+#include "dxvk_descriptor_pool.h"
+#include "dxvk_descriptor_worker.h"
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
@@ -17,6 +20,25 @@
 #include "dxvk_stats.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Immediate descriptor write
+   *
+   * Takes descriptor info either from an existing
+   * view descriptor or from a buffer range.
+   */
+  struct DxvkDescriptorWrite {
+    /** Actual descriptor type */
+    VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+    /** Pointer to view descriptor. Used for all image descriptors
+     *  as well as texel buffer descriptors. If \c nullptr, a null
+     *  descriptor of the corresponding type will be created. */
+    const DxvkDescriptor* descriptor = nullptr;
+    /** Buffer info, used for storage and uniform buffers. May be
+     *  used to build a null descriptor. */
+    DxvkResourceBufferInfo buffer = { };
+  };
+
   
   /**
    * \brief Timeline semaphore pair
@@ -422,7 +444,102 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
-    
+
+    /**
+     * \brief Tries to allocates and bind an empty descriptor range
+     *
+     * This will fail if the base address of the allocated range changes
+     * while a secondary command buffer is currently active. In that case,
+     * the secodary command buffer \e must be ended first.
+     * \returns \c true if a new range was successfully allocated and bound.
+     */
+    bool createDescriptorRange();
+
+    /**
+     * \brief Checks whether current descriptor range can service an allocation
+     *
+     * \param [in] pipelineLayout The pipeline layout
+     * \returns \c true if the current descriptor range has enough space
+     *    to allocate all descriptor sets in the given pipeline layout.
+     */
+    bool canAllocateDescriptors(const DxvkPipelineLayout* layout) const {
+      return m_descriptorRange && m_descriptorRange->testAllocation(layout->getDescriptorMemorySize());
+    }
+
+    /**
+     * \brief Allocates descriptor memory for a given layout
+     *
+     * The caller \e must ensure that enough space is available in the
+     * current descriptor range by calling \c canAllocateDescriptors,
+     * and allocate a new descriptor range if necessary.
+     * \param [in] layout Descriptor set layout
+     * \returns Allocated descriptor heap range
+     */
+    DxvkResourceBufferInfo allocateDescriptors(const DxvkDescriptorSetLayout* layout) const {
+      return m_descriptorRange->alloc(layout->getMemorySize());
+    }
+
+    /**
+     * \brief Sets resources and push constants
+     *
+     * Allocates and writes a descriptor set and sets push constant
+     * data all in one go. This method is primarily intended to be
+     * used with meta pipelines and external rendering.
+     *
+     * If \c descriptorCount is 0, no descriptors will be updated,
+     * and the currently bound set must be layout-compatible with
+     * the pipeline. Similarly, when setting \c pushDataSize to 0,
+     * no push constant data will be updated. This behaviour is
+     * useful when doing back-to-back draws with the same pipeline.
+     * \param [in] cmdBuffer Target command buffer
+     * \param [in] layout Pipeline layout. Must only have one
+     *    single non-empty descriptor set at index 0.
+     * \param [in] descriptorCount Number of descriptor infos
+     * \param [in] descriptorInfos Descriptors
+     * \param [in] pushDataSize Size of push constant data
+     * \param [in] pushData Pointer to push constant data
+     */
+    void bindResources(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    /**
+     * \brief Begins a secondary command buffer
+     *
+     * All subsequent commands targeted at the execution command
+     * buffer will be recorded into a secondary command buffer
+     * instead until \c endSecondaryCommandBuffer is called.
+     * \param [in] inheritanceInfo Command buffer inheritance info
+     */
+    void beginSecondaryCommandBuffer(
+      const VkCommandBufferInheritanceInfo& inheritanceInfo);
+
+    /**
+     * \brief Ends secondary command buffer
+     *
+     * Ends current secondary command buffer so that subsequent
+     * execution commands will be recorded into the primary
+     * command buffer again. The secondary command buffer can
+     * be executed manually with \c execCommands.
+     * \returns Command buffer handle
+     */
+    VkCommandBuffer endSecondaryCommandBuffer();
+
+    /**
+     * \brief Records secondary command buffers into primary
+     *
+     * \param [in] count Number of command buffers to execute
+     * \param [in] commandBuffers Command buffer handles
+     */
+    void cmdExecuteCommands(
+            uint32_t                count,
+            VkCommandBuffer*        commandBuffers);
+
+
     void updateDescriptorSets(
             uint32_t                      descriptorWriteCount,
       const VkWriteDescriptorSet*         pDescriptorWrites) {
@@ -438,25 +555,6 @@ namespace dxvk {
       const void*                         data) {
       m_vkd->vkUpdateDescriptorSetWithTemplate(m_vkd->device(),
         descriptorSet, descriptorTemplate, data);
-    }
-
-
-    void beginSecondaryCommandBuffer(
-      const VkCommandBufferInheritanceInfo& inheritanceInfo) {
-      m_execBuffer = std::exchange(m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)],
-        m_graphicsPool->getSecondaryCommandBuffer(inheritanceInfo));
-    }
-
-
-    VkCommandBuffer endSecondaryCommandBuffer() {
-      VkCommandBuffer cmd = getCmdBuffer();
-
-      if (m_vkd->vkEndCommandBuffer(cmd))
-        throw DxvkError("DxvkCommandList: Failed to end secondary command buffer");
-
-      m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)] = m_execBuffer;
-      m_execBuffer = VK_NULL_HANDLE;
-      return cmd;
     }
 
 
@@ -500,32 +598,31 @@ namespace dxvk {
     }
     
     
-    void cmdBindDescriptorSet(
-            DxvkCmdBuffer             cmdBuffer,
-            VkPipelineBindPoint       pipeline,
-            VkPipelineLayout          pipelineLayout,
-            VkDescriptorSet           descriptorSet,
-            uint32_t                  dynamicOffsetCount,
-      const uint32_t*                 pDynamicOffsets) {
-      m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
-        pipeline, pipelineLayout, 0, 1,
-        &descriptorSet, dynamicOffsetCount, pDynamicOffsets);
-    }
-    
-    
     void cmdBindDescriptorSets(
             DxvkCmdBuffer             cmdBuffer,
             VkPipelineBindPoint       pipeline,
             VkPipelineLayout          pipelineLayout,
             uint32_t                  firstSet,
             uint32_t                  descriptorSetCount,
-      const VkDescriptorSet*          descriptorSets,
-            uint32_t                  dynamicOffsetCount,
-      const uint32_t*                 pDynamicOffsets) {
+      const VkDescriptorSet*          descriptorSets) {
       m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
         pipeline, pipelineLayout, firstSet, descriptorSetCount,
-        descriptorSets, dynamicOffsetCount, pDynamicOffsets);
+        descriptorSets, 0, nullptr);
     }
+
+
+    void cmdSetDescriptorBufferOffsetsEXT(
+            DxvkCmdBuffer             cmdBuffer,
+            VkPipelineBindPoint       pipeline,
+            VkPipelineLayout          layout,
+            uint32_t                  firstSet,
+            uint32_t                  setCount,
+      const uint32_t*                 pBufferIndices,
+      const VkDeviceSize*             pOffsets) {
+      m_vkd->vkCmdSetDescriptorBufferOffsetsEXT(getCmdBuffer(cmdBuffer),
+        pipeline, layout, firstSet, setCount, pBufferIndices, pOffsets);
+    }
+
 
 
     void cmdBindIndexBuffer(
@@ -840,15 +937,6 @@ namespace dxvk {
     }
 
 
-    void cmdExecuteCommands(
-            uint32_t                count,
-            VkCommandBuffer*        commandBuffers) {
-      m_cmd.execCommands = true;
-
-      m_vkd->vkCmdExecuteCommands(getCmdBuffer(), count, commandBuffers);
-    }
-
-
     void cmdFillBuffer(
             DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
@@ -928,12 +1016,6 @@ namespace dxvk {
     }
     
 
-    void cmdSetDepthBiasState(
-            VkBool32                depthBiasEnable) {
-      m_vkd->vkCmdSetDepthBiasEnable(getCmdBuffer(), depthBiasEnable);
-    }
-
-
     void cmdSetDepthClipState(
             VkBool32                depthClipEnable) {
       m_vkd->vkCmdSetDepthClipEnableEXT(getCmdBuffer(), depthClipEnable);
@@ -944,7 +1026,13 @@ namespace dxvk {
             float                   depthBiasConstantFactor,
             float                   depthBiasClamp,
             float                   depthBiasSlopeFactor) {
-      m_vkd->vkCmdSetDepthBias(getCmdBuffer(),
+      auto cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetDepthBiasEnable(cmdBuffer,
+        depthBiasConstantFactor != 0.0f ||
+        depthBiasSlopeFactor != 0.0f);
+
+      m_vkd->vkCmdSetDepthBias(cmdBuffer,
         depthBiasConstantFactor,
         depthBiasClamp,
         depthBiasSlopeFactor);
@@ -952,40 +1040,45 @@ namespace dxvk {
 
 
     void cmdSetDepthBias2(
-      const VkDepthBiasInfoEXT     *depthBiasInfo) {
-      m_vkd->vkCmdSetDepthBias2EXT(getCmdBuffer(), depthBiasInfo);
+      const VkDepthBiasInfoEXT*     depthBiasInfo) {
+      auto cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetDepthBiasEnable(cmdBuffer,
+        depthBiasInfo->depthBiasConstantFactor != 0.0f ||
+        depthBiasInfo->depthBiasSlopeFactor != 0.0f);
+
+      m_vkd->vkCmdSetDepthBias2EXT(cmdBuffer, depthBiasInfo);
     }
 
 
     void cmdSetDepthBounds(
             float                   minDepthBounds,
             float                   maxDepthBounds) {
-      m_vkd->vkCmdSetDepthBounds(getCmdBuffer(),
-        minDepthBounds,
-        maxDepthBounds);
+      auto cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetDepthBoundsTestEnable(cmdBuffer,
+        minDepthBounds > 0.0f || maxDepthBounds < 1.0f);
+
+      m_vkd->vkCmdSetDepthBounds(cmdBuffer,
+        minDepthBounds, maxDepthBounds);
     }
 
 
-    void cmdSetDepthBoundsState(
-            VkBool32                depthBoundsTestEnable) {
-      m_vkd->vkCmdSetDepthBoundsTestEnable(getCmdBuffer(), depthBoundsTestEnable);
+    void cmdSetDepthTest(
+            VkBool32                depthTestEnable) {
+      m_vkd->vkCmdSetDepthTestEnable(getCmdBuffer(), depthTestEnable);
     }
 
 
-    void cmdSetDepthState(
-            VkBool32                depthTestEnable,
-            VkBool32                depthWriteEnable,
+    void cmdSetDepthWrite(
+            VkBool32                depthWriteEnable) {
+      m_vkd->vkCmdSetDepthWriteEnable(getCmdBuffer(), depthWriteEnable);
+    }
+
+
+    void cmdSetDepthCompareOp(
             VkCompareOp             depthCompareOp) {
-      VkCommandBuffer cmdBuffer = getCmdBuffer();
-      m_vkd->vkCmdSetDepthTestEnable(cmdBuffer, depthTestEnable);
-
-      if (depthTestEnable) {
-        m_vkd->vkCmdSetDepthWriteEnable(cmdBuffer, depthWriteEnable);
-        m_vkd->vkCmdSetDepthCompareOp(cmdBuffer, depthCompareOp);
-      } else {
-        m_vkd->vkCmdSetDepthWriteEnable(cmdBuffer, VK_FALSE);
-        m_vkd->vkCmdSetDepthCompareOp(cmdBuffer, VK_COMPARE_OP_ALWAYS);
-      }
+      m_vkd->vkCmdSetDepthCompareOp(getCmdBuffer(), depthCompareOp);
     }
 
 
@@ -1025,41 +1118,24 @@ namespace dxvk {
     }
 
 
-    void cmdSetStencilState(
-            VkBool32                enableStencilTest,
-      const VkStencilOpState&       front,
-      const VkStencilOpState&       back) {
-      VkCommandBuffer cmdBuffer = getCmdBuffer();
+    void cmdSetStencilTest(
+            VkBool32                enableStencilTest) {
+      m_vkd->vkCmdSetStencilTestEnable(getCmdBuffer(), enableStencilTest);
+    }
 
-      m_vkd->vkCmdSetStencilTestEnable(
-        cmdBuffer, enableStencilTest);
 
-      if (enableStencilTest) {
-        m_vkd->vkCmdSetStencilOp(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_BIT, front.failOp,
-          front.passOp, front.depthFailOp, front.compareOp);
-        m_vkd->vkCmdSetStencilCompareMask(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_BIT, front.compareMask);
-        m_vkd->vkCmdSetStencilWriteMask(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_BIT, front.writeMask);
+    void cmdSetStencilOp(
+            VkStencilFaceFlags      faceMask,
+      const VkStencilOpState&       op) {
+      m_vkd->vkCmdSetStencilOp(getCmdBuffer(), faceMask,
+        op.failOp, op.passOp, op.depthFailOp, op.compareOp);
+    }
 
-        m_vkd->vkCmdSetStencilOp(cmdBuffer,
-          VK_STENCIL_FACE_BACK_BIT, back.failOp,
-          back.passOp, back.depthFailOp, back.compareOp);
-        m_vkd->vkCmdSetStencilCompareMask(cmdBuffer,
-          VK_STENCIL_FACE_BACK_BIT, back.compareMask);
-        m_vkd->vkCmdSetStencilWriteMask(cmdBuffer,
-          VK_STENCIL_FACE_BACK_BIT, back.writeMask);
-      } else {
-        m_vkd->vkCmdSetStencilOp(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_AND_BACK,
-          VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
-          VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
-        m_vkd->vkCmdSetStencilCompareMask(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_AND_BACK, 0x0);
-        m_vkd->vkCmdSetStencilWriteMask(cmdBuffer,
-          VK_STENCIL_FACE_FRONT_AND_BACK, 0x0);
-      }
+
+    void cmdSetStencilCompareMask(
+            VkStencilFaceFlags      faceMask,
+            uint32_t                compareMask) {
+      m_vkd->vkCmdSetStencilCompareMask(getCmdBuffer(), faceMask, compareMask);
     }
 
 
@@ -1077,7 +1153,7 @@ namespace dxvk {
       m_vkd->vkCmdSetStencilWriteMask(getCmdBuffer(), faceMask, writeMask);
     }
 
-    
+
     void cmdSetViewport(
             uint32_t                viewportCount,
       const VkViewport*             viewports) {
@@ -1152,16 +1228,29 @@ namespace dxvk {
     }
 
 
-    void trackDescriptorPool(
-      const Rc<DxvkDescriptorPool>&       pool,
-      const Rc<DxvkDescriptorManager>&    manager) {
-      pool->updateStats(m_statCounters);
-      m_descriptorPools.push_back({ pool, manager });
+    void setDescriptorPool(
+            Rc<DxvkDescriptorPool>        pool,
+            Rc<DxvkDescriptorPoolSet>     manager) {
+      if (m_descriptorPool && m_descriptorPool != pool) {
+        m_descriptorPool->updateStats(m_statCounters);
+        m_descriptorPools.push_back({ std::move(m_descriptorPool), std::move(m_descriptorManager) });
+      }
+
+      m_descriptorPool = std::move(pool);
+      m_descriptorManager = std::move(manager);
     }
+
+
+    void setDescriptorHeap(
+            Rc<DxvkResourceDescriptorHeap> heap);
 
 
     void setTrackingId(uint64_t id) {
       m_trackingId = id;
+    }
+
+    void setDescriptorSyncHandle(sync::SyncPoint syncHandle) {
+      m_descriptorSync = std::move(syncHandle);
     }
 
   private:
@@ -1193,7 +1282,15 @@ namespace dxvk {
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
-      Rc<DxvkDescriptorManager>>> m_descriptorPools;
+      Rc<DxvkDescriptorPoolSet>>> m_descriptorPools;
+
+    Rc<DxvkDescriptorPool>    m_descriptorPool;
+    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
+    sync::SyncPoint           m_descriptorSync;
+
+    Rc<DxvkResourceDescriptorHeap>  m_descriptorHeap;
+    Rc<DxvkResourceDescriptorRange> m_descriptorRange;
+    VkDeviceSize                    m_descriptorOffset = 0u;
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
 
@@ -1224,9 +1321,33 @@ namespace dxvk {
       return m_cmdSparseBinds.emplace_back();
     }
 
+    void bindResourcesLegacy(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void bindResourcesDescriptorBuffer(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
+    void rebindDescriptorBuffers();
+
+    void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
+
     void endCommandBuffer(VkCommandBuffer cmdBuffer);
 
     VkCommandBuffer allocateCommandBuffer(DxvkCmdBuffer type);
+
+    void countDescriptorStats(
+      const Rc<DxvkResourceDescriptorRange>& range,
+            VkDeviceSize                  baseOffset);
 
   };
   

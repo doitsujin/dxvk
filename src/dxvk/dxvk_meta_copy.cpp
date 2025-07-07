@@ -1,5 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_meta_copy.h"
+#include "dxvk_util.h"
 
 #include <dxvk_fullscreen_geom.h>
 #include <dxvk_fullscreen_vert.h>
@@ -77,74 +78,25 @@ namespace dxvk {
   }
 
   
-  DxvkMetaCopyObjects::DxvkMetaCopyObjects(const DxvkDevice* device)
-  : m_vkd         (device->vkd()),
-    m_color {
-      createShaderModule(dxvk_copy_color_1d),
-      createShaderModule(dxvk_copy_color_2d),
-      createShaderModule(dxvk_copy_color_ms) } {
-    if (device->features().vk12.shaderOutputLayer) {
-      m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
-    } else {
-      m_shaderVert = createShaderModule(dxvk_fullscreen_vert);
-      m_shaderGeom = createShaderModule(dxvk_fullscreen_geom);
-    }
-    
-    if (device->features().extShaderStencilExport) {
-      m_depthStencil = {
-        createShaderModule(dxvk_copy_depth_stencil_1d),
-        createShaderModule(dxvk_copy_depth_stencil_2d),
-        createShaderModule(dxvk_copy_depth_stencil_ms) };
+  DxvkMetaCopyObjects::DxvkMetaCopyObjects(DxvkDevice* device)
+  : m_device(device) {
 
-      m_shaderBufferToImageDSExport = createShaderModule(dxvk_buffer_to_image_ds_export);
-    } else {
-      m_shaderBufferToImageD = createShaderModule(dxvk_buffer_to_image_d);
-      m_shaderBufferToImageS = createShaderModule(dxvk_buffer_to_image_s_discard);
-    }
-
-    m_shaderImageToBufferDS = createShaderModule(dxvk_image_to_buffer_ds);
-    m_shaderImageToBufferF = createShaderModule(dxvk_image_to_buffer_f);
   }
 
 
   DxvkMetaCopyObjects::~DxvkMetaCopyObjects() {
+    auto vk = m_device->vkd();
+
+    for (const auto& p : m_copyImagePipelines)
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
+
     for (const auto& p : m_bufferToImagePipelines)
-      m_vkd->vkDestroyPipeline(m_vkd->device(), p.second, nullptr);
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
     for (const auto& p : m_imageToBufferPipelines)
-      m_vkd->vkDestroyPipeline(m_vkd->device(), p.second, nullptr);
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
-    m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_bufferToImageCopySetLayout, nullptr);
-    m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_imageToBufferCopySetLayout, nullptr);
-
-    m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_bufferToImageCopyPipelineLayout, nullptr);
-    m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_imageToBufferCopyPipelineLayout, nullptr);
-
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderBufferToImageD, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderBufferToImageS, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderBufferToImageDSExport, nullptr);
-
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderImageToBufferF, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderImageToBufferDS, nullptr);
-
-    m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_copyBufferImagePipeline.dsetLayout, nullptr);
-    m_vkd->vkDestroyPipeline(m_vkd->device(), m_copyBufferImagePipeline.pipeHandle, nullptr);
-    m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_copyBufferImagePipeline.pipeLayout, nullptr);
-
-    for (const auto& pair : m_pipelines) {
-      m_vkd->vkDestroyPipeline(m_vkd->device(), pair.second.pipeHandle, nullptr);
-      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), pair.second.pipeLayout, nullptr);
-      m_vkd->vkDestroyDescriptorSetLayout (m_vkd->device(), pair.second.dsetLayout, nullptr);
-    }
-
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.fragMs, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag2D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag1D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.fragMs, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.frag2D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.frag1D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom,   nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert,   nullptr);
+    vk->vkDestroyPipeline(vk->device(), m_copyBufferImagePipeline.pipeline, nullptr);
   }
 
 
@@ -186,22 +138,12 @@ namespace dxvk {
     key.imageAspects = aspects;
 
     auto entry = m_bufferToImagePipelines.find(key);
-    if (entry != m_bufferToImagePipelines.end()) {
-      DxvkMetaCopyPipeline result = { };
-      result.dsetLayout = m_bufferToImageCopySetLayout;
-      result.pipeLayout = m_bufferToImageCopyPipelineLayout;
-      result.pipeHandle = entry->second;
-      return result;
-    }
+    if (entry != m_bufferToImagePipelines.end())
+      return entry->second;
 
-    VkPipeline pipeline = createCopyBufferToImagePipeline(key);
+    DxvkMetaCopyPipeline pipeline = createCopyBufferToImagePipeline(key);
     m_bufferToImagePipelines.insert({ key, pipeline });
-
-    DxvkMetaCopyPipeline result = { };
-    result.dsetLayout = m_bufferToImageCopySetLayout;
-    result.pipeLayout = m_bufferToImageCopyPipelineLayout;
-    result.pipeHandle = pipeline;
-    return result;
+    return pipeline;
   }
 
 
@@ -209,7 +151,7 @@ namespace dxvk {
           VkImageViewType       viewType,
           VkFormat              dstFormat) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
-    
+
     DxvkMetaBufferImageCopyPipelineKey key;
     key.imageViewType = viewType;
     key.imageFormat = VK_FORMAT_UNDEFINED;
@@ -217,22 +159,12 @@ namespace dxvk {
     key.imageAspects = lookupFormatInfo(dstFormat)->aspectMask;
 
     auto entry = m_bufferToImagePipelines.find(key);
-    if (entry != m_bufferToImagePipelines.end()) {
-      DxvkMetaCopyPipeline result = { };
-      result.dsetLayout = m_imageToBufferCopySetLayout;
-      result.pipeLayout = m_imageToBufferCopyPipelineLayout;
-      result.pipeHandle = entry->second;
-      return result;
-    }
+    if (entry != m_bufferToImagePipelines.end())
+      return entry->second;
 
-    VkPipeline pipeline = createCopyImageToBufferPipeline(key);
+    DxvkMetaCopyPipeline pipeline = createCopyImageToBufferPipeline(key);
     m_bufferToImagePipelines.insert({ key, pipeline });
-
-    DxvkMetaCopyPipeline result = { };
-    result.dsetLayout = m_imageToBufferCopySetLayout;
-    result.pipeLayout = m_imageToBufferCopyPipelineLayout;
-    result.pipeHandle = pipeline;
-    return result;
+    return pipeline;
   }
 
 
@@ -242,17 +174,17 @@ namespace dxvk {
           VkSampleCountFlagBits dstSamples) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    DxvkMetaCopyPipelineKey key;
+    DxvkMetaImageCopyPipelineKey key;
     key.viewType = viewType;
     key.format   = dstFormat;
     key.samples  = dstSamples;
     
-    auto entry = m_pipelines.find(key);
-    if (entry != m_pipelines.end())
+    auto entry = m_copyImagePipelines.find(key);
+    if (entry != m_copyImagePipelines.end())
       return entry->second;
 
-    DxvkMetaCopyPipeline pipeline = createPipeline(key);
-    m_pipelines.insert({ key, pipeline });
+    DxvkMetaCopyPipeline pipeline = createCopyImagePipeline(key);
+    m_copyImagePipelines.insert({ key, pipeline });
     return pipeline;
   }
 
@@ -260,304 +192,182 @@ namespace dxvk {
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyFormattedBufferPipeline() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    if (!m_copyBufferImagePipeline.pipeHandle)
+    if (!m_copyBufferImagePipeline.pipeline)
       m_copyBufferImagePipeline = createCopyFormattedBufferPipeline();
 
     return m_copyBufferImagePipeline;
   }
   
   
-  VkShaderModule DxvkMetaCopyObjects::createShaderModule(
-    const SpirvCodeBuffer&          code) const {
-    VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    info.codeSize               = code.size();
-    info.pCode                  = code.data();
-    
-    VkShaderModule result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create shader module");
-    return result;
-  }
-
-  
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyFormattedBufferPipeline() {
-    DxvkMetaCopyPipeline pipeline;
-
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-      { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo setLayoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    setLayoutInfo.bindingCount = bindings.size();
-    setLayoutInfo.pBindings = bindings.data();
-
-    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &setLayoutInfo, nullptr, &pipeline.dsetLayout) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create descriptor set layout");
-
-    VkPushConstantRange pushRange = { VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DxvkFormattedBufferCopyArgs) };
-
-    VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &pipeline.dsetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushRange;
-
-    if (m_vkd->vkCreatePipelineLayout(m_vkd->device(), &pipelineLayoutInfo, nullptr, &pipeline.pipeLayout) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create pipeline layout");
-
-    VkShaderModule shaderModule = createShaderModule(dxvk_copy_buffer_image);
-
-    VkComputePipelineCreateInfo pipelineInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    pipelineInfo.layout = pipeline.pipeLayout;
-    pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    pipelineInfo.stage.module = shaderModule;
-    pipelineInfo.stage.pName = "main";
-    pipelineInfo.basePipelineIndex = -1;
-
-    if (m_vkd->vkCreateComputePipelines(m_vkd->device(), VK_NULL_HANDLE,
-        1, &pipelineInfo, nullptr, &pipeline.pipeHandle) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create compute pipeline");
-
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), shaderModule, nullptr);
-    return pipeline;
-  }
-
-
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createPipeline(
-    const DxvkMetaCopyPipelineKey&  key) {
     DxvkMetaCopyPipeline pipeline;
-    pipeline.dsetLayout = this->createDescriptorSetLayout(key);
-    pipeline.pipeLayout = this->createPipelineLayout(pipeline.dsetLayout);
-    pipeline.pipeHandle = this->createPipelineObject(key, pipeline.pipeLayout);
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
+      sizeof(DxvkFormattedBufferCopyArgs), bindings.size(), bindings.data());
+    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout,
+      util::DxvkBuiltInShaderStage(dxvk_copy_buffer_image, nullptr));
     return pipeline;
   }
 
 
-  VkPipeline DxvkMetaCopyObjects::createCopyBufferToImagePipeline(
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyImagePipeline(
+    const DxvkMetaImageCopyPipelineKey& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+    }};
+
+    DxvkMetaCopyPipeline pipeline = { };
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(VkOffset2D), bindings.size(), bindings.data());
+
+    VkImageAspectFlags aspect = lookupFormatInfo(key.format)->aspectMask;
+
+    util::DxvkBuiltInGraphicsState state = { };
+
+    if (m_device->features().vk12.shaderOutputLayer) {
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
+    } else {
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_vert, nullptr);
+      state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
+    }
+
+    bool useDepthStencil = m_device->features().extShaderStencilExport
+      && (aspect == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+
+    if (useDepthStencil) {
+      if (key.viewType == VK_IMAGE_VIEW_TYPE_1D)
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_depth_stencil_1d, nullptr);
+      else if (key.samples == VK_SAMPLE_COUNT_1_BIT)
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_depth_stencil_2d, nullptr);
+      else
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_depth_stencil_ms, nullptr);
+    } else {
+      if (key.viewType == VK_IMAGE_VIEW_TYPE_1D)
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_color_1d, nullptr);
+      else if (key.samples == VK_SAMPLE_COUNT_1_BIT)
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_color_2d, nullptr);
+      else
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_copy_color_ms, nullptr);
+    }
+
+    state.sampleCount = key.samples;
+
+    if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      state.depthFormat = key.format;
+    else
+      state.colorFormat = key.format;
+
+    pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
+    return pipeline;
+  }
+
+
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyBufferToImagePipeline(
     const DxvkMetaBufferImageCopyPipelineKey& key) {
-    if (!m_bufferToImageCopySetLayout) {
-      std::array<VkDescriptorSetLayoutBinding, 1> bindings = {{
-        { 0, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
-      }};
+    static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
+    }};
 
-      VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-      info.bindingCount = bindings.size();
-      info.pBindings = bindings.data();
-
-      VkResult vr = m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
-        &info, nullptr, &m_bufferToImageCopySetLayout);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create descriptor set layout: ", vr));
-    }
-
-    if (!m_bufferToImageCopyPipelineLayout) {
-      VkPushConstantRange pushConstants = { };
-      pushConstants.offset = 0;
-      pushConstants.size = sizeof(DxvkBufferImageCopyArgs);
-      pushConstants.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-      VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-      info.setLayoutCount = 1;
-      info.pSetLayouts = &m_bufferToImageCopySetLayout;
-      info.pushConstantRangeCount = 1;
-      info.pPushConstantRanges = &pushConstants;
-
-      VkResult vr = m_vkd->vkCreatePipelineLayout(m_vkd->device(),
-        &info, nullptr, &m_bufferToImageCopyPipelineLayout);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create pipeline layout: ", vr));
-    }
-
-    std::array<VkPipelineShaderStageCreateInfo, 3> stages = { };
-    uint32_t stageCount = 0;
-
-    stages[stageCount++] = VkPipelineShaderStageCreateInfo {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-      VK_SHADER_STAGE_VERTEX_BIT, m_shaderVert, "main" };
-
-    if (m_shaderGeom) {
-      stages[stageCount++] = VkPipelineShaderStageCreateInfo {
-        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-        VK_SHADER_STAGE_GEOMETRY_BIT, m_shaderGeom, "main" };
-    }
+    DxvkMetaCopyPipeline pipeline;
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
 
     // We don't support color right now
     if (!(key.imageAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
-      Logger::err(str::format("DxvkMetaCopyObjects: Color images not unsupported"));
-      return VK_NULL_HANDLE;
+      Logger::err(str::format("DxvkMetaCopyObjects: Color images not supported"));
+      return DxvkMetaCopyPipeline();
     }
-
-    VkSpecializationMapEntry specMap = { };
-    specMap.size = sizeof(VkFormat);
-
-    VkSpecializationInfo specInfo = { };
-    specInfo.mapEntryCount = 1;
-    specInfo.pMapEntries = &specMap;
-    specInfo.dataSize = sizeof(VkFormat);
-    specInfo.pData = &key.bufferFormat;
-
-    // Always use the DS export shader if possible, it can
-    // support writing to one aspect exclusively.
-    auto& stage = stages[stageCount++];
-    stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    stage.module = m_shaderBufferToImageDSExport;
-    stage.pName = "main";
-    stage.pSpecializationInfo = &specInfo;
-
-    if (!m_shaderBufferToImageDSExport) {
-      stage.module = key.imageAspects == VK_IMAGE_ASPECT_STENCIL_BIT
-        ? m_shaderBufferToImageS
-        : m_shaderBufferToImageD;
-    }
-
-    std::array<VkDynamicState, 3> dynStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-      VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
-    }};
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    if (stage.module != m_shaderBufferToImageS)
-      dynState.dynamicStateCount -= 1;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
-    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.depthClampEnable = VK_TRUE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    uint32_t msMask = 0x1;
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &msMask;
-
-    VkPipelineColorBlendAttachmentState cbAttachment = { };
-    cbAttachment.colorWriteMask =
-      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbState.attachmentCount = 1;
-    cbState.pAttachments = &cbAttachment;
 
     VkStencilOpState stencilOp = { };
-    stencilOp.failOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.passOp = VK_STENCIL_OP_REPLACE;
+    stencilOp.failOp      = VK_STENCIL_OP_REPLACE;
+    stencilOp.passOp      = VK_STENCIL_OP_REPLACE;
     stencilOp.depthFailOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.compareOp = VK_COMPARE_OP_ALWAYS;
+    stencilOp.compareOp   = VK_COMPARE_OP_ALWAYS;
     stencilOp.compareMask = 0xff;
-    stencilOp.writeMask = 0xff;
-    stencilOp.reference = 0xff;
+    stencilOp.writeMask   = 0xff;
+    stencilOp.reference   = 0xff;
 
-    // Clear stencil for depth-only aspect
-    if (stage.module == m_shaderBufferToImageD)
+    // Clear stencil when writing depth aspect
+    if (!m_device->features().extShaderStencilExport && key.imageAspects != VK_IMAGE_ASPECT_STENCIL_BIT)
       stencilOp.reference = 0x00;
 
     VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    dsState.depthTestEnable = !!(key.imageAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
-    dsState.depthWriteEnable = dsState.depthTestEnable;
-    dsState.depthCompareOp = VK_COMPARE_OP_ALWAYS;
+    dsState.depthTestEnable   = !!(key.imageAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
+    dsState.depthWriteEnable  = dsState.depthTestEnable;
+    dsState.depthCompareOp    = VK_COMPARE_OP_ALWAYS;
     dsState.stencilTestEnable = !!(key.imageAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
-    dsState.front = stencilOp;
-    dsState.back = stencilOp;
+    dsState.front             = stencilOp;
+    dsState.back              = stencilOp;
 
-    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    // Set up dynamic states. Stencil write mask is
+    // only required for the stencil discard shader.
+    VkDynamicState dynamicStencilWriteMask = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
 
-    if (key.imageAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-      rtState.colorAttachmentCount = 1;
-      rtState.pColorAttachmentFormats = &key.imageFormat;
+    // Determine fragment shader to use. Always use the DS export shader
+    // if possible, it can support writing to one aspect exclusively.
+    VkSpecializationMapEntry specMap = { };
+    specMap.size = sizeof(VkFormat);
+
+    VkSpecializationInfo specInfo = { };
+    specInfo.mapEntryCount = 1;
+    specInfo.pMapEntries = &specMap;
+    specInfo.dataSize = sizeof(VkFormat);
+    specInfo.pData = &key.bufferFormat;
+
+    // Set up final pipeline state
+    util::DxvkBuiltInGraphicsState state = { };
+
+    if (m_device->features().vk12.shaderOutputLayer) {
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
     } else {
-      auto formatAspects = lookupFormatInfo(key.imageFormat)->aspectMask;
-
-      if (formatAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-        rtState.depthAttachmentFormat = key.imageFormat;
-      if (formatAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-        rtState.stencilAttachmentFormat = key.imageFormat;
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_vert, nullptr);
+      state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
     }
 
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtState };
-    info.stageCount             = stageCount;
-    info.pStages                = stages.data();
-    info.pVertexInputState      = &viState;
-    info.pInputAssemblyState    = &iaState;
-    info.pViewportState         = &vpState;
-    info.pRasterizationState    = &rsState;
-    info.pMultisampleState      = &msState;
-    info.pColorBlendState       = (key.imageAspects & VK_IMAGE_ASPECT_COLOR_BIT) ? &cbState : nullptr;
-    info.pDepthStencilState     = (key.imageAspects & VK_IMAGE_ASPECT_COLOR_BIT) ? nullptr : &dsState;
-    info.pDynamicState          = &dynState;
-    info.layout                 = m_bufferToImageCopyPipelineLayout;
-    info.basePipelineIndex      = -1;
+    if (m_device->features().extShaderStencilExport) {
+      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_ds_export, &specInfo);
+    } else if (key.imageAspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_s_discard, &specInfo);
 
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
-      VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
+      state.dynamicStateCount = 1u;
+      state.dynamicStates = &dynamicStencilWriteMask;
+    } else {
+      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_d, &specInfo);
+    }
 
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create graphics pipeline: ", vr));
+    if (key.imageAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      state.depthFormat = key.imageFormat;
+      state.dsState = &dsState;
+    } else {
+      state.colorFormat = key.imageFormat;
+    }
 
+    pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
     return pipeline;
   }
 
 
-  VkPipeline DxvkMetaCopyObjects::createCopyImageToBufferPipeline(
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyImageToBufferPipeline(
     const DxvkMetaBufferImageCopyPipelineKey& key) {
-    if (!m_imageToBufferCopySetLayout) {
-      std::array<VkDescriptorSetLayoutBinding, 3> bindings = {{
-        { 0, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
-        { 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
-        { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
-      }};
+    DxvkMetaCopyPipeline pipeline = { };
 
-      VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-      info.bindingCount = bindings.size();
-      info.pBindings = bindings.data();
+    static const std::array<DxvkDescriptorSetLayoutBinding, 3> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
+    }};
 
-      VkResult vr = m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
-        &info, nullptr, &m_imageToBufferCopySetLayout);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create descriptor set layout: ", vr));
-    }
-
-    if (!m_imageToBufferCopyPipelineLayout) {
-      VkPushConstantRange pushConstants = { };
-      pushConstants.offset = 0;
-      pushConstants.size = sizeof(DxvkBufferImageCopyArgs);
-      pushConstants.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
-      VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-      info.setLayoutCount = 1;
-      info.pSetLayouts = &m_imageToBufferCopySetLayout;
-      info.pushConstantRangeCount = 1;
-      info.pPushConstantRanges = &pushConstants;
-
-      VkResult vr = m_vkd->vkCreatePipelineLayout(m_vkd->device(),
-        &info, nullptr, &m_imageToBufferCopyPipelineLayout);
-
-      if (vr != VK_SUCCESS)
-        throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create pipeline layout: ", vr));
-    }
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
+      sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
 
     if (key.imageViewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
       Logger::err(str::format("DxvkMetaCopyObjects: Unsupported view type: ", key.imageViewType));
-      return VK_NULL_HANDLE;
+      return DxvkMetaCopyPipeline();
     }
 
     VkSpecializationMapEntry specMap = { };
@@ -569,196 +379,12 @@ namespace dxvk {
     specInfo.dataSize = sizeof(VkFormat);
     specInfo.pData = &key.bufferFormat;
 
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    info.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    info.stage.pName = "main";
-    info.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    info.stage.pSpecializationInfo = &specInfo;
-    info.layout = m_imageToBufferCopyPipelineLayout;
-    info.basePipelineIndex = -1;
+    util::DxvkBuiltInShaderStage stage = (key.imageAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      ? util::DxvkBuiltInShaderStage(dxvk_image_to_buffer_ds, &specInfo)
+      : util::DxvkBuiltInShaderStage(dxvk_image_to_buffer_f, &specInfo);
 
-    info.stage.module = key.imageAspects & VK_IMAGE_ASPECT_STENCIL_BIT
-      ? m_shaderImageToBufferDS
-      : m_shaderImageToBufferF;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = m_vkd->vkCreateComputePipelines(m_vkd->device(),
-      VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("DxvkMetaCopyObjects: Failed to create compute pipeline", vr));
-
+    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout, stage);
     return pipeline;
   }
 
-
-  VkDescriptorSetLayout DxvkMetaCopyObjects::createDescriptorSetLayout(
-    const DxvkMetaCopyPipelineKey&  key) const {
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-    }};
-    
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create descriptor set layout");
-    return result;
-  }
-
-  
-  VkPipelineLayout DxvkMetaCopyObjects::createPipelineLayout(
-          VkDescriptorSetLayout     descriptorSetLayout) const {
-    VkPushConstantRange push = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(VkOffset2D) };
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount         = 1;
-    info.pSetLayouts            = &descriptorSetLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges    = &push;
-    
-    VkPipelineLayout result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreatePipelineLayout(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create pipeline layout");
-    return result;
-  }
-  
-
-  VkPipeline DxvkMetaCopyObjects::createPipelineObject(
-    const DxvkMetaCopyPipelineKey&  key,
-          VkPipelineLayout          pipelineLayout) {
-    auto aspect = lookupFormatInfo(key.format)->aspectMask;
-
-    std::array<VkPipelineShaderStageCreateInfo, 3> stages;
-    uint32_t stageCount = 0;
-    
-    stages[stageCount++] = VkPipelineShaderStageCreateInfo {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-      VK_SHADER_STAGE_VERTEX_BIT, m_shaderVert, "main" };
-    
-    if (m_shaderGeom) {
-      stages[stageCount++] = VkPipelineShaderStageCreateInfo {
-        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-        VK_SHADER_STAGE_GEOMETRY_BIT, m_shaderGeom, "main" };
-    }
-    
-    std::array<std::pair<const FragShaders*, VkImageAspectFlags>, 3> shaderSets = {{
-      { &m_color,        VK_IMAGE_ASPECT_COLOR_BIT },
-      { &m_color,        VK_IMAGE_ASPECT_DEPTH_BIT },
-      { &m_depthStencil, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
-    }};
-
-    const FragShaders* shaderSet = nullptr;
-    
-    for (const auto& pair : shaderSets) {
-      if (pair.second == aspect)
-        shaderSet = pair.first;
-    }
-
-    if (!shaderSet)
-      throw DxvkError(str::format("DxvkMetaCopyObjects: Unsupported aspect mask: ", aspect));
-
-    VkShaderModule psModule = VK_NULL_HANDLE;
-
-    if (key.viewType == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
-      psModule = shaderSet->frag1D;
-    else if (key.samples == VK_SAMPLE_COUNT_1_BIT)
-      psModule = shaderSet->frag2D;
-    else
-      psModule = shaderSet->fragMs;
-    
-    stages[stageCount++] = VkPipelineShaderStageCreateInfo {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
-      VK_SHADER_STAGE_FRAGMENT_BIT, psModule, "main" };
-
-    std::array<VkDynamicState, 2> dynStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    }};
-    
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-    
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-    
-    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-    
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.depthClampEnable = VK_TRUE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-    
-    uint32_t msMask = 0xFFFFFFFF;
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = key.samples;
-    msState.sampleShadingEnable = key.samples != VK_SAMPLE_COUNT_1_BIT;
-    msState.minSampleShading  = 1.0f;
-    msState.pSampleMask       = &msMask;
-    
-    VkPipelineColorBlendAttachmentState cbAttachment = { };
-    cbAttachment.colorWriteMask =
-      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-    
-    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbState.attachmentCount = 1;
-    cbState.pAttachments = &cbAttachment;
-    
-    VkStencilOpState stencilOp = { };
-    stencilOp.failOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.passOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.depthFailOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.compareOp = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask = 0xFFFFFFFF;
-    stencilOp.writeMask = 0xFFFFFFFF;
-    
-    VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    dsState.depthTestEnable = VK_TRUE;
-    dsState.depthWriteEnable = VK_TRUE;
-    dsState.depthCompareOp = VK_COMPARE_OP_ALWAYS;
-    dsState.stencilTestEnable = VK_TRUE;
-    dsState.front = stencilOp;
-    dsState.back = stencilOp;
-    
-    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-
-    if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
-      rtState.colorAttachmentCount = 1;
-      rtState.pColorAttachmentFormats = &key.format;
-    } else {
-      if (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
-        rtState.depthAttachmentFormat = key.format;
-      if (aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
-        rtState.stencilAttachmentFormat = key.format;
-    }
-
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtState };
-    info.stageCount             = stageCount;
-    info.pStages                = stages.data();
-    info.pVertexInputState      = &viState;
-    info.pInputAssemblyState    = &iaState;
-    info.pViewportState         = &vpState;
-    info.pRasterizationState    = &rsState;
-    info.pMultisampleState      = &msState;
-    info.pColorBlendState       = (aspect & VK_IMAGE_ASPECT_COLOR_BIT) ? &cbState : nullptr;
-    info.pDepthStencilState     = (aspect & VK_IMAGE_ASPECT_COLOR_BIT) ? nullptr : &dsState;
-    info.pDynamicState          = &dynState;
-    info.layout                 = pipelineLayout;
-    info.basePipelineIndex      = -1;
-    
-    VkPipeline result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(), VK_NULL_HANDLE, 1, &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaCopyObjects: Failed to create graphics pipeline");
-    return result;
-  }
-  
 }

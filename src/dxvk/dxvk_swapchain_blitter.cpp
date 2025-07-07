@@ -5,7 +5,6 @@
 #include <dxvk_present_frag.h>
 #include <dxvk_present_frag_blit.h>
 #include <dxvk_present_frag_ms.h>
-#include <dxvk_present_frag_ms_amd.h>
 #include <dxvk_present_frag_ms_blit.h>
 #include <dxvk_present_vert.h>
 
@@ -15,12 +14,9 @@ namespace dxvk {
     const Rc<DxvkDevice>& device,
     const Rc<hud::Hud>&   hud)
   : m_device(device), m_hud(hud),
-    m_setLayout(createSetLayout()),
-    m_pipelineLayout(createPipelineLayout()),
-    m_cursorSetLayout(createCursorSetLayout()),
-    m_cursorPipelineLayout(createCursorPipelineLayout()) {
+    m_blitLayout(createBlitPipelineLayout()),
+    m_cursorLayout(createCursorPipelineLayout()) {
     this->createSampler();
-    this->createShaders();
   }
 
 
@@ -32,26 +28,11 @@ namespace dxvk {
 
     for (const auto& p : m_cursorPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_shaderVsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsCopy.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsBlit.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsMsResolve.stageInfo.module, nullptr);
-
-    vk->vkDestroyShaderModule(vk->device(), m_shaderVsCursor.stageInfo.module, nullptr);
-    vk->vkDestroyShaderModule(vk->device(), m_shaderFsCursor.stageInfo.module, nullptr);
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_setLayout, nullptr);
-
-    vk->vkDestroyPipelineLayout(vk->device(), m_cursorPipelineLayout, nullptr);
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_cursorSetLayout, nullptr);
   }
 
 
   void DxvkSwapchainBlitter::present(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
@@ -91,11 +72,13 @@ namespace dxvk {
     else
       destroyHudImage();
 
+    VkImageLayout renderLayout = dstView->getLayout();
+
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.newLayout = renderLayout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = dstView->image()->handle();
@@ -105,13 +88,13 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
     VkExtent3D dstExtent = dstView->mipLevelExtent(0u);
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = dstView->handle();
-    attachmentInfo.imageLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    attachmentInfo.imageLayout = renderLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -125,7 +108,7 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx.cmd->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(&renderInfo);
 
     performDraw(ctx, dstView, dstRect,
       srcView, srcRect, composite);
@@ -138,14 +121,14 @@ namespace dxvk {
         renderCursor(ctx, dstView);
     }
 
-    ctx.cmd->cmdEndRendering();
+    ctx->cmdEndRendering();
 
     barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
-    barrier.oldLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.oldLayout = renderLayout;
     barrier.newLayout = dstView->image()->info().layout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -156,7 +139,7 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
   }
 
 
@@ -258,7 +241,7 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::performDraw(
-    const DxvkContextObjects& ctx,
+    const Rc<DxvkCommandList>&ctx,
     const Rc<DxvkImageView>&  dstView,
           VkRect2D            dstRect,
     const Rc<DxvkImageView>&  srcView,
@@ -268,7 +251,7 @@ namespace dxvk {
     VkColorSpaceKHR srcColorSpace = srcView->image()->info().colorSpace;
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Swapchain blit"));
     }
 
@@ -296,14 +279,14 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 0.0f;
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
+    ctx->cmdSetViewport(1, &viewport);
 
     VkRect2D scissor = { };
     scissor.offset = coordA;
     scissor.extent.width = uint32_t(coordB.x - coordA.x);
     scissor.extent.height = uint32_t(coordB.y - coordA.y);
 
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetScissor(1, &scissor);
 
     DxvkSwapchainPipelineKey key;
     key.srcSpace = srcColorSpace;
@@ -313,67 +296,44 @@ namespace dxvk {
     key.dstFormat = dstView->info().format;
     key.needsGamma = m_gammaView != nullptr;
     key.needsBlit = dstRect.extent != srcRect.extent;
-    key.compositeHud = composite && m_hudView;
+    key.compositeHud = composite && m_hudSrv;
     key.compositeCursor = composite && m_cursorView;
 
-    VkPipeline pipeline = getPipeline(key);
+    VkPipeline pipeline = getBlitPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+    // Set up resource bindings
+    std::array<DxvkDescriptorWrite, 4> descriptors = { };
 
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_setLayout);
+    auto& imageDescriptor = descriptors[0u];
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imageDescriptor.descriptor = srcView->getDescriptor();
 
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = m_samplerPresent->handle();
-    imageDescriptor.imageView = srcView->handle();
-    imageDescriptor.imageLayout = srcView->image()->info().layout;
+    auto& gammaDescriptor = descriptors[1u];
+    gammaDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    VkDescriptorImageInfo gammaDescriptor = { };
-    gammaDescriptor.sampler = m_samplerGamma->handle();
+    if (m_gammaView)
+      gammaDescriptor.descriptor = m_gammaView->getDescriptor();
 
-    if (m_gammaView) {
-      gammaDescriptor.imageView = m_gammaView->handle();
-      gammaDescriptor.imageLayout = m_gammaView->image()->info().layout;
-    }
+    auto& hudDescriptor = descriptors[2u];
+    hudDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    VkDescriptorImageInfo hudDescriptor = { };
+    if (m_hudSrv)
+      hudDescriptor.descriptor = m_hudSrv->getDescriptor();
 
-    if (m_hudView) {
-      hudDescriptor.imageView = m_hudView->handle();
-      hudDescriptor.imageLayout = m_hudImage->info().layout;
-    }
+    auto& cursorDescriptor = descriptors[3u];
+    cursorDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    VkDescriptorImageInfo cursorDescriptor = { };
-    cursorDescriptor.sampler = m_samplerCursorNearest->handle();
+    uint32_t cursorSampler = m_samplerCursorNearest->getDescriptor().samplerIndex;
 
     if (m_cursorView) {
       VkExtent3D extent = m_cursorImage->info().extent;
 
       if (m_cursorRect.extent.width != extent.width
        || m_cursorRect.extent.height != extent.height)
-        cursorDescriptor.sampler = m_samplerCursorLinear->handle();
+        cursorSampler = m_samplerCursorLinear->getDescriptor().samplerIndex;
 
-      cursorDescriptor.imageLayout = m_cursorImage->info().layout;
-      cursorDescriptor.imageView = m_cursorView->handle();
+      cursorDescriptor.descriptor = m_cursorView->getDescriptor();
     }
-
-    std::array<VkWriteDescriptorSet, 4> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &gammaDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 2, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, &hudDescriptor },
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 3, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &cursorDescriptor },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(), descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout,
-      set, 0, nullptr);
 
     PushConstants args = { };
     args.srcOffset = srcRect.offset;
@@ -381,38 +341,42 @@ namespace dxvk {
     args.dstOffset = dstRect.offset;
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
+    args.samplerGamma = m_samplerGamma->getDescriptor().samplerIndex;
+    args.samplerCursor = cursorSampler;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      m_pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, sizeof(args), &args);
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    ctx.cmd->cmdDraw(3, 1, 0, 0);
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_blitLayout, descriptors.size(), descriptors.data(),
+      sizeof(args), &args);
+
+    ctx->cmdDraw(3, 1, 0, 0);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
     // Make sure to keep used resources alive
-    ctx.cmd->track(srcView->image(), DxvkAccess::Read);
-    ctx.cmd->track(dstView->image(), DxvkAccess::Write);
+    ctx->track(srcView->image(), DxvkAccess::Read);
+    ctx->track(dstView->image(), DxvkAccess::Write);
 
     if (m_gammaImage)
-      ctx.cmd->track(m_gammaImage, DxvkAccess::Read);
+      ctx->track(m_gammaImage, DxvkAccess::Read);
 
     if (m_hudImage)
-      ctx.cmd->track(m_hudImage, DxvkAccess::Read);
+      ctx->track(m_hudImage, DxvkAccess::Read);
 
     if (m_cursorImage)
-      ctx.cmd->track(m_cursorImage, DxvkAccess::Read);
+      ctx->track(m_cursorImage, DxvkAccess::Read);
 
-    ctx.cmd->track(m_samplerGamma);
-    ctx.cmd->track(m_samplerPresent);
-    ctx.cmd->track(m_samplerCursorLinear);
-    ctx.cmd->track(m_samplerCursorNearest);
+    ctx->track(m_samplerGamma);
+    ctx->track(m_samplerCursorLinear);
+    ctx->track(m_samplerCursorNearest);
   }
 
 
   void DxvkSwapchainBlitter::renderHudImage(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
           VkExtent3D                  extent) {
     if (m_hud->empty())
       return;
@@ -421,33 +385,35 @@ namespace dxvk {
       createHudImage(extent);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "HUD render"));
     }
 
     // Reset image
+    VkImageLayout renderLayout = m_hudRtv->getLayout();
+
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.newLayout = renderLayout;
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = m_hudImage->handle();
-    barrier.subresourceRange = m_hudView->imageSubresources();
+    barrier.subresourceRange = m_hudRtv->imageSubresources();
 
     VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_hudImage->trackInitialization(barrier.subresourceRange);
 
     // Render actual HUD image
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = m_hudView->handle();
-    attachmentInfo.imageLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    attachmentInfo.imageView = m_hudRtv->handle();
+    attachmentInfo.imageLayout = renderLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -458,26 +424,26 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx.cmd->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(&renderInfo);
 
-    m_hud->render(ctx, m_hudView);
+    m_hud->render(ctx, m_hudRtv);
 
-    ctx.cmd->cmdEndRendering();
+    ctx->cmdEndRendering();
 
     // Make image shader-readable
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-    barrier.oldLayout = m_hudImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    barrier.oldLayout = renderLayout;
     barrier.newLayout = m_hudImage->info().layout;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    ctx.cmd->track(m_hudImage, DxvkAccess::Write);
+    ctx->track(m_hudImage, DxvkAccess::Write);
   }
 
 
@@ -507,8 +473,6 @@ namespace dxvk {
 
     DxvkImageViewKey viewInfo = { };
     viewInfo.viewType       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.usage          = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                            | VK_IMAGE_USAGE_SAMPLED_BIT;
     viewInfo.format         = imageInfo.format;
     viewInfo.aspects        = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.mipIndex       = 0u;
@@ -516,24 +480,29 @@ namespace dxvk {
     viewInfo.layerIndex     = 0u;
     viewInfo.layerCount     = 1u;
 
-    m_hudView = m_hudImage->createView(viewInfo);
+    viewInfo.usage          = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    m_hudRtv = m_hudImage->createView(viewInfo);
+
+    viewInfo.usage          = VK_IMAGE_USAGE_SAMPLED_BIT;
+    m_hudSrv = m_hudImage->createView(viewInfo);
   }
 
 
   void DxvkSwapchainBlitter::destroyHudImage() {
     m_hudImage = nullptr;
-    m_hudView = nullptr;
+    m_hudRtv = nullptr;
+    m_hudSrv = nullptr;
   }
 
 
   void DxvkSwapchainBlitter::renderCursor(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
     const Rc<DxvkImageView>&          dstView) {
     if (!m_cursorRect.extent.width || !m_cursorRect.extent.height)
       return;
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture))) {
-      ctx.cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+      ctx->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(0xdcc0f0, "Software cursor"));
     }
 
@@ -547,13 +516,13 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 0.0f;
 
-    ctx.cmd->cmdSetViewport(1, &viewport);
+    ctx->cmdSetViewport(1, &viewport);
 
     VkRect2D scissor = { };
     scissor.extent.width = dstExtent.width;
     scissor.extent.height = dstExtent.height;
 
-    ctx.cmd->cmdSetScissor(1, &scissor);
+    ctx->cmdSetScissor(1, &scissor);
 
     DxvkCursorPipelineKey key = { };
     key.dstFormat = dstView->info().format;
@@ -561,55 +530,39 @@ namespace dxvk {
 
     VkPipeline pipeline = getCursorPipeline(key);
 
-    ctx.cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-
-    VkDescriptorSet set = ctx.descriptorPool->alloc(m_cursorSetLayout);
-
     VkExtent3D cursorExtent = m_cursorImage->info().extent;
 
-    bool filterLinear = m_cursorRect.extent.width != cursorExtent.width
-                     || m_cursorRect.extent.height != cursorExtent.height;
-
-    VkDescriptorImageInfo imageDescriptor = { };
-    imageDescriptor.sampler = filterLinear
-      ? m_samplerCursorLinear->handle()
-      : m_samplerCursorNearest->handle();
-    imageDescriptor.imageView = m_cursorView->handle();
-    imageDescriptor.imageLayout = m_cursorImage->info().layout;
-
-    std::array<VkWriteDescriptorSet, 1> descriptorWrites = {{
-      { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, nullptr,
-        set, 0, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, &imageDescriptor },
-    }};
-
-    ctx.cmd->updateDescriptorSets(
-      descriptorWrites.size(), descriptorWrites.data());
-
-    ctx.cmd->cmdBindDescriptorSet(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, m_cursorPipelineLayout,
-      set, 0, nullptr);
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    imageDescriptor.descriptor = m_cursorView->getDescriptor();
 
     CursorPushConstants args = { };
     args.dstExtent = { dstExtent.width, dstExtent.height };
     args.cursorOffset = m_cursorRect.offset;
     args.cursorExtent = m_cursorRect.extent;
+    args.sampler = m_samplerCursorNearest->getDescriptor().samplerIndex;
 
-    ctx.cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-      m_cursorPipelineLayout, VK_SHADER_STAGE_VERTEX_BIT,
-      0, sizeof(args), &args);
+    if (m_cursorRect.extent.width != cursorExtent.width
+     || m_cursorRect.extent.height != cursorExtent.height)
+      args.sampler = m_samplerCursorLinear->getDescriptor().samplerIndex;
 
-    ctx.cmd->cmdDraw(4, 1, 0, 0);
+    ctx->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    ctx->bindResources(DxvkCmdBuffer::ExecBuffer,
+      m_cursorLayout, 1u, &imageDescriptor, sizeof(args), &args);
+
+    ctx->cmdDraw(4, 1, 0, 0);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      ctx.cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    ctx.cmd->track(m_cursorImage, DxvkAccess::Write);
+    ctx->track(m_cursorImage, DxvkAccess::Write);
   }
 
 
   void DxvkSwapchainBlitter::uploadGammaImage(
-    const DxvkContextObjects&         ctx) {
+    const Rc<DxvkCommandList>&        ctx) {
     if (!m_gammaImage || m_gammaImage->info().extent.width != m_gammaCpCount) {
       DxvkImageCreateInfo imageInfo = { };
       imageInfo.type = VK_IMAGE_TYPE_1D;
@@ -648,14 +601,14 @@ namespace dxvk {
 
 
   void DxvkSwapchainBlitter::uploadCursorImage(
-    const DxvkContextObjects&         ctx) {
+    const Rc<DxvkCommandList>&        ctx) {
     uploadTexture(ctx, m_cursorImage, m_cursorBuffer);
     m_cursorBuffer = nullptr;
   }
 
 
   void DxvkSwapchainBlitter::uploadTexture(
-    const DxvkContextObjects&         ctx,
+    const Rc<DxvkCommandList>&        ctx,
     const Rc<DxvkImage>&              image,
     const Rc<DxvkBuffer>&             buffer) {
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -674,10 +627,10 @@ namespace dxvk {
     depInfo.imageMemoryBarrierCount = 1;
     depInfo.pImageMemoryBarriers = &barrier;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     image->trackInitialization(barrier.subresourceRange);
 
-    DxvkBufferSliceHandle bufferSlice = buffer->getSliceHandle();
+    DxvkResourceBufferInfo bufferSlice = buffer->getSliceInfo();
 
     VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
     copyRegion.bufferOffset = bufferSlice.offset;
@@ -686,13 +639,13 @@ namespace dxvk {
     copyRegion.imageSubresource.layerCount = 1u;
 
     VkCopyBufferToImageInfo2 copy = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
-    copy.srcBuffer = bufferSlice.handle;
+    copy.srcBuffer = bufferSlice.buffer;
     copy.dstImage = image->handle();
     copy.dstImageLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copy.regionCount = 1;
     copy.pRegions = &copyRegion;
 
-    ctx.cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copy);
+    ctx->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copy);
 
     barrier.srcStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -701,10 +654,10 @@ namespace dxvk {
     barrier.oldLayout = barrier.newLayout;
     barrier.newLayout = image->info().layout;
 
-    ctx.cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
 
-    ctx.cmd->track(buffer, DxvkAccess::Read);
-    ctx.cmd->track(image, DxvkAccess::Write);
+    ctx->track(buffer, DxvkAccess::Read);
+    ctx->track(image, DxvkAccess::Write);
   }
 
 
@@ -712,14 +665,6 @@ namespace dxvk {
     DxvkSamplerKey samplerInfo = { };
     samplerInfo.setFilter(VK_FILTER_LINEAR, VK_FILTER_LINEAR,
       VK_SAMPLER_MIPMAP_MODE_NEAREST);
-    samplerInfo.setAddressModes(
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER,
-      VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
-    samplerInfo.setUsePixelCoordinates(true);
- 
-    m_samplerPresent = m_device->createSampler(samplerInfo);
-
     samplerInfo.setAddressModes(
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
       VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
@@ -742,150 +687,31 @@ namespace dxvk {
   }
 
 
-  void DxvkSwapchainBlitter::createShaders() {
-    createShaderModule(m_shaderVsBlit, VK_SHADER_STAGE_VERTEX_BIT,
-      sizeof(dxvk_present_vert), dxvk_present_vert);
-    createShaderModule(m_shaderFsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(dxvk_present_frag_blit), dxvk_present_frag_blit);
-    createShaderModule(m_shaderFsCopy, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(dxvk_present_frag), dxvk_present_frag);
-    createShaderModule(m_shaderFsMsBlit, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(dxvk_present_frag_ms_blit), dxvk_present_frag_ms_blit);
-
-    if (m_device->features().amdShaderFragmentMask) {
-      createShaderModule(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
-        sizeof(dxvk_present_frag_ms_amd), dxvk_present_frag_ms_amd);
-    } else {
-      createShaderModule(m_shaderFsMsResolve, VK_SHADER_STAGE_FRAGMENT_BIT,
-        sizeof(dxvk_present_frag_ms), dxvk_present_frag_ms);
-    }
-
-    createShaderModule(m_shaderVsCursor, VK_SHADER_STAGE_VERTEX_BIT,
-      sizeof(dxvk_cursor_vert), dxvk_cursor_vert);
-    createShaderModule(m_shaderFsCursor, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(dxvk_cursor_frag), dxvk_cursor_frag);
-  }
-
-
-  void DxvkSwapchainBlitter::createShaderModule(
-          ShaderModule&               shader,
-          VkShaderStageFlagBits       stage,
-          size_t                      size,
-    const uint32_t*                   code) {
-    shader.moduleInfo.codeSize = size;
-    shader.moduleInfo.pCode = code;
-
-    shader.stageInfo.stage = stage;
-    shader.stageInfo.pName = "main";
-
-    if (m_device->features().khrMaintenance5.maintenance5
-     || m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
-      shader.stageInfo.pNext = &shader.moduleInfo;
-      return;
-    }
-
-    auto vk = m_device->vkd();
-
-    VkResult vr = vk->vkCreateShaderModule(vk->device(),
-      &shader.moduleInfo, nullptr, &shader.stageInfo.module);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit shader module: ", vr));
-  }
-
-
-  VkDescriptorSetLayout DxvkSwapchainBlitter::createSetLayout() {
-    auto vk = m_device->vkd();
-
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          1, VK_SHADER_STAGE_FRAGMENT_BIT },
-      { 3, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+  const DxvkPipelineLayout* DxvkSwapchainBlitter::createBlitPipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 4> bindings = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit descriptor set layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(PushConstants), bindings.size(), bindings.data());
   }
 
 
-  VkDescriptorSetLayout DxvkSwapchainBlitter::createCursorSetLayout() {
-    auto vk = m_device->vkd();
-
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+  const DxvkPipelineLayout* DxvkSwapchainBlitter::createCursorPipelineLayout() {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
     }};
 
-    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    info.bindingCount = bindings.size();
-    info.pBindings = bindings.data();
-
-    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain cursor descriptor set layout: ", vr));
-
-    return layout;
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(CursorPushConstants), bindings.size(), bindings.data());
   }
 
 
-  VkPipelineLayout DxvkSwapchainBlitter::createPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConst = { };
-    pushConst.size = sizeof(PushConstants);
-    pushConst.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1;
-    info.pSetLayouts = &m_setLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges = &pushConst;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit pipeline layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipelineLayout DxvkSwapchainBlitter::createCursorPipelineLayout() {
-    auto vk = m_device->vkd();
-
-    VkPushConstantRange pushConst = { };
-    pushConst.size = sizeof(CursorPushConstants);
-    pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    info.setLayoutCount = 1;
-    info.pSetLayouts = &m_cursorSetLayout;
-    info.pushConstantRangeCount = 1;
-    info.pPushConstantRanges = &pushConst;
-
-    VkPipelineLayout layout = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreatePipelineLayout(vk->device(), &info, nullptr, &layout);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain cursor pipeline layout: ", vr));
-
-    return layout;
-  }
-
-
-  VkPipeline DxvkSwapchainBlitter::createPipeline(
+  VkPipeline DxvkSwapchainBlitter::createBlitPipeline(
     const DxvkSwapchainPipelineKey&   key) {
     auto vk = m_device->vkd();
 
@@ -924,89 +750,32 @@ namespace dxvk {
     specInfo.dataSize = sizeof(specConstants);
     specInfo.pData = &specConstants;
 
-    std::array<VkPipelineShaderStageCreateInfo, 2> blitStages = { };
-    blitStages[0] = m_shaderVsBlit.stageInfo;
+    util::DxvkBuiltInGraphicsState state = { };
+    state.vs = util::DxvkBuiltInShaderStage(dxvk_present_vert, nullptr);
 
-    if (key.srcSamples == VK_SAMPLE_COUNT_1_BIT)
-      blitStages[1] = key.needsBlit ? m_shaderFsBlit.stageInfo : m_shaderFsCopy.stageInfo;
-    else
-      blitStages[1] = key.needsBlit ? m_shaderFsMsBlit.stageInfo : m_shaderFsMsResolve.stageInfo;
+    if (key.srcSamples == VK_SAMPLE_COUNT_1_BIT) {
+      state.fs = key.needsBlit
+        ? util::DxvkBuiltInShaderStage(dxvk_present_frag_blit, &specInfo)
+        : util::DxvkBuiltInShaderStage(dxvk_present_frag, &specInfo);
+    } else {
+      state.fs = key.needsBlit
+        ? util::DxvkBuiltInShaderStage(dxvk_present_frag_ms_blit, &specInfo)
+        : util::DxvkBuiltInShaderStage(dxvk_present_frag_ms, &specInfo);
+    }
 
-    blitStages[1].pSpecializationInfo = &specInfo;
-
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtInfo.colorAttachmentCount = 1;
-    rtInfo.pColorAttachmentFormats = &key.dstFormat;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
-    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    constexpr uint32_t sampleMask = 0x1;
-
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &sampleMask;
-
-    VkPipelineColorBlendAttachmentState cbAttachment = { };
-    cbAttachment.colorWriteMask =
-      VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-      VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbState.attachmentCount = 1;
-    cbState.pAttachments = &cbAttachment;
-
-    static const std::array<VkDynamicState, 2> dynStates = {
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    VkGraphicsPipelineCreateInfo blitInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
-    blitInfo.stageCount = blitStages.size();
-    blitInfo.pStages = blitStages.data();
-    blitInfo.pVertexInputState = &viState;
-    blitInfo.pInputAssemblyState = &iaState;
-    blitInfo.pViewportState = &vpState;
-    blitInfo.pRasterizationState = &rsState;
-    blitInfo.pMultisampleState = &msState;
-    blitInfo.pColorBlendState = &cbState;
-    blitInfo.pDynamicState = &dynState;
-    blitInfo.layout = m_pipelineLayout;
-    blitInfo.basePipelineIndex = -1;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
-      1, &blitInfo, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit pipeline: ", vr));
-
-    return pipeline;
+    state.colorFormat = key.dstFormat;
+    return m_device->createBuiltInGraphicsPipeline(m_blitLayout, state);
   }
 
 
-  VkPipeline DxvkSwapchainBlitter::getPipeline(
+  VkPipeline DxvkSwapchainBlitter::getBlitPipeline(
     const DxvkSwapchainPipelineKey&   key) {
     auto entry = m_pipelines.find(key);
 
     if (entry != m_pipelines.end())
       return entry->second;
 
-    VkPipeline pipeline = createPipeline(key);
+    VkPipeline pipeline = createBlitPipeline(key);
     m_pipelines.insert({ key, pipeline });
     return pipeline;
   }
@@ -1031,33 +800,8 @@ namespace dxvk {
     specInfo.dataSize = sizeof(specConstants);
     specInfo.pData = &specConstants;
 
-    std::array<VkPipelineShaderStageCreateInfo, 2> stages = { };
-    stages[0] = m_shaderVsCursor.stageInfo;
-    stages[1] = m_shaderFsCursor.stageInfo;
-    stages[1].pSpecializationInfo = &specInfo;
-
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
-    rtInfo.colorAttachmentCount = 1;
-    rtInfo.pColorAttachmentFormats = &key.dstFormat;
-
-    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
-
     VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-
-    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-
-    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsState.cullMode = VK_CULL_MODE_NONE;
-    rsState.polygonMode = VK_POLYGON_MODE_FILL;
-    rsState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.lineWidth = 1.0f;
-
-    constexpr uint32_t sampleMask = 0x1;
-
-    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msState.pSampleMask = &sampleMask;
 
     VkPipelineColorBlendAttachmentState cbAttachment = { };
     cbAttachment.blendEnable = VK_TRUE;
@@ -1071,40 +815,14 @@ namespace dxvk {
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbState.attachmentCount = 1;
-    cbState.pAttachments = &cbAttachment;
+    util::DxvkBuiltInGraphicsState state = { };
+    state.vs = util::DxvkBuiltInShaderStage(dxvk_cursor_vert, nullptr);
+    state.fs = util::DxvkBuiltInShaderStage(dxvk_cursor_frag, &specInfo);
+    state.colorFormat = key.dstFormat;
+    state.iaState = &iaState;
+    state.cbAttachment = &cbAttachment;
 
-    static const std::array<VkDynamicState, 2> dynStates = {
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dynState.dynamicStateCount = dynStates.size();
-    dynState.pDynamicStates = dynStates.data();
-
-    VkGraphicsPipelineCreateInfo blitInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
-    blitInfo.stageCount = stages.size();
-    blitInfo.pStages = stages.data();
-    blitInfo.pVertexInputState = &viState;
-    blitInfo.pInputAssemblyState = &iaState;
-    blitInfo.pViewportState = &vpState;
-    blitInfo.pRasterizationState = &rsState;
-    blitInfo.pMultisampleState = &msState;
-    blitInfo.pColorBlendState = &cbState;
-    blitInfo.pDynamicState = &dynState;
-    blitInfo.layout = m_cursorPipelineLayout;
-    blitInfo.basePipelineIndex = -1;
-
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE,
-      1, &blitInfo, nullptr, &pipeline);
-
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create swap chain blit pipeline: ", vr));
-
-    return pipeline;
+    return m_device->createBuiltInGraphicsPipeline(m_cursorLayout, state);
   }
 
 

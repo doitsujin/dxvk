@@ -129,11 +129,14 @@ namespace dxvk {
 
   private:
     
+    Com<DxgiFactory> m_factory;
+    Com<DxgiAdapter> m_adapter;
     DxgiMonitorInfo* m_monitorInfo = nullptr;
-    Com<DxgiAdapter> m_adapter = nullptr;
-    HMONITOR         m_monitor = nullptr;
+    HMONITOR         m_monitor     = nullptr;
 
     wsi::WsiDisplayMetadata m_metadata = {};
+
+    D3DDestructionNotifier m_destructionNotifier;
 
     static void FilterModesByDesc(
             std::vector<DXGI_MODE_DESC1>& Modes,

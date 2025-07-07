@@ -55,11 +55,22 @@ namespace dxvk {
         }
       } break;
 
+      case DxbcInstClass::AtomicCounter: {
+        const uint32_t registerId = ins.dst[1].idx[0].offset;
+        m_analysis->uavCounterMask |= uint64_t(1u) << registerId;
+      } break;
+
       case DxbcInstClass::TextureSample:
       case DxbcInstClass::TextureGather:
       case DxbcInstClass::TextureQueryLod:
       case DxbcInstClass::VectorDeriv: {
         m_analysis->usesDerivatives = true;
+      } break;
+
+      case DxbcInstClass::TextureQueryMs:
+      case DxbcInstClass::TextureQueryMsPos: {
+        if (ins.src[0].type == DxbcOperandType::Rasterizer)
+          m_analysis->usesSampleCount = true;
       } break;
 
       case DxbcInstClass::ControlFlow: {
@@ -119,14 +130,14 @@ namespace dxvk {
           case DxbcOpcode::DclConstantBuffer: {
             uint32_t registerId = ins.dst[0].idx[0].offset;
 
-            if (registerId < DxbcConstBufBindingCount)
+            if (registerId < DxbcConstantBuffersPerStage)
               m_analysis->bindings.cbvMask |= 1u << registerId;
           } break;
 
           case DxbcOpcode::DclSampler: {
             uint32_t registerId = ins.dst[0].idx[0].offset;
 
-            if (registerId < DxbcSamplerBindingCount)
+            if (registerId < DxbcSamplersPerStage)
               m_analysis->bindings.samplerMask |= 1u << registerId;
           } break;
 
@@ -138,7 +149,7 @@ namespace dxvk {
             uint32_t idx = registerId / 64u;
             uint32_t bit = registerId % 64u;
 
-            if (registerId < DxbcResourceBindingCount)
+            if (registerId < DxbcSrvPerStage)
               m_analysis->bindings.srvMask[idx] |= uint64_t(1u) << bit;
           } break;
 
@@ -147,7 +158,7 @@ namespace dxvk {
           case DxbcOpcode::DclUavStructured: {
             uint32_t registerId = ins.dst[0].idx[0].offset;
 
-            if (registerId < DxbcUavBindingCount)
+            if (registerId < DxbcUavPerPipeline)
               m_analysis->bindings.uavMask |= uint64_t(1u) << registerId;
           } break;
 
