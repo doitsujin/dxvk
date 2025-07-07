@@ -24,10 +24,9 @@ namespace dxvk {
       ++m_buckets[index];
       ++m_numLatencies;
 
-      QueueItem item = {
-        .timeStamp = t,
-        .latency   = latency
-      };
+      QueueItem item;
+      item.timeStamp = t;
+      item.latency   = latency;
 
       m_queue.push_back(item);
 
