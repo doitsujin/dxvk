@@ -207,6 +207,11 @@ namespace dxvk {
     if (unlikely(CheckFormat == D3D9Format::CENT && surface))
       return D3DERR_NOTAVAILABLE;
 
+    // No D3D8/9 implementation would be
+    // truly complete without frog support
+    if (unlikely(CheckFormat == D3D9Format::FROG))
+      return D3D_OK;
+
     // I really don't want to support this...
     if (unlikely(Usage & D3DUSAGE_DMAP)) {
       Logger::warn("D3D9Adapter::CheckDeviceFormat: D3DUSAGE_DMAP is unsupported");

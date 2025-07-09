@@ -105,6 +105,7 @@ namespace dxvk {
     Y410 = MAKEFOURCC('Y', '4', '1', '0'),
     AYUV = MAKEFOURCC('A', 'Y', 'U', 'V'),
     YV12 = MAKEFOURCC('Y', 'V', '1', '2'),
+    FROG = MAKEFOURCC('F', 'R', 'O', 'G'), // A largely semiaquatic amphibian
     OPAQUE_420 = MAKEFOURCC('4', '2', '0', 'O'),
 
     // Not supported but exist
