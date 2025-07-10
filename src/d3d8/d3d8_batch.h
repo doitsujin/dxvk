@@ -152,31 +152,29 @@ namespace dxvk {
       Batch* batch = &m_batches[size_t(batchedPrimType)];
       batch->PrimitiveType = batchedPrimType;
 
-      //UINT vertices = GetVertexCount8(PrimitiveType, PrimitiveCount);
-
       switch (PrimitiveType) {
         case D3DPT_POINTLIST:
           batch->Indices.resize(batch->Offset + PrimitiveCount);
-          for (UINT i = 0; i < PrimitiveCount; i++)
+          for (uint32_t i = 0; i < PrimitiveCount; i++)
             batch->Indices[batch->Offset++] = (StartVertex + i);
           break;
         case D3DPT_LINELIST:
           batch->Indices.resize(batch->Offset + PrimitiveCount * 2);
-          for (UINT i = 0; i < PrimitiveCount; i++) {
+          for (uint32_t i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i * 2 + 0);
             batch->Indices[batch->Offset++] = (StartVertex + i * 2 + 1);
           }
           break;
         case D3DPT_LINESTRIP:
           batch->Indices.resize(batch->Offset + PrimitiveCount * 2);
-          for (UINT i = 0; i < PrimitiveCount; i++) {
+          for (uint32_t i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i + 0);
             batch->Indices[batch->Offset++] = (StartVertex + i + 1);
           }
           break;
         case D3DPT_TRIANGLELIST:
           batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
-          for (UINT i = 0; i < PrimitiveCount; i++) {
+          for (uint32_t i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 0);
             batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 1);
             batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 2);
@@ -190,14 +188,14 @@ namespace dxvk {
             batch->Indices[batch->Offset + 1] = batch->Indices[batch->Offset-2];
             batch->Indices[batch->Offset += 2] = StartVertex;
           }
-          for (UINT i = 0; i < PrimitiveCount; i++) {
+          for (uint32_t i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i + 0);
           }
           break;
         // 1 2 3 4 5 6 7 -> 1 2 3, 1 3 4, 1 4 5, 1 5 6, 1 6 7
         case D3DPT_TRIANGLEFAN:
           batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
-          for (UINT i = 0; i < PrimitiveCount; i++) {
+          for (uint32_t i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + 0);
             batch->Indices[batch->Offset++] = (StartVertex + i + 1);
             batch->Indices[batch->Offset++] = (StartVertex + i + 2);

@@ -60,8 +60,8 @@ namespace dxvk {
       uint32_t UnmapLocked(D3D9Memory* memory);
 
       D3D9MemoryAllocator* m_allocator;
-      HANDLE m_mapping;
       uint32_t m_size;
+      HANDLE m_mapping;
       std::vector<D3D9MemoryRange> m_freeRanges;
       std::vector<D3D9MappingRange> m_mappingRanges;
   };

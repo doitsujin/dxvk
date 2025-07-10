@@ -1,5 +1,6 @@
 #include "d3d9_format.h"
 #include "d3d9_adapter.h"
+#include "d3d9_names.h"
 
 namespace dxvk {
 
