@@ -112,8 +112,10 @@ namespace dxvk {
 #endif
         }
 
-        if (m_fileStream)
+        if (m_fileStream) {
           m_fileStream << adjusted;
+          m_fileStream.flush();
+        }
       }
     }
   }
