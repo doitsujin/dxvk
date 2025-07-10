@@ -4181,7 +4181,8 @@ namespace dxvk {
 
     uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
 
-    // Check if this is a power of two...
+    // Check if this is a power of two and
+    // return D3DERR_NOTAVAILABLE on failure
     if (sampleCount & (sampleCount - 1))
       return D3DERR_NOTAVAILABLE;
 

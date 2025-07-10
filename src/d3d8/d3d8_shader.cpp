@@ -11,7 +11,7 @@
 
 namespace dxvk {
 
-  static constexpr int D3D8_NUM_VERTEX_INPUT_REGISTERS = 17;
+  static constexpr uint32_t D3D8_NUM_VERTEX_INPUT_REGISTERS = 17;
 
   /**
    * Standard mapping of vertex input registers v0-v16 to D3D9 usages and usage indices
@@ -131,10 +131,10 @@ namespace dxvk {
     DWORD shaderInputRegisters = 0;
 
     d3d9::D3DVERTEXELEMENT9* vertexElements = pTranslatedVS.declaration;
-    unsigned int elementIdx = 0;
+    uint32_t elementIdx = 0;
 
     // These are used for pDeclaration and pFunction
-    int i = 0;
+    uint32_t i = 0;
     DWORD token;
 
     std::stringstream dbg;
@@ -236,10 +236,10 @@ namespace dxvk {
           dbg << "count=" << count << ", addr=" << addr << ", rs=" << rs;
 
           // Add a DEF instruction for each constant
-          for (DWORD j = 0; j < regCount; j += 4) {
+          for (uint32_t j = 0; j < regCount; j += 4) {
             defs.push_back(encodeInstruction(d3d9::D3DSIO_DEF));
             defs.push_back(encodeDestRegister(d3d9::D3DSPR_CONST2, addr));
-            defs.push_back(pDeclaration[i+j+0]);
+            defs.push_back(pDeclaration[i+j]);
             defs.push_back(pDeclaration[i+j+1]);
             defs.push_back(pDeclaration[i+j+2]);
             defs.push_back(pDeclaration[i+j+3]);
@@ -287,7 +287,7 @@ namespace dxvk {
       Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));
 
       // Insert dcl instructions
-      for (int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
+      for (UINT vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
 
         // If bit N is set then we need to dcl register vN
         if ((shaderInputRegisters & (1 << vn)) != 0) {

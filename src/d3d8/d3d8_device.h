@@ -374,7 +374,7 @@ namespace dxvk {
      * called immediately before changing any D3D9 state.
      */
     inline void StateChange() {
-      if (ShouldBatch())
+      if (unlikely(ShouldBatch()))
         m_batcher->StateChange();
     }
 

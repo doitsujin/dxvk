@@ -998,7 +998,7 @@ namespace dxvk {
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int frontBufferCount = (SwapWithFrontBuffer() || m_parent->GetOptions()->extraFrontbuffer) ? 1 : 0;
+    const uint32_t frontBufferCount = (SwapWithFrontBuffer() || m_parent->GetOptions()->extraFrontbuffer) ? 1 : 0;
     const uint32_t bufferCount = NumBackBuffers + frontBufferCount;
 
     m_backBuffers.reserve(bufferCount);

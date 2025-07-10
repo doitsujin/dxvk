@@ -599,7 +599,7 @@ namespace dxvk {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
 
-    bool compressed = isDXT(srcDesc.Format);
+    const bool compressed = isDXTFormat(D3DFORMAT(srcDesc.Format));
 
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (unlikely(FAILED(res)))
@@ -737,17 +737,15 @@ namespace dxvk {
       pDestPointsArray = &point;
     }
 
-    for (UINT i = 0; i < cRects; i++) {
+    for (uint32_t i = 0; i < cRects; i++) {
 
       RECT srcRect, dstRect;
       srcRect = pSourceRectsArray[i];
 
       // True if the copy is asymmetric
-      bool asymmetric = true;
+      bool asymmetric = false;
       // True if the copy requires stretching (not technically supported)
-      bool stretch = true;
-      // True if the copy is not perfectly aligned (supported)
-      bool offset = true;
+      bool stretch = false;
 
       if (pDestPointsArray != NULL) {
         dstRect.left    = pDestPointsArray[i].x;
@@ -759,11 +757,8 @@ namespace dxvk {
 
         stretch     = (dstRect.right-dstRect.left) != (srcRect.right-srcRect.left)
                    || (dstRect.bottom-dstRect.top) != (srcRect.bottom-srcRect.top);
-
-        offset      = !stretch && asymmetric;
       } else {
         dstRect     = srcRect;
-        asymmetric  = stretch = offset = false;
       }
 
       POINT dstPt = { dstRect.left, dstRect.top };
@@ -1178,8 +1173,8 @@ namespace dxvk {
         // where the actual render target dimensions are off by one
         // pixel to what the game sets them to. Allow this corner case
         // to skip the validation, in order to prevent issues.
-        bool isOnePixelWider  = pViewport->X + pViewport->Width  == rtDesc.Width  + 1;
-        bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
+        const bool isOnePixelWider  = pViewport->X + pViewport->Width  == rtDesc.Width  + 1;
+        const bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
 
         if (m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller)) {
           Logger::debug("D3D8Device::SetViewport: Viewport exceeds render target dimensions by one pixel");
@@ -1727,7 +1722,6 @@ namespace dxvk {
     D3D8DeviceLock lock = LockDevice();
 
     d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
-    bool stateChange = true;
 
     switch (State) {
       // Most render states translate 1:1 to D3D9
@@ -1780,10 +1774,12 @@ namespace dxvk {
         return D3D_OK;
     }
 
-    if (stateChange) {
+    // Skip GetRenderState() calls for state
+    // comparisons if the batcher isn't used.
+    if (unlikely(ShouldBatch())) {
       DWORD value;
       // Value at this point is converted for use with D3D9,
-      // so we need to compare it against D3D9 directly
+      // so we need to compare it against D3D9 directly.
       HRESULT res = GetD3D9()->GetRenderState(State9, &value);
       if (likely(SUCCEEDED(res)) && value != Value)
         StateChange();
@@ -1877,12 +1873,12 @@ namespace dxvk {
       info.pVertexShader = std::move(pVertexShader);
 
       // Store D3D8 bytecodes in the shader info
-      for (UINT i = 0; pDeclaration[i] != D3DVSD_END(); i++)
+      for (uint32_t i = 0; pDeclaration[i] != D3DVSD_END(); i++)
         info.declaration.push_back(pDeclaration[i]);
       info.declaration.push_back(D3DVSD_END());
 
       if (pFunction != nullptr) {
-        for (UINT i = 0; pFunction[i] != D3DVS_END(); i++)
+        for (uint32_t i = 0; pFunction[i] != D3DVS_END(); i++)
           info.function.push_back(pFunction[i]);
         info.function.push_back(D3DVS_END());
       }
@@ -1981,11 +1977,11 @@ namespace dxvk {
       return GetD3D9()->GetFVF(pHandle);
     }
 
-    for (unsigned int i = 0; i < m_vertexShaders.size(); i++) {
+    for (DWORD i = 0; i < m_vertexShaders.size(); i++) {
       D3D8VertexShaderInfo& info = m_vertexShaders[i];
 
       if (info.pVertexShader == pVertexShader) {
-        *pHandle = getShaderHandle(DWORD(i));
+        *pHandle = getShaderHandle(i);
         return res;
       }
     }
