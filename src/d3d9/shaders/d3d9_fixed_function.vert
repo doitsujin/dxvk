@@ -22,12 +22,12 @@ layout(location = 12) in vec4 in_Color0;
 layout(location = 13) in vec4 in_Color1;
 layout(location = 14) in float in_Fog;
 layout(location = 15) in float in_PointSize;
-layout(location = 16) in float in_BlendWeight;
+layout(location = 16) in vec4 in_BlendWeight;
 layout(location = 17) in vec4 in_BlendIndices;
 
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
-invariant gl_Position;
+precise gl_Position;
 layout(location = 0) out vec4 out_Normal;
 layout(location = 1) out vec4 out_Texcoord0;
 layout(location = 2) out vec4 out_Texcoord1;
@@ -61,8 +61,13 @@ layout(push_constant, scalar) uniform RenderStates {
 // See d3d9_spec_constants.h for packing
 // MaxSpecDwords = 6
 // Binding has to match with getSpecConstantBufferSlot in dxso_util.h
-layout( set = 0, binding = 30, scalar) uniform SpecConsts {
+layout(set = 0, binding = 30, scalar) uniform SpecConsts {
     uint dword[6];
+};
+
+
+layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData {
+    mat4 WorldViewArray[];
 };
 
 
@@ -140,9 +145,13 @@ uint VertexBlendCount() {
 bool VertexBlendIndexed() {
     return bitfieldExtract(data.Key.Primitive[3], 27, 1) != 0;
 }
+bool NormalizeNormals() {
+    return bitfieldExtract(data.Key.Primitive[0], 29, 1) != 0;
+}
 
 void main() {
     vec4 vtx = in_Position0;
+    gl_Position = in_Position0;
     vec3 normal = in_Normal0.xyz;
 
     if (BlendMode() == D3D9FF_VertexBlendMode_Tween) {
@@ -158,15 +167,60 @@ void main() {
             vec4 vtxSum = vec4(0.0);
             vec3 nrmSum = vec3(0.0);
 
-            for (uint i = 0; i < VertexBlendCount(); i++) {
+            for (uint i = 0; i <= VertexBlendCount(); i++) {
                 uint arrayIndex;
                 if (VertexBlendIndexed()) {
                     arrayIndex = uint(round(in_BlendIndices[i]));
                 } else {
                     arrayIndex = i;
                 }
-                //mat4 worldView =
+                mat4 worldView = WorldViewArray[arrayIndex];
+
+                mat3 nrmMtx;
+                for (uint i = 0; i < 3; i++) {
+                    nrmMtx[i] = worldView[i].xyz;
+                }
+
+                vec4 vtxResult = vtx * worldView;
+                vec3 nrmResult = normal * nrmMtx;
+
+                float weight;
+                if (i != VertexBlendCount()) {
+                    weight = in_BlendWeight[i];
+                    blendWeightRemaining -= weight;
+                } else {
+                    weight = blendWeightRemaining;
+                }
+
+                vec4 weightVec4 = vec4(weight, weight, weight, weight);
+
+                vtxSum = fma(vtxResult, weightVec4, vtxSum);
+                nrmSum = fma(nrmResult, weightVec4.xyz, nrmSum);
             }
+        } else {
+            vtx = vtx * data.WorldView;
+
+            mat3 nrmMtx = mat3(data.NormalMatrix);
+
+            normal = nrmMtx * normal;
         }
+
+        // Some games rely no normals not being normal.
+        if (NormalizeNormals()) {
+            bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
+            normal = isZeroNormal ? normal : normalize(normal);
+        }
+
+        gl_Position = vtx * data.Projection;
+    } else {
+        gl_Position *= data.ViewportInfo.inverseExtent;
+        gl_Position += data.ViewportInfo.inverseOffset;
+
+        // We still need to account for perspective correction here...
+
+        float w = gl_Position.w;
+        float rhw = w == 0.0 ? 1.0 : 1.0 / w;
+        gl_Position.xyz *= rhw;
+        gl_Position.w = rhw;
     }
 }
