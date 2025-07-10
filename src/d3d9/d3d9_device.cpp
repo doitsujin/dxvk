@@ -7915,10 +7915,8 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyProgVertexShader);
     }
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
-      m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
-
-      D3D9FFShaderKeyVS key;
+    D3D9FFShaderKeyVS key;
+    {
       key.Data.Contents.HasPositionT = hasPositionT;
       key.Data.Contents.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
       key.Data.Contents.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
@@ -7978,7 +7976,11 @@ namespace dxvk {
       }
 
       key.Data.Contents.VertexClipping = m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
+    }
 
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+      m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
       EmitCs([
         this,
         cKey     = key,
@@ -8052,6 +8054,7 @@ namespace dxvk {
 
       data->Material = m_state.material;
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
+      data->Key = key.Data;
     }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
