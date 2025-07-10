@@ -8,6 +8,8 @@
 
 #include "../dxso/dxso_isgn.h"
 
+#include "d3d9_shader_types.h"
+
 #include <utility>
 #include <unordered_map>
 
@@ -107,57 +109,6 @@ namespace dxvk {
 
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
-
-  enum D3D9FF_VertexBlendMode {
-    D3D9FF_VertexBlendMode_Disabled,
-    D3D9FF_VertexBlendMode_Normal,
-    D3D9FF_VertexBlendMode_Tween,
-  };
-
-  struct D3D9FFShaderKeyVSData {
-    union {
-      struct {
-        uint32_t TexcoordIndices : 24;
-
-        uint32_t HasPositionT : 1;
-
-        uint32_t HasColor0 : 1; // Diffuse
-        uint32_t HasColor1 : 1; // Specular
-
-        uint32_t HasPointSize : 1;
-
-        uint32_t UseLighting : 1;
-
-        uint32_t NormalizeNormals : 1;
-        uint32_t LocalViewer : 1;
-        uint32_t RangeFog : 1;
-
-        uint32_t TexcoordFlags : 24;
-
-        uint32_t DiffuseSource : 2;
-        uint32_t AmbientSource : 2;
-        uint32_t SpecularSource : 2;
-        uint32_t EmissiveSource : 2;
-
-        uint32_t TransformFlags : 24;
-
-        uint32_t LightCount : 4;
-
-        uint32_t TexcoordDeclMask : 24;
-        uint32_t HasFog : 1;
-
-        uint32_t VertexBlendMode    : 2;
-        uint32_t VertexBlendIndexed : 1;
-        uint32_t VertexBlendCount   : 3;
-
-        uint32_t VertexClipping     : 1;
-
-        uint32_t Projected : 8;
-      } Contents;
-
-      uint32_t Primitive[5];
-    };
-  };
 
   struct D3D9FFShaderKeyVS {
     D3D9FFShaderKeyVS() {
