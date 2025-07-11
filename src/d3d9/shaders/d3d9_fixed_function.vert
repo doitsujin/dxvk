@@ -47,7 +47,7 @@ layout(location = 7) out vec4 out_Texcoord6;
 layout(location = 8) out vec4 out_Texcoord7;
 layout(location = 9) out vec4 out_Color0;
 layout(location = 10) out vec4 out_Color1;
-layout(location = 11) out vec4 out_Fog;
+layout(location = 11) out float out_Fog;
 
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
@@ -305,7 +305,7 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
         vec4 color = oColor;
         vec3 color3 = color.xyz;
         vec3 fogFact3 = vec3(fogFactor);
-        vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
+        vec3 lerpedFrog = mix(color3, fogColor, fogFact3);
         return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.z);
     } else {
         return vec4(fogFactor);
@@ -554,7 +554,7 @@ void main() {
         }
 
         if (applyTransform && !HasPositionT()) {
-            transformed = transformed * texCoords[i];
+            transformed = transformed * data.TexcoordMatrices[i];
         }
 
         // TODO: Shouldn't projected be checked per texture stage?
@@ -618,13 +618,16 @@ void main() {
             vec3 delta = position - vtx3;
             float d = length(delta);
             vec3 hitDir = -direction;
-                 hitDir = mix(hitDir, delta, isDirectional3);
+                 hitDir = mix(delta, hitDir, isDirectional3);
                  hitDir = normalize(hitDir);
 
             float atten = fma(d, atten2, atten1);
                   atten = fma(d, atten, atten0);
                   atten = 1.0 / atten;
                   atten = spvNMin(atten, FLOAT_MAX_VALUE);
+
+                  atten = d > range ? 0.0 : atten;
+                  atten = isDirectional ? 1.0 : atten;
 
             // Spot Lighting
             {
@@ -700,7 +703,7 @@ void main() {
         out_Color1 = in_Color1;
     }
 
-    out_Fog = DoFixedFunctionFog(vtx, vec4(0.0));
+    out_Fog = DoFixedFunctionFog(vtx, vec4(0.0)).x;
 
     gl_PointSize = DoPointSize(vtx);
 
