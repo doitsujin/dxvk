@@ -8,7 +8,9 @@
 
 #define FLOAT_MAX_VALUE 340282346638528859811704183484516925440.0
 
-#define CLIP_PLANE_COUNT 6 // caps::MaxClipPlanes in d3d9_caps.h
+
+const uint MaxClipPlaneCount = 6;
+const uint TextureStageCount = 8;
 
 
 layout(location = 0) in vec4 in_Position0;
@@ -33,7 +35,7 @@ layout(location = 17) in vec4 in_BlendIndices;
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
 precise gl_Position;
-out float gl_ClipDistance[CLIP_PLANE_COUNT];
+out float gl_ClipDistance[MaxClipPlaneCount];
 layout(location = 0) out vec4 out_Normal;
 layout(location = 1) out vec4 out_Texcoord0;
 layout(location = 2) out vec4 out_Texcoord1;
@@ -54,11 +56,11 @@ layout(location = 11) out vec4 out_Fog;
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSFixedFunction
 // ) = 4
-layout(set = 0, binding = 4, scalar) uniform ShaderData {
+layout(set = 0, binding = 4, scalar, row_major) uniform ShaderData {
     D3D9FixedFunctionVS data;
 };
 
-layout(push_constant, scalar) uniform RenderStates {
+layout(push_constant, scalar, row_major) uniform RenderStates {
     D3D9RenderStateInfo rs;
 };
 
@@ -78,7 +80,7 @@ layout(set = 0, binding = 30, scalar) uniform SpecConsts {
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSVertexBlendData
 // ) = 5
-layout(set = 0, binding = 5, std140) readonly buffer VertexBlendData {
+layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData {
     mat4 WorldViewArray[];
 };
 
@@ -90,7 +92,7 @@ layout(set = 0, binding = 5, std140) readonly buffer VertexBlendData {
 //     DxsoConstantBuffers::VSClipPlanes
 // ) = 3
 layout(set = 0, binding = 3, std140) readonly buffer ClipPlanes {
-    vec4 clipPlanes[CLIP_PLANE_COUNT];
+    vec4 clipPlanes[MaxClipPlaneCount];
 };
 
 
@@ -235,7 +237,9 @@ uint SpecClipPlaneCount() {
 
 #define isPixel false
 vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
-    vec4 specular = !isPixel ? in_Color1 : vec4(0.0);
+    vec4 color1 = HasColor1() ? in_Color1 : vec4(0.0);
+
+    vec4 specular = !isPixel ? color1 : vec4(0.0);
     bool hasSpecular = !isPixel && HasColor1();
 
     vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
@@ -343,7 +347,7 @@ void emitVsClipping(vec4 vtx) {
     uint clipPlaneCount = SpecClipPlaneCount();
 
     // Compute clip distances
-    for (uint i = 0; i < CLIP_PLANE_COUNT; i++) {
+    for (uint i = 0; i < MaxClipPlaneCount; i++) {
         vec4 clipPlane = clipPlanes[i];
         float dist = dot(worldPos, clipPlane);
         bool clipPlaneEnabled = i < clipPlaneCount;
@@ -357,9 +361,9 @@ vec4 PickSource(uint Source, vec4 Material) {
     if (Source == D3DMCS_MATERIAL)
         return Material;
     else if (Source == D3DMCS_COLOR1)
-        return in_Color0;
+        return HasColor0() ? in_Color0 : vec4(0.0);
     else
-        return in_Color1;
+        return HasColor1() ? in_Color1 : vec4(0.0);
 }
 
 
@@ -441,7 +445,7 @@ void main() {
     vec4 outNrm = vec4(normal, 1.0);
     out_Normal = outNrm;
 
-    vec4 texCoords[8];
+    vec4 texCoords[TextureStageCount];
     texCoords[0] = in_Texcoord0;
     texCoords[1] = in_Texcoord1;
     texCoords[2] = in_Texcoord2;
@@ -451,9 +455,8 @@ void main() {
     texCoords[6] = in_Texcoord6;
     texCoords[7] = in_Texcoord7;
 
-    vec4 transformedTexCoords[8];
+    vec4 transformedTexCoords[TextureStageCount];
 
-    const uint TextureStageCount = 8;
     for (uint i = 0; i < TextureStageCount; i++) {
         // 0b111 = 7
         uint inputIndex = (TexcoordIndices() >> (i * 3)) & 7;
