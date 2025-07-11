@@ -1775,50 +1775,22 @@ namespace dxvk {
     m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
     m_vs.in.NORMAL    = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
 
-    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Tween) {
-      m_vs.in.POSITION1 = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 1 });
-      m_vs.in.NORMAL1   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 1 });
-    }
-    else {
-      m_isgn.elemCount++;
-      m_isgn.elemCount++;
-    }
+    m_vs.in.POSITION1 = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 1 });
+    m_vs.in.NORMAL1   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 1 });
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
-    if (m_vsKey.Data.Contents.HasColor0)
-      m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
-    else {
-      m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
-      m_isgn.elemCount++;
-    }
+    m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
 
-    if (m_vsKey.Data.Contents.HasColor1)
-      m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
-    else {
-      m_vs.in.COLOR[1] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
-      m_isgn.elemCount++;
-    }
+    m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    if (m_vsKey.Data.Contents.HasFog)
-      m_vs.in.FOG = declareIO(true, DxsoSemantic{ DxsoUsage::Fog,   0 });
-    else
-      m_isgn.elemCount++;
+    m_vs.in.FOG = declareIO(true, DxsoSemantic{ DxsoUsage::Fog,   0 });
 
-    if (m_vsKey.Data.Contents.HasPointSize)
-      m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
-    else
-      m_isgn.elemCount++;
+    m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
 
-    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
-      m_vs.in.BLENDWEIGHT  = declareIO(true, DxsoSemantic{ DxsoUsage::BlendWeight, 0 });
-      m_vs.in.BLENDINDICES = declareIO(true, DxsoSemantic{ DxsoUsage::BlendIndices, 0 });
-    }
-    else {
-      m_isgn.elemCount++;
-      m_isgn.elemCount++;
-    }
+    m_vs.in.BLENDWEIGHT  = declareIO(true, DxsoSemantic{ DxsoUsage::BlendWeight, 0 });
+    m_vs.in.BLENDINDICES = declareIO(true, DxsoSemantic{ DxsoUsage::BlendIndices, 0 });
 
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
