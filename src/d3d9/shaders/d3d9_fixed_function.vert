@@ -701,7 +701,8 @@ void main() {
 
     gl_PointSize = DoPointSize(vtx);
 
-    if (VertexClipping()) {
+    //if (VertexClipping()) {
+    // We statically declare 6 clip planes, so we always need to write values.
         emitVsClipping(vtx);
-    }
+    //}
 }
