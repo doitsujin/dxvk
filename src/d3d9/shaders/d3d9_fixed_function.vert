@@ -8,6 +8,8 @@
 
 #define FLOAT_MAX_VALUE 340282346638528859811704183484516925440.0
 
+#define CLIP_PLANE_COUNT 6 // caps::MaxClipPlanes in d3d9_caps.h
+
 
 layout(location = 0) in vec4 in_Position0;
 layout(location = 1) in vec4 in_Normal0;
@@ -31,6 +33,7 @@ layout(location = 17) in vec4 in_BlendIndices;
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
 precise gl_Position;
+out float gl_ClipDistance[CLIP_PLANE_COUNT];
 layout(location = 0) out vec4 out_Normal;
 layout(location = 1) out vec4 out_Texcoord0;
 layout(location = 2) out vec4 out_Texcoord1;
@@ -51,7 +54,7 @@ layout(location = 11) out vec4 out_Fog;
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSFixedFunction
 // ) = 4
-layout(set = 0, binding = 4, scalar, row_major) uniform ShaderData {
+layout(set = 0, binding = 4, scalar) uniform ShaderData {
     D3D9FixedFunctionVS data;
 };
 
@@ -69,8 +72,25 @@ layout(set = 0, binding = 30, scalar) uniform SpecConsts {
 };
 
 
-layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData {
+// Bindings have to match with computeResourceSlotId in dxso_util.h
+// computeResourceSlotId(
+//     DxsoProgramType::VertexShader,
+//     DxsoBindingType::ConstantBuffer,
+//     DxsoConstantBuffers::VSVertexBlendData
+// ) = 5
+layout(set = 0, binding = 5, std140) readonly buffer VertexBlendData {
     mat4 WorldViewArray[];
+};
+
+
+// Bindings have to match with computeResourceSlotId in dxso_util.h
+// computeResourceSlotId(
+//     DxsoProgramType::VertexShader,
+//     DxsoBindingType::ConstantBuffer,
+//     DxsoConstantBuffers::VSClipPlanes
+// ) = 3
+layout(set = 0, binding = 3, std140) readonly buffer ClipPlanes {
+    vec4 clipPlanes[CLIP_PLANE_COUNT];
 };
 
 
@@ -166,6 +186,18 @@ uint Projected() {
 // Functions to extract information from the packed dynamic spec consts
 // See d3d9_spec_constants.h for packing
 // Please, dearest compiler, inline all of this.
+uint SpecSamplerType() {
+    return bitfieldExtract(specConstDword[0], 0, 32);
+}
+uint SpecSamplerDepthMode() {
+    return bitfieldExtract(specConstDword[1], 0, 21);
+}
+uint SpecAlphaCompareOp() {
+    return bitfieldExtract(specConstDword[1], 21, 3);
+}
+uint SpecPointMode() {
+    return bitfieldExtract(specConstDword[1], 24, 2);
+}
 uint SpecVertexFogMode() {
     return bitfieldExtract(specConstDword[1], 26, 2);
 }
@@ -175,6 +207,31 @@ uint SpecPixelFogMode() {
 bool SpecFogEnabled() {
     return bitfieldExtract(specConstDword[1], 30, 1) != 0;
 }
+uint SpecSamplerNull() {
+    return bitfieldExtract(specConstDword[2], 0, 21);
+}
+uint SpecProjectionType() {
+    return bitfieldExtract(specConstDword[2], 21, 6);
+}
+uint SpecAlphaPrecisionBits() {
+    return bitfieldExtract(specConstDword[2], 27, 4);
+}
+uint SpecVertexShaderBools() {
+    return bitfieldExtract(specConstDword[3], 0, 16);
+}
+uint SpecPixelShaderBools() {
+    return bitfieldExtract(specConstDword[3], 16, 16);
+}
+uint SpecFetch4() {
+    return bitfieldExtract(specConstDword[4], 0, 16);
+}
+uint SpecDrefClamp() {
+    return bitfieldExtract(specConstDword[5], 0, 21);
+}
+uint SpecClipPlaneCount() {
+    return bitfieldExtract(specConstDword[5], 21, 3);
+}
+
 
 #define isPixel false
 vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
@@ -248,6 +305,50 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
         return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.z);
     } else {
         return vec4(fogFactor);
+    }
+}
+
+
+float DoPointSize(vec4 vtx) {
+    float value = in_PointSize != 0.0 ? in_PointSize : rs.pointSize;
+    uint pointMode = SpecPointMode();
+    bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
+    float scaleC = rs.pointScaleC;
+    float scaleB = rs.pointScaleB;
+    float scaleA = rs.pointScaleA;
+
+    vec3 vtx3 = vtx.xyz;
+
+    float DeSqr = dot(vtx3, vtx3);
+    float De    = sqrt(DeSqr);
+    float scaleValue = scaleC * DeSqr;
+          scaleValue = fma(scaleB, De, scaleValue);
+          scaleValue += scaleA;
+          scaleValue = sqrt(scaleValue);
+          scaleValue = value / scaleValue;
+
+    value = isScale ? scaleValue : value;
+
+    float pointSizeMin = rs.pointSizeMin;
+    float pointSizeMax = rs.pointSizeMax;
+
+    return clamp(value, pointSizeMin, pointSizeMax);
+}
+
+
+void emitVsClipping(vec4 vtx) {
+    vec4 worldPos = data.InverseView * vtx;
+
+    // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
+    uint clipPlaneCount = SpecClipPlaneCount();
+
+    // Compute clip distances
+    for (uint i = 0; i < CLIP_PLANE_COUNT; i++) {
+        vec4 clipPlane = clipPlanes[i];
+        float dist = dot(worldPos, clipPlane);
+        bool clipPlaneEnabled = i < clipPlaneCount;
+        float value = clipPlaneEnabled ? dist : 0.0;
+        gl_ClipDistance[i] = value;
     }
 }
 
@@ -597,4 +698,10 @@ void main() {
     }
 
     out_Fog = DoFixedFunctionFog(vtx, vec4(0.0));
+
+    gl_PointSize = DoPointSize(vtx);
+
+    if (VertexClipping()) {
+        emitVsClipping(vtx);
+    }
 }
