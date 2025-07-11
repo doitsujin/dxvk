@@ -65,7 +65,7 @@ layout(push_constant, scalar) uniform RenderStates {
 // MaxSpecDwords = 6
 // Binding has to match with getSpecConstantBufferSlot in dxso_util.h
 layout(set = 0, binding = 30, scalar) uniform SpecConsts {
-    uint dword[6];
+    uint specConstDword[6];
 };
 
 
@@ -160,6 +160,95 @@ bool VertexClipping() {
 
 uint Projected() {
     return bitfieldExtract(data.Key.Primitive[4], 0, 8);
+}
+
+
+// Functions to extract information from the packed dynamic spec consts
+// See d3d9_spec_constants.h for packing
+// Please, dearest compiler, inline all of this.
+uint SpecVertexFogMode() {
+    return bitfieldExtract(specConstDword[1], 26, 2);
+}
+uint SpecPixelFogMode() {
+    return bitfieldExtract(specConstDword[1], 28, 2);
+}
+bool SpecFogEnabled() {
+    return bitfieldExtract(specConstDword[1], 30, 1) != 0;
+}
+
+#define isPixel false
+vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
+    vec4 specular = !isPixel ? in_Color1 : vec4(0.0);
+    bool hasSpecular = !isPixel && HasColor1();
+
+    vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
+    float fogScale = rs.fogScale;
+    float fogEnd = rs.fogEnd;
+    float fogDensity = rs.fogDensity;
+    D3DFOGMODE fogMode = isPixel ? SpecPixelFogMode() : SpecVertexFogMode();
+    bool fogEnabled = SpecFogEnabled();
+    if (!fogEnabled)
+        return vec4(0.0);
+
+    float w = vPos.w;
+    float z = vPos.z;
+    float depth;
+    if (isPixel) {
+        depth = z * (1.0 / w);
+    } else {
+        if (RangeFog()) {
+            vec3 pos3 = vPos.xyz;
+            depth = length(pos3);
+        } else {
+            depth = HasFog() ? in_Fog : abs(z);
+        }
+    }
+    float fogFactor;
+    if (!isPixel && HasPositionT()) {
+        fogFactor = hasSpecular ? specular.w : 1.0;
+    } else {
+        switch (fogMode) {
+            case D3DFOG_NONE:
+                if (isPixel)
+                    fogFactor = in_Fog;
+                else if (hasSpecular)
+                    fogFactor = specular.w;
+                else
+                    fogFactor = 1.0;
+                break;
+
+            // (end - d) / (end - start)
+            case D3DFOG_LINEAR:
+                fogFactor = fogEnd - depth;
+                fogFactor = fogFactor * fogScale;
+                fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
+                break;
+
+            // 1 / (e^[d * density])^2
+            case D3DFOG_EXP2:
+            // 1 / (e^[d * density])
+            case D3DFOG_EXP:
+                fogFactor = depth * fogDensity;
+
+                if (fogMode == D3DFOG_EXP2)
+                    fogFactor *= fogFactor;
+
+                // Provides the rcp.
+                fogFactor = -fogFactor;
+                fogFactor = exp(fogFactor);
+                break;
+        }
+    }
+
+    if (isPixel) {
+        vec4 color = oColor;
+        vec3 color3 = color.xyz;
+        vec3 fogFact3 = vec3(fogFactor);
+        vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
+        return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.z);
+    } else {
+        return vec4(fogFactor);
+    }
 }
 
 
@@ -506,4 +595,6 @@ void main() {
         out_Color0 = in_Color0;
         out_Color1 = in_Color1;
     }
+
+    out_Fog = DoFixedFunctionFog(vtx, vec4(0.0));
 }

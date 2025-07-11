@@ -53,6 +53,12 @@ struct D3DMATERIAL9 {
 #define TCIOffset 16
 #define TCIMask   (7 << TCIOffset)
 
+#define D3DFOGMODE uint
+#define D3DFOG_NONE 0
+#define D3DFOG_EXP 1
+#define D3DFOG_EXP2 2
+#define D3DFOG_LINEAR 3
+
 #else
 
 #include "../util/util_matrix.h"
