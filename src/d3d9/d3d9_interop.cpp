@@ -149,13 +149,17 @@ namespace dxvk {
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     DxvkDeviceImportInfo info;
-    info.device         = pInfo->device;
-    info.queue          = pInfo->graphicsQueue.queue;
-    info.queueFamily    = pInfo->graphicsQueue.family;
-    info.extensionCount = pInfo->extensionCount;
-    info.extensionNames = pInfo->extensionNames;
-    info.features       = pInfo->features;
-    info.queueCallback  = nullptr;
+    info.device               = pInfo->device;
+    info.queue                = pInfo->graphicsQueue.queue;
+    info.queueFamily          = pInfo->graphicsQueue.family;
+    info.transferQueue        = pInfo->transferQueue.queue;
+    info.transferQueueFamily  = pInfo->transferQueue.family;
+    info.sparseQueue          = pInfo->sparseQueue.queue;
+    info.sparseQueueFamily    = pInfo->sparseQueue.family;
+    info.extensionCount       = pInfo->extensionCount;
+    info.extensionNames       = pInfo->extensionNames;
+    info.features             = pInfo->features;
+    info.queueCallback        = nullptr;
 
     try {
       auto dxvkDevice = dxvkAdapter->importDevice(info);

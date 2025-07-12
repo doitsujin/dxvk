@@ -17,6 +17,8 @@ struct D3D9VkDeviceQueue {
 struct D3D9VkDeviceImportInfo {
     VkDevice                          device          = VK_NULL_HANDLE;
     D3D9VkDeviceQueue                 graphicsQueue   = {};
+    D3D9VkDeviceQueue                 transferQueue   = {};
+    D3D9VkDeviceQueue                 sparseQueue     = {};
     uint32_t                          extensionCount  = 0u;
     const char**                      extensionNames  = nullptr;
     const VkPhysicalDeviceFeatures2*  features        = nullptr;
@@ -146,6 +148,10 @@ ID3D9VkInteropInterface1 : public ID3D9VkInteropInterface {
    * The device must have been created with the following rules:
    * - All extensions returned by \c QueryDeviceExtensions \e must be enabled
    * - The \c graphicsQueue \e must support both graphics and compute operations
+   * - The \c transferQueue is optional if the \c graphicsQueue has \c VK_QUEUE_TRANSFER_BIT,
+   *   but you may still wish to supply a separate transfer queue for concurrency.
+   * - The \c sparseQueue is optional if the \c graphicsQueue has \c VK_QUEUE_SPARSE_BINDING_BIT,
+   *   in which case it is preferred to use the graphics queue for sparse binding.
    * - All features returned by \c QueryDeviceFeatures \e must be enabled
    * 
    * \param [in] Adapter Adapter ordinal
