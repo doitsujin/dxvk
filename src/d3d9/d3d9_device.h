@@ -213,6 +213,19 @@ namespace dxvk {
     uint16_t instanced = 0;
   };
 
+  enum class D3D9DSBindingMode {
+    Unbound,
+    ReadWrite,
+    ReadOnly
+  };
+
+  /** \brief Used to track whether an RT got bound
+   * the last time BindFrameBuffer got called. */
+  struct D3D9FramebufferBindingInfo {
+    uint8_t rtsBound     = (1u << caps::MaxSimultaneousRenderTargets) - 1u;
+    D3D9DSBindingMode ds = D3D9DSBindingMode::ReadOnly;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -940,7 +953,7 @@ namespace dxvk {
 
     void UpdateTextureBitmasks(uint32_t index, DWORD combinedUsage);
 
-    void UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask);
+    void UpdateActiveHazardsRT(uint32_t texMask);
 
     void UpdateActiveHazardsDS(uint32_t texMask);
 
@@ -1567,6 +1580,11 @@ namespace dxvk {
 
     GpuFlushType GetMaxFlushType() const;
 
+    void ResetFrameBufferBindingInfo() {
+      m_fbBindingInfo.rtsBound = (1u << caps::MaxSimultaneousRenderTargets) - 1u;
+      m_fbBindingInfo.ds = D3D9DSBindingMode::ReadOnly;
+    }
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1636,6 +1654,8 @@ namespace dxvk {
     D3D9VBSlotTracking              m_vbSlotTracking;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
+
+    D3D9FramebufferBindingInfo      m_fbBindingInfo;
 
     bool                            m_isSWVP;
     bool                            m_isD3D8Compatible;
