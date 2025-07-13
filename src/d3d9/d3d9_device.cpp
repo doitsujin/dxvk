@@ -1545,7 +1545,9 @@ namespace dxvk {
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
         DxvkImageUsageInfo usage = { };
-        usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        usage.usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        usage.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
         ctx->ensureImageCompatibility(cImage, usage);
 
