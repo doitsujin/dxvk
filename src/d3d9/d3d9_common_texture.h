@@ -328,6 +328,11 @@ namespace dxvk {
       return std::exchange(m_transitionedToHazardLayout, true);
     }
 
+    bool IsTransitionedToHazardLayout() const {
+      return m_transitionedToHazardLayout;
+    }
+
+
     D3DRESOURCETYPE GetType() const {
       return m_type;
     }
