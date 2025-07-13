@@ -4179,11 +4179,18 @@ namespace dxvk {
     if (unlikely(MultiSample > D3DMULTISAMPLE_16_SAMPLES))
       return D3DERR_INVALIDCALL;
 
-    uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    // Yes, it actually fails when explicitly passing D3DUSAGE_RENDERTARGET.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
 
-    // Check if this is a power of two and
-    // return D3DERR_NOTAVAILABLE on failure
-    if (sampleCount & (sampleCount - 1))
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // Check if the sample count is valid and supported and
+    // specifically return D3DERR_NOTAVAILABLE on failure.
+    if (FAILED(DecodeMultiSampleType(m_dxvkDevice, MultiSample, MultisampleQuality, nullptr)))
       return D3DERR_NOTAVAILABLE;
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -4231,6 +4238,14 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -4301,6 +4316,15 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    // Yes, it actually fails when explicitly passing D3DUSAGE_DEPTHSTENCIL.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_COMMON_TEXTURE_DESC desc;
