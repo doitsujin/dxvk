@@ -1398,6 +1398,7 @@ namespace dxvk {
 
 
   void DxvkShaderPipelineLibrary::compilePipeline() {
+    Logger::warn("Compile");
     std::lock_guard lock(m_mutex);
 
     // Skip if a pipeline has already been compiled
@@ -1419,6 +1420,7 @@ namespace dxvk {
 
     // Write back pipeline handle for future use
     m_pipeline = pipeline;
+    Logger::warn("Done Compile");
   }
 
 
@@ -1432,6 +1434,7 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::compileShaderPipelineLocked() {
+    Logger::warn("Compile2");
     this->notifyLibraryCompile();
 
     // If this is not the first time we're compiling the pipeline,
@@ -1460,12 +1463,14 @@ namespace dxvk {
       m_compiledOnce = true;
     }
 
+    Logger::warn("Done Compile2");
     return pipeline;
   }
 
 
   DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::compileShaderPipeline(
           VkPipelineCreateFlags2                flags) {
+    Logger::warn("Compile3");
     DxvkShaderStageInfo stageInfo(m_device);
     VkShaderStageFlags stageMask = getShaderStages();
 
@@ -1507,6 +1512,7 @@ namespace dxvk {
       pipeline = compileComputeShaderPipeline(stageInfo, flags);
 
     // Should be unreachable
+    Logger::warn("Done Compile3");
     return { pipeline, flags };
   }
 
@@ -1514,6 +1520,7 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
           VkPipelineCreateFlags2        flags) {
+    Logger::warn("Compile VS");
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -1586,12 +1593,14 @@ namespace dxvk {
     info.layout               = m_layout.getLayout(DxvkPipelineLayoutType::Independent)->getPipelineLayout();
     info.basePipelineIndex    = -1;
 
+    Logger::warn("Compile VS B");
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
     if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
 
+    Logger::warn("Done Compile VS");
     return vr ? VK_NULL_HANDLE : pipeline;
   }
 

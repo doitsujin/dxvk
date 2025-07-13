@@ -194,6 +194,10 @@ namespace dxvk {
             D3D9DeviceEx*         pDevice,
       const D3D9FFShaderKeyFS&    Key);
 
+    D3D9FFShader(
+            D3D9DeviceEx*         pDevice,
+            DxsoProgramType       ProgramType);
+
     template <typename T>
     void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
 
