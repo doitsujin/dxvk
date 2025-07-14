@@ -133,6 +133,7 @@ namespace dxvk
     windowData.unicode = IsWindowUnicode(window);
     windowData.filter  = false;
     windowData.activateProcessed = false;
+    windowData.deactivateProcessed = false;
     windowData.proc = reinterpret_cast<WNDPROC>(
       CallCharsetFunction(
       SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
