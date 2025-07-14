@@ -1072,6 +1072,11 @@ namespace dxvk {
     { R"(\\(DLSteamEdition|dlords)\.exe$)", {{
       { "d3d9.textureMemory",                  "0" },
     }} },
+    /* Test Drive Unlimited 2                     *
+     * Loss of input on alt-tab                   */
+    { R"(\\TestDrive2\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
@@ -1227,11 +1232,14 @@ namespace dxvk {
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
     /* Tom Clancy's Splinter Cell                 *
-     * Fixes shadow buffers and alt-tab           */
+     * Fixes shadow buffers, broken physics       *
+     * above 60 FPS and game freezing on alt-tab  */
     { R"(\\splintercell\.exe$)", {{
+      { "d3d9.hideAmdGpu",                  "True" },
+      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d8.scaleDref",                     "24" },
       { "d3d8.shadowPerspectiveDivide",     "True" },
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Trainz v1.3 (2001)                         *
      * Fixes black screen after alt-tab           */
@@ -1249,6 +1257,14 @@ namespace dxvk {
      * wrapper that leaks several surfaces.       */
     { R"(\\SFC3\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
+    }} },
+    /* GTR - FIA GT Racing Game                   *                  
+     * Vram complaint & restricted resolutions    *
+     * Performance                                */
+    { R"(\\GTR (- FIA GT Rac(e)?ing Game|Demo)\\(GTR(Demo)?|(3D)?Config)\.exe$)", {{
+      { "d3d9.maxAvailableMemory",         "1024" },
+      { "d3d9.memoryTrackTest",            "True" },
+      { "d3d9.cachedDynamicBuffers",       "True" },
     }} },
   };
 

@@ -259,6 +259,10 @@ namespace dxvk {
             uint32_t                timingCount,
             VkLatencyTimingsFrameReportNV* timings);
 
+
+    void registerLatencyTracker( const Rc<DxvkLatencyTracker>& tracker )
+      { m_latencyTracker = tracker; }
+
   private:
 
     Rc<DxvkDevice>              m_device;
@@ -315,6 +319,7 @@ namespace dxvk {
     std::queue<PresenterFrame>  m_frameQueue;
 
     uint64_t                    m_lastSignaled = 0u;
+    Rc<DxvkLatencyTracker>      m_latencyTracker;
 
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;

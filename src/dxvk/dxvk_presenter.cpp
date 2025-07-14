@@ -597,6 +597,9 @@ namespace dxvk {
 
     m_presentMode = pickPresentMode(modes.size(), modes.data(), m_preferredSyncInterval);
 
+    FramePacer* pacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+    if (pacer) pacer->getFramePacerMode()->setPresentMode(m_presentMode);
+
     // Check whether we can change present modes dynamically. This may
     // influence the image count as well as further swap chain creation.
     std::vector<VkPresentModeKHR> dynamicModes = {{
@@ -1077,6 +1080,13 @@ namespace dxvk {
     std::array<VkPresentModeKHR, 3> desired = { };
     uint32_t numDesired = 0;
 
+    FramePacer* pacer = dynamic_cast<FramePacer*>(m_latencyTracker.ptr());
+    if (pacer) {
+      uint32_t desiredMode;
+      if (pacer->getFramePacerMode()->getDesiredPresentMode(desiredMode))
+        desired[numDesired++] = (VkPresentModeKHR) desiredMode;
+    }
+
     Tristate tearFree = m_device->config().tearFree;
 
     if (!syncInterval) {
@@ -1097,7 +1107,7 @@ namespace dxvk {
           return pSupported[j];
       }
     }
-    
+
     // Guaranteed to be available
     return VK_PRESENT_MODE_FIFO_KHR;
   }
@@ -1250,11 +1260,13 @@ namespace dxvk {
 
       lock.unlock();
 
+      FramePacer* pacer = dynamic_cast<FramePacer*>(frame.tracker.ptr());
+
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
       if (frame.result >= 0 && (frame.mode == VK_PRESENT_MODE_FIFO_KHR || frame.mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR
-        || (dynamic_cast<FramePacer*>(frame.tracker.ptr()) && dynamic_cast<FramePacer*>(frame.tracker.ptr())->getMode()) )) {
+        || (pacer && pacer->getMode() && frame.mode != VK_PRESENT_MODE_MAILBOX_KHR))) {
         VkResult vr = m_vkd->vkWaitForPresentKHR(m_vkd->device(),
           m_swapchain, frame.frameId, std::numeric_limits<uint64_t>::max());
 

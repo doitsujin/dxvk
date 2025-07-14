@@ -123,6 +123,10 @@ namespace dxvk {
       return m_mode->m_mode;
     }
 
+    FramePacerMode* getFramePacerMode() {
+      return m_mode.get();
+    }
+
     void setTargetFrameRate( double frameRate ) {
       m_mode->setTargetFrameRate(frameRate);
     }

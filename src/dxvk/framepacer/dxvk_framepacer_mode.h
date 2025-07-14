@@ -18,6 +18,7 @@ namespace dxvk {
     enum Mode {
       MAX_FRAME_LATENCY = 0,
       LOW_LATENCY,
+      LOW_LATENCY_VRR,
       MIN_LATENCY
     };
 
@@ -34,6 +35,14 @@ namespace dxvk {
     virtual void endFrame( uint64_t frameId ) { }
 
     virtual void finishRender( uint64_t frameId ) { }
+
+    virtual bool getDesiredPresentMode( uint32_t& presentMode ) const {
+      return false; }
+
+    void setPresentMode( uint32_t presentMode ) {
+      m_presentMode = presentMode; }
+
+    uint32_t getPresentMode() { return m_presentMode; }
 
     void waitRenderFinished( uint64_t frameId ) {
       if (m_mode) m_fenceGpuFinished.wait(frameId-m_waitLatency); }
@@ -63,6 +72,7 @@ namespace dxvk {
 
     const uint32_t m_waitLatency;
     LatencyMarkersStorage* m_latencyMarkersStorage;
+    std::atomic<uint32_t> m_presentMode;
     std::atomic<int32_t> m_fpsLimitFrametime = { 0 };
     bool m_fpsLimitEnvOverride = { false };
 
