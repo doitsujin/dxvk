@@ -33,6 +33,7 @@ namespace dxvk {
       ENUM_NAME(D3D9Format::X8L8V8U8);
       ENUM_NAME(D3D9Format::Q8W8V8U8);
       ENUM_NAME(D3D9Format::V16U16);
+      ENUM_NAME(D3D9Format::W11V11U10);
       ENUM_NAME(D3D9Format::A2W10V10U10);
       ENUM_NAME(D3D9Format::UYVY);
       ENUM_NAME(D3D9Format::R8G8_B8G8);
