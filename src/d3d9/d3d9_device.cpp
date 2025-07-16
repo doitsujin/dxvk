@@ -4799,7 +4799,10 @@ namespace dxvk {
     if (unlikely(pResource->GetLocked(Subresource)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)))
+    auto& desc = *(pResource->Desc());
+
+    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)
+               && desc.Pool == D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
     // We only ever wait for textures that were used with GetRenderTargetData or GetFrontBufferData anyway.
@@ -4812,8 +4815,6 @@ namespace dxvk {
     // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
     if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
       Flags &= ~D3DLOCK_DISCARD;
-
-    auto& desc = *(pResource->Desc());
 
     if (unlikely(!desc.IsLockable))
       return D3DERR_INVALIDCALL;
