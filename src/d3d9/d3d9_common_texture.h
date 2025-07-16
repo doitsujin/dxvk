@@ -328,6 +328,11 @@ namespace dxvk {
       return std::exchange(m_transitionedToHazardLayout, true);
     }
 
+    bool IsTransitionedToHazardLayout() const {
+      return m_transitionedToHazardLayout;
+    }
+
+
     D3DRESOURCETYPE GetType() const {
       return m_type;
     }
@@ -531,7 +536,7 @@ namespace dxvk {
 
     D3D9VkInteropTexture          m_d3d9Interop;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, HANDLE* pSharedHandle) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
 
