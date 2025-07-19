@@ -4111,6 +4111,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetMaximumFrameLatency(UINT MaxLatency) {
     D3D9DeviceLock lock = LockDevice();
 
+    if (unlikely(MaxLatency > 30))
+      return D3DERR_INVALIDCALL;
+
     if (MaxLatency == 0)
       MaxLatency = DefaultFrameLatency;
 
