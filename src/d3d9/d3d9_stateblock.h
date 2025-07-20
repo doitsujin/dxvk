@@ -58,7 +58,7 @@ namespace dxvk {
     } vsConsts;
 
     struct {
-      bit::bitset<caps::MaxFloatConstantsPS>            fConsts;
+      bit::bitset<caps::MaxSM3FloatConstantsPS>         fConsts;
       bit::bitset<caps::MaxOtherConstants>              iConsts;
       bit::bitset<caps::MaxOtherConstants>              bConsts;
     } psConsts;
