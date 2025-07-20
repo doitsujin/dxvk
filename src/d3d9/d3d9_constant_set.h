@@ -34,7 +34,7 @@ namespace dxvk {
 
   struct D3D9ShaderConstantsPS {
     Vector4i iConsts[caps::MaxOtherConstants];
-    Vector4  fConsts[caps::MaxFloatConstantsPS];
+    Vector4  fConsts[caps::MaxSM3FloatConstantsPS];
     uint32_t bConsts[1];
   };
 

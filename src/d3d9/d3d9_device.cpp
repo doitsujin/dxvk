@@ -3405,20 +3405,6 @@ namespace dxvk {
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
-    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-    // Late fixed-function capable hardware exposed support for VS 1.1
-    const uint32_t shaderModelVS = m_isD3D8Compatible ? 1u : std::max(1u, m_d3d9Options.shaderModel);
-
-    if (unlikely(majorVersion > shaderModelVS
-             || (majorVersion == 1 && minorVersion > 1)
-             // Skip checking the SM2 minor version, as it has a 2_x mode apparently
-             || (majorVersion == 3 && minorVersion != 0))) {
-      Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Unsupported VS version ", majorVersion, ".", minorVersion));
-      return D3DERR_INVALIDCALL;
-    }
-
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
 
@@ -3431,16 +3417,6 @@ namespace dxvk {
       pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
-
-
-    if (m_isD3D8Compatible && !m_isSWVP) {
-      const uint32_t maxVSConstantIndex = module.GetMaxDefinedConstant();
-      // D3D8 enforces the value advertised in pCaps->MaxVertexShaderConst for HWVP
-      if (unlikely(maxVSConstantIndex > caps::MaxFloatConstantsVS - 1)) {
-        Logger::err(str::format("D3D9DeviceEx::CreateVertexShader: Invalid constant index ", maxVSConstantIndex));
-        return D3DERR_INVALIDCALL;
-      }
-    }
 
     *ppShader = ref(new D3D9VertexShader(this,
       &m_shaderAllocator,
@@ -3783,19 +3759,6 @@ namespace dxvk {
 
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
-
-    const uint32_t majorVersion = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-    const uint32_t minorVersion = D3DSHADER_VERSION_MINOR(pFunction[0]);
-
-    const uint32_t shaderModelPS = m_isD3D8Compatible ? std::min(1u, m_d3d9Options.shaderModel) : m_d3d9Options.shaderModel;
-
-    if (unlikely(majorVersion > shaderModelPS
-             || (majorVersion == 1 && minorVersion > 4)
-             // Skip checking the SM2 minor version, as it has a 2_x mode apparently
-             || (majorVersion == 3 && minorVersion != 0))) {
-      Logger::err(str::format("D3D9DeviceEx::CreatePixelShader: Unsupported PS version ", majorVersion, ".", minorVersion));
-      return D3DERR_INVALIDCALL;
-    }
 
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
@@ -4610,7 +4573,7 @@ namespace dxvk {
     vsConstSet.layout.bitmaskCount  = align(vsConstSet.layout.boolCount, 32) / 32;
 
     D3D9ConstantSets& psConstSet   = m_consts[DxsoProgramType::PixelShader];
-    psConstSet.layout.floatCount   = caps::MaxFloatConstantsPS;
+    psConstSet.layout.floatCount   = caps::MaxSM3FloatConstantsPS;
     psConstSet.layout.intCount     = caps::MaxOtherConstants;
     psConstSet.layout.boolCount    = caps::MaxOtherConstants;
     psConstSet.layout.bitmaskCount = align(psConstSet.layout.boolCount, 32) / 32;
@@ -5878,7 +5841,7 @@ namespace dxvk {
       // If the shader requires us to preserve shader defined constants,
       // we copy those over. We need to adjust the amount of used floats accordingly.
       auto shader = GetCommonShader(m_state.vertexShader);
-      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
+      floatCount = std::max(floatCount, static_cast<uint32_t>(shader->GetMaxDefinedFloatConstant() + 1));
     }
     // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
     floatCount = std::min(floatCount, constSet.meta.maxConstIndexF);
@@ -5946,7 +5909,7 @@ namespace dxvk {
       // If the shader requires us to preserve shader defined constants,
       // we copy those over. We need to adjust the amount of used floats accordingly.
       auto shader = GetCommonShader(Shader);
-      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
+      floatCount = std::max(floatCount, static_cast<uint32_t>(shader->GetMaxDefinedFloatConstant() + 1));
     }
     // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
     floatCount = std::min(constSet.meta.maxConstIndexF, floatCount);
@@ -5992,7 +5955,7 @@ namespace dxvk {
       else
         return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts.get(), m_consts[ShaderStage].layout, m_state.vertexShader);
     } else {
-      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>          (m_state.psConsts.get(), m_consts[ShaderStage].layout, m_state.pixelShader);
+      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>(m_state.psConsts.get(), m_consts[ShaderStage].layout, m_state.pixelShader);
     }
   }
 

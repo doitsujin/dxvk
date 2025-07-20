@@ -34,11 +34,13 @@ namespace dxvk {
     this->runCompiler(*compiler, m_code.iter());
     m_isgn = compiler->isgn();
 
-    m_meta            = compiler->meta();
-    m_constants       = compiler->constants();
-    m_maxDefinedConst = compiler->maxDefinedConstant();
-    m_usedSamplers    = compiler->usedSamplers();
-    m_textureTypes    = compiler->textureTypes();
+    m_meta                 = compiler->meta();
+    m_constants            = compiler->constants();
+    m_maxDefinedFloatConst = compiler->maxDefinedFloatConstant();
+    m_maxDefinedIntConst   = compiler->maxDefinedIntConstant();
+    m_maxDefinedBoolConst  = compiler->maxDefinedBoolConstant();
+    m_usedSamplers         = compiler->usedSamplers();
+    m_textureTypes         = compiler->textureTypes();
 
     compiler->finalize();
 
