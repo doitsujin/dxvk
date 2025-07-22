@@ -1077,6 +1077,13 @@ namespace dxvk {
     { R"(\\TestDrive2\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Perilous Warp - Nvidia path depends on     *
+     * unimplemented NvAPI_D3D9_StretchRectEx.    *
+     * Without it screen effects such as blood    *
+     * splatter are bugged.                       */
+    { R"(\\Perilous Warp\\system(64)?\\game\.exe$)", {{
+      { "d3d9.hideNvidiaGpu",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
