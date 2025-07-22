@@ -1328,9 +1328,13 @@ namespace dxvk {
     renderingInfo.pColorAttachments = &attachmentInfo;
     
     // Retrieve a compatible pipeline to use for rendering
+    auto resolveMode = filter == VK_FILTER_NEAREST
+      ? DxvkMetaBlitResolveMode::FilterNearest
+      : DxvkMetaBlitResolveMode::FilterLinear;
+
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       mipGenerator.getSrcViewType(), imageView->info().format,
-      VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, filter);
+      VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, resolveMode);
 
     for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
       // Image view to read from
@@ -3344,6 +3348,21 @@ namespace dxvk {
       uint32_t(dstOffsetsAdjusted[1].y - dstOffsetsAdjusted[0].y),
       uint32_t(dstOffsetsAdjusted[1].z - dstOffsetsAdjusted[0].z) };
 
+    // Determine resolve mode for when the source is multisampled. If
+    // there is no stretching going on, do a regular resolve.
+    auto resolveMode = filter == VK_FILTER_NEAREST
+      ? DxvkMetaBlitResolveMode::FilterNearest
+      : DxvkMetaBlitResolveMode::FilterLinear;
+
+    if (srcView->image()->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      bool isSameExtent = (std::abs(dstOffsets[1].x - dstOffsets[0].x) == std::abs(srcOffsets[1].x - srcOffsets[0].x))
+                       && (std::abs(dstOffsets[1].y - dstOffsets[0].y) == std::abs(srcOffsets[1].y - srcOffsets[0].y))
+                       && (std::abs(dstOffsets[1].z - dstOffsets[0].z) == std::abs(srcOffsets[1].z - srcOffsets[0].z));
+
+      if (isSameExtent)
+        resolveMode = DxvkMetaBlitResolveMode::ResolveAverage;
+    }
+
     // Begin render pass
     VkExtent3D imageExtent = dstView->mipLevelExtent(0);
 
@@ -3367,7 +3386,7 @@ namespace dxvk {
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       dstView->info().viewType, dstView->info().format,
       srcView->image()->info().sampleCount,
-      dstView->image()->info().sampleCount, filter);
+      dstView->image()->info().sampleCount, resolveMode);
 
     // Set up viewport
     VkViewport viewport;

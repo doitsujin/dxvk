@@ -26,6 +26,15 @@ namespace dxvk {
     uint32_t           layerCount;
     uint32_t           sampler;
   };
+
+  /**
+   * \brief Resolve mode for multisampled blits
+   */
+  enum class DxvkMetaBlitResolveMode : uint32_t {
+    FilterNearest     = 0u,
+    FilterLinear      = 1u,
+    ResolveAverage    = 2u,
+  };
   
   /**
    * \brief Blit pipeline key
@@ -39,14 +48,14 @@ namespace dxvk {
     VkFormat              viewFormat;
     VkSampleCountFlagBits srcSamples;
     VkSampleCountFlagBits dstSamples;
-    VkBool32              pointFilter;
+    DxvkMetaBlitResolveMode resolveMode;
     
     bool eq(const DxvkMetaBlitPipelineKey& other) const {
       return this->viewType     == other.viewType
           && this->viewFormat   == other.viewFormat
           && this->srcSamples   == other.srcSamples
           && this->dstSamples   == other.dstSamples
-          && this->pointFilter  == other.pointFilter;
+          && this->resolveMode  == other.resolveMode;
     }
     
     size_t hash() const {
@@ -55,7 +64,7 @@ namespace dxvk {
       result.add(uint32_t(this->viewFormat));
       result.add(uint32_t(this->srcSamples));
       result.add(uint32_t(this->dstSamples));
-      result.add(uint32_t(this->pointFilter));
+      result.add(uint32_t(this->resolveMode));
       return result;
     }
   };
@@ -95,7 +104,7 @@ namespace dxvk {
      * \param [in] viewFormat Image view format
      * \param [in] srcSamples Source sample count
      * \param [in] dstSamples Target sample count
-     * \param [in] filter What type of filter to use
+     * \param [in] resolveMode The resolve mode to use
      * \returns The blit pipeline
      */
     DxvkMetaBlitPipeline getPipeline(
@@ -103,7 +112,7 @@ namespace dxvk {
             VkFormat              viewFormat,
             VkSampleCountFlagBits srcSamples,
             VkSampleCountFlagBits dstSamples,
-            VkFilter              filter);
+            DxvkMetaBlitResolveMode resolveMode);
     
   private:
 

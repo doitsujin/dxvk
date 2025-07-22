@@ -33,7 +33,7 @@ namespace dxvk {
           VkFormat              viewFormat,
           VkSampleCountFlagBits srcSamples,
           VkSampleCountFlagBits dstSamples,
-          VkFilter              filter) {
+          DxvkMetaBlitResolveMode resolveMode) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaBlitPipelineKey key;
@@ -43,7 +43,7 @@ namespace dxvk {
     key.dstSamples = dstSamples;
 
     if (srcSamples != VK_SAMPLE_COUNT_1_BIT)
-      key.pointFilter = filter == VK_FILTER_NEAREST;
+      key.resolveMode = resolveMode;
 
     auto entry = m_pipelines.find(key);
     if (entry != m_pipelines.end())
@@ -67,9 +67,10 @@ namespace dxvk {
     const DxvkMetaBlitPipelineKey&    key) const {
     util::DxvkBuiltInGraphicsState state = { };
 
-    std::array<VkSpecializationMapEntry, 2u> specMap = {{
+    std::array<VkSpecializationMapEntry, 3u> specMap = {{
       { 0u, offsetof(DxvkMetaBlitPipelineKey, srcSamples),  sizeof(VkSampleCountFlagBits) },
-      { 1u, offsetof(DxvkMetaBlitPipelineKey, pointFilter), sizeof(VkBool32) },
+      { 1u, offsetof(DxvkMetaBlitPipelineKey, dstSamples),  sizeof(VkSampleCountFlagBits) },
+      { 2u, offsetof(DxvkMetaBlitPipelineKey, resolveMode), sizeof(DxvkMetaBlitResolveMode) },
     }};
 
     VkSpecializationInfo specInfo = { };
