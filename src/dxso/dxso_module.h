@@ -59,7 +59,11 @@ namespace dxvk {
 
     uint32_t usedRTs() { return m_usedRTs; }
 
-    uint32_t maxDefinedConstant() { return m_maxDefinedConst; }
+    int32_t maxDefinedFloatConstant() { return m_maxDefinedFloatConst; }
+
+    int32_t maxDefinedIntConstant() { return m_maxDefinedIntConst; }
+
+    int32_t maxDefinedBoolConstant() { return m_maxDefinedBoolConst; }
 
     uint32_t textureTypes() { return m_textureTypes; }
 
@@ -82,7 +86,9 @@ namespace dxvk {
     uint32_t        m_textureTypes = 0u;
 
     DxsoShaderMetaInfo   m_meta;
-    uint32_t             m_maxDefinedConst = 0u;
+    int32_t              m_maxDefinedFloatConst = -1;
+    int32_t              m_maxDefinedIntConst = -1;
+    int32_t              m_maxDefinedBoolConst = -1;
     DxsoDefinedConstants m_constants;
 
   };
