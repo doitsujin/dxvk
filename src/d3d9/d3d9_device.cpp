@@ -3813,10 +3813,7 @@ namespace dxvk {
     // forces us to deal with hazards in a different way.
     if (likely(oldShaderMasks.samplerMask != newShaderMasks.samplerMask ||
       oldShaderMasks.rtMask != newShaderMasks.rtMask))
-      UpdateActiveHazardsRT(
-        oldShaderMasks.rtMask | newShaderMasks.rtMask,
-        oldShaderMasks.samplerMask | newShaderMasks.samplerMask
-      );
+      UpdateActiveHazardsRT(oldShaderMasks.samplerMask | newShaderMasks.samplerMask);
 
     if (likely(oldShaderMasks.samplerMask != newShaderMasks.samplerMask))
       UpdateActiveHazardsDS(oldShaderMasks.samplerMask | newShaderMasks.samplerMask);
@@ -6184,7 +6181,7 @@ namespace dxvk {
       m_state.renderTargets[index]->GetBaseTexture() != nullptr)
       m_rtSlotTracking.canBeSampled |= bit;
 
-    UpdateActiveHazardsRT(bit, std::numeric_limits<uint32_t>::max());
+    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
   }
 
   template <uint32_t Index>
@@ -6270,7 +6267,7 @@ namespace dxvk {
     }
 
     if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET)) {
-      UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max(), bit);
+      UpdateActiveHazardsRT(bit);
     } else {
       m_textureSlotTracking.hazardRT             &= ~bit;
       m_textureSlotTracking.unresolvableHazardRT &= ~bit;
@@ -6285,14 +6282,14 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask) {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     uint32_t oldHazardMask = m_textureSlotTracking.hazardRT;
     m_textureSlotTracking.hazardRT             &= ~texMask;
     m_textureSlotTracking.unresolvableHazardRT &= ~texMask;
 
     auto psMasks = PSShaderMasks();
-    rtMask  &= m_rtSlotTracking.canBeSampled & ((1u << caps::MaxTextures) - 1);
-    texMask &= m_textureSlotTracking.rtUsage & psMasks.samplerMask & ((1u << caps::MaxSimultaneousTextures) - 1);
+    uint32_t rtMask = m_rtSlotTracking.canBeSampled & ((1u << caps::MaxSimultaneousTextures) - 1);
+    texMask &= m_textureSlotTracking.rtUsage & psMasks.samplerMask & ((1u << caps::MaxTextures) - 1);
 
     for (uint32_t rtIdx : bit::BitMask(rtMask)) {
       bool anyColorWrite = m_state.renderStates[ColorWriteIndex(rtIdx)] != 0;
