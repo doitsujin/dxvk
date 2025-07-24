@@ -1565,6 +1565,18 @@ namespace dxvk {
         : FixedFunctionMask;
     }
 
+    bool UseDepthStencilReadOnlyLayout() const {
+      // If the DS is also bound as a texture for sampling
+      // and it's either unused as DS or not written to,
+      // use the readonly layout.
+      bool readOnly = m_textureSlotTracking.hazardDS != 0;
+      readOnly &= m_state.renderStates[D3DRS_ZENABLE]
+        || m_state.renderStates[D3DRS_STENCILENABLE]
+        || m_nvdbEnabled
+        || m_state.renderStates[D3DRS_ZWRITEENABLE];
+      return readOnly;
+    }
+
     GpuFlushType GetMaxFlushType() const;
 
     Com<D3D9InterfaceEx>            m_parent;

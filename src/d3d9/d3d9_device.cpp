@@ -2333,13 +2333,23 @@ namespace dxvk {
           break;
 
         case D3DRS_ZWRITEENABLE:
-          if (likely(!Value != !oldValue))
+          if (m_state.depthStencil != nullptr
+            && m_state.renderStates[D3DRS_ZENABLE])
+            // Whether we write the depth has been changed => check for hazards
             UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
-        [[fallthrough]];
+
+          m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
+          break;
+
         case D3DRS_STENCILENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
+          break;
+
         case D3DRS_ZENABLE:
-          if (likely(m_state.depthStencil != nullptr))
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+          if (likely(m_state.depthStencil != nullptr)) {
+            // The depth test has been enabled or disabled => check for hazards
+            UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
+          }
 
           m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
           break;
@@ -6177,15 +6187,12 @@ namespace dxvk {
 
   template <uint32_t Index>
   inline void D3D9DeviceEx::UpdateAnyColorWrites() {
-    // The 0th RT is always bound.
-    bool bound = HasRenderTargetBound(Index);
-    if (Index == 0 || bound) {
-      if (bound) {
-        m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-      }
+    // Writes to a render target have been enabled => check for hazards
+    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
 
-      UpdateActiveRTs(Index);
-    }
+    // Writes to render target 0 have been enabled and the RT might not be bound due to the 1x1 hack.
+    if (Index == 0 && m_state.depthStencil != nullptr)
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
 
 
@@ -6670,33 +6677,85 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::BindFramebuffer() {
-    constexpr size_t DsvIndex = caps::MaxSimultaneousRenderTargets;
-
     m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
 
     DxvkRenderTargets attachments;
 
     bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
 
-    // Some games break if render targets that get disabled using the color write mask
-    // end up shrinking the render area. So we don't bind those.
-    // (This impacted Dead Space 1.)
+    // The extents and sample counts of all render targets need to match.
+    // There's a few exceptions for mismatching extents of depth stencil surfaces:
+    //   - It is allowed to be larger than RT0.
+    //   - It is allowed to be smaller than RT0 IF only one render target is bound, RT0 has the NULL format
+    //     or the extents 1x1 and the color write mask for RT0 is 0.
+
+    // Dead Space uses this behavior to render shadow maps if it detects AMD hardware.
+    // It detects AMD hardware by checking whether DF texture formats are supported.
+    // That's only the case on the AMD D3D9 driver.
+    // On AMD hardware Dead Space renders shadow maps by binding a 1x1 RT and setting the color write mask to 0.
+    // On Nvidia hardware it uses a render target with the NULL texture format.
+
     // We also unbind render targets if they aren't used for rendering but get sampled.
-    // But we want to minimize frame buffer changes because those
-    // break up the current render pass. So we dont unbind for disabled color write masks
-    // if the RT has the same size or is bigger than the smallest active RT.
-    std::array<VkExtent2D, DsvIndex + 1u> rtExtents = { };
-    std::array<VkSampleCountFlags, DsvIndex + 1u> rtSampleCounts = { };
+    // But we want to minimize frame buffer changes because those break up the current render pass,
+    // so we dont unbind for disabled color write masks unless the RT gets sampled.
 
     const auto& psMasks = PSShaderMasks();
 
-    VkSampleCountFlags sampleCount = 0u;
+    VkSampleCountFlags sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    VkExtent2D renderArea = { 0u, 0u };
+    const D3D9CommonTexture* rt0 = m_state.renderTargets[0]->GetCommonTexture(); // RT 0 can never be nullptr
+    if (likely(!rt0->IsNull())) {
+      const DxvkImageCreateInfo& rt0Info = rt0->GetImage()->info();
+      sampleCount = rt0Info.sampleCount;
+      renderArea = { rt0Info.extent.width, rt0Info.extent.height };
+    }
 
-    VkExtent2D renderArea = { ~0u, ~0u };
+    if (m_state.depthStencil != nullptr) {
+      const D3D9CommonTexture* ds = m_state.depthStencil->GetCommonTexture();
+      const DxvkImageCreateInfo& dsInfo = ds->GetImage()->info();
+
+      bool bindDS = ds->GetImage()->info().sampleCount == sampleCount;
+      uint32_t boundRTCount = 0;
+      for (uint32_t i = 0; i < m_state.renderTargets.size(); i++) {
+        if (m_state.renderTargets[i] != nullptr) // NULL format textures are counted
+          continue;
+
+        boundRTCount++;
+      }
+
+      const bool rt0WrittenTo = (psMasks.rtMask & 1u) != 0
+          && m_state.renderStates[D3DRS_COLORWRITEENABLE] != 0;
+
+      bool ignoreRT0 = rt0->IsNull();
+      // D3D9 has a special case for 1x1 textures. (Tested on Windows on the Nvidia D3D9 driver.)
+      ignoreRT0 |= boundRTCount == 1
+          && renderArea.width == 1
+          && renderArea.height == 1
+          && rt0WrittenTo;
+
+      bool mismatch = dsInfo.extent.width < renderArea.width
+        || dsInfo.extent.height < renderArea.height
+        || dsInfo.sampleCount != sampleCount;
+      bindDS &= !mismatch || ignoreRT0;
+
+      if (likely(bindDS)) {
+        renderArea = { dsInfo.extent.width, dsInfo.extent.height };
+        sampleCount = dsInfo.sampleCount;
+        attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!UseDepthStencilReadOnlyLayout());
+      }
+    }
 
     for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
       if (!HasRenderTargetBound(i))
         continue;
+
+      const D3D9CommonTexture* rt = m_state.renderTargets[i]->GetCommonTexture();
+      const DxvkImageCreateInfo& rtInfo = rt->GetImage()->info();
+      if (unlikely(rtInfo.extent.width != renderArea.width
+          || rtInfo.extent.height != renderArea.height
+          || rtInfo.sampleCount != sampleCount)) {
+        continue;
+      }
 
       // Check if the render target is also bound as a texture for sampling.
       // If that's the case, check whether we can skip binding the render target
@@ -6719,79 +6778,17 @@ namespace dxvk {
       const bool writtenTo = (psMasks.rtMask & rtBit) != 0
           && m_state.renderStates[ColorWriteIndex(i)] != 0;
 
-      // The texture is bound for sampling and as an RT but the RT isn't actually used for writing.
-      // Not assigning an extent to rtExtents[i] will lead to it getting skipped when we get to binding the rt.
       if (hasHazard && !writtenTo)
         continue;
 
-      rtExtents[i] = m_state.renderTargets[i]->GetSurfaceExtent();
-      rtSampleCounts[i] = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info().sampleCount;
-
-      // If writing to the RT is disabled it shouldn't impact the render area.
-      if (!writtenTo)
+      // 1x1 RT0 + DS special case
+      if (unlikely(m_state.renderTargets.size() == 1
+        && m_state.depthStencil != nullptr
+        && (rtInfo.extent.width == 1 && rtInfo.extent.height == 1)
+        && !writtenTo))
         continue;
 
-      if (sampleCount == 0)
-        sampleCount = rtSampleCounts[i];
-
-      if (sampleCount & rtSampleCounts[i]) {
-        renderArea.width = std::min(renderArea.width, rtExtents[i].width);
-        renderArea.height = std::min(renderArea.height, rtExtents[i].height);
-      }
-    }
-
-    // Similarly check if the DSV is bound for sampling and as a DSV
-    // and whether it is actually required.
-    const bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
-      || m_state.renderStates[D3DRS_STENCILENABLE]
-      || m_nvdbEnabled;
-
-    const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
-
-    if (m_state.depthStencil != nullptr && (m_textureSlotTracking.hazardDS == 0 || usesDepthBuffer || !depthWrite)) {
-      rtExtents[DsvIndex] = m_state.depthStencil->GetSurfaceExtent();
-      rtSampleCounts[DsvIndex] = m_state.depthStencil->GetCommonTexture()->GetImage()->info().sampleCount;
-      if (usesDepthBuffer) {
-        if (sampleCount == 0)
-          sampleCount = rtSampleCounts[DsvIndex];
-
-        if (sampleCount & rtSampleCounts[DsvIndex]) {
-          renderArea.width = std::min(renderArea.width, rtExtents[DsvIndex].width);
-          renderArea.height = std::min(renderArea.height, rtExtents[DsvIndex].height);
-        }
-      }
-    }
-
-    // We've skipped all render targets because they'd needlessly impact the render area.
-    // Just pick one and use the extents for the render area and sample count
-    for (uint32_t i = 0; i < rtExtents.size() && sampleCount == 0; i++) {
-      if (rtSampleCounts[i] == 0)
-        continue;
-
-      sampleCount = rtSampleCounts[i];
-      renderArea.width = rtExtents[i].width;
-      renderArea.height = rtExtents[i].height;
-    }
-
-    for (uint32_t i = 0u; i < m_state.renderTargets.size(); i++) {
-      if (HasRenderTargetBound(i)
-        && rtExtents[i].width >= renderArea.width
-        && rtExtents[i].height >= renderArea.height
-        && rtSampleCounts[i] == sampleCount)
-          attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
-    }
-
-    // Based on the render area and sample count of actively used render targets,
-    // bind any render target that does not further restrict the render area.
-
-    if (m_state.depthStencil != nullptr
-     && rtExtents[DsvIndex].width >= renderArea.width
-     && rtExtents[DsvIndex].height >= renderArea.height
-     && rtSampleCounts[DsvIndex] == sampleCount) {
-      // If the texture is bound for sampling and for depth testing but depth write is disabled,
-      // use the readonly layout.
-      const bool readOnly = !depthWrite && m_textureSlotTracking.hazardDS != 0;
-      attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!readOnly);
+      attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
     }
 
     // Work out feedback loop layouts based on bound render targets
@@ -6800,7 +6797,7 @@ namespace dxvk {
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       if (m_textureSlotTracking.unresolvableHazardRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-      if (m_textureSlotTracking.unresolvableHazardDS != 0 && depthWrite)
+      if (m_textureSlotTracking.unresolvableHazardDS != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
@@ -7255,16 +7252,11 @@ namespace dxvk {
     Rc<DxvkImageView> imageView;
 
     if (unlikely(m_textureSlotTracking.hazardDS & (1u << slot))) {
-      const bool usesDepthBuffer = m_state.renderStates[D3DRS_ZENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE]
-        || m_nvdbEnabled;
-
-      const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
-
-      if (usesDepthBuffer && !depthWrite) {
+      if (UseDepthStencilReadOnlyLayout()) {
         // The texture is also bound as the depth buffer but not written to. Bind it as readonly.
         imageView = commonTex->GetDepthReadOnlySampleView();
       } else {
+        // The texture is also bound as the depth buffer but has been transitioned to FEEDBACK_LOOP_LAYOUT.
         imageView = commonTex->GetSampleView(srgb);
       }
     } else {
