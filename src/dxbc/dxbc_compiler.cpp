@@ -6716,8 +6716,8 @@ namespace dxvk {
         { m_hs.builtinTessLevelOuter, 1 },  // FinalTriVeq0EdgeTessFactor
         { m_hs.builtinTessLevelOuter, 2 },  // FinalTriWeq0EdgeTessFactor
         { m_hs.builtinTessLevelInner, 0 },  // FinalTriInsideTessFactor
-        { m_hs.builtinTessLevelOuter, 0 },  // FinalLineDensityTessFactor
         { m_hs.builtinTessLevelOuter, 1 },  // FinalLineDetailTessFactor
+        { m_hs.builtinTessLevelOuter, 0 },  // FinalLineDensityTessFactor
       }};
       
       const TessFactor tessFactor = s_tessFactors.at(uint32_t(sv)
