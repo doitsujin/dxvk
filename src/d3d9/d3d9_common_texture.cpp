@@ -570,8 +570,10 @@ namespace dxvk {
       return VK_IMAGE_LAYOUT_GENERAL;
 
     // Otherwise, pick a layout that can be used for reading.
+    // Use DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL for a DS texture
+    // so it can be used as DS and sampled at the same time without transitioning.
     return (Usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      ? VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
       : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
   }
 
@@ -723,11 +725,6 @@ namespace dxvk {
     if (IsSrgbCompatible()) {
       m_sampleView.Srgb = CreateView(AllLayers, Lod,
         VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, true);
-    }
-
-    if (IsDepthStencil() && GetType() != D3DRTYPE_SURFACE) {
-      m_sampleView.DepthReadOnly = CreateView(AllLayers, Lod,
-        VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL, false);
     }
   }
 
