@@ -1020,6 +1020,8 @@ namespace dxvk {
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
 
+    ResetFrameBufferBindingInfo();
+
     return D3D_OK;
   }
 
@@ -1104,6 +1106,7 @@ namespace dxvk {
       MarkTextureMipsDirty(dstTexInfo);
 
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+    ResetFrameBufferBindingInfo();
 
     return D3D_OK;
   }
@@ -1170,6 +1173,7 @@ namespace dxvk {
 
     dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
     TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
+    ResetFrameBufferBindingInfo();
 
     return D3D_OK;
   }
@@ -1435,6 +1439,7 @@ namespace dxvk {
     }
 
     dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
+    ResetFrameBufferBindingInfo();
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1664,6 +1669,13 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
+    // We're changing the RT anyway, so make sure we don't attempt to
+    // skip binding it in an attempt to match what we did with the
+    // previous RT at that slot.
+    // Sampling a masked-out RT is rare, so assume that a bound render target
+    // will also end up getting used.
+    m_fbBindingInfo.rtsBound |= (1u << RenderTargetIndex);
+
     // Do a strong flush if the first render target is changed.
     ConsiderFlush(RenderTargetIndex == 0
       ? GpuFlushType::ImplicitStrongHint
@@ -1753,6 +1765,10 @@ namespace dxvk {
 
     if (m_state.depthStencil == ds)
       return D3D_OK;
+
+    // We're changing the DS anyway, so make sure we don't attempt to
+    // match the previous image layout.
+    m_fbBindingInfo.dsReadOnly = false;
 
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -5275,6 +5291,7 @@ namespace dxvk {
     }
     UnmapTextures();
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+    ResetFrameBufferBindingInfo();
   }
 
   void D3D9DeviceEx::EmitGenerateMips(
@@ -5460,6 +5477,7 @@ namespace dxvk {
 
     UnmapTextures();
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+    ResetFrameBufferBindingInfo();
     return D3D_OK;
   }
 
@@ -6108,6 +6126,10 @@ namespace dxvk {
     // context, then flush the command list
     uint64_t submissionId = ++m_submissionId;
 
+    // Flushing ends the render pass anyway so the previous binding info no longer matters.
+    ResetFrameBufferBindingInfo();
+    m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId,
@@ -6538,6 +6560,7 @@ namespace dxvk {
     }
 
     m_textureSlotTracking.needsMipGen &= ~mask;
+    ResetFrameBufferBindingInfo();
   }
 
 
@@ -6688,6 +6711,9 @@ namespace dxvk {
 
     bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
 
+    D3D9FramebufferBindingInfo oldBindingInfo = m_fbBindingInfo;
+    ResetFrameBufferBindingInfo();
+
     // The extents and sample counts of all render targets need to match.
     // There's a few exceptions for mismatching extents of depth stencil surfaces:
     //   - It is allowed to be larger than RT0.
@@ -6758,6 +6784,7 @@ namespace dxvk {
           || m_nvdbEnabled
           || m_state.renderStates[D3DRS_ZWRITEENABLE];
 
+        m_fbBindingInfo.dsReadOnly = !readOnly;
         attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!readOnly);
       }
     }
@@ -6805,6 +6832,10 @@ namespace dxvk {
         && !writtenTo))
         continue;
 
+      if (!(oldBindingInfo.rtsBound & rtBit) && !writtenTo)
+        continue;
+
+      m_fbBindingInfo.rtsBound |= 1u << i;
       attachments.color[i].view = m_state.renderTargets[i]->GetRenderTargetView(srgb);
     }
 
