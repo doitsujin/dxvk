@@ -6352,8 +6352,13 @@ namespace dxvk {
       m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
 
       if (unlikely(usesDepthBuffer)) {
-        if (!depthWrite) {
+        VkImageLayout dsLayout = m_state.depthStencil->GetCommonTexture()->GetLayout();
+        const bool hasUnusualLayout = dsLayout != m_hazardLayout
+            && dsLayout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+        if (unlikely(!depthWrite && !hasUnusualLayout)) {
           // We can resolve it by transitioning to DEPTH_ATTACHMENT_READONLY
+          // or it has already been transitioned to FEEDBACK_LOOP_LAYOUT and
+          // we don't need per-draw barriers right now.
           m_textureSlotTracking.textureDirty |= 1 << samplerIdx;
         } else {
           // We have to bind the DS as writable, so we need FEEDBACK_LOOP_LAYOUT.
@@ -6402,7 +6407,7 @@ namespace dxvk {
     for (uint32_t samplerIdx : bit::BitMask(m_textureSlotTracking.unresolvableHazardRT | m_textureSlotTracking.unresolvableHazardDS)) {
       // Guaranteed to not be nullptr...
       auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
-      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
+      if (unlikely(tex->GetLayout() != m_hazardLayout)) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
@@ -6741,7 +6746,19 @@ namespace dxvk {
       if (likely(bindDS)) {
         renderArea = { dsInfo.extent.width, dsInfo.extent.height };
         sampleCount = dsInfo.sampleCount;
-        attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!UseDepthStencilReadOnlyLayout());
+
+        // If the DS is also bound as a texture for sampling
+        // and it's either unused as DS or not written to,
+        // use the readonly layout.
+        bool readOnly = m_textureSlotTracking.hazardDS != 0 || (m_fbBindingInfo.dsReadOnly
+          && m_state.depthStencil->GetCommonTexture()->GetLayout() == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL);
+        readOnly &= m_state.depthStencil->GetCommonTexture()->GetLayout() == m_hazardLayout;
+        readOnly &= m_state.renderStates[D3DRS_ZENABLE]
+          || m_state.renderStates[D3DRS_STENCILENABLE]
+          || m_nvdbEnabled
+          || m_state.renderStates[D3DRS_ZWRITEENABLE];
+
+        attachments.depth.view = m_state.depthStencil->GetDepthStencilView(!readOnly);
       }
     }
 
@@ -7249,19 +7266,7 @@ namespace dxvk {
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
 
-    Rc<DxvkImageView> imageView;
-
-    if (unlikely(m_textureSlotTracking.hazardDS & (1u << slot))) {
-      if (UseDepthStencilReadOnlyLayout()) {
-        // The texture is also bound as the depth buffer but not written to. Bind it as readonly.
-        imageView = commonTex->GetDepthReadOnlySampleView();
-      } else {
-        // The texture is also bound as the depth buffer but has been transitioned to FEEDBACK_LOOP_LAYOUT.
-        imageView = commonTex->GetSampleView(srgb);
-      }
-    } else {
-      imageView = commonTex->GetSampleView(srgb);
-    }
+    Rc<DxvkImageView> imageView = commonTex->GetSampleView(srgb);
 
     EmitCs([
       cSlot = slot,
@@ -8287,6 +8292,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout) {
+    pResource->SetLayout(NewLayout);
     EmitCs([
       cImage        = pResource->GetImage(),
       cNewLayout    = NewLayout
