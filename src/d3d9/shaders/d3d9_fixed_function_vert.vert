@@ -69,7 +69,7 @@ layout(push_constant, scalar, row_major) uniform RenderStates {
 // See d3d9_spec_constants.h for packing
 // MaxSpecDwords = 6
 // Binding has to match with getSpecConstantBufferSlot in dxso_util.h
-layout(set = 0, binding = 30, scalar) uniform SpecConsts {
+layout(set = 0, binding = 31, scalar) uniform SpecConsts {
     uint specConstDword[6];
 };
 
@@ -91,7 +91,7 @@ layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData 
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSClipPlanes
 // ) = 3
-layout(set = 0, binding = 3, std140) readonly buffer ClipPlanes {
+layout(set = 0, binding = 3, std140) uniform ClipPlanes {
     vec4 clipPlanes[MaxClipPlaneCount];
 };
 

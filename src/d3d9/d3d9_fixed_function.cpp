@@ -12,7 +12,7 @@
 
 #include <cfloat>
 
-#include <d3d9_fixed_function.h>
+#include <d3d9_fixed_function_vert.h>
 
 namespace dxvk {
 
@@ -2610,8 +2610,7 @@ namespace dxvk {
 
     std::string name = str::format("FF_", isVS ? "VS" : "PS", "_Ubershader");
 
-    SpirvCodeBuffer codeBuffer(sizeof(d3d9_fixed_function), d3d9_fixed_function);
-    Logger::warn(str::format("Size: ", sizeof(d3d9_fixed_function)));
+    SpirvCodeBuffer codeBuffer(sizeof(d3d9_fixed_function_vert) / sizeof(uint32_t), d3d9_fixed_function_vert);
 
     constexpr uint32_t specConstantBufferBindingId = getSpecConstantBufferSlot();
     DxvkBindingInfo specConstantBufferBinding;
@@ -2644,7 +2643,7 @@ namespace dxvk {
     vertexBlendBinding.access          = VK_ACCESS_SHADER_READ_BIT;
     vertexBlendBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    uint32_t clipPlanesBindingId = computeResourceSlotId(
+    constexpr uint32_t clipPlanesBindingId = computeResourceSlotId(
       DxsoProgramType::VertexShader,
       DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::VSClipPlanes);
@@ -2673,15 +2672,11 @@ namespace dxvk {
     info.localPushData = DxvkPushDataBlock();
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
-    Logger::warn("Creating ubershader");
     m_shader = new DxvkShader(info, std::move(codeBuffer));
-    Logger::warn("Done creating ubershader");
     m_isgn = GetFixedFunctionIsgn();
 
     //m_shader->setShaderKey(shaderKey);
-    Logger::warn("Registering ubershader");
     pDevice->GetDXVKDevice()->registerShader(m_shader);
-    Logger::warn("Done registering ubershader");
   }
 
 
