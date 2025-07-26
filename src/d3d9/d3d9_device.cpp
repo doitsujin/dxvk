@@ -5777,10 +5777,17 @@ namespace dxvk {
       availableTextureMemory += memoryProp.memoryHeaps[i].size;
 
     constexpr VkDeviceSize Megabytes = 1024 * 1024;
+    // Windows will typically "reserve" some amount of video memory,
+    // presumably for back buffers, which gets subtracted from the
+    // reported size, e.g. in case of 4 GB it will report a total of
+    // 4286578687 available bytes. The reserved amount varies depending
+    // on the number of back buffers and the back buffer resolution,
+    // however 8 MB has been generally observed for 1080p.
+    constexpr VkDeviceSize ReservedMemory = 8 * Megabytes;
 
     // The value returned is a 32-bit value, so we need to clamp it.
     VkDeviceSize maxMemory = (VkDeviceSize(m_d3d9Options.maxAvailableMemory) * Megabytes) - 1;
-    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
+    availableTextureMemory = std::min(availableTextureMemory, maxMemory) - ReservedMemory;
 
     return int64_t(availableTextureMemory);
   }
