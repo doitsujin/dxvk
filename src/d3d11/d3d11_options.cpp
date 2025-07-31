@@ -31,6 +31,7 @@ namespace dxvk {
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
     this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
     this->disableDirectImageMapping = config.getOption<bool>("d3d11.disableDirectImageMapping", false);
+    this->ignoreExplicitFlush   = config.getOption<bool>("d3d11.ignoreExplicitFlush", false);
     this->sincosEmulation       = config.getOption<Tristate>("d3d11.sincosEmulation", Tristate::Auto);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways

@@ -111,6 +111,9 @@ namespace dxvk {
     /// Whether to use sincos emulation
     Tristate sincosEmulation = Tristate::Auto;
 
+    /// Whether to ignore calls to Flush / Flush1.
+    bool ignoreExplicitFlush = false;
+
     /// Shader dump path
     std::string shaderDumpPath;
   };

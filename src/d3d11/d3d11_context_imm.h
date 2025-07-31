@@ -214,6 +214,8 @@ namespace dxvk {
 
     void NotifyRenderPassBoundary();
 
+    bool ShouldFlushExplicit();
+
     DxvkStagingBufferStats GetStagingMemoryStatistics();
 
     static GpuFlushType GetMaxFlushType(

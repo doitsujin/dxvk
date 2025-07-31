@@ -169,7 +169,8 @@ namespace dxvk {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       m_flushReason = "Explicit Flush";
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+    if (ShouldFlushExplicit())
+      ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
 
@@ -181,7 +182,8 @@ namespace dxvk {
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       m_flushReason = "Explicit Flush";
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
+    if (hEvent || ShouldFlushExplicit())
+      ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
   
   
@@ -1221,6 +1223,12 @@ namespace dxvk {
       // Doing this makes it less likely to flush during render passes
       ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     }
+  }
+
+
+  bool D3D11ImmediateContext::ShouldFlushExplicit() {
+    return !m_device->perfHints().preferRenderPassOps
+        || !m_parent->GetOptions()->ignoreExplicitFlush;
   }
 
 
