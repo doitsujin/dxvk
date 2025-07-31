@@ -108,7 +108,6 @@ namespace dxvk {
           DxbcCompiler&       compiler,
           DxbcCodeSlice       slice) const {
     DxbcDecodeContext decoder;
-    
     while (!slice.atEnd()) {
       decoder.decodeInstruction(slice);
       

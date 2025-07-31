@@ -166,6 +166,9 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     D3D10DeviceLock lock = LockContext();
 
+    if (IgnoreExplicitFlush())
+      return;
+
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       m_flushReason = "Explicit Flush";
 
@@ -177,6 +180,13 @@ namespace dxvk {
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
     D3D10DeviceLock lock = LockContext();
+
+    if (IgnoreExplicitFlush()) {
+      if (!hEvent)
+        return;
+
+      Logger::warn("Can't ignore flush due to non-null event");
+    }
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       m_flushReason = "Explicit Flush";
@@ -1221,6 +1231,12 @@ namespace dxvk {
       // Doing this makes it less likely to flush during render passes
       ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     }
+  }
+
+
+  bool D3D11ImmediateContext::IgnoreExplicitFlush() {
+    Logger::warn(str::format("Ignore flush: ", m_parent->GetOptions()->ignoreExplicitFlush));
+    return m_parent->GetOptions()->ignoreExplicitFlush;
   }
 
 
