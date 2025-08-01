@@ -1329,7 +1329,7 @@ namespace dxvk {
     // Copies would only work if the extents match. (ie. no stretching)
     bool stretch = srcCopyExtent != dstCopyExtent;
 
-    bool dstHasRTUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+    bool dstHasAttachmentUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
     bool dstIsSurface = dstTextureInfo->GetType() == D3DRTYPE_SURFACE;
     if (stretch) {
       if (unlikely(pSourceSurface == pDestSurface))
@@ -1341,17 +1341,17 @@ namespace dxvk {
       // The docs say that stretching is only allowed if the destination is either a render target surface or a render target texture.
       // However in practice, using an offscreen plain surface in D3DPOOL_DEFAULT as the destination works fine.
       // Using a texture without USAGE_RENDERTARGET as destination however does not.
-      if (unlikely(!dstIsSurface && !dstHasRTUsage))
+      if (unlikely(!dstIsSurface && !dstHasAttachmentUsage))
         return D3DERR_INVALIDCALL;
     } else {
       bool srcIsSurface = srcTextureInfo->GetType() == D3DRTYPE_SURFACE;
-      bool srcHasRTUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+      bool srcHasAttachmentUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
       // Non-stretching copies are only allowed if:
       // - the destination is either a render target surface or a render target texture
       // - both destination and source are depth stencil surfaces
       // - both destination and source are offscreen plain surfaces.
       // The only way to get a surface with resource type D3DRTYPE_SURFACE without USAGE_RT or USAGE_DS is CreateOffscreenPlainSurface.
-      if (unlikely((!dstHasRTUsage && (!dstIsSurface || !srcIsSurface || srcHasRTUsage)) && !m_isD3D8Compatible))
+      if (unlikely((!dstHasAttachmentUsage && (!dstIsSurface || !srcIsSurface || srcHasAttachmentUsage)) && !m_isD3D8Compatible))
         return D3DERR_INVALIDCALL;
     }
 
@@ -1545,7 +1545,9 @@ namespace dxvk {
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
         DxvkImageUsageInfo usage = { };
-        usage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        usage.usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        usage.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        usage.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
         ctx->ensureImageCompatibility(cImage, usage);
 
@@ -4179,11 +4181,18 @@ namespace dxvk {
     if (unlikely(MultiSample > D3DMULTISAMPLE_16_SAMPLES))
       return D3DERR_INVALIDCALL;
 
-    uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    // Yes, it actually fails when explicitly passing D3DUSAGE_RENDERTARGET.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
 
-    // Check if this is a power of two and
-    // return D3DERR_NOTAVAILABLE on failure
-    if (sampleCount & (sampleCount - 1))
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // Check if the sample count is valid and supported and
+    // specifically return D3DERR_NOTAVAILABLE on failure.
+    if (FAILED(DecodeMultiSampleType(m_dxvkDevice, MultiSample, MultisampleQuality, nullptr)))
       return D3DERR_NOTAVAILABLE;
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -4231,6 +4240,14 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -4301,6 +4318,15 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
 
     if (unlikely(ppSurface == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // The new Create functions added in 9Ex only accept the new USAGE flags added with 9Ex.
+    // Yes, it actually fails when explicitly passing D3DUSAGE_DEPTHSTENCIL.
+    if (unlikely(Usage & ~(D3DUSAGE_RESTRICTED_CONTENT | D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
+      && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_COMMON_TEXTURE_DESC desc;

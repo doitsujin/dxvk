@@ -45,22 +45,29 @@ namespace dxvk {
 
     const bool createImage = m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH && m_desc.Format != D3D9Format::NULL_FORMAT;
     if (createImage) {
-      bool plainSurface = m_type == D3DRTYPE_SURFACE &&
-                          !(m_desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL));
+      m_image = CreatePrimaryImage(ResourceType, pSharedHandle);
 
-      try {
-        m_image = CreatePrimaryImage(ResourceType, plainSurface, pSharedHandle);
+      if (unlikely(m_image == nullptr && (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP))) {
+        // AUTOGENMIPMAP is supposed to be treated like a hint according to the docs.
+        // So if creating an image with it fails, create one without it.
+        m_desc.Usage &= ~D3DUSAGE_AUTOGENMIPMAP;
+        m_desc.MipLevels = 1;
+        m_image = CreatePrimaryImage(ResourceType, pSharedHandle);
       }
-      catch (const DxvkError& e) {
-        // D3DUSAGE_AUTOGENMIPMAP and offscreen plain is mutually exclusive
-        // so we can combine their retry this way.
-        if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP || plainSurface) {
-          m_desc.Usage &= ~D3DUSAGE_AUTOGENMIPMAP;
-          m_desc.MipLevels = 1;
-          m_image = CreatePrimaryImage(ResourceType, false, pSharedHandle);
-        }
-        else
-          throw e;
+
+      if (unlikely(m_image == nullptr)) {
+        throw DxvkError(str::format(
+          "D3D9: Cannot create texture:",
+          "\n  Type:    0x", std::hex, ResourceType, std::dec,
+          "\n  Format:  ", m_desc.Format,
+          "\n  Extent:  ", m_desc.Width,
+                      "x", m_desc.Height,
+                      "x", m_desc.Depth,
+          "\n  Samples: ", m_desc.MultiSample,
+          "\n  Layers:  ", m_desc.ArraySize,
+          "\n  Levels:  ", m_desc.MipLevels,
+          "\n  Usage:   0x", std::hex, m_desc.Usage, std::dec,
+          "\n  Pool:    0x", std::hex, m_desc.Pool, std::dec));
       }
 
       if (pSharedHandle && *pSharedHandle == nullptr) {
@@ -163,6 +170,7 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
+    // Sample counts need to be valid
     VkSampleCountFlagBits sampleCount;
     if (FAILED(DecodeMultiSampleType(pDevice->GetDXVKDevice(), pDesc->MultiSample, pDesc->MultisampleQuality, &sampleCount)))
       return D3DERR_INVALIDCALL;
@@ -213,6 +221,10 @@ namespace dxvk {
     if (ResourceType == D3DRTYPE_VOLUMETEXTURE
       && pDesc->Pool == D3DPOOL_SCRATCH
       && (pDesc->Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
+
+    // Auto-Mipgen is only valid on textures (for obvious reasons)
+    if ((pDesc->Usage & D3DUSAGE_AUTOGENMIPMAP) && ResourceType == D3DRTYPE_SURFACE)
       return D3DERR_INVALIDCALL;
 
     // Use the maximum possible mip level count if the supplied
@@ -328,7 +340,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const {
+  Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType, HANDLE* pSharedHandle) const {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type            = GetImageTypeFromResourceType(ResourceType);
     imageInfo.format          = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
@@ -366,13 +378,11 @@ namespace dxvk {
     if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      imageInfo.access |= VK_ACCESS_SHADER_WRITE_BIT;
       imageInfo.shared = true;
     }
 
     DecodeMultiSampleType(m_device->GetDXVKDevice(), m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
-
-    if (!m_desc.IsAttachmentOnly)
-      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
@@ -395,8 +405,11 @@ namespace dxvk {
     const bool isDS = m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
     const bool isAutoGen = m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP;
 
+    if (!m_desc.IsAttachmentOnly || (!isRT && !isDS))
+      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+
     // Are we an RT, need to gen mips or an offscreen plain surface?
-    if (isRT || isAutoGen || TryOffscreenRT) {
+    if (isRT || isAutoGen) {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
@@ -429,20 +442,8 @@ namespace dxvk {
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
 
     // Check if we can actually create the image
-    if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
-      throw DxvkError(str::format(
-        "D3D9: Cannot create texture:",
-        "\n  Type:    0x", std::hex, ResourceType, std::dec,
-        "\n  Format:  ", m_desc.Format,
-        "\n  Extent:  ", m_desc.Width,
-                    "x", m_desc.Height,
-                    "x", m_desc.Depth,
-        "\n  Samples: ", m_desc.MultiSample,
-        "\n  Layers:  ", m_desc.ArraySize,
-        "\n  Levels:  ", m_desc.MipLevels,
-        "\n  Usage:   0x", std::hex, m_desc.Usage, std::dec,
-        "\n  Pool:    0x", std::hex, m_desc.Pool, std::dec));
-    }
+    if (!CheckImageSupport(&imageInfo, imageInfo.tiling))
+      return nullptr;
 
     return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
