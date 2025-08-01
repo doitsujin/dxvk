@@ -1809,7 +1809,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < 4; i++)
       constant.float32[i] = data[i];
     m_constants.push_back(constant);
-    m_maxDefinedConstant = std::max(constant.uboIdx, m_maxDefinedConstant);
+    m_maxDefinedFloatConstant = std::max(static_cast<int32_t>(constant.uboIdx), m_maxDefinedFloatConstant);
   }
 
   void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {
@@ -1820,6 +1820,8 @@ namespace dxvk {
 
     std::string name = str::format("cI", ctx.dst.id.num, "_def");
     m_module.setDebugName(constId, name.c_str());
+
+    m_maxDefinedIntConstant = std::max(static_cast<int32_t>(ctx.dst.id.num), m_maxDefinedIntConstant);
   }
 
   void DxsoCompiler::emitDefB(const DxsoInstructionContext& ctx) {
@@ -1830,6 +1832,8 @@ namespace dxvk {
 
     std::string name = str::format("cB", ctx.dst.id.num, "_def");
     m_module.setDebugName(constId, name.c_str());
+
+    m_maxDefinedBoolConstant = std::max(static_cast<int32_t>(ctx.dst.id.num), m_maxDefinedBoolConstant);
   }
 
 

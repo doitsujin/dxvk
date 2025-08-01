@@ -150,6 +150,12 @@ namespace dxvk {
     ///////////////////
     // Desc Validation
 
+    // Resources can't be created in D3DPOOL_MANAGED
+    // when using extended devices. Note that the D3DPOOL
+    // value of 6 (D3DPOOL_MANAGED_EX) can be used.
+    if (pDevice->IsExtended() && pDesc->Pool == D3DPOOL_MANAGED)
+      return D3DERR_INVALIDCALL;
+
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
 
