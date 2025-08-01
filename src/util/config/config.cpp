@@ -173,10 +173,11 @@ namespace dxvk {
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
-     * Cached dynamic buffers help massively        *
-     * in CPU bound game parts                      */
+     * but apparently no longer works when spoofing *
+     * vendor IDs. Cached dynamic buffers help      *
+     * massively in CPU bound game parts            */
     { R"(\\Crysis3\.exe$)", {{
-      { "dxgi.customVendorId",              "10de" },
+      { "dxgi.hideNvidiaGpu",               "False" },
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Crysis 3 Remastered                          *
