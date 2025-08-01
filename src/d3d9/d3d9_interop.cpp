@@ -208,6 +208,7 @@ namespace dxvk {
           VkImageLayout             OldLayout,
           VkImageLayout             NewLayout) {
     auto texture = static_cast<D3D9VkInteropTexture *>(pTexture)->GetCommonTexture();
+    texture->SetLayout(NewLayout);
 
     m_device->EmitCs([
       cImage        = texture->GetImage(),

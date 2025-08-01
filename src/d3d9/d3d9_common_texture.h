@@ -64,7 +64,6 @@ namespace dxvk {
 
     Rc<DxvkImageView> Color;
     Rc<DxvkImageView> Srgb;
-    Rc<DxvkImageView> DepthReadOnly;
   };
 
   template <typename T>
@@ -324,8 +323,8 @@ namespace dxvk {
       return util::computeMipLevelExtent(GetExtent(), MipLevel);
     }
 
-    bool MarkTransitionedToHazardLayout() {
-      return std::exchange(m_transitionedToHazardLayout, true);
+    VkImageLayout GetCommonLayout() const {
+      return m_layout;
     }
 
     D3DRESOURCETYPE GetType() const {
@@ -354,9 +353,8 @@ namespace dxvk {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
     }
 
-    const Rc<DxvkImageView>& GetDepthReadOnlySampleView() const {
-      return m_sampleView.DepthReadOnly;
-    }
+    void SetLayout(VkImageLayout layout) { m_layout = layout; }
+    VkImageLayout GetLayout() const { return m_layout; }
 
     Rc<DxvkImageView> CreateView(
             UINT                   Layer,
@@ -495,6 +493,8 @@ namespace dxvk {
     Rc<DxvkBuffer>                m_buffer;
     D3D9Memory                    m_data = { };
 
+    VkImageLayout                 m_layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
     D3D9SubresourceArray<
       uint64_t>                   m_seqs = { };
 
@@ -510,8 +510,6 @@ namespace dxvk {
     bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;
-
-    bool                          m_transitionedToHazardLayout = false;
 
     D3D9ColorView                 m_sampleView;
 

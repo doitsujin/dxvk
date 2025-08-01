@@ -68,6 +68,8 @@ namespace dxvk {
         ExportImageInfo();
       }
 
+      m_layout = m_image->info().layout;
+
       if ((m_image->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT) != 0)
         CreateSampleView(0);
 
@@ -709,11 +711,6 @@ namespace dxvk {
     if (IsSrgbCompatible()) {
       m_sampleView.Srgb = CreateView(AllLayers, Lod,
         VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, true);
-    }
-
-    if (IsDepthStencil() && GetType() != D3DRTYPE_SURFACE) {
-      m_sampleView.DepthReadOnly = CreateView(AllLayers, Lod,
-        VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL, false);
     }
   }
 
