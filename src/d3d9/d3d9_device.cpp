@@ -3994,7 +3994,8 @@ namespace dxvk {
 
     if (!std::exchange(s_errorShown, true))
       Logger::warn("D3D9DeviceEx::DrawRectPatch: Stub");
-    return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
   }
 
 
@@ -4006,7 +4007,8 @@ namespace dxvk {
 
     if (!std::exchange(s_errorShown, true))
       Logger::warn("D3D9DeviceEx::DrawTriPatch: Stub");
-    return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
   }
 
 
@@ -4015,6 +4017,7 @@ namespace dxvk {
 
     if (!std::exchange(s_errorShown, true))
       Logger::warn("D3D9DeviceEx::DeletePatch: Stub");
+
     return D3DERR_INVALIDCALL;
   }
 
@@ -4058,19 +4061,31 @@ namespace dxvk {
           D3DCOMPOSERECTSOP       Operation,
           int                     Xoffset,
           int                     Yoffset) {
-    Logger::warn("D3D9DeviceEx::ComposeRects: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::ComposeRects: Stub");
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetGPUThreadPriority(INT* pPriority) {
-    Logger::warn("D3D9DeviceEx::GetGPUThreadPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::GetGPUThreadPriority: Stub");
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetGPUThreadPriority(INT Priority) {
-    Logger::warn("D3D9DeviceEx::SetGPUThreadPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::SetGPUThreadPriority: Stub");
+
     return D3D_OK;
   }
 
@@ -4084,7 +4099,11 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CheckResourceResidency(IDirect3DResource9** pResourceArray, UINT32 NumResources) {
-    Logger::warn("D3D9DeviceEx::CheckResourceResidency: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::CheckResourceResidency: Stub");
+
     return D3D_OK;
   }
 
