@@ -1282,6 +1282,13 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",            "True" },
       { "d3d9.cachedDynamicBuffers",       "True" },
     }} },
+    /* Comanche 4 - Only enables the FSAA option  *
+     * if it detects a device ID of 0x025x.       */
+     { R"(\\c4(lan)?\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.customDeviceId",              "0250" },
+      { "d3d9.customDeviceDesc", "NVIDIA GeForce4 Ti 4600" },
+    }} },
   };
 
 
