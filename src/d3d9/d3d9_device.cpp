@@ -2357,7 +2357,7 @@ namespace dxvk {
           break;
 
         case D3DRS_STENCILREF:
-          BindDepthStencilRefrence();
+          BindDepthStencilReference();
           break;
 
         case D3DRS_SCISSORTESTENABLE:
@@ -7164,7 +7164,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::BindDepthStencilRefrence() {
+  void D3D9DeviceEx::BindDepthStencilReference() {
     auto& rs = m_state.renderStates;
 
     uint32_t ref = uint32_t(rs[D3DRS_STENCILREF]) & 0xff;
@@ -8378,7 +8378,7 @@ namespace dxvk {
     BindDepthStencilState();
 
     rs[D3DRS_STENCILREF] = 0;
-    BindDepthStencilRefrence();
+    BindDepthStencilReference();
 
     rs[D3DRS_FILLMODE]            = D3DFILL_SOLID;
     rs[D3DRS_CULLMODE]            = D3DCULL_CCW;
