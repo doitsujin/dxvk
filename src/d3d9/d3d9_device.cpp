@@ -1706,22 +1706,17 @@ namespace dxvk {
       // Changing RT0 can disable ATOC and
       // potentially enable alpha test, so we
       // need to keep track of the state.
-      const bool wasAtocEnabled = m_atocEnabled;
-      m_atocEnabled = IsAlphaToCoverageEnabled();
-
-      const bool wasAlphaTestEnabled = m_alphaTestEnabled;
-      m_alphaTestEnabled = IsAlphaTestEnabled();
+      UpdateAlphaToCoverangeAndAlphaTest();
 
       if (likely(texInfo != nullptr)) {
-        if (m_alphaTestEnabled || wasAlphaTestEnabled) {
-          // We either need to enable or disable it based on the changed ATOC state
-          // or we need to recalculate the precision.
+        if (m_alphaTestEnabled) {
+          // We need to recalculate the precision.
           m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
         }
 
         bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
-        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask) || m_atocEnabled != wasAtocEnabled) {
+        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
           m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
           if (validSampleMask)
             m_flags.set(D3D9DeviceFlag::ValidSampleMask);
@@ -2317,20 +2312,7 @@ namespace dxvk {
           break;
 
         case D3DRS_ALPHATESTENABLE: {
-          const bool atocEnabled = IsAlphaToCoverageEnabled();
-
-          if (atocEnabled != m_atocEnabled) {
-            m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
-            m_atocEnabled = atocEnabled;
-          }
-
-          const bool alphaTestEnabled = IsAlphaTestEnabled();
-
-          if (alphaTestEnabled != m_alphaTestEnabled) {
-            m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
-            m_alphaTestEnabled = alphaTestEnabled;
-          }
-
+          UpdateAlphaToCoverangeAndAlphaTest();
           break;
         }
 
@@ -2470,20 +2452,7 @@ namespace dxvk {
               || Value == AlphaToCoverageDisable) &&
                  vendorId == amdVendorId &&
                  !m_isD3D8Compatible) {
-              const bool atocEnabled = IsAlphaToCoverageEnabled();
-
-              if (atocEnabled != m_atocEnabled) {
-                m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
-                m_atocEnabled = atocEnabled;
-              }
-
-              const bool alphaTestEnabled = IsAlphaTestEnabled();
-
-              if (alphaTestEnabled != m_alphaTestEnabled) {
-                m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
-                m_alphaTestEnabled = alphaTestEnabled;
-              }
-
+              UpdateAlphaToCoverangeAndAlphaTest();
               break;
             }
 
@@ -2570,20 +2539,7 @@ namespace dxvk {
 
             if (Value == AlphaToCoverageEnable
              || Value == AlphaToCoverageDisable) {
-              const bool atocEnabled = IsAlphaToCoverageEnabled();
-
-              if (atocEnabled != m_atocEnabled) {
-                m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
-                m_atocEnabled = atocEnabled;
-              }
-
-              const bool alphaTestEnabled = IsAlphaTestEnabled();
-
-              if (alphaTestEnabled != m_alphaTestEnabled) {
-                m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
-                m_alphaTestEnabled = alphaTestEnabled;
-              }
-
+              UpdateAlphaToCoverangeAndAlphaTest();
               break;
             }
 
@@ -6925,28 +6881,40 @@ namespace dxvk {
   }
 
 
-  bool D3D9DeviceEx::IsAlphaToCoverageEnabled() const {
-    // ATOC is not supported by D3D8
-    if (unlikely(m_isD3D8Compatible))
-      return false;
+  void D3D9DeviceEx::UpdateAlphaToCoverangeAndAlphaTest() {
+    if (likely(!m_isD3D8Compatible)) {
+      // ATOC is not supported by D3D8
+      bool alphaToCoverageEnabled = true;
 
-    const bool isAmd = m_adapter->GetVendorId() == uint32_t(DxvkGpuVendor::Amd);
+      // Check render states
+      // The AMD ATOC enable state or the Nvidia ATOC enable state with alpha test
+      // enabled (also supported by Intel) could potentially enable ATOC overall
+      const bool isAMDATOCEnabled = m_state.renderStates[D3DRS_POINTSIZE]      == uint32_t(D3D9Format::A2M1);
+      const bool isNVATOCEnabled  = m_state.renderStates[D3DRS_ADAPTIVETESS_Y] == uint32_t(D3D9Format::ATOC)
+                                      && m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0;
+      const bool isAMD = m_adapter->GetVendorId() == uint32_t(DxvkGpuVendor::Amd);
+      alphaToCoverageEnabled &= (isAMD && isAMDATOCEnabled) || (!isAMD && isNVATOCEnabled);
 
-    // The AMD ATOC enable state or the Nvidia ATOC enable state with alpha test
-    // enabled (also supported by Intel) could potentially enable ATOC overall,
-    // otherwise quick return false
-    if (!((m_state.renderStates[D3DRS_POINTSIZE]       == uint32_t(D3D9Format::A2M1) && isAmd)
-       || (m_state.renderStates[D3DRS_ADAPTIVETESS_Y]  == uint32_t(D3D9Format::ATOC) && !isAmd &&
-           m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0)))
-      return false;
+      // Check sample count of RT 0
+      const D3D9CommonTexture* rt0 = GetCommonTexture(m_state.renderTargets[0].ptr());
+      const bool isMultisampled = rt0 != nullptr && (
+        rt0->Desc()->MultiSample >= D3DMULTISAMPLE_2_SAMPLES
+        || (rt0->Desc()->MultiSample == D3DMULTISAMPLE_NONMASKABLE && rt0->Desc()->MultisampleQuality > 0)
+      );
+      alphaToCoverageEnabled &= isMultisampled;
 
-    const D3D9CommonTexture* rt0 = GetCommonTexture(m_state.renderTargets[0].ptr());
-    const bool isMultisampled = rt0 != nullptr && (
-      rt0->Desc()->MultiSample >= D3DMULTISAMPLE_2_SAMPLES
-      || (rt0->Desc()->MultiSample == D3DMULTISAMPLE_NONMASKABLE && rt0->Desc()->MultisampleQuality > 0)
-    );
+      if (m_atocEnabled != alphaToCoverageEnabled) {
+        m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+        m_atocEnabled = alphaToCoverageEnabled;
+      }
+    }
 
-    return rt0 != nullptr && isMultisampled;
+    // Update alpha test state
+    bool alphaTestEnabled = m_state.renderStates[D3DRS_ALPHATESTENABLE] && !m_atocEnabled;
+    if (m_alphaTestEnabled != alphaTestEnabled) {
+      m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+      m_alphaTestEnabled = alphaTestEnabled;
+    }
   }
 
 
