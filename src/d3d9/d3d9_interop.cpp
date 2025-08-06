@@ -73,6 +73,122 @@ namespace dxvk {
     return (count < maxCount) ? D3DERR_MOREDATA : D3D_OK;
   }
 
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceExtensions(
+         UINT                      Adapter,
+         uint32_t*                 Count,
+         VkExtensionProperties*    Extensions) {
+    if (unlikely(Count == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceExtensions(Count, Extensions))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceQueues(
+        UINT                      Adapter,
+        uint32_t*                 Count,
+        VkDeviceQueueCreateInfo*  Queues) {
+    if (unlikely(Count == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceQueues(Count, Queues))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::QueryDeviceFeatures(
+        UINT                      Adapter,
+        size_t*                   Size,
+        void*                     Data) {
+    if (unlikely(Size == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (unlikely(adapter == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+    if (!dxvkAdapter->capabilities().queryDeviceFeatures(Size, Data))
+      return D3DERR_MOREDATA;
+
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropInterface::ImportDevice(
+        UINT                        Adapter,
+        D3D9VkDeviceImportInfo*     pInfo,
+        IDirect3DDevice9Ex**        ppReturnedDevice) {
+    InitReturnPtr(ppReturnedDevice);
+
+    if (unlikely(pInfo                == nullptr
+              || ppReturnedDevice     == nullptr
+              || pInfo->presentParams == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    HRESULT hr = m_interface->ValidatePresentationParameters(pInfo->presentParams);
+    if (unlikely(FAILED(hr)))
+      return hr;
+
+    auto* adapter = m_interface->GetAdapter(Adapter);
+    if (adapter == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
+
+    DxvkDeviceImportInfo info;
+    info.device               = pInfo->device;
+    info.queue                = pInfo->graphicsQueue.queue;
+    info.queueFamily          = pInfo->graphicsQueue.family;
+    info.transferQueue        = pInfo->transferQueue.queue;
+    info.transferQueueFamily  = pInfo->transferQueue.family;
+    info.sparseQueue          = pInfo->sparseQueue.queue;
+    info.sparseQueueFamily    = pInfo->sparseQueue.family;
+    info.extensionCount       = pInfo->extensionCount;
+    info.extensionNames       = pInfo->extensionNames;
+    info.features             = pInfo->features;
+    info.queueCallback        = nullptr;
+
+    try {
+      auto dxvkDevice = dxvkAdapter->importDevice(info);
+      if (!dxvkDevice)
+        return D3DERR_NOTAVAILABLE;
+
+      auto* device = new D3D9DeviceEx(
+        m_interface,
+        adapter,
+        pInfo->deviceType,
+        pInfo->focusWindow,
+        pInfo->behaviorFlags,
+        dxvkDevice);
+
+      hr = device->InitialReset(pInfo->presentParams, pInfo->fullscreenMode);
+
+      if (unlikely(FAILED(hr)))
+        return hr;
+
+      *ppReturnedDevice = ref(device);
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_NOTAVAILABLE;
+    }
+
+    return D3D_OK;
+  }
+
   ////////////////////////////////
   // Texture Interop
   ///////////////////////////////
