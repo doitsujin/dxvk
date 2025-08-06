@@ -1698,18 +1698,22 @@ namespace dxvk {
       // Changing RT0 can disable ATOC and
       // potentially enable alpha test, so we
       // need to keep track of the state.
-      m_atocEnabled      = IsAlphaToCoverageEnabled();
+      const bool wasAtocEnabled = m_atocEnabled;
+      m_atocEnabled = IsAlphaToCoverageEnabled();
+
+      const bool wasAlphaTestEnabled = m_alphaTestEnabled;
       m_alphaTestEnabled = IsAlphaTestEnabled();
 
       if (likely(texInfo != nullptr)) {
-        if (m_alphaTestEnabled) {
-          // Need to recalculate the precision.
+        if (m_alphaTestEnabled || wasAlphaTestEnabled) {
+          // We either need to enable or disable it based on the changed ATOC state
+          // or we need to recalculate the precision.
           m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
         }
 
         bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
-        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask) || m_atocEnabled != wasAtocEnabled) {
           m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
           if (validSampleMask)
             m_flags.set(D3D9DeviceFlag::ValidSampleMask);
@@ -1719,6 +1723,7 @@ namespace dxvk {
       } else {
         m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
         m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+        m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
       }
     }
 
