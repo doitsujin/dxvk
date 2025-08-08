@@ -6315,7 +6315,7 @@ namespace dxvk {
 
     auto psMasks = PSShaderMasks();
     uint32_t rtMask = m_rtSlotTracking.canBeSampled & ((1u << caps::MaxSimultaneousTextures) - 1);
-    texMask &= psMasks.samplerMask & m_textureSlotTracking.rtUsage & ((1u << caps::MaxTextures) - 1);
+    texMask &= m_textureSlotTracking.rtUsage & ((1u << caps::MaxTextures) - 1);
 
     for (uint32_t rtIdx : bit::BitMask(rtMask)) {
       bool anyColorWrite = m_state.renderStates[ColorWriteIndex(rtIdx)] != 0;
@@ -6334,8 +6334,17 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
+        // If the shader doesn't actually use the texture, keep it marked as a hazard
+        // to avoid spilling the render pass over and over again because of shader changes.
+        if (!((psMasks.samplerMask | oldHazardMask) & (1 << samplerIdx)))
+          continue;
+
         // We can resolve the hazard by unbinding the RT.
         m_textureSlotTracking.hazardRT |= 1 << samplerIdx;
+
+        // Don't mark texture as an unresolvable hazard if the shader doesn't actually use it.
+        if (!(psMasks.samplerMask & (1 << samplerIdx)))
+          continue;
 
         if (likely(!anyColorWrite || !shaderWritesToRt))
           continue;
@@ -6364,7 +6373,7 @@ namespace dxvk {
       return;
 
     auto psMasks = PSShaderMasks();
-    texMask &= psMasks.samplerMask & m_textureSlotTracking.dsUsage & ((1u << caps::MaxTextures) - 1);
+    texMask &= m_textureSlotTracking.dsUsage & ((1u << caps::MaxTextures) - 1);
 
     const bool depthWrite = m_state.renderStates[D3DRS_ZENABLE] && m_state.renderStates[D3DRS_ZWRITEENABLE];
 
@@ -6375,7 +6384,16 @@ namespace dxvk {
       if (likely(dsBase != texBase))
         continue;
 
+      // If the shader doesn't actually use the texture, keep it marked as a hazard
+      // to avoid spilling the render pass over and over again because of shader changes.
+      if (!((psMasks.samplerMask | oldHazardMask) & (1 << samplerIdx)))
+        continue;
+
       m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
+
+      // Don't mark texture as an unresolvable hazard if the shader doesn't actually use it.
+      if (!(psMasks.samplerMask & (1 << samplerIdx)))
+        continue;
 
       if (unlikely(!depthWrite))
         continue;
