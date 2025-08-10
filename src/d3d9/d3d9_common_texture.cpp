@@ -229,6 +229,13 @@ namespace dxvk {
       && (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
 
+    // ATI2 can not be used for render targets, or for
+    // plain surfaces outside of D3DPOOL_SCRATCH in D3D9Ex
+    if (pDesc->Format == D3D9Format::ATI2
+     && (pDesc->Usage & D3DUSAGE_RENDERTARGET ||
+        (pDevice->IsExtended() && isPlainSurface && pDesc->Pool != D3DPOOL_SCRATCH)))
+      return D3DERR_INVALIDCALL;
+
     // Auto-Mipgen is only valid on textures (for obvious reasons)
     if ((pDesc->Usage & D3DUSAGE_AUTOGENMIPMAP) && ResourceType == D3DRTYPE_SURFACE)
       return D3DERR_INVALIDCALL;
