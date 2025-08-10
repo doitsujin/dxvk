@@ -429,7 +429,36 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9InterfaceEx::ValidatePresentationParameters(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+  HRESULT D3D9InterfaceEx::ValidatePresentationParametersEx(
+    const D3DPRESENT_PARAMETERS* pPresentationParameters,
+    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
+    // pFullscreenDisplayMode must not be NULL in full screen mode.
+    if (unlikely(!pPresentationParameters->Windowed && pFullscreenDisplayMode == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // pFullscreenDisplayMode must be NULL in windowed mode.
+    if (unlikely(pPresentationParameters->Windowed && pFullscreenDisplayMode != nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // On extended devices, the backbuffer dimensions
+    // must match the display mode when in full screen mode.
+    if (unlikely(!pPresentationParameters->Windowed &&
+                  (pPresentationParameters->BackBufferWidth  != pFullscreenDisplayMode->Width
+                || pPresentationParameters->BackBufferHeight != pFullscreenDisplayMode->Height)))
+      return D3DERR_INVALIDCALL;
+
+    return ValidatePresentationParameters(pPresentationParameters);
+  }
+
+
+  HRESULT D3D9InterfaceEx::ValidatePresentationParameters(
+    const D3DPRESENT_PARAMETERS* pPresentationParameters) {
+    if (unlikely(pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
     if (m_extended) {
       // The swap effect value on a D3D9Ex device
       // can not be higher than D3DSWAPEFFECT_FLIPEX.

@@ -791,7 +791,10 @@ namespace dxvk {
   HRESULT D3D9Adapter::GetAdapterDisplayModeEx(
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
-    if (pMode == nullptr)
+    if (unlikely(pMode == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pMode->Size != sizeof(D3DDISPLAYMODEEX)))
       return D3DERR_INVALIDCALL;
 
     if (pRotation != nullptr)
