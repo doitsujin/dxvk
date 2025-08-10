@@ -45,14 +45,16 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9CommonBuffer::ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc) {
+  HRESULT D3D9CommonBuffer::ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc, const bool IsExtended) {
     if (unlikely(pDesc->Size == 0))
       return D3DERR_INVALIDCALL;
 
     // Neither vertex nor index buffers can be created in D3DPOOL_SCRATCH
-    // or in D3DPOOL_MANAGED with D3DUSAGE_DYNAMIC.
+    // or in D3DPOOL_MANAGED with D3DUSAGE_DYNAMIC. On extended devices,
+    // D3DPOOL_MANAGED can not be used at all, regardless of usage flags.
     if (unlikely(pDesc->Pool == D3DPOOL_SCRATCH
-             || (pDesc->Pool == D3DPOOL_MANAGED && (pDesc->Usage & D3DUSAGE_DYNAMIC))))
+             || (pDesc->Pool == D3DPOOL_MANAGED && (IsExtended ||
+                                                    pDesc->Usage & D3DUSAGE_DYNAMIC))))
       return D3DERR_INVALIDCALL;
 
     // D3DUSAGE_AUTOGENMIPMAP, D3DUSAGE_DEPTHSTENCIL and D3DUSAGE_RENDERTARGET

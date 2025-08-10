@@ -599,6 +599,9 @@ namespace dxvk {
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
     if (pMode != nullptr) {
+      if (unlikely(pMode->Size != sizeof(D3DDISPLAYMODEEX)))
+        return D3DERR_INVALIDCALL;
+
       wsi::WsiMode devMode = { };
 
       if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &devMode)) {
