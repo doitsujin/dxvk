@@ -779,9 +779,11 @@ namespace dxvk {
     { R"(\\SR2_pc\.exe$)", {{
       { "d3d9.textureMemory",               "0" },
     }} },
-    /* Witcher 1: Very long loading times       */
+    /* Witcher 1: Very long loading times         *
+     * Inventory hair explosion at very high fps  */
     { R"(\\witcher\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
+      { "d3d9.maxFrameRate",                 "300" },
     }} },
     /* Guitar Hero World Tour                   *
      * Very prone to address space crashes      */
