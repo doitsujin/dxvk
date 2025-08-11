@@ -1074,6 +1074,11 @@ namespace dxvk {
     { R"(\\AN2\.dat$)", {{
       { "d3d9.modeCountCompatibility",      "True" },
     }} },
+    /* Psi-Ops: The Mindgate Conspiracy           *
+     * Broken input and physics above 60 fps      */
+    { R"(\\PsiOps\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
