@@ -467,6 +467,10 @@ namespace dxvk {
     { R"(\\Wargame European Escalation\\WarGame\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "True" },
     }} },
+    /* Guilty Gear - Speeds up above 60 fps         */
+    { R"(\\GuiltyGear\.exe$)", {{
+      { "dxgi.maxFrameRate",                  "60" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
