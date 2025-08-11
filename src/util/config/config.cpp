@@ -949,10 +949,13 @@ namespace dxvk {
     { R"(\\SWTFU\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
-    /* Fallout New Vegas - Various visual issues *
-     * with mods such as New Vegas Reloaded      */
-    { R"(\\FalloutNV\.exe$)", {{
-      { "d3d9.floatEmulation",              "Strict" },
+    /* Fallout New Vegas - Various visual issues  *
+     * in mod New Vegas Reloaded. Nvidia path in  *
+     * same mod use NvAPI_D3D9_StretchRectEx for  *
+     * depth buffer resolves                      */
+    { R"(\\FalloutNV(Launcher)?\.exe$)", {{
+      { "d3d9.floatEmulation",            "Strict" },
+      { "d3d9.hideNvidiaGpu",               "True" },
     }} },
     /* Dungeons and Dragons: Dragonshard         *
      * Massive FPS decreases in some scenes      */
