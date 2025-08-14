@@ -13,6 +13,8 @@
 
 #include <cfloat>
 
+#include <d3d9_fixed_function_vert.h>
+
 namespace dxvk {
 
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
@@ -2623,6 +2625,78 @@ namespace dxvk {
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
+
+  D3D9FFShader::D3D9FFShader(
+          D3D9DeviceEx*         pDevice,
+          DxsoProgramType       ProgramType) {
+
+    bool isVS = ProgramType == DxsoProgramType::VertexShader;
+
+    if (isVS) {
+      std::array<DxvkBindingInfo, 4> bindings;
+
+      SpirvCodeBuffer codeBuffer = SpirvCodeBuffer(sizeof(d3d9_fixed_function_vert) / sizeof(uint32_t), d3d9_fixed_function_vert);
+
+      constexpr uint32_t specConstantBufferBindingId = getSpecConstantBufferSlot();
+      auto& specConstantBufferBinding = bindings[0];
+      specConstantBufferBinding.set = 0u;
+      specConstantBufferBinding.binding        = specConstantBufferBindingId;
+      specConstantBufferBinding.resourceIndex  = specConstantBufferBindingId;
+      specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
+      specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t fixedFunctionDataBindingId = computeResourceSlotId(
+        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        DxsoConstantBuffers::VSFixedFunction);
+      auto& fixedFunctionDataBinding = bindings[1];
+      fixedFunctionDataBinding.set             = 0u;
+      fixedFunctionDataBinding.binding         = fixedFunctionDataBindingId;
+      fixedFunctionDataBinding.resourceIndex   = fixedFunctionDataBindingId;
+      fixedFunctionDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      fixedFunctionDataBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+      fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t vertexBlendBindingId = computeResourceSlotId(
+        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        DxsoConstantBuffers::VSVertexBlendData);
+      auto& vertexBlendBinding = bindings[2];
+      vertexBlendBinding.set             = 0u;
+      vertexBlendBinding.binding         = vertexBlendBindingId;
+      vertexBlendBinding.resourceIndex   = vertexBlendBindingId;
+      vertexBlendBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      vertexBlendBinding.access          = VK_ACCESS_SHADER_READ_BIT;
+      vertexBlendBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t clipPlanesBindingId = computeResourceSlotId(
+        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        DxsoConstantBuffers::VSClipPlanes);
+      auto& clipPlanesBinding = bindings[3];
+      clipPlanesBinding.set             = 0u;
+      clipPlanesBinding.binding         = clipPlanesBindingId;
+      clipPlanesBinding.resourceIndex   = clipPlanesBindingId;
+      clipPlanesBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      clipPlanesBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+      clipPlanesBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      DxvkSpirvShaderCreateInfo info;
+      info.bindingCount = bindings.size();
+      info.bindings = bindings.data();
+      info.flatShadingInputs = 0;
+      info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
+      info.localPushData = DxvkPushDataBlock();
+      info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
+
+      m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
+    }
+
+    m_isgn = GetFixedFunctionIsgn();
+
+    //m_shader->setShaderKey(shaderKey);
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
+  }
+
+
   template <typename T>
   void D3D9FFShader::Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name) {
     const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
@@ -2640,6 +2714,20 @@ namespace dxvk {
   D3D9FFShader D3D9FFShaderModuleSet::GetShaderModule(
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyVS&    ShaderKey) {
+
+    if (likely(pDevice->GetOptions()->ffUbershaderVS)) {
+      D3D9FFShaderKeyVS ubershaderKey = D3D9FFShaderKeyVS();
+      auto entry = m_vsModules.find(ubershaderKey);
+      if (unlikely(entry != m_vsModules.end()))
+        return entry->second;
+
+      D3D9FFShader ubershader(
+        pDevice, DxsoProgramType::VertexShader);
+
+      m_vsModules.insert({ubershaderKey, ubershader});
+      return ubershader;
+    }
+
     // Use the shader's unique key for the lookup
     auto entry = m_vsModules.find(ShaderKey);
     if (entry != m_vsModules.end())
