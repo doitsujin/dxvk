@@ -14,9 +14,9 @@
 #include <cfloat>
 
 #include <d3d9_fixed_function_vert.h>
+#include <d3d9_fixed_function_frag.h>
 
 namespace dxvk {
-
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
     invariantPosition = options->invariantPosition;
     forceSampleRateShading = options->forceSampleRateShading;
@@ -2688,6 +2688,84 @@ namespace dxvk {
       info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
       m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
+    } else {
+      std::vector<DxvkBindingInfo> bindings;
+
+      SpirvCodeBuffer codeBuffer = SpirvCodeBuffer(sizeof(d3d9_fixed_function_frag) / sizeof(uint32_t), d3d9_fixed_function_frag);
+
+      constexpr uint32_t specConstantBufferBindingId = getSpecConstantBufferSlot();
+      auto& specConstantBufferBinding = bindings.emplace_back();
+      specConstantBufferBinding.set = 0u;
+      specConstantBufferBinding.binding        = specConstantBufferBindingId;
+      specConstantBufferBinding.resourceIndex  = specConstantBufferBindingId;
+      specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
+      specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t fixedFunctionDataBindingId = computeResourceSlotId(
+        DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+        DxsoConstantBuffers::PSFixedFunction);
+      auto& fixedFunctionDataBinding = bindings.emplace_back();
+      fixedFunctionDataBinding.set             = 0u;
+      fixedFunctionDataBinding.binding         = fixedFunctionDataBindingId;
+      fixedFunctionDataBinding.resourceIndex   = fixedFunctionDataBindingId;
+      fixedFunctionDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      fixedFunctionDataBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+      fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t sharedDataBindingId = computeResourceSlotId(
+        DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+        DxsoConstantBuffers::PSShared);
+      auto& sharedDataBinding = bindings.emplace_back();
+      sharedDataBinding.set             = 0u;
+      sharedDataBinding.binding         = sharedDataBindingId;
+      sharedDataBinding.resourceIndex   = sharedDataBindingId;
+      sharedDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      sharedDataBinding.access          = VK_ACCESS_SHADER_READ_BIT;
+      sharedDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+      constexpr uint32_t textureBindingId = computeResourceSlotId(
+        DxsoProgramType::PixelShader,
+        DxsoBindingType::Image,
+        0);
+      auto& textureBinding = bindings.emplace_back();
+      textureBinding.set             = 0u;
+      textureBinding.binding         = textureBindingId;
+      textureBinding.resourceIndex   = textureBindingId;
+      textureBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      textureBinding.access       = VK_ACCESS_SHADER_READ_BIT;
+      textureBinding.descriptorCount = caps::TextureStageCount;
+
+      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        constexpr uint32_t samplerBindingId = computeResourceSlotId(
+          DxsoProgramType::PixelShader,
+          DxsoBindingType::Image,
+          0);
+
+        auto& samplerBinding = bindings.emplace_back();
+        samplerBinding.resourceIndex   = samplerBindingId;
+        samplerBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
+        samplerBinding.blockOffset     = GetPushSamplerOffset(i);
+        samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
+        bindings.push_back(samplerBinding);
+      }
+
+      bool flatShadingMask = (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 0 }))
+        | (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 1 }));
+
+      uint32_t samplerCount = caps::TextureStageCount;
+      uint32_t samplerDwordCount = (samplerCount + 1u) / 2u;
+
+      DxvkSpirvShaderCreateInfo info;
+      info.bindingCount = bindings.size();
+      info.bindings = bindings.data();
+      info.flatShadingInputs = flatShadingMask;
+      info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
+      info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, GetPushSamplerOffset(0u),
+        samplerCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
+      info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
+
+      m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
     }
 
     m_isgn = GetFixedFunctionIsgn();
@@ -2744,12 +2822,26 @@ namespace dxvk {
 
   D3D9FFShader D3D9FFShaderModuleSet::GetShaderModule(
           D3D9DeviceEx*         pDevice,
-    const D3D9FFShaderKeyFS&    ShaderKey) {
+          const D3D9FFShaderKeyFS&    ShaderKey) {
+
+    if (likely(pDevice->GetOptions()->ffUbershaderFS)) {
+      D3D9FFShaderKeyFS ubershaderKey = D3D9FFShaderKeyFS();
+      auto entry = m_fsModules.find(ubershaderKey);
+      if (unlikely(entry != m_fsModules.end()))
+        return entry->second;
+
+      D3D9FFShader ubershader(
+        pDevice, DxsoProgramType::PixelShader);
+
+      m_fsModules.insert({ubershaderKey, ubershader});
+      return ubershader;
+    }
+
     // Use the shader's unique key for the lookup
     auto entry = m_fsModules.find(ShaderKey);
     if (entry != m_fsModules.end())
       return entry->second;
-    
+
     D3D9FFShader shader(
       pDevice, ShaderKey);
 

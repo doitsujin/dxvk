@@ -8173,9 +8173,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
-      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
-
+    D3D9FFShaderKeyFS key;
+    {
       // Used args for a given operation.
       auto ArgsMask = [](DWORD Op) {
         switch (Op) {
@@ -8193,8 +8192,6 @@ namespace dxvk {
             return 0b110u; // Arg 1, 2
         }
       };
-
-      D3D9FFShaderKeyFS key;
 
       uint32_t idx;
       for (idx = 0; idx < caps::TextureStageCount; idx++) {
@@ -8254,6 +8251,11 @@ namespace dxvk {
       // The last stage *always* writes to current.
       if (idx >= 1)
         key.Stages[idx - 1].Contents.ResultIsTemp = false;
+    }
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
 
       EmitCs([
         this,
@@ -8275,6 +8277,7 @@ namespace dxvk {
 
       D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(mapPtr);
       DecodeD3DCOLOR((D3DCOLOR)rs[D3DRS_TEXTUREFACTOR], data->textureFactor.data);
+      memcpy(data->Stages, key.Stages, sizeof(key.Stages));
     }
   }
 
