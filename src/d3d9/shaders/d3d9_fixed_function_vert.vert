@@ -317,6 +317,33 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
 }
 
 
+float DoPointSize(vec4 vtx) {
+    float value = in_PointSize != 0.0 ? in_PointSize : rs.pointSize;
+    uint pointMode = SpecPointMode();
+    bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
+    float scaleC = rs.pointScaleC;
+    float scaleB = rs.pointScaleB;
+    float scaleA = rs.pointScaleA;
+
+    vec3 vtx3 = vtx.xyz;
+
+    float DeSqr = dot(vtx3, vtx3);
+    float De    = sqrt(DeSqr);
+    float scaleValue = scaleC * DeSqr;
+          scaleValue = fma(scaleB, De, scaleValue);
+          scaleValue += scaleA;
+          scaleValue = sqrt(scaleValue);
+          scaleValue = value / scaleValue;
+
+    value = isScale ? scaleValue : value;
+
+    float pointSizeMin = rs.pointSizeMin;
+    float pointSizeMax = rs.pointSizeMax;
+
+    return clamp(value, pointSizeMin, pointSizeMax);
+}
+
+
 vec4 PickSource(uint Source, vec4 Material) {
     if (Source == D3DMCS_MATERIAL)
         return Material;
@@ -664,4 +691,6 @@ void main() {
     }
 
     out_Fog = DoFixedFunctionFog(vtx, vec4(0.0)).x;
+
+    gl_PointSize = DoPointSize(vtx);
 }
