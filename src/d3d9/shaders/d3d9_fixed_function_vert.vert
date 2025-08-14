@@ -70,7 +70,7 @@ layout(push_constant, scalar, row_major) uniform RenderStates {
 // MaxSpecDwords = 6
 // Binding has to match with getSpecConstantBufferSlot in dxso_util.h
 layout(set = 0, binding = 31, scalar) uniform SpecConsts {
-    uint specConstDword[6];
+    uint dynamicSpecConstDword[6];
 };
 
 
@@ -188,50 +188,84 @@ uint Projected() {
 // Functions to extract information from the packed dynamic spec consts
 // See d3d9_spec_constants.h for packing
 // Please, dearest compiler, inline all of this.
+
+layout (constant_id = 0) const uint SpecConstDword0 = 0;
+layout (constant_id = 1) const uint SpecConstDword1 = 0;
+layout (constant_id = 2) const uint SpecConstDword2 = 0;
+layout (constant_id = 3) const uint SpecConstDword3 = 0;
+layout (constant_id = 4) const uint SpecConstDword4 = 0;
+layout (constant_id = 5) const uint SpecConstDword5 = 0;
+layout (constant_id = 6) const uint SpecConstDword6 = 0;
+layout (constant_id = 7) const uint SpecConstDword7 = 0;
+layout (constant_id = 8) const uint SpecConstDword8 = 0;
+layout (constant_id = 9) const uint SpecConstDword9 = 0;
+layout (constant_id = 10) const uint SpecConstDword10 = 0;
+layout (constant_id = 11) const uint SpecConstDword11 = 0;
+layout (constant_id = 12) const uint SpecConstDword12 = 0;
+
+bool SpecIsOptimized() {
+    return SpecConstDword12 != 0;
+}
+
 uint SpecSamplerType() {
-    return bitfieldExtract(specConstDword[0], 0, 32);
+    uint dword = SpecIsOptimized() ? SpecConstDword0 : dynamicSpecConstDword[0];
+    return bitfieldExtract(dword, 0, 32);
 }
 uint SpecSamplerDepthMode() {
-    return bitfieldExtract(specConstDword[1], 0, 21);
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 0, 21);
 }
 uint SpecAlphaCompareOp() {
-    return bitfieldExtract(specConstDword[1], 21, 3);
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 21, 3);
 }
 uint SpecPointMode() {
-    return bitfieldExtract(specConstDword[1], 24, 2);
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 24, 2);
 }
 uint SpecVertexFogMode() {
-    return bitfieldExtract(specConstDword[1], 26, 2);
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 26, 2);
 }
 uint SpecPixelFogMode() {
-    return bitfieldExtract(specConstDword[1], 28, 2);
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 28, 2);
 }
 bool SpecFogEnabled() {
-    return bitfieldExtract(specConstDword[1], 30, 1) != 0;
+    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+    return bitfieldExtract(dword, 30, 1) != 0;
 }
 uint SpecSamplerNull() {
-    return bitfieldExtract(specConstDword[2], 0, 21);
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 0, 21);
 }
 uint SpecProjectionType() {
-    return bitfieldExtract(specConstDword[2], 21, 6);
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 21, 6);
 }
 uint SpecAlphaPrecisionBits() {
-    return bitfieldExtract(specConstDword[2], 27, 4);
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 27, 4);
 }
 uint SpecVertexShaderBools() {
-    return bitfieldExtract(specConstDword[3], 0, 16);
+    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
+    return bitfieldExtract(dword, 0, 16);
 }
 uint SpecPixelShaderBools() {
-    return bitfieldExtract(specConstDword[3], 16, 16);
+    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
+    return bitfieldExtract(dword, 16, 16);
 }
 uint SpecFetch4() {
-    return bitfieldExtract(specConstDword[4], 0, 16);
+    uint dword = SpecIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
+    return bitfieldExtract(dword, 0, 16);
 }
 uint SpecDrefClamp() {
-    return bitfieldExtract(specConstDword[5], 0, 21);
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 0, 21);
 }
 uint SpecClipPlaneCount() {
-    return bitfieldExtract(specConstDword[5], 21, 3);
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 21, 3);
 }
 
 
