@@ -2762,7 +2762,7 @@ namespace dxvk {
       info.flatShadingInputs = flatShadingMask;
       info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
       info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, GetPushSamplerOffset(0u),
-        samplerCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
+        samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
       info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
       m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
