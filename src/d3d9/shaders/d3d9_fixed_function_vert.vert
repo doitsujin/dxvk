@@ -726,7 +726,7 @@ void main() {
         vec4 finalColor0 = fma(mat_ambient, data.GlobalAmbient, mat_emissive);
              finalColor0 = fma(mat_ambient, ambientValue, finalColor0);
              finalColor0 = fma(mat_diffuse, diffuseValue, finalColor0);
-             finalColor0.w = mat_diffuse.w;
+             finalColor0.a = mat_diffuse.a;
 
         vec4 finalColor1 = mat_specular * specularValue;
 

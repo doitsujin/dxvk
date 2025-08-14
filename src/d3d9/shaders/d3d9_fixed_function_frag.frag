@@ -336,10 +336,10 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
 
     if (isPixel) {
         vec4 color = oColor;
-        vec3 color3 = color.xyz;
+        vec3 color3 = color.rgb;
         vec3 fogFact3 = vec3(fogFactor);
         vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
-        return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.w);
+        return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
     } else {
         return vec4(fogFactor);
     }
@@ -496,7 +496,7 @@ vec4 GetArg(uint stage, uint arg, vec4 current, vec4 diffuse, vec4 specular, vec
 
     // reg = reg.wwww
     if ((arg & D3DTA_ALPHAREPLICATE) != 0)
-        reg = reg.wwww;
+        reg = reg.aaaa;
 
     return reg;
 }
@@ -550,34 +550,34 @@ vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse
             return fma(complement(arg[1]), arg[2], arg[1]);
 
         case D3DTOP_BLENDDIFFUSEALPHA:
-            return mix(arg[2], arg[1], diffuse.wwww);
+            return mix(arg[2], arg[1], diffuse.aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHA:
-            return mix(arg[2], arg[1], GetTexture(stage).wwww);
+            return mix(arg[2], arg[1], GetTexture(stage).aaaa);
 
         case D3DTOP_BLENDFACTORALPHA:
-            return mix(arg[2], arg[1], data.textureFactor.wwww);
+            return mix(arg[2], arg[1], data.textureFactor.aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHAPM:
-            return saturate(fma(arg[2], complement(GetTexture(stage).wwww), arg[1]));
+            return saturate(fma(arg[2], complement(GetTexture(stage).aaaa), arg[1]));
 
         case D3DTOP_BLENDCURRENTALPHA:
-            return mix(arg[2], arg[1], current.wwww);
+            return mix(arg[2], arg[1], current.aaaa);
 
         case D3DTOP_PREMODULATE:
             return dst; // Not implemented
 
         case D3DTOP_MODULATEALPHA_ADDCOLOR:
-            return saturate(fma(arg[1].wwww, arg[2], arg[1]));
+            return saturate(fma(arg[1].aaaa, arg[2], arg[1]));
 
         case D3DTOP_MODULATECOLOR_ADDALPHA:
-            return saturate(fma(arg[1], arg[2], arg[1].wwww));
+            return saturate(fma(arg[1], arg[2], arg[1].aaaa));
 
         case D3DTOP_MODULATEINVALPHA_ADDCOLOR:
-            return saturate(fma(complement(arg[1].wwww), arg[2], arg[1]));
+            return saturate(fma(complement(arg[1].aaaa), arg[2], arg[1]));
 
         case D3DTOP_MODULATEINVCOLOR_ADDALPHA:
-            return saturate(fma(complement(arg[1]), arg[2], arg[1].wwww));
+            return saturate(fma(complement(arg[1]), arg[2], arg[1].aaaa));
 
         case D3DTOP_BUMPENVMAPLUMINANCE:
         case D3DTOP_BUMPENVMAP:
@@ -586,7 +586,7 @@ vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse
             return dst;
 
         case D3DTOP_DOTPRODUCT3:
-            return saturate(vec4(dot(arg[1].xyz - vec3(0.5), arg[2].xyz - vec3(0.5)) * 4.0));
+            return saturate(vec4(dot(arg[1].rgb - vec3(0.5), arg[2].rgb - vec3(0.5)) * 4.0));
 
         case D3DTOP_MULTIPLYADD:
             return saturate(fma(arg[1], arg[2], arg[0]));
@@ -721,12 +721,12 @@ void main() {
 
             // src0.x, src0.y, src0.z src1.w
             if (colorResult != dst)
-                dst = vec4(colorResult.xyz, dst.w);
+                dst = vec4(colorResult.rgb, dst.a);
 
             // src0.x, src0.y, src0.z src1.w
             // But we flip src0, src1 to be inverse of color.
             if (alphaResult != dst)
-                dst = vec4(dst.xyz, alphaResult.w);
+                dst = vec4(dst.rgb, alphaResult.a);
         }
 
         if (ResultIsTemp(i)) {
