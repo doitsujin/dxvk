@@ -339,7 +339,7 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
         vec3 color3 = color.xyz;
         vec3 fogFact3 = vec3(fogFactor);
         vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
-        return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.z);
+        return vec4(lerpedFrog.x, lerpedFrog.y, lerpedFrog.z, color.w);
     } else {
         return vec4(fogFactor);
     }
@@ -625,7 +625,7 @@ void alphaTestPS() {
         alphaRef = float(alphaRefInt);
 
         // Adjust alpha to the given range and round
-        float alphaFactor = float((256 << alphaPrecision) - 1);
+        float alphaFactor = float((256u << alphaPrecision) - 1u);
 
         alpha = round(alpha * alphaFactor);
     } else {
