@@ -245,4 +245,338 @@ vec4 PickSource(uint Source, vec4 Material) {
 
 
 void main() {
+    vec4 vtx = in_Position0;
+    gl_Position = in_Position0;
+    vec3 normal = in_Normal0.xyz;
+
+    if (BlendMode() == D3D9FF_VertexBlendMode_Tween) {
+        vec4 vtx1 = in_Position1;
+        vec3 normal1 = in_Normal1.xyz;
+        vtx = mix(vtx, vtx1, data.TweenFactor);
+        normal = mix(normal, normal1, data.TweenFactor);
+    }
+
+    if (!HasPositionT()) {
+        if (BlendMode() == D3D9FF_VertexBlendMode_Normal) {
+            float blendWeightRemaining = 1.0;
+            vec4 vtxSum = vec4(0.0);
+            vec3 nrmSum = vec3(0.0);
+
+            for (uint i = 0; i <= VertexBlendCount(); i++) {
+                uint arrayIndex;
+                if (VertexBlendIndexed()) {
+                    arrayIndex = uint(round(in_BlendIndices[i]));
+                } else {
+                    arrayIndex = i;
+                }
+                mat4 worldView = WorldViewArray[arrayIndex];
+
+                mat3 nrmMtx;
+                for (uint i = 0; i < 3; i++) {
+                    nrmMtx[i] = worldView[i].xyz;
+                }
+
+                vec4 vtxResult = vtx * worldView;
+                vec3 nrmResult = normal * nrmMtx;
+
+                float weight;
+                if (i != VertexBlendCount()) {
+                    weight = in_BlendWeight[i];
+                    blendWeightRemaining -= weight;
+                } else {
+                    weight = blendWeightRemaining;
+                }
+
+                vec4 weightVec4 = vec4(weight, weight, weight, weight);
+
+                vtxSum = fma(vtxResult, weightVec4, vtxSum);
+                nrmSum = fma(nrmResult, weightVec4.xyz, nrmSum);
+            }
+        } else {
+            vtx = vtx * data.WorldView;
+
+            mat3 nrmMtx = mat3(data.NormalMatrix);
+
+            normal = nrmMtx * normal;
+        }
+
+        // Some games rely no normals not being normal.
+        if (NormalizeNormals()) {
+            bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
+            normal = isZeroNormal ? normal : normalize(normal);
+        }
+
+        gl_Position = vtx * data.Projection;
+    } else {
+        gl_Position *= data.ViewportInfo.inverseExtent;
+        gl_Position += data.ViewportInfo.inverseOffset;
+
+        // We still need to account for perspective correction here...
+
+        float w = gl_Position.w;
+        float rhw = w == 0.0 ? 1.0 : 1.0 / w;
+        gl_Position.xyz *= rhw;
+        gl_Position.w = rhw;
+    }
+
+    vec4 outNrm = vec4(normal, 1.0);
+    out_Normal = outNrm;
+
+    vec4 texCoords[TextureStageCount];
+    texCoords[0] = in_Texcoord0;
+    texCoords[1] = in_Texcoord1;
+    texCoords[2] = in_Texcoord2;
+    texCoords[3] = in_Texcoord3;
+    texCoords[4] = in_Texcoord4;
+    texCoords[5] = in_Texcoord5;
+    texCoords[6] = in_Texcoord6;
+    texCoords[7] = in_Texcoord7;
+
+    vec4 transformedTexCoords[TextureStageCount];
+
+    for (uint i = 0; i < TextureStageCount; i++) {
+        // 0b111 = 7
+        uint inputIndex = (TexcoordIndices() >> (i * 3)) & 7;
+        uint inputFlags = (TexcoordFlags() >> (i * 3)) & 7;
+        uint texcoordCount = (TexcoordDeclMask() >> (inputIndex * 3)) & 7;
+
+        vec4 transformed;
+
+        uint flags = (TransformFlags() >> (i * 3)) & 7;
+
+        // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
+        // but D3D9 does not apply the transformation matrix.
+        bool applyTransform = flags > D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
+
+        uint count = min(flags, 4u);
+
+        // A projection component index of 4 means we won't do projection
+        uint projIndex = count != 0 ? count - 1 : 4;
+
+        switch (inputFlags) {
+            default:
+            case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
+                transformed = texCoords[inputIndex & 0xFF];
+
+                if (texcoordCount < 4) {
+                    // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
+                    transformed.w = 0.0;
+                }
+
+                if (applyTransform) {
+                    /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
+                    Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
+                    if (texcoordCount <= 1) {
+                      // y gets padded to 1 for some reason
+                      transformed.y = 1.0;
+                    }*/
+
+                    if (texcoordCount >= 1 && texcoordCount < 4) {
+                        // The first component after the last one thats backed by a vertex buffer gets padded to 1 for some reason.
+                        uint idx = texcoordCount;
+                        transformed[idx] = 1.0;
+                    }
+                } else if (texcoordCount != 0 && !applyTransform) {
+                    // COUNT0, COUNT1, COUNT > 4 => take count from vertex decl if that's not zero
+                    count = texcoordCount;
+                }
+
+                projIndex = count != 0 ? count - 1 : 4;
+                break;
+
+            case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
+                transformed = outNrm;
+                if (!applyTransform) {
+                    count = 3;
+                    projIndex = 4;
+                }
+                break;
+
+            case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
+                transformed = vtx;
+                if (!applyTransform) {
+                    count = 3;
+                    projIndex = 4;
+                }
+                break;
+
+            case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
+                vec3 vtx3 = vtx.xyz;
+                vtx3 = normalize(vtx3);
+
+                vec3 reflection = reflect(vtx3, normal);
+                transformed = vec4(reflection, 1.0);
+                if (!applyTransform) {
+                    count = 3;
+                    projIndex = 4;
+                }
+                break;
+            }
+
+            case (DXVK_TSS_TCI_SPHEREMAP >> TCIOffset): {
+                vec3 vtx3 = vtx.xyz;
+                vtx3 = normalize(vtx3);
+
+                vec3 reflection = reflect(vtx3, normal);
+                float m = length(reflection + vec3(0.0, 0.0, 1.0)) * 2.0;
+
+                transformed = vec4(
+                    reflection.x / m + 0.5,
+                    reflection.y / m + 0.5,
+                    0.0,
+                    1.0
+                );
+                break;
+            }
+        }
+
+        if (applyTransform && !HasPositionT()) {
+            transformed = transformed * data.TexcoordMatrices[i];
+        }
+
+        // TODO: Shouldn't projected be checked per texture stage?
+        if (Projected() != 0 && projIndex < 4) {
+            // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
+            float projValue = transformed[projIndex];
+
+            // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
+            // The fragment shader will then decide whether to project or not.
+            transformed.w = projValue;
+        }
+
+        // TODO: Shouldn't projected be checked per texture stage?
+        uint totalComponents = (Projected() != 0 && projIndex < 4) ? 3 : 4;
+        for (uint i = count; i < totalComponents; i++) {
+            // Discard the components that exceed the specified D3DTTFF_COUNT
+            transformed[i] = 0.0;
+        }
+
+        transformedTexCoords[i] = transformed;
+    }
+
+    out_Texcoord0 = transformedTexCoords[0];
+    out_Texcoord1 = transformedTexCoords[1];
+    out_Texcoord2 = transformedTexCoords[2];
+    out_Texcoord3 = transformedTexCoords[3];
+    out_Texcoord4 = transformedTexCoords[4];
+    out_Texcoord5 = transformedTexCoords[5];
+    out_Texcoord6 = transformedTexCoords[6];
+    out_Texcoord7 = transformedTexCoords[7];
+
+    if (UseLighting()) {
+        vec4 diffuseValue = vec4(0.0);
+        vec4 specularValue = vec4(0.0);
+        vec4 ambientValue = vec4(0.0);
+
+        for (uint i = 0; i < LightCount(); i++) {
+            D3D9Light light = data.Lights[i];
+
+            vec4 diffuse = light.Diffuse;
+            vec4 specular = light.Specular;
+            vec4 ambient = light.Ambient;
+            vec3 position = light.Position.xyz;
+            vec3 direction = light.Direction.xyz;
+            uint type = light.Type;
+            float range = light.Range;
+            float falloff = light.Falloff;
+            float atten0 = light.Attenuation0;
+            float atten1 = light.Attenuation1;
+            float atten2 = light.Attenuation2;
+            float theta = light.Theta;
+            float phi = light.Phi;
+
+            bool isSpot = type == D3DLIGHT_SPOT;
+            bool isDirectional = type == D3DLIGHT_DIRECTIONAL;
+
+            bvec3 isDirectional3 = bvec3(isDirectional);
+
+            vec3 vtx3 = vtx.xyz;
+
+            vec3 delta = position - vtx3;
+            float d = length(delta);
+            vec3 hitDir = -direction;
+                 hitDir = mix(delta, hitDir, isDirectional3);
+                 hitDir = normalize(hitDir);
+
+            float atten = fma(d, atten2, atten1);
+                  atten = fma(d, atten, atten0);
+                  atten = 1.0 / atten;
+                  atten = spvNMin(atten, FLOAT_MAX_VALUE);
+
+                  atten = d > range ? 0.0 : atten;
+                  atten = isDirectional ? 1.0 : atten;
+
+            // Spot Lighting
+            {
+                float rho = dot(-hitDir, direction);
+                float spotAtten = rho - phi;
+                      spotAtten = spotAtten / (theta - phi);
+                      spotAtten = pow(spotAtten, falloff);
+
+                bool insideThetaAndPhi = rho <= theta;
+                bool insidePhi = rho > phi;
+                     spotAtten = insidePhi ? spotAtten : 0.0;
+                     spotAtten = insideThetaAndPhi ? spotAtten : 1.0;
+                     spotAtten = clamp(spotAtten, 0.0, 1.0);
+
+                     spotAtten = atten * spotAtten;
+                     atten     = isSpot ? spotAtten : atten;
+            }
+
+            float hitDot = dot(normal, hitDir);
+                  hitDot = clamp(hitDot, 0.0, 1.0);
+
+            float diffuseness = hitDot * atten;
+
+            vec3 mid;
+            if (LocalViewer()) {
+                mid = normalize(vtx3);
+                mid = hitDir - mid;
+            } else {
+                hitDir - vec3(0.0, 0.0, 1.0);
+            }
+
+            mid = normalize(mid);
+
+            float midDot = dot(normal, mid);
+                  midDot = clamp(midDot, 0.0, 1.0);
+            bool doSpec = midDot > 0.0;
+                 doSpec = doSpec && hitDot > 0.0;
+
+            float specularness = pow(midDot, data.Material.Power);
+                  specularness *= atten;
+                  specularness = doSpec ? specularness : 0.0;
+
+            vec4 lightAmbient  = ambient * atten;
+            vec4 lightDiffuse  = diffuse * diffuseness;
+            vec4 lightSpecular = specular * specularness;
+
+            ambientValue  += lightAmbient;
+            diffuseValue  += lightDiffuse;
+            specularValue += lightSpecular;
+        }
+
+        vec4 mat_diffuse  = PickSource(DiffuseSource(), data.Material.Diffuse);
+        vec4 mat_ambient  = PickSource(AmbientSource(), data.Material.Ambient);
+        vec4 mat_emissive = PickSource(EmissiveSource(), data.Material.Emissive);
+        vec4 mat_specular = PickSource(SpecularSource(), data.Material.Specular);
+
+        vec4 finalColor0 = fma(mat_ambient, data.GlobalAmbient, mat_emissive);
+             finalColor0 = fma(mat_ambient, ambientValue, finalColor0);
+             finalColor0 = fma(mat_diffuse, diffuseValue, finalColor0);
+             finalColor0.w = mat_diffuse.w;
+
+        vec4 finalColor1 = mat_specular * specularValue;
+
+        // Saturate
+        finalColor0 = clamp(finalColor0, vec4(0.0), vec4(1.0));
+
+        finalColor1 = clamp(finalColor1, vec4(0.0), vec4(1.0));
+
+        out_Color0 = finalColor0;
+        out_Color1 = finalColor1;
+    } else {
+        out_Color0 = in_Color0;
+        out_Color1 = in_Color1;
+    }
 }
