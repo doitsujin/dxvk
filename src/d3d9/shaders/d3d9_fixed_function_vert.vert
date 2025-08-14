@@ -35,6 +35,7 @@ layout(location = 17) in vec4 in_BlendIndices;
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
 precise gl_Position;
+out float gl_ClipDistance[MaxClipPlaneCount];
 layout(location = 0) out vec4 out_Normal;
 layout(location = 1) out vec4 out_Texcoord0;
 layout(location = 2) out vec4 out_Texcoord1;
@@ -341,6 +342,23 @@ float DoPointSize(vec4 vtx) {
     float pointSizeMax = rs.pointSizeMax;
 
     return clamp(value, pointSizeMin, pointSizeMax);
+}
+
+
+void emitVsClipping(vec4 vtx) {
+    vec4 worldPos = data.InverseView * vtx;
+
+    // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
+    uint clipPlaneCount = SpecClipPlaneCount();
+
+    // Compute clip distances
+    for (uint i = 0; i < MaxClipPlaneCount; i++) {
+        vec4 clipPlane = clipPlanes[i];
+        float dist = dot(worldPos, clipPlane);
+        bool clipPlaneEnabled = i < clipPlaneCount;
+        float value = clipPlaneEnabled ? dist : 0.0;
+        gl_ClipDistance[i] = value;
+    }
 }
 
 
@@ -693,4 +711,9 @@ void main() {
     out_Fog = DoFixedFunctionFog(vtx, vec4(0.0)).x;
 
     gl_PointSize = DoPointSize(vtx);
+
+    //if (VertexClipping()) {
+    // We statically declare 6 clip planes, so we always need to write values.
+        emitVsClipping(vtx);
+    //}
 }
