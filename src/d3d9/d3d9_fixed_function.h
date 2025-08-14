@@ -64,9 +64,9 @@ namespace dxvk {
     return 15u;
   }
 
-  constexpr uint32_t GetPushSamplerOffset(uint32_t samplerIndex) {
+  constexpr uint32_t GetPushSamplerOffset(uint32_t samplerIndex, uint32_t baseOffset = MaxSharedPushDataSize) {
     // Must not conflict with render state block
-    return MaxSharedPushDataSize + sizeof(uint16_t) * samplerIndex;
+    return baseOffset + sizeof(uint16_t) * samplerIndex;
   }
 
   // Returns new oFog if VS

@@ -2737,15 +2737,15 @@ namespace dxvk {
       textureBinding.descriptorCount = caps::TextureStageCount;
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        constexpr uint32_t samplerBindingId = computeResourceSlotId(
+        uint32_t samplerBindingId = computeResourceSlotId(
           DxsoProgramType::PixelShader,
           DxsoBindingType::Image,
-          0);
+          i);
 
         auto& samplerBinding = bindings.emplace_back();
         samplerBinding.resourceIndex   = samplerBindingId;
         samplerBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
-        samplerBinding.blockOffset     = GetPushSamplerOffset(i);
+        samplerBinding.blockOffset     = GetPushSamplerOffset(i, sizeof(D3D9RenderStateInfo));
         samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
         bindings.push_back(samplerBinding);
       }
@@ -2761,7 +2761,7 @@ namespace dxvk {
       info.bindings = bindings.data();
       info.flatShadingInputs = flatShadingMask;
       info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
-      info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, GetPushSamplerOffset(0u),
+      info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, GetPushSamplerOffset(0u, sizeof(D3D9RenderStateInfo)),
         samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
       info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
