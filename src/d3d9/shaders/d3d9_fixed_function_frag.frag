@@ -609,7 +609,7 @@ void alphaTestPS() {
     uint alphaPrecision = SpecAlphaPrecisionBits();
     uint alphaRefInitial = rs.alphaRef;
     float alphaRef;
-    float alpha = out_Color0.z;
+    float alpha = out_Color0.a;
 
     if (alphaFunc == VK_COMPARE_OP_ALWAYS) {
         return;
