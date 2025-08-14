@@ -569,6 +569,69 @@ vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse
     return vec4(0.0);
 }
 
+
+void alphaTestPS() {
+    uint alphaFunc = SpecAlphaCompareOp();
+    uint alphaPrecision = SpecAlphaPrecisionBits();
+    uint alphaRefInitial = rs.alphaRef;
+    float alphaRef;
+    float alpha = out_Color0.z;
+
+    if (alphaFunc == VK_COMPARE_OP_ALWAYS) {
+        return;
+    }
+
+    // Check if the given bit precision is supported
+    bool useIntPrecision = alphaPrecision <= 8;
+    if (useIntPrecision) {
+        // Adjust alpha ref to the given range
+        uint alphaRefInt = (alphaRefInitial << alphaPrecision) | (alphaRefInitial >> (8 - alphaPrecision));
+
+        // Convert alpha ref to float since we'll do the comparison based on that
+        alphaRef = float(alphaRefInt);
+
+        // Adjust alpha to the given range and round
+        float alphaFactor = float((256 << alphaPrecision) - 1);
+
+        alpha = round(alpha * alphaFactor);
+    } else {
+        alphaRef = float(alphaRefInitial) / 255.0;
+    }
+
+    bool atestResult;
+    switch (alphaFunc) {
+        case VK_COMPARE_OP_NEVER:
+            atestResult = false;
+
+        case VK_COMPARE_OP_LESS:
+            atestResult = alpha < alphaRef;
+
+        case VK_COMPARE_OP_EQUAL:
+            atestResult = alpha == alphaRef;
+
+        case VK_COMPARE_OP_LESS_OR_EQUAL:
+            atestResult = alpha <= alphaRef;
+
+        case VK_COMPARE_OP_GREATER:
+            atestResult = alpha > alphaRef;
+
+        case VK_COMPARE_OP_NOT_EQUAL:
+            atestResult = alpha != alphaRef;
+
+        case VK_COMPARE_OP_GREATER_OR_EQUAL:
+            atestResult = alpha >= alphaRef;
+
+        default:
+        case VK_COMPARE_OP_ALWAYS:
+            atestResult = true;
+    }
+
+    bool atestDiscard = !atestResult;
+    if (atestDiscard) {
+        discard;
+    }
+}
+
 void main() {
     vec4 diffuse = in_Color0;
     vec4 specular = in_Color1;
@@ -649,4 +712,5 @@ void main() {
     current = DoFixedFunctionFog(gl_FragCoord, current);
 
     out_Color0 = current;
+    alphaTestPS();
 }
