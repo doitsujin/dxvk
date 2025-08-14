@@ -31,6 +31,39 @@ layout(location = 11) in float in_Fog;
 
 layout(location = 0) out vec4 out_Color0;
 
+vec4 textureValue[TextureStageCount] = {
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+    vec4(0.0),
+};
+
+bool textureLoaded[TextureStageCount] = {
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+};
+
+vec4 texCoords[TextureStageCount] = {
+    in_Texcoord0,
+    in_Texcoord1,
+    in_Texcoord2,
+    in_Texcoord3,
+    in_Texcoord4,
+    in_Texcoord5,
+    in_Texcoord6,
+    in_Texcoord7
+};
+
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
 //     DxsoProgramType::PixelShader,
@@ -190,6 +223,340 @@ uint SpecClipPlaneCount() {
     return bitfieldExtract(specConstDword[5], 21, 3);
 }
 
+
+// [D3D8] Scale Dref to [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
+vec4 scaleDref(vec4 texCoord, int referenceIdx) {
+    float reference = texCoord[referenceIdx];
+    if (drefScaling == 0) {
+        return texCoord;
+    }
+    float maxDref = 1.0 / (float(1 << drefScaling) - 1.0);
+    reference *= maxDref;
+    texCoord[referenceIdx] = reference;
+    return texCoord;
+}
+
+
+vec4 DoBumpmapCoords(uint stage, vec4 baseCoords) {
+    stage = stage - 1;
+
+    vec4 coords = baseCoords;
+    for (uint i = 0; i < 2; i++) {
+        float tc_m_n = coords[i];
+        vec2 bm = vec2(sharedData.Stages[stage].BumpEnvMat[0][0], sharedData.Stages[stage].BumpEnvMat[0][1]);
+        vec2 t = textureValue[stage - 1].xy;
+        float result = tc_m_n + dot(bm, t);
+        coords[i] = result;
+    }
+    return coords;
+}
+
+
+uint LoadSamplerHeapIndex(uint samplerBindingIndex) {
+    uint packedSamplerIndex = packedSamplerIndices[samplerBindingIndex / 2u];
+    return bitfieldExtract(packedSamplerIndex, 16 * (int(samplerBindingIndex) & 1), 16);
+}
+
+
+// TODO: Passing the index here makes non-uniform necessary, solve that
+vec4 GetTexture(uint stage) {
+    if (textureLoaded[stage]) {
+        return textureValue[stage];
+    }
+
+    uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
+
+    vec4 texcoord = texCoords[stage];
+
+    bool shouldProject = Projected(stage);
+    float projValue = 1.0;
+    if (shouldProject) {
+        // Always use w, the vertex shader puts the correct value there.
+        projValue = texcoord.w;
+        if (textureType == D3DRTYPE_TEXTURE) {
+            // For 2D textures we divide by the z component, so move the w component up by one.
+            texcoord.z = projValue;
+        }
+    }
+
+    if (stage != 0 && (
+        ColorOp(stage - 1) == D3DTOP_BUMPENVMAP
+        || ColorOp(stage - 1) == D3DTOP_BUMPENVMAPLUMINANCE)) {
+        if (shouldProject) {
+            float projRcp = 1.0 / projValue;
+            texcoord *= projRcp;
+        }
+
+        texcoord = DoBumpmapCoords(stage, texcoord);
+
+        shouldProject = false;
+    }
+
+    vec4 texVal;
+    switch (textureType) {
+        case D3DRTYPE_TEXTURE:
+            if (SampleDref(stage))
+                texVal = texture(sampler2DShadow(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), scaleDref(texcoord, 2).xyz).xxxx;
+            else if (shouldProject)
+                texVal = textureProj(sampler2D(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
+            else
+                texVal = texture(sampler2D(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xy);
+            break;
+        case D3DRTYPE_CUBETEXTURE:
+            if (SampleDref(stage))
+                texVal = texture(samplerCubeShadow(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), scaleDref(texcoord, 3)).xxxx;
+            else if (shouldProject) {
+                texVal = texture(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz / texcoord.w); // TODO: ?
+                //texVal = textureProj(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyzw);
+            } else
+                texVal = texture(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
+            break;
+        case D3DRTYPE_VOLUMETEXTURE:
+            if (SampleDref(stage))
+                texVal = vec4(0.0); // TODO: ?
+            else if (shouldProject)
+                texVal = textureProj(sampler3D(t3d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord);
+            else
+                texVal = texture(sampler3D(t3d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
+            break;
+    }
+
+    if (stage != 0 && ColorOp(stage - 1) == D3DTOP_BUMPENVMAPLUMINANCE) {
+        float lScale = sharedData.Stages[stage - 1].BumpEnvLScale;
+        float lOffset = sharedData.Stages[stage - 1].BumpEnvLOffset;
+        float scale = texVal.z;
+        scale *= lScale;
+        scale += lOffset;
+        scale = clamp(scale, 0.0, 1.0);
+        texVal *= scale;
+    }
+
+    textureLoaded[stage] = true;
+    textureValue[stage] = texVal;
+    return texVal;
+}
+
+
+vec4 GetArg(uint stage, uint arg, vec4 current, vec4 diffuse, vec4 specular, vec4 temp) {
+    vec4 reg = vec4(1.0);
+    switch (arg & D3DTA_SELECTMASK) {
+        case D3DTA_CONSTANT: {
+             reg = vec4(
+                sharedData.Stages[stage].Constant[0],
+                sharedData.Stages[stage].Constant[1],
+                sharedData.Stages[stage].Constant[2],
+                sharedData.Stages[stage].Constant[3]
+            );
+            break;
+        }
+        case D3DTA_CURRENT:
+            reg = current;
+            break;
+        case D3DTA_DIFFUSE:
+            reg = diffuse;
+            break;
+        case D3DTA_SPECULAR:
+            reg = specular;
+            break;
+        case D3DTA_TEMP:
+            reg = temp;
+            break;
+        case D3DTA_TEXTURE:
+            reg = TextureBound(stage) ? GetTexture(stage) : vec4(0.0, 0.0, 0.0, 1.0);
+            break;
+        case D3DTA_TFACTOR:
+            reg = data.textureFactor;
+    }
+
+    // reg = 1 - reg
+    if ((arg & D3DTA_COMPLEMENT) != 0)
+        reg = vec4(1.0) - reg;
+
+    // reg = reg.wwww
+    if ((arg & D3DTA_ALPHAREPLICATE) != 0)
+        reg = reg.wwww;
+
+    return reg;
+}
+
+vec4[TextureArgCount] ProcessArgs(uint stage, uint[TextureArgCount] args, vec4 current, vec4 diffuse, vec4 specular, vec4 temp) {
+    vec4[TextureArgCount] argVals;
+    for (uint argI = 0; argI < TextureArgCount; argI++) {
+        argVals[argI] = GetArg(stage, args[argI], current, diffuse, specular, temp);
+    }
+    return argVals;
+}
+
+vec4 complement(vec4 val) {
+    return vec4(1.0) - val;
+}
+
+vec4 saturate(vec4 val) {
+    return clamp(val, vec4(0.0), vec4(1.0));
+}
+
+vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse, vec4 current) {
+    switch (op) {
+        case D3DTOP_SELECTARG1:
+            return arg[1];
+
+        case D3DTOP_SELECTARG2:
+            return arg[2];
+
+        case D3DTOP_MODULATE4X:
+            return arg[1] * arg[2] * 4.0;
+
+        case D3DTOP_MODULATE2X:
+            return arg[1] * arg[2] * 2.0;
+
+        case D3DTOP_MODULATE:
+            return arg[1] * arg[2];
+
+        case D3DTOP_ADDSIGNED2X:
+            return saturate(2.0 * (arg[1] + (arg[2] - vec4(0.5))));
+
+        case D3DTOP_ADDSIGNED:
+            return saturate(arg[1] + (arg[2] - vec4(0.5)));
+
+        case D3DTOP_ADD:
+            return saturate(arg[1] + arg[2]);
+
+        case D3DTOP_SUBTRACT:
+            return saturate(arg[1] - arg[2]);
+
+        case D3DTOP_ADDSMOOTH:
+            return fma(complement(arg[1]), arg[2], arg[1]);
+
+        case D3DTOP_BLENDDIFFUSEALPHA:
+            return mix(arg[2], arg[1], diffuse.wwww);
+
+        case D3DTOP_BLENDTEXTUREALPHA:
+            return mix(arg[2], arg[1], GetTexture(stage).wwww);
+
+        case D3DTOP_BLENDFACTORALPHA:
+            return mix(arg[2], arg[1], data.textureFactor.wwww);
+
+        case D3DTOP_BLENDTEXTUREALPHAPM:
+            return saturate(fma(arg[2], complement(GetTexture(stage).wwww), arg[1]));
+
+        case D3DTOP_BLENDCURRENTALPHA:
+            return mix(arg[2], arg[1], current.wwww);
+
+        case D3DTOP_PREMODULATE:
+            return dst; // Not implemented
+
+        case D3DTOP_MODULATEALPHA_ADDCOLOR:
+            return saturate(fma(arg[1].wwww, arg[2], arg[1]));
+
+        case D3DTOP_MODULATECOLOR_ADDALPHA:
+            return saturate(fma(arg[1], arg[2], arg[1].wwww));
+
+        case D3DTOP_MODULATEINVALPHA_ADDCOLOR:
+            return saturate(fma(complement(arg[1].wwww), arg[2], arg[1]));
+
+        case D3DTOP_MODULATEINVCOLOR_ADDALPHA:
+            return saturate(fma(complement(arg[1]), arg[2], arg[1].wwww));
+
+        case D3DTOP_BUMPENVMAPLUMINANCE:
+        case D3DTOP_BUMPENVMAP:
+            // Load texture for the next stage...
+            GetTexture(stage);
+            return dst;
+
+        case D3DTOP_DOTPRODUCT3:
+            return saturate(vec4(dot(arg[1].xyz - vec3(0.5), arg[2].xyz - vec3(0.5)) * 4.0));
+
+        case D3DTOP_MULTIPLYADD:
+            return saturate(fma(arg[1], arg[2], arg[0]));
+
+        case D3DTOP_LERP:
+            return mix(arg[2], arg[1], arg[0]);
+
+        default:
+            // Unhandled texture op!
+            return dst;
+
+    }
+
+    return vec4(0.0);
+}
+
 void main() {
-    out_Color0 = vec4(0.0);
+    vec4 diffuse = in_Color0;
+    vec4 specular = in_Color1;
+
+    // Current starts of as equal to diffuse.
+    vec4 current = diffuse;
+    // Temp starts off as equal to vec4(0)
+    vec4 temp = vec4(0.0);
+
+    vec4 unboundTextureConst = vec4(0.0, 0.0, 0.0, 1.0);
+
+    for (uint i = 0; i < TextureStageCount; i++) {
+        vec4 dst = ResultIsTemp(i) ? temp : current;
+
+        uint colorOp = ColorOp(i);
+
+        // This cancels all subsequent stages.
+        if (colorOp == D3DTOP_DISABLE)
+            break;
+
+        uint colorArgs[TextureArgCount] = {
+            ColorArg0(i),
+            ColorArg1(i),
+            ColorArg2(i)
+        };
+        uint alphaOp = AlphaOp(i);
+        uint alphaArgs[TextureArgCount] = {
+            AlphaArg0(i),
+            AlphaArg1(i),
+            AlphaArg2(i)
+        };
+
+        // Fast path if alpha/color path is identical.
+        // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
+        bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
+        if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
+            if (colorOp != D3DTOP_DISABLE) {
+                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, diffuse, specular, temp);
+                dst = DoOp(colorOp, dst, colorArgVals, i, diffuse, current);
+            }
+        } else {
+            vec4 colorResult = dst;
+            vec4 alphaResult = dst;
+            if (colorOp != D3DTOP_DISABLE) {
+                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, diffuse, specular, temp);
+                colorResult = DoOp(colorOp, dst, colorArgVals, i, diffuse, current);
+            }
+
+            if (alphaOp != D3DTOP_DISABLE) {
+                vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, diffuse, specular, temp);
+                alphaResult = DoOp(alphaOp, dst, alphaArgVals, i, diffuse, current);
+            }
+
+            // src0.x, src0.y, src0.z src1.w
+            if (colorResult != dst)
+                dst = vec4(colorResult.xyz, dst.w);
+
+            // src0.x, src0.y, src0.z src1.w
+            // But we flip src0, src1 to be inverse of color.
+            if (alphaResult != dst)
+                dst = vec4(dst.xyz, alphaResult.w);
+        }
+
+        if (ResultIsTemp(i)) {
+            temp = dst;
+        } else {
+            current = dst;
+        }
+    }
+
+    // TODO: Should this be done per-stage?
+    // The FF generator only uses stage 0
+    if (GlobalSpecularEnable(0)) {
+        specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
+        current += specular;
+    }
+
+    out_Color0 = current;
 }
