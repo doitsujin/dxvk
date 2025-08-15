@@ -123,6 +123,10 @@ namespace dxvk {
     static bool parseOptionValue(
       const std::string&  value,
             int32_t&      result);
+
+    static bool parseOptionValue(
+      const std::string&  value,
+            uint32_t&     result);
     
     static bool parseOptionValue(
       const std::string&  value,
