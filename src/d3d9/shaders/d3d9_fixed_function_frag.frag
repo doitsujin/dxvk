@@ -323,10 +323,8 @@ uint LoadSamplerHeapIndex(uint samplerBindingIndex) {
 
 
 // TODO: Passing the index here makes non-uniform necessary, solve that
-vec4 GetTexture(uint stage, vec4 previousStageTextureVal) {
+vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
     uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
-
-    vec4 texcoord = texCoords[stage];
 
     bool shouldProject = Projected(stage);
     float projValue = 1.0;
@@ -615,6 +613,9 @@ void main() {
 
     vec4 previousStageTextureVal = vec4(0.0);
 
+    uint pointMode = SpecPointMode();
+    bool isSprite = bitfieldExtract(pointMode, 1, 1) == 1u;
+
     for (uint i = 0; i < TextureStageCount; i++) {
         vec4 dst = ResultIsTemp(i) ? temp : current;
 
@@ -639,12 +640,14 @@ void main() {
         vec4 textureVal = vec4(0.0);
         bool usesTexture = false;
         [[unroll]]
-        for (uint i = 0; i < TextureArgCount; i++) {
-            usesTexture = usesTexture || colorArgs[i] == D3DTA_TEXTURE;
-            usesTexture = usesTexture || alphaArgs[i] == D3DTA_TEXTURE;
+        for (uint argI = 0; argI < TextureArgCount; argI++) {
+            usesTexture = usesTexture || colorArgs[argI] == D3DTA_TEXTURE || alphaArgs[argI] == D3DTA_TEXTURE;
         }
         if (usesTexture) {
-            textureVal = TextureBound(i) ? GetTexture(i, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
+            // We need to replace TEXCOORD inputs with gl_PointCoord
+            // if D3DRS_POINTSPRITEENABLE is set.
+            vec4 texCoord = isSprite ? vec4(gl_PointCoord, 0.0, 0.0) : texCoords[i];
+            textureVal = TextureBound(i) ? GetTexture(i, texCoord, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
         }
 
         // Fast path if alpha/color path is identical.
