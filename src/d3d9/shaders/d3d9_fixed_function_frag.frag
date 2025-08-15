@@ -169,8 +169,6 @@ layout (constant_id = 10) const uint SpecConstDword10 = 0;
 layout (constant_id = 11) const uint SpecConstDword11 = 0;
 layout (constant_id = 12) const uint SpecConstDword12 = 0;
 
-const int drefScaling = 0; // TODO
-
 bool SpecIsOptimized() {
     return SpecConstDword12 != 0;
 }
@@ -231,6 +229,10 @@ uint SpecDrefClamp() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 0, 21);
 }
+uint SpecDrefScaling() {
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 21, 5);
+}
 uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
@@ -288,14 +290,17 @@ vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
 
 
 // [D3D8] Scale Dref to [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
-vec4 scaleDref(vec4 texCoord, int referenceIdx) {
-    float reference = texCoord[referenceIdx];
-    if (drefScaling == 0) {
-        return texCoord;
+vec4 adjustDref(vec4 texCoord, uint referenceComponentIndex, uint samplerIndex) {
+    float reference = texCoord[referenceComponentIndex];
+    uint drefScaleFactor = SpecDrefScaling();
+    if (drefScaleFactor != 0) {
+        float maxDref = 1.0 / (float(1 << drefScaleFactor) - 1.0);
+        reference *= maxDref;
+        texCoord[referenceComponentIndex] = reference;
     }
-    float maxDref = 1.0 / (float(1 << drefScaling) - 1.0);
-    reference *= maxDref;
-    texCoord[referenceIdx] = reference;
+    if ((SpecDrefClamp() & (1u << samplerIndex)) != 0u) {
+        texCoord[referenceComponentIndex] = clamp(reference, 0.0, 1.0);
+    }
     return texCoord;
 }
 
@@ -354,7 +359,7 @@ vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
     switch (textureType) {
         case D3DRTYPE_TEXTURE:
             if (SampleDref(stage))
-                texVal = texture(sampler2DShadow(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), scaleDref(texcoord, 2).xyz).xxxx;
+                texVal = texture(sampler2DShadow(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), adjustDref(texcoord, 2, stage).xyz).xxxx;
             else if (shouldProject)
                 texVal = textureProj(sampler2D(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
             else
@@ -362,7 +367,7 @@ vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
             break;
         case D3DRTYPE_CUBETEXTURE:
             if (SampleDref(stage))
-                texVal = texture(samplerCubeShadow(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), scaleDref(texcoord, 3)).xxxx;
+                texVal = texture(samplerCubeShadow(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), adjustDref(texcoord, 3, stage)).xxxx;
             else if (shouldProject) {
                 texVal = texture(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz / texcoord.w); // TODO: ?
                 //texVal = textureProj(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyzw);
