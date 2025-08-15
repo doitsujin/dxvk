@@ -30,6 +30,7 @@ namespace dxvk {
     SpecFetch4,             // 1 bit for 16 PS samplers       | Bits: 16
 
     SpecDrefClamp,          // 1 bit for 21 VS + PS samplers  | Bits: 21
+    SpecDrefScaling,        // Range: 0-31                    | Bits: 5
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
 
     SpecConstantCount,
@@ -71,7 +72,8 @@ namespace dxvk {
       { 4, 0,  16 }, // Fetch4
 
       { 5, 0, 21 },  // DrefClamp
-      { 5, 21, 3 },  // ClipPlaneCount
+      { 5, 21, 5 },  // DrefScaling
+      { 5, 26, 3 },  // ClipPlaneCount
     }};
 
     template <D3D9SpecConstantId Id, typename T>

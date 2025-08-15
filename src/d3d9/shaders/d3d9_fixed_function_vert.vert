@@ -265,7 +265,7 @@ uint SpecDrefClamp() {
 }
 uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
-    return bitfieldExtract(dword, 21, 3);
+    return bitfieldExtract(dword, 26, 3);
 }
 
 float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {

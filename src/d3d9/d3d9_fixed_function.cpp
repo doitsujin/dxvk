@@ -20,7 +20,6 @@ namespace dxvk {
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
     invariantPosition = options->invariantPosition;
     forceSampleRateShading = options->forceSampleRateShading;
-    drefScaling = options->drefScaling;
   }
 
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
@@ -1939,10 +1938,11 @@ namespace dxvk {
             uint32_t reference = m_module.opCompositeExtract(m_floatType, texcoord, 1, &component);
 
             // [D3D8] Scale Dref to [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
-            if (m_options.drefScaling) {
-              uint32_t maxDref = m_module.constf32(1.0f / (float(1 << m_options.drefScaling) - 1.0f));
-              reference        = m_module.opFMul(m_floatType, reference, maxDref);
-            }
+            uint32_t drefScaleShift = m_spec.get(m_module, m_specUbo, SpecDrefScaling);
+            uint32_t drefScale      = m_module.opShiftLeftLogical(m_uint32Type, m_module.constu32(1), drefScaleShift);
+            drefScale               = m_module.opConvertUtoF(m_floatType, drefScale);
+            drefScale               = m_module.opFSub(m_floatType, drefScale, m_module.constf32(1.0f));
+            drefScale               = m_module.opFDiv(m_floatType, m_module.constf32(1.0f), drefScale);
 
             texture = m_module.opImageSampleDrefImplicitLod(m_floatType, imageVarId, texcoord, reference, imageOperands);
             texture = ScalarReplicate(texture);
