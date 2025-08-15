@@ -237,91 +237,53 @@ uint SpecClipPlaneCount() {
 }
 
 
-#define isPixel true
-bool HasColor1() { return true; }
-bool HasPositionT() { return false; }
-bool RangeFog() { return false; }
-bool HasFog() { return false; }
-#define in_PointSize 0
 vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
-    vec4 color1 = HasColor1() ? in_Color1 : vec4(0.0);
-
-    vec4 specular = !isPixel ? color1 : vec4(0.0);
-    bool hasSpecular = !isPixel && HasColor1();
-
     vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
     float fogScale = rs.fogScale;
     float fogEnd = rs.fogEnd;
     float fogDensity = rs.fogDensity;
-    D3DFOGMODE fogMode = isPixel ? SpecPixelFogMode() : SpecVertexFogMode();
+    D3DFOGMODE fogMode = SpecPixelFogMode();
     bool fogEnabled = SpecFogEnabled();
     if (!fogEnabled) {
-        if (isPixel) {
-            return oColor;
-        } else {
-            return vec4(0.0);
-        }
+        return oColor;
     }
 
     float w = vPos.w;
     float z = vPos.z;
-    float depth;
-    if (isPixel) {
-        depth = z * (1.0 / w);
-    } else {
-        if (RangeFog()) {
-            vec3 pos3 = vPos.xyz;
-            depth = length(pos3);
-        } else {
-            depth = HasFog() ? in_Fog : abs(z);
-        }
-    }
+    float depth = z * (1.0 / w);
     float fogFactor;
-    if (!isPixel && HasPositionT()) {
-        fogFactor = hasSpecular ? specular.w : 1.0;
-    } else {
-        switch (fogMode) {
-            case D3DFOG_NONE:
-                if (isPixel)
-                    fogFactor = in_Fog;
-                else if (hasSpecular)
-                    fogFactor = specular.w;
-                else
-                    fogFactor = 1.0;
-                break;
+    switch (fogMode) {
+        case D3DFOG_NONE:
+            fogFactor = in_Fog;
+            break;
 
-            // (end - d) / (end - start)
-            case D3DFOG_LINEAR:
-                fogFactor = fogEnd - depth;
-                fogFactor = fogFactor * fogScale;
-                fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
-                break;
+        // (end - d) / (end - start)
+        case D3DFOG_LINEAR:
+            fogFactor = fogEnd - depth;
+            fogFactor = fogFactor * fogScale;
+            fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
+            break;
 
-            // 1 / (e^[d * density])^2
-            case D3DFOG_EXP2:
-            // 1 / (e^[d * density])
-            case D3DFOG_EXP:
-                fogFactor = depth * fogDensity;
+        // 1 / (e^[d * density])^2
+        case D3DFOG_EXP2:
+        // 1 / (e^[d * density])
+        case D3DFOG_EXP:
+            fogFactor = depth * fogDensity;
 
-                if (fogMode == D3DFOG_EXP2)
-                    fogFactor *= fogFactor;
+            if (fogMode == D3DFOG_EXP2)
+                fogFactor *= fogFactor;
 
-                // Provides the rcp.
-                fogFactor = -fogFactor;
-                fogFactor = exp(fogFactor);
-                break;
-        }
+            // Provides the rcp.
+            fogFactor = -fogFactor;
+            fogFactor = exp(fogFactor);
+            break;
     }
 
-    if (isPixel) {
-        vec4 color = oColor;
-        vec3 color3 = color.rgb;
-        vec3 fogFact3 = vec3(fogFactor);
-        vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
-        return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
-    } else {
-        return vec4(fogFactor);
-    }
+    vec4 color = oColor;
+    vec3 color3 = color.rgb;
+    vec3 fogFact3 = vec3(fogFactor);
+    vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
+    return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
 }
 
 
