@@ -80,7 +80,7 @@ namespace dxvk {
     this->ffUbershaderFS                = config.getOption<bool>        ("d3d9.ffUbershaderFS",                false);
 
     // D3D8 options
-    this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);
+    this->drefScaling                   = config.getOption<uint32_t>     ("d3d8.scaleDref",                     0);
 
     // Clamp the shader model value between 0 and 3
     this->shaderModel    = dxvk::clamp(this->shaderModel, 0u, 3u);
