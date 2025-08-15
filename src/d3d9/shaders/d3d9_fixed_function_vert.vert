@@ -380,7 +380,7 @@ vec4 PickSource(uint Source, vec4 Material) {
     if (Source == D3DMCS_MATERIAL)
         return Material;
     else if (Source == D3DMCS_COLOR1)
-        return HasColor0() ? in_Color0 : vec4(0.0);
+        return HasColor0() ? in_Color0 : vec4(1.0);
     else
         return HasColor1() ? in_Color1 : vec4(0.0);
 }
@@ -718,8 +718,8 @@ void main() {
         out_Color0 = finalColor0;
         out_Color1 = finalColor1;
     } else {
-        out_Color0 = in_Color0;
-        out_Color1 = in_Color1;
+        out_Color0 = HasColor0() ? in_Color0 : vec4(1.0);
+        out_Color1 = HasColor1() ? in_Color1 : vec4(0.0);
     }
 
     out_Fog = DoFixedFunctionFog(vtx, vec4(0.0));
