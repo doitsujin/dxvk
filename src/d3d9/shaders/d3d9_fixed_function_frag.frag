@@ -656,10 +656,9 @@ void main() {
         } else {
             vec4 colorResult = dst;
             vec4 alphaResult = dst;
-            if (colorOp != D3DTOP_DISABLE) {
-                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
-                colorResult = DoOp(colorOp, dst, colorArgVals, current, textureVal);
-            }
+
+            vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
+            colorResult = DoOp(colorOp, dst, colorArgVals, current, textureVal);
 
             if (alphaOp != D3DTOP_DISABLE) {
                 vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
