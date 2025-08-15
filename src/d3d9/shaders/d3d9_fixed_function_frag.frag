@@ -4,6 +4,7 @@
 #extension GL_EXT_spirv_intrinsics : require
 #extension GL_EXT_demote_to_helper_invocation : require
 #extension GL_ARB_derivative_control : require
+#extension GL_EXT_control_flow_attributes : require
 
 #extension GL_EXT_nonuniform_qualifier : require // TODO: Get rid of this?
 
@@ -28,28 +29,6 @@ layout(location = 10) in vec4 in_Color1;
 layout(location = 11) in float in_Fog;
 
 layout(location = 0) out vec4 out_Color0;
-
-vec4 textureValue[TextureStageCount] = {
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-    vec4(0.0),
-};
-
-bool textureLoaded[TextureStageCount] = {
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-    false,
-};
 
 vec4 texCoords[TextureStageCount] = {
     in_Texcoord0,
@@ -359,14 +338,15 @@ vec4 scaleDref(vec4 texCoord, int referenceIdx) {
 }
 
 
-vec4 DoBumpmapCoords(uint stage, vec4 baseCoords) {
+vec4 DoBumpmapCoords(uint stage, vec4 baseCoords, vec4 previousStageTextureVal) {
     stage = stage - 1;
 
     vec4 coords = baseCoords;
+    [[unroll]]
     for (uint i = 0; i < 2; i++) {
         float tc_m_n = coords[i];
         vec2 bm = vec2(sharedData.Stages[stage].BumpEnvMat[0][0], sharedData.Stages[stage].BumpEnvMat[0][1]);
-        vec2 t = textureValue[stage - 1].xy;
+        vec2 t = previousStageTextureVal.xy;
         float result = tc_m_n + dot(bm, t);
         coords[i] = result;
     }
@@ -381,11 +361,7 @@ uint LoadSamplerHeapIndex(uint samplerBindingIndex) {
 
 
 // TODO: Passing the index here makes non-uniform necessary, solve that
-vec4 GetTexture(uint stage) {
-    if (textureLoaded[stage]) {
-        return textureValue[stage];
-    }
-
+vec4 GetTexture(uint stage, vec4 previousStageTextureVal) {
     uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
 
     vec4 texcoord = texCoords[stage];
@@ -409,7 +385,7 @@ vec4 GetTexture(uint stage) {
             texcoord *= projRcp;
         }
 
-        texcoord = DoBumpmapCoords(stage, texcoord);
+        texcoord = DoBumpmapCoords(stage, texcoord, previousStageTextureVal);
 
         shouldProject = false;
     }
@@ -453,13 +429,11 @@ vec4 GetTexture(uint stage) {
         texVal *= scale;
     }
 
-    textureLoaded[stage] = true;
-    textureValue[stage] = texVal;
     return texVal;
 }
 
 
-vec4 GetArg(uint stage, uint arg, vec4 current, vec4 diffuse, vec4 specular, vec4 temp) {
+vec4 GetArg(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal) {
     vec4 reg = vec4(1.0);
     switch (arg & D3DTA_SELECTMASK) {
         case D3DTA_CONSTANT: {
@@ -475,16 +449,16 @@ vec4 GetArg(uint stage, uint arg, vec4 current, vec4 diffuse, vec4 specular, vec
             reg = current;
             break;
         case D3DTA_DIFFUSE:
-            reg = diffuse;
+            reg = in_Color0;
             break;
         case D3DTA_SPECULAR:
-            reg = specular;
+            reg = in_Color1;
             break;
         case D3DTA_TEMP:
             reg = temp;
             break;
         case D3DTA_TEXTURE:
-            reg = TextureBound(stage) ? GetTexture(stage) : vec4(0.0, 0.0, 0.0, 1.0);
+            reg = textureVal;
             break;
         case D3DTA_TFACTOR:
             reg = data.textureFactor;
@@ -501,10 +475,11 @@ vec4 GetArg(uint stage, uint arg, vec4 current, vec4 diffuse, vec4 specular, vec
     return reg;
 }
 
-vec4[TextureArgCount] ProcessArgs(uint stage, uint[TextureArgCount] args, vec4 current, vec4 diffuse, vec4 specular, vec4 temp) {
-    vec4[TextureArgCount] argVals;
+vec4[TextureArgCount] ProcessArgs(uint stage, uint args[TextureArgCount], vec4 current, vec4 temp, vec4 textureVal) {
+    vec4 argVals[TextureArgCount];
+    [[unroll]]
     for (uint argI = 0; argI < TextureArgCount; argI++) {
-        argVals[argI] = GetArg(stage, args[argI], current, diffuse, specular, temp);
+        argVals[argI] = GetArg(stage, args[argI], current, temp, textureVal);
     }
     return argVals;
 }
@@ -517,7 +492,7 @@ vec4 saturate(vec4 val) {
     return clamp(val, vec4(0.0), vec4(1.0));
 }
 
-vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse, vec4 current) {
+vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], vec4 current, vec4 textureVal) {
     switch (op) {
         case D3DTOP_SELECTARG1:
             return arg[1];
@@ -550,16 +525,16 @@ vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse
             return fma(complement(arg[1]), arg[2], arg[1]);
 
         case D3DTOP_BLENDDIFFUSEALPHA:
-            return mix(arg[2], arg[1], diffuse.aaaa);
+            return mix(arg[2], arg[1], in_Color0.aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHA:
-            return mix(arg[2], arg[1], GetTexture(stage).aaaa);
+            return mix(arg[2], arg[1], textureVal.aaaa);
 
         case D3DTOP_BLENDFACTORALPHA:
             return mix(arg[2], arg[1], data.textureFactor.aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHAPM:
-            return saturate(fma(arg[2], complement(GetTexture(stage).aaaa), arg[1]));
+            return saturate(fma(arg[2], complement(textureVal.aaaa), arg[1]));
 
         case D3DTOP_BLENDCURRENTALPHA:
             return mix(arg[2], arg[1], current.aaaa);
@@ -582,7 +557,6 @@ vec4 DoOp(uint op, vec4 dst, vec4 arg[TextureArgCount], uint stage, vec4 diffuse
         case D3DTOP_BUMPENVMAPLUMINANCE:
         case D3DTOP_BUMPENVMAP:
             // Load texture for the next stage...
-            GetTexture(stage);
             return dst;
 
         case D3DTOP_DOTPRODUCT3:
@@ -667,15 +641,17 @@ void alphaTestPS() {
 }
 
 void main() {
-    vec4 diffuse = in_Color0;
-    vec4 specular = in_Color1;
+    // in_Color0 is diffuse
+    // in_Color1 is specular
 
     // Current starts of as equal to diffuse.
-    vec4 current = diffuse;
+    vec4 current = in_Color0;
     // Temp starts off as equal to vec4(0)
     vec4 temp = vec4(0.0);
 
     vec4 unboundTextureConst = vec4(0.0, 0.0, 0.0, 1.0);
+
+    vec4 previousStageTextureVal = vec4(0.0);
 
     for (uint i = 0; i < TextureStageCount; i++) {
         vec4 dst = ResultIsTemp(i) ? temp : current;
@@ -698,25 +674,34 @@ void main() {
             AlphaArg2(i)
         };
 
+        vec4 textureVal = vec4(0.0);
+        bool usesTexture = false;
+        [[unroll]]
+        for (uint i = 0; i < TextureArgCount; i++) {
+            usesTexture = usesTexture || colorArgs[i] == D3DTA_TEXTURE;
+            usesTexture = usesTexture || alphaArgs[i] == D3DTA_TEXTURE;
+        }
+        if (usesTexture) {
+            textureVal = TextureBound(i) ? GetTexture(i, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
+        }
+
         // Fast path if alpha/color path is identical.
         // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
         bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
         if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
-            if (colorOp != D3DTOP_DISABLE) {
-                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, diffuse, specular, temp);
-                dst = DoOp(colorOp, dst, colorArgVals, i, diffuse, current);
-            }
+            vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
+            dst = DoOp(colorOp, dst, colorArgVals, current, textureVal);
         } else {
             vec4 colorResult = dst;
             vec4 alphaResult = dst;
             if (colorOp != D3DTOP_DISABLE) {
-                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, diffuse, specular, temp);
-                colorResult = DoOp(colorOp, dst, colorArgVals, i, diffuse, current);
+                vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
+                colorResult = DoOp(colorOp, dst, colorArgVals, current, textureVal);
             }
 
             if (alphaOp != D3DTOP_DISABLE) {
-                vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, diffuse, specular, temp);
-                alphaResult = DoOp(alphaOp, dst, alphaArgVals, i, diffuse, current);
+                vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
+                alphaResult = DoOp(alphaOp, dst, alphaArgVals, current, textureVal);
             }
 
             // src0.x, src0.y, src0.z src1.w
@@ -734,12 +719,13 @@ void main() {
         } else {
             current = dst;
         }
+        previousStageTextureVal = textureVal;
     }
 
     // TODO: Should this be done per-stage?
     // The FF generator only uses stage 0
     if (GlobalSpecularEnable(0)) {
-        specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
+        vec4 specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
         current += specular;
     }
 
