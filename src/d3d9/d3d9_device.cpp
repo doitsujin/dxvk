@@ -2694,6 +2694,8 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipStatus(const D3DCLIPSTATUS9* pClipStatus) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (unlikely(pClipStatus == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -2704,6 +2706,8 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipStatus(D3DCLIPSTATUS9* pClipStatus) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (unlikely(pClipStatus == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -2915,7 +2919,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetSoftwareVertexProcessing(BOOL bSoftware) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (bSoftware && !CanSWVP())
       return D3DERR_INVALIDCALL;
@@ -2930,19 +2934,25 @@ namespace dxvk {
 
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::GetSoftwareVertexProcessing() {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return m_isSWVP;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetNPatchMode(float nSegments) {
+    D3D9DeviceLock lock = LockDevice();
+
+    m_state.nPatchSegments = nSegments;
+
     return D3D_OK;
   }
 
 
   float   STDMETHODCALLTYPE D3D9DeviceEx::GetNPatchMode() {
-    return 0.0f;
+    D3D9DeviceLock lock = LockDevice();
+
+    return m_state.nPatchSegments;
   }
 
 
