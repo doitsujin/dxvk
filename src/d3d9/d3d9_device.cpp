@@ -4089,6 +4089,11 @@ namespace dxvk {
     if (!std::exchange(s_errorShown, true))
       Logger::warn("D3D9DeviceEx::GetGPUThreadPriority: Stub");
 
+    if (unlikely(pPriority == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pPriority = 0;
+
     return D3D_OK;
   }
 
