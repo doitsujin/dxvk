@@ -30,17 +30,6 @@ layout(location = 11) in float in_Fog;
 
 layout(location = 0) out vec4 out_Color0;
 
-vec4 texCoords[TextureStageCount] = {
-    in_Texcoord0,
-    in_Texcoord1,
-    in_Texcoord2,
-    in_Texcoord3,
-    in_Texcoord4,
-    in_Texcoord5,
-    in_Texcoord6,
-    in_Texcoord7
-};
-
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
 //     DxsoProgramType::PixelShader,
@@ -236,6 +225,10 @@ uint SpecDrefScaling() {
 uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
+}
+uint SpecActiveTextureStageCount() {
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 29, 3);
 }
 
 
@@ -621,7 +614,10 @@ void main() {
     uint pointMode = SpecPointMode();
     bool isSprite = bitfieldExtract(pointMode, 1, 1) == 1u;
 
-    for (uint i = 0; i < TextureStageCount; i++) {
+    uint activeTextureStageCount = SpecActiveTextureStageCount() + 1;
+
+    [[unroll]]
+    for (uint i = 0; i < activeTextureStageCount; i++) {
         vec4 dst = ResultIsTemp(i) ? temp : current;
 
         uint colorOp = ColorOp(i);
@@ -651,7 +647,21 @@ void main() {
         if (usesTexture) {
             // We need to replace TEXCOORD inputs with gl_PointCoord
             // if D3DRS_POINTSPRITEENABLE is set.
-            vec4 texCoord = isSprite ? vec4(gl_PointCoord, 0.0, 0.0) : texCoords[i];
+            vec4 texCoord;
+            if (isSprite) {
+                texCoord = vec4(gl_PointCoord, 0.0, 0.0);
+            } else {
+                switch (i) {
+                    case 0: texCoord = in_Texcoord0; break;
+                    case 1: texCoord = in_Texcoord1; break;
+                    case 2: texCoord = in_Texcoord2; break;
+                    case 3: texCoord = in_Texcoord3; break;
+                    case 4: texCoord = in_Texcoord4; break;
+                    case 5: texCoord = in_Texcoord5; break;
+                    case 6: texCoord = in_Texcoord6; break;
+                    case 7: texCoord = in_Texcoord7; break;
+                }
+            }
             textureVal = TextureBound(i) ? GetTexture(i, texCoord, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
         }
 

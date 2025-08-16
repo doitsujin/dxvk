@@ -8175,6 +8175,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
+    uint32_t activeTextureStageCount = 0;
     D3D9FFShaderKeyFS key;
     {
       // Used args for a given operation.
@@ -8203,6 +8204,8 @@ namespace dxvk {
         // Subsequent stages do not occur if this is true.
         if (data[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
           break;
+
+        activeTextureStageCount = idx + 1;
 
         // If the stage is invalid (ie. no texture bound),
         // this and all subsequent stages get disabled.
@@ -8253,6 +8256,10 @@ namespace dxvk {
       // The last stage *always* writes to current.
       if (idx >= 1)
         key.Stages[idx - 1].Contents.ResultIsTemp = false;
+    }
+
+    if (m_specInfo.set<SpecTextureStageCount>(std::max(activeTextureStageCount, 1u) - 1u)) {
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
     }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
