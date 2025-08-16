@@ -684,13 +684,11 @@ void main() {
             }
 
             // src0.x, src0.y, src0.z src1.w
-            if (colorResult != dst)
-                dst = vec4(colorResult.rgb, dst.a);
+            dst = vec4(colorResult.rgb, dst.a);
 
             // src0.x, src0.y, src0.z src1.w
             // But we flip src0, src1 to be inverse of color.
-            if (alphaResult != dst)
-                dst = vec4(dst.rgb, alphaResult.a);
+            dst = vec4(dst.rgb, alphaResult.a);
         }
 
         if (ResultIsTemp(i)) {
