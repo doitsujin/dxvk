@@ -20,11 +20,7 @@ namespace dxvk {
   static constexpr uint32_t SamplerStateCount = D3DSAMP_DMAPOFFSET + 1;
   static constexpr uint32_t SamplerCount      = caps::MaxTexturesPS + caps::MaxTexturesVS + 1;
   static constexpr uint32_t TextureStageStateCount = DXVK_TSS_COUNT;
-
-  namespace hacks::PointSize {
-    static constexpr DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
-    static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');
-  }
+  static constexpr uint32_t PaletteEntryCount = 256;
   
   struct D3D9ClipPlane {
     float coeff[4] = {};
@@ -291,6 +287,11 @@ namespace dxvk {
     ItemType<std::array<
       std::array<DWORD, TextureStageStateCount>,
       caps::TextureStageCount>>                         textureStages = {};
+
+    std::unordered_map<
+       UINT,
+       std::array<PALETTEENTRY, PaletteEntryCount>>     texturePalettes;
+    UINT                                                texturePaletteNumber = 0u;
 
     ItemType<D3D9ShaderConstantsVSSoftware>             vsConsts;
     ItemType<D3D9ShaderConstantsPS>                     psConsts;
