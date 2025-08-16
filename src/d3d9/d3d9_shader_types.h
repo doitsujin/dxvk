@@ -208,10 +208,10 @@ struct D3D9FFShaderKeyVSData {
 
       uint32_t HasPositionT : 1;
 
-      uint32_t HasColor0 : 1; // Diffuse
-      uint32_t HasColor1 : 1; // Specular
+      uint32_t VertexHasColor0 : 1; // Diffuse
+      uint32_t VertexHasColor1 : 1; // Specular
 
-      uint32_t HasPointSize : 1;
+      uint32_t VertexHasPointSize : 1;
 
       uint32_t UseLighting : 1;
 
@@ -231,15 +231,13 @@ struct D3D9FFShaderKeyVSData {
       uint32_t LightCount : 4;
 
       uint32_t TexcoordDeclMask : 24;
-      uint32_t HasFog : 1;
+      uint32_t VertexHasFog : 1;
 
       uint32_t VertexBlendMode    : 2;
       uint32_t VertexBlendIndexed : 1;
       uint32_t VertexBlendCount   : 2;
 
       uint32_t VertexClipping     : 1;
-
-      uint32_t Projected : 8;
     } Contents;
 #endif
 
@@ -251,7 +249,7 @@ struct D3D9FFShaderKeyVSData {
 };
 
 
-struct D3D9FFShaderStage {
+struct D3D9FFTextureStage {
 #ifndef GLSL
   union {
     struct {
@@ -267,12 +265,6 @@ struct D3D9FFShaderStage {
 
       uint32_t     Type         : 2;
       uint32_t     ResultIsTemp : 1;
-      uint32_t     Projected    : 1;
-
-      uint32_t     ProjectedCount : 3;
-      uint32_t     SampleDref     : 1;
-
-      uint32_t     TextureBound : 1;
 
       // Included in here, read from Stage 0 for packing reasons
       // Affects all stages.
@@ -340,7 +332,7 @@ struct D3D9FixedFunctionPS {
 
   // TODO: Refactor once this works and we figure out what to
   //       do with the existing generated fixed function shaders
-  D3D9FFShaderStage Stages[8];
+  D3D9FFTextureStage Stages[8];
 };
 
 

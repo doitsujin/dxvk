@@ -3006,7 +3006,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         ? samplerIdx + FirstVSSamplerSlot
         : samplerIdx;
 
-      uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);
+      uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerIsNull, bitOffset, 1);
       isNull = m_module.opINotEqual(m_module.defBoolType(), isNull, m_module.constu32(0));
 
       // Only do the check for depth comp. samplers
@@ -3016,7 +3016,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
 
-        uint32_t isDepth = m_spec.get(m_module, m_specUbo, SpecSamplerDepthMode, bitOffset, 1);
+        uint32_t isDepth = m_spec.get(m_module, m_specUbo, SpecSamplerIsDepth, bitOffset, 1);
         isDepth = m_module.opINotEqual(m_module.defBoolType(), isDepth, m_module.constu32(0));
 
         m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);

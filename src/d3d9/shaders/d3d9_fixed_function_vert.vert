@@ -180,10 +180,6 @@ bool VertexClipping() {
     return bitfieldExtract(data.Key.Primitive[3], 30, 1) != 0;
 }
 
-uint Projected() {
-    return bitfieldExtract(data.Key.Primitive[4], 0, 8);
-}
-
 
 // Functions to extract information from the packed dynamic spec consts
 // See d3d9_spec_constants.h for packing
@@ -207,61 +203,52 @@ bool SpecIsOptimized() {
     return SpecConstDword12 != 0;
 }
 
-uint SpecSamplerType() {
+uint SpecSamplerType(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword0 : dynamicSpecConstDword[0];
-    return bitfieldExtract(dword, 0, 32);
+    return bitfieldExtract(dynamicSpecConstDword[0], int(textureStage) * 2, 2);
 }
-uint SpecSamplerDepthMode() {
+bool SpecSamplerIsDepth(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 0, 21);
+    return bitfieldExtract(dword, 0 + int(textureStage), 1) != 0u;
 }
 uint SpecAlphaCompareOp() {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 21, 3);
 }
-uint SpecPointMode() {
+bool SpecAnyProjected() {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 24, 2);
+    return bitfieldExtract(dword, 24, 8) != 0u;
 }
-uint SpecVertexFogMode() {
+bool SpecProjected(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 26, 2);
+    return bitfieldExtract(dword, 24 + int(textureStage), 1) != 0u;
 }
-uint SpecPixelFogMode() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 28, 2);
-}
-bool SpecFogEnabled() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 30, 1) != 0;
-}
-uint SpecSamplerNull() {
+
+bool SpecSamplerIsNull(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 0, 21);
-}
-uint SpecProjected() {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 21, 8);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0;
 }
 uint SpecAlphaPrecisionBits() {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 29, 4);
+    return bitfieldExtract(dword, 21, 4);
 }
-uint SpecVertexShaderBools() {
-    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
-    return bitfieldExtract(dword, 0, 16);
+bool SpecFogEnabled() {
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 25, 1) != 0;
 }
-uint SpecPixelShaderBools() {
-    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
-    return bitfieldExtract(dword, 16, 16);
+uint SpecVertexFogMode() {
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 26, 2);
 }
-uint SpecFetch4() {
+
+bool SpecFetch4(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
-    return bitfieldExtract(dword, 0, 16);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
-uint SpecDrefClamp() {
+
+bool SpecDrefClamp(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
-    return bitfieldExtract(dword, 0, 21);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
 uint SpecDrefScaling() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
@@ -270,6 +257,10 @@ uint SpecDrefScaling() {
 uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
+}
+uint SpecPointMode() {
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 29, 2);
 }
 
 float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
@@ -581,7 +572,7 @@ void main() {
         }
 
         // TODO: Shouldn't projected be checked per texture stage?
-        if (Projected() != 0 && projIndex < 4) {
+        if (SpecAnyProjected() && projIndex < 4) {
             // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
             float projValue = transformed[projIndex];
 
@@ -591,7 +582,7 @@ void main() {
         }
 
         // TODO: Shouldn't projected be checked per texture stage?
-        uint totalComponents = (Projected() != 0 && projIndex < 4) ? 3 : 4;
+        uint totalComponents = (SpecAnyProjected() && projIndex < 4) ? 3 : 4;
         for (uint i = count; i < totalComponents; i++) {
             // Discard the components that exceed the specified D3DTTFF_COUNT
             transformed[i] = 0.0;

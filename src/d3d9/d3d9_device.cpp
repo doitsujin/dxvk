@@ -7564,8 +7564,11 @@ namespace dxvk {
         m_consts[DxsoProgramType::PixelShader].meta.boolConstantMask);
     }
     else {
+      const uint32_t psTextureMask = usedTextureMask & ((1u << 8u) - 1u);
+      const uint32_t projected     = m_textureSlotTracking.projected & psTextureMask;
+
       UpdatePixelBoolSpec(0);
-      UpdatePixelShaderSamplerSpec(0u, 0u, 0u);
+      UpdatePixelShaderSamplerSpec(m_textureSlotTracking.textureType, projected, 0u);
 
       UpdateFixedFunctionPS();
     }
@@ -8018,16 +8021,16 @@ namespace dxvk {
     D3D9FFShaderKeyVS key;
     {
       key.Data.Contents.HasPositionT = hasPositionT;
-      key.Data.Contents.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
-      key.Data.Contents.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
-      key.Data.Contents.HasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize) : false;
-      key.Data.Contents.HasFog       = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog)       : false;
+      key.Data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
+      key.Data.Contents.VertexHasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
+      key.Data.Contents.VertexHasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize) : false;
+      key.Data.Contents.VertexHasFog       = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog)       : false;
 
       bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.Data.Contents.HasPositionT;
       bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
       uint32_t mask    = (lighting && colorVertex)
-                       ? (key.Data.Contents.HasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
-                       | (key.Data.Contents.HasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
+                       ? (key.Data.Contents.VertexHasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
+                       | (key.Data.Contents.VertexHasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
                        : 0;
 
       key.Data.Contents.UseLighting      = lighting;
@@ -8063,7 +8066,6 @@ namespace dxvk {
         key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
         key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
         key.Data.Contents.TexcoordIndices |= index          << (i * 3);
-        key.Data.Contents.Projected       |= ((m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED) == D3DTTFF_PROJECTED) << i;
       }
 
       key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
@@ -8213,8 +8215,6 @@ namespace dxvk {
             break;
         }
 
-        stage.TextureBound = m_state.textures[idx] != nullptr ? 1 : 0;
-
         stage.ColorOp = data[DXVK_TSS_COLOROP];
         stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
 
@@ -8229,14 +8229,6 @@ namespace dxvk {
         const uint32_t samplerOffset = idx * 2;
         stage.Type         = (m_textureSlotTracking.textureType >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
-
-        uint32_t ttff  = data[DXVK_TSS_TEXTURETRANSFORMFLAGS];
-        uint32_t count = ttff & ~D3DTTFF_PROJECTED;
-
-        stage.Projected      = (ttff & D3DTTFF_PROJECTED) ? 1      : 0;
-        stage.ProjectedCount = (ttff & D3DTTFF_PROJECTED) ? count  : 0;
-
-        stage.SampleDref = (m_textureSlotTracking.depth & (1 << idx)) != 0;
       }
 
       auto& stage0 = key.Stages[0].Contents;
@@ -8948,8 +8940,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask, uint32_t drefMask) {
-    bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
-         dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
+    bool dirty  = m_specInfo.set<SpecSamplerIsDepth>(depthMask);
+         dirty |= m_specInfo.set<SpecSamplerIsNull>(nullMask);
          dirty |= m_specInfo.set<SpecDrefClamp>(drefMask);
 
     if (dirty)

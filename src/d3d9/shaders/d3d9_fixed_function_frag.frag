@@ -89,7 +89,7 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 
 
 // Functions to extract information from the packed texture stages
-// See D3D9FFShaderStage in d3d9_shader_types.h
+// See D3D9FFTextureStage in d3d9_shader_types.h
 // Please, dearest compiler, inline all of this.
 uint ColorOp(uint stageIndex) {
     return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 0, 5);
@@ -123,18 +123,6 @@ uint TextureType(uint stageIndex) {
 bool ResultIsTemp(uint stageIndex) {
     return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 20, 1) != 0;
 }
-bool Projected(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 21, 1) != 0;
-}
-uint ProjectedCount(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 22, 3);
-}
-bool SampleDref(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 25, 1) != 0;
-}
-bool TextureBound(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 26, 1) != 0;
-}
 bool GlobalSpecularEnable(uint stageIndex) {
     return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 27, 1) != 0;
 }
@@ -162,61 +150,48 @@ bool SpecIsOptimized() {
     return SpecConstDword12 != 0;
 }
 
-uint SpecSamplerType() {
+uint SpecSamplerType(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword0 : dynamicSpecConstDword[0];
-    return bitfieldExtract(dynamicSpecConstDword[0], 0, 32);
+    return bitfieldExtract(dynamicSpecConstDword[0], int(textureStage) * 2, 2);
 }
-uint SpecSamplerDepthMode() {
+bool SpecSamplerIsDepth(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 0, 21);
+    return bitfieldExtract(dword, 0 + int(textureStage), 1) != 0u;
 }
 uint SpecAlphaCompareOp() {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 21, 3);
 }
-uint SpecPointMode() {
+bool SpecProjected(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 24, 2);
+    return bitfieldExtract(dword, 24 + int(textureStage), 1) != 0u;
 }
-uint SpecVertexFogMode() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 26, 2);
-}
-uint SpecPixelFogMode() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 28, 2);
-}
-bool SpecFogEnabled() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
-    return bitfieldExtract(dword, 30, 1) != 0;
-}
-uint SpecSamplerNull() {
+
+bool SpecSamplerIsNull(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 0, 21);
-}
-uint SpecProjectionType() {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 21, 6);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0;
 }
 uint SpecAlphaPrecisionBits() {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 27, 4);
+    return bitfieldExtract(dword, 21, 4);
 }
-uint SpecVertexShaderBools() {
-    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
-    return bitfieldExtract(dword, 0, 16);
+bool SpecFogEnabled() {
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 25, 1) != 0;
 }
-uint SpecPixelShaderBools() {
-    uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
-    return bitfieldExtract(dword, 16, 16);
+uint SpecPixelFogMode() {
+    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+    return bitfieldExtract(dword, 28, 2);
 }
-uint SpecFetch4() {
+
+bool SpecFetch4(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
-    return bitfieldExtract(dword, 0, 16);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
-uint SpecDrefClamp() {
+
+bool SpecDrefClamp(uint textureStage) {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
-    return bitfieldExtract(dword, 0, 21);
+    return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
 uint SpecDrefScaling() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
@@ -225,6 +200,10 @@ uint SpecDrefScaling() {
 uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
+}
+uint SpecPointMode() {
+    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+    return bitfieldExtract(dword, 29, 2);
 }
 
 
@@ -287,7 +266,7 @@ vec4 adjustDref(vec4 texCoord, uint referenceComponentIndex, uint samplerIndex) 
         reference *= maxDref;
         texCoord[referenceComponentIndex] = reference;
     }
-    if ((SpecDrefClamp() & (1u << samplerIndex)) != 0u) {
+    if (SpecDrefClamp(samplerIndex)) {
         texCoord[referenceComponentIndex] = clamp(reference, 0.0, 1.0);
     }
     return texCoord;
@@ -318,58 +297,33 @@ uint LoadSamplerHeapIndex(uint samplerBindingIndex) {
 
 // TODO: Passing the index here makes non-uniform necessary, solve that
 vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
-    uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
-
-    bool shouldProject = Projected(stage);
-    float projValue = 1.0;
-    if (shouldProject) {
-        // Always use w, the vertex shader puts the correct value there.
-        projValue = texcoord.w;
-        if (textureType == D3DRTYPE_TEXTURE) {
-            // For 2D textures we divide by the z component, so move the w component up by one.
-            texcoord.z = projValue;
-        }
+    if (SpecProjected(stage)) {
+        texcoord /= texcoord.w;
     }
 
     if (stage != 0 && (
         ColorOp(stage - 1) == D3DTOP_BUMPENVMAP
         || ColorOp(stage - 1) == D3DTOP_BUMPENVMAPLUMINANCE)) {
-        if (shouldProject) {
-            float projRcp = 1.0 / projValue;
-            texcoord *= projRcp;
-        }
-
         texcoord = DoBumpmapCoords(stage, texcoord, previousStageTextureVal);
-
-        shouldProject = false;
     }
 
     vec4 texVal;
+    uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
     switch (textureType) {
         case D3DRTYPE_TEXTURE:
-            if (SampleDref(stage))
+            if (SpecSamplerIsDepth(stage))
                 texVal = texture(sampler2DShadow(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), adjustDref(texcoord, 2, stage).xyz).xxxx;
-            else if (shouldProject)
-                texVal = textureProj(sampler2D(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
             else
                 texVal = texture(sampler2D(t2d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xy);
             break;
         case D3DRTYPE_CUBETEXTURE:
-            if (SampleDref(stage))
+            if (SpecSamplerIsDepth(stage))
                 texVal = texture(samplerCubeShadow(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), adjustDref(texcoord, 3, stage)).xxxx;
-            else if (shouldProject) {
-                texVal = texture(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz / texcoord.w); // TODO: ?
-                //texVal = textureProj(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyzw);
-            } else
+            else
                 texVal = texture(samplerCube(tcube[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
             break;
         case D3DRTYPE_VOLUMETEXTURE:
-            if (SampleDref(stage))
-                texVal = vec4(0.0); // TODO: ?
-            else if (shouldProject)
-                texVal = textureProj(sampler3D(t3d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord);
-            else
-                texVal = texture(sampler3D(t3d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
+            texVal = texture(sampler3D(t3d[stage], sampler_heap[LoadSamplerHeapIndex(stage)]), texcoord.xyz);
             break;
     }
 
@@ -656,7 +610,7 @@ void main() {
                     case 7: texCoord = in_Texcoord7; break;
                 }
             }
-            textureVal = TextureBound(i) ? GetTexture(i, texCoord, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
+            textureVal = !SpecSamplerIsNull(i) ? GetTexture(i, texCoord, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
         }
 
         // Fast path if alpha/color path is identical.

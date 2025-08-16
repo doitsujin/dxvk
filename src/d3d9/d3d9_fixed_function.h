@@ -128,7 +128,7 @@ namespace dxvk {
       }
     }
 
-    D3D9FFShaderStage Stages[caps::TextureStageCount];
+    D3D9FFTextureStage Stages[caps::TextureStageCount];
   };
 
   struct D3D9FFShaderKeyHash {
