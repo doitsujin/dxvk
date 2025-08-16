@@ -226,10 +226,6 @@ uint SpecClipPlaneCount() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
 }
-uint SpecActiveTextureStageCount() {
-    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
-    return bitfieldExtract(dword, 29, 3);
-}
 
 
 vec4 DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
@@ -614,10 +610,8 @@ void main() {
     uint pointMode = SpecPointMode();
     bool isSprite = bitfieldExtract(pointMode, 1, 1) == 1u;
 
-    uint activeTextureStageCount = SpecActiveTextureStageCount() + 1;
-
     [[unroll]]
-    for (uint i = 0; i < activeTextureStageCount; i++) {
+    for (uint i = 0; i < TextureStageCount; i++) {
         vec4 dst = ResultIsTemp(i) ? temp : current;
 
         uint colorOp = ColorOp(i);
