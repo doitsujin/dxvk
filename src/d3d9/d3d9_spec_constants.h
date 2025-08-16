@@ -15,14 +15,13 @@ namespace dxvk {
 
     SpecSamplerDepthMode,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecAlphaCompareOp,     // Range: 0 -> 7                  | Bits: 3
-    SpecPointMode,          // Range: 0 -> 3                  | Bits: 2
-    SpecVertexFogMode,      // Range: 0 -> 3                  | Bits: 2
-    SpecPixelFogMode,       // Range: 0 -> 3                  | Bits: 2
-    SpecFogEnabled,         // Range: 0 -> 1                  | Bits: 1
+    SpecProjected,          // 1 bit for 6 PS 1.x samplers    | Bits: 6
 
     SpecSamplerNull,        // 1 bit for 21 samplers          | Bits: 21
-    SpecProjectionType,     // 1 bit for 6 PS 1.x samplers    | Bits: 6
     SpecAlphaPrecisionBits, // Range: 0 -> 8 or 0xF           | Bits: 4
+    SpecFogEnabled,         // Range: 0 -> 1                  | Bits: 1
+    SpecVertexFogMode,      // Range: 0 -> 3                  | Bits: 2
+    SpecPixelFogMode,       // Range: 0 -> 3                  | Bits: 2
 
     SpecVertexShaderBools,  // 16 bools                       | Bits: 16
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
@@ -31,6 +30,7 @@ namespace dxvk {
 
     SpecDrefClamp,          // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
+    SpecPointMode,          // Range: 0 -> 3                  | Bits: 2
 
     SpecConstantCount,
   };
@@ -46,6 +46,7 @@ namespace dxvk {
   };
 
   struct D3D9SpecializationInfo {
+    // Spec const word 0 determines whether the other spec constants are used rather than the spec const UBO
     static constexpr uint32_t MaxSpecDwords = 6;
 
     static constexpr uint32_t MaxUBODwords  = 5;
@@ -56,14 +57,13 @@ namespace dxvk {
 
       { 1, 0,  21 }, // SamplerDepthMode
       { 1, 21, 3 },  // AlphaCompareOp
-      { 1, 24, 2 },  // PointMode
-      { 1, 26, 2 },  // VertexFogMode
-      { 1, 28, 2 },  // PixelFogMode
-      { 1, 30, 1 },  // FogEnabled
+      { 1, 24, 6 },  // Projected
 
       { 2, 0,  21 }, // SamplerNull
-      { 2, 21, 6 },  // ProjectionType
-      { 2, 27, 4 },  // AlphaPrecisionBits
+      { 2, 21, 4 },  // AlphaPrecisionBits
+      { 2, 25, 1 },  // FogEnabled
+      { 2, 26, 2 },  // VertexFogMode
+      { 2, 28, 2 },  // PixelFogMode
 
       { 3, 0,  16 }, // VertexShaderBools
       { 3, 16, 16 }, // PixelShaderBools
@@ -72,6 +72,7 @@ namespace dxvk {
 
       { 5, 0, 21 },  // DrefClamp
       { 5, 21, 3 },  // ClipPlaneCount
+      { 5, 24, 2 },  // PointMode
     }};
 
     template <D3D9SpecConstantId Id, typename T>

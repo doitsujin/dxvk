@@ -8941,7 +8941,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t projections, uint32_t fetch4) {
     bool dirty  = m_specInfo.set<SpecSamplerType>(types);
-         dirty |= m_specInfo.set<SpecProjectionType>(projections);
+         dirty |= m_specInfo.set<SpecProjected>(projections);
          dirty |= m_specInfo.set<SpecFetch4>(fetch4);
 
     if (dirty)
