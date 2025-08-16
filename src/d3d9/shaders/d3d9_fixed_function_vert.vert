@@ -174,10 +174,10 @@ bool VertexBlendIndexed() {
     return bitfieldExtract(data.Key.Primitive[3], 27, 1) != 0;
 }
 uint VertexBlendCount() {
-    return bitfieldExtract(data.Key.Primitive[3], 28, 3);
+    return bitfieldExtract(data.Key.Primitive[3], 28, 2);
 }
 bool VertexClipping() {
-    return bitfieldExtract(data.Key.Primitive[3], 31, 1) != 0;
+    return bitfieldExtract(data.Key.Primitive[3], 30, 1) != 0;
 }
 
 uint Projected() {
@@ -239,13 +239,13 @@ uint SpecSamplerNull() {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
     return bitfieldExtract(dword, 0, 21);
 }
-uint SpecProjectionType() {
+uint SpecProjected() {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 21, 6);
+    return bitfieldExtract(dword, 21, 8);
 }
 uint SpecAlphaPrecisionBits() {
     uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
-    return bitfieldExtract(dword, 27, 4);
+    return bitfieldExtract(dword, 29, 4);
 }
 uint SpecVertexShaderBools() {
     uint dword = SpecIsOptimized() ? SpecConstDword3 : dynamicSpecConstDword[3];
