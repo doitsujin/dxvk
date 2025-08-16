@@ -2740,7 +2740,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, coord.id, projScalar);
 
       if (switchProjRes) {
-        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
+        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjected, samplerIdx, 1);
         shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
