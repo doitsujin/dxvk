@@ -8661,6 +8661,11 @@ namespace dxvk {
       SetStreamSource(i, nullptr, 0, 0);
     }
 
+    // In D3D8, this represents the value of D3DRS_PATCHSEGMENTS.
+    // It defaults to 1.0f and is reset as any other render state.
+    if (IsD3D8Compatible())
+      m_state.nPatchSegments = 1.0f;
+
     m_alphaTestEnabled = false;
     m_atocEnabled      = false;
     m_nvdbEnabled      = false;

@@ -56,12 +56,6 @@ namespace dxvk {
 
     if (m_d3d8Options.batching)
       m_batcher = new D3D8Batcher(this, GetD3D9());
-
-    d3d9::D3DCAPS9 caps9;
-    HRESULT res = GetD3D9()->GetDeviceCaps(&caps9);
-
-    if (unlikely(SUCCEEDED(res) && caps9.PixelShaderVersion == D3DPS_VERSION(0, 0)))
-      m_isFixedFunctionOnly = true;
   }
 
   D3D8Device::~D3D8Device() {
@@ -162,6 +156,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     *ppD3D8 = m_parent.ref();
+
     return D3D_OK;
   }
 
@@ -295,6 +290,7 @@ namespace dxvk {
     }
 
     *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
+
     return D3D_OK;
   }
 
@@ -1735,6 +1731,7 @@ namespace dxvk {
 
         if (!std::exchange(s_linePatternErrorShown, true))
           Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
+
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
@@ -1770,8 +1767,8 @@ namespace dxvk {
 
         if (!std::exchange(s_patchSegmentsErrorShown, true))
           Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
-        m_patchSegments = bit::cast<float>(Value);
-        return D3D_OK;
+
+        return GetD3D9()->SetNPatchMode(bit::cast<float>(Value));
     }
 
     // Skip GetRenderState() calls for state
@@ -1827,7 +1824,8 @@ namespace dxvk {
         return D3D_OK;
 
       case D3DRS_PATCHSEGMENTS:
-        *pValue = bit::cast<DWORD>(m_patchSegments);
+        const float patchSegments = GetD3D9()->GetNPatchMode();
+        *pValue = bit::cast<DWORD>(patchSegments);
         return D3D_OK;
     }
 
