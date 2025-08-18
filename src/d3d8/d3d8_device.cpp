@@ -439,7 +439,7 @@ namespace dxvk {
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (ShouldBatch()) {
+    if (unlikely(ShouldBatch())) {
       *ppVertexBuffer = m_batcher->CreateVertexBuffer(Length, Usage, FVF, Pool);
       return D3D_OK;
     }
@@ -1248,7 +1248,7 @@ namespace dxvk {
       m_token++;
       auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
                                                       std::forward_as_tuple(m_token),
-                                                      std::forward_as_tuple(this, Type, pStateBlock9.ref()));
+                                                      std::forward_as_tuple(this, Type, pStateBlock9.ptr()));
       *pToken = m_token;
 
       // D3D8 state blocks automatically capture state on creation.
@@ -1491,7 +1491,7 @@ namespace dxvk {
           UINT             PrimitiveCount) {
     D3D8DeviceLock lock = LockDevice();
 
-    if (ShouldBatch())
+    if (unlikely(ShouldBatch()))
       return m_batcher->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
     return GetD3D9()->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
   }
@@ -1603,7 +1603,7 @@ namespace dxvk {
     HRESULT res = GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
 
     if (likely(SUCCEEDED(res))) {
-      if (ShouldBatch())
+      if (unlikely(ShouldBatch()))
         m_batcher->SetStream(StreamNumber, buffer, Stride);
 
       m_streams[StreamNumber].buffer = buffer;
@@ -1649,17 +1649,16 @@ namespace dxvk {
     if (unlikely(BaseVertexIndex > std::numeric_limits<int32_t>::max()))
       Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
-    // used by DrawIndexedPrimitive
-    m_baseVertexIndex = BaseVertexIndex;
-
     D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
     HRESULT res = GetD3D9()->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(buffer));
 
     if (likely(SUCCEEDED(res))) {
-      if (ShouldBatch())
-        m_batcher->SetIndices(buffer, m_baseVertexIndex);
+      if (unlikely(ShouldBatch()))
+        m_batcher->SetIndices(buffer, BaseVertexIndex);
 
       m_indices = buffer;
+      // used by DrawIndexedPrimitive
+      m_baseVertexIndex = BaseVertexIndex;
     }
 
     return res;
