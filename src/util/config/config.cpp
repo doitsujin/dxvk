@@ -1315,6 +1315,12 @@ namespace dxvk {
       { "d3d9.customDeviceId",              "0250" },
       { "d3d9.customDeviceDesc", "NVIDIA GeForce4 Ti 4600" },
     }} },
+    /* Top Spin (2005)                            *
+     * Missing geometry and textures without      *
+     * legacy DISCARD behavior                    */
+    { R"(\\TopSpin\.exe$)", {{
+      { "d3d8.forceLegacyDiscard",          "True" },
+    }} },
   };
 
 
