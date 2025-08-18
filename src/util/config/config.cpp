@@ -1289,6 +1289,12 @@ namespace dxvk {
     { R"(\\Aqua\.exe$)", {{
       { "d3d9.modeCountCompatibility",      "True" },
     }} },
+    /* Top Spin (2005)                            *
+     * Missing geometry and textures without      *
+     * legacy DISCARD behavior                    */
+    { R"(\\TopSpin\.exe$)", {{
+      { "d3d8.forceLegacyDiscard",          "True" },
+    }} },
   };
 
 
