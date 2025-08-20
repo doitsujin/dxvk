@@ -5379,6 +5379,9 @@ namespace dxvk {
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(!m_d3d9Options.allowDiscard))
+      Flags &= ~D3DLOCK_DISCARD;
+
     auto& desc = *pResource->Desc();
 
     // Ignore DISCARD if NOOVERWRITE is set
