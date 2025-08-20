@@ -616,7 +616,7 @@ void main() {
         // Fast path if alpha/color path is identical.
         // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
         bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
-        if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
+        if (fastPath || colorOp == D3DTOP_DOTPRODUCT3 || alphaOp == D3DTOP_DISABLE) {
             vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
             dst = DoOp(colorOp, dst, colorArgVals, current, textureVal);
         } else {
@@ -626,17 +626,11 @@ void main() {
             vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
             colorResult = DoOp(colorOp, dst, colorArgVals, current, textureVal);
 
-            if (alphaOp != D3DTOP_DISABLE) {
-                vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
-                alphaResult = DoOp(alphaOp, dst, alphaArgVals, current, textureVal);
-            }
+            vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
+            alphaResult = DoOp(alphaOp, dst, alphaArgVals, current, textureVal);
 
             // src0.x, src0.y, src0.z src1.w
-            dst = vec4(colorResult.rgb, dst.a);
-
-            // src0.x, src0.y, src0.z src1.w
-            // But we flip src0, src1 to be inverse of color.
-            dst = vec4(dst.rgb, alphaResult.a);
+            dst = vec4(colorResult.rgb, alphaResult.a);
         }
 
         if (ResultIsTemp(i)) {
@@ -657,5 +651,6 @@ void main() {
     current = DoFixedFunctionFog(gl_FragCoord, current);
 
     out_Color0 = current;
+
     alphaTestPS();
 }
