@@ -1,5 +1,7 @@
 #pragma once
 
+#include <algorithm>
+
 #if (defined(__x86_64__) && !defined(__arm64ec__)) || (defined(_M_X64) && !defined(_M_ARM64EC)) \
     || defined(__i386__) || defined(_M_IX86) || defined(__e2k__)
   #define DXVK_ARCH_X86
@@ -715,5 +717,99 @@ namespace dxvk::bit {
       return uint64_t(lo) | (uint64_t(c) << 32);
     }
   };
+
+
+  template<typename T>
+  class bit_vector {
+  public:
+    bit_vector() = default;
+
+    bit_vector(const bit_vector& other) noexcept {
+      wordPos = other.wordPos;
+      bitPos = other.bitPos;
+      data = other.data;
+    }
+
+    bit_vector(bit_vector&& other) noexcept {
+      wordPos = other.wordPos;
+      bitPos = other.bitPos;
+      data = std::move(other.data);
+      other.wordPos = 0;
+      other.bitPos = 0;
+    }
+
+    bit_vector& operator=(const bit_vector& other) noexcept {
+      wordPos = other.wordPos;
+      bitPos = other.bitPos;
+      data = other.data;
+      return *this;
+    }
+
+    bit_vector& operator=(bit_vector&& other) noexcept {
+      wordPos = other.wordPos;
+      bitPos = other.bitPos;
+      data = std::move(other.data);
+      other.wordPos = 0;
+      other.bitPos = 0;
+      return *this;
+    }
+
+    void reserve(const uint32_t size) noexcept{
+      data.reserve((size + bitWordSize() - 1) / bitWordSize());
+    }
+
+    void push_back(const T value, const uint32_t bitCount) noexcept {
+      reserve((bitCount - (bitWordSize() - bitPos)) / bitWordSize());
+
+      uint32_t writtenBits = 0;
+      while (writtenBits < bitCount) {
+        uint32_t space = bitWordSize() - bitPos;
+        uint32_t remaining = bitCount - writtenBits;
+        uint32_t dwordBits = std::min(space, remaining);
+        uint32_t mask = (1u << dwordBits) - 1;
+        data[bitPos] |= (value & mask) << bitPos;
+        value >>= dwordBits;
+        writtenBits += dwordBits;
+      }
+    }
+
+    T get(const uint32_t bitPos, const uint32_t bitCount) noexcept {
+      T result = 0;
+      uint32_t readBits = 0;
+      while (readBits < bitCount) {
+        uint32_t wordPos = (bitPos + readBits) / bitWordSize();
+        if (wordPos >= data.size()) {
+          break;
+        }
+        uint32_t bitWordPos = (bitPos + readBits) % bitWordSize();
+        uint32_t readFromWord = std::min(bitWordSize() - bitWordPos, bitCount - readBits);
+        result |= ((data[wordPos] >> bitWordPos) & ((1u << readFromWord) - 1u)) << (readBits + readFromWord);
+        readBits += readFromWord;
+      }
+      return result;
+    }
+
+    uint32_t bitCapacity() const noexcept {
+      return data.size() * wordSize();
+    }
+
+    uint32_t bitSize() const noexcept {
+      return wordPos * bitWordSize() + bitPos;
+    }
+
+    uint32_t wordSize() const noexcept {
+      return wordPos;
+    }
+
+  private:
+    static constexpr uint32_t bitWordSize() {
+      return sizeof(T) * 8;
+    }
+
+    uint32_t wordPos = 0;
+    uint32_t bitPos = 0;
+    std::vector<T> data;
+  };
+
 
 }

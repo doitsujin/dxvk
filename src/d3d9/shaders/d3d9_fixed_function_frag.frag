@@ -12,6 +12,7 @@
 #include "../d3d9_shader_types.h"
 
 const uint TextureStageCount = 8;
+const uint SpecConstOptimizedTextureStageCount = 4;
 const uint TextureArgCount = 3;
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
@@ -204,6 +205,75 @@ uint SpecClipPlaneCount() {
 uint SpecPointMode() {
     uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 29, 2);
+}
+
+uint SpecDword(uint index) {
+    switch (index) {
+        case 0:
+            return SpecConstDword0;
+        case 1:
+            return SpecConstDword1;
+        case 2:
+            return SpecConstDword2;
+        case 3:
+            return SpecConstDword3;
+        case 4:
+            return SpecConstDword4;
+        case 5:
+            return SpecConstDword5;
+        case 6:
+            return SpecConstDword6;
+        case 7:
+            return SpecConstDword7;
+        case 8:
+            return SpecConstDword8;
+        case 9:
+            return SpecConstDword9;
+        case 10:
+            return SpecConstDword10;
+        case 11:
+            return SpecConstDword11;
+        case 12:
+            return SpecConstDword12;
+        default:
+            return 0;
+    }
+}
+
+uint SpecActiveTextureStages() {
+    uint dword = SpecIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
+    return bitfieldExtract(dword, 16, 3) + 1u;
+}
+
+uint SpecTextureStageColorOp(uint textureStage) {
+    uint dword = SpecIsOptimized() ? SpecDword(6 + textureStage) : dynamicSpecConstDword[6 + textureStage];
+    return bitfieldExtract(dword, 0, 5);
+}
+
+uint SpecTextureStageColorArg(uint textureStage, uint arg) {
+    uint dword = SpecIsOptimized() ? SpecDword(6 + textureStage) : dynamicSpecConstDword[6 + textureStage];
+    uint value = bitfieldExtract(dword, 5 + 5 * int(arg - 1u), 5);
+    // Move the flags by 1 bit. 0x18 = 0b11000
+    value = (value & ~0x18) | ((value & 0x18) << 1u);
+    return value;
+}
+
+uint SpecTextureStageAlphaOp(uint textureStage) {
+    uint dword = SpecIsOptimized() ? SpecDword(6 + textureStage) : dynamicSpecConstDword[6 + textureStage];
+    return bitfieldExtract(dword, 15, 5);
+}
+
+uint SpecTextureStageAlphaArg(uint textureStage, uint arg) {
+    uint dword = SpecIsOptimized() ? SpecDword(6 + textureStage) : dynamicSpecConstDword[6 + textureStage];
+    uint value = bitfieldExtract(dword, 20 + 5 * int(arg - 1u), 5);
+    // Move the flags by 1 bit. 0x18 = 0b11000
+    value = (value & ~0x18) | ((value & 0x18) << 1u);
+    return value;
+}
+
+bool SpecTextureStageResultIsTemp(uint textureStage) {
+    uint dword = SpecIsOptimized() ? SpecDword(6 + textureStage) : dynamicSpecConstDword[6 + textureStage];
+    return bitfieldExtract(dword, 30, 1) != 0;
 }
 
 
@@ -565,25 +635,34 @@ void main() {
     bool isSprite = bitfieldExtract(pointMode, 1, 1) == 1u;
 
     [[unroll]]
-    for (uint i = 0; i < TextureStageCount; i++) {
-        vec4 dst = ResultIsTemp(i) ? temp : current;
+    for (uint i = 0; i < SpecActiveTextureStages(); i++) {
+        bool isStageOptimized = SpecIsOptimized() && i < SpecConstOptimizedTextureStageCount;
+        bool resultIsTemp = isStageOptimized ? SpecTextureStageResultIsTemp(i) : ResultIsTemp(i);
+        vec4 dst = resultIsTemp ? temp : current;
 
-        uint colorOp = ColorOp(i);
+        uint colorOp = isStageOptimized ? SpecTextureStageColorOp(i) : ColorOp(i);
 
         // This cancels all subsequent stages.
         if (colorOp == D3DTOP_DISABLE)
             break;
 
+        uint alphaOp = isStageOptimized ? SpecTextureStageAlphaOp(i) : AlphaOp(i);
+
+        bool usesArg0 = !isStageOptimized
+            || colorOp == D3DTOP_LERP
+            || colorOp == D3DTOP_MULTIPLYADD
+            || alphaOp == D3DTOP_LERP
+            || alphaOp == D3DTOP_MULTIPLYADD;
+
         uint colorArgs[TextureArgCount] = {
-            ColorArg0(i),
-            ColorArg1(i),
-            ColorArg2(i)
+            usesArg0 ? ColorArg0(i) : D3DTA_CONSTANT,
+            isStageOptimized ? SpecTextureStageColorArg(i, 1u) : ColorArg1(i),
+            isStageOptimized ? SpecTextureStageColorArg(i, 2u) : ColorArg2(i)
         };
-        uint alphaOp = AlphaOp(i);
         uint alphaArgs[TextureArgCount] = {
-            AlphaArg0(i),
-            AlphaArg1(i),
-            AlphaArg2(i)
+            usesArg0 ? AlphaArg0(i) : D3DTA_CONSTANT,
+            isStageOptimized ? SpecTextureStageAlphaArg(i, 1u) : AlphaArg1(i),
+            isStageOptimized ? SpecTextureStageAlphaArg(i, 2u) : AlphaArg2(i)
         };
 
         vec4 textureVal = vec4(0.0);
@@ -633,7 +712,7 @@ void main() {
             dst = vec4(colorResult.rgb, alphaResult.a);
         }
 
-        if (ResultIsTemp(i)) {
+        if (resultIsTemp) {
             temp = dst;
         } else {
             current = dst;
