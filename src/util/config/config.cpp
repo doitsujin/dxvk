@@ -1088,6 +1088,12 @@ namespace dxvk {
     { R"(\\PsiOps\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* Alone in the Dark (2008)                   *
+     * Crashes when selecting the graphics menu   *
+     * option without memory tracking in place    */
+    { R"(\\Alone\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
