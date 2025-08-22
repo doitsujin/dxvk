@@ -352,25 +352,32 @@ namespace dxvk {
     if (unlikely(cursorTex->Desc()->Format != D3D9Format::A8R8G8B8))
       return D3DERR_INVALIDCALL;
 
-    uint32_t inputWidth  = cursorTex->Desc()->Width;
-    uint32_t inputHeight = cursorTex->Desc()->Height;
+    const uint32_t inputWidth  = cursorTex->Desc()->Width;
+    const uint32_t inputHeight = cursorTex->Desc()->Height;
 
     // Check if surface dimensions are powers of two.
-    if ((inputWidth  && (inputWidth  & (inputWidth  - 1)))
-     || (inputHeight && (inputHeight & (inputHeight - 1))))
+    if (unlikely((inputWidth  && (inputWidth  & (inputWidth  - 1)))
+              || (inputHeight && (inputHeight & (inputHeight - 1)))))
       return D3DERR_INVALIDCALL;
 
     // It makes no sense to have a hotspot outside of the bitmap.
-    if ((inputWidth  && (XHotSpot > inputWidth  - 1))
-     || (inputHeight && (YHotSpot > inputHeight - 1)))
+    if (unlikely((inputWidth  && (XHotSpot > inputWidth  - 1))
+              || (inputHeight && (YHotSpot > inputHeight - 1))))
+      return D3DERR_INVALIDCALL;
+
+    // For some reason the cursor bitmap size validation is done
+    // against the display mode dimensions (which makes for an
+    // interesting situation on windowed swapchains...)
+    D3DDISPLAYMODEEX mode = { };
+    mode.Size = sizeof(D3DDISPLAYMODEEX);
+    m_adapter->GetAdapterDisplayModeEx(&mode, nullptr);
+
+    if (unlikely(inputWidth  > mode.Width
+              || inputHeight > mode.Height))
       return D3DERR_INVALIDCALL;
 
     D3DPRESENT_PARAMETERS params;
     m_implicitSwapchain->GetPresentParameters(&params);
-
-    if (inputWidth  > params.BackBufferWidth
-     || inputHeight > params.BackBufferHeight)
-      return D3DERR_INVALIDCALL;
 
     // Always use a hardware cursor when windowed.
     bool hwCursor  = params.Windowed;
@@ -381,7 +388,7 @@ namespace dxvk {
 
     D3DLOCKED_BOX lockedBox;
     HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
-    if (FAILED(hr))
+    if (unlikely(FAILED(hr)))
       return hr;
 
     const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
@@ -390,7 +397,7 @@ namespace dxvk {
       // Windows works with a stride of 128, lets respect that.
       // Copy data to the bitmap...
       CursorBitmap bitmap = { 0 };
-      size_t copyPitch = std::min<size_t>(
+      const size_t copyPitch = std::min<size_t>(
         HardwareCursorPitch,
         inputWidth * inputHeight * HardwareCursorFormatSize);
 
@@ -402,7 +409,7 @@ namespace dxvk {
       // Set this as our cursor.
       return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
     } else {
-      size_t copyPitch = inputWidth * HardwareCursorFormatSize;
+      const size_t copyPitch = inputWidth * HardwareCursorFormatSize;
       std::vector<uint8_t> bitmap(inputHeight * copyPitch, 0);
 
       for (uint32_t h = 0; h < inputHeight; h++)
