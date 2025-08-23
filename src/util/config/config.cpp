@@ -471,6 +471,10 @@ namespace dxvk {
     { R"(\\GuiltyGear\.exe$)", {{
       { "dxgi.maxFrameRate",                  "60" },
     }} },
+    /* Everybody's Gone to the Rapture - CPU perf   */
+    { R"(\\Rapture_Release\.exe$)", {{
+      { "d3d11.cachedDynamicResources",        "a" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
