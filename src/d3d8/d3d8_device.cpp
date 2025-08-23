@@ -224,29 +224,18 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D8DeviceLock lock = LockDevice();
 
+    HRESULT res = m_parent->ValidatePresentationParameters(pPresentationParameters);
+
+    if (unlikely(FAILED(res)))
+      return res;
+
     StateChange();
-
-    if (unlikely(pPresentationParameters == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
-    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
-    // RC Cars depends on it not being rejected.
-    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
-              && pPresentationParameters->BackBufferCount > 1))
-      return D3DERR_INVALIDCALL;
-
-    // In D3D8 nothing except D3DPRESENT_INTERVAL_DEFAULT can be used
-    // as a flag for windowed presentation.
-    if (unlikely(pPresentationParameters->Windowed
-              && pPresentationParameters->FullScreen_PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT))
-      return D3DERR_INVALIDCALL;
 
     m_presentParams = *pPresentationParameters;
     ResetState();
 
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
-    HRESULT res = GetD3D9()->Reset(&params);
+    res = GetD3D9()->Reset(&params);
 
     if (likely(SUCCEEDED(res)))
       RecreateBackBuffersAndAutoDepthStencil();
