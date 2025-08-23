@@ -167,6 +167,9 @@ namespace dxvk {
 
     /// Add an extra front buffer to make GetFrontBufferData() work correctly when the swapchain only has a single buffer
     bool extraFrontbuffer;
+
+    /// Replaces the hardware cursor with a software cursor
+    bool forceSoftwareCursor;
   };
 
 }

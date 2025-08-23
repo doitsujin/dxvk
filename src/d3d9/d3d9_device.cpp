@@ -379,6 +379,9 @@ namespace dxvk {
     hwCursor |= inputWidth  <= HardwareCursorWidth
              || inputHeight <= HardwareCursorHeight;
 
+    if (unlikely(!params.Windowed && m_d3d9Options.forceSoftwareCursor))
+      hwCursor = false;
+
     D3DLOCKED_BOX lockedBox;
     HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
     if (FAILED(hr))
@@ -412,7 +415,7 @@ namespace dxvk {
 
       m_implicitSwapchain->SetCursorTexture(inputWidth, inputHeight, &bitmap[0]);
 
-      return m_cursor.SetSoftwareCursor(inputWidth, inputHeight, XHotSpot, YHotSpot);
+      return m_cursor.SetSoftwareCursor(m_d3d9Options.forceSoftwareCursor, inputWidth, inputHeight, XHotSpot, YHotSpot);
     }
 
     return D3D_OK;
@@ -4176,6 +4179,11 @@ namespace dxvk {
           DWORD dwFlags) {
 
     if (m_cursor.IsSoftwareCursor()) {
+      // Ensure the actual hardware cursor stays hidden
+      // when we're forcing a software cursor
+      if (unlikely(m_d3d9Options.forceSoftwareCursor))
+        m_cursor.HideHardwareCursor();
+
       D3D9_SOFTWARE_CURSOR* pSoftwareCursor = m_cursor.GetSoftwareCursor();
 
       UINT cursorWidth  = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Width : 0;
