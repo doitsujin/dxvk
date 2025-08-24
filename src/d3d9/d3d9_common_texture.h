@@ -360,7 +360,7 @@ namespace dxvk {
     Rc<DxvkImageView> CreateView(
             UINT                   Layer,
             UINT                   Lod,
-            VkImageUsageFlagBits   UsageFlags,
+            VkImageUsageFlags      UsageFlags,
             VkImageLayout          Layout,
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
