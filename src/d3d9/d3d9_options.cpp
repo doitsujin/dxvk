@@ -63,6 +63,7 @@ namespace dxvk {
     this->forceAspectRatio              = config.getOption<std::string> ("d3d9.forceAspectRatio",              "");
     this->forceRefreshRate              = config.getOption<int32_t>     ("d3d9.forceRefreshRate",              0u);
     this->modeCountCompatibility        = config.getOption<bool>        ("d3d9.modeCountCompatibility",        false);
+    this->allowDiscard                  = config.getOption<bool>        ("d3d9.allowDiscard",                  true);
     this->enumerateByDisplays           = config.getOption<bool>        ("d3d9.enumerateByDisplays",           true);
     this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);

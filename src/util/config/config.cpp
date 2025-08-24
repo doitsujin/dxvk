@@ -1094,6 +1094,11 @@ namespace dxvk {
     { R"(\\Alone\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* Scarface - Rendering issues when the       *
+    /* D3DLOCK_DISCARD flag is respected          */
+    { R"(\\Scarface\.exe$)", {{
+      { "d3d9.allowDiscard",               "False" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
