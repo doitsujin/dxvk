@@ -365,17 +365,20 @@ namespace dxvk {
     if (unlikely(DeviceType == D3DDEVTYPE_SW))
       return D3DERR_INVALIDCALL;
 
-    // D3DDEVTYPE_REF devices can be created with D3D8, but not
-    // with D3D9, unless the Windows SDK 8.0 or later is installed.
-    // Report it unavailable, as it would be on most end-user systems.
-    if (unlikely(DeviceType == D3DDEVTYPE_REF && !m_isD3D8Compatible))
-      return D3DERR_NOTAVAILABLE;
-
     // Creating a device with D3DCREATE_PUREDEVICE only works in conjunction
     // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers.
     if (unlikely(BehaviorFlags & D3DCREATE_PUREDEVICE &&
                !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING)))
       return D3DERR_INVALIDCALL;
+
+    // Neither D3DDEVTYPE_REF nor D3DDEVTYPE_NULLREF support HWVP, although they
+    // will accept these flags as any regular D3DDEVTYPE_HAL device would.
+    if (unlikely(DeviceType == D3DDEVTYPE_REF || DeviceType == D3DDEVTYPE_NULLREF)) {
+      BehaviorFlags &= ~D3DCREATE_MIXED_VERTEXPROCESSING
+                     & ~D3DCREATE_PUREDEVICE
+                     & ~D3DCREATE_HARDWARE_VERTEXPROCESSING;
+      BehaviorFlags |= D3DCREATE_SOFTWARE_VERTEXPROCESSING;
+    }
 
     HRESULT hr;
     // Black Desert creates a D3DDEVTYPE_NULLREF device and

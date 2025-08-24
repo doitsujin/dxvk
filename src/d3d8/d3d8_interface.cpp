@@ -117,26 +117,17 @@ namespace dxvk {
         IDirect3DDevice8** ppReturnedDeviceInterface) {
     InitReturnPtr(ppReturnedDeviceInterface);
 
-    if (unlikely(pPresentationParameters == nullptr ||
-                 ppReturnedDeviceInterface == nullptr))
+    if (unlikely(ppReturnedDeviceInterface == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
-    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
-    // RC Cars depends on it not being rejected.
-    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
-              && pPresentationParameters->BackBufferCount > 1))
-      return D3DERR_INVALIDCALL;
+    HRESULT res = ValidatePresentationParameters(pPresentationParameters);
 
-    // In D3D8 nothing except D3DPRESENT_INTERVAL_DEFAULT can be used
-    // as a flag for windowed presentation.
-    if (unlikely(pPresentationParameters->Windowed
-              && pPresentationParameters->FullScreen_PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT))
-      return D3DERR_INVALIDCALL;
+    if (unlikely(FAILED(res)))
+      return res;
 
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
-    HRESULT res = m_d3d9->CreateDevice(
+    res = m_d3d9->CreateDevice(
       Adapter,
       (d3d9::D3DDEVTYPE)DeviceType,
       hFocusWindow,
@@ -153,6 +144,27 @@ namespace dxvk {
       ));
 
     return res;
+  }
+
+  HRESULT D3D8Interface::ValidatePresentationParameters(
+        const D3DPRESENT_PARAMETERS* pPresentationParameters) {
+    if (unlikely(pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
+    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
+    // RC Cars depends on it not being rejected.
+    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
+              && pPresentationParameters->BackBufferCount > 1))
+      return D3DERR_INVALIDCALL;
+
+    // In D3D8 nothing except D3DPRESENT_INTERVAL_DEFAULT can be used
+    // as a flag for windowed presentation.
+    if (unlikely(pPresentationParameters->Windowed
+              && pPresentationParameters->FullScreen_PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
+    return D3D_OK;
   }
 
 }

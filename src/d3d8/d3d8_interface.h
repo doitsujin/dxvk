@@ -170,6 +170,8 @@ namespace dxvk {
         D3DPRESENT_PARAMETERS* pPresentationParameters,
         IDirect3DDevice8** ppReturnedDeviceInterface);
 
+    HRESULT ValidatePresentationParameters(
+        const D3DPRESENT_PARAMETERS* pPresentationParameters);
 
     const D3D8Options& GetOptions() { return m_d3d8Options; }
 
