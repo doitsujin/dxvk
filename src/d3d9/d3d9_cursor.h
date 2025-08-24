@@ -45,13 +45,20 @@ namespace dxvk {
 
     void ResetSoftwareCursor();
 
+    void HideHardwareCursor();
+
     void UpdateCursor(int X, int Y);
 
     BOOL ShowCursor(BOOL bShow);
 
     HRESULT SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap);
 
-    HRESULT SetSoftwareCursor(UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot);
+    HRESULT SetSoftwareCursor(
+        bool ForceSoftwareCursor,
+        UINT Width,
+        UINT Height,
+        UINT XHotSpot,
+        UINT YHotSpot);
 
     D3D9_SOFTWARE_CURSOR* GetSoftwareCursor() {
       return &m_sCursor;
@@ -67,11 +74,12 @@ namespace dxvk {
 
   private:
 
-    BOOL                  m_visible   = FALSE;
+    bool                  m_forceSoftwareCursor = false;
+    BOOL                  m_visible             = FALSE;
     D3D9_SOFTWARE_CURSOR  m_sCursor;
 
 #ifdef _WIN32
-    HCURSOR               m_hCursor   = nullptr;
+    HCURSOR               m_hCursor             = nullptr;
 #endif
 
   };

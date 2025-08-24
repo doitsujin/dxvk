@@ -28,6 +28,11 @@ namespace dxvk {
   }
 
 
+  void D3D9Cursor::HideHardwareCursor() {
+    ::SetCursor(nullptr);
+  }
+
+
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     // SetCursorPosition is used to directly update the position of software cursors,
     // but keep track of the cursor position even when using hardware cursors, in order
@@ -53,8 +58,14 @@ namespace dxvk {
 
     if (m_hCursor != nullptr)
       ::SetCursor(bShow ? m_hCursor : nullptr);
-    else if (likely(!m_sCursor.ResetCursor))
-      m_sCursor.DrawCursor = bShow;
+    else if (likely(!m_sCursor.ResetCursor)) {
+      if (likely(!m_forceSoftwareCursor))
+        m_sCursor.DrawCursor = bShow;
+      // We are forcing a software cursor, and the visibility calls are
+      // intended for a hardware cursor, so we need a flipped boolean logic.
+      else
+        m_sCursor.DrawCursor = !bShow;
+    }
     
     return std::exchange(m_visible, bShow);
   }
@@ -88,13 +99,19 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9Cursor::SetSoftwareCursor(UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot) {
+  HRESULT D3D9Cursor::SetSoftwareCursor(
+      bool ForceSoftwareCursor,
+      UINT Width,
+      UINT Height,
+      UINT XHotSpot,
+      UINT YHotSpot) {
     // Make sure to hide the win32 cursor
     ::SetCursor(nullptr);
 
     if (m_hCursor != nullptr)
       ResetHardwareCursor();
 
+    m_forceSoftwareCursor = ForceSoftwareCursor;
     m_sCursor.Width       = Width;
     m_sCursor.Height      = Height;
     m_sCursor.XHotSpot    = XHotSpot;
@@ -122,6 +139,11 @@ namespace dxvk {
   }
 
 
+  void D3D9Cursor::HideHardwareCursor() {
+    Logger::warn("D3D9Cursor::HideHardwareCursor: Not supported on current platform.");
+  }
+
+
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     Logger::warn("D3D9Cursor::UpdateCursor: Not supported on current platform.");
   }
@@ -139,7 +161,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT D3D9Cursor::SetSoftwareCursor(UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot) {
+  HRESULT D3D9Cursor::SetSoftwareCursor(bool ForceSoftwareCursor, UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot) {
     Logger::warn("D3D9Cursor::SetSoftwareCursor: Not supported on current platform.");
 
     return D3D_OK;

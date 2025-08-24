@@ -1094,6 +1094,11 @@ namespace dxvk {
     { R"(\\Alone\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* The Big Secret of a Small Town             *
+     * Broken hardware cursor handling            */
+    { R"(\\TheBigSecret\.exe$)", {{
+      { "d3d9.forceSoftwareCursor",         "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
