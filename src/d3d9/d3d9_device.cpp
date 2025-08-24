@@ -6296,12 +6296,12 @@ namespace dxvk {
 
       // In fixed function shaders and SM < 2 we put the type mask
       // into a spec constant to select the used sampler type.
-      uint32_t oldTextureTypes = m_textureSlotTracking.textureType;
+      const uint32_t oldTextureTypes = m_textureSlotTracking.textureType;
+      m_textureSlotTracking.textureType &= ~textureBitMask;
+      m_textureSlotTracking.textureType |=  textureBits;
       if (oldTextureTypes != m_textureSlotTracking.textureType) {
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
       }
-      m_textureSlotTracking.textureType &= ~textureBitMask;
-      m_textureSlotTracking.textureType |=  textureBits;
     }
 
     if (likely(tex != nullptr)) {
