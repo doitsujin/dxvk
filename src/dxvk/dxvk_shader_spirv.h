@@ -44,6 +44,12 @@ namespace dxvk {
      */
     void dump(std::ostream& outputStream) const;
 
+    /**
+     * \brief Retrieves debug name for this shader
+     * \returns Shader debug name
+     */
+    std::string debugName() const;
+
   private:
 
     struct BindingOffsets {
@@ -67,6 +73,8 @@ namespace dxvk {
     std::vector<PushDataOffsets>  m_pushDataOffsets;
 
     DxvkPipelineLayoutBuilder     m_layout;
+
+    std::string                   m_debugName;
 
     static void eliminateInput(
             SpirvCodeBuffer&          code,

@@ -230,9 +230,7 @@ namespace dxvk {
      * \brief Retrieves debug name
      * \returns The shader's name
      */
-    std::string debugName() const {
-      return m_key.toString();
-    }
+    virtual std::string debugName() const = 0;
 
     /**
      * \brief Get lookup hash for a shader
