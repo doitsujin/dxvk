@@ -28,11 +28,32 @@ namespace dxvk {
     std::vector<uint32_t> varIds;
     std::vector<uint32_t> sampleMaskIds;
     std::unordered_map<uint32_t, uint32_t> pushConstantTypes;
+    std::unordered_map<uint32_t, std::string> strings;
 
     SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
+    uint32_t shaderNameId = 0;
 
     for (auto ins : code) {
+      if (ins.opCode() == spv::OpSource)
+        shaderNameId = ins.arg(3u);
+
+      if (ins.opCode() == spv::OpString) {
+        small_vector<char, 64u> str;
+
+        for (uint32_t i = 2u; i < ins.length(); i++) {
+          uint32_t arg = ins.arg(i);
+          str.push_back(char(arg >> 0u));
+          str.push_back(char(arg >> 8u));
+          str.push_back(char(arg >> 16u));
+          str.push_back(char(arg >> 24u));
+        }
+
+        str.push_back('\0');
+
+        strings.insert_or_assign(ins.arg(1u), std::string(str.data()));
+      }
+
       if (ins.opCode() == spv::OpDecorate) {
         if (ins.arg(2) == spv::DecorationBinding) {
           uint32_t varId = ins.arg(1);
@@ -176,6 +197,13 @@ namespace dxvk {
         info.samplerHeap.getBinding()));
     }
 
+    if (shaderNameId) {
+      auto entry = strings.find(shaderNameId);
+
+      if (entry != strings.end())
+        m_debugName = std::move(entry->second);
+    }
+
     m_code = SpirvCompressedBuffer(code);
 
     // Don't set pipeline library flag if the shader
@@ -246,6 +274,11 @@ namespace dxvk {
 
   void DxvkSpirvShader::dump(std::ostream& outputStream) const {
     m_code.decompress().store(outputStream);
+  }
+
+
+  std::string DxvkSpirvShader::debugName() const {
+    return m_debugName;
   }
 
 
