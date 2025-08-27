@@ -6,6 +6,8 @@
 #include <d3d11_video_blit_frag.h>
 #include <d3d11_video_blit_vert.h>
 
+#include "../dxvk/dxvk_shader_spirv.h"
+
 namespace dxvk {
 
   D3D11VideoProcessorEnumerator::D3D11VideoProcessorEnumerator(
@@ -1605,7 +1607,7 @@ namespace dxvk {
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vsInfo.outputMask = 0x1;
-    m_vs = new DxvkShader(vsInfo, std::move(vsCode));
+    m_vs = new DxvkSpirvShader(vsInfo, std::move(vsCode));
 
     DxvkShaderCreateInfo fsInfo;
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1613,7 +1615,7 @@ namespace dxvk {
     fsInfo.bindings = fsBindings.data();
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;
-    m_fs = new DxvkShader(fsInfo, std::move(fsCode));
+    m_fs = new DxvkSpirvShader(fsInfo, std::move(fsCode));
   }
 
 

@@ -95,16 +95,23 @@ namespace dxvk {
    * the shader with a pipeline, a shader module
    * needs to be created from he shader object.
    */
-  class DxvkShader : public RcObject {
+  class DxvkShader {
     
   public:
     
-    DxvkShader(
-      const DxvkShaderCreateInfo&   info,
-            SpirvCodeBuffer&&       spirv);
+    DxvkShader();
 
-    ~DxvkShader();
-    
+    virtual ~DxvkShader();
+
+    force_inline void incRef() {
+      m_refCount.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    force_inline void decRef() {
+      if (!(m_refCount.fetch_sub(1u, std::memory_order_acquire) - 1u))
+        delete this;
+    }
+
     /**
      * \brief Shader info
      * \returns Shader info
@@ -125,9 +132,7 @@ namespace dxvk {
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
-    DxvkPipelineLayoutBuilder getLayout() const {
-      return m_layout;
-    }
+    virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
 
     /**
      * \brief Retrieves spec constant mask
@@ -160,13 +165,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Gets raw code without modification
-     */
-    SpirvCodeBuffer getRawCode() const {
-      return m_code.decompress();
-    }
-
-    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
@@ -175,9 +173,9 @@ namespace dxvk {
      * \param [in] state Pipeline state info
      * \returns Uncompressed SPIR-V code buffer
      */
-    SpirvCodeBuffer getCode(
+    virtual SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderModuleCreateInfo& state) const;
+      const DxvkShaderModuleCreateInfo& state) const = 0;
     
     /**
      * \brief Tests whether this shader supports pipeline libraries
@@ -197,8 +195,8 @@ namespace dxvk {
      * Can be used to store the SPIR-V code in a file.
      * \param [in] outputStream Stream to write to 
      */
-    void dump(std::ostream& outputStream) const;
-    
+    virtual void dump(std::ostream& outputStream) const = 0;
+
     /**
      * \brief Sets the shader key
      * \param [in] key Unique key
@@ -250,52 +248,18 @@ namespace dxvk {
     
   private:
 
-    struct BindingOffsets {
-      uint32_t bindingIndex = 0u;
-      uint32_t bindingOffset = 0u;
-      uint32_t setIndex = 0u;
-      uint32_t setOffset = 0u;
-    };
+    std::atomic<uint32_t>         m_refCount = { 0u };
 
-    struct PushDataOffsets {
-      uint32_t codeOffset = 0u;
-      uint32_t pushOffset = 0u;
-    };
+    DxvkShaderKey                 m_key   = { };
+    size_t                        m_hash  = 0;
 
-    DxvkShaderCreateInfo          m_info;
-    SpirvCompressedBuffer         m_code;
-    
-    DxvkShaderFlags               m_flags;
-    DxvkShaderKey                 m_key;
-    size_t                        m_hash = 0;
+  protected:
 
-    size_t                        m_o1IdxOffset = 0;
-    size_t                        m_o1LocOffset = 0;
-
+    DxvkShaderCreateInfo          m_info  = { };
+    DxvkShaderFlags               m_flags = { };
     uint32_t                      m_specConstantMask = 0;
+
     std::atomic<bool>             m_needsLibraryCompile = { true };
-
-    std::vector<BindingOffsets>   m_bindingOffsets;
-    std::vector<PushDataOffsets>  m_pushDataOffsets;
-
-    DxvkPipelineLayoutBuilder     m_layout;
-
-    static void eliminateInput(
-            SpirvCodeBuffer&          code,
-            uint32_t                  location);
-
-    static void emitOutputSwizzles(
-            SpirvCodeBuffer&          code,
-            uint32_t                  outputMask,
-            const VkComponentMapping* swizzles);
-
-    static void emitFlatShadingDeclarations(
-            SpirvCodeBuffer&          code,
-            uint32_t                  inputMask);
-
-    static void patchInputTopology(
-            SpirvCodeBuffer&          code,
-            VkPrimitiveTopology       topology);
 
   };
   

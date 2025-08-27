@@ -3,6 +3,8 @@
 #include "d3d9_device.h"
 #include "d3d9_vertex_declaration.h"
 
+#include "../dxvk/dxvk_shader_spirv.h"
+
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -314,7 +316,7 @@ namespace dxvk {
       info.inputMask = m_inputMask;
       info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
-      return new DxvkShader(info, m_module.compile());
+      return new DxvkSpirvShader(info, m_module.compile());
     }
 
   private:
