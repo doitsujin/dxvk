@@ -23,7 +23,7 @@ namespace dxvk {
     return str::format(prefix, m_sha1.toString());
   }
 
-  
+
   size_t DxvkShaderKey::hash() const {
     DxvkHashState result;
     result.add(uint32_t(m_type));
