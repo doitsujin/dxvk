@@ -1,5 +1,7 @@
 #include "dxbc_compiler.h"
 
+#include "../dxvk/dxvk_shader_spirv.h"
+
 namespace dxvk {
 
   constexpr uint32_t Icb_BindingSlotId   = 14;
@@ -261,7 +263,7 @@ namespace dxvk {
         info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
     }
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkSpirvShader(info, m_module.compile());
   }
   
   
