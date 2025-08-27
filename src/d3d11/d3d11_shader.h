@@ -4,7 +4,10 @@
 #include <unordered_map>
 
 #include "../dxbc/dxbc_module.h"
+
 #include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_shader.h"
+#include "../dxvk/dxvk_shader_key.h"
 
 #include "../d3d10/d3d10_shader.h"
 
