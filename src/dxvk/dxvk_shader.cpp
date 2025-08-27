@@ -9,7 +9,10 @@
 #include <unordered_set>
 
 namespace dxvk {
-  
+
+  std::atomic<uint32_t> DxvkShader::s_cookie = { 0u };
+
+
   bool DxvkShaderModuleCreateInfo::eq(const DxvkShaderModuleCreateInfo& other) const {
     bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
            && fsFlatShading   == other.fsFlatShading
@@ -43,7 +46,8 @@ namespace dxvk {
   }
 
 
-  DxvkShader::DxvkShader() {
+  DxvkShader::DxvkShader()
+  : m_cookie(++s_cookie) {
 
   }
 
@@ -240,7 +244,7 @@ namespace dxvk {
     hash.add(uint32_t(m_shaderStages));
 
     for (uint32_t i = 0; i < m_shaderCount; i++)
-      hash.add(m_shaders[i]->getHash());
+      hash.add(m_shaders[i]->getCookie());
 
     return hash;
   }

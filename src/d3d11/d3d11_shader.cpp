@@ -48,7 +48,6 @@ namespace dxvk {
     m_shader = passthroughShader
       ? module.compilePassthroughShader(*pDxbcModuleInfo, name)
       : module.compile                 (*pDxbcModuleInfo, name);
-    m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(

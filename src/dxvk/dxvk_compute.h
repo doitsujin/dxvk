@@ -28,7 +28,7 @@ namespace dxvk {
     }
 
     size_t hash() const {
-      return DxvkShader::getHash(cs);
+      return DxvkShader::getCookie(cs);
     }
   };
 

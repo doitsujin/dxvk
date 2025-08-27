@@ -2601,7 +2601,6 @@ namespace dxvk {
 
     Dump(pDevice, Key, name);
 
-    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
@@ -2624,7 +2623,6 @@ namespace dxvk {
 
     Dump(pDevice, Key, name);
 
-    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
