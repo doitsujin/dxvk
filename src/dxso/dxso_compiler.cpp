@@ -1,13 +1,14 @@
-#include "dxso_compiler.h"
-
 #include "dxso_analysis.h"
+#include "dxso_compiler.h"
+#include "dxso_util.h"
 
 #include "../d3d9/d3d9_caps.h"
 #include "../d3d9/d3d9_constant_set.h"
 #include "../d3d9/d3d9_state.h"
 #include "../d3d9/d3d9_spec_constants.h"
 #include "../d3d9/d3d9_fixed_function.h"
-#include "dxso_util.h"
+
+#include "../dxvk/dxvk_shader_spirv.h"
 
 #include <cfloat>
 
@@ -236,7 +237,7 @@ namespace dxvk {
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkSpirvShader(info, m_module.compile());
   }
 
   void DxsoCompiler::emitInit() {

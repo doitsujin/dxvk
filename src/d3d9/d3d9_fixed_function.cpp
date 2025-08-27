@@ -5,6 +5,7 @@
 #include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_hash.h"
+#include "../dxvk/dxvk_shader_spirv.h"
 
 #include "../util/util_small_vector.h"
 
@@ -962,7 +963,7 @@ namespace dxvk {
     info.localPushData = m_samplerBlock;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkSpirvShader(info, m_module.compile());
   }
 
 
