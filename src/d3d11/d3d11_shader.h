@@ -68,39 +68,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Extended shader interface
-   */
-  class D3D11ExtShader : public ID3D11VkExtShader {
-
-  public:
-
-    D3D11ExtShader(
-            ID3D11DeviceChild*      pParent,
-            D3D11CommonShader*      pShader);
-
-    ~D3D11ExtShader();
-
-    ULONG STDMETHODCALLTYPE AddRef();
-
-    ULONG STDMETHODCALLTYPE Release();
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID                  riid,
-            void**                  ppvObject);
-
-    HRESULT STDMETHODCALLTYPE GetSpirvCode(
-            SIZE_T*                 pCodeSize,
-            void*                   pCode);
-
-  private:
-
-    ID3D11DeviceChild*  m_parent;
-    D3D11CommonShader*  m_shader;
-
-  };
-
-
-  /**
    * \brief Common shader interface
    * 
    * Implements methods for all D3D11*Shader
@@ -114,7 +81,7 @@ namespace dxvk {
     
     D3D11Shader(D3D11Device* device, const D3D11CommonShader& shader)
     : D3D11DeviceChild<D3D11Interface>(device),
-      m_shader(shader), m_d3d10(this), m_shaderExt(this, &m_shader),
+      m_shader(shader), m_d3d10(this),
       m_destructionNotifier(this) { }
     
     ~D3D11Shader() { }
@@ -133,11 +100,6 @@ namespace dxvk {
        || riid == __uuidof(ID3D10DeviceChild)
        || riid == __uuidof(D3D10Interface)) {
         *ppvObject = ref(&m_d3d10);
-        return S_OK;
-      }
-
-      if (riid == __uuidof(ID3D11VkExtShader)) {
-        *ppvObject = ref(&m_shaderExt);
         return S_OK;
       }
 
@@ -166,7 +128,6 @@ namespace dxvk {
     
     D3D11CommonShader m_shader;
     D3D10ShaderClass  m_d3d10;
-    D3D11ExtShader    m_shaderExt;
 
     D3DDestructionNotifier m_destructionNotifier;
     
