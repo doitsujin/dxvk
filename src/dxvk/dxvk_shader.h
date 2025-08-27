@@ -5,7 +5,6 @@
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
-#include "dxvk_shader_key.h"
 
 #include "../spirv/spirv_code_buffer.h"
 #include "../spirv/spirv_compression.h"
@@ -198,23 +197,6 @@ namespace dxvk {
     virtual void dump(std::ostream& outputStream) const = 0;
 
     /**
-     * \brief Sets the shader key
-     * \param [in] key Unique key
-     */
-    void setShaderKey(const DxvkShaderKey& key) {
-      m_key = key;
-      m_hash = key.hash();
-    }
-
-    /**
-     * \brief Retrieves shader key
-     * \returns The unique shader key
-     */
-    DxvkShaderKey getShaderKey() const {
-      return m_key;
-    }
-
-    /**
      * \brief Get lookup hash
      * 
      * Retrieves a non-unique hash value derived from the
@@ -222,8 +204,8 @@ namespace dxvk {
      * This is better than relying on the pointer value.
      * \returns Hash value for map lookups
      */
-    size_t getHash() const {
-      return m_hash;
+    size_t getCookie() const {
+      return m_cookie;
     }
     
     /**
@@ -240,16 +222,16 @@ namespace dxvk {
      * \param [in] shader The shader
      * \returns The shader's lookup hash, or 0
      */
-    static size_t getHash(const Rc<DxvkShader>& shader) {
-      return shader != nullptr ? shader->getHash() : 0;
+    static uint32_t getCookie(const Rc<DxvkShader>& shader) {
+      return shader != nullptr ? shader->getCookie() : 0;
     }
     
   private:
 
-    std::atomic<uint32_t>         m_refCount = { 0u };
+    static std::atomic<uint32_t>  s_cookie;
 
-    DxvkShaderKey                 m_key   = { };
-    size_t                        m_hash  = 0;
+    std::atomic<uint32_t>         m_refCount = { 0u };
+    uint32_t                      m_cookie = 0;
 
   protected:
 

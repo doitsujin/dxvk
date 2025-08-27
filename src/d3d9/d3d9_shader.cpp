@@ -74,8 +74,6 @@ namespace dxvk {
     m_maxDefinedIntConst   = pModule->maxDefinedIntConstant();
     m_maxDefinedBoolConst  = pModule->maxDefinedBoolConstant();
 
-    m_shader->setShaderKey(Key);
-
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
         str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
