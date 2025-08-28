@@ -5,6 +5,7 @@
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_shader_io.h"
 
 #include "../spirv/spirv_code_buffer.h"
 #include "../spirv/spirv_compression.h"
@@ -70,6 +71,19 @@ namespace dxvk {
 
 
   /**
+   * \brief Shader metadata
+   */
+  struct DxvkShaderMetadata {
+    /// Shader stage
+    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    /// Shader property flags
+    DxvkShaderFlags flags = { };
+    /// Specialization constant IDs used by the shader
+    uint32_t specConstantMask = 0u;
+  };
+
+
+  /**
    * \brief Shader module create info
    */
   struct DxvkShaderModuleCreateInfo {
@@ -120,11 +134,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves shader flags
-     * \returns Shader flags
+     * \brief Shader metadata
+     * \returns Shader metadata
      */
-    DxvkShaderFlags flags() const {
-      return m_flags;
+    const DxvkShaderMetadata& metadata() const {
+      return m_metadata;
     }
 
     /**
@@ -132,14 +146,6 @@ namespace dxvk {
      * \returns Pipeline layout builder
      */
     virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
-
-    /**
-     * \brief Retrieves spec constant mask
-     * \returns Bit mask of used spec constants
-     */
-    uint32_t getSpecConstantMask() const {
-      return m_specConstantMask;
-    }
 
     /**
      * \brief Tests whether this shader needs to be compiled
@@ -236,8 +242,7 @@ namespace dxvk {
   protected:
 
     DxvkShaderCreateInfo          m_info  = { };
-    DxvkShaderFlags               m_flags = { };
-    uint32_t                      m_specConstantMask = 0;
+    DxvkShaderMetadata            m_metadata = { };
 
     std::atomic<bool>             m_needsLibraryCompile = { true };
 

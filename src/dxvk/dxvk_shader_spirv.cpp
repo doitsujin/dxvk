@@ -74,12 +74,12 @@ namespace dxvk {
           if (ins.arg(3) == spv::BuiltInSampleMask)
             sampleMaskIds.push_back(ins.arg(1));
           if (ins.arg(3) == spv::BuiltInPosition)
-            m_flags.set(DxvkShaderFlag::ExportsPosition);
+            m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
         }
 
         if (ins.arg(2) == spv::DecorationSpecId) {
           if (ins.arg(3) <= MaxNumSpecConstants)
-            m_specConstantMask |= 1u << ins.arg(3);
+            m_metadata.specConstantMask |= 1u << ins.arg(3);
         }
 
         if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
@@ -94,40 +94,40 @@ namespace dxvk {
       if (ins.opCode() == spv::OpMemberDecorate) {
         if (ins.arg(3) == spv::DecorationBuiltIn) {
           if (ins.arg(4) == spv::BuiltInPosition)
-            m_flags.set(DxvkShaderFlag::ExportsPosition);
+            m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
         }
       }
 
       if (ins.opCode() == spv::OpExecutionMode) {
         if (ins.arg(2) == spv::ExecutionModeStencilRefReplacingEXT)
-          m_flags.set(DxvkShaderFlag::ExportsStencilRef);
+          m_metadata.flags.set(DxvkShaderFlag::ExportsStencilRef);
 
         if (ins.arg(2) == spv::ExecutionModeXfb)
-          m_flags.set(DxvkShaderFlag::HasTransformFeedback);
+          m_metadata.flags.set(DxvkShaderFlag::HasTransformFeedback);
 
         if (ins.arg(2) == spv::ExecutionModePointMode)
-          m_flags.set(DxvkShaderFlag::TessellationPoints);
+          m_metadata.flags.set(DxvkShaderFlag::TessellationPoints);
       }
 
       if (ins.opCode() == spv::OpCapability) {
         if (ins.arg(1) == spv::CapabilitySampleRateShading)
-          m_flags.set(DxvkShaderFlag::HasSampleRateShading);
+          m_metadata.flags.set(DxvkShaderFlag::HasSampleRateShading);
 
         if (ins.arg(1) == spv::CapabilityShaderViewportIndex
          || ins.arg(1) == spv::CapabilityShaderLayer)
-          m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+          m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
 
         if (ins.arg(1) == spv::CapabilitySparseResidency)
-          m_flags.set(DxvkShaderFlag::UsesSparseResidency);
+          m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
 
         if (ins.arg(1) == spv::CapabilityFragmentFullyCoveredEXT)
-          m_flags.set(DxvkShaderFlag::UsesFragmentCoverage);
+          m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
       }
 
       if (ins.opCode() == spv::OpVariable) {
         if (ins.arg(3) == spv::StorageClassOutput) {
           if (std::find(sampleMaskIds.begin(), sampleMaskIds.end(), ins.arg(2)) != sampleMaskIds.end())
-            m_flags.set(DxvkShaderFlag::ExportsSampleMask);
+            m_metadata.flags.set(DxvkShaderFlag::ExportsSampleMask);
         }
 
         if (ins.arg(3) == spv::StorageClassPushConstant) {
