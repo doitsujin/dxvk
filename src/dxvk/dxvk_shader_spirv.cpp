@@ -11,6 +11,8 @@ namespace dxvk {
     const DxvkShaderCreateInfo&       info,
           SpirvCodeBuffer&&           spirv)
   : m_layout(info.stage) {
+    m_metadata.stage = info.stage;
+
     m_info = info;
     m_info.bindings = nullptr;
 
@@ -22,186 +24,14 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
-    uint32_t pushConstantStructId = 0u;
-
-    std::vector<BindingOffsets> bindingOffsets;
-    std::vector<uint32_t> varIds;
-    std::vector<uint32_t> sampleMaskIds;
-    std::unordered_map<uint32_t, uint32_t> pushConstantTypes;
-    std::unordered_map<uint32_t, std::string> strings;
-
     SpirvCodeBuffer code = std::move(spirv);
-    uint32_t o1VarId = 0;
-    uint32_t shaderNameId = 0;
+    gatherIdOffsets(code);
+    gatherMetadata(code);
 
-    for (auto ins : code) {
-      if (ins.opCode() == spv::OpSource)
-        shaderNameId = ins.arg(3u);
-
-      if (ins.opCode() == spv::OpString) {
-        small_vector<char, 64u> str;
-
-        for (uint32_t i = 2u; i < ins.length(); i++) {
-          uint32_t arg = ins.arg(i);
-          str.push_back(char(arg >> 0u));
-          str.push_back(char(arg >> 8u));
-          str.push_back(char(arg >> 16u));
-          str.push_back(char(arg >> 24u));
-        }
-
-        str.push_back('\0');
-
-        strings.insert_or_assign(ins.arg(1u), std::string(str.data()));
-      }
-
-      if (ins.opCode() == spv::OpDecorate) {
-        if (ins.arg(2) == spv::DecorationBinding) {
-          uint32_t varId = ins.arg(1);
-          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
-          bindingOffsets[varId].bindingIndex = ins.arg(3);
-          bindingOffsets[varId].bindingOffset = ins.offset() + 3;
-          varIds.push_back(varId);
-        }
-
-        if (ins.arg(2) == spv::DecorationDescriptorSet) {
-          uint32_t varId = ins.arg(1);
-          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
-          bindingOffsets[varId].setIndex = ins.arg(3);
-          bindingOffsets[varId].setOffset = ins.offset() + 3;
-        }
-
-        if (ins.arg(2) == spv::DecorationBuiltIn) {
-          if (ins.arg(3) == spv::BuiltInSampleMask)
-            sampleMaskIds.push_back(ins.arg(1));
-          if (ins.arg(3) == spv::BuiltInPosition)
-            m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
-        }
-
-        if (ins.arg(2) == spv::DecorationSpecId) {
-          if (ins.arg(3) <= MaxNumSpecConstants)
-            m_metadata.specConstantMask |= 1u << ins.arg(3);
-        }
-
-        if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
-          m_o1LocOffset = ins.offset() + 3;
-          o1VarId = ins.arg(1);
-        }
-
-        if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
-          m_o1IdxOffset = ins.offset() + 3;
-      }
-
-      if (ins.opCode() == spv::OpMemberDecorate) {
-        if (ins.arg(3) == spv::DecorationBuiltIn) {
-          if (ins.arg(4) == spv::BuiltInPosition)
-            m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
-        }
-      }
-
-      if (ins.opCode() == spv::OpExecutionMode) {
-        if (ins.arg(2) == spv::ExecutionModeStencilRefReplacingEXT)
-          m_metadata.flags.set(DxvkShaderFlag::ExportsStencilRef);
-
-        if (ins.arg(2) == spv::ExecutionModeXfb)
-          m_metadata.flags.set(DxvkShaderFlag::HasTransformFeedback);
-
-        if (ins.arg(2) == spv::ExecutionModePointMode)
-          m_metadata.flags.set(DxvkShaderFlag::TessellationPoints);
-      }
-
-      if (ins.opCode() == spv::OpCapability) {
-        if (ins.arg(1) == spv::CapabilitySampleRateShading)
-          m_metadata.flags.set(DxvkShaderFlag::HasSampleRateShading);
-
-        if (ins.arg(1) == spv::CapabilityShaderViewportIndex
-         || ins.arg(1) == spv::CapabilityShaderLayer)
-          m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
-
-        if (ins.arg(1) == spv::CapabilitySparseResidency)
-          m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
-
-        if (ins.arg(1) == spv::CapabilityFragmentFullyCoveredEXT)
-          m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
-      }
-
-      if (ins.opCode() == spv::OpVariable) {
-        if (ins.arg(3) == spv::StorageClassOutput) {
-          if (std::find(sampleMaskIds.begin(), sampleMaskIds.end(), ins.arg(2)) != sampleMaskIds.end())
-            m_metadata.flags.set(DxvkShaderFlag::ExportsSampleMask);
-        }
-
-        if (ins.arg(3) == spv::StorageClassPushConstant) {
-          auto type = pushConstantTypes.find(ins.arg(1));
-
-          if (type != pushConstantTypes.end())
-            pushConstantStructId = type->second;
-        }
-      }
-
-      if (ins.opCode() == spv::OpTypePointer) {
-        if (ins.arg(2) == spv::StorageClassPushConstant)
-          pushConstantTypes.insert({ ins.arg(1), ins.arg(3) });
-      }
-
-      // Ignore the actual shader code, there's nothing interesting for us in there.
-      if (ins.opCode() == spv::OpFunction)
-        break;
-    }
-
-    for (auto ins : code) {
-      if (ins.opCode() == spv::OpMemberDecorate
-       && ins.arg(1) == pushConstantStructId
-       && ins.arg(3) == spv::DecorationOffset) {
-        auto& e = m_pushDataOffsets.emplace_back();
-        e.codeOffset = ins.offset() + 4;
-        e.pushOffset = ins.arg(4);
-      }
-
-      // Can exit even earlier here since decorations come up early
-      if (ins.opCode() == spv::OpFunction || ins.opCode() == spv::OpTypeVoid)
-        break;
-    }
-
-    // Combine spec constant IDs with other binding info
-    for (auto varId : varIds) {
-      BindingOffsets info = bindingOffsets[varId];
-
-      if (info.bindingOffset)
-        m_bindingOffsets.push_back(info);
-    }
-
-    if (pushConstantStructId) {
-      if (!info.sharedPushData.isEmpty()) {
-        auto stageMask = (info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
-          ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
-
-        m_layout.addPushData(DxvkPushDataBlock(stageMask,
-          info.sharedPushData.getOffset(),
-          info.sharedPushData.getSize(),
-          info.sharedPushData.getAlignment(),
-          info.sharedPushData.getResourceDwordMask()));
-      }
-
-      if (!info.localPushData.isEmpty()) {
-        m_layout.addPushData(DxvkPushDataBlock(info.stage,
-          info.localPushData.getOffset(),
-          info.localPushData.getSize(),
-          info.localPushData.getAlignment(),
-          info.localPushData.getResourceDwordMask()));
-      }
-    }
-
-    if (info.samplerHeap.getStageMask() & info.stage) {
-      m_layout.addSamplerHeap(DxvkShaderBinding(info.stage,
+    if (m_info.samplerHeap.getStageMask() & m_info.stage) {
+      m_layout.addSamplerHeap(DxvkShaderBinding(m_info.stage,
         info.samplerHeap.getSet(),
         info.samplerHeap.getBinding()));
-    }
-
-    if (shaderNameId) {
-      auto entry = strings.find(shaderNameId);
-
-      if (entry != strings.end())
-        m_debugName = std::move(entry->second);
     }
 
     if (m_debugName.empty())
@@ -224,34 +54,7 @@ namespace dxvk {
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderModuleCreateInfo& state) const {
     SpirvCodeBuffer spirvCode = m_code.decompress();
-    uint32_t* code = spirvCode.data();
-
-    // Remap resource binding IDs
-    if (bindings) {
-      for (const auto& info : m_bindingOffsets) {
-        auto mappedBinding = bindings->mapBinding(DxvkShaderBinding(
-          m_info.stage, info.setIndex, info.bindingIndex));
-
-        if (mappedBinding) {
-          code[info.bindingOffset] = mappedBinding->getBinding();
-
-          if (info.setOffset)
-            code[info.setOffset] = mappedBinding->getSet();
-        }
-      }
-
-      for (const auto& info : m_pushDataOffsets) {
-        uint32_t offset = bindings->mapPushData(m_info.stage, info.pushOffset);
-
-        if (offset < MaxTotalPushDataSize)
-          code[info.codeOffset] = offset;
-      }
-    }
-
-    // For dual-source blending we need to re-map
-    // location 1, index 0 to location 0, index 1
-    if (state.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
-      std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
+    patchResourceBindingsAndIoLocations(spirvCode, bindings, state);
 
     // Replace undefined input variables with zero
     for (uint32_t u : bit::BitMask(state.undefinedInputs))
@@ -282,6 +85,441 @@ namespace dxvk {
 
   std::string DxvkSpirvShader::debugName() const {
     return m_debugName;
+  }
+
+
+  void DxvkSpirvShader::gatherIdOffsets(
+          SpirvCodeBuffer&          code) {
+    for (auto i = code.begin(); i != code.end(); i++) {
+      auto ins = *i;
+
+      switch (ins.opCode()) {
+        case spv::OpString:
+        case spv::OpTypeVoid:
+        case spv::OpTypeInt:
+        case spv::OpTypeFloat:
+        case spv::OpTypeBool:
+        case spv::OpTypeVector:
+        case spv::OpTypeMatrix:
+        case spv::OpTypeImage:
+        case spv::OpTypeSampler:
+        case spv::OpTypeSampledImage:
+        case spv::OpTypeArray:
+        case spv::OpTypeRuntimeArray:
+        case spv::OpTypeStruct:
+        case spv::OpTypeOpaque:
+        case spv::OpTypePointer:
+        case spv::OpTypeFunction: {
+          m_idToOffset.insert({ ins.arg(1u), ins.offset() });
+        } break;
+
+        case spv::OpVariable: {
+          m_idToOffset.insert({ ins.arg(2u), ins.offset() });
+        } break;
+
+        case spv::OpFunction:
+          return;
+
+        default:
+          break;
+      }
+    }
+  }
+
+
+  void DxvkSpirvShader::gatherMetadata(
+          SpirvCodeBuffer&          code) {
+    for (auto i = code.begin(); i != code.end(); i++) {
+      auto ins = *i;
+
+      switch (ins.opCode()) {
+        case spv::OpCapability: {
+          switch (spv::Capability(ins.arg(1u))) {
+            case spv::CapabilitySampleRateShading: {
+              m_metadata.flags.set(DxvkShaderFlag::HasSampleRateShading);
+            } break;
+
+            case spv::CapabilityShaderLayer:
+            case spv::CapabilityShaderViewportIndex: {
+              if (m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+               && m_info.stage != VK_SHADER_STAGE_GEOMETRY_BIT)
+                m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+            } break;
+
+            case spv::CapabilitySparseResidency: {
+              m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
+            } break;
+
+            case spv::CapabilityFragmentFullyCoveredEXT: {
+              m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
+            } break;
+
+            default:
+              break;
+          }
+        } break;
+
+        case spv::OpExecutionMode: {
+          switch (spv::ExecutionMode(ins.arg(2u))) {
+            case spv::ExecutionModeStencilRefReplacingEXT: {
+              m_metadata.flags.set(DxvkShaderFlag::ExportsStencilRef);
+            } break;
+
+            case spv::ExecutionModeXfb: {
+              m_metadata.flags.set(DxvkShaderFlag::HasTransformFeedback);
+            } break;
+
+            case spv::ExecutionModePointMode: {
+              m_metadata.flags.set(DxvkShaderFlag::TessellationPoints);
+            } break;
+
+            default:
+              break;
+          }
+        } break;
+
+        case spv::OpDecorate: {
+          handleDecoration(ins, ins.arg(1u), -1, 2u);
+        } break;
+
+        case spv::OpMemberDecorate: {
+          handleDecoration(ins, ins.arg(1u), ins.arg(2u), 3u);
+        } break;
+
+        case spv::OpSource: {
+          if (ins.length() > 3u)
+            handleDebugName(code, ins.arg(3u));
+        } break;
+
+        case spv::OpVariable: {
+          auto varId = ins.arg(2u);
+          auto storage = spv::StorageClass(ins.arg(3u));
+
+          SpirvInstruction ptrType(code.data(), m_idToOffset.at(ins.arg(1u)), code.dwords());
+          SpirvInstruction varType(code.data(), m_idToOffset.at(ptrType.arg(3u)), code.dwords());
+
+          switch (storage) {
+            case spv::StorageClassInput:
+            case spv::StorageClassOutput: {
+              if (varType.opCode() == spv::OpTypeStruct) {
+                for (uint32_t i = 2u; i < varType.length(); i++)
+                  handleIoVariable(code, varType, storage, varId, int32_t(i));
+              } else {
+                handleIoVariable(code, varType, storage, varId, -1);
+              }
+           } break;
+
+            case spv::StorageClassPushConstant: {
+              m_pushConstantStructId = varType.arg(1u);
+
+              if (!m_info.sharedPushData.isEmpty()) {
+                auto stageMask = (m_info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
+                  ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
+
+                m_layout.addPushData(DxvkPushDataBlock(stageMask,
+                  m_info.sharedPushData.getOffset(),
+                  m_info.sharedPushData.getSize(),
+                  m_info.sharedPushData.getAlignment(),
+                  m_info.sharedPushData.getResourceDwordMask()));
+              }
+
+              if (!m_info.localPushData.isEmpty()) {
+                m_layout.addPushData(DxvkPushDataBlock(m_info.stage,
+                  m_info.localPushData.getOffset(),
+                  m_info.localPushData.getSize(),
+                  m_info.localPushData.getAlignment(),
+                  m_info.localPushData.getResourceDwordMask()));
+              }
+            } break;
+
+            default:
+              break;
+          }
+        } break;
+
+        case spv::OpFunction:
+          return;
+
+        default:
+          break;
+      }
+    }
+  }
+
+
+  void DxvkSpirvShader::handleIoVariable(
+          SpirvCodeBuffer&          code,
+    const SpirvInstruction&         type,
+          spv::StorageClass         storage,
+          uint32_t                  varId,
+          int32_t                   member) {
+    const auto& decoration = getDecoration(varId, member);
+
+    if (storage == spv::StorageClassOutput) {
+      if (decoration.builtIn == spv::BuiltInPosition)
+        m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
+
+      if (decoration.builtIn == spv::BuiltInSampleMask)
+        m_metadata.flags.set(DxvkShaderFlag::ExportsSampleMask);
+    }
+
+    DxvkShaderIoVar varInfo = { };
+
+    if (decoration.builtIn)
+      varInfo.builtIn = *decoration.builtIn;
+
+    if (decoration.location)
+      varInfo.location = *decoration.location;
+
+    if (decoration.index)
+      varInfo.location |= (*decoration.index) << 5u;
+
+    if (decoration.component)
+      varInfo.componentIndex = *decoration.component;
+
+    varInfo.componentCount = getComponentCountForType(code, type, varInfo.builtIn);
+    varInfo.isPatchConstant = decoration.patch;
+
+    if (storage == spv::StorageClassOutput)
+      m_metadata.outputs.add(varInfo);
+    else
+      m_metadata.inputs.add(varInfo);
+  }
+
+
+  void DxvkSpirvShader::handleDecoration(
+    const SpirvInstruction&         ins,
+          uint32_t                  id,
+          int32_t                   member,
+          uint32_t                  baseArg) {
+    auto range = m_decorations.equal_range(id);
+    auto entry = std::find_if(range.first, range.second,
+      [member] (const std::pair<uint32_t, DxvkSpirvDecorations>& decoration) {
+        return decoration.second.memberIndex == member;
+      });
+
+    if (entry == range.second) {
+      DxvkSpirvDecorations decoration = { };
+      decoration.memberIndex = member;
+
+      entry = m_decorations.insert({ id, decoration });
+    }
+
+    switch (spv::Decoration(ins.arg(baseArg))) {
+      case spv::DecorationLocation: {
+        entry->second.location = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationIndex: {
+        entry->second.index = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationComponent: {
+        entry->second.component = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationDescriptorSet: {
+        entry->second.set = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationBinding: {
+        entry->second.binding = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationOffset: {
+        entry->second.offset = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationArrayStride: {
+        entry->second.stride = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationBuiltIn: {
+        entry->second.builtIn = spv::BuiltIn(ins.arg(baseArg + 1u));
+      } break;
+
+      case spv::DecorationSpecId: {
+        uint32_t specId = ins.arg(baseArg + 1u);
+        m_metadata.specConstantMask |= 1u << specId;
+      } break;
+
+      case spv::DecorationPatch: {
+        entry->second.patch = true;
+      } break;
+
+      default:
+        break;
+    }
+  }
+
+
+  void DxvkSpirvShader::handleDebugName(
+          SpirvCodeBuffer&          code,
+          uint32_t                  stringId) {
+    auto e = m_idToOffset.find(stringId);
+
+    if (e == m_idToOffset.end())
+      return;
+
+    SpirvInstruction str(code.data(), e->second, code.dwords());
+
+    for (uint32_t i = 2u; i < str.length(); i++) {
+      uint32_t arg = str.arg(i);
+
+      for (uint32_t j = 0u; j < 4u; j++) {
+        auto ch = char(arg >> (8u * j));
+
+        if (!ch)
+          return;
+
+        m_debugName.push_back(ch);
+      }
+    }
+  }
+
+
+  const DxvkSpirvDecorations& DxvkSpirvShader::getDecoration(
+          uint32_t                  id,
+          int32_t                   member) const {
+    static const DxvkSpirvDecorations s_defaultDecorations = { };
+
+    auto range = m_decorations.equal_range(id);
+    auto entry = std::find_if(range.first, range.second,
+      [member] (const std::pair<uint32_t, DxvkSpirvDecorations>& decoration) {
+        return decoration.second.memberIndex == member;
+      });
+
+    if (entry == range.second)
+      return s_defaultDecorations;
+
+    return entry->second;
+  }
+
+
+  uint32_t DxvkSpirvShader::getComponentCountForType(
+          SpirvCodeBuffer&          code,
+    const SpirvInstruction&         type,
+          spv::BuiltIn              builtIn) const {
+    switch (type.opCode()) {
+      case spv::OpTypeVoid:
+      case spv::OpTypeBool:
+      case spv::OpTypeInt:
+      case spv::OpTypeFloat:
+        return 1u;
+
+      case spv::OpTypeVector:
+        return type.arg(3u);
+
+      case spv::OpTypeArray: {
+        auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
+
+        if (nested.opCode() != spv::OpTypeArray) {
+          if (builtIn == spv::BuiltInClipDistance
+           || builtIn == spv::BuiltInCullDistance
+           || builtIn == spv::BuiltInTessLevelInner
+           || builtIn == spv::BuiltInTessLevelOuter)
+            return type.arg(3u);
+        }
+
+        return getComponentCountForType(code, nested, builtIn);
+      }
+
+      case spv::OpTypeRuntimeArray: {
+        auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
+        return getComponentCountForType(code, nested, builtIn);
+      }
+
+      default:
+        throw DxvkError("Unexpected I/O type");
+    }
+  }
+
+
+  void DxvkSpirvShader::patchResourceBindingsAndIoLocations(
+          SpirvCodeBuffer&            code,
+    const DxvkShaderBindingMap*       bindings,
+    const DxvkShaderModuleCreateInfo& state) const {
+    for (auto i = code.begin(); i != code.end(); i++) {
+      auto ins = *i;
+
+      switch (ins.opCode()) {
+        case spv::OpDecorate: {
+          auto objectId = ins.arg(1u);
+          auto decorationType = spv::Decoration(ins.arg(2u));
+          const auto& decoration = getDecoration(objectId, -1);
+
+          switch (decorationType) {
+            case spv::DecorationDescriptorSet:
+            case spv::DecorationBinding: {
+              uint32_t set = 0u;
+              uint32_t binding = 0u;
+
+              if (decoration.set)
+                set = *decoration.set;
+
+              if (decoration.binding)
+                binding = *decoration.binding;
+
+              auto mappedBinding = bindings->mapBinding(
+                DxvkShaderBinding(m_info.stage, set, binding));
+
+              if (mappedBinding) {
+                if (decorationType == spv::DecorationDescriptorSet)
+                  ins.setArg(3u, mappedBinding->getSet());
+
+                if (decorationType == spv::DecorationBinding)
+                  ins.setArg(3u, mappedBinding->getBinding());
+              }
+            } break;
+
+            case spv::DecorationLocation:
+            case spv::DecorationIndex: {
+              if (!state.fsDualSrcBlend)
+                break;
+
+              // Ensure that what we're patching is actually an output variable
+              SpirvInstruction var(code.data(), m_idToOffset.at(ins.arg(1u)), code.dwords());
+
+              if (spv::StorageClass(var.arg(3u)) != spv::StorageClassOutput)
+                break;
+
+              // Set location to 0 or index to 1 for location 1
+              if (decoration.location == 1u)
+                ins.setArg(3u, decorationType == spv::DecorationIndex ? 1u : 0u);
+            } break;
+
+            default:
+              break;
+          }
+        } break;
+
+        case spv::OpMemberDecorate: {
+          auto objectId = ins.arg(1u);
+          auto decorationType = spv::Decoration(ins.arg(3u));
+
+          switch (decorationType) {
+            case spv::DecorationOffset: {
+              if (objectId != m_pushConstantStructId)
+                break;
+
+              uint32_t offset = bindings->mapPushData(m_info.stage, ins.arg(4u));
+
+              if (offset < MaxTotalPushDataSize)
+                ins.setArg(4u, offset);
+            } break;
+
+            default:
+              break;
+          }
+        } break;
+
+        case spv::OpFunction:
+          return;
+
+        default:
+          break;
+      }
+    }
   }
 
 
