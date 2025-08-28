@@ -80,6 +80,10 @@ namespace dxvk {
     DxvkShaderFlags flags = { };
     /// Specialization constant IDs used by the shader
     uint32_t specConstantMask = 0u;
+    /// Input variables consumed by the shader
+    DxvkShaderIo inputs = { };
+    /// Output variables produced by the shader
+    DxvkShaderIo outputs = { };
   };
 
 
