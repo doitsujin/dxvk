@@ -334,7 +334,7 @@ namespace dxvk {
     /// View type
     VkImageViewType viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     /// View usage flags
-    VkImageUsageFlagBits usage = VkImageUsageFlagBits(0u);
+    VkImageUsageFlags usage = VkImageUsageFlags(0u);
     /// View format
     VkFormat format = VK_FORMAT_UNDEFINED;
     /// Image layout that the view will be used as
