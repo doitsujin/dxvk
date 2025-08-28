@@ -649,7 +649,7 @@ namespace dxvk {
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
           UINT                   Layer,
           UINT                   Lod,
-          VkImageUsageFlagBits   UsageFlags,
+          VkImageUsageFlags      UsageFlags,
           VkImageLayout          Layout,
           bool                   Srgb) {
     DxvkImageViewKey viewInfo;
@@ -667,16 +667,16 @@ namespace dxvk {
     viewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(m_mapping.Swizzle);
 
     // Remove the stencil aspect if we are trying to create a regular image
-    // view of a depth stencil format 
-    if (UsageFlags != VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+    // view of a depth stencil format
+    if (!(UsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
       viewInfo.aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    if (UsageFlags == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ||
-        UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+    if (UsageFlags & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
       viewInfo.mipCount = 1;
 
     // Remove swizzle on depth views.
-    if (UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+    if (UsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       viewInfo.packedSwizzle = 0u;
 
     // Create the underlying image view object
