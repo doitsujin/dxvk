@@ -21,7 +21,7 @@ namespace dxvk {
 
     m_vars.resize(size + 1u);
 
-    for (size_t i = size; i > index; index--)
+    for (size_t i = size; i > index; i--)
       m_vars[i] = m_vars[i - 1u];
 
     m_vars[index] = var;
