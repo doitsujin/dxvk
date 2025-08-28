@@ -69,7 +69,7 @@ namespace dxvk {
 
       // Standalone vertex shaders must export vertex position
       if (m_info.stage == VK_SHADER_STAGE_VERTEX_BIT
-       && !m_flags.test(DxvkShaderFlag::ExportsPosition))
+       && !m_metadata.flags.test(DxvkShaderFlag::ExportsPosition))
         return false;
     } else {
       // Tessellation control shaders must define a valid vertex count
@@ -78,17 +78,17 @@ namespace dxvk {
         return false;
 
       // We don't support GPL with transform feedback right now
-      if (m_flags.test(DxvkShaderFlag::HasTransformFeedback))
+      if (m_metadata.flags.test(DxvkShaderFlag::HasTransformFeedback))
         return false;
     }
 
     // Spec constant selectors are only supported in graphics
-    if (m_specConstantMask & (1u << MaxNumSpecConstants))
+    if (m_metadata.specConstantMask & (1u << MaxNumSpecConstants))
       return m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT;
 
     // Always late-compile shaders with spec constants
     // that don't use the spec constant selector
-    return !m_specConstantMask;
+    return !m_metadata.specConstantMask;
   }
 
 
@@ -530,7 +530,7 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
     }
 
-    bool hasSampleRateShading = m_shaders.fs && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
+    bool hasSampleRateShading = m_shaders.fs && m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading);
     bool hasDynamicMultisampleState = hasSampleRateShading
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
@@ -539,7 +539,7 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
 
-      if (!m_shaders.fs || !m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask)) {
+      if (!m_shaders.fs || !m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask)) {
         if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
           dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
       }

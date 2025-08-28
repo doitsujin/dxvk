@@ -46,7 +46,7 @@ namespace dxvk {
   VkPrimitiveTopology determinePreGsTopology(
     const DxvkGraphicsPipelineShaders&      shaders,
     const DxvkGraphicsPipelineStateInfo&    state) {
-    if (shaders.tcs && shaders.tcs->flags().test(DxvkShaderFlag::TessellationPoints))
+    if (shaders.tcs && shaders.tcs->metadata().flags.test(DxvkShaderFlag::TessellationPoints))
       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
     if (shaders.tes)
@@ -358,13 +358,13 @@ namespace dxvk {
         : VK_SAMPLE_COUNT_1_BIT;
     }
 
-    if (shaders.fs && shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading)) {
       msInfo.sampleShadingEnable  = VK_TRUE;
       msInfo.minSampleShading     = 1.0f;
     }
 
     // Alpha to coverage is not supported with sample mask exports.
-    cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask);
+    cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask);
 
     msSampleMask                  = state.ms.sampleMask() & ((1u << msInfo.rasterizationSamples) - 1);
     msInfo.pSampleMask            = &msSampleMask;
@@ -596,7 +596,7 @@ namespace dxvk {
         // in combination with smooth lines. Override the line mode to
         // rectangular to fix this, but keep the width fixed at 1.0.
         bool needsOverride = state.ms.enableAlphaToCoverage()
-          || (shaders.fs && shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading));
+          || (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading));
 
         if (needsOverride)
           rsLineInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
@@ -1012,7 +1012,7 @@ namespace dxvk {
     m_specConstantMask = this->computeSpecConstantMask();
 
     if (m_shaders.gs != nullptr) {
-      if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
+      if (m_shaders.gs->metadata().flags.test(DxvkShaderFlag::HasTransformFeedback)) {
         m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
 
         m_barrier.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
@@ -1033,9 +1033,9 @@ namespace dxvk {
     }
 
     if (m_shaders.fs != nullptr) {
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading))
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleRateShading);
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask))
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleMaskExport);
     }
   }
@@ -1279,7 +1279,7 @@ namespace dxvk {
 
       // If dynamic multisample state is not supported and sample shading
       // is enabled, the library is compiled with a sample count of 1.
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading)) {
         bool canUseDynamicMultisampleState =
           m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples &&
           m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
@@ -1294,7 +1294,7 @@ namespace dxvk {
 
         if (!canUseDynamicAlphaToCoverage
          && (state.ms.enableAlphaToCoverage())
-         && !m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask))
+         && !m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
           return false;
       }
     }
@@ -1480,16 +1480,16 @@ namespace dxvk {
 
 
   uint32_t DxvkGraphicsPipeline::computeSpecConstantMask() const {
-    uint32_t mask = m_shaders.vs->getSpecConstantMask();
+    uint32_t mask = m_shaders.vs->metadata().specConstantMask;
 
     if (m_shaders.tcs != nullptr)
-      mask |= m_shaders.tcs->getSpecConstantMask();
+      mask |= m_shaders.tcs->metadata().specConstantMask;
     if (m_shaders.tes != nullptr)
-      mask |= m_shaders.tes->getSpecConstantMask();
+      mask |= m_shaders.tes->metadata().specConstantMask;
     if (m_shaders.gs != nullptr)
-      mask |= m_shaders.gs->getSpecConstantMask();
+      mask |= m_shaders.gs->metadata().specConstantMask;
     if (m_shaders.fs != nullptr)
-      mask |= m_shaders.fs->getSpecConstantMask();
+      mask |= m_shaders.fs->metadata().specConstantMask;
 
     return mask;
   }

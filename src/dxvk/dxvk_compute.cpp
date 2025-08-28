@@ -100,7 +100,7 @@ namespace dxvk {
     const DxvkComputePipelineStateInfo& state) const {
     auto vk = m_device->vkd();
 
-    DxvkPipelineSpecConstantState scState(m_shaders.cs->getSpecConstantMask(), state.sc);
+    DxvkPipelineSpecConstantState scState(m_shaders.cs->metadata().specConstantMask, state.sc);
     
     DxvkShaderStageInfo stageInfo(m_device);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
