@@ -84,8 +84,13 @@ namespace dxvk {
         // that have GENERAL (or FEEDBACK_LOOP) as their layout.
         // Because of that, we don't need to pay special attention here
         // to whether the image was transitioned because of a feedback loop.
+
+        VkImageUsageFlags usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        if (m_texture->GetImage()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+          usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
         view = m_texture->CreateView(m_face, m_mipLevel,
-          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+          usage,
           VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
           Srgb && m_isSrgbCompatible);
       }
@@ -103,12 +108,17 @@ namespace dxvk {
         // that have GENERAL (or FEEDBACK_LOOP) as their layout.
         // Because of that, we don't need to pay special attention here
         // to whether the image was transitioned because of a feedback loop.
+
+        VkImageUsageFlags usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+        if (m_texture->GetImage()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+          usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
         VkImageLayout layout = Writable
           ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
           : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
 
         view = m_texture->CreateView(m_face, m_mipLevel,
-          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, layout, false);
+          usage, layout, false);
       }
 
       return view;
