@@ -429,6 +429,9 @@ namespace dxvk {
           VkClearValue          value) {
     const VkImageUsageFlags viewUsage = imageView->info().usage;
 
+    if (findOverlappingDeferredClear(imageView->image(), imageView->imageSubresources()))
+      flushClearsInline();
+
     if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       value.color = util::swizzleClearColor(value.color,
         util::invertComponentMapping(imageView->info().unpackSwizzle()));
