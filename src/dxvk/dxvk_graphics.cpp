@@ -868,7 +868,7 @@ namespace dxvk {
       auto fsOutputMask = shaderMeta.outputs.computeMask();
 
       info.fsDualSrcBlend = state.useDualSourceBlending();
-      info.fsFlatShading = state.rs.flatShading() && shader->info().flatShadingInputs;
+      info.fsFlatShading = state.rs.flatShading() && shader->metadata().flatShadingInputs;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if ((fsOutputMask & (1u << i)) && state.writesRenderTarget(i))
@@ -1271,7 +1271,7 @@ namespace dxvk {
         return false;
 
       // Flat shading requires patching the fragment shader
-      if (state.rs.flatShading() && m_shaders.fs->info().flatShadingInputs)
+      if (state.rs.flatShading() && m_shaders.fs->metadata().flatShadingInputs)
         return false;
 
       // If dynamic multisample state is not supported and sample shading
