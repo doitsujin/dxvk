@@ -242,11 +242,8 @@ namespace dxvk {
 
     // Create the shader object
     DxvkShaderCreateInfo info = { };
-    info.stage = m_programInfo.shaderStage();
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
-    info.inputMask = m_inputMask;
-    info.outputMask = m_outputMask;
     info.sharedPushData = m_sharedPushData;
     info.localPushData = m_localPushData;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, DxbcGlobalSamplerSet, 0u);
