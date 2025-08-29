@@ -308,12 +308,10 @@ namespace dxvk {
         spv::ExecutionModelGeometry, "main");
       m_module.setDebugName(m_entryPointId, "main");
 
-      DxvkShaderCreateInfo info;
-      info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+      DxvkShaderCreateInfo info = { };
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
       info.localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, sizeof(D3D9SwvpEmuArgs), 4u, 0u);
-      info.inputMask = m_inputMask;
 
       return new DxvkSpirvShader(info, m_module.compile());
     }

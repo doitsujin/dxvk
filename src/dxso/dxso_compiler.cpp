@@ -225,11 +225,8 @@ namespace dxvk {
 
   Rc<DxvkShader> DxsoCompiler::compile() {
     DxvkShaderCreateInfo info;
-    info.stage = m_programInfo.shaderStage();
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
-    info.inputMask = m_inputMask;
-    info.outputMask = m_outputMask;
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
     info.localPushData = m_samplerPushData;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
