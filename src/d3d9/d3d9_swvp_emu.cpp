@@ -308,7 +308,7 @@ namespace dxvk {
         spv::ExecutionModelGeometry, "main");
       m_module.setDebugName(m_entryPointId, "main");
 
-      DxvkShaderCreateInfo info = { };
+      DxvkSpirvShaderCreateInfo info = { };
       info.bindingCount = 1;
       info.bindings = &m_bufferBinding;
       info.localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, sizeof(D3D9SwvpEmuArgs), 4u, 0u);
