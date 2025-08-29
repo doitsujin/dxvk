@@ -42,14 +42,9 @@ namespace dxvk {
    * \brief Shader info
    */
   struct DxvkShaderCreateInfo {
-    /// Shader stage
-    VkShaderStageFlagBits stage;
     /// Descriptor info
     uint32_t bindingCount = 0;
     const DxvkBindingInfo* bindings = nullptr;
-    /// Input and output register mask
-    uint32_t inputMask = 0;
-    uint32_t outputMask = 0;
     /// Flat shading input mask
     uint32_t flatShadingInputs = 0;
     /// Push data blocks
