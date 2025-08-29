@@ -56,8 +56,6 @@ namespace dxvk {
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
     uint32_t patchVertexCount = 0;
-    /// Transform feedback vertex strides
-    uint32_t xfbStrides[MaxNumXfbBuffers] = { };
   };
 
 
@@ -79,6 +77,12 @@ namespace dxvk {
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     /// Output primitive topology for geometry or tessellation shaders
     VkPrimitiveTopology outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    /// Rasterized stream for geometry shaders, or -1
+    int32_t rasterizedStream = 0;
+    /// Tess control patch vertex count
+    uint32_t patchVertexCount = 0;
+    /// Transform feedback vertex strides
+    std::array<uint32_t, MaxNumXfbBuffers> xfbStrides = { };
   };
 
 
