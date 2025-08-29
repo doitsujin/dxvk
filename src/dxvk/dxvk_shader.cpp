@@ -1,6 +1,7 @@
 #include "dxvk_device.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_shader.h"
+#include "dxvk_shader_io.h"
 
 #include <dxvk_dummy_frag.h>
 
@@ -14,9 +15,12 @@ namespace dxvk {
 
 
   bool DxvkShaderModuleCreateInfo::eq(const DxvkShaderModuleCreateInfo& other) const {
-    bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
-           && fsFlatShading   == other.fsFlatShading
-           && undefinedInputs == other.undefinedInputs;
+    bool eq = fsDualSrcBlend == other.fsDualSrcBlend
+           && fsFlatShading == other.fsFlatShading
+           && prevStageOutputs.getVarCount() == other.prevStageOutputs.getVarCount();
+
+    for (uint32_t i = 0; i < prevStageOutputs.getVarCount() && eq; i++)
+      eq = prevStageOutputs.getVar(i).eq(other.prevStageOutputs.getVar(i));
 
     for (uint32_t i = 0; i < rtSwizzles.size() && eq; i++) {
       eq = rtSwizzles[i].r == other.rtSwizzles[i].r
@@ -33,7 +37,9 @@ namespace dxvk {
     DxvkHashState hash;
     hash.add(uint32_t(fsDualSrcBlend));
     hash.add(uint32_t(fsFlatShading));
-    hash.add(undefinedInputs);
+
+    for (uint32_t i = 0; i < prevStageOutputs.getVarCount(); i++)
+      hash.add(prevStageOutputs.getVar(i).hash());
 
     for (uint32_t i = 0; i < rtSwizzles.size(); i++) {
       hash.add(rtSwizzles[i].r);
@@ -62,18 +68,18 @@ namespace dxvk {
       // Standalone pipeline libraries are unsupported for geometry
       // and tessellation stages since we'd need to compile them
       // all into one library
-      if (m_info.stage != VK_SHADER_STAGE_VERTEX_BIT
-       && m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
-       && m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+      if (m_metadata.stage != VK_SHADER_STAGE_VERTEX_BIT
+       && m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+       && m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT)
         return false;
 
       // Standalone vertex shaders must export vertex position
-      if (m_info.stage == VK_SHADER_STAGE_VERTEX_BIT
+      if (m_metadata.stage == VK_SHADER_STAGE_VERTEX_BIT
        && !m_metadata.flags.test(DxvkShaderFlag::ExportsPosition))
         return false;
     } else {
       // Tessellation control shaders must define a valid vertex count
-      if (m_info.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+      if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
        && (m_info.patchVertexCount < 1 || m_info.patchVertexCount > 32))
         return false;
 
@@ -84,7 +90,7 @@ namespace dxvk {
 
     // Spec constant selectors are only supported in graphics
     if (m_metadata.specConstantMask & (1u << MaxNumSpecConstants))
-      return m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT;
+      return m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT;
 
     // Always late-compile shaders with spec constants
     // that don't use the spec constant selector
@@ -168,7 +174,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_shaderCount; i++) {
       auto shader = m_shaders[i].ptr();
 
-      switch (shader->info().stage) {
+      switch (shader->metadata().stage) {
         case VK_SHADER_STAGE_VERTEX_BIT:                  result.vs = shader; break;
         case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    result.tcs = shader; break;
         case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: result.tes = shader; break;
@@ -201,7 +207,7 @@ namespace dxvk {
 
   void DxvkShaderPipelineLibraryKey::addShader(
     const Rc<DxvkShader>&               shader) {
-    m_shaderStages |= shader->info().stage;
+    m_shaderStages |= shader->metadata().stage;
     m_shaders[m_shaderCount++] = shader;
   }
 
@@ -217,10 +223,12 @@ namespace dxvk {
 
     // Ensure that stage I/O is compatible between stages
     for (uint32_t i = 0; i + 1 < m_shaderCount; i++) {
-      uint32_t currStageIoMask = m_shaders[i]->info().outputMask;
-      uint32_t nextStageIoMask = m_shaders[i + 1]->info().inputMask;
+      const auto& currShaderMeta = m_shaders[i]->metadata();
+      const auto& nextShaderMeta = m_shaders[i + 1u]->metadata();
 
-      if ((currStageIoMask & nextStageIoMask) != nextStageIoMask)
+      if (!DxvkShaderIo::checkStageCompatibility(
+          nextShaderMeta.stage, nextShaderMeta.inputs,
+          currShaderMeta.stage, currShaderMeta.outputs))
         return false;
     }
 
