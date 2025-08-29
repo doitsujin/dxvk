@@ -13,6 +13,7 @@ namespace dxvk {
   : m_layout(getShaderStage(spirv)) {
     SpirvCodeBuffer code = std::move(spirv);
     m_metadata.stage = VkShaderStageFlagBits(m_layout.getStageMask());
+    m_metadata.flatShadingInputs = info.flatShadingInputs;
     m_metadata.rasterizedStream = info.xfbRasterizedStream;
     m_metadata.patchVertexCount = info.patchVertexCount;
 

@@ -77,6 +77,8 @@ namespace dxvk {
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     /// Output primitive topology for geometry or tessellation shaders
     VkPrimitiveTopology outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    /// Fragment shader input locations to consider for flat shading
+    uint32_t flatShadingInputs = 0;
     /// Rasterized stream for geometry shaders, or -1
     int32_t rasterizedStream = 0;
     /// Tess control patch vertex count
@@ -127,14 +129,6 @@ namespace dxvk {
     force_inline void decRef() {
       if (!(m_refCount.fetch_sub(1u, std::memory_order_acquire) - 1u))
         delete this;
-    }
-
-    /**
-     * \brief Shader info
-     * \returns Shader info
-     */
-    const DxvkShaderCreateInfo& info() const {
-      return m_info;
     }
 
     /**
