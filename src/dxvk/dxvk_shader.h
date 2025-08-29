@@ -95,7 +95,7 @@ namespace dxvk {
     bool      fsFlatShading   = false;
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
-    DxvkShaderIo prevStageOutputs = { };
+    std::optional<DxvkShaderIo> prevStageOutputs = { };
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 

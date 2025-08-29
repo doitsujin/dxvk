@@ -17,10 +17,14 @@ namespace dxvk {
   bool DxvkShaderModuleCreateInfo::eq(const DxvkShaderModuleCreateInfo& other) const {
     bool eq = fsDualSrcBlend == other.fsDualSrcBlend
            && fsFlatShading == other.fsFlatShading
-           && prevStageOutputs.getVarCount() == other.prevStageOutputs.getVarCount();
+           && !prevStageOutputs == !other.prevStageOutputs;
 
-    for (uint32_t i = 0; i < prevStageOutputs.getVarCount() && eq; i++)
-      eq = prevStageOutputs.getVar(i).eq(other.prevStageOutputs.getVar(i));
+    if (prevStageOutputs && eq) {
+      eq = prevStageOutputs->getVarCount() == other.prevStageOutputs->getVarCount();
+
+      for (uint32_t i = 0; i < prevStageOutputs->getVarCount() && eq; i++)
+        eq = prevStageOutputs->getVar(i).eq(other.prevStageOutputs->getVar(i));
+    }
 
     for (uint32_t i = 0; i < rtSwizzles.size() && eq; i++) {
       eq = rtSwizzles[i].r == other.rtSwizzles[i].r
@@ -38,8 +42,10 @@ namespace dxvk {
     hash.add(uint32_t(fsDualSrcBlend));
     hash.add(uint32_t(fsFlatShading));
 
-    for (uint32_t i = 0; i < prevStageOutputs.getVarCount(); i++)
-      hash.add(prevStageOutputs.getVar(i).hash());
+    if (prevStageOutputs) {
+      for (uint32_t i = 0; i < prevStageOutputs->getVarCount(); i++)
+        hash.add(prevStageOutputs->getVar(i).hash());
+    }
 
     for (uint32_t i = 0; i < rtSwizzles.size(); i++) {
       hash.add(rtSwizzles[i].r);
