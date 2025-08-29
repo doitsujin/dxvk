@@ -5,6 +5,7 @@
 #include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_hash.h"
+#include "../dxvk/dxvk_shader_spirv.h"
 
 #include "../util/util_small_vector.h"
 
@@ -951,18 +952,15 @@ namespace dxvk {
       isVS() ? spv::ExecutionModelVertex : spv::ExecutionModelFragment, "main");
 
     // Create the shader module object
-    DxvkShaderCreateInfo info;
-    info.stage = isVS() ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+    DxvkSpirvShaderCreateInfo info;
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
-    info.inputMask = m_inputMask;
-    info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
     info.localPushData = m_samplerBlock;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, GetGlobalSamplerSetIndex(), 0u);
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkSpirvShader(info, m_module.compile());
   }
 
 
@@ -2600,7 +2598,6 @@ namespace dxvk {
 
     Dump(pDevice, Key, name);
 
-    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
@@ -2623,7 +2620,6 @@ namespace dxvk {
 
     Dump(pDevice, Key, name);
 
-    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 

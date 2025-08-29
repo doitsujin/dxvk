@@ -48,7 +48,6 @@ namespace dxvk {
     m_shader = passthroughShader
       ? module.compilePassthroughShader(*pDxbcModuleInfo, name)
       : module.compile                 (*pDxbcModuleInfo, name);
-    m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
@@ -67,7 +66,7 @@ namespace dxvk {
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                   | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                   | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-      info.stages = util::pipelineStages(m_shader->info().stage);
+      info.stages = util::pipelineStages(m_shader->metadata().stage);
       info.access = VK_ACCESS_UNIFORM_READ_BIT
                   | VK_ACCESS_TRANSFER_READ_BIT
                   | VK_ACCESS_TRANSFER_WRITE_BIT;
@@ -136,62 +135,6 @@ namespace dxvk {
     
     *pShader = std::move(module);
     return S_OK;
-  }
-  
-
-  D3D11ExtShader::D3D11ExtShader(
-          ID3D11DeviceChild*      pParent,
-          D3D11CommonShader*      pShader)
-  : m_parent(pParent), m_shader(pShader) {
-
-  }
-
-
-  D3D11ExtShader::~D3D11ExtShader() {
-
-  }
-
-
-  ULONG STDMETHODCALLTYPE D3D11ExtShader::AddRef() {
-    return m_parent->AddRef();
-  }
-
-
-  ULONG STDMETHODCALLTYPE D3D11ExtShader::Release() {
-    return m_parent->Release();
-  }
-
-
-  HRESULT STDMETHODCALLTYPE D3D11ExtShader::QueryInterface(
-          REFIID                  riid,
-          void**                  ppvObject) {
-    return m_parent->QueryInterface(riid, ppvObject);
-  }
-
-
-  HRESULT STDMETHODCALLTYPE D3D11ExtShader::GetSpirvCode(
-          SIZE_T*                 pCodeSize,
-          void*                   pCode) {
-    auto shader = m_shader->GetShader();
-    auto code = shader->getRawCode();
-
-    HRESULT hr = S_OK;
-
-    if (pCode) {
-      size_t size = code.size();
-
-      if (size > *pCodeSize) {
-        size = *pCodeSize;
-        hr = S_FALSE;
-      }
-
-      std::memcpy(pCode, code.data(), size);
-      *pCodeSize = size;
-      return hr;
-    } else {
-      *pCodeSize = code.size();
-      return hr;
-    }
   }
 
 }

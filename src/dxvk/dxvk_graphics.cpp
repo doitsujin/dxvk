@@ -46,11 +46,11 @@ namespace dxvk {
   VkPrimitiveTopology determinePreGsTopology(
     const DxvkGraphicsPipelineShaders&      shaders,
     const DxvkGraphicsPipelineStateInfo&    state) {
-    if (shaders.tcs && shaders.tcs->flags().test(DxvkShaderFlag::TessellationPoints))
+    if (shaders.tcs && shaders.tcs->metadata().flags.test(DxvkShaderFlag::TessellationPoints))
       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
     if (shaders.tes)
-      return shaders.tes->info().outputTopology;
+      return shaders.tes->metadata().outputTopology;
 
     return state.ia.primitiveTopology();
   }
@@ -60,7 +60,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineShaders&      shaders,
     const DxvkGraphicsPipelineStateInfo&    state) {
     if (shaders.gs)
-      return shaders.gs->info().outputTopology;
+      return shaders.gs->metadata().outputTopology;
 
     return determinePreGsTopology(shaders, state);
   }
@@ -80,7 +80,7 @@ namespace dxvk {
     iaInfo.topology               = state.ia.primitiveTopology();
     iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
 
-    uint32_t attrMask = shaders.vs->info().inputMask;
+    uint32_t attrMask = shaders.vs->metadata().inputs.computeMask();
     uint32_t bindingMask = 0;
 
     // Find out which bindings are used based on the attribute mask
@@ -274,7 +274,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineShaders&    shaders) {
     // Set up color formats and attachment blend states. Disable the write
     // mask for any attachment that the fragment shader does not write to.
-    uint32_t fsOutputMask = shaders.fs ? shaders.fs->info().outputMask : 0u;
+    uint32_t fsOutputMask = shaders.fs ? shaders.fs->metadata().outputs.computeMask() : 0u;
 
     // Dual-source blending can only write to one render target
     if (state.useDualSourceBlending())
@@ -358,13 +358,13 @@ namespace dxvk {
         : VK_SAMPLE_COUNT_1_BIT;
     }
 
-    if (shaders.fs && shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading)) {
       msInfo.sampleShadingEnable  = VK_TRUE;
       msInfo.minSampleShading     = 1.0f;
     }
 
     // Alpha to coverage is not supported with sample mask exports.
-    cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask);
+    cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask);
 
     msSampleMask                  = state.ms.sampleMask() & ((1u << msInfo.rasterizationSamples) - 1);
     msInfo.pSampleMask            = &msSampleMask;
@@ -557,7 +557,7 @@ namespace dxvk {
 
     // Set up rasterized stream depending on geometry shader state.
     // Rasterizing stream 0 is default behaviour in all situations.
-    int32_t streamIndex = shaders.gs ? shaders.gs->info().xfbRasterizedStream : 0;
+    int32_t streamIndex = shaders.gs ? shaders.gs->metadata().rasterizedStream : 0;
 
     if (streamIndex > 0) {
       rsXfbStreamInfo.pNext = std::exchange(rsInfo.pNext, &rsXfbStreamInfo);
@@ -596,7 +596,7 @@ namespace dxvk {
         // in combination with smooth lines. Override the line mode to
         // rectangular to fix this, but keep the width fixed at 1.0.
         bool needsOverride = state.ms.enableAlphaToCoverage()
-          || (shaders.fs && shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading));
+          || (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading));
 
         if (needsOverride)
           rsLineInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
@@ -858,44 +858,41 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo&  state) {
     DxvkShaderModuleCreateInfo info;
 
-    if (shader == nullptr)
+    if (!shader)
       return info;
 
     // Fix up fragment shader outputs for dual-source blending
-    const DxvkShaderCreateInfo& shaderInfo = shader->info();
+    const DxvkShaderMetadata& shaderMeta = shader->metadata();
 
-    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+    if (shaderMeta.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+      auto fsOutputMask = shaderMeta.outputs.computeMask();
+
       info.fsDualSrcBlend = state.useDualSourceBlending();
-      info.fsFlatShading = state.rs.flatShading() && shader->info().flatShadingInputs;
+      info.fsFlatShading = state.rs.flatShading() && shader->metadata().flatShadingInputs;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        if ((shaderInfo.outputMask & (1u << i)) && state.writesRenderTarget(i))
+        if ((fsOutputMask & (1u << i)) && state.writesRenderTarget(i))
           info.rtSwizzles[i] = state.omSwizzle[i].mapping();
       }
     }
 
     // Deal with undefined shader inputs
-    uint32_t consumedInputs = shaderInfo.inputMask;
-    uint32_t providedInputs = 0;
+    if (shaderMeta.stage == VK_SHADER_STAGE_VERTEX_BIT) {
+      uint32_t attributeMask = 0u;
 
-    if (shaderInfo.stage == VK_SHADER_STAGE_VERTEX_BIT) {
       for (uint32_t i = 0; i < state.il.attributeCount(); i++)
-        providedInputs |= 1u << state.ilAttributes[i].location();
-    } else if (shaderInfo.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-      auto prevStage = getPrevStageShader(shaders, shaderInfo.stage);
-      providedInputs = prevStage->info().outputMask;
+        attributeMask |= 1u << state.ilAttributes[i].location();
+
+      info.prevStageOutputs = DxvkShaderIo::forVertexBindings(attributeMask);
     } else {
-      // Technically not correct, but this
-      // would need a lot of extra care
-      providedInputs = consumedInputs;
+      auto prevStage = getPrevStageShader(shaders, shaderMeta.stage);
+      info.prevStageOutputs = prevStage->metadata().outputs;
     }
 
-    info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-
     // Fix up input topology for geometry shaders as necessary
-    if (shaderInfo.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+    if (shaderMeta.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
       VkPrimitiveTopology iaTopology = determinePreGsTopology(shaders, state);
-      info.inputTopology = determineGsInputTopology(shaderInfo.inputTopology, iaTopology);
+      info.inputTopology = determineGsInputTopology(shaderMeta.inputTopology, iaTopology);
     }
 
     return info;
@@ -1007,13 +1004,13 @@ namespace dxvk {
     m_vsLibrary     (vsLibrary),
     m_fsLibrary     (fsLibrary),
     m_debugName     (createDebugName()) {
-    m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
-    m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
+    m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->metadata().inputs.computeMask() : 0u;
+    m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->metadata().outputs.computeMask() : 0u;
     m_specConstantMask = this->computeSpecConstantMask();
     gplAsyncCache = m_device->config().gplAsyncCache;
 
     if (m_shaders.gs != nullptr) {
-      if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
+      if (m_shaders.gs->metadata().flags.test(DxvkShaderFlag::HasTransformFeedback)) {
         m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
 
         m_barrier.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
@@ -1022,7 +1019,7 @@ namespace dxvk {
                          |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
       }
 
-      if (m_shaders.gs->info().xfbRasterizedStream < 0)
+      if (m_shaders.gs->metadata().rasterizedStream < 0)
         m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
@@ -1034,9 +1031,9 @@ namespace dxvk {
     }
 
     if (m_shaders.fs != nullptr) {
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading))
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleRateShading);
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask))
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleMaskExport);
     }
   }
@@ -1245,20 +1242,19 @@ namespace dxvk {
 
     // If the vertex shader uses any input locations not provided by
     // the input layout, we need to patch the shader.
-    uint32_t vsInputMask = m_shaders.vs->info().inputMask;
     uint32_t ilAttributeMask = 0u;
 
     for (uint32_t i = 0; i < state.il.attributeCount(); i++)
       ilAttributeMask |= 1u << state.ilAttributes[i].location();
 
-    if ((vsInputMask & ilAttributeMask) != vsInputMask)
+    if ((m_vsIn & ilAttributeMask) != m_vsIn)
       return false;
 
     if (m_shaders.gs != nullptr) {
       // If the geometry shader's input topology is not compatible with
       // the topology set to the pipeline, we need to patch the GS.
       VkPrimitiveTopology iaTopology = determinePreGsTopology(m_shaders, state);
-      VkPrimitiveTopology gsTopology = m_shaders.gs->info().inputTopology;
+      VkPrimitiveTopology gsTopology = m_shaders.gs->metadata().inputTopology;
 
       if (determineGsInputTopology(gsTopology, iaTopology) != gsTopology)
         return false;
@@ -1267,22 +1263,23 @@ namespace dxvk {
     if (m_shaders.tcs != nullptr) {
       // If tessellation shaders are present, the input patch
       // vertex count must match the shader's definition.
-      if (m_shaders.tcs->info().patchVertexCount != state.ia.patchVertexCount())
+      if (m_shaders.tcs->metadata().patchVertexCount != state.ia.patchVertexCount())
         return false;
     }
 
     if (m_shaders.fs != nullptr) {
       // If the fragment shader has inputs not produced by the last
       // pre-rasterization stage, we need to patch the fragment shader
-      uint32_t fsIoMask = m_shaders.fs->info().inputMask;
-      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+      const auto& fsInputs = m_shaders.fs->metadata().inputs;
+      const auto* preRasterStage = m_shaders.vs.ptr();
 
-      if (m_shaders.gs != nullptr)
-        vsIoMask = m_shaders.gs->info().outputMask;
+      if (m_shaders.gs)
+        preRasterStage = m_shaders.gs.ptr();
       else if (m_shaders.tes != nullptr)
-        vsIoMask = m_shaders.tes->info().outputMask;
+        preRasterStage = m_shaders.tes.ptr();
 
-      if ((vsIoMask & fsIoMask) != fsIoMask)
+      if (!DxvkShaderIo::checkStageCompatibility(VK_SHADER_STAGE_FRAGMENT_BIT, fsInputs,
+          preRasterStage->metadata().stage, preRasterStage->metadata().outputs))
         return false;
 
       // Dual-source blending requires patching the fragment shader
@@ -1290,12 +1287,12 @@ namespace dxvk {
         return false;
 
       // Flat shading requires patching the fragment shader
-      if (state.rs.flatShading() && m_shaders.fs->info().flatShadingInputs)
+      if (state.rs.flatShading() && m_shaders.fs->metadata().flatShadingInputs)
         return false;
 
       // If dynamic multisample state is not supported and sample shading
       // is enabled, the library is compiled with a sample count of 1.
-      if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+      if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading)) {
         bool canUseDynamicMultisampleState =
           m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples &&
           m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
@@ -1310,7 +1307,7 @@ namespace dxvk {
 
         if (!canUseDynamicAlphaToCoverage
          && (state.ms.enableAlphaToCoverage())
-         && !m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask))
+         && !m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
           return false;
       }
     }
@@ -1498,16 +1495,16 @@ namespace dxvk {
 
 
   uint32_t DxvkGraphicsPipeline::computeSpecConstantMask() const {
-    uint32_t mask = m_shaders.vs->getSpecConstantMask();
+    uint32_t mask = m_shaders.vs->metadata().specConstantMask;
 
     if (m_shaders.tcs != nullptr)
-      mask |= m_shaders.tcs->getSpecConstantMask();
+      mask |= m_shaders.tcs->metadata().specConstantMask;
     if (m_shaders.tes != nullptr)
-      mask |= m_shaders.tes->getSpecConstantMask();
+      mask |= m_shaders.tes->metadata().specConstantMask;
     if (m_shaders.gs != nullptr)
-      mask |= m_shaders.gs->getSpecConstantMask();
+      mask |= m_shaders.gs->metadata().specConstantMask;
     if (m_shaders.fs != nullptr)
-      mask |= m_shaders.fs->getSpecConstantMask();
+      mask |= m_shaders.fs->metadata().specConstantMask;
 
     return mask;
   }
@@ -1523,9 +1520,7 @@ namespace dxvk {
       return result;
 
     if (m_shaders.fs) {
-      uint32_t colorMask = m_shaders.fs->info().outputMask;
-
-      for (auto i : bit::BitMask(colorMask)) {
+      for (auto i : bit::BitMask(m_fsOut)) {
         if (state.writesRenderTarget(i))
           result.trackColorWrite(i);
       }

@@ -313,11 +313,11 @@ namespace dxvk {
 
     size_t hash() const {
       DxvkHashState state;
-      state.add(DxvkShader::getHash(vs));
-      state.add(DxvkShader::getHash(tcs));
-      state.add(DxvkShader::getHash(tes));
-      state.add(DxvkShader::getHash(gs));
-      state.add(DxvkShader::getHash(fs));
+      state.add(DxvkShader::getCookie(vs));
+      state.add(DxvkShader::getCookie(tcs));
+      state.add(DxvkShader::getCookie(tes));
+      state.add(DxvkShader::getCookie(gs));
+      state.add(DxvkShader::getCookie(fs));
       return state;
     }
 
@@ -330,7 +330,7 @@ namespace dxvk {
     }
 
     static bool validateShaderType(const Rc<DxvkShader>& shader, VkShaderStageFlagBits stage) {
-      return shader == nullptr || shader->info().stage == stage;
+      return shader == nullptr || shader->metadata().stage == stage;
     }
   };
 
