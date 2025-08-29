@@ -2815,7 +2815,11 @@ namespace dxvk {
     const D3D11_VIDEO_DECODER_DESC*                     pVideoDesc,
     const D3D11_VIDEO_DECODER_CONFIG*                   pConfig,
           ID3D11VideoDecoder**                          ppDecoder) {
-    Logger::err("D3D11VideoDevice::CreateVideoDecoder: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::CreateVideoDecoder: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2838,7 +2842,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateAuthenticatedChannel(
           D3D11_AUTHENTICATED_CHANNEL_TYPE              ChannelType,
           ID3D11AuthenticatedChannel**                  ppAuthenticatedChannel) {
-    Logger::err("D3D11VideoDevice::CreateAuthenticatedChannel: Stub");
+    Logger::warn("D3D11VideoDevice::CreateAuthenticatedChannel: Stub");
     return E_NOTIMPL;
   }
 
@@ -2848,7 +2852,7 @@ namespace dxvk {
     const GUID*                                         pDecoderProfile,
     const GUID*                                         pKeyExchangeType,
           ID3D11CryptoSession**                         ppCryptoSession) {
-    Logger::err("D3D11VideoDevice::CreateCryptoSession: Stub");
+    Logger::warn("D3D11VideoDevice::CreateCryptoSession: Stub");
     return E_NOTIMPL;
   }
 
@@ -2857,7 +2861,11 @@ namespace dxvk {
           ID3D11Resource*                               pResource,
     const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC*         pDesc,
           ID3D11VideoDecoderOutputView**                ppVDOVView) {
-    Logger::err("D3D11VideoDevice::CreateVideoDecoderOutputView: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::CreateVideoDecoderOutputView: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2906,7 +2914,11 @@ namespace dxvk {
 
 
   UINT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderProfileCount() {
-    Logger::err("D3D11VideoDevice::GetVideoDecoderProfileCount: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::GetVideoDecoderProfileCount: Stub");
+
     return 0;
   }
 
@@ -2914,7 +2926,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderProfile(
           UINT                                          Index,
           GUID*                                         pDecoderProfile) {
-    Logger::err("D3D11VideoDevice::GetVideoDecoderProfile: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::GetVideoDecoderProfile: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2923,7 +2939,11 @@ namespace dxvk {
     const GUID*                                         pDecoderProfile,
           DXGI_FORMAT                                   Format,
           BOOL*                                         pSupported) {
-    Logger::err("D3D11VideoDevice::CheckVideoDecoderFormat: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::CheckVideoDecoderFormat: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2931,8 +2951,17 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderConfigCount(
     const D3D11_VIDEO_DECODER_DESC*                     pDesc,
           UINT*                                         pCount) {
-    Logger::err("D3D11VideoDevice::GetVideoDecoderConfigCount: Stub");
-    return E_NOTIMPL;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::GetVideoDecoderConfigCount: Stub");
+
+    if (!pCount)
+      return E_INVALIDARG;
+
+    *pCount = 0;
+
+    return S_OK;
   }
 
 
@@ -2940,7 +2969,11 @@ namespace dxvk {
     const D3D11_VIDEO_DECODER_DESC*                     pDesc,
           UINT                                          Index,
           D3D11_VIDEO_DECODER_CONFIG*                   pConfig) {
-    Logger::err("D3D11VideoDevice::GetVideoDecoderConfig: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::GetVideoDecoderConfig: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2949,7 +2982,11 @@ namespace dxvk {
     const GUID*                                         pCryptoType,
     const GUID*                                         pDecoderProfile,
           D3D11_VIDEO_CONTENT_PROTECTION_CAPS*          pCaps) {
-    Logger::err("D3D11VideoDevice::GetContentProtectionCaps: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::GetContentProtectionCaps: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2959,7 +2996,11 @@ namespace dxvk {
     const GUID*                                         pDecoderProfile,
           UINT                                          Index,
           GUID*                                         pKeyExchangeType) {
-    Logger::err("D3D11VideoDevice::CheckCryptoKeyExchange: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11VideoDevice::CheckCryptoKeyExchange: Stub");
+
     return E_NOTIMPL;
   }
 
@@ -2977,8 +3018,6 @@ namespace dxvk {
     const IUnknown*                                     pData) {
     return m_container->SetPrivateDataInterface(Name, pData);
   }
-
-
 
 
   D3D11ReflexDevice::D3D11ReflexDevice(

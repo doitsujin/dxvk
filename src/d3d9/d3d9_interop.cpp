@@ -108,6 +108,17 @@ namespace dxvk {
           VkImageLayout*        pLayout,
           VkImageCreateInfo*    pInfo) {
     const Rc<DxvkImage> image = m_texture->GetImage();
+    
+    if (unlikely(!image)) {
+      if (pHandle != nullptr)
+        *pHandle = VK_NULL_HANDLE;
+
+      if (pLayout != nullptr)
+        *pLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+      return D3DERR_NOTFOUND;
+    }
+
     const DxvkImageCreateInfo& info = image->info();
     
     if (pHandle != nullptr)

@@ -56,12 +56,6 @@ namespace dxvk {
 
     if (m_d3d8Options.batching)
       m_batcher = new D3D8Batcher(this, GetD3D9());
-
-    d3d9::D3DCAPS9 caps9;
-    HRESULT res = GetD3D9()->GetDeviceCaps(&caps9);
-
-    if (unlikely(SUCCEEDED(res) && caps9.PixelShaderVersion == D3DPS_VERSION(0, 0)))
-      m_isFixedFunctionOnly = true;
   }
 
   D3D8Device::~D3D8Device() {
@@ -162,6 +156,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     *ppD3D8 = m_parent.ref();
+
     return D3D_OK;
   }
 
@@ -229,29 +224,18 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D8DeviceLock lock = LockDevice();
 
+    HRESULT res = m_parent->ValidatePresentationParameters(pPresentationParameters);
+
+    if (unlikely(FAILED(res)))
+      return res;
+
     StateChange();
-
-    if (unlikely(pPresentationParameters == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    // D3DSWAPEFFECT_COPY can not be used with more than one back buffer.
-    // This is also technically true for D3DSWAPEFFECT_COPY_VSYNC, however
-    // RC Cars depends on it not being rejected.
-    if (unlikely(pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
-              && pPresentationParameters->BackBufferCount > 1))
-      return D3DERR_INVALIDCALL;
-
-    // In D3D8 nothing except D3DPRESENT_INTERVAL_DEFAULT can be used
-    // as a flag for windowed presentation.
-    if (unlikely(pPresentationParameters->Windowed
-              && pPresentationParameters->FullScreen_PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT))
-      return D3DERR_INVALIDCALL;
 
     m_presentParams = *pPresentationParameters;
     ResetState();
 
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
-    HRESULT res = GetD3D9()->Reset(&params);
+    res = GetD3D9()->Reset(&params);
 
     if (likely(SUCCEEDED(res)))
       RecreateBackBuffersAndAutoDepthStencil();
@@ -295,6 +279,7 @@ namespace dxvk {
     }
 
     *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
+
     return D3D_OK;
   }
 
@@ -439,7 +424,7 @@ namespace dxvk {
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (ShouldBatch()) {
+    if (unlikely(ShouldBatch())) {
       *ppVertexBuffer = m_batcher->CreateVertexBuffer(Length, Usage, FVF, Pool);
       return D3D_OK;
     }
@@ -1248,7 +1233,7 @@ namespace dxvk {
       m_token++;
       auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
                                                       std::forward_as_tuple(m_token),
-                                                      std::forward_as_tuple(this, Type, pStateBlock9.ref()));
+                                                      std::forward_as_tuple(this, Type, pStateBlock9.ptr()));
       *pToken = m_token;
 
       // D3D8 state blocks automatically capture state on creation.
@@ -1491,7 +1476,7 @@ namespace dxvk {
           UINT             PrimitiveCount) {
     D3D8DeviceLock lock = LockDevice();
 
-    if (ShouldBatch())
+    if (unlikely(ShouldBatch()))
       return m_batcher->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
     return GetD3D9()->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
   }
@@ -1603,7 +1588,7 @@ namespace dxvk {
     HRESULT res = GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
 
     if (likely(SUCCEEDED(res))) {
-      if (ShouldBatch())
+      if (unlikely(ShouldBatch()))
         m_batcher->SetStream(StreamNumber, buffer, Stride);
 
       m_streams[StreamNumber].buffer = buffer;
@@ -1649,17 +1634,16 @@ namespace dxvk {
     if (unlikely(BaseVertexIndex > std::numeric_limits<int32_t>::max()))
       Logger::warn("D3D8Device::SetIndices: BaseVertexIndex exceeds INT_MAX");
 
-    // used by DrawIndexedPrimitive
-    m_baseVertexIndex = BaseVertexIndex;
-
     D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
     HRESULT res = GetD3D9()->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(buffer));
 
     if (likely(SUCCEEDED(res))) {
-      if (ShouldBatch())
-        m_batcher->SetIndices(buffer, m_baseVertexIndex);
+      if (unlikely(ShouldBatch()))
+        m_batcher->SetIndices(buffer, BaseVertexIndex);
 
       m_indices = buffer;
+      // used by DrawIndexedPrimitive
+      m_baseVertexIndex = BaseVertexIndex;
     }
 
     return res;
@@ -1735,6 +1719,7 @@ namespace dxvk {
 
         if (!std::exchange(s_linePatternErrorShown, true))
           Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_LINEPATTERN");
+
         m_linePattern = bit::cast<D3DLINEPATTERN>(Value);
         return D3D_OK;
 
@@ -1770,8 +1755,8 @@ namespace dxvk {
 
         if (!std::exchange(s_patchSegmentsErrorShown, true))
           Logger::warn("D3D8Device::SetRenderState: Unimplemented render state D3DRS_PATCHSEGMENTS");
-        m_patchSegments = bit::cast<float>(Value);
-        return D3D_OK;
+
+        return GetD3D9()->SetNPatchMode(bit::cast<float>(Value));
     }
 
     // Skip GetRenderState() calls for state
@@ -1827,7 +1812,8 @@ namespace dxvk {
         return D3D_OK;
 
       case D3DRS_PATCHSEGMENTS:
-        *pValue = bit::cast<DWORD>(m_patchSegments);
+        const float patchSegments = GetD3D9()->GetNPatchMode();
+        *pValue = bit::cast<DWORD>(patchSegments);
         return D3D_OK;
     }
 

@@ -147,7 +147,7 @@ namespace dxvk {
 
     inline const D3D9_BUFFER_DESC* Desc() const { return &m_desc; }
 
-    static HRESULT ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc);
+    static HRESULT ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc, const bool IsExtended);
 
     /**
      * \brief The range of the buffer that was changed using Lock calls

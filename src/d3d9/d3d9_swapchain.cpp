@@ -506,7 +506,7 @@ namespace dxvk {
     // Assume there's 20 lines in a vBlank.
     constexpr uint32_t vBlankLineCount = 20;
 
-    if (pRasterStatus == nullptr)
+    if (unlikely(pRasterStatus == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3DDISPLAYMODEEX mode;
@@ -534,7 +534,7 @@ namespace dxvk {
 
   
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetDisplayMode(D3DDISPLAYMODE* pMode) {
-    if (pMode == nullptr)
+    if (unlikely(pMode == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pMode = D3DDISPLAYMODE();
@@ -556,7 +556,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetPresentParameters(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    if (pPresentationParameters == nullptr)
+    if (unlikely(pPresentationParameters == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pPresentationParameters = m_presentParams;
@@ -566,25 +566,44 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetLastPresentCount(UINT* pLastPresentCount) {
-    Logger::warn("D3D9SwapChainEx::GetLastPresentCount: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9SwapChainEx::GetLastPresentCount: Stub");
+
+    if (likely(pLastPresentCount != nullptr))
+      *pLastPresentCount = 0;
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetPresentStats(D3DPRESENTSTATS* pPresentationStatistics) {
-    Logger::warn("D3D9SwapChainEx::GetPresentStats: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9SwapChainEx::GetPresentStats: Stub");
+
+    if (likely(pPresentationStatistics != nullptr)) {
+      D3DPRESENTSTATS presentationStatistics = { };
+      *pPresentationStatistics = presentationStatistics;
+    }
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) {
-    if (pMode == nullptr && pRotation == nullptr)
+    if (unlikely(pMode == nullptr && pRotation == nullptr))
       return D3DERR_INVALIDCALL;
 
     if (pRotation != nullptr)
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
     if (pMode != nullptr) {
+      if (unlikely(pMode->Size != sizeof(D3DDISPLAYMODEEX)))
+        return D3DERR_INVALIDCALL;
+
       wsi::WsiMode devMode = { };
 
       if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &devMode)) {

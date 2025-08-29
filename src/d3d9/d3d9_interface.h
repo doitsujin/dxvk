@@ -124,7 +124,12 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetAdapterLUID(UINT Adapter, LUID* pLUID);
 
-    HRESULT ValidatePresentationParameters(D3DPRESENT_PARAMETERS* pPresentationParameters);
+    HRESULT ValidatePresentationParametersEx(
+        const D3DPRESENT_PARAMETERS* pPresentationParameters,
+        const D3DDISPLAYMODEEX*      pFullscreenDisplayMode);
+
+    HRESULT ValidatePresentationParameters(
+        const D3DPRESENT_PARAMETERS* pPresentationParameters);
 
     const D3D9Options& GetOptions() { return m_d3d9Options; }
 
