@@ -80,7 +80,7 @@ namespace dxvk {
     iaInfo.topology               = state.ia.primitiveTopology();
     iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
 
-    uint32_t attrMask = shaders.vs->info().inputMask;
+    uint32_t attrMask = shaders.vs->metadata().inputs.computeMask();
     uint32_t bindingMask = 0;
 
     // Find out which bindings are used based on the attribute mask
@@ -274,7 +274,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineShaders&    shaders) {
     // Set up color formats and attachment blend states. Disable the write
     // mask for any attachment that the fragment shader does not write to.
-    uint32_t fsOutputMask = shaders.fs ? shaders.fs->info().outputMask : 0u;
+    uint32_t fsOutputMask = shaders.fs ? shaders.fs->metadata().outputs.computeMask() : 0u;
 
     // Dual-source blending can only write to one render target
     if (state.useDualSourceBlending())
@@ -862,39 +862,35 @@ namespace dxvk {
       return info;
 
     // Fix up fragment shader outputs for dual-source blending
-    const DxvkShaderCreateInfo& shaderInfo = shader->info();
     const DxvkShaderMetadata& shaderMeta = shader->metadata();
 
-    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+    if (shaderMeta.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+      auto fsOutputMask = shaderMeta.outputs.computeMask();
+
       info.fsDualSrcBlend = state.useDualSourceBlending();
       info.fsFlatShading = state.rs.flatShading() && shader->info().flatShadingInputs;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        if ((shaderInfo.outputMask & (1u << i)) && state.writesRenderTarget(i))
+        if ((fsOutputMask & (1u << i)) && state.writesRenderTarget(i))
           info.rtSwizzles[i] = state.omSwizzle[i].mapping();
       }
     }
 
     // Deal with undefined shader inputs
-    uint32_t consumedInputs = shaderInfo.inputMask;
-    uint32_t providedInputs = 0;
+    if (shaderMeta.stage == VK_SHADER_STAGE_VERTEX_BIT) {
+      uint32_t attributeMask = 0u;
 
-    if (shaderInfo.stage == VK_SHADER_STAGE_VERTEX_BIT) {
       for (uint32_t i = 0; i < state.il.attributeCount(); i++)
-        providedInputs |= 1u << state.ilAttributes[i].location();
-    } else if (shaderInfo.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-      auto prevStage = getPrevStageShader(shaders, shaderInfo.stage);
-      providedInputs = prevStage->info().outputMask;
+        attributeMask |= 1u << state.ilAttributes[i].location();
+
+      info.prevStageOutputs = DxvkShaderIo::forVertexBindings(attributeMask);
     } else {
-      // Technically not correct, but this
-      // would need a lot of extra care
-      providedInputs = consumedInputs;
+      auto prevStage = getPrevStageShader(shaders, shaderMeta.stage);
+      info.prevStageOutputs = prevStage->metadata().outputs;
     }
 
-    info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-
     // Fix up input topology for geometry shaders as necessary
-    if (shaderInfo.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+    if (shaderMeta.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
       VkPrimitiveTopology iaTopology = determinePreGsTopology(shaders, state);
       info.inputTopology = determineGsInputTopology(shaderMeta.inputTopology, iaTopology);
     }
@@ -1008,8 +1004,8 @@ namespace dxvk {
     m_vsLibrary     (vsLibrary),
     m_fsLibrary     (fsLibrary),
     m_debugName     (createDebugName()) {
-    m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
-    m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
+    m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->metadata().inputs.computeMask() : 0u;
+    m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->metadata().outputs.computeMask() : 0u;
     m_specConstantMask = this->computeSpecConstantMask();
 
     if (m_shaders.gs != nullptr) {
@@ -1230,13 +1226,12 @@ namespace dxvk {
 
     // If the vertex shader uses any input locations not provided by
     // the input layout, we need to patch the shader.
-    uint32_t vsInputMask = m_shaders.vs->info().inputMask;
     uint32_t ilAttributeMask = 0u;
 
     for (uint32_t i = 0; i < state.il.attributeCount(); i++)
       ilAttributeMask |= 1u << state.ilAttributes[i].location();
 
-    if ((vsInputMask & ilAttributeMask) != vsInputMask)
+    if ((m_vsIn & ilAttributeMask) != m_vsIn)
       return false;
 
     if (m_shaders.gs != nullptr) {
@@ -1259,15 +1254,16 @@ namespace dxvk {
     if (m_shaders.fs != nullptr) {
       // If the fragment shader has inputs not produced by the last
       // pre-rasterization stage, we need to patch the fragment shader
-      uint32_t fsIoMask = m_shaders.fs->info().inputMask;
-      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+      const auto& fsInputs = m_shaders.fs->metadata().inputs;
+      const auto* preRasterStage = m_shaders.vs.ptr();
 
-      if (m_shaders.gs != nullptr)
-        vsIoMask = m_shaders.gs->info().outputMask;
+      if (m_shaders.gs)
+        preRasterStage = m_shaders.gs.ptr();
       else if (m_shaders.tes != nullptr)
-        vsIoMask = m_shaders.tes->info().outputMask;
+        preRasterStage = m_shaders.tes.ptr();
 
-      if ((vsIoMask & fsIoMask) != fsIoMask)
+      if (!DxvkShaderIo::checkStageCompatibility(VK_SHADER_STAGE_FRAGMENT_BIT, fsInputs,
+          preRasterStage->metadata().stage, preRasterStage->metadata().outputs))
         return false;
 
       // Dual-source blending requires patching the fragment shader
@@ -1506,9 +1502,7 @@ namespace dxvk {
       return result;
 
     if (m_shaders.fs) {
-      uint32_t colorMask = m_shaders.fs->info().outputMask;
-
-      for (auto i : bit::BitMask(colorMask)) {
+      for (auto i : bit::BitMask(m_fsOut)) {
         if (state.writesRenderTarget(i))
           result.trackColorWrite(i);
       }
