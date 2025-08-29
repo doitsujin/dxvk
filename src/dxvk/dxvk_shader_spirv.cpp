@@ -368,13 +368,19 @@ namespace dxvk {
     if (decoration.component)
       varInfo.componentIndex = *decoration.component;
 
-    varInfo.componentCount = getComponentCountForType(code, type, varInfo.builtIn);
+    auto componentInfo = getComponentCountForType(code, type, varInfo.builtIn);
+
+    varInfo.componentCount = componentInfo.first;
     varInfo.isPatchConstant = decoration.patch;
 
-    if (storage == spv::StorageClassOutput)
-      m_metadata.outputs.add(varInfo);
-    else
-      m_metadata.inputs.add(varInfo);
+    for (uint32_t i = 0u; i < componentInfo.second; i++) {
+      if (storage == spv::StorageClassOutput)
+        m_metadata.outputs.add(varInfo);
+      else
+        m_metadata.inputs.add(varInfo);
+
+      varInfo.location += 1u;
+    }
   }
 
 
@@ -499,7 +505,7 @@ namespace dxvk {
   }
 
 
-  uint32_t DxvkSpirvShader::getComponentCountForType(
+  std::pair<uint32_t, uint32_t> DxvkSpirvShader::getComponentCountForType(
           SpirvCodeBuffer&          code,
     const SpirvInstruction&         type,
           spv::BuiltIn              builtIn) const {
@@ -508,24 +514,25 @@ namespace dxvk {
       case spv::OpTypeBool:
       case spv::OpTypeInt:
       case spv::OpTypeFloat:
-        return 1u;
+        return std::make_pair(1u, 1u);
 
       case spv::OpTypeVector:
-        return type.arg(3u);
+        return std::make_pair(type.arg(3u), 1u);
 
       case spv::OpTypeArray: {
         auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
+        auto length = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(3u)), code.dwords());
 
         if (builtIn == spv::BuiltInClipDistance
          || builtIn == spv::BuiltInCullDistance
          || builtIn == spv::BuiltInTessLevelInner
          || builtIn == spv::BuiltInTessLevelOuter
          || builtIn == spv::BuiltInSampleMask) {
-          auto length = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(3u)), code.dwords());
-          return length.arg(3u);
+          // Treat built-in arrays as a single 'location' of sorts
+          return std::make_pair(length.arg(3u), 1u);
         }
 
-        return getComponentCountForType(code, nested, builtIn);
+        return std::make_pair(getComponentCountForType(code, nested, builtIn).first, length.arg(3u));
       }
 
       default:
