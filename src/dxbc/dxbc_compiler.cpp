@@ -247,8 +247,6 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.inputTopology = m_inputTopology;
-    info.outputTopology = m_outputTopology;
     info.sharedPushData = m_sharedPushData;
     info.localPushData = m_localPushData;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, DxbcGlobalSamplerSet, 0u);

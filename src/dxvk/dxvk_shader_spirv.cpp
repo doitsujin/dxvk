@@ -62,7 +62,7 @@ namespace dxvk {
 
     // Patch primitive topology as necessary
     if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT
-     && state.inputTopology != m_info.inputTopology
+     && state.inputTopology != m_metadata.inputTopology
      && state.inputTopology != VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
       patchInputTopology(spirvCode, state.inputTopology);
 

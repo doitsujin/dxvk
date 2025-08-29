@@ -314,7 +314,6 @@ namespace dxvk {
       info.bindings = &m_bufferBinding;
       info.localPushData = DxvkPushDataBlock(MaxSharedPushDataSize, sizeof(D3D9SwvpEmuArgs), 4u, 0u);
       info.inputMask = m_inputMask;
-      info.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
       return new DxvkSpirvShader(info, m_module.compile());
     }
