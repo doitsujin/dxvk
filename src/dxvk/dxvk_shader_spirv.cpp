@@ -10,9 +10,9 @@ namespace dxvk {
   DxvkSpirvShader::DxvkSpirvShader(
     const DxvkShaderCreateInfo&       info,
           SpirvCodeBuffer&&           spirv)
-  : m_layout(info.stage) {
+  : m_layout(getShaderStage(spirv)) {
     SpirvCodeBuffer code = std::move(spirv);
-    m_metadata.stage = getShaderStage(code);
+    m_metadata.stage = VkShaderStageFlagBits(m_layout.getStageMask());
 
     m_info = info;
     m_info.bindings = nullptr;
@@ -56,8 +56,19 @@ namespace dxvk {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     patchResourceBindingsAndIoLocations(spirvCode, bindings, state);
 
+    // Undefined I/O handling is coarse, and not supported for tessellation shaders.
+    uint32_t undefinedInputs = 0u;
+
+    if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+      auto producedMask = state.prevStageOutputs.computeMask();
+      auto consumedMask = m_metadata.inputs.computeMask();
+
+      auto definedMask = producedMask & consumedMask;
+      undefinedInputs = definedMask ^ consumedMask;
+    }
+
     // Replace undefined input variables with zero
-    for (uint32_t u : bit::BitMask(state.undefinedInputs))
+    for (uint32_t u : bit::BitMask(undefinedInputs))
       eliminateInput(spirvCode, u);
 
     // Patch primitive topology as necessary
@@ -68,7 +79,7 @@ namespace dxvk {
 
     // Emit fragment shader swizzles as necessary
     if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
-      emitOutputSwizzles(spirvCode, m_info.outputMask, state.rtSwizzles.data());
+      emitOutputSwizzles(spirvCode, m_metadata.outputs.computeMask(), state.rtSwizzles.data());
 
     // Emit input decorations for flat shading as necessary
     if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)

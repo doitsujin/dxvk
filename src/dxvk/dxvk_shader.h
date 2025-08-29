@@ -93,8 +93,9 @@ namespace dxvk {
   struct DxvkShaderModuleCreateInfo {
     bool      fsDualSrcBlend  = false;
     bool      fsFlatShading   = false;
-    uint32_t  undefinedInputs = 0;
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+
+    DxvkShaderIo prevStageOutputs = { };
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 

@@ -422,7 +422,7 @@ namespace dxvk {
     if (!shader->canUsePipelineLibrary(true))
       return false;
 
-    if (shader->info().stage == VK_SHADER_STAGE_COMPUTE_BIT)
+    if (shader->metadata().stage == VK_SHADER_STAGE_COMPUTE_BIT)
       return true;
 
     return m_device->canUseGraphicsPipelineLibrary();
