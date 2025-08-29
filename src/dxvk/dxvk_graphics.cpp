@@ -50,7 +50,7 @@ namespace dxvk {
       return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
 
     if (shaders.tes)
-      return shaders.tes->info().outputTopology;
+      return shaders.tes->metadata().outputTopology;
 
     return state.ia.primitiveTopology();
   }
@@ -60,7 +60,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineShaders&      shaders,
     const DxvkGraphicsPipelineStateInfo&    state) {
     if (shaders.gs)
-      return shaders.gs->info().outputTopology;
+      return shaders.gs->metadata().outputTopology;
 
     return determinePreGsTopology(shaders, state);
   }
@@ -863,6 +863,7 @@ namespace dxvk {
 
     // Fix up fragment shader outputs for dual-source blending
     const DxvkShaderCreateInfo& shaderInfo = shader->info();
+    const DxvkShaderMetadata& shaderMeta = shader->metadata();
 
     if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       info.fsDualSrcBlend = state.useDualSourceBlending();
@@ -895,7 +896,7 @@ namespace dxvk {
     // Fix up input topology for geometry shaders as necessary
     if (shaderInfo.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
       VkPrimitiveTopology iaTopology = determinePreGsTopology(shaders, state);
-      info.inputTopology = determineGsInputTopology(shaderInfo.inputTopology, iaTopology);
+      info.inputTopology = determineGsInputTopology(shaderMeta.inputTopology, iaTopology);
     }
 
     return info;
@@ -1242,7 +1243,7 @@ namespace dxvk {
       // If the geometry shader's input topology is not compatible with
       // the topology set to the pipeline, we need to patch the GS.
       VkPrimitiveTopology iaTopology = determinePreGsTopology(m_shaders, state);
-      VkPrimitiveTopology gsTopology = m_shaders.gs->info().inputTopology;
+      VkPrimitiveTopology gsTopology = m_shaders.gs->metadata().inputTopology;
 
       if (determineGsInputTopology(gsTopology, iaTopology) != gsTopology)
         return false;
