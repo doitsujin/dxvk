@@ -133,7 +133,7 @@ namespace dxvk {
             uint32_t                  id,
             int32_t                   member) const;
 
-    uint32_t getComponentCountForType(
+    std::pair<uint32_t, uint32_t> getComponentCountForType(
             SpirvCodeBuffer&          code,
       const SpirvInstruction&         type,
             spv::BuiltIn              builtIn) const;
