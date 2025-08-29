@@ -59,8 +59,8 @@ namespace dxvk {
     // Undefined I/O handling is coarse, and not supported for tessellation shaders.
     uint32_t undefinedInputs = 0u;
 
-    if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-      auto producedMask = state.prevStageOutputs.computeMask();
+    if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT && state.prevStageOutputs) {
+      auto producedMask = state.prevStageOutputs->computeMask();
       auto consumedMask = m_metadata.inputs.computeMask();
 
       auto definedMask = producedMask & consumedMask;
@@ -124,6 +124,7 @@ namespace dxvk {
           m_idToOffset.insert({ ins.arg(1u), ins.offset() });
         } break;
 
+        case spv::OpConstant:
         case spv::OpVariable: {
           m_idToOffset.insert({ ins.arg(2u), ins.offset() });
         } break;
@@ -259,9 +260,26 @@ namespace dxvk {
           switch (storage) {
             case spv::StorageClassInput:
             case spv::StorageClassOutput: {
+              // Tess control outputs as well as inputs, tess eval inputs and geometry inputs
+              // must use array types for non-patch constant variables. Unwrap the outer array.
+              if (varType.opCode() == spv::OpTypeArray && !getDecoration(varId, -1).patch) {
+                bool isArrayInput = (storage == spv::StorageClassInput)
+                  && (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT
+                   || m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+                   || m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+
+                bool isArrayOutput = (storage == spv::StorageClassOutput) &&
+                  (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+
+                if (isArrayInput || isArrayOutput)
+                  varType = SpirvInstruction(code.data(), m_idToOffset.at(varType.arg(2u)), code.dwords());
+              }
+
               if (varType.opCode() == spv::OpTypeStruct) {
-                for (uint32_t i = 2u; i < varType.length(); i++)
-                  handleIoVariable(code, varType, storage, varId, int32_t(i));
+                for (uint32_t i = 2u; i < varType.length(); i++) {
+                  SpirvInstruction memberType(code.data(), m_idToOffset.at(varType.arg(2u)), code.dwords());
+                  handleIoVariable(code, memberType, storage, varId, int32_t(i - 2u));
+                }
               } else {
                 handleIoVariable(code, varType, storage, varId, -1);
               }
@@ -471,24 +489,20 @@ namespace dxvk {
       case spv::OpTypeArray: {
         auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
 
-        if (nested.opCode() != spv::OpTypeArray) {
-          if (builtIn == spv::BuiltInClipDistance
-           || builtIn == spv::BuiltInCullDistance
-           || builtIn == spv::BuiltInTessLevelInner
-           || builtIn == spv::BuiltInTessLevelOuter)
-            return type.arg(3u);
+        if (builtIn == spv::BuiltInClipDistance
+         || builtIn == spv::BuiltInCullDistance
+         || builtIn == spv::BuiltInTessLevelInner
+         || builtIn == spv::BuiltInTessLevelOuter
+         || builtIn == spv::BuiltInSampleMask) {
+          auto length = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(3u)), code.dwords());
+          return length.arg(3u);
         }
 
         return getComponentCountForType(code, nested, builtIn);
       }
 
-      case spv::OpTypeRuntimeArray: {
-        auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
-        return getComponentCountForType(code, nested, builtIn);
-      }
-
       default:
-        throw DxvkError("Unexpected I/O type");
+        throw DxvkError(str::format("Unexpected I/O type: ", type.opCode()));
     }
   }
 

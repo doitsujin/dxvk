@@ -858,7 +858,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo&  state) {
     DxvkShaderModuleCreateInfo info;
 
-    if (shader == nullptr)
+    if (!shader)
       return info;
 
     // Fix up fragment shader outputs for dual-source blending
