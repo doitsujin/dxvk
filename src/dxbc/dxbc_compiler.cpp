@@ -241,7 +241,7 @@ namespace dxvk {
     m_module.setDebugName(m_entryPointId, "main");
 
     // Create the shader object
-    DxvkShaderCreateInfo info = { };
+    DxvkSpirvShaderCreateInfo info = { };
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
     info.sharedPushData = m_sharedPushData;

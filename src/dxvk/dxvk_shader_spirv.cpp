@@ -8,17 +8,16 @@
 namespace dxvk {
 
   DxvkSpirvShader::DxvkSpirvShader(
-    const DxvkShaderCreateInfo&       info,
+    const DxvkSpirvShaderCreateInfo&  info,
           SpirvCodeBuffer&&           spirv)
-  : m_layout(getShaderStage(spirv)) {
+  : m_info(info), m_layout(getShaderStage(spirv)) {
+    m_info.bindings = nullptr;
+
     SpirvCodeBuffer code = std::move(spirv);
     m_metadata.stage = VkShaderStageFlagBits(m_layout.getStageMask());
     m_metadata.flatShadingInputs = info.flatShadingInputs;
     m_metadata.rasterizedStream = info.xfbRasterizedStream;
     m_metadata.patchVertexCount = info.patchVertexCount;
-
-    m_info = info;
-    m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
     for (uint32_t i = 0; i < info.bindingCount; i++) {

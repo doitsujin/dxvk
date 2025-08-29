@@ -7,6 +7,27 @@
 namespace dxvk {
 
   /**
+   * \brief SPIR-V shader create info
+   */
+  struct DxvkSpirvShaderCreateInfo {
+    /// Descriptor info
+    uint32_t bindingCount = 0;
+    const DxvkBindingInfo* bindings = nullptr;
+    /// Flat shading input mask
+    uint32_t flatShadingInputs = 0;
+    /// Push data blocks
+    DxvkPushDataBlock sharedPushData;
+    DxvkPushDataBlock localPushData;
+    /// Descriptor set and binding of global sampler heap
+    DxvkShaderBinding samplerHeap;
+    /// Rasterized stream, or -1
+    int32_t xfbRasterizedStream = 0;
+    /// Tess control patch vertex count
+    uint32_t patchVertexCount = 0;
+  };
+
+
+  /**
    * \brief Decorations for a SPIR-V ID
    */
   struct DxvkSpirvDecorations {
@@ -34,7 +55,7 @@ namespace dxvk {
   public:
 
     DxvkSpirvShader(
-      const DxvkShaderCreateInfo&       info,
+      const DxvkSpirvShaderCreateInfo&  info,
             SpirvCodeBuffer&&           spirv);
 
     ~DxvkSpirvShader();
@@ -73,6 +94,8 @@ namespace dxvk {
     std::string debugName() const;
 
   private:
+
+    DxvkSpirvShaderCreateInfo     m_info  = { };
 
     SpirvCompressedBuffer         m_code;
     DxvkPipelineLayoutBuilder     m_layout;

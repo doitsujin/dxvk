@@ -86,7 +86,7 @@ namespace dxvk {
     } else {
       // Tessellation control shaders must define a valid vertex count
       if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
-       && (m_info.patchVertexCount < 1 || m_info.patchVertexCount > 32))
+       && (m_metadata.patchVertexCount < 1 || m_metadata.patchVertexCount > 32))
         return false;
 
       // We don't support GPL with transform feedback right now

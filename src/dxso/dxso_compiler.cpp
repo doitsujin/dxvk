@@ -224,7 +224,7 @@ namespace dxvk {
 
 
   Rc<DxvkShader> DxsoCompiler::compile() {
-    DxvkShaderCreateInfo info;
+    DxvkSpirvShaderCreateInfo info;
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
