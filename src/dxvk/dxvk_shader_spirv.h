@@ -6,6 +6,9 @@
 
 namespace dxvk {
 
+  /**
+   * \brief Decorations for a SPIR-V ID
+   */
   struct DxvkSpirvDecorations {
     int32_t memberIndex = -1;
     std::optional<uint32_t> location;
@@ -113,6 +116,9 @@ namespace dxvk {
             SpirvCodeBuffer&            code,
       const DxvkShaderBindingMap*       bindings,
       const DxvkShaderModuleCreateInfo& state) const;
+
+    static VkShaderStageFlagBits getShaderStage(
+            SpirvCodeBuffer&          code);
 
     static void eliminateInput(
             SpirvCodeBuffer&          code,

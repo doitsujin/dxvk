@@ -11,25 +11,25 @@ namespace dxvk {
     const DxvkShaderCreateInfo&       info,
           SpirvCodeBuffer&&           spirv)
   : m_layout(info.stage) {
-    m_metadata.stage = info.stage;
+    SpirvCodeBuffer code = std::move(spirv);
+    m_metadata.stage = getShaderStage(code);
 
     m_info = info;
     m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
     for (uint32_t i = 0; i < info.bindingCount; i++) {
-      DxvkShaderDescriptor descriptor(info.bindings[i], info.stage);
+      DxvkShaderDescriptor descriptor(info.bindings[i], m_metadata.stage);
       m_layout.addBindings(1, &descriptor);
     }
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
-    SpirvCodeBuffer code = std::move(spirv);
     gatherIdOffsets(code);
     gatherMetadata(code);
 
-    if (m_info.samplerHeap.getStageMask() & m_info.stage) {
-      m_layout.addSamplerHeap(DxvkShaderBinding(m_info.stage,
+    if (m_info.samplerHeap.getStageMask() & m_metadata.stage) {
+      m_layout.addSamplerHeap(DxvkShaderBinding(m_metadata.stage,
         info.samplerHeap.getSet(),
         info.samplerHeap.getBinding()));
     }
@@ -61,17 +61,17 @@ namespace dxvk {
       eliminateInput(spirvCode, u);
 
     // Patch primitive topology as necessary
-    if (m_info.stage == VK_SHADER_STAGE_GEOMETRY_BIT
+    if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT
      && state.inputTopology != m_info.inputTopology
      && state.inputTopology != VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
       patchInputTopology(spirvCode, state.inputTopology);
 
     // Emit fragment shader swizzles as necessary
-    if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+    if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
       emitOutputSwizzles(spirvCode, m_info.outputMask, state.rtSwizzles.data());
 
     // Emit input decorations for flat shading as necessary
-    if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)
+    if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)
       emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
 
     return spirvCode;
@@ -141,8 +141,8 @@ namespace dxvk {
 
             case spv::CapabilityShaderLayer:
             case spv::CapabilityShaderViewportIndex: {
-              if (m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
-               && m_info.stage != VK_SHADER_STAGE_GEOMETRY_BIT)
+              if (m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+               && m_metadata.stage != VK_SHADER_STAGE_GEOMETRY_BIT)
                 m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
             } break;
 
@@ -171,6 +171,53 @@ namespace dxvk {
 
             case spv::ExecutionModePointMode: {
               m_metadata.flags.set(DxvkShaderFlag::TessellationPoints);
+            } break;
+
+            case spv::ExecutionModeInputPoints: {
+              m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            } break;
+
+            case spv::ExecutionModeInputLines: {
+              m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            } break;
+
+            case spv::ExecutionModeInputLinesAdjacency: {
+              m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+            } break;
+
+            case spv::ExecutionModeInputTrianglesAdjacency: {
+              m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+            } break;
+
+            case spv::ExecutionModeIsolines: {
+              m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            } break;
+
+            case spv::ExecutionModeTriangles: {
+              if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT)
+                m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+              else if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT
+                    || m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+                m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            } break;
+
+            case spv::ExecutionModeQuads: {
+              // Tess domain only, this will produce triangles
+              m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            } break;
+
+            case spv::ExecutionModeOutputPoints: {
+              m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+            } break;
+
+            case spv::ExecutionModeOutputLineStrip: {
+              // For metadata purposes we use list topologies everywhere
+              m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            } break;
+
+            case spv::ExecutionModeOutputTriangleStrip: {
+              // For metadata purposes we use list topologies everywhere
+              m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
             } break;
 
             default:
@@ -213,7 +260,7 @@ namespace dxvk {
               m_pushConstantStructId = varType.arg(1u);
 
               if (!m_info.sharedPushData.isEmpty()) {
-                auto stageMask = (m_info.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
+                auto stageMask = (m_metadata.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
                   ? VK_SHADER_STAGE_ALL_GRAPHICS : VK_SHADER_STAGE_COMPUTE_BIT;
 
                 m_layout.addPushData(DxvkPushDataBlock(stageMask,
@@ -224,7 +271,7 @@ namespace dxvk {
               }
 
               if (!m_info.localPushData.isEmpty()) {
-                m_layout.addPushData(DxvkPushDataBlock(m_info.stage,
+                m_layout.addPushData(DxvkPushDataBlock(m_metadata.stage,
                   m_info.localPushData.getOffset(),
                   m_info.localPushData.getSize(),
                   m_info.localPushData.getAlignment(),
@@ -461,7 +508,7 @@ namespace dxvk {
                 binding = *decoration.binding;
 
               auto mappedBinding = bindings->mapBinding(
-                DxvkShaderBinding(m_info.stage, set, binding));
+                DxvkShaderBinding(m_metadata.stage, set, binding));
 
               if (mappedBinding) {
                 if (decorationType == spv::DecorationDescriptorSet)
@@ -502,7 +549,7 @@ namespace dxvk {
               if (objectId != m_pushConstantStructId)
                 break;
 
-              uint32_t offset = bindings->mapPushData(m_info.stage, ins.arg(4u));
+              uint32_t offset = bindings->mapPushData(m_metadata.stage, ins.arg(4u));
 
               if (offset < MaxTotalPushDataSize)
                 ins.setArg(4u, offset);
@@ -520,6 +567,37 @@ namespace dxvk {
           break;
       }
     }
+  }
+
+
+  VkShaderStageFlagBits DxvkSpirvShader::getShaderStage(
+          SpirvCodeBuffer&          code) {
+    for (auto i = code.begin(); i != code.end(); i++) {
+      auto ins = *i;
+
+      if (ins.opCode() == spv::OpEntryPoint) {
+        auto model = spv::ExecutionModel(ins.arg(1u));
+
+        switch (model) {
+          case spv::ExecutionModelVertex:
+            return VK_SHADER_STAGE_VERTEX_BIT;
+          case spv::ExecutionModelTessellationControl:
+            return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+          case spv::ExecutionModelTessellationEvaluation:
+            return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+          case spv::ExecutionModelGeometry:
+            return VK_SHADER_STAGE_GEOMETRY_BIT;
+          case spv::ExecutionModelFragment:
+            return VK_SHADER_STAGE_FRAGMENT_BIT;
+          case spv::ExecutionModelGLCompute:
+            return VK_SHADER_STAGE_COMPUTE_BIT;
+          default:
+            throw DxvkError(str::format("Invalid execution model: ", model));
+        }
+      }
+    }
+
+    throw DxvkError("No OpEntryPoint found in SPIR-V shader");
   }
 
 

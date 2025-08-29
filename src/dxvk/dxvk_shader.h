@@ -84,6 +84,10 @@ namespace dxvk {
     DxvkShaderIo inputs = { };
     /// Output variables produced by the shader
     DxvkShaderIo outputs = { };
+    /// Input primitive topology (for geometry shaders only)
+    VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    /// Output primitive topology for geometry or tessellation shaders
+    VkPrimitiveTopology outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
   };
 
 
