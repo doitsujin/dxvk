@@ -13,6 +13,8 @@ namespace dxvk {
   : m_layout(getShaderStage(spirv)) {
     SpirvCodeBuffer code = std::move(spirv);
     m_metadata.stage = VkShaderStageFlagBits(m_layout.getStageMask());
+    m_metadata.rasterizedStream = info.xfbRasterizedStream;
+    m_metadata.patchVertexCount = info.patchVertexCount;
 
     m_info = info;
     m_info.bindings = nullptr;
@@ -332,6 +334,19 @@ namespace dxvk {
     const auto& decoration = getDecoration(varId, member);
 
     if (storage == spv::StorageClassOutput) {
+      if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT) {
+        int32_t stream = 0;
+
+        if (decoration.stream)
+          stream = int32_t(*decoration.stream);
+
+        if (stream != m_metadata.rasterizedStream)
+          return;
+
+        if (decoration.xfbBuffer && decoration.xfbStride)
+          m_metadata.xfbStrides.at(*decoration.xfbBuffer) = *decoration.xfbStride;
+      }
+
       if (decoration.builtIn == spv::BuiltInPosition)
         m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
 
@@ -421,6 +436,18 @@ namespace dxvk {
 
       case spv::DecorationPatch: {
         entry->second.patch = true;
+      } break;
+
+      case spv::DecorationStream: {
+        entry->second.stream = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationXfbBuffer: {
+        entry->second.xfbBuffer = ins.arg(baseArg + 1u);
+      } break;
+
+      case spv::DecorationXfbStride: {
+        entry->second.xfbStride = ins.arg(baseArg + 1u);
       } break;
 
       default:

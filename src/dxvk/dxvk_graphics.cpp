@@ -557,7 +557,7 @@ namespace dxvk {
 
     // Set up rasterized stream depending on geometry shader state.
     // Rasterizing stream 0 is default behaviour in all situations.
-    int32_t streamIndex = shaders.gs ? shaders.gs->info().xfbRasterizedStream : 0;
+    int32_t streamIndex = shaders.gs ? shaders.gs->metadata().rasterizedStream : 0;
 
     if (streamIndex > 0) {
       rsXfbStreamInfo.pNext = std::exchange(rsInfo.pNext, &rsXfbStreamInfo);
@@ -1018,7 +1018,7 @@ namespace dxvk {
                          |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
       }
 
-      if (m_shaders.gs->info().xfbRasterizedStream < 0)
+      if (m_shaders.gs->metadata().rasterizedStream < 0)
         m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
@@ -1247,7 +1247,7 @@ namespace dxvk {
     if (m_shaders.tcs != nullptr) {
       // If tessellation shaders are present, the input patch
       // vertex count must match the shader's definition.
-      if (m_shaders.tcs->info().patchVertexCount != state.ia.patchVertexCount())
+      if (m_shaders.tcs->metadata().patchVertexCount != state.ia.patchVertexCount())
         return false;
     }
 

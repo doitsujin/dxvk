@@ -18,6 +18,9 @@ namespace dxvk {
     std::optional<uint32_t> binding;
     std::optional<uint32_t> offset;
     std::optional<uint32_t> stride;
+    std::optional<uint32_t> stream;
+    std::optional<uint32_t> xfbBuffer;
+    std::optional<uint32_t> xfbStride;
     bool patch = false;
     std::optional<spv::BuiltIn> builtIn;
   };
