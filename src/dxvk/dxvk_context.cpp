@@ -7096,7 +7096,7 @@ namespace dxvk {
   
   
   void DxvkContext::updateTransformFeedbackBuffers() {
-    const auto& gsInfo = m_state.gp.shaders.gs->info();
+    const auto& gsInfo = m_state.gp.shaders.gs->metadata();
 
     VkBuffer     xfbBuffers[MaxNumXfbBuffers];
     VkDeviceSize xfbOffsets[MaxNumXfbBuffers];

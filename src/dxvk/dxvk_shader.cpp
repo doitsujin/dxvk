@@ -463,7 +463,7 @@ namespace dxvk {
     VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
 
     if (m_shaders.tcs)
-      tsInfo.patchControlPoints = m_shaders.tcs->info().patchVertexCount;
+      tsInfo.patchControlPoints = m_shaders.tcs->metadata().patchVertexCount;
 
     // All viewport state is dynamic, so we do not need to initialize this.
     VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };

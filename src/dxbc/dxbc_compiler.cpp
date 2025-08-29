@@ -251,12 +251,8 @@ namespace dxvk {
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
 
-    if (m_moduleInfo.xfb) {
+    if (m_moduleInfo.xfb)
       info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
-
-      for (uint32_t i = 0; i < 4; i++)
-        info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
-    }
 
     return new DxvkSpirvShader(info, m_module.compile());
   }
