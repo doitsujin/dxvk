@@ -1604,10 +1604,10 @@ namespace dxvk {
       { 0u, 2u, 2u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
     }};
 
-    DxvkShaderCreateInfo vsInfo = { };
+    DxvkSpirvShaderCreateInfo vsInfo = { };
     m_vs = new DxvkSpirvShader(vsInfo, std::move(vsCode));
 
-    DxvkShaderCreateInfo fsInfo = { };
+    DxvkSpirvShaderCreateInfo fsInfo = { };
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
     m_fs = new DxvkSpirvShader(fsInfo, std::move(fsCode));

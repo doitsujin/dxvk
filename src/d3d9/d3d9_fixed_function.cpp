@@ -952,7 +952,7 @@ namespace dxvk {
       isVS() ? spv::ExecutionModelVertex : spv::ExecutionModelFragment, "main");
 
     // Create the shader module object
-    DxvkShaderCreateInfo info;
+    DxvkSpirvShaderCreateInfo info;
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
     info.flatShadingInputs = m_flatShadingMask;
