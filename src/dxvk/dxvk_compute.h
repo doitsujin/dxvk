@@ -28,7 +28,7 @@ namespace dxvk {
     }
 
     size_t hash() const {
-      return DxvkShader::getHash(cs);
+      return DxvkShader::getCookie(cs);
     }
   };
 
@@ -92,7 +92,7 @@ namespace dxvk {
      */
     uint32_t getSpecConstantMask() const {
       constexpr uint32_t globalMask = (1u << MaxNumSpecConstants) - 1;
-      return m_shaders.cs->getSpecConstantMask() & globalMask;
+      return m_shaders.cs->metadata().specConstantMask & globalMask;
     }
     
     /**

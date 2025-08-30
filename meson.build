@@ -172,6 +172,9 @@ else
   ]
 endif
 
+dxbc_spirv = subproject('dxbc-spirv')
+dxbc_spirv_dep = dxbc_spirv.get_variable('dxbc_spv_dep')
+
 dxvk_include_path = include_directories(dxvk_include_dirs)
 
 add_project_arguments(cpp.get_supported_arguments(compiler_args), language: 'cpp')

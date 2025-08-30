@@ -7696,7 +7696,7 @@ namespace dxvk {
   const D3D9CommonShader*                 pShaderModule) {
     auto shader = pShaderModule->GetShader();
 
-    if (unlikely(shader->needsLibraryCompile()))
+    if (unlikely(shader->needsCompile()))
       m_dxvkDevice->requestCompileShader(shader);
 
     EmitCs([

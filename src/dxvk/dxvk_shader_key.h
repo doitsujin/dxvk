@@ -33,7 +33,7 @@ namespace dxvk {
             VkShaderStageFlagBits stage,
       const Sha1Hash&             hash)
     : m_type(stage), m_sha1(hash) { }
-    
+
     /**
      * \brief Generates string from shader key
      * \returns String representation of the key

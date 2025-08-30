@@ -1,5 +1,7 @@
 #include "dxbc_compiler.h"
 
+#include "../dxvk/dxvk_shader_spirv.h"
+
 namespace dxvk {
 
   constexpr uint32_t Icb_BindingSlotId   = 14;
@@ -239,14 +241,9 @@ namespace dxvk {
     m_module.setDebugName(m_entryPointId, "main");
 
     // Create the shader object
-    DxvkShaderCreateInfo info = { };
-    info.stage = m_programInfo.shaderStage();
+    DxvkSpirvShaderCreateInfo info = { };
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
-    info.inputMask = m_inputMask;
-    info.outputMask = m_outputMask;
-    info.inputTopology = m_inputTopology;
-    info.outputTopology = m_outputTopology;
     info.sharedPushData = m_sharedPushData;
     info.localPushData = m_localPushData;
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_ALL, DxbcGlobalSamplerSet, 0u);
@@ -254,14 +251,10 @@ namespace dxvk {
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
 
-    if (m_moduleInfo.xfb) {
+    if (m_moduleInfo.xfb)
       info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
 
-      for (uint32_t i = 0; i < 4; i++)
-        info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
-    }
-
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkSpirvShader(info, m_module.compile());
   }
   
   

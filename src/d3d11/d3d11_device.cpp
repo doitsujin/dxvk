@@ -1951,20 +1951,20 @@ namespace dxvk {
 
     auto shader = commonShader.GetShader();
 
-    if (shader->flags().test(DxvkShaderFlag::ExportsStencilRef)
+    if (shader->metadata().flags.test(DxvkShaderFlag::ExportsStencilRef)
      && !m_dxvkDevice->features().extShaderStencilExport)
       return E_INVALIDARG;
 
-    if (shader->flags().test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
+    if (shader->metadata().flags.test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
      && (!m_dxvkDevice->features().vk12.shaderOutputViewportIndex
       || !m_dxvkDevice->features().vk12.shaderOutputLayer))
       return E_INVALIDARG;
 
-    if (shader->flags().test(DxvkShaderFlag::UsesSparseResidency)
+    if (shader->metadata().flags.test(DxvkShaderFlag::UsesSparseResidency)
      && !m_dxvkDevice->features().core.features.shaderResourceResidency)
       return E_INVALIDARG;
 
-    if (shader->flags().test(DxvkShaderFlag::UsesFragmentCoverage)
+    if (shader->metadata().flags.test(DxvkShaderFlag::UsesFragmentCoverage)
      && !m_dxvkDevice->properties().extConservativeRasterization.fullyCoveredFragmentShaderInputVariable)
       return E_INVALIDARG;
 

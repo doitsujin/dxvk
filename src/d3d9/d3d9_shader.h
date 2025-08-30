@@ -1,7 +1,11 @@
 #pragma once
 
-#include "d3d9_resource.h"
 #include "../dxso/dxso_module.h"
+
+#include "../dxvk/dxvk_shader.h"
+#include "../dxvk/dxvk_shader_key.h"
+
+#include "d3d9_resource.h"
 #include "d3d9_util.h"
 #include "d3d9_mem.h"
 

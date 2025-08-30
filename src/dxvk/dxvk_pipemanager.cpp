@@ -318,7 +318,9 @@ namespace dxvk {
 
   void DxvkPipelineManager::requestCompileShader(
     const Rc<DxvkShader>&         shader) {
-    if (!shader->needsLibraryCompile())
+    // Notify immediately so that this only gets called
+    // once, even if compilation does ot start immediately
+    if (!shader->notifyCompile())
       return;
 
     // Dispatch high-priority compile job
@@ -329,10 +331,6 @@ namespace dxvk {
 
     if (library)
       m_workers.compilePipelineLibrary(library, DxvkPipelinePriority::High);
-
-    // Notify immediately so that this only gets called
-    // once, even if compilation does ot start immediately
-    shader->notifyLibraryCompile();
   }
 
 
@@ -422,7 +420,7 @@ namespace dxvk {
     if (!shader->canUsePipelineLibrary(true))
       return false;
 
-    if (shader->info().stage == VK_SHADER_STAGE_COMPUTE_BIT)
+    if (shader->metadata().stage == VK_SHADER_STAGE_COMPUTE_BIT)
       return true;
 
     return m_device->canUseGraphicsPipelineLibrary();
