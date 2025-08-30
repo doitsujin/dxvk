@@ -131,19 +131,19 @@ namespace dxvk {
      * \c false once the pipeline library is being compiled.
      * \returns \c true if compilation is still needed
      */
-    bool needsLibraryCompile() const {
-      return m_needsLibraryCompile.load();
+    bool needsCompile() const {
+      return m_needsCompile.load();
     }
 
     /**
      * \brief Notifies library compile
      *
-     * Called automatically when pipeline compilation begins.
-     * Subsequent calls to \ref needsLibraryCompile will return
-     * \c false.
+     * Called automatically when pipeline compilation begins. Returns
+     * the previous state of the compile flag, which will be \c true
+     * if compilation is still required, and \c false otherwise.
      */
-    void notifyLibraryCompile() {
-      m_needsLibraryCompile.store(false);
+    bool notifyCompile() {
+      return m_needsCompile.exchange(false);
     }
 
     /**
@@ -216,11 +216,11 @@ namespace dxvk {
     std::atomic<uint32_t>         m_refCount = { 0u };
     uint32_t                      m_cookie = 0;
 
+    std::atomic<bool>             m_needsCompile = { true };
+
   protected:
 
     DxvkShaderMetadata            m_metadata = { };
-
-    std::atomic<bool>             m_needsLibraryCompile = { true };
 
   };
   

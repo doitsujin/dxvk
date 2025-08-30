@@ -3549,7 +3549,7 @@ namespace dxvk {
       auto buffer = pShaderModule->GetIcb();
       auto shader = pShaderModule->GetShader();
 
-      if (unlikely(shader->needsLibraryCompile()))
+      if (unlikely(shader->needsCompile()))
         m_device->requestCompileShader(shader);
 
       // If this shader activates any bindings that have not yet been applied,
