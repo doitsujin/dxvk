@@ -111,6 +111,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves shader cookie
+     *
+     * Unique value identifying the shader object that
+     * can be used for look-up purposes.
+     * \returns Unique shader cookie
+     */
+    size_t getCookie() const {
+      return m_cookie;
+    }
+
+    /**
      * \brief Shader metadata
      * \returns Shader metadata
      */
@@ -141,6 +152,18 @@ namespace dxvk {
     }
 
     /**
+     * \brief Tests whether this shader supports pipeline libraries
+     *
+     * This is true for any vertex, fragment, or compute shader that does not
+     * require additional pipeline state to be compiled into something useful.
+     * \param [in] standalone Set to \c true to evaluate this in the context
+     *    of a single-shader pipeline library, or \c false for a pre-raster
+     *    shader library consisting of multiple shader stages.
+     * \returns \c true if this shader can be used with pipeline libraries
+     */
+    bool canUsePipelineLibrary(bool standalone) const;
+
+    /**
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
@@ -158,18 +181,6 @@ namespace dxvk {
     virtual SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
       const DxvkShaderLinkage*          linkage) const = 0;
-    
-    /**
-     * \brief Tests whether this shader supports pipeline libraries
-     *
-     * This is true for any vertex, fragment, or compute shader that does not
-     * require additional pipeline state to be compiled into something useful.
-     * \param [in] standalone Set to \c true to evaluate this in the context
-     *    of a single-shader pipeline library, or \c false for a pre-raster
-     *    shader library consisting of multiple shader stages.
-     * \returns \c true if this shader can be used with pipeline libraries
-     */
-    bool canUsePipelineLibrary(bool standalone) const;
 
     /**
      * \brief Dumps SPIR-V shader
@@ -179,18 +190,6 @@ namespace dxvk {
      */
     virtual void dump(std::ostream& outputStream) const = 0;
 
-    /**
-     * \brief Get lookup hash
-     * 
-     * Retrieves a non-unique hash value derived from the
-     * shader key which can be used to perform lookups.
-     * This is better than relying on the pointer value.
-     * \returns Hash value for map lookups
-     */
-    size_t getCookie() const {
-      return m_cookie;
-    }
-    
     /**
      * \brief Retrieves debug name
      * \returns The shader's name
@@ -226,12 +225,11 @@ namespace dxvk {
   
 
   /**
-   * \brief Shader module object
+   * \brief Shader code collection
    * 
-   * Manages a Vulkan shader module. This will not
-   * perform any shader compilation. Instead, the
-   * context will create pipeline objects on the
-   * fly when executing draw calls.
+   * Manages shader stage and shader module create structures that can
+   * be passed to pipeline creation. Vulkan shader modules are not used,
+   * instead we rely on maintenance5 functionality.
    */
   class DxvkShaderStageInfo {
     
