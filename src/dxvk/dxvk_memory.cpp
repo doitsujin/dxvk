@@ -168,7 +168,7 @@ namespace dxvk {
     auto& descriptor = m_views.emplace(std::piecewise_construct,
       std::tuple(key), std::tuple()).first->second;
 
-    bool isShaderResource = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+    VkImageUsageFlags shaderResourceUsage = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
@@ -192,10 +192,10 @@ namespace dxvk {
     if (vr != VK_SUCCESS)
       throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
 
-    if (m_device->canUseDescriptorBuffer() && isShaderResource) {
+    if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
-      if (key.usage == VK_IMAGE_USAGE_STORAGE_BIT) {
+      if (shaderResourceUsage == VK_IMAGE_USAGE_STORAGE_BIT) {
         info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         info.data.pStorageImage = &descriptor.legacy.image;
       } else {

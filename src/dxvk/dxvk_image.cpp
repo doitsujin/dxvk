@@ -448,10 +448,10 @@ namespace dxvk {
   : m_image   (image),
     m_key     (key) {
     // If the view does not define a layout, figure out a suitable
-    // layout based on image view usage and image prperties. This
+    // layout based on image view usage and image properties. This
     // will be good enough in most situations.
     if (!m_key.layout) {
-      switch (m_key.usage) {
+      switch (m_key.usage & ~VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) {
         case VK_IMAGE_USAGE_SAMPLED_BIT:
           m_key.layout = (m_image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
             ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
@@ -552,7 +552,7 @@ namespace dxvk {
 
     // We need to expose RT and UAV swizzles to the backend,
     // but cannot legally pass them down to Vulkan
-    if (key.usage != VK_IMAGE_USAGE_SAMPLED_BIT)
+    if ((key.usage & ~VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT) != VK_IMAGE_USAGE_SAMPLED_BIT)
       key.packedSwizzle = 0u;
 
     return m_image->m_storage->createImageView(key);
