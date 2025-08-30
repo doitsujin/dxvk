@@ -71,7 +71,7 @@ namespace dxvk {
      */
     SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderModuleCreateInfo& state) const;
+      const DxvkShaderLinkage*          linkage) const;
 
     /**
      * \brief Queries shader binding layout
@@ -139,9 +139,9 @@ namespace dxvk {
             spv::BuiltIn              builtIn) const;
 
     void patchResourceBindingsAndIoLocations(
-            SpirvCodeBuffer&            code,
-      const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderModuleCreateInfo& state) const;
+            SpirvCodeBuffer&          code,
+      const DxvkShaderBindingMap*     bindings,
+      const DxvkShaderLinkage*        linkage) const;
 
     static VkShaderStageFlagBits getShaderStage(
             SpirvCodeBuffer&          code);
@@ -153,7 +153,7 @@ namespace dxvk {
     static void emitOutputSwizzles(
             SpirvCodeBuffer&          code,
             uint32_t                  outputMask,
-            const VkComponentMapping* swizzles);
+      const VkComponentMapping*       swizzles);
 
     static void emitFlatShadingDeclarations(
             SpirvCodeBuffer&          code,

@@ -244,11 +244,11 @@ namespace dxvk {
       const DxvkGraphicsPipelineShaders&    shaders,
       const DxvkGraphicsPipelineStateInfo&  state);
 
-    DxvkShaderModuleCreateInfo vsInfo;
-    DxvkShaderModuleCreateInfo tcsInfo;
-    DxvkShaderModuleCreateInfo tesInfo;
-    DxvkShaderModuleCreateInfo gsInfo;
-    DxvkShaderModuleCreateInfo fsInfo;
+    DxvkShaderLinkage vsInfo;
+    DxvkShaderLinkage tcsInfo;
+    DxvkShaderLinkage tesInfo;
+    DxvkShaderLinkage gsInfo;
+    DxvkShaderLinkage fsInfo;
 
     bool eq(const DxvkGraphicsPipelineShaderState& other) const;
 
@@ -256,7 +256,7 @@ namespace dxvk {
 
   private:
 
-    DxvkShaderModuleCreateInfo getCreateInfo(
+    DxvkShaderLinkage getLinkage(
       const DxvkGraphicsPipelineShaders&    shaders,
       const Rc<DxvkShader>&                 shader,
       const DxvkGraphicsPipelineStateInfo&  state);
@@ -657,12 +657,12 @@ namespace dxvk {
     void destroyOptimizedPipelines();
 
     void destroyVulkanPipeline(
-            VkPipeline                     pipeline) const;
-    
+            VkPipeline                    pipeline) const;
+
     SpirvCodeBuffer getShaderCode(
-      const Rc<DxvkShader>&                shader,
-      const DxvkShaderModuleCreateInfo&    info) const;
-    
+      const DxvkShader&                   shader,
+      const DxvkShaderLinkage&            linkage) const;
+
     uint32_t computeSpecConstantMask() const;
 
     DxvkAttachmentMask computeAttachmentMask(

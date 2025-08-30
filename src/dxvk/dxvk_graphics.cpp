@@ -823,11 +823,11 @@ namespace dxvk {
   DxvkGraphicsPipelineShaderState::DxvkGraphicsPipelineShaderState(
     const DxvkGraphicsPipelineShaders&    shaders,
     const DxvkGraphicsPipelineStateInfo&  state)
-  : vsInfo  (getCreateInfo(shaders, shaders.vs, state)),
-    tcsInfo (getCreateInfo(shaders, shaders.tcs, state)),
-    tesInfo (getCreateInfo(shaders, shaders.tes, state)),
-    gsInfo  (getCreateInfo(shaders, shaders.gs, state)),
-    fsInfo  (getCreateInfo(shaders, shaders.fs, state)) {
+  : vsInfo  (getLinkage(shaders, shaders.vs, state)),
+    tcsInfo (getLinkage(shaders, shaders.tcs, state)),
+    tesInfo (getLinkage(shaders, shaders.tes, state)),
+    gsInfo  (getLinkage(shaders, shaders.gs, state)),
+    fsInfo  (getLinkage(shaders, shaders.fs, state)) {
 
   }
 
@@ -852,11 +852,11 @@ namespace dxvk {
   }
 
 
-  DxvkShaderModuleCreateInfo DxvkGraphicsPipelineShaderState::getCreateInfo(
+  DxvkShaderLinkage DxvkGraphicsPipelineShaderState::getLinkage(
     const DxvkGraphicsPipelineShaders&    shaders,
     const Rc<DxvkShader>&                 shader,
     const DxvkGraphicsPipelineStateInfo&  state) {
-    DxvkShaderModuleCreateInfo info;
+    DxvkShaderLinkage info;
 
     if (!shader)
       return info;
@@ -1390,16 +1390,16 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
+    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(*m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 
     if (m_shaders.tcs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(*m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
     if (m_shaders.tes != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(*m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
     if (m_shaders.gs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(*m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
     if (m_shaders.fs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(*m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
 
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &key.foState.rtInfo };
 
@@ -1470,9 +1470,9 @@ namespace dxvk {
 
 
   SpirvCodeBuffer DxvkGraphicsPipeline::getShaderCode(
-    const Rc<DxvkShader>&                shader,
-    const DxvkShaderModuleCreateInfo&    info) const {
-    return shader->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), info);
+    const DxvkShader&         shader,
+    const DxvkShaderLinkage&  linkage) const {
+    return shader.getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), &linkage);
   }
 
 
