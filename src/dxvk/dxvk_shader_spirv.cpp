@@ -50,38 +50,40 @@ namespace dxvk {
 
   SpirvCodeBuffer DxvkSpirvShader::getCode(
     const DxvkShaderBindingMap*       bindings,
-    const DxvkShaderModuleCreateInfo& state) const {
+    const DxvkShaderLinkage*          linkage) const {
     SpirvCodeBuffer spirvCode = m_code.decompress();
-    patchResourceBindingsAndIoLocations(spirvCode, bindings, state);
+    patchResourceBindingsAndIoLocations(spirvCode, bindings, linkage);
 
     // Undefined I/O handling is coarse, and not supported for tessellation shaders.
-    uint32_t undefinedInputs = 0u;
+    if (linkage) {
+      uint32_t undefinedInputs = 0u;
 
-    if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT && state.prevStageOutputs) {
-      auto producedMask = state.prevStageOutputs->computeMask();
-      auto consumedMask = m_metadata.inputs.computeMask();
+      if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT && linkage->prevStageOutputs) {
+        auto producedMask = linkage->prevStageOutputs->computeMask();
+        auto consumedMask = m_metadata.inputs.computeMask();
 
-      auto definedMask = producedMask & consumedMask;
-      undefinedInputs = definedMask ^ consumedMask;
+        auto definedMask = producedMask & consumedMask;
+        undefinedInputs = definedMask ^ consumedMask;
+      }
+
+      // Replace undefined input variables with zero
+      for (uint32_t u : bit::BitMask(undefinedInputs))
+        eliminateInput(spirvCode, u);
+
+      // Patch primitive topology as necessary
+      if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT
+       && linkage->inputTopology != m_metadata.inputTopology
+       && linkage->inputTopology != VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
+        patchInputTopology(spirvCode, linkage->inputTopology);
+
+      // Emit fragment shader swizzles as necessary
+      if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+        emitOutputSwizzles(spirvCode, m_metadata.outputs.computeMask(), linkage->rtSwizzles.data());
+
+      // Emit input decorations for flat shading as necessary
+      if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsFlatShading)
+        emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
     }
-
-    // Replace undefined input variables with zero
-    for (uint32_t u : bit::BitMask(undefinedInputs))
-      eliminateInput(spirvCode, u);
-
-    // Patch primitive topology as necessary
-    if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT
-     && state.inputTopology != m_metadata.inputTopology
-     && state.inputTopology != VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
-      patchInputTopology(spirvCode, state.inputTopology);
-
-    // Emit fragment shader swizzles as necessary
-    if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
-      emitOutputSwizzles(spirvCode, m_metadata.outputs.computeMask(), state.rtSwizzles.data());
-
-    // Emit input decorations for flat shading as necessary
-    if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)
-      emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
 
     return spirvCode;
   }
@@ -540,7 +542,7 @@ namespace dxvk {
   void DxvkSpirvShader::patchResourceBindingsAndIoLocations(
           SpirvCodeBuffer&            code,
     const DxvkShaderBindingMap*       bindings,
-    const DxvkShaderModuleCreateInfo& state) const {
+    const DxvkShaderLinkage*          linkage) const {
     for (auto i = code.begin(); i != code.end(); i++) {
       auto ins = *i;
 
@@ -576,7 +578,7 @@ namespace dxvk {
 
             case spv::DecorationLocation:
             case spv::DecorationIndex: {
-              if (!state.fsDualSrcBlend)
+              if (!linkage || !linkage->fsDualSrcBlend)
                 break;
 
               // Ensure that what we're patching is actually an output variable

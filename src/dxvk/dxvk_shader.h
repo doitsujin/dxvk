@@ -70,7 +70,7 @@ namespace dxvk {
   /**
    * \brief Shader module create info
    */
-  struct DxvkShaderModuleCreateInfo {
+  struct DxvkShaderLinkage {
     bool      fsDualSrcBlend  = false;
     bool      fsFlatShading   = false;
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
@@ -79,7 +79,7 @@ namespace dxvk {
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 
-    bool eq(const DxvkShaderModuleCreateInfo& other) const;
+    bool eq(const DxvkShaderLinkage& other) const;
 
     size_t hash() const;
   };
@@ -119,12 +119,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries shader binding layout
-     * \returns Pipeline layout builder
-     */
-    virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
-
-    /**
      * \brief Tests whether this shader needs to be compiled
      *
      * If pipeline libraries are supported, this will return
@@ -147,17 +141,23 @@ namespace dxvk {
     }
 
     /**
-     * \brief Patches code using given info
+     * \brief Queries shader binding layout
+     * \returns Pipeline layout builder
+     */
+    virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
+
+    /**
+     * \brief Retrieves SPIR-V code for the given shader
      *
-     * Rewrites binding IDs and potentially fixes up other
-     * parts of the code depending on pipeline state.
+     * Creates the final shader binary with the given binding
+     * mapping and pipeline state information.
      * \param [in] bindings Biding map
-     * \param [in] state Pipeline state info
-     * \returns Uncompressed SPIR-V code buffer
+     * \param [in] linkage Pipeline state info
+     * \returns Uncompressed SPIR-V code
      */
     virtual SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderModuleCreateInfo& state) const = 0;
+      const DxvkShaderLinkage*          linkage) const = 0;
     
     /**
      * \brief Tests whether this shader supports pipeline libraries
