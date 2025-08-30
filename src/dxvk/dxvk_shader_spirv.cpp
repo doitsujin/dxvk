@@ -40,10 +40,6 @@ namespace dxvk {
       m_debugName = std::to_string(getCookie());
 
     m_code = SpirvCompressedBuffer(code);
-
-    // Don't set pipeline library flag if the shader
-    // doesn't actually support pipeline libraries
-    m_needsLibraryCompile = canUsePipelineLibrary(true);
   }
 
 

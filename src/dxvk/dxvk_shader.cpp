@@ -759,14 +759,14 @@ namespace dxvk {
       // Only notify the shader itself if we're actually
       // building the shader's standalone pipeline library
       if (!m_shaders.tcs && !m_shaders.tes && !m_shaders.gs)
-        m_shaders.vs->notifyLibraryCompile();
+        m_shaders.vs->notifyCompile();
     }
 
     if (m_shaders.fs)
-      m_shaders.fs->notifyLibraryCompile();
+      m_shaders.fs->notifyCompile();
 
     if (m_shaders.cs)
-      m_shaders.cs->notifyLibraryCompile();
+      m_shaders.cs->notifyCompile();
   }
 
 
