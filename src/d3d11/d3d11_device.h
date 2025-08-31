@@ -522,12 +522,26 @@ namespace dxvk {
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
-            DxvkShaderKey           ShaderKey,
+      const DxvkShaderHash&         ShaderKey,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
-            ID3D11ClassLinkage*     pClassLinkage,
       const DxbcModuleInfo*         pModuleInfo);
-    
+
+    DxvkShaderHash ComputeShaderKey(
+            VkShaderStageFlagBits   Stage,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
+
+    DxvkShaderHash ComputeShaderKey(
+            VkShaderStageFlagBits   Stage,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength,
+      const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
+            UINT                    NumEntries,
+      const UINT*                   pBufferStrides,
+            UINT                    NumStrides,
+            UINT                    RasterizedStream);
+
     HRESULT GetFormatSupportFlags(
             DXGI_FORMAT             Format,
             UINT*                   pFlags1,

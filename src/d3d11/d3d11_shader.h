@@ -36,7 +36,7 @@ namespace dxvk {
     D3D11CommonShader();
     D3D11CommonShader(
             D3D11Device*    pDevice,
-      const DxvkShaderKey*  pShaderKey,
+      const DxvkShaderHash& ShaderKey,
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength);
@@ -161,7 +161,7 @@ namespace dxvk {
     
     HRESULT GetShaderModule(
             D3D11Device*        pDevice,
-      const DxvkShaderKey*      pShaderKey,
+      const DxvkShaderHash&     ShaderKey,
       const DxbcModuleInfo*     pDxbcModuleInfo,
       const void*               pShaderBytecode,
             size_t              BytecodeLength,
@@ -172,7 +172,7 @@ namespace dxvk {
     dxvk::mutex m_mutex;
     
     std::unordered_map<
-      DxvkShaderKey,
+      DxvkShaderHash,
       D3D11CommonShader,
       DxvkHash, DxvkEq> m_modules;
     
