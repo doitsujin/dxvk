@@ -1141,31 +1141,34 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::SetViewport(const D3DVIEWPORT8* pViewport) {
     D3D8DeviceLock lock = LockDevice();
 
-    if (likely(pViewport != nullptr)) {
-      // We need a valid render target to validate the viewport
-      if (unlikely(m_renderTarget == nullptr))
+    // Outright crashes on native, but let's be
+    // somewhat more elegant about it.
+    if (unlikely(pViewport == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // We need a valid render target to validate the viewport
+    if (unlikely(m_renderTarget == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    D3DSURFACE_DESC rtDesc;
+    HRESULT res = m_renderTarget->GetDesc(&rtDesc);
+
+    // D3D8 will fail when setting a viewport that's outside of the
+    // current render target, although this apparently works in D3D9
+    if (likely(SUCCEEDED(res)) &&
+        unlikely(pViewport->X + pViewport->Width  > rtDesc.Width ||
+                 pViewport->Y + pViewport->Height > rtDesc.Height)) {
+      // On Linux/Wine and in windowed mode, we can get in situations
+      // where the actual render target dimensions are off by one
+      // pixel to what the game sets them to. Allow this corner case
+      // to skip the validation, in order to prevent issues.
+      const bool isOnePixelWider  = pViewport->X + pViewport->Width  == rtDesc.Width  + 1;
+      const bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
+
+      if (unlikely(m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller))) {
+        Logger::debug("D3D8Device::SetViewport: Viewport exceeds render target dimensions by one pixel");
+      } else {
         return D3DERR_INVALIDCALL;
-
-      D3DSURFACE_DESC rtDesc;
-      HRESULT res = m_renderTarget->GetDesc(&rtDesc);
-
-      // D3D8 will fail when setting a viewport that's outside of the
-      // current render target, although this apparently works in D3D9
-      if (likely(SUCCEEDED(res)) &&
-          unlikely(pViewport->X + pViewport->Width  > rtDesc.Width ||
-                   pViewport->Y + pViewport->Height > rtDesc.Height)) {
-        // On Linux/Wine and in windowed mode, we can get in situations
-        // where the actual render target dimensions are off by one
-        // pixel to what the game sets them to. Allow this corner case
-        // to skip the validation, in order to prevent issues.
-        const bool isOnePixelWider  = pViewport->X + pViewport->Width  == rtDesc.Width  + 1;
-        const bool isOnePixelTaller = pViewport->Y + pViewport->Height == rtDesc.Height + 1;
-
-        if (m_presentParams.Windowed && (isOnePixelWider || isOnePixelTaller)) {
-          Logger::debug("D3D8Device::SetViewport: Viewport exceeds render target dimensions by one pixel");
-        } else {
-          return D3DERR_INVALIDCALL;
-        }
       }
     }
 
