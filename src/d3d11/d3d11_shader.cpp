@@ -9,11 +9,11 @@ namespace dxvk {
   
   D3D11CommonShader::D3D11CommonShader(
           D3D11Device*    pDevice,
-    const DxvkShaderKey*  pShaderKey,
+    const DxvkShaderHash& ShaderKey,
     const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
           size_t          BytecodeLength) {
-    const std::string name = pShaderKey->toString();
+    const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
     DxbcReader reader(
@@ -29,6 +29,12 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
     }
 
+    // Compute legacy SHA-1 hash to pass as shader name
+    Sha1Hash sha1Hash = Sha1Hash::compute(
+      pShaderBytecode, BytecodeLength);
+
+    DxvkShaderKey legacyKey(ShaderKey.stage(), sha1Hash);
+
     // Error out if the shader is invalid
     DxbcModule module(reader);
     auto programInfo = module.programInfo();
@@ -38,16 +44,16 @@ namespace dxvk {
 
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
-    bool passthroughShader = pDxbcModuleInfo->xfb != nullptr
+    bool isPassthroughShader = pDxbcModuleInfo->xfb != nullptr
       && (programInfo->type() == DxbcProgramType::VertexShader
        || programInfo->type() == DxbcProgramType::DomainShader);
 
-    if (programInfo->shaderStage() != pShaderKey->type() && !passthroughShader)
+    if (programInfo->shaderStage() != ShaderKey.stage() && !isPassthroughShader)
       throw DxvkError("Mismatching shader type.");
 
-    m_shader = passthroughShader
-      ? module.compilePassthroughShader(*pDxbcModuleInfo, name)
-      : module.compile                 (*pDxbcModuleInfo, name);
+    m_shader = isPassthroughShader
+      ? module.compilePassthroughShader(*pDxbcModuleInfo, legacyKey.toString())
+      : module.compile                 (*pDxbcModuleInfo, legacyKey.toString());
     
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
@@ -94,7 +100,7 @@ namespace dxvk {
   
   HRESULT D3D11ShaderModuleSet::GetShaderModule(
           D3D11Device*        pDevice,
-    const DxvkShaderKey*      pShaderKey,
+    const DxvkShaderHash&     ShaderKey,
     const DxbcModuleInfo*     pDxbcModuleInfo,
     const void*               pShaderBytecode,
           size_t              BytecodeLength,
@@ -102,7 +108,7 @@ namespace dxvk {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
-      auto entry = m_modules.find(*pShaderKey);
+      auto entry = m_modules.find(ShaderKey);
       if (entry != m_modules.end()) {
         *pShader = entry->second;
         return S_OK;
@@ -114,7 +120,7 @@ namespace dxvk {
     D3D11CommonShader module;
     
     try {
-      module = D3D11CommonShader(pDevice, pShaderKey,
+      module = D3D11CommonShader(pDevice, ShaderKey,
         pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -126,7 +132,8 @@ namespace dxvk {
     // that object instead and discard the newly created module.
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
-      auto status = m_modules.insert({ *pShaderKey, module });
+      auto status = m_modules.insert({ ShaderKey, module });
+
       if (!status.second) {
         *pShader = status.first->second;
         return S_OK;

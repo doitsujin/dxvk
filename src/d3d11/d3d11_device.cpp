@@ -796,13 +796,9 @@ namespace dxvk {
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = nullptr;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_VERTEX_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage,
-      &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_VERTEX_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
     
     if (FAILED(hr))
       return hr;
@@ -828,13 +824,9 @@ namespace dxvk {
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = nullptr;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage,
-      &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -902,37 +894,19 @@ namespace dxvk {
     
     if (RasterizedStream != D3D11_SO_NO_RASTERIZED_STREAM)
       Logger::err("D3D11: CreateGeometryShaderWithStreamOutput: Rasterized stream not supported");
-    
-    // Compute hash from both the xfb info and the source
-    // code, because both influence the generated code
-    DxbcXfbInfo hashXfb = xfb;
 
-    std::vector<Sha1Data> chunks = {{
-      { pShaderBytecode, BytecodeLength  },
-      { &hashXfb,        sizeof(hashXfb) },
-    }};
-
-    for (uint32_t i = 0; i < hashXfb.entryCount; i++) {
-      const char* semantic = hashXfb.entries[i].semanticName;
-
-      if (semantic) {
-        chunks.push_back({ semantic, std::strlen(semantic) });
-        hashXfb.entries[i].semanticName = nullptr;
-      }
-    }
-
-    Sha1Hash hash = Sha1Hash::compute(chunks.size(), chunks.data());
-    
     // Create the actual shader module
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = &xfb;
+
+    auto shaderKey = ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT,
+      pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries,
+      pBufferStrides, NumStrides, RasterizedStream);
     
-    HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage,
-      &moduleInfo);
+    HRESULT hr = CreateShaderModule(&module, shaderKey,
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return E_INVALIDARG;
@@ -958,14 +932,9 @@ namespace dxvk {
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = nullptr;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
-
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_FRAGMENT_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage,
-      &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_FRAGMENT_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -997,12 +966,9 @@ namespace dxvk {
     if (tessInfo.maxTessFactor >= 8.0f)
       moduleInfo.tess = &tessInfo;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage, &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -1028,12 +994,9 @@ namespace dxvk {
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = nullptr;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage, &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -1059,13 +1022,9 @@ namespace dxvk {
     moduleInfo.tess    = nullptr;
     moduleInfo.xfb     = nullptr;
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, BytecodeLength);
-    
     HRESULT hr = CreateShaderModule(&module,
-      DxvkShaderKey(VK_SHADER_STAGE_COMPUTE_BIT, hash),
-      pShaderBytecode, BytecodeLength, pClassLinkage,
-      &moduleInfo);
+      ComputeShaderKey(VK_SHADER_STAGE_COMPUTE_BIT, pShaderBytecode, BytecodeLength),
+      pShaderBytecode, BytecodeLength, &moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -1933,21 +1892,27 @@ namespace dxvk {
   
   HRESULT D3D11Device::CreateShaderModule(
           D3D11CommonShader*      pShaderModule,
-          DxvkShaderKey           ShaderKey,
+    const DxvkShaderHash&         ShaderKey,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
-          ID3D11ClassLinkage*     pClassLinkage,
     const DxbcModuleInfo*         pModuleInfo) {
     if (!BytecodeLength || !pShaderBytecode)
       return E_INVALIDARG;
 
-    if (pClassLinkage != nullptr)
-      Logger::warn("D3D11Device::CreateShaderModule: Class linkage not supported");
+    // Ensure that the built-in hash is valid for the given binary.
+    // Somewhat relevant for us because we use the hash as a way to
+    // deduplicate and also tag shaders.
+    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+
+    if (!container.validateHash()) {
+      Logger::err("D3D11: Shader hash validation failed");
+      return E_INVALIDARG;
+    }
 
     D3D11CommonShader commonShader;
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
-      &ShaderKey, pModuleInfo, pShaderBytecode, BytecodeLength,
+      ShaderKey, pModuleInfo, pShaderBytecode, BytecodeLength,
       &commonShader);
 
     if (FAILED(hr))
@@ -1974,6 +1939,57 @@ namespace dxvk {
 
     *pShaderModule = std::move(commonShader);
     return S_OK;
+  }
+
+
+  DxvkShaderHash D3D11Device::ComputeShaderKey(
+          VkShaderStageFlagBits   Stage,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength) {
+    return ComputeShaderKey(Stage, pShaderBytecode, BytecodeLength, nullptr, 0u, nullptr, 0u, 0u);
+  }
+
+
+  DxvkShaderHash D3D11Device::ComputeShaderKey(
+          VkShaderStageFlagBits   Stage,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength,
+    const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
+          UINT                    NumEntries,
+    const UINT*                   pBufferStrides,
+          UINT                    NumStrides,
+          UINT                    RasterizedStream) {
+    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+    auto binHash = container.getHash();
+
+    if (!NumEntries) {
+      return DxvkShaderHash(Stage,
+        BytecodeLength, binHash.data.data(), binHash.data.size());
+    }
+
+    dxbc_spv::util::md5::Hasher xfbHasher;
+
+    for (uint32_t i = 0u; i < NumEntries; i++) {
+      xfbHasher.update(&pSODeclaration[i].Stream, sizeof(pSODeclaration[i].Stream));
+
+      if (pSODeclaration[i].SemanticName)
+        xfbHasher.update(pSODeclaration[i].SemanticName, std::strlen(pSODeclaration[i].SemanticName));
+
+      xfbHasher.update(&pSODeclaration[i].SemanticIndex, sizeof(pSODeclaration[i].SemanticIndex));
+      xfbHasher.update(&pSODeclaration[i].StartComponent, sizeof(pSODeclaration[i].StartComponent));
+      xfbHasher.update(&pSODeclaration[i].ComponentCount, sizeof(pSODeclaration[i].ComponentCount));
+      xfbHasher.update(&pSODeclaration[i].OutputSlot, sizeof(pSODeclaration[i].OutputSlot));
+    }
+
+    xfbHasher.update(pBufferStrides, sizeof(*pBufferStrides) * NumStrides);
+    xfbHasher.update(&RasterizedStream, sizeof(RasterizedStream));
+    xfbHasher.finalize();
+
+    auto xfbHash = xfbHasher.getDigest();
+
+    return DxvkShaderHash(Stage, BytecodeLength,
+      binHash.data.data(), binHash.data.size(),
+      xfbHash.data.data(), xfbHash.data.size());
   }
 
 
