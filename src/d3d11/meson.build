@@ -79,7 +79,7 @@ endif
 
 d3d11_dll = shared_library(dxvk_name_prefix+'d3d11', dxgi_common_src + d3d11_src + d3d10_src,
     glsl_generator.process(d3d11_shaders), d3d11_res,
-  dependencies        : [ d3d11_dxgi_dep, dxbc_dep, dxvk_dep ],
+  dependencies        : [ d3d11_dxgi_dep, dxbc_dep, dxvk_dep, dxbc_spirv_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d11'+def_spec_ext,
