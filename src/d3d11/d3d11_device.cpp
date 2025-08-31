@@ -1,6 +1,9 @@
 #include <algorithm>
 #include <cstring>
 
+#include <dxbc/dxbc_container.h>
+#include <dxbc/dxbc_signature.h>
+
 #include "../dxgi/dxgi_monitor.h"
 #include "../dxgi/dxgi_surface.h"
 #include "../dxgi/dxgi_swapchain.h"
@@ -670,11 +673,13 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      DxbcReader dxbcReader(reinterpret_cast<const char*>(
-        pShaderBytecodeWithInputSignature), BytecodeLength);
-      DxbcModule dxbcModule(dxbcReader);
+      dxbc_spv::dxbc::Container container(pShaderBytecodeWithInputSignature, BytecodeLength);
+      auto isgnChunk = container.getInputSignatureChunk();
 
-      const Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
+      if (!isgnChunk)
+        return E_INVALIDARG;
+
+      dxbc_spv::dxbc::Signature inputSignature(std::move(isgnChunk));
 
       uint32_t attrMask = 0;
       uint32_t bindMask = 0;
@@ -685,13 +690,13 @@ namespace dxvk {
       std::array<DxvkVertexBinding,   D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> bindList = { };
 
       for (uint32_t i = 0; i < NumElements; i++) {
-        const DxbcSgnEntry* entry = inputSignature->find(
+        auto entry = inputSignature.findSemantic(0u,
           pInputElementDescs[i].SemanticName,
-          pInputElementDescs[i].SemanticIndex, 0);
+          pInputElementDescs[i].SemanticIndex);
 
         // Create vertex input attribute description
         DxvkVertexAttribute attrib = { };
-        attrib.location = entry != nullptr ? entry->registerId : 0;
+        attrib.location = entry != inputSignature.end() ? entry->getRegisterIndex() : 0;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = LookupFormat(pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
@@ -728,7 +733,7 @@ namespace dxvk {
         binding.divisor   = pInputElementDescs[i].InstanceDataStepRate;
         binding.inputRate = pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA
           ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
-        binding.extent    = entry ? uint32_t(attrib.offset + formatInfo->elementSize) : 0u;
+        binding.extent    = entry != inputSignature.end() ? uint32_t(attrib.offset + formatInfo->elementSize) : 0u;
 
         // Check if the binding was already defined. If so, the
         // parameters must be identical (namely, the input rate).
@@ -743,7 +748,7 @@ namespace dxvk {
           bindingsDefined |= 1u << binding.binding;
         }
 
-        if (entry) {
+        if (entry != inputSignature.end()) {
           attrMask |= 1u << i;
           bindMask |= 1u << binding.binding;
           locationMask |= 1u << attrib.location;
@@ -751,11 +756,10 @@ namespace dxvk {
       }
 
       // Ensure that all inputs used by the shader are defined
-      for (auto i = inputSignature->begin(); i != inputSignature->end(); i++) {
-        bool isBuiltIn = DxbcIsgn::compareSemanticNames(i->semanticName, "sv_instanceid")
-                      || DxbcIsgn::compareSemanticNames(i->semanticName, "sv_vertexid");
+      for (auto i = inputSignature.begin(); i != inputSignature.end(); i++) {
+        bool isBuiltIn = i->getSystemValue() != dxbc_spv::dxbc::SignatureSysval::eNone;
 
-        if (!isBuiltIn && !(locationMask & (1u << i->registerId)))
+        if (!isBuiltIn && !(locationMask & (1u << i->getRegisterIndex())))
           return E_INVALIDARG;
       }
 
