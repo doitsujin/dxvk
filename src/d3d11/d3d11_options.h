@@ -108,9 +108,6 @@ namespace dxvk {
     /// Some games are broken and ignore row pitch.
     bool disableDirectImageMapping = false;
 
-    /// Whether to use sincos emulation
-    Tristate sincosEmulation = Tristate::Auto;
-
     /// Shader dump path
     std::string shaderDumpPath;
   };
