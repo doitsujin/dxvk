@@ -89,7 +89,7 @@ namespace dxvk {
   }
 
 
-  void DxvkSpirvShader::dump(std::ostream& outputStream) const {
+  void DxvkSpirvShader::dump(std::ostream& outputStream) {
     m_code.decompress().store(outputStream);
   }
 

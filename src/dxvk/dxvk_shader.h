@@ -314,7 +314,7 @@ namespace dxvk {
      * Can be used to store the SPIR-V code in a file.
      * \param [in] outputStream Stream to write to 
      */
-    virtual void dump(std::ostream& outputStream) const = 0;
+    virtual void dump(std::ostream& outputStream) = 0;
 
     /**
      * \brief Retrieves debug name
