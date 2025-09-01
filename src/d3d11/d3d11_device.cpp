@@ -49,7 +49,6 @@ namespace dxvk {
     m_dxvkAdapter       (m_dxvkDevice->adapter()),
     m_d3d11Formats      (m_dxvkDevice),
     m_d3d11Options      (m_dxvkDevice->instance()->config()),
-    m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
     m_shaderOptions     (GetShaderOptions(m_dxvkDevice, m_d3d11Options)),
     m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
     m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_d3d11Options, m_featureLevel) {
@@ -2152,7 +2151,7 @@ namespace dxvk {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
-      if (m_dxbcOptions.supportsTypedUavLoadR32) {
+      if (!m_shaderOptions.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat)) {
         // If the R32 formats are supported without format declarations,
         // we can optionally support additional formats for typed loads
         if (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)

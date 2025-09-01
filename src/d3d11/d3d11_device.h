@@ -503,7 +503,6 @@ namespace dxvk {
     
     const DXGIVkFormatTable         m_d3d11Formats;
     const D3D11Options              m_d3d11Options;
-    const DxbcOptions               m_dxbcOptions;
 
     DxvkShaderOptions               m_shaderOptions = { };
 
