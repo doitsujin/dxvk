@@ -111,6 +111,7 @@ dxvk_src = [
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
   'dxvk_shader_io.cpp',
+  'dxvk_shader_ir.cpp',
   'dxvk_shader_key.cpp',
   'dxvk_shader_spirv.cpp',
   'dxvk_signal.cpp',
