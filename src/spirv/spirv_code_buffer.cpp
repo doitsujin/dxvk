@@ -38,7 +38,13 @@ namespace dxvk {
     
     m_ptr = m_code.size();
   }
-  
+
+
+  SpirvCodeBuffer::SpirvCodeBuffer(std::vector<uint32_t>&& data)
+  : m_code(std::move(data)), m_ptr(m_code.size()) {
+
+  }
+
   
   uint32_t SpirvCodeBuffer::allocId() {
     constexpr size_t BoundIdsOffset = 3;
