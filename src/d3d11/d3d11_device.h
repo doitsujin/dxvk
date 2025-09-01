@@ -504,9 +504,11 @@ namespace dxvk {
     const DXGIVkFormatTable         m_d3d11Formats;
     const D3D11Options              m_d3d11Options;
     const DxbcOptions               m_dxbcOptions;
-    
+
+    DxvkShaderOptions               m_shaderOptions = { };
+
     DxvkCsChunkPool                 m_csChunkPool;
-    
+
     D3D11Initializer*               m_initializer = nullptr;
     D3D10Device*                    m_d3d10Device = nullptr;
     Com<D3D11ImmediateContext, false> m_context;
@@ -525,7 +527,7 @@ namespace dxvk {
       const DxvkShaderHash&         ShaderKey,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
-      const DxbcModuleInfo*         pModuleInfo);
+      const DxvkIrShaderCreateInfo& ModuleInfo);
 
     DxvkShaderHash ComputeShaderKey(
             VkShaderStageFlagBits   Stage,
@@ -570,7 +572,11 @@ namespace dxvk {
             D3D11CommonTexture*         pTexture,
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
-    
+
+    static DxvkShaderOptions GetShaderOptions(
+      const Rc<DxvkDevice>&             Device,
+      const D3D11Options&               Options);
+
   };
   
   

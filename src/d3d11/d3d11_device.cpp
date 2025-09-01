@@ -50,6 +50,7 @@ namespace dxvk {
     m_d3d11Formats      (m_dxvkDevice),
     m_d3d11Options      (m_dxvkDevice->instance()->config()),
     m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
+    m_shaderOptions     (GetShaderOptions(m_dxvkDevice, m_d3d11Options)),
     m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
     m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_d3d11Options, m_featureLevel) {
     m_initializer = new D3D11Initializer(this);
@@ -791,14 +792,12 @@ namespace dxvk {
     InitReturnPtr(ppVertexShader);
     D3D11CommonShader module;
 
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_VERTEX_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
     
     if (FAILED(hr))
       return hr;
@@ -819,14 +818,12 @@ namespace dxvk {
     InitReturnPtr(ppGeometryShader);
     D3D11CommonShader module;
     
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -857,7 +854,11 @@ namespace dxvk {
 
     // Zero-init some counterss so that we can increment
     // them while walking over the stream output entries
-    DxbcXfbInfo xfb = { };
+    std::array<uint32_t, D3D11_SO_BUFFER_SLOT_COUNT> xfbOffsets = { };
+
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
+    moduleInfo.rasterizedStream = RasterizedStream;
 
     for (uint32_t i = 0; i < NumEntries; i++) {
       const D3D11_SO_DECLARATION_ENTRY* so = &pSODeclaration[i];
@@ -871,42 +872,36 @@ namespace dxvk {
          || so->ComponentCount <  1
          || so->ComponentCount >  4)
           return E_INVALIDARG;
-        
-        DxbcXfbEntry* entry = &xfb.entries[xfb.entryCount++];
-        entry->semanticName   = so->SemanticName;
-        entry->semanticIndex  = so->SemanticIndex;
-        entry->componentIndex = so->StartComponent;
-        entry->componentCount = so->ComponentCount;
-        entry->streamId       = so->Stream;
-        entry->bufferId       = so->OutputSlot;
-        entry->offset         = xfb.strides[so->OutputSlot];
+
+        auto& entry = moduleInfo.xfbEntries.emplace_back();
+        entry.semanticName = so->SemanticName;
+        entry.semanticIndex = so->SemanticIndex;
+        entry.componentMask = ((1u << so->ComponentCount) - 1u) << so->StartComponent;
+        entry.stream = so->Stream;
+        entry.buffer = so->OutputSlot;
+        entry.offset = xfbOffsets.at(so->OutputSlot);
       }
 
-      xfb.strides[so->OutputSlot] += so->ComponentCount * sizeof(uint32_t);
+      xfbOffsets.at(so->OutputSlot) += so->ComponentCount * sizeof(uint32_t);
     }
     
     // If necessary, override the buffer strides
     for (uint32_t i = 0; i < NumStrides; i++)
-      xfb.strides[i] = pBufferStrides[i];
+      xfbOffsets.at(i) = pBufferStrides[i];
 
-    // Set stream to rasterize, if any
-    xfb.rasterizedStream = -1;
-    
-    if (RasterizedStream != D3D11_SO_NO_RASTERIZED_STREAM)
-      Logger::err("D3D11: CreateGeometryShaderWithStreamOutput: Rasterized stream not supported");
+    // Assign buffer stride to each entry
+    for (size_t i = 0u; i < moduleInfo.xfbEntries.size(); i++) {
+      auto& entry = moduleInfo.xfbEntries[i];
+      entry.stride = xfbOffsets.at(entry.buffer);
+    }
 
     // Create the actual shader module
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = &xfb;
-
     auto shaderKey = ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT,
       pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries,
       pBufferStrides, NumStrides, RasterizedStream);
     
     HRESULT hr = CreateShaderModule(&module, shaderKey,
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return E_INVALIDARG;
@@ -927,14 +922,12 @@ namespace dxvk {
     InitReturnPtr(ppPixelShader);
     D3D11CommonShader module;
     
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_FRAGMENT_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -955,20 +948,12 @@ namespace dxvk {
     InitReturnPtr(ppHullShader);
     D3D11CommonShader module;
     
-    DxbcTessInfo tessInfo;
-    tessInfo.maxTessFactor = float(m_d3d11Options.maxTessFactor);
-
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
-
-    if (tessInfo.maxTessFactor >= 8.0f)
-      moduleInfo.tess = &tessInfo;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -989,14 +974,12 @@ namespace dxvk {
     InitReturnPtr(ppDomainShader);
     D3D11CommonShader module;
     
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -1017,14 +1000,12 @@ namespace dxvk {
     InitReturnPtr(ppComputeShader);
     D3D11CommonShader module;
     
-    DxbcModuleInfo moduleInfo;
-    moduleInfo.options = m_dxbcOptions;
-    moduleInfo.tess    = nullptr;
-    moduleInfo.xfb     = nullptr;
+    DxvkIrShaderCreateInfo moduleInfo = { };
+    moduleInfo.options = m_shaderOptions;
 
     HRESULT hr = CreateShaderModule(&module,
       ComputeShaderKey(VK_SHADER_STAGE_COMPUTE_BIT, pShaderBytecode, BytecodeLength),
-      pShaderBytecode, BytecodeLength, &moduleInfo);
+      pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
       return hr;
@@ -1895,7 +1876,7 @@ namespace dxvk {
     const DxvkShaderHash&         ShaderKey,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
-    const DxbcModuleInfo*         pModuleInfo) {
+    const DxvkIrShaderCreateInfo& ModuleInfo) {
     if (!BytecodeLength || !pShaderBytecode)
       return E_INVALIDARG;
 
@@ -1912,7 +1893,7 @@ namespace dxvk {
     D3D11CommonShader commonShader;
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
-      ShaderKey, pModuleInfo, pShaderBytecode, BytecodeLength,
+      ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength,
       &commonShader);
 
     if (FAILED(hr))
@@ -2431,6 +2412,24 @@ namespace dxvk {
     }
 
     return feedback;
+  }
+
+
+  DxvkShaderOptions D3D11Device::GetShaderOptions(
+    const Rc<DxvkDevice>&             Device,
+    const D3D11Options&               Options) {
+    auto result = Device->getShaderCompileOptions();
+
+    if (Options.disableMsaa)
+      result.compileOptions.flags.set(DxvkShaderCompileFlag::DisableMsaa);
+
+    if (Options.forceVolatileTgsmAccess)
+      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+
+    if (Options.forceComputeUavBarriers)
+      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
+
+    return result;
   }
 
 

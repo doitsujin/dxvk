@@ -8,6 +8,7 @@
 #include "../dxvk/dxvk_device.h"
 #include "../dxvk/dxvk_shader.h"
 #include "../dxvk/dxvk_shader_key.h"
+#include "../dxvk/dxvk_shader_ir.h"
 
 #include "../d3d10/d3d10_shader.h"
 
@@ -35,11 +36,11 @@ namespace dxvk {
     
     D3D11CommonShader();
     D3D11CommonShader(
-            D3D11Device*    pDevice,
-      const DxvkShaderHash& ShaderKey,
-      const DxbcModuleInfo* pDxbcModuleInfo,
-      const void*           pShaderBytecode,
-            size_t          BytecodeLength);
+            D3D11Device*            pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const DxvkIrShaderCreateInfo& ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
     ~D3D11CommonShader();
 
     Rc<DxvkShader> GetShader() const {
@@ -68,11 +69,11 @@ namespace dxvk {
     DxbcBindingMask m_bindings = { };
 
     void CreateLegacyShader(
-            D3D11Device*    pDevice,
-      const DxvkShaderHash& ShaderKey,
-      const DxbcModuleInfo* pDxbcModuleInfo,
-      const void*           pShaderBytecode,
-            size_t          BytecodeLength);
+            D3D11Device*            pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const DxvkIrShaderCreateInfo& ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
 
   };
 
@@ -167,12 +168,12 @@ namespace dxvk {
     ~D3D11ShaderModuleSet();
     
     HRESULT GetShaderModule(
-            D3D11Device*        pDevice,
-      const DxvkShaderHash&     ShaderKey,
-      const DxbcModuleInfo*     pDxbcModuleInfo,
-      const void*               pShaderBytecode,
-            size_t              BytecodeLength,
-            D3D11CommonShader*  pShader);
+            D3D11Device*            pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const DxvkIrShaderCreateInfo& ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength,
+            D3D11CommonShader*      pShader);
     
   private:
     
