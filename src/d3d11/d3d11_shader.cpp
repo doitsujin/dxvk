@@ -8,11 +8,11 @@ namespace dxvk {
   
   
   D3D11CommonShader::D3D11CommonShader(
-          D3D11Device*    pDevice,
-    const DxvkShaderHash& ShaderKey,
-    const DxbcModuleInfo* pDxbcModuleInfo,
-    const void*           pShaderBytecode,
-          size_t          BytecodeLength) {
+          D3D11Device*            pDevice,
+    const DxvkShaderHash&         ShaderKey,
+    const DxvkIrShaderCreateInfo& ModuleInfo,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength) {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
@@ -25,7 +25,7 @@ namespace dxvk {
       file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
     }
 
-    CreateLegacyShader(pDevice, ShaderKey, pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+    CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
 
     if (!dumpPath.empty()) {
       std::ofstream dumpStream(
@@ -39,11 +39,11 @@ namespace dxvk {
 
 
   void D3D11CommonShader::CreateLegacyShader(
-          D3D11Device*    pDevice,
-    const DxvkShaderHash& ShaderKey,
-    const DxbcModuleInfo* pDxbcModuleInfo,
-    const void*           pShaderBytecode,
-          size_t          BytecodeLength) {
+          D3D11Device*            pDevice,
+    const DxvkShaderHash&         ShaderKey,
+    const DxvkIrShaderCreateInfo& ModuleInfo,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength) {
     DxbcReader reader(
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
@@ -61,9 +61,67 @@ namespace dxvk {
     if (!programInfo)
       throw DxvkError("Invalid shader binary.");
 
+    DxbcXfbInfo xfb = { };
+    xfb.rasterizedStream = ModuleInfo.rasterizedStream;
+    xfb.entryCount = ModuleInfo.xfbEntries.size();
+
+    for (size_t i = 0u; i < ModuleInfo.xfbEntries.size(); i++) {
+      const auto& src = ModuleInfo.xfbEntries[i];
+
+      auto& dst = xfb.entries[i];
+      dst.semanticName = src.semanticName.c_str();
+      dst.semanticIndex = src.semanticIndex;
+      dst.componentIndex = bit::tzcnt(uint32_t(src.componentMask));
+      dst.componentCount = bit::popcnt(uint32_t(src.componentMask));
+      dst.streamId = src.stream;
+      dst.bufferId = src.buffer;
+      dst.offset = src.offset;
+
+      xfb.strides[src.buffer] = src.stride;
+    }
+
+    DxbcTessInfo tessInfo = { };
+    tessInfo.maxTessFactor = float(ModuleInfo.options.compileOptions.maxTessFactor);
+
+    DxbcModuleInfo legacyInfo = { };
+    legacyInfo.options.supportsTypedUavLoadR32 = !ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+    legacyInfo.options.supportsRawAccessChains = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
+    legacyInfo.options.rawAccessChainBug = legacyInfo.options.supportsRawAccessChains;
+    legacyInfo.options.invariantPosition = true;
+    legacyInfo.options.forceVolatileTgsmAccess = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+    legacyInfo.options.forceComputeUavBarriers = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
+    legacyInfo.options.disableMsaa = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::DisableMsaa);
+    legacyInfo.options.forceSampleRateShading = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
+    legacyInfo.options.needsPointSizeExport = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::ExportPointSize);
+    legacyInfo.options.sincosEmulation = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
+    legacyInfo.options.supports16BitPushData = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData);
+    legacyInfo.options.minSsboAlignment = ModuleInfo.options.compileOptions.minStorageBufferAlignment;
+
+    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush32) &&
+        ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte32))
+      legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormFlushToZero32);
+
+    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
+      legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan32);
+
+    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::IndependentDenormMode)) {
+      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64) &&
+          ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte64))
+        legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
+
+      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64))
+        legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan64);
+    }
+
+    if (tessInfo.maxTessFactor >= 8.0f)
+      legacyInfo.tess = &tessInfo;
+
+    if (xfb.entryCount)
+      legacyInfo.xfb = &xfb;
+
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
-    bool isPassthroughShader = pDxbcModuleInfo->xfb != nullptr
+    bool isPassthroughShader = (ShaderKey.stage() == VK_SHADER_STAGE_GEOMETRY_BIT)
       && (programInfo->type() == DxbcProgramType::VertexShader
        || programInfo->type() == DxbcProgramType::DomainShader);
 
@@ -71,8 +129,8 @@ namespace dxvk {
       throw DxvkError("Mismatching shader type.");
 
     m_shader = isPassthroughShader
-      ? module.compilePassthroughShader(*pDxbcModuleInfo, legacyKey.toString())
-      : module.compile                 (*pDxbcModuleInfo, legacyKey.toString());
+      ? module.compilePassthroughShader(legacyInfo, legacyKey.toString())
+      : module.compile                 (legacyInfo, legacyKey.toString());
 
     // Create shader constant buffer if necessary
     auto icb = module.icbInfo();
@@ -108,12 +166,12 @@ namespace dxvk {
   
   
   HRESULT D3D11ShaderModuleSet::GetShaderModule(
-          D3D11Device*        pDevice,
-    const DxvkShaderHash&     ShaderKey,
-    const DxbcModuleInfo*     pDxbcModuleInfo,
-    const void*               pShaderBytecode,
-          size_t              BytecodeLength,
-          D3D11CommonShader*  pShader) {
+          D3D11Device*            pDevice,
+    const DxvkShaderHash&         ShaderKey,
+    const DxvkIrShaderCreateInfo& ModuleInfo,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength,
+          D3D11CommonShader*      pShader) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
@@ -130,7 +188,7 @@ namespace dxvk {
     
     try {
       module = D3D11CommonShader(pDevice, ShaderKey,
-        pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+        ModuleInfo, pShaderBytecode, BytecodeLength);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_INVALIDARG;
