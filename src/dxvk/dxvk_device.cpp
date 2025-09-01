@@ -23,7 +23,7 @@ namespace dxvk {
     m_perfHints         (getPerfHints()),
     m_objects           (this),
     m_submissionQueue   (this, queueCallback) {
-
+    determineShaderOptions();
   }
   
   
@@ -671,5 +671,96 @@ namespace dxvk {
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
   }
-  
+
+
+  void DxvkDevice::determineShaderOptions() {
+    m_shaderOptions.compileOptions.minStorageBufferAlignment =
+      m_properties.core.properties.limits.minStorageBufferOffsetAlignment;
+
+    m_shaderOptions.compileOptions.maxTessFactor =
+      m_properties.core.properties.limits.maxTessellationGenerationLevel;
+
+    if (m_features.core.features.shaderInt16 && m_features.vk12.shaderFloat16)
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::Supports16BitArithmetic);
+
+    if (m_features.core.features.shaderInt16 && m_features.vk11.storagePushConstant16)
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::Supports16BitPushData);
+
+    // Need to tag typed storage image loads with the format on some devices
+    auto r32Features = getFormatFeatures(VK_FORMAT_R32_SFLOAT).optimal
+                     & getFormatFeatures(VK_FORMAT_R32_UINT).optimal
+                     & getFormatFeatures(VK_FORMAT_R32_SINT).optimal;
+
+    if (!(r32Features & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT))
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+
+    // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
+    bool lowerSinCos = m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+                    || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS);
+    applyTristate(lowerSinCos, m_options.lowerSinCos);
+
+    if (lowerSinCos)
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::LowerSinCos);
+
+    // Converting unsigned integers to float should return an unsigned float,
+    // but Nvidia drivers don't agree
+    if (m_adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY))
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::LowerItoF);
+
+    // Forward UBO device limit as-is
+    m_shaderOptions.spirvOptions.maxUniformBufferSize = m_properties.core.properties.limits.maxUniformBufferRange;
+
+    // ANV up to mesa 25.0.2 breaks when we *don't* explicitly write point size
+    if (m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version(25, 0, 3)))
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::ExportPointSize);
+
+    if (m_features.nvRawAccessChains.shaderRawAccessChains)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
+
+    // Set up float control feature flags
+    if (m_properties.vk12.shaderSignedZeroInfNanPreserveFloat16)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve16);
+    if (m_properties.vk12.shaderSignedZeroInfNanPreserveFloat32)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
+    if (m_properties.vk12.shaderSignedZeroInfNanPreserveFloat64)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64);
+
+    if (m_properties.vk12.shaderRoundingModeRTEFloat16)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRte16);
+    if (m_properties.vk12.shaderRoundingModeRTEFloat32)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRte32);
+    if (m_properties.vk12.shaderRoundingModeRTEFloat64)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRte64);
+
+    if (m_properties.vk12.shaderRoundingModeRTZFloat16)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRtz16);
+    if (m_properties.vk12.shaderRoundingModeRTZFloat32)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRtz32);
+    if (m_properties.vk12.shaderRoundingModeRTZFloat64)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsRtz64);
+
+    if (m_properties.vk12.shaderDenormFlushToZeroFloat16)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormFlush16);
+    if (m_properties.vk12.shaderDenormFlushToZeroFloat32)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormFlush32);
+    if (m_properties.vk12.shaderDenormFlushToZeroFloat64)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormFlush64);
+
+    if (m_properties.vk12.shaderDenormPreserveFloat16)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormPreserve16);
+    if (m_properties.vk12.shaderDenormPreserveFloat32)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormPreserve32);
+    if (m_properties.vk12.shaderDenormPreserveFloat64)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsDenormPreserve64);
+
+    if (m_properties.vk12.roundingModeIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::IndependentRoundMode);
+
+    if (m_properties.vk12.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::IndependentDenormMode);
+
+    if (m_features.khrShaderFloatControls2.shaderFloatControls2)
+      m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
+  }
+
 }

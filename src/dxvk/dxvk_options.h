@@ -66,7 +66,10 @@ namespace dxvk {
     /// Overrides memory budget for DXVK
     VkDeviceSize maxMemoryBudget = 0u;
 
-    // Device name
+    /// Whether to use custom sin/cos approximation
+    Tristate lowerSinCos = Tristate::Auto;
+
+    /// Device name
     std::string deviceFilter;
   };
 

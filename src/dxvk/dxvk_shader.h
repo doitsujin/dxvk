@@ -17,7 +17,131 @@ namespace dxvk {
   class DxvkShaderModule;
   class DxvkPipelineManager;
   struct DxvkPipelineStats;
-  
+
+  /**
+   * \brief Shader compile flags
+   */
+  enum class DxvkShaderCompileFlag : uint32_t {
+    /// Whether to detect and resolve cases of missing
+    /// shared memory barriers in compute shaders
+    InsertSharedMemoryBarriers  = 0u,
+    /// Whether to detect and resolve cases of missing
+    /// resource memory barriers in compute shaders
+    InsertResourceBarriers      = 1u,
+    /// Whether loads from typed read-write resources
+    /// require the format of the resource to be R32.
+    TypedR32LoadRequiresFormat  = 2u,
+    /// Whether to replace all multisampled image
+    /// resource bindings with single-sampled variants.
+    DisableMsaa                 = 3u,
+    /// Whether to enable sample interpolation for all
+    /// interpolated shader inputs.
+    EnableSampleRateShading     = 4u,
+    /// Whether to lower unsigned int to float conversions.
+    /// Needed to work around an Nvidia driver bug.
+    LowerItoF                   = 5u,
+    /// Whether to lower sin/cos to a custom approximation.
+    /// Used on hardware where the built-in intrinsics are
+    /// not accurate enough.
+    LowerSinCos                 = 6u,
+    /// Whether the device supports 16-bit int and float
+    /// arithmetic. Effectively enables min16 lowering.
+    Supports16BitArithmetic     = 7u,
+    /// Whether 16-bit push data is supported. Used to
+    /// pack sampler indices in the binding model
+    Supports16BitPushData       = 8u,
+  };
+
+  using DxvkShaderCompileFlags = Flags<DxvkShaderCompileFlag>;
+
+
+  /**
+   * \brief Shader compile options
+   *
+   * Device-level options to enable certain
+   * features or behaviours.
+   */
+  struct DxvkShaderCompileOptions {
+    /// Compile flags
+    DxvkShaderCompileFlags flags = 0u;
+    /// Maximum tessellation factor. If 0, tessellation factors
+    /// will not be clamped beyond what is set in the shader.
+    uint8_t maxTessFactor = 0u;
+    /// Global push data offset for rasterizer sample count
+    uint8_t sampleCountPushDataOffset = 0u;
+    /// Minimum required storage buffer alignment. Buffers
+    /// with a smaller guaranteed alignment must be demoted
+    /// to typed buffers.
+    uint16_t minStorageBufferAlignment = 0u;
+    /// Rasterized geometry stream
+    int32_t rasterizedStream = -1;
+  };
+
+
+  /**
+   * \brief Shader lowering flags
+   *
+   * These flags do not affect the internal IR.
+   */
+  enum class DxvkShaderSpirvFlag : uint32_t {
+    /// Whether to export point size.
+    ExportPointSize             = 0u,
+    /// Whether raw access chains are supported.
+    SupportsNvRawAccessChains   = 1u,
+    /// Whether signed zero / inf / nan preserve is
+    /// supported for the given bit width
+    SupportsSzInfNanPreserve16  = 2u,
+    SupportsSzInfNanPreserve32  = 3u,
+    SupportsSzInfNanPreserve64  = 4u,
+    /// Whether rounding to nearest even is supported
+    /// for the given bit width
+    SupportsRte16               = 5u,
+    SupportsRte32               = 6u,
+    SupportsRte64               = 7u,
+    /// Whether rounding towards zero is supported
+    /// for the given bit width
+    SupportsRtz16               = 8u,
+    SupportsRtz32               = 9u,
+    SupportsRtz64               = 10u,
+    /// Whether flushing denorms is supported for the
+    /// given bit width
+    SupportsDenormFlush16       = 11u,
+    SupportsDenormFlush32       = 12u,
+    SupportsDenormFlush64       = 13u,
+    /// Whether preserving denorms is supported for the
+    /// given bit width
+    SupportsDenormPreserve16    = 14u,
+    SupportsDenormPreserve32    = 15u,
+    SupportsDenormPreserve64    = 16u,
+    /// Whether 16/64-bit rounding and denorm modes can be
+    /// set independently of the corresponding 32-bit mode
+    IndependentRoundMode        = 17u,
+    IndependentDenormMode       = 18u,
+    /// Whether float control 2 features are supported
+    SupportsFloatControls2      = 19u,
+  };
+
+  using DxvkShaderSpirvFlags = Flags<DxvkShaderSpirvFlag>;
+
+
+  /**
+   * \brief SPIR-V lowering options
+   */
+  struct DxvkShaderSpirvOptions {
+    DxvkShaderSpirvFlags flags = 0u;
+    uint32_t maxUniformBufferSize = 0u;
+  };
+
+
+  /**
+   * \brief Shader compile and lowering options
+   */
+  struct DxvkShaderOptions {
+    DxvkShaderCompileOptions compileOptions = { };
+    DxvkShaderSpirvOptions spirvOptions = { };
+  };
+
+
   /**
    * \brief Shader flags
    *
@@ -71,11 +195,13 @@ namespace dxvk {
    * \brief Shader module create info
    */
   struct DxvkShaderLinkage {
-    bool      fsDualSrcBlend  = false;
-    bool      fsFlatShading   = false;
+    bool fsDualSrcBlend  = false;
+    bool fsFlatShading   = false;
+
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
-    std::optional<DxvkShaderIo> prevStageOutputs = { };
+    VkShaderStageFlagBits prevStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
+    DxvkShaderIo prevStageOutputs = { };
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 
