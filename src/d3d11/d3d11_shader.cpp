@@ -16,18 +16,37 @@ namespace dxvk {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
-    DxbcReader reader(
-      reinterpret_cast<const char*>(pShaderBytecode),
-      BytecodeLength);
-    
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
     const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
     
-    if (dumpPath.size() != 0) {
-      reader.store(std::ofstream(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(),
-        std::ios_base::binary | std::ios_base::trunc));
+    if (!dumpPath.empty()) {
+      std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
+      file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
     }
+
+    CreateLegacyShader(pDevice, ShaderKey, pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+
+    if (!dumpPath.empty()) {
+      std::ofstream dumpStream(
+        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
+        std::ios_base::binary | std::ios_base::trunc);
+      m_shader->dump(dumpStream);
+    }
+
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
+  }
+
+
+  void D3D11CommonShader::CreateLegacyShader(
+          D3D11Device*    pDevice,
+    const DxvkShaderHash& ShaderKey,
+    const DxbcModuleInfo* pDxbcModuleInfo,
+    const void*           pShaderBytecode,
+          size_t          BytecodeLength) {
+    DxbcReader reader(
+      reinterpret_cast<const char*>(pShaderBytecode),
+      BytecodeLength);
 
     // Compute legacy SHA-1 hash to pass as shader name
     Sha1Hash sha1Hash = Sha1Hash::compute(
@@ -54,15 +73,7 @@ namespace dxvk {
     m_shader = isPassthroughShader
       ? module.compilePassthroughShader(*pDxbcModuleInfo, legacyKey.toString())
       : module.compile                 (*pDxbcModuleInfo, legacyKey.toString());
-    
-    if (dumpPath.size() != 0) {
-      std::ofstream dumpStream(
-        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
-        std::ios_base::binary | std::ios_base::trunc);
-      
-      m_shader->dump(dumpStream);
-    }
-    
+
     // Create shader constant buffer if necessary
     auto icb = module.icbInfo();
 
@@ -83,8 +94,6 @@ namespace dxvk {
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);
     }
-
-    pDevice->GetDXVKDevice()->registerShader(m_shader);
 
     // Write back binding mask
     auto bindings = module.bindings();

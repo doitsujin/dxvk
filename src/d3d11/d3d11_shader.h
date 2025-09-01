@@ -67,6 +67,13 @@ namespace dxvk {
 
     DxbcBindingMask m_bindings = { };
 
+    void CreateLegacyShader(
+            D3D11Device*    pDevice,
+      const DxvkShaderHash& ShaderKey,
+      const DxbcModuleInfo* pDxbcModuleInfo,
+      const void*           pShaderBytecode,
+            size_t          BytecodeLength);
+
   };
 
 
