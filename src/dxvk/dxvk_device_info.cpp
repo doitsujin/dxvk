@@ -49,6 +49,7 @@ namespace dxvk {
     HANDLE_EXT(khrPipelineLibrary);                \
     HANDLE_EXT(khrPresentId);                      \
     HANDLE_EXT(khrPresentWait);                    \
+    HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
     HANDLE_EXT(khrWin32KeyedMutex);                \
@@ -881,6 +882,9 @@ namespace dxvk {
       /* Present wait, used for frame pacing and statistics */
       ENABLE_EXT_FEATURE(khrPresentId, presentId, false),
       ENABLE_EXT_FEATURE(khrPresentWait, presentWait, false),
+
+      /* Used for shader compilation in addition to regular float_controls features */
+      ENABLE_EXT_FEATURE(khrShaderFloatControls2, shaderFloatControls2, false),
 
       /* Swapchain, needed for presentation */
       ENABLE_EXT(khrSwapchain, true),
