@@ -886,6 +886,8 @@ namespace dxvk {
       info.prevStageOutputs = DxvkShaderIo::forVertexBindings(attributeMask);
     } else {
       auto prevStage = getPrevStageShader(shaders, shaderMeta.stage);
+
+      info.prevStage = prevStage->metadata().stage;
       info.prevStageOutputs = prevStage->metadata().outputs;
     }
 

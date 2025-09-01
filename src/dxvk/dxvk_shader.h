@@ -73,8 +73,6 @@ namespace dxvk {
     /// with a smaller guaranteed alignment must be demoted
     /// to typed buffers.
     uint16_t minStorageBufferAlignment = 0u;
-    /// Rasterized geometry stream
-    int32_t rasterizedStream = -1;
   };
 
 
