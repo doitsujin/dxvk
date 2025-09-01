@@ -50,7 +50,7 @@ namespace dxvk {
 
   SpirvCodeBuffer DxvkSpirvShader::getCode(
     const DxvkShaderBindingMap*       bindings,
-    const DxvkShaderLinkage*          linkage) const {
+    const DxvkShaderLinkage*          linkage) {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     patchResourceBindingsAndIoLocations(spirvCode, bindings, linkage);
 

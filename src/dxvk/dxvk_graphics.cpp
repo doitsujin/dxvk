@@ -1470,7 +1470,7 @@ namespace dxvk {
 
 
   SpirvCodeBuffer DxvkGraphicsPipeline::getShaderCode(
-    const DxvkShader&         shader,
+          DxvkShader&         shader,
     const DxvkShaderLinkage&  linkage) const {
     return shader.getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), &linkage);
   }

@@ -660,7 +660,7 @@ namespace dxvk {
             VkPipeline                    pipeline) const;
 
     SpirvCodeBuffer getShaderCode(
-      const DxvkShader&                   shader,
+            DxvkShader&                   shader,
       const DxvkShaderLinkage&            linkage) const;
 
     uint32_t computeSpecConstantMask() const;
