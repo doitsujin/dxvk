@@ -7324,10 +7324,10 @@ namespace dxvk {
       key.setDepthCompare(cIsDepth, VK_COMPARE_OP_LESS_OR_EQUAL);
 
       if (cState.mipFilter) {
-        // Anisotropic filtering doesn't make any sense with only one mip
         uint32_t anisotropy = cState.maxAnisotropy;
 
-        if (cState.minFilter != D3DTEXF_ANISOTROPIC)
+        // Anisotropic filtering doesn't make any sense with only one mip
+        if (cState.minFilter != D3DTEXF_ANISOTROPIC || !cIsMultiMip)
           anisotropy = 0u;
 
         // Forcing anisotropic filtering doesn't make any sense with only one mip
