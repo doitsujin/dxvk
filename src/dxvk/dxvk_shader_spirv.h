@@ -71,7 +71,7 @@ namespace dxvk {
      */
     SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderLinkage*          linkage) const;
+      const DxvkShaderLinkage*          linkage);
 
     /**
      * \brief Queries shader binding layout

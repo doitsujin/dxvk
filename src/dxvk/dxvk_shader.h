@@ -306,7 +306,7 @@ namespace dxvk {
      */
     virtual SpirvCodeBuffer getCode(
       const DxvkShaderBindingMap*       bindings,
-      const DxvkShaderLinkage*          linkage) const = 0;
+      const DxvkShaderLinkage*          linkage) = 0;
 
     /**
      * \brief Dumps SPIR-V shader
