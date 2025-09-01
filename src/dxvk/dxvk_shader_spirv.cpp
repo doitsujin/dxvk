@@ -58,8 +58,8 @@ namespace dxvk {
     if (linkage) {
       uint32_t undefinedInputs = 0u;
 
-      if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT && linkage->prevStageOutputs) {
-        auto producedMask = linkage->prevStageOutputs->computeMask();
+      if (m_metadata.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+        auto producedMask = linkage->prevStageOutputs.computeMask();
         auto consumedMask = m_metadata.inputs.computeMask();
 
         auto definedMask = producedMask & consumedMask;

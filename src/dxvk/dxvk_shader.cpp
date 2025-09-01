@@ -16,14 +16,13 @@ namespace dxvk {
 
   bool DxvkShaderLinkage::eq(const DxvkShaderLinkage& other) const {
     bool eq = fsDualSrcBlend == other.fsDualSrcBlend
-           && fsFlatShading == other.fsFlatShading
-           && !prevStageOutputs == !other.prevStageOutputs;
+           && fsFlatShading == other.fsFlatShading;
 
-    if (prevStageOutputs && eq) {
-      eq = prevStageOutputs->getVarCount() == other.prevStageOutputs->getVarCount();
+    if (eq) {
+      eq = prevStageOutputs.getVarCount() == other.prevStageOutputs.getVarCount();
 
-      for (uint32_t i = 0; i < prevStageOutputs->getVarCount() && eq; i++)
-        eq = prevStageOutputs->getVar(i).eq(other.prevStageOutputs->getVar(i));
+      for (uint32_t i = 0; i < prevStageOutputs.getVarCount() && eq; i++)
+        eq = prevStageOutputs.getVar(i).eq(other.prevStageOutputs.getVar(i));
     }
 
     for (uint32_t i = 0; i < rtSwizzles.size() && eq; i++) {
@@ -42,10 +41,8 @@ namespace dxvk {
     hash.add(uint32_t(fsDualSrcBlend));
     hash.add(uint32_t(fsFlatShading));
 
-    if (prevStageOutputs) {
-      for (uint32_t i = 0; i < prevStageOutputs->getVarCount(); i++)
-        hash.add(prevStageOutputs->getVar(i).hash());
-    }
+    for (uint32_t i = 0; i < prevStageOutputs.getVarCount(); i++)
+      hash.add(prevStageOutputs.getVar(i).hash());
 
     for (uint32_t i = 0; i < rtSwizzles.size(); i++) {
       hash.add(rtSwizzles[i].r);

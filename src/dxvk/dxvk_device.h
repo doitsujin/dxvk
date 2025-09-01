@@ -215,6 +215,18 @@ namespace dxvk {
       return m_adapter->getFormatLimits(query);
     }
 
+
+    /**
+     * \brief Queries default shader compile options
+     *
+     * Can be overridden by the client API. Only applies to
+     * shaders using internal IR rather than SPIR-V binaries.
+     * \returns Device-global shader compile options.
+     */
+    DxvkShaderOptions getShaderCompileOptions() const {
+      return m_shaderOptions;
+    }
+
     /**
      * \brief Get device status
      * 
@@ -676,21 +688,25 @@ namespace dxvk {
 
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
-    
+
+    DxvkShaderOptions           m_shaderOptions;
+
     DxvkDevicePerfHints         m_perfHints;
     DxvkObjects                 m_objects;
 
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
-    
+
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
-    
+
     DxvkSubmissionQueue         m_submissionQueue;
 
     DxvkDevicePerfHints getPerfHints();
-    
+
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
+
+    void determineShaderOptions();
 
   };
   
