@@ -108,6 +108,9 @@ namespace dxvk {
     /// Some games are broken and ignore row pitch.
     bool disableDirectImageMapping = false;
 
+    /// Whether to use dxbc-spirv instead of the legacy compiler.
+    bool useDxbcSpirv = false;
+
     /// Shader dump path
     std::string shaderDumpPath;
   };
