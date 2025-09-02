@@ -24,6 +24,69 @@ namespace dxvk {
   class D3D11Device;
 
   /**
+   * \brief Shader resource mapping
+   *
+   * Helper class to compute backend resource
+   * indices for D3D11 binding slots.
+   */
+  class D3D11ShaderResourceMapping : public DxvkIrResourceMapping {
+    static constexpr uint32_t StageCount        = 6u;
+    static constexpr uint32_t CbvPerStage       = 16u;
+    static constexpr uint32_t SamplersPerStage  = 16u;
+    static constexpr uint32_t SrvPerStage       = 128u;
+    static constexpr uint32_t SrvTotal          = SrvPerStage * StageCount;
+    static constexpr uint32_t UavPerPipeline    = 64u;
+    static constexpr uint32_t UavTotal          = UavPerPipeline * 4u;
+    static constexpr uint32_t UavIndexGraphics  = DxbcSrvTotal;
+    static constexpr uint32_t UavIndexCompute   = UavIndexGraphics + DxbcUavPerPipeline * 2u;
+  public:
+
+    ~D3D11ShaderResourceMapping();
+
+    uint32_t determineResourceIndex(
+            dxbc_spv::ir::ShaderStage stage,
+            dxbc_spv::ir::ScalarType  type,
+            uint32_t                  regSpace,
+            uint32_t                  regIndex) const;
+
+    static uint32_t computeCbvBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+      return computeStageIndex(stage) * CbvPerStage + index;
+    }
+
+    static uint32_t computeSamplerBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+      return computeStageIndex(stage) * SamplersPerStage + index;
+    }
+
+    static uint32_t computeSrvBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+      return computeStageIndex(stage) * SrvPerStage + index;
+    }
+
+    static uint32_t computeUavBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+      return (stage == dxbc_spv::ir::ShaderStage::eCompute ? UavIndexCompute : UavIndexGraphics) + index;
+    }
+
+    static uint32_t computeUavCounterBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+      return computeUavBinding(stage, index) + UavPerPipeline;
+    }
+
+  private:
+
+    static uint32_t computeStageIndex(dxbc_spv::ir::ShaderStage stage) {
+      switch (stage) {
+        case dxbc_spv::ir::ShaderStage::ePixel:     return 0u;
+        case dxbc_spv::ir::ShaderStage::eVertex:    return 1u;
+        case dxbc_spv::ir::ShaderStage::eGeometry:  return 2u;
+        case dxbc_spv::ir::ShaderStage::eHull:      return 3u;
+        case dxbc_spv::ir::ShaderStage::eDomain:    return 4u;
+        case dxbc_spv::ir::ShaderStage::eCompute:   return 5u;
+        default:                                    return -1u;
+      }
+    }
+
+  };
+
+
+  /**
    * \brief Common shader object
    * 
    * Stores the compiled SPIR-V shader and the SHA-1
@@ -68,12 +131,22 @@ namespace dxvk {
 
     DxbcBindingMask m_bindings = { };
 
+    void CreateIrShader(
+            D3D11Device*            pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const DxvkIrShaderCreateInfo& ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
+
     void CreateLegacyShader(
             D3D11Device*            pDevice,
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength);
+
+    static VkShaderStageFlagBits ConvertShaderStage(
+            dxbc_spv::dxbc::ShaderType Type);
 
   };
 
