@@ -77,7 +77,7 @@ namespace dxvk {
     // we already allocated a large number of queries
     std::lock_guard lock(m_mutex);
 
-    if (m_queries.size() >= m_queries.MinCapacity)
+    if (m_queries.size() >= m_queries.EmbeddedCapacity)
       accumulateQueryDataLocked();
 
     m_queries.push_back(std::move(query));
