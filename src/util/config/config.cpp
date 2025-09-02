@@ -1103,6 +1103,12 @@ namespace dxvk {
     { R"(\\Scarface\.exe$)", {{
       { "d3d9.allowDiscard",               "False" },
     }} },
+    /* Heroes of Annihilated Empires              *
+     * Cursor and other animations play back too  *
+     * fast without a frame cap in place.         */
+    { R"(\\Heroes of Annihilated Empires.*\\engine\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
