@@ -55,6 +55,10 @@ namespace dxvk {
     { R"(\\ACShadows\.exe$)", {{
       { "dxgi.enableDummyCompositionSwapchain", "True" }
     }} },
+    /* Anno 117: Uses composition swapchain        */
+    { R"(\\Anno117\.exe$)", {{
+      { "dxgi.enableDummyCompositionSwapchain", "True" }
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
