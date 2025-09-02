@@ -115,9 +115,13 @@ namespace dxvk {
     m_shaderCache.SupportFlags = D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_INPROC_CACHE
                                | D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_DISK_CACHE;
 
-    // DXVK does not support min precision
-    m_shaderMinPrecision.PixelShaderMinPrecision          = 0;
-    m_shaderMinPrecision.AllOtherShaderStagesMinPrecision = 0;
+    // 16-bit precision is supported on capable devices
+    auto minPrecision = Adapter->features().core.features.shaderInt16 && Adapter->features().vk12.shaderFloat16
+      ? D3D11_SHADER_MIN_PRECISION_16_BIT
+      : D3D11_SHADER_MIN_PRECISION_SUPPORT(0u);
+
+    m_shaderMinPrecision.PixelShaderMinPrecision          = minPrecision;
+    m_shaderMinPrecision.AllOtherShaderStagesMinPrecision = minPrecision;
 
     // Report native support for command lists by default. Deferred context
     // usage can be beneficial for us as ExecuteCommandList has low overhead,
