@@ -1066,26 +1066,35 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
-    uint32_t mipLevels = dstTexInfo->IsAutomaticMip() ? 1 : dstTexInfo->Desc()->MipLevels;
+    uint32_t srcMipLevels = srcTexInfo->IsAutomaticMip() ? 1 : srcTexInfo->Desc()->MipLevels;
+    uint32_t dstMipLevels = dstTexInfo->IsAutomaticMip() ? 1 : dstTexInfo->Desc()->MipLevels;
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
 
     uint32_t srcMipOffset = 0;
     VkExtent3D srcFirstMipExtent = srcTexInfo->GetExtent();
     VkExtent3D dstFirstMipExtent = dstTexInfo->GetExtent();
 
-    if (srcFirstMipExtent != dstFirstMipExtent) {
-      // UpdateTexture can be used with textures that have different mip lengths.
-      // It will either match the the top mips or the bottom ones.
-      // If the largest mip maps don't match in size, we try to take the smallest ones
-      // of the source.
+    if (srcMipLevels > 1 || dstMipLevels > 1) {
+      // UpdateTexture does not validate dimensions for textures with only one mip
+      if (srcFirstMipExtent != dstFirstMipExtent) {
+        // UpdateTexture can be used with textures that have different mip lengths.
+        // It will either match the the top mips or the bottom ones.
+        // If the largest mip maps don't match in size, we try to take the smallest ones
+        // of the source.
 
-      srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
-      srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
-      dstFirstMipExtent = dstTexInfo->GetExtent();
+        srcMipOffset = srcTexInfo->Desc()->MipLevels - dstMipLevels;
+        srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
+        dstFirstMipExtent = dstTexInfo->GetExtent();
+      }
+
+      if (srcFirstMipExtent != dstFirstMipExtent)
+        return D3DERR_INVALIDCALL;
+    } else {
+      if (unlikely(srcFirstMipExtent.width  > dstFirstMipExtent.width
+                || srcFirstMipExtent.height > dstFirstMipExtent.height
+                || srcFirstMipExtent.depth  > dstFirstMipExtent.depth))
+        Logger::warn("D3D9DeviceEx::UpdateTexture: Source dimensions exceed the destination");
     }
-
-    if (srcFirstMipExtent != dstFirstMipExtent)
-      return D3DERR_INVALIDCALL;
 
     for (uint32_t a = 0; a < arraySlices; a++) {
       // The docs claim that the dirty box is just a performance optimization, however in practice games rely on it.
@@ -1101,7 +1110,7 @@ namespace dxvk {
       };
       VkOffset3D mip0Offset = { int32_t(box.Left), int32_t(box.Top), int32_t(box.Front) };
 
-      for (uint32_t dstMip = 0; dstMip < mipLevels; dstMip++) {
+      for (uint32_t dstMip = 0; dstMip < dstMipLevels; dstMip++) {
         // Scale the dirty box for the respective mip level
         uint32_t srcMip = dstMip + srcMipOffset;
         uint32_t srcSubresource = srcTexInfo->CalcSubresource(a, srcMip);
@@ -1118,7 +1127,7 @@ namespace dxvk {
     }
 
     srcTexInfo->ClearDirtyBoxes();
-    if (dstTexInfo->IsAutomaticMip() && mipLevels != dstTexInfo->Desc()->MipLevels)
+    if (dstTexInfo->IsAutomaticMip() && dstMipLevels != dstTexInfo->Desc()->MipLevels)
       MarkTextureMipsDirty(dstTexInfo);
 
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);

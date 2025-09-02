@@ -107,6 +107,7 @@ namespace dxvk {
       ENUM_NAME(D3D9Format::R2VB);
       ENUM_NAME(D3D9Format::COPM);
       ENUM_NAME(D3D9Format::SSAA);
+      ENUM_NAME(D3D9Format::NVCS);
       ENUM_NAME(D3D9Format::NVHS);
       ENUM_NAME(D3D9Format::NVHU);
 
