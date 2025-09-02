@@ -1109,6 +1109,12 @@ namespace dxvk {
     { R"(\\Perilous Warp\\system(64)?\\game\.exe$)", {{
       { "d3d9.hideNvidiaGpu",               "True" },
     }} },
+    /* Heroes of Annihilated Empires              *
+     * Cursor and other animations play back too  *
+     * fast without a frame cap in place.         */
+    { R"(\\Heroes of Annihilated Empires.*\\engine\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
