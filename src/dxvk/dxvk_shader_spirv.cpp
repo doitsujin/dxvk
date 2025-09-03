@@ -53,6 +53,11 @@ namespace dxvk {
   }
 
 
+  void DxvkSpirvShader::compile() {
+    // No-op sice SPIR-V is already compiled
+  }
+
+
   SpirvCodeBuffer DxvkSpirvShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {

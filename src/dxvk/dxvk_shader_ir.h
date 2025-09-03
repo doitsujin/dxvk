@@ -77,6 +77,11 @@ namespace dxvk {
     DxvkShaderMetadata getShaderMetadata();
 
     /**
+     * \brief Compiles shader to internal IR
+     */
+    void compile();
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other

@@ -280,18 +280,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Tests whether this shader supports pipeline libraries
-     *
-     * This is true for any vertex, fragment, or compute shader that does not
-     * require additional pipeline state to be compiled into something useful.
-     * \param [in] standalone Set to \c true to evaluate this in the context
-     *    of a single-shader pipeline library, or \c false for a pre-raster
-     *    shader library consisting of multiple shader stages.
-     * \returns \c true if this shader can be used with pipeline libraries
-     */
-    bool canUsePipelineLibrary(bool standalone);
-
-    /**
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
@@ -304,6 +292,14 @@ namespace dxvk {
      * \returns Shader metadata
      */
     virtual DxvkShaderMetadata getShaderMetadata() = 0;
+
+    /**
+     * \brief Compiles shader
+     *
+     * Performs any IR conversions and lowering that may be necessary.
+     * Shader metadata will be immediately available afterwards.
+     */
+    virtual void compile() = 0;
 
     /**
      * \brief Retrieves SPIR-V code for the given shader
@@ -503,12 +499,6 @@ namespace dxvk {
       const Rc<DxvkShader>&               shader);
 
     /**
-     * \brief Checks wether a pipeline library can be created
-     * \returns \c true if all added shaders are compatible
-     */
-    bool canUsePipelineLibrary() const;
-
-    /**
      * \brief Checks for equality
      *
      * \param [in] other Key to compare to
@@ -613,9 +603,10 @@ namespace dxvk {
     DxvkPipelineBindings            m_layout;
 
     dxvk::mutex                     m_mutex;
-    DxvkShaderPipelineLibraryHandle m_pipeline      = { VK_NULL_HANDLE, 0 };
     uint32_t                        m_useCount      = 0u;
     bool                            m_compiledOnce  = false;
+
+    std::optional<DxvkShaderPipelineLibraryHandle> m_pipeline;
 
     dxvk::mutex                     m_identifierMutex;
     DxvkShaderIdentifierSet         m_identifiers;
@@ -655,6 +646,12 @@ namespace dxvk {
             VkShaderStageFlagBits         stage);
 
     void notifyLibraryCompile() const;
+
+    void compileShaders();
+
+    bool canCreatePipelineLibrary() const;
+
+    bool canCreatePipelineLibraryForShader(DxvkShader& shader, bool needsPosition) const;
 
     bool canUsePipelineCacheControl() const;
 
