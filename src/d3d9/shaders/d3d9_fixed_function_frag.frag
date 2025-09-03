@@ -344,13 +344,13 @@ vec4 adjustDref(vec4 texCoord, uint referenceComponentIndex, uint samplerIndex) 
 
 
 vec4 DoBumpmapCoords(uint stage, vec4 baseCoords, vec4 previousStageTextureVal) {
-    stage = stage - 1;
+    uint previousStage = stage - 1;
 
     vec4 coords = baseCoords;
     [[unroll]]
     for (uint i = 0; i < 2; i++) {
         float tc_m_n = coords[i];
-        vec2 bm = vec2(sharedData.Stages[stage].BumpEnvMat[0][0], sharedData.Stages[stage].BumpEnvMat[0][1]);
+        vec2 bm = vec2(sharedData.Stages[previousStage].BumpEnvMat[i][0], sharedData.Stages[previousStage].BumpEnvMat[i][1]);
         vec2 t = previousStageTextureVal.xy;
         float result = tc_m_n + dot(bm, t);
         coords[i] = result;
