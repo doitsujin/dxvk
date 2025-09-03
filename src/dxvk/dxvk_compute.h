@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "../util/sync/sync_list.h"
@@ -126,11 +127,11 @@ namespace dxvk {
 
   private:
     
-    DxvkDevice*                 m_device;    
-    DxvkPipelineStats*          m_stats;
+    DxvkDevice*                 m_device = nullptr;
+    DxvkPipelineStats*          m_stats = nullptr;
 
-    DxvkShaderPipelineLibrary*  m_library;
-    VkPipeline                  m_libraryHandle;
+    DxvkShaderPipelineLibrary*  m_library = nullptr;
+    std::optional<VkPipeline>   m_libraryHandle;
 
     DxvkComputePipelineShaders  m_shaders;
     DxvkPipelineBindings        m_layout;
