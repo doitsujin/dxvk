@@ -1925,6 +1925,8 @@ namespace dxvk {
       }
     }
 
+    DxbcBindingMask bindingMask;
+
     while (parser) {
       auto op = parser.parseInstruction();
 
@@ -1932,6 +1934,30 @@ namespace dxvk {
         return E_INVALIDARG;
 
       switch (op.getOpToken().getOpCode()) {
+        case dxbc_spv::dxbc::OpCode::eDclSampler: {
+          uint32_t index = op.getDst(0u).getIndex(0u);
+          bindingMask.samplerMask |= 1u << index;
+        } break;
+
+        case dxbc_spv::dxbc::OpCode::eDclConstantBuffer: {
+          uint32_t index = op.getDst(0u).getIndex(0u);
+          bindingMask.cbvMask |= 1u << index;
+        } break;
+
+        case dxbc_spv::dxbc::OpCode::eDclResource:
+        case dxbc_spv::dxbc::OpCode::eDclResourceRaw:
+        case dxbc_spv::dxbc::OpCode::eDclResourceStructured: {
+          uint32_t index = op.getDst(0u).getIndex(0u);
+          bindingMask.srvMask.at(index / 64u) |= uint64_t(1u) << (index % 64u);
+        } break;
+
+        case dxbc_spv::dxbc::OpCode::eDclUavTyped:
+        case dxbc_spv::dxbc::OpCode::eDclUavRaw:
+        case dxbc_spv::dxbc::OpCode::eDclUavStructured: {
+          uint32_t index = op.getDst(0u).getIndex(0u);
+          bindingMask.uavMask |= uint64_t(1u) << index;
+        } break;
+
         case dxbc_spv::dxbc::OpCode::eDclInput:
         case dxbc_spv::dxbc::OpCode::eDclInputSgv:
         case dxbc_spv::dxbc::OpCode::eDclInputSiv:
@@ -2035,7 +2061,7 @@ namespace dxvk {
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
       ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength,
-      &commonShader);
+      bindingMask, &commonShader);
 
     if (FAILED(hr))
       return hr;

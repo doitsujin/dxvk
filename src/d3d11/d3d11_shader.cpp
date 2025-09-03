@@ -45,7 +45,9 @@ namespace dxvk {
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
-          size_t                  BytecodeLength) {
+          size_t                  BytecodeLength,
+    const DxbcBindingMask&        BindingMask)
+  : m_bindings(BindingMask) {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
@@ -258,12 +260,6 @@ namespace dxvk {
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);
     }
-
-    // Write back binding mask
-    auto bindings = module.bindings();
-
-    if (bindings)
-      m_bindings = *bindings;
   }
 
 
@@ -298,6 +294,7 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
+    const DxbcBindingMask&        BindingMask,
           D3D11CommonShader*      pShader) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
@@ -315,7 +312,7 @@ namespace dxvk {
     
     try {
       module = D3D11CommonShader(pDevice, ShaderKey,
-        ModuleInfo, pShaderBytecode, BytecodeLength);
+        ModuleInfo, pShaderBytecode, BytecodeLength, BindingMask);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_INVALIDARG;

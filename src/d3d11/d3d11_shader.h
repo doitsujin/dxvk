@@ -103,7 +103,8 @@ namespace dxvk {
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
-            size_t                  BytecodeLength);
+            size_t                  BytecodeLength,
+      const DxbcBindingMask&        BindingMask);
     ~D3D11CommonShader();
 
     Rc<DxvkShader> GetShader() const {
@@ -246,6 +247,7 @@ namespace dxvk {
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
+      const DxbcBindingMask&        BindingMask,
             D3D11CommonShader*      pShader);
     
   private:
