@@ -92,13 +92,8 @@ namespace dxvk {
 
     dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
 
-    dxbc_spv::dxbc::Parser parser(container.getCodeChunk());
-
-    dxbc_spv::dxbc::ShaderInfo shaderInfo = parser.getShaderInfo();
-    auto [hi, lo] = shaderInfo.getVersion();
-
-    if ((hi > 5u) || (hi == 5u && lo) || (hi == 4u && lo > 1u) || hi < 4u)
-      throw DxvkError(str::format("Invalid shader model: ", hi, "_", lo));
+    dxbc_spv::dxbc::ShaderInfo shaderInfo =
+      dxbc_spv::dxbc::Parser(container.getCodeChunk()).getShaderInfo();
 
     dxbc_spv::dxbc::Converter converter(std::move(container), options);
 
@@ -108,16 +103,12 @@ namespace dxvk {
     auto dstStage = ConvertShaderStage(shaderInfo.getType());
     auto srcStage = ShaderKey.stage();
 
-    if (dstStage == VK_SHADER_STAGE_GEOMETRY_BIT && (
-        srcStage == VK_SHADER_STAGE_VERTEX_BIT ||
-        srcStage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)) {
-      if (!converter.createPassthroughGs(builder))
-        throw DxvkError("Failed to create pass-through GS.");
-    } else if (dstStage == srcStage) {
+    if (dstStage == srcStage) {
       if (!converter.convertShader(builder))
         throw DxvkError("Failed to convert shader.");
     } else {
-      throw DxvkError("Shader type mismatch.");
+      if (!converter.createPassthroughGs(builder))
+        throw DxvkError("Failed to create pass-through GS.");
     }
 
     // Figure out used resource bindings
