@@ -1257,7 +1257,7 @@ namespace dxvk {
       // If the fragment shader has inputs not produced by the last
       // pre-rasterization stage, we need to patch the fragment shader
       const auto& fsInputs = m_shaders.fs->metadata().inputs;
-      const auto* preRasterStage = m_shaders.vs.ptr();
+      auto* preRasterStage = m_shaders.vs.ptr();
 
       if (m_shaders.gs)
         preRasterStage = m_shaders.gs.ptr();

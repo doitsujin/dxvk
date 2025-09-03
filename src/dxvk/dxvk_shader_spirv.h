@@ -61,6 +61,12 @@ namespace dxvk {
     ~DxvkSpirvShader();
 
     /**
+     * \brief Queries shader metadata
+     * \returns Shader metadata
+     */
+    DxvkShaderMetadata getShaderMetadata();
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
@@ -102,6 +108,8 @@ namespace dxvk {
 
     std::string                   m_debugName;
     uint32_t                      m_pushConstantStructId = 0u;
+
+    DxvkShaderMetadata            m_metadata = { };
 
     std::unordered_multimap<uint32_t, DxvkSpirvDecorations> m_decorations = { };
     std::unordered_map<uint32_t, uint32_t> m_idToOffset = { };

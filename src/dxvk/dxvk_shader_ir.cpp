@@ -1011,6 +1011,11 @@ namespace dxvk {
   }
 
 
+  DxvkShaderMetadata DxvkIrShader::getShaderMetadata() {
+    return m_metadata;
+  }
+
+
   SpirvCodeBuffer DxvkIrShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {

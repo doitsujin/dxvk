@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "dxvk_include.h"
@@ -249,8 +250,11 @@ namespace dxvk {
      * \brief Shader metadata
      * \returns Shader metadata
      */
-    const DxvkShaderMetadata& metadata() const {
-      return m_metadata;
+    const DxvkShaderMetadata& metadata() {
+      if (unlikely(!m_metadata))
+        m_metadata = getShaderMetadata();
+
+      return *m_metadata;
     }
 
     /**
@@ -285,13 +289,21 @@ namespace dxvk {
      *    shader library consisting of multiple shader stages.
      * \returns \c true if this shader can be used with pipeline libraries
      */
-    bool canUsePipelineLibrary(bool standalone) const;
+    bool canUsePipelineLibrary(bool standalone);
 
     /**
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
     virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
+
+    /**
+     * \brief Queries uncached shader metadata
+     *
+     * Compiles the shader as necessary.
+     * \returns Shader metadata
+     */
+    virtual DxvkShaderMetadata getShaderMetadata() = 0;
 
     /**
      * \brief Retrieves SPIR-V code for the given shader
@@ -341,9 +353,7 @@ namespace dxvk {
 
     std::atomic<bool>             m_needsCompile = { true };
 
-  protected:
-
-    DxvkShaderMetadata            m_metadata = { };
+    std::optional<DxvkShaderMetadata> m_metadata;
 
   };
   
