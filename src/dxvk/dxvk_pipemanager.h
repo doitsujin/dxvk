@@ -287,7 +287,7 @@ namespace dxvk {
     DxvkPipelineWorkers       m_workers;
     DxvkPipelineStats         m_stats;
     
-    dxvk::mutex m_mutex;
+    dxvk::mutex m_layoutMutex;
     
     std::unordered_map<
       DxvkDescriptorSetLayoutKey,
@@ -298,6 +298,8 @@ namespace dxvk {
       DxvkPipelineLayoutKey,
       DxvkPipelineLayout,
       DxvkHash, DxvkEq> m_pipelineLayouts;
+
+    dxvk::mutex m_pipelineMutex;
 
     std::unordered_map<
       DxvkGraphicsPipelineVertexInputState,

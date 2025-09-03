@@ -194,7 +194,7 @@ namespace dxvk {
     if (shaders.cs == nullptr)
       return nullptr;
     
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
     
     auto pair = m_computePipelines.find(shaders);
     if (pair != m_computePipelines.end())
@@ -218,8 +218,8 @@ namespace dxvk {
     if (shaders.vs == nullptr)
       return nullptr;
     
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-    
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
+
     auto pair = m_graphicsPipelines.find(shaders);
     if (pair != m_graphicsPipelines.end())
       return &pair->second;
@@ -267,14 +267,14 @@ namespace dxvk {
   
   DxvkShaderPipelineLibrary* DxvkPipelineManager::createShaderPipelineLibrary(
     const DxvkShaderPipelineLibraryKey& key) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
     return createPipelineLibraryLocked(key);
   }
 
 
   DxvkGraphicsPipelineVertexInputLibrary* DxvkPipelineManager::createVertexInputLibrary(
     const DxvkGraphicsPipelineVertexInputState& state) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
 
     auto pair = m_vertexInputLibraries.find(state);
     if (pair != m_vertexInputLibraries.end())
@@ -290,7 +290,7 @@ namespace dxvk {
 
   DxvkGraphicsPipelineFragmentOutputLibrary* DxvkPipelineManager::createFragmentOutputLibrary(
     const DxvkGraphicsPipelineFragmentOutputState& state) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
 
     auto pair = m_fragmentOutputLibraries.find(state);
     if (pair != m_fragmentOutputLibraries.end())
@@ -350,6 +350,8 @@ namespace dxvk {
 
   const DxvkDescriptorSetLayout* DxvkPipelineManager::createDescriptorSetLayout(
     const DxvkDescriptorSetLayoutKey& key) {
+    std::lock_guard<dxvk::mutex> lock(m_layoutMutex);
+
     auto pair = m_descriptorSetLayouts.find(key);
     if (pair != m_descriptorSetLayouts.end())
       return &pair->second;
@@ -364,6 +366,8 @@ namespace dxvk {
 
   const DxvkPipelineLayout* DxvkPipelineManager::createPipelineLayout(
     const DxvkPipelineLayoutKey& key) {
+    std::lock_guard<dxvk::mutex> lock(m_layoutMutex);
+
     auto pair = m_pipelineLayouts.find(key);
     if (pair != m_pipelineLayouts.end())
       return &pair->second;
@@ -387,7 +391,7 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibrary* DxvkPipelineManager::createNullFsPipelineLibrary() {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
     DxvkShaderPipelineLibraryKey key;
 
     auto iter = m_shaderLibraries.emplace(
@@ -400,7 +404,7 @@ namespace dxvk {
 
   DxvkShaderPipelineLibrary* DxvkPipelineManager::findPipelineLibrary(
     const DxvkShaderPipelineLibraryKey& key) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_pipelineMutex);
     return findPipelineLibraryLocked(key);
   }
 
