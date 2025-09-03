@@ -48,6 +48,11 @@ namespace dxvk {
   }
 
 
+  DxvkShaderMetadata DxvkSpirvShader::getShaderMetadata() {
+    return m_metadata;
+  }
+
+
   SpirvCodeBuffer DxvkSpirvShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {

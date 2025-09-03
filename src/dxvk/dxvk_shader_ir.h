@@ -69,6 +69,14 @@ namespace dxvk {
     ~DxvkIrShader();
 
     /**
+     * \brief Queries shader metadata
+     *
+     * Compiles the shader on demand.
+     * \returns Shader metadata
+     */
+    DxvkShaderMetadata getShaderMetadata();
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
@@ -110,6 +118,8 @@ namespace dxvk {
 
     std::vector<uint8_t>          m_ir;
     std::atomic<bool>             m_legalizedIr = { false };
+
+    DxvkShaderMetadata            m_metadata = { };
 
     void legalizeIr();
 

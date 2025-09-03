@@ -66,38 +66,40 @@ namespace dxvk {
   }
   
   
-  bool DxvkShader::canUsePipelineLibrary(bool standalone) const {
+  bool DxvkShader::canUsePipelineLibrary(bool standalone) {
+    const auto& metadata = this->metadata();
+
     if (standalone) {
       // Standalone pipeline libraries are unsupported for geometry
       // and tessellation stages since we'd need to compile them
       // all into one library
-      if (m_metadata.stage != VK_SHADER_STAGE_VERTEX_BIT
-       && m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT
-       && m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+      if (metadata.stage != VK_SHADER_STAGE_VERTEX_BIT
+       && metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+       && metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT)
         return false;
 
       // Standalone vertex shaders must export vertex position
-      if (m_metadata.stage == VK_SHADER_STAGE_VERTEX_BIT
-       && !m_metadata.flags.test(DxvkShaderFlag::ExportsPosition))
+      if (metadata.stage == VK_SHADER_STAGE_VERTEX_BIT
+       && !metadata.flags.test(DxvkShaderFlag::ExportsPosition))
         return false;
     } else {
       // Tessellation control shaders must define a valid vertex count
-      if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
-       && (m_metadata.patchVertexCount < 1 || m_metadata.patchVertexCount > 32))
+      if (metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+       && (metadata.patchVertexCount < 1 || metadata.patchVertexCount > 32))
         return false;
 
       // We don't support GPL with transform feedback right now
-      if (m_metadata.flags.test(DxvkShaderFlag::HasTransformFeedback))
+      if (metadata.flags.test(DxvkShaderFlag::HasTransformFeedback))
         return false;
     }
 
     // Spec constant selectors are only supported in graphics
-    if (m_metadata.specConstantMask & (1u << MaxNumSpecConstants))
-      return m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT;
+    if (metadata.specConstantMask & (1u << MaxNumSpecConstants))
+      return metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT;
 
     // Always late-compile shaders with spec constants
     // that don't use the spec constant selector
-    return !m_metadata.specConstantMask;
+    return !metadata.specConstantMask;
   }
 
 
