@@ -521,7 +521,10 @@ namespace dxvk {
       uint32_t set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eSampler);
 
       m_layout.addSamplerHeap(DxvkShaderBinding(m_metadata.stage, set, 0u));
-      return m_builder.add(dxbc_spv::ir::Op::DclSampler(m_entryPoint, 0u, 0u, 0u));
+      auto var = m_builder.add(dxbc_spv::ir::Op::DclSampler(m_entryPoint, 0u, 0u, 0u));
+
+      m_builder.add(dxbc_spv::ir::Op::DebugName(var, "sampler_heap"));
+      return var;
     }
 
 
