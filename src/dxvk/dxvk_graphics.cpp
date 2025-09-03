@@ -1207,7 +1207,7 @@ namespace dxvk {
   
   bool DxvkGraphicsPipeline::canCreateBasePipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
-    if (!m_vsLibrary || !m_fsLibrary)
+    if (!m_device->canUseGraphicsPipelineLibrary())
       return false;
 
     // We do not implement setting certain rarely used render
@@ -1334,6 +1334,9 @@ namespace dxvk {
 
     DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle();
     DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
+
+    if (!vs.handle || !fs.handle)
+      return VK_NULL_HANDLE;
 
     std::array<VkPipeline, 4> libraries = {{
       key.viLibrary->getHandle(), vs.handle, fs.handle,
