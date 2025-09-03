@@ -104,12 +104,10 @@ namespace dxvk {
       for (size_t i = 0; i < workerCount; i++) {
         DxvkPipelinePriority priority = DxvkPipelinePriority::Normal;
 
-        if (m_device->canUseGraphicsPipelineLibrary()) {
-          if (i >= npWorkerCount)
-            priority = DxvkPipelinePriority::High;
-          else if (i < lpWorkerCount)
-            priority = DxvkPipelinePriority::Low;
-        }
+        if (i >= npWorkerCount)
+          priority = DxvkPipelinePriority::High;
+        else if (i < lpWorkerCount)
+          priority = DxvkPipelinePriority::Low;
 
         auto& worker = m_workers.emplace_back([this, priority] {
           runWorker(priority);
@@ -177,10 +175,7 @@ namespace dxvk {
     Logger::info(str::format("DXVK: Graphics pipeline libraries ",
       (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
 
-    if (m_device->canUseGraphicsPipelineLibrary()) {
-      auto library = createNullFsPipelineLibrary();
-      library->compilePipeline();
-    }
+    createNullFsPipelineLibrary()->compilePipeline();
   }
   
   
@@ -224,38 +219,29 @@ namespace dxvk {
     if (pair != m_graphicsPipelines.end())
       return &pair->second;
 
-    DxvkShaderPipelineLibrary* vsLibrary = nullptr;
-    DxvkShaderPipelineLibrary* fsLibrary = nullptr;
+    DxvkShaderPipelineLibraryKey vsKey;
+    vsKey.addShader(shaders.vs);
 
-    if (m_device->canUseGraphicsPipelineLibrary()) {
-      DxvkShaderPipelineLibraryKey vsKey;
-      vsKey.addShader(shaders.vs);
+    if (shaders.tcs != nullptr) vsKey.addShader(shaders.tcs);
+    if (shaders.tes != nullptr) vsKey.addShader(shaders.tes);
+    if (shaders.gs  != nullptr) vsKey.addShader(shaders.gs);
 
-      if (shaders.tcs != nullptr) vsKey.addShader(shaders.tcs);
-      if (shaders.tes != nullptr) vsKey.addShader(shaders.tes);
-      if (shaders.gs  != nullptr) vsKey.addShader(shaders.gs);
+    DxvkShaderPipelineLibrary* vsLibrary = findPipelineLibraryLocked(vsKey);
 
-      if (vsKey.canUsePipelineLibrary()) {
-        vsLibrary = findPipelineLibraryLocked(vsKey);
-
-        if (!vsLibrary) {
-          // If multiple shader stages are participating, create a
-          // pipeline library so that it can potentially be reused.
-          // Don't dispatch the pipeline library to a worker thread
-          // since it should be compiled on demand anyway.
-          vsLibrary = createPipelineLibraryLocked(vsKey);
-        }
-      }
-
-      if (vsLibrary) {
-        DxvkShaderPipelineLibraryKey fsKey;
-
-        if (shaders.fs != nullptr)
-          fsKey.addShader(shaders.fs);
-
-        fsLibrary = findPipelineLibraryLocked(fsKey);
-      }
+    if (!vsLibrary) {
+      // If multiple shader stages are participating, create a
+      // pipeline library so that it can potentially be reused.
+      // Don't dispatch the pipeline library to a worker thread
+      // since it should be compiled on demand anyway.
+      vsLibrary = createPipelineLibraryLocked(vsKey);
     }
+
+    DxvkShaderPipelineLibraryKey fsKey;
+
+    if (shaders.fs != nullptr)
+      fsKey.addShader(shaders.fs);
+
+    DxvkShaderPipelineLibrary* fsLibrary = findPipelineLibraryLocked(fsKey);
 
     auto iter = m_graphicsPipelines.emplace(
       std::piecewise_construct,
@@ -306,13 +292,11 @@ namespace dxvk {
   
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
-    if (canPrecompileShader(shader)) {
-      DxvkShaderPipelineLibraryKey key;
-      key.addShader(shader);
+    DxvkShaderPipelineLibraryKey key;
+    key.addShader(shader);
 
-      auto library = createShaderPipelineLibrary(key);
-      m_workers.compilePipelineLibrary(library, DxvkPipelinePriority::Normal);
-    }
+    auto library = createShaderPipelineLibrary(key);
+    m_workers.compilePipelineLibrary(library, DxvkPipelinePriority::Normal);
   }
 
 
@@ -417,18 +401,6 @@ namespace dxvk {
       return &pair->second;
 
     return createPipelineLibraryLocked(key);
-  }
-
-
-  bool DxvkPipelineManager::canPrecompileShader(
-    const Rc<DxvkShader>& shader) const {
-    if (!shader->canUsePipelineLibrary(true))
-      return false;
-
-    if (shader->metadata().stage == VK_SHADER_STAGE_COMPUTE_BIT)
-      return true;
-
-    return m_device->canUseGraphicsPipelineLibrary();
   }
 
 }

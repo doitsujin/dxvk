@@ -1016,6 +1016,13 @@ namespace dxvk {
   }
 
 
+  void DxvkIrShader::compile() {
+    DxvkDxbcSpirvLogger logger(debugName());
+
+    legalizeIr();
+  }
+
+
   SpirvCodeBuffer DxvkIrShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {

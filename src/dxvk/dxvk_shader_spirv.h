@@ -67,6 +67,11 @@ namespace dxvk {
     DxvkShaderMetadata getShaderMetadata();
 
     /**
+     * \brief Called when the shader itself needs to be compiled
+     */
+    void compile();
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
