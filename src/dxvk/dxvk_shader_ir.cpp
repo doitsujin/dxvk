@@ -1171,8 +1171,8 @@ namespace dxvk {
     options.arithmeticOptions.lowerDot = true;
     options.arithmeticOptions.lowerSinCos = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
     options.arithmeticOptions.lowerMsad = true;
-    options.arithmeticOptions.lowerF32toF16 = true;
-    options.arithmeticOptions.lowerConvertFtoI = true;
+    options.arithmeticOptions.lowerF32toF16 = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerF32toF16);
+    options.arithmeticOptions.lowerConvertFtoI = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerFtoI);
     options.arithmeticOptions.lowerGsVertexCountIn = false;
     options.arithmeticOptions.hasNvUnsignedItoFBug = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerItoF);
 

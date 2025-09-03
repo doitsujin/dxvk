@@ -699,8 +699,16 @@ namespace dxvk {
                     || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS);
     applyTristate(lowerSinCos, m_options.lowerSinCos);
 
+
     if (lowerSinCos)
       m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::LowerSinCos);
+
+    // RADV generally does the right thing for f32tof16 and int conversions by default
+    if (!m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)) {
+      m_shaderOptions.compileOptions.flags.set(
+        DxvkShaderCompileFlag::LowerFtoI,
+        DxvkShaderCompileFlag::LowerF32toF16);
+    }
 
     // Converting unsigned integers to float should return an unsigned float,
     // but Nvidia drivers don't agree
