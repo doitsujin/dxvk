@@ -478,16 +478,32 @@ namespace dxvk {
     ~DxvkShaderPipelineLibraryKey();
 
     /**
-     * \brief Creates shader set from key
-     * \returns Shader set
+     * \brief Queries number of shaders in the set
+     * \returns Shader count
      */
-    DxvkShaderSet getShaderSet() const;
+    uint32_t getShaderCount() const {
+      return m_shaders.size();
+    }
 
     /**
-     * \brief Builds merged binding layout
-     * \returns Pipeline layout builder
+     * \brief Queries shader by index
      */
-    DxvkPipelineLayoutBuilder getLayout() const;
+    DxvkShader* getShader(uint32_t index) const {
+      return m_shaders[index].ptr();
+    }
+
+    /**
+     * \brief Queries number of shaders in the set
+     * \returns Shader count
+     */
+    DxvkShader* findShader(VkShaderStageFlagBits stage) const {
+      for (const auto& shader : m_shaders) {
+        if (shader->metadata().stage == stage)
+          return shader.ptr();
+      }
+
+      return nullptr;
+    }
 
     /**
      * \brief Adds a shader to the key
@@ -495,8 +511,7 @@ namespace dxvk {
      * Shaders must be added in stage order.
      * \param [in] shader Shader to add
      */
-    void addShader(
-      const Rc<DxvkShader>&               shader);
+    void addShader(Rc<DxvkShader> shader);
 
     /**
      * \brief Checks for equality
@@ -504,8 +519,7 @@ namespace dxvk {
      * \param [in] other Key to compare to
      * \returns \c true if the keys are equal
      */
-    bool eq(
-      const DxvkShaderPipelineLibraryKey& other) const;
+    bool eq(const DxvkShaderPipelineLibraryKey& other) const;
 
     /**
      * \brief Computes key hash
@@ -515,9 +529,7 @@ namespace dxvk {
 
   private:
 
-    uint32_t                      m_shaderCount   = 0;
-    VkShaderStageFlags            m_shaderStages  = 0;
-    std::array<Rc<DxvkShader>, 4> m_shaders;
+    small_vector<Rc<DxvkShader>, 4> m_shaders;
 
   };
 
@@ -595,12 +607,12 @@ namespace dxvk {
 
   private:
 
-    const DxvkDevice*               m_device;
+    DxvkDevice*                     m_device = nullptr;
+    DxvkPipelineManager*            m_manager = nullptr;
 
-    DxvkPipelineStats*              m_stats;
-    DxvkShaderSet                   m_shaders;
+    DxvkShaderPipelineLibraryKey    m_shaders;
 
-    DxvkPipelineBindings            m_layout;
+    std::optional<DxvkPipelineBindings> m_layout;
 
     dxvk::mutex                     m_mutex;
     uint32_t                        m_useCount      = 0u;
