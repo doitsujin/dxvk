@@ -142,10 +142,10 @@ namespace dxvk {
 
     DxvkIrLowerBindingModelPass(
             dxbc_spv::ir::Builder&    builder,
-      const DxvkIrResourceMapping&    mapping,
+      const DxvkIrShaderConverter&    shader,
       const DxvkIrShaderCreateInfo&   info)
     : m_builder (builder),
-      m_mapping (mapping),
+      m_shader  (shader),
       m_info    (info) {
 
     }
@@ -268,7 +268,7 @@ namespace dxvk {
     };
 
     dxbc_spv::ir::Builder&        m_builder;
-    const DxvkIrResourceMapping&  m_mapping;
+    const DxvkIrShaderConverter&  m_shader;
     DxvkIrShaderCreateInfo        m_info = { };
 
     DxvkShaderMetadata            m_metadata = { };
@@ -311,7 +311,7 @@ namespace dxvk {
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eCbv);
       binding.binding = regIndex;
-      binding.resourceIndex = m_mapping.determineResourceIndex(m_stage,
+      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
 
       if (op->getType().byteSize() <= m_info.options.spirvOptions.maxUniformBufferSize) {
@@ -338,7 +338,7 @@ namespace dxvk {
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eSrv);
       binding.binding = regIndex;
-      binding.resourceIndex = m_mapping.determineResourceIndex(m_stage,
+      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eSrv, regSpace, regIndex);
       binding.access = VK_ACCESS_SHADER_READ_BIT;
 
@@ -373,7 +373,7 @@ namespace dxvk {
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eUav);
       binding.binding = regIndex;
-      binding.resourceIndex = m_mapping.determineResourceIndex(m_stage,
+      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eUav, regSpace, regIndex);
 
       if (!(uavFlags & dxbc_spv::ir::UavFlag::eWriteOnly))
@@ -412,7 +412,7 @@ namespace dxvk {
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eUavCounter);
       binding.binding = regIndex;
-      binding.resourceIndex = m_mapping.determineResourceIndex(m_stage,
+      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eUavCounter, regSpace, regIndex);
       binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
@@ -662,7 +662,7 @@ namespace dxvk {
       auto regIndex = uint32_t(sampler->getOperand(2u));
 
       DxvkBindingInfo binding = { };
-      binding.resourceIndex = m_mapping.determineResourceIndex(m_stage,
+      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eSampler, regSpace, regIndex);
       binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
       binding.blockOffset = MaxSharedPushDataSize + localPushDataOffset;
@@ -990,19 +990,17 @@ namespace dxvk {
 
 
 
-
-  DxvkIrResourceMapping::~DxvkIrResourceMapping() {
+  DxvkIrShaderConverter::~DxvkIrShaderConverter() {
 
   }
 
 
+
   DxvkIrShader::DxvkIrShader(
     const DxvkIrShaderCreateInfo&   info,
-    const DxvkIrResourceMapping&    mapping,
-          dxbc_spv::ir::Builder&&   builder)
-  : m_debugName(getDebugName(builder)), m_info(info) {
-    lowerIoBindingModel(builder, mapping);
-    serializeIr(builder);
+          Rc<DxvkIrShaderConverter> shader)
+  : m_baseIr(std::move(shader)), m_debugName(m_baseIr->getDebugName()), m_info(info) {
+
   }
 
 
@@ -1012,23 +1010,23 @@ namespace dxvk {
 
 
   DxvkShaderMetadata DxvkIrShader::getShaderMetadata() {
+    convertIr("getShaderMetadata()");
+
     return m_metadata;
   }
 
 
   void DxvkIrShader::compile() {
-    DxvkDxbcSpirvLogger logger(debugName());
-
-    legalizeIr();
+    convertIr(nullptr);
   }
 
 
   SpirvCodeBuffer DxvkIrShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {
-    DxvkDxbcSpirvLogger logger(debugName());
+    convertIr("getCode()");
 
-    legalizeIr();
+    DxvkDxbcSpirvLogger logger(debugName());
 
     dxbc_spv::ir::Builder irBuilder;
     deserializeIr(irBuilder);
@@ -1124,7 +1122,9 @@ namespace dxvk {
   }
 
 
-  DxvkPipelineLayoutBuilder DxvkIrShader::getLayout() const {
+  DxvkPipelineLayoutBuilder DxvkIrShader::getLayout() {
+    convertIr("getLayout()");
+
     return m_layout;
   }
 
@@ -1135,19 +1135,36 @@ namespace dxvk {
   }
 
 
-  std::string DxvkIrShader::debugName() const {
+  std::string DxvkIrShader::debugName() {
     return m_debugName;
   }
 
 
-  void DxvkIrShader::legalizeIr() {
-    if (m_legalizedIr.load(std::memory_order_acquire))
+  void DxvkIrShader::convertIr(const char* reason) {
+    if (m_convertedIr.load(std::memory_order_acquire))
       return;
 
     std::lock_guard lock(m_mutex);
 
-    if (m_legalizedIr.load(std::memory_order_relaxed))
+    if (m_convertedIr.load(std::memory_order_relaxed))
       return;
+
+    if (reason && Logger::logLevel() <= LogLevel::Debug)
+      Logger::debug(str::format(m_debugName, ": Early compile: ", reason));
+
+    DxvkDxbcSpirvLogger logger(m_debugName);
+
+    dxbc_spv::ir::Builder builder;
+    m_baseIr->convertShader(builder);
+
+    if (!m_info.xfbEntries.empty()) {
+      dxbc_spv::ir::LowerIoPass ioPass(builder);
+
+      ioPass.resolveXfbOutputs(
+        m_info.xfbEntries.size(),
+        m_info.xfbEntries.data(),
+        m_info.rasterizedStream);
+    }
 
     dxbc_spv::dxbc::CompileOptions options;
     options.arithmeticOptions.fuseMad = true;
@@ -1168,7 +1185,13 @@ namespace dxvk {
     options.resourceOptions.structuredCbv = true;
     options.resourceOptions.structuredSrvUav = true;
 
-    options.bufferOptions = getBufferPassOptions();
+    auto ssboAlignment = m_info.options.compileOptions.minStorageBufferAlignment;
+    options.bufferOptions.useTypedForRaw = ssboAlignment > 16u;
+    options.bufferOptions.useTypedForStructured = ssboAlignment > 4u;
+    options.bufferOptions.useTypedForSparseFeedback = true;
+    options.bufferOptions.useRawForTypedAtomic = ssboAlignment <= 4u;
+    options.bufferOptions.forceFormatForTypedUavRead = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+    options.bufferOptions.minStructureAlignment = ssboAlignment;
 
     options.scalarizeOptions.subDwordVectors = true;
 
@@ -1180,14 +1203,21 @@ namespace dxvk {
     options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
     options.derivativeOptions.hoistDescriptorLoads = true;
 
-    dxbc_spv::ir::Builder builder;
-    deserializeIr(builder);
-
     dxbc_spv::dxbc::legalizeIr(builder, options);
+
+    // Generate shader metadata based on the final code
+    DxvkIrLowerBindingModelPass lowerBindingModelPass(builder, *m_baseIr, m_info);
+    lowerBindingModelPass.run();
+
+    m_metadata = lowerBindingModelPass.getMetadata();
+    m_layout = lowerBindingModelPass.getLayout();
 
     serializeIr(builder);
 
-    m_legalizedIr.store(true, std::memory_order_release);
+    // Destroy original converter, we no longer need it
+    m_baseIr = nullptr;
+
+    m_convertedIr.store(true, std::memory_order_release);
   }
 
 
@@ -1207,64 +1237,6 @@ namespace dxvk {
     if (!deserializer.deserialize(builder))
       throw DxvkError("Failed to deserialize shader");
   }
-
-
-  std::string DxvkIrShader::getDebugName(const dxbc_spv::ir::Builder& builder) const {
-    dxbc_spv::ir::SsaDef entryPoint;
-
-    for (const auto& op : builder) {
-      if (op.getOpCode() == dxbc_spv::ir::OpCode::eEntryPoint)
-        entryPoint = op.getDef();
-    }
-
-    if (entryPoint) {
-      auto uses = builder.getUses(entryPoint);
-
-      for (auto iter = uses.first; iter != uses.second; iter++) {
-        if (iter->getOpCode() == dxbc_spv::ir::OpCode::eDebugName)
-          return iter->getLiteralString(iter->getFirstLiteralOperandIndex());
-      }
-    }
-
-    // Shouldn't happen
-    return str::format("ir_shader_", getCookie());
-  }
-
-
-  void DxvkIrShader::lowerIoBindingModel(dxbc_spv::ir::Builder& builder, const DxvkIrResourceMapping& mapping) {
-    // To generate binding info, we need to know the final descriptor type of each buffer
-    dxbc_spv::ir::ConvertBufferKindPass::runPass(builder, getBufferPassOptions());
-
-    if (!m_info.xfbEntries.empty()) {
-      dxbc_spv::ir::LowerIoPass ioPass(builder);
-
-      ioPass.resolveXfbOutputs(
-        m_info.xfbEntries.size(),
-        m_info.xfbEntries.data(),
-        m_info.rasterizedStream);
-    }
-
-    DxvkIrLowerBindingModelPass pass(builder, mapping, m_info);
-    pass.run();
-
-    m_metadata = pass.getMetadata();
-    m_layout = pass.getLayout();
-  }
-
-
-  dxbc_spv::ir::ConvertBufferKindPass::Options DxvkIrShader::getBufferPassOptions() const {
-    auto ssboAlignment = m_info.options.compileOptions.minStorageBufferAlignment;
-
-    dxbc_spv::ir::ConvertBufferKindPass::Options options = { };
-    options.useTypedForRaw = ssboAlignment > 16u;
-    options.useTypedForStructured = ssboAlignment > 4u;
-    options.useTypedForSparseFeedback = true;
-    options.useRawForTypedAtomic = ssboAlignment <= 4u;
-    options.forceFormatForTypedUavRead = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
-    options.minStructureAlignment = ssboAlignment;
-    return options;
-  }
-
 
 
   dxbc_spv::ir::PrimitiveType DxvkIrShader::convertPrimitiveType(VkPrimitiveTopology topology) {

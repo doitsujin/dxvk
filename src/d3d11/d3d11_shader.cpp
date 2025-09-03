@@ -6,34 +6,90 @@
 
 namespace dxvk {
 
-  static D3D11ShaderResourceMapping g_d3d11ShaderMapping;
+  class D3D11ShaderConverter : public DxvkIrShaderConverter {
 
+  public:
 
-  D3D11ShaderResourceMapping::~D3D11ShaderResourceMapping() {
-
-  }
-
-
-  uint32_t D3D11ShaderResourceMapping::determineResourceIndex(
-          dxbc_spv::ir::ShaderStage stage,
-          dxbc_spv::ir::ScalarType  type,
-          uint32_t                  regSpace,
-          uint32_t                  regIndex) const {
-    switch (type) {
-      case dxbc_spv::ir::ScalarType::eSampler:
-        return computeSamplerBinding(stage, regIndex);
-      case dxbc_spv::ir::ScalarType::eCbv:
-        return computeCbvBinding(stage, regIndex);
-      case dxbc_spv::ir::ScalarType::eSrv:
-        return computeSrvBinding(stage, regIndex);
-      case dxbc_spv::ir::ScalarType::eUav:
-        return computeUavBinding(stage, regIndex);
-      case dxbc_spv::ir::ScalarType::eUavCounter:
-        return computeUavCounterBinding(stage, regIndex);
-      default:
-        return -1u;
+    D3D11ShaderConverter(
+      const DxvkShaderHash&         ShaderKey,
+      const DxvkIrShaderCreateInfo& ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength)
+    : m_key(ShaderKey), m_info(ModuleInfo) {
+      m_dxbc.resize(BytecodeLength);
+      std::memcpy(m_dxbc.data(), pShaderBytecode, BytecodeLength);
     }
-  }
+
+    ~D3D11ShaderConverter() { }
+
+    void convertShader(
+            dxbc_spv::ir::Builder&    builder) {
+      auto debugName = m_key.toString();
+
+      dxbc_spv::dxbc::Converter::Options options = { };
+      options.name = debugName.c_str();
+      options.includeDebugNames = true;
+      options.boundCheckScratch = true;
+      options.boundCheckShaderIo = true;
+      options.boundCheckIcb = true;
+      options.maxTessFactor = float(m_info.options.compileOptions.maxTessFactor);
+
+      dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
+
+      dxbc_spv::dxbc::ShaderInfo shaderInfo =
+        dxbc_spv::dxbc::Parser(container.getCodeChunk()).getShaderInfo();
+
+      dxbc_spv::dxbc::Converter converter(std::move(container), options);
+
+      // Determine whether to create a regular shader or a pass-through GS
+      auto dstIsGs = m_key.stage() == VK_SHADER_STAGE_GEOMETRY_BIT;
+      auto srcIsGs = shaderInfo.getType() == dxbc_spv::dxbc::ShaderType::eGeometry;
+
+      if (dstIsGs && !srcIsGs) {
+        if (!converter.createPassthroughGs(builder))
+          throw DxvkError("Failed to create pass-through GS.");
+      } else {
+        if (!converter.convertShader(builder))
+          throw DxvkError("Failed to convert shader.");
+      }
+    }
+
+    uint32_t determineResourceIndex(
+            dxbc_spv::ir::ShaderStage stage,
+            dxbc_spv::ir::ScalarType  type,
+            uint32_t                  regSpace,
+            uint32_t                  regIndex) const {
+      switch (type) {
+        case dxbc_spv::ir::ScalarType::eSampler:
+          return D3D11ShaderResourceMapping::computeSamplerBinding(stage, regIndex);
+        case dxbc_spv::ir::ScalarType::eCbv:
+          return D3D11ShaderResourceMapping::computeCbvBinding(stage, regIndex);
+        case dxbc_spv::ir::ScalarType::eSrv:
+          return D3D11ShaderResourceMapping::computeSrvBinding(stage, regIndex);
+        case dxbc_spv::ir::ScalarType::eUav:
+          return D3D11ShaderResourceMapping::computeUavBinding(stage, regIndex);
+        case dxbc_spv::ir::ScalarType::eUavCounter:
+          return D3D11ShaderResourceMapping::computeUavCounterBinding(stage, regIndex);
+        default:
+          return -1u;
+      }
+    }
+
+
+    std::string getDebugName() const {
+      return m_key.toString();
+    }
+
+  private:
+
+    std::vector<uint8_t> m_dxbc;
+
+    DxvkShaderHash          m_key;
+    DxvkIrShaderCreateInfo  m_info;
+
+  };
+
+
 
   
   D3D11CommonShader:: D3D11CommonShader() { }
@@ -61,7 +117,7 @@ namespace dxvk {
     }
 
     if (pDevice->GetOptions()->useDxbcSpirv)
-      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
+      CreateIrShader(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
     else
       CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
 
@@ -77,72 +133,12 @@ namespace dxvk {
 
 
   void D3D11CommonShader::CreateIrShader(
-          D3D11Device*            pDevice,
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength) {
-    auto debugName = ShaderKey.toString();
-
-    dxbc_spv::dxbc::Converter::Options options = { };
-    options.name = debugName.c_str();
-    options.includeDebugNames = true;
-    options.boundCheckScratch = true;
-    options.boundCheckShaderIo = true;
-    options.boundCheckIcb = true;
-    options.maxTessFactor = float(ModuleInfo.options.compileOptions.maxTessFactor);
-
-    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
-
-    dxbc_spv::dxbc::ShaderInfo shaderInfo =
-      dxbc_spv::dxbc::Parser(container.getCodeChunk()).getShaderInfo();
-
-    dxbc_spv::dxbc::Converter converter(std::move(container), options);
-
-    dxbc_spv::ir::Builder builder;
-
-    // Determine whether to create a regular shader or a pass-through GS
-    auto dstStage = ConvertShaderStage(shaderInfo.getType());
-    auto srcStage = ShaderKey.stage();
-
-    if (dstStage == srcStage) {
-      if (!converter.convertShader(builder))
-        throw DxvkError("Failed to convert shader.");
-    } else {
-      if (!converter.createPassthroughGs(builder))
-        throw DxvkError("Failed to create pass-through GS.");
-    }
-
-    // Figure out used resource bindings
-    auto [a, b] = builder.getDeclarations();
-
-    for (auto iter = a; iter != b; iter++) {
-      switch (iter->getOpCode()) {
-        case dxbc_spv::ir::OpCode::eDclCbv: {
-          m_bindings.cbvMask |= 1u << uint32_t(iter->getOperand(2u));
-        } break;
-
-        case dxbc_spv::ir::OpCode::eDclSrv: {
-          uint32_t index = uint32_t(iter->getOperand(2u));
-          m_bindings.srvMask.at(index / 64u) |= 1ull << (index % 64u);
-        } break;
-
-        case dxbc_spv::ir::OpCode::eDclUav: {
-          uint32_t index = uint32_t(iter->getOperand(2u));
-          m_bindings.uavMask |= 1ull << uint32_t(index);
-        } break;
-
-        case dxbc_spv::ir::OpCode::eDclSampler: {
-          m_bindings.samplerMask |= 1u << uint32_t(iter->getOperand(2u));
-        } break;
-
-        default:
-          break;
-      }
-    }
-
-    // Create and process actual shader
-    m_shader = new DxvkIrShader(ModuleInfo, g_d3d11ShaderMapping, std::move(builder));
+    m_shader = new DxvkIrShader(ModuleInfo,
+      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength));
   }
 
 
@@ -260,27 +256,6 @@ namespace dxvk {
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);
     }
-  }
-
-
-  VkShaderStageFlagBits D3D11CommonShader::ConvertShaderStage(
-          dxbc_spv::dxbc::ShaderType Type) {
-    switch (Type) {
-      case dxbc_spv::dxbc::ShaderType::eVertex:
-        return VK_SHADER_STAGE_VERTEX_BIT;
-      case dxbc_spv::dxbc::ShaderType::eHull:
-        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-      case dxbc_spv::dxbc::ShaderType::eDomain:
-        return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-      case dxbc_spv::dxbc::ShaderType::eGeometry:
-        return VK_SHADER_STAGE_GEOMETRY_BIT;
-      case dxbc_spv::dxbc::ShaderType::ePixel:
-        return VK_SHADER_STAGE_FRAGMENT_BIT;
-      case dxbc_spv::dxbc::ShaderType::eCompute:
-        return VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-
-    return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
   }
 
   
