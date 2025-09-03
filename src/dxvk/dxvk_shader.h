@@ -38,19 +38,25 @@ namespace dxvk {
     /// Whether to enable sample interpolation for all
     /// interpolated shader inputs.
     EnableSampleRateShading     = 4u,
+    /// Whether the device supports 16-bit int and float
+    /// arithmetic. Effectively enables min16 lowering.
+    Supports16BitArithmetic     = 5u,
+    /// Whether 16-bit push data is supported. Used to
+    /// pack sampler indices in the binding model
+    Supports16BitPushData       = 6u,
     /// Whether to lower unsigned int to float conversions.
     /// Needed to work around an Nvidia driver bug.
-    LowerItoF                   = 5u,
+    LowerItoF                   = 7u,
+    /// Whether to manualy clamp the input for float-to-integer
+    /// conversions to avoid overflow and get correct NaN behaviour
+    LowerFtoI                   = 8u,
     /// Whether to lower sin/cos to a custom approximation.
     /// Used on hardware where the built-in intrinsics are
     /// not accurate enough.
-    LowerSinCos                 = 6u,
-    /// Whether the device supports 16-bit int and float
-    /// arithmetic. Effectively enables min16 lowering.
-    Supports16BitArithmetic     = 7u,
-    /// Whether 16-bit push data is supported. Used to
-    /// pack sampler indices in the binding model
-    Supports16BitPushData       = 8u,
+    LowerSinCos                 = 9u,
+    /// Whether to clamp non-infinite inputs to f32tof16 in
+    /// order to work around issues on drivers that use RTE.
+    LowerF32toF16               = 10u,
   };
 
   using DxvkShaderCompileFlags = Flags<DxvkShaderCompileFlag>;
