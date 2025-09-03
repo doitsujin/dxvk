@@ -283,7 +283,7 @@ namespace dxvk {
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
-    virtual DxvkPipelineLayoutBuilder getLayout() const = 0;
+    virtual DxvkPipelineLayoutBuilder getLayout() = 0;
 
     /**
      * \brief Queries uncached shader metadata
@@ -326,7 +326,7 @@ namespace dxvk {
      * \brief Retrieves debug name
      * \returns The shader's name
      */
-    virtual std::string debugName() const = 0;
+    virtual std::string debugName() = 0;
 
     /**
      * \brief Get lookup hash for a shader

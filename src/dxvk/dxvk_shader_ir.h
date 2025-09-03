@@ -34,22 +34,56 @@ namespace dxvk {
 
 
   /**
-   * \brief IR shader binding to resource index mapping
+   * \brief Raw shader binary for dxbc-spirv
    *
-   * Small interface to determine the DXVK-internal resource
-   * binding index for any given resource declaration.
+   * Performs the initial shader conversion and provides a method for
+   * the shader implementation to map resource registers to DXVK bindings.
    */
-  class DxvkIrResourceMapping {
+  class DxvkIrShaderConverter {
 
   public:
 
-    virtual ~DxvkIrResourceMapping();
+    void incRef() {
+      m_useCount.fetch_add(1u, std::memory_order_acquire);
+    }
 
+    void decRef() {
+      if (m_useCount.fetch_sub(1u, std::memory_order_release) == 1u)
+        delete this;
+    }
+
+    virtual ~DxvkIrShaderConverter();
+
+    /**
+     * \brief Performs initial shader conversion
+     * \param [out] builder IR builder
+     */
+    virtual void convertShader(
+            dxbc_spv::ir::Builder&    builder) = 0;
+
+    /**
+     * \brief Maps IR binding to internal resource index
+     *
+     * \param [in] stage Shader stage
+     * \param [in] type Descriptor type
+     * \param [in] regSpace Register space
+     * \param [in] regIndex Register index
+     */
     virtual uint32_t determineResourceIndex(
             dxbc_spv::ir::ShaderStage stage,
             dxbc_spv::ir::ScalarType  type,
             uint32_t                  regSpace,
             uint32_t                  regIndex) const = 0;
+
+    /**
+     * \brief Queries shader debug name
+     * \returns Shader debug name
+     */
+    virtual std::string getDebugName() const = 0;
+
+  private:
+
+    std::atomic<uint32_t> m_useCount = { };
 
   };
 
@@ -63,8 +97,7 @@ namespace dxvk {
 
     DxvkIrShader(
       const DxvkIrShaderCreateInfo&   info,
-      const DxvkIrResourceMapping&    mapping,
-            dxbc_spv::ir::Builder&&   builder);
+            Rc<DxvkIrShaderConverter> shader);
 
     ~DxvkIrShader();
 
@@ -98,7 +131,7 @@ namespace dxvk {
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
-    DxvkPipelineLayoutBuilder getLayout() const;
+    DxvkPipelineLayoutBuilder getLayout();
 
     /**
      * \brief Dumps SPIR-V binary to a stream
@@ -110,10 +143,11 @@ namespace dxvk {
      * \brief Retrieves debug name for this shader
      * \returns Shader debug name
      */
-    std::string debugName() const;
+    std::string debugName();
 
   private:
 
+    Rc<DxvkIrShaderConverter>     m_baseIr;
     std::string                   m_debugName;
 
     DxvkIrShaderCreateInfo        m_info;
@@ -122,21 +156,15 @@ namespace dxvk {
     dxvk::mutex                   m_mutex;
 
     std::vector<uint8_t>          m_ir;
-    std::atomic<bool>             m_legalizedIr = { false };
+    std::atomic<bool>             m_convertedIr = { false };
 
     DxvkShaderMetadata            m_metadata = { };
 
-    void legalizeIr();
+    void convertIr(const char* reason);
 
     void serializeIr(const dxbc_spv::ir::Builder& builder);
 
     void deserializeIr(dxbc_spv::ir::Builder& builder) const;
-
-    std::string getDebugName(const dxbc_spv::ir::Builder& builder) const;
-
-    void lowerIoBindingModel(dxbc_spv::ir::Builder& builder, const DxvkIrResourceMapping& mapping);
-
-    dxbc_spv::ir::ConvertBufferKindPass::Options getBufferPassOptions() const;
 
     static dxbc_spv::ir::PrimitiveType convertPrimitiveType(VkPrimitiveTopology topology);
 

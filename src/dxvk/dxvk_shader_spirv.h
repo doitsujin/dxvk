@@ -88,9 +88,7 @@ namespace dxvk {
      * \brief Queries shader binding layout
      * \returns Pipeline layout builder
      */
-    DxvkPipelineLayoutBuilder getLayout() const {
-      return m_layout;
-    }
+    DxvkPipelineLayoutBuilder getLayout();
 
     /**
      * \brief Dumps SPIR-V binary to a stream
@@ -102,7 +100,7 @@ namespace dxvk {
      * \brief Retrieves debug name for this shader
      * \returns Shader debug name
      */
-    std::string debugName() const;
+    std::string debugName();
 
   private:
 

@@ -29,7 +29,7 @@ namespace dxvk {
    * Helper class to compute backend resource
    * indices for D3D11 binding slots.
    */
-  class D3D11ShaderResourceMapping : public DxvkIrResourceMapping {
+  struct D3D11ShaderResourceMapping {
     static constexpr uint32_t StageCount        = 6u;
     static constexpr uint32_t CbvPerStage       = 16u;
     static constexpr uint32_t SamplersPerStage  = 16u;
@@ -39,15 +39,6 @@ namespace dxvk {
     static constexpr uint32_t UavTotal          = UavPerPipeline * 4u;
     static constexpr uint32_t UavIndexGraphics  = DxbcSrvTotal;
     static constexpr uint32_t UavIndexCompute   = UavIndexGraphics + DxbcUavPerPipeline * 2u;
-  public:
-
-    ~D3D11ShaderResourceMapping();
-
-    uint32_t determineResourceIndex(
-            dxbc_spv::ir::ShaderStage stage,
-            dxbc_spv::ir::ScalarType  type,
-            uint32_t                  regSpace,
-            uint32_t                  regIndex) const;
 
     static uint32_t computeCbvBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
       return computeStageIndex(stage) * CbvPerStage + index;
@@ -68,8 +59,6 @@ namespace dxvk {
     static uint32_t computeUavCounterBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
       return computeUavBinding(stage, index) + UavPerPipeline;
     }
-
-  private:
 
     static uint32_t computeStageIndex(dxbc_spv::ir::ShaderStage stage) {
       switch (stage) {
@@ -133,7 +122,6 @@ namespace dxvk {
     DxbcBindingMask m_bindings = { };
 
     void CreateIrShader(
-            D3D11Device*            pDevice,
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
@@ -145,9 +133,6 @@ namespace dxvk {
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength);
-
-    static VkShaderStageFlagBits ConvertShaderStage(
-            dxbc_spv::dxbc::ShaderType Type);
 
   };
 

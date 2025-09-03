@@ -99,12 +99,17 @@ namespace dxvk {
   }
 
 
+  DxvkPipelineLayoutBuilder DxvkSpirvShader::getLayout() {
+    return m_layout;
+  }
+
+
   void DxvkSpirvShader::dump(std::ostream& outputStream) {
     m_code.decompress().store(outputStream);
   }
 
 
-  std::string DxvkSpirvShader::debugName() const {
+  std::string DxvkSpirvShader::debugName() {
     return m_debugName;
   }
 
