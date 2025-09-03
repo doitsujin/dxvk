@@ -588,28 +588,36 @@ void alphaTestPS() {
     switch (alphaFunc) {
         case VK_COMPARE_OP_NEVER:
             atestResult = false;
+            break;
 
         case VK_COMPARE_OP_LESS:
             atestResult = alpha < alphaRef;
+            break;
 
         case VK_COMPARE_OP_EQUAL:
             atestResult = alpha == alphaRef;
+            break;
 
         case VK_COMPARE_OP_LESS_OR_EQUAL:
             atestResult = alpha <= alphaRef;
+            break;
 
         case VK_COMPARE_OP_GREATER:
             atestResult = alpha > alphaRef;
+            break;
 
         case VK_COMPARE_OP_NOT_EQUAL:
             atestResult = alpha != alphaRef;
+            break;
 
         case VK_COMPARE_OP_GREATER_OR_EQUAL:
             atestResult = alpha >= alphaRef;
+            break;
 
         default:
         case VK_COMPARE_OP_ALWAYS:
             atestResult = true;
+            break;
     }
 
     bool atestDiscard = !atestResult;
