@@ -263,7 +263,6 @@ struct D3D9FFTextureStage {
       uint32_t     AlphaArg1 : 6;
       uint32_t     AlphaArg2 : 6;
 
-      uint32_t     Type         : 2;
       uint32_t     ResultIsTemp : 1;
 
       // Included in here, read from Stage 0 for packing reasons

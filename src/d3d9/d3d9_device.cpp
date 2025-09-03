@@ -8239,8 +8239,6 @@ namespace dxvk {
       stage.AlphaArg1 = data[DXVK_TSS_ALPHAARG1];
       stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
 
-      const uint32_t samplerOffset = idx * 2;
-      stage.Type         = (m_textureSlotTracking.textureType >> samplerOffset) & 0xffu;
       stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
     }
 

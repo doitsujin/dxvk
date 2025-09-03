@@ -118,14 +118,11 @@ uint AlphaArg2(uint stageIndex) {
     return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 12, 6);
 }
 
-uint TextureType(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 18, 2);
-}
 bool ResultIsTemp(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 20, 1) != 0;
+    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 18, 1) != 0;
 }
 bool GlobalSpecularEnable(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 27, 1) != 0;
+    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 19, 1) != 0;
 }
 
 
@@ -378,7 +375,7 @@ vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
     }
 
     vec4 texVal;
-    uint textureType = D3DRTYPE_TEXTURE + TextureType(stage);
+    uint textureType = D3DRTYPE_TEXTURE + SpecSamplerType(stage);
     switch (textureType) {
         case D3DRTYPE_TEXTURE:
             if (SpecSamplerIsDepth(stage))
@@ -728,8 +725,6 @@ void main() {
         previousStageTextureVal = textureVal;
     }
 
-    // TODO: Should this be done per-stage?
-    // The FF generator only uses stage 0
     if (GlobalSpecularEnable(0)) {
         vec4 specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
         current += specular;
