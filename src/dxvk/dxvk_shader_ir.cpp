@@ -1166,6 +1166,11 @@ namespace dxvk {
         m_info.rasterizedStream);
     }
 
+    if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::DisableMsaa)) {
+      dxbc_spv::ir::LowerIoPass ioPass(builder);
+      ioPass.demoteMultisampledSrv();
+    }
+
     dxbc_spv::dxbc::CompileOptions options;
     options.arithmeticOptions.fuseMad = true;
     options.arithmeticOptions.lowerDot = true;
