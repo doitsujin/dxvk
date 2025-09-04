@@ -95,7 +95,7 @@ namespace dxvk {
 
       { 2, 0,  21 }, // SamplerIsNull
       { 2, 21, 4 },  // AlphaPrecisionBits
-      { 1, 25, 1 },  // FogEnabled
+      { 2, 25, 1 },  // FogEnabled
       { 2, 26, 2 },  // VertexFogMode
       { 2, 28, 2 },  // PixelFogMode
 
