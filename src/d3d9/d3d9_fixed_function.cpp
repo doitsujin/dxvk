@@ -2851,7 +2851,7 @@ namespace dxvk {
         bindings.push_back(samplerBinding);
       }
 
-      bool flatShadingMask = (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 0 }))
+      uint32_t flatShadingMask = (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 0 }))
         | (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 1 }));
 
       uint32_t samplerCount = caps::TextureStageCount;
