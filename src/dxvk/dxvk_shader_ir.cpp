@@ -505,6 +505,16 @@ namespace dxvk {
     }
 
 
+    void addDebugMemberName(dxbc_spv::ir::SsaDef def, uint32_t member, const std::string& name) {
+      if (!name.empty()) {
+        if (m_builder.getOp(def).getType().isStructType())
+          m_builder.add(dxbc_spv::ir::Op::DebugMemberName(def, member, name.c_str()));
+        else
+          m_builder.add(dxbc_spv::ir::Op::DebugName(def, name.c_str()));
+      }
+    }
+
+
     dxbc_spv::ir::SsaDef declareSamplerHeap() {
       // Declare sampler heap with unknown size since it may vary by device
       uint32_t set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eSampler);
@@ -567,10 +577,7 @@ namespace dxvk {
       if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
         for (size_t i = 0u; i < m_samplers.size(); i++) {
           auto& e = m_samplers[i];
-          auto debugName = getDebugName(e.sampler);
-
-          if (!debugName.empty())
-            m_builder.add(dxbc_spv::ir::Op::DebugMemberName(def, e.memberIndex, debugName.c_str()));
+          addDebugMemberName(def, e.memberIndex, getDebugName(e.sampler));
         }
       }
 
@@ -855,8 +862,7 @@ namespace dxvk {
           m_localPushDataResourceMask |= 3ull << (m_localPushDataOffset / sizeof(uint32_t));
           m_localPushDataOffset += sizeof(uint64_t);
 
-          m_builder.add(dxbc_spv::ir::Op::DebugMemberName(pushDataVar,
-            uavCounterIndex, getDebugName(uavCounter.dcl).c_str()));
+          addDebugMemberName(pushDataVar, uavCounterIndex, getDebugName(uavCounter.dcl));
 
           rewriteUavCounterAsBda(uavCounter.dcl, pushDataVar, uavCounterIndex++);
         }
