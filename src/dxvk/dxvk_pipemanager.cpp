@@ -412,10 +412,11 @@ namespace dxvk {
   DxvkShaderPipelineLibrary* DxvkPipelineManager::findPipelineLibraryLocked(
     const DxvkShaderPipelineLibraryKey& key) {
     auto pair = m_shaderLibraries.find(key);
-    if (pair == m_shaderLibraries.end())
-      return nullptr;
 
-    return &pair->second;
+    if (pair != m_shaderLibraries.end())
+      return &pair->second;
+
+    return createPipelineLibraryLocked(key);
   }
 
 
