@@ -553,7 +553,7 @@ namespace dxvk {
       uint32_t dwordIndex = m_localPushDataOffset / sizeof(uint32_t);
       uint32_t dwordCount = (wordCount + 1u) / 2u;
 
-      m_localPushDataResourceMask |= ((1u << dwordCount) - 1u) << dwordIndex;
+      m_localPushDataResourceMask |= ((1ull << dwordCount) - 1ull) << dwordIndex;
 
       if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
         // Add each word separately and pad with a dummy entry if unaligned
@@ -631,22 +631,26 @@ namespace dxvk {
         const auto& op = m_builder.getOp(uses[i]);
 
         if (op.getOpCode() == dxbc_spv::ir::OpCode::eDescriptorLoad) {
-          dxbc_spv::ir::SsaDef indexDef = { };
+          dxbc_spv::ir::SsaDef samplerIndex = { };
+          dxbc_spv::ir::SsaDef memberIndex = { };
+
+          if (m_builder.getOp(pushDataDef).getType().isStructType())
+            memberIndex = m_builder.makeConstant(uint32_t(info.memberIndex));
 
           if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-            indexDef = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
-              dxbc_spv::ir::ScalarType::eU16, pushDataDef, m_builder.makeConstant(uint32_t(info.memberIndex))));
-            indexDef = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::ConvertItoI(
-              dxbc_spv::ir::ScalarType::eU32, indexDef));
+            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
+              dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
+            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::ConvertItoI(
+              dxbc_spv::ir::ScalarType::eU32, samplerIndex));
           } else {
-            indexDef = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
-              dxbc_spv::ir::ScalarType::eU32, pushDataDef, m_builder.makeConstant(uint32_t(info.memberIndex))));
-            indexDef = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::UBitExtract(
-              dxbc_spv::ir::ScalarType::eU32, indexDef, m_builder.makeConstant(uint32_t(16u * info.wordIndex)), m_builder.makeConstant(16u)));
+            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
+              dxbc_spv::ir::ScalarType::eU32, pushDataDef, memberIndex));
+            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::UBitExtract(
+              dxbc_spv::ir::ScalarType::eU32, samplerIndex, m_builder.makeConstant(uint32_t(16u * info.wordIndex)), m_builder.makeConstant(16u)));
           }
 
           m_builder.rewriteOp(op.getDef(), dxbc_spv::ir::Op::DescriptorLoad(
-            op.getType(), heapDef, indexDef));
+            op.getType(), heapDef, samplerIndex));
         } else if (op.isDeclarative()) {
           m_builder.removeOp(op);
         }
