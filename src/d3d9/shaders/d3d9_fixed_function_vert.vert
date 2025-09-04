@@ -503,7 +503,7 @@ void main() {
                     transformed.w = 0.0;
                 }
 
-                if (applyTransform) {
+                if (applyTransform && !HasPositionT()) {
                     /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
                     Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
                     if (texcoordCount <= 1) {
@@ -586,9 +586,9 @@ void main() {
 
         // TODO: Shouldn't projected be checked per texture stage?
         uint totalComponents = (SpecAnyProjected() && projIndex < 4) ? 3 : 4;
-        for (uint i = count; i < totalComponents; i++) {
+        for (uint j = count; j < totalComponents; j++) {
             // Discard the components that exceed the specified D3DTTFF_COUNT
-            transformed[i] = 0.0;
+            transformed[j] = 0.0;
         }
 
         transformedTexCoords[i] = transformed;
