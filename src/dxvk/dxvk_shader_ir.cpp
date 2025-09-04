@@ -263,8 +263,7 @@ namespace dxvk {
     };
 
     struct UavCounterInfo {
-      dxbc_spv::ir::SsaDef uavCounter = { };
-      uint32_t memberIndex = 0u;
+      dxbc_spv::ir::SsaDef dcl = { };
     };
 
     dxbc_spv::ir::Builder&        m_builder;
@@ -276,6 +275,9 @@ namespace dxvk {
 
     dxbc_spv::ir::SsaDef          m_entryPoint = { };
     dxbc_spv::ir::ShaderStage     m_stage = { };
+
+    dxbc_spv::ir::SsaDef          m_incUavCounterFunction = { };
+    dxbc_spv::ir::SsaDef          m_decUavCounterFunction = { };
 
     uint32_t                      m_localPushDataAlign = 4u;
     uint32_t                      m_localPushDataOffset = 0u;
@@ -403,21 +405,8 @@ namespace dxvk {
 
 
     dxbc_spv::ir::Builder::iterator handleUavCounter(dxbc_spv::ir::Builder::iterator op) {
-      const auto& uavOp = m_builder.getOpForOperand(*op, 1u);
-
-      auto regSpace = uint32_t(uavOp.getOperand(1u));
-      auto regIndex = uint32_t(uavOp.getOperand(2u));
-
-      // TODO promote to BDA
-      DxvkBindingInfo binding = { };
-      binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eUavCounter);
-      binding.binding = regIndex;
-      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
-        dxbc_spv::ir::ScalarType::eUavCounter, regSpace, regIndex);
-      binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
-
-      addBinding(binding);
+      auto& e = m_uavCounters.emplace_back();
+      e.dcl = op->getDef();
       return ++op;
     }
 
@@ -709,9 +698,188 @@ namespace dxvk {
     }
 
 
+    void sortUavCounters() {
+      // Sort samplers by the corresponding UAV binding index for consistency
+      std::sort(&m_uavCounters[0u], &m_uavCounters[0u] + m_uavCounters.size(), [&] (const UavCounterInfo& a, const UavCounterInfo& b) {
+        const auto& aUav = m_builder.getOpForOperand(a.dcl, 1u);
+        const auto& bUav = m_builder.getOpForOperand(b.dcl, 1u);
+
+        return uint32_t(aUav.getOperand(2u)) < uint32_t(bUav.getOperand(2u));
+      });
+    }
+
+
+    dxbc_spv::ir::SsaDef getUavCounterFunction(dxbc_spv::ir::AtomicOp atomicOp) {
+      auto& def = atomicOp == dxbc_spv::ir::AtomicOp::eInc
+        ? m_incUavCounterFunction
+        : m_decUavCounterFunction;
+
+      if (def)
+        return def;
+
+      auto mainFunc = m_builder.getOpForOperand(m_entryPoint, 0u).getDef();
+
+      // Declare counter address parameter and function
+      auto param = m_builder.add(dxbc_spv::ir::Op::DclParam(dxbc_spv::ir::ScalarType::eU64));
+      m_builder.add(dxbc_spv::ir::Op::DebugName(param, "va"));
+
+      def = m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::Function(dxbc_spv::ir::ScalarType::eU32).addParam(param));
+      m_builder.add(dxbc_spv::ir::Op::DebugName(def, atomicOp == dxbc_spv::ir::AtomicOp::eInc ? "uav_ctr_inc" : "uav_ctr_dec"));
+
+      // Insert labels
+      auto execBlock = m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::Label());
+      auto mergeBlock = m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::Label());
+      auto entryBlock = m_builder.addAfter(def, dxbc_spv::ir::Op::LabelSelection(mergeBlock));
+
+      // Insert check whether the counter address is null
+      auto address = m_builder.addBefore(execBlock, dxbc_spv::ir::Op::ParamLoad(dxbc_spv::ir::ScalarType::eU64, def, param));
+      auto execCond = m_builder.addBefore(execBlock, dxbc_spv::ir::Op::INe(dxbc_spv::ir::ScalarType::eBool, address, m_builder.makeConstant(uint64_t(0u))));
+      m_builder.addBefore(execBlock, dxbc_spv::ir::Op::BranchConditional(execCond, execBlock, mergeBlock));
+
+      // Insert actual atomic op
+      auto pointer = m_builder.addBefore(mergeBlock, dxbc_spv::ir::Op::Pointer(dxbc_spv::ir::ScalarType::eU32, address, dxbc_spv::ir::UavFlags()));
+      auto value = m_builder.addBefore(mergeBlock, dxbc_spv::ir::Op::MemoryAtomic(atomicOp,
+        dxbc_spv::ir::ScalarType::eU32, pointer, dxbc_spv::ir::SsaDef(), dxbc_spv::ir::SsaDef()));
+
+      if (atomicOp == dxbc_spv::ir::AtomicOp::eDec) {
+        value = m_builder.addBefore(mergeBlock, dxbc_spv::ir::Op::ISub(
+          dxbc_spv::ir::ScalarType::eU32, value, m_builder.makeConstant(1u)));
+      }
+
+      m_builder.addBefore(mergeBlock, dxbc_spv::ir::Op::Branch(mergeBlock));
+
+      // Insert phi and function return
+      value = m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::Phi(dxbc_spv::ir::ScalarType::eU32)
+        .addPhi(execBlock, value)
+        .addPhi(entryBlock, m_builder.makeConstant(0u)));
+
+      m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::Return(dxbc_spv::ir::ScalarType::eU32, value));
+      m_builder.addBefore(mainFunc, dxbc_spv::ir::Op::FunctionEnd());
+      return def;
+    }
+
+
+    void rewriteUavCounterUsesAsBda(dxbc_spv::ir::SsaDef descriptor, dxbc_spv::ir::SsaDef pushData, uint32_t pushMember) {
+      small_vector<dxbc_spv::ir::SsaDef, 64u> uses;
+      m_builder.getUses(descriptor, uses);
+
+      // Rewrite descriptor load to load the raw pointer from push data
+      dxbc_spv::ir::SsaDef memberIndex = { };
+
+      if (m_builder.getOp(pushData).getType().isStructType())
+        memberIndex = m_builder.makeConstant(pushMember);
+
+      m_builder.rewriteOp(descriptor, dxbc_spv::ir::Op::PushDataLoad(
+        dxbc_spv::ir::ScalarType::eU64, pushData, memberIndex));
+
+      // Rewrite counter atomics as raw memory atomics. Counter decrement semantics differ
+      // from regular decrement, so take that into account and subtract 1 from the result.
+      for (auto use : uses) {
+        const auto& useOp = m_builder.getOp(use);
+
+        if (useOp.getOpCode() == dxbc_spv::ir::OpCode::eCounterAtomic) {
+          auto atomicOp = dxbc_spv::ir::AtomicOp(useOp.getOperand(1u));
+          auto func = getUavCounterFunction(atomicOp);
+
+          m_builder.rewriteOp(use, dxbc_spv::ir::Op::FunctionCall(
+            dxbc_spv::ir::ScalarType::eU32, func).addParam(descriptor));
+        }
+      }
+    }
+
+
+    void rewriteUavCounterAsBda(dxbc_spv::ir::SsaDef uavCounter, dxbc_spv::ir::SsaDef pushData, uint32_t pushMember) {
+      small_vector<dxbc_spv::ir::SsaDef, 64u> uses;
+      m_builder.getUses(uavCounter, uses);
+
+      for (auto use : uses) {
+        if (m_builder.getOp(use).getOpCode() == dxbc_spv::ir::OpCode::eDescriptorLoad)
+          rewriteUavCounterUsesAsBda(use, pushData, pushMember);
+        else
+          m_builder.remove(use);
+      }
+
+      m_builder.remove(uavCounter);
+    }
+
+
     void rewriteUavCounters() {
       if (m_uavCounters.empty())
         return;
+
+      sortUavCounters();
+
+      // In compute shaders, we can freely use push data space
+      auto ssboAlignment = m_info.options.compileOptions.minStorageBufferAlignment;
+
+      size_t maxPushDataSize = m_stage == dxbc_spv::ir::ShaderStage::eCompute
+        ? MaxTotalPushDataSize - MaxReservedPushDataSize
+        : MaxPerStagePushDataSize;
+
+      size_t uavCounterIndex = 0u;
+
+      if (m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize && ssboAlignment <= 4u) {
+        // Align push data to a multiple of 8 bytes before emitting counters
+        m_localPushDataAlign = std::max<uint32_t>(m_localPushDataAlign, sizeof(uint64_t));
+        m_localPushDataOffset = align(m_localPushDataOffset, m_localPushDataAlign);
+
+        // Declare push data variable and type
+        dxbc_spv::ir::Type pushDataType = { };
+
+        size_t maxUavCounters = std::min<size_t>(m_uavCounters.size(),
+          (maxPushDataSize - m_localPushDataOffset) / sizeof(uint64_t));
+
+        for (uint32_t i = 0u; i < maxUavCounters; i++)
+          pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU64);
+
+        auto pushDataVar = m_builder.add(dxbc_spv::ir::Op::DclPushData(
+          pushDataType, m_entryPoint, m_localPushDataOffset, m_stage));
+
+        while (uavCounterIndex < m_uavCounters.size() && m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize) {
+          const auto& uavCounter = m_uavCounters[uavCounterIndex];
+          const auto& uavOp = m_builder.getOpForOperand(uavCounter.dcl, 1u);
+
+          auto regSpace = uint32_t(uavOp.getOperand(1u));
+          auto regIndex = uint32_t(uavOp.getOperand(2u));
+
+          DxvkBindingInfo binding = { };
+          binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
+            dxbc_spv::ir::ScalarType::eUavCounter, regSpace, regIndex);
+          binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+          binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+          binding.blockOffset = MaxSharedPushDataSize + m_localPushDataOffset;
+          binding.flags.set(DxvkDescriptorFlag::PushData);
+
+          addBinding(binding);
+
+          m_localPushDataResourceMask |= 3ull << (m_localPushDataOffset / sizeof(uint32_t));
+          m_localPushDataOffset += sizeof(uint64_t);
+
+          m_builder.add(dxbc_spv::ir::Op::DebugMemberName(pushDataVar,
+            uavCounterIndex, getDebugName(uavCounter.dcl).c_str()));
+
+          rewriteUavCounterAsBda(uavCounter.dcl, pushDataVar, uavCounterIndex++);
+        }
+      }
+
+      // Emit remaining UAV counters as regular descriptors
+      while (uavCounterIndex < m_uavCounters.size()) {
+        const auto& uavCounter = m_uavCounters[uavCounterIndex++];
+        const auto& uavOp = m_builder.getOpForOperand(uavCounter.dcl, 1u);
+
+        auto regSpace = uint32_t(uavOp.getOperand(1u));
+        auto regIndex = uint32_t(uavOp.getOperand(2u));
+
+        DxvkBindingInfo binding = { };
+        binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eUavCounter);
+        binding.binding = regIndex;
+        binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
+          dxbc_spv::ir::ScalarType::eUavCounter, regSpace, regIndex);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+
+        addBinding(binding);
+      }
     }
 
 
