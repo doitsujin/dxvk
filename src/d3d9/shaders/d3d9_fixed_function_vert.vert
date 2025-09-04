@@ -670,7 +670,7 @@ void main() {
                 mid = normalize(vtx3);
                 mid = hitDir - mid;
             } else {
-                hitDir - vec3(0.0, 0.0, 1.0);
+                mid = hitDir - vec3(0.0, 0.0, 1.0);
             }
 
             mid = normalize(mid);
