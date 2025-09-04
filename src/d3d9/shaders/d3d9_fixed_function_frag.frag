@@ -368,9 +368,15 @@ vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
         texcoord /= texcoord.w;
     }
 
+    uint previousStageColorOp = 0;
+    if (stage > 0) {
+        bool isPreviousStageOptimized = SpecIsOptimized() && stage - 1 < SpecConstOptimizedTextureStageCount;
+        previousStageColorOp = isPreviousStageOptimized ? SpecTextureStageColorOp(stage - 1) : ColorOp(stage - 1);
+    }
+
     if (stage != 0 && (
-        ColorOp(stage - 1) == D3DTOP_BUMPENVMAP
-        || ColorOp(stage - 1) == D3DTOP_BUMPENVMAPLUMINANCE)) {
+        previousStageColorOp == D3DTOP_BUMPENVMAP
+        || previousStageColorOp == D3DTOP_BUMPENVMAPLUMINANCE)) {
         texcoord = DoBumpmapCoords(stage, texcoord, previousStageTextureVal);
     }
 
@@ -394,7 +400,7 @@ vec4 GetTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
             break;
     }
 
-    if (stage != 0 && ColorOp(stage - 1) == D3DTOP_BUMPENVMAPLUMINANCE) {
+    if (stage != 0 && previousStageColorOp == D3DTOP_BUMPENVMAPLUMINANCE) {
         float lScale = sharedData.Stages[stage - 1].BumpEnvLScale;
         float lOffset = sharedData.Stages[stage - 1].BumpEnvLOffset;
         float scale = texVal.z;
