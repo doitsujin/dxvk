@@ -717,12 +717,56 @@ namespace dxvk {
     }
 
 
-    DxvkAccessOp determineAccessOpForAccess(const dxbc_spv::ir::Op& op) const {
+    DxvkAccessOp determineAccessOpForStore(const dxbc_spv::ir::Op& op) const {
+      if (!op.isConstant() || !op.getType().isBasicType())
+        return DxvkAccessOp::None;
+
+      // If the constant is a vector, all scalars must be the same since we can
+      // only encode one scalar value, and if values written to the same location
+      // differ then the execution order matters.
+      auto type = op.getType().getBaseType(0u);
+
+      if (byteSize(type.getBaseType()) > 4u)
+        return DxvkAccessOp::None;
+
+      uint32_t value = uint32_t(op.getOperand(0u));
+
+      for (uint32_t i = 1u; i < type.getVectorSize(); i++) {
+        if (uint32_t(op.getOperand(i)) != value)
+          return DxvkAccessOp::None;
+      }
+
+      constexpr uint32_t IMaxValue = 1u << DxvkAccessOp::StoreValueBits;
+      constexpr uint32_t FBitShift = 32u - DxvkAccessOp::StoreValueBits;
+      constexpr uint32_t FBitMask = (1u << FBitShift) - 1u;
+
+      if (value < IMaxValue) {
+        // Trivial case, represent as unsigned int
+        return DxvkAccessOp(DxvkAccessOp::StoreUi, value);
+      } else if (~value < IMaxValue) {
+        // 'Signed' integer, use one's complement instead of the
+        // usual two's here to gain an extra value we can encode
+        return DxvkAccessOp(DxvkAccessOp::StoreSi, ~value);
+      } else if (!(value & FBitMask)) {
+        // Potential float bit pattern, need to ignore mantissa
+        return DxvkAccessOp(DxvkAccessOp::StoreF, value >>FBitShift);
+      }
+
+      return DxvkAccessOp::None;
+    }
+
+
+    std::optional<DxvkAccessOp> determineAccessOpForAccess(const dxbc_spv::ir::Op& op) const {
       switch (op.getOpCode()) {
+        case dxbc_spv::ir::OpCode::eBufferLoad:
+        case dxbc_spv::ir::OpCode::eImageLoad:
+          return DxvkAccessOp::Load;
+
         case dxbc_spv::ir::OpCode::eBufferStore:
         case dxbc_spv::ir::OpCode::eImageStore: {
-
-        } return DxvkAccessOp::None;
+          return determineAccessOpForStore(m_builder.getOpForOperand(op,
+            op.getFirstLiteralOperandIndex() - 1u));
+        }
 
         case dxbc_spv::ir::OpCode::eBufferAtomic:
         case dxbc_spv::ir::OpCode::eImageAtomic: {
@@ -760,13 +804,23 @@ namespace dxvk {
             case dxbc_spv::ir::AtomicOp::eUMax:
               return DxvkAccessOp::UMax;
 
+            case dxbc_spv::ir::AtomicOp::eLoad:
+              return DxvkAccessOp::Load;
+
+            case dxbc_spv::ir::AtomicOp::eStore: {
+              return determineAccessOpForStore(m_builder.getOpForOperand(op,
+                op.getFirstLiteralOperandIndex() - 1u));
+            }
+
             default:
               return DxvkAccessOp::None;
           }
         }
 
         default:
-          return DxvkAccessOp::None;
+          // Resource queries etc don't access resource memory,
+          // so they must not affect the result
+          return std::nullopt;
       }
     }
 
@@ -782,6 +836,9 @@ namespace dxvk {
 
           for (auto use = aDesc; use != bDesc; use++) {
             auto access = determineAccessOpForAccess(*use);
+
+            if (!access)
+              continue;
 
             if (access == DxvkAccessOp::None) {
               // Can't optimize the access
