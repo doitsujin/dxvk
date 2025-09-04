@@ -694,7 +694,7 @@ void main() {
                     case 7: texCoord = in_Texcoord7; break;
                 }
             }
-            textureVal = !SpecSamplerIsNull(i) ? GetTexture(i, texCoord, previousStageTextureVal) : vec4(0.0, 0.0, 0.0, 1.0);
+            textureVal = !SpecSamplerIsNull(i) ? GetTexture(i, texCoord, previousStageTextureVal) : unboundTextureConst;
         }
 
         // Fast path if alpha/color path is identical.
@@ -710,11 +710,17 @@ void main() {
             vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
             colorResult = DoOp(colorOp, dst, colorArgVals, current, textureVal);
 
-            vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
-            alphaResult = DoOp(alphaOp, dst, alphaArgVals, current, textureVal);
+            if (alphaOp != D3DTOP_DISABLE) {
+                vec4 alphaArgVals[TextureArgCount] = ProcessArgs(i, alphaArgs, current, temp, textureVal);
+                alphaResult = DoOp(alphaOp, dst, alphaArgVals, current, textureVal);
+            }
+
+            dst.xyz = colorResult.xyz;
 
             // src0.x, src0.y, src0.z src1.w
-            dst = vec4(colorResult.rgb, alphaResult.a);
+            if (alphaOp != D3DTOP_DISABLE) {
+                dst.a = alphaResult.a;
+            }
         }
 
         if (resultIsTemp) {
