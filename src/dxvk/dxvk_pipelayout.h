@@ -23,6 +23,8 @@ namespace dxvk {
    * is accessed exlusively via order-invariant stores.
    */
   struct DxvkAccessOp {
+    static constexpr uint32_t StoreValueBits = 12u;
+
     enum OpType : uint16_t {
       None      = 0x0u,
       Or        = 0x1u,
@@ -33,6 +35,7 @@ namespace dxvk {
       IMax      = 0x6u,
       UMin      = 0x7u,
       UMax      = 0x8u,
+      Load      = 0x9u,
 
       StoreF    = 0xdu,
       StoreUi   = 0xeu,
