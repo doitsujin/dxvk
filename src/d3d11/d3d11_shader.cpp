@@ -47,10 +47,10 @@ namespace dxvk {
 
       if (dstIsGs && !srcIsGs) {
         if (!converter.createPassthroughGs(builder))
-          throw DxvkError("Failed to create pass-through GS.");
+          throw DxvkError(str::format("Failed to create pass-through geometry shader: ", m_key.toString()));
       } else {
         if (!converter.convertShader(builder))
-          throw DxvkError("Failed to convert shader.");
+          throw DxvkError(str::format("Failed to convert shader: ", m_key.toString()));
       }
     }
 
