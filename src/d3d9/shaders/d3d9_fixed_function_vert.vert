@@ -328,7 +328,7 @@ float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
 
 
 float DoPointSize(vec4 vtx) {
-    float value = in_PointSize != 0.0 ? in_PointSize : rs.pointSize;
+    float value = HasPointSize() ? in_PointSize : rs.pointSize;
     uint pointMode = SpecPointMode();
     bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
     float scaleC = rs.pointScaleC;
