@@ -656,7 +656,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = FALSE;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
@@ -732,7 +732,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = FALSE;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
@@ -793,7 +793,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = FALSE;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
@@ -4257,7 +4257,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = Lockable;
 
@@ -4312,7 +4312,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = TRUE;
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
@@ -4391,7 +4391,7 @@ namespace dxvk {
     desc.Discard            = Discard;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.IsBackBuffer       = FALSE;
+    desc.IsShared           = FALSE;
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
@@ -8743,7 +8743,7 @@ namespace dxvk {
       desc.Discard            = (pPresentationParameters->Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL) != 0;
       desc.MultiSample        = pPresentationParameters->MultiSampleType;
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
-      desc.IsBackBuffer       = FALSE;
+      desc.IsShared           = FALSE;
       desc.IsAttachmentOnly   = TRUE;
       desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
