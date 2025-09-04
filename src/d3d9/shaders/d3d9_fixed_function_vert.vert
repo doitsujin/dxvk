@@ -409,8 +409,8 @@ void main() {
                 mat4 worldView = WorldViewArray[arrayIndex];
 
                 mat3 nrmMtx;
-                for (uint i = 0; i < 3; i++) {
-                    nrmMtx[i] = worldView[i].xyz;
+                for (uint j = 0; j < 3; j++) {
+                    nrmMtx[j] = worldView[j].xyz;
                 }
 
                 vec4 vtxResult = vtx * worldView;
@@ -429,6 +429,9 @@ void main() {
                 vtxSum = fma(vtxResult, weightVec4, vtxSum);
                 nrmSum = fma(nrmResult, weightVec4.xyz, nrmSum);
             }
+
+            vtx = vtxSum;
+            normal = nrmSum;
         } else {
             vtx = vtx * data.WorldView;
 
