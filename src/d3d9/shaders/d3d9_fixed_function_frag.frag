@@ -706,7 +706,7 @@ void main() {
         // Fast path if alpha/color path is identical.
         // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
         bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
-        if (fastPath || colorOp == D3DTOP_DOTPRODUCT3 || alphaOp == D3DTOP_DISABLE) {
+        if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
             vec4 colorArgVals[TextureArgCount] = ProcessArgs(i, colorArgs, current, temp, textureVal);
             dst = DoOp(colorOp, dst, colorArgVals, current, textureVal);
         } else {
