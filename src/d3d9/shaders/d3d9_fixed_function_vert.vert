@@ -110,73 +110,73 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 // Functions to extract information from the packed VS key
 // See D3D9FFShaderKeyVSData in d3d9_shader_types.h
 // Please, dearest compiler, inline all of this.
-uint TexcoordIndices() {
+uint texcoordIndices() {
     return bitfieldExtract(data.Key.Primitive[0], 0, 24);
 }
-bool HasPositionT() {
+bool hasPositionT() {
     return bitfieldExtract(data.Key.Primitive[0], 24, 1) != 0;
 }
-bool HasColor0() {
+bool vertexHasColor0() {
     return bitfieldExtract(data.Key.Primitive[0], 25, 1) != 0;
 }
-bool HasColor1() {
+bool vertexHasColor1() {
     return bitfieldExtract(data.Key.Primitive[0], 26, 1) != 0;
 }
-bool HasPointSize() {
+bool vertexHasPointSize() {
     return bitfieldExtract(data.Key.Primitive[0], 27, 1) != 0;
 }
-bool UseLighting() {
+bool useLighting() {
     return bitfieldExtract(data.Key.Primitive[0], 28, 1) != 0;
 }
-bool NormalizeNormals() {
+bool normalizeNormals() {
     return bitfieldExtract(data.Key.Primitive[0], 29, 1) != 0;
 }
-bool LocalViewer() {
+bool localViewer() {
     return bitfieldExtract(data.Key.Primitive[0], 30, 1) != 0;
 }
-bool RangeFog() {
+bool rangeFog() {
     return bitfieldExtract(data.Key.Primitive[0], 31, 1) != 0;
 }
 
-uint TexcoordFlags() {
+uint texcoordFlags() {
     return bitfieldExtract(data.Key.Primitive[1], 0, 24);
 }
-uint DiffuseSource() {
+uint diffuseSource() {
     return bitfieldExtract(data.Key.Primitive[1], 24, 2);
 }
-uint AmbientSource() {
+uint ambientSource() {
     return bitfieldExtract(data.Key.Primitive[1], 26, 2);
 }
-uint SpecularSource() {
+uint specularSource() {
     return bitfieldExtract(data.Key.Primitive[1], 28, 2);
 }
-uint EmissiveSource() {
+uint emissiveSource() {
     return bitfieldExtract(data.Key.Primitive[1], 30, 2);
 }
 
-uint TransformFlags() {
+uint transformFlags() {
     return bitfieldExtract(data.Key.Primitive[2], 0, 24);
 }
-uint LightCount() {
+uint lightCount() {
     return bitfieldExtract(data.Key.Primitive[2], 24, 4);
 }
 
-uint TexcoordDeclMask() {
+uint texcoordDeclMask() {
     return bitfieldExtract(data.Key.Primitive[3], 0, 24);
 }
-bool HasFog() {
+bool hasFog() {
     return bitfieldExtract(data.Key.Primitive[3], 24, 1) != 0;
 }
-D3D9FF_VertexBlendMode BlendMode() {
+D3D9FF_VertexBlendMode blendMode() {
     return bitfieldExtract(data.Key.Primitive[3], 25, 2);
 }
-bool VertexBlendIndexed() {
+bool vertexBlendIndexed() {
     return bitfieldExtract(data.Key.Primitive[3], 27, 1) != 0;
 }
-uint VertexBlendCount() {
+uint vertexBlendCount() {
     return bitfieldExtract(data.Key.Primitive[3], 28, 2);
 }
-bool VertexClipping() {
+bool vertexClipping() {
     return bitfieldExtract(data.Key.Primitive[3], 30, 1) != 0;
 }
 
@@ -199,82 +199,84 @@ layout (constant_id = 10) const uint SpecConstDword10 = 0;
 layout (constant_id = 11) const uint SpecConstDword11 = 0;
 layout (constant_id = 12) const uint SpecConstDword12 = 0;
 
-bool SpecIsOptimized() {
+bool specIsOptimized() {
     return SpecConstDword12 != 0;
 }
 
-uint SpecSamplerType(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword0 : dynamicSpecConstDword[0];
+uint specSamplerType(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword0 : dynamicSpecConstDword[0];
     return bitfieldExtract(dynamicSpecConstDword[0], int(textureStage) * 2, 2);
 }
-bool SpecSamplerIsDepth(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+bool specSamplerIsDepth(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 0 + int(textureStage), 1) != 0u;
 }
-uint SpecAlphaCompareOp() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+uint specAlphaCompareOp() {
+    uint dword = specIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 21, 3);
 }
-bool SpecAnyProjected() {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+bool specAnyProjected() {
+    uint dword = specIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 24, 8) != 0u;
 }
-bool SpecProjected(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
+bool specProjected(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword1 : dynamicSpecConstDword[1];
     return bitfieldExtract(dword, 24 + int(textureStage), 1) != 0u;
 }
 
-bool SpecSamplerIsNull(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+bool specSamplerIsNull(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
     return bitfieldExtract(dword, int(textureStage), 1) != 0;
 }
-uint SpecAlphaPrecisionBits() {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+uint specAlphaPrecisionBits() {
+    uint dword = specIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
     return bitfieldExtract(dword, 21, 4);
 }
-bool SpecFogEnabled() {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+bool specFogEnabled() {
+    uint dword = specIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
     return bitfieldExtract(dword, 25, 1) != 0;
 }
-uint SpecVertexFogMode() {
-    uint dword = SpecIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
+uint specVertexFogMode() {
+    uint dword = specIsOptimized() ? SpecConstDword2 : dynamicSpecConstDword[2];
     return bitfieldExtract(dword, 26, 2);
 }
 
-bool SpecFetch4(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
+bool specFetch4(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword4 : dynamicSpecConstDword[4];
     return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
 
-bool SpecDrefClamp(uint textureStage) {
-    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+bool specDrefClamp(uint textureStage) {
+    uint dword = specIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, int(textureStage), 1) != 0u;
 }
-uint SpecDrefScaling() {
-    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+uint specDrefScaling() {
+    uint dword = specIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 21, 5);
 }
-uint SpecClipPlaneCount() {
-    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+uint specClipPlaneCount() {
+    uint dword = specIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 26, 3);
 }
-uint SpecPointMode() {
-    uint dword = SpecIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
+uint specPointMode() {
+    uint dword = specIsOptimized() ? SpecConstDword5 : dynamicSpecConstDword[5];
     return bitfieldExtract(dword, 29, 2);
 }
 
-float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
-    vec4 color1 = HasColor1() ? in_Color1 : vec4(0.0);
+
+
+float calculateFog(vec4 vPos, vec4 oColor) {
+    vec4 color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
 
     vec4 specular = color1;
-    bool hasSpecular = HasColor1();
+    bool hasSpecular = vertexHasColor1();
 
     vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
     float fogScale = rs.fogScale;
     float fogEnd = rs.fogEnd;
     float fogDensity = rs.fogDensity;
-    D3DFOGMODE fogMode = SpecVertexFogMode();
-    bool fogEnabled = SpecFogEnabled();
+    D3DFOGMODE fogMode = specVertexFogMode();
+    bool fogEnabled = specFogEnabled();
     if (!fogEnabled) {
         return 0.0;
     }
@@ -282,14 +284,14 @@ float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
     float w = vPos.w;
     float z = vPos.z;
     float depth;
-    if (RangeFog()) {
+    if (rangeFog()) {
         vec3 pos3 = vPos.xyz;
         depth = length(pos3);
     } else {
-        depth = HasFog() ? in_Fog : abs(z);
+        depth = hasFog() ? in_Fog : abs(z);
     }
     float fogFactor;
-    if (HasPositionT()) {
+    if (hasPositionT()) {
         fogFactor = hasSpecular ? specular.w : 1.0;
     } else {
         switch (fogMode) {
@@ -327,9 +329,9 @@ float DoFixedFunctionFog(vec4 vPos, vec4 oColor) {
 }
 
 
-float DoPointSize(vec4 vtx) {
-    float value = HasPointSize() ? in_PointSize : rs.pointSize;
-    uint pointMode = SpecPointMode();
+float calculatePointSize(vec4 vtx) {
+    float value = vertexHasPointSize() ? in_PointSize : rs.pointSize;
+    uint pointMode = specPointMode();
     bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
     float scaleC = rs.pointScaleC;
     float scaleB = rs.pointScaleB;
@@ -358,7 +360,7 @@ void emitVsClipping(vec4 vtx) {
     vec4 worldPos = data.InverseView * vtx;
 
     // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
-    uint clipPlaneCount = SpecClipPlaneCount();
+    uint clipPlaneCount = specClipPlaneCount();
 
     // Compute clip distances
     for (uint i = 0; i < MaxClipPlaneCount; i++) {
@@ -371,13 +373,13 @@ void emitVsClipping(vec4 vtx) {
 }
 
 
-vec4 PickSource(uint Source, vec4 Material) {
-    if (Source == D3DMCS_MATERIAL)
-        return Material;
-    else if (Source == D3DMCS_COLOR1)
-        return HasColor0() ? in_Color0 : vec4(1.0);
+vec4 pickMaterialSource(uint source, vec4 material) {
+    if (source == D3DMCS_MATERIAL)
+        return material;
+    else if (source == D3DMCS_COLOR1)
+        return vertexHasColor0() ? in_Color0 : vec4(1.0);
     else
-        return HasColor1() ? in_Color1 : vec4(0.0);
+        return vertexHasColor1() ? in_Color1 : vec4(0.0);
 }
 
 
@@ -386,22 +388,22 @@ void main() {
     gl_Position = in_Position0;
     vec3 normal = in_Normal0.xyz;
 
-    if (BlendMode() == D3D9FF_VertexBlendMode_Tween) {
+    if (blendMode() == D3D9FF_VertexBlendMode_Tween) {
         vec4 vtx1 = in_Position1;
         vec3 normal1 = in_Normal1.xyz;
         vtx = mix(vtx, vtx1, data.TweenFactor);
         normal = mix(normal, normal1, data.TweenFactor);
     }
 
-    if (!HasPositionT()) {
-        if (BlendMode() == D3D9FF_VertexBlendMode_Normal) {
+    if (!hasPositionT()) {
+        if (blendMode() == D3D9FF_VertexBlendMode_Normal) {
             float blendWeightRemaining = 1.0;
             vec4 vtxSum = vec4(0.0);
             vec3 nrmSum = vec3(0.0);
 
-            for (uint i = 0; i <= VertexBlendCount(); i++) {
+            for (uint i = 0; i <= vertexBlendCount(); i++) {
                 uint arrayIndex;
-                if (VertexBlendIndexed()) {
+                if (vertexBlendIndexed()) {
                     arrayIndex = uint(round(in_BlendIndices[i]));
                 } else {
                     arrayIndex = i;
@@ -417,7 +419,7 @@ void main() {
                 vec3 nrmResult = normal * nrmMtx;
 
                 float weight;
-                if (i != VertexBlendCount()) {
+                if (i != vertexBlendCount()) {
                     weight = in_BlendWeight[i];
                     blendWeightRemaining -= weight;
                 } else {
@@ -440,8 +442,8 @@ void main() {
             normal = nrmMtx * normal;
         }
 
-        // Some games rely no normals not being normal.
-        if (NormalizeNormals()) {
+        // Some games rely on normals not being normal.
+        if (normalizeNormals()) {
             bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
             normal = isZeroNormal ? normal : normalize(normal);
         }
@@ -476,13 +478,13 @@ void main() {
 
     for (uint i = 0; i < TextureStageCount; i++) {
         // 0b111 = 7
-        uint inputIndex = (TexcoordIndices() >> (i * 3)) & 7;
-        uint inputFlags = (TexcoordFlags() >> (i * 3)) & 7;
-        uint texcoordCount = (TexcoordDeclMask() >> (inputIndex * 3)) & 7;
+        uint inputIndex = (texcoordIndices() >> (i * 3)) & 7;
+        uint inputFlags = (texcoordFlags() >> (i * 3)) & 7;
+        uint texcoordCount = (texcoordDeclMask() >> (inputIndex * 3)) & 7;
 
         vec4 transformed;
 
-        uint flags = (TransformFlags() >> (i * 3)) & 7;
+        uint flags = (transformFlags() >> (i * 3)) & 7;
 
         // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
         // but D3D9 does not apply the transformation matrix.
@@ -503,7 +505,7 @@ void main() {
                     transformed.w = 0.0;
                 }
 
-                if (applyTransform && !HasPositionT()) {
+                if (applyTransform && !hasPositionT()) {
                     /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
                     Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
                     if (texcoordCount <= 1) {
@@ -570,12 +572,12 @@ void main() {
             }
         }
 
-        if (applyTransform && !HasPositionT()) {
+        if (applyTransform && !hasPositionT()) {
             transformed = transformed * data.TexcoordMatrices[i];
         }
 
         // TODO: Shouldn't projected be checked per texture stage?
-        if (SpecAnyProjected() && projIndex < 4) {
+        if (specAnyProjected() && projIndex < 4) {
             // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
             float projValue = transformed[projIndex];
 
@@ -585,7 +587,7 @@ void main() {
         }
 
         // TODO: Shouldn't projected be checked per texture stage?
-        uint totalComponents = (SpecAnyProjected() && projIndex < 4) ? 3 : 4;
+        uint totalComponents = (specAnyProjected() && projIndex < 4) ? 3 : 4;
         for (uint j = count; j < totalComponents; j++) {
             // Discard the components that exceed the specified D3DTTFF_COUNT
             transformed[j] = 0.0;
@@ -603,12 +605,12 @@ void main() {
     out_Texcoord6 = transformedTexCoords[6];
     out_Texcoord7 = transformedTexCoords[7];
 
-    if (UseLighting()) {
+    if (useLighting()) {
         vec4 diffuseValue = vec4(0.0);
         vec4 specularValue = vec4(0.0);
         vec4 ambientValue = vec4(0.0);
 
-        for (uint i = 0; i < LightCount(); i++) {
+        for (uint i = 0; i < lightCount(); i++) {
             D3D9Light light = data.Lights[i];
 
             vec4 diffuse = light.Diffuse;
@@ -669,7 +671,7 @@ void main() {
             float diffuseness = hitDot * atten;
 
             vec3 mid;
-            if (LocalViewer()) {
+            if (localViewer()) {
                 mid = normalize(vtx3);
                 mid = hitDir - mid;
             } else {
@@ -696,17 +698,17 @@ void main() {
             specularValue += lightSpecular;
         }
 
-        vec4 mat_diffuse  = PickSource(DiffuseSource(), data.Material.Diffuse);
-        vec4 mat_ambient  = PickSource(AmbientSource(), data.Material.Ambient);
-        vec4 mat_emissive = PickSource(EmissiveSource(), data.Material.Emissive);
-        vec4 mat_specular = PickSource(SpecularSource(), data.Material.Specular);
+        vec4 matDiffuse  = pickMaterialSource(diffuseSource(), data.Material.Diffuse);
+        vec4 matAmbient  = pickMaterialSource(ambientSource(), data.Material.Ambient);
+        vec4 matEmissive = pickMaterialSource(emissiveSource(), data.Material.Emissive);
+        vec4 matSpecular = pickMaterialSource(specularSource(), data.Material.Specular);
 
-        vec4 finalColor0 = fma(mat_ambient, data.GlobalAmbient, mat_emissive);
-             finalColor0 = fma(mat_ambient, ambientValue, finalColor0);
-             finalColor0 = fma(mat_diffuse, diffuseValue, finalColor0);
-             finalColor0.a = mat_diffuse.a;
+        vec4 finalColor0 = fma(matAmbient, data.GlobalAmbient, matEmissive);
+             finalColor0 = fma(matAmbient, ambientValue, finalColor0);
+             finalColor0 = fma(matDiffuse, diffuseValue, finalColor0);
+             finalColor0.a = matDiffuse.a;
 
-        vec4 finalColor1 = mat_specular * specularValue;
+        vec4 finalColor1 = matSpecular * specularValue;
 
         // Saturate
         finalColor0 = clamp(finalColor0, vec4(0.0), vec4(1.0));
@@ -716,16 +718,14 @@ void main() {
         out_Color0 = finalColor0;
         out_Color1 = finalColor1;
     } else {
-        out_Color0 = HasColor0() ? in_Color0 : vec4(1.0);
-        out_Color1 = HasColor1() ? in_Color1 : vec4(0.0);
+        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(1.0);
+        out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
     }
 
-    out_Fog = DoFixedFunctionFog(vtx, vec4(0.0));
+    out_Fog = calculateFog(vtx, vec4(0.0));
 
-    gl_PointSize = DoPointSize(vtx);
+    gl_PointSize = calculatePointSize(vtx);
 
-    //if (VertexClipping()) {
     // We statically declare 6 clip planes, so we always need to write values.
-        emitVsClipping(vtx);
-    //}
+    emitVsClipping(vtx);
 }

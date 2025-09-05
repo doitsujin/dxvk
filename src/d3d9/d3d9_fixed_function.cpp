@@ -1140,7 +1140,7 @@ namespace dxvk {
         normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
       }
 
-      // Some games rely no normals not being normal.
+      // Some games rely on normals not being normal.
       if (m_vsKey.Data.Contents.NormalizeNormals) {
         uint32_t bool3_t = m_module.defVectorType(m_boolType, 3);
 
