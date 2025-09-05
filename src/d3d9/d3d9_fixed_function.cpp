@@ -1956,7 +1956,11 @@ namespace dxvk {
           drefScale               = m_module.opConvertUtoF(m_floatType, drefScale);
           drefScale               = m_module.opFSub(m_floatType, drefScale, m_module.constf32(1.0f));
           drefScale               = m_module.opFDiv(m_floatType, m_module.constf32(1.0f), drefScale);
-          reference               = m_module.opFMul(m_floatType, reference, drefScale);
+          reference               = m_module.opSelect(m_floatType,
+            m_module.opINotEqual(m_uint32Type, drefScaleShift, m_module.constu32(0)),
+            m_module.opFMul(m_floatType, reference, drefScale),
+            reference
+          );
 
           // Clamp Dref to [0..1] for D32F emulating UNORM textures
           uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, textureStage, 1);
