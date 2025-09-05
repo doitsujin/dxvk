@@ -1925,6 +1925,8 @@ namespace dxvk {
       }
     }
 
+    dxbc_spv::dxbc::Instruction icbOp = { };
+
     DxbcBindingMask bindingMask;
 
     while (parser) {
@@ -1934,6 +1936,11 @@ namespace dxvk {
         return E_INVALIDARG;
 
       switch (op.getOpToken().getOpCode()) {
+        case dxbc_spv::dxbc::OpCode::eCustomData: {
+          if (op.getOpToken().getCustomDataType() == dxbc_spv::dxbc::CustomDataType::eDclIcb)
+            icbOp = std::move(op);
+        } break;
+
         case dxbc_spv::dxbc::OpCode::eDclSampler: {
           uint32_t index = op.getDst(0u).getIndex(0u);
           bindingMask.samplerMask |= 1u << index;
@@ -2056,12 +2063,20 @@ namespace dxvk {
       }
     }
 
+    // Handle immediate constant buffer declaration
+    D3D11ShaderIcbInfo icbInfo = { };
+
+    if (icbOp) {
+      icbInfo.data = icbOp.getCustomData().first;
+      icbInfo.size = icbOp.getCustomData().second;
+    }
+
     // Initialize the actual shader
-    D3D11CommonShader commonShader;
+    D3D11CommonShader commonShader = { };
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
       ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength,
-      bindingMask, &commonShader);
+      icbInfo, bindingMask, &commonShader);
 
     if (FAILED(hr))
       return hr;

@@ -106,12 +106,13 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb,
     const DxbcBindingMask&        BindingMask)
   : m_bindings(BindingMask) {
     Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
     
     if (pDevice->GetOptions()->useDxbcSpirv)
-      CreateIrShader(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
+      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, Icb);
     else
       CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
 
@@ -120,10 +121,35 @@ namespace dxvk {
 
 
   void D3D11CommonShader::CreateIrShader(
+          D3D11Device*            pDevice,
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
-          size_t                  BytecodeLength) {
+          size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb) {
+    constexpr size_t MaxEmbeddedIcbSize = 64u;
+
+    // Create icb if lowering is required
+    size_t icbSizeInBytes = Icb.size * sizeof(*Icb.data);
+
+    if (ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) && icbSizeInBytes > MaxEmbeddedIcbSize) {
+      DxvkBufferCreateInfo info = { };
+      info.size   = align(icbSizeInBytes, 256u);
+      info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                  | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                  | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      info.stages = util::pipelineStages(ShaderKey.stage());
+      info.access = VK_ACCESS_UNIFORM_READ_BIT
+                  | VK_ACCESS_TRANSFER_READ_BIT
+                  | VK_ACCESS_TRANSFER_WRITE_BIT;
+      info.debugName = "Icb";
+
+      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      pDevice->InitShaderIcb(this, icbSizeInBytes, Icb.data);
+    }
+
+    // Create actual shader converter
     m_shader = new DxvkIrShader(ModuleInfo,
       new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength));
   }
@@ -272,6 +298,7 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb,
     const DxbcBindingMask&        BindingMask,
           D3D11CommonShader*      pShader) {
     // Use the shader's unique key for the lookup
@@ -290,7 +317,7 @@ namespace dxvk {
     
     try {
       module = D3D11CommonShader(pDevice, ShaderKey,
-        ModuleInfo, pShaderBytecode, BytecodeLength, BindingMask);
+        ModuleInfo, pShaderBytecode, BytecodeLength, Icb, BindingMask);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_INVALIDARG;
