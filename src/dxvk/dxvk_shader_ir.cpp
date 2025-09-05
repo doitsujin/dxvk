@@ -1387,6 +1387,11 @@ namespace dxvk {
     if (reason && Logger::logLevel() <= LogLevel::Debug)
       Logger::debug(str::format(m_debugName, ": Early compile: ", reason));
 
+    const auto& dumpPath = getShaderDumpPath();
+
+    if (!dumpPath.empty())
+      dumpSource(dumpPath);
+
     DxvkDxbcSpirvLogger logger(m_debugName);
 
     dxbc_spv::ir::Builder builder;
@@ -1458,6 +1463,11 @@ namespace dxvk {
     m_baseIr = nullptr;
 
     m_convertedIr.store(true, std::memory_order_release);
+
+    // Need to do this *after* marking the conversion as done since lowering
+    // to SPIR-V itself will otherwise call into this method again
+    if (!dumpPath.empty())
+      dumpSpv(dumpPath);
   }
 
 
@@ -1476,6 +1486,20 @@ namespace dxvk {
 
     if (!deserializer.deserialize(builder))
       throw DxvkError("Failed to deserialize shader");
+  }
+
+
+  void DxvkIrShader::dumpSource(const std::string& path) {
+    if (m_baseIr)
+      m_baseIr->dumpSource(path);
+  }
+
+
+  void DxvkIrShader::dumpSpv(const std::string& path) {
+    std::ofstream file(str::topath(str::format(path, "/", m_debugName, ".spv").c_str()).c_str(), std::ios_base::trunc | std::ios_base::binary);
+
+    auto code = getCode(nullptr, nullptr);
+    file.write(reinterpret_cast<const char*>(code.data()), code.size());
   }
 
 
