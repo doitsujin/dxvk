@@ -725,6 +725,17 @@ namespace dxvk {
     if (m_features.nvRawAccessChains.shaderRawAccessChains)
       m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
 
+    // Mesa drivers generally optimize large constant arrays to a buffer, some other
+    // drivers do not and suffer a significant performance loss. Enable lowering on
+    // those drivers.
+    if (!m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_TURNIP)
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_LLVMPIPE)
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA))
+      m_shaderOptions.compileOptions.flags.set(DxvkShaderCompileFlag::LowerConstantArrays);
+
     // Set up float control feature flags
     if (m_properties.vk12.shaderSignedZeroInfNanPreserveFloat16)
       m_shaderOptions.spirvOptions.flags.set(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve16);

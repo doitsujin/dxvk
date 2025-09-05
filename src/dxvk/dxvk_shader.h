@@ -57,6 +57,10 @@ namespace dxvk {
     /// Whether to clamp non-infinite inputs to f32tof16 in
     /// order to work around issues on drivers that use RTE.
     LowerF32toF16               = 10u,
+    /// Whether to lower built-in constant arrays to a regular
+    /// constant buffer. The register space and index for this
+    /// buffer are defined in the compile options.
+    LowerConstantArrays         = 11u,
   };
 
   using DxvkShaderCompileFlags = Flags<DxvkShaderCompileFlag>;
