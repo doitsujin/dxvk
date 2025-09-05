@@ -76,6 +76,17 @@ namespace dxvk {
 
 
   /**
+   * \brief Immediate constant buffer info
+   */
+  struct D3D11ShaderIcbInfo {
+    /// Size in dwords
+    size_t size = 0u;
+    /// Constant data
+    const uint32_t* data = nullptr;
+  };
+
+
+  /**
    * \brief Common shader object
    * 
    * Stores the compiled SPIR-V shader and the SHA-1
@@ -93,6 +104,7 @@ namespace dxvk {
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
+      const D3D11ShaderIcbInfo&     Icb,
       const DxbcBindingMask&        BindingMask);
     ~D3D11CommonShader();
 
@@ -122,10 +134,12 @@ namespace dxvk {
     DxbcBindingMask m_bindings = { };
 
     void CreateIrShader(
+            D3D11Device*            pDevice,
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
-            size_t                  BytecodeLength);
+            size_t                  BytecodeLength,
+      const D3D11ShaderIcbInfo&     Icb);
 
     void CreateLegacyShader(
             D3D11Device*            pDevice,
@@ -232,6 +246,7 @@ namespace dxvk {
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
+      const D3D11ShaderIcbInfo&     Icb,
       const DxbcBindingMask&        BindingMask,
             D3D11CommonShader*      pShader);
     
