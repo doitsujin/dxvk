@@ -345,7 +345,13 @@ namespace dxvk {
     static uint32_t getCookie(const Rc<DxvkShader>& shader) {
       return shader != nullptr ? shader->getCookie() : 0;
     }
-    
+
+    /**
+     * \brief Queries shader dump path
+     * \returns Shader dump path, or empty string
+     */
+    static const std::string& getShaderDumpPath();
+
   private:
 
     static std::atomic<uint32_t>  s_cookie;

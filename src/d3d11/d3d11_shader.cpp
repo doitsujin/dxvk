@@ -75,6 +75,10 @@ namespace dxvk {
       }
     }
 
+    void dumpSource(const std::string& path) const {
+      std::ofstream file(str::topath(str::format(path, "/", m_key.toString(), ".dxbc").c_str()).c_str(), std::ios_base::trunc | std::ios_base::binary);
+      file.write(reinterpret_cast<const char*>(m_dxbc.data()), m_dxbc.size());
+    }
 
     std::string getDebugName() const {
       return m_key.toString();
@@ -104,29 +108,12 @@ namespace dxvk {
           size_t                  BytecodeLength,
     const DxbcBindingMask&        BindingMask)
   : m_bindings(BindingMask) {
-    const std::string name = ShaderKey.toString();
-    Logger::debug(str::format("Compiling shader ", name));
+    Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
     
-    // If requested by the user, dump both the raw DXBC
-    // shader and the compiled SPIR-V module to a file.
-    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
-    
-    if (!dumpPath.empty()) {
-      std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
-      file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
-    }
-
     if (pDevice->GetOptions()->useDxbcSpirv)
       CreateIrShader(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
     else
       CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
-
-    if (!dumpPath.empty()) {
-      std::ofstream dumpStream(
-        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
-        std::ios_base::binary | std::ios_base::trunc);
-      m_shader->dump(dumpStream);
-    }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
@@ -148,6 +135,15 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength) {
+    // If requested by the user, dump both the raw DXBC
+    // shader and the compiled SPIR-V module to a file.
+    const auto& dumpPath = DxvkShader::getShaderDumpPath();
+
+    if (!dumpPath.empty()) {
+      std::ofstream file(str::topath(str::format(dumpPath, "/", ShaderKey.toString(), ".dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
+      file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
+    }
+
     DxbcReader reader(
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
@@ -255,6 +251,13 @@ namespace dxvk {
 
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);
+    }
+
+    if (!dumpPath.empty()) {
+      std::ofstream dumpStream(
+        str::topath(str::format(dumpPath, "/", ShaderKey.toString(), ".spv").c_str()).c_str(),
+        std::ios_base::binary | std::ios_base::trunc);
+      m_shader->dump(dumpStream);
     }
   }
 

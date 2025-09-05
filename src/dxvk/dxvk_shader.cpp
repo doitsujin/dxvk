@@ -66,6 +66,12 @@ namespace dxvk {
   }
 
 
+  const std::string& DxvkShader::getShaderDumpPath() {
+    static std::string s_path = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+    return s_path;
+  }
+
+
   
 
   DxvkShaderStageInfo::DxvkShaderStageInfo(const DxvkDevice* device)

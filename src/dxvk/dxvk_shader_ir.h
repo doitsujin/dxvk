@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <string>
 #include <vector>
 
 #include <dxbc/dxbc_api.h>
@@ -74,6 +75,12 @@ namespace dxvk {
             dxbc_spv::ir::ScalarType  type,
             uint32_t                  regSpace,
             uint32_t                  regIndex) const = 0;
+
+    /**
+     * \brief Dumps source to the given output file
+     * \param [in] file Output stream
+     */
+    virtual void dumpSource(const std::string& path) const = 0;
 
     /**
      * \brief Queries shader debug name
@@ -165,6 +172,10 @@ namespace dxvk {
     void serializeIr(const dxbc_spv::ir::Builder& builder);
 
     void deserializeIr(dxbc_spv::ir::Builder& builder) const;
+
+    void dumpSource(const std::string& dumpPath);
+
+    void dumpSpv(const std::string& dumpPath);
 
     static dxbc_spv::ir::PrimitiveType convertPrimitiveType(VkPrimitiveTopology topology);
 
