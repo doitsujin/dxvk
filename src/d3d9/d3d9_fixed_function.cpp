@@ -1957,7 +1957,7 @@ namespace dxvk {
           drefScale               = m_module.opFSub(m_floatType, drefScale, m_module.constf32(1.0f));
           drefScale               = m_module.opFDiv(m_floatType, m_module.constf32(1.0f), drefScale);
           reference               = m_module.opSelect(m_floatType,
-            m_module.opINotEqual(m_uint32Type, drefScaleShift, m_module.constu32(0)),
+            m_module.opINotEqual(m_boolType, drefScaleShift, m_module.constu32(0)),
             m_module.opFMul(m_floatType, reference, drefScale),
             reference
           );

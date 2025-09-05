@@ -2934,7 +2934,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         drefScale               = m_module.opFSub(fType, drefScale, m_module.constf32(1.0f));
         drefScale               = m_module.opFDiv(fType, m_module.constf32(1.0f), drefScale);
         reference               = m_module.opSelect(fType,
-          m_module.opINotEqual(uiType, drefScaleShift, m_module.constu32(0)),
+          m_module.opINotEqual(bool_t, drefScaleShift, m_module.constu32(0)),
           m_module.opFMul(fType, reference, drefScale),
           reference
         );
