@@ -36,7 +36,7 @@ namespace dxvk {
       options.lowerIcb = m_lowerIcb;
       options.icbRegisterSpace = 0u;
       options.icbRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
-      options.maxTessFactor = float(m_info.options.compileOptions.maxTessFactor);
+      options.maxTessFactor = float(m_info.options.maxTessFactor);
 
       dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
 
@@ -138,7 +138,7 @@ namespace dxvk {
     // Create icb if lowering is required
     size_t icbSizeInBytes = Icb.size * sizeof(*Icb.data);
 
-    if (ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) && icbSizeInBytes > MaxEmbeddedIcbSize) {
+    if (ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) && icbSizeInBytes > MaxEmbeddedIcbSize) {
       DxvkBufferCreateInfo info = { };
       info.size   = align(icbSizeInBytes, 256u);
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
@@ -213,35 +213,35 @@ namespace dxvk {
     }
 
     DxbcTessInfo tessInfo = { };
-    tessInfo.maxTessFactor = float(ModuleInfo.options.compileOptions.maxTessFactor);
+    tessInfo.maxTessFactor = float(ModuleInfo.options.maxTessFactor);
 
     DxbcModuleInfo legacyInfo = { };
-    legacyInfo.options.supportsTypedUavLoadR32 = !ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
-    legacyInfo.options.supportsRawAccessChains = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
+    legacyInfo.options.supportsTypedUavLoadR32 = !ModuleInfo.options.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+    legacyInfo.options.supportsRawAccessChains = ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
     legacyInfo.options.rawAccessChainBug = legacyInfo.options.supportsRawAccessChains;
     legacyInfo.options.invariantPosition = true;
-    legacyInfo.options.forceVolatileTgsmAccess = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
-    legacyInfo.options.forceComputeUavBarriers = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
-    legacyInfo.options.disableMsaa = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::DisableMsaa);
-    legacyInfo.options.forceSampleRateShading = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
-    legacyInfo.options.needsPointSizeExport = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::ExportPointSize);
-    legacyInfo.options.sincosEmulation = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
-    legacyInfo.options.supports16BitPushData = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData);
-    legacyInfo.options.minSsboAlignment = ModuleInfo.options.compileOptions.minStorageBufferAlignment;
+    legacyInfo.options.forceVolatileTgsmAccess = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+    legacyInfo.options.forceComputeUavBarriers = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
+    legacyInfo.options.disableMsaa = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::DisableMsaa);
+    legacyInfo.options.forceSampleRateShading = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
+    legacyInfo.options.needsPointSizeExport = ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::ExportPointSize);
+    legacyInfo.options.sincosEmulation = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerSinCos);
+    legacyInfo.options.supports16BitPushData = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData);
+    legacyInfo.options.minSsboAlignment = ModuleInfo.options.minStorageBufferAlignment;
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush32) &&
-        ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte32))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormFlush32) &&
+        ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte32))
       legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormFlushToZero32);
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
       legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan32);
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::IndependentDenormMode)) {
-      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64) &&
-          ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte64))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::IndependentDenormMode)) {
+      if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64) &&
+          ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte64))
         legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
 
-      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64))
+      if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64))
         legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan64);
     }
 

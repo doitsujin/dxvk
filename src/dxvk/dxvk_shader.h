@@ -67,27 +67,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Shader compile options
-   *
-   * Device-level options to enable certain
-   * features or behaviours.
-   */
-  struct DxvkShaderCompileOptions {
-    /// Compile flags
-    DxvkShaderCompileFlags flags = 0u;
-    /// Maximum tessellation factor. If 0, tessellation factors
-    /// will not be clamped beyond what is set in the shader.
-    uint8_t maxTessFactor = 0u;
-    /// Global push data offset for rasterizer sample count
-    uint8_t sampleCountPushDataOffset = 0u;
-    /// Minimum required storage buffer alignment. Buffers
-    /// with a smaller guaranteed alignment must be demoted
-    /// to typed buffers.
-    uint16_t minStorageBufferAlignment = 0u;
-  };
-
-
-  /**
    * \brief Shader lowering flags
    *
    * These flags do not affect the internal IR.
@@ -134,20 +113,28 @@ namespace dxvk {
 
 
   /**
-   * \brief SPIR-V lowering options
-   */
-  struct DxvkShaderSpirvOptions {
-    DxvkShaderSpirvFlags flags = 0u;
-    uint32_t maxUniformBufferSize = 0u;
-  };
-
-
-  /**
-   * \brief Shader compile and lowering options
+   * \brief Shader compile options
+   *
+   * Device-level options to enable certain
+   * features or behaviours.
    */
   struct DxvkShaderOptions {
-    DxvkShaderCompileOptions compileOptions = { };
-    DxvkShaderSpirvOptions spirvOptions = { };
+    /// Compile flags
+    DxvkShaderCompileFlags flags = 0u;
+    /// SPIR-V lowering flags
+    DxvkShaderSpirvFlags spirv = 0u;
+    /// Maximum uniform buffer size, in bytes. Constant buffer bindings
+    /// larger than this will be lowered to a storage buffer.
+    uint32_t maxUniformBufferSize = 0u;
+    /// Maximum tessellation factor. If 0, tessellation factors
+    /// will not be clamped beyond what is set in the shader.
+    uint8_t maxTessFactor = 0u;
+    /// Global push data offset for rasterizer sample count
+    uint8_t sampleCountPushDataOffset = 0u;
+    /// Minimum required storage buffer alignment. Buffers
+    /// with a smaller guaranteed alignment must be demoted
+    /// to typed buffers.
+    uint16_t minStorageBufferAlignment = 0u;
   };
 
 

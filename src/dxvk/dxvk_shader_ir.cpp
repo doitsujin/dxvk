@@ -316,7 +316,7 @@ namespace dxvk {
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
 
-      if (op->getType().byteSize() <= m_info.options.spirvOptions.maxUniformBufferSize) {
+      if (op->getType().byteSize() <= m_info.options.maxUniformBufferSize) {
         binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         binding.access = VK_ACCESS_UNIFORM_READ_BIT;
       } else {
@@ -539,7 +539,7 @@ namespace dxvk {
       for (size_t i = 0u; i < m_samplers.size(); i++) {
         auto& e = m_samplers[i];
 
-        if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
+        if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
           e.memberIndex = i;
           e.wordIndex = 0u;
         } else {
@@ -554,7 +554,7 @@ namespace dxvk {
 
       m_localPushDataResourceMask |= ((1ull << dwordCount) - 1ull) << dwordIndex;
 
-      if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
         // Add each word separately and pad with a dummy entry if unaligned
         for (uint32_t i = 0u; i < wordCount; i++)
           pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU16);
@@ -574,7 +574,7 @@ namespace dxvk {
       m_localPushDataOffset += pushDataType.byteSize();
 
       // Add debug names for sampler indices
-      if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
         for (size_t i = 0u; i < m_samplers.size(); i++) {
           auto& e = m_samplers[i];
           addDebugMemberName(def, e.memberIndex, getDebugName(e.sampler));
@@ -590,7 +590,7 @@ namespace dxvk {
       m_builder.getUses(op->getDef(), uses);
 
       m_builder.rewriteOp(op->getDef(), dxbc_spv::ir::Op::DclPushData(op->getType(),
-        m_entryPoint, m_info.options.compileOptions.sampleCountPushDataOffset, dxbc_spv::ir::ShaderStageMask()));
+        m_entryPoint, m_info.options.sampleCountPushDataOffset, dxbc_spv::ir::ShaderStageMask()));
 
       for (auto use : uses) {
         const auto& useOp = m_builder.getOp(use);
@@ -602,7 +602,7 @@ namespace dxvk {
       }
 
       m_sharedPushDataOffset = std::max<uint32_t>(m_sharedPushDataOffset,
-        m_info.options.compileOptions.sampleCountPushDataOffset + sizeof(uint32_t));
+        m_info.options.sampleCountPushDataOffset + sizeof(uint32_t));
       return ++op;
     }
 
@@ -633,7 +633,7 @@ namespace dxvk {
           if (m_builder.getOp(pushDataDef).getType().isStructType())
             memberIndex = m_builder.makeConstant(uint32_t(info.memberIndex));
 
-          if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
+          if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
             samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
               dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
             samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::ConvertItoI(
@@ -817,7 +817,7 @@ namespace dxvk {
       sortUavCounters();
 
       // In compute shaders, we can freely use push data space
-      auto ssboAlignment = m_info.options.compileOptions.minStorageBufferAlignment;
+      auto ssboAlignment = m_info.options.minStorageBufferAlignment;
 
       size_t maxPushDataSize = m_stage == dxbc_spv::ir::ShaderStage::eCompute
         ? MaxTotalPushDataSize - MaxReservedPushDataSize
@@ -1294,58 +1294,56 @@ namespace dxvk {
           ioPass.resolvePatchConstantLocations(convertIoMap(linkage->prevStageOutputs, linkage->prevStage));
       }
 
-      if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading))
+      if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && m_info.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading))
         ioPass.enableSampleInterpolation();
     }
 
     // Set up SPIR-V options. Only enable float controls if a sufficient subset
     // of features is supported; this avoids running into performance issues on
     // Nvidia where just enabling RTE on FP32 causes a ~20% performance drop.
-    auto spirvOptions = m_info.options.spirvOptions;
-
     dxbc_spv::spirv::SpirvBuilder::Options options = { };
     options.includeDebugNames = true;
-    options.nvRawAccessChains = spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
+    options.nvRawAccessChains = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
     options.dualSourceBlending = linkage && linkage->fsDualSrcBlend;
 
-    if (spirvOptions.flags.all(DxvkShaderSpirvFlag::IndependentDenormMode,
+    if (m_info.options.spirv.all(DxvkShaderSpirvFlag::IndependentDenormMode,
                                DxvkShaderSpirvFlag::SupportsRte32,
                                DxvkShaderSpirvFlag::SupportsDenormFlush32)) {
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte16))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte16))
         options.supportedRoundModesF16 |= dxbc_spv::ir::RoundMode::eNearestEven;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte32))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte32))
         options.supportedRoundModesF32 |= dxbc_spv::ir::RoundMode::eNearestEven;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte64))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte64))
         options.supportedRoundModesF64 |= dxbc_spv::ir::RoundMode::eNearestEven;
 
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRtz16))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRtz16))
         options.supportedRoundModesF16 |= dxbc_spv::ir::RoundMode::eZero;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRtz32))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRtz32))
         options.supportedRoundModesF32 |= dxbc_spv::ir::RoundMode::eZero;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRtz64))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsRtz64))
         options.supportedRoundModesF64 |= dxbc_spv::ir::RoundMode::eZero;
 
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush16))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormFlush16))
         options.supportedDenormModesF16 |= dxbc_spv::ir::DenormMode::eFlush;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush32))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormFlush32))
         options.supportedDenormModesF32 |= dxbc_spv::ir::DenormMode::eFlush;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush64))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormFlush64))
         options.supportedDenormModesF64 |= dxbc_spv::ir::DenormMode::eFlush;
 
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve16))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormPreserve16))
         options.supportedDenormModesF16 |= dxbc_spv::ir::DenormMode::ePreserve;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve32))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormPreserve32))
         options.supportedDenormModesF32 |= dxbc_spv::ir::DenormMode::ePreserve;
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64))
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64))
         options.supportedDenormModesF64 |= dxbc_spv::ir::DenormMode::ePreserve;
 
-      if (spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
-        options.floatControls2 = spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsFloatControls2);
+      if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
+        options.floatControls2 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsFloatControls2);
     }
 
-    options.supportsZeroInfNanPreserveF16 = spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve16);
-    options.supportsZeroInfNanPreserveF32 = spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
-    options.supportsZeroInfNanPreserveF64 = spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64);
+    options.supportsZeroInfNanPreserveF16 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve16);
+    options.supportsZeroInfNanPreserveF32 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
+    options.supportsZeroInfNanPreserveF64 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64);
 
     // Build final SPIR-V binary
     DxvkShaderResourceMapping mapping(m_metadata.stage, bindings);
@@ -1406,7 +1404,7 @@ namespace dxvk {
         m_info.rasterizedStream);
     }
 
-    if (m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::DisableMsaa)) {
+    if (m_info.options.flags.test(DxvkShaderCompileFlag::DisableMsaa)) {
       dxbc_spv::ir::LowerIoPass ioPass(builder);
       ioPass.demoteMultisampledSrv();
     }
@@ -1414,15 +1412,15 @@ namespace dxvk {
     dxbc_spv::dxbc::CompileOptions options;
     options.arithmeticOptions.fuseMad = true;
     options.arithmeticOptions.lowerDot = true;
-    options.arithmeticOptions.lowerSinCos = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
+    options.arithmeticOptions.lowerSinCos = m_info.options.flags.test(DxvkShaderCompileFlag::LowerSinCos);
     options.arithmeticOptions.lowerMsad = true;
-    options.arithmeticOptions.lowerF32toF16 = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerF32toF16);
-    options.arithmeticOptions.lowerConvertFtoI = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerFtoI);
+    options.arithmeticOptions.lowerF32toF16 = m_info.options.flags.test(DxvkShaderCompileFlag::LowerF32toF16);
+    options.arithmeticOptions.lowerConvertFtoI = m_info.options.flags.test(DxvkShaderCompileFlag::LowerFtoI);
     options.arithmeticOptions.lowerGsVertexCountIn = false;
-    options.arithmeticOptions.hasNvUnsignedItoFBug = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerItoF);
+    options.arithmeticOptions.hasNvUnsignedItoFBug = m_info.options.flags.test(DxvkShaderCompileFlag::LowerItoF);
 
-    options.min16Options.enableFloat16 = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitArithmetic);
-    options.min16Options.enableInt16 = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitArithmetic);
+    options.min16Options.enableFloat16 = m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitArithmetic);
+    options.min16Options.enableInt16 = m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitArithmetic);
 
     options.resourceOptions.allowSubDwordScratchAndLds = true;
     options.resourceOptions.flattenLds = false;
@@ -1430,19 +1428,19 @@ namespace dxvk {
     options.resourceOptions.structuredCbv = true;
     options.resourceOptions.structuredSrvUav = true;
 
-    auto ssboAlignment = m_info.options.compileOptions.minStorageBufferAlignment;
+    auto ssboAlignment = m_info.options.minStorageBufferAlignment;
     options.bufferOptions.useTypedForRaw = ssboAlignment > 16u;
     options.bufferOptions.useTypedForStructured = ssboAlignment > 4u;
     options.bufferOptions.useTypedForSparseFeedback = true;
     options.bufferOptions.useRawForTypedAtomic = ssboAlignment <= 4u;
-    options.bufferOptions.forceFormatForTypedUavRead = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+    options.bufferOptions.forceFormatForTypedUavRead = m_info.options.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
     options.bufferOptions.minStructureAlignment = ssboAlignment;
 
     options.scalarizeOptions.subDwordVectors = true;
 
     options.syncOptions.insertRovLocks = true;
-    options.syncOptions.insertLdsBarriers = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
-    options.syncOptions.insertUavBarriers = m_info.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
+    options.syncOptions.insertLdsBarriers = m_info.options.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+    options.syncOptions.insertUavBarriers = m_info.options.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
 
     options.derivativeOptions.hoistNontrivialDerivativeOps = true;
     options.derivativeOptions.hoistNontrivialImplicitLodOps = false;

@@ -2315,7 +2315,7 @@ namespace dxvk {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
-      if (!m_shaderOptions.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat)) {
+      if (!m_shaderOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat)) {
         // If the R32 formats are supported without format declarations,
         // we can optionally support additional formats for typed loads
         if (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
@@ -2584,13 +2584,13 @@ namespace dxvk {
     auto result = Device->getShaderCompileOptions();
 
     if (Options.disableMsaa)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::DisableMsaa);
+      result.flags.set(DxvkShaderCompileFlag::DisableMsaa);
 
     if (Options.forceVolatileTgsmAccess)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+      result.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
 
     if (Options.forceComputeUavBarriers)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
+      result.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
 
     return result;
   }

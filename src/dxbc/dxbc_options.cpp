@@ -47,7 +47,7 @@ namespace dxvk {
     needsPointSizeExport = device->adapter()->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version(25, 0, 3));
 
     // Intel's hardware sin/cos is so inaccurate that it causes rendering issues in some games
-    sincosEmulation = device->getShaderCompileOptions().compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
+    sincosEmulation = device->getShaderCompileOptions().flags.test(DxvkShaderCompileFlag::LowerSinCos);
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
