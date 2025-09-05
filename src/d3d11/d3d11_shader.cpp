@@ -14,8 +14,9 @@ namespace dxvk {
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
-            size_t                  BytecodeLength)
-    : m_key(ShaderKey), m_info(ModuleInfo) {
+            size_t                  BytecodeLength,
+            bool                    LowerIcb)
+    : m_key(ShaderKey), m_info(ModuleInfo), m_lowerIcb(LowerIcb) {
       m_dxbc.resize(BytecodeLength);
       std::memcpy(m_dxbc.data(), pShaderBytecode, BytecodeLength);
     }
@@ -31,7 +32,10 @@ namespace dxvk {
       options.includeDebugNames = true;
       options.boundCheckScratch = true;
       options.boundCheckShaderIo = true;
-      options.boundCheckIcb = true;
+      options.boundCheckIcb = !m_lowerIcb;
+      options.lowerIcb = m_lowerIcb;
+      options.icbRegisterSpace = 0u;
+      options.icbRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
       options.maxTessFactor = float(m_info.options.compileOptions.maxTessFactor);
 
       dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
@@ -90,6 +94,8 @@ namespace dxvk {
 
     DxvkShaderHash          m_key;
     DxvkIrShaderCreateInfo  m_info;
+
+    bool                    m_lowerIcb = false;
 
   };
 
@@ -151,7 +157,7 @@ namespace dxvk {
 
     // Create actual shader converter
     m_shader = new DxvkIrShader(ModuleInfo,
-      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength));
+      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, bool(m_buffer)));
   }
 
 
