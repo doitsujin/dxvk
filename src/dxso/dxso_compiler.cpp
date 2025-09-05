@@ -2812,6 +2812,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // The projection (/.w) happens before this...
       // Of course it does...
+      // TexBem/TexBemL only exist in PS<=1.3
       texcoordVar.id  = DoProjection(texcoordVar, true);
       auto values     = emitBem(ctx, texcoordVar, n);
       for (uint32_t i = 0; i < 2; i++)
@@ -2912,7 +2913,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       // We already handled this for TexBem(L)
-      if (m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube && opcode != DxsoOpcode::TexBem && opcode != DxsoOpcode::TexBemL) {
+      if (m_programInfo.majorVersion() < 2 && m_programInfo.minorVersion() < 4 && samplerType != SamplerTypeTextureCube && opcode != DxsoOpcode::TexBem && opcode != DxsoOpcode::TexBemL) {
         texcoordVar.id = DoProjection(texcoordVar, true);
       }
 

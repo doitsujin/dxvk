@@ -7564,22 +7564,36 @@ namespace dxvk {
 
       const uint32_t psTextureMask = usedTextureMask & ((1u << caps::MaxTexturesPS) - 1u);
       const uint32_t fetch4        = m_textureSlotTracking.fetch4    & psTextureMask;
-      const uint32_t projected     = m_textureSlotTracking.projected & psTextureMask;
+      uint32_t projected           = m_textureSlotTracking.projected;
+      uint32_t textureTypes        = m_textureSlotTracking.textureType;
 
       const auto& programInfo = GetCommonShader(m_state.pixelShader)->GetInfo();
+      const bool useProgrammableVS = UseProgrammableVS();
 
-      if (programInfo.majorVersion() >= 2)
-        UpdatePixelShaderSamplerSpec(m_d3d9Options.forceSamplerTypeSpecConstants ? m_textureSlotTracking.textureType : 0u, 0u, fetch4);
-      else
-        UpdatePixelShaderSamplerSpec(m_textureSlotTracking.textureType, programInfo.minorVersion() >= 4 ? 0u : projected, fetch4); // For implicit samplers...
+      if (likely(useProgrammableVS && (programInfo.majorVersion() > 2 || programInfo.minorVersion() > 3))) {
+        // Fixed function shaders use the projected spec constant too.
+        projected = 0u;
+      } else if (useProgrammableVS) {
+        projected &= psTextureMask;
+      }
+
+      if (likely(programInfo.majorVersion() >= 2 && !m_d3d9Options.forceSamplerTypeSpecConstants)) {
+        textureTypes = 0u;
+      }
+
+      UpdatePixelShaderSamplerSpec(textureTypes, projected, fetch4);
 
       UpdatePixelBoolSpec(
         m_state.psConsts->bConsts[0] &
         m_consts[DxsoProgramType::PixelShader].meta.boolConstantMask);
     }
     else {
-      const uint32_t psTextureMask = usedTextureMask & ((1u << 8u) - 1u);
-      const uint32_t projected     = m_textureSlotTracking.projected & psTextureMask;
+      uint32_t projected = m_textureSlotTracking.projected;
+      if (likely(UseProgrammableVS())) {
+        // Fixed function shaders use the projected spec constant too.
+        const uint32_t psTextureMask = usedTextureMask & ((1u << 8u) - 1u);
+        projected &= psTextureMask;
+      }
 
       UpdatePixelBoolSpec(0);
       UpdatePixelShaderSamplerSpec(m_textureSlotTracking.textureType, projected, 0u);
