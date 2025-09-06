@@ -2740,7 +2740,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, coord.id, projScalar);
 
       if (switchProjRes) {
-        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
+        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjected, samplerIdx, 1);
         shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
@@ -2812,6 +2812,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // The projection (/.w) happens before this...
       // Of course it does...
+      // TexBem/TexBemL only exist in PS<=1.3
       texcoordVar.id  = DoProjection(texcoordVar, true);
       auto values     = emitBem(ctx, texcoordVar, n);
       for (uint32_t i = 0; i < 2; i++)
@@ -2912,7 +2913,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       // We already handled this for TexBem(L)
-      if (m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube && opcode != DxsoOpcode::TexBem && opcode != DxsoOpcode::TexBemL) {
+      if (m_programInfo.majorVersion() < 2 && m_programInfo.minorVersion() < 4 && samplerType != SamplerTypeTextureCube && opcode != DxsoOpcode::TexBem && opcode != DxsoOpcode::TexBemL) {
         texcoordVar.id = DoProjection(texcoordVar, true);
       }
 
@@ -2920,16 +2921,23 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t reference = 0;
       if (depth) {
+        uint32_t uiType = m_module.defIntType(32, false);
         uint32_t fType = m_module.defFloatType(32);
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
           fType, texcoordVar.id, 1, &component);
 
         // [D3D8] Scale Dref from [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
-        if (m_moduleInfo.options.drefScaling) {
-          uint32_t drefScale       = m_module.constf32(GetDrefScaleFactor(m_moduleInfo.options.drefScaling));
-          reference                = m_module.opFMul(fType, reference, drefScale);
-        }
+        uint32_t drefScaleShift = m_spec.get(m_module, m_specUbo, SpecDrefScaling);
+        uint32_t drefScale      = m_module.opShiftLeftLogical(uiType, m_module.constu32(1), drefScaleShift);
+        drefScale               = m_module.opConvertUtoF(fType, drefScale);
+        drefScale               = m_module.opFSub(fType, drefScale, m_module.constf32(1.0f));
+        drefScale               = m_module.opFDiv(fType, m_module.constf32(1.0f), drefScale);
+        reference               = m_module.opSelect(fType,
+          m_module.opINotEqual(bool_t, drefScaleShift, m_module.constu32(0)),
+          m_module.opFMul(fType, reference, drefScale),
+          reference
+        );
 
         // Clamp Dref to [0..1] for D32F emulating UNORM textures 
         uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
@@ -3003,7 +3011,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         ? samplerIdx + FirstVSSamplerSlot
         : samplerIdx;
 
-      uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);
+      uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerIsNull, bitOffset, 1);
       isNull = m_module.opINotEqual(m_module.defBoolType(), isNull, m_module.constu32(0));
 
       // Only do the check for depth comp. samplers
@@ -3013,7 +3021,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
 
-        uint32_t isDepth = m_spec.get(m_module, m_specUbo, SpecSamplerDepthMode, bitOffset, 1);
+        uint32_t isDepth = m_spec.get(m_module, m_specUbo, SpecSamplerIsDepth, bitOffset, 1);
         isDepth = m_module.opINotEqual(m_module.defBoolType(), isDepth, m_module.constu32(0));
 
         m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);

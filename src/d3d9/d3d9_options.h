@@ -163,10 +163,16 @@ namespace dxvk {
     bool reproducibleCommandStream;
 
     /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
-    int32_t drefScaling;
+    uint32_t drefScaling;
 
     /// Add an extra front buffer to make GetFrontBufferData() work correctly when the swapchain only has a single buffer
     bool extraFrontbuffer;
+
+    /// Use the uber shader for fixed function vertex shaders.
+    bool ffUbershaderVS;
+
+    /// Use the uber shader for fixed function fragment shaders.
+    bool ffUbershaderFS;
   };
 
 }
