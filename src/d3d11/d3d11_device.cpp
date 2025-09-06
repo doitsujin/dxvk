@@ -1925,6 +1925,8 @@ namespace dxvk {
       }
     }
 
+    dxbc_spv::dxbc::Instruction icbOp = { };
+
     DxbcBindingMask bindingMask;
 
     while (parser) {
@@ -1934,6 +1936,11 @@ namespace dxvk {
         return E_INVALIDARG;
 
       switch (op.getOpToken().getOpCode()) {
+        case dxbc_spv::dxbc::OpCode::eCustomData: {
+          if (op.getOpToken().getCustomDataType() == dxbc_spv::dxbc::CustomDataType::eDclIcb)
+            icbOp = std::move(op);
+        } break;
+
         case dxbc_spv::dxbc::OpCode::eDclSampler: {
           uint32_t index = op.getDst(0u).getIndex(0u);
           bindingMask.samplerMask |= 1u << index;
@@ -2056,12 +2063,20 @@ namespace dxvk {
       }
     }
 
+    // Handle immediate constant buffer declaration
+    D3D11ShaderIcbInfo icbInfo = { };
+
+    if (icbOp) {
+      icbInfo.data = icbOp.getCustomData().first;
+      icbInfo.size = icbOp.getCustomData().second;
+    }
+
     // Initialize the actual shader
-    D3D11CommonShader commonShader;
+    D3D11CommonShader commonShader = { };
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
       ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength,
-      bindingMask, &commonShader);
+      icbInfo, bindingMask, &commonShader);
 
     if (FAILED(hr))
       return hr;
@@ -2300,7 +2315,7 @@ namespace dxvk {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
-      if (!m_shaderOptions.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat)) {
+      if (!m_shaderOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat)) {
         // If the R32 formats are supported without format declarations,
         // we can optionally support additional formats for typed loads
         if (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
@@ -2569,13 +2584,13 @@ namespace dxvk {
     auto result = Device->getShaderCompileOptions();
 
     if (Options.disableMsaa)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::DisableMsaa);
+      result.flags.set(DxvkShaderCompileFlag::DisableMsaa);
 
     if (Options.forceVolatileTgsmAccess)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+      result.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
 
     if (Options.forceComputeUavBarriers)
-      result.compileOptions.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
+      result.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
 
     return result;
   }

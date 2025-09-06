@@ -14,8 +14,9 @@ namespace dxvk {
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
-            size_t                  BytecodeLength)
-    : m_key(ShaderKey), m_info(ModuleInfo) {
+            size_t                  BytecodeLength,
+            bool                    LowerIcb)
+    : m_key(ShaderKey), m_info(ModuleInfo), m_lowerIcb(LowerIcb) {
       m_dxbc.resize(BytecodeLength);
       std::memcpy(m_dxbc.data(), pShaderBytecode, BytecodeLength);
     }
@@ -31,8 +32,11 @@ namespace dxvk {
       options.includeDebugNames = true;
       options.boundCheckScratch = true;
       options.boundCheckShaderIo = true;
-      options.boundCheckIcb = true;
-      options.maxTessFactor = float(m_info.options.compileOptions.maxTessFactor);
+      options.boundCheckIcb = !m_lowerIcb;
+      options.lowerIcb = m_lowerIcb;
+      options.icbRegisterSpace = 0u;
+      options.icbRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+      options.maxTessFactor = float(m_info.options.maxTessFactor);
 
       dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
 
@@ -75,6 +79,10 @@ namespace dxvk {
       }
     }
 
+    void dumpSource(const std::string& path) const {
+      std::ofstream file(str::topath(str::format(path, "/", m_key.toString(), ".dxbc").c_str()).c_str(), std::ios_base::trunc | std::ios_base::binary);
+      file.write(reinterpret_cast<const char*>(m_dxbc.data()), m_dxbc.size());
+    }
 
     std::string getDebugName() const {
       return m_key.toString();
@@ -86,6 +94,8 @@ namespace dxvk {
 
     DxvkShaderHash          m_key;
     DxvkIrShaderCreateInfo  m_info;
+
+    bool                    m_lowerIcb = false;
 
   };
 
@@ -102,43 +112,52 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb,
     const DxbcBindingMask&        BindingMask)
   : m_bindings(BindingMask) {
-    const std::string name = ShaderKey.toString();
-    Logger::debug(str::format("Compiling shader ", name));
+    Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
     
-    // If requested by the user, dump both the raw DXBC
-    // shader and the compiled SPIR-V module to a file.
-    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
-    
-    if (!dumpPath.empty()) {
-      std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
-      file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
-    }
-
     if (pDevice->GetOptions()->useDxbcSpirv)
-      CreateIrShader(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
+      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, Icb);
     else
       CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength);
-
-    if (!dumpPath.empty()) {
-      std::ofstream dumpStream(
-        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
-        std::ios_base::binary | std::ios_base::trunc);
-      m_shader->dump(dumpStream);
-    }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
 
   void D3D11CommonShader::CreateIrShader(
+          D3D11Device*            pDevice,
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
-          size_t                  BytecodeLength) {
+          size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb) {
+    constexpr size_t MaxEmbeddedIcbSize = 64u;
+
+    // Create icb if lowering is required
+    size_t icbSizeInBytes = Icb.size * sizeof(*Icb.data);
+
+    if (ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) && icbSizeInBytes > MaxEmbeddedIcbSize) {
+      DxvkBufferCreateInfo info = { };
+      info.size   = align(icbSizeInBytes, 256u);
+      info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                  | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                  | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      info.stages = util::pipelineStages(ShaderKey.stage());
+      info.access = VK_ACCESS_UNIFORM_READ_BIT
+                  | VK_ACCESS_TRANSFER_READ_BIT
+                  | VK_ACCESS_TRANSFER_WRITE_BIT;
+      info.debugName = "Icb";
+
+      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      pDevice->InitShaderIcb(this, icbSizeInBytes, Icb.data);
+    }
+
+    // Create actual shader converter
     m_shader = new DxvkIrShader(ModuleInfo,
-      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength));
+      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, bool(m_buffer)));
   }
 
 
@@ -148,6 +167,15 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength) {
+    // If requested by the user, dump both the raw DXBC
+    // shader and the compiled SPIR-V module to a file.
+    const auto& dumpPath = DxvkShader::getShaderDumpPath();
+
+    if (!dumpPath.empty()) {
+      std::ofstream file(str::topath(str::format(dumpPath, "/", ShaderKey.toString(), ".dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
+      file.write(reinterpret_cast<const char*>(pShaderBytecode), BytecodeLength);
+    }
+
     DxbcReader reader(
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
@@ -185,35 +213,35 @@ namespace dxvk {
     }
 
     DxbcTessInfo tessInfo = { };
-    tessInfo.maxTessFactor = float(ModuleInfo.options.compileOptions.maxTessFactor);
+    tessInfo.maxTessFactor = float(ModuleInfo.options.maxTessFactor);
 
     DxbcModuleInfo legacyInfo = { };
-    legacyInfo.options.supportsTypedUavLoadR32 = !ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
-    legacyInfo.options.supportsRawAccessChains = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
+    legacyInfo.options.supportsTypedUavLoadR32 = !ModuleInfo.options.flags.test(DxvkShaderCompileFlag::TypedR32LoadRequiresFormat);
+    legacyInfo.options.supportsRawAccessChains = ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsNvRawAccessChains);
     legacyInfo.options.rawAccessChainBug = legacyInfo.options.supportsRawAccessChains;
     legacyInfo.options.invariantPosition = true;
-    legacyInfo.options.forceVolatileTgsmAccess = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
-    legacyInfo.options.forceComputeUavBarriers = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
-    legacyInfo.options.disableMsaa = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::DisableMsaa);
-    legacyInfo.options.forceSampleRateShading = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
-    legacyInfo.options.needsPointSizeExport = ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::ExportPointSize);
-    legacyInfo.options.sincosEmulation = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::LowerSinCos);
-    legacyInfo.options.supports16BitPushData = ModuleInfo.options.compileOptions.flags.test(DxvkShaderCompileFlag::Supports16BitPushData);
-    legacyInfo.options.minSsboAlignment = ModuleInfo.options.compileOptions.minStorageBufferAlignment;
+    legacyInfo.options.forceVolatileTgsmAccess = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
+    legacyInfo.options.forceComputeUavBarriers = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::InsertResourceBarriers);
+    legacyInfo.options.disableMsaa = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::DisableMsaa);
+    legacyInfo.options.forceSampleRateShading = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
+    legacyInfo.options.needsPointSizeExport = ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::ExportPointSize);
+    legacyInfo.options.sincosEmulation = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerSinCos);
+    legacyInfo.options.supports16BitPushData = ModuleInfo.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData);
+    legacyInfo.options.minSsboAlignment = ModuleInfo.options.minStorageBufferAlignment;
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormFlush32) &&
-        ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte32))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormFlush32) &&
+        ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte32))
       legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormFlushToZero32);
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32))
       legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan32);
 
-    if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::IndependentDenormMode)) {
-      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64) &&
-          ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsRte64))
+    if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::IndependentDenormMode)) {
+      if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsDenormPreserve64) &&
+          ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsRte64))
         legacyInfo.options.floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
 
-      if (ModuleInfo.options.spirvOptions.flags.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64))
+      if (ModuleInfo.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64))
         legacyInfo.options.floatControl.set(DxbcFloatControlFlag::PreserveNan64);
     }
 
@@ -256,6 +284,13 @@ namespace dxvk {
       // Upload immediate constant buffer to VRAM
       pDevice->InitShaderIcb(this, icb.size, icb.data);
     }
+
+    if (!dumpPath.empty()) {
+      std::ofstream dumpStream(
+        str::topath(str::format(dumpPath, "/", ShaderKey.toString(), ".spv").c_str()).c_str(),
+        std::ios_base::binary | std::ios_base::trunc);
+      m_shader->dump(dumpStream);
+    }
   }
 
   
@@ -269,6 +304,7 @@ namespace dxvk {
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
+    const D3D11ShaderIcbInfo&     Icb,
     const DxbcBindingMask&        BindingMask,
           D3D11CommonShader*      pShader) {
     // Use the shader's unique key for the lookup
@@ -287,7 +323,7 @@ namespace dxvk {
     
     try {
       module = D3D11CommonShader(pDevice, ShaderKey,
-        ModuleInfo, pShaderBytecode, BytecodeLength, BindingMask);
+        ModuleInfo, pShaderBytecode, BytecodeLength, Icb, BindingMask);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_INVALIDARG;

@@ -57,30 +57,13 @@ namespace dxvk {
     /// Whether to clamp non-infinite inputs to f32tof16 in
     /// order to work around issues on drivers that use RTE.
     LowerF32toF16               = 10u,
+    /// Whether to lower built-in constant arrays to a regular
+    /// constant buffer. The register space and index for this
+    /// buffer are defined in the compile options.
+    LowerConstantArrays         = 11u,
   };
 
   using DxvkShaderCompileFlags = Flags<DxvkShaderCompileFlag>;
-
-
-  /**
-   * \brief Shader compile options
-   *
-   * Device-level options to enable certain
-   * features or behaviours.
-   */
-  struct DxvkShaderCompileOptions {
-    /// Compile flags
-    DxvkShaderCompileFlags flags = 0u;
-    /// Maximum tessellation factor. If 0, tessellation factors
-    /// will not be clamped beyond what is set in the shader.
-    uint8_t maxTessFactor = 0u;
-    /// Global push data offset for rasterizer sample count
-    uint8_t sampleCountPushDataOffset = 0u;
-    /// Minimum required storage buffer alignment. Buffers
-    /// with a smaller guaranteed alignment must be demoted
-    /// to typed buffers.
-    uint16_t minStorageBufferAlignment = 0u;
-  };
 
 
   /**
@@ -130,20 +113,28 @@ namespace dxvk {
 
 
   /**
-   * \brief SPIR-V lowering options
-   */
-  struct DxvkShaderSpirvOptions {
-    DxvkShaderSpirvFlags flags = 0u;
-    uint32_t maxUniformBufferSize = 0u;
-  };
-
-
-  /**
-   * \brief Shader compile and lowering options
+   * \brief Shader compile options
+   *
+   * Device-level options to enable certain
+   * features or behaviours.
    */
   struct DxvkShaderOptions {
-    DxvkShaderCompileOptions compileOptions = { };
-    DxvkShaderSpirvOptions spirvOptions = { };
+    /// Compile flags
+    DxvkShaderCompileFlags flags = 0u;
+    /// SPIR-V lowering flags
+    DxvkShaderSpirvFlags spirv = 0u;
+    /// Maximum uniform buffer size, in bytes. Constant buffer bindings
+    /// larger than this will be lowered to a storage buffer.
+    uint32_t maxUniformBufferSize = 0u;
+    /// Maximum tessellation factor. If 0, tessellation factors
+    /// will not be clamped beyond what is set in the shader.
+    uint8_t maxTessFactor = 0u;
+    /// Global push data offset for rasterizer sample count
+    uint8_t sampleCountPushDataOffset = 0u;
+    /// Minimum required storage buffer alignment. Buffers
+    /// with a smaller guaranteed alignment must be demoted
+    /// to typed buffers.
+    uint16_t minStorageBufferAlignment = 0u;
   };
 
 
@@ -345,7 +336,13 @@ namespace dxvk {
     static uint32_t getCookie(const Rc<DxvkShader>& shader) {
       return shader != nullptr ? shader->getCookie() : 0;
     }
-    
+
+    /**
+     * \brief Queries shader dump path
+     * \returns Shader dump path, or empty string
+     */
+    static const std::string& getShaderDumpPath();
+
   private:
 
     static std::atomic<uint32_t>  s_cookie;
