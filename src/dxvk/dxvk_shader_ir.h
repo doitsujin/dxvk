@@ -169,6 +169,8 @@ namespace dxvk {
 
     void convertIr(const char* reason);
 
+    void convertShader();
+
     void serializeIr(const dxbc_spv::ir::Builder& builder);
 
     void deserializeIr(dxbc_spv::ir::Builder& builder) const;
