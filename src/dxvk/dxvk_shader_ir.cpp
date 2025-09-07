@@ -1390,6 +1390,21 @@ namespace dxvk {
     if (!dumpPath.empty())
       dumpSource(dumpPath);
 
+    convertShader();
+
+    // Destroy original converter, we no longer need it
+    m_baseIr = nullptr;
+
+    m_convertedIr.store(true, std::memory_order_release);
+
+    // Need to do this *after* marking the conversion as done since lowering
+    // to SPIR-V itself will otherwise call into this method again
+    if (!dumpPath.empty())
+      dumpSpv(dumpPath);
+  }
+
+
+  void DxvkIrShader::convertShader() {
     DxvkDxbcSpirvLogger logger(m_debugName);
 
     dxbc_spv::ir::Builder builder;
@@ -1456,16 +1471,6 @@ namespace dxvk {
     m_layout = lowerBindingModelPass.getLayout();
 
     serializeIr(builder);
-
-    // Destroy original converter, we no longer need it
-    m_baseIr = nullptr;
-
-    m_convertedIr.store(true, std::memory_order_release);
-
-    // Need to do this *after* marking the conversion as done since lowering
-    // to SPIR-V itself will otherwise call into this method again
-    if (!dumpPath.empty())
-      dumpSpv(dumpPath);
   }
 
 
