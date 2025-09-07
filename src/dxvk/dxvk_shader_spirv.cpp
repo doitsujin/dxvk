@@ -291,9 +291,11 @@ namespace dxvk {
               }
 
               if (varType.opCode() == spv::OpTypeStruct) {
+                auto structId = varType.arg(1u);
+
                 for (uint32_t i = 2u; i < varType.length(); i++) {
-                  SpirvInstruction memberType(code.data(), m_idToOffset.at(varType.arg(2u)), code.dwords());
-                  handleIoVariable(code, memberType, storage, varId, int32_t(i - 2u));
+                  SpirvInstruction memberType(code.data(), m_idToOffset.at(varType.arg(i)), code.dwords());
+                  handleIoVariable(code, memberType, storage, structId, int32_t(i - 2u));
                 }
               } else {
                 handleIoVariable(code, varType, storage, varId, -1);
