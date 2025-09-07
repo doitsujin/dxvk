@@ -30,9 +30,7 @@ namespace dxvk {
       dxbc_spv::dxbc::Converter::Options options = { };
       options.name = debugName.c_str();
       options.includeDebugNames = true;
-      options.boundCheckScratch = true;
       options.boundCheckShaderIo = true;
-      options.boundCheckIcb = !m_lowerIcb;
       options.lowerIcb = m_lowerIcb;
       options.icbRegisterSpace = 0u;
       options.icbRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
