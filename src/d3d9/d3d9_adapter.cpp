@@ -248,13 +248,14 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto dst = ConvertFormatUnfixed(SurfaceFormat);
-    // Wargame: European Escalation expects NULL format
-    // checks to succeed, otherwise it will crash
+    // Wargame: European Escalation expects a D3DMULTISAMPLE_NONE
+    // NULL format check to succeed, otherwise it will crash
     if (SurfaceFormat != D3D9Format::NULL_FORMAT && dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     if (MultiSampleType != D3DMULTISAMPLE_NONE
-     && (SurfaceFormat == D3D9Format::D16_LOCKABLE
+     && (SurfaceFormat == D3D9Format::NULL_FORMAT
+      || SurfaceFormat == D3D9Format::D16_LOCKABLE
       || SurfaceFormat == D3D9Format::D32F_LOCKABLE
       || SurfaceFormat == D3D9Format::D32_LOCKABLE
       || SurfaceFormat == D3D9Format::INTZ
