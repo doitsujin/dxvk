@@ -5554,8 +5554,6 @@ namespace dxvk {
       VkImageLayout layout = depthAttachment.view->getLayout();
 
       if (layout != ops.depthOps.loadLayout) {
-        VkImageAspectFlags depthAspects = depthAttachment.view->info().aspects;
-
         VkPipelineStageFlags2 depthStages =
           VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
           VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT;
