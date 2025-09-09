@@ -15,7 +15,8 @@ namespace dxvk {
 
     SpecSamplerDepthMode,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecAlphaCompareOp,     // Range: 0 -> 7                  | Bits: 3
-    SpecSamplerProjected,   // 1 bit for 6 PS 1.x samplers    | Bits: 6
+    SpecSamplerProjected,   // 1 bit for 6 PS 1.x samplers    | Bits: 8
+                            // (1 bit for 8 FF texture stages)
 
     SpecSamplerNull,        // 1 bit for 21 samplers          | Bits: 21
     SpecAlphaPrecisionBits, // Range: 0 -> 8 or 0xF           | Bits: 4
@@ -58,7 +59,7 @@ namespace dxvk {
 
       { 1, 0,  21 }, // SamplerDepthMode
       { 1, 21, 3 },  // AlphaCompareOp
-      { 1, 24, 6 },  // SamplerProjected
+      { 1, 24, 8 },  // SamplerProjected
 
       { 2, 0,  21 }, // SamplerNull
       { 2, 21, 4 },  // AlphaPrecisionBits
