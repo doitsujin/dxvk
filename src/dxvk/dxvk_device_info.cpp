@@ -871,7 +871,7 @@ namespace dxvk {
 
       /* Maintenance features, relied on in various parts of the code */
       ENABLE_EXT_FEATURE(khrMaintenance5, maintenance5, true),
-      ENABLE_EXT_FEATURE(khrMaintenance6, maintenance6, false),
+      ENABLE_EXT_FEATURE(khrMaintenance6, maintenance6, true),
       ENABLE_EXT_FEATURE(khrMaintenance7, maintenance7, false),
 
       /* Dependency for graphics pipeline library */

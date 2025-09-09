@@ -7001,15 +7001,9 @@ namespace dxvk {
       m_renderPassBarrierSrc.access |= VK_ACCESS_INDEX_READ_BIT;
 
       m_cmd->track(m_state.vi.indexBuffer.buffer(), DxvkAccess::Read);
-    } else if (m_device->features().khrMaintenance6.maintenance6) {
+    } else {
       // Bind null index buffer to read all zeroes, not too useful but well-defined
       m_cmd->cmdBindIndexBuffer2(VK_NULL_HANDLE, 0, VK_WHOLE_SIZE, m_state.vi.indexType);
-    } else {
-      // Bind dummy buffer that contains all zeroes
-      auto bufferInfo = m_common->dummyResources().bufferInfo();
-
-      m_cmd->cmdBindIndexBuffer2(bufferInfo.buffer,
-        bufferInfo.offset, bufferInfo.size, m_state.vi.indexType);
     }
   }
   
