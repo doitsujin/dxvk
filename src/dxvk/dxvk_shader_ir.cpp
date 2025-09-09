@@ -1281,6 +1281,8 @@ namespace dxvk {
 
           for (auto i : bit::BitMask(outputMask))
             swizzles.at(i) = convertOutputSwizzle(linkage->rtSwizzles.at(i));
+
+          ioPass.swizzleOutputs(swizzles.size(), swizzles.data());
         }
 
         if (m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT && !DxvkShaderIo::checkStageCompatibility(
