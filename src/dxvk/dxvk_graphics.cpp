@@ -566,14 +566,10 @@ namespace dxvk {
       rsInfo.rasterizerDiscardEnable = VK_TRUE;
     }
 
-    // Set up depth clip state. If the extension is not supported,
-    // use depth clamp instead, even though this is not accurate.
-    if (device->features().extDepthClipEnable.depthClipEnable) {
-      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
-      rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
-    } else {
-      rsInfo.depthClampEnable = !state.rs.depthClipEnable();
-    }
+    // Set up depth clip state. Require depth clip support,
+    // this is *not* equivalent to disabling depth clamp.
+    rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+    rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
 
     // Set up conservative rasterization if requested by the application.
     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
