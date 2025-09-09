@@ -2594,7 +2594,6 @@ namespace dxvk {
       pDevice->GetOptions());
 
     m_shader = compiler.compile();
-    m_isgn   = compiler.isgn();
 
     Dump(pDevice, Key, name);
 
@@ -2616,7 +2615,6 @@ namespace dxvk {
       pDevice->GetOptions());
 
     m_shader = compiler.compile();
-    m_isgn   = compiler.isgn();
 
     Dump(pDevice, Key, name);
 
