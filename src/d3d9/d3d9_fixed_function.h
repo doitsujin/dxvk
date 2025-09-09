@@ -254,8 +254,6 @@ namespace dxvk {
 
     Rc<DxvkShader> m_shader;
 
-    DxsoIsgn       m_isgn;
-
   };
 
 
