@@ -508,9 +508,6 @@ namespace dxvk {
     // Sanitize features with other feature dependencies
     if (!m_featuresSupported.core.features.shaderInt16)
       m_featuresSupported.vk11.storagePushConstant16 = VK_FALSE;
-
-    if (!m_featuresSupported.extDepthClipEnable.depthClipEnable)
-      m_featuresSupported.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable = VK_FALSE;
   }
 
 
@@ -791,7 +788,7 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extCustomBorderColor, customBorderColorWithoutFormat, false),
 
       /* Depth clip matches D3D semantics where depth clamp does not */
-      ENABLE_EXT_FEATURE(extDepthClipEnable, depthClipEnable, false),
+      ENABLE_EXT_FEATURE(extDepthClipEnable, depthClipEnable, true),
 
       /* Controls depth bias behaviour with emulated depth formats */
       ENABLE_EXT_FEATURE(extDepthBiasControl, depthBiasControl, false),

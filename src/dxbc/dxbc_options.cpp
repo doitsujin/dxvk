@@ -11,12 +11,7 @@ namespace dxvk {
 
   DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options) {
     const Rc<DxvkAdapter> adapter = device->adapter();
-
-    const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = device->properties();
-
-    useDepthClipWorkaround
-      = !devFeatures.extDepthClipEnable.depthClipEnable;
 
     VkFormatFeatureFlags2 r32Features
       = device->getFormatFeatures(VK_FORMAT_R32_SFLOAT).optimal
