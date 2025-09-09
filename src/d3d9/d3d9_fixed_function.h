@@ -114,12 +114,12 @@ namespace dxvk {
       struct {
         uint32_t TexcoordIndices : 24;
 
-        uint32_t HasPositionT : 1;
+        uint32_t VertexHasPositionT : 1;
 
-        uint32_t HasColor0 : 1; // Diffuse
-        uint32_t HasColor1 : 1; // Specular
+        uint32_t VertexHasColor0 : 1; // Diffuse
+        uint32_t VertexHasColor1 : 1; // Specular
 
-        uint32_t HasPointSize : 1;
+        uint32_t VertexHasPointSize : 1;
 
         uint32_t UseLighting : 1;
 
@@ -139,7 +139,7 @@ namespace dxvk {
         uint32_t LightCount : 4;
 
         uint32_t TexcoordDeclMask : 24;
-        uint32_t HasFog : 1;
+        uint32_t VertexHasFog : 1;
 
         uint32_t VertexBlendMode    : 2;
         uint32_t VertexBlendIndexed : 1;
