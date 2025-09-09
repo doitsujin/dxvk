@@ -8941,8 +8941,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t projections, uint32_t fetch4) {
     bool dirty  = m_specInfo.set<SpecSamplerType>(types);
-         dirty |= m_specInfo.set<SpecProjected>(projections);
-         dirty |= m_specInfo.set<SpecFetch4>(fetch4);
+         dirty |= m_specInfo.set<SpecSamplerProjected>(projections);
+         dirty |= m_specInfo.set<SpecSamplerFetch4>(fetch4);
 
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
@@ -8952,7 +8952,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask, uint32_t drefMask) {
     bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
          dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
-         dirty |= m_specInfo.set<SpecDrefClamp>(drefMask);
+         dirty |= m_specInfo.set<SpecSamplerDrefClamp>(drefMask);
 
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);

@@ -2740,7 +2740,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, coord.id, projScalar);
 
       if (switchProjRes) {
-        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjected, samplerIdx, 1);
+        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecSamplerProjected, samplerIdx, 1);
         shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
@@ -2932,7 +2932,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
 
         // Clamp Dref to [0..1] for D32F emulating UNORM textures 
-        uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
+        uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecSamplerDrefClamp, samplerIdx, 1);
         clampDref = m_module.opINotEqual(bool_t, clampDref, m_module.constu32(0));
         uint32_t clampedDref = m_module.opFClamp(fType, reference, m_module.constf32(0.0f), m_module.constf32(1.0f));
         reference = m_module.opSelect(fType, clampDref, clampedDref, reference);
@@ -2940,7 +2940,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t fetch4 = 0;
       if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
-        fetch4 = m_spec.get(m_module, m_specUbo, SpecFetch4, samplerIdx, 1);
+        fetch4 = m_spec.get(m_module, m_specUbo, SpecSamplerFetch4, samplerIdx, 1);
 
         fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
 
