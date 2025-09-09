@@ -143,7 +143,7 @@ namespace dxvk {
 
         uint32_t VertexBlendMode    : 2;
         uint32_t VertexBlendIndexed : 1;
-        uint32_t VertexBlendCount   : 3;
+        uint32_t VertexBlendCount   : 2;
 
         uint32_t VertexClipping     : 1;
 
