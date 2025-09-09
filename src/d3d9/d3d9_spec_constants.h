@@ -31,6 +31,7 @@ namespace dxvk {
     SpecSamplerDrefClamp,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
     SpecPointMode,          // Range: 0 -> 3                  | Bits: 2
+    SpecDrefScaling,        // Range: 0-31 | Bits: 5
 
     SpecConstantCount,
   };
@@ -73,6 +74,7 @@ namespace dxvk {
       { 5, 0, 21 },  // SamplerDrefClamp
       { 5, 21, 3 },  // ClipPlaneCount
       { 5, 24, 2 },  // PointMode
+      { 5, 26, 5 },  // DrefScaling
     }};
 
     template <D3D9SpecConstantId Id, typename T>

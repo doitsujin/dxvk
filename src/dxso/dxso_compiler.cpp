@@ -2920,16 +2920,23 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t reference = 0;
       if (depth) {
+        uint32_t uiType = m_module.defIntType(32, false);
         uint32_t fType = m_module.defFloatType(32);
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
           fType, texcoordVar.id, 1, &component);
 
         // [D3D8] Scale Dref from [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
-        if (m_moduleInfo.options.drefScaling) {
-          uint32_t drefScale       = m_module.constf32(GetDrefScaleFactor(m_moduleInfo.options.drefScaling));
-          reference                = m_module.opFMul(fType, reference, drefScale);
-        }
+        uint32_t drefScaleShift = m_spec.get(m_module, m_specUbo, SpecDrefScaling);
+        uint32_t drefScale      = m_module.opShiftLeftLogical(uiType, m_module.constu32(1), drefScaleShift);
+        drefScale               = m_module.opConvertUtoF(fType, drefScale);
+        drefScale               = m_module.opFSub(fType, drefScale, m_module.constf32(1.0f));
+        drefScale               = m_module.opFDiv(fType, m_module.constf32(1.0f), drefScale);
+        reference               = m_module.opSelect(fType,
+          m_module.opINotEqual(bool_t, drefScaleShift, m_module.constu32(0)),
+          m_module.opFMul(fType, reference, drefScale),
+          reference
+        );
 
         // Clamp Dref to [0..1] for D32F emulating UNORM textures 
         uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecSamplerDrefClamp, samplerIdx, 1);

@@ -50,12 +50,7 @@ namespace dxvk {
 
     bool    invariantPosition;
     bool    forceSampleRateShading;
-    int32_t drefScaling;
   };
-
-  constexpr float GetDrefScaleFactor(int32_t bitDepth) {
-    return 1.0f / (float(1 << bitDepth) - 1.0f);
-  }
 
   constexpr uint32_t GetGlobalSamplerSetIndex() {
     // arbitrary, but must not conflict with bindings

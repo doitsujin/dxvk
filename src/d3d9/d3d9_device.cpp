@@ -190,6 +190,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
 
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+
+    m_specInfo.set<SpecDrefScaling, uint32_t>(m_d3d9Options.drefScaling);
   }
 
 
