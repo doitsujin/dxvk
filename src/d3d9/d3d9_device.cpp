@@ -3920,6 +3920,22 @@ namespace dxvk {
       BindShader<DxsoProgramTypes::PixelShader>(newShader);
 
       UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
+
+      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFTextureStageCount>(0u);
+      dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(0u);
+      constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
+      for (uint32_t i = 0; i < 4; i++) {
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), 0u);
+        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), 0u);
+      }
+      if (dirty) {
+        m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+      }
     }
     else {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
@@ -8334,6 +8350,44 @@ namespace dxvk {
       // The flags are set based on the specialized shaders.
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+
+      // Spec constants...
+      uint32_t activeTextureStageCount;
+      for (activeTextureStageCount = 1; activeTextureStageCount <= caps::TextureStageCount; activeTextureStageCount++) {
+        auto& stage = key.Stages[activeTextureStageCount - 1].Contents;
+        if (stage.ColorOp == D3DTOP_DISABLE)
+          break;
+      }
+
+      const auto repackArg = [](uint32_t arg) {
+        return (arg & 0b111u) | ((arg & 0b110000u) >> 1u);
+      };
+
+      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFTextureStageCount>(std::max(activeTextureStageCount, 1u) - 1u /* Subtract 1 to make it fit 3 bits */);
+      dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(key.Stages[0].Contents.GlobalSpecularEnable);
+      constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
+      for (uint32_t i = 0; i < 4; i++) {
+        if (i <= activeTextureStageCount) {
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), key.Stages[i].Contents.ColorOp);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), repackArg(key.Stages[i].Contents.ColorArg1));
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), repackArg(key.Stages[i].Contents.ColorArg2));
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), key.Stages[i].Contents.AlphaOp);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), repackArg(key.Stages[i].Contents.AlphaArg1));
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), repackArg(key.Stages[i].Contents.AlphaArg2));
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), key.Stages[i].Contents.ResultIsTemp);
+        } else {
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), 0);
+          dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), 0);
+        }
+      }
+      if (dirty) {
+        m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+      }
     } else if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
 

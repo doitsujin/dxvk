@@ -107,6 +107,8 @@ const uint VK_COMPARE_OP_NOT_EQUAL        = 5;
 const uint VK_COMPARE_OP_GREATER_OR_EQUAL = 6;
 const uint VK_COMPARE_OP_ALWAYS           = 7;
 
+const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextureStage0ColorOp;
+
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
@@ -269,7 +271,8 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
 
     uint previousStageColorOp = 0;
     if (stage > 0) {
-        previousStageColorOp = colorOp(stage - 1);
+        bool isPreviousStageOptimized = specIsOptimized() && stage - 1 < SpecConstOptimizedTextureStageCount;
+        previousStageColorOp = isPreviousStageOptimized ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1)) : colorOp(stage - 1);
     }
 
     if (stage != 0 && (
@@ -554,31 +557,38 @@ struct TextureStageState {
 };
 
 TextureStageState runTextureStage(uint stage, TextureStageState state) {
-    const uint colorOp = colorOp(stage);
+    if (specUint(SpecFFTextureStageCount) <= stage) {
+        return state;
+    }
+
+    const bool isStageOptimized = specIsOptimized() && stage < SpecConstOptimizedTextureStageCount;
+
+    const uint colorOp = isStageOptimized ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage) : colorOp(stage);
 
     // This cancels all subsequent stages.
     if (colorOp == D3DTOP_DISABLE)
         return state;
 
-    const bool resultIsTemp = resultIsTemp(stage);
+    const bool resultIsTemp = isStageOptimized ? specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage) : resultIsTemp(stage);
     vec4 dst = resultIsTemp ? state.temp : state.current;
 
-    const uint alphaOp = alphaOp(stage);
+    const uint alphaOp = isStageOptimized ? specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage) : alphaOp(stage);
 
-    const bool usesArg0 = colorOp == D3DTOP_LERP
+    const bool usesArg0 = !isStageOptimized
+        || colorOp == D3DTOP_LERP
         || colorOp == D3DTOP_MULTIPLYADD
         || alphaOp == D3DTOP_LERP
         || alphaOp == D3DTOP_MULTIPLYADD;
 
     const TextureStageArguments colorArgs = {
         usesArg0 ? colorArg0(stage) : D3DTA_CONSTANT,
-        colorArg1(stage),
-        colorArg2(stage)
+        isStageOptimized ? specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage) : colorArg1(stage),
+        isStageOptimized ? specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage) : colorArg2(stage)
     };
     const TextureStageArguments alphaArgs = {
         usesArg0 ? alphaArg0(stage) : D3DTA_CONSTANT,
-        alphaArg1(stage),
-        alphaArg2(stage)
+        isStageOptimized ? specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage) : alphaArg1(stage),
+        isStageOptimized ? specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage) : alphaArg2(stage)
     };
 
     vec4 textureVal = vec4(0.0);
@@ -672,7 +682,7 @@ void main() {
     state = runTextureStage(6, state);
     state = runTextureStage(7, state);
 
-    if (globalSpecularEnabled()) {
+    if (specBool(SpecFFGlobalSpecularEnabled)) {
         vec4 specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
         state.current += specular;
     }
