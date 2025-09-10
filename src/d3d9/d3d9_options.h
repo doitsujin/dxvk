@@ -167,6 +167,9 @@ namespace dxvk {
 
     /// Add an extra front buffer to make GetFrontBufferData() work correctly when the swapchain only has a single buffer
     bool extraFrontbuffer;
+
+    /// Use the uber shader for fixed function vertex shaders.
+    bool ffUbershaderVS;
   };
 
 }
