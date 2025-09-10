@@ -48,6 +48,7 @@ namespace dxvk {
     , m_dxvkDevice         ( dxvkDevice )
     , m_memoryAllocator    ( )
     , m_shaderAllocator    ( )
+    , m_ffModules          ( this )
     , m_shaderModules      ( new D3D9ShaderModuleSet )
     , m_stagingBuffer      ( dxvkDevice, StagingBufferSize )
     , m_stagingBufferFence ( new sync::Fence() )
@@ -184,7 +185,6 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
     m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
-    m_flags.set(D3D9DeviceFlag::DirtyProgVertexShader);
     m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
     m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
@@ -192,6 +192,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
 
     m_specInfo.set<SpecDrefScaling, uint32_t>(m_d3d9Options.drefScaling);
+
+    BindFFUbershader<DxsoProgramType::VertexShader>();
   }
 
 
@@ -3417,7 +3419,20 @@ namespace dxvk {
     if (dirtyFFShader)
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
+    const bool wasUsingProgrammableVS = UseProgrammableVS();
+
     m_state.vertexDecl = decl;
+
+    const bool usesProgrammableVS = UseProgrammableVS();
+
+    if (unlikely(usesProgrammableVS != wasUsingProgrammableVS)) {
+      if (usesProgrammableVS) {
+        BindShader<DxsoProgramType::VertexShader>(GetCommonShader(m_state.vertexShader));
+      } else {
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+        BindFFUbershader<DxsoProgramType::VertexShader>();
+      }
+    }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -3536,15 +3551,19 @@ namespace dxvk {
         || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
+    const bool wasUsingProgrammableVS = UseProgrammableVS();
+
     m_state.vertexShader = shader;
 
-    if (shader != nullptr) {
-      m_flags.clr(D3D9DeviceFlag::DirtyProgVertexShader);
-      m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+    const bool usesProgrammableVS = UseProgrammableVS();
 
+    if (usesProgrammableVS) {
       BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
 
       UpdateTextureTypeMismatchesForShader(newShader, VSShaderMasks().samplerMask, FirstVSSamplerSlot);
+    } else if (wasUsingProgrammableVS) {
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+      BindFFUbershader<DxsoProgramType::VertexShader>();
     }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
@@ -7537,12 +7556,6 @@ namespace dxvk {
     UpdatePointMode(PrimitiveType == D3DPT_POINTLIST);
 
     if (likely(UseProgrammableVS())) {
-      if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
-        m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
-
-        BindShader<DxsoProgramType::VertexShader>(
-          GetCommonShader(m_state.vertexShader));
-      }
       UploadConstants<DxsoProgramTypes::VertexShader>();
 
       if (likely(!CanSWVP())) {
@@ -7742,6 +7755,17 @@ namespace dxvk {
     ] (DxvkContext* ctx) mutable {
       constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
       ctx->bindShader<stage>(std::move(cShader));
+    });
+  }
+
+
+  template <DxsoProgramType ShaderStage>
+  void D3D9DeviceEx::BindFFUbershader() {
+    EmitCs([
+     &cShaders = m_ffModules
+    ](DxvkContext* ctx) {
+      auto shader = cShaders.GetVSUbershaderModule();
+      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(shader.GetShader());
     });
   }
 
@@ -8020,14 +8044,77 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateFixedFunctionVS() {
-    // Shader...
-    bool hasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
-    bool hasBlendWeight    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendWeight);
-    bool hasBlendIndices   = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendIndices);
+  D3D9FFShaderKeyVS D3D9DeviceEx::BuildFFKeyVS(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend) const {
+    D3D9FFShaderKeyVS key;
+    key.Data.Contents.VertexHasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+    key.Data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0);
+    key.Data.Contents.VertexHasColor1    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
+    key.Data.Contents.VertexHasPointSize = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize);
+    key.Data.Contents.VertexHasFog       = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog);
+
+    bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.Data.Contents.VertexHasPositionT;
+    bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
+    uint32_t mask    = (lighting && colorVertex)
+                     ? (key.Data.Contents.VertexHasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
+                     | (key.Data.Contents.VertexHasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
+                     : 0;
+
+    key.Data.Contents.UseLighting      = lighting;
+    key.Data.Contents.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
+    key.Data.Contents.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
+
+    key.Data.Contents.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
+
+    key.Data.Contents.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
+    key.Data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
+    key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
+    key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
+
+    uint32_t lightCount = 0;
+
+    if (key.Data.Contents.UseLighting) {
+      for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
+        if (m_state.enabledLightIndices[i] != std::numeric_limits<uint32_t>::max())
+          lightCount++;
+      }
+    }
+
+    key.Data.Contents.LightCount = lightCount;
+
+    for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
+      uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+      uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
+      uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
+
+      transformFlags &= 0b111;
+      index          &= 0b111;
+
+      key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
+      key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
+      key.Data.Contents.TexcoordIndices |= index          << (i * 3);
+    }
+
+    key.Data.Contents.VertexTexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+
+    key.Data.Contents.VertexBlendMode  = uint32_t(vertexBlendMode);
+
+    if (vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
+      key.Data.Contents.VertexBlendIndexed = indexedVertexBlend;
+      key.Data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
+    }
+
+    key.Data.Contents.VertexClipping = m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
+
+    return key;
+  }
+
+
+   void D3D9DeviceEx::UpdateFixedFunctionVS() {
+    bool hasPositionT    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+    bool hasBlendWeight  = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendWeight);
+    bool hasBlendIndices = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendIndices);
 
     bool indexedVertexBlend = hasBlendIndices && m_state.renderStates[D3DRS_INDEXEDVERTEXBLENDENABLE];
-
     D3D9FF_VertexBlendMode vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
 
     if (m_state.renderStates[D3DRS_VERTEXBLEND] != D3DVBF_DISABLE && !hasPositionT) {
@@ -8043,74 +8130,16 @@ namespace dxvk {
         vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
     }
 
-    if (unlikely(hasPositionT && m_state.vertexShader != nullptr && !m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
-      m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
-      m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
-      m_flags.set(D3D9DeviceFlag::DirtyProgVertexShader);
-    }
+    // Shader...
+    const bool useUbershader = m_d3d9Options.ffUbershaderVS;
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
+    if (useUbershader && m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+    } else if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
 
-      D3D9FFShaderKeyVS key;
-      key.Data.Contents.VertexHasPositionT = hasPositionT;
-      key.Data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0);
-      key.Data.Contents.VertexHasColor1    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
-      key.Data.Contents.VertexHasPointSize = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize);
-      key.Data.Contents.VertexHasFog       = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog);
-
-      bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.Data.Contents.VertexHasPositionT;
-      bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
-      uint32_t mask    = (lighting && colorVertex)
-                       ? (key.Data.Contents.VertexHasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
-                       | (key.Data.Contents.VertexHasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
-                       : 0;
-
-      key.Data.Contents.UseLighting      = lighting;
-      key.Data.Contents.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
-      key.Data.Contents.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
-
-      key.Data.Contents.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
-
-      key.Data.Contents.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
-      key.Data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
-      key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
-      key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
-
-      uint32_t lightCount = 0;
-
-      if (key.Data.Contents.UseLighting) {
-        for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
-          if (m_state.enabledLightIndices[i] != std::numeric_limits<uint32_t>::max())
-            lightCount++;
-        }
-      }
-
-      key.Data.Contents.LightCount = lightCount;
-
-      for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
-        uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
-        uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
-
-        transformFlags &= 0b111;
-        index          &= 0b111;
-
-        key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
-        key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
-        key.Data.Contents.TexcoordIndices |= index          << (i * 3);
-      }
-
-      key.Data.Contents.VertexTexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
-
-      key.Data.Contents.VertexBlendMode    = uint32_t(vertexBlendMode);
-
-      if (vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
-        key.Data.Contents.VertexBlendIndexed = indexedVertexBlend;
-        key.Data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
-      }
-
-      key.Data.Contents.VertexClipping = m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
+      D3D9FFShaderKeyVS key = BuildFFKeyVS(vertexBlendMode, indexedVertexBlend);
 
       EmitCs([
         this,
@@ -8122,6 +8151,7 @@ namespace dxvk {
       });
     }
 
+    // Viewport...
     if (hasPositionT && (m_flags.test(D3D9DeviceFlag::DirtyFFViewport) || m_ffZTest != IsZTestEnabled())) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
@@ -8185,6 +8215,9 @@ namespace dxvk {
 
       data->Material = m_state.material;
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
+      if (useUbershader) {
+        data->Key = BuildFFKeyVS(vertexBlendMode, indexedVertexBlend).Data;
+      }
     }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {

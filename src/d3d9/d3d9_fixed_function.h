@@ -4,6 +4,8 @@
 
 #include "d3d9_caps.h"
 
+#include "d3d9_state.h"
+
 #include "../dxvk/dxvk_shader.h"
 
 #include "../dxso/dxso_isgn.h"
@@ -109,58 +111,6 @@ namespace dxvk {
     D3D9FF_VertexBlendMode_Tween,
   };
 
-  struct D3D9FFShaderKeyVSData {
-    union {
-      struct {
-        uint32_t TexcoordIndices : 24;
-
-        uint32_t VertexHasPositionT : 1;
-
-        uint32_t VertexHasColor0 : 1; // Diffuse
-        uint32_t VertexHasColor1 : 1; // Specular
-
-        uint32_t VertexHasPointSize : 1;
-
-        uint32_t UseLighting : 1;
-
-        uint32_t NormalizeNormals : 1;
-        uint32_t LocalViewer : 1;
-        uint32_t RangeFog : 1;
-
-        uint32_t TexcoordFlags : 24;
-
-        uint32_t DiffuseSource : 2;
-        uint32_t AmbientSource : 2;
-        uint32_t SpecularSource : 2;
-        uint32_t EmissiveSource : 2;
-
-        uint32_t TransformFlags : 24;
-
-        uint32_t LightCount : 4;
-
-        uint32_t VertexTexcoordDeclMask : 24;
-        uint32_t VertexHasFog : 1;
-
-        uint32_t VertexBlendMode    : 2;
-        uint32_t VertexBlendIndexed : 1;
-        uint32_t VertexBlendCount   : 2;
-
-        uint32_t VertexClipping     : 1;
-      } Contents;
-
-      uint32_t Primitive[5];
-    };
-  };
-
-  struct D3D9FFShaderKeyVS {
-    D3D9FFShaderKeyVS() {
-      // memcmp safety
-      std::memset(&Data, 0, sizeof(Data));
-    }
-
-    D3D9FFShaderKeyVSData Data;
-  };
-
   constexpr uint32_t TextureArgCount = 3;
 
   struct D3D9FFShaderStage {
@@ -229,6 +179,9 @@ namespace dxvk {
             D3D9DeviceEx*         pDevice,
       const D3D9FFShaderKeyFS&    Key);
 
+    D3D9FFShader(
+            D3D9DeviceEx*         pDevice);
+
     template <typename T>
     void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
 
@@ -247,6 +200,10 @@ namespace dxvk {
 
   public:
 
+    D3D9FFShaderModuleSet() = delete;
+
+    explicit D3D9FFShaderModuleSet(D3D9DeviceEx* pDevice);
+
     D3D9FFShader GetShaderModule(
             D3D9DeviceEx*         pDevice,
       const D3D9FFShaderKeyVS&    ShaderKey);
@@ -254,6 +211,10 @@ namespace dxvk {
     D3D9FFShader GetShaderModule(
             D3D9DeviceEx*         pDevice,
       const D3D9FFShaderKeyFS&    ShaderKey);
+
+    const D3D9FFShader& GetVSUbershaderModule() const {
+      return m_vsUbershader;
+    }
 
     UINT GetVSCount() const {
       return m_vsModules.size();
@@ -274,6 +235,8 @@ namespace dxvk {
       D3D9FFShaderKeyFS,
       D3D9FFShader,
       D3D9FFShaderKeyHash, D3D9FFShaderKeyEq> m_fsModules;
+
+    D3D9FFShader m_vsUbershader;
 
   };
 
