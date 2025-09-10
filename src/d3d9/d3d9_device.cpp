@@ -8246,8 +8246,6 @@ namespace dxvk {
             break;
         }
 
-        stage.TextureBound = m_state.textures[idx] != nullptr ? 1 : 0;
-
         stage.ColorOp = data[DXVK_TSS_COLOROP];
         stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
 
@@ -8259,17 +8257,7 @@ namespace dxvk {
         stage.AlphaArg1 = data[DXVK_TSS_ALPHAARG1];
         stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
 
-        const uint32_t samplerOffset = idx * 2;
-        stage.Type         = (m_textureSlotTracking.textureType >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
-
-        uint32_t ttff  = data[DXVK_TSS_TEXTURETRANSFORMFLAGS];
-        uint32_t count = ttff & ~D3DTTFF_PROJECTED;
-
-        stage.Projected      = (ttff & D3DTTFF_PROJECTED) ? 1      : 0;
-        stage.ProjectedCount = (ttff & D3DTTFF_PROJECTED) ? count  : 0;
-
-        stage.SampleDref = (m_textureSlotTracking.depth & (1 << idx)) != 0;
       }
 
       auto& stage0 = key.Stages[0].Contents;
