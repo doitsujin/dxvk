@@ -28,11 +28,46 @@ namespace dxvk {
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
 
     SpecSamplerFetch4,      // 1 bit for 16 PS samplers       | Bits: 16
+    SpecFFTextureStageCount, // Range: 1 -> 8 | Bits: 3
 
     SpecSamplerDrefClamp,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
     SpecPointMode,          // Range: 0 -> 3                  | Bits: 2
     SpecDrefScaling,        // Range: 0-31 | Bits: 5
+
+    SpecFFGlobalSpecularEnabled,  // Bool                     | Bits: 1
+
+    SpecFFTextureStage0ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage0ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage0ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage0AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage0AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage0AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage0ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage1ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage1ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage1AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage2ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage2ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage2AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage3ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage3ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage3AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3ResultIsTemp, // Bool                  | Bits: 1
 
     SpecConstantCount,
   };
@@ -49,10 +84,9 @@ namespace dxvk {
 
   struct D3D9SpecializationInfo {
     // Spec const word 0 determines whether the other spec constants are used rather than the spec const UBO
-    static constexpr uint32_t MaxSpecDwords = 6;
+    static constexpr uint32_t MaxSpecDwords = 10;
 
-    static constexpr uint32_t MaxUBODwords  = 5;
-    static constexpr size_t UBOSize = MaxUBODwords * sizeof(uint32_t);
+    static constexpr size_t UBOSize = MaxSpecDwords * sizeof(uint32_t);
 
     static constexpr std::array<BitfieldPosition, SpecConstantCount> Layout{{
       { 0, 0, 32 },  // SamplerType
@@ -71,11 +105,48 @@ namespace dxvk {
       { 3, 16, 16 }, // PixelShaderBools
 
       { 4, 0,  16 }, // SamplerFetch4
+      { 4, 16,  3 }, // FFTextureStageCount
 
       { 5, 0, 21 },  // SamplerDrefClamp
       { 5, 21, 3 },  // ClipPlaneCount
       { 5, 24, 2 },  // PointMode
       { 5, 26, 5 },  // DrefScaling
+
+      { 6, 31, 1 },  // FFGlobalSpecularEnabled.
+      // Packed with Texture stage 0 but placed here out of order so every texture stage
+      // has the same number of entries in the Layout array.
+
+      { 6,  0, 5 },  // FFTextureStage0ColorOp
+      { 6,  5, 5 },  // FFTextureStage0ColorArg1
+      { 6, 10, 5 },  // FFTextureStage0ColorArg2
+      { 6, 15, 5 },  // FFTextureStage0AlphaOp
+      { 6, 20, 5 },  // FFTextureStage0AlphaArg1
+      { 6, 25, 5 },  // FFTextureStage0AlphaArg2
+      { 6, 30, 1 },  // FFTextureStage0ResultIsTemp
+
+      { 7,  0, 5 },  // FFTextureStage1ColorOp
+      { 7,  5, 5 },  // FFTextureStage1ColorArg1
+      { 7, 10, 5 },  // FFTextureStage1ColorArg2
+      { 7, 15, 5 },  // FFTextureStage1AlphaOp
+      { 7, 20, 5 },  // FFTextureStage1AlphaArg1
+      { 7, 25, 5 },  // FFTextureStage1AlphaArg2
+      { 7, 30, 1 },  // FFTextureStage1ResultIsTemp
+
+      { 8,  0, 5 },  // FFTextureStage2ColorOp
+      { 8,  5, 5 },  // FFTextureStage2ColorArg1
+      { 8, 10, 5 },  // FFTextureStage2ColorArg2
+      { 8, 15, 5 },  // FFTextureStage2AlphaOp
+      { 8, 20, 5 },  // FFTextureStage2AlphaArg1
+      { 8, 25, 5 },  // FFTextureStage2AlphaArg2
+      { 8, 30, 1 },  // FFTextureStage2ResultIsTemp
+
+      { 9,  0, 5 },  // FFTextureStage3ColorOp
+      { 9,  5, 5 },  // FFTextureStage3ColorArg1
+      { 9, 10, 5 },  // FFTextureStage3ColorArg2
+      { 9, 15, 5 },  // FFTextureStage3AlphaOp
+      { 9, 20, 5 },  // FFTextureStage3AlphaArg1
+      { 9, 25, 5 },  // FFTextureStage3AlphaArg2
+      { 9, 30, 1 },  // FFTextureStage3ResultIsTemp
     }};
 
     template <D3D9SpecConstantId Id, typename T>
@@ -92,9 +163,29 @@ namespace dxvk {
       return true;
     }
 
+    template <typename T>
+    bool set(const D3D9SpecConstantId id, const T& value) {
+      const uint32_t x = uint32_t(value);
+      if (get(id) == x)
+        return false;
+
+      const auto& layout = Layout[id];
+
+      data[layout.dwordOffset] &= ~layout.mask();
+      data[layout.dwordOffset] |= (x << layout.bitOffset) & layout.mask();
+
+      return true;
+    }
+
     template <D3D9SpecConstantId Id>
     uint32_t get() const {
       constexpr auto& layout = Layout[Id];
+
+      return (data[layout.dwordOffset] & layout.mask()) >> layout.bitOffset;
+    }
+
+    uint32_t get(const D3D9SpecConstantId id) const {
+      const auto& layout = Layout[id];
 
       return (data[layout.dwordOffset] & layout.mask()) >> layout.bitOffset;
     }
