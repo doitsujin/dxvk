@@ -8142,11 +8142,6 @@ namespace dxvk {
     if (resourceList.empty())
       return;
 
-    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
-      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
-        vk::makeLabel(0xc0a2f0, "Memory defrag"));
-    }
-
     std::vector<DxvkRelocateBufferInfo> bufferInfos;
     std::vector<DxvkRelocateImageInfo> imageInfos;
 
@@ -8179,6 +8174,11 @@ namespace dxvk {
     // If there are any resources to relocate, we have to stall the transfer
     // queue so that subsequent resource uploads do not overlap with resource
     // copies on the graphics timeline.
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xc0a2f0, "Memory defrag"));
+    }
+
     relocateResources(
       bufferInfos.size(), bufferInfos.data(),
       imageInfos.size(), imageInfos.data());
