@@ -113,45 +113,6 @@ namespace dxvk {
 
   constexpr uint32_t TextureArgCount = 3;
 
-  struct D3D9FFShaderStage {
-    union {
-      struct {
-        uint32_t     ColorOp   : 5;
-        uint32_t     ColorArg0 : 6;
-        uint32_t     ColorArg1 : 6;
-        uint32_t     ColorArg2 : 6;
-
-        uint32_t     AlphaOp   : 5;
-        uint32_t     AlphaArg0 : 6;
-        uint32_t     AlphaArg1 : 6;
-        uint32_t     AlphaArg2 : 6;
-
-        uint32_t     ResultIsTemp : 1;
-
-        // Included in here, read from Stage 0 for packing reasons
-        // Affects all stages.
-        uint32_t     GlobalSpecularEnable : 1;
-      } Contents;
-
-      uint32_t Primitive[2];
-    };
-  };
-
-  struct D3D9FFShaderKeyFS {
-    D3D9FFShaderKeyFS() {
-      // memcmp safety
-      std::memset(Stages, 0, sizeof(Stages));
-
-      // Normalize this. DISABLE != 0.
-      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        Stages[i].Contents.ColorOp = D3DTOP_DISABLE;
-        Stages[i].Contents.AlphaOp = D3DTOP_DISABLE;
-      }
-    }
-
-    D3D9FFShaderStage Stages[caps::TextureStageCount];
-  };
-
   struct D3D9FFShaderKeyHash {
     size_t operator () (const D3D9FFShaderKeyVS& key) const;
     size_t operator () (const D3D9FFShaderKeyFS& key) const;
@@ -180,7 +141,8 @@ namespace dxvk {
       const D3D9FFShaderKeyFS&    Key);
 
     D3D9FFShader(
-            D3D9DeviceEx*         pDevice);
+            D3D9DeviceEx*         pDevice,
+            DxsoProgramType       ProgramType);
 
     template <typename T>
     void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
@@ -216,6 +178,10 @@ namespace dxvk {
       return m_vsUbershader;
     }
 
+    const D3D9FFShader& GetFSUbershaderModule() const {
+      return m_fsUbershader;
+    }
+
     UINT GetVSCount() const {
       return m_vsModules.size();
     }
@@ -237,6 +203,7 @@ namespace dxvk {
       D3D9FFShaderKeyHash, D3D9FFShaderKeyEq> m_fsModules;
 
     D3D9FFShader m_vsUbershader;
+    D3D9FFShader m_fsUbershader;
 
   };
 

@@ -190,8 +190,48 @@ namespace dxvk {
   };
 
 
+  struct D3D9FFShaderStage {
+    union {
+      struct {
+        uint32_t     ColorOp   : 5;
+        uint32_t     ColorArg0 : 6;
+        uint32_t     ColorArg1 : 6;
+        uint32_t     ColorArg2 : 6;
+
+        uint32_t     AlphaOp   : 5;
+        uint32_t     AlphaArg0 : 6;
+        uint32_t     AlphaArg1 : 6;
+        uint32_t     AlphaArg2 : 6;
+
+        uint32_t     ResultIsTemp : 1;
+
+        // Included in here, read from Stage 0 for packing reasons
+        // Affects all stages.
+        uint32_t     GlobalSpecularEnable : 1;
+      } Contents;
+
+      uint32_t Primitive[2];
+    };
+  };
+
+  struct D3D9FFShaderKeyFS {
+    D3D9FFShaderKeyFS() {
+      // memcmp safety
+      std::memset(Stages, 0, sizeof(Stages));
+
+      // Normalize this. DISABLE != 0.
+      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        Stages[i].Contents.ColorOp = D3DTOP_DISABLE;
+        Stages[i].Contents.AlphaOp = D3DTOP_DISABLE;
+      }
+    }
+
+    D3D9FFShaderStage Stages[caps::TextureStageCount];
+  };
+
   struct D3D9FixedFunctionPS {
     Vector4 textureFactor;
+    D3D9FFShaderKeyFS Key;
   };
 
   enum D3D9SharedPSStages {
