@@ -194,6 +194,7 @@ namespace dxvk {
     m_specInfo.set<SpecDrefScaling, uint32_t>(m_d3d9Options.drefScaling);
 
     BindFFUbershader<DxsoProgramType::VertexShader>();
+    BindFFUbershader<DxsoProgramType::PixelShader>();
   }
 
 
@@ -3347,11 +3348,12 @@ namespace dxvk {
 
     // We unbound the pixel shader before,
     // let's make sure that gets rebound.
-    m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-
     if (m_state.pixelShader != nullptr) {
       BindShader<DxsoProgramTypes::PixelShader>(
         GetCommonShader(m_state.pixelShader));
+    } else {
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      BindFFUbershader<DxsoProgramType::PixelShader>();
     }
 
     if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
@@ -3915,13 +3917,14 @@ namespace dxvk {
     const D3D9ShaderMasks newShaderMasks = PSShaderMasks();
 
     if (shader != nullptr) {
-      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-
       BindShader<DxsoProgramTypes::PixelShader>(newShader);
 
       UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
     }
     else {
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      BindFFUbershader<DxsoProgramType::PixelShader>();
+
       // TODO: What fixed function textures are in use?
       // Currently we are making all 8 of them as in use here.
       // Fixed function always uses spec constants to decide the texture type.
@@ -7761,12 +7764,21 @@ namespace dxvk {
 
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::BindFFUbershader() {
-    EmitCs([
-     &cShaders = m_ffModules
-    ](DxvkContext* ctx) {
-      auto shader = cShaders.GetVSUbershaderModule();
-      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(shader.GetShader());
-    });
+    if (ShaderStage == DxsoProgramType::VertexShader) {
+      EmitCs([
+       &cShaders = m_ffModules
+      ](DxvkContext* ctx) {
+        auto shader = cShaders.GetVSUbershaderModule();
+        ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(shader.GetShader());
+      });
+    } else {
+      EmitCs([
+       &cShaders = m_ffModules
+      ](DxvkContext* ctx) {
+        auto shader = cShaders.GetFSUbershaderModule();
+        ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(shader.GetShader());
+      });
+    }
   }
 
 
@@ -8236,77 +8248,94 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateFixedFunctionPS() {
-    // Shader...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
-      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
+  D3D9FFShaderKeyFS D3D9DeviceEx::BuildFFKeyFS() const {
+     // Used args for a given operation.
+    auto ArgsMask = [](DWORD Op) {
+      switch (Op) {
+        case D3DTOP_DISABLE:
+          return 0b000u; // No Args
+        case D3DTOP_SELECTARG1:
+        case D3DTOP_PREMODULATE:
+          return 0b010u; // Arg 1
+        case D3DTOP_SELECTARG2:
+          return 0b100u; // Arg 2
+        case D3DTOP_MULTIPLYADD:
+        case D3DTOP_LERP:
+          return 0b111u; // Arg 0, 1, 2
+        default:
+          return 0b110u; // Arg 1, 2
+      }
+    };
 
-      // Used args for a given operation.
-      auto ArgsMask = [](DWORD Op) {
-        switch (Op) {
-          case D3DTOP_DISABLE:
-            return 0b000u; // No Args
-          case D3DTOP_SELECTARG1:
-          case D3DTOP_PREMODULATE:
-            return 0b010u; // Arg 1
-          case D3DTOP_SELECTARG2:
-            return 0b100u; // Arg 2
-          case D3DTOP_MULTIPLYADD:
-          case D3DTOP_LERP:
-            return 0b111u; // Arg 0, 1, 2
-          default:
-            return 0b110u; // Arg 1, 2
-        }
-      };
+    D3D9FFShaderKeyFS key;
 
-      D3D9FFShaderKeyFS key;
+    uint32_t activeTextureStageCount = 0;
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      auto& stage = key.Stages[i].Contents;
+      auto& data  = m_state.textureStages[i];
 
-      uint32_t idx;
-      for (idx = 0; idx < caps::TextureStageCount; idx++) {
-        auto& stage = key.Stages[idx].Contents;
-        auto& data  = m_state.textureStages[idx];
+      // Subsequent stages do not occur if this is true.
+      if (data[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
+        break;
 
-        // Subsequent stages do not occur if this is true.
-        if (data[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
+      // If the stage is invalid (ie. no texture bound),
+      // this and all subsequent stages get disabled.
+      if (m_state.textures[i] == nullptr) {
+        if (((data[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 0u)))
+         || ((data[DXVK_TSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 1u)))
+         || ((data[DXVK_TSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 2u))))
           break;
-
-        // If the stage is invalid (ie. no texture bound),
-        // this and all subsequent stages get disabled.
-        if (m_state.textures[idx] == nullptr) {
-          if (((data[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 0u)))
-           || ((data[DXVK_TSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 1u)))
-           || ((data[DXVK_TSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 2u))))
-            break;
-        }
-
-        stage.ColorOp = data[DXVK_TSS_COLOROP];
-        stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
-
-        stage.ColorArg0 = data[DXVK_TSS_COLORARG0];
-        stage.ColorArg1 = data[DXVK_TSS_COLORARG1];
-        stage.ColorArg2 = data[DXVK_TSS_COLORARG2];
-
-        stage.AlphaArg0 = data[DXVK_TSS_ALPHAARG0];
-        stage.AlphaArg1 = data[DXVK_TSS_ALPHAARG1];
-        stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
-
-        stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
       }
 
-      auto& stage0 = key.Stages[0].Contents;
+      stage.ColorOp = data[DXVK_TSS_COLOROP];
+      stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
 
-      if (stage0.ResultIsTemp &&
-          stage0.ColorOp != D3DTOP_DISABLE &&
-          stage0.AlphaOp == D3DTOP_DISABLE) {
-        stage0.AlphaOp   = D3DTOP_SELECTARG1;
-        stage0.AlphaArg1 = D3DTA_DIFFUSE;
-      }
+      stage.ColorArg0 = data[DXVK_TSS_COLORARG0];
+      stage.ColorArg1 = data[DXVK_TSS_COLORARG1];
+      stage.ColorArg2 = data[DXVK_TSS_COLORARG2];
 
-      stage0.GlobalSpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
+      stage.AlphaArg0 = data[DXVK_TSS_ALPHAARG0];
+      stage.AlphaArg1 = data[DXVK_TSS_ALPHAARG1];
+      stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
 
-      // The last stage *always* writes to current.
-      if (idx >= 1)
-        key.Stages[idx - 1].Contents.ResultIsTemp = false;
+      stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
+
+      activeTextureStageCount = i + 1;
+    }
+
+    auto& stage0 = key.Stages[0].Contents;
+
+    if (stage0.ResultIsTemp &&
+        stage0.ColorOp != D3DTOP_DISABLE &&
+        stage0.AlphaOp == D3DTOP_DISABLE) {
+      stage0.AlphaOp   = D3DTOP_SELECTARG1;
+      stage0.AlphaArg1 = D3DTA_DIFFUSE;
+    }
+
+    stage0.GlobalSpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
+
+    // The last stage *always* writes to current.
+    if (activeTextureStageCount >= 1)
+      key.Stages[activeTextureStageCount - 1].Contents.ResultIsTemp = false;
+
+    return key;
+  }
+
+
+  void D3D9DeviceEx::UpdateFixedFunctionPS() {
+    if (unlikely(!m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) && !m_flags.test(D3D9DeviceFlag::DirtyFFPixelData)))
+      return;
+
+    // Shader...
+    const bool useUbershader = m_d3d9Options.ffUbershaderFS;
+
+    D3D9FFShaderKeyFS key = BuildFFKeyFS();
+    if (useUbershader && m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
+      // The flags are set based on the specialized shaders.
+      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+    } else if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
 
       EmitCs([
         this,
@@ -8318,8 +8347,7 @@ namespace dxvk {
       });
     }
 
-    // Constants
-
+    // Constants...
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelData);
 
@@ -8328,6 +8356,9 @@ namespace dxvk {
 
       D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(mapPtr);
       DecodeD3DCOLOR((D3DCOLOR)rs[D3DRS_TEXTUREFACTOR], data->textureFactor.data);
+      if (useUbershader) {
+        data->Key = key;
+      }
     }
   }
 

@@ -170,6 +170,9 @@ namespace dxvk {
 
     /// Use the uber shader for fixed function vertex shaders.
     bool ffUbershaderVS;
+
+    /// Use the uber shader for fixed function fragment shaders.
+    bool ffUbershaderFS;
   };
 
 }
