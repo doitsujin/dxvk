@@ -24,6 +24,8 @@ namespace dxvk {
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
     uint32_t patchVertexCount = 0;
+    /// Manually assigned debug name
+    std::string debugName;
   };
 
 

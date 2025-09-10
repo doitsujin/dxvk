@@ -36,7 +36,9 @@ namespace dxvk {
         info.samplerHeap.getBinding()));
     }
 
-    if (m_debugName.empty())
+    if (!info.debugName.empty())
+      m_debugName = info.debugName;
+    else if (m_debugName.empty())
       m_debugName = std::to_string(getCookie());
 
     m_code = SpirvCompressedBuffer(code);
