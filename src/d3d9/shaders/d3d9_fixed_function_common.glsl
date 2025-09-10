@@ -68,41 +68,11 @@ const uint SpecPixelFogMode = 8;
 const uint SpecVertexShaderBools = 9;
 const uint SpecPixelShaderBools = 10;
 const uint SpecSamplerFetch4 = 11;
-const uint SpecFFTextureStageCount = 12;
-const uint SpecSamplerDrefClamp = 13;
-const uint SpecClipPlaneCount = 14;
-const uint SpecPointMode = 15;
-const uint SpecDrefScaling = 16;
-const uint SpecFFGlobalSpecularEnabled = 17;
-const uint SpecFFTextureStage0ColorOp = 18;
-const uint SpecFFTextureStage0ColorArg1 = 19;
-const uint SpecFFTextureStage0ColorArg2 = 20;
-const uint SpecFFTextureStage0AlphaOp = 21;
-const uint SpecFFTextureStage0AlphaArg1 = 22;
-const uint SpecFFTextureStage0AlphaArg2 = 23;
-const uint SpecFFTextureStage0ResultIsTemp = 24;
-const uint SpecFFTextureStage1ColorOp = 25;
-const uint SpecFFTextureStage1ColorArg1 = 26;
-const uint SpecFFTextureStage1ColorArg2 = 27;
-const uint SpecFFTextureStage1AlphaOp = 28;
-const uint SpecFFTextureStage1AlphaArg1 = 29;
-const uint SpecFFTextureStage1AlphaArg2 = 30;
-const uint SpecFFTextureStage1ResultIsTemp = 31;
-const uint SpecFFTextureStage2ColorOp = 32;
-const uint SpecFFTextureStage2ColorArg1 = 33;
-const uint SpecFFTextureStage2ColorArg2 = 34;
-const uint SpecFFTextureStage2AlphaOp = 35;
-const uint SpecFFTextureStage2AlphaArg1 = 36;
-const uint SpecFFTextureStage2AlphaArg2 = 37;
-const uint SpecFFTextureStage2ResultIsTemp = 38;
-const uint SpecFFTextureStage3ColorOp = 39;
-const uint SpecFFTextureStage3ColorArg1 = 40;
-const uint SpecFFTextureStage3ColorArg2 = 41;
-const uint SpecFFTextureStage3AlphaOp = 42;
-const uint SpecFFTextureStage3AlphaArg1 = 43;
-const uint SpecFFTextureStage3AlphaArg2 = 44;
-const uint SpecFFTextureStage3ResultIsTemp = 45;
-const uint SpecConstantCount = 46;
+const uint SpecSamplerDrefClamp = 12;
+const uint SpecClipPlaneCount = 13;
+const uint SpecPointMode = 14;
+const uint SpecDrefScaling = 15;
+const uint SpecConstantCount = 16;
 
 struct BitfieldPosition {
     uint dwordOffset;
@@ -128,46 +98,11 @@ BitfieldPosition SpecConstLayout[SpecConstantCount] = {
     { 3, 16, 16 }, // PixelShaderBools
 
     { 4, 0,  16 }, // SamplerFetch4
-    { 4, 16,  3 }, // FFTextureStageCount
 
     { 5, 0, 21 },  // SamplerDrefClamp
     { 5, 21, 3 },  // ClipPlaneCount
     { 5, 24, 2 },  // PointMode
     { 5, 26, 5 },  // DrefScaling
-
-    { 6, 31, 1 },  // FFGlobalSpecularEnabled.
-
-    { 6,  0, 5 },  // FFTextureStage0ColorOp
-    { 6,  5, 5 },  // FFTextureStage0ColorArg1
-    { 6, 10, 5 },  // FFTextureStage0ColorArg2
-    { 6, 15, 5 },  // FFTextureStage0AlphaOp
-    { 6, 20, 5 },  // FFTextureStage0AlphaArg1
-    { 6, 25, 5 },  // FFTextureStage0AlphaArg2
-    { 6, 30, 1 },  // FFTextureStage0ResultIsTemp
-
-    { 7,  0, 5 },  // FFTextureStage1ColorOp
-    { 7,  5, 5 },  // FFTextureStage1ColorArg1
-    { 7, 10, 5 },  // FFTextureStage1ColorArg2
-    { 7, 15, 5 },  // FFTextureStage1AlphaOp
-    { 7, 20, 5 },  // FFTextureStage1AlphaArg1
-    { 7, 25, 5 },  // FFTextureStage1AlphaArg2
-    { 7, 30, 1 },  // FFTextureStage1ResultIsTemp
-
-    { 8,  0, 5 },  // FFTextureStage2ColorOp
-    { 8,  5, 5 },  // FFTextureStage2ColorArg1
-    { 8, 10, 5 },  // FFTextureStage2ColorArg2
-    { 8, 15, 5 },  // FFTextureStage2AlphaOp
-    { 8, 20, 5 },  // FFTextureStage2AlphaArg1
-    { 8, 25, 5 },  // FFTextureStage2AlphaArg2
-    { 8, 30, 1 },  // FFTextureStage2ResultIsTemp
-
-    { 9,  0, 5 },  // FFTextureStage3ColorOp
-    { 9,  5, 5 },  // FFTextureStage3ColorArg1
-    { 9, 10, 5 },  // FFTextureStage3ColorArg2
-    { 9, 15, 5 },  // FFTextureStage3AlphaOp
-    { 9, 20, 5 },  // FFTextureStage3AlphaArg1
-    { 9, 25, 5 },  // FFTextureStage3AlphaArg2
-    { 9, 30, 1 },  // FFTextureStage3ResultIsTemp
 };
 
 bool specIsOptimized() {
