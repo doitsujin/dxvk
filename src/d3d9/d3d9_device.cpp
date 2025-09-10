@@ -4559,6 +4559,18 @@ namespace dxvk {
     auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
     auto newTexture = GetCommonTexture(pTexture);
 
+    // We need to check our ops and disable respective stages.
+    // Given we have transition from a null resource to
+    // a valid resource or vice versa.
+    const bool isPSSampler = StateSampler < caps::MaxTexturesPS;
+    if (isPSSampler) {
+      // If we either bind a new texture or unbind the old one,
+      // we need to update the fixed function shader
+      // because we generate a different shader based on whether each texture is bound.
+      if (newTexture == nullptr || oldTexture == nullptr)
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+    }
+
     bool oldTextureIsCube = oldTexture != nullptr && oldTexture->IsCube();
     bool newTextureIsCube = newTexture != nullptr && newTexture->IsCube();
     if (unlikely(oldTextureIsCube != newTextureIsCube)) {
