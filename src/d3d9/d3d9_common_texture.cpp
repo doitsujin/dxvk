@@ -618,8 +618,40 @@ namespace dxvk {
         return;
     }
 
-    if (m_desc.Depth == 1 && m_desc.MipLevels == 1 && m_desc.MultiSample == D3DMULTISAMPLE_NONE &&
+    struct d3dkmt_d3d9_desc desc = {
+      .dxgi = {
+        .size = sizeof(desc),
+        .version = 1,
+        .width = m_desc.Width,
+        .height = m_desc.Height,
+        .format = dxgiFormat,
+        .unknown_0 = 1,
+      },
+      .format = (D3DFORMAT)m_desc.Format,
+      .type = m_type,
+      .usage = m_desc.Usage | 0x8000000,
+    };
+
+    switch (m_type) {
+      case D3DRTYPE_TEXTURE:
+        desc.texture.width = m_desc.Width;
+        desc.texture.height = m_desc.Height;
+        desc.texture.levels = m_desc.MipLevels;
+        break;
+      case D3DRTYPE_SURFACE:
+        desc.surface.width = m_desc.Width;
+        desc.surface.height = m_desc.Height;
+        break;
+      default:
+        Logger::warn(str::format("D3D9: Unsupported type for shared textures:", m_type));
+        break;
+    }
+
+    if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &desc, sizeof(desc)) &&
+        m_desc.Depth == 1 && m_desc.MipLevels == 1 && m_desc.MultiSample == D3DMULTISAMPLE_NONE &&
         m_desc.Usage & D3DUSAGE_RENDERTARGET && dxgiFormat != DXGI_FORMAT_UNKNOWN) {
+      HANDLE ntHandle = openKmtHandle(m_image->sharedHandle());
+
       DxvkSharedTextureMetadata metadata;
 
       metadata.Width              = m_desc.Width;
@@ -635,15 +667,11 @@ namespace dxvk {
       metadata.MiscFlags          = D3D11_RESOURCE_MISC_SHARED;
       metadata.TextureLayout      = D3D11_TEXTURE_LAYOUT_UNDEFINED;
 
-      if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &metadata, sizeof(metadata))) {
-        HANDLE ntHandle = openKmtHandle(m_image->sharedHandle());
+      if (ntHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(ntHandle, &metadata, sizeof(metadata)))
+        Logger::warn("D3D9: Failed to write shared resource info for a texture");
 
-        if (ntHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(ntHandle, &metadata, sizeof(metadata)))
-          Logger::warn("D3D9: Failed to write shared resource info for a texture");
-
-        if (ntHandle != INVALID_HANDLE_VALUE)
-          ::CloseHandle(ntHandle);
-      }
+      if (ntHandle != INVALID_HANDLE_VALUE)
+        ::CloseHandle(ntHandle);
     }
   }
 

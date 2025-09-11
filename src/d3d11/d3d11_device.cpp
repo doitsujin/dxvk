@@ -2411,12 +2411,61 @@ namespace dxvk {
 
 #ifdef _WIN32
     D3D11_COMMON_TEXTURE_DESC d3d11Desc;
-    DxvkSharedTextureMetadata metadata;
-    size_t size = sizeof(metadata);
+    union d3dkmt_desc desc = {0};
+    size_t size = sizeof(desc);
     LUID luid;
 
     memcpy(&luid, m_dxvkAdapter->deviceProperties().vk11.deviceLUID, sizeof(luid));
-    if (!getSharedResourceRuntimeData(luid, hResource, &metadata, &size) || size != sizeof(metadata)) {
+    if (getSharedResourceRuntimeData(luid, hResource, &desc, &size)) {
+      if (desc.dxgi.size == sizeof(desc.d3d11) && desc.dxgi.version == 4) {
+        switch (desc.d3d11.dimension) {
+          case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+            d3d11Desc.Width = desc.d3d11.d3d11_2d.Width;
+            d3d11Desc.Height = desc.d3d11.d3d11_2d.Height;
+            d3d11Desc.Depth = 1;
+            d3d11Desc.MipLevels = desc.d3d11.d3d11_2d.MipLevels;
+            d3d11Desc.ArraySize = desc.d3d11.d3d11_2d.ArraySize;
+            d3d11Desc.Format = desc.d3d11.d3d11_2d.Format;
+            d3d11Desc.SampleDesc = desc.d3d11.d3d11_2d.SampleDesc;
+            d3d11Desc.Usage = desc.d3d11.d3d11_2d.Usage;
+            d3d11Desc.BindFlags = desc.d3d11.d3d11_2d.BindFlags;
+            d3d11Desc.CPUAccessFlags = desc.d3d11.d3d11_2d.CPUAccessFlags;
+            d3d11Desc.MiscFlags = desc.d3d11.d3d11_2d.MiscFlags;
+            d3d11Desc.TextureLayout = D3D11_TEXTURE_LAYOUT_UNDEFINED;
+            break;
+
+          default:
+            Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Unsupported dimension: ", desc.d3d11.dimension));
+            return E_INVALIDARG;
+        }
+      } else if (desc.dxgi.size == sizeof(desc.d3d9) && desc.dxgi.version == 1) {
+        switch (desc.d3d9.type) {
+          case D3DRTYPE_TEXTURE:
+            d3d11Desc.Width = desc.d3d9.texture.width;
+            d3d11Desc.Height = desc.d3d9.texture.height;
+            d3d11Desc.Depth = 1;
+            d3d11Desc.MipLevels = desc.d3d9.texture.levels;
+            d3d11Desc.ArraySize = desc.d3d9.texture.depth;
+            d3d11Desc.Format = desc.d3d9.dxgi.format;
+            d3d11Desc.SampleDesc.Count = 1;
+            d3d11Desc.SampleDesc.Quality = 0;
+            d3d11Desc.Usage = D3D11_USAGE_DEFAULT;
+            d3d11Desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+            d3d11Desc.CPUAccessFlags = 0;
+            d3d11Desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED;
+            d3d11Desc.TextureLayout = D3D11_TEXTURE_LAYOUT_UNDEFINED;
+            break;
+
+          default:
+            Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Unsupported D3D9 type: ", desc.d3d9.type));
+            return E_INVALIDARG;
+        }
+      } else {
+        Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Unsupported runtime desc size: ", desc.dxgi.size, " version: ", desc.dxgi.version));
+        return E_INVALIDARG;
+      }
+    } else {
+      DxvkSharedTextureMetadata metadata;
       HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
 
       if (ntHandle == INVALID_HANDLE_VALUE) {
@@ -2433,20 +2482,20 @@ namespace dxvk {
         Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
         return E_INVALIDARG;
       }
-    }
 
-    d3d11Desc.Width          = metadata.Width;
-    d3d11Desc.Height         = metadata.Height;
-    d3d11Desc.Depth          = 1,
-    d3d11Desc.MipLevels      = metadata.MipLevels;
-    d3d11Desc.ArraySize      = metadata.ArraySize;
-    d3d11Desc.Format         = metadata.Format;
-    d3d11Desc.SampleDesc     = metadata.SampleDesc;
-    d3d11Desc.Usage          = metadata.Usage;
-    d3d11Desc.BindFlags      = metadata.BindFlags;
-    d3d11Desc.CPUAccessFlags = metadata.CPUAccessFlags;
-    d3d11Desc.MiscFlags      = metadata.MiscFlags;
-    d3d11Desc.TextureLayout  = metadata.TextureLayout;
+      d3d11Desc.Width          = metadata.Width;
+      d3d11Desc.Height         = metadata.Height;
+      d3d11Desc.Depth          = 1,
+      d3d11Desc.MipLevels      = metadata.MipLevels;
+      d3d11Desc.ArraySize      = metadata.ArraySize;
+      d3d11Desc.Format         = metadata.Format;
+      d3d11Desc.SampleDesc     = metadata.SampleDesc;
+      d3d11Desc.Usage          = metadata.Usage;
+      d3d11Desc.BindFlags      = metadata.BindFlags;
+      d3d11Desc.CPUAccessFlags = metadata.CPUAccessFlags;
+      d3d11Desc.MiscFlags      = metadata.MiscFlags;
+      d3d11Desc.TextureLayout  = metadata.TextureLayout;
+    }
 
     if ((d3d11Desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE) && !(d3d11Desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))) {
       Logger::warn("Fixing up wrong MiscFlags");

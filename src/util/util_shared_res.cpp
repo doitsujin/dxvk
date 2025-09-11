@@ -9,7 +9,6 @@ namespace dxvk {
 
 #ifdef _WIN32
 
-  typedef UINT D3DKMT_HANDLE;
   typedef ULONG NTSTATUS;
   typedef ULONGLONG D3DGPU_VIRTUAL_ADDRESS;
 

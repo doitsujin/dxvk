@@ -721,27 +721,74 @@ namespace dxvk {
   
   
   void D3D11CommonTexture::ExportImageInfo() {
-    DxvkSharedTextureMetadata metadata;
+    struct d3dkmt_d3d11_desc desc = {
+      .dxgi = {
+        .size = sizeof(desc),
+        .version = 4,
+        .nt_shared = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE),
+      },
+      .dimension = m_dimension,
+    };
 
-    metadata.Width          = m_desc.Width;
-    metadata.Height         = m_desc.Height;
-    metadata.MipLevels      = m_desc.MipLevels;
-    metadata.ArraySize      = m_desc.ArraySize;
-    metadata.Format         = m_desc.Format;
-    metadata.SampleDesc     = m_desc.SampleDesc;
-    metadata.Usage          = m_desc.Usage;
-    metadata.BindFlags      = m_desc.BindFlags;
-    metadata.CPUAccessFlags = m_desc.CPUAccessFlags;
-    metadata.MiscFlags      = m_desc.MiscFlags;
-    metadata.TextureLayout  = m_desc.TextureLayout;
+    switch (m_dimension) {
+      case D3D11_RESOURCE_DIMENSION_UNKNOWN: break;
+      case D3D11_RESOURCE_DIMENSION_BUFFER: break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+        desc.d3d11_1d.Width = m_desc.Width;
+        desc.d3d11_1d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_1d.ArraySize = m_desc.ArraySize;
+        desc.d3d11_1d.Format = m_desc.Format;
+        desc.d3d11_1d.Usage = m_desc.Usage;
+        desc.d3d11_1d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_1d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_1d.MiscFlags = m_desc.MiscFlags;
+        break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+        desc.d3d11_2d.Width = m_desc.Width;
+        desc.d3d11_2d.Height = m_desc.Height;
+        desc.d3d11_2d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_2d.ArraySize = m_desc.ArraySize;
+        desc.d3d11_2d.Format = m_desc.Format;
+        desc.d3d11_2d.SampleDesc = m_desc.SampleDesc;
+        desc.d3d11_2d.Usage = m_desc.Usage;
+        desc.d3d11_2d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_2d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_2d.MiscFlags = m_desc.MiscFlags;
+        break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+        desc.d3d11_3d.Width = m_desc.Width;
+        desc.d3d11_3d.Height = m_desc.Height;
+        desc.d3d11_3d.Depth = m_desc.Depth;
+        desc.d3d11_3d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_3d.Format = m_desc.Format;
+        desc.d3d11_3d.Usage = m_desc.Usage;
+        desc.d3d11_3d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_3d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_3d.MiscFlags = m_desc.MiscFlags;
+        break;
+    }
 
-    if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &metadata, sizeof(metadata))) {
+    if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &desc, sizeof(desc))) {
       HANDLE hSharedHandle;
 
       if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
         hSharedHandle = m_image->sharedHandle();
       else
         hSharedHandle = openKmtHandle( m_image->sharedHandle() );
+
+      DxvkSharedTextureMetadata metadata;
+
+      metadata.Width          = m_desc.Width;
+      metadata.Height         = m_desc.Height;
+      metadata.MipLevels      = m_desc.MipLevels;
+      metadata.ArraySize      = m_desc.ArraySize;
+      metadata.Format         = m_desc.Format;
+      metadata.SampleDesc     = m_desc.SampleDesc;
+      metadata.Usage          = m_desc.Usage;
+      metadata.BindFlags      = m_desc.BindFlags;
+      metadata.CPUAccessFlags = m_desc.CPUAccessFlags;
+      metadata.MiscFlags      = m_desc.MiscFlags;
+      metadata.TextureLayout  = m_desc.TextureLayout;
 
       if (hSharedHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(hSharedHandle, &metadata, sizeof(metadata))) {
         Logger::warn("D3D11: Failed to write shared resource info for a texture");
