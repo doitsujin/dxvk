@@ -2410,25 +2410,31 @@ namespace dxvk {
       return S_FALSE;
 
 #ifdef _WIN32
-    HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
-
-    if (ntHandle == INVALID_HANDLE_VALUE) {
-      Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Handle not found: ", hResource));
-      return E_INVALIDARG;
-    }
-
-    DxvkSharedTextureMetadata metadata;
-    bool ret = getSharedMetadata(ntHandle, &metadata, sizeof(metadata), NULL);
-
-    if (IsKmtHandle)
-      ::CloseHandle(ntHandle);
-
-    if (!ret) {
-      Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
-      return E_INVALIDARG;
-    }
-
     D3D11_COMMON_TEXTURE_DESC d3d11Desc;
+    DxvkSharedTextureMetadata metadata;
+    size_t size = sizeof(metadata);
+    LUID luid;
+
+    memcpy(&luid, m_dxvkAdapter->deviceProperties().vk11.deviceLUID, sizeof(luid));
+    if (!getSharedResourceRuntimeData(luid, hResource, &metadata, &size) || size != sizeof(metadata)) {
+      HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
+
+      if (ntHandle == INVALID_HANDLE_VALUE) {
+        Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Handle not found: ", hResource));
+        return E_INVALIDARG;
+      }
+
+      bool ret = getSharedMetadata(ntHandle, &metadata, sizeof(metadata), NULL);
+
+      if (IsKmtHandle)
+        ::CloseHandle(ntHandle);
+
+      if (!ret) {
+        Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
+        return E_INVALIDARG;
+      }
+    }
+
     d3d11Desc.Width          = metadata.Width;
     d3d11Desc.Height         = metadata.Height;
     d3d11Desc.Depth          = 1,
@@ -2441,6 +2447,7 @@ namespace dxvk {
     d3d11Desc.CPUAccessFlags = metadata.CPUAccessFlags;
     d3d11Desc.MiscFlags      = metadata.MiscFlags;
     d3d11Desc.TextureLayout  = metadata.TextureLayout;
+
     if ((d3d11Desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE) && !(d3d11Desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))) {
       Logger::warn("Fixing up wrong MiscFlags");
       d3d11Desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED;

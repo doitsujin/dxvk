@@ -8,6 +8,11 @@
 
 namespace dxvk {
 
+    /* new Wine API, mostly compatible with Windows: */
+    bool setSharedResourceRuntimeData(HANDLE handle, const void *data, size_t size);
+    bool getSharedResourceRuntimeData(LUID luid, HANDLE handle, void *data, size_t *size);
+
+    /* old legacy Proton version, not compatible with Windows: */
     HANDLE openKmtHandle(HANDLE kmt_handle);
 
     bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize);

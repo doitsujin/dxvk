@@ -721,13 +721,6 @@ namespace dxvk {
   
   
   void D3D11CommonTexture::ExportImageInfo() {
-    HANDLE hSharedHandle;
-
-    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
-      hSharedHandle = m_image->sharedHandle();
-    else
-      hSharedHandle = openKmtHandle( m_image->sharedHandle() );
-
     DxvkSharedTextureMetadata metadata;
 
     metadata.Width          = m_desc.Width;
@@ -742,12 +735,21 @@ namespace dxvk {
     metadata.MiscFlags      = m_desc.MiscFlags;
     metadata.TextureLayout  = m_desc.TextureLayout;
 
-    if (hSharedHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(hSharedHandle, &metadata, sizeof(metadata))) {
-      Logger::warn("D3D11: Failed to write shared resource info for a texture");
-    }
+    if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &metadata, sizeof(metadata))) {
+      HANDLE hSharedHandle;
 
-    if (hSharedHandle != INVALID_HANDLE_VALUE)
-      CloseHandle(hSharedHandle);
+      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
+        hSharedHandle = m_image->sharedHandle();
+      else
+        hSharedHandle = openKmtHandle( m_image->sharedHandle() );
+
+      if (hSharedHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(hSharedHandle, &metadata, sizeof(metadata))) {
+        Logger::warn("D3D11: Failed to write shared resource info for a texture");
+      }
+
+      if (hSharedHandle != INVALID_HANDLE_VALUE)
+        CloseHandle(hSharedHandle);
+    }
   }
   
   

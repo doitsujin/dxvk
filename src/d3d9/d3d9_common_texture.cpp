@@ -620,8 +620,6 @@ namespace dxvk {
 
     if (m_desc.Depth == 1 && m_desc.MipLevels == 1 && m_desc.MultiSample == D3DMULTISAMPLE_NONE &&
         m_desc.Usage & D3DUSAGE_RENDERTARGET && dxgiFormat != DXGI_FORMAT_UNKNOWN) {
-      HANDLE ntHandle = openKmtHandle(m_image->sharedHandle());
-
       DxvkSharedTextureMetadata metadata;
 
       metadata.Width              = m_desc.Width;
@@ -637,11 +635,15 @@ namespace dxvk {
       metadata.MiscFlags          = D3D11_RESOURCE_MISC_SHARED;
       metadata.TextureLayout      = D3D11_TEXTURE_LAYOUT_UNDEFINED;
 
-      if (ntHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(ntHandle, &metadata, sizeof(metadata)))
-        Logger::warn("D3D9: Failed to write shared resource info for a texture");
+      if (!setSharedResourceRuntimeData(m_image->sharedHandle(), &metadata, sizeof(metadata))) {
+        HANDLE ntHandle = openKmtHandle(m_image->sharedHandle());
 
-      if (ntHandle != INVALID_HANDLE_VALUE)
-        ::CloseHandle(ntHandle);
+        if (ntHandle == INVALID_HANDLE_VALUE || !setSharedMetadata(ntHandle, &metadata, sizeof(metadata)))
+          Logger::warn("D3D9: Failed to write shared resource info for a texture");
+
+        if (ntHandle != INVALID_HANDLE_VALUE)
+          ::CloseHandle(ntHandle);
+      }
     }
   }
 
