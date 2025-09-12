@@ -28,7 +28,11 @@
 namespace dxvk {
   
   class DxvkInstance;
+  class DxvkShaderCache;
 
+  class DxvkIrShader;
+  class DxvkIrShaderConverter;
+  class DxvkIrShaderCreateInfo;
 
   /**
    * \brief Device performance hints
@@ -444,6 +448,22 @@ namespace dxvk {
       const util::DxvkBuiltInGraphicsState& state);
 
     /**
+     * \brief Creates IR shader from cache
+     *
+     * Will try to look up and retrive the given shader from
+     * the shader cache. If no shader converter is provided
+     * and the look-up fails, this returns \c nullptr.
+     * \param [in] name Shader name
+     * \param [in] createInfo Shader create info
+     * \param [in] converter Shader converter to
+     *    use when cache look-upo fails.
+     */
+    Rc<DxvkShader> createCachedShader(
+      const std::string&                    name,
+      const DxvkIrShaderCreateInfo&         createInfo,
+      const Rc<DxvkIrShaderConverter>&      converter);
+
+    /**
      * \brief Imports a buffer
      *
      * \param [in] createInfo Buffer create info
@@ -700,6 +720,8 @@ namespace dxvk {
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
 
     DxvkSubmissionQueue         m_submissionQueue;
+
+    Rc<DxvkShaderCache>         m_shaderCache;
 
     DxvkDevicePerfHints getPerfHints();
 
