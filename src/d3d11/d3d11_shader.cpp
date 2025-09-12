@@ -154,8 +154,16 @@ namespace dxvk {
     }
 
     // Create actual shader converter
-    m_shader = new DxvkIrShader(ModuleInfo,
-      new D3D11ShaderConverter(ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, bool(m_buffer)));
+    m_shader = pDevice->GetDXVKDevice()->createCachedShader(
+      ShaderKey.toString(), ModuleInfo, nullptr);
+
+    if (!m_shader) {
+      Rc<D3D11ShaderConverter> converter = new D3D11ShaderConverter(ShaderKey,
+        ModuleInfo, pShaderBytecode, BytecodeLength, bool(m_buffer));
+
+      m_shader = pDevice->GetDXVKDevice()->createCachedShader(
+        ShaderKey.toString(), ModuleInfo, std::move(converter));
+    }
   }
 
 
