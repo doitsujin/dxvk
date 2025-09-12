@@ -2,6 +2,8 @@
 #include "dxvk_instance.h"
 #include "dxvk_latency_builtin.h"
 #include "dxvk_latency_reflex.h"
+#include "dxvk_shader_cache.h"
+#include "dxvk_shader_ir.h"
 
 namespace dxvk {
   
@@ -24,6 +26,9 @@ namespace dxvk {
     m_objects           (this),
     m_submissionQueue   (this, queueCallback) {
     determineShaderOptions();
+
+    if (env::getEnvVar("DXVK_SHADER_CACHE") != "0" && DxvkShader::getShaderDumpPath().empty())
+      m_shaderCache = new DxvkShaderCache(DxvkShaderCache::getDefaultFilePaths());
   }
   
   
@@ -467,6 +472,26 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkShader> DxvkDevice::createCachedShader(
+    const std::string&                    name,
+    const DxvkIrShaderCreateInfo&         createInfo,
+    const Rc<DxvkIrShaderConverter>&      converter) {
+    Rc<DxvkIrShader> shader = nullptr;
+
+    if (m_shaderCache && !converter)
+      shader = m_shaderCache->lookupShader(name, createInfo);
+
+    if (!shader && converter) {
+      shader = new DxvkIrShader(createInfo, converter);
+
+      if (m_shaderCache)
+        m_shaderCache->addShader(shader);
+    }
+
+    return shader;
+  }
+
+
   Rc<DxvkBuffer> DxvkDevice::importBuffer(
     const DxvkBufferCreateInfo& createInfo,
     const DxvkBufferImportInfo& importInfo,
