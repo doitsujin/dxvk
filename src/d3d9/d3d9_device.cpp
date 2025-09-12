@@ -4644,6 +4644,9 @@ namespace dxvk {
           m_textureSlotTracking.projected &= ~(1 << Stage);
           if (Value & D3DTTFF_PROJECTED)
             m_textureSlotTracking.projected |= 1 << Stage;
+
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
           break;
 
         case DXVK_TSS_BUMPENVMAT00:
