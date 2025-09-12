@@ -8,6 +8,43 @@
 
 namespace dxvk {
 
+  size_t DxvkIrShaderCreateInfo::hash() const {
+    static_assert(std::is_trivially_copyable_v<DxvkShaderOptions>);
+
+    DxvkHashState hash;
+    hash.add(bit::fnv1a_hash(reinterpret_cast<const char*>(&options), sizeof(options)));
+    hash.add(flatShadingInputs);
+    hash.add(rasterizedStream);
+
+    for (const auto& xfb : xfbEntries)
+      hash.add(std::hash<dxbc_spv::ir::IoXfbInfo>()(xfb));
+
+    return hash;
+  }
+
+
+  bool DxvkIrShaderCreateInfo::eq(const DxvkIrShaderCreateInfo& other) const {
+    static_assert(std::is_trivially_copyable_v<DxvkShaderOptions>);
+
+    if (std::memcmp(&options, &other.options, sizeof(options)))
+      return false;
+
+    if (flatShadingInputs != other.flatShadingInputs
+     || rasterizedStream != other.rasterizedStream)
+      return false;
+
+    if (xfbEntries.size() != other.xfbEntries.size())
+      return false;
+
+    for (size_t i = 0u; i != xfbEntries.size(); i++) {
+      if (xfbEntries[i] != other.xfbEntries[i])
+        return false;
+    }
+
+    return true;
+  }
+
+
   /**
    * \brief DXVK-specific logger for dxbc-spirv
    */
