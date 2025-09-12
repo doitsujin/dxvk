@@ -176,14 +176,7 @@ namespace dxvk {
         uint32_t     AlphaArg1 : 6;
         uint32_t     AlphaArg2 : 6;
 
-        uint32_t     Type         : 2;
         uint32_t     ResultIsTemp : 1;
-        uint32_t     Projected    : 1;
-
-        uint32_t     ProjectedCount : 3;
-        uint32_t     SampleDref     : 1;
-
-        uint32_t     TextureBound : 1;
 
         // Included in here, read from Stage 0 for packing reasons
         // Affects all stages.
