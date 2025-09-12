@@ -716,4 +716,27 @@ namespace dxvk::bit {
     }
   };
 
+
+  /**
+   * \brief FNV-1a hash implementation
+   */
+  inline uint64_t fnv1a_init() {
+    return 0xcbf29ce484222325ull;
+  }
+
+  template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+  inline uint64_t fnv1a_iter(uint64_t hash, T value) {
+    return (hash ^ uint64_t(value)) * 0x100000001b3ull;
+  }
+
+  template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
+  inline uint64_t fnv1a_hash(const T* data, size_t count) {
+    uint64_t hash = fnv1a_init();
+
+    for (size_t i = 0u; i < count; i++)
+      hash = fnv1a_iter(hash, data[i]);
+
+    return hash;
+  }
+
 }
