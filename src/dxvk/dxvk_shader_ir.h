@@ -110,7 +110,22 @@ namespace dxvk {
       const DxvkIrShaderCreateInfo&   info,
             Rc<DxvkIrShaderConverter> shader);
 
+    DxvkIrShader(
+            std::string               name,
+      const DxvkIrShaderCreateInfo&   info,
+            DxvkShaderMetadata        metadata,
+            DxvkPipelineLayoutBuilder layout,
+            std::vector<uint8_t>      ir);
+
     ~DxvkIrShader();
+
+    /**
+     * \brief Queries shader create info
+     * \returns Shader create info
+     */
+    DxvkIrShaderCreateInfo getShaderCreateInfo() const {
+      return m_info;
+    }
 
     /**
      * \brief Queries shader metadata
@@ -149,6 +164,11 @@ namespace dxvk {
      * \param [in] outputStream Stream to write to
      */
     void dump(std::ostream& outputStream);
+
+    /**
+     * \brief Queries serialized IR
+     */
+    std::pair<const uint8_t*, size_t> getSerializedIr();
 
     /**
      * \brief Retrieves debug name for this shader
