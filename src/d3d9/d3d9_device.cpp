@@ -8101,7 +8101,7 @@ namespace dxvk {
         key.Data.Contents.TexcoordIndices |= index          << (i * 3);
       }
 
-      key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+      key.Data.Contents.VertexTexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
 
       key.Data.Contents.VertexBlendMode    = uint32_t(vertexBlendMode);
 

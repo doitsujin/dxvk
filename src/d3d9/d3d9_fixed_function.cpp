@@ -1183,7 +1183,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex = (m_vsKey.Data.Contents.TexcoordIndices     >> (i * 3)) & 0b111;
       uint32_t inputFlags = (m_vsKey.Data.Contents.TexcoordFlags       >> (i * 3)) & 0b111;
-      uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (inputIndex * 3)) & 0b111;
+      uint32_t texcoordCount = (m_vsKey.Data.Contents.VertexTexcoordDeclMask >> (inputIndex * 3)) & 0b111;
 
       uint32_t transformed;
 
