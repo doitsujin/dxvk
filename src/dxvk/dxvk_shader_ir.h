@@ -31,6 +31,10 @@ namespace dxvk {
     int32_t rasterizedStream = 0;
     /// Streamout parameters
     small_vector<dxbc_spv::ir::IoXfbInfo, 8u> xfbEntries = { };
+
+    size_t hash() const;
+
+    bool eq(const DxvkIrShaderCreateInfo& other) const;
   };
 
 
