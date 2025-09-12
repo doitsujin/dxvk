@@ -1276,6 +1276,21 @@ namespace dxvk {
   }
 
 
+  DxvkIrShader::DxvkIrShader(
+          std::string               name,
+    const DxvkIrShaderCreateInfo&   info,
+          DxvkShaderMetadata        metadata,
+          DxvkPipelineLayoutBuilder layout,
+          std::vector<uint8_t>      ir)
+  : m_debugName   (std::move(name)), m_info(info),
+    m_layout      (std::move(layout)),
+    m_ir          (std::move(ir)),
+    m_convertedIr (true),
+    m_metadata    (std::move(metadata)) {
+
+  }
+
+
   DxvkIrShader::~DxvkIrShader() {
 
   }
@@ -1404,6 +1419,13 @@ namespace dxvk {
   void DxvkIrShader::dump(std::ostream& outputStream) {
     auto code = getCode(nullptr, nullptr);
     outputStream.write(reinterpret_cast<const char*>(code.data()), code.size());
+  }
+
+
+  std::pair<const uint8_t*, size_t> DxvkIrShader::getSerializedIr() {
+    convertIr("getSerializedIr()");
+
+    return std::make_pair(m_ir.data(), m_ir.size());
   }
 
 
