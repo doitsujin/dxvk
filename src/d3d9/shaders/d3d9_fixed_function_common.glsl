@@ -68,7 +68,7 @@ const uint SpecPixelFogMode = 8;
 const uint SpecVertexShaderBools = 9;
 const uint SpecPixelShaderBools = 10;
 const uint SpecSamplerFetch4 = 11;
-const uint SpecFFTextureStageCount = 12;
+const uint SpecFFLastActiveTextureStage = 12;
 const uint SpecSamplerDrefClamp = 13;
 const uint SpecClipPlaneCount = 14;
 const uint SpecPointMode = 15;
@@ -128,7 +128,7 @@ BitfieldPosition SpecConstLayout[SpecConstantCount] = {
     { 3, 16, 16 }, // PixelShaderBools
 
     { 4, 0,  16 }, // SamplerFetch4
-    { 4, 16,  3 }, // FFTextureStageCount
+    { 4, 16,  3 }, // FFLastActiveTextureStage
 
     { 5, 0, 21 },  // SamplerDrefClamp
     { 5, 21, 3 },  // ClipPlaneCount

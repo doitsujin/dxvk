@@ -3921,7 +3921,7 @@ namespace dxvk {
 
       UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
 
-      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFTextureStageCount>(0u);
+      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(0u);
       dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(0u);
       constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
       for (uint32_t i = 0; i < 4; i++) {
@@ -8353,8 +8353,8 @@ namespace dxvk {
 
       // Spec constants...
       uint32_t activeTextureStageCount;
-      for (activeTextureStageCount = 1; activeTextureStageCount <= caps::TextureStageCount; activeTextureStageCount++) {
-        auto& stage = key.Stages[activeTextureStageCount - 1].Contents;
+      for (activeTextureStageCount = 0; activeTextureStageCount < caps::TextureStageCount; activeTextureStageCount++) {
+        auto& stage = key.Stages[activeTextureStageCount].Contents;
         if (stage.ColorOp == D3DTOP_DISABLE)
           break;
       }
@@ -8363,7 +8363,8 @@ namespace dxvk {
         return (arg & 0b111u) | ((arg & 0b110000u) >> 1u);
       };
 
-      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFTextureStageCount>(std::max(activeTextureStageCount, 1u) - 1u /* Subtract 1 to make it fit 3 bits */);
+      uint32_t lastActiveTextureStage = std::max(activeTextureStageCount, 1u) - 1u; // Subtract 1 to make it fit 3 bits
+      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(lastActiveTextureStage);
       dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(key.Stages[0].Contents.GlobalSpecularEnable);
       constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
       for (uint32_t i = 0; i < 4; i++) {
