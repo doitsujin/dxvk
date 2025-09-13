@@ -386,6 +386,11 @@ TextureStageArgumentValues readArgValues(uint stage, const TextureStageArguments
     return argVals;
 }
 
+uint repackArg(uint arg) {
+    // Move the flags by 1 bit. 0x18 = 0b11000
+    return (arg & ~0x18) | ((arg & 0x18) << 1u);
+}
+
 vec4 complement(vec4 val) {
     return vec4(1.0) - val;
 }
@@ -582,13 +587,13 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
 
     const TextureStageArguments colorArgs = {
         usesArg0 ? colorArg0(stage) : D3DTA_CONSTANT,
-        isStageOptimized ? specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage) : colorArg1(stage),
-        isStageOptimized ? specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage) : colorArg2(stage)
+        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)) : colorArg1(stage),
+        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage)) : colorArg2(stage)
     };
     const TextureStageArguments alphaArgs = {
         usesArg0 ? alphaArg0(stage) : D3DTA_CONSTANT,
-        isStageOptimized ? specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage) : alphaArg1(stage),
-        isStageOptimized ? specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage) : alphaArg2(stage)
+        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)) : alphaArg1(stage),
+        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage)) : alphaArg2(stage)
     };
 
     vec4 textureVal = vec4(0.0);
