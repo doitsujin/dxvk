@@ -562,7 +562,7 @@ struct TextureStageState {
 };
 
 TextureStageState runTextureStage(uint stage, TextureStageState state) {
-    if (specUint(SpecFFTextureStageCount) <= stage) {
+    if (stage > specUint(SpecFFLastActiveTextureStage)) {
         return state;
     }
 

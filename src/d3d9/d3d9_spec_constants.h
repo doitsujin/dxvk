@@ -28,7 +28,7 @@ namespace dxvk {
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
 
     SpecSamplerFetch4,      // 1 bit for 16 PS samplers       | Bits: 16
-    SpecFFTextureStageCount, // Range: 1 -> 8 | Bits: 3
+    SpecFFLastActiveTextureStage, // Range: 1 -> 8            | Bits: 3
 
     SpecSamplerDrefClamp,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecClipPlaneCount,     // 3 bits for 6 clip planes       | Bits : 3
@@ -105,7 +105,7 @@ namespace dxvk {
       { 3, 16, 16 }, // PixelShaderBools
 
       { 4, 0,  16 }, // SamplerFetch4
-      { 4, 16,  3 }, // FFTextureStageCount
+      { 4, 16,  3 }, // FFLastActiveTextureStage
 
       { 5, 0, 21 },  // SamplerDrefClamp
       { 5, 21, 3 },  // ClipPlaneCount
