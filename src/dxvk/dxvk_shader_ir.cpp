@@ -8,6 +8,43 @@
 
 namespace dxvk {
 
+  size_t DxvkIrShaderCreateInfo::hash() const {
+    static_assert(std::is_trivially_copyable_v<DxvkShaderOptions>);
+
+    DxvkHashState hash;
+    hash.add(bit::fnv1a_hash(reinterpret_cast<const char*>(&options), sizeof(options)));
+    hash.add(flatShadingInputs);
+    hash.add(rasterizedStream);
+
+    for (const auto& xfb : xfbEntries)
+      hash.add(std::hash<dxbc_spv::ir::IoXfbInfo>()(xfb));
+
+    return hash;
+  }
+
+
+  bool DxvkIrShaderCreateInfo::eq(const DxvkIrShaderCreateInfo& other) const {
+    static_assert(std::is_trivially_copyable_v<DxvkShaderOptions>);
+
+    if (std::memcmp(&options, &other.options, sizeof(options)))
+      return false;
+
+    if (flatShadingInputs != other.flatShadingInputs
+     || rasterizedStream != other.rasterizedStream)
+      return false;
+
+    if (xfbEntries.size() != other.xfbEntries.size())
+      return false;
+
+    for (size_t i = 0u; i != xfbEntries.size(); i++) {
+      if (xfbEntries[i] != other.xfbEntries[i])
+        return false;
+    }
+
+    return true;
+  }
+
+
   /**
    * \brief DXVK-specific logger for dxbc-spirv
    */
@@ -154,6 +191,8 @@ namespace dxvk {
      * \brief Runs lowering pass
      */
     void run() {
+      gatherAliasedResourceBindings();
+
       auto iter = m_builder.begin();
 
       while (iter != m_builder.getDeclarations().second) {
@@ -266,6 +305,31 @@ namespace dxvk {
       dxbc_spv::ir::SsaDef dcl = { };
     };
 
+    struct ResourceKey {
+      dxbc_spv::ir::OpCode opCode = { };
+      uint32_t registerSpace = 0u;
+      uint32_t registerIndex = 0u;
+
+      bool eq(const ResourceKey& other) const {
+        return opCode        == other.opCode
+            && registerSpace == other.registerSpace
+            && registerIndex == other.registerIndex;
+      }
+
+      size_t hash() const {
+        DxvkHashState hash;
+        hash.add(uint32_t(opCode));
+        hash.add(registerSpace);
+        hash.add(registerIndex);
+        return hash;
+      }
+    };
+
+    struct ResourceAlias {
+      bool hasAlias = false;
+      bool hasBinding = false;
+    };
+
     dxbc_spv::ir::Builder&        m_builder;
     const DxvkIrShaderConverter&  m_shader;
     DxvkIrShaderCreateInfo        m_info = { };
@@ -287,6 +351,43 @@ namespace dxvk {
 
     small_vector<SamplerInfo,     16u>  m_samplers;
     small_vector<UavCounterInfo,  64u>  m_uavCounters;
+
+    std::unordered_map<ResourceKey, ResourceAlias, DxvkHash, DxvkEq> m_resources;
+
+    ResourceAlias& getResourceAlias(dxbc_spv::ir::OpCode opCode, uint32_t space, uint32_t index) {
+      ResourceKey k = { };
+      k.opCode = opCode;
+      k.registerSpace = space;
+      k.registerIndex = index;
+
+      return m_resources.at(k);
+    }
+
+    void gatherAliasedResourceBindings() {
+      auto iter = m_builder.begin();
+
+      while (iter != m_builder.getDeclarations().second) {
+        switch (iter->getOpCode()) {
+          case dxbc_spv::ir::OpCode::eDclSrv:
+          case dxbc_spv::ir::OpCode::eDclUav: {
+            ResourceKey k = { };
+            k.opCode = iter->getOpCode();
+            k.registerSpace = uint32_t(iter->getOperand(1u));
+            k.registerIndex = uint32_t(iter->getOperand(2u));
+
+            auto e = m_resources.emplace(std::piecewise_construct, std::tuple(k), std::tuple());
+
+            if (!e.second)
+              e.first->second.hasAlias = true;
+          } break;
+
+          default:
+            break;
+        }
+
+        iter++;
+      }
+    }
 
 
     dxbc_spv::ir::Builder::iterator handleEntryPoint(dxbc_spv::ir::Builder::iterator op) {
@@ -337,12 +438,15 @@ namespace dxvk {
       auto regSpace = uint32_t(op->getOperand(1u));
       auto regIndex = uint32_t(op->getOperand(2u));
 
+      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
+
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eSrv);
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eSrv, regSpace, regIndex);
       binding.access = VK_ACCESS_SHADER_READ_BIT;
+      binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
       if (dxbc_spv::ir::resourceIsBuffer(resourceKind)) {
         if (dxbc_spv::ir::resourceIsTyped(resourceKind))
@@ -350,7 +454,9 @@ namespace dxvk {
         else
           binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       } else {
-        binding.viewType = determineViewType(resourceKind);
+        if (!resourceAlias.hasAlias)
+          binding.viewType = determineViewType(resourceKind);
+
         binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
         if (dxbc_spv::ir::resourceIsMultisampled(resourceKind))
@@ -360,7 +466,9 @@ namespace dxvk {
       if (resourceHasSparseFeedbackLoads(op))
         m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
 
-      addBinding(binding);
+      if (!std::exchange(resourceAlias.hasBinding, true))
+        addBinding(binding);
+
       return ++op;
     }
 
@@ -368,6 +476,8 @@ namespace dxvk {
     dxbc_spv::ir::Builder::iterator handleUav(dxbc_spv::ir::Builder::iterator op) {
       auto regSpace = uint32_t(op->getOperand(1u));
       auto regIndex = uint32_t(op->getOperand(2u));
+
+      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
 
       auto resourceKind = dxbc_spv::ir::ResourceKind(op->getOperand(4u));
       auto uavFlags = dxbc_spv::ir::UavFlags(op->getOperand(5u));
@@ -377,6 +487,7 @@ namespace dxvk {
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eUav, regSpace, regIndex);
+      binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
       if (!(uavFlags & dxbc_spv::ir::UavFlag::eWriteOnly))
         binding.access |= VK_ACCESS_SHADER_READ_BIT;
@@ -392,14 +503,18 @@ namespace dxvk {
         else
           binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       } else {
-        binding.viewType = determineViewType(resourceKind);
+        if (!resourceAlias.hasAlias)
+          binding.viewType = determineViewType(resourceKind);
+
         binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
       }
 
       if (resourceHasSparseFeedbackLoads(op))
         m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
 
-      addBinding(binding);
+      if (!std::exchange(resourceAlias.hasBinding, true))
+        addBinding(binding);
+
       return ++op;
     }
 
@@ -1239,6 +1354,21 @@ namespace dxvk {
   }
 
 
+  DxvkIrShader::DxvkIrShader(
+          std::string               name,
+    const DxvkIrShaderCreateInfo&   info,
+          DxvkShaderMetadata        metadata,
+          DxvkPipelineLayoutBuilder layout,
+          std::vector<uint8_t>      ir)
+  : m_debugName   (std::move(name)), m_info(info),
+    m_layout      (std::move(layout)),
+    m_ir          (std::move(ir)),
+    m_convertedIr (true),
+    m_metadata    (std::move(metadata)) {
+
+  }
+
+
   DxvkIrShader::~DxvkIrShader() {
 
   }
@@ -1367,6 +1497,13 @@ namespace dxvk {
   void DxvkIrShader::dump(std::ostream& outputStream) {
     auto code = getCode(nullptr, nullptr);
     outputStream.write(reinterpret_cast<const char*>(code.data()), code.size());
+  }
+
+
+  std::pair<const uint8_t*, size_t> DxvkIrShader::getSerializedIr() {
+    convertIr("getSerializedIr()");
+
+    return std::make_pair(m_ir.data(), m_ir.size());
   }
 
 

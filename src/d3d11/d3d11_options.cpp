@@ -31,7 +31,7 @@ namespace dxvk {
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
     this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
     this->disableDirectImageMapping = config.getOption<bool>("d3d11.disableDirectImageMapping", false);
-    this->useDxbcSpirv          = config.getOption<bool>("d3d11.useDxbcSpirv", false);
+    this->useDxbcSpirv          = config.getOption<bool>("d3d11.useDxbcSpirv", true);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
