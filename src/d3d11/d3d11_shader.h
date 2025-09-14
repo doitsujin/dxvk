@@ -23,6 +23,30 @@ namespace dxvk {
   
   class D3D11Device;
 
+  constexpr uint32_t D3D11ShaderTypeCount = 6u;
+
+  using D3D11ShaderType = dxbc_spv::dxbc::ShaderType;
+  using D3D11ShaderTypeFlags = Flags<dxbc_spv::dxbc::ShaderType>;
+
+  /**
+   * \brief Translates D3D11 shader stage to corresponding Vulkan stage
+   *
+   * \param [in] ProgramType DXBC program type
+   * \returns Corresponding Vulkan shader stage
+   */
+  constexpr VkShaderStageFlagBits GetShaderStage(D3D11ShaderType ProgramType) {
+    constexpr uint64_t lut
+      = (uint64_t(VK_SHADER_STAGE_VERTEX_BIT)                   << (8u * uint32_t(D3D11ShaderType::eVertex)))
+      | (uint64_t(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)     << (8u * uint32_t(D3D11ShaderType::eHull)))
+      | (uint64_t(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)  << (8u * uint32_t(D3D11ShaderType::eDomain)))
+      | (uint64_t(VK_SHADER_STAGE_GEOMETRY_BIT)                 << (8u * uint32_t(D3D11ShaderType::eGeometry)))
+      | (uint64_t(VK_SHADER_STAGE_FRAGMENT_BIT)                 << (8u * uint32_t(D3D11ShaderType::ePixel)))
+      | (uint64_t(VK_SHADER_STAGE_COMPUTE_BIT)                  << (8u * uint32_t(D3D11ShaderType::eCompute)));
+
+    return VkShaderStageFlagBits((lut >> (8u * uint32_t(ProgramType))) & 0xff);
+  }
+
+
   /**
    * \brief Shader resource mapping
    *
@@ -40,27 +64,32 @@ namespace dxvk {
     static constexpr uint32_t UavIndexGraphics  = DxbcSrvTotal;
     static constexpr uint32_t UavIndexCompute   = UavIndexGraphics + DxbcUavPerPipeline * 2u;
 
-    static uint32_t computeCbvBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+    template<typename T>
+    static uint32_t computeCbvBinding(T stage, uint32_t index) {
       return computeStageIndex(stage) * CbvPerStage + index;
     }
 
-    static uint32_t computeSamplerBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+    template<typename T>
+    static uint32_t computeSamplerBinding(T stage, uint32_t index) {
       return computeStageIndex(stage) * SamplersPerStage + index;
     }
 
-    static uint32_t computeSrvBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+    template<typename T>
+    static uint32_t computeSrvBinding(T stage, uint32_t index) {
       return computeStageIndex(stage) * SrvPerStage + index;
     }
 
-    static uint32_t computeUavBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
-      return (stage == dxbc_spv::ir::ShaderStage::eCompute ? UavIndexCompute : UavIndexGraphics) + index;
+    template<typename T>
+    static uint32_t computeUavBinding(T stage, uint32_t index) {
+      return (computeStageIndex(stage) == computeStageIndex(dxbc_spv::ir::ShaderStage::eCompute) ? UavIndexCompute : UavIndexGraphics) + index;
     }
 
-    static uint32_t computeUavCounterBinding(dxbc_spv::ir::ShaderStage stage, uint32_t index) {
+    template<typename T>
+    static uint32_t computeUavCounterBinding(T stage, uint32_t index) {
       return computeUavBinding(stage, index) + UavPerPipeline;
     }
 
-    static uint32_t computeStageIndex(dxbc_spv::ir::ShaderStage stage) {
+    static constexpr uint32_t computeStageIndex(dxbc_spv::ir::ShaderStage stage) {
       switch (stage) {
         case dxbc_spv::ir::ShaderStage::ePixel:     return 0u;
         case dxbc_spv::ir::ShaderStage::eVertex:    return 1u;
@@ -70,6 +99,10 @@ namespace dxvk {
         case dxbc_spv::ir::ShaderStage::eCompute:   return 5u;
         default:                                    return -1u;
       }
+    }
+
+    static constexpr uint32_t computeStageIndex(D3D11ShaderType stage) {
+      return uint32_t(stage);
     }
 
   };

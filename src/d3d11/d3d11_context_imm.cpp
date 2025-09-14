@@ -1020,24 +1020,24 @@ namespace dxvk {
     EmitCs<false>([
       cDirtyState = dirtyState
     ] (DxvkContext* ctx) {
-      for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
-        auto dxStage = DxbcProgramType(i);
+      for (uint32_t i = 0; i < D3D11ShaderTypeCount; i++) {
+        auto dxStage = D3D11ShaderType(i);
         auto vkStage = GetShaderStage(dxStage);
 
         // Unbind all dirty constant buffers
-        auto cbvSlot = computeConstantBufferBinding(dxStage, 0);
+        auto cbvSlot = D3D11ShaderResourceMapping::computeCbvBinding(dxStage, 0);
 
         for (uint32_t index : bit::BitMask(cDirtyState[dxStage].cbvMask))
           ctx->bindUniformBuffer(vkStage, cbvSlot + index, DxvkBufferSlice());
 
         // Unbind all dirty samplers
-        auto samplerSlot = computeSamplerBinding(dxStage, 0);
+        auto samplerSlot = D3D11ShaderResourceMapping::computeSamplerBinding(dxStage, 0);
 
         for (uint32_t index : bit::BitMask(cDirtyState[dxStage].samplerMask))
           ctx->bindResourceSampler(vkStage, samplerSlot + index, nullptr);
 
         // Unbind all dirty shader resource views
-        auto srvSlot = computeSrvBinding(dxStage, 0);
+        auto srvSlot = D3D11ShaderResourceMapping::computeSrvBinding(dxStage, 0);
 
         for (uint32_t m = 0; m < cDirtyState[dxStage].srvMask.size(); m++) {
           for (uint32_t index : bit::BitMask(cDirtyState[dxStage].srvMask[m]))
@@ -1047,14 +1047,14 @@ namespace dxvk {
         // Unbind all dirty unordered access views
         VkShaderStageFlags uavStages = 0u;
 
-        if (dxStage == DxbcProgramType::ComputeShader)
+        if (dxStage == D3D11ShaderType::eCompute)
           uavStages = VK_SHADER_STAGE_COMPUTE_BIT;
-        else if (dxStage == DxbcProgramType::PixelShader)
+        else if (dxStage == D3D11ShaderType::ePixel)
           uavStages = VK_SHADER_STAGE_ALL_GRAPHICS;
 
         if (uavStages) {
-          auto uavSlot = computeUavBinding(dxStage, 0);
-          auto ctrSlot = computeUavCounterBinding(dxStage, 0);
+          auto uavSlot = D3D11ShaderResourceMapping::computeUavBinding(dxStage, 0);
+          auto ctrSlot = D3D11ShaderResourceMapping::computeUavCounterBinding(dxStage, 0);
 
           for (uint32_t index : bit::BitMask(cDirtyState[dxStage].uavMask)) {
             ctx->bindResourceImageView(vkStage, uavSlot + index, nullptr);
@@ -1066,8 +1066,8 @@ namespace dxvk {
 
     // Since we set the DXVK context bindings to null, any bindings that are null
     // on the D3D context are no longer dirty, so we can clear the respective bits.
-    for (uint32_t i = 0; i < uint32_t(DxbcProgramType::Count); i++) {
-      auto stage = DxbcProgramType(i);
+    for (uint32_t i = 0; i < D3D11ShaderTypeCount; i++) {
+      auto stage = D3D11ShaderType(i);
 
       for (uint32_t index : bit::BitMask(dirtyState[stage].cbvMask)) {
         if (!m_state.cbv[stage].buffers[index].buffer.ptr())
@@ -1086,8 +1086,8 @@ namespace dxvk {
         }
       }
 
-      if (stage == DxbcProgramType::ComputeShader || stage == DxbcProgramType::PixelShader) {
-        auto& uavs = stage == DxbcProgramType::ComputeShader ? m_state.uav.views : m_state.om.uavs;
+      if (stage == D3D11ShaderType::eCompute || stage == D3D11ShaderType::ePixel) {
+        auto& uavs = stage == D3D11ShaderType::eCompute ? m_state.uav.views : m_state.om.uavs;
 
         for (uint32_t index : bit::BitMask(dirtyState[stage].uavMask)) {
           if (!uavs[index].ptr())

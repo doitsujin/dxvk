@@ -807,22 +807,22 @@ namespace dxvk {
             VkDeviceSize                      Size);
 
     void ApplyDirtyConstantBuffers(
-            DxbcProgramType                   Stage,
+            D3D11ShaderType                   Stage,
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
     void ApplyDirtySamplers(
-            DxbcProgramType                   Stage,
+            D3D11ShaderType                   Stage,
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
     void ApplyDirtyShaderResources(
-            DxbcProgramType                   Stage,
+            D3D11ShaderType                   Stage,
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
     void ApplyDirtyUnorderedAccessViews(
-            DxbcProgramType                   Stage,
+            D3D11ShaderType                   Stage,
       const DxbcBindingMask&                  BoundMask,
             DxbcBindingMask&                  DirtyMask);
 
@@ -854,7 +854,7 @@ namespace dxvk {
     void BatchDrawIndexed(
       const VkDrawIndexedIndirectCommand&     draw);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void BindShader(
       const D3D11CommonShader*                pShaderModule);
 
@@ -892,30 +892,30 @@ namespace dxvk {
             UINT                              Offset);
 
     void BindConstantBuffer(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             UINT                              Slot,
             D3D11Buffer*                      pBuffer,
             UINT                              Offset,
             UINT                              Length);
 
     void BindConstantBufferRange(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             UINT                              Slot,
             UINT                              Offset,
             UINT                              Length);
 
     void BindSampler(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             UINT                              Slot,
             D3D11SamplerState*                pSampler);
 
     void BindShaderResource(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             UINT                              Slot,
             D3D11ShaderResourceView*          pResource);
 
     void BindUnorderedAccessView(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             UINT                              Slot,
             D3D11UnorderedAccessView*         pUav);
 
@@ -964,24 +964,24 @@ namespace dxvk {
 
     template<typename T>
     bool DirtyBindingGeneric(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             T                                 BoundMask,
             T&                                DirtyMask,
             T                                 DirtyBit,
             bool                              IsNull);
 
     bool DirtyConstantBuffer(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             uint32_t                          Slot,
             bool                              IsNull);
 
     bool DirtySampler(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             uint32_t                          Slot,
             bool                              IsNull);
 
     bool DirtyShaderResource(
-            DxbcProgramType                   ShaderStage,
+            D3D11ShaderType                   ShaderStage,
             uint32_t                          Slot,
             bool                              IsNull);
 
@@ -999,7 +999,7 @@ namespace dxvk {
             ID3D11Resource*                   pResource,
             UINT                              Subresource);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void GetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -1007,13 +1007,13 @@ namespace dxvk {
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void GetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void GetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
@@ -1036,7 +1036,7 @@ namespace dxvk {
 
     void ResetStagingBuffer();
 
-    template<DxbcProgramType ShaderStage, typename T>
+    template<D3D11ShaderType ShaderStage, typename T>
     void ResolveSrvHazards(
             T*                                pView);
 
@@ -1057,24 +1057,24 @@ namespace dxvk {
     void RestoreCommandListState();
     
     void RestoreConstantBuffers(
-            DxbcProgramType                   Stage);
+            D3D11ShaderType                   Stage);
     
     void RestoreSamplers(
-            DxbcProgramType                   Stage);
+            D3D11ShaderType                   Stage);
 
     void RestoreShaderResources(
-            DxbcProgramType                   Stage);
+            D3D11ShaderType                   Stage);
 
     void RestoreUnorderedAccessViews(
-            DxbcProgramType                   Stage);
+            D3D11ShaderType                   Stage);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void SetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void SetConstantBuffers1(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -1082,13 +1082,13 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void SetShaderResources(
             UINT                              StartSlot,
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     void SetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
@@ -1119,7 +1119,7 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUAVs);
 
-    template<DxbcProgramType ShaderStage>
+    template<D3D11ShaderType ShaderStage>
     bool TestSrvHazards(
             D3D11ShaderResourceView*          pView);
 

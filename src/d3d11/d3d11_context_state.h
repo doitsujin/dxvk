@@ -14,7 +14,7 @@
 #include "d3d11_view_uav.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Per-stage state
    *
@@ -26,8 +26,8 @@ namespace dxvk {
 
   public:
 
-          T& operator [] (DxbcProgramType type)       { return m_state[uint32_t(type)]; }
-    const T& operator [] (DxbcProgramType type) const { return m_state[uint32_t(type)]; }
+          T& operator [] (D3D11ShaderType type)       { return m_state[uint32_t(type)]; }
+    const T& operator [] (D3D11ShaderType type) const { return m_state[uint32_t(type)]; }
 
     /**
      * \brief Calls reset method on all objects
@@ -313,9 +313,9 @@ namespace dxvk {
    * re-applied to the context.
    */
   struct D3D11LazyBindings {
-    DxbcProgramTypeFlags shadersUsed = 0u;
-    DxbcProgramTypeFlags shadersDirty = 0u;
-    DxbcProgramTypeFlags graphicsUavShaders = 0u;
+    D3D11ShaderTypeFlags shadersUsed = 0u;
+    D3D11ShaderTypeFlags shadersDirty = 0u;
+    D3D11ShaderTypeFlags graphicsUavShaders = 0u;
 
     D3D11ShaderStageState<DxbcBindingMask> bindingsUsed;
     D3D11ShaderStageState<DxbcBindingMask> bindingsDirty;
@@ -372,7 +372,7 @@ namespace dxvk {
    * \brief Maximum used binding numbers for all context state
    */
   struct D3D11MaxUsedBindings {
-    std::array<D3D11MaxUsedStageBindings, uint32_t(DxbcProgramType::Count)> stages;
+    std::array<D3D11MaxUsedStageBindings, D3D11ShaderTypeCount> stages;
     uint32_t  vbCount;
     uint32_t  soCount;
   };
