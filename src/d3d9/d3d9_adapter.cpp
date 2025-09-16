@@ -394,7 +394,7 @@ namespace dxvk {
                                     | D3DPRESENT_INTERVAL_FOUR
                                     | D3DPRESENT_INTERVAL_IMMEDIATE;
     // Cursor
-    pCaps->CursorCaps               = D3DCURSORCAPS_COLOR; // I do not support Cursor yet, but I don't want to say I don't support it for compatibility reasons.
+    pCaps->CursorCaps               = D3DCURSORCAPS_COLOR;
     // Dev Caps
     pCaps->DevCaps                  = D3DDEVCAPS_EXECUTESYSTEMMEMORY
                                     | D3DDEVCAPS_EXECUTEVIDEOMEMORY
