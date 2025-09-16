@@ -7,11 +7,12 @@ namespace dxvk {
 
 #ifdef _WIN32
   void D3D9Cursor::ResetCursor() {
-    ShowCursor(FALSE);
+    m_visible = FALSE;
+    ShowCursor(m_visible);
 
-    if (m_hCursor != nullptr)
+    if (IsHardwareCursor())
       ResetHardwareCursor();
-    else if (IsSoftwareCursor())
+    else if (IsActiveSoftwareCursor())
       ResetSoftwareCursor();
   }
 
@@ -23,8 +24,8 @@ namespace dxvk {
 
 
   void D3D9Cursor::ResetSoftwareCursor() {
-    m_sCursor.DrawCursor = false;
-    m_sCursor.ResetCursor = true;
+    m_sCursor.DrawCursor  = false;
+    m_sCursor.ClearCursor = true;
   }
 
 
@@ -35,7 +36,7 @@ namespace dxvk {
     m_sCursor.X = X;
     m_sCursor.Y = Y;
 
-    if (unlikely(m_sCursor.Width > 0 && m_sCursor.Height > 0))
+    if (IsActiveSoftwareCursor())
       return;
 
     POINT currentPos = { };
@@ -48,20 +49,25 @@ namespace dxvk {
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
     // Cursor visibility remains unchanged (typically FALSE) if the cursor isn't set.
-    if (unlikely(m_hCursor == nullptr && !IsSoftwareCursor()))
+    if (unlikely(!IsHardwareCursor() && !IsActiveSoftwareCursor()))
       return m_visible;
 
-    if (m_hCursor != nullptr)
+    if (IsHardwareCursor()) {
+      // Prevents the win32 cursor from being overwritten with nullptr
+      // in situations when a hardware cursor is set, but not shown.
+      if (!m_visible && !bShow)
+        return m_visible;
       ::SetCursor(bShow ? m_hCursor : nullptr);
-    else if (likely(!m_sCursor.ResetCursor))
+    } else {
       m_sCursor.DrawCursor = bShow;
-    
+    }
+
     return std::exchange(m_visible, bShow);
   }
 
 
-  HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
-    if (IsSoftwareCursor())
+  void D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
+    if (IsActiveSoftwareCursor())
       ResetSoftwareCursor();
 
     CursorMask mask;
@@ -74,7 +80,7 @@ namespace dxvk {
     info.hbmMask  = ::CreateBitmap(HardwareCursorWidth, HardwareCursorHeight, 1, 1,  &mask[0]);
     info.hbmColor = ::CreateBitmap(HardwareCursorWidth, HardwareCursorHeight, 1, 32, &bitmap[0]);
 
-    if (m_hCursor != nullptr)
+    if (IsHardwareCursor())
       ::DestroyCursor(m_hCursor);
 
     m_hCursor = ::CreateIconIndirect(&info);
@@ -83,27 +89,23 @@ namespace dxvk {
     ::DeleteObject(info.hbmColor);
 
     ShowCursor(m_visible);
-
-    return D3D_OK;
   }
 
 
-  HRESULT D3D9Cursor::SetSoftwareCursor(UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot) {
-    // Make sure to hide the win32 cursor
+  void D3D9Cursor::SetSoftwareCursor(UINT XHotSpot, UINT YHotSpot, UINT Width, UINT Height) {
+    // Make sure to hide the win32 cursor.
     ::SetCursor(nullptr);
 
-    if (m_hCursor != nullptr)
+    if (IsHardwareCursor())
       ResetHardwareCursor();
 
     m_sCursor.Width       = Width;
     m_sCursor.Height      = Height;
     m_sCursor.XHotSpot    = XHotSpot;
     m_sCursor.YHotSpot    = YHotSpot;
-    m_sCursor.ResetCursor = false;
+    m_sCursor.ClearCursor = false;
 
     ShowCursor(m_visible);
-
-    return D3D_OK;
   }
 
 #else
@@ -133,16 +135,13 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
+  void D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
     Logger::warn("D3D9Cursor::SetHardwareCursor: Not supported on current platform.");
-
-    return D3D_OK;
   }
 
-  HRESULT D3D9Cursor::SetSoftwareCursor(UINT Width, UINT Height, UINT XHotSpot, UINT YHotSpot) {
-    Logger::warn("D3D9Cursor::SetSoftwareCursor: Not supported on current platform.");
 
-    return D3D_OK;
+  void D3D9Cursor::SetSoftwareCursor(UINT XHotSpot, UINT YHotSpot, UINT Width, UINT Height) {
+    Logger::warn("D3D9Cursor::SetSoftwareCursor: Not supported on current platform.");
   }
 #endif
 

@@ -384,35 +384,39 @@ namespace dxvk {
     D3DPRESENT_PARAMETERS params;
     m_implicitSwapchain->GetPresentParameters(&params);
 
-    // Always use a hardware cursor when windowed.
-    bool hwCursor  = params.Windowed;
-
-    // Always use a hardware cursor w/h <= 32 px
-    hwCursor |= inputWidth  <= HardwareCursorWidth
-             || inputHeight <= HardwareCursorHeight;
+    // Use a hardware cursor if w/h == 32 px or when windowed.
+    const bool hwCursor = (inputWidth  == HardwareCursorWidth &&
+                           inputHeight == HardwareCursorHeight)
+                          || params.Windowed;
 
     D3DLOCKED_BOX lockedBox;
     HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
     if (unlikely(FAILED(hr)))
       return hr;
 
-    const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
+    const uint8_t* data = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
 
     if (hwCursor) {
-      // Windows works with a stride of 128, lets respect that.
-      // Copy data to the bitmap...
       CursorBitmap bitmap = { 0 };
+      // We need to consider applications that might misbehave in
+      // windowed mode, setting a cursor smaller or larger than 32 x 32 px.
       const size_t copyPitch = std::min<size_t>(
         HardwareCursorPitch,
-        inputWidth * inputHeight * HardwareCursorFormatSize);
+        inputWidth * HardwareCursorFormatSize);
+      const size_t copyHeight = std::min<size_t>(
+        HardwareCursorHeight,
+        inputHeight
+      );
 
-      for (uint32_t h = 0; h < HardwareCursorHeight; h++)
+      // Windows works with a stride of 128, let's respect that.
+      for (uint32_t h = 0; h < copyHeight; h++)
         std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
 
-      UnlockImage(cursorTex, 0, 0);
+      hr = UnlockImage(cursorTex, 0, 0);
+      if (unlikely(FAILED(hr)))
+        return hr;
 
-      // Set this as our cursor.
-      return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
+      m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
     } else {
       const size_t copyPitch = inputWidth * HardwareCursorFormatSize;
       std::vector<uint8_t> bitmap(inputHeight * copyPitch, 0);
@@ -420,11 +424,13 @@ namespace dxvk {
       for (uint32_t h = 0; h < inputHeight; h++)
         std::memcpy(&bitmap[h * copyPitch], &data[h * lockedBox.RowPitch], copyPitch);
 
-      UnlockImage(cursorTex, 0, 0);
+      hr = UnlockImage(cursorTex, 0, 0);
+      if (unlikely(FAILED(hr)))
+        return hr;
 
       m_implicitSwapchain->SetCursorTexture(inputWidth, inputHeight, &bitmap[0]);
 
-      return m_cursor.SetSoftwareCursor(inputWidth, inputHeight, XHotSpot, YHotSpot);
+      m_cursor.SetSoftwareCursor(XHotSpot, YHotSpot, inputWidth, inputHeight);
     }
 
     return D3D_OK;
@@ -4244,7 +4250,7 @@ namespace dxvk {
     if (m_cursor.IsSoftwareCursor()) {
       D3D9_SOFTWARE_CURSOR* pSoftwareCursor = m_cursor.GetSoftwareCursor();
 
-      UINT cursorWidth  = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Width : 0;
+      UINT cursorWidth  = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Width  : 0;
       UINT cursorHeight = pSoftwareCursor->DrawCursor ? pSoftwareCursor->Height : 0;
 
       m_implicitSwapchain->SetCursorPosition(pSoftwareCursor->X - pSoftwareCursor->XHotSpot,
@@ -4254,12 +4260,12 @@ namespace dxvk {
       // Once a hardware cursor has been set or the device has been reset,
       // we need to ensure that we render a 0-sized rectangle first, and
       // only then fully clear the software cursor.
-      if (unlikely(pSoftwareCursor->ResetCursor)) {
-        pSoftwareCursor->Width = 0;
-        pSoftwareCursor->Height = 0;
-        pSoftwareCursor->XHotSpot = 0;
-        pSoftwareCursor->YHotSpot = 0;
-        pSoftwareCursor->ResetCursor = false;
+      if (unlikely(pSoftwareCursor->ClearCursor)) {
+        pSoftwareCursor->Width       = 0;
+        pSoftwareCursor->Height      = 0;
+        pSoftwareCursor->XHotSpot    = 0;
+        pSoftwareCursor->YHotSpot    = 0;
+        pSoftwareCursor->ClearCursor = false;
       }
     }
 
