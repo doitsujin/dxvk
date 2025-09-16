@@ -76,6 +76,8 @@
         "dxvk_common_required": {
             "extensions": {
                 "VK_KHR_maintenance5": 1,
+                "VK_KHR_maintenance6": 1,
+                "VK_EXT_depth_clip_enable": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -90,6 +92,12 @@
                 },
                 "VkPhysicalDeviceMaintenance5FeaturesKHR": {
                     "maintenance5": true
+                },
+                "VkPhysicalDeviceMaintenance6FeaturesKHR": {
+                    "maintenance6": true
+                },
+                "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
+                    "depthClipEnable": true
                 }
             },
             "properties": {
@@ -101,7 +109,6 @@
         "dxvk_common_optional": {
             "extensions": {
                 "VK_KHR_load_store_op_none": 1,
-                "VK_KHR_maintenance6": 1,
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id": 1,
                 "VK_KHR_present_wait": 1,
@@ -117,9 +124,6 @@
                 "VkPhysicalDeviceVulkan11Features": {
                     "shaderInt16": true,
                     "storagePushConstant16": true
-                },
-                "VkPhysicalDeviceMaintenance6FeaturesKHR": {
-                    "maintenance6": true
                 },
                 "VkPhysicalDeviceMaintenance7FeaturesKHR": {
                     "maintenance7": true
@@ -177,7 +181,6 @@
                 "VK_EXT_memory_priority": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_depth_bias_control": 1,
-                "VK_EXT_depth_clip_enable": 1,
                 "VK_EXT_custom_border_color": 1,
                 "VK_EXT_attachment_feedback_loop_layout": 1,
                 "VK_EXT_non_seamless_cube_map": 1
@@ -201,9 +204,6 @@
                     "leastRepresentableValueForceUnormRepresentation": true,
                     "floatRepresentation": true,
                     "depthBiasExact": true
-                },
-                "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
-                    "depthClipEnable": true
                 },
                 "VkPhysicalDeviceCustomBorderColorFeaturesEXT": {
                     "customBorderColors": true,
@@ -263,7 +263,6 @@
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_custom_border_color": 1,
                 "VK_EXT_depth_bias_control": 1,
-                "VK_EXT_depth_clip_enable": 1,
                 "VK_EXT_swapchain_colorspace": 1,
                 "VK_EXT_hdr_metadata": 1
             },
@@ -292,9 +291,6 @@
                     "depthBiasControl": true,
                     "leastRepresentableValueForceUnormRepresentation": true,
                     "depthBiasExact": true
-                },
-                "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
-                    "depthClipEnable": true
                 }
             }
         },
