@@ -537,10 +537,13 @@ namespace dxvk {
     if (m_device->canUseDescriptorBuffer())
       flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, &flagsInfo };
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage        = *stageInfo.getStageInfos();
     info.layout       = m_layout->getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
     info.basePipelineIndex = -1;
+
+    if (flagsInfo.flags)
+      flagsInfo.pNext = std::exchange(info.pNext, &flagsInfo);
 
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
