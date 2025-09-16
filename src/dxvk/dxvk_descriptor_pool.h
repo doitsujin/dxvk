@@ -10,78 +10,31 @@
 namespace dxvk {
 
   class DxvkDevice;
-  class DxvkDescriptorPoolSet;
-  
-  /**
-   * \brief Descriptor set list
-   */
-  class DxvkDescriptorSetList {
-
-  public:
-
-    DxvkDescriptorSetList();
-    ~DxvkDescriptorSetList();
-
-    VkDescriptorSet alloc();
-
-    void addSet(VkDescriptorSet set);
-
-    void reset();
-
-  private:
-
-    size_t                        m_next = 0;
-    std::vector<VkDescriptorSet>  m_sets;
-
-  };
-
-
-  /**
-   * \brief Persistent descriptor set map
-   *
-   * Points to a list of set maps for each
-   * defined set in a pipeline layout.
-   */
-  struct DxvkDescriptorSetMap {
-    std::array<DxvkDescriptorSetList*, DxvkDescriptorSets::SetCount> sets;
-  };
-
   
   /**
    * \brief Descriptor pool
    *
-   * Manages descriptors that have the same lifetime. Sets are
-   * intended to be reused as much as possible in order to reduce
-   * overhead in the driver from descriptor set initialization,
-   * but allocated sets will have unspecified contents and need
-   * to be updated.
+   * Legacy descriptor pool allocator with submission-based lifetime
+   * tracking.
    */
   class DxvkDescriptorPool : public RcObject {
     constexpr static uint32_t MaxDesiredPoolCount = 2;
   public:
 
-    DxvkDescriptorPool(
-            DxvkDevice*               device,
-            DxvkDescriptorPoolSet*    manager);
+    DxvkDescriptorPool(DxvkDevice* device);
 
     ~DxvkDescriptorPool();
 
     /**
-     * \brief Tests whether the descriptor pool should be replaced
-     *
-     * \param [in] endFrame Whether this is the end of the frame
-     * \returns \c true if the pool should be submitted
-     */
-    bool shouldSubmit(bool endFrame);
-
-    /**
      * \brief Allocates one or multiple descriptor sets
      *
+     * \param [in] trackingId Submission tracking ID
      * \param [in] layout Pipeline layout
      * \param [in] setMask Descriptor set mask
      * \param [out] sets Descriptor sets
      */
     void alloc(
+            uint64_t                  trackingId,
       const DxvkPipelineLayout*       layout,
             uint32_t                  setMask,
             VkDescriptorSet*          sets);
@@ -89,16 +42,22 @@ namespace dxvk {
     /**
      * \brief Allocates a single descriptor set
      *
+     * \param [in] trackingId Submission tracking ID
      * \param [in] layout Descriptor set layout
      * \returns The descriptor set
      */
     VkDescriptorSet alloc(
+            uint64_t                  trackingId,
       const DxvkDescriptorSetLayout*  layout);
 
     /**
-     * \brief Resets pool
+     * \brief Declares given submission ID as complete
+     *
+     * Used for tracking descriptor pool lifetimes.
+     * \param [in] trackingId last completed tracking ID
      */
-    void reset();
+    void notifyCompletion(
+            uint64_t                    trackingId);
 
     /**
      * \brief Updates stat counters with set count
@@ -108,113 +67,25 @@ namespace dxvk {
 
   private:
 
-    DxvkDevice*               m_device;
-    DxvkDescriptorPoolSet*    m_manager;
+    DxvkDevice* m_device = nullptr;
 
-    std::vector<VkDescriptorPool> m_descriptorPools;
+    uint64_t m_setsAllocated = 0u;
 
-    std::unordered_map<
-      const DxvkDescriptorSetLayout*,
-      DxvkDescriptorSetList>  m_setLists;
+    struct DescriptorPool {
+      VkDescriptorPool pool = VK_NULL_HANDLE;
+      uint64_t trackingId = 0u;
+    };
 
-    std::unordered_map<
-      const DxvkPipelineLayout*,
-      DxvkDescriptorSetMap>   m_setMaps;
+    std::atomic<uint64_t> m_lastCompleteTrackingId = { 0u };
 
-    std::pair<
-      const DxvkPipelineLayout*,
-      DxvkDescriptorSetMap*>  m_cachedEntry;
+    small_vector<DescriptorPool, 4u> m_pools;
 
-    uint32_t m_setsAllocated  = 0;
-    uint32_t m_setsUsed       = 0;
+    size_t m_poolIndex = 0u;
 
-    uint32_t m_prevSetsAllocated = 0;
+    DescriptorPool& getNextPool();
 
-    DxvkDescriptorSetMap* getSetMapCached(
-      const DxvkPipelineLayout*                 layout);
-
-    DxvkDescriptorSetMap* getSetMap(
-      const DxvkPipelineLayout*                 layout);
-
-    DxvkDescriptorSetList* getSetList(
-      const DxvkDescriptorSetLayout*            layout);
-
-    VkDescriptorSet allocSetWithLayout(
-            DxvkDescriptorSetList*              list,
-      const DxvkDescriptorSetLayout*            layout);
-
-    VkDescriptorSet allocSetFromPool(
-            VkDescriptorPool                    pool,
-      const DxvkDescriptorSetLayout*            layout);
-
-    VkDescriptorPool addPool();
+    VkDescriptorPool createDescriptorPool() const;
 
   };
   
-  /*
-   * \brief Descriptor pool manager
-   */
-  class DxvkDescriptorPoolSet : public RcObject {
-
-  public:
-
-    DxvkDescriptorPoolSet(
-            DxvkDevice*                 device);
-
-    ~DxvkDescriptorPoolSet();
-
-    /**
-     * \brief Queries maximum number of descriptor sets per pool
-     * \returns Maximum set count
-     */
-    uint32_t getMaxSetCount() const {
-      return m_maxSets;
-    }
-
-    /**
-     * \brief Retrieves or creates a descriptor type
-     * \returns The descriptor pool
-     */
-    Rc<DxvkDescriptorPool> getDescriptorPool();
-
-    /**
-     * \brief Recycles descriptor pool
-     *
-     * Resets and recycles the given
-     * descriptor pool for future use.
-     */
-    void recycleDescriptorPool(
-      const Rc<DxvkDescriptorPool>&     pool);
-
-    /**
-     * \brief Creates a Vulkan descriptor pool
-     *
-     * Returns an existing unused pool or
-     * creates a new one if necessary.
-     * \returns The descriptor pool
-     */
-    VkDescriptorPool createVulkanDescriptorPool();
-
-    /**
-     * \brief Returns unused descriptor pool
-     *
-     * Caches the pool for future use, or destroys
-     * it if there are too many objects in the cache
-     * already.
-     * \param [in] pool Vulkan descriptor pool
-     */
-    void recycleVulkanDescriptorPool(VkDescriptorPool pool);
-
-  private:
-
-    DxvkDevice*                         m_device;
-    uint32_t                            m_maxSets = 0;
-    DxvkRecycler<DxvkDescriptorPool, 8> m_pools;
-
-    dxvk::mutex                         m_mutex;
-    std::array<VkDescriptorPool, 8>     m_vkPools;
-    size_t                              m_vkPoolCount = 0;
-
-  };
-
 }

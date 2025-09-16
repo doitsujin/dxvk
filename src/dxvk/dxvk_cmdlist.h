@@ -1229,15 +1229,8 @@ namespace dxvk {
 
 
     void setDescriptorPool(
-            Rc<DxvkDescriptorPool>        pool,
-            Rc<DxvkDescriptorPoolSet>     manager) {
-      if (m_descriptorPool && m_descriptorPool != pool) {
-        m_descriptorPool->updateStats(m_statCounters);
-        m_descriptorPools.push_back({ std::move(m_descriptorPool), std::move(m_descriptorManager) });
-      }
-
-      m_descriptorPool = std::move(pool);
-      m_descriptorManager = std::move(manager);
+            Rc<DxvkDescriptorPool>        pool) {
+      m_descriptorPool = pool;
     }
 
 
@@ -1280,12 +1273,9 @@ namespace dxvk {
     small_vector<DxvkCommandSubmissionInfo, 4> m_cmdSubmissions;
     small_vector<DxvkSparseBindSubmission, 4>  m_cmdSparseBinds;
     
-    std::vector<std::pair<
-      Rc<DxvkDescriptorPool>,
-      Rc<DxvkDescriptorPoolSet>>> m_descriptorPools;
+    std::vector<Rc<DxvkDescriptorPool>> m_descriptorPools;
 
     Rc<DxvkDescriptorPool>    m_descriptorPool;
-    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
     sync::SyncPoint           m_descriptorSync;
 
     Rc<DxvkResourceDescriptorHeap>  m_descriptorHeap;

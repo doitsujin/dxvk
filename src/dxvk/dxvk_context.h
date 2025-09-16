@@ -1374,7 +1374,6 @@ namespace dxvk {
     DxvkDescriptorState     m_descriptorState;
 
     Rc<DxvkDescriptorPool>  m_descriptorPool;
-    Rc<DxvkDescriptorPoolSet> m_descriptorManager;
 
     Rc<DxvkResourceDescriptorHeap> m_descriptorHeap;
 
@@ -2180,8 +2179,6 @@ namespace dxvk {
     void beginActiveDebugRegions();
 
     void endActiveDebugRegions();
-
-    void submitDescriptorPool(bool endFrame);
 
     template<VkPipelineBindPoint BindPoint>
     force_inline void trackUniformBufferBinding(const DxvkShaderDescriptor& binding, const DxvkBufferSlice& slice) {

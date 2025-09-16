@@ -28,7 +28,7 @@ namespace dxvk {
 
       m_features.set(DxvkContextFeature::DescriptorBuffer);
     } else {
-      m_descriptorManager = new DxvkDescriptorPoolSet(device.ptr());
+      m_descriptorPool = new DxvkDescriptorPool(device.ptr());
     }
 
     // Init framebuffer info with default render pass in case
@@ -90,8 +90,6 @@ namespace dxvk {
 
     m_implicitResolves.cleanup(m_trackingId);
 
-    this->submitDescriptorPool(false);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       // Make sure to emit the submission reason always at the very end
       if (reason && reason->pLabelName && reason->pLabelName[0])
@@ -104,8 +102,6 @@ namespace dxvk {
 
 
   void DxvkContext::endFrame() {
-    this->submitDescriptorPool(true);
-
     m_renderPassIndex = 0u;
   }
 
@@ -6293,7 +6289,7 @@ namespace dxvk {
       constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
 
       std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
-      m_descriptorPool->alloc(pipelineLayout, dirtySetMask, sets.data());
+      m_descriptorPool->alloc(m_trackingId, pipelineLayout, dirtySetMask, sets.data());
 
       uint32_t descriptorCount = 0;
 
@@ -8365,10 +8361,7 @@ namespace dxvk {
     if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
       m_cmd->setDescriptorHeap(m_descriptorHeap);
     } else {
-      if (!m_descriptorPool)
-        m_descriptorPool = m_descriptorManager->getDescriptorPool();
-
-      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
+      m_cmd->setDescriptorPool(m_descriptorPool);
     }
   }
 
@@ -9380,15 +9373,6 @@ namespace dxvk {
   void DxvkContext::endActiveDebugRegions() {
     for (size_t i = 0; i < m_debugLabelStack.size(); i++)
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-  }
-
-
-  void DxvkContext::submitDescriptorPool(bool endFrame) {
-    // Only relevant for the legacy descriptor model
-    if (m_descriptorPool && m_descriptorPool->shouldSubmit(endFrame)) {
-      m_descriptorPool = m_descriptorManager->getDescriptorPool();
-      m_cmd->setDescriptorPool(m_descriptorPool, m_descriptorManager);
-    }
   }
 
 }
