@@ -484,7 +484,9 @@ namespace dxvk::hud {
     Rc<DxvkDevice> m_device;
 
     uint64_t m_descriptorPoolCount = 0;
-    uint64_t m_descriptorSetCount  = 0;
+    uint64_t m_descriptorSetCount = 0;
+    uint64_t m_descriptorSetCountDisplay = 0;
+    uint64_t m_descriptorSetCountMax = 0;
 
     uint64_t m_descriptorHeapCount = 0;
     uint64_t m_descriptorHeapAlloc = 0;

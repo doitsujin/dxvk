@@ -3,41 +3,9 @@
 
 namespace dxvk {
 
-  DxvkDescriptorSetList::DxvkDescriptorSetList() {
-
-  }
-
-
-  DxvkDescriptorSetList::~DxvkDescriptorSetList() {
-
-  }
-
-
-  VkDescriptorSet DxvkDescriptorSetList::alloc() {
-    if (unlikely(m_next == m_sets.size()))
-      return VK_NULL_HANDLE;
-
-    return m_sets[m_next++];
-  }
-
-
-  void DxvkDescriptorSetList::addSet(VkDescriptorSet set) {
-    m_sets.push_back(set);
-    m_next = m_sets.size();
-  }
-
-
-  void DxvkDescriptorSetList::reset() {
-    m_next = 0;
-  }
-
-
-
   DxvkDescriptorPool::DxvkDescriptorPool(
-          DxvkDevice*               device,
-          DxvkDescriptorPoolSet*    manager)
-  : m_device(device), m_manager(manager),
-    m_cachedEntry(nullptr, nullptr) {
+          DxvkDevice*               device)
+  : m_device(device) {
 
   }
 
@@ -45,301 +13,143 @@ namespace dxvk {
   DxvkDescriptorPool::~DxvkDescriptorPool() {
     auto vk = m_device->vkd();
 
-    for (auto pool : m_descriptorPools)
-      vk->vkDestroyDescriptorPool(vk->device(), pool, nullptr);
+    for (auto pool : m_pools)
+      vk->vkDestroyDescriptorPool(vk->device(), pool.pool, nullptr);
 
     m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount,
-      uint64_t(-int64_t(m_descriptorPools.size())));
-    m_device->addStatCtr(DxvkStatCounter::DescriptorSetCount,
-      uint64_t(-int64_t(m_setsAllocated)));
-  }
-
-
-  bool DxvkDescriptorPool::shouldSubmit(bool endFrame) {
-    // Never submit empty descriptor pools
-    if (!m_setsAllocated)
-      return false;
-
-    // Submit at the end of each frame to make it more likely
-    // to get similar descriptor set layouts the next time the
-    // pool gets used.
-    if (endFrame)
-      return true;
-
-    // Submit very large descriptor pools to prevent extreme
-    // memory bloat. This may be necessary for off-screen
-    // rendering applications, or in situations where games
-    // pre-render a lot of images without presenting in between.
-    return m_device->features().nvDescriptorPoolOverallocation.descriptorPoolOverallocation ?
-      m_setsAllocated > MaxDesiredPoolCount * m_manager->getMaxSetCount() :
-      m_descriptorPools.size() > MaxDesiredPoolCount;
+      uint64_t(-int64_t(m_pools.size())));
   }
 
 
   void DxvkDescriptorPool::alloc(
+          uint64_t                  trackingId,
     const DxvkPipelineLayout*       layout,
           uint32_t                  setMask,
           VkDescriptorSet*          sets) {
-    auto setMap = getSetMapCached(layout);
-
-    for (auto setIndex : bit::BitMask(setMask)) {
-      auto list = setMap->sets[setIndex];
-
-      if (unlikely(!(sets[setIndex] = list->alloc()))) {
-        sets[setIndex] = allocSetWithLayout(list,
-          layout->getDescriptorSetLayout(setIndex));
-      }
-
-      m_setsUsed += 1;
-    }
+    for (auto setIndex : bit::BitMask(setMask))
+      sets[setIndex] = alloc(trackingId, layout->getDescriptorSetLayout(setIndex));
   }
 
 
   VkDescriptorSet DxvkDescriptorPool::alloc(
+          uint64_t                  trackingId,
     const DxvkDescriptorSetLayout*  layout) {
-    auto list = getSetList(layout);
+    auto vk = m_device->vkd();
 
-    VkDescriptorSet set = list->alloc();
+    DescriptorPool* pool = nullptr;
 
-    if (unlikely(!set))
-      set = allocSetWithLayout(list, layout);
+    if (!m_pools.empty())
+      pool = &m_pools[m_poolIndex];
 
+    VkDescriptorSetLayout setLayout = layout->getSetLayout();
+
+    VkResult vr = VK_ERROR_OUT_OF_POOL_MEMORY;
+    VkDescriptorSet set = VK_NULL_HANDLE;
+
+    VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    info.descriptorSetCount = 1u;
+    info.pSetLayouts = &setLayout;
+
+    if (likely(pool)) {
+      info.descriptorPool = pool->pool;
+
+      vr = vk->vkAllocateDescriptorSets(vk->device(), &info, &set);
+    }
+
+    if (unlikely(vr != VK_SUCCESS)) {
+      pool = &getNextPool();
+
+      info.descriptorPool = pool->pool;
+      vr = vk->vkAllocateDescriptorSets(vk->device(), &info, &set);
+
+      if (vr != VK_SUCCESS)
+        throw DxvkError(str::format("Failed to allocate descriptor set: ", vr));
+    }
+
+    pool->trackingId = trackingId;
+
+    m_setsAllocated++;
     return set;
   }
 
 
-  void DxvkDescriptorPool::reset() {
-    // As a heuristic to save memory, check how many descriptor
-    // sets were actually being used in past submissions.
-    size_t poolCount = m_descriptorPools.size();
-    bool needsReset = poolCount > MaxDesiredPoolCount;
-
-    if (poolCount > 1 || m_setsAllocated > m_manager->getMaxSetCount() / 2) {
-      double factor = std::max(11.0 / 3.0 - double(poolCount) / 3.0, 1.0);
-      needsReset = double(m_setsUsed) * factor < double(m_setsAllocated);
-    }
-
-    m_setsUsed = 0;
-
-    if (!needsReset) {
-      for (auto& entry : m_setLists)
-        entry.second.reset();
-    } else {
-      // If most sets are no longer needed, reset and destroy
-      // descriptor pools and reset all lookup tables in order
-      // to accomodate more descriptors of different layouts.
-      for (auto pool : m_descriptorPools)
-        m_manager->recycleVulkanDescriptorPool(pool);
-
-      m_descriptorPools.clear();
-      m_setLists.clear();
-      m_setMaps.clear();
-
-      m_setsAllocated = 0;
-    }
-
-    m_cachedEntry = { nullptr, nullptr };
+  void DxvkDescriptorPool::notifyCompletion(
+          uint64_t                    trackingId) {
+    m_lastCompleteTrackingId.store(trackingId, std::memory_order_release);
   }
 
 
   void DxvkDescriptorPool::updateStats(DxvkStatCounters& counters) {
-    counters.addCtr(DxvkStatCounter::DescriptorSetCount,
-      uint64_t(int64_t(m_setsAllocated) - int64_t(m_prevSetsAllocated)));
-
-    m_prevSetsAllocated = m_setsAllocated;
+    counters.addCtr(DxvkStatCounter::DescriptorSetCount, m_setsAllocated);
+    m_setsAllocated = 0u;
   }
 
 
-  DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMapCached(
-    const DxvkPipelineLayout*                 layout) {
-    if (likely(m_cachedEntry.first == layout))
-      return m_cachedEntry.second;
+  DxvkDescriptorPool::DescriptorPool& DxvkDescriptorPool::getNextPool() {
+    uint64_t lastComplete = m_lastCompleteTrackingId.load(std::memory_order_acquire);
 
-    auto map = getSetMap(layout);
-    m_cachedEntry = std::make_pair(layout, map);
-    return map;
-  }
+    bool foundFreePool = false;
 
+    if (!m_pools.empty()) {
+      for (size_t i = 1u; i < m_pools.size() && !foundFreePool; i++) {
+        m_poolIndex += 1u;
+        m_poolIndex %= m_pools.size();
 
-  DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMap(
-    const DxvkPipelineLayout*                 layout) {
-    auto pair = m_setMaps.find(layout);
-
-    if (likely(pair != m_setMaps.end()))
-      return &pair->second;
-
-    auto iter = m_setMaps.emplace(
-      std::piecewise_construct,
-      std::tuple(layout),
-      std::tuple());
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      const auto* setLayout = layout->getDescriptorSetLayout(i);
-
-      iter.first->second.sets[i] = (setLayout && !setLayout->isEmpty())
-        ? getSetList(setLayout)
-        : nullptr;
+        foundFreePool = lastComplete >= m_pools[m_poolIndex].trackingId;
+      }
     }
 
-    return &iter.first->second;
-  }
+    if (!foundFreePool) {
+      auto& pool = m_pools.emplace_back();
+      pool.pool = createDescriptorPool();
 
+      m_poolIndex = m_pools.size() - 1u;
+      return pool;
+    } else {
+      auto& result = m_pools[m_poolIndex];
 
-  DxvkDescriptorSetList* DxvkDescriptorPool::getSetList(
-    const DxvkDescriptorSetLayout*            layout) {
-    auto pair = m_setLists.find(layout);
+      auto vk = m_device->vkd();
+      VkResult vr = vk->vkResetDescriptorPool(vk->device(), result.pool, 0u);
 
-    if (pair != m_setLists.end())
-      return &pair->second;
+      if (vr)
+        throw DxvkError(str::format("Failed reset descriptor pool: ", vr));
 
-    auto iter = m_setLists.emplace(
-      std::piecewise_construct,
-      std::tuple(layout),
-      std::tuple());
-    return &iter.first->second;
-  }
-
-
-  VkDescriptorSet DxvkDescriptorPool::allocSetWithLayout(
-          DxvkDescriptorSetList*              list,
-    const DxvkDescriptorSetLayout*            layout) {
-    VkDescriptorSet set = VK_NULL_HANDLE;
-
-    if (!m_descriptorPools.empty())
-      set = allocSetFromPool(m_descriptorPools.back(), layout);
-
-    if (!set)
-      set = allocSetFromPool(addPool(), layout);
-
-    list->addSet(set);
-    m_setsAllocated += 1;
-
-    return set;
-  }
-
-
-  VkDescriptorSet DxvkDescriptorPool::allocSetFromPool(
-          VkDescriptorPool                    pool,
-    const DxvkDescriptorSetLayout*            layout) {
-    auto vk = m_device->vkd();
-
-    VkDescriptorSetLayout setLayout = layout->getSetLayout();
-
-    VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
-    info.descriptorPool = pool;
-    info.descriptorSetCount = 1;
-    info.pSetLayouts = &setLayout;
-
-    VkDescriptorSet set = VK_NULL_HANDLE;
-    
-    if (vk->vkAllocateDescriptorSets(vk->device(), &info, &set) != VK_SUCCESS)
-      return VK_NULL_HANDLE;
-
-    return set;
-  }
-
-
-  VkDescriptorPool DxvkDescriptorPool::addPool() {
-    VkDescriptorPool pool = m_manager->createVulkanDescriptorPool();
-    m_descriptorPools.push_back(pool);
-    return pool;
-  }
-
-  
-  DxvkDescriptorPoolSet::DxvkDescriptorPoolSet(
-          DxvkDevice*                 device)
-  : m_device(device) {
-    // Deliberately pick a very high number of descriptor sets so that
-    // we will typically end up using all available pool memory before
-    // the descriptor set limit becomes the limiting factor.
-    m_maxSets = env::is32BitHostPlatform() ? 24576u : 49152u;
-  }
-
-
-  DxvkDescriptorPoolSet::~DxvkDescriptorPoolSet() {
-    auto vk = m_device->vkd();
-
-    for (size_t i = 0; i < m_vkPoolCount; i++)
-      vk->vkDestroyDescriptorPool(vk->device(), m_vkPools[i], nullptr);
-
-    m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount,
-      uint64_t(-int64_t(m_vkPoolCount)));
-  }
-
-
-  Rc<DxvkDescriptorPool> DxvkDescriptorPoolSet::getDescriptorPool() {
-    Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
-
-    if (pool == nullptr)
-      pool = new DxvkDescriptorPool(m_device, this);
-
-    return pool;
-  }
-
-
-  void DxvkDescriptorPoolSet::recycleDescriptorPool(
-    const Rc<DxvkDescriptorPool>&     pool) {
-    pool->reset();
-
-    m_pools.returnObject(pool);
-  }
-
-
-  VkDescriptorPool DxvkDescriptorPoolSet::createVulkanDescriptorPool() {
-    auto vk = m_device->vkd();
-
-    { std::lock_guard lock(m_mutex);
-
-      if (m_vkPoolCount)
-        return m_vkPools[--m_vkPoolCount];
+      return result;
     }
+  }
+
+
+  VkDescriptorPool DxvkDescriptorPool::createDescriptorPool() const {
+    auto vk = m_device->vkd();
 
     // Samplers and uniform buffers may be special on some implementations
     // so we should allocate space for a reasonable number of both, but
     // assume that all other descriptor types share pool memory.
-    std::array<VkDescriptorPoolSize, 6> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          m_maxSets / 2  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          m_maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   m_maxSets / 2  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   m_maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         m_maxSets * 2  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         m_maxSets / 2  },
+    constexpr static uint32_t MaxSets = env::is32BitHostPlatform() ? 24576u : 49152u;
+
+    static const std::array<VkDescriptorPoolSize, 6> pools = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxSets / 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          MaxSets / 64 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   MaxSets / 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxSets / 64 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         MaxSets * 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         MaxSets / 2  },
     }};
-    
+
     VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-    info.maxSets       = m_maxSets;
+    info.maxSets       = MaxSets;
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();
 
-    if (m_device->features().nvDescriptorPoolOverallocation.descriptorPoolOverallocation) {
-      info.flags |= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV
-                 |  VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV;
-    }
-
     VkDescriptorPool pool = VK_NULL_HANDLE;
 
-    if (vk->vkCreateDescriptorPool(vk->device(), &info, nullptr, &pool) != VK_SUCCESS)
-      throw DxvkError("DxvkDescriptorPool: Failed to create descriptor pool");
+    VkResult vr = vk->vkCreateDescriptorPool(vk->device(), &info, nullptr, &pool);
+
+    if (vr)
+      throw DxvkError(str::format("Failed create descriptor pool: ", vr));
 
     m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount, 1);
     return pool;
-  }
-
-  
-  void DxvkDescriptorPoolSet::recycleVulkanDescriptorPool(VkDescriptorPool pool) {
-    auto vk = m_device->vkd();
-    vk->vkResetDescriptorPool(vk->device(), pool, 0);
-
-    { std::lock_guard lock(m_mutex);
-
-      if (m_vkPoolCount < m_vkPools.size()) {
-        m_vkPools[m_vkPoolCount++] = pool;
-        return;
-      }
-    }
-
-    m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount, uint64_t(-1ll));
-    vk->vkDestroyDescriptorPool(vk->device(), pool, nullptr);
   }
 
 }

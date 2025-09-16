@@ -395,6 +395,8 @@ namespace dxvk {
 
       m_descriptorRange = nullptr;
       m_descriptorHeap = nullptr;
+    } else {
+      m_descriptorPool->updateStats(m_statCounters);
     }
 
     // Commit current set of command buffers
@@ -457,13 +459,10 @@ namespace dxvk {
     m_statCounters.reset();
 
     // Recycle descriptor pools
-    for (const auto& descriptorPools : m_descriptorPools)
-      descriptorPools.second->recycleDescriptorPool(descriptorPools.first);
-
-    m_descriptorPools.clear();
-
-    m_descriptorPool = nullptr;
-    m_descriptorManager = nullptr;
+    if (m_descriptorPool) {
+      m_descriptorPool->notifyCompletion(m_trackingId);
+      m_descriptorPool = nullptr;
+    }
 
     // Release pipelines
     for (auto pipeline : m_pipelines)
@@ -513,7 +512,7 @@ namespace dxvk {
     auto setLayout = layout->getDescriptorSetLayout(0u);
 
     if (descriptorCount && setLayout && !setLayout->isEmpty()) {
-      VkDescriptorSet set = m_descriptorPool->alloc(setLayout);
+      VkDescriptorSet set = m_descriptorPool->alloc(m_trackingId, setLayout);
 
       small_vector<DxvkLegacyDescriptor, 16u> descriptors;
 
