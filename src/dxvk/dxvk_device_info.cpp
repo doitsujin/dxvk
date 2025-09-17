@@ -53,7 +53,6 @@ namespace dxvk {
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
     HANDLE_EXT(khrWin32KeyedMutex);                \
-    HANDLE_EXT(nvDescriptorPoolOverallocation);    \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
     HANDLE_EXT(nvxBinaryImport);                   \
@@ -488,10 +487,6 @@ namespace dxvk {
     if (m_featuresSupported.extRobustness2.robustImageAccess2)
       m_featuresSupported.vk13.robustImageAccess = VK_FALSE;
 
-    // If descriptor buffers are used, disable legacy descriptor model extensions
-    if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer)
-      m_featuresSupported.nvDescriptorPoolOverallocation.descriptorPoolOverallocation = VK_FALSE;
-
     // Vertex attribute divisor is unusable before spec version 3
     if (m_extensionsSupported.extVertexAttributeDivisor.specVersion < 3u) {
       m_featuresSupported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = VK_FALSE;
@@ -892,9 +887,6 @@ namespace dxvk {
 
       /* Keyed mutex support in wine */
       ENABLE_EXT(khrWin32KeyedMutex, false),
-
-      /* Descriptor pool overallocation, reduces descriptor pool spam in legacy model */
-      ENABLE_EXT_FEATURE(nvDescriptorPoolOverallocation, descriptorPoolOverallocation, false),
 
       /* Reflex support */
       ENABLE_EXT(nvLowLatency2, false),
