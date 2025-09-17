@@ -405,8 +405,7 @@ namespace dxvk {
         inputWidth * HardwareCursorFormatSize);
       const size_t copyHeight = std::min<size_t>(
         HardwareCursorHeight,
-        inputHeight
-      );
+        inputHeight);
 
       // Windows works with a stride of 128, let's respect that.
       for (uint32_t h = 0; h < copyHeight; h++)

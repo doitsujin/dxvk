@@ -254,8 +254,7 @@ namespace dxvk {
       return D3DERR_NOTAVAILABLE;
 
     if (MultiSampleType != D3DMULTISAMPLE_NONE
-     && (SurfaceFormat == D3D9Format::NULL_FORMAT
-      || SurfaceFormat == D3D9Format::D16_LOCKABLE
+     && (SurfaceFormat == D3D9Format::D16_LOCKABLE
       || SurfaceFormat == D3D9Format::D32F_LOCKABLE
       || SurfaceFormat == D3D9Format::D32_LOCKABLE
       || SurfaceFormat == D3D9Format::INTZ
