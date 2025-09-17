@@ -8,7 +8,14 @@ namespace dxvk {
     if (!ppDirect3D8)
       return D3DERR_INVALIDCALL;
 
-    *ppDirect3D8 = ref(new D3D8Interface());
+    try {
+      *ppDirect3D8 = ref(new D3D8Interface());
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      *ppDirect3D8 = nullptr;
+      return D3DERR_NOTAVAILABLE;
+    }
+
     return D3D_OK;
   }
 

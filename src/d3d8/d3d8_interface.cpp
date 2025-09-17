@@ -10,7 +10,7 @@ namespace dxvk {
   D3D8Interface::D3D8Interface()
     : m_d3d9(d3d9::Direct3DCreate9(D3D_SDK_VERSION)) {
     // Get the bridge interface to D3D9.
-    if (FAILED(m_d3d9->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), reinterpret_cast<void**>(&m_bridge)))) {
+    if (unlikely(FAILED(m_d3d9->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), reinterpret_cast<void**>(&m_bridge))))) {
       throw DxvkError("D3D8Interface: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
@@ -75,21 +75,22 @@ namespace dxvk {
     d3d9::D3DADAPTER_IDENTIFIER9 identifier9;
     HRESULT res = m_d3d9->GetAdapterIdentifier(Adapter, Flags, &identifier9);
 
-    if (likely(SUCCEEDED(res))) {
-      strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
-      strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
+    if (unlikely(FAILED(res)))
+      return res;
 
-      pIdentifier->DriverVersion    = identifier9.DriverVersion;
-      pIdentifier->VendorId         = identifier9.VendorId;
-      pIdentifier->DeviceId         = identifier9.DeviceId;
-      pIdentifier->SubSysId         = identifier9.SubSysId;
-      pIdentifier->Revision         = identifier9.Revision;
-      pIdentifier->DeviceIdentifier = identifier9.DeviceIdentifier;
+    strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
+    strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
 
-      pIdentifier->WHQLLevel = identifier9.WHQLLevel;
-    }
+    pIdentifier->DriverVersion    = identifier9.DriverVersion;
+    pIdentifier->VendorId         = identifier9.VendorId;
+    pIdentifier->DeviceId         = identifier9.DeviceId;
+    pIdentifier->SubSysId         = identifier9.SubSysId;
+    pIdentifier->Revision         = identifier9.Revision;
+    pIdentifier->DeviceIdentifier = identifier9.DeviceIdentifier;
 
-    return res;
+    pIdentifier->WHQLLevel = identifier9.WHQLLevel;
+
+    return D3D_OK;
   }
 
   HRESULT __stdcall D3D8Interface::EnumAdapterModes(
@@ -136,14 +137,21 @@ namespace dxvk {
       &pDevice9
     );
 
-    if (likely(SUCCEEDED(res)))
+    if (unlikely(FAILED(res)))
+      return res;
+
+    try {
       *ppReturnedDeviceInterface = ref(new D3D8Device(
         this, std::move(pDevice9),
         DeviceType, hFocusWindow, BehaviorFlags,
         pPresentationParameters
       ));
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_NOTAVAILABLE;
+    }
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT D3D8Interface::ValidatePresentationParameters(
