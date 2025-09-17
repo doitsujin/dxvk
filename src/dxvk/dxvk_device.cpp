@@ -748,6 +748,9 @@ namespace dxvk {
 
     // Forward UBO device limit as-is
     m_shaderOptions.maxUniformBufferSize = m_properties.core.properties.limits.maxUniformBufferRange;
+    m_shaderOptions.maxUniformBufferCount = m_properties.core.properties.limits.maxPerStageDescriptorUniformBuffers < MaxNumUniformBufferSlots
+      ? int32_t(m_properties.core.properties.limits.maxPerStageDescriptorUniformBuffers)
+      : -1;
 
     // ANV up to mesa 25.0.2 breaks when we *don't* explicitly write point size
     if (m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA, Version(), Version(25, 0, 3)))

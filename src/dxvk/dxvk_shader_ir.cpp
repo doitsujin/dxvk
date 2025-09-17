@@ -1477,6 +1477,9 @@ namespace dxvk {
     options.supportsZeroInfNanPreserveF32 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve32);
     options.supportsZeroInfNanPreserveF64 = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsSzInfNanPreserve64);
 
+    options.maxCbvSize = m_info.options.maxUniformBufferSize;
+    options.maxCbvCount = m_info.options.maxUniformBufferCount;
+
     // Build final SPIR-V binary
     DxvkShaderResourceMapping mapping(m_metadata.stage, bindings);
 

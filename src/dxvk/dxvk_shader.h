@@ -126,6 +126,10 @@ namespace dxvk {
     /// Maximum uniform buffer size, in bytes. Constant buffer bindings
     /// larger than this will be lowered to a storage buffer.
     uint32_t maxUniformBufferSize = 0u;
+    /// Maximum uniform buffer count per shader. Constant buffer
+    /// bindigs beyond this will be lowered to a storage buffer.
+    /// Negative numbers impose no limit on the number of buffers.
+    int32_t maxUniformBufferCount = -1;
     /// Maximum tessellation factor. If 0, tessellation factors
     /// will not be clamped beyond what is set in the shader.
     uint8_t maxTessFactor = 0u;
