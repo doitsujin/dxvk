@@ -47,7 +47,7 @@ namespace dxvk {
     , m_behaviorFlags(BehaviorFlags)
     , m_multithread(BehaviorFlags & D3DCREATE_MULTITHREADED) {
     // Get the bridge interface to D3D9.
-    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), reinterpret_cast<void**>(&m_bridge)))) {
+    if (unlikely(FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), reinterpret_cast<void**>(&m_bridge))))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
