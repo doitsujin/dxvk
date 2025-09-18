@@ -226,7 +226,7 @@ namespace dxvk {
       std::vector<const char*> extensionNames;
 
       for (const auto& layer : layersEnabled)
-        extensionNames.push_back(layer.c_str());
+        layerNames.push_back(layer.c_str());
 
       for (const auto& ext : extensionsEnabled)
         extensionNames.push_back(ext.extensionName);
