@@ -8370,7 +8370,7 @@ namespace dxvk {
 
       uint32_t lastActiveTextureStage = std::max(activeTextureStageCount, 1u) - 1u; // Subtract 1 to make it fit 3 bits
       bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(lastActiveTextureStage);
-      dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(key.Stages[0].Contents.GlobalSpecularEnable);
+      dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(m_state.renderStates[D3DRS_SPECULARENABLE]);
       constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
       for (uint32_t i = 0; i < 4; i++) {
         if (i <= activeTextureStageCount) {
