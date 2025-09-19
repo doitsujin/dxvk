@@ -3415,7 +3415,7 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyRasterizerSampleCount() {
-    DxbcPushConstants pc;
+    D3D11ShaderPushData pc = { };
     pc.rasterizerSampleCount = m_state.om.sampleCount;
 
     if (unlikely(!m_state.om.sampleCount)) {
@@ -4889,8 +4889,8 @@ namespace dxvk {
       }
 
       // Initialize push constants
-      DxbcPushConstants pc;
-      pc.rasterizerSampleCount = 1;
+      D3D11ShaderPushData pc = { };
+      pc.rasterizerSampleCount = 1u;
       ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pc), &pc);
     });
   }
