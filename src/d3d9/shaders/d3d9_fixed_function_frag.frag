@@ -173,9 +173,6 @@ uint alphaArg2(uint stageIndex) {
 bool resultIsTemp(uint stageIndex) {
     return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 18, 1) != 0;
 }
-bool globalSpecularEnabled() {
-    return bitfieldExtract(data.Stages[0].Primitive[1], 19, 1) != 0;
-}
 
 
 vec4 calculateFog(vec4 vPos, vec4 oColor) {
@@ -342,7 +339,10 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
             reg = in_Color0;
             break;
         case D3DTA_SPECULAR:
-            reg = in_Color1;
+            // Specular highlights shouldn't be calculated at all if D3DRS_SPECULARENABLE
+            // is set to FALSE, however, to avoid adding a spec constant in the FF VS and to
+            // ensure correctness during texture blending, simply return vec4(0.0) here instead.
+            reg = specBool(SpecFFGlobalSpecularEnabled) ? in_Color1 : vec4(0.0);
             break;
         case D3DTA_TEMP:
             reg = temp;
