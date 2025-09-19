@@ -317,8 +317,8 @@ namespace dxvk {
     D3D11ShaderTypeFlags shadersDirty = 0u;
     D3D11ShaderTypeFlags graphicsUavShaders = 0u;
 
-    D3D11ShaderStageState<DxbcBindingMask> bindingsUsed;
-    D3D11ShaderStageState<DxbcBindingMask> bindingsDirty;
+    D3D11ShaderStageState<D3D11BindingMask> bindingsUsed;
+    D3D11ShaderStageState<D3D11BindingMask> bindingsDirty;
 
     void reset() {
       shadersUsed = 0u;

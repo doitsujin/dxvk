@@ -138,7 +138,7 @@ namespace dxvk {
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
       const D3D11ShaderIcbInfo&     Icb,
-      const DxbcBindingMask&        BindingMask);
+      const D3D11BindingMask&       BindingMask);
     ~D3D11CommonShader();
 
     Rc<DxvkShader> GetShader() const {
@@ -155,7 +155,7 @@ namespace dxvk {
       return m_shader->debugName();
     }
 
-    DxbcBindingMask GetBindingMask() const {
+    D3D11BindingMask GetBindingMask() const {
       return m_bindings;
     }
 
@@ -164,7 +164,7 @@ namespace dxvk {
     Rc<DxvkShader> m_shader;
     Rc<DxvkBuffer> m_buffer;
 
-    DxbcBindingMask m_bindings = { };
+    D3D11BindingMask m_bindings = { };
 
     void CreateIrShader(
             D3D11Device*            pDevice,
@@ -273,7 +273,7 @@ namespace dxvk {
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
       const D3D11ShaderIcbInfo&     Icb,
-      const DxbcBindingMask&        BindingMask,
+      const D3D11BindingMask&       BindingMask,
             D3D11CommonShader*      pShader);
     
   private:
