@@ -57,7 +57,7 @@ namespace dxvk {
      *
      * Only valid after successfully compiling the shader.
      */
-    std::optional<DxbcBindingMask> bindings() const {
+    std::optional<D3D11BindingMask> bindings() const {
       return m_bindings;
     }
 
@@ -120,7 +120,7 @@ namespace dxvk {
 
     std::vector<uint32_t> m_icb;
 
-    std::optional<DxbcBindingMask> m_bindings;
+    std::optional<D3D11BindingMask> m_bindings;
     
     void runAnalyzer(
             DxbcAnalyzer&       analyzer,
