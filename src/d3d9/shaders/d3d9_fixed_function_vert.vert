@@ -658,6 +658,7 @@ void main() {
                   midDot = clamp(midDot, 0.0, 1.0);
             bool doSpec = midDot > 0.0;
                  doSpec = doSpec && hitDot > 0.0;
+                 doSpec = doSpec && specBool(SpecFFGlobalSpecularEnabled);
 
             float specularness = pow(midDot, data.Material.Power);
                   specularness *= atten;
