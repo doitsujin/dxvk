@@ -174,13 +174,6 @@ namespace dxvk {
             size_t                  BytecodeLength,
       const D3D11ShaderIcbInfo&     Icb);
 
-    void CreateLegacyShader(
-            D3D11Device*            pDevice,
-      const DxvkShaderHash&         ShaderKey,
-      const DxvkIrShaderCreateInfo& ModuleInfo,
-      const void*                   pShaderBytecode,
-            size_t                  BytecodeLength);
-
   };
 
 
