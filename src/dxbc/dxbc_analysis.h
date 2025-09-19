@@ -54,7 +54,7 @@ namespace dxvk {
     DxbcClipCullInfo clipCullIn;
     DxbcClipCullInfo clipCullOut;
 
-    DxbcBindingMask bindings = { };
+    D3D11BindingMask bindings = { };
 
     uint64_t uavCounterMask = 0u;
     

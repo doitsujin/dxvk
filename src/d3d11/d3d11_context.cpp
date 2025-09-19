@@ -3133,8 +3133,8 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyConstantBuffers(
           D3D11ShaderType                   Stage,
-    const DxbcBindingMask&                  BoundMask,
-          DxbcBindingMask&                  DirtyMask) {
+    const D3D11BindingMask&                 BoundMask,
+          D3D11BindingMask&                 DirtyMask) {
     uint32_t bindMask = BoundMask.cbvMask & DirtyMask.cbvMask;
 
     if (!bindMask)
@@ -3156,8 +3156,8 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtySamplers(
           D3D11ShaderType                   Stage,
-    const DxbcBindingMask&                  BoundMask,
-          DxbcBindingMask&                  DirtyMask) {
+    const D3D11BindingMask&                 BoundMask,
+          D3D11BindingMask&                 DirtyMask) {
     uint32_t bindMask = BoundMask.samplerMask & DirtyMask.samplerMask;
 
     if (!bindMask)
@@ -3175,8 +3175,8 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyShaderResources(
           D3D11ShaderType                   Stage,
-    const DxbcBindingMask&                  BoundMask,
-          DxbcBindingMask&                  DirtyMask) {
+    const D3D11BindingMask&                 BoundMask,
+          D3D11BindingMask&                 DirtyMask) {
     const auto& state = m_state.srv[Stage];
 
     for (uint32_t i = 0; i < state.maxCount; i += 64u) {
@@ -3198,8 +3198,8 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyDirtyUnorderedAccessViews(
           D3D11ShaderType                   Stage,
-    const DxbcBindingMask&                  BoundMask,
-          DxbcBindingMask&                  DirtyMask) {
+    const D3D11BindingMask&                 BoundMask,
+          D3D11BindingMask&                 DirtyMask) {
     uint64_t bindMask = BoundMask.uavMask & DirtyMask.uavMask;
 
     if (!bindMask)

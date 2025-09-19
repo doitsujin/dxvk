@@ -111,7 +111,7 @@ namespace dxvk {
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
     const D3D11ShaderIcbInfo&     Icb,
-    const DxbcBindingMask&        BindingMask)
+    const D3D11BindingMask&       BindingMask)
   : m_bindings(BindingMask) {
     if (Logger::logLevel() <= LogLevel::Debug)
       Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
@@ -175,7 +175,7 @@ namespace dxvk {
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
     const D3D11ShaderIcbInfo&     Icb,
-    const DxbcBindingMask&        BindingMask,
+    const D3D11BindingMask&       BindingMask,
           D3D11CommonShader*      pShader) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
