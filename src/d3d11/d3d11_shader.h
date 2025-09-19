@@ -3,8 +3,6 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "../dxbc/dxbc_module.h"
-
 #include "../dxvk/dxvk_device.h"
 #include "../dxvk/dxvk_shader.h"
 #include "../dxvk/dxvk_shader_key.h"
@@ -18,6 +16,7 @@
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
+#include "d3d11_util.h"
 
 namespace dxvk {
   
@@ -61,8 +60,8 @@ namespace dxvk {
     static constexpr uint32_t SrvTotal          = SrvPerStage * StageCount;
     static constexpr uint32_t UavPerPipeline    = 64u;
     static constexpr uint32_t UavTotal          = UavPerPipeline * 4u;
-    static constexpr uint32_t UavIndexGraphics  = DxbcSrvTotal;
-    static constexpr uint32_t UavIndexCompute   = UavIndexGraphics + DxbcUavPerPipeline * 2u;
+    static constexpr uint32_t UavIndexGraphics  = SrvTotal;
+    static constexpr uint32_t UavIndexCompute   = UavIndexGraphics + UavPerPipeline * 2u;
 
     template<typename T>
     static uint32_t computeCbvBinding(T stage, uint32_t index) {
