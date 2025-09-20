@@ -1927,7 +1927,7 @@ namespace dxvk {
 
     dxbc_spv::dxbc::Instruction icbOp = { };
 
-    DxbcBindingMask bindingMask;
+    D3D11BindingMask bindingMask;
 
     while (parser) {
       auto op = parser.parseInstruction();
@@ -1943,26 +1943,26 @@ namespace dxvk {
 
         case dxbc_spv::dxbc::OpCode::eDclSampler: {
           uint32_t index = op.getDst(0u).getIndex(0u);
-          bindingMask.samplerMask |= 1u << index;
+          bindingMask.setSampler(index);
         } break;
 
         case dxbc_spv::dxbc::OpCode::eDclConstantBuffer: {
           uint32_t index = op.getDst(0u).getIndex(0u);
-          bindingMask.cbvMask |= 1u << index;
+          bindingMask.setCbv(index);
         } break;
 
         case dxbc_spv::dxbc::OpCode::eDclResource:
         case dxbc_spv::dxbc::OpCode::eDclResourceRaw:
         case dxbc_spv::dxbc::OpCode::eDclResourceStructured: {
           uint32_t index = op.getDst(0u).getIndex(0u);
-          bindingMask.srvMask.at(index / 64u) |= uint64_t(1u) << (index % 64u);
+          bindingMask.setSrv(index);
         } break;
 
         case dxbc_spv::dxbc::OpCode::eDclUavTyped:
         case dxbc_spv::dxbc::OpCode::eDclUavRaw:
         case dxbc_spv::dxbc::OpCode::eDclUavStructured: {
           uint32_t index = op.getDst(0u).getIndex(0u);
-          bindingMask.uavMask |= uint64_t(1u) << index;
+          bindingMask.setUav(index);
         } break;
 
         case dxbc_spv::dxbc::OpCode::eDclInput:

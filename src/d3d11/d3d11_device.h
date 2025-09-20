@@ -3,8 +3,6 @@
 #include <mutex>
 #include <vector>
 
-#include "../dxbc/dxbc_options.h"
-
 #include "../dxgi/dxgi_object.h"
 #include "../dxgi/dxgi_interfaces.h"
 

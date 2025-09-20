@@ -8,10 +8,6 @@ if get_option('enable_dxgi')
   subdir('dxgi')
 endif
 
-if get_option('enable_d3d10') or get_option('enable_d3d11')
-  subdir('dxbc')
-endif
-
 if get_option('enable_d3d11')
   if not get_option('enable_dxgi')
     error('DXGI is required for D3D11.')

@@ -2,11 +2,47 @@
 
 #include "dxso_include.h"
 
-#include "../dxbc/dxbc_tag.h"
-
 #include <cstdint>
 
 namespace dxvk {
+
+  /**
+   * \brief Four-character tag
+   */
+  class DxsoTag {
+
+  public:
+
+    DxsoTag() {
+      for (size_t i = 0; i < 4; i++)
+        m_chars[i] = '\0';
+    }
+
+    DxsoTag(const char* tag) {
+      for (size_t i = 0; i < 4; i++)
+        m_chars[i] = tag[i];
+    }
+
+    bool operator == (const DxsoTag& other) const {
+      bool result = true;
+      for (size_t i = 0; i < 4; i++)
+        result &= m_chars[i] == other.m_chars[i];
+      return result;
+    }
+
+    bool operator != (const DxsoTag& other) const {
+      return !this->operator == (other);
+    }
+
+    const char* operator & () const { return m_chars; }
+          char* operator & ()       { return m_chars; }
+
+  private:
+
+    char m_chars[4];
+
+  };
+
 
   /**
     * \brief DXSO (d3d9) bytecode reader
@@ -28,7 +64,7 @@ namespace dxvk {
     auto readu32() { return this->readNum<uint32_t> (); }
     auto readf32() { return this->readNum<float>    (); }
 
-    DxbcTag readTag();
+    DxsoTag readTag();
 
     void read(void* dst, size_t n);
 

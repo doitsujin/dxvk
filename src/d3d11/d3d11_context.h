@@ -808,23 +808,23 @@ namespace dxvk {
 
     void ApplyDirtyConstantBuffers(
             D3D11ShaderType                   Stage,
-      const DxbcBindingMask&                  BoundMask,
-            DxbcBindingMask&                  DirtyMask);
+      const D3D11BindingMask&                 BoundMask,
+            D3D11BindingMask&                 DirtyMask);
 
     void ApplyDirtySamplers(
             D3D11ShaderType                   Stage,
-      const DxbcBindingMask&                  BoundMask,
-            DxbcBindingMask&                  DirtyMask);
+      const D3D11BindingMask&                 BoundMask,
+            D3D11BindingMask&                 DirtyMask);
 
     void ApplyDirtyShaderResources(
             D3D11ShaderType                   Stage,
-      const DxbcBindingMask&                  BoundMask,
-            DxbcBindingMask&                  DirtyMask);
+      const D3D11BindingMask&                 BoundMask,
+            D3D11BindingMask&                 DirtyMask);
 
     void ApplyDirtyUnorderedAccessViews(
             D3D11ShaderType                   Stage,
-      const DxbcBindingMask&                  BoundMask,
-            DxbcBindingMask&                  DirtyMask);
+      const D3D11BindingMask&                 BoundMask,
+            D3D11BindingMask&                 DirtyMask);
 
     void ApplyDirtyGraphicsBindings();
 
