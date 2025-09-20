@@ -1566,8 +1566,7 @@ namespace dxvk {
       ioPass.demoteMultisampledSrv();
     }
 
-    dxbc_spv::dxbc::CompileOptions options;
-    options.arithmeticOptions.fuseMad = true;
+    dxbc_spv::ir::CompileOptions options;
     options.arithmeticOptions.lowerDot = true;
     options.arithmeticOptions.lowerSinCos = m_info.options.flags.test(DxvkShaderCompileFlag::LowerSinCos);
     options.arithmeticOptions.lowerMsad = true;
@@ -1603,7 +1602,7 @@ namespace dxvk {
     options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
     options.derivativeOptions.hoistDescriptorLoads = true;
 
-    dxbc_spv::dxbc::legalizeIr(builder, options);
+    dxbc_spv::ir::legalizeIr(builder, options);
 
     // Generate shader metadata based on the final code
     DxvkIrLowerBindingModelPass lowerBindingModelPass(builder, *m_baseIr, m_info);
