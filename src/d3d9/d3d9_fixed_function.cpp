@@ -2126,7 +2126,9 @@ namespace dxvk {
             reg = diffuse;
             break;
           case D3DTA_SPECULAR:
-            reg = specular;
+            // Specular highlights shouldn't be calculated at all if D3DRS_SPECULARENABLE
+            // is set to FALSE, so return vec4(0.0) to ensure correctness during texture blending.
+            reg = m_fsKey.Stages[0].Contents.GlobalSpecularEnable ? specular : m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
             break;
           case D3DTA_TEMP:
             reg = temp;
