@@ -1405,6 +1405,14 @@ namespace dxvk {
         if (m_metadata.stage == VK_SHADER_STAGE_GEOMETRY_BIT && linkage->inputTopology != m_metadata.inputTopology)
           ioPass.changeGsInputPrimitiveType(convertPrimitiveType(linkage->inputTopology));
 
+        if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsDualSrcBlend) {
+          dxbc_spv::ir::IoMap io = { };
+          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 0u, 0xfu));
+          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 1u, 0xfu));
+
+          ioPass.resolveUnusedOutputs(io);
+        }
+
         if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
           std::array<dxbc_spv::ir::IoOutputSwizzle, 8u> swizzles = { };
           uint32_t outputMask = m_metadata.outputs.computeMask();
