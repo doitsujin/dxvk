@@ -277,7 +277,7 @@ namespace dxvk {
     /* Crazy Machines 3 - crashes on long device  *
      * descriptions                               */
     { R"(\\cm3\.exe$)", {{
-      { "dxgi.customDeviceDesc",            "DXVK Adapter" },
+      { "dxgi.customDeviceDesc",            "DXVK Device" },
     }} },
     /* World of Final Fantasy: Broken and useless *
      * use of 4x MSAA throughout the renderer     */
