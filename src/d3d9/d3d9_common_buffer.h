@@ -181,7 +181,7 @@ namespace dxvk {
     void PreLoad();
 
     bool HasSequenceNumber() const {
-      return m_mapMode != D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
+      return m_mapMode != D3D9_COMMON_BUFFER_MAP_MODE_DIRECT || m_boundMask == 0;
     }
 
      /**
@@ -190,7 +190,7 @@ namespace dxvk {
      * Stores which CS chunk the resource was last used on.
      * \param [in] Seq Sequence number
      */
-    void TrackMappingBufferSequenceNumber(uint64_t Seq) {
+    void TrackBufferSequenceNumber(uint64_t Seq) {
       m_seq = Seq;
     }
 
@@ -208,6 +208,11 @@ namespace dxvk {
 
     bool DoPerDrawUpload() const {
       return m_desc.Pool == D3DPOOL_SYSTEMMEM && (m_desc.Usage & D3DUSAGE_DYNAMIC) != 0;
+    }
+
+    void SetBound(uint32_t Slot, bool Bound) {
+      m_boundMask &= ~(1u << Slot);
+      m_boundMask |= uint8_t(Bound) << Slot;
     }
 
   private:
@@ -243,6 +248,11 @@ namespace dxvk {
     uint32_t                    m_lockCount = 0;
 
     uint64_t                    m_seq = 0ull;
+
+    /** Tracks which slots the buffer is currently bound to.
+     * 0 if it's not bound at all. Bits 0 - 3 (incl.) are valid
+     * for vertex buffers and only bit 0 is valid for index buffers. */
+    uint8_t                     m_boundMask = 0u;
 
   };
 
