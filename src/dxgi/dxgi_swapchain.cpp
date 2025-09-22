@@ -491,7 +491,16 @@ namespace dxvk {
         Logger::err("DXGI: ResizeTarget: Failed to query containing output");
         return E_FAIL;
       }
-      
+
+      RECT bounds;
+      uint32_t width, height;
+      wsi::getDesktopCoordinates(m_monitor, &bounds);
+      wsi::getWindowSize(m_window, &width, &height);
+      // Window bounds were changed behind our back, update saved state
+      if ((uint32_t)bounds.right - bounds.left != width
+	  || (uint32_t)bounds.bottom - bounds.top != height)
+	wsi::saveWindowState(m_window, &m_windowState, false);
+
       ChangeDisplayMode(output.ptr(), &newDisplayMode);
 
       wsi::updateFullscreenWindow(m_monitor, m_window, false);
