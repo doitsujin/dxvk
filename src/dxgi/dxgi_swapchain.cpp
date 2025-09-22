@@ -491,7 +491,9 @@ namespace dxvk {
         Logger::err("DXGI: ResizeTarget: Failed to query containing output");
         return E_FAIL;
       }
-      
+
+      wsi::saveWindowState(nullptr, m_window, &m_windowState, false);
+
       ChangeDisplayMode(output.ptr(), &newDisplayMode);
 
       wsi::updateFullscreenWindow(m_monitor, m_window, false);
