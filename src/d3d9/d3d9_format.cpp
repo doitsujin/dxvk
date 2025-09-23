@@ -478,9 +478,10 @@ namespace dxvk {
             D3D9Adapter*     pParent,
       const Rc<DxvkAdapter>& adapter,
       const D3D9Options&     options)
-    : m_parent (pParent) {
+    : m_isExtended (pParent->IsExtended()),
+      m_isD3D8Compatible (pParent->IsD3D8Compatible()) {
 
-    const uint32_t vendorId = m_parent->GetVendorId();
+    const uint32_t vendorId = pParent->GetVendorId();
     const bool     isNvidia = vendorId == uint32_t(DxvkGpuVendor::Nvidia);
     const bool     isAmd    = vendorId == uint32_t(DxvkGpuVendor::Amd);
     const bool     isIntel  = vendorId == uint32_t(DxvkGpuVendor::Intel);
@@ -528,7 +529,7 @@ namespace dxvk {
       return D3D9_VK_FORMAT_MAPPING();
 
     // W11V11U10 is only supported by d3d8
-    if (Format == D3D9Format::W11V11U10 && !m_parent->IsD3D8Compatible())
+    if (Format == D3D9Format::W11V11U10 && !m_isD3D8Compatible)
       return D3D9_VK_FORMAT_MAPPING();
 
     if (Format == D3D9Format::D16_LOCKABLE && !m_d16lockableSupport)
@@ -617,14 +618,14 @@ namespace dxvk {
 
       // only considered on d3d9Ex interfaces
       case D3D9Format::D32_LOCKABLE:
-        if (m_parent->IsExtended())
+        if (m_isExtended)
           return &d32_lockable;
 
         [[fallthrough]];
 
       // only considered on d3d9Ex interfaces
       case D3D9Format::S8_LOCKABLE:
-        if (m_parent->IsExtended())
+        if (m_isExtended)
           return &s8_lockable;
 
         [[fallthrough]];
