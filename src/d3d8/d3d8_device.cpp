@@ -1234,13 +1234,10 @@ namespace dxvk {
 
     if (likely(SUCCEEDED(res))) {
       m_token++;
-      auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
-                                                      std::forward_as_tuple(m_token),
-                                                      std::forward_as_tuple(this, Type, pStateBlock9.ptr()));
+      m_stateBlocks.emplace(std::piecewise_construct,
+                            std::forward_as_tuple(m_token),
+                            std::forward_as_tuple(this, ConvertStateBlockType(Type), pStateBlock9.ptr()));
       *pToken = m_token;
-
-      // D3D8 state blocks automatically capture state on creation.
-      stateBlockIterPair.first->second.Capture();
     }
 
     return res;
