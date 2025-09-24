@@ -46,6 +46,8 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Capture() {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     // A state block can't capture state while another is being recorded.
     if (unlikely(m_parent->ShouldRecord()))
       return D3DERR_INVALIDCALL;
@@ -60,6 +62,8 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Apply() {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     // A state block can't be applied while another is being recorded.
     if (unlikely(m_parent->ShouldRecord()))
       return D3DERR_INVALIDCALL;
