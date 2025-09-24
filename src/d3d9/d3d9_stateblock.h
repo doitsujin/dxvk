@@ -66,7 +66,7 @@ namespace dxvk {
     bit::bitvector                                      lightEnabledChanges;
   };
 
-  enum class D3D9StateBlockType :uint32_t {
+  enum class D3D9StateBlockType : uint8_t {
     None,
     VertexState,
     PixelState,
