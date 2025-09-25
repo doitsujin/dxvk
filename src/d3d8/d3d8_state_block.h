@@ -55,17 +55,18 @@ namespace dxvk {
 
   enum class D3D8StateBlockType : uint8_t {
     None,
-    VertexState,
+    All,
     PixelState,
-    All
+    VertexState,
+    Unknown
   };
 
   inline D3D8StateBlockType ConvertStateBlockType(D3DSTATEBLOCKTYPE type) {
     switch (type) {
+      case D3DSBT_ALL:         return D3D8StateBlockType::All;
       case D3DSBT_PIXELSTATE:  return D3D8StateBlockType::PixelState;
       case D3DSBT_VERTEXSTATE: return D3D8StateBlockType::VertexState;
-      default:
-      case D3DSBT_ALL:         return D3D8StateBlockType::All;
+      default:                 return D3D8StateBlockType::Unknown;
     }
   }
 
