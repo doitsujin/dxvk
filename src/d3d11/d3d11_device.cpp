@@ -2592,6 +2592,9 @@ namespace dxvk {
     if (Options.forceComputeUavBarriers)
       result.flags.set(DxvkShaderCompileFlag::InsertResourceBarriers);
 
+    if (Options.forceSampleRateShading)
+      result.flags.set(DxvkShaderCompileFlag::EnableSampleRateShading);
+
     return result;
   }
 
