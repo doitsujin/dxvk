@@ -13,7 +13,7 @@ namespace dxvk {
   }
 
   D3D11Options::D3D11Options(const Config& config) {
-    this->forceVolatileTgsmAccess = config.getOption<bool>("d3d11.forceVolatileTgsmAccess", false);
+    this->forceComputeLdsBarriers = config.getOption<bool>("d3d11.forceComputeLdsBarriers", false);
     this->forceComputeUavBarriers = config.getOption<bool>("d3d11.forceComputeUavBarriers", false);
     this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);
     this->relaxedGraphicsBarriers = config.getOption<bool>("d3d11.relaxedGraphicsBarriers", false);

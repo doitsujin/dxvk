@@ -18,7 +18,7 @@ namespace dxvk {
     /// Workaround for compute shaders that read and
     /// write from the same shared memory location
     /// without explicit synchronization.
-    bool forceVolatileTgsmAccess = false;
+    bool forceComputeLdsBarriers = false;
 
     /// Force UAV synchronization insided compute shaders
     ///
