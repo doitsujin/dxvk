@@ -21,8 +21,6 @@ namespace dxvk {
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
     this->samplerLodBias        = config.getOption<float>("d3d11.samplerLodBias", 0.0f);
     this->clampNegativeLodBias  = config.getOption<bool>("d3d11.clampNegativeLodBias", false);
-    this->invariantPosition     = config.getOption<bool>("d3d11.invariantPosition", true);
-    this->floatControls         = config.getOption<bool>("d3d11.floatControls", true);
     this->forceSampleRateShading = config.getOption<bool>("d3d11.forceSampleRateShading", false);
     this->disableMsaa           = config.getOption<bool>("d3d11.disableMsaa", false);
     this->enableContextLock     = config.getOption<bool>("d3d11.enableContextLock", false);

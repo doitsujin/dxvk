@@ -254,12 +254,6 @@ namespace dxvk {
     { R"(\\armoredwarfare\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "c" },
     }} },
-    /* Shadow of the Tomb Raider - invariant      *
-     * position breaks character rendering on NV  */
-    { R"(\\SOTTR\.exe$)", {{
-      { "d3d11.invariantPosition",         "False" },
-      { "d3d11.floatControls",             "False" },
-    }} },
     /* Nioh 2                                     */
     { R"(\\nioh2\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
@@ -347,11 +341,6 @@ namespace dxvk {
      * Games speed up above 60 fps                */
     { R"(\\MSFC\.exe$)", {{
       { "dxgi.maxFrameRate",                  "60" },
-    }} },
-    /* Battlefield: Bad Company 2                 *
-     * Gets rid of black flickering               */
-    { R"(\\BFBC2Game\.exe$)", {{
-      { "d3d11.floatControls",             "False" },
     }} },
     /* Sonic Frontiers - flickering shadows and   *
      * vegetation when GPU-bound                  */
