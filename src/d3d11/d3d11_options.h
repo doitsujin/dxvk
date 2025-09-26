@@ -60,12 +60,6 @@ namespace dxvk {
     /// Clamps negative LOD bias
     bool clampNegativeLodBias = false;
 
-    /// Declare vertex positions in shaders as invariant
-    bool invariantPosition = true;
-
-    /// Enable float control bits
-    bool floatControls = true;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency = 0;
