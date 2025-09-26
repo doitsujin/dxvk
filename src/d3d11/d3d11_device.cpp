@@ -2586,7 +2586,7 @@ namespace dxvk {
     if (Options.disableMsaa)
       result.flags.set(DxvkShaderCompileFlag::DisableMsaa);
 
-    if (Options.forceVolatileTgsmAccess)
+    if (Options.forceComputeLdsBarriers)
       result.flags.set(DxvkShaderCompileFlag::InsertSharedMemoryBarriers);
 
     if (Options.forceComputeUavBarriers)
