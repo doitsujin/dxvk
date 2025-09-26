@@ -116,7 +116,7 @@ namespace dxvk {
     pDesc->Type               = D3DRTYPE_SURFACE;
     pDesc->Usage              = desc.Usage;
     pDesc->Pool               = desc.Pool;
-    
+
     pDesc->MultiSampleType    = desc.MultiSample;
     pDesc->MultiSampleQuality = desc.MultisampleQuality;
     pDesc->Width              = std::max(1u, desc.Width  >> m_mipLevel);
@@ -145,21 +145,27 @@ namespace dxvk {
     if (unlikely(pRect != nullptr)) {
       D3D9_FORMAT_BLOCK_SIZE blockSize = GetFormatAlignedBlockSize(desc.Format);
 
-      bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
+      const bool isBlockAlignedFormat = blockSize.Width > 0 && blockSize.Height > 0;
+      const bool isSystemMemSurface   = desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE;
 
       // The boundaries of pRect are validated for D3DPOOL_DEFAULT surfaces
       // with formats which need to be block aligned, surfaces created via
       // CreateImageSurface and D3D8 cube textures outside of D3DPOOL_DEFAULT
-      if ((isBlockAlignedFormat && desc.Pool == D3DPOOL_DEFAULT)
-       || (desc.Pool == D3DPOOL_SYSTEMMEM && type == D3DRTYPE_SURFACE)
+      if ((isBlockAlignedFormat && desc.Pool == D3DPOOL_DEFAULT) || isSystemMemSurface
        || (m_texture->Device()->IsD3D8Compatible() &&
-           desc.Pool != D3DPOOL_DEFAULT   && type == D3DRTYPE_CUBETEXTURE)) {
+           desc.Pool != D3DPOOL_DEFAULT && type == D3DRTYPE_CUBETEXTURE)) {
+        const LONG width  = pRect->right  - pRect->left;
+        const LONG height = pRect->bottom - pRect->top;
+
+        const bool invalidDimensions = isSystemMemSurface ? (width < 0 || height < 0) : (width <= 0 || height <= 0);
+
         // Negative coordinates
         if (pRect->left < 0 || pRect->right  < 0
          || pRect->top  < 0 || pRect->bottom < 0
-        // Negative or zero length dimensions
-         || pRect->right  - pRect->left <= 0
-         || pRect->bottom - pRect->top  <= 0
+        // Negative or zero length dimensions (just negative in case of
+        // D3DPOOL_SYSTEMMEM surfaces, as Legends of Eisenwald tries to lock
+        // and unlock a zero-length pRect and crashes if this fails)
+         || invalidDimensions
         // Exceeding surface dimensions
          || static_cast<UINT>(pRect->right)  > std::max(1u, desc.Width  >> m_mipLevel)
          || static_cast<UINT>(pRect->bottom) > std::max(1u, desc.Height >> m_mipLevel))
