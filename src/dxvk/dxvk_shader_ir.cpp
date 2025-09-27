@@ -297,8 +297,9 @@ namespace dxvk {
 
     struct SamplerInfo {
       dxbc_spv::ir::SsaDef sampler = { };
-      uint16_t memberIndex = 0u;
-      uint16_t wordIndex = 0u;
+      dxbc_spv::ir::SsaDef indexFn = { };
+      uint32_t samplerIndex = 0u;
+      uint32_t samplerCount = 0u;
     };
 
     struct UavCounterInfo {
@@ -655,18 +656,14 @@ namespace dxvk {
       m_localPushDataOffset = align(m_localPushDataOffset, sizeof(uint32_t));
 
       // Compute index offsets for each sampler
-      uint32_t wordCount = m_samplers.size();
+      uint32_t wordCount = 0u;
 
       for (size_t i = 0u; i < m_samplers.size(); i++) {
         auto& e = m_samplers[i];
+        e.samplerIndex = wordCount;
+        e.samplerCount = uint32_t(m_builder.getOp(e.sampler).getOperand(3u));
 
-        if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-          e.memberIndex = i;
-          e.wordIndex = 0u;
-        } else {
-          e.memberIndex = i / 2u;
-          e.wordIndex = i % 2u;
-        }
+        wordCount += e.samplerCount;
       }
 
       // Mark corresponding dwords as resources
@@ -698,7 +695,7 @@ namespace dxvk {
       if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
         for (size_t i = 0u; i < m_samplers.size(); i++) {
           auto& e = m_samplers[i];
-          addDebugMemberName(def, e.memberIndex, getDebugName(e.sampler));
+          addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
         }
       }
 
@@ -728,6 +725,80 @@ namespace dxvk {
     }
 
 
+    dxbc_spv::ir::SsaDef loadConstantSamplerIndex(dxbc_spv::ir::SsaDef ref, dxbc_spv::ir::SsaDef pushDataDef, const SamplerInfo& info, uint32_t index) {
+      uint32_t wordIndex = info.samplerIndex + index;
+
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
+        dxbc_spv::ir::SsaDef memberIndex = { };
+
+        if (m_builder.getOp(pushDataDef).getType().isStructType())
+          memberIndex = m_builder.makeConstant(wordIndex);
+
+        dxbc_spv::ir::SsaDef samplerIndex = m_builder.addBefore(ref,
+          dxbc_spv::ir::Op::PushDataLoad(dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
+        samplerIndex = m_builder.addBefore(ref, dxbc_spv::ir::Op::ConvertItoI(
+          dxbc_spv::ir::ScalarType::eU32, samplerIndex));
+        return samplerIndex;
+      } else {
+        dxbc_spv::ir::SsaDef bitIndex = m_builder.makeConstant(uint32_t(16u * (wordIndex % 2u)));
+        dxbc_spv::ir::SsaDef memberIndex = { };
+
+        if (m_builder.getOp(pushDataDef).getType().isStructType())
+          memberIndex = m_builder.makeConstant(uint32_t(wordIndex / 2u));
+
+        dxbc_spv::ir::SsaDef samplerIndex = m_builder.addBefore(ref,
+          dxbc_spv::ir::Op::PushDataLoad(dxbc_spv::ir::ScalarType::eU32, pushDataDef, memberIndex));
+        samplerIndex = m_builder.addBefore(ref, dxbc_spv::ir::Op::UBitExtract(
+          dxbc_spv::ir::ScalarType::eU32, samplerIndex, bitIndex, m_builder.makeConstant(16u)));
+        return samplerIndex;
+      }
+    }
+
+
+    dxbc_spv::ir::SsaDef buildSamplerIndexFn(const SamplerInfo& info, dxbc_spv::ir::SsaDef pushDataDef) {
+      /* Declare function parameter and function */
+      auto indexParam = m_builder.add(dxbc_spv::ir::Op::DclParam(dxbc_spv::ir::ScalarType::eU32));
+      m_builder.add(dxbc_spv::ir::Op::DebugName(indexParam, "index"));
+
+      auto fn = m_builder.addBefore(m_builder.getCode().first->getDef(),
+        dxbc_spv::ir::Op::Function(dxbc_spv::ir::ScalarType::eU32).addParam(indexParam));
+      m_builder.add(dxbc_spv::ir::Op::DebugName(fn, (getDebugName(info.sampler) + "_load").c_str()));
+
+      auto fnEnd = m_builder.addAfter(fn, dxbc_spv::ir::Op::FunctionEnd());
+      m_builder.addBefore(fnEnd, dxbc_spv::ir::Op::Label());
+
+      /* Load each sampler index and pick the correct one for the requested index */
+      auto index = m_builder.addBefore(fnEnd, dxbc_spv::ir::Op::ParamLoad(
+        dxbc_spv::ir::ScalarType::eU32, fn, indexParam));
+      auto result = m_builder.makeConstant(0u);
+
+      for (uint32_t i = 0u; i < info.samplerCount; i++) {
+        auto sampler = loadConstantSamplerIndex(fnEnd, pushDataDef, info, i);
+
+        auto cond = m_builder.addBefore(fnEnd, dxbc_spv::ir::Op::IEq(
+          dxbc_spv::ir::ScalarType::eBool, index, m_builder.makeConstant(i)));
+
+        result = m_builder.addBefore(fnEnd, dxbc_spv::ir::Op::Select(
+          dxbc_spv::ir::ScalarType::eU32, cond, sampler, result));
+      }
+
+      m_builder.addBefore(fnEnd, dxbc_spv::ir::Op::Return(dxbc_spv::ir::ScalarType::eU32, result));
+      return fn;
+    }
+
+
+    dxbc_spv::ir::SsaDef loadSamplerIndex(dxbc_spv::ir::SsaDef ref, dxbc_spv::ir::SsaDef pushDataDef, SamplerInfo& info, const dxbc_spv::ir::Op& index) {
+      if (index.isConstant())
+        return loadConstantSamplerIndex(ref, pushDataDef, info, uint32_t(index.getOperand(0u)));
+
+      if (!info.indexFn)
+        info.indexFn = buildSamplerIndexFn(info, pushDataDef);
+
+      return m_builder.addBefore(ref, dxbc_spv::ir::Op::FunctionCall(
+        dxbc_spv::ir::ScalarType::eU32, info.indexFn).addParam(index.getDef()));
+    }
+
+
     dxbc_spv::ir::Builder::iterator rewriteSampler(dxbc_spv::ir::Builder::iterator sampler, dxbc_spv::ir::SsaDef heapDef, dxbc_spv::ir::SsaDef pushDataDef) {
       small_vector<dxbc_spv::ir::SsaDef, 64u> uses;
       m_builder.getUses(sampler->getDef(), uses);
@@ -748,23 +819,8 @@ namespace dxvk {
         const auto& op = m_builder.getOp(uses[i]);
 
         if (op.getOpCode() == dxbc_spv::ir::OpCode::eDescriptorLoad) {
-          dxbc_spv::ir::SsaDef samplerIndex = { };
-          dxbc_spv::ir::SsaDef memberIndex = { };
-
-          if (m_builder.getOp(pushDataDef).getType().isStructType())
-            memberIndex = m_builder.makeConstant(uint32_t(info.memberIndex));
-
-          if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
-              dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
-            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::ConvertItoI(
-              dxbc_spv::ir::ScalarType::eU32, samplerIndex));
-          } else {
-            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::PushDataLoad(
-              dxbc_spv::ir::ScalarType::eU32, pushDataDef, memberIndex));
-            samplerIndex = m_builder.addBefore(op.getDef(), dxbc_spv::ir::Op::UBitExtract(
-              dxbc_spv::ir::ScalarType::eU32, samplerIndex, m_builder.makeConstant(uint32_t(16u * info.wordIndex)), m_builder.makeConstant(16u)));
-          }
+          dxbc_spv::ir::SsaDef samplerIndex = loadSamplerIndex(op.getDef(),
+            pushDataDef, info, m_builder.getOpForOperand(op, 1u));
 
           m_builder.rewriteOp(op.getDef(), dxbc_spv::ir::Op::DescriptorLoad(
             op.getType(), heapDef, samplerIndex));
@@ -774,22 +830,24 @@ namespace dxvk {
       }
 
       // Infer push data offset from member index and word index
-      uint32_t localPushDataOffset = m_localPushDataOffset + 2u * info.wordIndex
-        + m_builder.getOp(pushDataDef).getType().byteOffset(info.memberIndex)
+      uint32_t localPushDataOffset = m_localPushDataOffset
         - m_builder.getOp(pushDataDef).getType().byteSize();
 
       // Add sampler info to the descriptor layout
       auto regSpace = uint32_t(sampler->getOperand(1u));
       auto regIndex = uint32_t(sampler->getOperand(2u));
 
-      DxvkBindingInfo binding = { };
-      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
-        dxbc_spv::ir::ScalarType::eSampler, regSpace, regIndex);
-      binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-      binding.blockOffset = MaxSharedPushDataSize + localPushDataOffset;
-      binding.flags.set(DxvkDescriptorFlag::PushData);
+      for (uint32_t i = 0u; i < info.samplerCount; i++) {
+        DxvkBindingInfo binding = { };
+        binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
+          dxbc_spv::ir::ScalarType::eSampler, regSpace, regIndex + i);
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+        binding.blockOffset = MaxSharedPushDataSize + localPushDataOffset
+          + sizeof(uint16_t) * (info.samplerIndex + i);
+        binding.flags.set(DxvkDescriptorFlag::PushData);
 
-      addBinding(binding);
+        addBinding(binding);
+      }
 
       return m_builder.iter(m_builder.remove(sampler->getDef()));
     }
