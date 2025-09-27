@@ -828,12 +828,13 @@ namespace dxvk {
 
     void sortUavCounters() {
       // Sort samplers by the corresponding UAV binding index for consistency
-      std::sort(&m_uavCounters[0u], &m_uavCounters[0u] + m_uavCounters.size(), [&] (const UavCounterInfo& a, const UavCounterInfo& b) {
-        const auto& aUav = m_builder.getOpForOperand(a.dcl, 1u);
-        const auto& bUav = m_builder.getOpForOperand(b.dcl, 1u);
+      std::sort(&m_uavCounters[0u], &m_uavCounters[0u] + m_uavCounters.size(),
+        [this] (const UavCounterInfo& a, const UavCounterInfo& b) {
+          const auto& aUav = m_builder.getOpForOperand(a.dcl, 1u);
+          const auto& bUav = m_builder.getOpForOperand(b.dcl, 1u);
 
-        return uint32_t(aUav.getOperand(2u)) < uint32_t(bUav.getOperand(2u));
-      });
+          return uint32_t(aUav.getOperand(2u)) < uint32_t(bUav.getOperand(2u));
+        });
     }
 
 
@@ -931,6 +932,19 @@ namespace dxvk {
     }
 
 
+    bool hasUavCounterArray() const {
+      for (const auto& e : m_uavCounters) {
+        const auto& uav = m_builder.getOpForOperand(e.dcl, 1u);
+        auto regCount = uint32_t(uav.getOperand(3u));
+
+        if (regCount != 1u)
+          return true;
+      }
+
+      return false;
+    }
+
+
     void rewriteUavCounters() {
       if (m_uavCounters.empty())
         return;
@@ -946,7 +960,7 @@ namespace dxvk {
 
       size_t uavCounterIndex = 0u;
 
-      if (m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize && ssboAlignment <= 4u) {
+      if (m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize && ssboAlignment <= 4u && !hasUavCounterArray()) {
         // Align push data to a multiple of 8 bytes before emitting counters
         m_localPushDataAlign = std::max<uint32_t>(m_localPushDataAlign, sizeof(uint64_t));
         m_localPushDataOffset = align(m_localPushDataOffset, m_localPushDataAlign);
@@ -996,6 +1010,7 @@ namespace dxvk {
 
         auto regSpace = uint32_t(uavOp.getOperand(1u));
         auto regIndex = uint32_t(uavOp.getOperand(2u));
+        auto regCount = uint32_t(uavOp.getOperand(3u));
 
         DxvkBindingInfo binding = { };
         binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eUavCounter);
@@ -1003,6 +1018,7 @@ namespace dxvk {
         binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
           dxbc_spv::ir::ScalarType::eUavCounter, regSpace, regIndex);
         binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        binding.descriptorCount = regCount;
         binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
         addBinding(binding);
