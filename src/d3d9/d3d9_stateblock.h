@@ -66,19 +66,20 @@ namespace dxvk {
     bit::bitvector                                      lightEnabledChanges;
   };
 
-  enum class D3D9StateBlockType :uint32_t {
+  enum class D3D9StateBlockType : uint8_t {
     None,
-    VertexState,
+    All,
     PixelState,
-    All
+    VertexState,
+    Unknown
   };
 
   inline D3D9StateBlockType ConvertStateBlockType(D3DSTATEBLOCKTYPE type) {
     switch (type) {
+      case D3DSBT_ALL:         return D3D9StateBlockType::All;
       case D3DSBT_PIXELSTATE:  return D3D9StateBlockType::PixelState;
       case D3DSBT_VERTEXSTATE: return D3D9StateBlockType::VertexState;
-      default:
-      case D3DSBT_ALL:         return D3D9StateBlockType::All;
+      default:                 return D3D9StateBlockType::Unknown;
     }
   }
 
