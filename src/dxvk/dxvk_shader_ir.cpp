@@ -410,12 +410,14 @@ namespace dxvk {
     dxbc_spv::ir::Builder::iterator handleCbv(dxbc_spv::ir::Builder::iterator op) {
       auto regSpace = uint32_t(op->getOperand(1u));
       auto regIndex = uint32_t(op->getOperand(2u));
+      auto regCount = uint32_t(op->getOperand(3u));
 
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eCbv);
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
+      binding.descriptorCount = regCount;
 
       if (op->getType().byteSize() <= m_info.options.maxUniformBufferSize) {
         binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -437,6 +439,7 @@ namespace dxvk {
 
       auto regSpace = uint32_t(op->getOperand(1u));
       auto regIndex = uint32_t(op->getOperand(2u));
+      auto regCount = uint32_t(op->getOperand(3u));
 
       auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
 
@@ -445,6 +448,7 @@ namespace dxvk {
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eSrv, regSpace, regIndex);
+      binding.descriptorCount = regCount;
       binding.access = VK_ACCESS_SHADER_READ_BIT;
       binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -476,6 +480,7 @@ namespace dxvk {
     dxbc_spv::ir::Builder::iterator handleUav(dxbc_spv::ir::Builder::iterator op) {
       auto regSpace = uint32_t(op->getOperand(1u));
       auto regIndex = uint32_t(op->getOperand(2u));
+      auto regCount = uint32_t(op->getOperand(3u));
 
       auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
 
@@ -487,6 +492,7 @@ namespace dxvk {
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eUav, regSpace, regIndex);
+      binding.descriptorCount = regCount;
       binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
       if (!(uavFlags & dxbc_spv::ir::UavFlag::eWriteOnly))
