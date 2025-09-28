@@ -1692,6 +1692,11 @@ namespace dxvk {
     options.derivativeOptions.hoistNontrivialImplicitLodOps = false;
     options.derivativeOptions.hoistDescriptorLoads = true;
 
+    options.cseOptions.relocateDescriptorLoad = true;
+
+    if (m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsResourceIndexing))
+      options.descriptorIndexing.optimizeDescriptorIndexing = true;
+
     dxbc_spv::ir::legalizeIr(builder, options);
 
     // Generate shader metadata based on the final code
