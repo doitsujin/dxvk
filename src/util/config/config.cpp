@@ -1323,6 +1323,11 @@ namespace dxvk {
     { R"(\\TopSpin\.exe$)", {{
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
+    /* Lego Racers 2 - Hits an incredible amount  *
+     * of queue syncs with direct buffer mapping  */
+    { R"(\\LEGO Racers 2\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
   };
 
 
