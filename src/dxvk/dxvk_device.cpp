@@ -814,6 +814,21 @@ namespace dxvk {
 
     if (m_features.khrShaderFloatControls2.shaderFloatControls2)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
+
+    // Set up resource indexing flags
+    if (m_features.core.features.shaderUniformBufferArrayDynamicIndexing &&
+        m_features.core.features.shaderSampledImageArrayDynamicIndexing &&
+        m_features.core.features.shaderStorageBufferArrayDynamicIndexing &&
+        m_features.core.features.shaderStorageImageArrayDynamicIndexing &&
+        m_features.vk12.shaderUniformTexelBufferArrayDynamicIndexing &&
+        m_features.vk12.shaderStorageTexelBufferArrayDynamicIndexing &&
+        m_features.vk12.shaderUniformBufferArrayNonUniformIndexing &&
+        m_features.vk12.shaderSampledImageArrayNonUniformIndexing &&
+        m_features.vk12.shaderStorageBufferArrayNonUniformIndexing &&
+        m_features.vk12.shaderStorageImageArrayNonUniformIndexing &&
+        m_features.vk12.shaderUniformTexelBufferArrayNonUniformIndexing &&
+        m_features.vk12.shaderStorageTexelBufferArrayNonUniformIndexing)
+      m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
   }
 
 }

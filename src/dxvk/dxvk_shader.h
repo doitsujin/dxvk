@@ -107,6 +107,9 @@ namespace dxvk {
     IndependentDenormMode       = 18u,
     /// Whether float control 2 features are supported
     SupportsFloatControls2      = 19u,
+    /// Whether dynamic non-uniform resource indexing is
+    /// supported. Only applies to typed resources.
+    SupportsResourceIndexing    = 20u,
   };
 
   using DxvkShaderSpirvFlags = Flags<DxvkShaderSpirvFlag>;
