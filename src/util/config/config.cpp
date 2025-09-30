@@ -1111,6 +1111,11 @@ namespace dxvk {
     { R"(\\Heroes of Annihilated Empires.*\\engine\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* RaceRoom Racing Experience                 *
+     * Game depends on NvAPI_D3D9_StretchRectEx   */
+    { R"(\\RRRE(64)?\.exe$)", {{
+      { "d3d9.hideNvidiaGpu",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
