@@ -310,11 +310,13 @@ namespace dxvk {
       dxbc_spv::ir::OpCode opCode = { };
       uint32_t registerSpace = 0u;
       uint32_t registerIndex = 0u;
+      VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 
       bool eq(const ResourceKey& other) const {
-        return opCode        == other.opCode
-            && registerSpace == other.registerSpace
-            && registerIndex == other.registerIndex;
+        return opCode         == other.opCode
+            && registerSpace  == other.registerSpace
+            && registerIndex  == other.registerIndex
+            && descriptorType == other.descriptorType;
       }
 
       size_t hash() const {
@@ -322,6 +324,7 @@ namespace dxvk {
         hash.add(uint32_t(opCode));
         hash.add(registerSpace);
         hash.add(registerIndex);
+        hash.add(uint32_t(descriptorType));
         return hash;
       }
     };
@@ -355,14 +358,60 @@ namespace dxvk {
 
     std::unordered_map<ResourceKey, ResourceAlias, DxvkHash, DxvkEq> m_resources;
 
-    ResourceAlias& getResourceAlias(dxbc_spv::ir::OpCode opCode, uint32_t space, uint32_t index) {
+    ResourceAlias& getResourceAlias(dxbc_spv::ir::OpCode opCode, uint32_t space, uint32_t index, VkDescriptorType descriptorType) {
       ResourceKey k = { };
       k.opCode = opCode;
       k.registerSpace = space;
       k.registerIndex = index;
+      k.descriptorType = descriptorType;
 
       return m_resources.at(k);
     }
+
+
+    VkDescriptorType determineDescriptorType(const dxbc_spv::ir::Op& op) const {
+      switch (op.getOpCode()) {
+        case dxbc_spv::ir::OpCode::eDclSampler:
+          return VK_DESCRIPTOR_TYPE_SAMPLER;
+
+        case dxbc_spv::ir::OpCode::eDclCbv: {
+          return op.getType().byteSize() <= m_info.options.maxUniformBufferSize
+            ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+            : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+
+        case dxbc_spv::ir::OpCode::eDclSrv: {
+          auto resourceKind = dxbc_spv::ir::ResourceKind(op.getOperand(4u));
+
+          if (dxbc_spv::ir::resourceIsBuffer(resourceKind)) {
+            return dxbc_spv::ir::resourceIsTyped(resourceKind)
+              ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+              : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+          } else {
+            return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          }
+        }
+
+        case dxbc_spv::ir::OpCode::eDclUav: {
+          auto resourceKind = dxbc_spv::ir::ResourceKind(op.getOperand(4u));
+
+          if (dxbc_spv::ir::resourceIsBuffer(resourceKind)) {
+            return dxbc_spv::ir::resourceIsTyped(resourceKind)
+              ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+              : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+          } else {
+            return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+          }
+        }
+
+        case dxbc_spv::ir::OpCode::eDclUavCounter:
+          return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+
+        default:
+          throw DxvkError(str::format("Unhandled resource declaration: ", op.getOpCode()));
+      }
+    }
+
 
     void gatherAliasedResourceBindings() {
       auto iter = m_builder.begin();
@@ -375,6 +424,7 @@ namespace dxvk {
             k.opCode = iter->getOpCode();
             k.registerSpace = uint32_t(iter->getOperand(1u));
             k.registerIndex = uint32_t(iter->getOperand(2u));
+            k.descriptorType = determineDescriptorType(*iter);
 
             auto e = m_resources.emplace(std::piecewise_construct, std::tuple(k), std::tuple());
 
@@ -418,15 +468,12 @@ namespace dxvk {
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
+      binding.descriptorType = determineDescriptorType(*op);
       binding.descriptorCount = regCount;
+      binding.access = VK_ACCESS_UNIFORM_READ_BIT;
 
-      if (op->getType().byteSize() <= m_info.options.maxUniformBufferSize) {
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        binding.access = VK_ACCESS_UNIFORM_READ_BIT;
-      } else {
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      if (binding.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
         binding.access = VK_ACCESS_SHADER_READ_BIT;
-      }
 
       binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
@@ -442,31 +489,23 @@ namespace dxvk {
       auto regIndex = uint32_t(op->getOperand(2u));
       auto regCount = uint32_t(op->getOperand(3u));
 
-      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
-
       DxvkBindingInfo binding = { };
       binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eSrv);
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eSrv, regSpace, regIndex);
+      binding.descriptorType = determineDescriptorType(*op);
       binding.descriptorCount = regCount;
       binding.access = VK_ACCESS_SHADER_READ_BIT;
       binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
-      if (dxbc_spv::ir::resourceIsBuffer(resourceKind)) {
-        if (dxbc_spv::ir::resourceIsTyped(resourceKind))
-          binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-        else
-          binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      } else {
-        if (!resourceAlias.hasAlias)
-          binding.viewType = determineViewType(resourceKind);
+      if (dxbc_spv::ir::resourceIsMultisampled(resourceKind))
+        binding.flags.set(DxvkDescriptorFlag::Multisampled);
 
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex, binding.descriptorType);
 
-        if (dxbc_spv::ir::resourceIsMultisampled(resourceKind))
-          binding.flags.set(DxvkDescriptorFlag::Multisampled);
-      }
+      if (!resourceAlias.hasAlias)
+        binding.viewType = determineViewType(resourceKind);
 
       if (resourceHasSparseFeedbackLoads(op))
         m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
@@ -483,8 +522,6 @@ namespace dxvk {
       auto regIndex = uint32_t(op->getOperand(2u));
       auto regCount = uint32_t(op->getOperand(3u));
 
-      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex);
-
       auto resourceKind = dxbc_spv::ir::ResourceKind(op->getOperand(4u));
       auto uavFlags = dxbc_spv::ir::UavFlags(op->getOperand(5u));
 
@@ -493,6 +530,7 @@ namespace dxvk {
       binding.binding = regIndex;
       binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
         dxbc_spv::ir::ScalarType::eUav, regSpace, regIndex);
+      binding.descriptorType = determineDescriptorType(*op);
       binding.descriptorCount = regCount;
       binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
@@ -504,17 +542,10 @@ namespace dxvk {
         binding.accessOp = determineAccessOpForUav(op);
       }
 
-      if (dxbc_spv::ir::resourceIsBuffer(resourceKind)) {
-        if (dxbc_spv::ir::resourceIsTyped(resourceKind))
-          binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-        else
-          binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      } else {
-        if (!resourceAlias.hasAlias)
-          binding.viewType = determineViewType(resourceKind);
+      auto& resourceAlias = getResourceAlias(op->getOpCode(), regSpace, regIndex, binding.descriptorType);
 
-        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-      }
+      if (!resourceAlias.hasAlias)
+        binding.viewType = determineViewType(resourceKind);
 
       if (resourceHasSparseFeedbackLoads(op))
         m_metadata.flags.set(DxvkShaderFlag::UsesSparseResidency);
