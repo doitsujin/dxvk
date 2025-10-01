@@ -1328,6 +1328,11 @@ namespace dxvk {
     { R"(\\LEGO Racers 2\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
+    /* Smash Up Derby - Poor performance on Intel *
+     * due to queue syncs on certain race tracks  */
+    { R"(\\Smash up Derby\\cars\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
   };
 
 
