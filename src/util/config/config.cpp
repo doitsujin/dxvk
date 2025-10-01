@@ -107,10 +107,10 @@ namespace dxvk {
       { "dxgi.hideNvidiaGpu",              "False" },
       { "dxgi.hideIntelGpu",                "True" },
     }} },
-    /* Far Cry 5: Unsynchronized write-after-read *
-     * in some compute shaders cause invisible    *
-     * terrain on some GPUs.                      */
-    { R"(\\FarCry5\.exe$)", {{
+    /* Far Cry 5 and New Dawn: Unsynchronized     *
+     * write-after-read in some compute shaders   *
+     * cause invisible terrain on some GPUs.      */
+    { R"(\\FarCry(5|NewDawn)\.exe$)", {{
       { "d3d11.forceComputeLdsBarriers",    "True" },
     }} },
     /* Frostpunk: Renders one frame with D3D9     *
