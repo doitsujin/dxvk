@@ -42,6 +42,20 @@ namespace dxvk::wsi {
   }
 
 
+  void GlfwWsiDriver::saveWindowState(
+      HWND Window,
+      DxvkWindowState* pState,
+      bool saveStyle) {
+  }
+
+
+  void GlfwWsiDriver::restoreWindowState(
+      HWND hWindow,
+      DxvkWindowState* pState,
+      bool restoreCoordinates) {
+  }
+
+
   bool GlfwWsiDriver::setWindowMode(
       HMONITOR hMonitor,
       HWND hWindow,
@@ -94,8 +108,7 @@ namespace dxvk::wsi {
 
   bool GlfwWsiDriver::leaveFullscreenMode(
       HWND hWindow,
-      DxvkWindowState* pState,
-      bool             restoreCoordinates) {
+      DxvkWindowState* pState) {
     GLFWwindow* window = fromHwnd(hWindow);
 
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
