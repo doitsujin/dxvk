@@ -57,6 +57,16 @@ namespace dxvk::wsi {
             uint32_t         width,
             uint32_t         weight) = 0;
 
+    virtual void saveWindowState(
+            HWND             hWindow,
+            DxvkWindowState* pState,
+            bool             saveStyle) = 0;
+
+    virtual void restoreWindowState(
+            HWND             hWindow,
+            DxvkWindowState* pState,
+            bool             restoreCoordinates) = 0;
+
     virtual bool setWindowMode(
             HMONITOR         hMonitor,
             HWND             hWindow,
@@ -72,8 +82,7 @@ namespace dxvk::wsi {
 
     virtual bool leaveFullscreenMode(
             HWND             hWindow,
-            DxvkWindowState* pState,
-            bool             restoreCoordinates) = 0;
+            DxvkWindowState* pState) = 0;
 
     virtual bool restoreDisplayMode() = 0;
 
