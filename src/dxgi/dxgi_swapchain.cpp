@@ -736,6 +736,8 @@ namespace dxvk {
     DXGI_OUTPUT_DESC desc;
     output->GetDesc(&desc);
 
+    wsi::saveWindowState(m_window, &m_windowState, true);
+
     if (!wsi::enterFullscreenMode(desc.Monitor, m_window, &m_windowState, modeSwitch)) {
       Logger::err("DXGI: EnterFullscreenMode: Failed to enter fullscreen mode");
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
@@ -788,10 +790,11 @@ namespace dxvk {
     if (!wsi::isWindow(m_window))
       return S_OK;
     
-    if (!wsi::leaveFullscreenMode(m_window, &m_windowState, true)) {
+    if (!wsi::leaveFullscreenMode(m_window, &m_windowState)) {
       Logger::err("DXGI: LeaveFullscreenMode: Failed to exit fullscreen mode");
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     }
+    wsi::restoreWindowState(m_window, &m_windowState, true);
     
     return S_OK;
   }
