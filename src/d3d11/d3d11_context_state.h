@@ -330,6 +330,23 @@ namespace dxvk {
     }
   };
 
+
+  struct D3D11ClassInstanceState {
+    static constexpr uint32_t MaxInstances = 256u;
+
+    uint32_t instanceCount = 0u;
+    std::array<Com<D3D11ClassInstance, false>, MaxInstances> instances;
+
+    void reset() {
+      for (uint32_t i = 0u; i < instanceCount; i++)
+        instances[i] = nullptr;
+
+      instanceCount = 0u;
+    }
+  };
+
+  using D3D11ClassInstances = D3D11ShaderStageState<D3D11ClassInstanceState>;
+
   
   /**
    * \brief Context state
@@ -355,6 +372,7 @@ namespace dxvk {
     D3D11SamplerBindings samplers;
 
     D3D11LazyBindings   lazy;
+    D3D11ClassInstances instances;
   };
 
   /**
