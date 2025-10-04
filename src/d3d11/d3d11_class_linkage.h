@@ -6,13 +6,15 @@
 #include "../dxvk/dxvk_hash.h"
 
 #include "../util/thread.h"
+#include "../util/util_small_vector.h"
 
 #include "d3d11_device_child.h"
 
 namespace dxvk {
-  
+
   class D3D11Device;
   class D3D11ClassLinkage;
+  class D3D11ClassInstance;
 
   struct D3D11ClassTypeInfo {
     uint32_t CbvStride = 0u;
@@ -20,6 +22,57 @@ namespace dxvk {
     uint32_t SamplerCount = 0u;
   };
 
+
+  struct D3D11InterfaceType {
+    uint32_t typeId = 0u;
+    uint32_t functionTable = 0u;
+  };
+
+
+  struct D3D11InterfaceSlot {
+    small_vector<D3D11InterfaceType, 16> types;
+  };
+
+
+  struct D3D11InstanceData {
+    uint32_t data = 0u;
+    uint32_t functionTable = 0u;
+  };
+
+
+  class D3D11InterfaceInfo {
+
+  public:
+
+    D3D11InterfaceInfo();
+
+    ~D3D11InterfaceInfo();
+
+    D3D11InstanceData EncodeInstanceData(
+            uint32_t                    SlotId,
+            D3D11ClassInstance*         pInstance) const;
+
+    void AddType(
+            uint32_t                    TypeId,
+      const char*                       pTypeName);
+
+    void AddSlotInfo(
+            uint32_t                    FirstSlot,
+            uint32_t                    SlotCount,
+            uint32_t                    TypeId,
+            uint32_t                    FunctionTable);
+
+    const char* GetTypeName(
+            uint32_t                    TypeId);
+
+  private:
+
+    std::vector<std::string>        m_typeNames;
+    std::vector<D3D11InterfaceSlot> m_interfaceSlots;
+
+  };
+
+  
   class D3D11ClassInstance : public D3D11DeviceObject<ID3D11ClassInstance> {
 
   public:
@@ -62,6 +115,8 @@ namespace dxvk {
     void AddRefPrivate();
 
     void ReleasePrivate();
+
+    D3D11InstanceData EncodeInstanceData(uint32_t Ft) const;
 
   private:
 

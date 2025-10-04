@@ -1,7 +1,88 @@
+#include <dxbc/dxbc_interface.h>
+
 #include "d3d11_class_linkage.h"
 #include "d3d11_device.h"
 
 namespace dxvk {
+
+  D3D11InterfaceInfo::D3D11InterfaceInfo() {
+
+  }
+
+
+  D3D11InterfaceInfo::~D3D11InterfaceInfo() {
+
+  }
+
+
+  D3D11InstanceData D3D11InterfaceInfo::EncodeInstanceData(
+          uint32_t                    SlotId,
+          D3D11ClassInstance*         pInstance) const {
+    if (pInstance && SlotId < m_interfaceSlots.size()) {
+      uint32_t typeId = m_typeNames.size();
+
+      for (uint32_t i = 0u; i < typeId; i++) {
+        if (pInstance->MatchesTypeName(m_typeNames[i].c_str()))
+          typeId = i;
+      }
+
+      const auto& slot = m_interfaceSlots.at(SlotId);
+
+      for (const auto& e : slot.types) {
+        if (e.typeId == typeId) {
+          return pInstance->EncodeInstanceData(e.functionTable);
+        }
+      }
+
+      return pInstance->EncodeInstanceData(
+        dxbc_spv::dxbc::InstanceData::DefaultFunctionTable);
+    }
+
+    dxbc_spv::dxbc::InstanceData defaultData = { };
+
+    D3D11InstanceData result = {};
+    result.data = defaultData.data;
+    result.functionTable = defaultData.functionTable;
+    return result;
+  }
+
+
+  void D3D11InterfaceInfo::AddType(
+          uint32_t                    TypeId,
+    const char*                       pTypeName) {
+    if (TypeId >= m_typeNames.size())
+      m_typeNames.resize(TypeId + 1u);
+
+    m_typeNames.at(TypeId) = pTypeName;
+  }
+
+
+  void D3D11InterfaceInfo::AddSlotInfo(
+          uint32_t                    FirstSlot,
+          uint32_t                    SlotCount,
+          uint32_t                    TypeId,
+          uint32_t                    FunctionTable) {
+    uint32_t minSize = FirstSlot + SlotCount;
+
+    if (m_interfaceSlots.size() < minSize)
+      m_interfaceSlots.resize(minSize);
+
+    for (uint32_t i = 0u; i < SlotCount; i++) {
+      auto& e = m_interfaceSlots.at(FirstSlot + i).types.emplace_back();
+      e.typeId = TypeId;
+      e.functionTable = FunctionTable;
+    }
+  }
+
+
+  const char* D3D11InterfaceInfo::GetTypeName(
+          uint32_t                    TypeId) {
+    if (TypeId < m_typeNames.size())
+      return m_typeNames.at(TypeId).c_str();
+
+    return nullptr;
+  }
+
 
   D3D11ClassInstance::D3D11ClassInstance(
           D3D11Device*                pDevice,
@@ -122,6 +203,20 @@ namespace dxvk {
   bool D3D11ClassInstance::MatchesTypeName(
     const char*                   pName) const {
     return !std::strncmp(pName, m_typeName.c_str(), m_typeName.size());
+  }
+
+
+  D3D11InstanceData D3D11ClassInstance::EncodeInstanceData(uint32_t Ft) const {
+    dxbc_spv::dxbc::InstanceData instanceInfo(m_desc.ConstantBuffer,
+      m_desc.BaseConstantBufferOffset + m_desc.InstanceIndex * m_type.CbvStride,
+      m_desc.BaseTexture + m_desc.InstanceIndex * m_type.SrvCount,
+      m_desc.BaseSampler + m_desc.InstanceIndex * m_type.SamplerCount,
+      Ft);
+
+    D3D11InstanceData result = { };
+    result.data = instanceInfo.data;
+    result.functionTable = instanceInfo.functionTable;
+    return result;
   }
 
 
