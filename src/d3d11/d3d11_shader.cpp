@@ -1,4 +1,5 @@
 #include <dxbc/dxbc_container.h>
+#include <dxbc/dxbc_interface.h>
 #include <dxbc/dxbc_parser.h>
 
 #include "d3d11_device.h"
@@ -108,6 +109,7 @@ namespace dxvk {
   
   D3D11CommonShader::D3D11CommonShader(
           D3D11Device*            pDevice,
+          D3D11ClassLinkage*      pLinkage,
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
@@ -117,6 +119,9 @@ namespace dxvk {
   : m_bindings(BindingMask) {
     if (Logger::logLevel() <= LogLevel::Debug)
       Logger::debug(str::format("Compiling shader ", ShaderKey.toString()));
+
+    if (pLinkage)
+      GatherInterefaceInfo(pLinkage, pShaderBytecode, BytecodeLength);
 
     CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, Icb);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
@@ -165,6 +170,51 @@ namespace dxvk {
     }
   }
 
+
+  void D3D11CommonShader::GatherInterefaceInfo(
+          D3D11ClassLinkage*      pLinkage,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength) {
+    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+    dxbc_spv::util::ByteReader ifaceChunk(container.getInterfaceChunk());
+
+    if (!ifaceChunk)
+      return;
+
+    dxbc_spv::dxbc::InterfaceChunk ifaceInfo(ifaceChunk);
+
+    if (!ifaceInfo)
+      return;
+
+    auto typeInfos = ifaceInfo.getClassTypes();
+    auto slotInfos = ifaceInfo.getInterfaceSlots();
+
+    for (auto i = typeInfos.first; i != typeInfos.second; i++) {
+      m_interfaces.AddType(i->id, i->name.c_str());
+      pLinkage->AddType(i->name.c_str(), i->cbSize, i->srvCount, i->samplerCount);
+    }
+
+    for (auto i = slotInfos.first; i != slotInfos.second; i++) {
+      for (const auto& e : i->entries)
+        m_interfaces.AddSlotInfo(i->index, i->count, e.typeId, e.tableId);
+    }
+
+    auto instances = ifaceInfo.getClassInstances();
+
+    for (auto i = instances.first; i != instances.second; i++) {
+      D3D11_CLASS_INSTANCE_DESC desc = { };
+      desc.ConstantBuffer = i->cbvIndex;
+      desc.BaseConstantBufferOffset = i->cbvOffset;
+      desc.BaseTexture = i->srvIndex & 0x7fu;
+      desc.BaseSampler = i->samplerIndex & 0xfu;
+
+      auto typeName = m_interfaces.GetTypeName(i->typeId);
+
+      if (typeName)
+        pLinkage->AddInstance(&desc, typeName, i->name.c_str());
+    }
+  }
+
   
   D3D11ShaderModuleSet:: D3D11ShaderModuleSet() { }
   D3D11ShaderModuleSet::~D3D11ShaderModuleSet() { }
@@ -172,6 +222,7 @@ namespace dxvk {
   
   HRESULT D3D11ShaderModuleSet::GetShaderModule(
           D3D11Device*            pDevice,
+          D3D11ClassLinkage*      pLinkage,
     const DxvkShaderHash&         ShaderKey,
     const DxvkIrShaderCreateInfo& ModuleInfo,
     const void*                   pShaderBytecode,
@@ -194,7 +245,7 @@ namespace dxvk {
     D3D11CommonShader module;
     
     try {
-      module = D3D11CommonShader(pDevice, ShaderKey,
+      module = D3D11CommonShader(pDevice, pLinkage, ShaderKey,
         ModuleInfo, pShaderBytecode, BytecodeLength, Icb, BindingMask);
     } catch (const DxvkError& e) {
       Logger::err(e.message());

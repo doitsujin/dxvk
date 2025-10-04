@@ -521,6 +521,7 @@ namespace dxvk {
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
+            ID3D11ClassLinkage*     pLinkage,
       const DxvkShaderHash&         ShaderKey,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
