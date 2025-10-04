@@ -1348,7 +1348,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.vs != shader) {
       m_state.vs = shader;
@@ -1486,7 +1486,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11HullShader*>(pHullShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.hs != shader) {
       m_state.hs = shader;
@@ -1624,7 +1624,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.ds != shader) {
       m_state.ds = shader;
@@ -1762,7 +1762,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11GeometryShader*>(pShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.gs != shader) {
       m_state.gs = shader;
@@ -1900,7 +1900,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.ps != shader) {
       m_state.ps = shader;
@@ -2038,7 +2038,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
 
     if (NumClassInstances)
-      Logger::err("D3D11: Class instances not supported");
+      SetClassInstances(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
 
     if (m_state.cs != shader) {
       m_state.cs = shader;
@@ -5858,6 +5858,15 @@ namespace dxvk {
     }
 
     return true;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::SetClassInstances(
+    const D3D11CommonShader*                pShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+
   }
 
 
