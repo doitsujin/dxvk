@@ -1165,6 +1165,11 @@ namespace dxvk {
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
 
+    void SetClassInstances(
+      const D3D11CommonShader*                pShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
     static DxvkInputAssemblyState InitDefaultPrimitiveTopology();
 
     static DxvkRasterizerState InitDefaultRasterizerState();
