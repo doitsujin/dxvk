@@ -14,6 +14,7 @@
 
 #include "../util/util_env.h"
 
+#include "d3d11_class_linkage.h"
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_util.h"
@@ -132,6 +133,7 @@ namespace dxvk {
     D3D11CommonShader();
     D3D11CommonShader(
             D3D11Device*            pDevice,
+            D3D11ClassLinkage*      pLinkage,
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
@@ -158,12 +160,19 @@ namespace dxvk {
       return m_bindings;
     }
 
+    D3D11InstanceData GetClassInstanceData(
+            uint32_t                Slot,
+            D3D11ClassInstance*     pClassInstance) const {
+      return m_interfaces.EncodeInstanceData(Slot, pClassInstance);
+    }
+
   private:
 
     Rc<DxvkShader> m_shader;
     Rc<DxvkBuffer> m_buffer;
 
-    D3D11BindingMask m_bindings = { };
+    D3D11BindingMask    m_bindings = { };
+    D3D11InterfaceInfo  m_interfaces = { };
 
     void CreateIrShader(
             D3D11Device*            pDevice,
@@ -172,6 +181,11 @@ namespace dxvk {
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
       const D3D11ShaderIcbInfo&     Icb);
+
+    void GatherInterefaceInfo(
+            D3D11ClassLinkage*      pLinkage,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
 
   };
 
@@ -267,6 +281,7 @@ namespace dxvk {
     
     HRESULT GetShaderModule(
             D3D11Device*            pDevice,
+            D3D11ClassLinkage*      pLinkage,
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,

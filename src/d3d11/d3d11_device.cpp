@@ -795,7 +795,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_VERTEX_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
     
@@ -821,7 +821,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_GEOMETRY_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
 
@@ -900,7 +900,7 @@ namespace dxvk {
       pShaderBytecode, BytecodeLength, pSODeclaration, NumEntries,
       pBufferStrides, NumStrides, RasterizedStream);
     
-    HRESULT hr = CreateShaderModule(&module, shaderKey,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage, shaderKey,
       pShaderBytecode, BytecodeLength, moduleInfo);
 
     if (FAILED(hr))
@@ -925,7 +925,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_FRAGMENT_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
 
@@ -951,7 +951,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
 
@@ -977,7 +977,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
 
@@ -1003,7 +1003,7 @@ namespace dxvk {
     DxvkIrShaderCreateInfo moduleInfo = { };
     moduleInfo.options = m_shaderOptions;
 
-    HRESULT hr = CreateShaderModule(&module,
+    HRESULT hr = CreateShaderModule(&module, pClassLinkage,
       ComputeShaderKey(VK_SHADER_STAGE_COMPUTE_BIT, pShaderBytecode, BytecodeLength),
       pShaderBytecode, BytecodeLength, moduleInfo);
 
@@ -1873,6 +1873,7 @@ namespace dxvk {
   
   HRESULT D3D11Device::CreateShaderModule(
           D3D11CommonShader*      pShaderModule,
+          ID3D11ClassLinkage*     pLinkage,
     const DxvkShaderHash&         ShaderKey,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
@@ -2075,6 +2076,7 @@ namespace dxvk {
     D3D11CommonShader commonShader = { };
 
     HRESULT hr = m_shaderModules.GetShaderModule(this,
+      static_cast<D3D11ClassLinkage*>(pLinkage),
       ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength,
       icbInfo, bindingMask, &commonShader);
 
