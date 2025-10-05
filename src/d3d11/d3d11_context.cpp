@@ -1417,8 +1417,7 @@ namespace dxvk {
     if (ppVertexShader)
       *ppVertexShader = m_state.vs.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::eVertex>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -1553,8 +1552,7 @@ namespace dxvk {
     if (ppHullShader)
       *ppHullShader = m_state.hs.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::eHull>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -1689,8 +1687,7 @@ namespace dxvk {
     if (ppDomainShader)
       *ppDomainShader = m_state.ds.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::eDomain>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -1825,8 +1822,7 @@ namespace dxvk {
     if (ppGeometryShader)
       *ppGeometryShader = m_state.gs.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::eGeometry>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -1961,8 +1957,7 @@ namespace dxvk {
     if (ppPixelShader)
       *ppPixelShader = m_state.ps.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::ePixel>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -2155,8 +2150,7 @@ namespace dxvk {
     if (ppComputeShader)
       *ppComputeShader = m_state.cs.ref();
 
-    if (pNumClassInstances)
-      *pNumClassInstances = 0;
+    GetClassInstances<D3D11ShaderType::eCompute>(ppClassInstances, pNumClassInstances);
   }
 
 
@@ -5903,6 +5897,27 @@ namespace dxvk {
       ] (DxvkContext* ctx) mutable {
         ctx->bindUniformBuffer(cStage, cSlotId, DxvkBufferSlice());
       });
+    }
+  }
+
+
+  template<typename ContextType>
+  template<D3D11ShaderType ShaderStage>
+  void D3D11CommonContext<ContextType>::GetClassInstances(
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    if (unlikely(pNumClassInstances)) {
+      const auto& state = m_state.instances[ShaderStage];
+
+      if (ppClassInstances) {
+        for (uint32_t i = 0u; i < *pNumClassInstances; i++) {
+          ppClassInstances[i] = i < state.instanceCount
+            ? state.instances[i].ref()
+            : nullptr;
+        }
+      }
+
+      *pNumClassInstances = state.instanceCount;
     }
   }
 

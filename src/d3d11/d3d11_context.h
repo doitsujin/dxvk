@@ -1173,6 +1173,11 @@ namespace dxvk {
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances);
 
+    template<D3D11ShaderType ShaderStage>
+    void GetClassInstances(
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
     Rc<DxvkBuffer> AllocInstanceDataBuffer(
             D3D11ShaderType                   ShaderStage);
 
