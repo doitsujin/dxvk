@@ -4,3 +4,37 @@ EXPORTS
     D3D11CreateDevice @22
     D3D11CreateDeviceAndSwapChain @23
     D3D11On12CreateDevice @24
+    D3DKMTCloseAdapter = gdi32.D3DKMTCloseAdapter
+    D3DKMTCreateAllocation = gdi32.D3DKMTCreateAllocation
+    D3DKMTCreateContext = gdi32.D3DKMTCreateContext
+    D3DKMTCreateDevice = gdi32.D3DKMTCreateDevice
+    D3DKMTCreateSynchronizationObject = gdi32.D3DKMTCreateSynchronizationObject
+    D3DKMTDestroyAllocation = gdi32.D3DKMTDestroyAllocation
+    D3DKMTDestroyContext = gdi32.D3DKMTDestroyContext
+    D3DKMTDestroyDevice = gdi32.D3DKMTDestroyDevice
+    D3DKMTDestroySynchronizationObject = gdi32.D3DKMTDestroySynchronizationObject
+    D3DKMTEscape = gdi32.D3DKMTEscape
+    D3DKMTGetContextSchedulingPriority = gdi32.D3DKMTGetContextSchedulingPriority
+    D3DKMTGetDeviceState = gdi32.D3DKMTGetDeviceState
+    D3DKMTGetDisplayModeList = gdi32.D3DKMTGetDisplayModeList
+    D3DKMTGetMultisampleMethodList = gdi32.D3DKMTGetMultisampleMethodList
+    D3DKMTGetRuntimeData = gdi32.D3DKMTGetRuntimeData
+    D3DKMTGetSharedPrimaryHandle = gdi32.D3DKMTGetSharedPrimaryHandle
+    D3DKMTLock = gdi32.D3DKMTLock
+    D3DKMTOpenAdapterFromHdc = gdi32.D3DKMTOpenAdapterFromHdc
+    D3DKMTOpenResource = gdi32.D3DKMTOpenResource
+    D3DKMTPresent = gdi32.D3DKMTPresent
+    D3DKMTQueryAdapterInfo = gdi32.D3DKMTQueryAdapterInfo
+    D3DKMTQueryAllocationResidency = gdi32.D3DKMTQueryAllocationResidency
+    D3DKMTQueryResourceInfo = gdi32.D3DKMTQueryResourceInfo
+    D3DKMTRender = gdi32.D3DKMTRender
+    D3DKMTSetAllocationPriority = gdi32.D3DKMTSetAllocationPriority
+    D3DKMTSetContextSchedulingPriority = gdi32.D3DKMTSetContextSchedulingPriority
+    D3DKMTSetDisplayMode = gdi32.D3DKMTSetDisplayMode
+    D3DKMTSetDisplayPrivateDriverFormat = gdi32.D3DKMTSetDisplayPrivateDriverFormat
+    D3DKMTSetGammaRamp = gdi32.D3DKMTSetGammaRamp
+    D3DKMTSetVidPnSourceOwner = gdi32.D3DKMTSetVidPnSourceOwner
+    D3DKMTSignalSynchronizationObject = gdi32.D3DKMTSignalSynchronizationObject
+    D3DKMTUnlock = gdi32.D3DKMTUnlock
+    D3DKMTWaitForSynchronizationObject = gdi32.D3DKMTWaitForSynchronizationObject
+    D3DKMTWaitForVerticalBlankEvent = gdi32.D3DKMTWaitForVerticalBlankEvent
