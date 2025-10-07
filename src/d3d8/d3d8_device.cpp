@@ -1229,18 +1229,22 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return D3DERR_INVALIDCALL;
 
+    D3D8StateBlockType stateBlockType = ConvertStateBlockType(Type);
+
+    if (unlikely(stateBlockType == D3D8StateBlockType::Unknown)) {
+      Logger::warn(str::format("D3D8Device::CreateStateBlock: Invalid state block type: ", Type));
+      return D3DERR_INVALIDCALL;
+    }
+
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
     if (likely(SUCCEEDED(res))) {
       m_token++;
-      auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
-                                                      std::forward_as_tuple(m_token),
-                                                      std::forward_as_tuple(this, Type, pStateBlock9.ptr()));
+      m_stateBlocks.emplace(std::piecewise_construct,
+                            std::forward_as_tuple(m_token),
+                            std::forward_as_tuple(this, stateBlockType, pStateBlock9.ptr()));
       *pToken = m_token;
-
-      // D3D8 state blocks automatically capture state on creation.
-      stateBlockIterPair.first->second.Capture();
     }
 
     return res;
