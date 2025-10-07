@@ -2658,7 +2658,14 @@ namespace dxvk {
   
   
   bool STDMETHODCALLTYPE D3D11DeviceExt::GetCudaTextureObjectNVX(uint32_t srvDriverHandle, uint32_t samplerDriverHandle, uint32_t* pCudaTextureHandle) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
     ID3D11ShaderResourceView* srv = HandleToSrvNVX(srvDriverHandle);
+
+    if (!dxvkDevice->features().nvxImageViewHandle) {
+      Logger::err("GetCudaTextureObjectNVX: VK_NVX_image_view_handle not enabled.");
+      return false;
+    }
 
     if (!srv) {
       Logger::warn(str::format("GetCudaTextureObjectNVX() failure - srv handle wasn't found: ", srvDriverHandle));
@@ -2688,8 +2695,8 @@ namespace dxvk {
     // note: there's no implicit lifetime management here; it's up to the
     // app to keep the sampler and SRV alive as long as it wants to use this
     // derived handle.
-    VkDevice vkDevice = m_device->GetDXVKDevice()->handle();
-    *pCudaTextureHandle = m_device->GetDXVKDevice()->vkd()->vkGetImageViewHandleNVX(vkDevice, &imageViewHandleInfo);
+    VkDevice vkDevice = dxvkDevice->handle();
+    *pCudaTextureHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(vkDevice, &imageViewHandleInfo);
 
     if (!*pCudaTextureHandle) {
       Logger::warn("GetCudaTextureObjectNVX() handle==0 - failed");
@@ -2703,6 +2710,12 @@ namespace dxvk {
   bool STDMETHODCALLTYPE D3D11DeviceExt::CreateCubinComputeShaderWithNameNVX(const void* pCubin, uint32_t size,
       uint32_t blockX, uint32_t blockY, uint32_t blockZ, const char* pShaderName, IUnknown** phShader) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!dxvkDevice->features().nvxBinaryImport) {
+      Logger::err("CreateCubinComputeShaderWithNameNVX: VK_NVX_binary_import not enabled.");
+      return false;
+    }
+
     VkDevice vkDevice = dxvkDevice->handle();
 
     VkCuModuleCreateInfoNVX moduleCreateInfo = { VK_STRUCTURE_TYPE_CU_MODULE_CREATE_INFO_NVX };
@@ -2735,6 +2748,13 @@ namespace dxvk {
 
 
   bool STDMETHODCALLTYPE D3D11DeviceExt::GetResourceHandleGPUVirtualAddressAndSizeNVX(void* hObject, uint64_t* gpuVAStart, uint64_t* gpuVASize) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!dxvkDevice->features().nvxImageViewHandle) {
+      Logger::err("GetResourceHandleGPUVirtualAddressAndSizeNVX: VK_NVX_image_view_handle not enabled.");
+      return false;
+    }
+
     // The hObject 'opaque driver handle' is really just a straight cast
     // of the corresponding ID3D11Resource* in dxvk/dxvknvapi
     ID3D11Resource* pResource = static_cast<ID3D11Resource*>(hObject);
@@ -2746,7 +2766,6 @@ namespace dxvk {
       return false;
     }
 
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     VkDevice vkDevice = dxvkDevice->handle();
 
     if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
@@ -2808,6 +2827,13 @@ namespace dxvk {
     const D3D11_UNORDERED_ACCESS_VIEW_DESC*   pDesc,
           ID3D11UnorderedAccessView**         ppUAV,
           uint32_t*                           pDriverHandle) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!dxvkDevice->features().nvxImageViewHandle) {
+      Logger::err("CreateUnorderedAccessViewAndGetDriverHandleNVX: VK_NVX_image_view_handle not enabled.");
+      return false;
+    }
+
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -2835,7 +2861,6 @@ namespace dxvk {
     imageViewHandleInfo.imageView = dxvkImageView->handle();
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(
       dxvkDevice->handle(), &imageViewHandleInfo);
 
@@ -2850,6 +2875,13 @@ namespace dxvk {
 
 
   bool STDMETHODCALLTYPE D3D11DeviceExt::CreateShaderResourceViewAndGetDriverHandleNVX(ID3D11Resource* pResource, const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc, ID3D11ShaderResourceView** ppSRV, uint32_t* pDriverHandle) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!dxvkDevice->features().nvxImageViewHandle) {
+      Logger::err("CreateShaderResourceViewAndGetDriverHandleNVX: VK_NVX_image_view_handle not enabled.");
+      return false;
+    }
+
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -2877,7 +2909,6 @@ namespace dxvk {
     imageViewHandleInfo.imageView = dxvkImageView->handle();
     imageViewHandleInfo.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     *pDriverHandle = dxvkDevice->vkd()->vkGetImageViewHandleNVX(
       dxvkDevice->handle(), &imageViewHandleInfo);
 
@@ -2894,6 +2925,13 @@ namespace dxvk {
 
 
   bool STDMETHODCALLTYPE D3D11DeviceExt::CreateSamplerStateAndGetDriverHandleNVX(const D3D11_SAMPLER_DESC* pSamplerDesc, ID3D11SamplerState** ppSamplerState, uint32_t* pDriverHandle) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!dxvkDevice->features().nvxImageViewHandle) {
+      Logger::err("CreateShaderResourceViewAndGetDriverHandleNVX: VK_NVX_image_view_handle not enabled.");
+      return false;
+    }
+
     if (FAILED(m_device->CreateSamplerState(pSamplerDesc, ppSamplerState)))
       return false;
 
