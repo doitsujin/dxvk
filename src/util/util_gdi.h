@@ -223,6 +223,17 @@ namespace dxvk {
       D3DKMT_HANDLE hSyncObject;
   } D3DKMT_OPENSYNCOBJECTFROMNTHANDLE;
 
+  typedef struct _D3DKMT_QUERYRESOURCEINFO
+  {
+      D3DKMT_HANDLE hDevice;
+      D3DKMT_HANDLE hGlobalShare;
+      void *pPrivateRuntimeData;
+      UINT PrivateRuntimeDataSize;
+      UINT TotalPrivateDriverDataSize;
+      UINT ResourcePrivateDriverDataSize;
+      UINT NumAllocations;
+  } D3DKMT_QUERYRESOURCEINFO;
+
   typedef struct _UNICODE_STRING {
       USHORT Length;        /* bytes */
       USHORT MaximumLength; /* bytes */
@@ -317,5 +328,6 @@ namespace dxvk {
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenResourceFromNtHandle(D3DKMT_OPENRESOURCEFROMNTHANDLE *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenSynchronizationObject(D3DKMT_OPENSYNCHRONIZATIONOBJECT *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenSyncObjectFromNtHandle(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE *desc);
+  EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTQueryResourceInfo(D3DKMT_QUERYRESOURCEINFO *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTShareObjects(UINT count, const D3DKMT_HANDLE *handles, OBJECT_ATTRIBUTES *attr, UINT access, HANDLE *handle);
 }
