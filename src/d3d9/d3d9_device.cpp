@@ -33,6 +33,10 @@
 
 namespace dxvk {
 
+  static bool isD3dkmtGlobalHandle(HANDLE handle) {
+    return (HandleToULong(handle) & 0xc0000000) && (HandleToULong(handle) & 0x3f) == 2;
+  }
+
   D3D9DeviceEx::D3D9DeviceEx(
           D3D9InterfaceEx*       pParent,
           D3D9Adapter*           pAdapter,
@@ -684,6 +688,10 @@ namespace dxvk {
       if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
         return D3DERR_INVALIDCALL;
 
+      // Shared resource handle has to be a D3DKMT global handle */
+      if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+        return E_INVALIDARG;
+
       const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, IsExtended(), pSharedHandle);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
@@ -718,6 +726,9 @@ namespace dxvk {
 
     if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
 
     if (unlikely(pSharedHandle))
         Logger::err("CreateVolumeTexture: Shared volume textures not supported");
@@ -780,6 +791,9 @@ namespace dxvk {
     if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
+
     if (unlikely(pSharedHandle))
         Logger::err("CreateCubeTexture: Shared cube textures not supported");
 
@@ -840,6 +854,9 @@ namespace dxvk {
     if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
       return D3DERR_NOTAVAILABLE;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
+
     if (unlikely(pSharedHandle))
         Logger::err("CreateVertexBuffer: Shared vertex buffers not supported");
 
@@ -886,6 +903,9 @@ namespace dxvk {
 
     if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
       return D3DERR_NOTAVAILABLE;
+
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
 
     if (unlikely(pSharedHandle))
         Logger::err("CreateIndexBuffer: Shared index buffers not supported");
@@ -4261,6 +4281,10 @@ namespace dxvk {
       && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
 
+    // Shared resource handle has to be a D3DKMT global handle */
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
+
     // Check if the sample count is valid and supported and
     // specifically return D3DERR_NOTAVAILABLE on failure.
     if (FAILED(DecodeMultiSampleType(m_dxvkDevice, MultiSample, MultisampleQuality, nullptr)))
@@ -4360,6 +4384,10 @@ namespace dxvk {
       if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
         return D3DERR_INVALIDCALL;
 
+      // Shared resource handle has to be a D3DKMT global handle */
+      if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+        return E_INVALIDARG;
+
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture(), initialData);
       *ppSurface = surface.ref();
@@ -4399,6 +4427,10 @@ namespace dxvk {
     if (unlikely((Usage & (D3DUSAGE_RESTRICT_SHARED_RESOURCE | D3DUSAGE_RESTRICT_SHARED_RESOURCE_DRIVER)) != 0
       && pSharedHandle == nullptr))
       return D3DERR_INVALIDCALL;
+
+    // Shared resource handle has to be a D3DKMT global handle */
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle && !isD3dkmtGlobalHandle(*pSharedHandle)))
+      return E_INVALIDARG;
 
     D3D9_COMMON_TEXTURE_DESC desc;
     desc.Width              = Width;
