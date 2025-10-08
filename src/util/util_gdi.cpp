@@ -74,6 +74,11 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS D3DKMTQueryResourceInfo(D3DKMT_QUERYRESOURCEINFO *desc) {
+    Logger::warn("D3DKMTQueryResourceInfo: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS WINAPI D3DKMTShareObjects(UINT count, const D3DKMT_HANDLE *handles, OBJECT_ATTRIBUTES *attr, UINT access, HANDLE *handle) {
     Logger::warn("D3DKMTShareObjects: Not available on this platform.");
     return -1;
