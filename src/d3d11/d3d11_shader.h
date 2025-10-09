@@ -109,6 +109,21 @@ namespace dxvk {
 
 
   /**
+   * \brief Shader key
+   */
+  struct D3D11ShaderKey {
+    VkShaderStageFlagBits Stage = { };
+    const void* Code = nullptr;
+    size_t CodeSize = 0u;
+    const D3D11_SO_DECLARATION_ENTRY* pXfbEntries = nullptr;
+    UINT XfbEntryCount = 0u;
+    const UINT* pXfbBufferStrides = nullptr;
+    UINT XfbBufferCount = 0u;
+    UINT RasterizedStream;
+  };
+
+
+  /**
    * \brief Immediate constant buffer info
    */
   struct D3D11ShaderIcbInfo {
