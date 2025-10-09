@@ -519,6 +519,8 @@ namespace dxvk {
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11DeviceFeatures             m_deviceFeatures;
 
+    std::string                     m_shaderReplacementPath;
+
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
             ID3D11ClassLinkage*     pLinkage,
@@ -556,6 +558,9 @@ namespace dxvk {
             D3D11CommonTexture*         pTexture,
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
+
+    std::vector<char> ReplaceShader(
+      const DxvkShaderHash&         ShaderKey);
 
     static DxvkShaderOptions GetShaderOptions(
       const Rc<DxvkDevice>&             Device,

@@ -56,6 +56,8 @@ namespace dxvk {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());
+
+    m_shaderReplacementPath = env::getEnvVar("DXVK_SHADER_REPLACEMENT_PATH");
   }
   
   
@@ -1904,6 +1906,16 @@ namespace dxvk {
 
     DxvkShaderHash shaderKey = ComputeShaderKey(Key);
 
+    // Use shader key to find replacement file
+    std::vector<char> replacedShader = ReplaceShader(shaderKey);
+
+    if (!replacedShader.empty()) {
+      Key.Code = replacedShader.data();
+      Key.CodeSize = replacedShader.size();
+
+      shaderKey = ComputeShaderKey(Key);
+    }
+
     // Ensure that the built-in hash is valid for the given binary.
     // Somewhat relevant for us because we use the hash as a way to
     // deduplicate and also tag shaders.
@@ -2586,6 +2598,30 @@ namespace dxvk {
     }
 
     return feedback;
+  }
+
+
+  std::vector<char> D3D11Device::ReplaceShader(
+    const DxvkShaderHash&         ShaderKey) {
+    if (m_shaderReplacementPath.empty())
+      return std::vector<char>();
+
+    auto path = m_shaderReplacementPath + "/" + ShaderKey.toString() + ".dxbc";
+
+    std::ifstream replacementFile(path,
+      std::ios_base::in | std::ios_base::binary);
+
+    if (!replacementFile.is_open())
+      return std::vector<char>();
+
+    Logger::info(str::format("Found replacement shader: ", path));
+
+    replacementFile.seekg(0, std::ios_base::end);
+    std::vector<char> result(replacementFile.tellg());
+
+    replacementFile.seekg(0, std::ios_base::beg);
+    replacementFile.read(result.data(), result.size());
+    return result;
   }
 
 
