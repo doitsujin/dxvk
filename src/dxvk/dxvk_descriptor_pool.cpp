@@ -125,7 +125,7 @@ namespace dxvk {
     // Samplers and uniform buffers may be special on some implementations
     // so we should allocate space for a reasonable number of both, but
     // assume that all other descriptor types share pool memory.
-    constexpr static uint32_t MaxSets = env::is32BitHostPlatform() ? 24576u : 49152u;
+    constexpr static uint32_t MaxSets = 1024u;
 
     static const std::array<VkDescriptorPoolSize, 6> pools = {{
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxSets / 2  },

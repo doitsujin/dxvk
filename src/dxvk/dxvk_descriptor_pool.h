@@ -78,7 +78,7 @@ namespace dxvk {
 
     std::atomic<uint64_t> m_lastCompleteTrackingId = { 0u };
 
-    small_vector<DescriptorPool, 4u> m_pools;
+    small_vector<DescriptorPool, 64u> m_pools;
 
     size_t m_poolIndex = 0u;
 
