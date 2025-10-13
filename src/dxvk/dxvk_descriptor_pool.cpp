@@ -36,37 +36,30 @@ namespace dxvk {
     const DxvkDescriptorSetLayout*  layout) {
     auto vk = m_device->vkd();
 
-    DescriptorPool* pool = nullptr;
-
-    if (!m_pools.empty())
-      pool = &m_pools[m_poolIndex];
-
     VkDescriptorSetLayout setLayout = layout->getSetLayout();
 
     VkResult vr = VK_ERROR_OUT_OF_POOL_MEMORY;
     VkDescriptorSet set = VK_NULL_HANDLE;
 
     VkDescriptorSetAllocateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO };
+    info.descriptorPool = m_pool.second.pool;
     info.descriptorSetCount = 1u;
     info.pSetLayouts = &setLayout;
 
-    if (likely(pool)) {
-      info.descriptorPool = pool->pool;
-
+    if (likely(info.descriptorPool))
       vr = vk->vkAllocateDescriptorSets(vk->device(), &info, &set);
-    }
 
     if (unlikely(vr != VK_SUCCESS)) {
-      pool = &getNextPool();
+      m_pool = getNextPool();
 
-      info.descriptorPool = pool->pool;
+      info.descriptorPool = m_pool.second.pool;
       vr = vk->vkAllocateDescriptorSets(vk->device(), &info, &set);
 
       if (vr != VK_SUCCESS)
         throw DxvkError(str::format("Failed to allocate descriptor set: ", vr));
     }
 
-    pool->trackingId = trackingId;
+    m_pool.second.trackingId = trackingId;
 
     m_setsAllocated++;
     return set;
@@ -75,7 +68,29 @@ namespace dxvk {
 
   void DxvkDescriptorPool::notifyCompletion(
           uint64_t                    trackingId) {
-    m_lastCompleteTrackingId.store(trackingId, std::memory_order_release);
+    small_vector<std::pair<size_t, VkDescriptorPool>, 16u> pools;
+
+    { std::lock_guard lock(m_mutex);
+
+      for (size_t i = 0u; i < m_pools.size(); i++) {
+        auto& pool = m_pools[i];
+
+        if (trackingId >= pool.trackingId && pool.status == Status::InFlight)
+          pools.push_back(std::make_pair(i, pool.pool));
+      }
+    }
+
+    if (!pools.empty()) {
+      auto vk = m_device->vkd();
+
+      for (const auto& pool : pools)
+        vk->vkResetDescriptorPool(vk->device(), pool.second, 0u);
+
+      std::lock_guard lock(m_mutex);
+
+      for (const auto& pool : pools)
+        m_pools[pool.first].status = Status::Reset;
+    }
   }
 
 
@@ -85,37 +100,31 @@ namespace dxvk {
   }
 
 
-  DxvkDescriptorPool::DescriptorPool& DxvkDescriptorPool::getNextPool() {
-    uint64_t lastComplete = m_lastCompleteTrackingId.load(std::memory_order_acquire);
+  std::pair<size_t, DxvkDescriptorPool::DescriptorPool> DxvkDescriptorPool::getNextPool() {
+    std::lock_guard lock(m_mutex);
 
-    bool foundFreePool = false;
+    // Commit current pool and mark as in flight
+    if (m_pool.second.pool) {
+      m_pools[m_pool.first] = m_pool.second;
+      m_pools[m_pool.first].status = Status::InFlight;
+    }
 
-    if (!m_pools.empty()) {
-      for (size_t i = 1u; i < m_pools.size() && !foundFreePool; i++) {
-        m_poolIndex += 1u;
-        m_poolIndex %= m_pools.size();
-
-        foundFreePool = lastComplete >= m_pools[m_poolIndex].trackingId;
+    // Find available pool that's not in use
+    for (size_t i = 0u; i < m_pools.size(); i++) {
+      if (m_pools[i].status == Status::Reset) {
+        m_pools[i].status = Status::InUse;
+        return std::make_pair(i, m_pools[i]);
       }
     }
 
-    if (!foundFreePool) {
-      auto& pool = m_pools.emplace_back();
-      pool.pool = createDescriptorPool();
+    // Create new pool as necessary
+    auto poolIndex = m_pools.size();
 
-      m_poolIndex = m_pools.size() - 1u;
-      return pool;
-    } else {
-      auto& result = m_pools[m_poolIndex];
+    auto& pool = m_pools.emplace_back();
+    pool.pool = createDescriptorPool();
+    pool.status = Status::InUse;
 
-      auto vk = m_device->vkd();
-      VkResult vr = vk->vkResetDescriptorPool(vk->device(), result.pool, 0u);
-
-      if (vr)
-        throw DxvkError(str::format("Failed reset descriptor pool: ", vr));
-
-      return result;
-    }
+    return std::make_pair(poolIndex, pool);
   }
 
 

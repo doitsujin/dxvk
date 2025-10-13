@@ -71,18 +71,24 @@ namespace dxvk {
 
     uint64_t m_setsAllocated = 0u;
 
+    enum class Status : uint32_t {
+      Reset     = 0,
+      InUse     = 1,
+      InFlight  = 2,
+    };
+
     struct DescriptorPool {
       VkDescriptorPool pool = VK_NULL_HANDLE;
       uint64_t trackingId = 0u;
+      Status status = Status::Reset;
     };
 
-    std::atomic<uint64_t> m_lastCompleteTrackingId = { 0u };
+    dxvk::mutex m_mutex;
 
     small_vector<DescriptorPool, 64u> m_pools;
+    std::pair<size_t, DescriptorPool> m_pool = { };
 
-    size_t m_poolIndex = 0u;
-
-    DescriptorPool& getNextPool();
+    std::pair<size_t, DescriptorPool> getNextPool();
 
     VkDescriptorPool createDescriptorPool() const;
 
