@@ -1,8 +1,154 @@
 #include <fstream>
 
+#include "./com/com_include.h"
+
+#include "./log/log.h"
+
 #include "util_file.h"
+#include "util_string.h"
 
 namespace dxvk::util {
+
+#ifdef _WIN32
+  class Win32File : public FileIface {
+
+  public:
+
+    Win32File(const std::string& path, FileFlags flags)
+    : m_flags(flags) {
+      DWORD access = 0u;
+      DWORD share = 0u;
+      DWORD mode = 0u;
+
+      if (flags.test(FileFlag::AllowRead)) {
+        access |= GENERIC_READ;
+        share |= FILE_SHARE_READ;
+        mode = OPEN_EXISTING;
+      }
+
+      if (flags.test(FileFlag::AllowWrite)) {
+        access |= GENERIC_WRITE;
+        share |= FILE_SHARE_WRITE;
+        mode = OPEN_EXISTING;
+
+        if (flags.test(FileFlag::Truncate))
+          mode = CREATE_ALWAYS;
+      }
+
+      if (flags.test(FileFlag::Exclusive))
+        share = 0u;
+
+      std::array<WCHAR, MAX_PATH + 1u> pathCvt;
+
+      size_t len = str::transcodeString(
+        pathCvt.data(), pathCvt.size(),
+        path.data(), path.size());
+
+      pathCvt[len] = '\0';
+
+      m_file = CreateFileW(pathCvt.data(),
+        access, share, nullptr, mode, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+      if (!m_file)
+        m_file = INVALID_HANDLE_VALUE;
+    }
+
+    ~Win32File() {
+      CloseHandle(m_file);
+    }
+
+    bool read(size_t offset, size_t size, void* data) {
+      if (!seek(offset, FILE_BEGIN))
+        return false;
+
+      return read(size, data);
+    }
+
+    bool write(size_t offset, size_t size, const void* data) {
+      if (!seek(offset, FILE_BEGIN))
+        return false;
+
+      return write(size, data);
+    }
+
+    bool append(size_t size, const void* data) {
+      if (!seek(0, FILE_END))
+        return false;
+
+      return write(size, data);
+    }
+
+    size_t size() {
+      if (m_file == INVALID_HANDLE_VALUE)
+        return 0u;
+
+      LARGE_INTEGER size = { };
+
+      if (!GetFileSizeEx(m_file, &size))
+        return 0u;
+
+      return size.QuadPart;
+    }
+
+    bool status() const {
+      return m_file != INVALID_HANDLE_VALUE;
+    }
+
+    bool flush() {
+      return FlushFileBuffers(m_file);
+    }
+
+  private:
+
+    FileFlags m_flags = { };
+    HANDLE    m_file  = INVALID_HANDLE_VALUE;
+
+    bool seek(size_t offset, DWORD method) {
+      if (!m_file)
+        return false;
+
+      LARGE_INTEGER address = { };
+      address.QuadPart = offset;
+
+      return SetFilePointerEx(m_file, address, nullptr, method);
+    }
+
+    bool read(size_t size, void* data) {
+      auto buffer = reinterpret_cast<char*>(data);
+
+      while (size) {
+        DWORD read = 0u;
+
+        if (!ReadFile(m_file, buffer, size, &read, nullptr) || !read)
+          return false;
+
+        buffer += read;
+        size -= read;
+      }
+
+      return true;
+    }
+
+    bool write(size_t size, const void* data) {
+      auto buffer = reinterpret_cast<const char*>(data);
+
+      while (size) {
+        DWORD written = 0u;
+
+        if (!WriteFile(m_file, buffer, size, &written, nullptr) || !written)
+          return false;
+
+        buffer += written;
+        size -= written;
+      }
+
+      return true;
+    }
+
+  };
+
+  using FileImpl = Win32File;
+#else
 
   class StlFile : public FileIface {
 
@@ -91,7 +237,7 @@ namespace dxvk::util {
   };
 
   using FileImpl = StlFile;
-
+#endif
 
   FileIface::~FileIface() {
 
