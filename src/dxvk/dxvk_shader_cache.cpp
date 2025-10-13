@@ -132,12 +132,16 @@ namespace dxvk {
     // Try to open both files in read-only mode for now, re-open
     // in read-write mode when we actually add new cache entries.
     auto path = m_filePaths.directory + env::PlatformDirSlash;
-    auto iosFlags = std::ios_base::in | std::ios_base::out | std::ios_base::binary;
 
-    m_binFile = std::fstream(path + m_filePaths.binFile, iosFlags);
-    m_lutFile = std::fstream(path + m_filePaths.lutFile, iosFlags);
+    auto flags = util::FileFlags(
+      util::FileFlag::AllowRead,
+      util::FileFlag::AllowWrite,
+      util::FileFlag::Exclusive);
 
-    if (!m_binFile.is_open() || !m_lutFile.is_open())
+    m_binFile.open(path + m_filePaths.binFile, flags);
+    m_lutFile.open(path + m_filePaths.lutFile, flags);
+
+    if (!m_binFile || !m_lutFile)
       return false;
 
     Logger::info(str::format("Found cache file: ", path + m_filePaths.binFile));
@@ -148,28 +152,32 @@ namespace dxvk {
   bool DxvkShaderCache::openWriteOnlyLocked() {
     // Didn't have a lot of success so far, nuke the files and retry.
     auto path = m_filePaths.directory + env::PlatformDirSlash;
-    auto iosFlags = std::ios_base::out | std::ios_base::binary | std::ios_base::trunc;
 
-    m_binFile = std::fstream(path + m_filePaths.binFile, iosFlags);
-    m_lutFile = std::fstream(path + m_filePaths.lutFile, iosFlags);
+    auto flags = util::FileFlags(
+      util::FileFlag::AllowWrite,
+      util::FileFlag::Truncate,
+      util::FileFlag::Exclusive);
 
-    if (!m_binFile.is_open() || !m_lutFile.is_open()) {
+    m_binFile.open(path + m_filePaths.binFile, flags);
+    m_lutFile.open(path + m_filePaths.lutFile, flags);
+
+    if (!m_binFile || !m_lutFile) {
       if (!env::createDirectory(m_filePaths.directory)) {
         Logger::warn(str::format("Failed to create directory: ", m_filePaths.directory));
         return false;
       }
 
-      m_binFile = std::fstream(path + m_filePaths.binFile, iosFlags);
-      m_lutFile = std::fstream(path + m_filePaths.lutFile, iosFlags);
+      m_binFile.open(path + m_filePaths.binFile, flags);
+      m_lutFile.open(path + m_filePaths.lutFile, flags);
     }
 
-    if (!m_binFile.is_open())
+    if (!m_binFile)
       Logger::warn(str::format("Failed to create ", path + m_filePaths.binFile, ", disabling cache"));
 
-    if (!m_lutFile.is_open())
+    if (!m_lutFile)
       Logger::warn(str::format("Failed to create ", path + m_filePaths.lutFile, ", disabling cache"));
 
-    if (!m_binFile.is_open() || !m_lutFile.is_open())
+    if (!m_binFile || !m_lutFile)
       return false;
 
     Logger::info(str::format("Created cache file: ", path + m_filePaths.binFile));
@@ -190,12 +198,11 @@ namespace dxvk {
   bool DxvkShaderCache::parseLut() {
     LutHeader header;
 
-    m_lutFile.seekg(0, std::ios_base::end);
-    auto size = m_lutFile.tellg();
-    m_lutFile.seekg(0, std::ios_base::beg);
+    size_t size = m_lutFile.size();
+    size_t offset = 0u;
 
-    if (!readBytes(m_lutFile, header.magic.data(), header.magic.size())
-     || !readString(m_lutFile, header.versionString)) {
+    if (!readBytes(m_lutFile, header.magic.data(), offset, header.magic.size())
+     || !readString(m_lutFile, offset, header.versionString)) {
       Logger::warn("Failed to parse cache file header.");
       return false;
     }
@@ -206,11 +213,11 @@ namespace dxvk {
       return false;
     }
 
-    while (m_lutFile.tellg() != size) {
+    while (offset < size) {
       LutKey k;
       LutEntry e;
 
-      if (!readShaderLutEntry(k, e)) {
+      if (!readShaderLutEntry(k, e, offset)) {
         Logger::warn("Failed to parse cache look-up table.");
         return false;
       }
@@ -222,7 +229,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::writeShaderXfbInfo(std::ostream& stream, const dxbc_spv::ir::IoXfbInfo& xfb) {
+  bool DxvkShaderCache::writeShaderXfbInfo(util::File& stream, const dxbc_spv::ir::IoXfbInfo& xfb) {
     return writeString(stream, xfb.semanticName)
         && write(stream, xfb.semanticIndex)
         && write(stream, xfb.componentMask)
@@ -233,7 +240,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::writeShaderCreateInfo(std::ostream& stream, const DxvkIrShaderCreateInfo& createInfo) {
+  bool DxvkShaderCache::writeShaderCreateInfo(util::File& stream, const DxvkIrShaderCreateInfo& createInfo) {
     bool status = write(stream, createInfo.options)
                && write(stream, createInfo.flatShadingInputs)
                && write(stream, createInfo.rasterizedStream);
@@ -250,9 +257,9 @@ namespace dxvk {
   Rc<DxvkIrShader> DxvkShaderCache::loadCachedShaderLocked(const LutKey& key, const LutEntry& entry) {
     std::vector<uint8_t> ir(entry.binarySize);
 
-    m_binFile.seekg(entry.offset, std::ios_base::beg);
+    size_t offset = entry.offset;
 
-    if (!readBytes(m_binFile, ir.data(), ir.size())) {
+    if (!readBytes(m_binFile, ir.data(), offset, entry.binarySize)) {
       Logger::warn("Failed to read cached shader binary");
       return nullptr;
     }
@@ -264,14 +271,14 @@ namespace dxvk {
 
     DxvkShaderMetadata metadata;
 
-    if (!readShaderMetadata(m_binFile, metadata)) {
+    if (!readShaderMetadata(m_binFile, offset, metadata)) {
       Logger::warn("Failed to read cached shader metadata");
       return nullptr;
     }
 
     DxvkPipelineLayoutBuilder layout;
 
-    if (!readShaderLayout(m_binFile, layout)) {
+    if (!readShaderLayout(m_binFile, offset, layout)) {
       Logger::warn("Failed to read cached shader binding layout");
       return nullptr;
     }
@@ -297,16 +304,16 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::readShaderIo(std::istream& stream, DxvkShaderIo& io) {
+  bool DxvkShaderCache::readShaderIo(util::File& stream, size_t& offset, DxvkShaderIo& io) {
     uint8_t varCount = 0u;
 
-    if (!read(stream, varCount))
+    if (!read(stream, offset, varCount))
       return false;
 
     for (uint32_t i = 0u; i < varCount; i++) {
       DxvkShaderIoVar var = { };
 
-      if (!read(stream, var))
+      if (!read(stream, offset, var))
         return false;
 
       io.add(var);
@@ -316,29 +323,29 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::readShaderMetadata(std::istream& stream, DxvkShaderMetadata& metadata) {
-    bool status = read(stream, metadata.stage)
-               && read(stream, metadata.flags)
-               && read(stream, metadata.specConstantMask)
-               && readShaderIo(stream, metadata.inputs)
-               && readShaderIo(stream, metadata.outputs)
-               && read(stream, metadata.inputTopology)
-               && read(stream, metadata.outputTopology)
-               && read(stream, metadata.flatShadingInputs)
-               && read(stream, metadata.rasterizedStream)
-               && read(stream, metadata.patchVertexCount);
+  bool DxvkShaderCache::readShaderMetadata(util::File& stream, size_t& offset, DxvkShaderMetadata& metadata) {
+    bool status = read(stream, offset, metadata.stage)
+               && read(stream, offset, metadata.flags)
+               && read(stream, offset, metadata.specConstantMask)
+               && readShaderIo(stream, offset, metadata.inputs)
+               && readShaderIo(stream, offset, metadata.outputs)
+               && read(stream, offset, metadata.inputTopology)
+               && read(stream, offset, metadata.outputTopology)
+               && read(stream, offset, metadata.flatShadingInputs)
+               && read(stream, offset, metadata.rasterizedStream)
+               && read(stream, offset, metadata.patchVertexCount);
 
     for (auto& xfb : metadata.xfbStrides)
-      status = status && read(stream, xfb);
+      status = status && read(stream, offset, xfb);
 
     return status;
   }
 
 
-  bool DxvkShaderCache::readShaderLayout(std::istream& stream, DxvkPipelineLayoutBuilder& layout) {
+  bool DxvkShaderCache::readShaderLayout(util::File& stream, size_t& offset, DxvkPipelineLayoutBuilder& layout) {
     VkShaderStageFlags stageMask = { };
 
-    if (!read(stream, stageMask))
+    if (!read(stream, offset, stageMask))
       return false;
 
     layout = DxvkPipelineLayoutBuilder(stageMask);
@@ -346,13 +353,13 @@ namespace dxvk {
     // Read push data blocks
     uint32_t pushDataMask = 0u;
 
-    if (!read(stream, pushDataMask))
+    if (!read(stream, offset, pushDataMask))
       return false;
 
     for (uint32_t i = 0u; i < bit::popcnt(pushDataMask); i++) {
       DxvkPushDataBlock block = { };
 
-      if (!read(stream, block))
+      if (!read(stream, offset, block))
         return false;
 
       layout.addPushData(block);
@@ -361,13 +368,13 @@ namespace dxvk {
     // Read shader binding info
     uint32_t bindingCount = 0u;
 
-    if (!read(stream, bindingCount))
+    if (!read(stream, offset, bindingCount))
       return false;
 
     for (uint32_t i = 0u; i < bindingCount; i++) {
       DxvkShaderDescriptor binding = { };
 
-      if (!read(stream, binding))
+      if (!read(stream, offset, binding))
         return false;
 
       layout.addBindings(1u, &binding);
@@ -376,13 +383,13 @@ namespace dxvk {
     // Read sampler heap mappings
     uint32_t samplerHeapCount = 0u;
 
-    if (!read(stream, samplerHeapCount))
+    if (!read(stream, offset, samplerHeapCount))
       return false;
 
     for (uint32_t i = 0u; i < samplerHeapCount; i++) {
       DxvkShaderBinding binding = { };
 
-      if (!read(stream, binding))
+      if (!read(stream, offset, binding))
         return false;
 
       layout.addSamplerHeap(binding);
@@ -392,37 +399,37 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::readShaderXfbInfo(std::istream& stream, dxbc_spv::ir::IoXfbInfo& xfb) {
-    return readString(stream, xfb.semanticName)
-        && read(stream, xfb.semanticIndex)
-        && read(stream, xfb.componentMask)
-        && read(stream, xfb.stream)
-        && read(stream, xfb.buffer)
-        && read(stream, xfb.offset)
-        && read(stream, xfb.stride);
+  bool DxvkShaderCache::readShaderXfbInfo(util::File& stream, size_t& offset, dxbc_spv::ir::IoXfbInfo& xfb) {
+    return readString(stream, offset, xfb.semanticName)
+        && read(stream, offset, xfb.semanticIndex)
+        && read(stream, offset, xfb.componentMask)
+        && read(stream, offset, xfb.stream)
+        && read(stream, offset, xfb.buffer)
+        && read(stream, offset, xfb.offset)
+        && read(stream, offset, xfb.stride);
  }
 
 
-  bool DxvkShaderCache::readShaderLutKey(std::istream& stream, LutKey& key) {
-    bool status = readString(stream, key.name)
-               && read(stream, key.createInfo.options)
-               && read(stream, key.createInfo.flatShadingInputs)
-               && read(stream, key.createInfo.rasterizedStream);
+  bool DxvkShaderCache::readShaderLutKey(util::File& stream, size_t& offset, LutKey& key) {
+    bool status = readString(stream, offset, key.name)
+               && read(stream, offset, key.createInfo.options)
+               && read(stream, offset, key.createInfo.flatShadingInputs)
+               && read(stream, offset, key.createInfo.rasterizedStream);
 
     uint32_t xfbCount = 0u;
-    status = status && read(stream, xfbCount);
+    status = status && read(stream, offset, xfbCount);
 
     key.createInfo.xfbEntries.resize(xfbCount);
 
     for (uint32_t i = 0u; i < xfbCount; i++)
-      status = status && readShaderXfbInfo(stream, key.createInfo.xfbEntries[i]);
+      status = status && readShaderXfbInfo(stream, offset, key.createInfo.xfbEntries[i]);
 
     return status;
   }
 
 
-  bool DxvkShaderCache::readShaderLutEntry(LutKey& key, LutEntry& entry) {
-    return readShaderLutKey(m_lutFile, key) && read(m_lutFile, entry);
+  bool DxvkShaderCache::readShaderLutEntry(LutKey& key, LutEntry& entry, size_t& offset) {
+    return readShaderLutKey(m_lutFile, offset, key) && read(m_lutFile, offset, entry);
   }
 
 
@@ -456,9 +463,6 @@ namespace dxvk {
       if (drain) {
         std::unique_lock fileLock(m_fileMutex);
 
-        m_binFile.seekp(0, std::ios_base::end);
-        m_lutFile.seekp(0, std::ios_base::end);
-
         for (const auto& shader : localQueue) {
           if (!writeShaderToCache(*shader)) {
             Logger::err("Failed to write cache file.");
@@ -476,7 +480,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::writeShaderLayout(std::ostream& stream, const DxvkPipelineLayoutBuilder& layout) {
+  bool DxvkShaderCache::writeShaderLayout(util::File& stream, const DxvkPipelineLayoutBuilder& layout) {
     bool status = write(stream, layout.getStageMask())
                && write(stream, layout.getPushDataMask());
 
@@ -498,7 +502,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::writeShaderIo(std::ostream& stream, const DxvkShaderIo& io) {
+  bool DxvkShaderCache::writeShaderIo(util::File& stream, const DxvkShaderIo& io) {
     bool status = write(stream, uint8_t(io.getVarCount()));
 
     for (uint32_t i = 0u; i < io.getVarCount(); i++)
@@ -508,7 +512,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkShaderCache::writeShaderMetadata(std::ostream& stream, const DxvkShaderMetadata& metadata) {
+  bool DxvkShaderCache::writeShaderMetadata(util::File& stream, const DxvkShaderMetadata& metadata) {
     bool status = write(stream, metadata.stage)
                && write(stream, metadata.flags)
                && write(stream, metadata.specConstantMask)
@@ -527,11 +531,11 @@ namespace dxvk {
   }
 
 
-  std::optional<DxvkShaderCache::LutEntry> DxvkShaderCache::writeShaderBinary(std::ostream& stream, DxvkIrShader& shader) {
+  std::optional<DxvkShaderCache::LutEntry> DxvkShaderCache::writeShaderBinary(util::File& stream, DxvkIrShader& shader) {
     auto [data, size] = shader.getSerializedIr();
 
     LutEntry entry = { };
-    entry.offset = stream.tellp();
+    entry.offset = stream.size();
     entry.binarySize = size;
 
     if (!writeBytes(stream, data, size)
@@ -539,13 +543,14 @@ namespace dxvk {
      || !writeShaderLayout(stream, shader.getLayout()))
       return std::nullopt;
 
-    entry.metadataSize = uint32_t(uint64_t(stream.tellp()) - (entry.offset + entry.binarySize));
+
+    entry.metadataSize = uint32_t(uint64_t(stream.size()) - (entry.offset + entry.binarySize));
     entry.checksum = bit::fnv1a_hash(data, size);
     return std::make_optional(entry);
   }
 
 
-  bool DxvkShaderCache::writeHeader(std::ostream& stream, const LutHeader& header) {
+  bool DxvkShaderCache::writeHeader(util::File& stream, const LutHeader& header) {
     return writeBytes(stream, header.magic.data(), header.magic.size())
         && writeString(stream, header.versionString);
   }
