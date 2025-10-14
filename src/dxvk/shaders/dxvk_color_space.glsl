@@ -28,6 +28,10 @@ vec3 linear_to_srgb(vec3 linear) {
   return mix(hiPart, loPart, isLo);
 }
 
+vec3 linear_to_gamma_22(vec3 linear) {
+  return pow(linear, vec3(1.0f / 2.2f));
+}
+
 vec3 srgb_to_linear(vec3 srgb) {
   bvec3 isLo = lessThanEqual(srgb, vec3(0.04045f));
 
@@ -36,6 +40,9 @@ vec3 srgb_to_linear(vec3 srgb) {
   return mix(hiPart, loPart, isLo);
 }
 
+vec3 gamma_22_to_linear(vec3 value) {
+  return pow(value, vec3(2.2f));
+}
 
 // Perceptual quantizer conversion
 vec3 nits_to_pq(vec3 nits) {

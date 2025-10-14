@@ -12,6 +12,7 @@ layout(constant_id = 4) const uint c_dst_color_space = VK_COLOR_SPACE_SRGB_NONLI
 layout(constant_id = 5) const bool c_dst_is_srgb = true;
 layout(constant_id = 6) const bool c_composite_hud = false;
 layout(constant_id = 7) const bool c_composite_cursor = false;
+layout(constant_id = 8) const bool c_sdr_is_gamma22 = true;
 
 layout(set = 0, binding = 0) uniform sampler s_samplers[];
 
@@ -71,8 +72,17 @@ vec4 input_to_sc_rgb(vec4 color) {
       return color;
 
     case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR: {
-      if (!c_src_is_srgb)
-        color.rgb = srgb_to_linear(color.rgb);
+      if (c_dst_color_space == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR || !c_sdr_is_gamma22) {
+        if (!c_src_is_srgb)
+          color.rgb = srgb_to_linear(color.rgb);
+      } else {
+        // Content tends to be designed around
+        // gamma 2.2 rather than piecewise sRGB
+        if (c_src_is_srgb)
+          color.rgb = linear_to_srgb(color.rgb);
+
+        color.rgb = gamma_22_to_linear(color.rgb);
+      }
 
       color.rgb = nits_to_sc_rgb(color.rgb * SDR_NITS);
       return color;
@@ -128,8 +138,15 @@ vec4 sc_rgb_to_output(vec4 color) {
     case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR: {
       color.rgb = sc_rgb_to_nits(color.rgb) / SDR_NITS;
 
-      if (!c_dst_is_srgb)
-        color.rgb = linear_to_srgb(color.rgb);
+      if (c_src_color_space == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR || !c_sdr_is_gamma22) {
+        if (!c_dst_is_srgb)
+          color.rgb = linear_to_srgb(color.rgb);
+      } else {
+        color.rgb = linear_to_gamma_22(color.rgb);
+
+        if (c_dst_is_srgb)
+          color.rgb = srgb_to_linear(color.rgb);
+      }
 
       return color;
     }

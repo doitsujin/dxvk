@@ -49,6 +49,10 @@ namespace dxvk {
     VkBool32 compositeHud = VK_FALSE;
     /// Bit indicating whether the software cursor needs to be composited
     VkBool32 compositeCursor = VK_FALSE;
+    /// Bit indicating that SDR content is to be interpreted as Gamma 2.2
+    /// rather than the piecewise sRGB function. This adds some conversions,
+    /// but seems to match the expectations of most displays and SDR content.
+    VkBool32 sdrIsGamma22 = VK_TRUE;
 
     size_t hash() const {
       DxvkHashState hash;
@@ -61,6 +65,7 @@ namespace dxvk {
       hash.add(uint32_t(needsGamma));
       hash.add(uint32_t(compositeHud));
       hash.add(uint32_t(compositeCursor));
+      hash.add(uint32_t(sdrIsGamma22));
       return hash;
     }
 
@@ -73,7 +78,8 @@ namespace dxvk {
           && needsBlit == other.needsBlit
           && needsGamma == other.needsGamma
           && compositeHud == other.compositeHud
-          && compositeCursor == other.compositeCursor;
+          && compositeCursor == other.compositeCursor
+          && sdrIsGamma22 == other.sdrIsGamma22;
     }
   };
 
@@ -185,6 +191,7 @@ namespace dxvk {
       VkBool32 dstIsSrgb;
       VkBool32 compositeHud;
       VkBool32 compositeCursor;
+      VkBool32 sdrIsGamma22;
     };
 
     struct PushConstants {

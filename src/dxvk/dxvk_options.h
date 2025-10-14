@@ -69,6 +69,11 @@ namespace dxvk {
     /// Whether to use custom sin/cos approximation
     Tristate lowerSinCos = Tristate::Auto;
 
+    /// Whether to interpret SDR content as Gamma 2.2 rather than piecewise
+    /// sRGB. Only matters when promoting SDR content to an HDR color space
+    /// or vice versa.
+    bool sdrIsGamma22 = true;
+
     /// Device name
     std::string deviceFilter;
   };

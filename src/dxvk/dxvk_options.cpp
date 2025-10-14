@@ -21,6 +21,7 @@ namespace dxvk {
     deviceFilter          = config.getOption<std::string>("dxvk.deviceFilter",        "");
     lowerSinCos           = config.getOption<Tristate>("dxvk.lowerSinCos",            Tristate::Auto);
     tilerMode             = config.getOption<Tristate>("dxvk.tilerMode",              Tristate::Auto);
+    sdrIsGamma22          = config.getOption<bool>    ("dxvk.sdrIsGamma22",           true);
 
     auto budget = config.getOption<int32_t>("dxvk.maxMemoryBudget", 0);
     maxMemoryBudget = VkDeviceSize(std::max(budget, 0)) << 20u;
