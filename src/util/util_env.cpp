@@ -141,9 +141,13 @@ namespace dxvk::env {
       path.data(), path.size());
 
     widePath[length] = L'\0';
-    return !!CreateDirectoryW(widePath.data(), nullptr);
+
+    if (!CreateDirectoryW(widePath.data(), nullptr))
+      return GetLastError() == ERROR_ALREADY_EXISTS;
+
+    return true;
 #else
-    return std::filesystem::create_directories(path);
+    return std::filesystem::is_directory(path) || std::filesystem::create_directories(path);
 #endif
   }
   
