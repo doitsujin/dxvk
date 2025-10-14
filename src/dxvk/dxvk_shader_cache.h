@@ -35,8 +35,6 @@ namespace dxvk {
       std::string binFile;
     };
 
-    DxvkShaderCache(FilePaths paths);
-
     ~DxvkShaderCache();
 
     void incRef() {
@@ -45,7 +43,7 @@ namespace dxvk {
 
     void decRef() {
       if (m_useCount.fetch_sub(1u, std::memory_order_release) == 1u)
-        delete this;
+        freeInstance();
     }
 
     /**
@@ -74,7 +72,20 @@ namespace dxvk {
      */
     static FilePaths getDefaultFilePaths();
 
+    /**
+     * \brief Initializes shader cache
+     * \returns Shader cache instance
+     */
+    static Rc<DxvkShaderCache> getInstance();
+
   private:
+
+    struct Instance {
+      dxvk::mutex       mutex;
+      DxvkShaderCache*  instance = nullptr;
+    };
+
+    static Instance s_instance;
 
     struct LutHeader {
       std::array<char, 4u>  magic = { };
@@ -122,6 +133,8 @@ namespace dxvk {
 
     dxvk::thread                  m_writer;
 
+    DxvkShaderCache();
+
     bool ensureStatus(Status status);
 
     Status initialize();
@@ -143,6 +156,8 @@ namespace dxvk {
     bool readShaderLutEntry(LutKey& key, LutEntry& entry, size_t& offset);
 
     void runWriter();
+
+    void freeInstance();
 
     static bool writeShaderXfbInfo(util::File& stream, const dxbc_spv::ir::IoXfbInfo& xfb);
 

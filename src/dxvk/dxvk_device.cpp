@@ -28,7 +28,7 @@ namespace dxvk {
     determineShaderOptions();
 
     if (env::getEnvVar("DXVK_SHADER_CACHE") != "0" && DxvkShader::getShaderDumpPath().empty())
-      m_shaderCache = new DxvkShaderCache(DxvkShaderCache::getDefaultFilePaths());
+      m_shaderCache = DxvkShaderCache::getInstance();
   }
   
   
