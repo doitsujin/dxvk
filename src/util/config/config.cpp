@@ -1252,11 +1252,17 @@ namespace dxvk {
     { R"(\\fifa2003(demo)?\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* Splinter Cell: Pandora Tomorrow            *
-     * Broken inputs and physics above 60 FPS     */
-    { R"(\\SplinterCell2\.exe$)", {{
+    /* Splinter Cell: Pandora Tomorrow (Retail)   *
+     * Missing shadows without dref scaling and   *
+     * broken inputs and physics above 60 FPS     */
+    { R"(\\offline\\system\\SplinterCell2\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.scaleDref",                     "24" },
+    }} },
+    /* Splinter Cell: Pandora Tomorrow (Steam)    *
+     * Broken inputs and physics above 60 FPS     */
+    { R"(\\Splinter Cell Pandora Tomorrow\\system\\SplinterCell2\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
     }} },
     /* Chrome: Gold Edition                       *
      * Broken character model motion at high FPS  */

@@ -44,7 +44,7 @@ namespace dxvk {
   struct D3D8CapturableState {
     std::array<D3D8VBOP, d8caps::MAX_STREAMS>                      streams;
     std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES> textures;
-    
+
     IDirect3DIndexBuffer8* indices = nullptr;
     UINT  baseVertexIndex    = 0;
     DWORD vertexShaderHandle = 0;
