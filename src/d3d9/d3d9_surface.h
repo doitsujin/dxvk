@@ -10,8 +10,6 @@
 
 namespace dxvk {
 
-  using D3D9GDIDesc = D3DKMT_DESTROYDCFROMMEMORY;
-
   using D3D9SurfaceBase = D3D9Subresource<IDirect3DSurface9>;
   class D3D9Surface final : public D3D9SurfaceBase {
 
@@ -68,7 +66,8 @@ namespace dxvk {
 
   private:
 
-    D3D9GDIDesc m_dcDesc;
+    HDC         m_hdc = nullptr;
+    HANDLE      m_hbitmap = nullptr;
 
   };
 }
