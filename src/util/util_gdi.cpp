@@ -14,8 +14,18 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *desc) {
+    Logger::warn("D3DKMTCreateDevice: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTDestroyDCFromMemory(const D3DKMT_DESTROYDCFROMMEMORY *desc) {
     Logger::warn("D3DKMTDestroyDCFromMemory: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS D3DKMTDestroyDevice(const D3DKMT_DESTROYDEVICE *desc) {
+    Logger::warn("D3DKMTDestroyDevice: Not available on this platform.");
     return -1;
   }
 
