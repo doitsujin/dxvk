@@ -56,6 +56,9 @@ namespace dxvk {
         Logger::warn(str::format("Importing semaphores of type ", info.sharedType, " not supported by device"));
       }
     }
+
+    if (info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
+      initKmtHandles();
   }
 
 
@@ -67,6 +70,11 @@ namespace dxvk {
         m_condVar.notify_one();
       }
       m_thread.join();
+    }
+    if (m_kmtLocal) {
+      D3DKMT_DESTROYSYNCHRONIZATIONOBJECT desc = { };
+      desc.hSyncObject = m_kmtLocal;
+      D3DKMTDestroySynchronizationObject(&desc);
     }
     m_vkd->vkDestroySemaphore(m_vkd->device(), m_semaphore, nullptr);
   }
@@ -180,5 +188,42 @@ namespace dxvk {
       Logger::err(str::format("Failed to get semaphore handle: ", vr));
 
     return sharedHandle;
+  }
+
+
+  void DxvkFence::initKmtHandles() {
+#ifdef _WIN32
+    VkSemaphoreGetWin32HandleInfoKHR win32HandleInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR };
+    win32HandleInfo.semaphore = m_semaphore;
+    win32HandleInfo.handleType = m_info.sharedType;
+
+    HANDLE sharedHandle = INVALID_HANDLE_VALUE;
+    VkResult vr = m_vkd->vkGetSemaphoreWin32HandleKHR(m_vkd->device(), &win32HandleInfo, &sharedHandle);
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("Failed to get semaphore handle: ", vr));
+    } else if (m_info.sharedType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT) {
+      D3DKMT_OPENSYNCHRONIZATIONOBJECT desc = { };
+      desc.hSharedHandle = HandleToULong(sharedHandle);
+
+      if (D3DKMTOpenSynchronizationObject(&desc)) {
+        Logger::warn("DxvkFence::DxvkFence: Failed to open shared D3DKMT handle");
+      } else {
+        m_kmtLocal = desc.hSyncObject;
+        m_kmtGlobal = desc.hSharedHandle;
+      }
+    } else {
+      D3DKMT_OPENSYNCOBJECTFROMNTHANDLE desc = { };
+      desc.hNtHandle = sharedHandle;
+
+      if (D3DKMTOpenSyncObjectFromNtHandle(&desc)) {
+        Logger::warn("DxvkFence::DxvkFence: Failed to open shared NT handle");
+      } else {
+        m_kmtLocal = desc.hSyncObject;
+      }
+      CloseHandle(sharedHandle);
+    }
+#else
+    Logger::warn("DxvkFence::initKmtHandles: Not implemented on this platform");
+#endif
   }
 }
