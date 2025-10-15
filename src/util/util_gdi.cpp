@@ -44,6 +44,11 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS D3DKMTEscape(const D3DKMT_ESCAPE *desc) {
+    Logger::warn("D3DKMTEscape: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTOpenAdapterFromLuid(D3DKMT_OPENADAPTERFROMLUID *desc) {
     Logger::warn("D3DKMTOpenAdapterFromLuid: Not available on this platform.");
     return -1;

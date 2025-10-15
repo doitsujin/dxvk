@@ -618,6 +618,43 @@ namespace dxvk {
         return;
     }
 
+    struct d3dkmt_d3d9_desc desc = { };
+    desc.dxgi.size = sizeof(desc);
+    desc.dxgi.version = 1;
+    desc.dxgi.width = m_desc.Width;
+    desc.dxgi.height = m_desc.Height;
+    desc.dxgi.format = dxgiFormat;
+    desc.dxgi.unknown_0 = 1;
+    desc.format = static_cast<D3DFORMAT>(m_desc.Format);
+    desc.type = m_type;
+    desc.usage = m_desc.Usage | 0x8000000;
+
+    switch (m_type) {
+      case D3DRTYPE_TEXTURE:
+        desc.texture.width = m_desc.Width;
+        desc.texture.height = m_desc.Height;
+        desc.texture.levels = m_desc.MipLevels;
+        break;
+      case D3DRTYPE_SURFACE:
+        desc.surface.width = m_desc.Width;
+        desc.surface.height = m_desc.Height;
+        break;
+      default:
+        Logger::warn(str::format("D3D9: Unsupported type for shared textures:", m_type));
+        break;
+    }
+
+    D3DKMT_ESCAPE escape = { };
+    escape.Type = D3DKMT_ESCAPE_UPDATE_RESOURCE_WINE;
+    escape.pPrivateDriverData = &desc;
+    escape.PrivateDriverDataSize = sizeof(desc);
+    escape.hContext = m_image->storage()->kmtLocal();
+
+    if (!D3DKMTEscape(&escape))
+      return;
+
+    /* try the legacy Proton shared resource implementation */
+
     if (m_desc.Depth == 1 && m_desc.MipLevels == 1 && m_desc.MultiSample == D3DMULTISAMPLE_NONE &&
         m_desc.Usage & D3DUSAGE_RENDERTARGET && dxgiFormat != DXGI_FORMAT_UNKNOWN) {
       HANDLE ntHandle = openKmtHandle(m_image->sharedHandle());
