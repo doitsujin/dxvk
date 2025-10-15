@@ -215,6 +215,13 @@ namespace dxvk {
 
 
   DxvkResourceAllocation::~DxvkResourceAllocation() {
+    if (unlikely(m_kmtLocal)) {
+      D3DKMT_DESTROYALLOCATION destroy = { };
+      destroy.hDevice = m_allocator->device()->kmtLocal();
+      destroy.hResource = m_kmtLocal;
+      D3DKMTDestroyAllocation(&destroy);
+    }
+
     if (m_buffer) {
       if (unlikely(m_bufferViews))
         delete m_bufferViews;
@@ -1118,6 +1125,67 @@ namespace dxvk {
           "\n  samples: ", createInfo.samples));
       }
     }
+
+#ifdef _WIN32
+    auto sharedExport = (const VkExportMemoryAllocateInfo*)next;
+    if (sharedExport && sharedExport->sType == VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO) {
+      VkMemoryGetWin32HandleInfoKHR handleInfo = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
+      handleInfo.handleType = (VkExternalMemoryHandleTypeFlagBits)sharedExport->handleTypes;
+      handleInfo.memory = allocation->m_memory;
+
+      D3DDDI_OPENALLOCATIONINFO2 alloc = { };
+      HANDLE sharedHandle = INVALID_HANDLE_VALUE;
+
+      if (vk->vkGetMemoryWin32HandleKHR(vk->device(), &handleInfo, &sharedHandle) != VK_SUCCESS) {
+        Logger::warn("DxvkMemoryAllocator::createImageResource: Failed to get shared handle for memory");
+      } else if (handleInfo.handleType & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT) {
+        D3DKMT_OPENRESOURCE open = { };
+        open.hDevice = m_device->kmtLocal();
+        open.hGlobalShare = (uintptr_t)sharedHandle;
+        open.NumAllocations = 1;
+        open.pOpenAllocationInfo2 = &alloc;
+
+        if (D3DKMTOpenResource2(&open)) {
+          Logger::warn("DxvkMemoryAllocator::createImageResource: Failed to open shared D3DKMT handle");
+        } else {
+          allocation->m_kmtLocal = open.hResource;
+          allocation->m_kmtGlobal = open.hGlobalShare;
+        }
+      } else {
+        D3DKMT_OPENRESOURCEFROMNTHANDLE open = { };
+        char dummy;
+
+        open.hDevice = m_device->kmtLocal();
+        open.hNtHandle = sharedHandle;
+        open.NumAllocations = 1;
+        open.pOpenAllocationInfo2 = &alloc;
+        open.pPrivateRuntimeData = &dummy;
+        open.PrivateRuntimeDataSize = 0;
+        open.pTotalPrivateDriverDataBuffer = &dummy;
+        open.TotalPrivateDriverDataBufferSize = 0;
+
+        if (D3DKMTOpenResourceFromNtHandle(&open)) {
+          Logger::warn("DxvkMemoryAllocator::createImageResource: Failed to open shared NT handle");
+        } else {
+          allocation->m_kmtLocal = open.hResource;
+
+          if (open.hKeyedMutex) {
+            Logger::warn(str::format("DxvkMemoryAllocator::createImageResource: Unexpected bundled keyed mutex"));
+            D3DKMT_DESTROYKEYEDMUTEX destroy_mutex = { };
+            destroy_mutex.hKeyedMutex = open.hKeyedMutex;
+            D3DKMTDestroyKeyedMutex(&destroy_mutex);
+          }
+          if (open.hSyncObject) {
+            Logger::warn(str::format("DxvkMemoryAllocator::createImageResource: Unexpected bundled sync object"));
+            D3DKMT_DESTROYSYNCHRONIZATIONOBJECT destroy_sync = { };
+            destroy_sync.hSyncObject = open.hSyncObject;
+            D3DKMTDestroySynchronizationObject(&destroy_sync);
+          }
+        }
+        CloseHandle(sharedHandle);
+      }
+    }
+#endif
 
     return allocation;
   }
