@@ -29,8 +29,23 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS WINAPI D3DKMTDestroySynchronizationObject(const D3DKMT_DESTROYSYNCHRONIZATIONOBJECT *desc) {
+    Logger::warn("D3DKMTDestroySynchronizationObject: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTOpenAdapterFromLuid(D3DKMT_OPENADAPTERFROMLUID *desc) {
     Logger::warn("D3DKMTOpenAdapterFromLuid: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS WINAPI D3DKMTOpenSynchronizationObject(D3DKMT_OPENSYNCHRONIZATIONOBJECT *desc) {
+    Logger::warn("D3DKMTOpenSynchronizationObject: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS WINAPI D3DKMTOpenSyncObjectFromNtHandle(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE *desc) {
+    Logger::warn("D3DKMTOpenSyncObjectFromNtHandle: Not available on this platform.");
     return -1;
   }
 #endif
