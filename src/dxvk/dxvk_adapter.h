@@ -8,6 +8,8 @@
 #include "dxvk_include.h"
 #include "dxvk_format.h"
 
+#include "../util/util_gdi.h"
+
 namespace dxvk {
   
   class DxvkDevice;
@@ -111,6 +113,15 @@ namespace dxvk {
      */
     VkPhysicalDevice handle() const {
       return m_handle;
+    }
+    
+    /**
+     * \brief D3DKMT adapter local handle
+     * \returns The adapter D3DKMT local handle
+     * \returns \c 0 if there's no matching D3DKMT adapter
+     */
+    D3DKMT_HANDLE kmtLocal() const {
+      return m_kmtLocal;
     }
     
     /**
@@ -300,6 +311,7 @@ namespace dxvk {
     
     DxvkInstance*           m_instance  = nullptr;
     VkPhysicalDevice        m_handle    = VK_NULL_HANDLE;
+    D3DKMT_HANDLE           m_kmtLocal = 0;
 
     DxvkDeviceCapabilities  m_capabilities;
 
