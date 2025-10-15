@@ -47,6 +47,7 @@ namespace dxvk {
   struct DxvkSharedHandleInfo {
     DxvkSharedHandleMode mode = DxvkSharedHandleMode::None;
     VkExternalMemoryHandleTypeFlagBits type   = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+    bool keyedMutex = false;
     union {
       // When we want to implement this on non-Windows platforms,
       // we could add a `int fd` here, etc.

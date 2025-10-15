@@ -64,6 +64,7 @@ namespace dxvk {
       imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
         ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
         : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+      imageInfo.sharing.keyedMutex = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX);
       imageInfo.sharing.handle = hSharedHandle;
     }
 
@@ -724,8 +725,17 @@ namespace dxvk {
     struct d3dkmt_d3d11_desc desc = { };
     desc.dxgi.size = sizeof(desc);
     desc.dxgi.version = 4;
+    desc.dxgi.keyed_mutex = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX);
     desc.dxgi.nt_shared = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE);
     desc.dimension = m_dimension;
+
+    if (desc.dxgi.keyed_mutex) {
+      auto keyedMutex = m_image->getKeyedMutex();
+      desc.dxgi.mutex_handle = keyedMutex ? keyedMutex->kmtGlobal() : 0;
+
+      auto syncObject = m_image->getSyncObject();
+      desc.dxgi.sync_handle = syncObject ? syncObject->kmtGlobal() : 0;
+    }
 
     switch (m_dimension) {
       case D3D11_RESOURCE_DIMENSION_UNKNOWN: break;
