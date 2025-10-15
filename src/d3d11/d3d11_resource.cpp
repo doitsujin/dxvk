@@ -14,10 +14,6 @@ namespace dxvk {
           D3D11Device*    pDevice)
   : m_resource(pResource),
     m_device(pDevice) {
-
-    m_supported = m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
-               && m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex != nullptr
-               && m_device->GetDXVKDevice()->vkd()->wine_vkReleaseKeyedMutex != nullptr;
   }
 
 
@@ -85,16 +81,17 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AcquireSync(
           UINT64                  Key,
           DWORD                   dwMilliseconds) {
-    if (!m_supported) {
+    D3D11CommonTexture* texture = GetCommonTexture(m_resource);
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    if (!m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
+        || m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex == nullptr) {
       if (!m_warned) {
         m_warned = true;
         Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Not supported");
       }
       return S_OK;
     }
-
-    D3D11CommonTexture* texture = GetCommonTexture(m_resource);
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
     VkResult vr = dxvkDevice->vkd()->wine_vkAcquireKeyedMutex(
       dxvkDevice->handle(), texture->GetImage()->getMemoryInfo().memory, Key, dwMilliseconds);
@@ -108,9 +105,6 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::ReleaseSync(
           UINT64                  Key) {
-    if (!m_supported)
-      return S_OK;
-
     D3D11CommonTexture* texture = GetCommonTexture(m_resource);
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
@@ -124,6 +118,11 @@ namespace dxvk {
 
       D3D10DeviceLock lock = context->LockContext();
       context->WaitForResource(*texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+    }
+
+    if (!m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
+        || m_device->GetDXVKDevice()->vkd()->wine_vkReleaseKeyedMutex == nullptr) {
+      return S_OK;
     }
 
     VkResult vr = dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(
