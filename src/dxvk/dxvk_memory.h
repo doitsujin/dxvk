@@ -551,6 +551,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief D3DKMT resource local handle
+     * \returns The resource D3DKMT local handle
+     * \returns \c 0 if resource is not shared
+     */
+    D3DKMT_HANDLE kmtLocal() const {
+      return m_kmtLocal;
+    }
+
+    /**
+     * \brief D3DKMT resource global handle
+     * \returns The resource D3DKMT global handle
+     * \returns \c 0 if resource is not shared or shared with NT handle
+     */
+    D3DKMT_HANDLE kmtGlobal() const {
+      return m_kmtGlobal;
+    }
+
+    /**
      * \brief Queries memory info
      * \returns Memory info
      */
@@ -644,6 +662,8 @@ namespace dxvk {
 
     VkImage                     m_image = VK_NULL_HANDLE;
     DxvkResourceImageViewMap*   m_imageViews = nullptr;
+    D3DKMT_HANDLE               m_kmtLocal = 0;
+    D3DKMT_HANDLE               m_kmtGlobal = 0;
 
     DxvkSparsePageTable*        m_sparsePageTable = nullptr;
 
