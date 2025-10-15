@@ -4,6 +4,7 @@
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 
+#include "../util/util_win32_compat.h"
 #include "../util/util_shared_res.h"
 
 namespace dxvk {
@@ -220,6 +221,14 @@ namespace dxvk {
       return S_OK;
     }
 
+    D3DKMT_HANDLE global = texture->GetImage()->storage()->kmtGlobal();
+    if (global) {
+      *pSharedHandle = reinterpret_cast<HANDLE>(global);
+      return S_OK;
+    }
+
+    /* try legacy Proton shared resource implementation */
+
     HANDLE kmtHandle = texture->GetImage()->sharedHandle();
 
     if (kmtHandle == INVALID_HANDLE_VALUE)
@@ -280,6 +289,32 @@ namespace dxvk {
     if (texture == nullptr || pHandle == nullptr ||
         !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE))
       return E_INVALIDARG;
+
+    OBJECT_ATTRIBUTES attr = { };
+    attr.Length = sizeof(attr);
+    attr.SecurityDescriptor = const_cast<SECURITY_ATTRIBUTES*>(pAttributes);
+
+    WCHAR buffer[MAX_PATH];
+    UNICODE_STRING name_str;
+    if (lpName) {
+        DWORD session, len, name_len = wcslen(lpName);
+
+        ProcessIdToSessionId(GetCurrentProcessId(), &session);
+        len = swprintf(buffer, ARRAYSIZE(buffer), L"\\Sessions\\%u\\BaseNamedObjects\\", session);
+        memcpy(buffer + len, lpName, (name_len + 1) * sizeof(WCHAR));
+        name_str.MaximumLength = name_str.Length = (len + name_len) * sizeof(WCHAR);
+        name_str.MaximumLength += sizeof(WCHAR);
+        name_str.Buffer = buffer;
+
+        attr.ObjectName = &name_str;
+        attr.Attributes = OBJ_CASE_INSENSITIVE;
+    }
+
+    D3DKMT_HANDLE local = texture->GetImage()->storage()->kmtLocal();
+    if (!D3DKMTShareObjects(1, &local, &attr, dwAccess, pHandle))
+      return S_OK;
+
+    /* try legacy Proton shared resource implementation */
 
     if (lpName)
       Logger::warn("Naming shared resources not supported");

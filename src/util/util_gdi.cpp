@@ -68,6 +68,11 @@ namespace dxvk {
     Logger::warn("D3DKMTOpenSyncObjectFromNtHandle: Not available on this platform.");
     return -1;
   }
+
+  NTSTATUS WINAPI D3DKMTShareObjects(UINT count, const D3DKMT_HANDLE *handles, OBJECT_ATTRIBUTES *attr, UINT access, HANDLE *handle) {
+    Logger::warn("D3DKMTShareObjects: Not available on this platform.");
+    return -1;
+  }
 #endif
 
 }

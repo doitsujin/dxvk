@@ -69,8 +69,35 @@ namespace dxvk {
           DWORD               dwAccess,
           LPCWSTR             lpName,
           HANDLE*             pHandle) {
+    InitReturnPtr(pHandle);
     if (!(m_flags & D3D11_FENCE_FLAG_SHARED))
       return E_INVALIDARG;
+
+    OBJECT_ATTRIBUTES attr = { };
+    attr.Length = sizeof(attr);
+    attr.SecurityDescriptor = const_cast<SECURITY_ATTRIBUTES*>(pAttributes);
+
+    WCHAR buffer[MAX_PATH];
+    UNICODE_STRING name_str;
+    if (lpName) {
+        DWORD session, len, name_len = wcslen(lpName);
+
+        ProcessIdToSessionId(GetCurrentProcessId(), &session);
+        len = swprintf(buffer, ARRAYSIZE(buffer), L"\\Sessions\\%u\\BaseNamedObjects\\", session);
+        memcpy(buffer + len, lpName, (name_len + 1) * sizeof(WCHAR));
+        name_str.MaximumLength = name_str.Length = (len + name_len) * sizeof(WCHAR);
+        name_str.MaximumLength += sizeof(WCHAR);
+        name_str.Buffer = buffer;
+
+        attr.ObjectName = &name_str;
+        attr.Attributes = OBJ_CASE_INSENSITIVE;
+    }
+
+    D3DKMT_HANDLE local = m_fence->kmtLocal();
+    if (!D3DKMTShareObjects(1, &local, &attr, dwAccess, pHandle))
+      return S_OK;
+
+    /* try legacy Proton shared resource implementation */
 
     if (pAttributes)
       Logger::warn(str::format("CreateSharedHandle: attributes ", pAttributes, " not handled"));
