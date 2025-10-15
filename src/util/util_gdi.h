@@ -1,6 +1,8 @@
 #pragma once
 
 #include <d3d9.h>
+#include <d3d11_4.h>
+#include <d3d12.h>
 
 #ifndef _WIN32
 #define EXTERN_C
@@ -119,6 +121,35 @@ namespace dxvk {
       D3DKMT_HANDLE hSyncObject;
   } D3DKMT_DESTROYSYNCHRONIZATIONOBJECT;
 
+  typedef enum _D3DKMT_ESCAPETYPE
+  {
+      D3DKMT_ESCAPE_UPDATE_RESOURCE_WINE = 0x80000000
+  } D3DKMT_ESCAPETYPE;
+
+  typedef struct _D3DDDI_ESCAPEFLAGS
+  {
+      union
+      {
+          struct
+          {
+              UINT HardwareAccess :1;
+              UINT Reserved       :31;
+          };
+          UINT Value;
+      };
+  } D3DDDI_ESCAPEFLAGS;
+
+  typedef struct _D3DKMT_ESCAPE
+  {
+      D3DKMT_HANDLE      hAdapter;
+      D3DKMT_HANDLE      hDevice;
+      D3DKMT_ESCAPETYPE  Type;
+      D3DDDI_ESCAPEFLAGS Flags;
+      void              *pPrivateDriverData;
+      UINT               PrivateDriverDataSize;
+      D3DKMT_HANDLE      hContext;
+  } D3DKMT_ESCAPE;
+
   typedef struct _D3DKMT_OPENADAPTERFROMLUID
   {
       LUID AdapterLuid;
@@ -209,6 +240,69 @@ namespace dxvk {
 
   #define OBJ_CASE_INSENSITIVE 0x00000040
 
+  /* undocumented D3D runtime data descriptors */
+
+  struct d3dkmt_dxgi_desc
+  {
+      UINT                        size;
+      UINT                        version;
+      UINT                        width;
+      UINT                        height;
+      DXGI_FORMAT                 format;
+      UINT                        unknown_0;
+      UINT                        unknown_1;
+      UINT                        keyed_mutex;
+      D3DKMT_HANDLE               mutex_handle;
+      D3DKMT_HANDLE               sync_handle;
+      UINT                        nt_shared;
+      UINT                        unknown_2;
+      UINT                        unknown_3;
+      UINT                        unknown_4;
+  };
+
+  struct d3dkmt_d3d9_desc
+  {
+      struct d3dkmt_dxgi_desc     dxgi;
+      D3DFORMAT                   format;
+      D3DRESOURCETYPE             type;
+      UINT                        usage;
+      union
+      {
+          struct
+          {
+              UINT                unknown_0;
+              UINT                width;
+              UINT                height;
+              UINT                levels;
+              UINT                depth;
+          } texture;
+          struct
+          {
+              UINT                unknown_0;
+              UINT                unknown_1;
+              UINT                unknown_2;
+              UINT                width;
+              UINT                height;
+          } surface;
+          struct
+          {
+              UINT                unknown_0;
+              UINT                width;
+              UINT                format;
+              UINT                unknown_1;
+              UINT                unknown_2;
+          } buffer;
+      };
+  };
+
+  static_assert( sizeof(struct d3dkmt_d3d9_desc) == 0x58 );
+
+  union d3dkmt_desc
+  {
+      struct d3dkmt_dxgi_desc     dxgi;
+      struct d3dkmt_d3d9_desc     d3d9;   /* if dxgi.size == sizeof(d3d9)  && dxgi.version == 1 && sizeof(desc) == sizeof(d3d9) */
+  };
+
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCloseAdapter(const D3DKMT_CLOSEADAPTER *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateDCFromMemory(D3DKMT_CREATEDCFROMMEMORY *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *desc);
@@ -217,6 +311,7 @@ namespace dxvk {
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyDevice(const D3DKMT_DESTROYDEVICE *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyKeyedMutex(const D3DKMT_DESTROYKEYEDMUTEX *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroySynchronizationObject(const D3DKMT_DESTROYSYNCHRONIZATIONOBJECT *desc);
+  EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTEscape(const D3DKMT_ESCAPE *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenAdapterFromLuid(D3DKMT_OPENADAPTERFROMLUID *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenResource2(D3DKMT_OPENRESOURCE *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenResourceFromNtHandle(D3DKMT_OPENRESOURCEFROMNTHANDLE *desc);
