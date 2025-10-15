@@ -19,7 +19,7 @@ namespace dxvk {
   };
 
   struct D3DKMT_DESTROYDCFROMMEMORY {
-    HDC    hDC     = nullptr;
+    HDC    hDc     = nullptr;
     HANDLE hBitmap = nullptr;
   };
 
