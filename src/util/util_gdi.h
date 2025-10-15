@@ -2,6 +2,8 @@
 
 #include <d3d9.h>
 #include <dxgi.h>
+#include <d3d11_4.h>
+#include <d3d12.h>
 
 #ifndef _WIN32
 #define EXTERN_C
@@ -307,10 +309,68 @@ namespace dxvk {
 
   static_assert( sizeof(struct d3dkmt_d3d9_desc) == 0x58 );
 
+  struct d3dkmt_d3d11_desc
+  {
+      struct d3dkmt_dxgi_desc     dxgi;
+      D3D11_RESOURCE_DIMENSION    dimension;
+      union
+      {
+          D3D11_BUFFER_DESC       d3d11_buf;
+          D3D11_TEXTURE1D_DESC    d3d11_1d;
+          D3D11_TEXTURE2D_DESC    d3d11_2d;
+          D3D11_TEXTURE3D_DESC    d3d11_3d;
+      };
+  };
+
+  static_assert( sizeof(struct d3dkmt_d3d11_desc) == 0x68 );
+
+  typedef struct D3D12_MIP_REGION
+  {
+      UINT Width;
+      UINT Height;
+      UINT Depth;
+  } D3D12_MIP_REGION;
+
+  typedef struct D3D12_RESOURCE_DESC1
+  {
+      D3D12_RESOURCE_DIMENSION Dimension;
+      UINT64 Alignment;
+      UINT64 Width;
+      UINT Height;
+      UINT16 DepthOrArraySize;
+      UINT16 MipLevels;
+      DXGI_FORMAT Format;
+      DXGI_SAMPLE_DESC SampleDesc;
+      D3D12_TEXTURE_LAYOUT Layout;
+      D3D12_RESOURCE_FLAGS Flags;
+      D3D12_MIP_REGION SamplerFeedbackMipRegion;
+  } D3D12_RESOURCE_DESC1;
+
+  struct d3dkmt_d3d12_desc
+  {
+      struct d3dkmt_d3d11_desc    d3d11;
+      UINT                        unknown_5[4];
+      UINT                        resource_size;
+      UINT                        unknown_6[7];
+      UINT                        resource_align;
+      UINT                        unknown_7[9];
+      union
+      {
+          D3D12_RESOURCE_DESC     desc;
+          D3D12_RESOURCE_DESC1    desc1;
+          UINT                    __pad[16];
+      };
+      UINT64                      unknown_8[1];
+  };
+
+  static_assert( sizeof(struct d3dkmt_d3d12_desc) == 0x108 );
+
   union d3dkmt_desc
   {
       struct d3dkmt_dxgi_desc     dxgi;
       struct d3dkmt_d3d9_desc     d3d9;   /* if dxgi.size == sizeof(d3d9)  && dxgi.version == 1 && sizeof(desc) == sizeof(d3d9) */
+      struct d3dkmt_d3d11_desc    d3d11;  /* if dxgi.size == sizeof(d3d11) && dxgi.version == 4 && sizeof(desc) >= sizeof(d3d11) */
+      struct d3dkmt_d3d12_desc    d3d12;  /* if dxgi.size == sizeof(d3d11) && dxgi.version == 0 && sizeof(desc) == sizeof(d3d12) */
   };
 
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCloseAdapter(const D3DKMT_CLOSEADAPTER *desc);
