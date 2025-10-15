@@ -4,6 +4,11 @@
 namespace dxvk {
 
 #ifndef _WIN32
+  NTSTATUS WINAPI D3DKMTAcquireKeyedMutex(D3DKMT_ACQUIREKEYEDMUTEX *desc) {
+    Logger::warn("D3DKMTAcquireKeyedMutex: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTCloseAdapter(const D3DKMT_CLOSEADAPTER *desc) {
     Logger::warn("D3DKMTCloseAdapter: Not available on this platform.");
     return -1;
@@ -16,6 +21,11 @@ namespace dxvk {
 
   NTSTATUS D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *desc) {
     Logger::warn("D3DKMTCreateDevice: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS D3DKMTCreateKeyedMutex2(D3DKMT_CREATEKEYEDMUTEX2 *desc) {
+    Logger::warn("D3DKMTCreateKeyedMutex2: Not available on this platform.");
     return -1;
   }
 
@@ -84,10 +94,40 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS WINAPI D3DKMTReleaseKeyedMutex(D3DKMT_RELEASEKEYEDMUTEX *desc) {
+    Logger::warn("D3DKMTReleaseKeyedMutex: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS WINAPI D3DKMTShareObjects(UINT count, const D3DKMT_HANDLE *handles, OBJECT_ATTRIBUTES *attr, UINT access, HANDLE *handle) {
     Logger::warn("D3DKMTShareObjects: Not available on this platform.");
     return -1;
   }
-#endif
+#else
+  static NTSTATUS WINAPI NoD3DKMTAcquireKeyedMutex(D3DKMT_ACQUIREKEYEDMUTEX *desc) {
+    return -1;
+  }
 
+  NTSTATUS WINAPI D3DKMTAcquireKeyedMutex(D3DKMT_ACQUIREKEYEDMUTEX *desc) {
+    static decltype(D3DKMTAcquireKeyedMutex) *func;
+    if (!func) {
+      InterlockedCompareExchangePointer((void **)&func, (void *)GetProcAddress(GetModuleHandle("gdi32"), "D3DKMTAcquireKeyedMutex"), NULL);
+      InterlockedCompareExchangePointer((void **)&func, (void *)NoD3DKMTAcquireKeyedMutex, NULL);
+    }
+    return func(desc);
+  }
+
+  static NTSTATUS WINAPI NoD3DKMTReleaseKeyedMutex(D3DKMT_RELEASEKEYEDMUTEX *desc) {
+    return -1;
+  }
+
+  NTSTATUS WINAPI D3DKMTReleaseKeyedMutex(D3DKMT_RELEASEKEYEDMUTEX *desc) {
+    static decltype(D3DKMTReleaseKeyedMutex) *func;
+    if (!func) {
+      InterlockedCompareExchangePointer((void **)&func, (void *)GetProcAddress(GetModuleHandle("gdi32"), "D3DKMTReleaseKeyedMutex"), NULL);
+      InterlockedCompareExchangePointer((void **)&func, (void *)NoD3DKMTReleaseKeyedMutex, NULL);
+    }
+    return func(desc);
+  }
+#endif
 }

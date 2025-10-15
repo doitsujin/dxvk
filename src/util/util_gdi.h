@@ -15,6 +15,14 @@ namespace dxvk {
   using D3DKMT_HANDLE = UINT;
   using D3DGPU_VIRTUAL_ADDRESS = ULONGLONG;
 
+  typedef struct _D3DKMT_ACQUIREKEYEDMUTEX
+  {
+      D3DKMT_HANDLE hKeyedMutex;
+      UINT64 Key;
+      LARGE_INTEGER *pTimeout;
+      UINT64 FenceValue;
+  } D3DKMT_ACQUIREKEYEDMUTEX;
+
   typedef struct _D3DKMT_CLOSEADAPTER
   {
       D3DKMT_HANDLE hAdapter;
@@ -91,6 +99,29 @@ namespace dxvk {
       D3DDDI_PATCHLOCATIONLIST *pPatchLocationList;
       UINT PatchLocationListSize;
   } D3DKMT_CREATEDEVICE;
+
+  typedef struct _D3DKMT_CREATEKEYEDMUTEX2_FLAGS
+  {
+      union
+      {
+          struct
+          {
+              UINT NtSecuritySharing : 1;
+              UINT Reserved : 31;
+          };
+          UINT Value;
+      };
+  } D3DKMT_CREATEKEYEDMUTEX2_FLAGS;
+
+  typedef struct _D3DKMT_CREATEKEYEDMUTEX2
+  {
+      UINT64 InitialValue;
+      D3DKMT_HANDLE hSharedHandle;
+      D3DKMT_HANDLE hKeyedMutex;
+      void *pPrivateRuntimeData;
+      UINT PrivateRuntimeDataSize;
+      D3DKMT_CREATEKEYEDMUTEX2_FLAGS Flags;
+  } D3DKMT_CREATEKEYEDMUTEX2;
 
   typedef struct _D3DKMT_DESTROYALLOCATION
   {
@@ -245,6 +276,13 @@ namespace dxvk {
       UINT NumAllocations;
   } D3DKMT_QUERYRESOURCEINFOFROMNTHANDLE;
 
+  typedef struct _D3DKMT_RELEASEKEYEDMUTEX
+  {
+      D3DKMT_HANDLE hKeyedMutex;
+      UINT64 Key;
+      UINT64 FenceValue;
+  } D3DKMT_RELEASEKEYEDMUTEX;
+
   typedef struct _UNICODE_STRING {
       USHORT Length;        /* bytes */
       USHORT MaximumLength; /* bytes */
@@ -383,9 +421,11 @@ namespace dxvk {
       struct d3dkmt_d3d12_desc    d3d12;  /* if dxgi.size == sizeof(d3d11) && dxgi.version == 0 && sizeof(desc) == sizeof(d3d12) */
   };
 
+  NTSTATUS WINAPI D3DKMTAcquireKeyedMutex(D3DKMT_ACQUIREKEYEDMUTEX *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCloseAdapter(const D3DKMT_CLOSEADAPTER *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateDCFromMemory(D3DKMT_CREATEDCFROMMEMORY *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateDevice(D3DKMT_CREATEDEVICE *desc);
+  EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateKeyedMutex2(D3DKMT_CREATEKEYEDMUTEX2 *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyAllocation(const D3DKMT_DESTROYALLOCATION *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyDCFromMemory(const D3DKMT_DESTROYDCFROMMEMORY *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyDevice(const D3DKMT_DESTROYDEVICE *desc);
@@ -399,5 +439,6 @@ namespace dxvk {
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTOpenSyncObjectFromNtHandle(D3DKMT_OPENSYNCOBJECTFROMNTHANDLE *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTQueryResourceInfo(D3DKMT_QUERYRESOURCEINFO *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTQueryResourceInfoFromNtHandle(D3DKMT_QUERYRESOURCEINFOFROMNTHANDLE *desc);
+  NTSTATUS WINAPI D3DKMTReleaseKeyedMutex(D3DKMT_RELEASEKEYEDMUTEX *desc);
   EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTShareObjects(UINT count, const D3DKMT_HANDLE *handles, OBJECT_ATTRIBUTES *attr, UINT access, HANDLE *handle);
 }

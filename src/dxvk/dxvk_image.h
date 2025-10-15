@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_descriptor_pool.h"
+#include "dxvk_fence.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_sparse.h"
@@ -335,6 +336,39 @@ namespace dxvk {
 
   };
 
+  class DxvkKeyedMutex : public RcObject {
+  public:
+
+    DxvkKeyedMutex(
+            uint64_t        initialValue,
+            bool            ntShared);
+    
+    ~DxvkKeyedMutex();
+    
+    /**
+     * \brief D3DKMT keyed mutex local handle
+     * \returns The keyed mutex D3DKMT local handle
+     * \returns \c 0 if fence is not shared
+     */
+    D3DKMT_HANDLE kmtLocal() const {
+      return m_kmtLocal;
+    }
+
+    /**
+     * \brief D3DKMT keyed mutex global handle
+     * \returns The keyed mutex D3DKMT global handle
+     * \returns \c 0 if keyed mutex is not shared or shared with NT handle
+     */
+    D3DKMT_HANDLE kmtGlobal() const {
+      return m_kmtGlobal;
+    }
+
+  private:
+
+    D3DKMT_HANDLE               m_kmtLocal  = 0;
+    D3DKMT_HANDLE               m_kmtGlobal = 0;
+
+  };
 
   /**
    * \brief Virtual image resource
@@ -622,6 +656,22 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves current keyed mutex
+     * \returns Keyed mutex guarding this image
+     */
+    Rc<DxvkKeyedMutex> getKeyedMutex() const {
+      return m_mutex;
+    }
+
+    /**
+     * \brief Retrieves current sync object
+     * \returns sync object guarding this image
+     */
+    Rc<DxvkFence> getSyncObject() const {
+      return m_fence;
+    }
+
+    /**
      * \brief Retrieves resource ID for barrier tracking
      * \returns Unique resource ID
      */
@@ -708,6 +758,9 @@ namespace dxvk {
     uint32_t                    m_version     = 0u;
     VkBool32                    m_shared      = VK_FALSE;
     VkBool32                    m_stableAddress = VK_FALSE;
+
+    Rc<DxvkFence>               m_fence       = nullptr;
+    Rc<DxvkKeyedMutex>          m_mutex       = nullptr;
 
     DxvkResourceImageInfo       m_imageInfo   = { };
 

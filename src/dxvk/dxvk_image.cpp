@@ -4,6 +4,29 @@
 
 namespace dxvk {
   
+  DxvkKeyedMutex::DxvkKeyedMutex(
+            uint64_t        initialValue,
+            bool            ntShared) {
+    D3DKMT_CREATEKEYEDMUTEX2 create = { };
+    create.Flags.NtSecuritySharing = ntShared;
+    create.InitialValue = initialValue;
+
+    if (D3DKMTCreateKeyedMutex2(&create)) {
+      Logger::warn("DxvkKeyedMutex::DxvkKeyedMutex: Failed to allocate keyed mutex");
+    } else {
+      m_kmtLocal = create.hKeyedMutex;
+      m_kmtGlobal = create.hSharedHandle;
+    }
+  }
+    
+  DxvkKeyedMutex::~DxvkKeyedMutex() {
+    if (m_kmtLocal) {
+      D3DKMT_DESTROYKEYEDMUTEX destroy = { };
+      destroy.hKeyedMutex = m_kmtLocal;
+      D3DKMTDestroyKeyedMutex(&destroy);
+    }
+  }
+
   DxvkImage::DxvkImage(
           DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
@@ -38,6 +61,17 @@ namespace dxvk {
 
     if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
       m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
+
+    if (m_info.sharing.mode == DxvkSharedHandleMode::Export && m_info.sharing.keyedMutex) {
+      m_mutex = new DxvkKeyedMutex(0, !!(m_info.sharing.type & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT));
+
+      DxvkFenceCreateInfo fenceInfo;
+      fenceInfo.initialValue = 0;
+      fenceInfo.sharedType = (m_info.sharing.type & VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT)
+        ? VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT
+        : VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+      m_fence = device->createFence(fenceInfo);
+    }
 
     assignStorage(allocateStorage());
   }
