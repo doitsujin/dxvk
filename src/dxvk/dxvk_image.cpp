@@ -215,6 +215,7 @@ namespace dxvk {
     allocationInfo.resourceCookie = cookie();
     allocationInfo.properties = m_properties;
     allocationInfo.mode = mode;
+    allocationInfo.handleType = m_info.sharing.type;
 
     if (m_info.transient)
       allocationInfo.mode.set(DxvkAllocationMode::NoDedicated);

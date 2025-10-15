@@ -19,6 +19,11 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS D3DKMTDestroyAllocation(const D3DKMT_DESTROYALLOCATION *desc) {
+    Logger::warn("D3DKMTDestroyAllocation: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS D3DKMTDestroyDCFromMemory(const D3DKMT_DESTROYDCFROMMEMORY *desc) {
     Logger::warn("D3DKMTDestroyDCFromMemory: Not available on this platform.");
     return -1;
@@ -29,6 +34,11 @@ namespace dxvk {
     return -1;
   }
 
+  NTSTATUS D3DKMTDestroyKeyedMutex(const D3DKMT_DESTROYKEYEDMUTEX *desc) {
+    Logger::warn("D3DKMTDestroyKeyedMutex: Not available on this platform.");
+    return -1;
+  }
+
   NTSTATUS WINAPI D3DKMTDestroySynchronizationObject(const D3DKMT_DESTROYSYNCHRONIZATIONOBJECT *desc) {
     Logger::warn("D3DKMTDestroySynchronizationObject: Not available on this platform.");
     return -1;
@@ -36,6 +46,16 @@ namespace dxvk {
 
   NTSTATUS D3DKMTOpenAdapterFromLuid(D3DKMT_OPENADAPTERFROMLUID *desc) {
     Logger::warn("D3DKMTOpenAdapterFromLuid: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS D3DKMTOpenResource2(D3DKMT_OPENRESOURCE *desc) {
+    Logger::warn("D3DKMTOpenResource2: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS D3DKMTOpenResourceFromNtHandle(D3DKMT_OPENRESOURCEFROMNTHANDLE *desc) {
+    Logger::warn("D3DKMTOpenResourceFromNtHandle: Not available on this platform.");
     return -1;
   }
 
