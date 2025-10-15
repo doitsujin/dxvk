@@ -19,8 +19,8 @@ namespace dxvk {
   };
 
   struct D3DKMT_DESTROYDCFROMMEMORY {
-    HDC    hDc     = nullptr;
-    HANDLE hBitmap = nullptr;
+    HDC    hDc;
+    HANDLE hBitmap;
   };
 
   using D3DKMTCreateDCFromMemoryType  = NTSTATUS(STDMETHODCALLTYPE*) (D3DKMT_CREATEDCFROMMEMORY*);
