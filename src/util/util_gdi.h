@@ -2,31 +2,34 @@
 
 #include <d3d9.h>
 
+#ifndef _WIN32
+#define EXTERN_C
+#define WINBASEAPI
+#endif
+
 namespace dxvk {
   using NTSTATUS = LONG;
+  using D3DDDIFORMAT = D3DFORMAT;
 
-  // Slightly modified definitions...
-  struct D3DKMT_CREATEDCFROMMEMORY {
-    void*         pMemory;
-    D3DFORMAT     Format;
-    UINT          Width;
-    UINT          Height;
-    UINT          Pitch;
-    HDC           hDeviceDc;
-    PALETTEENTRY* pColorTable;
-    HDC           hDc;
-    HANDLE        hBitmap;
-  };
+  typedef struct _D3DKMT_CREATEDCFROMMEMORY
+  {
+      void *pMemory;
+      D3DDDIFORMAT Format;
+      UINT Width;
+      UINT Height;
+      UINT Pitch;
+      HDC hDeviceDc;
+      PALETTEENTRY *pColorTable;
+      HDC hDc;
+      HANDLE hBitmap;
+  } D3DKMT_CREATEDCFROMMEMORY;
 
-  struct D3DKMT_DESTROYDCFROMMEMORY {
-    HDC    hDC     = nullptr;
-    HANDLE hBitmap = nullptr;
-  };
+  typedef struct _D3DKMT_DESTROYDCFROMMEMORY
+  {
+      HDC hDc;
+      HANDLE hBitmap;
+  } D3DKMT_DESTROYDCFROMMEMORY;
 
-  using D3DKMTCreateDCFromMemoryType  = NTSTATUS(STDMETHODCALLTYPE*) (D3DKMT_CREATEDCFROMMEMORY*);
-  NTSTATUS D3DKMTCreateDCFromMemory (D3DKMT_CREATEDCFROMMEMORY*  Arg1);
-
-  using D3DKMTDestroyDCFromMemoryType = NTSTATUS(STDMETHODCALLTYPE*) (D3DKMT_DESTROYDCFROMMEMORY*);
-  NTSTATUS D3DKMTDestroyDCFromMemory(D3DKMT_DESTROYDCFROMMEMORY* Arg1);
-
+  EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTCreateDCFromMemory(D3DKMT_CREATEDCFROMMEMORY *desc);
+  EXTERN_C WINBASEAPI NTSTATUS WINAPI D3DKMTDestroyDCFromMemory(const D3DKMT_DESTROYDCFROMMEMORY *desc);
 }
