@@ -24,6 +24,16 @@ namespace dxvk {
     m_perfHints         (getPerfHints()),
     m_objects           (this),
     m_submissionQueue   (this, queueCallback) {
+
+    if (adapter->kmtLocal()) {
+      D3DKMT_CREATEDEVICE create = { };
+      create.hAdapter = adapter->kmtLocal();
+      if (D3DKMTCreateDevice(&create))
+        Logger::warn("Failed to create D3DKMT device");
+      else
+        m_kmtLocal = create.hDevice;
+    }
+
     determineShaderOptions();
 
     if (env::getEnvVar("DXVK_SHADER_CACHE") != "0" && DxvkShader::getShaderDumpPath().empty())
@@ -32,6 +42,12 @@ namespace dxvk {
   
   
   DxvkDevice::~DxvkDevice() {
+    if (m_kmtLocal) {
+      D3DKMT_DESTROYDEVICE destroy = { };
+      destroy.hDevice = m_kmtLocal;
+      D3DKMTDestroyDevice(&destroy);
+    }
+
     // If we are being destroyed during/after DLL process detachment
     // from TerminateProcess, etc, our CS threads are already destroyed
     // and we cannot synchronize against them.
