@@ -67,6 +67,17 @@ inline HANDLE GetCurrentProcess() {
   return nullptr;
 }
 
+inline DWORD GetCurrentProcessId() {
+  dxvk::Logger::warn("GetCurrentProcessId not implemented.");
+  return 0;
+}
+
+inline BOOL ProcessIdToSessionId(DWORD pid, DWORD *id) {
+  dxvk::Logger::warn("ProcessIdToSessionId not implemented.");
+  *id = 0;
+  return FALSE;
+}
+
 inline HDC CreateCompatibleDC(HDC hdc) {
   dxvk::Logger::warn("CreateCompatibleDC not implemented.");
   return nullptr;

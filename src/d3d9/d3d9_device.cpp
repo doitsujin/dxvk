@@ -692,6 +692,11 @@ namespace dxvk {
       if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
         return D3DERR_INVALIDCALL;
 
+      // Shared resource handle has to be a D3DKMT global handle */
+      if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                   !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_TEXTURE, desc)))
+        return E_INVALIDARG;
+
       const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, IsExtended(), pSharedHandle);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
@@ -754,6 +759,10 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_VOLUMETEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_VOLUMETEXTURE, desc)))
+      return E_INVALIDARG;
+
     try {
       const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc, IsExtended());
       m_initializer->InitTexture(texture->GetCommonTexture());
@@ -815,6 +824,10 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_CUBETEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_CUBETEXTURE, desc)))
+      return E_INVALIDARG;
+
     try {
       const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc, IsExtended());
       m_initializer->InitTexture(texture->GetCommonTexture());
@@ -862,6 +875,10 @@ namespace dxvk {
     if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, IsExtended())))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedBuffer(*pSharedHandle, desc)))
+      return E_INVALIDARG;
+
     try {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc, IsExtended());
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
@@ -907,6 +924,10 @@ namespace dxvk {
 
     if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, IsExtended())))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedBuffer(*pSharedHandle, desc)))
+      return E_INVALIDARG;
 
     try {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc, IsExtended());
@@ -4341,6 +4362,10 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_SURFACE, desc)))
+      return E_INVALIDARG;
+
     try {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
@@ -4416,6 +4441,10 @@ namespace dxvk {
       if (unlikely(pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT))
         return D3DERR_INVALIDCALL;
 
+      if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                   !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_SURFACE, desc)))
+        return E_INVALIDARG;
+
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture(), initialData);
       *ppSurface = surface.ref();
@@ -4474,6 +4503,10 @@ namespace dxvk {
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
+                 !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_SURFACE, desc)))
+      return E_INVALIDARG;
 
     try {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
@@ -9154,4 +9187,162 @@ namespace dxvk {
       return GpuFlushType::ImplicitWeakHint;
   }
 
+  bool D3D9DeviceEx::ValidateSharedTexture(
+    HANDLE                          handle,
+    D3DRESOURCETYPE                 type,
+    const D3D9_COMMON_TEXTURE_DESC& textureDesc) const {
+    if (!((uintptr_t)handle & 0xc0000000)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: not a D3DKMT handle: ", handle));
+      return false;
+    }
+
+    union d3dkmt_desc desc;
+
+    D3DKMT_QUERYRESOURCEINFO query = { };
+    query.hDevice = m_dxvkDevice->kmtLocal();
+    query.hGlobalShare = (uintptr_t)handle;
+    query.pPrivateRuntimeData = &desc;
+    query.PrivateRuntimeDataSize = sizeof(desc);
+
+    if (D3DKMTQueryResourceInfo(&query)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Failed to query resource: ", handle));
+    } else if (query.PrivateRuntimeDataSize < sizeof(desc.dxgi) || query.PrivateRuntimeDataSize > sizeof(desc)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Unexpected size: ", query.PrivateRuntimeDataSize));
+    } else {
+      D3DDDI_OPENALLOCATIONINFO2 alloc = { };
+      D3DKMT_OPENRESOURCE open = { };
+      open.hDevice = m_dxvkDevice->kmtLocal();
+      open.hGlobalShare = (uintptr_t)handle;
+      open.NumAllocations = 1;
+      open.pOpenAllocationInfo2 = &alloc;
+      open.pPrivateRuntimeData = &desc;
+      open.PrivateRuntimeDataSize = query.PrivateRuntimeDataSize;
+
+      if (D3DKMTOpenResource2(&open)) {
+        Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Failed to open resource: ", handle));
+      } else {
+        D3DKMT_DESTROYALLOCATION destroy = { };
+        destroy.hDevice = m_dxvkDevice->kmtLocal();
+        destroy.hResource = open.hResource;
+        D3DKMTDestroyAllocation(&destroy);
+
+        if (desc.dxgi.size != sizeof(desc.d3d9) || desc.dxgi.version != 1) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid size: ",
+                                   desc.dxgi.size, " or version: ", desc.dxgi.version));
+          return false;
+        }
+        if (desc.d3d9.type != type) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid type: ", desc.d3d9.type));
+          return false;
+        }
+        if (desc.d3d9.dxgi.width != textureDesc.Width || desc.d3d9.dxgi.height != textureDesc.Height) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid dimensions: ", desc.d3d9.dxgi.width, "x", desc.d3d9.dxgi.height));
+          return false;
+        }
+        if (desc.d3d9.format != (D3DFORMAT)textureDesc.Format) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid format: ", desc.d3d9.format));
+          return false;
+        }
+        if (textureDesc.Usage & ~desc.d3d9.usage) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid usage: ", desc.d3d9.usage));
+          return false;
+        }
+        if (type == D3DRTYPE_TEXTURE && desc.d3d9.texture.levels != textureDesc.MipLevels) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedTexture: Invalid mip levels: ", desc.d3d9.texture.levels));
+          return false;
+        }
+
+        Logger::info(str::format("Found D3D9 desc: ", desc.d3d9.type));
+        Logger::info(str::format("  dxgi.width: ", desc.d3d9.dxgi.width));
+        Logger::info(str::format("  dxgi.height: ", desc.d3d9.dxgi.height));
+        Logger::info(str::format("  format: ", desc.d3d9.format));
+        Logger::info(str::format("  usage: ", desc.d3d9.usage));
+        if (desc.d3d9.type == D3DRTYPE_TEXTURE) {
+          Logger::info(str::format("  texture.width: ", desc.d3d9.texture.width));
+          Logger::info(str::format("  texture.height: ", desc.d3d9.texture.height));
+          Logger::info(str::format("  texture.depth: ", desc.d3d9.texture.depth));
+          Logger::info(str::format("  texture.levels: ", desc.d3d9.texture.levels));
+        } else if (desc.d3d9.type == D3DRTYPE_SURFACE) {
+          Logger::info(str::format("  surface.width: ", desc.d3d9.surface.width));
+          Logger::info(str::format("  surface.height: ", desc.d3d9.surface.height));
+        }
+        return true;
+      }
+    }
+
+    /* ignore failures for legacy Proton implementation */
+    return true;
+  }
+
+  bool D3D9DeviceEx::ValidateSharedBuffer(
+      HANDLE                        handle,
+      const dxvk::D3D9_BUFFER_DESC& bufferDesc) const {
+    if (!((uintptr_t)handle & 0xc0000000)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: not a D3DKMT handle: ", handle));
+      return false;
+    }
+
+    union d3dkmt_desc desc;
+
+    D3DKMT_QUERYRESOURCEINFO query = { };
+    query.hDevice = m_dxvkDevice->kmtLocal();
+    query.hGlobalShare = (uintptr_t)handle;
+    query.pPrivateRuntimeData = &desc;
+    query.PrivateRuntimeDataSize = sizeof(desc);
+
+    if (D3DKMTQueryResourceInfo(&query)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Failed to query resource: ", handle));
+    } else if (query.PrivateRuntimeDataSize < sizeof(desc.dxgi) || query.PrivateRuntimeDataSize > sizeof(desc)) {
+      Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Unexpected size: ", query.PrivateRuntimeDataSize));
+    } else {
+      D3DDDI_OPENALLOCATIONINFO2 alloc = { };
+      D3DKMT_OPENRESOURCE open = { };
+      open.hDevice = m_dxvkDevice->kmtLocal();
+      open.hGlobalShare = (uintptr_t)handle;
+      open.NumAllocations = 1;
+      open.pOpenAllocationInfo2 = &alloc;
+      open.pPrivateRuntimeData = &desc;
+      open.PrivateRuntimeDataSize = query.PrivateRuntimeDataSize;
+
+      if (D3DKMTOpenResource2(&open)) {
+        Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Failed to open resource: ", handle));
+      } else {
+        D3DKMT_DESTROYALLOCATION destroy = { };
+        destroy.hDevice = m_dxvkDevice->kmtLocal();
+        destroy.hResource = open.hResource;
+        D3DKMTDestroyAllocation(&destroy);
+
+        if (desc.dxgi.size != sizeof(desc.d3d9) || desc.dxgi.version != 1) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Invalid size: ",
+                                   desc.dxgi.size, " or version: ", desc.dxgi.version));
+          return false;
+        }
+        if (desc.d3d9.type != bufferDesc.Type) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Invalid type: ", desc.d3d9.type));
+          return false;
+        }
+        if (desc.d3d9.dxgi.width != bufferDesc.Size || desc.d3d9.buffer.width != bufferDesc.Size) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Invalid dimensions: ", desc.d3d9.dxgi.width, "x", desc.d3d9.dxgi.height));
+          return false;
+        }
+        if (desc.d3d9.buffer.format != (UINT)bufferDesc.Format) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Invalid format: ", desc.d3d9.format));
+          return false;
+        }
+        if (bufferDesc.Usage & ~desc.d3d9.usage) {
+          Logger::warn(str::format("D3D9DeviceEx::ValidateSharedBuffer: Invalid usage: ", desc.d3d9.usage));
+          return false;
+        }
+
+        Logger::info(str::format("Found D3D9 desc: ", desc.d3d9.type));
+        Logger::info(str::format("  dxgi.width: ", desc.d3d9.buffer.width));
+        Logger::info(str::format("  format: ", desc.d3d9.buffer.format));
+        Logger::info(str::format("  usage: ", desc.d3d9.usage));
+        return true;
+      }
+    }
+
+    /* ignore failures for legacy Proton implementation */
+    return true;
+  }
 }
