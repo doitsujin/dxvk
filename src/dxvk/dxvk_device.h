@@ -115,6 +115,15 @@ namespace dxvk {
     }
 
     /**
+     * \brief D3DKMT device local handle
+     * \returns The device D3DKMT local handle
+     * \returns \c 0 if there's no matching D3DKMT device
+     */
+    D3DKMT_HANDLE kmtLocal() const {
+      return m_kmtLocal;
+    }
+
+    /**
      * \brief Checks whether debug functionality is enabled
      * \returns \c true if debug utils are enabled
      */
@@ -702,6 +711,7 @@ namespace dxvk {
     Rc<DxvkInstance>            m_instance;
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
+    D3DKMT_HANDLE               m_kmtLocal = 0;
 
     DxvkDebugFlags              m_debugFlags;
     DxvkDeviceQueueSet          m_queues;
