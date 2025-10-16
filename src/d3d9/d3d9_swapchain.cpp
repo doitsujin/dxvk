@@ -729,7 +729,8 @@ namespace dxvk {
                  && cp[i].b == identity;
     }
 
-    if (!isIdentity && !m_presentParams.Windowed)
+    // For D3D7 and earlier we always fake windowed mode because of DDraw interop
+    if (!isIdentity && (!m_presentParams.Windowed || m_parent->IsD3DCompatibile(D3DCompatibility::D3D7)))
       m_blitter->setGammaRamp(NumControlPoints, cp.data());
     else
       m_blitter->setGammaRamp(0, nullptr);
@@ -1378,7 +1379,11 @@ namespace dxvk {
     if (m_parent->Is9On12Device())
       return m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex) ? "D3D9ExOn12" : "D3D9On12";
 
-    return m_parent->IsD3DCompatibile(D3DCompatibility::D3D8) ? "D3D8" :
+    return m_parent->IsD3DCompatibile(D3DCompatibility::D3D3) ? "D3D3" :
+           m_parent->IsD3DCompatibile(D3DCompatibility::D3D5) ? "D3D5" :
+           m_parent->IsD3DCompatibile(D3DCompatibility::D3D6) ? "D3D6" :
+           m_parent->IsD3DCompatibile(D3DCompatibility::D3D7) ? "D3D7" :
+           m_parent->IsD3DCompatibile(D3DCompatibility::D3D8) ? "D3D8" :
            m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex) ? "D3D9Ex" : "D3D9";
   }
 

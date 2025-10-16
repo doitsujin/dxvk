@@ -52,17 +52,8 @@ jobs:
         & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x86 -host_arch=x64 -no_logo && set" `
           | % { , ($_ -Split '=', 2) } `
           | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
-        meson --buildtype release --backend vs2022 build-msvc-x86
+        meson --buildtype release -Denable_dxgi=false -Denable_d3d8=false -Denable_d3d10=false -Denable_d3d11=false --backend vs2022 build-msvc-x86
         msbuild -m build-msvc-x86/dxvk.sln
-
-    - name: Build MSVC x64
-      shell: pwsh
-      run: |
-        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x64 -host_arch=x64 -no_logo && set" `
-          | % { , ($_ -Split '=', 2) } `
-          | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
-        meson --buildtype release --backend vs2022 build-msvc-x64
-        msbuild -m build-msvc-x64/dxvk.sln
 
     - name: Prepare artifacts
       shell: pwsh
@@ -70,12 +61,9 @@ jobs:
         mkdir artifacts\x32
         ls -Path build-msvc-x86\src -Include *.dll,*.pdb -Recurse
           | cp -Destination (Join-Path -Path (pwd) -ChildPath artifacts\x32)
-        mkdir artifacts\x64
-        ls -Path build-msvc-x64\src -Include *.dll,*.pdb -Recurse
-          | cp -Destination (Join-Path -Path (pwd) -ChildPath artifacts\x64)
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: dxvk-${{ env.VERSION_NAME }}-msvc-output
+        name: d7vk-${{ env.VERSION_NAME }}-msvc-output
         path: artifacts\*

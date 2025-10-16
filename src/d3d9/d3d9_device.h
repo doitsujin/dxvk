@@ -1433,6 +1433,41 @@ namespace dxvk {
         : GetHelper(m_state.psConsts);
     }
 
+    HRESULT SetColorKeyState(bool colorKeyState) {
+      if (m_specData.setColorKeyEnable(colorKeyState))
+        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+
+      return D3D_OK;
+    }
+
+    HRESULT SetLegacyLightsState(bool legacyLightState) {
+      if (m_specData.setLegacyLights(legacyLightState))
+        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+
+      return D3D_OK;
+    }
+
+    HRESULT SetAlternatePixelCenter(bool alternatePixelCenter) {
+      if (m_specData.setAlternatePixelCenter(alternatePixelCenter))
+        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+
+      return D3D_OK;
+    }
+
+    HRESULT SetColorKey(DWORD colorKeyLow, DWORD colorKeyHigh) {
+      if (m_pushData.ffps.colorKeyLow != colorKeyLow) {
+        m_pushData.ffps.colorKeyLow = colorKeyLow;
+        m_dirty.set(D3D9DeviceDirtyFlag::PushDataFfps);
+      }
+
+      if (m_pushData.ffps.colorKeyHigh != colorKeyHigh) {
+        m_pushData.ffps.colorKeyHigh = colorKeyHigh;
+        m_dirty.set(D3D9DeviceDirtyFlag::PushDataFfps);
+      }
+
+      return D3D_OK;
+    }
+
     void UpdateFixedFunctionVS();
 
     void UpdateFixedFunctionPS();

@@ -457,6 +457,11 @@ Vertex transformVertex() {
 
         return result;
     } else {
+        if (isAlternatePixelCenterEnabled()) {
+            result.coord.x -= 0.5;
+            result.coord.y -= 0.5;
+        }
+
         // We still need to account for perspective correction here...
         result.transformed = fma(result.coord, data.ViewportInfo.inverseExtent, data.ViewportInfo.inverseOffset);
 
@@ -611,11 +616,16 @@ Lighting computeLighting(vec4 vertex, vec3 normal) {
         vec4 specularValue = vec4(0.0);
         vec4 ambientValue = vec4(0.0);
 
+        const bool useLegacyLights = isLegacyLightingEnabled();
+
         for (uint i = 0; i < lightCount(); i++) {
             D3D9Light light = data.Lights[i];
 
             vec3 delta = light.Position.xyz - vertex.xyz;
             float dist = length(delta);
+            if (useLegacyLights) {
+                dist = (light.Range - dist) / light.Range;
+            }
 
             // Directional light properties
             vec3 hitDir = -light.Direction.xyz;
@@ -625,9 +635,15 @@ Lighting computeLighting(vec4 vertex, vec3 normal) {
                 // Range-based attenuation
                 atten = fma(dist, light.Attenuation2, light.Attenuation1);
                 atten = fma(dist, atten, light.Attenuation0);
-                atten = 1.0 / atten;
+                if (!useLegacyLights) {
+                    atten = 1.0 / atten;
+                }
                 atten = spvNMin(atten, FloatMaxValue);
-                atten = dist > light.Range ? 0.0 : atten;
+                if (useLegacyLights) {
+                    atten = dist < 0.0 ? 0.0 : atten; // dist > light.Range
+                } else {
+                    atten = dist > light.Range ? 0.0 : atten;
+                }
 
                 hitDir = normalize(delta);
             }
@@ -669,7 +685,12 @@ Lighting computeLighting(vec4 vertex, vec3 normal) {
             float midDot = dot(normal, normalize(mid));
                   midDot = clamp(midDot, 0.0, 1.0);
 
-            if (midDot > 0.0 && hitDot > 0.0) {
+            bool doSpec = midDot > 0.0 && hitDot > 0.0;
+            if (useLegacyLights) {
+                doSpec = doSpec && data.Material.Power > 0.0;
+            }
+
+            if (doSpec) {
                 float specularness = pow(midDot, data.Material.Power) * atten;
                 specularValue += light.Specular * specularness;
             }

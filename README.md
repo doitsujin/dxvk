@@ -1,52 +1,117 @@
-# DXVK
+﻿# D7VK
 
-A Vulkan-based translation layer for Direct3D 8/9/10/11 which allows running 3D applications on Linux using Wine.
+A Vulkan-based translation layer for Direct3D 7, 6, 5 and 3 which allows running 3D applications on Linux using Wine. It uses DXVK's D3D9 backend as well as Wine's DDraw implementation (or the Windows native DDraw) and acts as a proxy between the two, providing a minimal D3D7/6/5/3-on-D3D9 implementation.
 
-For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
+> [!IMPORTANT]
+> D3D retained-mode applications are NOT supported, since the project only aims to implement immediate-mode.
 
-The most recent development builds can be found [here](https://github.com/doitsujin/dxvk/actions/workflows/artifacts.yml?query=branch%3Amaster).
+> [!NOTE]
+> D3D7/6/5/3 support is also available in [DXVK-Sarek](https://github.com/pythonlover02/DXVK-Sarek), in case you are using older graphics hardware.
 
-Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
+## FAQ
+
+### Will D7VK work with every game out there?
+
+Sadly, no. DDraw and older D3D is a land of highly cursed API interoperability, and applications that for one reason or another mix and match D3D7/6/5/3/DDraw with GDI are generally not expected to work properly. In such cases, if games provide alternative renderers, based on Glide or OpenGL, I strongly recommend you use those, together with [nGlide](https://www.zeus-software.com/downloads/nglide) where applicable.
+
+> [!TIP]
+> If you're wondering about the current state of a certain game, a good starting point would be checking [the issue tracker](https://github.com/WinterSnowfall/d7vk/issues).
+
+### Waiter, waiter! There's D3D6/5/3 support in my D7VK soup!
+
+Well, yes, after looking over the D3D6/5 SDK documentation, they turned out to be somewhat approachable, so I have implemented both. Thanks to [CkNoSFeRaTU](https://github.com/CkNoSFeRaTU) we also support D3D3, along with execute buffer driven rendering, and thus have achieved full D3D (immediate-mode) coverage of the DDraw world.
+
+### Why not spin off a D6VK, a D5VK and a D3VK, or rename the project?
+
+All APIs prior to D3D8 fall under the cursed umbrella of DDraw, so it makes absolutely no sense to split things up. As for any renaming, that won't happen, since D3D7 support is still the main focus of the project.
+
+### What happened to D3D1, D3D2 and D3D4?
+
+- D3D1 never existed, because the first release of DirectX didn't include a 3D component at all.
+- Direct3D (2) was added in DirectX 2 and was left mostly unchanged in DirectX 3, so D3D2 and D3D3 are interchangeable terms, with a purely historical distinction.
+- [DirectX 4 was never released](https://devblogs.microsoft.com/oldnewthing/20040122-00/?p=40963), and the prototyped D3D4 implementation was ultimately restructured into what became D3D5.
+
+### I don't have a Vulkan 1.4 capable GPU, so I can't use D7VK!
+
+Then this is your lucky day, because through the efforts of [pythonlover02](https://github.com/pythonlover02), D7VK, aka D3D7/6/5/3 support for DXVK, was ported back to [DXVK-Sarek](https://github.com/pythonlover02/DXVK-Sarek). Apart from a few missing features (see below), you're getting everything D7VK has to offer, and you can now run it even on a Vulkan 1.1 capable GPU.
+
+> [!WARNING]
+> Support for the following D3D7/6/5/3 features is missing in the now ancient DXVK-Sarek backend:
+> - Color key transparency
+> - Dynamic (application-controlled) FSAA states
+
+### Will DXVK's D3D9 config options, such as frame rate limits, work with D7VK?
+
+Yes, because D7VK relies on DXVK's D3D9 backend, so everything ends up there anyway.
+
+### VSync isn't turning off/on although the application lets me control it. What gives?
+
+VSync is enabled by default with older D3D, and thus also in D7VK. In fact, older D3D devices have to explicitly expose support for being able to _turn off_ VSync, since not all of them were capable of doing it back in the day. Due to problematic implementations, given limited hardware support at the time, changing the default behavior may simply not work reliably, even if an option is provided.
+
+> [!NOTE]
+> D7VK properly supports disabling VSync if applications consistently perform flips using the `DDFLIP_NOVSYNC` flag, e.g. _Unreal Tournament_ with the OldUnreal patch applied, _Re-Volt_, _3DMark 2000_ and others.
+
+That being said, D7VK will also enforce various frame rate limits, provided as built-in config options, for games that are known to break or suffer from various bugs at high frame rates. These situations are very much an issue on high refresh rate displays, regardless of VSync.
+
+You can, however, use the traditional DXVK config options for controlling either frame rate limits or the presentation interval (VSync), namely: `d3d9.maxFrameRate` and `d3d9.presentInterval`, with values of your choosing, either to override any existing settings or to specify your own. Be warned that doing so is most likely going to cause issues, unless some form of mod/modern patch resolves the underlying physics/input handling/rendering limitations that many of these applications were confronted with at high frame rates.
+
+### Is there a way to force enable AA?
+
+Yes, use `ddraw.emulateFSAA = Forced`. Note that dynamic FSAA emulation is supported by D7VK, and some applications will outright provide you with the means to enable or disable it. Only use the above config option if you want to force enable AA, regardless of application support or set states. Please also keep in mind that force enabling AA may not work well in all cases, and screen edge artifacting and/or GUI element corruption are possible consequences.
+
+Should you encounter any situation in which AA support is listed as unavailable or greyed out by an application (without it being forced, as per the above), please raise an issue on our tracker.
+
+> [!WARNING]
+> In [DXVK-Sarek](https://github.com/pythonlover02/DXVK-Sarek) you'll only be able to (optionally) force enable FSAA emulation, as the backend functionality required to let games dynamically control the AA state is missing.
+
+### Will it work on Windows?
+
+Maybe? I'm not using Windows, so can't test it or develop it to be adapted to such situations. Its primarily intended use case is, and always will be, Wine/Linux. To that end, D7VK is pretty much aligned with upstream DXVK.
+
+### Will it be upstreamed to DXVK at some point?
+
+No.
+
+### Why not? Just do it!
+
+Because DXVK's development team have made it clear they are not interested in merging and/or maintaining anything prior to D3D8. Also, considering this project takes a minimal approach in its DDraw implementation, essentially acting as a DDraw wrapper for D3D, it operates on a different principle compared to mainline DXVK, which is why it's best kept as a separate project altogether. I understand the desire to forge the One Ring, ehm... have things unified, but in this case it simply isn't meant to be.
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add `native` DLL overrides for `d3d8`, `d3d9`, `d3d10core`, `d3d11` and `dxgi` under the Libraries tab.
 
-In a default Wine prefix that would be as follows:
-```
-export WINEPREFIX=/path/to/wineprefix
-cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
-cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
-winecfg
-```
+Grab the latest release or compile the project manually if you want to be "on the bleeding edge".
 
-For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `system32` directory:
-```
-export WINEPREFIX=/path/to/wineprefix
-cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
-winecfg
-```
+> [!WARNING]
+> Please keep in mind that ABSOLUTELY NO TESTING is done on Windows. D7VK is developed on and primarily aimed at use with Wine/Linux, so your mileage may vary in other situations.
 
-Verify that your application uses DXVK instead of wined3d by enabling the HUD (see notes below).
+On Windows, simply copying D7VK's `ddraw.dll` next to the game executable usually works just fine, and is the only supported deployment option. If a game ships its own `ddraw.dll` file, you are expected to rename it (to something like `ddraw.dll.bak`) before bringing D7VK into the picture.
 
-In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
+> [!CAUTION]
+> Do NOT, I repeat, do NOT copy `ddraw.dll` in your system directory when using D7VK on Windows, since that may break your system, and you will need access to an actual DDraw implementation for D7VK to work.
 
-Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatically handle setup of dxvk on their own when enabled.
+On Linux, if you only want to give it a test in a Wine prefix of choice or only want to use it with a limited number of games, you can similarly copy D7VK's `ddraw.dll` file next to the game/application executable, then open `winecfg` and manually add `native, builtin` (explicitly in that order) DLL overrides for `ddraw` under the Libraries tab. Though this is expected to work in most cases, there are known exceptions of games which insist on loading dlls from the system path directly.
 
-#### DLL dependencies 
-Listed below are the DLL requirements for using DXVK with any single API.
+The more permanent and recommended deployment approach on Linux, which is in fact required by some games, such as _GTA 2_, _StarLancer_, _Midtown Madness 2_ and others, is to rename the system path Wine `ddraw.dll` file to `ddraw_.dll` and then copy D7VK's `ddraw.dll` in your `system32` (for a 32-bit prefix) or `syswow64` (for a 64-bit prefix) system path, in order to stand in its place. D7VK will prioritize loading the `ddraw_.dll` file from its current path before trying to load `ddraw.dll` from the system path, in order to accommodate both methods of use. You will need to set up proper dll overrides in Wine even in this case, as described above.
 
-- d3d8: `d3d8.dll` and `d3d9.dll`
-- d3d9: `d3d9.dll`
-- d3d10: `d3d10core.dll`, `d3d11.dll` and `dxgi.dll`
-- d3d11: `d3d11.dll` and `dxgi.dll`
+> [!CAUTION]
+> Simply copying D7VK's `ddraw.dll` in your system path and replacing Wine's will NOT work, as D7VK doesn't implement DDraw, and as such it needs access to an actual DDraw implementation for any level of D3D to work.
 
-### Notes on Vulkan drivers
-Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
+> [!TIP]
+> Verify that your application uses D7VK instead of WineD3D by enabling the HUD (see notes below).
 
-### Online multi-player games
-Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
+#### DLL dependencies
+
+Listed below are the DLL requirements for using D7VK with any single API.
+
+- d3d7: `ddraw.dll`
+- d3d6: `ddraw.dll`
+- d3d5: `ddraw.dll`
+- d3d3: `ddraw.dll`
+
+> [!IMPORTANT]
+> [DXVK-Sarek](https://github.com/pythonlover02/DXVK-Sarek) will also require the `d3d9.dll` file for each of the above listed APIs, in addition to `ddraw.dll`.
 
 ### HUD
+
 The `DXVK_HUD` environment variable controls a HUD which can display the framerate and some stat counters. It accepts a comma-separated list of the following options:
 - `devinfo`: Displays the name of the GPU and the driver version.
 - `fps`: Shows the current frame rate.
@@ -70,115 +135,25 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
 ### Logs
-When used with Wine, DXVK will print log messages to `stderr`. Additionally, standalone log files can optionally be generated by setting the `DXVK_LOG_PATH` variable, where log files in the given directory will be called `app_d3d11.log`, `app_dxgi.log` etc., where `app` is the name of the game executable.
+
+When used with Wine, D7VK will print log messages to `stderr`. Additionally, standalone log files can optionally be generated by setting the `D7VK_LOG_PATH` variable, where log files in the given directory will be called `app_ddraw.log` etc., where `app` is the name of the game executable. The `D7VK_LOG_LEVEL` variable can be used to control logging verbosity.
+
+The naming of the environment variables has been altered in order to allow for finer control of logging specifically for D7VK, independently of upstream DXVK.
+
+> [!NOTE]
+> D7VK v1.2 and earlier versions use the `DXVK_LOG_LEVEL` and `DXVK_LOG_PATH` variables, much like upstream DXVK.
 
 On Windows, log files will be created in the game's working directory by default, which is usually next to the game executable.
 
-### Device filter
-Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
-- `DXVK_FILTER_DEVICE_NAME="Device Name"` Selects devices with a matching Vulkan device name, which can be retrieved with tools such as `vulkaninfo`. Matches on substrings, so "VEGA" or "AMD RADV VEGA10" is supported if the full device name is "AMD RADV VEGA10 (LLVM 9.0.0)", for example. If the substring matches more than one device, the first device matched will be used.
-- `DXVK_FILTER_DEVICE_UUID="00000000000000000000000000000001"` Selects a device by matching its Vulkan device UUID, which can also be retrieved using tools such as `vulkaninfo`. The UUID must be a 32-character hexadecimal string with no dashes. This method provides more precise selection, especially when using multiple identical GPUs.
+## Any other doubts?
 
-**Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
+Please refer to the upstream DXVK wiki and documentation, available [here](https://github.com/doitsujin/dxvk).
 
-### Debugging
-The following environment variables can be used for **debugging** purposes.
-- `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
-- `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
-- `DXVK_LOG_PATH=/some/directory` Changes path where log files are stored. Set to `none` to disable log file creation entirely, without disabling logging.
-- `DXVK_DEBUG=...` Enables one of various debugging modes:
-  - `capture`: Default when used with certain tools. Enables dxvk-internal debug names and debug markers for render passes, shaders, etc.
-  - `hang`: Detects GPU hangs or driver crashes resulting in `VK_ERROR_DEVICE_LOST` and logs failing command(s).
-  - `markers`: Uses `VK_EXT_debug_utils` to forward applocation-provided resource names and debug markers to Vulkan.
-  - `validation`: Enables validation debug callback. Must also set `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` on Linux.
-- `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
-- `DXVK_CONFIG="dxgi.hideAmdGpu = True; dxgi.syncInterval = 0"` Can be used to set config variables through the environment instead of a configuration file using the same syntax. `;` is used as a seperator.
-- `DXVK_SHADER_CACHE=0`: Disables the internal shader cache.
-- `DXVK_SHADER_CACHE_PATH=/some/directory`: Path to internal shader cache files. By default, this will use `%LOCALAPPDATA%/dxvk` in a Windows
-  or Wine environment, and `$HOME/.cache` or `$XDG_CACHE_HOME` in a native Linux environment.
+Feel free to report any issues you encounter, should they not already be present on the issue tracker.
 
-### Graphics Pipeline Library
-On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will be compiled at the time the game loads its D3D shaders, rather than at draw time. This reduces or eliminates shader compile stutter in many games when compared to the previous system.
+## Acknowledgments
 
-In games that load their shaders during loading screens or in the menu, this can lead to prolonged periods of very high CPU utilization, especially on weaker CPUs. For affected games it is recommended to wait for shader compilation to finish before starting the game to avoid stutter and low performance. Shader compiler activity can be monitored with `DXVK_HUD=compiler`.
+None of this would have ever been possible without DXVK and Wine, so remember to show your love to the awesome people involved in those projects. A special thanks goes out to [AlpyneDreams](https://github.com/AlpyneDreams) (of D8VK fame), both for D8VK and also for providing a good reference experimental branch, without which I would not have even considered diving head first into spinning off D7VK.
 
-**Note:** Games which only load their D3D shaders at draw time (e.g. most Unreal Engine games) will still exhibit some stutter, although it should still be less severe than without this feature.
+An equally special thanks goes out to [CkNoSFeRaTU](https://github.com/CkNoSFeRaTU), who has helped the project with numerous contributions, such as color key transparency support, implementing D3D3 execute buffers, implementing legacy viewport transformations, adding a highly optimized CPU ProcessVertices implementation etc., and has done a metric ton of investigative work, which in turn led to countless bug fixes and many more games being supported by D7VK.
 
-## Build instructions
-
-In order to pull in all submodules that are needed for building, clone the repository using the following command:
-```
-git clone --recursive https://github.com/doitsujin/dxvk.git
-```
-
-### Requirements:
-- [wine 10.0](https://www.winehq.org/) or newer
-- [Meson](https://mesonbuild.com/) build system (at least version 0.58)
-- [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 10.0)
-- [glslang](https://github.com/KhronosGroup/glslang) compiler
-
-### Building DLLs
-
-#### The simple way
-Inside the DXVK directory, run:
-```
-./package-release.sh master /your/target/directory --no-package
-```
-
-This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of DXVK, which can be set up in the same way as the release versions as noted above.
-
-In order to preserve the build directories for development, pass `--dev-build` to the script. This option implies `--no-package`. After making changes to the source code, you can then do the following to rebuild DXVK:
-```
-# change to build.32 for 32-bit
-cd /your/target/directory/build.64
-ninja install
-```
-
-#### Compiling manually
-```
-# 64-bit build. For 32-bit builds, replace
-# build-win64.txt with build-win32.txt
-meson setup --cross-file build-win64.txt --buildtype release --prefix /your/dxvk/directory build.w64
-cd build.w64
-ninja install
-```
-
-The D3D8, D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`.
-
-### Build troubleshooting
-DXVK requires threading support from your mingw-w64 build environment. If you
-are missing this, you may see "error: ‘std::cv_status’ has not been declared"
-or similar threading related errors.
-
-On Debian and Ubuntu, this can be resolved by using the posix alternate, which
-supports threading. For example, choose the posix alternate from these
-commands:
-```
-update-alternatives --config x86_64-w64-mingw32-gcc
-update-alternatives --config x86_64-w64-mingw32-g++
-update-alternatives --config i686-w64-mingw32-gcc
-update-alternatives --config i686-w64-mingw32-g++
-```
-For non debian based distros, make sure that your mingw-w64-gcc cross compiler 
-does have `--enable-threads=posix` enabled during configure. If your distro does
-ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
-recompile locally or open a bug at your distro's bugtracker to ask for it. 
-
-# DXVK Native
-
-DXVK Native is a version of DXVK which allows it to be used natively without Wine.
-
-This is primarily useful for game and application ports to either avoid having to write another rendering backend, or to help with port bringup during development.
-
-[Release builds](https://github.com/doitsujin/dxvk/releases) are built using the Steam Runtime.
-
-### How does it work?
-
-DXVK Native replaces certain Windows-isms with a platform and framework-agnostic replacement, for example, `HWND`s can become `SDL_Window*`s, etc.
-All it takes to do that is to add another WSI backend.
-
-**Note:** DXVK Native requires a backend to be explicitly set via the `DXVK_WSI_DRIVER` environment variable. The current built-in options are `SDL3`, `SDL2`, and `GLFW`.
-
-DXVK Native comes with a slim set of Windows header definitions required for D3D9/11 and the MinGW headers for D3D9/11.
-In most cases, it will end up being plug and play with your renderer, but there may be certain teething issues such as:
-- `__uuidof(type)` is supported, but `__uuidof(variable)` is not supported. Use `__uuidof_var(variable)` instead.

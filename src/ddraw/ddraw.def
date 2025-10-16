@@ -1,0 +1,23 @@
+LIBRARY DDRAW.DLL
+EXPORTS
+  AcquireDDThreadLock         @1
+  CompleteCreateSysmemSurface @3
+  D3DParseUnknownCommand      @4
+  DDGetAttachedSurfaceLcl     @5
+  DDInternalLock              @6
+  DDInternalUnlock            @7
+  DSoundHelp                  @8
+  DirectDrawCreate            @9
+  DirectDrawCreateClipper     @10
+  DirectDrawCreateEx          @11
+  DirectDrawEnumerateA        @12
+  DirectDrawEnumerateExA      @13
+  DirectDrawEnumerateExW      @14
+  DirectDrawEnumerateW        @15
+  DllCanUnloadNow             @16
+  DllGetClassObject           @17
+  GetDDSurfaceLocal           @18
+  GetOLEThunkData             @19
+  GetSurfaceFromDC            @20
+  RegisterSpecialCase         @21
+  ReleaseDDThreadLock         @22

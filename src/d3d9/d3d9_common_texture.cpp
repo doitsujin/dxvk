@@ -228,7 +228,8 @@ namespace dxvk {
 
     // RENDERTARGET and DEPTHSTENCIL in D3DPOOL_DEFAULT
     // can not also have DYNAMIC usage
-    if (pDesc->Pool == D3DPOOL_DEFAULT &&
+    if (!pDevice->IsD3DCompatibile(D3DCompatibility::D3D7) &&
+         pDesc->Pool == D3DPOOL_DEFAULT &&
         (pDesc->Usage & usageRTOrDS) &&
         (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
@@ -295,7 +296,8 @@ namespace dxvk {
     }
 
     // A multisample RT/DS must not be lockable
-    if (pDesc->IsLockable && sampleCount > VK_SAMPLE_COUNT_1_BIT)
+    if (!pDevice->IsD3DCompatibile(D3DCompatibility::D3D7)
+      && pDesc->IsLockable && sampleCount > VK_SAMPLE_COUNT_1_BIT)
         return D3DERR_INVALIDCALL;
 
     return D3D_OK;

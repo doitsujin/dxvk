@@ -104,7 +104,7 @@ namespace dxvk::hud {
           HudRenderer&        renderer,
           HudPos              position) {
     position.y += 16;
-    renderer.drawText(16, position, 0xffffffffu, "DXVK " DXVK_VERSION);
+    renderer.drawText(16, position, 0xffffffffu, "D7VK " DXVK_VERSION);
 
     position.y += 8;
     return position;

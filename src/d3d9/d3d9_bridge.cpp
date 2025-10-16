@@ -94,6 +94,32 @@ namespace dxvk {
     return mapping.IsValid();
   }
 
+  uint32_t DxvkLegacyD3DDeviceBridge::DetermineInitialTextureMemory() {
+    const int64_t initialTextureMemory = m_device->DetermineInitialTextureMemory();
+
+    return initialTextureMemory > 0 ? static_cast<uint32_t>(initialTextureMemory) : 0;
+  }
+
+  HRESULT DxvkLegacyD3DDeviceBridge::ResetSwapChain(D3DPRESENT_PARAMETERS* Params) {
+    return m_device->ResetSwapChain(Params, nullptr);
+  }
+
+  HRESULT DxvkLegacyD3DDeviceBridge::SetColorKeyState(bool colorKeyState) {
+    return m_device->SetColorKeyState(colorKeyState);
+  }
+
+  HRESULT DxvkLegacyD3DDeviceBridge::SetColorKey(DWORD colorKeyLow, DWORD colorKeyHigh) {
+    return m_device->SetColorKey(colorKeyLow, colorKeyHigh);
+  }
+
+  HRESULT DxvkLegacyD3DDeviceBridge::SetLegacyLightsState(bool legacyLightsState) {
+    return m_device->SetLegacyLightsState(legacyLightsState);
+  }
+
+  HRESULT DxvkLegacyD3DDeviceBridge::SetAlternatePixelCenter(bool alternatePixelCenter) {
+    return m_device->SetAlternatePixelCenter(alternatePixelCenter);
+  }
+
   DxvkLegacyD3DInterfaceBridge::DxvkLegacyD3DInterfaceBridge(D3D9InterfaceEx* pObject)
     : m_interface(pObject) {
   }

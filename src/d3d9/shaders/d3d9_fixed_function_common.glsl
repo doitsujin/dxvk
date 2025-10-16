@@ -8,6 +8,9 @@ const uint D3DFOG_EXP    = 1;
 const uint D3DFOG_EXP2   = 2;
 const uint D3DFOG_LINEAR = 3;
 
+const uint WRAPMODE_CLAMP  = 1;
+const uint WRAPMODE_MIRROR = 2;
+
 const uint MaxSharedPushDataSize = 32;
 
 struct D3D9VsPushData {
@@ -23,6 +26,9 @@ struct D3D9FfvsPushData {
 
 struct D3D9FfpsPushData {
     uint textureFactor;
+    uint packedAddressUV;
+    uint colorKeyLow;
+    uint colorKeyHigh;
 };
 
 struct D3D9SharedPushData {
@@ -106,6 +112,30 @@ bool isSpecularEnabled() {
     return bitfieldExtract(packedProjMaskAndFfArgs, 8, 1) != 0;
 }
 
+// Checks whether color key transparency is enabled
+bool isColorKeyEnabled() {
+    return bitfieldExtract(unused_spec7, 0, 1) != 0;
+}
+
+// Checks whether legacy lighting is enabled
+bool isLegacyLightingEnabled() {
+    return bitfieldExtract(unused_spec7, 8, 1) != 0;
+}
+
+// Checks whether alternate pixel center is enabled
+bool isAlternatePixelCenterEnabled() {
+    return bitfieldExtract(unused_spec7, 16, 1) != 0;
+}
+
 vec4 decodeD3DColor(uint color) {
     return unpackUnorm4x8(color).bgra;
+}
+
+ivec4 decodeColorKey(uint color) {
+    ivec4 decoded;
+    decoded.a = int((color & 0xff000000) >> 24);
+    decoded.r = int((color & 0x00ff0000) >> 16);
+    decoded.g = int((color & 0x0000ff00) >> 8);
+    decoded.b = int((color & 0x000000ff));
+    return decoded;
 }

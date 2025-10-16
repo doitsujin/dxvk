@@ -76,6 +76,10 @@ namespace dxvk {
     static constexpr uint32_t           Offset = 0u;
 
     uint32_t textureFactor = 0u;
+    uint16_t addressU      = 0u;
+    uint16_t addressV      = 0u;
+    uint32_t colorKeyLow   = 0u;
+    uint32_t colorKeyHigh  = 0u;
   };
 
   /// Complete push data state. Note that the data layout inside
@@ -145,7 +149,10 @@ namespace dxvk {
     uint16_t spec6Pad = 0u;
 
     // Spec ID 7: Reserved.
-    uint32_t spec7Pad = 0u;
+    bool colorKeyEnable = false;
+    bool useLegacyLights = false;
+    bool useAlternatePixelCenter = false;
+    uint8_t spec7Pad = 0u;
 
     // Spec ID 8..11: Texture stage ops for fixed function.
     // Each stage is packed as follows:
@@ -193,6 +200,18 @@ namespace dxvk {
 
     bool setGlobalSpecular(bool enable) {
       return set(enableGlobalSpecular, enable);
+    }
+
+    bool setColorKeyEnable(bool colorKeyState) {
+      return set(colorKeyEnable, colorKeyState);
+    }
+
+    bool setLegacyLights(bool legacyLightsState) {
+      return set(useLegacyLights, legacyLightsState);
+    }
+
+    bool setAlternatePixelCenter(bool alternatePixelCenter) {
+      return set(useAlternatePixelCenter, alternatePixelCenter);
     }
 
     bool setFogMode(bool enable, bool zFog, D3DFOGMODE vertexFog, D3DFOGMODE pixelFog) {

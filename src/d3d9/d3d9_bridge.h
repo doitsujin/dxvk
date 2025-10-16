@@ -6,7 +6,11 @@
 
 enum class DxvkD3DCompatibility : uint8_t {
   D3D9Ex,
-  D3D8
+  D3D8,
+  D3D7,
+  D3D6,
+  D3D5,
+  D3D3
 };
 
 /**
@@ -26,6 +30,7 @@ IDxvkLegacyD3DDeviceBridge : public IUnknown {
   #ifdef DXVK_D3D9_NAMESPACE
     using IDirect3DSurface9 = d3d9::IDirect3DSurface9;
     using D3DFORMAT = d3d9::D3DFORMAT;
+    using D3DPRESENT_PARAMETERS = d3d9::D3DPRESENT_PARAMETERS;
   #endif
 
   /**
@@ -48,6 +53,46 @@ IDxvkLegacyD3DDeviceBridge : public IUnknown {
    * \param [in] Format D3DFORMAT value to be checked
    */
   virtual bool IsSupportedSurfaceFormat(D3DFORMAT Format) = 0;
+
+  /**
+   * \brief Determines the initial amount of texture memory for a device
+   */
+  virtual uint32_t DetermineInitialTextureMemory() = 0;
+
+  /**
+   * \brief Resets the D3D9 swapchain, skipping a general device reset
+   *
+   * \param [in] Params D3DPRESENT_PARAMETERS* value to be used
+   */
+  virtual HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* Params) = 0;
+
+  /**
+   * \brief Updates the color key transparency state in D3D9
+   *
+   * \param [in] Params bool value to be used
+   */
+  virtual HRESULT SetColorKeyState(bool colorKeyState) = 0;
+
+  /**
+   * \brief Updates the color key transparency value in D3D9
+   *
+   * \param [in] Params DWORD, DWORD low and high values to be used
+   */
+  virtual HRESULT SetColorKey(DWORD colorKeyLow, DWORD colorKeyHigh) = 0;
+
+  /**
+   * \brief Updates the legacy light state in D3D9
+   *
+   * \param [in] Params bool value to be used
+   */
+  virtual HRESULT SetLegacyLightsState(bool legacyLightsState) = 0;
+
+  /**
+   * \brief Updates the alternate pixel center state in D3D9
+   *
+   * \param [in] Params bool value to be used
+   */
+  virtual HRESULT SetAlternatePixelCenter(bool alternatePixelCenter) = 0;
 };
 
 /**
@@ -104,6 +149,18 @@ namespace dxvk {
         const POINT*              pDestPoint);
 
     bool IsSupportedSurfaceFormat(D3DFORMAT Format);
+
+    uint32_t DetermineInitialTextureMemory();
+
+    HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* Params);
+
+    HRESULT SetColorKeyState(bool colorKeyState);
+
+    HRESULT SetColorKey(DWORD colorKeyLow, DWORD colorKeyHigh);
+
+    HRESULT SetLegacyLightsState(bool legacyLightsState);
+
+    HRESULT SetAlternatePixelCenter(bool alternatePixelCenter);
 
   private:
 

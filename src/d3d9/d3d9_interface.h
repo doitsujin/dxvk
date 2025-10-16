@@ -154,6 +154,34 @@ namespace dxvk {
         case D3DCompatibility::D3D8:
           Logger::info("The D3D9 interface is now operating in D3D8 compatibility mode.");
           break;
+        case D3DCompatibility::D3D7:
+          m_d3dCompatibility.set(D3DCompatibility::D3D8);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D6);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D5);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D3);
+          Logger::info("The D3D9 interface is now operating in D3D7 compatibility mode.");
+          break;
+        case D3DCompatibility::D3D6:
+          m_d3dCompatibility.set(D3DCompatibility::D3D8);
+          m_d3dCompatibility.set(D3DCompatibility::D3D7);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D5);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D3);
+          Logger::info("The D3D9 interface is now operating in D3D6 compatibility mode.");
+          break;
+        case D3DCompatibility::D3D5:
+          m_d3dCompatibility.set(D3DCompatibility::D3D8);
+          m_d3dCompatibility.set(D3DCompatibility::D3D7);
+          m_d3dCompatibility.set(D3DCompatibility::D3D6);
+          m_d3dCompatibility.clr(D3DCompatibility::D3D3);
+          Logger::info("The D3D9 interface is now operating in D3D5 compatibility mode.");
+          break;
+        case D3DCompatibility::D3D3:
+          m_d3dCompatibility.set(D3DCompatibility::D3D8);
+          m_d3dCompatibility.set(D3DCompatibility::D3D7);
+          m_d3dCompatibility.set(D3DCompatibility::D3D6);
+          m_d3dCompatibility.set(D3DCompatibility::D3D5);
+          Logger::info("The D3D9 interface is now operating in D3D3 compatibility mode.");
+          break;
         default:
           break;
       }
