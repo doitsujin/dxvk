@@ -59,6 +59,30 @@ namespace dxvk::wsi {
           uint32_t         weight);
 
   /**
+    * \brief Save window state
+    *
+    * \param [in] hWindow The window
+    * \param [in] pState The swapchain's window state
+    * \param [in] saveStyle Whether to save window style and exstyle
+    */
+  void saveWindowState(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             saveStyle);
+
+  /**
+    * \brief Restore window state
+    *
+    * \param [in] hWindow The window
+    * \param [in] pState The swapchain's window state
+    * \param [in] restoreCoordinates Whether to restore window position and dimension
+    */
+  void restoreWindowState(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             restoreCoordinates);
+
+  /**
     * \brief Sets the display mode for a window/monitor
     * 
     * \param [in] hMonitor The monitor
@@ -98,8 +122,7 @@ namespace dxvk::wsi {
     */
   bool leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState,
-          bool             restoreCoordinates);
+          DxvkWindowState* pState);
 
   /**
     * \brief Restores the display mode if necessary
