@@ -1116,11 +1116,14 @@ namespace dxvk {
     { R"(\\RRRE(64)?\.exe$)", {{
       { "d3d9.hideNvidiaGpu",               "True" },
     }} },
+    /* Blitzkrieg 2 - Startup crash               */
+    { R"(\\Blitzkrieg 2( - Fall of the Reich| - Liberation)?\\bin\\game\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
     /* Core Awaken ~Jilelen and crimson dungeon~  *
      * Freezes on boot                            */
     { R"(\\BioDungeon\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
-    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */

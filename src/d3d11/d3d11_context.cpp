@@ -1346,7 +1346,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
-    SetClassInstances<D3D11ShaderType::eVertex>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::eVertex>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.vs != shader) {
       m_state.vs = shader;
@@ -1481,7 +1482,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11HullShader*>(pHullShader);
-    SetClassInstances<D3D11ShaderType::eHull>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::eHull>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.hs != shader) {
       m_state.hs = shader;
@@ -1751,7 +1753,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11GeometryShader*>(pShader);
-    SetClassInstances<D3D11ShaderType::eGeometry>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::eGeometry>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.gs != shader) {
       m_state.gs = shader;
@@ -1886,7 +1889,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
-    SetClassInstances<D3D11ShaderType::ePixel>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::ePixel>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.ps != shader) {
       m_state.ps = shader;
@@ -2021,7 +2025,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
-    SetClassInstances<D3D11ShaderType::eCompute>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::eCompute>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.cs != shader) {
       m_state.cs = shader;
@@ -5858,19 +5863,19 @@ namespace dxvk {
     if (likely(!NumClassInstances) && likely(!state.instanceCount))
       return;
 
+    // Not sure if this is the right thing to do, but if we don't
+    // have a shader we also don't really have anything to bind
+    if (!pShader)
+      NumClassInstances = 0u;
+
     // Assign class instances for state tracking and populate
     // constant buffer containing class instance data */
-    std::array<D3D11InstanceData, D3D11ClassInstanceState::MaxInstances> data;
-
     for (uint32_t i = 0u; i < NumClassInstances && i < D3D11ClassInstanceState::MaxInstances; i++)
       state.instances[i] = static_cast<D3D11ClassInstance*>(ppClassInstances[i]);
 
     // Unset previously bound class instances, if any
     for (uint32_t i = NumClassInstances; i < state.instanceCount; i++)
       state.instances[i] = nullptr;
-
-    for (uint32_t i = 0u; i < D3D11ClassInstanceState::MaxInstances; i++)
-      data[i] = pShader->GetClassInstanceData(i, state.instances[i].ptr());
 
     uint32_t slotId = D3D11ShaderResourceMapping::computeCbvBinding(ShaderStage,
       D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT + 1u);
@@ -5879,7 +5884,10 @@ namespace dxvk {
       auto buffer = AllocInstanceDataBuffer(ShaderStage);
       auto slice = buffer->allocateStorage();
 
-      std::memcpy(slice->mapPtr(), data.data(), sizeof(data));
+      auto data = reinterpret_cast<D3D11InstanceData*>(slice->mapPtr());
+
+      for (uint32_t i = 0u; i < D3D11ClassInstanceState::MaxInstances; i++)
+        data[i] = pShader->GetClassInstanceData(i, state.instances[i].ptr());
 
       EmitCs([
         cSlotId = slotId,
