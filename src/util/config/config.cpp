@@ -1116,6 +1116,11 @@ namespace dxvk {
     { R"(\\RRRE(64)?\.exe$)", {{
       { "d3d9.hideNvidiaGpu",               "True" },
     }} },
+    /* Core Awaken ~Jilelen and crimson dungeon~  *
+     * Freezes on boot                            */
+    { R"(\\BioDungeon\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
