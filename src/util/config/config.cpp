@@ -1120,9 +1120,10 @@ namespace dxvk {
     { R"(\\Blitzkrieg 2( - Fall of the Reich| - Liberation)?\\bin\\game\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
-    /* Core Awaken ~Jilelen and LittleSnow~       *
-     * Freezes on boot                            */
-    { R"(\\BioDungeon\.exe$)", {{
+    /* Core Awaken series (Jilelen and LittleSnow/The Yuka) & *
+     * Mine Dungeon 2 ~Rurumu's trip~                         *
+     * Freezes on boot                                        */
+    { R"(\\(BioDungeon|BioLab2|MineDungeon2)\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
     }} },
 
