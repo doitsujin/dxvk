@@ -137,6 +137,37 @@ namespace dxvk::wsi {
   }
 
 
+  void Win32WsiDriver::saveWindowState(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             saveStyle) {
+    if (saveStyle) {
+      LONG style   = ::GetWindowLongW(hWindow, GWL_STYLE);
+      LONG exstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE);
+
+      pState->win.style = style;
+      pState->win.exstyle = exstyle;
+    }
+
+    ::GetWindowRect(hWindow, &pState->win.rect);
+  }
+
+
+  void Win32WsiDriver::restoreWindowState(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             restoreCoordinates) {
+    UINT flags = SWP_FRAMECHANGED | SWP_NOACTIVATE;
+    const RECT rect = pState->win.rect;
+
+    if (!restoreCoordinates)
+      flags |= SWP_NOSIZE | SWP_NOMOVE;
+
+    ::SetWindowPos(hWindow, (pState->win.exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
+      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, flags);
+  }
+
+
   bool Win32WsiDriver::setWindowMode(
           HMONITOR                hMonitor,
           HWND                    hWindow,
@@ -184,9 +215,6 @@ namespace dxvk::wsi {
     LONG style   = ::GetWindowLongW(hWindow, GWL_STYLE);
     LONG exstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE);
     
-    pState->win.style = style;
-    pState->win.exstyle = exstyle;
-    
     style   &= ~WS_OVERLAPPEDWINDOW;
     exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
     
@@ -207,8 +235,7 @@ namespace dxvk::wsi {
 
   bool Win32WsiDriver::leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState,
-          bool             restoreCoordinates) {
+          DxvkWindowState* pState) {
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native DXGI does.
     LONG curStyle   = ::GetWindowLongW(hWindow, GWL_STYLE)   & ~WS_VISIBLE;
@@ -219,16 +246,6 @@ namespace dxvk::wsi {
       ::SetWindowLongW(hWindow, GWL_STYLE,   pState->win.style);
       ::SetWindowLongW(hWindow, GWL_EXSTYLE, pState->win.exstyle);
     }
-
-    // Restore window position and apply the style
-    UINT flags = SWP_FRAMECHANGED | SWP_NOACTIVATE;
-    const RECT rect = pState->win.rect;
-
-    if (!restoreCoordinates)
-      flags |= SWP_NOSIZE | SWP_NOMOVE;
-    
-    ::SetWindowPos(hWindow, (pState->win.exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, flags);
 
     return true;
   }
