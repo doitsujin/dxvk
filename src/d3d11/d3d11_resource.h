@@ -78,6 +78,8 @@ namespace dxvk {
     D3D11Device* m_device;
     bool m_warned = false;
     bool m_supported = false;
+    uint64_t m_fenceValue = 0;
+    std::atomic<bool> m_owned = { false };
   };
 
 
