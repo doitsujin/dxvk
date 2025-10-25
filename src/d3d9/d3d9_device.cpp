@@ -1670,6 +1670,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
+      // Setting Render target 0 changes viewport & scissor
+      // even if it gets changed to the one that's already bound.
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
       viewport.Y       = 0;
@@ -1709,32 +1711,39 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
+    m_state.renderTargets[RenderTargetIndex] = rt;
+
     // Do a strong flush if the first render target is changed.
     ConsiderFlush(RenderTargetIndex == 0
       ? GpuFlushType::ImplicitStrongHint
       : GpuFlushType::ImplicitWeakHint);
+
     m_dirty.set(D3D9DeviceDirtyFlag::Framebuffer);
 
-    m_state.renderTargets[RenderTargetIndex] = rt;
+    // Update tracking bitmasks
+    uint32_t oldAlphaSwizzleRTs = m_rtSlotTracking.hasAlphaSwizzle;
+    const uint32_t bit = 1u << RenderTargetIndex;
+    m_rtSlotTracking.canBeSampled    &= ~bit;
+    m_rtSlotTracking.hasAlphaSwizzle &= ~bit;
 
-    // Update feedback loop tracking bitmasks
-    UpdateActiveRTs(RenderTargetIndex);
+    if (texInfo != nullptr) {
+      // Update render target sampling usage bitmask for hazard tracking
+      m_rtSlotTracking.canBeSampled |= uint8_t(HasRenderTargetBound(RenderTargetIndex) &&
+        rt->GetBaseTexture() != nullptr) << RenderTargetIndex;
 
-    // Update render target alpha swizzle bitmask if we need to fix up the alpha channel
-    // for XRGB formats
-    uint32_t originalAlphaSwizzleRTs = m_rtSlotTracking.hasAlphaSwizzle;
-
-    m_rtSlotTracking.hasAlphaSwizzle &= ~(1 << RenderTargetIndex);
-
-    if (rt != nullptr) {
-      if (texInfo->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE)
-        m_rtSlotTracking.hasAlphaSwizzle |= 1 << RenderTargetIndex;
+      // Update render target alpha swizzle bitmask if we need to fix up the alpha channel
+      // for XRGB formats
+      m_rtSlotTracking.hasAlphaSwizzle |= uint8_t(texInfo->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE) << RenderTargetIndex;
 
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
     }
 
-    if (originalAlphaSwizzleRTs != m_rtSlotTracking.hasAlphaSwizzle)
+    // Update hazards now that the RT has changed
+    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
+
+    // The blend factors need to get adjusted to the swizzle.
+    if (oldAlphaSwizzleRTs != m_rtSlotTracking.hasAlphaSwizzle)
       m_dirty.set(D3D9DeviceDirtyFlag::BlendState);
 
     if (RenderTargetIndex == 0) {
@@ -1744,13 +1753,14 @@ namespace dxvk {
       UpdateAlphaToCoverangeAndAlphaTest();
 
       if (likely(texInfo != nullptr)) {
-        if (m_alphaTestEnabled) {
-          // We need to recalculate the precision.
+        // We need to recalculate the alpha test precision for the potentially changed RT format.
+        // Updating the precision is cheap, so there's no need to compare the previous format to the new one.
+        if (m_alphaTestEnabled)
           m_dirty.set(D3D9DeviceDirtyFlag::AlphaTestState);
-        }
 
         bool oldValidSampleMask = m_validSampleMask;
         m_validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+        // We need to update the multisample state to account for the changed sample mask.
         if (m_validSampleMask != oldValidSampleMask)
           m_dirty.set(D3D9DeviceDirtyFlag::MultiSampleState);
       } else {
