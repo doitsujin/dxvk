@@ -80,6 +80,7 @@ namespace dxvk {
     FFPixelShader,
     FFViewport,
     FFPixelData,
+    FFPSMasks,
     SharedPixelShaderData,
     DepthBounds,
     PointScale,
@@ -1557,11 +1558,17 @@ namespace dxvk {
         : D3D9ShaderMasks();
     }
 
-    inline D3D9ShaderMasks PSShaderMasks() const {
-      return m_state.pixelShader != nullptr
-        ? m_state.pixelShader->GetCommonShader()->GetShaderMask()
-        : FixedFunctionMask;
+    inline D3D9ShaderMasks PSShaderMasks() {
+      if (likely(m_state.pixelShader != nullptr))
+        return m_state.pixelShader->GetCommonShader()->GetShaderMask();
+
+      if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::FFPSMasks)))
+        m_ffShaderMasks = BuildFFShaderMasks();
+
+      return m_ffShaderMasks;
     }
+
+    D3D9ShaderMasks BuildFFShaderMasks() const;
 
     GpuFlushType GetMaxFlushType() const;
 
@@ -1686,6 +1693,8 @@ namespace dxvk {
     std::atomic<uint32_t>           m_losableResourceCounter   = { 0 };
 
     D3D9SwapChainEx*                m_mostRecentlyUsedSwapchain = nullptr;
+
+    D3D9ShaderMasks                 m_ffShaderMasks;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
