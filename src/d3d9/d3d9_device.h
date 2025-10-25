@@ -54,43 +54,40 @@ namespace dxvk {
   class D3D9FormatHelper;
   class D3D9UserDefinedAnnotation;
 
-  enum class D3D9DeviceFlag : uint32_t {
-    DirtyFramebuffer,
-    DirtyClipPlanes,
-    DirtyDepthStencilState,
-    DirtyBlendState,
-    DirtyRasterizerState,
-    DirtyDepthBias,
-    DirtyAlphaTestState,
-    DirtyInputLayout,
-    DirtyViewportScissor,
-    DirtyMultiSampleState,
-    DirtyVertexBuffers,
-    DirtyIndexBuffer,
+  enum class D3D9DeviceDirtyFlag : uint32_t {
+    Framebuffer,
+    ClipPlanes,
+    DepthStencilState,
+    BlendState,
+    RasterizerState,
+    DepthBias,
+    AlphaTestState,
+    InputLayout,
+    ViewportScissor,
+    MultiSampleState,
+    VertexBuffers,
+    IndexBuffer,
 
-    DirtyFogState,
-    DirtyFogColor,
-    DirtyFogDensity,
-    DirtyFogScale,
-    DirtyFogEnd,
+    FogState,
+    FogColor,
+    FogDensity,
+    FogScale,
+    FogEnd,
 
-    DirtyFFVertexData,
-    DirtyFFVertexBlend,
-    DirtyFFVertexShader,
-    DirtyFFPixelShader,
-    DirtyFFViewport,
-    DirtyFFPixelData,
-    DirtySharedPixelShaderData,
-    ValidSampleMask,
-    DirtyDepthBounds,
-    DirtyPointScale,
+    FFVertexData,
+    FFVertexBlend,
+    FFVertexShader,
+    FFPixelShader,
+    FFViewport,
+    FFPixelData,
+    SharedPixelShaderData,
+    DepthBounds,
+    PointScale,
 
-    InScene,
-
-    DirtySpecializationEntries,
+    SpecializationEntries,
   };
 
-  using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
+  using D3D9DeviceDirtyFlags = Flags<D3D9DeviceDirtyFlag>;
 
   enum class D3D9DeviceLostState {
     Ok = 0,
@@ -1628,7 +1625,7 @@ namespace dxvk {
     D3D9Multithread                 m_multithread;
     D3D9InputAssemblyState          m_iaState;
 
-    D3D9DeviceFlags                 m_flags;
+    D3D9DeviceDirtyFlags            m_dirty;
 
     D3D9TextureSlotTracking         m_textureSlotTracking;
 
@@ -1649,6 +1646,9 @@ namespace dxvk {
     // vendor hack state tracking
     bool                            m_atocEnabled      = false;
     bool                            m_nvdbEnabled      = false;
+
+    bool                            m_inScene          = false;
+    bool                            m_validSampleMask  = false;
 
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
