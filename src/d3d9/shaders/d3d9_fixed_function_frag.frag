@@ -597,12 +597,12 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
     };
 
     vec4 textureVal = vec4(0.0);
-    bool usesTexture = colorArgs.arg0 == D3DTA_TEXTURE
-        || colorArgs.arg1 == D3DTA_TEXTURE
-        || colorArgs.arg2 == D3DTA_TEXTURE
-        || alphaArgs.arg0 == D3DTA_TEXTURE
-        || alphaArgs.arg1 == D3DTA_TEXTURE
-        || alphaArgs.arg2 == D3DTA_TEXTURE;
+    bool usesTexture = (colorArgs.arg0 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (colorArgs.arg1 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (colorArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (alphaArgs.arg0 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (alphaArgs.arg1 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (alphaArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE;
 
     if (usesTexture) {
         // We need to replace TEXCOORD inputs with gl_PointCoord
