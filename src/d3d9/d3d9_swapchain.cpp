@@ -950,7 +950,7 @@ namespace dxvk {
     for (uint32_t i = 1; i < rotatingBufferCount; i++)
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
-    m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+    m_parent->m_dirty.set(D3D9DeviceDirtyFlag::Framebuffer);
   }
 
 
