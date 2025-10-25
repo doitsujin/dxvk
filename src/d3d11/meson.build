@@ -70,16 +70,16 @@ d3d11_ld_args      = []
 d3d11_link_depends = []
 
 if platform == 'windows'
-  d3d11_dxgi_dep = lib_dxgi
+  d3d11_dxgi_deps = [ lib_gdi32, lib_dxgi ]
 else
   d3d11_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d11.sym') ]
   d3d11_link_depends += files('d3d11.sym')
-  d3d11_dxgi_dep = dxgi_dep
+  d3d11_dxgi_deps = [ dxgi_dep ]
 endif
 
 d3d11_dll = shared_library(dxvk_name_prefix+'d3d11', dxgi_common_src + d3d11_src + d3d10_src,
     glsl_generator.process(d3d11_shaders), d3d11_res,
-  dependencies        : [ d3d11_dxgi_dep, dxvk_dep, dxbc_spirv_dep ],
+  dependencies        : d3d11_dxgi_deps + [ dxvk_dep, dxbc_spirv_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d11'+def_spec_ext,
