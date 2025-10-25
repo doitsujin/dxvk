@@ -339,10 +339,7 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
             reg = in_Color0;
             break;
         case D3DTA_SPECULAR:
-            // Specular highlights shouldn't be calculated at all if D3DRS_SPECULARENABLE
-            // is set to FALSE, however, to avoid adding a spec constant in the FF VS and to
-            // ensure correctness during texture blending, simply return vec4(0.0) here instead.
-            reg = specBool(SpecFFGlobalSpecularEnabled) ? in_Color1 : vec4(0.0);
+            reg = in_Color1;
             break;
         case D3DTA_TEMP:
             reg = temp;
@@ -688,8 +685,7 @@ void main() {
     state = runTextureStage(7, state);
 
     if (specBool(SpecFFGlobalSpecularEnabled)) {
-        vec4 specular = in_Color1 * vec4(1.0, 1.0, 1.0, 0.0);
-        state.current += specular;
+        state.current.xyz += in_Color1.xyz;
     }
 
     state.current = calculateFog(gl_FragCoord, state.current);

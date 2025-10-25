@@ -2472,6 +2472,7 @@ namespace dxvk {
 
         case D3DRS_SPECULARENABLE:
           m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
           break;
 
         case D3DRS_FOGENABLE:
@@ -8115,6 +8116,8 @@ namespace dxvk {
     key.Data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
     key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
     key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
+
+    key.Data.Contents.SpecularEnabled  = m_state.renderStates[D3DRS_SPECULARENABLE];
 
     uint32_t lightCount = 0;
 

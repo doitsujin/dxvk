@@ -218,6 +218,9 @@ uint transformFlags() {
 uint lightCount() {
     return bitfieldExtract(data.KeyPrimitives[2], 24, 4);
 }
+bool specularEnabled() {
+    return bitfieldExtract(data.KeyPrimitives[2], 28, 1) != 0;
+}
 
 uint vertexTexcoordDeclMask() {
     return bitfieldExtract(data.KeyPrimitives[3], 0, 24);
@@ -690,7 +693,11 @@ void main() {
         finalColor1 = clamp(finalColor1, vec4(0.0), vec4(1.0));
 
         out_Color0 = finalColor0;
-        out_Color1 = finalColor1;
+        if (specularEnabled()) {
+            out_Color1 = finalColor1;
+        } else {
+            out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
+        }
     } else {
         out_Color0 = vertexHasColor0() ? in_Color0 : vec4(1.0);
         out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);

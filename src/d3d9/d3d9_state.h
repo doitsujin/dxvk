@@ -127,6 +127,8 @@ namespace dxvk {
         uint32_t LocalViewer : 1;
         uint32_t RangeFog : 1;
 
+        // End of uint32_t
+
         uint32_t TexcoordFlags : 24;
 
         uint32_t DiffuseSource : 2;
@@ -134,9 +136,14 @@ namespace dxvk {
         uint32_t SpecularSource : 2;
         uint32_t EmissiveSource : 2;
 
+        // Next uint32_t
+
         uint32_t TransformFlags : 24;
 
         uint32_t LightCount : 4;
+        uint32_t SpecularEnabled : 1;
+
+        // End of uint32_t
 
         uint32_t VertexTexcoordDeclMask : 24;
         uint32_t VertexHasFog : 1;
@@ -146,6 +153,8 @@ namespace dxvk {
         uint32_t VertexBlendCount   : 2;
 
         uint32_t VertexClipping     : 1;
+
+        // End of uint32_t
       } Contents;
 
       uint32_t Primitive[5];
