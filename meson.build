@@ -194,6 +194,9 @@ glsl_args = [
   '@INPUT@',
   '-o', '@OUTPUT@',
 ]
+if get_option('debug')
+  glsl_args += ['-gVS']
+endif
 glsl_generator = generator(
   glsl_compiler,
   output    : [ '@BASENAME@.h' ],
