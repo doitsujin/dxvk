@@ -1712,6 +1712,8 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
+    bool wasBound = HasRenderTargetBound(RenderTargetIndex);
+
     m_state.renderTargets[RenderTargetIndex] = rt;
 
     // Do a strong flush if the first render target is changed.
@@ -1740,9 +1742,6 @@ namespace dxvk {
         texInfo->SetNeedsMipGen(true);
     }
 
-    // Update hazards now that the RT has changed
-    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
-
     // The blend factors need to get adjusted to the swizzle.
     if (oldAlphaSwizzleRTs != m_rtSlotTracking.hasAlphaSwizzle)
       m_dirty.set(D3D9DeviceDirtyFlag::BlendState);
@@ -1769,7 +1768,15 @@ namespace dxvk {
         m_dirty.set(D3D9DeviceDirtyFlag::MultiSampleState);
         m_dirty.set(D3D9DeviceDirtyFlag::AlphaTestState);
       }
+
+      // We need to update the fixed function pixel shader masks because they
+      // depend on whether or not it's a depth-only pass.
+      if (HasRenderTargetBound(RenderTargetIndex) != wasBound)
+        m_dirty.set(D3D9DeviceDirtyFlag::FFPSMasks);
     }
+
+    // Update hazards now that the RT has changed
+    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
 
     return D3D_OK;
   }
@@ -6363,31 +6370,85 @@ namespace dxvk {
 
   template <uint32_t Index>
   inline void D3D9DeviceEx::UpdateAnyColorWrites() {
+    // Writes to render target 0 have been enabled and the RT might not be bound due to the 1x1 hack.
+    if (Index == 0 && m_state.renderStates[ColorWriteIndex(0)] && m_state.depthStencil != nullptr)
+      m_dirty.set(D3D9DeviceDirtyFlag::Framebuffer);
+
+    // We need to update the fixed function pixel shader masks because they
+    // depend on whether or not it's a depth-only pass.
+    m_dirty.set(D3D9DeviceDirtyFlag::FFPSMasks);
+
     // Writes to a render target have been enabled => check for hazards
     UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
-
-    // Writes to render target 0 have been enabled and the RT might not be bound due to the 1x1 hack.
-    if (Index == 0 && m_state.depthStencil != nullptr)
-      m_dirty.set(D3D9DeviceDirtyFlag::Framebuffer);
   }
 
 
   D3D9ShaderMasks D3D9DeviceEx::BuildFFShaderMasks() const {
     D3D9ShaderMasks mask;
+    mask.samplerMask = 0u;
     mask.rtMask = 0b1u;
+
+    bool colorUsed = HasRenderTargetBound(0u) && m_state.renderStates[ColorWriteIndex(0u)] != 0u;
+    uint8_t alphaTempInfluencedByTexture = 0u;
+    uint8_t alphaCurrentInfluencedByTexture = 0u;
     for (uint32_t i = 0u; i < m_state.textureStages->size(); i++) {
       const auto& stage = m_state.textureStages[i];
       if (stage[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
         break;
 
-      if ((stage[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+      if (colorUsed) {
+        bool textureArg = (stage[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (stage[DXVK_TSS_ALPHAARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (stage[DXVK_TSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (stage[DXVK_TSS_ALPHAARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (stage[DXVK_TSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (stage[DXVK_TSS_ALPHAARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE)
-        mask.samplerMask |= (1u << i);
+        || (stage[DXVK_TSS_ALPHAARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE;
+        mask.samplerMask |= uint8_t(textureArg) << i;
+        continue;
+      }
+
+      // Find texture accesses that aren't being overwritten by a constant later.
+      // Dawn of War Definitive Edition hits this for the depth prepass.
+      // This case is only really likely to happen in depth passes
+      // where the fixed function stages are configured the same way
+      // as for regular color passes.
+
+      bool resultAsTemp = stage[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
+
+      uint8_t influenceMask = 0u;
+      if (stage[DXVK_TSS_ALPHAOP] != D3DTOP_SELECTARG2) {
+        switch (stage[DXVK_TSS_ALPHAARG1] & D3DTA_SELECTMASK) {
+          case D3DTA_TEMP:    influenceMask |= alphaTempInfluencedByTexture;    break;
+          case D3DTA_CURRENT: influenceMask |= alphaCurrentInfluencedByTexture; break;
+          case D3DTA_TEXTURE: influenceMask |= 1u << i;                         break;
+        }
+      }
+
+      if (stage[DXVK_TSS_ALPHAOP] != D3DTOP_SELECTARG1) {
+        switch (stage[DXVK_TSS_ALPHAARG2] & D3DTA_SELECTMASK) {
+          case D3DTA_TEMP:    influenceMask |= alphaTempInfluencedByTexture;    break;
+          case D3DTA_CURRENT: influenceMask |= alphaCurrentInfluencedByTexture; break;
+          case D3DTA_TEXTURE: influenceMask |= 1u << i;                         break;
+        }
+      }
+
+      if (stage[DXVK_TSS_ALPHAOP] == D3DTOP_SELECTARG1 || stage[DXVK_TSS_ALPHAOP] == D3DTOP_SELECTARG2) {
+        uint32_t selectArg = (stage[DXVK_TSS_ALPHAOP] & D3DTA_SELECTMASK) == D3DTOP_SELECTARG1
+          ? stage[DXVK_TSS_ALPHAARG1]
+          : stage[DXVK_TSS_ALPHAARG2];
+        switch (selectArg) {
+          case D3DTA_CONSTANT: influenceMask = 0u;                               break;
+          case D3DTA_CURRENT:  influenceMask = alphaCurrentInfluencedByTexture; break;
+          case D3DTA_TEMP:     influenceMask = alphaTempInfluencedByTexture;    break;
+        }
+      }
+
+      if (resultAsTemp)
+        alphaTempInfluencedByTexture    = influenceMask;
+      else
+        alphaCurrentInfluencedByTexture = influenceMask;
     }
+    mask.samplerMask |= alphaTempInfluencedByTexture | alphaCurrentInfluencedByTexture;
     return mask;
   }
 
