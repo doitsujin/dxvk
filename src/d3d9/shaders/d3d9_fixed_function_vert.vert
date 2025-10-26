@@ -243,7 +243,7 @@ bool vertexClipping() {
 
 
 float calculateFog(vec4 vPos, vec4 oColor) {
-    vec4 color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
+    vec4 color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
 
     vec4 specular = color1;
     bool hasSpecular = vertexHasColor1();
@@ -696,11 +696,11 @@ void main() {
         if (specularEnabled()) {
             out_Color1 = finalColor1;
         } else {
-            out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
+            out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
         }
     } else {
-        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(1.0);
-        out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0);
+        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(0.0, 0.0, 0.0, 1.0);
+        out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
     }
 
     out_Fog = calculateFog(vtx, vec4(0.0));
