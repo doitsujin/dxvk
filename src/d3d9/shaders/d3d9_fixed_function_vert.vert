@@ -351,12 +351,12 @@ void emitVsClipping(vec4 vtx) {
 
 
 vec4 pickMaterialSource(uint source, vec4 material) {
-    if (source == D3DMCS_MATERIAL)
-        return material;
-    else if (source == D3DMCS_COLOR1)
-        return vertexHasColor0() ? in_Color0 : vec4(1.0);
+    if (source == D3DMCS_COLOR1 && vertexHasColor0())
+        return in_Color0;
+    else if (source == D3DMCS_COLOR2 && vertexHasColor1())
+        return in_Color1;
     else
-        return vertexHasColor1() ? in_Color1 : vec4(0.0);
+        return material;
 }
 
 
