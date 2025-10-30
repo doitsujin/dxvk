@@ -243,9 +243,7 @@ bool vertexClipping() {
 
 
 float calculateFog(vec4 vPos, vec4 oColor) {
-    vec4 color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
-
-    vec4 specular = color1;
+    vec4 specular = in_Color1;
     bool hasSpecular = vertexHasColor1();
 
     vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
@@ -273,10 +271,7 @@ float calculateFog(vec4 vPos, vec4 oColor) {
     } else {
         switch (fogMode) {
             case D3DFOG_NONE:
-                if (hasSpecular)
-                    fogFactor = specular.w;
-                else
-                    fogFactor = 1.0;
+                fogFactor = hasSpecular ? specular.w : 1.0;
                 break;
 
             // (end - d) / (end - start)
