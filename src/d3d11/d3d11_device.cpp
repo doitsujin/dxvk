@@ -363,7 +363,9 @@ namespace dxvk {
     if (hr != S_OK)
       return hr;
     
-    *ppSRView = view;
+    if (ppSRView)
+      *ppSRView = view;
+
     return S_OK;
   }
   
