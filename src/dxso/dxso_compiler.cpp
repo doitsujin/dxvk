@@ -3487,13 +3487,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t value;
 
-      if (semantic.usage == DxsoUsage::Color) {
+      if (semantic == DxsoSemantic{ DxsoUsage::Color, 0}) {
+        value = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
+      } else if (semantic.usage == DxsoUsage::Color) {
         value = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
       } else if (semantic == DxsoSemantic{ DxsoUsage::Fog, 0}) {
         value = m_module.constf32(0.0);
       } else {
         value = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
       }
+      // TODO: If it's used with a SM3 PS, we need to export 0,0,0,0 as the default for color1.
+      //       Implement that using a spec constant.
 
       uint32_t outputPtr = emitNewVariableDefault(info, value);
 

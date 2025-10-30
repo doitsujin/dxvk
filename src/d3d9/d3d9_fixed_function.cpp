@@ -1819,13 +1819,14 @@ namespace dxvk {
     if (m_vsKey.Data.Contents.VertexHasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     else {
-      m_vs.in.COLOR[0] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
+      m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
       m_isgn.elemCount++;
     }
 
     if (m_vsKey.Data.Contents.VertexHasColor1)
       m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
     else {
+      // TODO: SM3 behavior
       m_vs.in.COLOR[1] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
       m_isgn.elemCount++;
     }

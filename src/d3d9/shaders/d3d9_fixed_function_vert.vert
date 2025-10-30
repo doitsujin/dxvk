@@ -697,10 +697,13 @@ void main() {
             out_Color1 = finalColor1;
         } else {
             out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
+            // TODO: SM3 behavior, see below.
         }
     } else {
-        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(0.0, 0.0, 0.0, 1.0);
+        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(1.0, 1.0, 1.0, 1.0);
         out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
+        // TODO: If it's used with a SM3 PS, we need to export 0,0,0,0 as the default for color1.
+        //       Implement that using a spec constant.
     }
 
     out_Fog = calculateFog(vtx, vec4(0.0));
