@@ -3394,7 +3394,7 @@ namespace dxvk {
     }
 
     dst->SetNeedsReadback(true);
-    TrackBufferMappingBufferSequenceNumber(dst);
+    TrackBufferSequenceNumber(dst);
 
     return D3D_OK;
   }
@@ -3724,8 +3724,16 @@ namespace dxvk {
     auto& vbo = m_state.vertexBuffers[StreamNumber];
     bool needsUpdate = vbo.vertexBuffer != buffer;
 
-    if (needsUpdate)
+    if (needsUpdate) {
+      if (likely(vbo.vertexBuffer != nullptr)) {
+        D3D9CommonBuffer* oldBuffer = vbo.vertexBuffer->GetCommonBuffer();
+        oldBuffer->SetBound(StreamNumber, false);
+        if (oldBuffer->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
+          TrackBufferSequenceNumber(oldBuffer);
+        }
+      }
       vbo.vertexBuffer = buffer;
+    }
 
     const uint32_t bit = 1u << StreamNumber;
     m_vbSlotTracking.bound &= ~bit;
@@ -3733,6 +3741,8 @@ namespace dxvk {
     m_vbSlotTracking.needsUpload &= ~bit;
 
     if (buffer != nullptr) {
+      buffer->GetCommonBuffer()->SetBound(StreamNumber, true);
+
       needsUpdate |= vbo.offset != OffsetInBytes
                   || vbo.stride != Stride;
 
@@ -3853,13 +3863,23 @@ namespace dxvk {
     if (buffer == m_state.indices.ptr())
       return D3D_OK;
 
+    if (likely(m_state.indices != nullptr)) {
+      D3D9CommonBuffer* oldBuffer = m_state.indices->GetCommonBuffer();
+      oldBuffer->SetBound(0, false);
+      if (oldBuffer->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
+        TrackBufferSequenceNumber(oldBuffer);
+      }
+    }
+
     m_state.indices = buffer;
 
     // Don't unbind the buffer if the game sets a nullptr here.
     // Operation Flashpoint Red River breaks if we do that.
     // EndScene will clean it up if necessary.
-    if (buffer != nullptr)
+    if (buffer != nullptr) {
+      buffer->GetCommonBuffer()->SetBound(0, true);
       BindIndices();
+    }
 
     return D3D_OK;
   }
@@ -5619,7 +5639,7 @@ namespace dxvk {
     });
 
     pResource->DirtyRange().Clear();
-    TrackBufferMappingBufferSequenceNumber(pResource);
+    TrackBufferSequenceNumber(pResource);
 
     UnmapTextures();
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
@@ -8958,10 +8978,10 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  void D3D9DeviceEx::TrackBufferMappingBufferSequenceNumber(
+  void D3D9DeviceEx::TrackBufferSequenceNumber(
         D3D9CommonBuffer* pResource) {
     uint64_t sequenceNumber = GetCurrentSequenceNumber();
-    pResource->TrackMappingBufferSequenceNumber(sequenceNumber);
+    pResource->TrackBufferSequenceNumber(sequenceNumber);
   }
 
   void D3D9DeviceEx::TrackTextureMappingBufferSequenceNumber(
