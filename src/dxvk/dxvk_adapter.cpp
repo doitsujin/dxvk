@@ -25,12 +25,26 @@ namespace dxvk {
   : m_instance      (&instance),
     m_handle        (handle),
     m_capabilities  (instance, handle, nullptr) {
+    const auto& properties = m_capabilities.getProperties();
 
+    if (properties.vk11.deviceLUIDValid) {
+      D3DKMT_OPENADAPTERFROMLUID open = { };
+      memcpy(&open.AdapterLuid, properties.vk11.deviceLUID, sizeof(open.AdapterLuid));
+
+      if (D3DKMTOpenAdapterFromLuid(&open))
+        Logger::warn("Failed to open D3DKMT adapter");
+      else
+        m_kmtLocal = open.hAdapter;
+    }
   }
   
   
   DxvkAdapter::~DxvkAdapter() {
-    
+    if (m_kmtLocal) {
+      D3DKMT_CLOSEADAPTER close = { };
+      close.hAdapter = m_kmtLocal;
+      D3DKMTCloseAdapter(&close);
+    }
   }
 
 
