@@ -68,13 +68,9 @@ namespace dxvk {
     }
     
     Com& operator = (T* object) {
-      // prevents the destruction of private
-      // Com objects during self-assignment
-      if (likely(m_ptr != object)) {
-        this->decRef();
-        m_ptr = object;
-        this->incRef();
-      }
+      this->decRef();
+      m_ptr = object;
+      this->incRef();
       return *this;
     }
     
