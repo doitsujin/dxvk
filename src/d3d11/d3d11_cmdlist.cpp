@@ -54,8 +54,8 @@ namespace dxvk {
   }
 
 
-  uint64_t D3D11CommandList::AddChunk(DxvkCsChunkRef&& Chunk) {
-    m_chunks.push_back(std::move(Chunk));
+  uint64_t D3D11CommandList::AddChunk(DxvkCsChunkRef&& Chunk, uint64_t Cost) {
+    m_chunks.emplace_back(std::move(Chunk), Cost);
     return m_chunks.size() - 1;
   }
   
@@ -99,7 +99,7 @@ namespace dxvk {
         flushType = GpuFlushType::ImplicitStrongHint;
 
       // Dispatch the chunk and capture its sequence number
-      uint64_t seq = DispatchProc(DxvkCsChunkRef(m_chunks[i]), flushType);
+      uint64_t seq = DispatchProc(DxvkCsChunkRef(m_chunks[i].chunk), m_chunks[i].cost, flushType);
 
       // Track resource sequence numbers for the added chunk
       while (j < m_resources.size() && m_resources[j].chunkId == i)

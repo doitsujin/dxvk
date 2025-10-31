@@ -395,6 +395,8 @@ namespace dxvk {
     if (counterView == nullptr)
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
       cSrcSlice = DxvkBufferSlice(counterView)
@@ -423,6 +425,8 @@ namespace dxvk {
     if (!rtv)
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     auto view  = rtv->GetImageView();
     auto color = ConvertColorValue(ColorRGBA, view->formatInfo());
 
@@ -450,6 +454,8 @@ namespace dxvk {
 
     if (FAILED(pUnorderedAccessView->QueryInterface(IID_PPV_ARGS(&qiUav))))
       return;
+
+    AddCost(GpuCostEstimate::Transfer);
 
     auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
 
@@ -598,6 +604,8 @@ namespace dxvk {
     if (!info || info->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt))
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     VkClearValue clearValue;
     clearValue.color.float32[0] = Values[0];
     clearValue.color.float32[1] = Values[1];
@@ -657,6 +665,8 @@ namespace dxvk {
     if (!aspectMask)
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     VkClearValue clearValue;
     clearValue.depthStencil.depth   = Depth;
     clearValue.depthStencil.stencil = Stencil;
@@ -682,6 +692,8 @@ namespace dxvk {
 
     if (NumRects && !pRect)
       return;
+
+    AddCost(GpuCostEstimate::Transfer);
 
     // ID3D11View has no methods to query the exact type of
     // the view, so we'll have to check each possible class
@@ -768,6 +780,8 @@ namespace dxvk {
     if (!(resourceDesc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS))
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     EmitCs([cDstImageView = view->GetImageView()]
     (DxvkContext* ctx) {
       ctx->generateMipmaps(cDstImageView, VK_FILTER_LINEAR);
@@ -824,6 +838,8 @@ namespace dxvk {
     if (DstSubresource >= dstTextureInfo->CountSubresources()
      || SrcSubresource >= srcTextureInfo->CountSubresources())
       return;
+
+    AddCost(GpuCostEstimate::Transfer);
 
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
@@ -1148,6 +1164,8 @@ namespace dxvk {
     if (unlikely(!ThreadGroupCountX || !ThreadGroupCountY || !ThreadGroupCountZ))
       return;
 
+    AddCost(GpuCostEstimate::Dispatch);
+
     if (unlikely(HasDirtyComputeBindings()))
       ApplyDirtyComputeBindings();
 
@@ -1169,6 +1187,8 @@ namespace dxvk {
 
     if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDispatchIndirectCommand)))
       return;
+
+    AddCost(GpuCostEstimate::DispatchIndirect);
 
     if (unlikely(HasDirtyComputeBindings()))
       ApplyDirtyComputeBindings();
@@ -4151,6 +4171,8 @@ namespace dxvk {
     if (SrcOffset >= srcLength || DstOffset >= dstLength || !ByteCount)
       return;
 
+    AddCost(GpuCostEstimate::Transfer);
+
     ByteCount = std::min(dstLength - DstOffset, ByteCount);
     ByteCount = std::min(srcLength - SrcOffset, ByteCount);
 
@@ -4233,6 +4255,8 @@ namespace dxvk {
 
     if (!SrcExtent.width || !SrcExtent.height || !SrcExtent.depth)
       return;
+
+    AddCost(GpuCostEstimate::Transfer);
 
     // While copying between 2D and 3D images is allowed in CopySubresourceRegion,
     // copying more than one slice at a time is not suppoted. Layer counts are 1.
@@ -4460,6 +4484,8 @@ namespace dxvk {
 
       tiles[i] = tile;
     }
+
+    AddCost(GpuCostEstimate::Transfer);
 
     // If D3D12 is anything to go by, not passing this flag will trigger
     // the other code path, regardless of whether TO_LINEAR_BUFFER is set.
@@ -5372,6 +5398,7 @@ namespace dxvk {
     }
 
     if (needsUpdate) {
+      AddCost(GpuCostEstimate::RenderPass);
       BindFramebuffer();
 
       if constexpr (!IsDeferred)

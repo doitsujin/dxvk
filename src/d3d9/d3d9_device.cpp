@@ -5876,7 +5876,7 @@ namespace dxvk {
     uint64_t chunkId = GetCurrentSequenceNumber();
     uint64_t submissionId = m_submissionFence->value();
 
-    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
+    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId, 0u))
       Flush();
   }
 

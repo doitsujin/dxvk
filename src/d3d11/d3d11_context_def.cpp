@@ -397,7 +397,8 @@ namespace dxvk {
   
   
   void D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_chunkId = m_commandList->AddChunk(std::move(chunk));
+    m_chunkId = m_commandList->AddChunk(std::move(chunk), m_estimatedCost);
+    m_estimatedCost = 0u;
   }
 
 

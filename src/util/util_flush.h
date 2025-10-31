@@ -7,6 +7,33 @@
 namespace dxvk {
 
   /**
+   * \brief GPU cost estimate for various operations
+   *
+   * These provide only a very rough estimate for GPU execution times,
+   * which can be useful to avoid GPU time-outs in some situations.
+   */
+  struct GpuCostEstimate {
+    /** Assume that compute dispatches are much more expensive than draws
+     *  regardless of workgroup counts. This is not always true, but may
+     *  help account for immediate synchronization or complex shaders that
+     *  we do not generally have any up-front knowledge about. */
+    static constexpr uint64_t Dispatch              = 4u;
+    static constexpr uint64_t DispatchIndirect      = 5u;
+    /** Assume a high base cost per render pass. We're not counting draws
+     *  in order to avoid splitting passes on tiling GPUs, and draw costs
+     *  can vary wildly anyway. */
+    static constexpr uint64_t RenderPass            = 10u;
+    /** Transfer cost can vary wildly, but so do use cases. Just assume
+     *  a low cost, especially since synchronization on back-to-back
+     *  transfers is unlikely to be necessary. */
+    static constexpr uint64_t Transfer              = 2u;
+
+    /** Cost threshold at which submissions are always preferred */
+    static constexpr uint64_t MaxCostPerSubmission  = 1'500u;
+  };
+
+
+  /**
    * \brief GPU context flush type
    */
   enum class GpuFlushType : uint32_t {
@@ -60,12 +87,14 @@ namespace dxvk {
      * \param [in] flushType Flush type
      * \param [in] chunkId GPU command sequence number
      * \param [in] lastCompleteSubmissionId Last completed command submission ID
+     * \param [in] estimatedCost Estimated submission cost
      * \returns \c true if a flush should be performed
      */
     bool considerFlush(
             GpuFlushType          flushType,
             uint64_t              chunkId,
-            uint32_t              lastCompleteSubmissionId);
+            uint32_t              lastCompleteSubmissionId,
+            uint64_t              estimatedCost);
 
     /**
      * \brief Notifies tracker about a context flush

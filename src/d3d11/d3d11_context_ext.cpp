@@ -69,7 +69,7 @@ namespace dxvk {
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
-    
+
     if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
       m_ctx->ApplyDirtyGraphicsBindings();
 
@@ -212,6 +212,8 @@ namespace dxvk {
     launchInfo.shader = cubinShader;
 
     /* Need to capture by value in case this gets called from a deferred context */
+    m_ctx->AddCost(GpuCostEstimate::Dispatch);
+
     m_ctx->EmitCs([cLaunchInfo = std::move(launchInfo)] (DxvkContext* ctx) {
       ctx->launchCuKernelNVX(cLaunchInfo.nvxLaunchInfo, cLaunchInfo.buffers, cLaunchInfo.images);
     });
