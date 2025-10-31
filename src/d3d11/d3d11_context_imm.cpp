@@ -261,7 +261,7 @@ namespace dxvk {
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     // Dispatch command list to the CS thread
-    commandList->EmitToCsThread([this] (DxvkCsChunkRef&& chunk, GpuFlushType flushType) {
+    commandList->EmitToCsThread([this] (DxvkCsChunkRef&& chunk, uint64_t cost, GpuFlushType flushType) {
       EmitCsChunk(std::move(chunk));
 
       // Return the sequence number from before the flush since
@@ -270,6 +270,7 @@ namespace dxvk {
 
       // Consider a flush after every chunk in case the app
       // submits a very large command list or the GPU is idle
+      AddCost(cost);
       ConsiderFlush(flushType);
       return csSeqNum;
     });
@@ -1110,7 +1111,7 @@ namespace dxvk {
     uint64_t chunkId = GetCurrentSequenceNumber();
     uint64_t submissionId = m_submissionFence->value();
 
-    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
+    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId, m_estimatedCost))
       ExecuteFlush(FlushType, nullptr, false);
   }
 
@@ -1173,6 +1174,9 @@ namespace dxvk {
     // Reset counter for discarded memory in flight
     m_discardMemoryOnFlush = m_discardMemoryCounter;
 
+    // Reset GPU execution cost estimate
+    m_estimatedCost = 0u;
+
     // Notify the device that the context has been flushed,
     // this resets some resource initialization heuristics.
     m_parent->NotifyContextFlush();
@@ -1209,6 +1213,9 @@ namespace dxvk {
 
 
   void D3D11ImmediateContext::NotifyRenderPassBoundary() {
+    // Doing this makes it less likely to flush during render passes
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
     if (m_device->perfHints().preferRenderPassOps) {
       // On tilers, we want to avoid submitting during a render pass or a sequence
       // of render passes as much as possible, but if a submission request has been
@@ -1217,9 +1224,6 @@ namespace dxvk {
 
       if (pending != GpuFlushType::None)
         ExecuteFlush(pending, nullptr, false);
-    } else {
-      // Doing this makes it less likely to flush during render passes
-      ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     }
   }
 

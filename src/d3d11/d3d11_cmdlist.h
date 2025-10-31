@@ -6,7 +6,7 @@
 
 namespace dxvk {
   
-  using D3D11ChunkDispatchProc = std::function<uint64_t (DxvkCsChunkRef&&, GpuFlushType)>;
+  using D3D11ChunkDispatchProc = std::function<uint64_t (DxvkCsChunkRef&&, uint64_t, GpuFlushType)>;
 
   class D3D11CommandList : public D3D11DeviceChild<ID3D11CommandList> {
     
@@ -28,7 +28,8 @@ namespace dxvk {
             D3D11Query*         pQuery);
     
     uint64_t AddChunk(
-            DxvkCsChunkRef&&    Chunk);
+            DxvkCsChunkRef&&    Chunk,
+            uint64_t            Cost);
 
     uint64_t AddCommandList(
             D3D11CommandList*   pCommandList);
@@ -44,6 +45,14 @@ namespace dxvk {
 
   private:
 
+    struct ChunkEntry {
+      ChunkEntry() = default;
+      ChunkEntry(DxvkCsChunkRef&& c, uint64_t v)
+      : chunk(std::move(c)), cost(v) { }
+      DxvkCsChunkRef chunk = { };
+      uint64_t cost = 0u;
+    };
+
     struct TrackedResource {
       D3D11ResourceRef  ref;
       uint64_t          chunkId;
@@ -51,7 +60,7 @@ namespace dxvk {
 
     UINT m_contextFlags = 0u;
 
-    std::vector<DxvkCsChunkRef>         m_chunks;
+    std::vector<ChunkEntry>             m_chunks;
     std::vector<Com<D3D11Query, false>> m_queries;
     std::vector<TrackedResource>        m_resources;
 

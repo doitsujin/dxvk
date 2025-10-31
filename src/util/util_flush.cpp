@@ -1,4 +1,6 @@
 #include "util_flush.h"
+#include "util_string.h"
+#include "log/log.h"
 
 namespace dxvk {
 
@@ -10,7 +12,8 @@ namespace dxvk {
   bool GpuFlushTracker::considerFlush(
           GpuFlushType          flushType,
           uint64_t              chunkId,
-          uint32_t              lastCompleteSubmissionId) {
+          uint32_t              lastCompleteSubmissionId,
+          uint64_t              estimatedCost) {
     constexpr uint32_t minPendingSubmissions = 2;
 
     constexpr uint32_t minChunkCount =  3u;
@@ -22,8 +25,11 @@ namespace dxvk {
     if (!chunkCount)
       return false;
 
+    // Deliberately ignore cost heuristic if we're not categorically ignoring
+    // submission requests anyway, since we should never submit enough to time
+    // out with the chunk-based heuristic.
     if (flushType > m_maxType)
-      return false;
+      return estimatedCost >= GpuCostEstimate::MaxCostPerSubmission;
 
     // Take any earlier missed flush with a stronger hint into account, so
     // that we still flush those as soon as possible. Ignore synchronization

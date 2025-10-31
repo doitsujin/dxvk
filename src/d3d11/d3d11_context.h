@@ -79,7 +79,6 @@ namespace dxvk {
   protected:
     // Compile-time debug flag to force lazy binding on (True) or off (False)
     constexpr static Tristate DebugLazyBinding = Tristate::Auto;
-
   public:
     
     D3D11CommonContext(
@@ -799,6 +798,8 @@ namespace dxvk {
     DxvkCsChunkRef              m_csChunk;
     DxvkCsDataBlock*            m_csData = nullptr;
 
+    uint64_t                    m_estimatedCost = 0u;
+
     DxvkLocalAllocationCache    m_allocationCache;
 
     D3D11ShaderStageState<Rc<DxvkBuffer>> m_instanceData;
@@ -1180,6 +1181,10 @@ namespace dxvk {
 
     Rc<DxvkBuffer> AllocInstanceDataBuffer(
             D3D11ShaderType                   ShaderStage);
+
+    force_inline void AddCost(uint64_t Value) {
+      m_estimatedCost += Value;
+    }
 
     static DxvkInputAssemblyState InitDefaultPrimitiveTopology();
 
