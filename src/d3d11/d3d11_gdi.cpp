@@ -45,7 +45,7 @@ namespace dxvk {
       m_readback->Release();
 
     D3DKMT_DESTROYDCFROMMEMORY desc;
-    desc.hDC     = m_hdc;
+    desc.hDc     = m_hdc;
     desc.hBitmap = m_hbitmap;
     D3DKMTDestroyDCFromMemory(&desc);
   }

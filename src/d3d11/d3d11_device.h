@@ -575,6 +575,11 @@ namespace dxvk {
       const Rc<DxvkDevice>&             Device,
       const D3D11Options&               Options);
 
+    static bool ConvertRuntimeDescriptor(
+      UINT                       size,
+      const union d3dkmt_desc&   d3dkmt,
+      D3D11_COMMON_TEXTURE_DESC* desc);
+
   };
   
   

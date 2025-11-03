@@ -350,6 +350,9 @@ inline bool operator != (const D3DVIEWPORT9& a, const D3DVIEWPORT9& b) {
   return !(a == b);
 }
 
+
+// Missing in some versions of mingw headers
+#ifndef _MSC_VER
 inline bool operator == (const RECT& a, const RECT& b) {
   return a.left   == b.left  &&
          a.right  == b.right &&
@@ -360,6 +363,7 @@ inline bool operator == (const RECT& a, const RECT& b) {
 inline bool operator != (const RECT& a, const RECT& b) {
   return !(a == b);
 }
+#endif /* _MSC_VER */
 
 inline bool operator == (const POINT& a, const POINT& b) {
   return a.x == b.x && a.y == b.y;

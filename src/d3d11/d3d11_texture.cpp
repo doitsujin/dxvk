@@ -64,6 +64,7 @@ namespace dxvk {
       imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
         ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
         : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+      imageInfo.sharing.keyedMutex = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX);
       imageInfo.sharing.handle = hSharedHandle;
     }
 
@@ -721,6 +722,70 @@ namespace dxvk {
   
   
   void D3D11CommonTexture::ExportImageInfo() {
+    struct d3dkmt_d3d11_desc desc = { };
+    desc.dxgi.size = sizeof(desc);
+    desc.dxgi.version = 4;
+    desc.dxgi.keyed_mutex = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX);
+    desc.dxgi.nt_shared = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE);
+    desc.dimension = m_dimension;
+
+    if (desc.dxgi.keyed_mutex) {
+      auto keyedMutex = m_image->getKeyedMutex();
+      desc.dxgi.mutex_handle = keyedMutex ? keyedMutex->kmtGlobal() : 0;
+
+      auto syncObject = m_image->getSyncObject();
+      desc.dxgi.sync_handle = syncObject ? syncObject->kmtGlobal() : 0;
+    }
+
+    switch (m_dimension) {
+      case D3D11_RESOURCE_DIMENSION_UNKNOWN: break;
+      case D3D11_RESOURCE_DIMENSION_BUFFER: break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+        desc.d3d11_1d.Width = m_desc.Width;
+        desc.d3d11_1d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_1d.ArraySize = m_desc.ArraySize;
+        desc.d3d11_1d.Format = m_desc.Format;
+        desc.d3d11_1d.Usage = m_desc.Usage;
+        desc.d3d11_1d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_1d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_1d.MiscFlags = m_desc.MiscFlags;
+        break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+        desc.d3d11_2d.Width = m_desc.Width;
+        desc.d3d11_2d.Height = m_desc.Height;
+        desc.d3d11_2d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_2d.ArraySize = m_desc.ArraySize;
+        desc.d3d11_2d.Format = m_desc.Format;
+        desc.d3d11_2d.SampleDesc = m_desc.SampleDesc;
+        desc.d3d11_2d.Usage = m_desc.Usage;
+        desc.d3d11_2d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_2d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_2d.MiscFlags = m_desc.MiscFlags;
+        break;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+        desc.d3d11_3d.Width = m_desc.Width;
+        desc.d3d11_3d.Height = m_desc.Height;
+        desc.d3d11_3d.Depth = m_desc.Depth;
+        desc.d3d11_3d.MipLevels = m_desc.MipLevels;
+        desc.d3d11_3d.Format = m_desc.Format;
+        desc.d3d11_3d.Usage = m_desc.Usage;
+        desc.d3d11_3d.BindFlags = m_desc.BindFlags;
+        desc.d3d11_3d.CPUAccessFlags = m_desc.CPUAccessFlags;
+        desc.d3d11_3d.MiscFlags = m_desc.MiscFlags;
+        break;
+    }
+
+    D3DKMT_ESCAPE escape = { };
+    escape.Type = D3DKMT_ESCAPE_UPDATE_RESOURCE_WINE;
+    escape.pPrivateDriverData = &desc;
+    escape.PrivateDriverDataSize = sizeof(desc);
+    escape.hContext = m_image->storage()->kmtLocal();
+
+    if (!D3DKMTEscape(&escape))
+      return;
+
+    /* try the legacy Proton shared resource implementation */
+
     HANDLE hSharedHandle;
 
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)

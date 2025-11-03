@@ -237,18 +237,21 @@ namespace dxvk {
     DeleteDC(createInfo.hDeviceDc);
 
     // These should now be set...
-    m_dcDesc.hDC     = createInfo.hDc;
-    m_dcDesc.hBitmap = createInfo.hBitmap;
+    m_hdc     = createInfo.hDc;
+    m_hbitmap = createInfo.hBitmap;
 
-    *phDC = m_dcDesc.hDC;
+    *phDC = m_hdc;
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::ReleaseDC(HDC hDC) {
-    if (unlikely(m_dcDesc.hDC == nullptr || m_dcDesc.hDC != hDC))
+    if (unlikely(m_hdc == nullptr || m_hdc != hDC))
       return D3DERR_INVALIDCALL;
 
-    D3DKMTDestroyDCFromMemory(&m_dcDesc);
+    D3DKMT_DESTROYDCFROMMEMORY desc;
+    desc.hDc     = m_hdc;
+    desc.hBitmap = m_hbitmap;
+    D3DKMTDestroyDCFromMemory(&desc);
 
     HRESULT hr = UnlockRect();
     if (FAILED(hr))

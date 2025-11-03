@@ -4,6 +4,7 @@
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 
+#include "../util/util_win32_compat.h"
 #include "../util/util_shared_res.h"
 
 namespace dxvk {
@@ -93,6 +94,27 @@ namespace dxvk {
     }
 
     D3D11CommonTexture* texture = GetCommonTexture(m_resource);
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    if (keyedMutex && keyedMutex->kmtLocal()) {
+      LARGE_INTEGER timeout = { };
+      D3DKMT_ACQUIREKEYEDMUTEX acquire = { };
+      acquire.hKeyedMutex = keyedMutex->kmtLocal();
+      acquire.Key = Key;
+      acquire.pTimeout = &timeout;
+      timeout.QuadPart = dwMilliseconds * -10000;
+
+      NTSTATUS status = D3DKMTAcquireKeyedMutex(&acquire);
+      if (status == STATUS_TIMEOUT)
+        return WAIT_TIMEOUT;
+      if (status)
+        return DXGI_ERROR_INVALID_CALL;
+
+      m_fenceValue = acquire.FenceValue;
+      return S_OK;
+    }
+
+    /* try legacy Proton shared resource implementation */
+
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
     VkResult vr = dxvkDevice->vkd()->wine_vkAcquireKeyedMutex(
@@ -123,6 +145,33 @@ namespace dxvk {
 
       D3D10DeviceLock lock = context->LockContext();
       context->WaitForResource(*texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+    }
+
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    if (keyedMutex && keyedMutex->kmtLocal()) {
+      auto syncObject = texture->GetImage()->getSyncObject();
+      if (syncObject) {
+        VkSemaphoreSignalInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_SIGNAL_INFO };
+        info.semaphore = syncObject->handle();
+        info.value = m_fenceValue + 1;
+
+        if (dxvkDevice->vkd()->vkSignalSemaphore(dxvkDevice->handle(), &info)) {
+          Logger::warn("D3D11DXGIKeyedMutex::ReleaseSync: Failed to signal semaphore");
+          return DXGI_ERROR_INVALID_CALL;
+        }
+      }
+
+      D3DKMT_RELEASEKEYEDMUTEX release = { };
+      release.hKeyedMutex = keyedMutex->kmtLocal();
+      release.Key = Key;
+      release.FenceValue = m_fenceValue + 1;
+
+      if (D3DKMTReleaseKeyedMutex(&release)) {
+        Logger::warn("D3D11DXGIKeyedMutex::ReleaseSync: Failed to release mutex.");
+        return DXGI_ERROR_INVALID_CALL;
+      }
+
+      return S_OK;
     }
 
     VkResult vr = dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(
@@ -220,6 +269,14 @@ namespace dxvk {
       return S_OK;
     }
 
+    D3DKMT_HANDLE global = texture->GetImage()->storage()->kmtGlobal();
+    if (global) {
+      *pSharedHandle = (HANDLE)(uintptr_t)global;
+      return S_OK;
+    }
+
+    /* try legacy Proton shared resource implementation */
+
     HANDLE kmtHandle = texture->GetImage()->sharedHandle();
 
     if (kmtHandle == INVALID_HANDLE_VALUE)
@@ -280,6 +337,41 @@ namespace dxvk {
     if (texture == nullptr || pHandle == nullptr ||
         !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE))
       return E_INVALIDARG;
+
+    OBJECT_ATTRIBUTES attr = { };
+    attr.Length = sizeof(attr);
+    attr.SecurityDescriptor = (void *)pAttributes;
+
+    WCHAR buffer[MAX_PATH];
+    UNICODE_STRING name_str;
+    if (lpName) {
+        DWORD session, len, name_len = wcslen(lpName);
+
+        ProcessIdToSessionId(GetCurrentProcessId(), &session);
+        len = swprintf(buffer, ARRAYSIZE(buffer), L"\\Sessions\\%u\\BaseNamedObjects\\", session);
+        memcpy(buffer + len, lpName, (name_len + 1) * sizeof(WCHAR));
+        name_str.MaximumLength = name_str.Length = (len + name_len) * sizeof(WCHAR);
+        name_str.MaximumLength += sizeof(WCHAR);
+        name_str.Buffer = buffer;
+
+        attr.ObjectName = &name_str;
+        attr.Attributes = OBJ_CASE_INSENSITIVE;
+    }
+
+    D3DKMT_HANDLE local = texture->GetImage()->storage()->kmtLocal();
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    auto syncObject = texture->GetImage()->getSyncObject();
+
+    if (keyedMutex && keyedMutex->kmtLocal() && !keyedMutex->kmtGlobal() &&
+        syncObject && syncObject->kmtLocal() && !syncObject->kmtGlobal()) {
+      D3DKMT_HANDLE handles[] = {local, keyedMutex->kmtLocal(), syncObject->kmtLocal()};
+      if (!D3DKMTShareObjects(3, handles, &attr, dwAccess, pHandle))
+        return S_OK;
+    } else if (!D3DKMTShareObjects(1, &local, &attr, dwAccess, pHandle)) {
+      return S_OK;
+    }
+
+    /* try legacy Proton shared resource implementation */
 
     if (lpName)
       Logger::warn("Naming shared resources not supported");
