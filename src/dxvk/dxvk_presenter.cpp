@@ -44,6 +44,11 @@ namespace dxvk {
     // with present operations and periodically signals the event
     if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
+
+    // Gamescope WSI is currently broken and doesn't properly signal
+    // the present fence if presentation is queued but fails.
+    // TODO Remove this hack when this gets fixed in stable SteamOS.
+    m_hasGamescopeFenceSignalBug = env::getEnvVar("ENABLE_GAMESCOPE_WSI") == "1";
   }
 
   
@@ -208,6 +213,9 @@ namespace dxvk {
       currSync.fenceSignaled = status != VK_ERROR_OUT_OF_DEVICE_MEMORY
                             && status != VK_ERROR_OUT_OF_HOST_MEMORY
                             && status != VK_ERROR_DEVICE_LOST;
+
+      if (m_hasGamescopeFenceSignalBug)
+        currSync.fenceSignaled = status >= 0;
     }
 
     if (status >= 0) {
