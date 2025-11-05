@@ -1,6 +1,6 @@
 #include "d3d8_volume.h"
 
-#include "d3d8_d3d9_util.h"
+#include "d3d8_util.h"
 
 namespace dxvk {
 

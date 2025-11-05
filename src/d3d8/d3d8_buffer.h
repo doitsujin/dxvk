@@ -50,8 +50,8 @@ namespace dxvk {
 
   protected:
 
-    const D3D8Options* m_options;
-    const DWORD        m_usage;
+    const D3D8Options* m_options = nullptr;
+    const DWORD        m_usage   = 0;
 
   };
 
