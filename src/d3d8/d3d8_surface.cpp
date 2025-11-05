@@ -1,7 +1,7 @@
 #include "d3d8_surface.h"
 #include "d3d8_device.h"
 
-#include "d3d8_d3d9_util.h"
+#include "d3d8_util.h"
 
 namespace dxvk {
 
@@ -38,7 +38,7 @@ namespace dxvk {
       D3DLOCKED_RECT* pLockedRect,
       CONST RECT*     pRect,
       DWORD           Flags) {
-    return GetD3D9()->LockRect((d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
+    return GetD3D9()->LockRect(reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect), pRect, Flags);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Surface::UnlockRect() {
@@ -61,7 +61,7 @@ namespace dxvk {
 
     // NOTE: This adds a D3DPOOL_DEFAULT resource to the
     // device, which counts as losable during device reset
-    Com<d3d9::IDirect3DSurface9> image = nullptr;
+    Com<d3d9::IDirect3DSurface9> image;
     HRESULT res = GetParent()->GetD3D9()->CreateRenderTarget(
       desc.Width, desc.Height, desc.Format,
       d3d9::D3DMULTISAMPLE_NONE, 0,

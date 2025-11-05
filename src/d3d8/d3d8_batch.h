@@ -234,7 +234,7 @@ namespace dxvk {
 
   private:
 
-    D3D8Device*                     m_device8;
+    D3D8Device*                     m_device8 = nullptr;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
     D3D8BatchBuffer*                m_stream = nullptr;

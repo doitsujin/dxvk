@@ -76,7 +76,7 @@ namespace dxvk {
 
   protected:
 
-    D3D8Device* m_parent;
+    D3D8Device* m_parent = nullptr;
 
   };
 

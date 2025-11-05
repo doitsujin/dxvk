@@ -16,7 +16,7 @@ namespace dxvk {
       : m_d3d9(std::move(object)) {
     }
 
-    D3D9* GetD3D9() {
+    D3D9* GetD3D9() const {
       return m_d3d9.ptr();
     }
 

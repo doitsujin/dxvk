@@ -132,7 +132,7 @@ namespace dxvk {
 
   private:
 
-    D3D8Device*                     m_device;
+    D3D8Device*                     m_device = nullptr;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
 
     D3D8CapturableState m_state;

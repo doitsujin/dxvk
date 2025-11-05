@@ -1,8 +1,5 @@
 #pragma once
 
-// Utility functions for converting
-// between DirectX8 and DirectX9 types.
-
 #include "d3d8_include.h"
 #include "d3d8_format.h"
 #include "d3d8_options.h"
@@ -188,6 +185,22 @@ namespace dxvk {
       // 25:
       case D3DTSS_ADDRESSW:       return d3d9::D3DSAMP_ADDRESSW;
       default:                    return d3d9::D3DSAMPLERSTATETYPE(-1u);
+    }
+  }
+
+  inline DWORD isFVF(DWORD Handle) {
+    return (Handle & D3DFVF_RESERVED0) == 0;
+  }
+
+  inline DWORD getShaderHandle(DWORD Index) {
+    return (Index << 1) | D3DFVF_RESERVED0;
+  }
+
+  inline DWORD getShaderIndex(DWORD Handle) {
+    if ((Handle & D3DFVF_RESERVED0) != 0) {
+      return ((Handle & ~(D3DFVF_RESERVED0)) >> 1) - 1;
+    } else {
+      return Handle;
     }
   }
 

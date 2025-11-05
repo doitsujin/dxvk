@@ -6,7 +6,7 @@
 #include "d3d8_buffer.h"
 #include "d3d8_swapchain.h"
 #include "d3d8_state_block.h"
-#include "d3d8_d3d9_util.h"
+#include "d3d8_util.h"
 #include "d3d8_caps.h"
 #include "d3d8_batch.h"
 
