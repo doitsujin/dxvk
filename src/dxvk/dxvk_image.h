@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_descriptor_pool.h"
+#include "dxvk_fence.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_sparse.h"
@@ -335,6 +336,80 @@ namespace dxvk {
 
   };
 
+  class DxvkKeyedMutex : public RcObject {
+  public:
+
+    /**
+     * \brief Creates a new shared keyed mutex
+     */
+    DxvkKeyedMutex(
+      const Rc<DxvkDevice>& device,
+            uint64_t        initialValue,
+            bool            ntShared);
+
+    /**
+     * \brief Opens a shared keyed mutex from its D3DKMT handles
+     */
+    DxvkKeyedMutex(
+      const Rc<DxvkDevice>& device,
+            Rc<DxvkFence>&& fence,
+            D3DKMT_HANDLE   kmtLocal,
+            D3DKMT_HANDLE   kmtGlobal);
+    
+    ~DxvkKeyedMutex();
+    
+    /**
+     * \brief D3DKMT keyed mutex local handle
+     * \returns The keyed mutex D3DKMT local handle
+     * \returns \c 0 if fence is not shared
+     */
+    D3DKMT_HANDLE kmtLocal() const {
+      return m_kmtLocal;
+    }
+
+    /**
+     * \brief D3DKMT keyed mutex global handle
+     * \returns The keyed mutex D3DKMT global handle
+     * \returns \c 0 if keyed mutex is not shared or shared with NT handle
+     */
+    D3DKMT_HANDLE kmtGlobal() const {
+      return m_kmtGlobal;
+    }
+
+    /**
+     * \brief Retrieves current sync object
+     * \returns sync object guarding this image
+     */
+    Rc<DxvkFence> getSyncObject() const {
+      return m_fence;
+    }
+
+    /**
+     * \brief Try to acquire the keyed mutex
+     * \returns DXGI_ERROR_INVALID_CALL if owned already or on error
+     * \returns WAIT_TIMEOUT on timeout
+     * \returns S_OK on success
+     */
+    HRESULT AcquireSync(UINT64 key, DWORD milliseconds);
+
+    /**
+     * \brief Release the keyed mutex
+     * \returns DXGI_ERROR_INVALID_CALL if not owned or on error
+     * \returns S_OK on success
+     */
+    HRESULT ReleaseSync(UINT64 key);
+
+  private:
+
+    Rc<vk::DeviceFn>            m_vkd;
+    Rc<DxvkFence>               m_fence;
+    D3DKMT_HANDLE               m_kmtLocal  = 0;
+    D3DKMT_HANDLE               m_kmtGlobal = 0;
+
+    uint64_t                    m_fenceValue = 0;
+    std::atomic<bool>           m_owned = { false };
+
+  };
 
   /**
    * \brief Virtual image resource
@@ -622,6 +697,21 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves current keyed mutex
+     * \returns Keyed mutex guarding this image
+     */
+    Rc<DxvkKeyedMutex> getKeyedMutex() const {
+      return m_mutex;
+    }
+
+    /**
+     * \brief Sets the image keyed mutex and sync object
+     */
+    void setKeyedMutex(Rc<DxvkKeyedMutex>&& mutex) {
+      m_mutex = mutex;
+    }
+
+    /**
      * \brief Retrieves resource ID for barrier tracking
      * \returns Unique resource ID
      */
@@ -708,6 +798,8 @@ namespace dxvk {
     uint32_t                    m_version     = 0u;
     VkBool32                    m_shared      = VK_FALSE;
     VkBool32                    m_stableAddress = VK_FALSE;
+
+    Rc<DxvkKeyedMutex>          m_mutex       = nullptr;
 
     DxvkResourceImageInfo       m_imageInfo   = { };
 

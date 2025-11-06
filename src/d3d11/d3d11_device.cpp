@@ -1483,12 +1483,33 @@ namespace dxvk {
         destroy.hResource = open.hResource;
         D3DKMTDestroyAllocation(&destroy);
 
+        Rc<DxvkFence> fence;
+        if (d3dkmt.dxgi.sync_handle) {
+          DxvkFenceCreateInfo fenceInfo = { };
+          fenceInfo.sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+          fenceInfo.sharedHandle = reinterpret_cast<HANDLE>(d3dkmt.dxgi.sync_handle);
+          fence = this->GetDXVKDevice()->createFence(fenceInfo);
+        }
+
+        Rc<DxvkKeyedMutex> mutex;
+        if (d3dkmt.dxgi.keyed_mutex) {
+          D3DKMT_OPENKEYEDMUTEX openMutex = { };
+          openMutex.hSharedHandle = d3dkmt.dxgi.mutex_handle;
+
+          if (D3DKMTOpenKeyedMutex(&openMutex)) {
+            Logger::warn(str::format("D3D11Device::OpenSharedResource: Failed to open keyed mutex: ", d3dkmt.dxgi.keyed_mutex));
+          } else {
+            mutex = new DxvkKeyedMutex(m_dxvkDevice, std::move(fence), openMutex.hKeyedMutex, openMutex.hSharedHandle);
+          }
+        }
+
         D3D11_COMMON_TEXTURE_DESC desc = { };
         if (!ConvertRuntimeDescriptor(query.PrivateRuntimeDataSize, d3dkmt, &desc))
           return E_INVALIDARG;
 
         try {
           const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr, hResource);
+          texture->GetCommonTexture()->GetImage()->setKeyedMutex(std::move(mutex));
           texture->QueryInterface(ReturnedInterface, ppResource);
           return S_OK;
         }
@@ -1553,17 +1574,31 @@ namespace dxvk {
         destroy.hResource = open.hResource;
         D3DKMTDestroyAllocation(&destroy);
 
+        Rc<DxvkFence> fence;
         if (open.hSyncObject) {
+#ifdef _WIN32
+          DxvkFenceCreateInfo fenceInfo = { };
+
+          /* need to create a NT shared handle again to import the fence from it */
+          if (D3DKMTShareObjects(1, &open.hSyncObject, NULL, GENERIC_ALL, &fenceInfo.sharedHandle))
+            Logger::warn(str::format("D3D11Device::OpenSharedResource1: Failed to open sync object"));
+          else {
+            fenceInfo.sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+            fence = m_dxvkDevice->createFence(fenceInfo);
+            CloseHandle(fenceInfo.sharedHandle);
+          }
+#else
           Logger::warn(str::format("D3D11Device::OpenSharedResource1: Ignoring bundled sync object"));
+#endif
+
           D3DKMT_DESTROYSYNCHRONIZATIONOBJECT destroySync = { };
           destroySync.hSyncObject = open.hSyncObject;
           D3DKMTDestroySynchronizationObject(&destroySync);
         }
+
+        Rc<DxvkKeyedMutex> mutex;
         if (open.hKeyedMutex) {
-          Logger::warn(str::format("D3D11Device::OpenSharedResource1: Ignoring bundled keyed mutex"));
-          D3DKMT_DESTROYKEYEDMUTEX destroyMutex = { };
-          destroyMutex.hKeyedMutex = open.hKeyedMutex;
-          D3DKMTDestroyKeyedMutex(&destroyMutex);
+          mutex = new DxvkKeyedMutex(m_dxvkDevice, std::move(fence), open.hKeyedMutex, 0);
         }
 
         D3D11_COMMON_TEXTURE_DESC desc = { };
@@ -1572,6 +1607,7 @@ namespace dxvk {
 
         try {
           const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr, hResource);
+          texture->GetCommonTexture()->GetImage()->setKeyedMutex(std::move(mutex));
           texture->QueryInterface(ReturnedInterface, ppResource);
           return S_OK;
         }
