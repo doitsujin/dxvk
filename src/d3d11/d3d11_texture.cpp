@@ -247,8 +247,18 @@ namespace dxvk {
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
       m_mapPtr = m_image->mapPtr(0);
 
-    if (imageInfo.sharing.mode == DxvkSharedHandleMode::Export)
+    if (imageInfo.sharing.mode == DxvkSharedHandleMode::Export) {
+      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) {
+        try {
+          Rc<DxvkKeyedMutex> mutex = new DxvkKeyedMutex(m_device->GetDXVKDevice(), 0, !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE));
+          m_image->setKeyedMutex(std::move(mutex));
+        } catch (const DxvkError& e) {
+          Logger::warn("D3D11CommonTexture: Failed to create keyed mutex");
+        }
+      }
+
       ExportImageInfo();
+    }
   }
   
   
@@ -724,8 +734,17 @@ namespace dxvk {
     struct d3dkmt_d3d11_desc desc = { };
     desc.dxgi.size = sizeof(desc);
     desc.dxgi.version = 4;
+    desc.dxgi.keyed_mutex = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX);
     desc.dxgi.nt_shared = !!(m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE);
     desc.dimension = m_dimension;
+
+    if (desc.dxgi.keyed_mutex) {
+      auto keyedMutex = m_image->getKeyedMutex();
+      desc.dxgi.mutex_handle = keyedMutex ? keyedMutex->kmtGlobal() : 0;
+
+      auto syncObject = keyedMutex->getSyncObject();
+      desc.dxgi.sync_handle = syncObject ? syncObject->kmtGlobal() : 0;
+    }
 
     switch (m_dimension) {
       case D3D11_RESOURCE_DIMENSION_UNKNOWN: break;

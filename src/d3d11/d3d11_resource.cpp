@@ -84,6 +84,12 @@ namespace dxvk {
     D3D11CommonTexture* texture = GetCommonTexture(m_resource);
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    if (keyedMutex)
+      return keyedMutex->AcquireSync(Key, dwMilliseconds);
+
+    /* try legacy Proton shared resource implementation */
+
     if (!m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
         || m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex == nullptr) {
       if (!m_warned) {
@@ -119,6 +125,12 @@ namespace dxvk {
       D3D10DeviceLock lock = context->LockContext();
       context->WaitForResource(*texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
     }
+
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    if (keyedMutex)
+      return keyedMutex->ReleaseSync(Key);
+
+    /* try legacy Proton shared resource implementation */
 
     if (!m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
         || m_device->GetDXVKDevice()->vkd()->wine_vkReleaseKeyedMutex == nullptr) {
@@ -310,8 +322,14 @@ namespace dxvk {
     }
 
     D3DKMT_HANDLE local = texture->GetImage()->storage()->kmtLocal();
-    if (!D3DKMTShareObjects(1, &local, &attr, dwAccess, pHandle))
+    auto keyedMutex = texture->GetImage()->getKeyedMutex();
+    if (keyedMutex) {
+      D3DKMT_HANDLE handles[] = {local, keyedMutex->kmtLocal(), keyedMutex->getSyncObject()->kmtLocal()};
+      if (!D3DKMTShareObjects(3, handles, &attr, dwAccess, pHandle))
+        return S_OK;
+    } else if (!D3DKMTShareObjects(1, &local, &attr, dwAccess, pHandle)) {
       return S_OK;
+    }
 
     /* try legacy Proton shared resource implementation */
 
