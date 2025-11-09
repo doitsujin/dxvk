@@ -4191,7 +4191,7 @@ namespace dxvk {
       // that we can actually perform the clear
       this->startRenderPass();
 
-      if (findOverlappingDeferredClear(imageView->image(), imageView->imageSubresources()))
+      if (findOverlappingDeferredClear(*imageView->image(), imageView->imageSubresources()))
         flushClearsInline();
 
       if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -4627,7 +4627,7 @@ namespace dxvk {
       return false;
 
     // Find a pending clear that overlaps with the source image
-    const DxvkDeferredClear* clear = findDeferredClear(srcImage, vk::makeSubresourceRange(srcSubresource));
+    const DxvkDeferredClear* clear = findDeferredClear(*srcImage, vk::makeSubresourceRange(srcSubresource));
 
     if (!clear)
       return false;
@@ -5154,7 +5154,7 @@ namespace dxvk {
       return false;
 
     // Find a pending clear that overlaps with the source image
-    const DxvkDeferredClear* clear = findDeferredClear(srcImage, vk::makeSubresourceRange(region.srcSubresource));
+    const DxvkDeferredClear* clear = findDeferredClear(*srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     if (!clear)
       return false;
@@ -5239,7 +5239,7 @@ namespace dxvk {
 
     // Otherwise, if any clears are queued up for the source image,
     // that clear operation needs to be performed first.
-    if (findOverlappingDeferredClear(srcImage, vk::makeSubresourceRange(region.srcSubresource)))
+    if (findOverlappingDeferredClear(*srcImage, vk::makeSubresourceRange(region.srcSubresource)))
       flushClearsInline();
 
     // Check whether we're dealing with a color or depth attachment, one
@@ -6914,7 +6914,7 @@ namespace dxvk {
 
     // Flush clears if there are any that affect the image. We need
     // to check all subresources here, not just the ones to be used.
-    if (flushClears && findOverlappingDeferredClear(image, image->getAvailableSubresources()))
+    if (flushClears && findOverlappingDeferredClear(*image, image->getAvailableSubresources()))
       this->spillRenderPass(false);
 
     // All images are in their default layout for suspended passes
@@ -6949,10 +6949,10 @@ namespace dxvk {
 
 
   DxvkDeferredClear* DxvkContext::findDeferredClear(
-    const Rc<DxvkImage>&          image,
+    const DxvkImage&               image,
     const VkImageSubresourceRange& subresources) {
     for (auto& entry : m_deferredClears) {
-      if ((entry.imageView->image() == image.ptr()) && ((subresources.aspectMask & entry.clearAspects) == subresources.aspectMask)
+      if ((entry.imageView->image() == &image) && ((subresources.aspectMask & entry.clearAspects) == subresources.aspectMask)
        && (vk::checkSubresourceRangeSuperset(entry.imageView->imageSubresources(), subresources)))
         return &entry;
     }
@@ -6962,10 +6962,10 @@ namespace dxvk {
 
 
   DxvkDeferredClear* DxvkContext::findOverlappingDeferredClear(
-    const Rc<DxvkImage>&          image,
+    const DxvkImage&               image,
     const VkImageSubresourceRange& subresources) {
     for (auto& entry : m_deferredClears) {
-      if ((entry.imageView->image() == image.ptr())
+      if ((entry.imageView->image() == &image)
        && ((entry.clearAspects | entry.discardAspects) | subresources.aspectMask)
        && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources)))
         return &entry;
@@ -8522,6 +8522,129 @@ namespace dxvk {
     addImageLayoutTransition(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       dstLayout, dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::acquireImage(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess,
+          bool                      flushClears) {
+    // If any pending clears affect the image, submit them first
+    if (flushClears && findOverlappingDeferredClear(image, image.getAvailableSubresources()))
+      spillRenderPass(false);
+
+    // Work out whether a layout transition is required at all
+    VkImageLayout srcLayout = image.queryLayoutForRange(subresources);
+
+    DxvkAccess access = srcLayout != dstLayout || (dstAccess & vk::AccessWriteMask)
+      ? DxvkAccess::Write
+      : DxvkAccess::Read;
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      flushPendingAccesses(image, subresources, access);
+
+    if (dstLayout != srcLayout && dstLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+      transitionImageLayout(image, subresources,
+        srcLayout, dstLayout, dstStages, dstAccess);
+    }
+  }
+
+
+  void DxvkContext::releaseImage(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess) {
+    accessImage(cmdBuffer, image, subresources,
+      srcLayout, srcStages, srcAccess, DxvkAccessOp::None);
+  }
+
+
+  void DxvkContext::transitionImageLayout(
+          DxvkImage&                image,
+          VkImageSubresourceRange   subresources,
+          VkImageLayout             srcLayout,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess) {
+    if (unlikely(srcLayout == dstLayout))
+      return;
+
+    if (image.info().type == VK_IMAGE_TYPE_3D) {
+      subresources.baseArrayLayer = 0u;
+      subresources.layerCount = 1u;
+    }
+
+    if (srcLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+      // We can transition everything in one go
+      addImageLayoutTransition(image, subresources,
+        srcLayout, image.info().stages, image.info().access,
+        dstLayout, dstStages, dstAccess);
+    } else {
+      // Transition each subresource separately
+      VkImageSubresource s = { };
+      s.aspectMask = subresources.aspectMask;
+
+      for (s.mipLevel = subresources.baseMipLevel; s.mipLevel < subresources.baseMipLevel + subresources.levelCount; s.mipLevel++) {
+        for (s.arrayLayer = subresources.baseArrayLayer; s.arrayLayer < subresources.baseArrayLayer + subresources.layerCount; s.arrayLayer++) {
+          srcLayout = image.queryLayout(s);
+
+          if (srcLayout != dstLayout) {
+            addImageLayoutTransition(image, vk::makeSubresourceRange(s),
+              srcLayout, image.info().stages, image.info().access,
+              dstLayout, dstStages, dstAccess);
+          }
+        }
+      }
+    }
+
+    if (dstLayout != image.info().layout)
+      trackNonDefaultLayout(image);
+
+    image.trackLayout(subresources, dstLayout);
+  }
+
+
+  void DxvkContext::restoreImageLayouts(bool sharedOnly) {
+    size_t dstIdx = 0u;
+    size_t srcIdx = 0u;
+
+    while (srcIdx < m_transitionedImages.size()) {
+      if (!sharedOnly || m_transitionedImages[srcIdx]->info().shared) {
+        transitionImageLayout(*m_transitionedImages[srcIdx],
+          m_transitionedImages[srcIdx]->getAvailableSubresources(),
+          VK_IMAGE_LAYOUT_MAX_ENUM,
+          m_transitionedImages[srcIdx]->info().layout,
+          m_transitionedImages[srcIdx]->info().stages,
+          m_transitionedImages[srcIdx]->info().access);
+      } else {
+        if (dstIdx != srcIdx)
+          m_transitionedImages[dstIdx] = std::move(m_transitionedImages[srcIdx]);
+
+        dstIdx += 1u;
+      }
+
+      srcIdx += 1u;
+    }
+
+    m_transitionedImages.resize(dstIdx);
+  }
+
+
+  void DxvkContext::trackNonDefaultLayout(
+          DxvkImage&                image) {
+    for (const auto& e : m_transitionedImages) {
+      if (e == &image)
+        return;
+    }
+
+    m_transitionedImages.emplace_back(&image);
   }
 
 

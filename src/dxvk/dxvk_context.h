@@ -1419,6 +1419,8 @@ namespace dxvk {
 
     DxvkImplicitResolveTracker  m_implicitResolves;
 
+    std::vector<Rc<DxvkImage>> m_transitionedImages;
+
     void blitImageFb(
             Rc<DxvkImageView>     dstView,
       const VkOffset3D*           dstOffsets,
@@ -1749,11 +1751,11 @@ namespace dxvk {
             bool                    flushClears = true);
 
     DxvkDeferredClear* findDeferredClear(
-      const Rc<DxvkImage>&          image,
+      const DxvkImage&               image,
       const VkImageSubresourceRange& subresources);
 
     DxvkDeferredClear* findOverlappingDeferredClear(
-      const Rc<DxvkImage>&          image,
+      const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
     void updateIndexBufferBinding();
@@ -1908,6 +1910,36 @@ namespace dxvk {
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
+
+    void acquireImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            bool                      flushClears = true);
+
+    void releaseImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void transitionImageLayout(
+            DxvkImage&                image,
+            VkImageSubresourceRange   subresources,
+            VkImageLayout             srcLayout,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess);
+
+    void restoreImageLayouts(bool sharedOnly);
+
+    void trackNonDefaultLayout(
+            DxvkImage&                image);
 
     void accessMemory(
             DxvkCmdBuffer             cmdBuffer,
