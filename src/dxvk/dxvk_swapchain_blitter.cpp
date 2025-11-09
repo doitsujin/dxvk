@@ -408,7 +408,6 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = &barrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    m_hudImage->trackInitialization(barrier.subresourceRange);
 
     // Render actual HUD image
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -439,6 +438,7 @@ namespace dxvk {
     barrier.newLayout = m_hudImage->info().layout;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    m_hudImage->trackLayout(m_hudRtv->imageSubresources(), m_hudImage->info().layout);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -628,7 +628,6 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = &barrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    image->trackInitialization(barrier.subresourceRange);
 
     DxvkResourceBufferInfo bufferSlice = buffer->getSliceInfo();
 
@@ -655,6 +654,7 @@ namespace dxvk {
     barrier.newLayout = image->info().layout;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+    image->trackLayout(image->getAvailableSubresources(), image->info().layout);
 
     ctx->track(buffer, DxvkAccess::Read);
     ctx->track(image, DxvkAccess::Write);

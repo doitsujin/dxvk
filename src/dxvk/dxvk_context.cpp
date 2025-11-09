@@ -8466,8 +8466,8 @@ namespace dxvk {
     if (srcLayout == dstLayout && srcStages == dstStages)
       return;
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
+    if (srcLayout != dstLayout)
+      image.trackLayout(subresources, dstLayout);
 
     auto& barrier = m_imageLayoutTransitions.emplace_back();
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
@@ -8586,8 +8586,8 @@ namespace dxvk {
           DxvkAccessOp              accessOp) {
     auto& batch = getBarrierBatch(cmdBuffer);
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
+    if (srcLayout != dstLayout)
+      image.trackLayout(subresources, dstLayout);
 
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = srcStages;
@@ -8730,11 +8730,13 @@ namespace dxvk {
           VkImageLayout             srcLayout,
           VkPipelineStageFlags2     srcStages,
           VkAccessFlags2            srcAccess) {
+    VkImageLayout dstLayout = image.info().layout;
+
     auto& transferBatch = getBarrierBatch(DxvkCmdBuffer::SdmaBuffer);
     auto& graphicsBatch = getBarrierBatch(DxvkCmdBuffer::InitBarriers);
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
+    if (srcLayout != dstLayout)
+      image.trackLayout(subresources, dstLayout);
 
     if (m_device->hasDedicatedTransferQueue()) {
       VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
@@ -8743,7 +8745,7 @@ namespace dxvk {
       barrier.dstStageMask = srcStages;
       barrier.dstAccessMask = VK_ACCESS_2_NONE;
       barrier.oldLayout = srcLayout;
-      barrier.newLayout = image.info().layout;
+      barrier.newLayout = dstLayout;
       barrier.srcQueueFamilyIndex = m_device->queues().transfer.queueFamily;
       barrier.dstQueueFamilyIndex = m_device->queues().graphics.queueFamily;
       barrier.image = image.handle();
@@ -8763,7 +8765,7 @@ namespace dxvk {
       barrier.dstStageMask = image.info().stages;
       barrier.dstAccessMask = image.info().access;
       barrier.oldLayout = srcLayout;
-      barrier.newLayout = image.info().layout;
+      barrier.newLayout = dstLayout;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.image = image.handle();

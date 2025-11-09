@@ -13,7 +13,8 @@ namespace dxvk {
     m_vkd           (device->vkd()),
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
-    m_info          (createInfo) {
+    m_info          (createInfo),
+    m_allSubresourceLayout(m_info.initialLayout) {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
@@ -36,8 +37,9 @@ namespace dxvk {
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
-    if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
-      m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
+    // Not sure if we need to transition out of undefined here?
+    if (m_info.sharing.mode == DxvkSharedHandleMode::Import)
+      m_allSubresourceLayout = m_info.layout;
 
     assignStorage(allocateStorage());
   }
@@ -54,7 +56,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo),
-    m_stableAddress (true) {
+    m_stableAddress (true),
+    m_allSubresourceLayout(m_info.initialLayout) {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
@@ -292,53 +295,86 @@ namespace dxvk {
   }
 
 
-  void DxvkImage::trackInitialization(
-    const VkImageSubresourceRange& subresources) {
-    if (!m_uninitializedSubresourceCount)
-      return;
-
+  void DxvkImage::trackLayout(
+    const VkImageSubresourceRange& subresources,
+          VkImageLayout            layout) {
     if (subresources.levelCount == m_info.mipLevels && subresources.layerCount == m_info.numLayers) {
       // Trivial case, everything gets initialized at once
-      m_uninitializedSubresourceCount = 0u;
-      m_uninitializedMipsPerLayer.clear();
+      if (m_allSubresourceLayout == VK_IMAGE_LAYOUT_MAX_ENUM)
+        m_perSubresourceLayout.clear();
+
+      m_allSubresourceLayout = layout;
     } else {
-      // Partial initialization. Track each layer individually.
-      if (m_uninitializedMipsPerLayer.empty()) {
-        m_uninitializedMipsPerLayer.resize(m_info.numLayers);
-
-        for (uint32_t i = 0; i < m_info.numLayers; i++)
-          m_uninitializedMipsPerLayer[i] = uint16_t(1u << m_info.mipLevels) - 1u;
+      // Partial initialization. Track each subresource individually.
+      if (m_allSubresourceLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+        m_allSubresourceLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
+        m_perSubresourceLayout.resize(m_info.mipLevels * m_info.numLayers);
       }
 
-      uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+      for (uint32_t m = subresources.baseMipLevel; m < subresources.baseMipLevel + subresources.levelCount; m++) {
+        uint32_t idx = m * m_info.numLayers;
 
-      for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
-        m_uninitializedSubresourceCount -= bit::popcnt(uint16_t(m_uninitializedMipsPerLayer[i] & mipMask));
-        m_uninitializedMipsPerLayer[i] &= ~mipMask;
+        for (uint32_t l = subresources.baseArrayLayer; l < subresources.baseArrayLayer + subresources.layerCount; l++)
+          m_perSubresourceLayout[idx + l] = layout;
       }
-
-      if (!m_uninitializedSubresourceCount)
-        m_uninitializedMipsPerLayer.clear();
     }
   }
 
 
-  bool DxvkImage::isInitialized(
+  VkImageLayout DxvkImage::queryLayout(
+    const VkImageSubresource&     subresource) const {
+    if (m_allSubresourceLayout != VK_IMAGE_LAYOUT_MAX_ENUM)
+      return m_allSubresourceLayout;
+
+    uint32_t idx = m_info.numLayers * subresource.mipLevel + subresource.arrayLayer;
+    return m_perSubresourceLayout[idx];
+  }
+
+
+  VkImageLayout DxvkImage::queryLayoutForRange(
     const VkImageSubresourceRange& subresources) const {
-    if (likely(!m_uninitializedSubresourceCount))
-      return true;
+    VkImageLayout baseLayout = m_allSubresourceLayout;
 
-    if (m_uninitializedMipsPerLayer.empty())
-      return false;
+    if (baseLayout != VK_IMAGE_LAYOUT_MAX_ENUM)
+      return baseLayout;
 
-    uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
+    for (uint32_t m = subresources.baseMipLevel; m < subresources.baseMipLevel + subresources.levelCount; m++) {
+      uint32_t idx = m * m_info.numLayers;
 
-    for (uint32_t i = 0; i < subresources.layerCount; i++) {
-      if (m_uninitializedMipsPerLayer[subresources.baseArrayLayer + i] & mipMask)
-        return false;
+      if (baseLayout == VK_IMAGE_LAYOUT_MAX_ENUM)
+        baseLayout = m_perSubresourceLayout[idx + subresources.baseArrayLayer];
+
+      for (uint32_t l = subresources.baseArrayLayer; l < subresources.baseArrayLayer + subresources.layerCount; l++) {
+        VkImageLayout layout = m_perSubresourceLayout[idx + l];
+
+        if (layout != baseLayout)
+          return VK_IMAGE_LAYOUT_MAX_ENUM;
+      }
     }
 
-    return true;
+    return baseLayout;
+  }
+
+
+  bool DxvkImage::isInitialized(const VkImageSubresourceRange& subresources) const {
+    if (m_allSubresourceLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+      return m_allSubresourceLayout != VK_IMAGE_LAYOUT_UNDEFINED
+          && m_allSubresourceLayout != VK_IMAGE_LAYOUT_PREINITIALIZED;
+    } else {
+      for (uint32_t m = subresources.baseMipLevel; m < subresources.baseMipLevel + subresources.levelCount; m++) {
+        uint32_t idx = m * m_info.numLayers;
+
+        for (uint32_t l = subresources.baseArrayLayer; l < subresources.baseArrayLayer + subresources.layerCount; l++) {
+          VkImageLayout layout = m_perSubresourceLayout[idx + l];
+
+          if (layout == VK_IMAGE_LAYOUT_UNDEFINED
+           || layout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+            return false;
+        }
+      }
+
+      return true;
+    }
   }
 
 

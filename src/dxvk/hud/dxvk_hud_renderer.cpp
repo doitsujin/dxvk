@@ -390,7 +390,6 @@ namespace dxvk::hud {
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
-    m_fontTexture->trackInitialization(imageBarrier.subresourceRange);
 
     VkBufferCopy2 bufferRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
     bufferRegion.srcOffset = uploadSlice.offset;
@@ -445,6 +444,7 @@ namespace dxvk::hud {
     depInfo.pImageMemoryBarriers = &imageBarrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::InitBuffer, &depInfo);
+    m_fontTexture->trackLayout(imageBarrier.subresourceRange, m_fontTexture->info().layout);
 
     ctx->track(uploadBuffer, DxvkAccess::Read);
     ctx->track(m_fontBuffer, DxvkAccess::Write);

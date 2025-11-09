@@ -665,14 +665,38 @@ namespace dxvk {
       const DxvkImageViewKey& info);
 
     /**
-     * \brief Tracks subresource initialization
+     * \brief Tracks image layout transition
      *
-     * Initialization happens when transitioning the image
-     * away from \c PREINITIALIZED or \c UNDEFINED layouts.
+     * Transitions can happen on image initialization,
+     * or when render targets change usage.
      * \param [in] subresources Subresource range
+     * \param [in] layout New image layout
      */
-    void trackInitialization(
-      const VkImageSubresourceRange& subresources);
+    void trackLayout(
+      const VkImageSubresourceRange& subresources,
+            VkImageLayout            layout);
+
+    /**
+     * \brief Queries image layout for a given subresource
+     *
+     * Note that all aspects of a given image are treated as the
+     * same subresource. This is relevant when tracking layouts
+     * of planar images or depth-stencil images.
+     * \param [in] subresource The subresource to query
+     * \returns The current layout of the subresource
+     */
+    VkImageLayout queryLayout(
+      const VkImageSubresource&     subresource) const;
+
+    /**
+     * \brief Queries image layout for a subresource range
+     *
+     * As above, except that this will return \c VK_IMAGE_LAYOUT_MAX_ENUM
+     * in case the layout is ambiguous, i.e. if subresources within the
+     * provided range do not have the same layout.
+     */
+    VkImageLayout queryLayoutForRange(
+      const VkImageSubresourceRange& subresources) const;
 
     /**
      * \brief Checks whether subresources are initialized
@@ -714,8 +738,9 @@ namespace dxvk {
     Rc<DxvkResourceAllocation>  m_storage     = nullptr;
 
     small_vector<VkFormat, 4>   m_viewFormats;
-    small_vector<uint16_t, 8>   m_uninitializedMipsPerLayer = { };
-    uint32_t                    m_uninitializedSubresourceCount = 0u;
+
+    small_vector<VkImageLayout, 16> m_perSubresourceLayout = { };
+    VkImageLayout                   m_allSubresourceLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     dxvk::mutex                 m_viewMutex;
     std::unordered_map<DxvkImageViewKey,
