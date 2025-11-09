@@ -14,6 +14,13 @@
 
 namespace dxvk {
 
+  enum class DxvkAcquireImageFlag : uint32_t {
+    IgnoreClears,
+    Discard,
+  };
+
+  using DxvkAcquireImageFlags = Flags<DxvkAcquireImageFlag>;
+
   /**
    * \brief DXVK context
    * 
@@ -1918,12 +1925,27 @@ namespace dxvk {
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess,
-            bool                      flushClears = true);
+            DxvkAcquireImageFlags     flags);
+
+    void acquireImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImageView&            imageView,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            DxvkAcquireImageFlags     flags);
 
     void releaseImage(
             DxvkCmdBuffer             cmdBuffer,
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess);
+
+    void releaseImage(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImageView&            imageView,
             VkImageLayout             srcLayout,
             VkPipelineStageFlags2     srcStages,
             VkAccessFlags2            srcAccess);
