@@ -2376,6 +2376,7 @@ namespace dxvk {
     }
 
     this->transitionRenderTargetLayouts(true);
+    this->restoreImageLayouts(true);
   }
 
 
@@ -3099,6 +3100,7 @@ namespace dxvk {
     // explicitly in the API for barrier and tracking purposes
     // since they're being used bindlessly.
     this->spillRenderPass(true);
+    this->restoreImageLayouts(false);
 
     VkPipelineStageFlags srcStages = 0;
     VkAccessFlags srcAccess = 0;
@@ -7387,6 +7389,7 @@ namespace dxvk {
   template<bool Resolve>
   bool DxvkContext::commitComputeState() {
     this->spillRenderPass(false);
+    this->restoreImageLayouts(false);
 
     if (m_flags.any(DxvkContextFlag::CpDirtyPipelineState,
                     DxvkContextFlag::CpDirtySpecConstants)) {
@@ -7463,8 +7466,10 @@ namespace dxvk {
 
     // Start the render pass. This must happen before any render state
     // is set up so that we can safely use secondary command buffers.
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      this->restoreImageLayouts(false);
       this->startRenderPass();
+    }
 
     // If there are any pending clears, record them now
     if (unlikely(!m_deferredClears.empty()))
