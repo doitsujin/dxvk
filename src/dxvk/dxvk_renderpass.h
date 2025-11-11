@@ -4,8 +4,6 @@
 #include <vector>
 #include <unordered_map>
 
-#include "../util/sync/sync_list.h"
-
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
