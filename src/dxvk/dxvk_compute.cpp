@@ -29,8 +29,9 @@ namespace dxvk {
   DxvkComputePipeline::~DxvkComputePipeline() {
     m_library->releasePipelineHandle();
 
-    for (const auto& instance : m_pipelines)
+    m_pipelines.forEach([this] (const DxvkComputePipelineInstance& instance) {
       this->destroyPipeline(instance.handle);
+    });
   }
   
   
@@ -80,18 +81,13 @@ namespace dxvk {
     VkPipeline newPipelineHandle = this->createPipeline(state);
 
     m_stats->numComputePipelines += 1;
-    return &(*m_pipelines.emplace(state, newPipelineHandle));
+    return m_pipelines.add(state, newPipelineHandle);
   }
 
   
   DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
     const DxvkComputePipelineStateInfo& state) {
-    for (auto& instance : m_pipelines) {
-      if (instance.state.eq(state))
-        return &instance;
-    }
-    
-    return nullptr;
+    return m_pipelines.find(state);
   }
   
   
