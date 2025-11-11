@@ -87,7 +87,7 @@ namespace dxvk {
   DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
     const DxvkComputePipelineStateInfo& state) {
     for (auto& instance : m_pipelines) {
-      if (instance.state == state)
+      if (instance.state.eq(state))
         return &instance;
     }
     
