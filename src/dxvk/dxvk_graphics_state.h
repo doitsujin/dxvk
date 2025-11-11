@@ -3,7 +3,10 @@
 #include "dxvk_format.h"
 #include "dxvk_limits.h"
 
+#include <atomic>
 #include <cstring>
+#include <optional>
+#include <utility>
 
 namespace dxvk {
 
@@ -746,6 +749,218 @@ namespace dxvk {
     }
 
     DxvkScInfo              sc;
+  };
+
+
+  /**
+   * \brief Pipeline state look-up table
+   *
+   * Provides a thread-safe, adaptive data structure for pipeline variants.
+   * Look-up and insertion are expected to be O(log n).
+   */
+  template<typename K, typename V>
+  class DxvkPipelineVariantTable {
+    static constexpr size_t LayerBits = 5u;
+    static constexpr size_t LayerSize = 1u << LayerBits;
+
+    static constexpr uint32_t HashThreshold = 4u;
+  public:
+
+    ~DxvkPipelineVariantTable() {
+      iter(m_table, [] (Entry* e) { delete e; });
+    }
+
+    V* find(const K& k) const {
+      // If the number of variants is small, avoid computing the
+      // state hash since that is somewhat expensive to do
+      uint32_t mask = m_table.mask.load(std::memory_order::memory_order_acquire);
+
+      bool useSimple = !(mask & (mask - 1u));
+
+      if (!useSimple)
+        useSimple = bit::popcnt(mask) < HashThreshold;
+
+      if (likely(useSimple)) {
+        for (auto index : bit::BitMask(mask)) {
+          // If more that one level is present, we need to consider
+          // those as well, but we can only do that on the hash path.
+          auto e = m_table.entries[index].load(std::memory_order_acquire);
+          useSimple = useSimple && !e->table.mask.load(std::memory_order_relaxed);
+
+          // Scan entries with the same hash
+          while (e) {
+            if (e->key.eq(k))
+              return &e->value;
+
+            e = e->next.load(std::memory_order_acquire);
+          }
+        }
+
+        if (likely(useSimple))
+          return nullptr;
+      }
+
+      // Compute hash and traverse entries
+      size_t hash = k.hash();
+      size_t shift = 0u;
+
+      const Table* table = &m_table;
+
+      while (true) {
+        size_t index = computeListIndex(hash, shift);
+        shift += LayerBits;
+
+        auto e = table->entries[index].load(std::memory_order_acquire);
+
+        if (!e)
+          break;
+
+        // Fetch next table from list head
+        // and ensure that the hash matches
+        table = &e->table;
+
+        if (e->hash != hash)
+          continue;
+
+        // Scan entries with the same hash
+        while (e) {
+          if (e->key.eq(k))
+            return &e->value;
+
+          e = e->next.load(std::memory_order_acquire);
+        }
+      }
+
+      // No pipeline found
+      return nullptr;
+    }
+
+    template<typename... Args>
+    V* add(const K& k, Args&&... args) {
+      size_t hash = k.hash();
+
+      // Try to insert the new entry into the top-level look-up table.
+      // If the given entry is already set, try the next level.
+      Entry* entry = new Entry(k, hash, std::forward<Args>(args)...);
+      Table* table = &m_table;
+      Entry* target = nullptr;
+
+      size_t index = -1;
+      size_t shift = 0u;
+
+      while (!target) {
+        index = computeListIndex(hash, shift);
+
+        // If this succeeds, this is the first entry at the given index
+        if (table->entries[index].compare_exchange_strong(target, entry,
+            std::memory_order_release, std::memory_order_acquire))
+          break;
+
+        // Check if there is a hash collision
+        if (target->hash == hash)
+          break;
+
+        table = &target->table;
+        target = nullptr;
+
+        shift += LayerBits;
+      }
+
+      if (target) {
+        // The new entry has the same hash as the target entry, so
+        // just append it to the linked list. This should be rare.
+        while (true) {
+          Entry* next = nullptr;
+
+          if (target->next.compare_exchange_strong(next, entry,
+              std::memory_order_release, std::memory_order_acquire))
+            break;
+
+          target = next;
+        }
+      } else {
+        // Update mask now that the corresponding entry is non-null
+        table->mask.fetch_or(1u << index, std::memory_order_release);
+      }
+
+      return &entry->value;
+    }
+
+    template<typename Fn>
+    void forEach(const Fn& fn) const {
+      iter(m_table, [&] (Entry* e) { fn(e->value); });
+    }
+
+  private:
+
+    struct Entry;
+
+    struct Table {
+      std::array<std::atomic<Entry*>, LayerSize> entries = { };
+      std::atomic<uint32_t> mask = { 0u };
+    };
+
+    struct Entry {
+      template<typename... Args>
+      Entry(const K& k, size_t h, Args&&... args)
+      : key(k), hash(h), value(std::forward<Args>(args)...) { }
+
+      K       key   = { };
+      size_t  hash  = 0u;
+      V       value = { };
+      Table   table = { };
+
+      std::atomic<Entry*> next = { nullptr };
+    };
+
+    Table m_table;
+
+    template<typename Fn>
+    static void iter(const Table& table, const Fn& fn) {
+      uint32_t mask = table.mask.load(std::memory_order_acquire);
+
+      for (auto index : bit::BitMask(mask)) {
+        Entry* e = table.entries[index].load(std::memory_order_relaxed);
+
+        // Recurse first so that the function can be used for destruction.
+        // Only the first entry in each list can have a sub-table.
+        if (e->table.mask.load(std::memory_order_relaxed))
+          iter(e->table, fn);
+
+        while (e) {
+          Entry* next = e->next.load(std::memory_order_acquire);
+          fn(e);
+          e = next;
+        }
+      }
+    }
+
+    static size_t computeListIndex(size_t hash, size_t shift) {
+      // Swap bytes to ensure that high bits of the hash contribute to the index.
+      // This is useful since hashes often only differ in the high 32 bits.
+      size_t index = hash;
+
+      if constexpr (!env::is32BitHostPlatform()) {
+        index = ((index >> 56u) & 0x00000000000000ffull)
+              | ((index >> 40u) & 0x000000000000ff00ull)
+              | ((index >> 24u) & 0x0000000000ff0000ull)
+              | ((index >>  8u) & 0x00000000ff000000ull)
+              | ((index <<  8u) & 0x000000ff00000000ull)
+              | ((index << 24u) & 0x0000ff0000000000ull)
+              | ((index << 40u) & 0x00ff000000000000ull)
+              | ((index << 56u) & 0xff00000000000000ull);
+      } else {
+        index = ((index >> 24u) & 0x000000ffu)
+              | ((index >>  8u) & 0x0000ff00u)
+              | ((index <<  8u) & 0x00ff0000u)
+              | ((index << 24u) & 0xff000000u);
+      }
+
+      index += hash;
+
+      return (index >> shift) % LayerSize;
+    }
+
   };
 
 }
