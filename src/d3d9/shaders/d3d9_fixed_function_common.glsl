@@ -39,7 +39,7 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 // Dynamic "spec constants"
 // Binding has to match with getSpecConstantBufferSlot in dxso_util.h
 layout(set = 0, binding = 31, scalar) uniform SpecConsts {
-    uint dynamicSpecConstDword[13];
+    uint dynamicSpecConstDword[20];
 };
 
 layout (constant_id = 0) const uint SpecConstDword0 = 0;
@@ -55,6 +55,14 @@ layout (constant_id = 9) const uint SpecConstDword9 = 0;
 layout (constant_id = 10) const uint SpecConstDword10 = 0;
 layout (constant_id = 11) const uint SpecConstDword11 = 0;
 layout (constant_id = 12) const uint SpecConstDword12 = 0;
+layout (constant_id = 13) const uint SpecConstDword13 = 0;
+layout (constant_id = 14) const uint SpecConstDword14 = 0;
+layout (constant_id = 15) const uint SpecConstDword15 = 0;
+layout (constant_id = 16) const uint SpecConstDword16 = 0;
+layout (constant_id = 17) const uint SpecConstDword17 = 0;
+layout (constant_id = 18) const uint SpecConstDword18 = 0;
+layout (constant_id = 19) const uint SpecConstDword19 = 0;
+layout (constant_id = 20) const uint SpecConstDword20 = 0;
 
 const uint SpecSamplerType = 0;
 const uint SpecSamplerDepthMode = 1;
@@ -171,7 +179,7 @@ BitfieldPosition SpecConstLayout[SpecConstantCount] = {
 };
 
 bool specIsOptimized() {
-    return SpecConstDword12 != 0u;
+    return SpecConstDword20 != 0u;
 }
 
 uint specDword(uint index) {
@@ -206,6 +214,22 @@ uint specDword(uint index) {
             return SpecConstDword11;
         case 12u:
             return SpecConstDword12;
+        case 13u:
+            return SpecConstDword13;
+        case 14u:
+            return SpecConstDword14;
+        case 15u:
+            return SpecConstDword15;
+        case 16u:
+            return SpecConstDword16;
+        case 17u:
+            return SpecConstDword17;
+        case 18u:
+            return SpecConstDword18;
+        case 19u:
+            return SpecConstDword19;
+        case 20u:
+            return SpecConstDword20;
         default:
             return 0u;
     }
