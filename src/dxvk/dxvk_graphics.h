@@ -2,8 +2,6 @@
 
 #include <mutex>
 
-#include "../util/sync/sync_list.h"
-
 #include "dxvk_bind_mask.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_graphics_state.h"
