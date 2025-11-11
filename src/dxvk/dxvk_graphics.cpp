@@ -1159,8 +1159,9 @@ namespace dxvk {
 
       // Remove any base pipeline references, but
       // keep the optimized pipelines around.
-      for (auto& entry : m_pipelines)
-        entry.baseHandle.store(VK_NULL_HANDLE);
+      m_pipelines.forEach([] (DxvkGraphicsPipelineInstance& e) {
+        e.baseHandle.store(VK_NULL_HANDLE);
+      });
 
       // Destroy the actual Vulkan pipelines
       this->destroyBasePipelines();
@@ -1186,18 +1187,13 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Error, state);
 
     m_stats->numGraphicsPipelines += 1;
-    return &(*m_pipelines.emplace(state, baseHandle, fastHandle, computeAttachmentMask(state)));
+    return m_pipelines.add(state, baseHandle, fastHandle, computeAttachmentMask(state));
   }
   
   
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state) {
-    for (auto& instance : m_pipelines) {
-      if (instance.state.eq(state))
-        return &instance;
-    }
-    
-    return nullptr;
+    return m_pipelines.find(state);
   }
   
   
