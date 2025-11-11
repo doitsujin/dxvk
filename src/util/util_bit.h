@@ -725,18 +725,45 @@ namespace dxvk::bit {
   }
 
   template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
-  inline uint64_t fnv1a_iter(uint64_t hash, T value) {
+  uint64_t fnv1a_iter(uint64_t hash, T value) {
     return (hash ^ uint64_t(value)) * 0x100000001b3ull;
   }
 
-  template<typename T, std::enable_if_t<std::is_integral_v<T>, bool> = true>
-  inline uint64_t fnv1a_hash(const T* data, size_t count) {
+  inline uint64_t fnv1a_hash(const unsigned char* data, size_t size) {
     uint64_t hash = fnv1a_init();
+    size_t idx = 0u;
 
-    for (size_t i = 0u; i < count; i++)
-      hash = fnv1a_iter(hash, data[i]);
+    while (idx + sizeof(hash) <= size) {
+      uint64_t v = (uint64_t(data[idx + 0u]) <<  0u)
+                 | (uint64_t(data[idx + 1u]) <<  8u)
+                 | (uint64_t(data[idx + 2u]) << 16u)
+                 | (uint64_t(data[idx + 3u]) << 24u)
+                 | (uint64_t(data[idx + 4u]) << 32u)
+                 | (uint64_t(data[idx + 5u]) << 40u)
+                 | (uint64_t(data[idx + 6u]) << 48u)
+                 | (uint64_t(data[idx + 7u]) << 56u);
 
+      hash = fnv1a_iter(hash, v);
+      idx += sizeof(hash);
+    }
+
+    if (idx < size) {
+      uint64_t v = 0u;
+
+      while (idx < size) {
+        v |= uint64_t(data[idx]) << (8u * (idx % sizeof(hash)));
+        idx++;
+      }
+
+      hash = fnv1a_iter(hash, v);
+    }
+
+    hash = fnv1a_iter(hash, size);
     return hash;
+  }
+
+  inline uint64_t fnv1a_hash(const char* data, size_t size) {
+    return fnv1a_hash(reinterpret_cast<const unsigned char*>(data), size);
   }
 
 }
