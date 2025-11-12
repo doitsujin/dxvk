@@ -938,9 +938,9 @@ namespace dxvk {
     static size_t computeListIndex(size_t hash, size_t shift) {
       // Swap bytes to ensure that high bits of the hash contribute to the index.
       // This is useful since hashes often only differ in the high 32 bits.
-      size_t index = hash;
+      if constexpr (sizeof(size_t) == sizeof(uint64_t)) {
+        uint64_t index = hash;
 
-      if constexpr (!env::is32BitHostPlatform()) {
         index = ((index >> 56u) & 0x00000000000000ffull)
               | ((index >> 40u) & 0x000000000000ff00ull)
               | ((index >> 24u) & 0x0000000000ff0000ull)
@@ -949,16 +949,18 @@ namespace dxvk {
               | ((index << 24u) & 0x0000ff0000000000ull)
               | ((index << 40u) & 0x00ff000000000000ull)
               | ((index << 56u) & 0xff00000000000000ull);
+
+        return size_t((index + hash) >> shift) % LayerSize;
       } else {
+        uint32_t index = hash;
+
         index = ((index >> 24u) & 0x000000ffu)
               | ((index >>  8u) & 0x0000ff00u)
               | ((index <<  8u) & 0x00ff0000u)
               | ((index << 24u) & 0xff000000u);
+
+        return size_t((index + hash) >> shift) % LayerSize;
       }
-
-      index += hash;
-
-      return (index >> shift) % LayerSize;
     }
 
   };
