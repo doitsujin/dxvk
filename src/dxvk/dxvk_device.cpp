@@ -658,8 +658,10 @@ namespace dxvk {
   
   DxvkDevicePerfHints DxvkDevice::getPerfHints() {
     DxvkDevicePerfHints hints;
+
+    // RADV properly fuses depth-stencil copies now
     hints.preferFbDepthStencilCopy = m_features.extShaderStencilExport
-      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR)
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, Version(), Version(25, 3, 99))
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
 
