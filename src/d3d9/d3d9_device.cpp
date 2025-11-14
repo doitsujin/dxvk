@@ -2385,7 +2385,7 @@ namespace dxvk {
               && m_state.renderStates[D3DRS_ZENABLE])) {
               // Whether we write the depth has been changed => check for hazards
               UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
-              }
+            }
 
             m_dirty.set(D3D9DeviceDirtyFlag::DepthStencilState);
           }
@@ -6523,17 +6523,24 @@ namespace dxvk {
       if (likely(dsBase != texBase))
         continue;
 
-      // If the shader doesn't actually use the texture, keep it marked as a hazard
-      // to avoid spilling the render pass over and over again because of shader changes.
-      if (!((psMasks.samplerMask | oldHazardMask) & (1 << samplerIdx)))
+      const bool sampledInShader = !!(psMasks.samplerMask & (1 << samplerIdx));
+      const bool wasHazard = !!(oldHazardMask & (1 << samplerIdx));
+
+      // Don't mark it as a hazard if the current shader doesn't actually sample it
+      // but we need to render to it.
+      // If the shader doesn't actually sample the texture, we don't render to it
+      // and it was a hazard before, keep it marked as a hazard to avoid spilling
+      // the render pass over and over again because of shader changes.
+      if (unlikely(!sampledInShader && (depthWrite || !wasHazard)))
         continue;
 
       m_textureSlotTracking.hazardDS |= 1 << samplerIdx;
 
       // Don't mark texture as an unresolvable hazard if the shader doesn't actually use it.
-      if (!(psMasks.samplerMask & (1 << samplerIdx)))
+      if (unlikely(!sampledInShader))
         continue;
 
+      // The hazard can be resolved by binding it as READONLY.
       if (unlikely(!depthWrite))
         continue;
 
