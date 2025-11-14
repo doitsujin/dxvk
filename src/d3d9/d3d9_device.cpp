@@ -6448,7 +6448,7 @@ namespace dxvk {
 
   inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     uint32_t oldHazardMask             = m_textureSlotTracking.hazardRT;
-    uint32_t oldUnresolvableHazardMask = m_textureSlotTracking.hazardRT;
+    uint32_t oldUnresolvableHazardMask = m_textureSlotTracking.unresolvableHazardRT;
     m_textureSlotTracking.hazardRT             &= ~texMask;
     m_textureSlotTracking.unresolvableHazardRT &= ~texMask;
 
@@ -6473,18 +6473,22 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
+        const bool sampledInShader = !!(psMasks.samplerMask & (1 << samplerIdx));
+        const bool wasHazard = !!(oldHazardMask & (1 << samplerIdx));
+
         // If the shader doesn't actually use the texture, keep it marked as a hazard
         // to avoid spilling the render pass over and over again because of shader changes.
-        if (!((psMasks.samplerMask | oldHazardMask) & (1 << samplerIdx)))
+        if (unlikely(!sampledInShader && ((anyColorWrite && shaderWritesToRt) || !wasHazard)))
           continue;
 
         // We can resolve the hazard by unbinding the RT.
         m_textureSlotTracking.hazardRT |= 1 << samplerIdx;
 
         // Don't mark texture as an unresolvable hazard if the shader doesn't actually use it.
-        if (!(psMasks.samplerMask & (1 << samplerIdx)))
+        if (unlikely(!sampledInShader))
           continue;
 
+        // The hazard can be resolved by not binding it.
         if (likely(!anyColorWrite || !shaderWritesToRt))
           continue;
 
