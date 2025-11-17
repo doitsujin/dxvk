@@ -19,11 +19,6 @@ namespace dxvk {
     m_useNvLowLatency2(useNvLowLatency2) {
     Logger::info(str::format("Latency control enabled, using ",
       useNvLowLatency2 ? "VK_NV_low_latency2" : "built-in algorithm"));
-
-    auto limit = FpsLimiter::getEnvironmentOverride();
-
-    if (limit)
-      m_envFpsLimit = *limit;
   }
 
 
