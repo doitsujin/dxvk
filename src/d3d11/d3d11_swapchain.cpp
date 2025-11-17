@@ -2,8 +2,6 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
-#include "../dxvk/dxvk_latency_builtin.h"
-
 #include "../util/util_win32_compat.h"
 
 namespace dxvk {

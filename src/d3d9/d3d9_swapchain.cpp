@@ -1124,8 +1124,7 @@ namespace dxvk {
     double frameRate = std::max(frameRateOption, 0.0);
 
     if (frameRateOption == 0.0 && SyncInterval) {
-      bool engageLimiter = SyncInterval > 1u || m_monitor ||
-        m_device->config().latencySleep == Tristate::True;
+      bool engageLimiter = SyncInterval > 1u || m_monitor;
 
       if (engageLimiter)
         frameRate = -m_displayRefreshRate / double(SyncInterval);
