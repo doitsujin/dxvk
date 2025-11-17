@@ -3213,8 +3213,7 @@ namespace dxvk {
   : m_container(pContainer), m_device(pDevice) {
     auto dxvkDevice = pDevice->GetDXVKDevice();
 
-    m_reflexEnabled = dxvkDevice->features().nvLowLatency2
-                   && dxvkDevice->config().latencySleep == Tristate::Auto;
+    m_reflexEnabled = dxvkDevice->features().nvLowLatency2;
   }
 
 

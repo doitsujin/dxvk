@@ -44,14 +44,6 @@ namespace dxvk {
 
     // Ensure that RGBA16 swap chains are scRGB if supported
     UpdateColorSpace(m_desc.Format, m_colorSpace);
-
-    // Somewhat hacky way to determine whether to forward the
-    // display refresh rate in windowed mode even with a sync
-    // interval of 1.
-    if (!m_is_d3d12) {
-      auto instance = pFactory->GetDXVKInstance();
-      m_hasLatencyControl = instance->options().latencySleep == Tristate::True;
-    }
   }
   
   
@@ -1034,7 +1026,7 @@ namespace dxvk {
     // Engage the frame limiter with large sync intervals even in windowed
     // mode since we want to avoid double-presenting to the swap chain.
     if (SyncInterval != m_frameRateSyncInterval && m_descFs.Windowed) {
-      bool engageLimiter = (SyncInterval > 1u) || (SyncInterval && m_hasLatencyControl);
+      bool engageLimiter = (SyncInterval > 1u);
 
       m_frameRateSyncInterval = SyncInterval;
       m_frameRateRefresh = 0.0f;
