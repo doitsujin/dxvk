@@ -441,17 +441,18 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*dstBuffer, dstOffset, numBytes,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    accessBatch.add(*srcBuffer, srcOffset, numBytes,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
-    if (!prepareOutOfOrderTransfer(srcBuffer, srcOffset, numBytes, DxvkAccess::Read)
-     || !prepareOutOfOrderTransfer(dstBuffer, dstOffset, numBytes, DxvkAccess::Write)) {
-      this->spillRenderPass(true);
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch);
 
-      flushPendingAccesses(*srcBuffer, srcOffset, numBytes, DxvkAccess::Read);
-      flushPendingAccesses(*dstBuffer, dstOffset, numBytes, DxvkAccess::Write);
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      spillRenderPass(true);
 
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
-    }
+    syncResources(cmdBuffer, accessBatch, false);
 
     auto srcSlice = srcBuffer->getSliceInfo(srcOffset, numBytes);
     auto dstSlice = dstBuffer->getSliceInfo(dstOffset, numBytes);
@@ -468,17 +469,6 @@ namespace dxvk {
     copyInfo.pRegions = &copyRegion;
 
     m_cmd->cmdCopyBuffer(cmdBuffer, &copyInfo);
-
-    accessBuffer(cmdBuffer, *srcBuffer, srcOffset, numBytes,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
-      DxvkAccessOp::None);
-
-    accessBuffer(cmdBuffer, *dstBuffer, dstOffset, numBytes,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      DxvkAccessOp::None);
-
-    m_cmd->track(dstBuffer, DxvkAccess::Write);
-    m_cmd->track(srcBuffer, DxvkAccess::Read);
   }
   
   
@@ -505,10 +495,10 @@ namespace dxvk {
       
       VkDeviceSize tmpOffset = 0;
       
-      this->copyBuffer(tmpBuffer, tmpOffset, dstBuffer, srcOffset, numBytes);
-      this->copyBuffer(dstBuffer, dstOffset, tmpBuffer, tmpOffset, numBytes);
+      copyBuffer(tmpBuffer, tmpOffset, dstBuffer, srcOffset, numBytes);
+      copyBuffer(dstBuffer, dstOffset, tmpBuffer, tmpOffset, numBytes);
     } else {
-      this->copyBuffer(dstBuffer, dstOffset, dstBuffer, srcOffset, numBytes);
+      copyBuffer(dstBuffer, dstOffset, dstBuffer, srcOffset, numBytes);
     }
   }
 
