@@ -3017,49 +3017,25 @@ namespace dxvk {
     // since they're being used bindlessly.
     this->spillRenderPass(true);
 
-    VkPipelineStageFlags srcStages = 0;
-    VkAccessFlags srcAccess = 0;
+    DxvkResourceBatch batch;
 
     for (auto& r : buffers) {
-      srcStages |= r.first->info().stages;
-      srcAccess |= r.first->info().access;
+      VkPipelineStageFlags2 access = (r.second.test(DxvkAccess::Read) ? VK_ACCESS_2_MEMORY_READ_BIT : 0u)
+                                   | (r.second.test(DxvkAccess::Write) ? VK_ACCESS_2_MEMORY_WRITE_BIT : 0u);
+      batch.add(*r.first, 0u, r.first->info().size, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, access);
     }
 
     for (auto& r : images) {
-      srcStages |= r.first->info().stages;
-      srcAccess |= r.first->info().access;
+      VkPipelineStageFlags2 access = (r.second.test(DxvkAccess::Read) ? VK_ACCESS_2_MEMORY_READ_BIT : 0u)
+                                   | (r.second.test(DxvkAccess::Write) ? VK_ACCESS_2_MEMORY_WRITE_BIT : 0u);
 
-      this->prepareImage(r.first, r.first->getAvailableSubresources());
+      batch.add(*r.first, r.first->getAvailableSubresources(),
+        r.first->info().layout, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, access, false);
     }
 
-    accessMemory(DxvkCmdBuffer::ExecBuffer, srcStages, srcAccess,
-      VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT);
-    flushBarriers();
+    syncResources(DxvkCmdBuffer::ExecBuffer, batch, true);
 
     m_cmd->cmdLaunchCuKernel(nvxLaunchInfo);
-
-    for (auto& r : buffers) {
-      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT)
-                                | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
-
-      accessBuffer(DxvkCmdBuffer::ExecBuffer,
-        *r.first, 0, r.first->info().size,
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
-        accessFlags, DxvkAccessOp::None);
-
-      m_cmd->track(r.first, r.second.test(DxvkAccess::Write) ? DxvkAccess::Write : DxvkAccess::Read);
-    }
-
-    for (auto& r : images) {
-      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT)
-                                | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
-      accessImage(DxvkCmdBuffer::ExecBuffer, *r.first,
-        r.first->getAvailableSubresources(), r.first->info().layout,
-        VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, accessFlags, DxvkAccessOp::None);
-
-      m_cmd->track(r.first, r.second.test(DxvkAccess::Write) ? DxvkAccess::Write : DxvkAccess::Read);
-    }
   }
   
   
