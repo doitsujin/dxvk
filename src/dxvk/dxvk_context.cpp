@@ -266,15 +266,16 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           uint32_t              value) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*buffer, offset, length,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    if (!prepareOutOfOrderTransfer(buffer, offset, length, DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       spillRenderPass(true);
 
-      flushPendingAccesses(*buffer, offset, length, DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
-    }
+    syncResources(cmdBuffer, accessBatch, false);
 
     auto bufferSlice = buffer->getSliceInfo(offset, align(length, sizeof(uint32_t)));
 
@@ -291,12 +292,6 @@ namespace dxvk {
         bufferSlice.size,
         &value);
     }
-
-    accessBuffer(cmdBuffer, *buffer, offset, length,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      DxvkAccessOp::None);
-
-    m_cmd->track(buffer, DxvkAccess::Write);
   }
   
   
@@ -305,16 +300,18 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           VkClearColorValue     value) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*bufferView, offset, length,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    if (!prepareOutOfOrderTransfer(bufferView, offset, length, DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
       spillRenderPass(true);
       invalidateState();
-
-      flushPendingAccesses(*bufferView, DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
+
+    syncResources(cmdBuffer, accessBatch, false);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = bufferView->buffer()->info().debugName;
@@ -351,14 +348,8 @@ namespace dxvk {
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
-    accessBuffer(cmdBuffer, *bufferView,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      VK_ACCESS_2_SHADER_WRITE_BIT, DxvkAccessOp::None);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
-
-    m_cmd->track(bufferView->buffer(), DxvkAccess::Write);
   }
   
   
