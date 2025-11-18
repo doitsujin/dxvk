@@ -2105,6 +2105,10 @@ namespace dxvk {
     DxvkBarrierBatch& getBarrierBatch(
             DxvkCmdBuffer             cmdBuffer);
 
+    DxvkCmdBuffer prepareOutOfOrderTransfer(
+            DxvkCmdBuffer             cmdBuffer,
+      const DxvkResourceBatch&        batch);
+
     bool prepareOutOfOrderTransfer(
       const Rc<DxvkBuffer>&           buffer,
             VkDeviceSize              offset,
