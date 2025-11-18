@@ -373,7 +373,6 @@ namespace dxvk {
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
-      this->prepareImage(imageView->image(), imageView->imageSubresources(), false);
     } else if (!m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects)) {
       // We cannot inline clears if the clear aspects are not writable. End the
       // render pass on the next draw to ensure that the image gets cleared.
@@ -2599,15 +2598,16 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*buffer, offset, size,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    if (!prepareOutOfOrderTransfer(buffer, offset, size, DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       spillRenderPass(true);
 
-      flushPendingAccesses(*buffer, offset, size, DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
-    }
+    syncResources(cmdBuffer, accessBatch, false);
 
     auto bufferSlice = buffer->getSliceInfo(offset, size);
 
@@ -2616,12 +2616,6 @@ namespace dxvk {
       bufferSlice.offset,
       bufferSlice.size,
       data);
-
-    accessBuffer(cmdBuffer, *buffer, offset, size,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-
-    m_cmd->track(buffer, DxvkAccess::Write);
   }
   
   
@@ -4581,7 +4575,6 @@ namespace dxvk {
 
     auto view = dstImage->createView(viewInfo);
 
-    prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
     deferClear(view, srcSubresource.aspectMask, clear->clearValue);
     return true;
   }
@@ -5091,7 +5084,6 @@ namespace dxvk {
 
     // End current render pass and prepare the destination image
     spillRenderPass(true);
-    prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
 
     // Create an image view that we can use to perform the clear
     DxvkImageViewKey key = { };
