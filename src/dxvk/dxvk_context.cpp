@@ -896,7 +896,7 @@ namespace dxvk {
 
       accessDrawBuffer(offset, 1, 0, sizeof(VkDispatchIndirectCommand));
 
-      this->trackDrawBuffer();
+      trackDrawBuffer<VK_PIPELINE_BIND_POINT_COMPUTE>();
     }
   }
   
@@ -7523,7 +7523,7 @@ namespace dxvk {
       this->updatePushData<VK_PIPELINE_BIND_POINT_GRAPHICS>();
 
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
-      this->trackDrawBuffer();
+      this->trackDrawBuffer<VK_PIPELINE_BIND_POINT_GRAPHICS>();
 
     return true;
   }
@@ -7796,12 +7796,15 @@ namespace dxvk {
   }
 
 
+  template<VkPipelineBindPoint BindPoint>
   void DxvkContext::trackDrawBuffer() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
 
-      m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-      m_renderPassBarrierSrc.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+      if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+        m_renderPassBarrierSrc.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+        m_renderPassBarrierSrc.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+      }
 
       if (m_state.id.argBuffer.length())
         m_cmd->track(m_state.id.argBuffer.buffer(), DxvkAccess::Read);

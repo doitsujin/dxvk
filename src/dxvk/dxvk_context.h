@@ -1834,6 +1834,7 @@ namespace dxvk {
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
 
+    template<VkPipelineBindPoint BindPoint>
     void trackDrawBuffer();
 
     bool tryInvalidateDeviceLocalBuffer(
