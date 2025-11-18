@@ -3172,6 +3172,127 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::acquireResources(
+          DxvkCmdBuffer               cmdBuffer,
+    const DxvkResourceBatch&          resources,
+          bool                        flushClears) {
+    bool hasLayoutTransitions = false;
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+      for (size_t i = 0u; i < resources.size(); i++) {
+        const auto& e = resources[i];
+
+        if (e.image)
+          prepareImage(e.image, e.imageSubresource, flushClears);
+      }
+    }
+
+    VkPipelineStageFlags2 srcStages = 0u;
+    VkPipelineStageFlags2 dstStages = 0u;
+
+    VkAccessFlags2 srcAccess = 0u;
+    VkAccessFlags2 dstAccess = 0u;
+
+    for (size_t i = 0u; i < resources.size(); i++) {
+      const auto& e = resources[i];
+
+      DxvkAccess access = (e.access & vk::AccessWriteMask)
+        ? DxvkAccess::Write
+        : DxvkAccess::Read;
+
+      if (e.buffer) {
+        if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+          flushPendingAccesses(*e.buffer, e.bufferOffset, e.bufferSize, access);
+
+        if (unlikely(e.stages & ~e.buffer->info().stages)
+         || unlikely(e.access & ~e.buffer->info().access)) {
+          srcStages |= e.buffer->info().stages;
+          srcAccess |= e.buffer->info().access;
+          dstStages |= e.stages;
+          dstAccess |= e.access;
+        }
+
+        m_cmd->track(e.buffer, access);
+      } else if (e.image) {
+        if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
+          if (!e.imageExtent.width) {
+            flushPendingAccesses(*e.image, e.imageSubresource, access);
+          } else {
+            flushPendingAccesses(*e.image, vk::pickSubresourceLayers(e.imageSubresource, 0u),
+              e.imageOffset, e.imageExtent, access);
+          }
+        }
+
+        if (e.imageLayout != e.image->info().layout || e.discard) {
+          addImageLayoutTransition(*e.image, e.imageSubresource,
+            e.imageLayout, e.stages, e.access, e.discard);
+
+          hasLayoutTransitions = true;
+        } else {
+          if (unlikely(e.stages & ~e.image->info().stages)
+           || unlikely(e.access & ~e.image->info().access)) {
+            srcStages |= e.image->info().stages;
+            srcAccess |= e.image->info().access;
+            dstStages |= e.stages;
+            dstAccess |= e.access;
+          }
+        }
+
+        m_cmd->track(e.image, access);
+      }
+    }
+
+    if (hasLayoutTransitions)
+      flushImageLayoutTransitions(cmdBuffer);
+
+    if (unlikely(srcStages | dstStages)) {
+      // Need a global barrier if the resource cannot
+      // by default be accessed in the specified way
+      if (cmdBuffer == DxvkCmdBuffer::InitBuffer)
+        cmdBuffer = DxvkCmdBuffer::InitBarriers;
+      else if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
+        cmdBuffer = DxvkCmdBuffer::SdmaBarriers;
+
+      accessMemory(cmdBuffer, srcStages, srcAccess, dstStages, dstAccess);
+
+      if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+        flushBarriers();
+    }
+  }
+
+
+  void DxvkContext::releaseResources(
+          DxvkCmdBuffer               cmdBuffer,
+    const DxvkResourceBatch&          resources) {
+    for (size_t i = 0u; i < resources.size(); i++) {
+      const auto& e = resources[i];
+
+      if (e.buffer) {
+        accessBuffer(cmdBuffer, *e.buffer, e.bufferOffset, e.bufferSize,
+          e.stages, e.access, DxvkAccessOp::None);
+      } else if (e.image) {
+        if (!e.imageExtent.width) {
+          accessImage(cmdBuffer, *e.image, e.imageSubresource,
+            e.imageLayout, e.stages, e.access, DxvkAccessOp::None);
+        } else {
+          accessImageRegion(cmdBuffer, *e.image, vk::pickSubresourceLayers(e.imageSubresource, 0u),
+            e.imageOffset, e.imageExtent,
+            e.imageLayout, e.stages, e.access, DxvkAccessOp::None);
+        }
+      }
+    }
+  }
+
+
+  void DxvkContext::syncResources(
+          DxvkCmdBuffer               cmdBuffer,
+    const DxvkResourceBatch&          resources,
+          bool                        flushClears) {
+    acquireResources(cmdBuffer, resources, flushClears);
+    releaseResources(cmdBuffer, resources);
+  }
+
+
   void DxvkContext::beginRenderPassDebugRegion() {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 

@@ -2162,6 +2162,20 @@ namespace dxvk {
 
     bool needsDrawBarriers();
 
+    void acquireResources(
+            DxvkCmdBuffer               cmdBuffer,
+      const DxvkResourceBatch&          resources,
+            bool                        flushClears);
+
+    void releaseResources(
+            DxvkCmdBuffer               cmdBuffer,
+      const DxvkResourceBatch&          resources);
+
+    void syncResources(
+            DxvkCmdBuffer               cmdBuffer,
+      const DxvkResourceBatch&          resources,
+            bool                        flushClears);
+
     void beginRenderPassDebugRegion();
 
     template<VkPipelineBindPoint BindPoint>

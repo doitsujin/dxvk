@@ -10,6 +10,100 @@
 namespace dxvk {
 
   /**
+   * \brief Resource access info
+   *
+   * Stores which parts of a resource are accessed,
+   * as well as the respective access types.
+   */
+  struct DxvkResourceUse {
+    DxvkBuffer* buffer = nullptr;
+    VkDeviceSize bufferOffset = 0u;
+    VkDeviceSize bufferSize = 0u;
+
+    DxvkImage* image = nullptr;
+    VkImageSubresourceRange imageSubresource = { };
+    VkOffset3D imageOffset = { };
+    VkExtent3D imageExtent = { };
+    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VkPipelineStageFlags2 stages = 0u;
+    VkAccessFlags2 access = 0u;
+
+    VkBool32 discard = VK_FALSE;
+  };
+
+
+  /**
+   * \brief Resource access batch
+   *
+   * Array wrapper with some convenience methods
+   * to add resource use infos.
+   */
+  class DxvkResourceBatch {
+
+  public:
+
+    DxvkResourceUse& add() {
+      return m_resources.emplace_back();
+    }
+
+    DxvkResourceUse& add(DxvkBuffer& buffer, VkDeviceSize offset, VkDeviceSize size,
+      VkPipelineStageFlags2 stages, VkAccessFlags2 access) {
+      auto& e = add();
+      e.buffer = &buffer;
+      e.bufferOffset = offset;
+      e.bufferSize = size;
+      e.stages = stages;
+      e.access = access;
+      return e;
+    }
+
+    DxvkResourceUse& add(DxvkBufferView& bufferView, VkPipelineStageFlags2 stages, VkAccessFlags2 access) {
+      return add(*bufferView.buffer(), bufferView.info().offset, bufferView.info().size, stages, access);
+    }
+
+    DxvkResourceUse& add(DxvkBufferView& bufferView, VkDeviceSize offset, VkDeviceSize size,
+      VkPipelineStageFlags2 stages, VkAccessFlags2 access) {
+      const auto* formatInfo = bufferView.formatInfo();
+      VkDeviceSize factor = formatInfo ? formatInfo->elementSize : 1u;
+
+      return add(*bufferView.buffer(), offset * factor, size * factor, stages, access);
+    }
+
+    DxvkResourceUse& add(DxvkImage& image, const VkImageSubresourceRange subresource,
+      VkImageLayout layout, VkPipelineStageFlags2 stages, VkAccessFlags2 access, VkBool32 discard) {
+      auto& e = add();
+      e.image = &image;
+      e.imageSubresource = subresource;
+      e.imageLayout = layout;
+      e.stages = stages;
+      e.access = access;
+      e.discard = discard;
+      return e;
+    }
+
+    DxvkResourceUse& add(DxvkImageView& imageView,
+      VkImageLayout layout, VkPipelineStageFlags2 stages, VkAccessFlags2 access, VkBool32 discard) {
+      return add(*imageView.image(), imageView.imageSubresources(),
+        layout, stages, access, discard);
+    }
+
+    size_t size() const {
+      return m_resources.size();
+    }
+
+    const DxvkResourceUse& operator [] (size_t idx) const {
+      return m_resources[idx];
+    }
+
+  private:
+
+    small_vector<DxvkResourceUse, 4u> m_resources;
+
+  };
+
+
+  /**
    * \brief Address range
    */
   struct DxvkAddressRange {
