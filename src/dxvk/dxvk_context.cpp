@@ -1506,27 +1506,25 @@ namespace dxvk {
 
     // Ensure the image is accessible and in its default layout
     this->spillRenderPass(true);
-    this->prepareImage(image, image->getAvailableSubresources());
 
-    flushPendingAccesses(*image, image->getAvailableSubresources(), DxvkAccess::Write);
+    DxvkResourceBatch accessBatch;
+
+    auto& imageAccess = accessBatch.add(*image, image->getAvailableSubresources(),
+      image->info().layout, image->info().stages, image->info().access, VK_FALSE);
+
+    acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
     if (isUsageAndFormatCompatible) {
       // Emit a barrier. If used in internal passes, this function
       // must be called *before* emitting dirty checks there.
-      VkImageLayout oldLayout = image->info().layout;
-      VkImageLayout newLayout = usageInfo.layout ? usageInfo.layout : oldLayout;
+      imageAccess.imageLayout = usageInfo.layout ? usageInfo.layout : image->info().layout;
 
       image->assignStorageWithUsage(image->storage(), usageInfo);
 
       if (usageInfo.stableGpuAddress)
         m_common->memoryManager().lockResourceGpuAddress(image->storage());
 
-      accessImage(DxvkCmdBuffer::ExecBuffer, *image, image->getAvailableSubresources(),
-        oldLayout, image->info().stages, image->info().access,
-        newLayout, image->info().stages, image->info().access,
-        DxvkAccessOp::None);
-
-      m_cmd->track(image, DxvkAccess::Write);
+      releaseResources(DxvkCmdBuffer::ExecBuffer, accessBatch);
       return true;
     }
 
