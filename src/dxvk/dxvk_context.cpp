@@ -1446,11 +1446,10 @@ namespace dxvk {
 
       if (found) {
         m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
-
         spillRenderPass(true);
-
-        prepareImage(image, image->getAvailableSubresources());
       }
+
+      prepareImage(image, image->getAvailableSubresources());
     }
 
     // If the image has any pending layout transitions, flush them accordingly.
@@ -1458,7 +1457,10 @@ namespace dxvk {
     if (resourceHasAccess(*image, image->getAvailableSubresources(), DxvkAccess::Write, DxvkAccessOp::None)) {
       spillRenderPass(true);
 
-      flushBarriers();
+      DxvkResourceBatch accessBatch;
+      accessBatch.add(*image, image->getAvailableSubresources(),
+        image->info().layout, image->info().stages, image->info().access, VK_FALSE);
+      acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
     }
 
     // Actually replace backing storage and make sure to keep the old one alive
