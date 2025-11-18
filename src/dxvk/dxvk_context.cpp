@@ -230,15 +230,12 @@ namespace dxvk {
     if (image->info().layout != layout) {
       this->spillRenderPass(true);
 
-      VkImageSubresourceRange subresources = image->getAvailableSubresources();
+      // Only emit one transition to the destination layout
+      DxvkResourceBatch accessBatch;
+      accessBatch.add(*image, image->getAvailableSubresources(),
+        layout, image->info().stages, image->info().access, VK_FALSE);
 
-      this->prepareImage(image, subresources);
-
-      flushPendingAccesses(*image, subresources, DxvkAccess::Write);
-
-      accessImage(DxvkCmdBuffer::ExecBuffer, *image, subresources,
-        image->info().layout, image->info().stages, 0,
-        layout, image->info().stages, image->info().access, DxvkAccessOp::None);
+      acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
       image->setLayout(layout);
 
@@ -250,11 +247,9 @@ namespace dxvk {
       }
 
       const DxvkAttachment& ds = m_state.om.renderTargets.depth;
-      if (ds.view != nullptr && ds.view->image() == image) {
-        m_rtLayouts.depth = layout;
-      }
 
-      m_cmd->track(image, DxvkAccess::Write);
+      if (ds.view != nullptr && ds.view->image() == image)
+        m_rtLayouts.depth = layout;
     }
   }
 
