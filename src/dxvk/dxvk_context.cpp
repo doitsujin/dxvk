@@ -4033,7 +4033,6 @@ namespace dxvk {
           VkOffset3D            imageOffset,
           VkExtent3D            imageExtent) {
     this->spillRenderPass(true);
-    this->prepareImage(image, vk::makeSubresourceRange(imageSubresource));
 
     VkDeviceSize dataSize = imageSubresource.layerCount * util::computeImageDataSize(
       image->info().format, imageExtent, imageSubresource.aspectMask);
@@ -4047,28 +4046,23 @@ namespace dxvk {
     auto srcSubresource = imageSubresource;
     srcSubresource.aspectMask = srcFormatInfo->aspectMask;
 
-    flushPendingAccesses(*image, srcSubresource, imageOffset, imageExtent, DxvkAccess::Read);
-    flushPendingAccesses(*buffer, bufferOffset, dataSize, DxvkAccess::Write);
-
     // Select a suitable image layout for the transfer op
     VkImageLayout srcImageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    addImageLayoutTransition(*image, vk::makeSubresourceRange(srcSubresource), srcImageLayoutTransfer,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*buffer, bufferOffset, dataSize,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+
+    auto& imageAccess = accessBatch.add(*image, vk::makeSubresourceRange(srcSubresource),
+      srcImageLayoutTransfer, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, VK_FALSE);
+    imageAccess.imageOffset = imageOffset;
+    imageAccess.imageExtent = imageExtent;
+
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
     this->copyImageBufferData<false>(DxvkCmdBuffer::ExecBuffer,
       image, imageSubresource, imageOffset, imageExtent, srcImageLayoutTransfer,
       bufferSlice, bufferRowAlignment, bufferSliceAlignment);
-
-    accessImageRegion(DxvkCmdBuffer::ExecBuffer, *image, srcSubresource, imageOffset, imageExtent, srcImageLayoutTransfer,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
-
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *buffer, bufferOffset, dataSize,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-
-    m_cmd->track(buffer, DxvkAccess::Write);
-    m_cmd->track(image, DxvkAccess::Read);
   }
 
 
@@ -4085,16 +4079,11 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    this->prepareImage(image, vk::makeSubresourceRange(imageSubresource));
-
     // Ensure we can read the source image
     DxvkImageUsageInfo imageUsage = { };
     imageUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
 
     ensureImageCompatibility(image, imageUsage);
-
-    flushPendingAccesses(*image, imageSubresource,
-      imageOffset, imageExtent, DxvkAccess::Read);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = buffer->info().debugName;
@@ -4137,16 +4126,20 @@ namespace dxvk {
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
 
-    flushPendingAccesses(*bufferView, DxvkAccess::Write);
-
     // Transition image to a layout we can use for reading as necessary
     VkImageLayout imageLayout = (image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
       ? image->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
       : image->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    addImageLayoutTransition(*image, vk::makeSubresourceRange(imageSubresource),
-      imageLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*bufferView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
+
+    auto& imageAccess = accessBatch.add(*image, vk::makeSubresourceRange(imageSubresource),imageLayout,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, VK_FALSE);
+    imageAccess.imageOffset = imageOffset;
+    imageAccess.imageExtent = imageExtent;
+
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
     // Retrieve pipeline
     VkImageViewType viewType = image->info().type == VK_IMAGE_TYPE_1D
@@ -4212,19 +4205,10 @@ namespace dxvk {
       workgroupCount.height,
       workgroupCount.depth);
 
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *bufferView,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT, DxvkAccessOp::None);
-
-    accessImageRegion(DxvkCmdBuffer::ExecBuffer, *image, imageSubresource, imageOffset, imageExtent, imageLayout,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, DxvkAccessOp::None);
-
     m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-    m_cmd->track(buffer, DxvkAccess::Write);
-    m_cmd->track(image, DxvkAccess::Read);
 }
 
 
