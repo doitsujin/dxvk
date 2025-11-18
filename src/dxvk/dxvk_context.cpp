@@ -187,8 +187,6 @@ namespace dxvk {
     const VkOffset3D*           srcOffsets,
           VkFilter              filter) {
     this->spillRenderPass(true);
-    this->prepareImage(dstView->image(), dstView->imageSubresources());
-    this->prepareImage(srcView->image(), srcView->imageSubresources());
 
     auto mapping = util::resolveSrcComponentMapping(
       dstView->info().unpackSwizzle(),
@@ -3384,20 +3382,13 @@ namespace dxvk {
           VkFilter              filter) {
     this->invalidateState();
 
-    bool dstIsDepthStencil = dstView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
-
-    dstView = ensureImageViewCompatibility(dstView, dstIsDepthStencil
-      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+    dstView = ensureImageViewCompatibility(dstView, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
     srcView = ensureImageViewCompatibility(srcView, VK_IMAGE_USAGE_SAMPLED_BIT);
 
     if (!dstView || !srcView) {
       Logger::err(str::format("DxvkContext: blitImageFb: Resources not supported"));
       return;
     }
-
-    flushPendingAccesses(*dstView, DxvkAccess::Write);
-    flushPendingAccesses(*srcView, DxvkAccess::Read);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = dstView->image()->info().debugName;
@@ -3409,16 +3400,14 @@ namespace dxvk {
           srcName ? srcName : "unknown", ")").c_str()));
     }
 
-    VkImageLayout srcLayout = srcView->getLayout();
-    VkImageLayout dstLayout = dstView->getLayout();
-
-    addImageLayoutTransition(*dstView->image(), dstView->imageSubresources(),
-      dstLayout, VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, false);
-    addImageLayoutTransition(*srcView->image(), srcView->imageSubresources(),
-      srcLayout, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*dstView, dstView->getLayout(),
+      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT, false);
+    accessBatch.add(*srcView, srcView->getLayout(),
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
       VK_ACCESS_2_SHADER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
     // Sort out image offsets so that dstOffset[0] points
     // to the top-left corner of the target area
@@ -3465,7 +3454,7 @@ namespace dxvk {
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = dstView->handle();
-    attachmentInfo.imageLayout = dstLayout;
+    attachmentInfo.imageLayout = dstView->getLayout();
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -3545,22 +3534,9 @@ namespace dxvk {
     m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
 
-    // Add barriers and track image objects
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *dstView->image(), dstView->imageSubresources(), dstLayout,
-      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, DxvkAccessOp::None);
-    
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *srcView->image(), srcView->imageSubresources(), srcLayout,
-      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT, DxvkAccessOp::None);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    m_cmd->track(dstView->image(), DxvkAccess::Write);
-    m_cmd->track(srcView->image(), DxvkAccess::Read);
     m_cmd->track(std::move(sampler));
   }
 
@@ -3571,18 +3547,14 @@ namespace dxvk {
     const Rc<DxvkImageView>&    srcView,
     const VkOffset3D*           srcOffsets,
           VkFilter              filter) {
-    flushPendingAccesses(*dstView, DxvkAccess::Write);
-    flushPendingAccesses(*srcView, DxvkAccess::Read);
-
     // Prepare the two images for transfer ops if necessary
     auto dstLayout = dstView->image()->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     auto srcLayout = srcView->image()->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    addImageLayoutTransition(*dstView->image(), dstView->imageSubresources(),
-      dstLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
-    addImageLayoutTransition(*srcView->image(), srcView->imageSubresources(),
-      srcLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    DxvkResourceBatch accessBatch;
+    accessBatch.add(*dstView, dstLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
+    accessBatch.add(*srcView, srcLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch, true);
 
     // Perform the blit operation
     VkImageBlit2 blitRegion = { VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
@@ -3604,15 +3576,6 @@ namespace dxvk {
     blitInfo.filter = filter;
 
     m_cmd->cmdBlitImage(&blitInfo);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer, *dstView->image(), dstView->imageSubresources(), dstLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer, *srcView->image(), srcView->imageSubresources(), srcLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
-
-    m_cmd->track(dstView->image(), DxvkAccess::Write);
-    m_cmd->track(srcView->image(), DxvkAccess::Read);
   }
 
 
