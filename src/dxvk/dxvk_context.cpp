@@ -2034,8 +2034,6 @@ namespace dxvk {
       bool useLateClear = m_device->perfHints().renderPassClearFormatBug
         && imageView->info().format != imageView->image()->info().format;
 
-      flushPendingAccesses(*imageView, DxvkAccess::Write);
-
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
         const char* imageName = imageView->image()->info().debugName;
         m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
@@ -2043,11 +2041,9 @@ namespace dxvk {
       }
 
       // Set up a temporary render pass to execute the clear
-      VkImageLayout imageLayout = imageView->getLayout();
-
       VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
       attachmentInfo.imageView = imageView->handle();
-      attachmentInfo.imageLayout = imageLayout;
+      attachmentInfo.imageLayout = imageView->getLayout();
       attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachmentInfo.clearValue = clearValue;
 
@@ -2058,9 +2054,6 @@ namespace dxvk {
       VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
       renderingInfo.layerCount = imageView->info().layerCount;
-
-      VkImageLayout loadLayout;
-      VkImageLayout storeLayout;
 
       VkPipelineStageFlags clearStages = 0;
       VkAccessFlags        clearAccess = 0;
@@ -2077,9 +2070,6 @@ namespace dxvk {
 
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &attachmentInfo;
-
-        loadLayout = colorOp.loadLayout;
-        storeLayout = colorOp.storeLayout;
       } else {
         clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -2096,13 +2086,13 @@ namespace dxvk {
           stencilInfo.loadOp = depthOp.loadOpS;
         }
 
-        loadLayout = depthOp.loadLayout;
-        storeLayout = depthOp.storeLayout;
+        useLateClear = false;
       }
 
-      addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
-        loadLayout, clearStages, 0, imageLayout, clearStages, clearAccess);
-      flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+      DxvkResourceBatch accessBatch;
+      accessBatch.add(*imageView, imageView->getLayout(), clearStages, clearAccess,
+        (clearAspects | discardAspects) == imageView->info().aspects);
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch, false);
 
       m_cmd->cmdBeginRendering(&renderingInfo);
 
@@ -2121,16 +2111,8 @@ namespace dxvk {
 
       m_cmd->cmdEndRendering();
 
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *imageView->image(), imageView->imageSubresources(),
-        imageLayout, clearStages, clearAccess, storeLayout,
-        imageView->image()->info().stages,
-        imageView->image()->info().access, DxvkAccessOp::None);
-
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-      m_cmd->track(imageView->image(), DxvkAccess::Write);
     } else {
       // Perform the operation when starting the next render pass
       if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -5353,8 +5335,8 @@ namespace dxvk {
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
 
-      this->applyRenderTargetLoadLayouts();
       this->flushClears(true);
+      this->applyRenderTargetLoadLayouts();
 
       // Make sure all graphics state gets reapplied on the next draw
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
