@@ -1682,7 +1682,7 @@ namespace dxvk {
   }
 
   // ZBIAS can be an integer from 0 to 16 and needs to be remapped to float
-  static constexpr float ZBIAS_SCALE     = -0.000005f;
+  static constexpr float ZBIAS_SCALE     = -10.0f / (1 << 16); // Consider 10x D16 precision
   static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
