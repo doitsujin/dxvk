@@ -7707,6 +7707,11 @@ namespace dxvk {
       if (m_nvdbEnabled) {
         db.minDepthBounds = std::clamp(bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_Z]), 0.0f, 1.0f);
         db.maxDepthBounds = std::clamp(bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_W]), 0.0f, 1.0f);
+
+        if (db.maxDepthBounds < db.minDepthBounds) {
+          db.minDepthBounds = 0.0f;
+          db.maxDepthBounds = 1.0f;
+        }
       }
 
       EmitCs([
