@@ -558,9 +558,6 @@ namespace dxvk {
     if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
       return;
 
-    this->prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
-    this->prepareImage(srcImage, vk::makeSubresourceRange(srcSubresource));
-
     bool useFb = dstSubresource.aspectMask != srcSubresource.aspectMask;
 
     if (m_device->perfHints().preferFbDepthStencilCopy) {
@@ -4347,27 +4344,31 @@ namespace dxvk {
       + dstSubresource.layerCount - overlapSubresourceRange.baseArrayLayer;
     overlapSubresourceRange.levelCount = 1u;
 
-    flushPendingAccesses(*dstImage, dstSubresource, dstOffset, extent, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresource, srcOffset, extent, DxvkAccess::Read);
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
 
     VkImageLayout dstImageLayout = VK_IMAGE_LAYOUT_GENERAL;
     VkImageLayout srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     if (hasOvelap) {
-      addImageLayoutTransition(*dstImage, overlapSubresourceRange, dstImageLayout,
+      accessBatch.emplace_back(*dstImage, overlapSubresourceRange, dstImageLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
     } else {
       dstImageLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
       srcImageLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-      addImageLayoutTransition(*dstImage, dstSubresourceRange, dstImageLayout,
+      auto& dstAccess = accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstImageLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
         dstImage->isFullSubresource(dstSubresource, extent));
-      addImageLayoutTransition(*srcImage, srcSubresourceRange, srcImageLayout,
+      dstAccess.imageOffset = srcOffset;
+      dstAccess.imageExtent = extent;
+
+      auto& srcAccess = accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcImageLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+      srcAccess.imageOffset = srcOffset;
+      srcAccess.imageExtent = extent;
     }
 
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     for (auto aspects = dstSubresource.aspectMask; aspects; ) {
       auto aspect = vk::getNextAspect(aspects);
@@ -4401,19 +4402,6 @@ namespace dxvk {
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
     }
-
-    if (hasOvelap) {
-      accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, overlapSubresourceRange, dstImageLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT | VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
-    } else {
-      accessImageRegion(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresource, dstOffset, extent, dstImageLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-      accessImageRegion(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresource, srcOffset, extent, srcImageLayout,
-        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
-    }
-
-    m_cmd->track(dstImage, DxvkAccess::Write);
-    m_cmd->track(srcImage, DxvkAccess::Read);
   }
 
   
@@ -4466,9 +4454,6 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
 
-    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
-
     // Create source and destination image views
     DxvkMetaCopyViews views(
       dstImage, dstSubresource, viewFormats.dstFormat,
@@ -4504,11 +4489,12 @@ namespace dxvk {
       ? srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
       : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
-    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
-    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout,
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout,
       dstStages, dstAccess, doDiscard);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     // Create pipeline for the copy operation
     DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getCopyImagePipeline(
@@ -4588,18 +4574,8 @@ namespace dxvk {
     m_cmd->cmdDraw(3, dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
 
-    accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange,
-      srcLayout, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT, DxvkAccessOp::None);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresourceRange,
-      dstLayout, dstStages, dstAccess, DxvkAccessOp::None);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-    m_cmd->track(dstImage, DxvkAccess::Write);
-    m_cmd->track(srcImage, DxvkAccess::Read);
   }
 
 
