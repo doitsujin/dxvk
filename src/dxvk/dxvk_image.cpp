@@ -146,6 +146,9 @@ namespace dxvk {
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
     m_shared = canShareImage(device, imageInfo, m_info.sharing);
 
+    m_globalLayout = (m_info.sharing.mode != DxvkSharedHandleMode::Import)
+      ? m_info.initialLayout : m_info.layout;
+
     if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
       m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
 
@@ -164,7 +167,8 @@ namespace dxvk {
     m_properties    (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)),
     m_info          (createInfo),
-    m_stableAddress (true) {
+    m_stableAddress (true),
+    m_globalLayout  (createInfo.initialLayout) {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
@@ -431,6 +435,8 @@ namespace dxvk {
       if (!m_uninitializedSubresourceCount)
         m_uninitializedMipsPerLayer.clear();
     }
+
+    trackLayout(subresources, m_info.layout);
   }
 
 
@@ -450,6 +456,90 @@ namespace dxvk {
     }
 
     return true;
+  }
+
+
+  VkImageLayout DxvkImage::queryLayout(const VkImageSubresourceRange& subresources) const {
+    // Check whether the entire resource is in the same layout
+    if (m_globalLayout != VK_IMAGE_LAYOUT_MAX_ENUM)
+      return m_globalLayout;
+
+    VkImageSubresource subresource = { };
+    subresource.aspectMask = subresources.aspectMask & (subresources.aspectMask - 1u);
+    subresource.mipLevel = subresources.baseMipLevel;
+    subresource.arrayLayer = subresources.baseArrayLayer;
+
+    VkImageLayout baseLayout = queryLayout(subresource);
+
+    // If only one subresource is included in the range, return its layout
+    VkImageAspectFlags nonplanarAspects = VK_IMAGE_ASPECT_COLOR_BIT
+                                        | VK_IMAGE_ASPECT_DEPTH_BIT
+                                        | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    if (subresources.levelCount == 1u
+     && subresources.layerCount == 1u
+     && (subresources.aspectMask & nonplanarAspects))
+      return baseLayout;
+
+    // Otherwise, check whether all subresources have the same layout
+    VkImageAspectFlags aspects = subresources.aspectMask;
+
+    while (aspects) {
+      subresource.aspectMask = vk::getNextAspect(aspects);
+      subresource.mipLevel = subresources.baseMipLevel;
+
+      for (uint32_t m = 0u; m < subresources.levelCount; m++) {
+        uint32_t index = computeSubresourceIndex(subresource);
+
+        for (uint32_t l = 0u; l < subresources.layerCount; l++) {
+          if (m_localLayouts[index + l] != baseLayout)
+            return VK_IMAGE_LAYOUT_MAX_ENUM;
+        }
+
+        subresource.mipLevel += 1u;
+      }
+    }
+
+    return baseLayout;
+  }
+
+
+  void DxvkImage::trackLayout(const VkImageSubresourceRange& subresources, VkImageLayout layout) {
+    if (subresources == getAvailableSubresources()) {
+      // Entire resource is in the same layout
+      m_globalLayout = layout;
+    } else {
+      if (m_globalLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+        // If previously the entire resource was in the same layout,
+        // we need to update all subresource entries to that layout
+        if (m_localLayouts.empty())
+          m_localLayouts.resize(computeSubresourceCount());
+
+        for (size_t i = 0u; i < m_localLayouts.size(); i++)
+          m_localLayouts[i] = m_globalLayout;
+
+        m_globalLayout = VK_IMAGE_LAYOUT_MAX_ENUM;
+      }
+
+      // Update entries contained in the subresource range
+      VkImageAspectFlags aspects = subresources.aspectMask;
+
+      while (aspects) {
+        VkImageSubresource subresource;
+        subresource.aspectMask = vk::getNextAspect(aspects);
+        subresource.mipLevel = subresources.baseMipLevel;
+        subresource.arrayLayer = subresources.baseArrayLayer;
+
+        for (uint32_t m = 0u; m < subresources.levelCount; m++) {
+          uint32_t index = computeSubresourceIndex(subresource);
+
+          for (uint32_t l = 0u; l < subresources.layerCount; l++)
+            m_localLayouts[index + l] = layout;
+
+          subresource.mipLevel += 1u;
+        }
+      }
+    }
   }
 
 
