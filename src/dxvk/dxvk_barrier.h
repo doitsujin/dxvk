@@ -10,6 +10,95 @@
 namespace dxvk {
 
   /**
+   * \brief Buffer access info
+   */
+  struct DxvkResourceAccess {
+    DxvkResourceAccess() = default;
+
+    DxvkResourceAccess(
+            DxvkBuffer&               resource,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess)
+    : stages      (dstStages),
+      access      (dstAccess),
+      buffer      (&resource),
+      bufferOffset(offset),
+      bufferSize  (size) { }
+
+    DxvkResourceAccess(
+            DxvkBufferView&           view,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess)
+    : stages      (dstStages),
+      access      (dstAccess),
+      buffer      (view.buffer()),
+      bufferOffset(view.info().offset),
+      bufferSize  (view.info().size) { }
+
+    DxvkResourceAccess(
+            DxvkBufferView&           view,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess)
+    : stages      (dstStages),
+      access      (dstAccess),
+      buffer      (view.buffer()) {
+      auto* formatInfo = view.formatInfo();
+
+      VkDeviceSize elementSize = formatInfo
+        ? formatInfo->elementSize
+        : 1u;
+
+      bufferOffset = elementSize * offset + view.info().offset;
+      bufferSize = elementSize * size;
+    }
+
+    DxvkResourceAccess(
+            DxvkImage&                resource,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            bool                      discardImage)
+    : stages      (dstStages),
+      access      (dstAccess),
+      image       (&resource),
+      imageSubresources(subresources),
+      imageLayout (dstLayout),
+      discard     (discardImage) { }
+
+    DxvkResourceAccess(
+            DxvkImageView&            view,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            bool                      discardView)
+    : stages      (dstStages),
+      access      (dstAccess),
+      image       (view.image()),
+      imageSubresources(view.imageSubresources()),
+      imageLayout (view.getLayout()),
+      discard     (discardView) { }
+
+    VkPipelineStageFlags2 stages = 0u;
+    VkAccessFlags2 access = 0u;
+
+    DxvkBuffer* buffer = nullptr;
+    VkDeviceSize bufferOffset = 0u;
+    VkDeviceSize bufferSize = 0u;
+
+    DxvkImage* image = nullptr;
+    VkImageSubresourceRange imageSubresources = { };
+    VkOffset3D imageOffset = { };
+    VkExtent3D imageExtent = { };
+    VkImageLayout imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkBool32 discard = VK_FALSE;
+  };
+
+
+  /**
    * \brief Address range
    */
   struct DxvkAddressRange {
