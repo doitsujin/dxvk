@@ -1909,6 +1909,34 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
 
+    void transitionImageLayout(
+            DxvkCmdBuffer             cmdBuffer,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkPipelineStageFlags2     srcStages,
+            VkAccessFlags2            srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags2     dstStages,
+            VkAccessFlags2            dstAccess,
+            bool                      discard);
+
+    void acquireResources(
+            DxvkCmdBuffer             cmdBuffer,
+            size_t                    count,
+      const DxvkResourceAccess*       batch,
+            bool                      flushClears = true);
+
+    void releaseResources(
+            DxvkCmdBuffer             cmdBuffer,
+            size_t                    count,
+      const DxvkResourceAccess*       batch);
+
+    void syncResources(
+            DxvkCmdBuffer             cmdBuffer,
+            size_t                    count,
+      const DxvkResourceAccess*       batch,
+            bool                      flushClears = true);
+
     void accessMemory(
             DxvkCmdBuffer             cmdBuffer,
             VkPipelineStageFlags2     srcStages,

@@ -6917,6 +6917,13 @@ namespace dxvk {
     if (flushClears && findOverlappingDeferredClear(image, image->getAvailableSubresources()))
       this->spillRenderPass(false);
 
+    // If the image is not in its defaul layout due to per-subresource
+    // tracking, make sure that it is.
+    transitionImageLayout(DxvkCmdBuffer::ExecBuffer,
+      *image, subresources, image->info().stages, image->info().access,
+      image->info().layout, image->info().stages, image->info().access, false);
+    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+
     // All images are in their default layout for suspended passes
     if (!m_flags.test(DxvkContextFlag::GpRenderPassSuspended))
       return;
@@ -8522,6 +8529,212 @@ namespace dxvk {
     addImageLayoutTransition(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       dstLayout, dstStages, dstAccess);
+  }
+
+
+  void DxvkContext::transitionImageLayout(
+          DxvkCmdBuffer             cmdBuffer,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkPipelineStageFlags2     srcStages,
+          VkAccessFlags2            srcAccess,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags2     dstStages,
+          VkAccessFlags2            dstAccess,
+          bool                      discard) {
+    // If all subresources are in the correct layout, we don't need to do anything.
+    // If we're discarding a render target, re-initialize the image since doing so
+    // may lead to more efficient compression in some cases.
+    VkImageLayout srcLayout = image.queryLayout(subresources);
+
+    VkImageUsageFlags rtUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                              | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    if (discard && (image.info().usage & rtUsage))
+      srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    if (srcLayout == dstLayout)
+      return;
+
+    if (srcLayout == VK_IMAGE_LAYOUT_MAX_ENUM) {
+      VkImageAspectFlags aspects = subresources.aspectMask;
+      VkImageSubresource subresource = { };
+
+      while (aspects) {
+        subresource.aspectMask = vk::getNextAspect(aspects);
+        subresource.mipLevel = subresources.baseMipLevel;
+
+        for (uint32_t m = 0u; m < subresources.levelCount; m++) {
+          subresource.arrayLayer = subresources.baseArrayLayer;
+
+          for (uint32_t l = 0u; l < subresources.layerCount; l++) {
+            srcLayout = image.queryLayout(subresource);
+
+            if (srcLayout != dstLayout) {
+              addImageLayoutTransition(image, vk::makeSubresourceRange(subresource),
+                srcLayout, srcStages, srcAccess,
+                dstLayout, dstStages, dstAccess);
+            }
+
+            subresource.arrayLayer += 1u;
+          }
+
+          subresource.mipLevel += 1u;
+        }
+      }
+    } else {
+      addImageLayoutTransition(image, subresources,
+        srcLayout, srcStages, srcAccess,
+        dstLayout, dstStages, dstAccess);
+    }
+
+    image.trackLayout(subresources, dstLayout);
+  }
+
+
+  void DxvkContext::acquireResources(
+          DxvkCmdBuffer             cmdBuffer,
+          size_t                    count,
+    const DxvkResourceAccess*       batch,
+          bool                      flushClears) {
+    if (cmdBuffer == DxvkCmdBuffer::InitBuffer)
+      cmdBuffer = DxvkCmdBuffer::InitBarriers;
+    else if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
+      cmdBuffer = DxvkCmdBuffer::SdmaBarriers;
+
+    // Flush any barriers affecting the resources
+    bool needsFlush = cmdBuffer != DxvkCmdBuffer::ExecBuffer;
+
+    VkPipelineStageFlags2 srcStages = 0u;
+    VkPipelineStageFlags2 dstStages = 0u;
+
+    VkAccessFlags2 srcAccess = 0u;
+    VkAccessFlags2 dstAccess = 0u;
+
+    for (size_t i = 0u; i < count; i++) {
+      const auto& e = batch[i];
+
+      DxvkAccess access = (e.access & vk::AccessWriteMask)
+        ? DxvkAccess::Write
+        : DxvkAccess::Read;
+
+      if (e.buffer) {
+        if (!needsFlush) {
+          needsFlush = resourceHasAccess(*e.buffer, e.bufferOffset, e.bufferSize,
+            DxvkAccess::Write, DxvkAccessOp::None);
+
+          if (!needsFlush && (e.access & vk::AccessWriteMask)) {
+            needsFlush = resourceHasAccess(*e.buffer, e.bufferOffset, e.bufferSize,
+              DxvkAccess::Read, DxvkAccessOp::None);
+          }
+        }
+
+        if (unlikely(e.stages & ~e.buffer->info().stages)
+         || unlikely(e.access & ~e.buffer->info().access)) {
+          srcStages |= e.buffer->info().stages;
+          srcAccess |= e.buffer->info().access;
+          dstStages |= e.stages;
+          dstAccess |= e.access;
+        }
+
+        m_cmd->track(e.buffer, access);
+      } else if (e.image) {
+        // Ensure that images are not affected by legacy
+        // layout tracking, and have no pending clears etc.
+        if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+          prepareImage(e.image, e.imageSubresources, flushClears);
+
+        if (!needsFlush) {
+          if (!e.imageExtent.width) {
+            if (!needsFlush) {
+              needsFlush = resourceHasAccess(*e.image, e.imageSubresources,
+                DxvkAccess::Write, DxvkAccessOp::None);
+
+              if (!needsFlush && (e.access & vk::AccessWriteMask)) {
+                needsFlush = resourceHasAccess(*e.image, e.imageSubresources,
+                  DxvkAccess::Read, DxvkAccessOp::None);
+              }
+            }
+          } else {
+            VkImageSubresourceLayers layers = vk::pickSubresourceLayers(e.imageSubresources, 0u);
+
+            needsFlush = resourceHasAccess(*e.image, layers,
+              e.imageOffset, e.imageExtent, DxvkAccess::Write, DxvkAccessOp::None);
+
+            if (!needsFlush && (e.access & vk::AccessWriteMask)) {
+              needsFlush = resourceHasAccess(*e.image, layers,
+                e.imageOffset, e.imageExtent, DxvkAccess::Read, DxvkAccessOp::None);
+            }
+          }
+        }
+
+        if (unlikely(e.stages & ~e.image->info().stages)
+         || unlikely(e.access & ~e.image->info().access)) {
+          srcStages |= e.image->info().stages;
+          srcAccess |= e.image->info().access;
+          dstStages |= e.stages;
+          dstAccess |= e.access;
+        }
+
+        transitionImageLayout(cmdBuffer, *e.image, e.imageSubresources,
+          e.image->info().stages, e.image->info().access,
+          e.imageLayout, e.stages, e.access, e.discard);
+
+        m_cmd->track(e.image, access);
+      }
+    }
+
+    // If the resource can be accessed in ways that regular barriers
+    // don't handle, emit a global memory barrier to sort it out
+    if (unlikely(srcStages | dstStages)) {
+      accessMemory(cmdBuffer, srcStages, srcAccess, dstStages, dstAccess);
+      needsFlush = true;
+    }
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && needsFlush)
+      flushBarriers();
+
+    flushImageLayoutTransitions(cmdBuffer);
+  }
+
+
+  void DxvkContext::releaseResources(
+          DxvkCmdBuffer             cmdBuffer,
+          size_t                    count,
+    const DxvkResourceAccess*       batch) {
+    for (size_t i = 0u; i < count; i++) {
+      const auto& e = batch[i];
+
+      if (e.buffer) {
+        accessBuffer(cmdBuffer, *e.buffer, e.bufferOffset, e.bufferSize,
+          e.stages, e.access, e.buffer->info().stages, e.buffer->info().access,
+          DxvkAccessOp::None);
+      } else if (e.image) {
+        if (!e.imageExtent.width) {
+          accessImage(cmdBuffer, *e.image, e.imageSubresources,
+            e.imageLayout, e.stages, e.access, e.imageLayout,
+            e.image->info().stages, e.image->info().access,
+            DxvkAccessOp::None);
+        } else {
+          accessImageRegion(cmdBuffer, *e.image,
+            vk::pickSubresourceLayers(e.imageSubresources, 0u),
+            e.imageOffset, e.imageExtent, e.imageLayout,
+            e.stages, e.access, e.imageLayout,
+            e.image->info().stages, e.image->info().access,
+            DxvkAccessOp::None);
+        }
+      }
+    }
+  }
+
+
+  void DxvkContext::syncResources(
+          DxvkCmdBuffer             cmdBuffer,
+          size_t                    count,
+    const DxvkResourceAccess*       batch,
+          bool                      flushClears) {
+    acquireResources(cmdBuffer, count, batch, flushClears);
+    releaseResources(cmdBuffer, count, batch);
   }
 
 
