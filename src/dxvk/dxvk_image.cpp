@@ -149,9 +149,6 @@ namespace dxvk {
     m_globalLayout = (m_info.sharing.mode != DxvkSharedHandleMode::Import)
       ? m_info.initialLayout : m_info.layout;
 
-    if (m_info.sharing.mode != DxvkSharedHandleMode::Import)
-      m_uninitializedSubresourceCount = m_info.numLayers * m_info.mipLevels;
-
     assignStorage(allocateStorage());
   }
 
@@ -407,59 +404,45 @@ namespace dxvk {
   }
 
 
-  void DxvkImage::trackInitialization(
-    const VkImageSubresourceRange& subresources) {
-    if (!m_uninitializedSubresourceCount)
-      return;
-
-    if (subresources.levelCount == m_info.mipLevels && subresources.layerCount == m_info.numLayers) {
-      // Trivial case, everything gets initialized at once
-      m_uninitializedSubresourceCount = 0u;
-      m_uninitializedMipsPerLayer.clear();
-    } else {
-      // Partial initialization. Track each layer individually.
-      if (m_uninitializedMipsPerLayer.empty()) {
-        m_uninitializedMipsPerLayer.resize(m_info.numLayers);
-
-        for (uint32_t i = 0; i < m_info.numLayers; i++)
-          m_uninitializedMipsPerLayer[i] = uint16_t(1u << m_info.mipLevels) - 1u;
-      }
-
-      uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
-
-      for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
-        m_uninitializedSubresourceCount -= bit::popcnt(uint16_t(m_uninitializedMipsPerLayer[i] & mipMask));
-        m_uninitializedMipsPerLayer[i] &= ~mipMask;
-      }
-
-      if (!m_uninitializedSubresourceCount)
-        m_uninitializedMipsPerLayer.clear();
-    }
-
-    trackLayout(subresources, m_info.layout);
-  }
-
-
   bool DxvkImage::isInitialized(const VkImageSubresource& subresource) const {
-    return isInitialized(vk::makeSubresourceRange(subresource));
+    VkImageLayout layout = queryLayout(subresource);
+
+    return layout != VK_IMAGE_LAYOUT_UNDEFINED
+        && layout != VK_IMAGE_LAYOUT_PREINITIALIZED;
   }
 
 
   bool DxvkImage::isInitialized(const VkImageSubresourceRange& subresources) const {
-    if (likely(!m_uninitializedSubresourceCount))
+    if (m_globalLayout != VK_IMAGE_LAYOUT_MAX_ENUM) {
+      return m_globalLayout != VK_IMAGE_LAYOUT_UNDEFINED
+          && m_globalLayout != VK_IMAGE_LAYOUT_PREINITIALIZED;
+    } else {
+      // Check each individual subresource layout
+      VkImageAspectFlags aspects = subresources.aspectMask;
+
+      while (aspects) {
+        VkImageSubresource subresource = { };
+        subresource.aspectMask = vk::getNextAspect(aspects);
+        subresource.mipLevel = subresources.baseMipLevel;
+        subresource.arrayLayer = subresources.baseArrayLayer;
+
+        for (uint32_t m = 0u; m < subresources.levelCount; m++) {
+          uint32_t index = computeSubresourceIndex(subresource);
+
+          for (uint32_t l = 0u; l < subresources.layerCount; l++) {
+            VkImageLayout layout = m_localLayouts[index + l];
+
+            if (layout == VK_IMAGE_LAYOUT_UNDEFINED
+             || layout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+              return false;
+          }
+
+          subresource.mipLevel += 1u;
+        }
+      }
+
       return true;
-
-    if (m_uninitializedMipsPerLayer.empty())
-      return false;
-
-    uint16_t mipMask = ((1u << subresources.levelCount) - 1u) << subresources.baseMipLevel;
-
-    for (uint32_t i = 0; i < subresources.layerCount; i++) {
-      if (m_uninitializedMipsPerLayer[subresources.baseArrayLayer + i] & mipMask)
-        return false;
     }
-
-    return true;
   }
 
 

@@ -755,16 +755,6 @@ namespace dxvk {
       const DxvkImageViewKey& info);
 
     /**
-     * \brief Tracks subresource initialization
-     *
-     * Initialization happens when transitioning the image
-     * away from \c PREINITIALIZED or \c UNDEFINED layouts.
-     * \param [in] subresources Subresource range
-     */
-    void trackInitialization(
-      const VkImageSubresourceRange& subresources);
-
-    /**
      * \brief Checks whether an image subresource is initialized
      *
      * \param [in] subresource The subresource to query
@@ -848,8 +838,6 @@ namespace dxvk {
     Rc<DxvkResourceAllocation>  m_storage     = nullptr;
 
     small_vector<VkFormat, 4>   m_viewFormats;
-    small_vector<uint16_t, 8>   m_uninitializedMipsPerLayer = { };
-    uint32_t                    m_uninitializedSubresourceCount = 0u;
 
     VkImageLayout               m_globalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     small_vector<VkImageLayout, 16> m_localLayouts;

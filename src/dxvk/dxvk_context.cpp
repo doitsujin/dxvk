@@ -1115,6 +1115,9 @@ namespace dxvk {
 
       m_cmd->track(image, DxvkAccess::Write);
     }
+
+    // The image will be in its default layout after this
+    image->trackLayout(image->getAvailableSubresources(), image->info().layout);
   }
   
   
@@ -1161,6 +1164,8 @@ namespace dxvk {
     // Perform initial layout transition
     accessImage(DxvkCmdBuffer::InitBuffer, *image, image->getAvailableSubresources(),
       VK_IMAGE_LAYOUT_UNDEFINED, VK_PIPELINE_STAGE_2_NONE, 0, DxvkAccessOp::None);
+
+    image->trackLayout(image->getAvailableSubresources(), image->info().layout);
 
     m_cmd->track(image, DxvkAccess::Write);
   }
@@ -5052,6 +5057,8 @@ namespace dxvk {
     accessImageTransfer(*image, image->getAvailableSubresources(), transferLayout,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
+    image->trackLayout(image->getAvailableSubresources(), image->info().layout);
+
     m_cmd->track(source, DxvkAccess::Read);
     m_cmd->track(image, DxvkAccess::Write);
   }
@@ -7930,9 +7937,6 @@ namespace dxvk {
     if (srcLayout == dstLayout && srcStages == dstStages)
       return;
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
-
     auto& barrier = m_imageLayoutTransitions.emplace_back();
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2;
     barrier.srcStageMask = srcStages;
@@ -8277,9 +8281,6 @@ namespace dxvk {
           DxvkAccessOp              accessOp) {
     auto& batch = getBarrierBatch(cmdBuffer);
 
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
-
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = srcStages;
     barrier.srcAccessMask = srcAccess;
@@ -8423,9 +8424,6 @@ namespace dxvk {
           VkAccessFlags2            srcAccess) {
     auto& transferBatch = getBarrierBatch(DxvkCmdBuffer::SdmaBuffer);
     auto& graphicsBatch = getBarrierBatch(DxvkCmdBuffer::InitBarriers);
-
-    if (srcLayout == VK_IMAGE_LAYOUT_UNDEFINED || srcLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      image.trackInitialization(subresources);
 
     if (m_device->hasDedicatedTransferQueue()) {
       VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
