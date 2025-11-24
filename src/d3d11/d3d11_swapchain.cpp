@@ -481,10 +481,13 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       auto allocation = cImages[0]->storage();
 
-      for (size_t i = 0u; i + 1 < cImages.size(); i++)
-        ctx->invalidateImage(cImages[i], cImages[i + 1]->storage());
+      for (size_t i = 0u; i + 1 < cImages.size(); i++) {
+        ctx->invalidateImage(cImages[i], cImages[i + 1]->storage(),
+          cImages[i + 1]->info().layout);
+      }
 
-      ctx->invalidateImage(cImages[cImages.size() - 1u], std::move(allocation));
+      ctx->invalidateImage(cImages[cImages.size() - 1u],
+        std::move(allocation), cImages[0]->info().layout);
     });
   }
 
