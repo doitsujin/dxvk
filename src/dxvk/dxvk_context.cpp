@@ -1229,17 +1229,16 @@ namespace dxvk {
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
     this->spillRenderPass(true);
-    this->prepareImage(resource, resource->getAvailableSubresources());
 
-    flushPendingAccesses(*resource, resource->getAvailableSubresources(), DxvkAccess::Write);
+    // Image is being prepared for external usage, flush
+    // any and all tracking that we may have involving it.
+    // TODO rework this to fit the acquire/release model.
+    DxvkResourceAccess access(*resource, resource->getAvailableSubresources(),
+      dstLayout, srcStages | dstStages, srcAccess | dstAccess,
+      srcLayout == VK_IMAGE_LAYOUT_UNDEFINED);
 
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *resource, resource->getAvailableSubresources(),
-      srcLayout, srcStages, srcAccess,
-      dstLayout, dstStages, dstAccess,
-      DxvkAccessOp::None);
-
-    m_cmd->track(resource, DxvkAccess::Write);
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
+    acquireResources(cmdBuffer, 1u, &access);
   }
 
 
