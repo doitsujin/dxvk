@@ -4203,34 +4203,23 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceAccess access(*imageView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+      imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0u), extent));
 
-    if (!prepareOutOfOrderTransfer(imageView->image(), DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
       spillRenderPass(true);
       invalidateState();
-
-      prepareImage(imageView->image(), imageView->imageSubresources());
-      flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
+
+    syncResources(cmdBuffer, 1u, &access);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = imageView->image()->info().debugName;
 
       m_cmd->cmdBeginDebugUtilsLabel(cmdBuffer, vk::makeLabel(0xf0dcdc,
         str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
-    }
-
-    // Avoid inserting useless barriers if the image is already in the correct layout
-    VkImageLayout clearLayout = imageView->getLayout();
-
-    if (imageView->image()->info().layout != clearLayout
-     || !imageView->image()->isInitialized(imageView->imageSubresources())) {
-      addImageLayoutTransition(*imageView->image(), imageView->imageSubresources(),
-        clearLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-        imageView->image()->isFullSubresource(vk::pickSubresourceLayers(imageView->imageSubresources(), 0), extent));
-      flushImageLayoutTransitions(cmdBuffer);
     }
 
     // Query pipeline objects to use for this clear operation
@@ -4265,17 +4254,11 @@ namespace dxvk {
     m_cmd->cmdDispatch(cmdBuffer,
       workgroups.width, workgroups.height, workgroups.depth);
 
-    accessImage(cmdBuffer, *imageView->image(), imageView->imageSubresources(),
-      clearLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-      VK_ACCESS_2_SHADER_WRITE_BIT, DxvkAccessOp::None);
-
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
-
-    m_cmd->track(imageView->image(), DxvkAccess::Write);
   }
 
   
