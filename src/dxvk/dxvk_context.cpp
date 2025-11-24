@@ -1446,7 +1446,8 @@ namespace dxvk {
       flushBarriers();
     }
 
-    // Ensure that the image is in its default layout
+    // Ensure that the image is in its default layout. No need to explicitly
+    // track it here though since we track the storage object instead.
     if (image->queryLayout(image->getAvailableSubresources()) != image->info().layout) {
       spillRenderPass(true);
 
@@ -1467,11 +1468,18 @@ namespace dxvk {
     // If the image is new and uninitialized, submit a layout transition
     image->trackLayout(image->getAvailableSubresources(), layout);
 
-    if (layout == VK_IMAGE_LAYOUT_UNDEFINED || layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-      transitionImageLayout(DxvkCmdBuffer::InitBarriers, *image, image->getAvailableSubresources(),
-        image->info().stages, image->info().access, image->info().layout,
-        image->info().stages, image->info().access, layout == VK_IMAGE_LAYOUT_UNDEFINED);
-      flushImageLayoutTransitions(DxvkCmdBuffer::InitBarriers);
+    if (layout != image->info().layout) {
+      if (layout == VK_IMAGE_LAYOUT_UNDEFINED || layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+        transitionImageLayout(DxvkCmdBuffer::InitBarriers, *image, image->getAvailableSubresources(),
+          image->info().stages, image->info().access, image->info().layout,
+          image->info().stages, image->info().access, layout == VK_IMAGE_LAYOUT_UNDEFINED);
+        flushImageLayoutTransitions(DxvkCmdBuffer::InitBarriers);
+
+        m_cmd->track(image, DxvkAccess::Read);
+      } else {
+        // Track non-default layout as necessary
+        m_nonDefaultLayoutImages.emplace_back(image);
+      }
     }
 
     image->resetTracking();
@@ -2370,6 +2378,7 @@ namespace dxvk {
         ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
         : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
+      // TODO fix layout tracking somehow
       addImageLayoutTransition(*dstImage, dstSubresource,
         oldLayout, dstImage->info().stages, dstImage->info().access,
         newLayout, stages, access);
@@ -5069,7 +5078,7 @@ namespace dxvk {
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
 
-      this->flushClears(true);
+      prepareShaderReadableImages(true);
 
       // Make sure all graphics state gets reapplied on the next draw
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
@@ -5146,7 +5155,7 @@ namespace dxvk {
       flushResolves();
 
       if (!suspend)
-        flushClears(false);
+        prepareShaderReadableImages(false);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalRenderPass);
@@ -5157,8 +5166,9 @@ namespace dxvk {
         flushBarriers();
       }
 
-      // Execute deferred clears if necessary
-      flushClears(false);
+      // Ensure that all shader readable images are ready
+      // to be read and in their default layout
+      prepareShaderReadableImages(false);
     }
   }
 
@@ -7838,8 +7848,9 @@ namespace dxvk {
 
 
   void DxvkContext::endCurrentCommands() {
-    this->spillRenderPass(true);
-    this->restoreSharedImageLayouts();
+    spillRenderPass(true);
+
+    prepareSharedImages();
 
     m_sdmaAcquires.finalize(m_cmd);
     m_sdmaBarriers.finalize(m_cmd);
@@ -7993,19 +8004,176 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::restoreSharedImageLayouts() {
-    if (!m_sharedImages.empty()) {
-      small_vector<DxvkResourceAccess, 16u> accessBatch;
+  void DxvkContext::trackNonDefaultImageLayout(
+            DxvkImage&                image) {
+    for (const auto& e : m_nonDefaultLayoutImages) {
+      if (e == &image)
+        return;
+    }
 
-      for (const auto& image : m_sharedImages) {
-        accessBatch.emplace_back(*image, image->getAvailableSubresources(),
-          image->info().layout, image->info().stages, image->info().access, false);
+    m_nonDefaultLayoutImages.emplace_back(&image);
+  }
+
+
+  bool DxvkContext::overlapsRenderTarget(
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources) {
+    if (!(image.info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
+      return false;
+
+    if (image.info().usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+      const auto& view = m_state.om.renderTargets.depth.view;
+
+      if (view && view->image() == &image) {
+        VkImageSubresourceRange viewSubresources = view->imageSubresources();
+
+        if ((subresources.aspectMask & viewSubresources.aspectMask)
+         && vk::checkSubresourceRangeOverlap(subresources, viewSubresources))
+          return true;
+      }
+    }
+
+    if (image.info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+      for (uint32_t i = 0u; i < MaxNumRenderTargets; i++) {
+        const auto& view = m_state.om.renderTargets.color[i].view;
+
+        if (view && view->image() == &image) {
+          VkImageSubresourceRange viewSubresources = view->imageSubresources();
+
+          if ((subresources.aspectMask & viewSubresources.aspectMask)
+           && vk::checkSubresourceRangeOverlap(subresources, viewSubresources))
+            return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+
+  bool DxvkContext::restoreImageLayout(
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          bool                      keepAttachments) {
+    // Note that this method does not flush layout transitions
+    m_cmd->track(&image, DxvkAccess::Read);
+
+    if (likely(!keepAttachments || !overlapsRenderTarget(image, subresources))) {
+      // Transition entire image to its default limit in one go
+      transitionImageLayout(DxvkCmdBuffer::ExecBuffer, image, subresources,
+        image.info().stages, image.info().access, image.info().layout,
+        image.info().stages, image.info().access, false);
+      return true;
+    } else {
+      // Iterate over each plane and mip level, and check whether
+      // there is any overlap with bound render targets
+      VkImageAspectFlags aspects = image.formatInfo()->aspectMask;
+
+      while (aspects) {
+        VkImageSubresourceRange range = { };
+        range.aspectMask = vk::getNextAspect(aspects);
+
+        for (uint32_t m = 0u; m < subresources.levelCount; m++) {
+          range.baseMipLevel = subresources.baseMipLevel + m;
+          range.levelCount = 1u;
+          range.baseArrayLayer = subresources.baseArrayLayer;
+          range.layerCount = subresources.layerCount;
+
+          if (overlapsRenderTarget(image, range)) {
+            // Scan and transition array layers one by one
+            for (uint32_t l = 0u; l < subresources.layerCount; l++) {
+              range.baseArrayLayer = subresources.baseArrayLayer + l;
+              range.layerCount = 1u;
+
+              if (!overlapsRenderTarget(image, range)) {
+                transitionImageLayout(DxvkCmdBuffer::ExecBuffer, image, range,
+                  image.info().stages, image.info().access, image.info().layout,
+                  image.info().stages, image.info().access, false);
+              }
+            }
+          } else {
+            // Transition entire mip level at once
+            transitionImageLayout(DxvkCmdBuffer::ExecBuffer, image, range,
+              image.info().stages, image.info().access, image.info().layout,
+              image.info().stages, image.info().access, false);
+          }
+        }
       }
 
-      acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
-
-      m_sharedImages.clear();
+      return false;
     }
+  }
+
+
+  template<typename Pred>
+  void DxvkContext::restoreImageLayouts(const Pred& pred, bool keepAttachments) {
+    if (m_nonDefaultLayoutImages.empty())
+      return;
+
+    size_t src = 0u;
+    size_t dst = 0u;
+
+    while (src < m_nonDefaultLayoutImages.size()) {
+      bool fullyRestored = false;
+
+      if (pred(*m_nonDefaultLayoutImages[src])) {
+        fullyRestored = restoreImageLayout(*m_nonDefaultLayoutImages[src],
+          m_nonDefaultLayoutImages[src]->getAvailableSubresources(),
+          keepAttachments);
+      }
+
+      if (!fullyRestored) {
+        if (dst < src)
+          m_nonDefaultLayoutImages[dst] = std::move(m_nonDefaultLayoutImages[src]);
+
+        dst += 1u;
+      }
+
+      src += 1u;
+    }
+
+    if (dst < src) {
+      m_nonDefaultLayoutImages.resize(dst);
+
+      flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    }
+  }
+
+
+  void DxvkContext::prepareShaderReadableImages(bool renderPass) {
+    // Flush pending clears and emit barriers before potentially
+    // emitting layout transitions affecting the same images.
+    if (!m_deferredClears.empty()) {
+      flushClears(renderPass);
+      flushBarriers();
+    }
+
+    // Just transition all images for the time being, we can make this
+    // more granular for tilers as necessary. When changing this, we will
+    // also need to ensure that we don't keep destroyed images alive.
+    if (!m_nonDefaultLayoutImages.empty()) {
+      restoreImageLayouts([] (DxvkImage& image) {
+        return true;
+      }, renderPass);
+    }
+  }
+
+
+  void DxvkContext::prepareSharedImages() {
+    // Only flush clears for shared images, and restore layouts
+    bool hasSharedClear = false;
+
+    for (const auto& image : m_nonDefaultLayoutImages) {
+      if (image->info().shared)
+        hasSharedClear = flushDeferredClear(*image, image->getAvailableSubresources());
+    }
+
+    if (hasSharedClear)
+      flushBarriers();
+
+    restoreImageLayouts([] (DxvkImage& image) {
+      return image.info().shared;
+    }, false);
   }
 
 
@@ -8065,10 +8233,8 @@ namespace dxvk {
         dstLayout, dstStages, dstAccess);
     }
 
-    if (dstLayout != image.info().layout && image.info().shared) {
-      if (std::find(m_sharedImages.begin(), m_sharedImages.end(), &image) == m_sharedImages.end())
-        m_sharedImages.emplace_back(&image);
-    }
+    if (dstLayout != image.info().layout)
+      trackNonDefaultImageLayout(image);
 
     image.trackLayout(subresources, dstLayout);
   }
