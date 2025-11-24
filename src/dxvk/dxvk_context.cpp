@@ -8148,6 +8148,7 @@ namespace dxvk {
   void DxvkContext::endCurrentCommands() {
     this->spillRenderPass(true);
     this->flushSharedImages();
+    this->restoreSharedImageLayouts();
 
     m_sdmaAcquires.finalize(m_cmd);
     m_sdmaBarriers.finalize(m_cmd);
@@ -8304,6 +8305,22 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::restoreSharedImageLayouts() {
+    if (!m_sharedImages.empty()) {
+      small_vector<DxvkResourceAccess, 16u> accessBatch;
+
+      for (const auto& image : m_sharedImages) {
+        accessBatch.emplace_back(*image, image->getAvailableSubresources(),
+          image->info().layout, image->info().stages, image->info().access, false);
+      }
+
+      acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+      m_sharedImages.clear();
+    }
+  }
+
+
   void DxvkContext::transitionImageLayout(
           DxvkCmdBuffer             cmdBuffer,
           DxvkImage&                image,
@@ -8358,6 +8375,11 @@ namespace dxvk {
       addImageLayoutTransition(image, subresources,
         srcLayout, srcStages, srcAccess,
         dstLayout, dstStages, dstAccess);
+    }
+
+    if (dstLayout != image.info().layout && image.info().shared) {
+      if (std::find(m_sharedImages.begin(), m_sharedImages.end(), &image) == m_sharedImages.end())
+        m_sharedImages.emplace_back(&image);
     }
 
     image.trackLayout(subresources, dstLayout);

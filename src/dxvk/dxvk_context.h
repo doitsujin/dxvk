@@ -1415,6 +1415,8 @@ namespace dxvk {
 
     std::vector<util::DxvkDebugLabel> m_debugLabelStack;
 
+    std::vector<Rc<DxvkImage>> m_sharedImages;
+
     DxvkDescriptorCopyWorker m_descriptorWorker;
 
     Rc<DxvkLatencyTracker>  m_latencyTracker;
@@ -1913,6 +1915,8 @@ namespace dxvk {
             VkImageLayout             dstLayout,
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
+
+    void restoreSharedImageLayouts();
 
     void transitionImageLayout(
             DxvkCmdBuffer             cmdBuffer,
