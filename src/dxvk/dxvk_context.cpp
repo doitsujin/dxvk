@@ -1251,8 +1251,6 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    this->prepareImage(imageView->image(), imageView->imageSubresources());
-
     // Make sure we can both render to and read from the image
     VkFormat viewFormat = imageView->info().format;
 
@@ -1268,8 +1266,6 @@ namespace dxvk {
       return;
     }
 
-    flushPendingAccesses(*imageView->image(), imageView->imageSubresources(), DxvkAccess::Write);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = imageView->image()->info().debugName;
 
@@ -1280,22 +1276,6 @@ namespace dxvk {
     // Create image views, etc.
     DxvkMetaMipGenViews mipGenerator(imageView);
     
-    VkImageLayout dstLayout = mipGenerator.getDstView(0u)->getLayout();
-    VkImageLayout srcLayout = mipGenerator.getSrcView(0u)->getLayout();
-
-    // If necessary, transition first mip level to the read-only layout
-    addImageLayoutTransition(*imageView->image(),
-      mipGenerator.getTopSubresource(), srcLayout,
-      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT, false);
-
-    addImageLayoutTransition(*imageView->image(),
-      mipGenerator.getAllTargetSubresources(), dstLayout,
-      VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
-
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
-    
     // Common descriptor set properties that we use to
     // bind the source image view to the fragment shader
     Rc<DxvkSampler> sampler = createBlitSampler(filter);
@@ -1303,16 +1283,6 @@ namespace dxvk {
     DxvkDescriptorWrite imageDescriptor = { };
     imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    // Common render pass info
-    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageLayout = dstLayout;
-    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pColorAttachments = &attachmentInfo;
-    
     // Retrieve a compatible pipeline to use for rendering
     auto resolveMode = filter == VK_FILTER_NEAREST
       ? DxvkMetaBlitResolveMode::FilterNearest
@@ -1323,8 +1293,10 @@ namespace dxvk {
       VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, resolveMode);
 
     for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
-      // Image view to read from
-      imageDescriptor.descriptor = mipGenerator.getSrcView(i)->getDescriptor();
+      auto srcView = mipGenerator.getSrcView(i);
+      auto dstView = mipGenerator.getDstView(i);
+
+      imageDescriptor.descriptor = srcView->getDescriptor();
 
       // Width, height and layer count for the current pass
       VkExtent3D passExtent = mipGenerator.computePassExtent(i);
@@ -1343,9 +1315,17 @@ namespace dxvk {
       scissor.extent    = { passExtent.width, passExtent.height };
 
       // Set up rendering info
-      attachmentInfo.imageView = mipGenerator.getDstView(i)->handle();
+      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+      attachmentInfo.imageView = dstView->handle();
+      attachmentInfo.imageLayout = dstView->getLayout();
+      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea = scissor;
       renderingInfo.layerCount = passExtent.depth;
+      renderingInfo.colorAttachmentCount = 1;
+      renderingInfo.pColorAttachments = &attachmentInfo;
 
       // Set up push constants
       DxvkMetaBlitPushConstants pushConstants = { };
@@ -1354,16 +1334,11 @@ namespace dxvk {
       pushConstants.layerCount = passExtent.depth;
       pushConstants.sampler = sampler->getDescriptor().samplerIndex;
 
-      if (i) {
-        addImageLayoutTransition(*imageView->image(),
-          mipGenerator.getSourceSubresource(i), dstLayout,
-          VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-          VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, srcLayout,
-          VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-          VK_ACCESS_2_SHADER_READ_BIT);
-
-        flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
-      }
+      // Emit per-subresource barriers
+      small_vector<DxvkResourceAccess, 2u> accessBatch;
+      accessBatch.emplace_back(*srcView, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+      accessBatch.emplace_back(*dstView,  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
       m_cmd->cmdBeginRendering(&renderingInfo);
 
@@ -1381,36 +1356,9 @@ namespace dxvk {
       m_cmd->cmdEndRendering();
     }
 
-    // Issue barriers to ensure we can safely access all mip
-    // levels of the image in all ways the image can be used
-    if (srcLayout == dstLayout) {
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *imageView->image(), imageView->imageSubresources(), srcLayout,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_2_SHADER_READ_BIT,
-        DxvkAccessOp::None);
-    } else {
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *imageView->image(), mipGenerator.getAllSourceSubresources(), srcLayout,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT |
-        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT |
-        VK_ACCESS_2_SHADER_READ_BIT,
-        DxvkAccessOp::None);
-
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *imageView->image(), mipGenerator.getBottomSubresource(), dstLayout,
-        VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-        DxvkAccessOp::None);
-    }
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
 
-    m_cmd->track(imageView->image(), DxvkAccess::Write);
     m_cmd->track(std::move(sampler));
   }
   
