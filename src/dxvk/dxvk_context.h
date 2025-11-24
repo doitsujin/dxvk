@@ -1415,7 +1415,7 @@ namespace dxvk {
 
     std::vector<util::DxvkDebugLabel> m_debugLabelStack;
 
-    std::vector<Rc<DxvkImage>> m_sharedImages;
+    std::vector<Rc<DxvkImage>> m_nonDefaultLayoutImages;
 
     DxvkDescriptorCopyWorker m_descriptorWorker;
 
@@ -1890,7 +1890,27 @@ namespace dxvk {
             VkPipelineStageFlags2     dstStages,
             VkAccessFlags2            dstAccess);
 
-    void restoreSharedImageLayouts();
+    void trackNonDefaultImageLayout(
+            DxvkImage&                image);
+
+    bool overlapsRenderTarget(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources);
+
+    bool restoreImageLayout(
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            bool                      keepAttachments);
+
+    template<typename Pred>
+    void restoreImageLayouts(
+      const Pred&                     pred,
+            bool                      keepAttachments);
+
+    void prepareShaderReadableImages(
+            bool                      renderPass);
+
+    void prepareSharedImages();
 
     void transitionImageLayout(
             DxvkCmdBuffer             cmdBuffer,
