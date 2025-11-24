@@ -1963,16 +1963,11 @@ namespace dxvk {
     this->spillRenderPass(false);
 
     if (srcLayout != dstLayout) {
-      prepareImage(dstImage, dstSubresources);
-      flushPendingAccesses(*dstImage, dstSubresources, DxvkAccess::Write);
-
-      accessImage(DxvkCmdBuffer::ExecBuffer,
-        *dstImage, dstSubresources,
-        srcLayout, dstImage->info().stages, dstImage->info().access,
+      DxvkResourceAccess access(*dstImage, dstSubresources,
         dstLayout, dstImage->info().stages, dstImage->info().access,
-        DxvkAccessOp::None);
-      
-      m_cmd->track(dstImage, DxvkAccess::Write);
+        srcLayout == VK_IMAGE_LAYOUT_UNDEFINED);
+
+      acquireResources(DxvkCmdBuffer::ExecBuffer, 1u, &access);
     }
   }
   
