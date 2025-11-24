@@ -5158,7 +5158,7 @@ namespace dxvk {
 
   void DxvkContext::acquireRenderTargets(
     const DxvkFramebufferInfo&  framebufferInfo,
-    const DxvkRenderPassOps&    ops) {
+          DxvkRenderPassOps&    ops) {
     m_rtAccess.clear();
 
     // Transition all images to the render layout as necessary
@@ -5178,6 +5178,15 @@ namespace dxvk {
       if (layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
         depthStages |= m_device->getShaderPipelineStages();
         depthAccess |= VK_ACCESS_2_SHADER_READ_BIT;
+      }
+
+      VkImageLayout currentLayout = depthAttachment.view->image()->queryLayout(depthAttachment.view->imageSubresources());
+
+      if (currentLayout == VK_IMAGE_LAYOUT_UNDEFINED) {
+        if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
+          ops.depthOps.loadOpD = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD)
+          ops.depthOps.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       }
 
       VkImageAspectFlags preserveAspects = depthAttachment.view->info().aspects;
@@ -5201,6 +5210,11 @@ namespace dxvk {
                                    | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT;
 
         VkPipelineStageFlags2 colorStages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+
+        VkImageLayout currentLayout = colorAttachment.view->image()->queryLayout(colorAttachment.view->imageSubresources());
+
+        if (currentLayout == VK_IMAGE_LAYOUT_UNDEFINED && ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
+          ops.colorOps[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
         bool discard = ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR
                     || ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -5228,7 +5242,7 @@ namespace dxvk {
 
   void DxvkContext::renderPassBindFramebuffer(
     const DxvkFramebufferInfo&  framebufferInfo,
-    const DxvkRenderPassOps&    ops) {
+          DxvkRenderPassOps&    ops) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
     acquireRenderTargets(framebufferInfo, ops);
