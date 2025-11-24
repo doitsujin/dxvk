@@ -7618,13 +7618,45 @@ namespace dxvk {
     if (!bufferCount && !imageCount)
       return;
 
-    // Ensure images are in the expected layout and any sort of layout
-    // tracking does not happen after the backing storage is swapped.
-    for (size_t i = 0; i < imageCount; i++)
-      prepareImage(imageInfos[i].image, imageInfos[i].image->getAvailableSubresources());
+    // Ensure that all images are in their default layout and are
+    // safely accessible, but ignore any uninitialized subresources.
+    std::vector<DxvkResourceAccess> accessBatch;
 
-    flushBarriers();
+    for (size_t i = 0u; i < bufferCount; i++) {
+      const auto& e = bufferInfos[i];
 
+      accessBatch.emplace_back(*e.buffer, 0u, e.buffer->info().size,
+        e.buffer->info().stages, e.buffer->info().access);
+    }
+
+    for (size_t i = 0u; i < imageCount; i++) {
+      const auto& e = imageInfos[i];
+
+      if (e.image->isInitialized(e.image->getAvailableSubresources())) {
+        accessBatch.emplace_back(*e.image, e.image->getAvailableSubresources(),
+          e.image->info().layout, e.image->info().stages, e.image->info().access, false);
+      } else {
+        VkImageAspectFlags aspects = e.image->formatInfo()->aspectMask;
+        VkImageSubresource subresource = { };
+
+        while (aspects) {
+          subresource.aspectMask = vk::getNextAspect(aspects);
+
+          for (subresource.mipLevel = 0u; subresource.mipLevel < e.image->info().mipLevels; subresource.mipLevel++) {
+            for (subresource.arrayLayer = 0u; subresource.arrayLayer < e.image->info().numLayers; subresource.arrayLayer++) {
+              if (e.image->isInitialized(subresource)) {
+                accessBatch.emplace_back(*e.image, vk::makeSubresourceRange(subresource),
+                  e.image->info().layout, e.image->info().stages, e.image->info().access, false);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    acquireResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+    // Use low-level barriers while processing actual copies
     small_vector<VkImageMemoryBarrier2, 16> imageBarriers;
 
     VkMemoryBarrier2 memoryBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };

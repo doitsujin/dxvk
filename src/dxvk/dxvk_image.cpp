@@ -440,8 +440,12 @@ namespace dxvk {
   }
 
 
-  bool DxvkImage::isInitialized(
-    const VkImageSubresourceRange& subresources) const {
+  bool DxvkImage::isInitialized(const VkImageSubresource& subresource) const {
+    return isInitialized(vk::makeSubresourceRange(subresource));
+  }
+
+
+  bool DxvkImage::isInitialized(const VkImageSubresourceRange& subresources) const {
     if (likely(!m_uninitializedSubresourceCount))
       return true;
 

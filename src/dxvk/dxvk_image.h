@@ -765,6 +765,15 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources);
 
     /**
+     * \brief Checks whether an image subresource is initialized
+     *
+     * \param [in] subresource The subresource to query
+     * \returns \c true if the given subresource is initialized
+     */
+    bool isInitialized(
+      const VkImageSubresource& subresource) const;
+
+    /**
      * \brief Checks whether subresources are initialized
      *
      * \param [in] subresources Subresource range
