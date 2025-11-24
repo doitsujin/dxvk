@@ -1417,15 +1417,17 @@ namespace dxvk {
 
   void DxvkContext::invalidateImage(
     const Rc<DxvkImage>&            image,
-          Rc<DxvkResourceAllocation>&& slice) {
-    invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo());
+          Rc<DxvkResourceAllocation>&& slice,
+          VkImageLayout             layout) {
+    invalidateImageWithUsage(image, std::move(slice), DxvkImageUsageInfo(), layout);
   }
 
 
   void DxvkContext::invalidateImageWithUsage(
     const Rc<DxvkImage>&            image,
           Rc<DxvkResourceAllocation>&& slice,
-    const DxvkImageUsageInfo&       usageInfo) {
+    const DxvkImageUsageInfo&       usageInfo,
+          VkImageLayout             layout) {
     VkImageUsageFlags usage = image->info().usage;
 
     // Invalidate active image descriptors
@@ -1433,8 +1435,6 @@ namespace dxvk {
       m_descriptorState.dirtyViews(image->getShaderStages());
 
     // Ensure that the image is in its default layout before invalidation
-    // and is not being tracked by the render pass layout logic. This does
-    // assume that the new backing storage is also in the default layout.
     if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
       bool found = false;
 
@@ -1446,16 +1446,27 @@ namespace dxvk {
 
         spillRenderPass(true);
 
+        // Ensure that there are no pending clears etc
         prepareImage(image, image->getAvailableSubresources());
       }
     }
 
-    // If the image has any pending layout transitions, flush them accordingly.
-    // There might be false positives here, but those do not affect correctness.
+    // If there are any pending accesses that may involve
+    // layout transitions, ensure that they are done
     if (resourceHasAccess(*image, image->getAvailableSubresources(), DxvkAccess::Write, DxvkAccessOp::None)) {
       spillRenderPass(true);
-
       flushBarriers();
+    }
+
+    // Ensure that the image is in its default layout
+    if (image->queryLayout(image->getAvailableSubresources()) != image->info().layout) {
+      spillRenderPass(true);
+
+      transitionImageLayout(DxvkCmdBuffer::ExecBuffer, *image,
+        image->getAvailableSubresources(),
+        image->info().stages, image->info().access,
+        image->info().layout, image->info().stages, image->info().access, false);
+      flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
     }
 
     // Actually replace backing storage and make sure to keep the old one alive
@@ -1464,6 +1475,16 @@ namespace dxvk {
 
     if (usageInfo.stableGpuAddress)
       m_common->memoryManager().lockResourceGpuAddress(image->storage());
+
+    // If the image is new and uninitialized, submit a layout transition
+    image->trackLayout(image->getAvailableSubresources(), layout);
+
+    if (layout == VK_IMAGE_LAYOUT_UNDEFINED || layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+      transitionImageLayout(DxvkCmdBuffer::InitBarriers, *image, image->getAvailableSubresources(),
+        image->info().stages, image->info().access, image->info().layout,
+        image->info().stages, image->info().access, layout == VK_IMAGE_LAYOUT_UNDEFINED);
+      flushImageLayoutTransitions(DxvkCmdBuffer::InitBarriers);
+    }
 
     image->resetTracking();
   }
@@ -7869,7 +7890,8 @@ namespace dxvk {
       copy.regionCount = imageRegions.size();
       copy.pRegions = imageRegions.data();
 
-      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo);
+      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage),
+        info.usageInfo, info.image->info().layout);
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
       m_cmd->track(info.image, DxvkAccess::Move);

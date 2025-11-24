@@ -511,8 +511,7 @@ namespace dxvk {
           cImage = std::move(mappedImage),
           cStorage = pResource->DiscardStorage()
         ] (DxvkContext* ctx) {
-          ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage));
-          ctx->initImage(cImage, VK_IMAGE_LAYOUT_PREINITIALIZED);
+          ctx->invalidateImage(cImage, Rc<DxvkResourceAllocation>(cStorage), VK_IMAGE_LAYOUT_PREINITIALIZED);
         });
 
         ThrottleDiscard(layout.Size);

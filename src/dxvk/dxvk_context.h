@@ -940,10 +940,12 @@ namespace dxvk {
      * Replaces the backing storage of an image.
      * \param [in] buffer The buffer to invalidate
      * \param [in] slice New buffer slice
+     * \param [in] layout Initial layout of the new storage
      */
     void invalidateImage(
       const Rc<DxvkImage>&            image,
-            Rc<DxvkResourceAllocation>&& slice);
+            Rc<DxvkResourceAllocation>&& slice,
+            VkImageLayout             layout);
     
     /**
      * \brief Invalidates image content and add usage flag
@@ -952,11 +954,13 @@ namespace dxvk {
      * \param [in] buffer The buffer to invalidate
      * \param [in] slice New buffer slice
      * \param [in] usageInfo Added usage info
+     * \param [in] layout Initial layout of the new storage
      */
     void invalidateImageWithUsage(
       const Rc<DxvkImage>&            image,
             Rc<DxvkResourceAllocation>&& slice,
-      const DxvkImageUsageInfo&       usageInfo);
+      const DxvkImageUsageInfo&       usageInfo,
+            VkImageLayout             layout);
 
     /**
      * \brief Ensures that an image supports the given usage
