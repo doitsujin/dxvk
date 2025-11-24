@@ -19,10 +19,8 @@ namespace dxvk {
    * and final layout of a single attachment.
    */
   struct DxvkColorAttachmentOps {
-    VkAttachmentLoadOp  loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
-    VkClearColorValue   clearValue  = VkClearColorValue();
+    VkAttachmentLoadOp loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkClearColorValue clearValue = VkClearColorValue();
   };
   
   
@@ -33,10 +31,8 @@ namespace dxvk {
    * final layout of the depth-stencil attachment.
    */
   struct DxvkDepthAttachmentOps {
-    VkAttachmentLoadOp  loadOpD     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    VkAttachmentLoadOp  loadOpS     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
+    VkAttachmentLoadOp loadOpD = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkAttachmentLoadOp loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkClearDepthStencilValue clearValue = VkClearDepthStencilValue();
   };
   

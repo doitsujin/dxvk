@@ -1389,12 +1389,12 @@ namespace dxvk {
     DxvkBarrierTracker      m_barrierTracker;
     DxvkBarrierControlFlags m_barrierControl;
 
+    small_vector<DxvkResourceAccess, MaxNumRenderTargets + 1u> m_rtAccess;
+
     DxvkGpuQueryManager     m_queryManager;
 
     DxvkGlobalPipelineBarrier m_renderPassBarrierSrc = { };
     DxvkGlobalPipelineBarrier m_renderPassBarrierDst = { };
-
-    DxvkRenderTargetLayouts m_rtLayouts = { };
 
     std::vector<DxvkDeferredClear> m_deferredClears;
     std::array<DxvkDeferredResolve, MaxNumRenderTargets + 1u> m_deferredResolves = { };
@@ -1640,8 +1640,6 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkImageAspectFlags        discardAspects);
 
-    void preparePostRenderPassClears();
-
     void hoistInlineClear(
             DxvkDeferredClear&        clear,
             VkRenderingAttachmentInfo& attachment,
@@ -1651,8 +1649,6 @@ namespace dxvk {
 
     void flushClears(
             bool                      useRenderPass);
-
-    void flushSharedImages();
 
     void flushRenderPassDiscards();
 
@@ -1669,13 +1665,11 @@ namespace dxvk {
     void startRenderPass();
     void spillRenderPass(bool suspend);
     
-    void renderPassEmitInitBarriers(
+    void acquireRenderTargets(
       const DxvkFramebufferInfo&  framebufferInfo,
       const DxvkRenderPassOps&    ops);
 
-    void renderPassEmitPostBarriers(
-      const DxvkFramebufferInfo&  framebufferInfo,
-      const DxvkRenderPassOps&    ops);
+    void releaseRenderTargets();
 
     void renderPassBindFramebuffer(
       const DxvkFramebufferInfo&  framebufferInfo,
@@ -1731,36 +1725,16 @@ namespace dxvk {
 
     void updateRenderTargets();
     
-    void applyRenderTargetLoadLayouts();
-
-    void applyRenderTargetStoreLayouts();
-
-    void transitionRenderTargetLayouts(
-            bool                    sharedOnly);
-
-    void transitionColorAttachment(
-      const DxvkAttachment&         attachment,
-            VkImageLayout           oldLayout);
-
-    void transitionDepthAttachment(
-      const DxvkAttachment&         attachment,
-            VkImageLayout           oldLayout);
-
-    void updateRenderTargetLayouts(
-      const DxvkFramebufferInfo&    newFb,
-      const DxvkFramebufferInfo&    oldFb);
-
-    void prepareImage(
-      const Rc<DxvkImage>&          image,
-      const VkImageSubresourceRange& subresources,
-            bool                    flushClears = true);
+    bool flushDeferredClear(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
 
     DxvkDeferredClear* findDeferredClear(
-      const Rc<DxvkImage>&          image,
+      const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
     DxvkDeferredClear* findOverlappingDeferredClear(
-      const Rc<DxvkImage>&          image,
+      const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
     void updateIndexBufferBinding();
