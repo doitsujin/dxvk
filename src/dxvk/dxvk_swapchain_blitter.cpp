@@ -390,14 +390,12 @@ namespace dxvk {
     }
 
     // Reset image
-    VkImageLayout renderLayout = m_hudRtv->getLayout();
-
     VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
     barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout = renderLayout;
+    barrier.newLayout = m_hudRtv->getLayout();
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.image = m_hudImage->handle();
@@ -408,12 +406,11 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = &barrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    m_hudImage->trackInitialization(barrier.subresourceRange);
 
     // Render actual HUD image
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = m_hudRtv->handle();
-    attachmentInfo.imageLayout = renderLayout;
+    attachmentInfo.imageLayout = m_hudRtv->getLayout();
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
@@ -435,10 +432,12 @@ namespace dxvk {
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
     barrier.dstStageMask = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT;
     barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT;
-    barrier.oldLayout = renderLayout;
+    barrier.oldLayout = m_hudRtv->getLayout();
     barrier.newLayout = m_hudImage->info().layout;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+
+    m_hudImage->trackLayout(m_hudRtv->imageSubresources(), m_hudImage->info().layout);
 
     if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
       ctx->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -628,7 +627,6 @@ namespace dxvk {
     depInfo.pImageMemoryBarriers = &barrier;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
-    image->trackInitialization(barrier.subresourceRange);
 
     DxvkResourceBufferInfo bufferSlice = buffer->getSliceInfo();
 
@@ -655,6 +653,8 @@ namespace dxvk {
     barrier.newLayout = image->info().layout;
 
     ctx->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
+
+    image->trackLayout(image->getAvailableSubresources(), image->info().layout);
 
     ctx->track(buffer, DxvkAccess::Read);
     ctx->track(image, DxvkAccess::Write);
