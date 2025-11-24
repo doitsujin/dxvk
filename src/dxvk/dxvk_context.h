@@ -1667,13 +1667,13 @@ namespace dxvk {
     
     void acquireRenderTargets(
       const DxvkFramebufferInfo&  framebufferInfo,
-      const DxvkRenderPassOps&    ops);
+            DxvkRenderPassOps&    ops);
 
     void releaseRenderTargets();
 
     void renderPassBindFramebuffer(
       const DxvkFramebufferInfo&  framebufferInfo,
-      const DxvkRenderPassOps&    ops);
+            DxvkRenderPassOps&    ops);
     
     void renderPassUnbindFramebuffer();
     
