@@ -9358,6 +9358,30 @@ namespace dxvk {
   }
 
 
+  DxvkCmdBuffer DxvkContext::prepareOutOfOrderTransfer(
+          DxvkCmdBuffer             cmdBuffer,
+          size_t                    accessCount,
+    const DxvkResourceAccess*       accessBatch) {
+    for (size_t i = 0u; i < accessCount; i++) {
+      const auto& e = accessBatch[i];
+
+      DxvkAccess access = (e.access & vk::AccessWriteMask)
+        ? DxvkAccess::Write
+        : DxvkAccess::Read;
+
+      if (e.buffer) {
+        if (!prepareOutOfOrderTransfer(e.buffer, e.bufferOffset, e.bufferSize, access))
+          return DxvkCmdBuffer::ExecBuffer;
+      } else if (e.image) {
+        if (!prepareOutOfOrderTransfer(e.image, access))
+          return DxvkCmdBuffer::ExecBuffer;
+      }
+    }
+
+    return cmdBuffer;
+  }
+
+
   bool DxvkContext::prepareOutOfOrderTransfer(
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,
