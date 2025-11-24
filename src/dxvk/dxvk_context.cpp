@@ -1524,27 +1524,22 @@ namespace dxvk {
 
     // Ensure the image is accessible and in its default layout
     this->spillRenderPass(true);
-    this->prepareImage(image, image->getAvailableSubresources());
 
-    flushPendingAccesses(*image, image->getAvailableSubresources(), DxvkAccess::Write);
+    DxvkResourceAccess access(*image, image->getAvailableSubresources(),
+      image->info().layout, image->info().stages, image->info().access, false);
+
+    if (isUsageAndFormatCompatible && usageInfo.layout)
+      access.imageLayout = usageInfo.layout;
+
+    acquireResources(DxvkCmdBuffer::ExecBuffer, 1u, &access);
 
     if (isUsageAndFormatCompatible) {
       // Emit a barrier. If used in internal passes, this function
       // must be called *before* emitting dirty checks there.
-      VkImageLayout oldLayout = image->info().layout;
-      VkImageLayout newLayout = usageInfo.layout ? usageInfo.layout : oldLayout;
-
       image->assignStorageWithUsage(image->storage(), usageInfo);
 
       if (usageInfo.stableGpuAddress)
         m_common->memoryManager().lockResourceGpuAddress(image->storage());
-
-      accessImage(DxvkCmdBuffer::ExecBuffer, *image, image->getAvailableSubresources(),
-        oldLayout, image->info().stages, image->info().access,
-        newLayout, image->info().stages, image->info().access,
-        DxvkAccessOp::None);
-
-      m_cmd->track(image, DxvkAccess::Write);
       return true;
     }
 
@@ -7808,6 +7803,8 @@ namespace dxvk {
       const auto& info = imageInfos[i];
       auto oldStorage = info.image->storage();
 
+      VkImageLayout finalLayout = info.usageInfo.layout ? info.usageInfo.layout : info.image->info().layout;
+
       DxvkResourceImageInfo dstInfo = info.storage->getImageInfo();
       DxvkResourceImageInfo srcInfo = oldStorage->getImageInfo();
 
@@ -7865,7 +7862,7 @@ namespace dxvk {
               dstBarrier.dstStageMask = info.image->info().stages;
               dstBarrier.dstAccessMask = info.image->info().access;
               dstBarrier.oldLayout = info.image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-              dstBarrier.newLayout = info.image->info().layout;
+              dstBarrier.newLayout = finalLayout;
               dstBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
               dstBarrier.image = info.storage->getImageInfo().image;
@@ -7890,8 +7887,7 @@ namespace dxvk {
       copy.regionCount = imageRegions.size();
       copy.pRegions = imageRegions.data();
 
-      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage),
-        info.usageInfo, info.image->info().layout);
+      invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo, finalLayout);
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
       m_cmd->track(info.image, DxvkAccess::Move);
