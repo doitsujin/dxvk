@@ -1981,8 +1981,6 @@ namespace dxvk {
       return;
 
     this->spillRenderPass(true);
-    this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
-    this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     if (unlikely(useHw)) {
       // Only used as a fallback if we can't use the images any other way,
@@ -1995,7 +1993,7 @@ namespace dxvk {
     } else {
       // Default path, use a resolve attachment
       this->resolveImageRp(dstImage, srcImage,
-        region, format, mode, stencilMode);
+        region, format, mode, stencilMode, true);
     }
   }
 
@@ -2564,11 +2562,6 @@ namespace dxvk {
       auto srcSubresource = attachment.view->imageSubresources();
       auto dstSubresource = resolve.imageView->imageSubresources();
 
-      // We're within a render pass, any pending clears will have happened
-      // after the resolve, so ignore them here.
-      prepareImage(attachment.view->image(), srcSubresource, false);
-      prepareImage(resolve.imageView->image(), dstSubresource, false);
-
       while (resolve.layerMask) {
         uint32_t layerIndex = bit::tzcnt(resolve.layerMask);
         uint32_t layerCount = bit::tzcnt(~(resolve.layerMask >> layerIndex));
@@ -2584,8 +2577,10 @@ namespace dxvk {
         region.srcSubresource.layerCount = layerCount;
         region.extent = resolve.imageView->mipLevelExtent(0u);
 
+        // We're within a render pass, any pending clears will have
+        // happened after the resolve, so ignore them here.
         resolveImageRp(resolve.imageView->image(), attachment.view->image(),
-          region, attachment.view->info().format, resolve.depthMode, resolve.stencilMode);
+          region, attachment.view->info().format, resolve.depthMode, resolve.stencilMode, false);
 
         resolve.layerMask &= ~0u << (layerIndex + layerCount);
       }
@@ -4723,20 +4718,18 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
-    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
-
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
     VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout,
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       dstImage->isFullSubresource(region.dstSubresource, region.extent));
-    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
+    accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     VkImageResolve2 resolveRegion = { VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2 };
     resolveRegion.srcSubresource = region.srcSubresource;
@@ -4754,19 +4747,6 @@ namespace dxvk {
     resolveInfo.pRegions = &resolveRegion;
 
     m_cmd->cmdResolveImage(&resolveInfo);
-  
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *dstImage, dstSubresourceRange, dstLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      VK_ACCESS_2_TRANSFER_READ_BIT, DxvkAccessOp::None);
-
-    m_cmd->track(dstImage, DxvkAccess::Write);
-    m_cmd->track(srcImage, DxvkAccess::Read);
   }
 
 
@@ -4776,14 +4756,12 @@ namespace dxvk {
     const VkImageResolve&           region,
           VkFormat                  format,
           VkResolveModeFlagBits     mode,
-          VkResolveModeFlagBits     stencilMode) {
+          VkResolveModeFlagBits     stencilMode,
+          bool                      flushClears) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
     bool isDepthStencil = (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
-
-    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = dstImage->info().debugName;
@@ -4820,9 +4798,10 @@ namespace dxvk {
       ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
       : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout, stages, srcAccess, false);
-    addImageLayoutTransition(*dstImage, dstSubresourceRange, dstLayout, stages, dstAccess, true);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout, stages, srcAccess, false);
+    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout, stages, dstAccess, true);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data(), flushClears);
 
     // Create a pair of views for the attachment resolve
     DxvkMetaResolveViews views(dstImage, region.dstSubresource,
@@ -4861,17 +4840,8 @@ namespace dxvk {
     m_cmd->cmdBeginRendering(&renderingInfo);
     m_cmd->cmdEndRendering();
 
-    // Add barriers for the render pass resolve
-    accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange,
-      srcLayout, stages, srcAccess, DxvkAccessOp::None);
-    accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresourceRange,
-      dstLayout, stages, dstAccess, DxvkAccessOp::None);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-    m_cmd->track(dstImage, DxvkAccess::Write);
-    m_cmd->track(srcImage, DxvkAccess::Read);
   }
 
 
@@ -4886,9 +4856,6 @@ namespace dxvk {
 
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
-
-    flushPendingAccesses(*dstImage, dstSubresourceRange, DxvkAccess::Write);
-    flushPendingAccesses(*srcImage, srcSubresourceRange, DxvkAccess::Read);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = dstImage->info().debugName;
@@ -4938,11 +4905,11 @@ namespace dxvk {
         dstAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     }
 
-    addImageLayoutTransition(*dstImage, dstSubresourceRange,
-      dstLayout, dstStages, dstAccess, doDiscard);
-    addImageLayoutTransition(*srcImage, srcSubresourceRange, srcLayout,
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout, dstStages, dstAccess, doDiscard);
+    accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     // Create a framebuffer and pipeline for the resolve op
     VkExtent3D passExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
@@ -5023,18 +4990,8 @@ namespace dxvk {
 
     m_cmd->cmdEndRendering();
 
-    accessImage(DxvkCmdBuffer::ExecBuffer, *srcImage, srcSubresourceRange,
-      srcLayout, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT, DxvkAccessOp::None);
-
-    accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresourceRange,
-      dstLayout, dstStages, dstAccess, DxvkAccessOp::None);
-
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-    m_cmd->track(dstImage, DxvkAccess::Write);
-    m_cmd->track(srcImage, DxvkAccess::Read);
   }
 
 
@@ -8197,9 +8154,6 @@ namespace dxvk {
     DxvkImplicitResolveOp op;
 
     while (m_implicitResolves.extractResolve(op)) {
-      prepareImage(op.inputImage, vk::makeSubresourceRange(op.resolveRegion.srcSubresource));
-      prepareImage(op.resolveImage, vk::makeSubresourceRange(op.resolveRegion.dstSubresource));
-
       // Always do a SAMPLE_ZERO resolve here since that's less expensive and closer to what
       // happens on native AMD anyway. Need to use a shader in case we are dealing with a
       // non-integer color image since render pass resolves only support AVERAGE..
@@ -8210,7 +8164,7 @@ namespace dxvk {
 
       if (useRp) {
         resolveImageRp(op.resolveImage, op.inputImage, op.resolveRegion,
-          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
+          op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, true);
       } else {
         resolveImageFb(op.resolveImage, op.inputImage, op.resolveRegion,
           op.resolveFormat, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT, VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
