@@ -4589,9 +4589,6 @@ namespace dxvk {
           VkDeviceSize          offset) {
     auto pageTable = sparse->getSparsePageTable();
 
-    flushPendingAccesses(*buffer, offset, SparseMemoryPageSize * pageCount,
-      ToBuffer ? DxvkAccess::Write : DxvkAccess::Read);
-
     if (pageTable->getBufferHandle()) {
       this->copySparseBufferPages<ToBuffer>(
         static_cast<DxvkBuffer*>(sparse.ptr()),
@@ -4601,12 +4598,6 @@ namespace dxvk {
         static_cast<DxvkImage*>(sparse.ptr()),
         pageCount, pages, buffer, offset);
     }
-
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *buffer,
-      offset, SparseMemoryPageSize * pageCount,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      ToBuffer ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT,
-      DxvkAccessOp::None);
   }
 
 
@@ -4625,8 +4616,12 @@ namespace dxvk {
     auto sparseSlice = sparse->getSliceInfo();
     auto bufferSlice = buffer->getSliceInfo(offset, SparseMemoryPageSize * pageCount);
 
-    flushPendingAccesses(*sparse, 0, sparse->info().size,
-      ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*sparse, 0u, sparseSlice.size, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    accessBatch.emplace_back(*buffer, offset, bufferSlice.size, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     for (uint32_t i = 0; i < pageCount; i++) {
       auto pageInfo = pageTable->getPageInfo(pages[i]);
@@ -4652,14 +4647,6 @@ namespace dxvk {
 
     if (info.regionCount)
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &info);
-
-    accessBuffer(DxvkCmdBuffer::ExecBuffer,
-      *sparse, 0, sparse->info().size, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      ToBuffer ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      DxvkAccessOp::None);
-
-    m_cmd->track(sparse, ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
-    m_cmd->track(buffer, ToBuffer ? DxvkAccess::Write : DxvkAccess::Read);
   }
 
 
@@ -4677,22 +4664,17 @@ namespace dxvk {
     auto pageExtent = pageTable->getProperties().pageRegionExtent;
 
     auto bufferSlice = buffer->getSliceInfo(offset, SparseMemoryPageSize * pageCount);
-    auto sparseSubresources = sparse->getAvailableSubresources();
-
-    flushPendingAccesses(*sparse, sparseSubresources,
-      ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
 
     VkImageLayout transferLayout = sparse->pickLayout(ToBuffer
       ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
       : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    VkAccessFlags transferAccess = ToBuffer
-      ? VK_ACCESS_TRANSFER_READ_BIT
-      : VK_ACCESS_TRANSFER_WRITE_BIT;
-
-    addImageLayoutTransition(*sparse, sparseSubresources, transferLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, transferAccess, false);
-    flushImageLayoutTransitions(DxvkCmdBuffer::ExecBuffer);
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*sparse, sparse->getAvailableSubresources(), transferLayout,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, ToBuffer ? VK_ACCESS_2_TRANSFER_READ_BIT : VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
+    accessBatch.emplace_back(*buffer, offset, bufferSlice.size, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_2_TRANSFER_WRITE_BIT : VK_ACCESS_2_TRANSFER_READ_BIT);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     for (uint32_t i = 0; i < pageCount; i++) {
       auto pageInfo = pageTable->getPageInfo(pages[i]);
@@ -4731,13 +4713,6 @@ namespace dxvk {
       if (info.regionCount)
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info);
     }
-
-    accessImage(DxvkCmdBuffer::ExecBuffer,
-      *sparse, sparseSubresources, transferLayout,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, transferAccess, DxvkAccessOp::None);
-
-    m_cmd->track(sparse, ToBuffer ? DxvkAccess::Read : DxvkAccess::Write);
-    m_cmd->track(buffer, ToBuffer ? DxvkAccess::Write : DxvkAccess::Read);
   }
 
 
