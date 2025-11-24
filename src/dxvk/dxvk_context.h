@@ -1580,7 +1580,8 @@ namespace dxvk {
       const VkImageResolve&           region,
             VkFormat                  format,
             VkResolveModeFlagBits     mode,
-            VkResolveModeFlagBits     stencilMode);
+            VkResolveModeFlagBits     stencilMode,
+            bool                      flushClears);
 
     void resolveImageFb(
       const Rc<DxvkImage>&            dstImage,
