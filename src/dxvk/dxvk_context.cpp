@@ -676,9 +676,6 @@ namespace dxvk {
     viewInfo.usage = VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     Rc<DxvkBufferView> srcView = srcBuffer->createView(viewInfo);
 
-    flushPendingAccesses(*dstView, DxvkAccess::Write);
-    flushPendingAccesses(*srcView, DxvkAccess::Read);
-
     if (srcBuffer == dstBuffer
      && srcView->info().offset < dstView->info().offset + dstView->info().size
      && srcView->info().offset + srcView->info().size > dstView->info().offset) {
@@ -698,6 +695,14 @@ namespace dxvk {
       auto tmpBufferSlice = tmpBuffer->getSliceInfo();
       auto srcBufferSlice = srcView->getSliceInfo();
 
+      viewInfo.offset = 0;
+      auto tmpView = tmpBuffer->createView(viewInfo);
+
+      small_vector<DxvkResourceAccess, 2u> accessBatch;
+      accessBatch.emplace_back(*srcView, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+      accessBatch.emplace_back(*tmpView, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
       VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
       copyRegion.srcOffset = srcBufferSlice.offset;
       copyRegion.dstOffset = tmpBufferSlice.offset;
@@ -711,17 +716,13 @@ namespace dxvk {
 
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copyInfo);
 
-      emitMemoryBarrier(
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-
-      viewInfo.offset = 0;
-      srcView = tmpBuffer->createView(viewInfo);
-
-      m_cmd->track(tmpBuffer, DxvkAccess::Write);
+      srcView = std::move(tmpView);
     }
+
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*srcView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+    accessBatch.emplace_back(*dstView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     auto pipeInfo = m_common->metaCopy().getCopyFormattedBufferPipeline();
 
@@ -753,18 +754,6 @@ namespace dxvk {
       (extent.width  + 7) / 8,
       (extent.height + 7) / 8,
       extent.depth);
-
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *dstView,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-      DxvkAccessOp::None);
-
-    accessBuffer(DxvkCmdBuffer::ExecBuffer, *srcView,
-      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT,
-      DxvkAccessOp::None);
-
-    // Track all involved resources
-    m_cmd->track(dstBuffer, DxvkAccess::Write);
-    m_cmd->track(srcBuffer, DxvkAccess::Read);
   }
 
 
