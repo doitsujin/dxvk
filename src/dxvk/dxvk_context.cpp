@@ -2308,16 +2308,12 @@ namespace dxvk {
       auto dstSubresource = resolve.imageView->imageSubresources();
       bool isDepthStencil = dstSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
-      VkImageLayout oldLayout = dstImage->info().layout;
       VkImageLayout newLayout = dstImage->pickLayout(isDepthStencil
         ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
       bool isFullWrite = (resolve.depthMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
                       && (resolve.stencilMode || !(dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT));
-
-      if (isFullWrite)
-        oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
       // If the application may have used the destination image as shader input in
       // any way, we need to preserve its contents throughout the render pass and
@@ -2378,15 +2374,15 @@ namespace dxvk {
         ? VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
         : VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
 
-      // TODO fix layout tracking somehow
-      addImageLayoutTransition(*dstImage, dstSubresource,
-        oldLayout, dstImage->info().stages, dstImage->info().access,
-        newLayout, stages, access);
+      transitionImageLayout(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresource,
+        dstImage->info().stages, dstImage->info().access, newLayout, stages, access,
+        isFullWrite);
 
-      // Record layout transition from attachment layout back to default
-      // layout. This will be flushed after the render pass has ended.
-      accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage,
-        dstSubresource, newLayout, stages, access, DxvkAccessOp::None);
+      // Record post-resolve barrier. This is not a layout transition.
+      accessImage(DxvkCmdBuffer::ExecBuffer, *dstImage, dstSubresource,
+        newLayout, stages, access,
+        newLayout, dstImage->info().stages, dstImage->info().access,
+        DxvkAccessOp::None);
 
       if (!isDepthStencil) {
         uint32_t index = m_state.om.framebufferInfo.getColorAttachmentIndex(i);
