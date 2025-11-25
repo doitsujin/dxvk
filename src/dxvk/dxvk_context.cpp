@@ -420,17 +420,16 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*dstBuffer, dstOffset, numBytes, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
+    accessBatch.emplace_back(*srcBuffer, srcOffset, numBytes, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
-    if (!prepareOutOfOrderTransfer(srcBuffer, srcOffset, numBytes, DxvkAccess::Read)
-     || !prepareOutOfOrderTransfer(dstBuffer, dstOffset, numBytes, DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch.size(), accessBatch.data());
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       this->spillRenderPass(true);
 
-      flushPendingAccesses(*srcBuffer, srcOffset, numBytes, DxvkAccess::Read);
-      flushPendingAccesses(*dstBuffer, dstOffset, numBytes, DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
-    }
+    syncResources(cmdBuffer, accessBatch.size(), accessBatch.data());
 
     auto srcSlice = srcBuffer->getSliceInfo(srcOffset, numBytes);
     auto dstSlice = dstBuffer->getSliceInfo(dstOffset, numBytes);
@@ -447,17 +446,6 @@ namespace dxvk {
     copyInfo.pRegions = &copyRegion;
 
     m_cmd->cmdCopyBuffer(cmdBuffer, &copyInfo);
-
-    accessBuffer(cmdBuffer, *srcBuffer, srcOffset, numBytes,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT,
-      DxvkAccessOp::None);
-
-    accessBuffer(cmdBuffer, *dstBuffer, dstOffset, numBytes,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
-      DxvkAccessOp::None);
-
-    m_cmd->track(dstBuffer, DxvkAccess::Write);
-    m_cmd->track(srcBuffer, DxvkAccess::Read);
   }
   
   
