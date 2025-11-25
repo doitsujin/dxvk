@@ -2518,15 +2518,15 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+    DxvkResourceAccess access(*buffer, offset, size,
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
 
-    if (!prepareOutOfOrderTransfer(buffer, offset, size, DxvkAccess::Write)) {
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       spillRenderPass(true);
 
-      flushPendingAccesses(*buffer, offset, size, DxvkAccess::Write);
-
-      cmdBuffer = DxvkCmdBuffer::ExecBuffer;
-    }
+    syncResources(cmdBuffer, 1u, &access);
 
     auto bufferSlice = buffer->getSliceInfo(offset, size);
 
@@ -2535,12 +2535,6 @@ namespace dxvk {
       bufferSlice.offset,
       bufferSlice.size,
       data);
-
-    accessBuffer(cmdBuffer, *buffer, offset, size,
-      VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-      VK_ACCESS_2_TRANSFER_WRITE_BIT, DxvkAccessOp::None);
-
-    m_cmd->track(buffer, DxvkAccess::Write);
   }
   
   
