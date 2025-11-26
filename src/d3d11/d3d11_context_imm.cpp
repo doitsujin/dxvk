@@ -815,27 +815,19 @@ namespace dxvk {
     auto texture = GetCommonTexture(pResource);
     auto buffer = GetCommonBuffer(pResource);
 
-    if (buffer) {
+    Rc<DxvkPagedResource> resource;
+
+    if (texture)
+      resource = texture->GetImage();
+    else if (buffer)
+      resource = buffer->GetBuffer();
+
+    if (resource) {
       EmitCs([
-        cBuffer   = buffer->GetBuffer()
-      ] (DxvkContext* ctx) {
-        ctx->emitBufferBarrier(cBuffer,
-          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
-          cBuffer->info().stages,
-          cBuffer->info().access);
-      });
-    } else if (texture) {
-      EmitCs([
-        cImage    = texture->GetImage(),
+        cResource = std::move(resource),
         cLayout   = SrcLayout
       ] (DxvkContext* ctx) {
-        ctx->emitImageBarrier(cImage, cLayout,
-          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
-          cImage->info().layout,
-          cImage->info().stages,
-          cImage->info().access);
+        ctx->acquireExternalResource(cResource, cLayout);
       });
     }
   }
@@ -849,27 +841,19 @@ namespace dxvk {
     auto texture = GetCommonTexture(pResource);
     auto buffer = GetCommonBuffer(pResource);
 
-    if (buffer) {
+    Rc<DxvkPagedResource> resource;
+
+    if (texture)
+      resource = texture->GetImage();
+    else if (buffer)
+      resource = buffer->GetBuffer();
+
+    if (resource) {
       EmitCs([
-        cBuffer   = buffer->GetBuffer()
-      ] (DxvkContext* ctx) {
-        ctx->emitBufferBarrier(cBuffer,
-          cBuffer->info().stages,
-          cBuffer->info().access,
-          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
-      });
-    } else if (texture) {
-      EmitCs([
-        cImage    = texture->GetImage(),
+        cResource = std::move(resource),
         cLayout   = DstLayout
       ] (DxvkContext* ctx) {
-        ctx->emitImageBarrier(cImage,
-          cImage->info().layout,
-          cImage->info().stages,
-          cImage->info().access,
-          cLayout, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
+        ctx->releaseExternalResource(cResource, cLayout);
       });
     }
   }

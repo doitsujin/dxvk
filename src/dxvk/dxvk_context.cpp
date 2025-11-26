@@ -1156,43 +1156,72 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::emitBufferBarrier(
-    const Rc<DxvkBuffer>&           resource,
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess) {
-    this->spillRenderPass(true);
+  void DxvkContext::acquireExternalResource(
+      const Rc<DxvkPagedResource>&    resource,
+            VkImageLayout             layout) {
+    DxvkResourceAccess access;
+    access.stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    access.access = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+    access.buffer = dynamic_cast<DxvkBuffer*>(resource.ptr());
+    access.image = dynamic_cast<DxvkImage*>(resource.ptr());
 
-    accessBuffer(DxvkCmdBuffer::ExecBuffer,
-      *resource, 0, resource->info().size,
-      srcStages, srcAccess, dstStages, dstAccess,
-      DxvkAccessOp::None);
+    if (access.buffer) {
+      access.bufferOffset = 0u;
+      access.bufferSize = access.buffer->info().size;
+    } else if (access.image) {
+      access.imageSubresources = access.image->getAvailableSubresources();
+      access.imageLayout = layout;
 
-    m_cmd->track(resource, DxvkAccess::Write);
+      // Need to overwrite the tracked layout
+      access.image->trackLayout(access.imageSubresources, access.imageLayout);
+    }
+
+    // Try to acquire on the init command buffer since this will generally
+    // be the first use of the resource in a command list. Otherwise, we
+    // need to flush barriers since there may be release barriers already.
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(
+      DxvkCmdBuffer::InitBarriers, 1u, &access);
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      spillRenderPass(true);
+
+    if (access.image && access.imageLayout != access.image->info().layout) {
+      // External release barrier and layout transition in one go
+      transitionImageLayout(cmdBuffer, *access.image, access.imageSubresources,
+        access.stages, access.access, access.imageLayout,
+        access.image->info().stages, access.image->info().access, false);
+      flushImageLayoutTransitions(cmdBuffer);
+    } else {
+      releaseResources(cmdBuffer, 1u, &access);
+    }
+
+    m_cmd->track(resource, DxvkAccess::Read);
   }
 
 
-  void DxvkContext::emitImageBarrier(
-    const Rc<DxvkImage>&            resource,
-          VkImageLayout             srcLayout,
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          VkImageLayout             dstLayout,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess) {
-    this->spillRenderPass(true);
+  void DxvkContext::releaseExternalResource(
+    const Rc<DxvkPagedResource>&    resource,
+          VkImageLayout             layout) {
+    spillRenderPass(true);
 
-    // Image is being prepared for external usage, flush
-    // any and all tracking that we may have involving it.
-    // TODO rework this to fit the acquire/release model.
-    DxvkResourceAccess access(*resource, resource->getAvailableSubresources(),
-      dstLayout, srcStages | dstStages, srcAccess | dstAccess,
-      srcLayout == VK_IMAGE_LAYOUT_UNDEFINED);
+    DxvkResourceAccess access;
+    access.stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+    access.access = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT;
+    access.buffer = dynamic_cast<DxvkBuffer*>(resource.ptr());
+    access.image = dynamic_cast<DxvkImage*>(resource.ptr());
 
-    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
-    acquireResources(cmdBuffer, 1u, &access);
+    if (access.buffer) {
+      access.bufferOffset = 0u;
+      access.bufferSize = access.buffer->info().size;
+    } else if (access.image) {
+      access.imageSubresources = access.image->getAvailableSubresources();
+      access.imageLayout = layout;
+    }
+
+    // Prepare resource for external use, hence acquire
+    acquireResources(DxvkCmdBuffer::ExecBuffer, 1u, &access);
   }
+
 
 
   void DxvkContext::generateMipmaps(
