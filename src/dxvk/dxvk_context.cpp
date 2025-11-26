@@ -805,7 +805,7 @@ namespace dxvk {
           uint32_t x,
           uint32_t y,
           uint32_t z) {
-    if (this->commitComputeState()) {
+    if (this->commitComputeState<false>()) {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
@@ -822,12 +822,7 @@ namespace dxvk {
           VkDeviceSize      offset) {
     auto argInfo = m_state.id.argBuffer.getSliceInfo();
 
-    flushPendingAccesses(
-      *m_state.id.argBuffer.buffer(),
-      m_state.id.argBuffer.offset() + offset,
-      sizeof(VkDispatchIndirectCommand), DxvkAccess::Read);
-
-    if (this->commitComputeState()) {
+    if (this->commitComputeState<true>()) {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
@@ -6792,7 +6787,7 @@ namespace dxvk {
   }
   
 
-  template<bool Resolve>
+  template<bool Indirect, bool Resolve>
   bool DxvkContext::commitComputeState() {
     this->spillRenderPass(false);
 
@@ -6802,7 +6797,7 @@ namespace dxvk {
         return false;
     }
 
-    if (this->checkComputeHazards()) {
+    if (this->checkComputeHazards<Indirect>()) {
       this->flushBarriers();
 
       // Dirty descriptors if this hasn't happened yet for
@@ -6818,7 +6813,7 @@ namespace dxvk {
 
       if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
         this->flushImplicitResolves();
-        return this->commitComputeState<false>();
+        return this->commitComputeState<Indirect, false>();
       }
     }
 
@@ -7057,13 +7052,21 @@ namespace dxvk {
   }
   
 
+  template<bool Indirect>
   bool DxvkContext::checkComputeHazards() {
     // Exit early if we know that there cannot be any hazards to avoid
     // some overhead after barriers are flushed. This is common.
     if (m_barrierTracker.empty())
       return false;
 
-    return checkResourceHazards<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->getLayout());
+    bool requiresBarrier = checkResourceHazards<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->getLayout());
+
+    if (Indirect && !requiresBarrier) {
+      requiresBarrier = checkBufferBarrier<VK_PIPELINE_BIND_POINT_COMPUTE>(
+        m_state.id.argBuffer, VK_ACCESS_INDIRECT_COMMAND_READ_BIT, DxvkAccessOp::None);
+    }
+
+    return requiresBarrier;
   }
 
 
