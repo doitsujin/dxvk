@@ -1,5 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
+#include "dxvk_latency_builtin.h"
 #include "dxvk_latency_reflex.h"
 #include "dxvk_shader_cache.h"
 #include "dxvk_shader_ir.h"
@@ -560,11 +561,18 @@ namespace dxvk {
 
   Rc<DxvkLatencyTracker> DxvkDevice::createLatencyTracker(
     const Rc<Presenter>&            presenter) {
-    // Reflex is broken on 32-bit drivers, but there are no known apps anyway
-    if (!m_features.nvLowLatency2 || env::is32BitHostPlatform())
+    if (m_options.latencySleep == Tristate::False)
       return nullptr;
 
-    return new DxvkReflexLatencyTrackerNv(presenter);
+    if (m_options.latencySleep == Tristate::Auto) {
+      if (m_features.nvLowLatency2)
+        return new DxvkReflexLatencyTrackerNv(presenter);
+      else
+        return nullptr;
+    }
+
+    return new DxvkBuiltInLatencyTracker(presenter,
+      m_options.latencyTolerance, m_features.nvLowLatency2);
   }
 
 
