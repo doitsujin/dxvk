@@ -756,12 +756,20 @@ namespace dxvk {
     // that have GENERAL (or FEEDBACK_LOOP) as their layout.
     // This will always be the case for images that can be sampled.
     // So just pick UNDEFINED here.
+
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    // We default to DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL for DS images that can be sampled.
+    // The backend defaults to DS_READ_ONLY, so we need to set the layout explicitly.
+    if (IsDepthStencil())
+      layout = VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+
     m_sampleView.Color = CreateView(AllLayers, Lod,
-      VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, false);
+      VK_IMAGE_USAGE_SAMPLED_BIT, layout, false);
 
     if (IsSrgbCompatible()) {
       m_sampleView.Srgb = CreateView(AllLayers, Lod,
-        VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_UNDEFINED, true);
+        VK_IMAGE_USAGE_SAMPLED_BIT, layout, true);
     }
   }
 
