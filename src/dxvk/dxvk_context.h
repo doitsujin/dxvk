@@ -1748,7 +1748,7 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint>
     void updatePushData();
     
-    template<bool Resolve = true>
+    template<bool Indirect, bool Resolve = true>
     bool commitComputeState();
     
     template<bool Indexed, bool Indirect, bool Resolve = true>
@@ -1758,6 +1758,7 @@ namespace dxvk {
     bool checkResourceHazards(
       const DxvkPipelineBindings*     layout);
 
+    template<bool Indirect>
     bool checkComputeHazards();
 
     template<bool Indexed, bool Indirect>
