@@ -146,7 +146,8 @@ namespace dxvk {
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                   | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                   | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-      info.stages = util::pipelineStages(ShaderKey.stage());
+      info.stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT
+                  | util::pipelineStages(ShaderKey.stage());
       info.access = VK_ACCESS_UNIFORM_READ_BIT
                   | VK_ACCESS_TRANSFER_READ_BIT
                   | VK_ACCESS_TRANSFER_WRITE_BIT;
