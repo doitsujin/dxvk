@@ -2074,32 +2074,6 @@ namespace dxvk {
     void accessDrawCountBuffer(
             VkDeviceSize              offset);
 
-    void flushPendingAccesses(
-            DxvkBuffer&               buffer,
-            VkDeviceSize              offset,
-            VkDeviceSize              size,
-            DxvkAccess                access);
-
-    void flushPendingAccesses(
-            DxvkBufferView&           bufferView,
-            DxvkAccess                access);
-
-    void flushPendingAccesses(
-            DxvkImage&                image,
-      const VkImageSubresourceRange&  subresources,
-            DxvkAccess                access);
-
-    void flushPendingAccesses(
-            DxvkImage&                image,
-      const VkImageSubresourceLayers& subresources,
-            VkOffset3D                offset,
-            VkExtent3D                extent,
-            DxvkAccess                access);
-
-    void flushPendingAccesses(
-            DxvkImageView&            imageView,
-            DxvkAccess                access);
-
     void flushBarriers();
 
     bool resourceHasAccess(
