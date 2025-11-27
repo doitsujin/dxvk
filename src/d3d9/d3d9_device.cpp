@@ -4875,7 +4875,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::WaitStagingBuffer() {
+  void D3D9DeviceEx::ThrottleAllocation() {
     // Treshold for staging memory in flight. Since the staging buffer granularity
     // is somewhat coars, it is possible for one additional allocation to be in use,
     // but otherwise this is a hard upper bound.
@@ -4887,7 +4887,9 @@ namespace dxvk {
     // that staging buffer memory gets recycled relatively soon.
     constexpr VkDeviceSize MaxStagingMemoryPerSubmission = MaxStagingMemoryInFlight / 3u;
 
-    VkDeviceSize stagingBufferAllocated = m_stagingBuffer.getStatistics().allocatedTotal;
+    DxvkStagingBufferStats stats = GetStagingMemoryStatistics();
+
+    VkDeviceSize stagingBufferAllocated = stats.allocatedTotal;
 
     if (stagingBufferAllocated > m_stagingMemorySignaled + MaxStagingMemoryPerSubmission) {
       // Perform submission. If the amount of staging memory allocated since the
@@ -4903,6 +4905,14 @@ namespace dxvk {
     // Wait for staging memory to get recycled.
     if (stagingBufferAllocated > MaxStagingMemoryInFlight)
       m_dxvkDevice->waitForFence(*m_stagingBufferFence, stagingBufferAllocated - MaxStagingMemoryInFlight);
+  }
+
+
+  DxvkStagingBufferStats D3D9DeviceEx::GetStagingMemoryStatistics() const {
+    DxvkStagingBufferStats stats = m_stagingBuffer.getStatistics();
+    stats.allocatedTotal += m_discardMemoryCounter;
+    stats.allocatedSinceLastReset += m_discardMemoryCounter - m_discardMemoryOnFlush;
+    return stats;
   }
 
 
@@ -5333,7 +5343,7 @@ namespace dxvk {
     VkOffset3D DestOffset) {
     // Wait until the amount of used staging memory is under a certain threshold to avoid using
     // too much memory and even more so to avoid using too much address space.
-    WaitStagingBuffer();
+    ThrottleAllocation();
 
     const Rc<DxvkImage> image = pDestTexture->GetImage();
 
@@ -5566,6 +5576,9 @@ namespace dxvk {
       // the buffer is not currently getting used anyway
       // so there's no reason to waste memory by discarding.
 
+      m_discardMemoryCounter += desc.Size;
+      ThrottleAllocation();
+
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
@@ -5633,7 +5646,7 @@ namespace dxvk {
         D3D9CommonBuffer*       pResource) {
     // Wait until the amount of used staging memory is under a certain threshold to avoid using
     // too much memory and even more so to avoid using too much address space.
-    WaitStagingBuffer();
+    ThrottleAllocation();
 
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
     auto srcSlice = pResource->GetMappedSlice();
@@ -6312,7 +6325,10 @@ namespace dxvk {
       m_submitStatus.result = VK_NOT_READY;
 
     // Update signaled staging buffer counter and signal the fence
-    m_stagingMemorySignaled = m_stagingBuffer.getStatistics().allocatedTotal;
+    m_stagingMemorySignaled = GetStagingMemoryStatistics().allocatedTotal;
+
+    // Reset counter for discarded memory in flight
+    m_discardMemoryOnFlush = m_discardMemoryCounter;
 
     // Add commands to flush the threaded
     // context, then flush the command list
