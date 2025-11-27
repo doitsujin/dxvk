@@ -490,7 +490,8 @@ namespace dxvk {
           VkDeviceSize          rowAlignment,
           VkDeviceSize          sliceAlignment,
           VkFormat              srcFormat) {
-    bool useFb = !formatsAreCopyCompatible(dstImage->info().format, srcFormat);
+    bool useFb = !formatsAreCopyCompatible(dstImage->info().format, srcFormat)
+              || dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
     if (useFb) {
       copyBufferToImageFb(dstImage, dstSubresource, dstOffset, dstExtent,
@@ -2587,7 +2588,8 @@ namespace dxvk {
     // Always use framebuffer path for depth-stencil images since we know
     // they are writeable and can't use Vulkan transfer queues. Stencil
     // data is interleaved and needs to be decoded manually anyway.
-    bool useFb = !formatsAreCopyCompatible(image->info().format, format);
+    bool useFb = !formatsAreCopyCompatible(image->info().format, format)
+              || image->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
     if (useFb)
       uploadImageFb(image, source, sourceOffset, subresourceAlignment, format);
@@ -3468,6 +3470,20 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
+    bool isDepthStencil = imageSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+
+    // Ensure we can read the source image
+    DxvkImageUsageInfo imageUsage = { };
+    imageUsage.usage = isDepthStencil
+      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    if (!ensureImageCompatibility(image, imageUsage)) {
+      Logger::err(str::format("DxvkContext: copyBufferToImageFb: Unsupported images:"
+        "\n  dst format: ", dstImage->info().format,
+        "\n  src format: ", srcImage->info().format));
+    }
+
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = image->info().debugName;
       const char* srcName = buffer->info().debugName;
@@ -3511,7 +3527,6 @@ namespace dxvk {
 
     // Create image view to render to
     bool discard = image->isFullSubresource(imageSubresource, imageExtent);
-    bool isDepthStencil = imageSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
 
     DxvkImageViewKey imageViewInfo = { };
     imageViewInfo.viewType = image->info().type == VK_IMAGE_TYPE_1D
@@ -3602,7 +3617,8 @@ namespace dxvk {
     // If we have a depth aspect, this will give us either the depth-only
     // pipeline or one that can write all the given aspects
     DxvkMetaCopyPipeline pipeline = m_common->metaCopy().getCopyBufferToImagePipeline(
-      image->info().format, bufferFormat, imageSubresource.aspectMask);
+      image->info().format, bufferFormat, imageSubresource.aspectMask,
+      image->info().sampleCount);
 
     DxvkDescriptorWrite bufferDescriptor = { };
     bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
@@ -3631,7 +3647,8 @@ namespace dxvk {
       // stencil to 0 and then "write" each individual bit by discarding
       // fragments where that bit is not set.
       pipeline = m_common->metaCopy().getCopyBufferToImagePipeline(
-        image->info().format, bufferFormat, VK_IMAGE_ASPECT_STENCIL_BIT);
+        image->info().format, bufferFormat, VK_IMAGE_ASPECT_STENCIL_BIT,
+        image->info().sampleCount);
 
       if (imageSubresource.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
         VkClearAttachment clear = { };
@@ -9117,7 +9134,7 @@ namespace dxvk {
         return VK_FORMAT_R32G32_UINT;
 
       default:
-        return VK_FORMAT_UNDEFINED;
+        return srcFormat;
     }
   }
 

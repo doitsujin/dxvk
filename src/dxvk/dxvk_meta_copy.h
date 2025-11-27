@@ -88,19 +88,22 @@ namespace dxvk {
     VkFormat imageFormat = VK_FORMAT_UNDEFINED;
     VkFormat bufferFormat = VK_FORMAT_UNDEFINED;
     VkImageAspectFlags imageAspects = 0u;
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
     bool eq(const DxvkMetaBufferImageCopyPipelineKey& other) const {
       return this->imageViewType == other.imageViewType
           && this->imageFormat   == other.imageFormat
           && this->imageAspects  == other.imageAspects
-          && this->bufferFormat  == other.bufferFormat;
+          && this->bufferFormat  == other.bufferFormat
+          && this->sampleCount   == other.sampleCount;
     }
 
     size_t hash() const {
       return (uint32_t(imageViewType))
            ^ (uint32_t(imageAspects) << 4)
            ^ (uint32_t(imageFormat) << 8)
-           ^ (uint32_t(bufferFormat) << 16);
+           ^ (uint32_t(bufferFormat) << 16)
+           ^ (uint32_t(sampleCount) << 28);
     }
   };
 
@@ -167,14 +170,18 @@ namespace dxvk {
      *
      * Note that setting both depth and stencil aspects
      * requires device support for depth-stencil export.
+     * For multisampled images, all samples for a pixel
+     * will receive the same value.
      * \param [in] dstFormat Destionation image format
      * \param [in] srcFormat Source buffer data format
      * \param [in] aspects Aspect mask to copy
+     * \param [in] samples Sample count
      */
     DxvkMetaCopyPipeline getCopyBufferToImagePipeline(
             VkFormat              dstFormat,
             VkFormat              srcFormat,
-            VkImageAspectFlags    aspects);
+            VkImageAspectFlags    aspects,
+            VkSampleCountFlags    samples);
 
     /**
      * \brief Creates pipeline for image to buffer copy
