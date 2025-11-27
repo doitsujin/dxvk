@@ -5503,8 +5503,8 @@ namespace dxvk {
 
     auto& desc = *pResource->Desc();
 
-    // Ignore DISCARD if NOOVERWRITE is set
-    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
+    // Ignore DISCARD if NOOVERWRITE or READONLY is set
+    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE | D3DLOCK_READONLY)) != D3DLOCK_DISCARD))
       Flags &= ~D3DLOCK_DISCARD;
 
     // Ignore DISCARD and NOOVERWRITE if the buffer is not DEFAULT pool (tests + Halo 2)
