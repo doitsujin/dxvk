@@ -3479,9 +3479,8 @@ namespace dxvk {
       : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     if (!ensureImageCompatibility(image, imageUsage)) {
-      Logger::err(str::format("DxvkContext: copyBufferToImageFb: Unsupported images:"
-        "\n  dst format: ", dstImage->info().format,
-        "\n  src format: ", srcImage->info().format));
+      Logger::err(str::format("DxvkContext: copyBufferToImageFb: Unsupported image:"
+        "\n  format: ", image->info().format));
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
