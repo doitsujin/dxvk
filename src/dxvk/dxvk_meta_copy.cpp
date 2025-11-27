@@ -8,7 +8,9 @@
 
 #include <dxvk_buffer_to_image_d.h>
 #include <dxvk_buffer_to_image_ds_export.h>
+#include <dxvk_buffer_to_image_f.h>
 #include <dxvk_buffer_to_image_s_discard.h>
+#include <dxvk_buffer_to_image_u.h>
 
 #include <dxvk_image_to_buffer_ds.h>
 #include <dxvk_image_to_buffer_f.h>
@@ -129,13 +131,15 @@ namespace dxvk {
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferToImagePipeline(
           VkFormat              dstFormat,
           VkFormat              srcFormat,
-          VkImageAspectFlags    aspects) {
+          VkImageAspectFlags    aspects,
+          VkSampleCountFlags    samples) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaBufferImageCopyPipelineKey key;
     key.imageFormat = dstFormat;
     key.bufferFormat = srcFormat;
     key.imageAspects = aspects;
+    key.sampleCount = VkSampleCountFlagBits(samples);
 
     auto entry = m_bufferToImagePipelines.find(key);
     if (entry != m_bufferToImagePipelines.end())
@@ -277,12 +281,6 @@ namespace dxvk {
     pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
       sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
 
-    // We don't support color right now
-    if (!(key.imageAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
-      Logger::err(str::format("DxvkMetaCopyObjects: Color images not supported"));
-      return DxvkMetaCopyPipeline();
-    }
-
     VkStencilOpState stencilOp = { };
     stencilOp.failOp      = VK_STENCIL_OP_REPLACE;
     stencilOp.passOp      = VK_STENCIL_OP_REPLACE;
@@ -321,6 +319,7 @@ namespace dxvk {
 
     // Set up final pipeline state
     util::DxvkBuiltInGraphicsState state = { };
+    state.sampleCount = key.sampleCount;
 
     if (m_device->features().vk12.shaderOutputLayer) {
       state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
@@ -329,21 +328,27 @@ namespace dxvk {
       state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
     }
 
-    if (m_device->features().extShaderStencilExport) {
-      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_ds_export, &specInfo);
-    } else if (key.imageAspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_s_discard, &specInfo);
-
-      state.dynamicStateCount = 1u;
-      state.dynamicStates = &dynamicStencilWriteMask;
-    } else {
-      state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_d, &specInfo);
-    }
-
     if (key.imageAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      if (m_device->features().extShaderStencilExport) {
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_ds_export, &specInfo);
+      } else if (key.imageAspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_s_discard, &specInfo);
+
+        state.dynamicStateCount = 1u;
+        state.dynamicStates = &dynamicStencilWriteMask;
+      } else {
+        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_d, &specInfo);
+      }
+
       state.depthFormat = key.imageFormat;
       state.dsState = &dsState;
     } else {
+      const auto* formatInfo = lookupFormatInfo(key.imageFormat);
+
+      state.fs = formatInfo->flags.any(DxvkFormatFlag::SampledUInt, DxvkFormatFlag::SampledSInt)
+        ? util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_u, &specInfo)
+        : util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_f, &specInfo);
+
       state.colorFormat = key.imageFormat;
     }
 
