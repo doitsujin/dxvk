@@ -51,13 +51,14 @@ namespace dxvk {
       return;
     }
 
-    if (interval < TimerDuration::zero())
-      interval = -interval;
-
     auto t1 = dxvk::high_resolution_clock::now();
 
-    if (!testRefreshHeuristic(interval, t1, latency))
-      return;
+    if (interval < TimerDuration::zero()) {
+      interval = -interval;
+
+      if (!testRefreshHeuristic(interval, t1, latency))
+        return;
+    }
 
     // Subsequent code must not access any class members
     // that can be written by setTargetFrameRate
