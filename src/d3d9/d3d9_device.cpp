@@ -5528,6 +5528,10 @@ namespace dxvk {
     if (unlikely(CanOnlySWVP() && !pResource->NeedsReadback()))
       Flags |= D3DLOCK_NOOVERWRITE;
 
+    // READONLY is ignored for non-managed pools
+    if ((Flags & D3DLOCK_READONLY) && !IsPoolManaged(desc.Pool))
+      Flags &= ~D3DLOCK_READONLY;
+
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
     //  how that works given it is meant to be a DIRECT access..?)
