@@ -341,7 +341,7 @@ namespace dxvk {
     /* Shantae and the Pirate's Curse             *
      * Game speeds up above 60 fps                */
     { R"(\\ShantaeCurse\.exe$)", {{
-      { "dxgi.maxFrameRate",                  "60" },
+      { "dxgi.maxFrameRate",                "-60" },
     }} },
     /* Mighty Switch Force! Collection            *
      * Games speed up above 60 fps                */
@@ -388,7 +388,7 @@ namespace dxvk {
      * Game speed increases when above 60 fps in  *
      * the tavern area                            */
     { R"(\\BLADESTORM Nightmare\\Launch_(EA|JP)\.exe$)", {{
-      { "dxgi.maxFrameRate",                  "60" },
+      { "dxgi.maxFrameRate",                  "-60" },
     }} },
     /* Vindictus d3d11 CPU bound perf, and work   *
      * around the game not properly initializing  *
@@ -447,7 +447,7 @@ namespace dxvk {
     /* The Hurricane of the Varstray              *
      * Too fast above 60fps                       */
     { R"(\\Varstray_steam(_demo)?\.exe$)", {{
-      { "dxgi.maxFrameRate",                  "60" },
+      { "dxgi.maxFrameRate",                 "-60" },
     }} },
     /* Watch Dogs 2 - ships broken compute shaders *
      * with no barriers when they are needed       */
@@ -471,7 +471,7 @@ namespace dxvk {
     }} },
     /* Guilty Gear - Speeds up above 60 fps         */
     { R"(\\GuiltyGear\.exe$)", {{
-      { "dxgi.maxFrameRate",                  "60" },
+      { "dxgi.maxFrameRate",                 "-60" },
     }} },
     /* Everybody's Gone to the Rapture - CPU perf   */
     { R"(\\Rapture_Release\.exe$)", {{
@@ -515,7 +515,7 @@ namespace dxvk {
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* The Sims 2,                                *
      * Body Shop,                                 *
@@ -540,14 +540,14 @@ namespace dxvk {
      * Built-in Vsync Locks the game to 30 FPS    */
     { R"(\\Dead Space\.exe$)", {{
       { "d3d9.supportDFFormats",           "False" },
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d9.presentInterval",                "1" },
     }} },
     /* Dead Space 2                               *
      * Physics issues above 60 FPS                *
      * Built-in Vsync Locks the game to 30 FPS    */
     { R"(\\deadspace2\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d9.presentInterval",                "1" },
     }} },
     /* Halo CE/HaloPC                             */
@@ -627,7 +627,7 @@ namespace dxvk {
      * Legend flickers with next gen content option. */
     { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Everquest                                  */
     { R"(\\eqgame\.exe$)", {{
@@ -670,7 +670,7 @@ namespace dxvk {
     }} },
     /* Demon Stone breaks at frame rates > 60fps  */
     { R"(\\Demonstone\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Far Cry 1                                  *
      * Has worse water rendering on AMD GPUs      */
@@ -679,7 +679,7 @@ namespace dxvk {
     }} },
     /* Sine Mora EX                               */
     { R"(\\SineMoraEX\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Red Orchestra 2                            */
     { R"(\\ROGame\.exe$)", {{
@@ -716,7 +716,7 @@ namespace dxvk {
     }} },
     /* Limbo                                      */
     { R"(\\limbo\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Escape from Tarkov launcher                *
      * Work around partial presentation issues    */
@@ -744,17 +744,17 @@ namespace dxvk {
     /* Bionic Commando                            *
      * Physics break at high fps                  */
     { R"(\\bionic_commando\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Beyond Good And Evil                       *
      * UI breaks at high fps                      */
     { R"(\\BGE\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* King Of Fighters XIII                      *
      * In-game speed increases on high FPS        */
     { R"(\\kof(xiii|13_win32_Release)\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* YS Origin                                  *
      * Helps very bad frametimes in some areas    */
@@ -769,7 +769,7 @@ namespace dxvk {
      * Inventory hair explosion at very high fps  */
     { R"(\\witcher\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-      { "d3d9.maxFrameRate",                 "300" },
+      { "d3d9.maxFrameRate",                "-300" },
     }} },
     /* Guitar Hero World Tour                     *
      * Very prone to address space crashes        */
@@ -817,7 +817,7 @@ namespace dxvk {
     /* Battle Fantasia Revised Edition            *
      * Speedup above 60fps                        */
     { R"(\\bf10\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Codename Panzers Phase One/Two             *
      * Main menu won't render after intros        *
@@ -844,7 +844,7 @@ namespace dxvk {
     }} },
     /* STEINS;GATE ELITE                          */
     { R"(\\SG_ELITE\\Game\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* The Incredibles                            */
     { R"(\\IncPC\.exe$)", {{
@@ -852,15 +852,15 @@ namespace dxvk {
     }} },
     /* Conflict Vietnam                           */
     { R"(\\Vietnam\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Project: Snowblind                         */
     { R"(\\Snowblind\.(SP|MP|exe)$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Aviary Attorney                            */
     { R"(\\Aviary Attorney\\nw\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Drakensang: The Dark Eye                   */
     { R"(\\drakensang\.exe$)", {{
@@ -886,7 +886,7 @@ namespace dxvk {
     }} },
     /* Sonic CD                                   */
     { R"(\\soniccd\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* UK Truck Simulator 1                       */
     { R"(\\UK Truck Simulator\\bin\\win_x86\\game\.exe$)", {{
@@ -905,7 +905,7 @@ namespace dxvk {
     }} },
     /* Dark Void - Crashes above 60fps in places  */
     { R"(\\ShippingPC-SkyGame\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* 9th Dawn II                                *
      * OpenGL game that also spins up d3d9        *
@@ -950,7 +950,7 @@ namespace dxvk {
     }} },
     /* WRC4 - Audio breaks above 60fps            */
     { R"(\\WRC4\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Splinter Cell Conviction                   *
      * Unsupported GPU complaint                  */
@@ -980,7 +980,7 @@ namespace dxvk {
     /* F.E.A.R 1 & expansions                     *
      * Graphics glitches at very high fps         */
     { R"(\\FEAR(MP|XP|XP2)?\.exe$)", {{
-      { "d3d9.maxFrameRate",                 "360" },
+      { "d3d9.maxFrameRate",                "-360" },
     }} },
     /* Secret World Legends - d3d9 mode only sees *
      * 512MB vram locking higher graphics presets */
@@ -1000,7 +1000,7 @@ namespace dxvk {
     /* Arcana Heart 3 Love Max + Xtend version    *
      * Game speed is too fast above 60 fps        */
     { R"(\\(AH3LM|AALib)\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* May Payne 3 - Visual issues on drivers     *
      * such as ANV (and amdvlk when set to True)  */
@@ -1066,7 +1066,7 @@ namespace dxvk {
      * game speed is too fast above 60 fps.       */
     { R"(\\Astebreed\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Dungeon Lords - Crash when saving game     */
     { R"(\\(DLSteamEdition|dlords)\.exe$)", {{
@@ -1092,7 +1092,7 @@ namespace dxvk {
     /* Psi-Ops: The Mindgate Conspiracy           *
      * Broken input and physics above 60 fps      */
     { R"(\\PsiOps\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Alone in the Dark (2008)                   *
      * Crashes when selecting the graphics menu   *
@@ -1109,7 +1109,7 @@ namespace dxvk {
      * Cursor and other animations play back too  *
      * fast without a frame cap in place.         */
     { R"(\\Heroes of Annihilated Empires.*\\engine\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* RaceRoom Racing Experience                 *
      * Game depends on NvAPI_D3D9_StretchRectEx   */
@@ -1138,7 +1138,7 @@ namespace dxvk {
 
     /* Duke Nukem Forever (2001)                  */
     { R"(\\DukeForever\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Anito: Defend a Land Enraged               */
     { R"(\\Anito\.exe$)", {{
@@ -1164,7 +1164,7 @@ namespace dxvk {
     }} },
     /* Railroad Tycoon 3                          */
     { R"(\\RT3\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Pure Pinball 2.0 REDUX                     *
      * This game reads from undeclared vs inputs  *
@@ -1208,7 +1208,7 @@ namespace dxvk {
     }} },
     /* V-Rally 3                                  */
     { R"(\\VRally3(Demo)?\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Soldiers: Heroes Of World War II           *
      * Fills up all available memory and hangs    *
@@ -1220,11 +1220,11 @@ namespace dxvk {
     /* Cossacks II: Napoleonic Wars &             *
      * Battle for Europe                          */
     { R"(\\Cossacks II.*\\engine\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Alexander                                  */
     { R"(\\Alexander\\Data\\engine\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* 3DMark2001 (SE)                            *
      * Fixes a drastic performance drop in the    *
@@ -1243,7 +1243,7 @@ namespace dxvk {
     /* The Lord of the Rings:                     *
      * The Fellowship of the Ring                 */
     { R"(\\Fellowship\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d8.placeP8InScratch",            "True" },
     }} },
     /* Inquisitor (2009)                          *
@@ -1271,24 +1271,24 @@ namespace dxvk {
      * Missing shadows without dref scaling and   *
      * broken inputs and physics above 60 FPS     */
     { R"(\\offline\\system\\SplinterCell2\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d8.scaleDref",                     "24" },
     }} },
     /* Splinter Cell: Pandora Tomorrow (Steam)    *
      * Broken inputs and physics above 60 FPS     */
     { R"(\\Splinter Cell Pandora Tomorrow\\system\\SplinterCell2\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Chrome: Gold Edition                       *
      * Broken character model motion at high FPS  */
     { R"(\\Chrome(Single|Net)\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
     }} },
     /* Rayman 3: Hoodlum Havoc                    *
      * Missing geometry and textures without      *
      * legacy DISCARD behavior                    */
     { R"(\\Rayman3\.exe$)", {{
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d8.forceLegacyDiscard",          "True" },
     }} },
     /* Tom Clancy's Splinter Cell                 *
@@ -1296,7 +1296,7 @@ namespace dxvk {
      * above 60 FPS and game freezing on alt-tab  */
     { R"(\\splintercell\.exe$)", {{
       { "d3d9.hideAmdGpu",                  "True" },
-      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d9.maxFrameRate",                 "-60" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d8.scaleDref",                     "24" },
       { "d3d8.shadowPerspectiveDivide",     "True" },
@@ -1361,7 +1361,7 @@ namespace dxvk {
     /* Fallout 4: Defaults to 45 FPS on OLED, but also breaks above 60 FPS */
     { R"(\\Fallout4\.exe$)", {{
       { "dxgi.syncInterval",                   "1" },
-      { "dxgi.maxFrameRate",                  "60" },
+      { "dxgi.maxFrameRate",                 "-60" },
     }} },
   };
 
