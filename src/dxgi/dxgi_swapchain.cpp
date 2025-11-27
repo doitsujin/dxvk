@@ -1056,14 +1056,16 @@ namespace dxvk {
 
     // Use a negative number to indicate that the limiter should only
     // be engaged if the target frame rate is actually exceeded
-    double frameRate = std::max(m_frameRateOption, 0.0);
+    double frameRate = m_frameRateOption;
 
-    if (SyncInterval && m_frameRateOption == 0.0)
-      frameRate = -m_frameRateRefresh / double(SyncInterval);
+    if (frameRate != -1.0) {
+      if (SyncInterval && frameRate == 0.0)
+        frameRate = -m_frameRateRefresh / double(SyncInterval);
 
-    if (m_frameRateLimit != frameRate) {
-      m_frameRateLimit = frameRate;
-      m_presenter2->SetTargetFrameRate(frameRate);
+      if (m_frameRateLimit != frameRate) {
+        m_frameRateLimit = frameRate;
+        m_presenter2->SetTargetFrameRate(frameRate);
+      }
     }
   }
 
