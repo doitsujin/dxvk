@@ -775,7 +775,6 @@ namespace dxvk {
      * Very prone to address space crashes        */
     { R"(\\(GHWT|GHWT_Definitive)\.exe$)", {{
       { "d3d9.textureMemory",                 "16" },
-      { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
     /* The Ship (2004)                            */
     { R"(\\ship\.exe$)", {{
@@ -788,13 +787,6 @@ namespace dxvk {
     /* Hammer World Editor                        */
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* Dragon Age Origins                         *
-     * Keeps unmapping the same 3 1MB buffers     *
-     * thousands of times when you alt-tab out    *
-     * Causing it to crash OOM                    */
-    { R"(\\DAOrigins\.exe$)" , {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
     /* Sonic & All-Stars Racing Transformed       *
      * Helps performance when Resizable BAR       *
@@ -873,11 +865,6 @@ namespace dxvk {
     /* Battlestations Midway                      */
     { R"(\\Battlestationsmidway\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
-    /* SkyDrift                                   *
-     * Works around alt tab OOM crash             */
-    { R"(\\SkyDrift\.exe$)" , {{
-      { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
     /* Assassin's Creed 2                         *
      * Helps alt tab crash on Linux               */
