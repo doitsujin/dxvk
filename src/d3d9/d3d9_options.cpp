@@ -65,7 +65,7 @@ namespace dxvk {
     this->modeCountCompatibility        = config.getOption<bool>        ("d3d9.modeCountCompatibility",        false);
     this->allowDiscard                  = config.getOption<bool>        ("d3d9.allowDiscard",                  true);
     this->enumerateByDisplays           = config.getOption<bool>        ("d3d9.enumerateByDisplays",           true);
-    this->cachedDynamicBuffers          = config.getOption<bool>        ("d3d9.cachedDynamicBuffers",          false);
+    this->cachedWriteOnlyBuffers        = config.getOption<bool>        ("d3d9.cachedWriteOnlyBuffers",          false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);

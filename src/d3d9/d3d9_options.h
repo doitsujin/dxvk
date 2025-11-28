@@ -126,7 +126,7 @@ namespace dxvk {
     bool enumerateByDisplays;
 
     /// Cached dynamic buffers: Maps all buffers in cached memory.
-    bool cachedDynamicBuffers;
+    bool cachedWriteOnlyBuffers;
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;
