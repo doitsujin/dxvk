@@ -133,7 +133,7 @@ namespace dxvk {
       if ((m_desc.Usage & D3DUSAGE_WRITEONLY) == 0
         || DoPerDrawUpload()
         || m_parent->CanOnlySWVP()
-        || m_parent->GetOptions()->cachedDynamicBuffers) {
+        || m_parent->GetOptions()->cachedWriteOnlyBuffers) {
         // Never use uncached memory on devices that support SWVP because we might end up reading from it.
 
         info.access |= VK_ACCESS_HOST_READ_BIT;
