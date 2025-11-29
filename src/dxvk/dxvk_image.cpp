@@ -492,6 +492,10 @@ namespace dxvk {
 
 
   void DxvkImage::trackLayout(const VkImageSubresourceRange& subresources, VkImageLayout layout) {
+    // Nothing to do if the layout doesn't change
+    if (m_globalLayout == layout)
+      return;
+
     if (subresources == getAvailableSubresources()) {
       // Entire resource is in the same layout
       m_globalLayout = layout;
