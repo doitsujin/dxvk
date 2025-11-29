@@ -48,7 +48,9 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrPipelineLibrary);                \
     HANDLE_EXT(khrPresentId);                      \
+    HANDLE_EXT(khrPresentId2);                     \
     HANDLE_EXT(khrPresentWait);                    \
+    HANDLE_EXT(khrPresentWait2);                   \
     HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
@@ -500,9 +502,23 @@ namespace dxvk {
       m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
     }
 
+    // Ensure we only enable one of present_id or present_id_2
+    if (m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.khrPresentId.presentId = VK_FALSE;
+
     // Sanitize features with other feature dependencies
     if (!m_featuresSupported.core.features.shaderInt16)
       m_featuresSupported.vk11.storagePushConstant16 = VK_FALSE;
+
+    if (!m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.khrPresentWait2.presentWait2 = VK_FALSE;
+
+    if (!m_featuresSupported.khrPresentId.presentId)
+      m_featuresSupported.khrPresentWait.presentWait = VK_FALSE;
+
+    if (!m_featuresSupported.khrPresentId.presentId
+     && !m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.nvLowLatency2 = VK_FALSE;
   }
 
 
@@ -885,7 +901,9 @@ namespace dxvk {
 
       /* Present wait, used for frame pacing and statistics */
       ENABLE_EXT_FEATURE(khrPresentId, presentId, false),
+      ENABLE_EXT_FEATURE(khrPresentId2, presentId2, false),
       ENABLE_EXT_FEATURE(khrPresentWait, presentWait, false),
+      ENABLE_EXT_FEATURE(khrPresentWait2, presentWait2, false),
 
       /* Used for shader compilation in addition to regular float_controls features */
       ENABLE_EXT_FEATURE(khrShaderFloatControls2, shaderFloatControls2, false),
