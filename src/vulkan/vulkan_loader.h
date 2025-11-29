@@ -480,6 +480,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkWaitForPresentKHR);
     #endif
 
+    #ifdef VK_KHR_present_wait2
+    VULKAN_FN(vkWaitForPresent2KHR);
+    #endif
+
     #ifdef VK_KHR_win32_keyed_mutex
     // Wine additions to actually use this extension.
     VULKAN_FN(wine_vkAcquireKeyedMutex);
