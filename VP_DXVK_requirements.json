@@ -110,12 +110,12 @@
             "extensions": {
                 "VK_KHR_load_store_op_none": 1,
                 "VK_KHR_maintenance7": 1,
-                "VK_KHR_present_id": 1,
-                "VK_KHR_present_wait": 1,
+                "VK_KHR_present_id2": 1,
+                "VK_KHR_present_wait2": 1,
+                "VK_KHR_swapchain_maintenance1": 1,
                 "VK_KHR_swapchain_mutable_format": 1,
                 "VK_EXT_line_rasterization": 1,
-                "VK_EXT_pageable_device_local_memory": 1,
-                "VK_EXT_swapchain_maintenance1": 1
+                "VK_EXT_pageable_device_local_memory": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -128,11 +128,14 @@
                 "VkPhysicalDeviceMaintenance7FeaturesKHR": {
                     "maintenance7": true
                 },
-                "VkPhysicalDevicePresentIdFeaturesKHR": {
-                    "presentId": true
+                "VkPhysicalDevicePresentId2FeaturesKHR": {
+                    "presentId2": true
                 },
-                "VkPhysicalDevicePresentWaitFeaturesKHR": {
-                    "presentWait": true
+                "VkPhysicalDevicePresentWait2FeaturesKHR": {
+                    "presentWait2": true
+                },
+                "VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR": {
+                    "swapchainMaintenance1": true
                 },
                 "VkPhysicalDeviceLineRasterizationFeaturesEXT": {
                     "rectangularLines": true,
@@ -140,9 +143,6 @@
                 },
                 "VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT": {
                     "pageableDeviceLocalMemory": true
-                },
-                "VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT": {
-                    "swapchainMaintenance1": true
                 }
             }
         },
