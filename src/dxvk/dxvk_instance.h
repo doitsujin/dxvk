@@ -163,6 +163,13 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries extension support
+     */
+    const DxvkInstanceExtensionInfo& extensions() const {
+      return m_extensionInfo;
+    }
+
+    /**
      * \brief Instance extension list
      *
      * Returns the list of extensions that the
