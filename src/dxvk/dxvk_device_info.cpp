@@ -53,6 +53,7 @@ namespace dxvk {
     HANDLE_EXT(khrPresentWait2);                   \
     HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrSwapchain);                      \
+    HANDLE_EXT(khrSwapchainMaintenance1);          \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
     HANDLE_EXT(khrWin32KeyedMutex);                \
     HANDLE_EXT(nvLowLatency2);                     \
@@ -312,6 +313,25 @@ namespace dxvk {
         [&enabledExtensions] (const VkExtensionProperties& a) {
           return enabledExtensions.find(a) == enabledExtensions.end();
         }), extensions.end());
+    }
+
+    // If multiple extensions provide the same functionality, remove any
+    // deprecated aliases so that we always use the latest iteration.
+    std::array<std::pair<const char*, const char*>, 1u> aliases = {{
+      { VK_KHR_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+        VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME },
+    }};
+
+    for (const auto& alias : aliases) {
+      auto a = vk::makeExtension(alias.first);
+      auto b = vk::makeExtension(alias.second);
+
+      auto aIter = std::lower_bound(extensions.begin(), extensions.end(), a, vk::SortExtension());
+      auto bIter = std::lower_bound(extensions.begin(), extensions.end(), b, vk::SortExtension());
+
+      if (aIter != extensions.end() && !vk::SortExtension()(a, *aIter)
+       && bIter != extensions.end() && !vk::SortExtension()(b, *bIter))
+        extensions.erase(bIter);
     }
 
     // HACK: Use mesh shader extension support to determine whether we're
@@ -910,6 +930,10 @@ namespace dxvk {
 
       /* Swapchain, needed for presentation */
       ENABLE_EXT(khrSwapchain, true),
+
+      /* Swapchain maintenance, used to implement proper synchronization
+       * and dynamic present modes to avoid swapchain recreation */
+      ENABLE_EXT_FEATURE(khrSwapchainMaintenance1, swapchainMaintenance1, false),
 
       /* Mutable format used to change srgb-ness of swapchain views */
       ENABLE_EXT(khrSwapchainMutableFormat, false),

@@ -40,6 +40,10 @@ namespace dxvk {
         throw DxvkError(str::format("Failed to create Vulkan surface, ", vr));
     }
 
+    // KHR and EXT variants of this extension are completely identical
+    m_hasSwapchainMaintenance1 = m_device->features().khrSwapchainMaintenance1.swapchainMaintenance1
+                              || m_device->features().extSwapchainMaintenance1.swapchainMaintenance1;
+
     // Gamescope WSI is currently broken and doesn't properly signal
     // the present fence if presentation is queued but fails.
     // TODO Remove this hack when this gets fixed in stable SteamOS.
@@ -178,11 +182,11 @@ namespace dxvk {
     presentId2.swapchainCount = 1;
     presentId2.pPresentIds  = &frameId;
 
-    VkSwapchainPresentFenceInfoEXT fenceInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT };
+    VkSwapchainPresentFenceInfoKHR fenceInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_KHR };
     fenceInfo.swapchainCount = 1;
     fenceInfo.pFences       = &currSync.fence;
 
-    VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
+    VkSwapchainPresentModeInfoKHR modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_KHR };
     modeInfo.swapchainCount = 1;
     modeInfo.pPresentModes  = &m_presentMode;
 
@@ -200,7 +204,7 @@ namespace dxvk {
         presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
     }
 
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+    if (m_hasSwapchainMaintenance1) {
       modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
       fenceInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &fenceInfo));
     }
@@ -212,7 +216,7 @@ namespace dxvk {
     // recreate the swapchain. Spec says that 'queue' operations, i.e. the
     // semaphore and fence signals, still happen if present fails with
     // normal swapchain errors, such as OUT_OF_DATE or SURFACE_LOST.
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+    if (m_hasSwapchainMaintenance1) {
       currSync.fenceSignaled = status != VK_ERROR_OUT_OF_DEVICE_MEMORY
                             && status != VK_ERROR_OUT_OF_HOST_MEMORY
                             && status != VK_ERROR_DEVICE_LOST;
@@ -638,10 +642,10 @@ namespace dxvk {
     uint32_t minImageCount = caps.surfaceCapabilities.minImageCount;
     uint32_t maxImageCount = caps.surfaceCapabilities.maxImageCount;
 
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
-      VkSurfacePresentModeCompatibilityEXT compatibleModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT };
+    if (m_hasSwapchainMaintenance1) {
+      VkSurfacePresentModeCompatibilityKHR compatibleModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_KHR };
 
-      VkSurfacePresentModeEXT presentModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT };
+      VkSurfacePresentModeKHR presentModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_KHR };
       presentModeInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &presentModeInfo));
       presentModeInfo.presentMode = m_presentMode;
 
@@ -708,7 +712,7 @@ namespace dxvk {
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
 
-    VkSwapchainPresentModesCreateInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT };
+    VkSwapchainPresentModesCreateInfoKHR modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_KHR };
     modeInfo.presentModeCount       = compatibleModes.size();
     modeInfo.pPresentModes          = compatibleModes.data();
 
@@ -748,7 +752,7 @@ namespace dxvk {
     if (m_device->features().extFullScreenExclusive)
       fullScreenInfo.pNext = const_cast<void*>(std::exchange(swapInfo.pNext, &fullScreenInfo));
 
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+    if (m_hasSwapchainMaintenance1)
       modeInfo.pNext = std::exchange(swapInfo.pNext, &modeInfo);
 
     if (m_device->features().nvLowLatency2)
@@ -809,7 +813,7 @@ namespace dxvk {
     // that we use to ensure that semaphores are safe to access.
     uint32_t semaphoreCount = images.size();
 
-    if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+    if (!m_hasSwapchainMaintenance1) {
       // Without support for present fences, just give up and allocate extra
       // semaphores. We have no real guarantees when they are safe to access.
       semaphoreCount *= 2u;
@@ -1195,7 +1199,7 @@ namespace dxvk {
     // Without present fence support, waiting for the queue or device to go idle
     // is the only way to properly synchronize swapchain teardown. Care must be
     // taken not to call this method while the submission queue is locked.
-    if (!m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+    if (!m_hasSwapchainMaintenance1)
       m_device->waitForIdle();
 
     // Wait for the presentWait worker to finish using
