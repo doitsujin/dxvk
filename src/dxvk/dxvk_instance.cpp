@@ -159,6 +159,10 @@ namespace dxvk {
         ext->specVersion = entry->specVersion;
     }
 
+    // Only enable one of the surface maintenance extensions
+    if (m_extensionInfo.khrSurfaceMaintenance1.specVersion)
+      m_extensionInfo.extSurfaceMaintenance1.specVersion = 0u;
+
     // Hide debug mode behind an environment variable since it adds
     // significant overhead, and some games will not work with it enabled.
     std::string debugEnv = env::getEnvVar("DXVK_DEBUG");
@@ -366,6 +370,7 @@ namespace dxvk {
       &extensions.extSurfaceMaintenance1,
       &extensions.khrGetSurfaceCapabilities2,
       &extensions.khrSurface,
+      &extensions.khrSurfaceMaintenance1,
     }};
   }
 

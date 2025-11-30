@@ -30,6 +30,7 @@ namespace dxvk {
     VkExtensionProperties extSurfaceMaintenance1      = vk::makeExtension(VK_EXT_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
     VkExtensionProperties khrGetSurfaceCapabilities2  = vk::makeExtension(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME);
     VkExtensionProperties khrSurface                  = vk::makeExtension(VK_KHR_SURFACE_EXTENSION_NAME);
+    VkExtensionProperties khrSurfaceMaintenance1      = vk::makeExtension(VK_KHR_SURFACE_MAINTENANCE_1_EXTENSION_NAME);
   };
 
 
