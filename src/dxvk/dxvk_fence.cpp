@@ -22,7 +22,7 @@ namespace dxvk {
       VkPhysicalDeviceExternalSemaphoreInfo externalInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO, &typeInfo };
       externalInfo.handleType = info.sharedType;
 
-      VkExternalSemaphoreProperties externalProperties = { };
+      VkExternalSemaphoreProperties externalProperties = { VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES };
       vki->vkGetPhysicalDeviceExternalSemaphoreProperties(
         device->adapter()->handle(), &externalInfo, &externalProperties);
 
