@@ -152,6 +152,12 @@ namespace dxvk {
 
     Rc<DxvkInstance> GetInstance() { return m_instance; }
 
+    bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
+
+    void EnableAdditionalFormats() {
+            m_unlockAdditionalFormats = true;
+    }
+
   private:
 
     Rc<DxvkInstance>              m_instance;
@@ -167,6 +173,10 @@ namespace dxvk {
     std::vector<D3D9Adapter>      m_adapters;
 
     D3D9VkInteropInterface        m_d3d9Interop;
+
+    bool m_unlockAdditionalFormats = false;
+
+    D3D9VkExtInterface            m_d3d9ExtInterface;
 
     static const D3D9ON12_ARGS* Find9On12Args(
       const Rc<DxvkAdapter>& Adapter,

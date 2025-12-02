@@ -372,4 +372,27 @@ namespace dxvk {
     }
   }
 
+  D3D9VkExtInterface::D3D9VkExtInterface(D3D9InterfaceEx *pInterface)
+    : m_interface(pInterface) {
+
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtInterface::AddRef() {
+    return m_interface->AddRef();
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtInterface::Release() {
+    return m_interface->Release();
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D9VkExtInterface::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_interface->QueryInterface(riid, ppvObject);
+  }
+
+  void STDMETHODCALLTYPE D3D9VkExtInterface::UnlockAdditionalFormats() {
+    m_interface->EnableAdditionalFormats();
+  }
+
 }

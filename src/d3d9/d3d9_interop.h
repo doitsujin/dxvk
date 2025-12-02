@@ -142,4 +142,23 @@ namespace dxvk {
 
   };
 
+  class D3D9VkExtInterface final : public ID3D9VkExtInterface {
+
+  public:
+
+    D3D9VkExtInterface(D3D9InterfaceEx *pInterface);
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void **ppvObject);
+
+    void STDMETHODCALLTYPE UnlockAdditionalFormats();
+
+  private:
+    D3D9InterfaceEx *m_interface;
+
+  };
+
 }

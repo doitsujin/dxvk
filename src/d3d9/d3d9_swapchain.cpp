@@ -26,6 +26,7 @@ namespace dxvk {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
+    m_unlockAdditionalFormats = m_parent->HasFormatsUnlocked();
 
     UpdateWindowCtx();
 

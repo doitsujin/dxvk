@@ -1574,6 +1574,8 @@ namespace dxvk {
       HANDLE                        handle,
       const dxvk::D3D9_BUFFER_DESC& bufferDesc) const;
 
+    bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1721,6 +1723,8 @@ namespace dxvk {
     // Written by CS thread
     alignas(CACHE_LINE_SIZE)
     std::atomic<uint64_t>           m_lastSamplerStats = { 0u };
+
+    bool m_unlockAdditionalFormats = false;
   };
 
 }
