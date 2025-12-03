@@ -742,8 +742,10 @@ namespace dxvk {
       auto keyedMutex = m_image->getKeyedMutex();
       desc.dxgi.mutex_handle = keyedMutex ? keyedMutex->kmtGlobal() : 0;
 
-      auto syncObject = keyedMutex->getSyncObject();
-      desc.dxgi.sync_handle = syncObject ? syncObject->kmtGlobal() : 0;
+      if (keyedMutex) {
+        auto syncObject = keyedMutex->getSyncObject();
+        desc.dxgi.sync_handle = syncObject ? syncObject->kmtGlobal() : 0;
+      }
     }
 
     switch (m_dimension) {
