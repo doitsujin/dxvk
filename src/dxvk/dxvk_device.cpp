@@ -732,7 +732,9 @@ namespace dxvk {
     if (m_features.core.features.shaderInt16 && m_features.vk12.shaderFloat16)
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::Supports16BitArithmetic);
 
-    if (m_features.core.features.shaderInt16 && m_features.vk11.storagePushConstant16)
+    // RADV currently does not emit great code with 16-bit sampler indices
+    if (m_features.core.features.shaderInt16 && m_features.vk11.storagePushConstant16
+     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV))
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::Supports16BitPushData);
 
     // Need to tag typed storage image loads with the format on some devices
