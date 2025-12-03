@@ -723,10 +723,25 @@ namespace dxvk {
       m_localPushDataOffset += pushDataType.byteSize();
 
       // Add debug names for sampler indices
-      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-        for (size_t i = 0u; i < m_samplers.size(); i++) {
-          auto& e = m_samplers[i];
+      for (size_t i = 0u; i < m_samplers.size(); i++) {
+        auto& e = m_samplers[i];
+
+        if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
           addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
+        } else if (!(e.samplerIndex % 2u)) {
+          std::string debugName = getDebugName(e.sampler);
+
+          for (size_t j = 0u; j < m_samplers.size(); j++) {
+            auto& eHi = m_samplers[j];
+
+            if (eHi.samplerIndex == e.samplerIndex + 1u) {
+              debugName += "_";
+              debugName += getDebugName(eHi.sampler);
+              break;
+            }
+          }
+
+          addDebugMemberName(def, e.samplerIndex / 2u, debugName);
         }
       }
 
