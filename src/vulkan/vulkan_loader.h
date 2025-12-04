@@ -401,6 +401,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
     VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
     VULKAN_FN(vkCmdSetDepthClipEnableEXT);
+    VULKAN_FN(vkCmdSetSampleLocationsEnableEXT);
     VULKAN_FN(vkCmdSetLineRasterizationModeEXT);
     #endif
 
@@ -421,6 +422,11 @@ namespace dxvk::vk {
     #ifdef VK_EXT_multi_draw
     VULKAN_FN(vkCmdDrawMultiEXT);
     VULKAN_FN(vkCmdDrawMultiIndexedEXT);
+    #endif
+
+    #ifdef VK_EXT_sample_locations
+    VULKAN_FN(vkCmdSetSampleLocationsEXT);
+    VULKAN_FN(vkGetPhysicalDeviceMultisamplePropertiesEXT);
     #endif
 
     #ifdef VK_EXT_shader_module_identifier

@@ -34,6 +34,7 @@ namespace dxvk {
     HANDLE_EXT(extNonSeamlessCubeMap);             \
     HANDLE_EXT(extPageableDeviceLocalMemory);      \
     HANDLE_EXT(extRobustness2);                    \
+    HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extShaderModuleIdentifier);         \
     HANDLE_EXT(extShaderStencilExport);            \
     HANDLE_EXT(extSwapchainColorSpace);            \
@@ -70,6 +71,7 @@ namespace dxvk {
     HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMultiDraw);                      \
     HANDLE_EXT(extRobustness2);                    \
+    HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extTransformFeedback);              \
     HANDLE_EXT(extVertexAttributeDivisor);         \
     HANDLE_EXT(khrMaintenance5);                   \
@@ -847,6 +849,7 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3RasterizationSamples, false),
       ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3SampleMask, false),
       ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3LineRasterizationMode, false),
+      ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3SampleLocationsEnable, false),
 
       /* Enables client API features */
       ENABLE_EXT_FEATURE(extFragmentShaderInterlock, fragmentShaderSampleInterlock, false),
@@ -882,6 +885,9 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extRobustness2, robustBufferAccess2, true),
       ENABLE_EXT_FEATURE(extRobustness2, robustImageAccess2, false),
       ENABLE_EXT_FEATURE(extRobustness2, nullDescriptor, true),
+
+      /* Sample locations, used to "disable" MSAA rendering */
+      ENABLE_EXT(extSampleLocations, false),
 
       /* Shader module identifier, used for pipeline lifetime management in 32-bit */
       ENABLE_EXT_FEATURE(extShaderModuleIdentifier, shaderModuleIdentifier, false),
