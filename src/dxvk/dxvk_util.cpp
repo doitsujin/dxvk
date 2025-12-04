@@ -372,4 +372,68 @@ namespace dxvk::util {
         || factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
   }
 
+
+  VkSampleLocationsInfoEXT setupSampleLocations(
+          VkSampleCountFlagBits       sampleCount,
+          VkBool32                    center) {
+    static const std::array<VkSampleLocationEXT, 16u> s_centerLocations = {{
+      { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f },
+      { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f },
+      { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f },
+      { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f }, { 0.5f, 0.5f },
+    }};
+
+    static const std::array<VkSampleLocationEXT, 32u> s_defaultLocations = {{
+      /* Invalid resource */
+      { 0.5f, 0.5f },
+      /* 1 samples */
+      { 0.5f, 0.5f },
+      /* 2 samples */
+      { 0.75f, 0.75f },
+      { 0.25f, 0.25f },
+      /* 4 samples */
+      { 0.375f, 0.125f },
+      { 0.875f, 0.375f },
+      { 0.125f, 0.625f },
+      { 0.625f, 0.875f },
+      /* 8 samples */
+      { 0.5625f, 0.3125f },
+      { 0.4375f, 0.6875f },
+      { 0.8125f, 0.5625f },
+      { 0.3125f, 0.1875f },
+      { 0.1875f, 0.8125f },
+      { 0.0625f, 0.4375f },
+      { 0.6875f, 0.9375f },
+      { 0.9375f, 0.0625f },
+      /* 16 samples */
+      { 0.5625f, 0.5625f },
+      { 0.4375f, 0.3125f },
+      { 0.3125f, 0.6250f },
+      { 0.7500f, 0.4375f },
+      { 0.1875f, 0.3750f },
+      { 0.6250f, 0.8125f },
+      { 0.8125f, 0.6875f },
+      { 0.6875f, 0.1875f },
+      { 0.3750f, 0.8750f },
+      { 0.5000f, 0.0625f },
+      { 0.2500f, 0.1250f },
+      { 0.1250f, 0.7500f },
+      { 0.0000f, 0.5000f },
+      { 0.9375f, 0.2500f },
+      { 0.8750f, 0.9375f },
+      { 0.0625f, 0.0000f },
+    }};
+
+    uint32_t count = uint32_t(sampleCount);
+
+    VkSampleLocationsInfoEXT locations = { VK_STRUCTURE_TYPE_SAMPLE_LOCATIONS_INFO_EXT };
+    locations.sampleLocationsPerPixel = sampleCount;
+    locations.sampleLocationGridSize = { 1u, 1u };
+    locations.sampleLocationsCount = count;
+    locations.pSampleLocations = center
+      ? &s_centerLocations[0u]
+      : &s_defaultLocations[count];
+    return locations;
+  }
+
 }

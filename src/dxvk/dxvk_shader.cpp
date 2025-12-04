@@ -457,6 +457,8 @@ namespace dxvk {
     bool hasDynamicMultisampleState = hasSampleRateShading
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
+    bool hasDynamicSampleLocations = m_device->features().extSampleLocations
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
 
     if (hasDynamicMultisampleState) {
       dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
@@ -466,6 +468,11 @@ namespace dxvk {
         if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
           dynamicStates.push_back(VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT);
       }
+    }
+
+    if (hasDynamicSampleLocations) {
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT);
     }
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };

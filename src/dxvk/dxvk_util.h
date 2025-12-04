@@ -493,6 +493,17 @@ namespace dxvk::util {
           VkBlendFactor               factor);
 
   /**
+   * \brief Determines sample positions
+   *
+   * \param [in] sampleCount Sample count
+   * \param [in] center Whether to center samples or use default locations
+   * \returns Sample location structure
+   */
+  VkSampleLocationsInfoEXT setupSampleLocations(
+          VkSampleCountFlagBits       sampleCount,
+          VkBool32                    center);
+
+  /**
    * \brief Computes unsigned normalized value
    *
    * Doesn't necessarily do perfect rounding.

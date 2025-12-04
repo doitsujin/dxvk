@@ -1111,6 +1111,15 @@ namespace dxvk {
     }
 
     
+    void cmdSetSampleLocations(
+            VkBool32                enable,
+      const VkSampleLocationsInfoEXT* sampleLocations) {
+      VkCommandBuffer cmdBuffer = getCmdBuffer();
+
+      m_vkd->vkCmdSetSampleLocationsEnableEXT(cmdBuffer, enable);
+      m_vkd->vkCmdSetSampleLocationsEXT(cmdBuffer, sampleLocations);
+    }
+
     void cmdSetScissor(
             uint32_t                scissorCount,
       const VkRect2D*               scissors) {
