@@ -689,8 +689,7 @@ namespace dxvk {
       // Compute index offsets for each sampler
       uint32_t wordCount = 0u;
 
-      for (size_t i = 0u; i < m_samplers.size(); i++) {
-        auto& e = m_samplers[i];
+      for (auto& e : m_samplers) {
         e.samplerIndex = wordCount;
         e.samplerCount = uint32_t(m_builder.getOp(e.sampler).getOperand(3u));
 
@@ -723,17 +722,13 @@ namespace dxvk {
       m_localPushDataOffset += pushDataType.byteSize();
 
       // Add debug names for sampler indices
-      for (size_t i = 0u; i < m_samplers.size(); i++) {
-        auto& e = m_samplers[i];
-
+      for (const auto& e : m_samplers) {
         if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
           addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
         } else if (!(e.samplerIndex % 2u)) {
           std::string debugName = getDebugName(e.sampler);
 
-          for (size_t j = 0u; j < m_samplers.size(); j++) {
-            auto& eHi = m_samplers[j];
-
+          for (const auto& eHi : m_samplers) {
             if (eHi.samplerIndex == e.samplerIndex + 1u) {
               debugName += "_";
               debugName += getDebugName(eHi.sampler);
@@ -852,9 +847,9 @@ namespace dxvk {
       // Find sampler entry
       SamplerInfo info = { };
 
-      for (size_t i = 0u; i < m_samplers.size(); i++) {
-        if (m_samplers[i].sampler == sampler->getDef()) {
-          info = m_samplers[i];
+      for (const auto& e : m_samplers) {
+        if (e.sampler == sampler->getDef()) {
+          info = e;
           break;
         }
       }
@@ -901,7 +896,7 @@ namespace dxvk {
 
     void sortSamplers() {
       // Sort samplers by binding index for consistency
-      std::sort(&m_samplers[0u], &m_samplers[0u] + m_samplers.size(), [&] (const SamplerInfo& a, const SamplerInfo& b) {
+      std::sort(m_samplers.begin(), m_samplers.end(), [&] (const SamplerInfo& a, const SamplerInfo& b) {
         const auto& aOp = m_builder.getOp(a.sampler);
         const auto& bOp = m_builder.getOp(b.sampler);
 
@@ -932,7 +927,7 @@ namespace dxvk {
 
     void sortUavCounters() {
       // Sort samplers by the corresponding UAV binding index for consistency
-      std::sort(&m_uavCounters[0u], &m_uavCounters[0u] + m_uavCounters.size(),
+      std::sort(m_uavCounters.begin(), m_uavCounters.end(),
         [this] (const UavCounterInfo& a, const UavCounterInfo& b) {
           const auto& aUav = m_builder.getOpForOperand(a.dcl, 1u);
           const auto& bUav = m_builder.getOpForOperand(b.dcl, 1u);
