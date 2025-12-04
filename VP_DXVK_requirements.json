@@ -114,6 +114,7 @@
                 "VK_KHR_present_wait2": 1,
                 "VK_KHR_swapchain_maintenance1": 1,
                 "VK_KHR_swapchain_mutable_format": 1,
+                "VK_EXT_extended_dynamic_state3": 1,
                 "VK_EXT_line_rasterization": 1,
                 "VK_EXT_pageable_device_local_memory": 1
             },
@@ -136,6 +137,14 @@
                 },
                 "VkPhysicalDeviceSwapchainMaintenance1FeaturesKHR": {
                     "swapchainMaintenance1": true
+                },
+                "VkPhysicalDeviceExtendedDynamicState3FeaturesEXT": {
+                    "extendedDynamicState3AlphaToCoverageEnable" : true,
+                    "extendedDynamicState3DepthClipEnable" : true,
+                    "extendedDynamicState3RasterizationSamples" : true,
+                    "extendedDynamicState3SampleMask" : true,
+                    "extendedDynamicState3LineRasterizationMode" : true,
+                    "extendedDynamicState3SampleLocationsEnable" : true
                 },
                 "VkPhysicalDeviceLineRasterizationFeaturesEXT": {
                     "rectangularLines": true,
