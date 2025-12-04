@@ -6944,6 +6944,25 @@ namespace dxvk {
         this->spillRenderPass(true);
     }
 
+    // If a depth-stencil image is bound used with non-default sample locations,
+    // make sure that the image actually has the compat flag set.
+    if (unlikely(m_state.gp.state.useSampleLocations())) {
+      if (m_state.om.renderTargets.depth.view
+       && m_device->features().extSampleLocations
+       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable) {
+        auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
+
+        if (!(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
+          this->spillRenderPass(true);
+
+          DxvkImageUsageInfo usage = { };
+          usage.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+
+          ensureImageCompatibility(m_state.om.renderTargets.depth.view->image(), usage);
+        }
+      }
+    }
+
     if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)
      || m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
                              DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
