@@ -698,6 +698,11 @@ namespace dxvk {
         util::isDualSourceBlendFactor(omBlend[0].dstAlphaBlendFactor()));
     }
 
+    bool useSampleLocations() const {
+      return ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT
+          && rs.sampleCount() == VK_SAMPLE_COUNT_1_BIT;
+    }
+
     bool writesRenderTarget(
             uint32_t                        target) const {
       if (!omBlend[target].colorWriteMask())

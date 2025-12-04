@@ -469,6 +469,9 @@ namespace dxvk {
     bool hasDynamicAlphaToCoverage = hasDynamicMultisampleState && state.cbUseDynamicAlphaToCoverage
       && device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
 
+    bool hasDynamicSampleLocations = m_device->features().extSampleLocations
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
+
     if (hasDynamicMultisampleState) {
       dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
       dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_MASK_EXT);
@@ -476,6 +479,11 @@ namespace dxvk {
 
     if (hasDynamicAlphaToCoverage)
       dynamicStates.push_back(VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT);
+
+    if (hasDynamicSampleLocations) {
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT);
+    }
 
     if (state.cbUseDynamicBlendConstants)
       dynamicStates.push_back(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
@@ -749,6 +757,9 @@ namespace dxvk {
     const DxvkDevice*                     device,
     const DxvkGraphicsPipelineStateInfo&  state,
           DxvkGraphicsPipelineFlags       flags) {
+    bool hasDynamicSampleLocations = device->features().extSampleLocations
+      && device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
+
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
 
@@ -782,6 +793,11 @@ namespace dxvk {
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
+    }
+
+    if (state.useSampleLocations() && hasDynamicSampleLocations) {
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT;
     }
 
     if (dyInfo.dynamicStateCount)

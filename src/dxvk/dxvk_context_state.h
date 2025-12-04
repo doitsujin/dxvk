@@ -42,6 +42,7 @@ namespace dxvk {
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyMultisampleState,    ///< Multisample state has changed
     GpDirtyRasterizerState,     ///< Cull mode and front face have changed
+    GpDirtySampleLocations,     ///< Sample locations have changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDirtySpecConstants,       ///< Graphics spec constants are out of date
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
@@ -52,6 +53,7 @@ namespace dxvk {
     GpDynamicStencilTest,       ///< Stencil test state is dynamic
     GpDynamicMultisampleState,  ///< Multisample state is dynamic
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
+    GpDynamicSampleLocations,   ///< Sample locations are dynamic
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
     GpHasPushData,              ///< Graphics pipeline uses push data
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
