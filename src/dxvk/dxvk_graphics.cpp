@@ -460,8 +460,7 @@ namespace dxvk {
   : m_device(device) {
     auto vk = m_device->vkd();
 
-    uint32_t dynamicStateCount = 0;
-    std::array<VkDynamicState, 4> dynamicStates = { };
+    small_vector<VkDynamicState, 8> dynamicStates = { };
 
     bool hasDynamicMultisampleState = state.msInfo.sampleShadingEnable
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
@@ -471,21 +470,21 @@ namespace dxvk {
       && device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
 
     if (hasDynamicMultisampleState) {
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_MASK_EXT);
     }
 
     if (hasDynamicAlphaToCoverage)
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT);
 
     if (state.cbUseDynamicBlendConstants)
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 
-    if (dynamicStateCount) {
-      dyInfo.dynamicStateCount  = dynamicStateCount;
-      dyInfo.pDynamicStates     = dynamicStates.data();
+    if (!dynamicStates.empty()) {
+      dyInfo.dynamicStateCount = dynamicStates.size();
+      dyInfo.pDynamicStates = dynamicStates.data();
     }
 
     // Fix up multisample state based on dynamic state. Needed to

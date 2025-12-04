@@ -353,21 +353,20 @@ namespace dxvk {
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
-    uint32_t dynamicStateCount = 0;
-    std::array<VkDynamicState, 7> dynamicStates;
+    small_vector<VkDynamicState, 16> dynamicStates;
 
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
+    dynamicStates.push_back(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_CULL_MODE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_FRONT_FACE);
 
     if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT);
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dyInfo.dynamicStateCount  = dynamicStateCount;
+    dyInfo.dynamicStateCount  = dynamicStates.size();
     dyInfo.pDynamicStates     = dynamicStates.data();
 
     // If a tessellation control shader is present, grab the patch vertex count
@@ -436,21 +435,20 @@ namespace dxvk {
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
-    uint32_t dynamicStateCount = 0;
-    std::array<VkDynamicState, 13> dynamicStates;
+    small_vector<VkDynamicState, 16> dynamicStates;
 
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP;
+    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_REFERENCE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE);
+    dynamicStates.push_back(VK_DYNAMIC_STATE_STENCIL_OP);
 
     if (m_device->features().core.features.depthBounds) {
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE;
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_DEPTH_BOUNDS);
     }
 
     auto fs = m_shaders.findShader(VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -461,17 +459,17 @@ namespace dxvk {
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
 
     if (hasDynamicMultisampleState) {
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+      dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
+      dynamicStates.push_back(VK_DYNAMIC_STATE_SAMPLE_MASK_EXT);
 
       if (!fs || !fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask)) {
         if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
-          dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+          dynamicStates.push_back(VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT);
       }
     }
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dyInfo.dynamicStateCount  = dynamicStateCount;
+    dyInfo.dynamicStateCount  = dynamicStates.size();
     dyInfo.pDynamicStates     = dynamicStates.data();
 
     // Set up multisample state. If sample shading is enabled, assume that
