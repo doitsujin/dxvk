@@ -76,13 +76,17 @@ namespace dxvk {
    * \brief Device import info
    */
   struct DxvkDeviceImportInfo {
-    VkDevice          device          = VK_NULL_HANDLE;
-    VkQueue           queue           = VK_NULL_HANDLE;
-    uint32_t          queueFamily     = VK_QUEUE_FAMILY_IGNORED;
-    uint32_t          extensionCount  = 0u;
-    const char**      extensionNames  = nullptr;
-    const VkPhysicalDeviceFeatures2* features = nullptr;
-    DxvkQueueCallback queueCallback   = { };
+    VkDevice                          device                  = VK_NULL_HANDLE;
+    VkQueue                           queue                   = VK_NULL_HANDLE;
+    uint32_t                          queueFamily             = VK_QUEUE_FAMILY_IGNORED;
+    VkQueue                           transferQueue           = VK_NULL_HANDLE;
+    uint32_t                          transferQueueFamily     = VK_QUEUE_FAMILY_IGNORED;
+    VkQueue                           sparseQueue             = VK_NULL_HANDLE;
+    uint32_t                          sparseQueueFamily       = VK_QUEUE_FAMILY_IGNORED;
+    uint32_t                          extensionCount          = 0u;
+    const char**                      extensionNames          = nullptr;
+    const VkPhysicalDeviceFeatures2*  features                = nullptr;
+    DxvkQueueCallback                 queueCallback           = { };
   };
 
   /**
@@ -113,6 +117,14 @@ namespace dxvk {
      */
     VkPhysicalDevice handle() const {
       return m_handle;
+    }
+
+    /**
+     * \brief Device capability info
+     * \returns The device capabilities object
+     */
+    const DxvkDeviceCapabilities& capabilities() const {
+      return m_capabilities;
     }
     
     /**
