@@ -26,7 +26,6 @@ namespace dxvk {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
-    m_unlockAdditionalFormats = m_parent->HasFormatsUnlocked();
 
     UpdateWindowCtx();
 
@@ -1184,7 +1183,7 @@ namespace dxvk {
         return { VK_FORMAT_B5G6R5_UNORM_PACK16, m_colorspace };
 
       case D3D9Format::A16B16G16R16F: {
-        if (!m_unlockAdditionalFormats) {
+        if (!m_parent->HasFormatsUnlocked()) {
           Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", format));
           return VkSurfaceFormatKHR { };
         }
@@ -1483,7 +1482,14 @@ namespace dxvk {
   }
 
   void STDMETHODCALLTYPE D3D9VkExtSwapchain::UnlockAdditionalFormats() {
-    m_swapchain->m_unlockAdditionalFormats = true;
+    Logger::err("ID3D9VkExtSwapchain::UnlockAdditionalFormats is deprecated.\n"
+                "Please use ID3D9VkExtInterface::UnlockAdditionalFormats instead.\n");
+
+    Com<ID3D9VkExtInterface> iface;
+
+    if (SUCCEEDED(m_swapchain->GetParent()->QueryInterface(
+        __uuidof(ID3D9VkExtInterface), reinterpret_cast<void**>(&iface))))
+      iface->UnlockAdditionalFormats();
   }
 
 }

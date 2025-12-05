@@ -8913,7 +8913,7 @@ namespace dxvk {
 
   HRESULT D3D9DeviceEx::ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
     D3D9Format backBufferFmt = EnumerateFormat(pPresentationParameters->BackBufferFormat);
-    bool unlockedFormats = m_parent->HasFormatsUnlocked() || m_implicitSwapchain != nullptr && m_implicitSwapchain->HasFormatsUnlocked();
+    bool unlockedFormats = m_parent->HasFormatsUnlocked();
 
     Logger::info(str::format(
       "D3D9DeviceEx::ResetSwapChain:\n",
