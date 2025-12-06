@@ -1,0 +1,19 @@
+[binaries]
+c = 'clang'
+cpp = 'clang++'
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+windres = 'llvm-windres'
+
+[properties]
+needs_exe_wrapper = true
+c_args = [ '--target=i686-w64-mingw32' ]
+cpp_args = [ '--target=i686-w64-mingw32' ]
+c_link_args = [ '--target=i686-w64-mingw32' ]
+cpp_link_args = [ '--target=i686-w64-mingw32' ]
+
+[host_machine]
+system = 'windows'
+cpu_family = 'x86'
+cpu = 'x86'
+endian = 'little'
