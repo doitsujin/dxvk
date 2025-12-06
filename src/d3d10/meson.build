@@ -15,8 +15,10 @@ else
   d3d10_d3d11_dep = d3d11_dep
 endif
 
+d3d10_core_dependencies = [ dependency('threads'), d3d10_d3d11_dep ]
+
 d3d10_core_dll = shared_library(dxvk_name_prefix+'d3d10core', d3d10_core_src, d3d10_core_res,
-  dependencies        : [ d3d10_d3d11_dep ],
+  dependencies        : d3d10_core_dependencies,
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d10core'+def_spec_ext,

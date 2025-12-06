@@ -27,6 +27,7 @@ opt_devbuild=0
 opt_buildid=false
 opt_64_only=0
 opt_32_only=0
+opt_compiler=gcc
 
 crossfile="build-win"
 
@@ -48,6 +49,9 @@ while [ $# -gt 0 ]; do
   "--32-only")
     opt_32_only=1
     ;;
+  "--clang-compiler")
+    opt_compiler=clang
+    ;;
   *)
     echo "Unrecognized option: $1" >&2
     exit 1
@@ -66,7 +70,7 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  meson setup --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
+  meson setup --cross-file "$DXVK_SRC_DIR/$crossfile$1-$2.txt" \
         --buildtype "release"                               \
         --prefix "$DXVK_BUILD_DIR"                          \
         $opt_strip                                          \
@@ -93,10 +97,10 @@ function package {
 }
 
 if [ $opt_32_only -eq 0 ]; then
-  build_arch 64
+  build_arch 64 $opt_compiler
 fi
 if [ $opt_64_only -eq 0 ]; then
-  build_arch 32
+  build_arch 32 $opt_compiler
 fi
 
 if [ $opt_nopackage -eq 0 ]; then
