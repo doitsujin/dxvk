@@ -36,7 +36,7 @@ jobs:
 
   clang-artifacts-steamrt-sniper:
     runs-on: ubuntu-latest
-    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta
+    container: registry.gitlab.steamos.cloud/steamrt/steamrt4/sdk:beta
 
     steps:
     - name: Checkout code
