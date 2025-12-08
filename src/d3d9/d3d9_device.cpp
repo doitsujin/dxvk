@@ -41,6 +41,7 @@ namespace dxvk {
           DWORD                  BehaviorFlags,
           Rc<DxvkDevice>         dxvkDevice)
     : m_parent             ( pParent )
+    , m_d3d9Options        ( dxvkDevice, pParent->GetInstance()->config() )
     , m_deviceType         ( DeviceType )
     , m_window             ( hFocusWindow )
     , m_behaviorFlags      ( BehaviorFlags )
@@ -52,7 +53,6 @@ namespace dxvk {
     , m_shaderModules      ( new D3D9ShaderModuleSet )
     , m_stagingBuffer      ( dxvkDevice, StagingBufferSize )
     , m_stagingBufferFence ( new sync::Fence() )
-    , m_d3d9Options        ( dxvkDevice, pParent->GetInstance()->config() )
     , m_multithread        ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP             ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) != 0 )
     , m_isD3D8Compatible   ( pParent->IsD3D8Compatible() )
