@@ -2744,8 +2744,6 @@ namespace dxvk {
     if (isVS) {
       std::array<DxvkBindingInfo, 4> bindings;
 
-      SpirvCodeBuffer codeBuffer = SpirvCodeBuffer(sizeof(d3d9_fixed_function_vert) / sizeof(uint32_t), d3d9_fixed_function_vert);
-
       constexpr uint32_t specConstantBufferBindingId = getSpecConstantBufferSlot();
       auto& specConstantBufferBinding = bindings[0];
       specConstantBufferBinding.set = 0u;
@@ -2797,11 +2795,9 @@ namespace dxvk {
       info.samplerHeap = DxvkShaderBinding();
       info.debugName = "FF VS";
 
-      m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
+      m_shader = new DxvkSpirvShader(info, d3d9_fixed_function_vert);
     } else {
       std::vector<DxvkBindingInfo> bindings;
-
-      SpirvCodeBuffer codeBuffer = SpirvCodeBuffer(sizeof(d3d9_fixed_function_frag) / sizeof(uint32_t), d3d9_fixed_function_frag);
 
       constexpr uint32_t specConstantBufferBindingId = getSpecConstantBufferSlot();
       auto& specConstantBufferBinding = bindings.emplace_back();
@@ -2876,7 +2872,7 @@ namespace dxvk {
       info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, 1u, 0u);
       info.debugName = "FF FS";
 
-      m_shader = new DxvkSpirvShader(info, std::move(codeBuffer));
+      m_shader = new DxvkSpirvShader(info, d3d9_fixed_function_frag);
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
