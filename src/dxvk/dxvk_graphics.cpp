@@ -469,8 +469,7 @@ namespace dxvk {
     bool hasDynamicAlphaToCoverage = hasDynamicMultisampleState && state.cbUseDynamicAlphaToCoverage
       && device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
 
-    bool hasDynamicSampleLocations = m_device->features().extSampleLocations
-      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
+    bool hasDynamicSampleLocations = m_device->canUseSampleLocations(0u);
 
     if (hasDynamicMultisampleState) {
       dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
@@ -757,9 +756,6 @@ namespace dxvk {
     const DxvkDevice*                     device,
     const DxvkGraphicsPipelineStateInfo&  state,
           DxvkGraphicsPipelineFlags       flags) {
-    bool hasDynamicSampleLocations = device->features().extSampleLocations
-      && device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
-
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
     dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
 
@@ -795,7 +791,7 @@ namespace dxvk {
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
     }
 
-    if (state.useSampleLocations() && hasDynamicSampleLocations) {
+    if (state.useSampleLocations() && device->canUseSampleLocations(0u)) {
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_ENABLE_EXT;
       dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT;
     }

@@ -129,6 +129,14 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::canUseSampleLocations(VkSampleCountFlags samples) const {
+    return (m_features.extSampleLocations)
+        && (m_features.extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable)
+        && (m_properties.extSampleLocations.variableSampleLocations)
+        && (m_properties.extSampleLocations.sampleLocationSampleCounts & samples) == samples;
+  }
+
+
   bool DxvkDevice::mustTrackPipelineLifetime() const {
     switch (m_options.trackPipelineLifetime) {
       case Tristate::True:

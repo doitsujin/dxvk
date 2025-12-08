@@ -5713,8 +5713,7 @@ namespace dxvk {
           : DxvkContextFlag::GpDirtyMultisampleState);
       }
 
-      if (m_device->features().extSampleLocations
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable)
+      if (m_device->canUseSampleLocations(0u))
         m_flags.set(DxvkContextFlag::GpDynamicSampleLocations);
     } else {
       if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
@@ -5726,8 +5725,7 @@ namespace dxvk {
           : DxvkContextFlag::GpDirtyDepthBounds);
       }
 
-      if (m_device->features().extSampleLocations
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable) {
+      if (m_device->canUseSampleLocations(0u)) {
         m_flags.set(m_state.gp.state.useSampleLocations()
           ? DxvkContextFlag::GpDynamicSampleLocations
           : DxvkContextFlag::GpDirtySampleLocations);
@@ -6640,10 +6638,6 @@ namespace dxvk {
       if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable
        && !m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
         m_cmd->cmdSetAlphaToCoverageState(m_state.gp.state.ms.enableAlphaToCoverage());
-
-      if (m_device->features().extSampleLocations
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable) {
-      }
     }
 
     if (unlikely(m_flags.all(DxvkContextFlag::GpDirtySampleLocations,
@@ -6665,9 +6659,9 @@ namespace dxvk {
         msSampleCount = rsSampleCount ? rsSampleCount : VK_SAMPLE_COUNT_1_BIT;
 
       bool center = m_state.gp.state.useSampleLocations();
-      bool enable = true;
+      bool enable = m_device->canUseSampleLocations(msSampleCount);
 
-      if (m_state.om.renderTargets.depth.view) {
+      if (enable && m_state.om.renderTargets.depth.view) {
         auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
         enable = bool(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT);
       }
@@ -6947,18 +6941,20 @@ namespace dxvk {
     // If a depth-stencil image is bound used with non-default sample locations,
     // make sure that the image actually has the compat flag set.
     if (unlikely(m_state.gp.state.useSampleLocations())) {
-      if (m_state.om.renderTargets.depth.view
-       && m_device->features().extSampleLocations
-       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable) {
-        auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
+      if (m_state.om.renderTargets.depth.view) {
+        VkSampleCountFlagBits samples = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
 
-        if (!(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
-          this->spillRenderPass(true);
+        if (m_device->canUseSampleLocations(samples)) {
+          auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
 
-          DxvkImageUsageInfo usage = { };
-          usage.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+          if (!(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
+            this->spillRenderPass(true);
 
-          ensureImageCompatibility(m_state.om.renderTargets.depth.view->image(), usage);
+            DxvkImageUsageInfo usage = { };
+            usage.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
+
+            ensureImageCompatibility(m_state.om.renderTargets.depth.view->image(), usage);
+          }
         }
       }
     }

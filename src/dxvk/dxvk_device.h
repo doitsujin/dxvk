@@ -286,6 +286,12 @@ namespace dxvk {
     bool canUsePipelineCacheControl() const;
 
     /**
+     * \brief Checks whether sample locations can be used
+     * \returns \c true if sample locations are supported for any of the given sample counts
+     */
+    bool canUseSampleLocations(VkSampleCountFlags samples) const;
+
+    /**
      * \brief Checks whether pipelines should be tracked
      * \returns \c true if pipelines need to be tracked
      */

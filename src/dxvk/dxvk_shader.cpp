@@ -457,8 +457,7 @@ namespace dxvk {
     bool hasDynamicMultisampleState = hasSampleRateShading
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
-    bool hasDynamicSampleLocations = m_device->features().extSampleLocations
-      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleLocationsEnable;
+    bool hasDynamicSampleLocations = m_device->canUseSampleLocations(0u);
 
     if (hasDynamicMultisampleState) {
       dynamicStates.push_back(VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT);
