@@ -60,6 +60,12 @@ namespace dxvk {
       const DxvkSpirvShaderCreateInfo&  info,
             SpirvCodeBuffer&&           spirv);
 
+    template<size_t N>
+    DxvkSpirvShader(
+      const DxvkSpirvShaderCreateInfo&  info,
+      const uint32_t(&code)[N])
+    : DxvkSpirvShader(info, SpirvCodeBuffer(N, code)) { }
+
     ~DxvkSpirvShader();
 
     /**
