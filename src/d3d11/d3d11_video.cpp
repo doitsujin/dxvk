@@ -1595,9 +1595,6 @@ namespace dxvk {
 
 
   void D3D11VideoContext::CreateShaders() {
-    SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
-    SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
-
     const std::array<DxvkBindingInfo, 3> fsBindings = {{
       { 0u, 0u, 0u, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_ACCESS_UNIFORM_READ_BIT, DxvkDescriptorFlag::UniformBuffer },
       { 0u, 1u, 1u, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1u, VK_IMAGE_VIEW_TYPE_2D,       VK_ACCESS_SHADER_READ_BIT },
@@ -1605,12 +1602,12 @@ namespace dxvk {
     }};
 
     DxvkSpirvShaderCreateInfo vsInfo = { };
-    m_vs = new DxvkSpirvShader(vsInfo, std::move(vsCode));
+    m_vs = new DxvkSpirvShader(vsInfo, d3d11_video_blit_vert);
 
     DxvkSpirvShaderCreateInfo fsInfo = { };
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
-    m_fs = new DxvkSpirvShader(fsInfo, std::move(fsCode));
+    m_fs = new DxvkSpirvShader(fsInfo, d3d11_video_blit_frag);
   }
 
 
