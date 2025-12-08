@@ -1579,6 +1579,7 @@ namespace dxvk {
     bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
 
     Com<D3D9InterfaceEx>            m_parent;
+    D3D9Options                     m_d3d9Options;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
     WORD                            m_behaviorFlags;
@@ -1630,7 +1631,6 @@ namespace dxvk {
 
     Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
 
-    const D3D9Options               m_d3d9Options;
     DxsoOptions                     m_dxsoOptions;
 
     std::unordered_map<
