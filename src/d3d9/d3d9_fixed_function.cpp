@@ -15,6 +15,7 @@
 
 #include <d3d9_fixed_function_vert.h>
 #include <d3d9_fixed_function_frag.h>
+#include <d3d9_fixed_function_frag_sample.h>
 
 namespace dxvk {
 
@@ -2872,7 +2873,9 @@ namespace dxvk {
       info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, 1u, 0u);
       info.debugName = "FF FS";
 
-      m_shader = new DxvkSpirvShader(info, d3d9_fixed_function_frag);
+      m_shader = pDevice->GetOptions()->forceSampleRateShading
+        ? new DxvkSpirvShader(info, d3d9_fixed_function_frag_sample)
+        : new DxvkSpirvShader(info, d3d9_fixed_function_frag);
     }
 
     pDevice->GetDXVKDevice()->registerShader(m_shader);
