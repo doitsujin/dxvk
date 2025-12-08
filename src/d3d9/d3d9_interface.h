@@ -172,10 +172,9 @@ namespace dxvk {
 
     std::vector<D3D9Adapter>      m_adapters;
 
-    D3D9VkInteropInterface        m_d3d9Interop;
-
     bool m_unlockAdditionalFormats = false;
 
+    D3D9VkInteropInterface        m_d3d9Interop;
     D3D9VkExtInterface            m_d3d9ExtInterface;
 
     static const D3D9ON12_ARGS* Find9On12Args(

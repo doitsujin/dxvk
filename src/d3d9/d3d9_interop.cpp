@@ -107,8 +107,15 @@ namespace dxvk {
           VkImage*              pHandle,
           VkImageLayout*        pLayout,
           VkImageCreateInfo*    pInfo) {
+    static std::atomic<bool> s_errorShown = { false };
+
+    if (!s_errorShown.exchange(true)) {
+      Logger::warn("D3D9VkInteropTexture::GetVulkanImageInfo is deprecated and will be removed.\n"
+                   "Please use ID3D9VkInteropDevice::UnwrapTexture and ReturnTexture instead.");
+    }
+
     const Rc<DxvkImage> image = m_texture->GetImage();
-    
+
     if (unlikely(!image)) {
       if (pHandle != nullptr)
         *pHandle = VK_NULL_HANDLE;
@@ -218,6 +225,13 @@ namespace dxvk {
     const VkImageSubresourceRange*  pSubresources,
           VkImageLayout             OldLayout,
           VkImageLayout             NewLayout) {
+    static std::atomic<bool> s_errorShown = { false };
+
+    if (!s_errorShown.exchange(true)) {
+      Logger::warn("D3D9VkInteropDevice::TransitionTextureLayout is deprecated.\n"
+                   "Please use ID3D9VkInteropDevice::UnwrapTexture and ReturnTexture instead.");
+    }
+
     auto texture = static_cast<D3D9VkInteropTexture *>(pTexture)->GetCommonTexture();
 
     m_device->EmitCs([
@@ -274,7 +288,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::CreateImage(
-          const D3D9VkExtImageDesc* params,
+    const D3D9VkExtImageDesc*       params,
           IDirect3DResource9**      ppResult) {
     InitReturnPtr(ppResult);
 
@@ -312,7 +326,7 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    D3D9_COMMON_TEXTURE_DESC desc;
+    D3D9_COMMON_TEXTURE_DESC desc = { };
     desc.Width              = params->Width;
     desc.Height             = params->Height;
     desc.Depth              = params->Depth;
@@ -351,6 +365,152 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
   }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::UnwrapTexture(
+          IUnknown*                 pResource,
+          VkImage*                  pImage,
+          VkImageSubresourceRange*  pSubresources,
+          VkImageCreateInfo*        pInfo) {
+    D3D9CommonTexture* texture = nullptr;
+
+    Com<IDirect3DTexture9> texture2D;
+    Com<IDirect3DVolumeTexture9> texture3D;
+    Com<IDirect3DSurface9> surface;
+    Com<IDirect3DVolume9> volume;
+
+    int32_t mipLevel = -1;
+    int32_t arrayLayer = -1;
+
+    if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DTexture9), reinterpret_cast<void**>(&texture2D)))) {
+      texture = static_cast<D3D9Texture2D*>(texture2D.ptr())->GetCommonTexture();
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DVolumeTexture9), reinterpret_cast<void**>(&texture3D)))) {
+      texture = static_cast<D3D9Texture3D*>(texture3D.ptr())->GetCommonTexture();
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DVolume9), reinterpret_cast<void**>(&volume)))) {
+      auto v = static_cast<D3D9Volume*>(volume.ptr());
+      texture = v->GetCommonTexture();
+      mipLevel = int32_t(v->GetMipLevel());
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DSurface9), reinterpret_cast<void**>(&surface)))) {
+      auto s = static_cast<D3D9Surface*>(surface.ptr());
+      texture = s->GetCommonTexture();
+      arrayLayer = int32_t(s->GetFace());
+      mipLevel = int32_t(s->GetMipLevel());
+    } else {
+      Logger::err("D3D9: Interop resource not a texture, volume or surface.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    Rc<DxvkImage> image = texture->GetImage();
+
+    if (unlikely(!image)) {
+      if (pImage)
+        *pImage = VK_NULL_HANDLE;
+
+      return D3DERR_NOTFOUND;
+    }
+
+    VkImageSubresourceRange subresources = image->getAvailableSubresources();
+
+    if (mipLevel >= 0) {
+      subresources.baseMipLevel = uint32_t(mipLevel);
+      subresources.levelCount = 1u;
+    }
+
+    if (arrayLayer >= 0) {
+      subresources.baseArrayLayer = uint32_t(arrayLayer);
+      subresources.layerCount = 1u;
+    }
+
+    if (image->canRelocate()) {
+      // Still need to lock image in place for now since
+      // everything happens before resource relocation,
+      // but this may change in the future
+      auto chunk = m_device->AllocCsChunk();
+
+      chunk->push([cImage = image] (DxvkContext* ctx) {
+        DxvkImageUsageInfo usageInfo;
+        usageInfo.stableGpuAddress = true;
+
+        ctx->ensureImageCompatibility(cImage, usageInfo);
+      });
+
+      m_device->InjectCsChunk(std::move(chunk), true);
+    }
+
+    if (pImage)
+      *pImage = image->handle();
+
+    if (pSubresources)
+      *pSubresources = subresources;
+
+    if (pInfo) {
+      // We currently don't support any extended structures
+      if (pInfo->sType != VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
+       || pInfo->pNext != nullptr)
+        return D3DERR_INVALIDCALL;
+
+      const DxvkImageCreateInfo& info = image->info();
+
+      pInfo->flags          = 0;
+      pInfo->imageType      = info.type;
+      pInfo->format         = info.format;
+      pInfo->extent         = info.extent;
+      pInfo->mipLevels      = info.mipLevels;
+      pInfo->arrayLayers    = info.numLayers;
+      pInfo->samples        = info.sampleCount;
+      pInfo->tiling         = info.tiling;
+      pInfo->usage          = info.usage;
+      pInfo->sharingMode    = VK_SHARING_MODE_EXCLUSIVE;
+      pInfo->queueFamilyIndexCount = 0;
+      pInfo->initialLayout  = info.layout;
+    }
+
+    m_device->EmitCs([
+      cImage        = std::move(image)
+    ] (DxvkContext* ctx) {
+      ctx->releaseExternalResource(cImage, cImage->info().layout);
+    });
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::ReturnTexture(
+          ID3D9VkInteropTexture*    pResource) {
+    D3D9CommonTexture* texture = nullptr;
+
+    Com<IDirect3DTexture9> texture2D;
+    Com<IDirect3DVolumeTexture9> texture3D;
+    Com<IDirect3DSurface9> surface;
+    Com<IDirect3DVolume9> volume;
+
+    if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DTexture9), reinterpret_cast<void**>(&texture2D)))) {
+      texture = static_cast<D3D9Texture2D*>(texture2D.ptr())->GetCommonTexture();
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DVolumeTexture9), reinterpret_cast<void**>(&texture3D)))) {
+      texture = static_cast<D3D9Texture3D*>(texture3D.ptr())->GetCommonTexture();
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DVolume9), reinterpret_cast<void**>(&volume)))) {
+      texture = static_cast<D3D9Volume*>(volume.ptr())->GetCommonTexture();
+    } else if (SUCCEEDED(pResource->QueryInterface(__uuidof(IDirect3DSurface9), reinterpret_cast<void**>(&surface)))) {
+      texture = static_cast<D3D9Surface*>(surface.ptr())->GetCommonTexture();
+    } else {
+      Logger::err("D3D9: Interop resource not a texture, volume or surface.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    Rc<DxvkImage> image = texture->GetImage();
+
+    if (unlikely(!image))
+      return D3DERR_NOTFOUND;
+
+    m_device->EmitCs([
+      cImage        = std::move(image)
+    ] (DxvkContext* ctx) {
+      ctx->acquireExternalResource(cImage, cImage->info().layout);
+    });
+
+    return S_OK;
+  }
+
 
   template <typename ResourceType>
   HRESULT D3D9VkInteropDevice::CreateTextureResource(

@@ -79,7 +79,7 @@ namespace dxvk {
 
   };
 
-  class D3D9VkInteropDevice final : public ID3D9VkInteropDevice {
+  class D3D9VkInteropDevice final : public ID3D9VkInteropDevice1 {
 
   public:
 
@@ -127,8 +127,17 @@ namespace dxvk {
             DWORD                MapFlags);
 
     HRESULT STDMETHODCALLTYPE CreateImage(
-            const D3D9VkExtImageDesc* desc,
+      const D3D9VkExtImageDesc*       desc,
             IDirect3DResource9**      ppResult);
+
+    HRESULT STDMETHODCALLTYPE UnwrapTexture(
+            IUnknown*                 pResource,
+            VkImage*                  pImage,
+            VkImageSubresourceRange*  pSubresources,
+            VkImageCreateInfo*        pInfo);
+
+    HRESULT STDMETHODCALLTYPE ReturnTexture(
+            ID3D9VkInteropTexture*    pResource);
 
   private:
 

@@ -249,9 +249,66 @@ ID3D9VkInteropDevice : public IUnknown {
    * \returns D3D_OK, D3DERR_INVALIDCALL, or D3DERR_OUTOFVIDEOMEMORY
    */
   virtual HRESULT STDMETHODCALLTYPE CreateImage(
-          const D3D9VkExtImageDesc* desc,
+    const D3D9VkExtImageDesc*       desc,
           IDirect3DResource9**      ppResult) = 0;
 };
+
+
+MIDL_INTERFACE("909d6753-df34-4686-8e26-5184299783fd")
+ID3D9VkInteropDevice1 : public ID3D9VkInteropDevice {
+  /**
+   * \brief Prepares an image resource for external use
+   *
+   * Must be called \e before submitting any commands that access an interop
+   * resource outside of DXVK. Once released, the resource \e must \e not be
+   * used with any D3D9 commands until it is re-acquired via \c AcquireTexture.
+   *
+   * \note Applications \e must explicitly call \c FlushRenderingCommands prior
+   *       to using an interop resource externally so that any commands using
+   *       the resource, including this transition, actually get submitted.
+   * \param [in] pResource Texture resource to unwrap
+   * \param [out] pImage Vulkan image. Note that the image handle and backing storage may
+   *       change between calls, and applications using the Vulkan resource directly will
+   *       have to recreate all their image views when that happens.
+   * \param [out] pSubresources Image subresource range. If \c pResource is a surface,
+   *       this only covers the single subresource included in the surface, otherwise
+   *       it will include all subresources in the entire image. May be \c nullptr.
+   * \param [out] pInfo Image create info, with the following rules:
+   *        - \c pInfo->sType \e must be \c VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
+   *        - \c pInfo->pNext \e must be \c nullptr or point to a supported
+   *          extension-specific structure (currently none)
+   *        - \c pInfo->queueFamilyIndexCount must be the length of the
+   *          \c pInfo->pQueueFamilyIndices array, in \c uint32_t units.
+   *        - \c pInfo->pQueueFamilyIndices must either be \c nullptr or point to a
+   *          pre-allocated array of \c uint32_t of size \c pInfo->pQueueFamilyIndices.
+   *          If \c nullptr, then \c pInfo->pQueueFamilyIndexCount will receive the
+   *          number of unique queue families that can access the image concurrently
+   *          if the shading mode is \c VK_SHARING_MODE_CONCURRENT.
+   *        - \c pInfo->initialLayout will receive the layout that all subresources
+   *          in \c pSubresources will be in after the Unwrap call itself, rather than
+   *          the initial layout on image creation.
+   * \returns \c S_OK on success, \c D3DERR_INVALIDCALL on error, or \c D3DERR_NOTFOUND
+   *        in case the given resource is not backed by an actual Vulkan image.
+   */
+  virtual HRESULT STDMETHODCALLTYPE UnwrapTexture(
+          IUnknown*                 pResource,
+          VkImage*                  pImage,
+          VkImageSubresourceRange*  pSubresources,
+          VkImageCreateInfo*        pInfo) = 0;
+
+  /**
+   * \brief Prepares an image resource for use with DXVK
+   *
+   * Must be called \e after all commands that access an interop
+   * resource outside of D3D9 have been submitted to the GPU.
+   * The resource can then be used with D3D9.
+   * \param [in] pResource Texture resource to release. This resource
+   *    must have previously been used in an \c UnwrapTexture call.
+   */
+  virtual HRESULT STDMETHODCALLTYPE ReturnTexture(
+          ID3D9VkInteropTexture*    pResource) = 0;
+};
+
 
 /**
  * \brief D3D9 current output metadata
@@ -299,6 +356,7 @@ __CRT_UUID_DECL(ID3D9VkInteropInterface,   0x3461a81b,0xce41,0x485b,0xb6,0xb5,0x
 __CRT_UUID_DECL(ID3D9VkInteropInterface1,  0xd6589ed4,0x7a37,0x4096,0xba,0xc2,0x22,0x3b,0x25,0xae,0x31,0xd2);
 __CRT_UUID_DECL(ID3D9VkInteropTexture,     0xd56344f5,0x8d35,0x46fd,0x80,0x6d,0x94,0xc3,0x51,0xb4,0x72,0xc1);
 __CRT_UUID_DECL(ID3D9VkInteropDevice,      0x2eaa4b89,0x0107,0x4bdb,0x87,0xf7,0x0f,0x54,0x1c,0x49,0x3c,0xe0);
+__CRT_UUID_DECL(ID3D9VkInteropDevice1,     0x909d6753,0xdf34,0x4686,0x8e,0x26,0x51,0x84,0x29,0x97,0x83,0xfd);
 __CRT_UUID_DECL(ID3D9VkExtSwapchain,       0x13776e93,0x4aa9,0x430a,0xa4,0xec,0xfe,0x9e,0x28,0x11,0x81,0xd5);
 __CRT_UUID_DECL(ID3D9VkExtInterface,       0x65b55086,0xe3e3,0x4c3e,0xb3,0xa0,0x86,0x81,0x5c,0xce,0x2c,0x4c);
 #endif

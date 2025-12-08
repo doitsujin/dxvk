@@ -240,7 +240,8 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(ID3D9VkInteropDevice)) {
+    if (riid == __uuidof(ID3D9VkInteropDevice)
+     || riid == __uuidof(ID3D9VkInteropDevice1)) {
       *ppvObject = ref(&m_d3d9Interop);
       return S_OK;
     }
