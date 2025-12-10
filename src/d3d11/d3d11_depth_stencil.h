@@ -11,15 +11,16 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DepthStencilState : public D3D11StateObject<ID3D11DepthStencilState> {
-    
+  class D3D11DepthStencilState : public D3D11StateObject<ID3D11DepthStencilState, D3D11DepthStencilState> {
+    using Container = D3D11StateObjectSet<D3D11DepthStencilState>;
   public:
     
     using DescType = D3D11_DEPTH_STENCIL_DESC;
     
     D3D11DepthStencilState(
             D3D11Device*              device,
-      const D3D11_DEPTH_STENCIL_DESC& desc);
+      const D3D11_DEPTH_STENCIL_DESC& desc,
+            Container*                container);
     ~D3D11DepthStencilState();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -28,6 +29,10 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE GetDesc(
             D3D11_DEPTH_STENCIL_DESC* pDesc) final;
+
+    const D3D11_DEPTH_STENCIL_DESC& Desc() const {
+      return m_desc;
+    }
 
     DxvkDepthStencilState GetState() const {
       return m_state;

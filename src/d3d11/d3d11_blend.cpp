@@ -5,8 +5,9 @@ namespace dxvk {
   
   D3D11BlendState::D3D11BlendState(
           D3D11Device*        device,
-    const D3D11_BLEND_DESC1&  desc)
-  : D3D11StateObject<ID3D11BlendState1>(device),
+    const D3D11_BLEND_DESC1&  desc,
+          Container*          container)
+  : D3D11StateObject<ID3D11BlendState1, D3D11BlendState>(device, container),
     m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     // If Independent Blend is disabled, we must ignore the
     // blend modes for render target 1 to 7. In Vulkan, all

@@ -5,8 +5,9 @@ namespace dxvk {
   
   D3D11DepthStencilState::D3D11DepthStencilState(
           D3D11Device*              device,
-    const D3D11_DEPTH_STENCIL_DESC& desc)
-  : D3D11StateObject<ID3D11DepthStencilState>(device),
+    const D3D11_DEPTH_STENCIL_DESC& desc,
+          Container*                container)
+  : D3D11StateObject<ID3D11DepthStencilState, D3D11DepthStencilState>(device, container),
     m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     m_state.setDepthTest(desc.DepthEnable);
     m_state.setDepthWrite(desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL);

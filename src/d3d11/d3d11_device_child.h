@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d11_include.h"
+#include "d3d11_state.h"
 
 #include "../util/com/com_private_data.h"
 
@@ -103,13 +104,18 @@ namespace dxvk {
     
   };
 
-  template<typename Base>
+  template<typename Base, typename Self>
   class D3D11StateObject : public D3D11DeviceObject<Base> {
-    
+    using Container = D3D11StateObjectSet<Self>;
+
+    constexpr static uint32_t AddRefValue = 1u;
+    constexpr static uint32_t ReleaseShift = 16u;
+    constexpr static uint32_t ReleaseValue = 1u << ReleaseShift;
+    constexpr static uint32_t RefMask = ReleaseValue - 1u;
   public:
 
-    D3D11StateObject(D3D11Device* pDevice)
-    : D3D11DeviceObject<Base>(pDevice) {
+    D3D11StateObject(D3D11Device* pDevice, Container* pContainer)
+    : D3D11DeviceObject<Base>(pDevice), m_container(pContainer) {
 
     }
 
@@ -137,17 +143,44 @@ namespace dxvk {
     }
 
     void AddRefPrivate() {
-      m_refPrivate.fetch_add(1u, std::memory_order_acquire);
+      // Since state objects manage themselves inside a look-up table, we need to
+      // atomically count both release and addrefs to support the following sequence
+      // of events:
+      // - Thread 0: Calls StateObjectSet::Create and takes lock
+      // - Thread 1: Calls StateObjectSet::Destroy, is now blocked
+      // - Thread 0: StateObjectSet::Create returns
+      // - Thread 0: Calls StateObjectSet::Destroy immmediately and takes lock
+      // - Thread 0: StateObjectSet::Destroy returns
+      // - Thread 1: Gets unblocked
+      // - Thread 1: StateObjectSet::Destroy returns
+      // In this scenario, only one thread can safely destroy the object.
+      uint32_t expected = m_refPrivate.load(std::memory_order_relaxed);
+      uint32_t desired;
+
+      do {
+        desired = ((expected + 1u) & RefMask) | (expected & ~RefMask);
+      } while (!m_refPrivate.compare_exchange_strong(expected, desired, std::memory_order_acquire));
     }
 
     void ReleasePrivate() {
-      m_refPrivate.fetch_sub(1u, std::memory_order_release);
+      uint32_t refCount = m_refPrivate.fetch_add(ReleaseValue, std::memory_order_release) + ReleaseValue;
+
+      uint32_t addRefCount = (refCount & RefMask) / AddRefValue;
+      uint32_t releaseCount = (refCount & ~RefMask) / ReleaseValue;
+
+      if (unlikely(addRefCount == releaseCount))
+        m_container->Destroy(static_cast<Self*>(this), refCount);
+    }
+
+    BOOL IsCurrent(uint32_t version) {
+      return m_refPrivate.load(std::memory_order_relaxed) == version;
     }
 
   private:
 
     std::atomic<uint32_t> m_refCount = { 0u };
     std::atomic<uint32_t> m_refPrivate = { 0u };
+    Container*            m_container = nullptr;
     
   };
   

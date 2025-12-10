@@ -10,15 +10,16 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RasterizerState : public D3D11StateObject<ID3D11RasterizerState2> {
-    
+  class D3D11RasterizerState : public D3D11StateObject<ID3D11RasterizerState2, D3D11RasterizerState> {
+    using Container = D3D11StateObjectSet<D3D11RasterizerState>;
   public:
     
     using DescType = D3D11_RASTERIZER_DESC2;
     
     D3D11RasterizerState(
             D3D11Device*                    device,
-      const D3D11_RASTERIZER_DESC2&         desc);
+      const D3D11_RASTERIZER_DESC2&         desc,
+            Container*                      container);
     ~D3D11RasterizerState();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(

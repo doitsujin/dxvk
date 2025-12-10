@@ -2,9 +2,12 @@
 
 #include <array>
 
+#include "d3d11_blend.h"
 #include "d3d11_buffer.h"
+#include "d3d11_depth_stencil.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_query.h"
+#include "d3d11_rasterizer.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
