@@ -2,10 +2,7 @@
 
 #include <unordered_map>
 
-#include "d3d11_blend.h"
-#include "d3d11_depth_stencil.h"
-#include "d3d11_rasterizer.h"
-#include "d3d11_sampler.h"
+#include "d3d11_include.h"
 
 namespace dxvk {
   
@@ -64,10 +61,26 @@ namespace dxvk {
       auto result = m_objects.emplace(
         std::piecewise_construct,
         std::tuple(desc),
-        std::tuple(device, desc));
+        std::tuple(device, desc, this));
       return ref(&result.first->second);
     }
-    
+
+    /**
+     * \brief Destroys a state object
+     *
+     * If the object is no longer in use, it will be
+     * removed from the look-ip table.
+     * \param [in] object Pointer to object to destroy
+     */
+    void Destroy(T* object, uint32_t version) {
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+      if (object->IsCurrent(version)) {
+        DescType desc = object->Desc();
+        m_objects.erase(desc);
+      }
+    }
+
   private:
     
     dxvk::mutex                                m_mutex;

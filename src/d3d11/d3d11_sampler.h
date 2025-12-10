@@ -10,15 +10,16 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11SamplerState : public D3D11StateObject<ID3D11SamplerState> {
-    
+  class D3D11SamplerState : public D3D11StateObject<ID3D11SamplerState, D3D11SamplerState> {
+    using Container = D3D11StateObjectSet<D3D11SamplerState>;
   public:
     
     using DescType = D3D11_SAMPLER_DESC;
     
     D3D11SamplerState(
             D3D11Device*        device,
-      const D3D11_SAMPLER_DESC& desc);
+      const D3D11_SAMPLER_DESC& desc,
+            Container*          container);
     ~D3D11SamplerState();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -35,7 +36,11 @@ namespace dxvk {
     D3D10SamplerState* GetD3D10Iface() {
       return &m_d3d10;
     }
-    
+
+    const D3D11_SAMPLER_DESC& Desc() const {
+      return m_desc;
+    }
+
     static HRESULT NormalizeDesc(
             D3D11_SAMPLER_DESC* pDesc);
     

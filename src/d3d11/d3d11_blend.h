@@ -11,15 +11,16 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11BlendState : public D3D11StateObject<ID3D11BlendState1> {
-    
+  class D3D11BlendState : public D3D11StateObject<ID3D11BlendState1, D3D11BlendState> {
+    using Container = D3D11StateObjectSet<D3D11BlendState>;
   public:
     
     using DescType = D3D11_BLEND_DESC1;
     
     D3D11BlendState(
             D3D11Device*       device,
-      const D3D11_BLEND_DESC1& desc);
+      const D3D11_BLEND_DESC1& desc,
+            Container*         container);
     ~D3D11BlendState();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -32,6 +33,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_BLEND_DESC1* pDesc) final;
     
+    const D3D11_BLEND_DESC1& Desc() const {
+      return m_desc;
+    }
+
     DxvkMultisampleState GetMsState(uint32_t SampleMask) const {
       DxvkMultisampleState msState = m_msState;
       msState.setSampleMask(SampleMask);

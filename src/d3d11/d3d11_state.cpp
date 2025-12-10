@@ -1,5 +1,7 @@
 #include "d3d11_state.h"
 
+#include "../dxvk/dxvk_hash.h"
+
 namespace dxvk {
   
   size_t D3D11StateDescHash::operator () (

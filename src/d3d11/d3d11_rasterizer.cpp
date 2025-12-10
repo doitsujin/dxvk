@@ -5,8 +5,9 @@ namespace dxvk {
   
   D3D11RasterizerState::D3D11RasterizerState(
           D3D11Device*                    device,
-    const D3D11_RASTERIZER_DESC2&         desc)
-  : D3D11StateObject<ID3D11RasterizerState2>(device),
+    const D3D11_RASTERIZER_DESC2&         desc,
+          Container*                      container)
+  : D3D11StateObject<ID3D11RasterizerState2, D3D11RasterizerState>(device, container),
     m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.

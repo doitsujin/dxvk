@@ -6,8 +6,9 @@ namespace dxvk {
   
   D3D11SamplerState::D3D11SamplerState(
           D3D11Device*        device,
-    const D3D11_SAMPLER_DESC& desc)
-  : D3D11StateObject<ID3D11SamplerState>(device),
+    const D3D11_SAMPLER_DESC& desc,
+          Container*          container)
+  : D3D11StateObject<ID3D11SamplerState, D3D11SamplerState>(device, container),
     m_desc(desc), m_d3d10(this), m_destructionNotifier(this) {
     DxvkSamplerKey info = { };
 
