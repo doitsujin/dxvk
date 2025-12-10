@@ -114,24 +114,40 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE AddRef() {
-      uint32_t refCount = this->m_refCount++;
-      if (unlikely(!refCount))
+      uint32_t refCount = m_refCount.fetch_add(1u, std::memory_order_acquire);
+
+      if (unlikely(!refCount)) {
+        AddRefPrivate();
         this->GetParentInterface()->AddRef();
+      }
 
       return refCount + 1;
     }
-    
+
     ULONG STDMETHODCALLTYPE Release() {
-      uint32_t refCount = --this->m_refCount;
-      if (unlikely(!refCount))
-        this->GetParentInterface()->Release();
+      uint32_t refCount = m_refCount.fetch_sub(1u, std::memory_order_release) - 1u;
+
+      if (unlikely(!refCount)) {
+        ID3D11Device* device = this->GetParentInterface();
+        ReleasePrivate();
+        device->Release();
+      }
 
       return refCount;
+    }
+
+    void AddRefPrivate() {
+      m_refPrivate.fetch_add(1u, std::memory_order_acquire);
+    }
+
+    void ReleasePrivate() {
+      m_refPrivate.fetch_sub(1u, std::memory_order_release);
     }
 
   private:
 
     std::atomic<uint32_t> m_refCount = { 0u };
+    std::atomic<uint32_t> m_refPrivate = { 0u };
     
   };
   

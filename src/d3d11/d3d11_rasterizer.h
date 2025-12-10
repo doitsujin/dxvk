@@ -34,8 +34,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc2(
             D3D11_RASTERIZER_DESC2* pDesc) final;
     
-    const D3D11_RASTERIZER_DESC2* Desc() const {
-      return &m_desc;
+    const D3D11_RASTERIZER_DESC2& Desc() const {
+      return m_desc;
     }
     
     DxvkRasterizerState GetState() const {
