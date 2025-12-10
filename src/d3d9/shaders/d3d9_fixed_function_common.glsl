@@ -110,7 +110,51 @@ const uint SpecFFTextureStage3AlphaOp = 42;
 const uint SpecFFTextureStage3AlphaArg1 = 43;
 const uint SpecFFTextureStage3AlphaArg2 = 44;
 const uint SpecFFTextureStage3ResultIsTemp = 45;
-const uint SpecConstantCount = 46;
+const uint SpecFFTextureStage4ColorOp = 46;
+const uint SpecFFTextureStage4ColorArg1 = 47;
+const uint SpecFFTextureStage4ColorArg2 = 48;
+const uint SpecFFTextureStage4AlphaOp = 49;
+const uint SpecFFTextureStage4AlphaArg1 = 50;
+const uint SpecFFTextureStage4AlphaArg2 = 51;
+const uint SpecFFTextureStage4ResultIsTemp = 52;
+const uint SpecFFTextureStage5ColorOp = 53;
+const uint SpecFFTextureStage5ColorArg1 = 54;
+const uint SpecFFTextureStage5ColorArg2 = 55;
+const uint SpecFFTextureStage5AlphaOp = 56;
+const uint SpecFFTextureStage5AlphaArg1 = 57;
+const uint SpecFFTextureStage5AlphaArg2 = 58;
+const uint SpecFFTextureStage5ResultIsTemp = 59;
+const uint SpecFFTextureStage6ColorOp = 60;
+const uint SpecFFTextureStage6ColorArg1 = 61;
+const uint SpecFFTextureStage6ColorArg2 = 62;
+const uint SpecFFTextureStage6AlphaOp = 63;
+const uint SpecFFTextureStage6AlphaArg1 = 64;
+const uint SpecFFTextureStage6AlphaArg2 = 65;
+const uint SpecFFTextureStage6ResultIsTemp = 66;
+const uint SpecFFTextureStage7ColorOp = 67;
+const uint SpecFFTextureStage7ColorArg1 = 68;
+const uint SpecFFTextureStage7ColorArg2 = 69;
+const uint SpecFFTextureStage7AlphaOp = 70;
+const uint SpecFFTextureStage7AlphaArg1 = 71;
+const uint SpecFFTextureStage7AlphaArg2 = 72;
+const uint SpecFFTextureStage7ResultIsTemp = 73;
+const uint SpecFFTextureStage0ColorArg0 = 74;
+const uint SpecFFTextureStage1ColorArg0 = 75;
+const uint SpecFFTextureStage2ColorArg0 = 76;
+const uint SpecFFTextureStage3ColorArg0 = 77;
+const uint SpecFFTextureStage4ColorArg0 = 78;
+const uint SpecFFTextureStage5ColorArg0 = 79;
+const uint SpecFFTextureStage6ColorArg0 = 80;
+const uint SpecFFTextureStage7ColorArg0 = 81;
+const uint SpecFFTextureStage0AlphaArg0 = 82;
+const uint SpecFFTextureStage1AlphaArg0 = 83;
+const uint SpecFFTextureStage2AlphaArg0 = 84;
+const uint SpecFFTextureStage3AlphaArg0 = 85;
+const uint SpecFFTextureStage4AlphaArg0 = 86;
+const uint SpecFFTextureStage5AlphaArg0 = 87;
+const uint SpecFFTextureStage6AlphaArg0 = 88;
+const uint SpecFFTextureStage7AlphaArg0 = 89;
+const uint SpecConstantCount = 90;
 
 struct BitfieldPosition {
     uint dwordOffset;
@@ -176,6 +220,57 @@ BitfieldPosition SpecConstLayout[SpecConstantCount] = {
     { 9, 20, 5 },  // FFTextureStage3AlphaArg1
     { 9, 25, 5 },  // FFTextureStage3AlphaArg2
     { 9, 30, 1 },  // FFTextureStage3ResultIsTemp
+
+    { 10,  0, 5 },  // FFTextureStage4ColorOp
+    { 10,  5, 5 },  // FFTextureStage4ColorArg1
+    { 10, 10, 5 },  // FFTextureStage4ColorArg2
+    { 10, 15, 5 },  // FFTextureStage4AlphaOp
+    { 10, 20, 5 },  // FFTextureStage4AlphaArg1
+    { 10, 25, 5 },  // FFTextureStage4AlphaArg2
+    { 10, 30, 1 },  // FFTextureStage4ResultIsTemp
+
+    { 11,  0, 5 },  // FFTextureStage5ColorOp
+    { 11,  5, 5 },  // FFTextureStage5ColorArg1
+    { 11, 10, 5 },  // FFTextureStage5ColorArg2
+    { 11, 15, 5 },  // FFTextureStage5AlphaOp
+    { 11, 20, 5 },  // FFTextureStage5AlphaArg1
+    { 11, 25, 5 },  // FFTextureStage5AlphaArg2
+    { 11, 30, 1 },  // FFTextureStage5ResultIsTemp
+
+    { 12,  0, 5 },  // FFTextureStage6ColorOp
+    { 12,  5, 5 },  // FFTextureStage6ColorArg1
+    { 12, 10, 5 },  // FFTextureStage6ColorArg2
+    { 12, 15, 5 },  // FFTextureStage6AlphaOp
+    { 12, 20, 5 },  // FFTextureStage6AlphaArg1
+    { 12, 25, 5 },  // FFTextureStage6AlphaArg2
+    { 12, 30, 1 },  // FFTextureStage6ResultIsTemp
+
+    { 13,  0, 5 },  // FFTextureStage7ColorOp
+    { 13,  5, 5 },  // FFTextureStage7ColorArg1
+    { 13, 10, 5 },  // FFTextureStage7ColorArg2
+    { 13, 15, 5 },  // FFTextureStage7AlphaOp
+    { 13, 20, 5 },  // FFTextureStage7AlphaArg1
+    { 13, 25, 5 },  // FFTextureStage7AlphaArg2
+    { 13, 30, 1 },  // FFTextureStage7ResultIsTemp
+
+    { 14,  0, 5 },  // FFTextureStage0ColorArg0
+    { 14,  5, 5 },  // FFTextureStage1ColorArg0
+    { 14, 10, 5 },  // FFTextureStage2ColorArg0
+    { 14, 15, 5 },  // FFTextureStage3ColorArg0
+    { 14, 20, 5 },  // FFTextureStage4ColorArg0
+    { 14, 25, 5 },  // FFTextureStage5ColorArg0
+
+    { 15,  0, 5 },  // FFTextureStage6ColorArg0
+    { 15,  5, 5 },  // FFTextureStage7ColorArg0
+    { 15, 10, 5 },  // FFTextureStage0AlphaArg0
+    { 15, 15, 5 },  // FFTextureStage1AlphaArg0
+    { 15, 20, 5 },  // FFTextureStage2AlphaArg0
+    { 15, 25, 5 },  // FFTextureStage3AlphaArg0
+
+    { 16,  0, 5 },  // FFTextureStage4AlphaArg0
+    { 16,  5, 5 },  // FFTextureStage5AlphaArg0
+    { 16, 10, 5 },  // FFTextureStage6AlphaArg0
+    { 16, 15, 5 },  // FFTextureStage7AlphaArg0
 };
 
 bool specIsOptimized() {
