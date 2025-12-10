@@ -508,7 +508,6 @@ namespace dxvk {
 
     D3D11Initializer*               m_initializer = nullptr;
     D3D10Device*                    m_d3d10Device = nullptr;
-    Com<D3D11ImmediateContext, false> m_context;
 
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -518,6 +517,8 @@ namespace dxvk {
 
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11DeviceFeatures             m_deviceFeatures;
+
+    Com<D3D11ImmediateContext, false> m_context;
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
