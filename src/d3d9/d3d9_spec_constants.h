@@ -69,6 +69,57 @@ namespace dxvk {
     SpecFFTextureStage3AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
     SpecFFTextureStage3ResultIsTemp, // Bool                  | Bits: 1
 
+    SpecFFTextureStage4ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage4ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage4ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage4AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage4AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage4AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage4ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage5ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage5ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage5AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage6ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage6ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage6ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage6AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage6AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage6AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage6ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage7ColorOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage7ColorArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7ColorArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7AlphaOp,   // Range: 1 -> 26           | Bits: 5
+    SpecFFTextureStage7AlphaArg1, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7AlphaArg2, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7ResultIsTemp, // Bool                  | Bits: 1
+
+    SpecFFTextureStage0ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage4ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+
+    SpecFFTextureStage6ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7ColorArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage0AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage1AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage2AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage3AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+
+    SpecFFTextureStage4AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage5AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage6AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecFFTextureStage7AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+
     SpecConstantCount,
   };
 
@@ -84,7 +135,7 @@ namespace dxvk {
 
   struct D3D9SpecializationInfo {
     // Spec const word 0 determines whether the other spec constants are used rather than the spec const UBO
-    static constexpr uint32_t MaxSpecDwords = 10;
+    static constexpr uint32_t MaxSpecDwords = 17;
 
     static constexpr size_t UBOSize = MaxSpecDwords * sizeof(uint32_t);
 
@@ -147,6 +198,57 @@ namespace dxvk {
       { 9, 20, 5 },  // FFTextureStage3AlphaArg1
       { 9, 25, 5 },  // FFTextureStage3AlphaArg2
       { 9, 30, 1 },  // FFTextureStage3ResultIsTemp
+
+      { 10,  0, 5 },  // FFTextureStage4ColorOp
+      { 10,  5, 5 },  // FFTextureStage4ColorArg1
+      { 10, 10, 5 },  // FFTextureStage4ColorArg2
+      { 10, 15, 5 },  // FFTextureStage4AlphaOp
+      { 10, 20, 5 },  // FFTextureStage4AlphaArg1
+      { 10, 25, 5 },  // FFTextureStage4AlphaArg2
+      { 10, 30, 1 },  // FFTextureStage4ResultIsTemp
+
+      { 11,  0, 5 },  // FFTextureStage5ColorOp
+      { 11,  5, 5 },  // FFTextureStage5ColorArg1
+      { 11, 10, 5 },  // FFTextureStage5ColorArg2
+      { 11, 15, 5 },  // FFTextureStage5AlphaOp
+      { 11, 20, 5 },  // FFTextureStage5AlphaArg1
+      { 11, 25, 5 },  // FFTextureStage5AlphaArg2
+      { 11, 30, 1 },  // FFTextureStage5ResultIsTemp
+
+      { 12,  0, 5 },  // FFTextureStage6ColorOp
+      { 12,  5, 5 },  // FFTextureStage6ColorArg1
+      { 12, 10, 5 },  // FFTextureStage6ColorArg2
+      { 12, 15, 5 },  // FFTextureStage6AlphaOp
+      { 12, 20, 5 },  // FFTextureStage6AlphaArg1
+      { 12, 25, 5 },  // FFTextureStage6AlphaArg2
+      { 12, 30, 1 },  // FFTextureStage6ResultIsTemp
+
+      { 13,  0, 5 },  // FFTextureStage7ColorOp
+      { 13,  5, 5 },  // FFTextureStage7ColorArg1
+      { 13, 10, 5 },  // FFTextureStage7ColorArg2
+      { 13, 15, 5 },  // FFTextureStage7AlphaOp
+      { 13, 20, 5 },  // FFTextureStage7AlphaArg1
+      { 13, 25, 5 },  // FFTextureStage7AlphaArg2
+      { 13, 30, 1 },  // FFTextureStage7ResultIsTemp
+
+      { 14,  0, 5 },  // FFTextureStage0ColorArg0
+      { 14,  5, 5 },  // FFTextureStage1ColorArg0
+      { 14, 10, 5 },  // FFTextureStage2ColorArg0
+      { 14, 15, 5 },  // FFTextureStage3ColorArg0
+      { 14, 20, 5 },  // FFTextureStage4ColorArg0
+      { 14, 25, 5 },  // FFTextureStage5ColorArg0
+
+      { 15,  0, 5 },  // FFTextureStage6ColorArg0
+      { 15,  5, 5 },  // FFTextureStage7ColorArg0
+      { 15, 10, 5 },  // FFTextureStage0AlphaArg0
+      { 15, 15, 5 },  // FFTextureStage1AlphaArg0
+      { 15, 20, 5 },  // FFTextureStage2AlphaArg0
+      { 15, 25, 5 },  // FFTextureStage3AlphaArg0
+
+      { 16,  0, 5 },  // FFTextureStage4AlphaArg0
+      { 16,  5, 5 },  // FFTextureStage5AlphaArg0
+      { 16, 10, 5 },  // FFTextureStage6AlphaArg0
+      { 16, 15, 5 },  // FFTextureStage7AlphaArg0
     }};
 
     template <D3D9SpecConstantId Id, typename T>

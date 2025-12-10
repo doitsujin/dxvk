@@ -28,7 +28,6 @@ layout(location = 11) INTERP_MODE in float in_Fog;
 layout(location = 0) out vec4 out_Color0;
 
 
-const uint SpecConstOptimizedTextureStageCount = 4;
 const uint TextureArgCount = 3;
 const uint MaxSharedPushDataSize = 64;
 
@@ -271,8 +270,7 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
 
     uint previousStageColorOp = 0;
     if (stage > 0) {
-        bool isPreviousStageOptimized = specIsOptimized() && stage - 1 < SpecConstOptimizedTextureStageCount;
-        previousStageColorOp = isPreviousStageOptimized ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1)) : colorOp(stage - 1);
+        previousStageColorOp = specIsOptimized() ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1)) : colorOp(stage - 1);
     }
 
     if (stage != 0 && (
@@ -566,34 +564,28 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
         return state;
     }
 
-    const bool isStageOptimized = specIsOptimized() && stage < SpecConstOptimizedTextureStageCount;
-
-    const uint colorOp = isStageOptimized ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage) : colorOp(stage);
+    const uint colorOp = specIsOptimized() ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage) : colorOp(stage);
 
     // This cancels all subsequent stages.
     if (colorOp == D3DTOP_DISABLE)
         return state;
 
-    const bool resultIsTemp = isStageOptimized ? specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage) : resultIsTemp(stage);
+    const bool resultIsTemp = specIsOptimized() ? specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage) : resultIsTemp(stage);
     vec4 dst = resultIsTemp ? state.temp : state.current;
 
-    const uint alphaOp = isStageOptimized ? specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage) : alphaOp(stage);
-
-    const bool usesArg0 = !isStageOptimized
-        || colorOp == D3DTOP_LERP
-        || colorOp == D3DTOP_MULTIPLYADD
-        || alphaOp == D3DTOP_LERP
-        || alphaOp == D3DTOP_MULTIPLYADD;
+    const uint alphaOp = specIsOptimized() ? specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage) : alphaOp(stage);
 
     const TextureStageArguments colorArgs = {
-        usesArg0 ? colorArg0(stage) : D3DTA_CONSTANT,
-        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)) : colorArg1(stage),
-        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage)) : colorArg2(stage)
+        // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg0 + stage))                             : colorArg0(stage),
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)) : colorArg1(stage),
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage)) : colorArg2(stage)
     };
     const TextureStageArguments alphaArgs = {
-        usesArg0 ? alphaArg0(stage) : D3DTA_CONSTANT,
-        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)) : alphaArg1(stage),
-        isStageOptimized ? repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage)) : alphaArg2(stage)
+        // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg0 + stage))                             : alphaArg0(stage),
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)) : alphaArg1(stage),
+        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage)) : alphaArg2(stage)
     };
 
     vec4 textureVal = vec4(0.0);
