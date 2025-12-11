@@ -61,6 +61,8 @@ namespace dxvk {
     /// constant buffer. The register space and index for this
     /// buffer are defined in the compile options.
     LowerConstantArrays         = 11u,
+    /// Whether to enable semantic-based I/O interface matching
+    SemanticIo                  = 12u,
   };
 
   using DxvkShaderCompileFlags = Flags<DxvkShaderCompileFlag>;
@@ -161,6 +163,7 @@ namespace dxvk {
     UsesFragmentCoverage,
     UsesSparseResidency,
     TessellationPoints,
+    SemanticIo,
   };
 
   using DxvkShaderFlags = Flags<DxvkShaderFlag>;
@@ -200,6 +203,7 @@ namespace dxvk {
   struct DxvkShaderLinkage {
     bool fsDualSrcBlend  = false;
     bool fsFlatShading   = false;
+    bool semanticIo      = false;
 
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 

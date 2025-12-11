@@ -274,6 +274,9 @@ namespace dxvk {
         rasterizedStream = m_info.rasterizedStream;
 
       m_metadata.outputs = convertIoMap(dxbc_spv::ir::IoMap::forOutputs(m_builder, uint32_t(rasterizedStream)));
+
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::SemanticIo))
+        m_metadata.flags.set(DxvkShaderFlag::SemanticIo);
     }
 
 
@@ -1546,9 +1549,17 @@ namespace dxvk {
           ioPass.swizzleOutputs(swizzles.size(), swizzles.data());
         }
 
+        bool matchSemantics = linkage->semanticIo && m_metadata.flags.test(DxvkShaderFlag::SemanticIo);
+
         if (m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT && !DxvkShaderIo::checkStageCompatibility(
-            m_metadata.stage, m_metadata.inputs, linkage->prevStage, linkage->prevStageOutputs))
-          ioPass.resolveMismatchedIo(convertShaderStage(linkage->prevStage), convertIoMap(linkage->prevStageOutputs, linkage->prevStage));
+            m_metadata.stage, m_metadata.inputs, linkage->prevStage, linkage->prevStageOutputs)) {
+          auto prevStageIoMap = convertIoMap(linkage->prevStageOutputs, linkage->prevStage);
+
+          if (matchSemantics)
+            ioPass.resolveSemanticIo(prevStageIoMap);
+
+          ioPass.resolveMismatchedIo(convertShaderStage(linkage->prevStage), prevStageIoMap);
+        }
 
         if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
           ioPass.resolvePatchConstantLocations(convertIoMap(m_metadata.outputs, m_metadata.stage));
