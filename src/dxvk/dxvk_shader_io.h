@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_include.h"
+#include "dxvk_hash.h"
 
 #include "../spirv/spirv_module.h"
 
@@ -24,21 +25,30 @@ namespace dxvk {
     /// Whether the declaration is a patch constant.
     /// Only used in tessellation shaders.
     bool isPatchConstant = false;
+    /// Semantic name and index
+    uint32_t semanticIndex = 0u;
+    std::string semanticName = { };
 
     bool eq(const DxvkShaderIoVar& other) const {
       return builtIn         == other.builtIn &&
              location        == other.location &&
              componentIndex  == other.componentIndex &&
              componentCount  == other.componentCount &&
-             isPatchConstant == other.isPatchConstant;
+             isPatchConstant == other.isPatchConstant &&
+             semanticIndex   == other.semanticIndex &&
+             semanticName    == other.semanticName;
     }
 
     size_t hash() const {
-      uint32_t metadata = (uint32_t(location))
-                        | (uint32_t(componentIndex) << 8u)
-                        | (uint32_t(componentCount) << 16u)
-                        | (uint32_t(isPatchConstant ? 1u : 0u) << 24u);
-      return metadata ^ uint32_t(builtIn);
+      DxvkHashState hash;
+      hash.add(uint32_t(builtIn));
+      hash.add(uint32_t(location));
+      hash.add(uint32_t(componentIndex));
+      hash.add(uint32_t(componentCount));
+      hash.add(uint32_t(isPatchConstant));
+      hash.add(uint32_t(semanticIndex));
+      hash.add(bit::fnv1a_hash(semanticName.data(), semanticName.size()));
+      return hash;
     }
   };
 
@@ -100,6 +110,8 @@ namespace dxvk {
      * \param [in] prevStage Previous stage. Ignored for vertex shaders.
      * \param [in] outputs Output variables written by the previous
      *    stage, or vertex buffer bindings in case of vertex shaders.
+     * \param [in] matchSemantics Whether to compare shader semantics.
+     *    If not set, semantic names will be ignored completely.
      * \returns \c true if all input variables consumed by the given
      *    shader are written by the previous stage, or \c false if any
      *    fix-up is required.
@@ -108,7 +120,8 @@ namespace dxvk {
             VkShaderStageFlagBits stage,
       const DxvkShaderIo&         inputs,
             VkShaderStageFlagBits prevStage,
-      const DxvkShaderIo&         outputs);
+      const DxvkShaderIo&         outputs,
+            bool                  matchSemantics);
 
     /**
      * \brief Computes I/O object for vertex bindings.

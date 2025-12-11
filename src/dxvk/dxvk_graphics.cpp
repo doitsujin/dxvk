@@ -1269,8 +1269,11 @@ namespace dxvk {
       else if (m_shaders.tes != nullptr)
         preRasterStage = m_shaders.tes.ptr();
 
+      bool semanticIo = preRasterStage->metadata().flags.test(DxvkShaderFlag::SemanticIo)
+                     && m_shaders.fs->metadata().flags.test(DxvkShaderFlag::SemanticIo);
+
       if (!DxvkShaderIo::checkStageCompatibility(VK_SHADER_STAGE_FRAGMENT_BIT, fsInputs,
-          preRasterStage->metadata().stage, preRasterStage->metadata().outputs))
+          preRasterStage->metadata().stage, preRasterStage->metadata().outputs, semanticIo))
         return false;
 
       // Dual-source blending requires patching the fragment shader

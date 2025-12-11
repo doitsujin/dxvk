@@ -1330,9 +1330,15 @@ namespace dxvk {
           var.componentIndex = e.getFirstComponentIndex();
           var.componentCount = e.computeComponentCount();
           var.isPatchConstant = e.getType() == dxbc_spv::ir::IoEntryType::ePerPatch;
+
+          if (m_info.options.flags.test(DxvkShaderCompileFlag::SemanticIo)) {
+            auto semantic = io.getSemanticForEntry(e);
+            var.semanticName = semantic.name;
+            var.semanticIndex = semantic.index;
+          }
         }
 
-        map.add(var);
+        map.add(std::move(var));
       }
 
       return map;
@@ -1552,7 +1558,7 @@ namespace dxvk {
         bool matchSemantics = linkage->semanticIo && m_metadata.flags.test(DxvkShaderFlag::SemanticIo);
 
         if (m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT && !DxvkShaderIo::checkStageCompatibility(
-            m_metadata.stage, m_metadata.inputs, linkage->prevStage, linkage->prevStageOutputs)) {
+            m_metadata.stage, m_metadata.inputs, linkage->prevStage, linkage->prevStageOutputs, matchSemantics)) {
           auto prevStageIoMap = convertIoMap(linkage->prevStageOutputs, linkage->prevStage);
 
           if (matchSemantics)
@@ -1882,9 +1888,13 @@ namespace dxvk {
           ? dxbc_spv::ir::IoEntryType::ePerPatch
           : dxbc_spv::ir::IoEntryType::ePerVertex;
 
+        dxbc_spv::ir::IoSemantic semantic = { };
+        semantic.name = var.semanticName;
+        semantic.index = var.semanticIndex;
+
         map.add(dxbc_spv::ir::IoLocation(type, var.location,
           ((1u << var.componentCount) - 1u) << var.componentIndex),
-          dxbc_spv::ir::IoSemantic());
+          std::move(semantic));
       }
     }
 
