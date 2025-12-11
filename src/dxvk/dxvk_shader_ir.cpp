@@ -1530,8 +1530,8 @@ namespace dxvk {
 
         if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsDualSrcBlend) {
           dxbc_spv::ir::IoMap io = { };
-          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 0u, 0xfu));
-          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 1u, 0xfu));
+          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 0u, 0xfu), dxbc_spv::ir::IoSemantic());
+          io.add(dxbc_spv::ir::IoLocation(dxbc_spv::ir::IoEntryType::ePerVertex, 1u, 0xfu), dxbc_spv::ir::IoSemantic());
 
           ioPass.resolveUnusedOutputs(io);
         }
@@ -1861,15 +1861,19 @@ namespace dxvk {
       if (var.builtIn != spv::BuiltInMax) {
         auto builtIn = convertBuiltIn(var.builtIn, stage);
 
-        if (builtIn)
-          map.add(dxbc_spv::ir::IoLocation(*builtIn, uint8_t((1u << var.componentCount) - 1u)));
+        if (builtIn) {
+          map.add(
+            dxbc_spv::ir::IoLocation(*builtIn, uint8_t((1u << var.componentCount) - 1u)),
+            dxbc_spv::ir::IoSemantic());
+        }
       } else {
         auto type = var.isPatchConstant
           ? dxbc_spv::ir::IoEntryType::ePerPatch
           : dxbc_spv::ir::IoEntryType::ePerVertex;
 
         map.add(dxbc_spv::ir::IoLocation(type, var.location,
-          ((1u << var.componentCount) - 1u) << var.componentIndex));
+          ((1u << var.componentCount) - 1u) << var.componentIndex),
+          dxbc_spv::ir::IoSemantic());
       }
     }
 
