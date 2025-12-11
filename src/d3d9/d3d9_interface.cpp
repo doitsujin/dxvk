@@ -4,6 +4,7 @@
 #include "d3d9_caps.h"
 #include "d3d9_device.h"
 #include "d3d9_bridge.h"
+#include "d3d9_window.h"
 
 #include "../util/util_singleton.h"
 
@@ -413,6 +414,9 @@ namespace dxvk {
         hFocusWindow,
         BehaviorFlags,
         dxvkDevice);
+
+      if (!pPresentationParameters->Windowed)
+        ActivateFocusWindow(hFocusWindow ? hFocusWindow : pPresentationParameters->hDeviceWindow);
 
       hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
 
