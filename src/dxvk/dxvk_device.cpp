@@ -734,9 +734,6 @@ namespace dxvk {
     m_shaderOptions.minStorageBufferAlignment =
       m_properties.core.properties.limits.minStorageBufferOffsetAlignment;
 
-    m_shaderOptions.maxTessFactor =
-      m_properties.core.properties.limits.maxTessellationGenerationLevel;
-
     if (m_features.core.features.shaderInt16 && m_features.vk12.shaderFloat16)
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::Supports16BitArithmetic);
 
