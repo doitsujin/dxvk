@@ -701,9 +701,12 @@ namespace dxvk {
         const auto& prevShaderMeta = prevShader->metadata();
         const auto& currShaderMeta = currShader->metadata();
 
+        bool semanticIo = currShaderMeta.flags.test(DxvkShaderFlag::SemanticIo)
+                       && prevShaderMeta.flags.test(DxvkShaderFlag::SemanticIo);
+
         if (!DxvkShaderIo::checkStageCompatibility(
             currShaderMeta.stage, currShaderMeta.inputs,
-            prevShaderMeta.stage, prevShaderMeta.outputs))
+            prevShaderMeta.stage, prevShaderMeta.outputs, semanticIo))
           return false;
       }
     }

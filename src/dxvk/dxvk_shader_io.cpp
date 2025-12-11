@@ -24,7 +24,7 @@ namespace dxvk {
     for (size_t i = size; i > index; i--)
       m_vars[i] = m_vars[i - 1u];
 
-    m_vars[index] = var;
+    m_vars[index] = std::move(var);
   }
 
 
@@ -44,7 +44,8 @@ namespace dxvk {
           VkShaderStageFlagBits stage,
     const DxvkShaderIo&         inputs,
           VkShaderStageFlagBits prevStage,
-    const DxvkShaderIo&         outputs) {
+    const DxvkShaderIo&         outputs,
+          bool                  matchSemantics) {
     for (uint32_t i = 0, j = 0; i < inputs.getVarCount(); i++) {
       // Ignore built-ins that don't need to be written by previous stage
       auto input = inputs.getVar(i);
@@ -77,6 +78,14 @@ namespace dxvk {
             input.componentIndex  != output.componentIndex ||
             input.componentCount  >  output.componentCount)
           return false;
+
+        // Only match semantics if explicitly requested, and ignore built-ins
+        // since they are inherently matched via the actual built-in anyway.
+        if (matchSemantics) {
+          if (!str::compareCaseInsensitive(input.semanticName.c_str(), output.semanticName.c_str())
+           || input.semanticIndex != output.semanticIndex)
+            return false;
+        }
       }
     }
 
@@ -92,7 +101,7 @@ namespace dxvk {
       var.location = location;
       var.componentCount = 4u;
 
-      result.add(var);
+      result.add(std::move(var));
     }
 
     return result;

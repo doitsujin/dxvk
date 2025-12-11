@@ -315,10 +315,16 @@ namespace dxvk {
     for (uint32_t i = 0u; i < varCount; i++) {
       DxvkShaderIoVar var = { };
 
-      if (!read(stream, offset, var))
+      if (!read(stream, offset, var.builtIn)
+       || !read(stream, offset, var.location)
+       || !read(stream, offset, var.componentIndex)
+       || !read(stream, offset, var.componentCount)
+       || !read(stream, offset, var.isPatchConstant)
+       || !read(stream, offset, var.semanticIndex)
+       || !readString(stream, offset, var.semanticName))
         return false;
 
-      io.add(var);
+      io.add(std::move(var));
     }
 
     return true;
@@ -507,8 +513,17 @@ namespace dxvk {
   bool DxvkShaderCache::writeShaderIo(util::File& stream, const DxvkShaderIo& io) {
     bool status = write(stream, uint8_t(io.getVarCount()));
 
-    for (uint32_t i = 0u; i < io.getVarCount(); i++)
-      status = status && write(stream, io.getVar(i));
+    for (uint32_t i = 0u; i < io.getVarCount(); i++) {
+      const auto& var = io.getVar(i);
+
+      status = status && write(stream, var.builtIn)
+                      && write(stream, var.location)
+                      && write(stream, var.componentIndex)
+                      && write(stream, var.componentCount)
+                      && write(stream, var.isPatchConstant)
+                      && write(stream, var.semanticIndex)
+                      && writeString(stream, var.semanticName);
+    }
 
     return status;
   }
