@@ -135,15 +135,12 @@ namespace dxvk {
     /// bindigs beyond this will be lowered to a storage buffer.
     /// Negative numbers impose no limit on the number of buffers.
     int32_t maxUniformBufferCount = -1;
-    /// Maximum tessellation factor. If 0, tessellation factors
-    /// will not be clamped beyond what is set in the shader.
-    uint8_t maxTessFactor = 0u;
     /// Global push data offset for rasterizer sample count
-    uint8_t sampleCountPushDataOffset = 0u;
+    uint32_t sampleCountPushDataOffset = 0u;
     /// Minimum required storage buffer alignment. Buffers
     /// with a smaller guaranteed alignment must be demoted
     /// to typed buffers.
-    uint16_t minStorageBufferAlignment = 0u;
+    uint32_t minStorageBufferAlignment = 0u;
   };
 
 
