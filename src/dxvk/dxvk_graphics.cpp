@@ -896,6 +896,8 @@ namespace dxvk {
 
       info.prevStage = prevStage->metadata().stage;
       info.prevStageOutputs = prevStage->metadata().outputs;
+
+      info.semanticIo = prevStage->metadata().flags.test(DxvkShaderFlag::SemanticIo);
     }
 
     // Fix up input topology for geometry shaders as necessary
