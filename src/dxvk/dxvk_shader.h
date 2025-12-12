@@ -20,6 +20,22 @@ namespace dxvk {
   struct DxvkPipelineStats;
 
   /**
+   * \brief Push data to handle built-ins
+   */
+  struct DxvkBuiltInPushData {
+    static constexpr uint32_t SampleCountOffset = 0u;
+    static constexpr uint32_t SampleCountBits = 16u;
+
+    DxvkBuiltInPushData() = default;
+
+    explicit DxvkBuiltInPushData(uint32_t sampleCount)
+    : builtIns(sampleCount << SampleCountOffset) { }
+
+    uint32_t builtIns = 0u;
+  };
+
+
+  /**
    * \brief Shader compile flags
    */
   enum class DxvkShaderCompileFlag : uint32_t {
@@ -135,8 +151,8 @@ namespace dxvk {
     /// bindigs beyond this will be lowered to a storage buffer.
     /// Negative numbers impose no limit on the number of buffers.
     int32_t maxUniformBufferCount = -1;
-    /// Global push data offset for rasterizer sample count
-    uint32_t sampleCountPushDataOffset = 0u;
+    /// Global push data offset for emulated built-ins
+    uint32_t builtInPushDataOffset = 0u;
     /// Minimum required storage buffer alignment. Buffers
     /// with a smaller guaranteed alignment must be demoted
     /// to typed buffers.
