@@ -37,7 +37,6 @@ namespace dxvk {
       options.icbRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
       options.classInstanceRegisterSpace = 0u;
       options.classInstanceRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT + 1u;
-      options.maxTessFactor = float(m_info.options.maxTessFactor);
 
       dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
 
