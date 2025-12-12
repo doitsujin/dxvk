@@ -48,6 +48,13 @@ namespace dxvk {
       bufferUsage |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
 
     m_allocationCache = m_device->createAllocationCache(bufferUsage, memoryFlags);
+
+    // Determine maximum tess factor based on device options
+    int32_t tessFactorOption = m_parent->GetOptions()->maxTessFactor;
+    m_maxTessFactor = std::min(m_device->properties().core.properties.limits.maxTessellationGenerationLevel, 64u);
+
+    if (tessFactorOption > 0 && tessFactorOption < int32_t(m_maxTessFactor))
+      m_maxTessFactor = tessFactorOption;
   }
 
 
@@ -3424,23 +3431,22 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyRasterizerSampleCount() {
-    D3D11ShaderPushData pc = { };
-    pc.rasterizerSampleCount = m_state.om.sampleCount;
+    uint32_t sampleCount = m_state.om.sampleCount;
 
-    if (unlikely(!m_state.om.sampleCount)) {
-      pc.rasterizerSampleCount = m_state.rs.state
+    if (unlikely(!sampleCount)) {
+      sampleCount = m_state.rs.state
         ? m_state.rs.state->Desc().ForcedSampleCount
-        : 0;
+        : 0u;
 
-      if (!pc.rasterizerSampleCount)
-        pc.rasterizerSampleCount = 1;
+      if (!sampleCount)
+        sampleCount = 1u;
     }
 
     EmitCs([
-      cPushConstants = pc
+      cPushConstants = DxvkBuiltInPushData(sampleCount, m_maxTessFactor)
     ] (DxvkContext* ctx) {
       ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
-        0, sizeof(cPushConstants), &cPushConstants);
+        0u, sizeof(cPushConstants), &cPushConstants);
     });
   }
 
@@ -4812,7 +4818,8 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ResetCommandListState() {
     EmitCs([
-      cUsedBindings = GetMaxUsedBindings()
+      cUsedBindings  = GetMaxUsedBindings(),
+      cMaxTessFactor = m_maxTessFactor
     ] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets(), 0u);
@@ -4905,8 +4912,7 @@ namespace dxvk {
       }
 
       // Initialize push constants
-      D3D11ShaderPushData pc = { };
-      pc.rasterizerSampleCount = 1u;
+      DxvkBuiltInPushData pc(1u, cMaxTessFactor);
       ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pc), &pc);
     });
   }
