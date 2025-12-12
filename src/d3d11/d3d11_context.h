@@ -790,6 +790,8 @@ namespace dxvk {
     D3D11ContextState           m_state;
     UINT                        m_flags;
 
+    uint32_t                    m_maxTessFactor = 0u;
+
     DxvkStagingBuffer           m_staging;
 
     D3D11CmdType                m_csDataType = D3D11CmdType::None;

@@ -62,14 +62,6 @@ namespace dxvk {
   };
 
 
-  /**
-   * \brief Shader push data
-   */
-  struct D3D11ShaderPushData {
-    uint32_t rasterizerSampleCount = 0u;
-  };
-
-
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;
