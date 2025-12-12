@@ -594,7 +594,8 @@ namespace dxvk {
 
       auto builtIn = dxbc_spv::ir::BuiltIn(op->getOperand(op->getFirstLiteralOperandIndex()));
 
-      if (builtIn == dxbc_spv::ir::BuiltIn::eSampleCount)
+      if (builtIn == dxbc_spv::ir::BuiltIn::eSampleCount
+       || builtIn == dxbc_spv::ir::BuiltIn::eTessFactorLimit)
         return rewriteBuiltIn(op, builtIn);
 
       if (builtIn == dxbc_spv::ir::BuiltIn::eIsFullyCovered)
@@ -768,8 +769,9 @@ namespace dxvk {
 
     dxbc_spv::ir::Builder::iterator rewriteBuiltIn(dxbc_spv::ir::Builder::iterator op, dxbc_spv::ir::BuiltIn builtIn) {
       // Map built-in to bit range in the built-in push data dword
-      static const std::array<std::tuple<dxbc_spv::ir::BuiltIn, uint16_t, uint16_t>, 1u> s_builtins = {{
-        { dxbc_spv::ir::BuiltIn::eSampleCount, DxvkBuiltInPushData::SampleCountOffset, DxvkBuiltInPushData::SampleCountBits },
+      static const std::array<std::tuple<dxbc_spv::ir::BuiltIn, uint16_t, uint16_t>, 2u> s_builtins = {{
+        { dxbc_spv::ir::BuiltIn::eSampleCount,     DxvkBuiltInPushData::SampleCountOffset,    DxvkBuiltInPushData::SampleCountBits },
+        { dxbc_spv::ir::BuiltIn::eTessFactorLimit, DxvkBuiltInPushData::MaxTessFactorOffset,  DxvkBuiltInPushData::MaxTessFactorBits },
       }};
 
       uint32_t bitIndex = 0u;

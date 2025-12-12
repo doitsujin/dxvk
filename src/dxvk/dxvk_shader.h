@@ -24,12 +24,16 @@ namespace dxvk {
    */
   struct DxvkBuiltInPushData {
     static constexpr uint32_t SampleCountOffset = 0u;
-    static constexpr uint32_t SampleCountBits = 16u;
+    static constexpr uint32_t SampleCountBits = 8u;
+
+    static constexpr uint32_t MaxTessFactorOffset = SampleCountOffset + SampleCountBits;
+    static constexpr uint32_t MaxTessFactorBits = 8u;
 
     DxvkBuiltInPushData() = default;
 
-    explicit DxvkBuiltInPushData(uint32_t sampleCount)
-    : builtIns(sampleCount << SampleCountOffset) { }
+    explicit DxvkBuiltInPushData(uint32_t sampleCount, uint32_t maxTessFactor)
+    : builtIns((sampleCount   << SampleCountOffset)
+             | (maxTessFactor << MaxTessFactorOffset)) { }
 
     uint32_t builtIns = 0u;
   };
