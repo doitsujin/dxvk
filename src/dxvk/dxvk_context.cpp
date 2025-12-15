@@ -1961,12 +1961,27 @@ namespace dxvk {
   }
   
   
+  VkAttachmentStoreOp DxvkContext::determineClearStoreOp(
+          VkAttachmentLoadOp        loadOp) const {
+    if (loadOp == VK_ATTACHMENT_LOAD_OP_NONE)
+      return VK_ATTACHMENT_STORE_OP_NONE;
+
+    if (loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE)
+      return VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    return VK_ATTACHMENT_STORE_OP_STORE;
+  }
+
+
   void DxvkContext::performClear(
     const Rc<DxvkImageView>&        imageView,
           int32_t                   attachmentIndex,
           VkImageAspectFlags        discardAspects,
           VkImageAspectFlags        clearAspects,
           VkClearValue              clearValue) {
+    bool hasLoadOpNone = m_device->features().khrLoadStoreOpNone &&
+      m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess;
+
     DxvkColorAttachmentOps colorOp;
     colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     
@@ -1983,11 +1998,15 @@ namespace dxvk {
       depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_CLEAR;
     else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
       depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    
+    else if (hasLoadOpNone)
+      depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_NONE;
+
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
     else if (discardAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    else if (hasLoadOpNone)
+      depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_NONE;
 
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects | discardAspects)) {
       // Do not fold the clear/discard into the render pass if any of the affected aspects
@@ -2015,7 +2034,6 @@ namespace dxvk {
       VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
       attachmentInfo.imageView = imageView->handle();
       attachmentInfo.imageLayout = imageView->getLayout();
-      attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachmentInfo.clearValue = clearValue;
 
       VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
@@ -2035,6 +2053,7 @@ namespace dxvk {
                     |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
 
         attachmentInfo.loadOp = colorOp.loadOp;
+        attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
         if (useLateClear && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
           attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -2049,12 +2068,16 @@ namespace dxvk {
 
         if (imageView->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
           renderingInfo.pDepthAttachment = &attachmentInfo;
+
           attachmentInfo.loadOp = depthOp.loadOpD;
+          attachmentInfo.storeOp = determineClearStoreOp(depthOp.loadOpD);
         }
 
         if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
           renderingInfo.pStencilAttachment = &stencilInfo;
+
           stencilInfo.loadOp = depthOp.loadOpS;
+          stencilInfo.storeOp = determineClearStoreOp(depthOp.loadOpS);
         }
       }
 
