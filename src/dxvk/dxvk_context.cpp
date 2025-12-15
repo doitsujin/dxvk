@@ -8365,7 +8365,7 @@ namespace dxvk {
         // Ensure that images are not affected by legacy
         // layout tracking, and have no pending clears etc.
         if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && flushClears)
-          needsFlush = flushDeferredClear(*e.image, e.image->getAvailableSubresources());
+          needsFlush |= flushDeferredClear(*e.image, e.image->getAvailableSubresources());
 
         if (!needsFlush) {
           if (!e.imageExtent.width) {
