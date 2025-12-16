@@ -2242,6 +2242,12 @@ namespace dxvk {
       clearRect.layerCount = m_state.om.renderingInfo.rendering.layerCount;
 
       m_cmd->cmdClearAttachments(attachments.size(), attachments.data(), 1u, &clearRect);
+
+      // Full clears require the render area to cover everything
+      m_state.om.renderAreaLo = VkOffset2D { 0, 0 };
+      m_state.om.renderAreaHi = VkOffset2D {
+        int32_t(clearRect.rect.extent.width),
+        int32_t(clearRect.rect.extent.height) };
     }
 
     m_deferredClears.clear();
@@ -2482,25 +2488,42 @@ namespace dxvk {
     auto& renderingInfo = m_state.om.renderingInfo;
 
     // Track attachment access for render pass clears and resolves
+    bool hasClearOrResolve = false;
+
     for (uint32_t i = 0; i < renderingInfo.rendering.colorAttachmentCount; i++) {
-      if (renderingInfo.color[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      if (renderingInfo.color[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
         m_state.om.attachmentMask.trackColorWrite(i);
-      if (renderingInfo.color[i].resolveImageView && renderingInfo.color[i].resolveMode)
+        hasClearOrResolve = true;
+      }
+
+      if (renderingInfo.color[i].resolveImageView && renderingInfo.color[i].resolveMode) {
         m_state.om.attachmentMask.trackColorRead(i);
+        hasClearOrResolve = true;
+      }
     }
 
     if (renderingInfo.rendering.pDepthAttachment) {
-      if (renderingInfo.depth.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      if (renderingInfo.depth.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
         m_state.om.attachmentMask.trackDepthWrite();
-      if (renderingInfo.depth.resolveImageView && renderingInfo.depth.resolveMode)
+        hasClearOrResolve = true;
+      }
+
+      if (renderingInfo.depth.resolveImageView && renderingInfo.depth.resolveMode) {
         m_state.om.attachmentMask.trackDepthRead();
+        hasClearOrResolve = true;
+      }
     }
 
     if (renderingInfo.rendering.pStencilAttachment) {
-      if (renderingInfo.stencil.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      if (renderingInfo.stencil.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
         m_state.om.attachmentMask.trackStencilWrite();
-      if (renderingInfo.stencil.resolveImageView && renderingInfo.stencil.resolveMode)
+        hasClearOrResolve = true;
+      }
+
+      if (renderingInfo.stencil.resolveImageView && renderingInfo.stencil.resolveMode) {
         m_state.om.attachmentMask.trackStencilRead();
+        hasClearOrResolve = true;
+      }
     }
 
     // If we don't have maintenance7 support, we need to pretend that accessing
@@ -2522,6 +2545,16 @@ namespace dxvk {
     if (renderingInfo.rendering.pStencilAttachment) {
       adjustAttachmentLoadStoreOps(renderingInfo.stencil,
         m_state.om.attachmentMask.getStencilAccess());
+    }
+
+    // If we can prove that the app has only rendered to a portion of
+    // the image, adjust the render area to the exact rendered region.
+    if (!hasClearOrResolve && m_state.om.renderAreaLo.x < m_state.om.renderAreaHi.x
+                           && m_state.om.renderAreaLo.y < m_state.om.renderAreaHi.y) {
+      renderingInfo.rendering.renderArea.offset = m_state.om.renderAreaLo;
+      renderingInfo.rendering.renderArea.extent = VkExtent2D {
+        uint32_t(m_state.om.renderAreaHi.x - m_state.om.renderAreaLo.x),
+        uint32_t(m_state.om.renderAreaHi.y - m_state.om.renderAreaLo.y) };
     }
   }
 
@@ -3988,6 +4021,14 @@ namespace dxvk {
 
       if (aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
         m_state.om.attachmentMask.trackStencilWrite();
+
+      // Inline clears may affect render area
+      m_state.om.renderAreaLo = VkOffset2D {
+        std::min(m_state.om.renderAreaLo.x, offset.x),
+        std::min(m_state.om.renderAreaLo.y, offset.y) };
+      m_state.om.renderAreaHi = VkOffset2D {
+        std::min(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
+        std::min(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
     }
 
     // Perform the actual clear operation
@@ -5404,6 +5445,13 @@ namespace dxvk {
       renderingInheritance.stencilAttachmentFormat = depthStencilFormat;
     }
 
+    // Reset render area tracking, will be adjusted when drawing with viewports.
+    m_state.om.renderAreaLo = VkOffset2D { int32_t(fbSize.width), int32_t(fbSize.height) };
+    m_state.om.renderAreaHi = VkOffset2D { 0, 0 };
+
+    if (lateClearCount)
+      std::swap(m_state.om.renderAreaLo, m_state.om.renderAreaHi);
+
     // On drivers that don't natively support secondary command buffers, only use
     // them to enable MSAA resolve attachments. Also ignore render passes with only
     // one color attachment here since those tend to only have a small number of
@@ -6643,6 +6691,14 @@ namespace dxvk {
         dst.extent = VkExtent2D {
           std::min(scissor.extent.width,  uint32_t(hi.x - lo.x)),
           std::min(scissor.extent.height, uint32_t(hi.y - lo.y)) };
+
+        // Extend render area based on the final scissor rect
+        m_state.om.renderAreaLo = {
+          std::min(m_state.om.renderAreaLo.x, dst.offset.x),
+          std::min(m_state.om.renderAreaLo.y, dst.offset.y) };
+        m_state.om.renderAreaHi = {
+          std::max(m_state.om.renderAreaHi.x, int32_t(dst.offset.x + dst.extent.width)),
+          std::max(m_state.om.renderAreaHi.y, int32_t(dst.offset.y + dst.extent.height)) };
       }
 
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
