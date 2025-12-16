@@ -6623,14 +6623,26 @@ namespace dxvk {
       DxvkFramebufferSize renderSize = m_state.om.framebufferInfo.size();
 
       for (uint32_t i = 0; i < m_state.vp.viewportCount; i++) {
+        const auto& viewport = m_state.vp.viewports[i];
         const auto& scissor = m_state.vp.scissorRects[i];
 
-        clampedScissors[i].offset = VkOffset2D {
-          std::clamp<int32_t>(scissor.offset.x, 0, renderSize.width),
-          std::clamp<int32_t>(scissor.offset.y, 0, renderSize.height) };
-        clampedScissors[i].extent = VkExtent2D {
-          uint32_t(std::clamp<int32_t>(scissor.offset.x + scissor.extent.width,  clampedScissors[i].offset.x, renderSize.width)  - clampedScissors[i].offset.x),
-          uint32_t(std::clamp<int32_t>(scissor.offset.y + scissor.extent.height, clampedScissors[i].offset.y, renderSize.height) - clampedScissors[i].offset.y) };
+        // Need to floor scissor to viewport region to match D3D rules
+        VkOffset2D lo = {
+          std::max(scissor.offset.x, int32_t(std::max(0.0f, viewport.x))),
+          std::max(scissor.offset.y, int32_t(std::max(0.0f, std::min(viewport.y, viewport.y + viewport.height)))) };
+
+        VkOffset2D hi = {
+          std::min(int32_t(renderSize.width),  int32_t(std::max(0.0f, viewport.x + viewport.width))),
+          std::min(int32_t(renderSize.height), int32_t(std::max(0.0f, std::max(viewport.y, viewport.y + viewport.height)))) };
+
+        hi.x = std::max(hi.x, lo.x);
+        hi.y = std::max(hi.y, lo.y);
+
+        auto& dst = clampedScissors[i];
+        dst.offset = lo;
+        dst.extent = VkExtent2D {
+          std::min(scissor.extent.width,  uint32_t(hi.x - lo.x)),
+          std::min(scissor.extent.height, uint32_t(hi.y - lo.y)) };
       }
 
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
