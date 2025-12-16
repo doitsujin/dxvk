@@ -5343,6 +5343,8 @@ namespace dxvk {
     std::array<VkFormat, MaxNumRenderTargets> colorFormats = { };
     std::array<VkClearAttachment, MaxNumRenderTargets> lateClears = { };
 
+    bool hasMipmappedRt = false;
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
 
@@ -5374,6 +5376,8 @@ namespace dxvk {
         }
 
         colorInfoCount = i + 1;
+
+        hasMipmappedRt |= colorTarget.view->image()->info().mipLevels > 1u;
       }
     }
 
@@ -5463,7 +5467,7 @@ namespace dxvk {
       useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
 
       if (!m_device->perfHints().preferPrimaryCmdBufs)
-        useSecondaryCmdBuffer |= depthStencilAspects || colorInfoCount > 1u;
+        useSecondaryCmdBuffer |= depthStencilAspects || colorInfoCount > 1u || !hasMipmappedRt;
     }
 
     if (useSecondaryCmdBuffer) {
