@@ -4027,8 +4027,8 @@ namespace dxvk {
         std::min(m_state.om.renderAreaLo.x, offset.x),
         std::min(m_state.om.renderAreaLo.y, offset.y) };
       m_state.om.renderAreaHi = VkOffset2D {
-        std::min(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
-        std::min(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
+        std::max(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
+        std::max(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
     }
 
     // Perform the actual clear operation
