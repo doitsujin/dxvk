@@ -17,21 +17,15 @@ namespace dxvk {
     // We generally want to preserve the border color as-is, and only apply the inverse
     // swizzle if the device applies the image view swizzle to border colors as well.
     VkSamplerBorderColorComponentMappingCreateInfoEXT borderColorSwizzle = { VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT };
-    borderColorSwizzle.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-                                      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+    borderColorSwizzle.components = { VkComponentSwizzle(key.u.p.viewSwizzleR), VkComponentSwizzle(key.u.p.viewSwizzleG),
+                                      VkComponentSwizzle(key.u.p.viewSwizzleB), VkComponentSwizzle(key.u.p.viewSwizzleA) };
     borderColorSwizzle.srgb = formatInfo && formatInfo->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
 
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
-    borderColorInfo.customBorderColor = key.borderColor;
+    borderColorInfo.customBorderColor = swizzleBorderColor(key.borderColor, borderColorSwizzle.components);
 
     if (!m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
       borderColorInfo.format = VkFormat(key.u.p.viewFormat);
-
-    if (m_pool->m_device->features().extBorderColorSwizzle.borderColorSwizzleFromImage) {
-      borderColorInfo.customBorderColor = swizzleBorderColor(borderColorInfo.customBorderColor, VkComponentMapping {
-        VkComponentSwizzle(key.u.p.viewSwizzleR), VkComponentSwizzle(key.u.p.viewSwizzleG),
-        VkComponentSwizzle(key.u.p.viewSwizzleB), VkComponentSwizzle(key.u.p.viewSwizzleA) });
-    }
 
     VkSamplerReductionModeCreateInfo reductionInfo = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
     reductionInfo.reductionMode = VkSamplerReductionMode(key.u.p.reduction);
