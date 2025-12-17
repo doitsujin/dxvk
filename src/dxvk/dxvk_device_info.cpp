@@ -17,6 +17,7 @@ namespace dxvk {
 
   #define EXTENSIONS_WITH_FEATURES                 \
     HANDLE_EXT(extAttachmentFeedbackLoopLayout);   \
+    HANDLE_EXT(extBorderColorSwizzle);             \
     HANDLE_EXT(extConservativeRasterization);      \
     HANDLE_EXT(extCustomBorderColor);              \
     HANDLE_EXT(extDepthClipEnable);                \
@@ -823,6 +824,10 @@ namespace dxvk {
 
       /* Allows sampling currently bound render targets for client APIs */
       ENABLE_EXT_FEATURE(extAttachmentFeedbackLoopLayout, attachmentFeedbackLoopLayout, false),
+
+      /* Fix some border color jank due to hardware differences */
+      ENABLE_EXT_FEATURE(extBorderColorSwizzle, borderColorSwizzle, false),
+      ENABLE_EXT_FEATURE(extBorderColorSwizzle, borderColorSwizzleFromImage, false),
 
       /* Enables client API features */
       ENABLE_EXT(extConservativeRasterization, false),
