@@ -1,6 +1,7 @@
 #include "dxvk_buffer.h"
-#include "dxvk_sampler.h"
 #include "dxvk_device.h"
+#include "dxvk_format.h"
+#include "dxvk_sampler.h"
 
 namespace dxvk {
     
@@ -11,11 +12,29 @@ namespace dxvk {
   : m_pool(pool), m_key(key) {
     auto vk = m_pool->m_device->vkd();
 
+    auto formatInfo = lookupFormatInfo(VkFormat(key.u.p.viewFormat));
+
+    // We generally want to preserve the border color as-is, and only apply the inverse
+    // swizzle if the device applies the image view swizzle to border colors as well.
+    VkSamplerBorderColorComponentMappingCreateInfoEXT borderColorSwizzle = { VK_STRUCTURE_TYPE_SAMPLER_BORDER_COLOR_COMPONENT_MAPPING_CREATE_INFO_EXT };
+    borderColorSwizzle.components = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+                                      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+    borderColorSwizzle.srgb = formatInfo && formatInfo->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+
     VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
-    borderColorInfo.customBorderColor   = key.borderColor;
+    borderColorInfo.customBorderColor = key.borderColor;
+
+    if (!m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
+      borderColorInfo.format = VkFormat(key.u.p.viewFormat);
+
+    if (m_pool->m_device->features().extBorderColorSwizzle.borderColorSwizzleFromImage) {
+      borderColorInfo.customBorderColor = swizzleBorderColor(borderColorInfo.customBorderColor, VkComponentMapping {
+        VkComponentSwizzle(key.u.p.viewSwizzleR), VkComponentSwizzle(key.u.p.viewSwizzleG),
+        VkComponentSwizzle(key.u.p.viewSwizzleB), VkComponentSwizzle(key.u.p.viewSwizzleA) });
+    }
 
     VkSamplerReductionModeCreateInfo reductionInfo = { VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO };
-    reductionInfo.reductionMode         = VkSamplerReductionMode(key.u.p.reduction);
+    reductionInfo.reductionMode = VkSamplerReductionMode(key.u.p.reduction);
 
     VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     samplerInfo.magFilter = VkFilter(key.u.p.magFilter);
@@ -40,8 +59,13 @@ namespace dxvk {
     if (!m_pool->m_device->features().core.features.samplerAnisotropy)
       samplerInfo.anisotropyEnable = VK_FALSE;
 
-    if (key.u.p.hasBorder)
-      samplerInfo.borderColor = determineBorderColorType();
+    if (key.u.p.hasBorder) {
+      samplerInfo.borderColor = determineBorderColorType(borderColorInfo);
+
+      if (m_pool->m_device->features().extBorderColorSwizzle.borderColorSwizzle
+       && !m_pool->m_device->features().extBorderColorSwizzle.borderColorSwizzleFromImage)
+        borderColorSwizzle.pNext = std::exchange(samplerInfo.pNext, &borderColorSwizzle);
+    }
 
     if (samplerInfo.borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT
      || samplerInfo.borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT)
@@ -64,7 +88,7 @@ namespace dxvk {
   }
 
 
-  VkBorderColor DxvkSampler::determineBorderColorType() const {
+  VkBorderColor DxvkSampler::determineBorderColorType(const VkSamplerCustomBorderColorCreateInfoEXT& info) const {
     static const std::array<std::pair<VkClearColorValue, VkBorderColor>, 4> s_borderColors = {{
       { { { 0.0f, 0.0f, 0.0f, 0.0f } }, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
       { { { 0.0f, 0.0f, 0.0f, 1.0f } }, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
@@ -78,7 +102,7 @@ namespace dxvk {
       bool allEqual = true;
 
       for (uint32_t i = 0; i < componentCount; i++)
-        allEqual &= m_key.borderColor.float32[i] == e.first.float32[i];
+        allEqual &= info.customBorderColor.float32[i] == e.first.float32[i];
 
       if (allEqual)
         return e.second;
@@ -86,13 +110,13 @@ namespace dxvk {
 
     // If custom border colors are supported, use that
     if (m_pool->m_device->features().extCustomBorderColor.customBorderColors
-     && m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat)
+     && (m_pool->m_device->features().extCustomBorderColor.customBorderColorWithoutFormat || info.format))
       return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
 
     // Otherwise, use the sum of absolute differences to find the
     // closest fallback value. Some D3D9 games may rely on this.
     Logger::warn("DXVK: Custom border colors not supported");
- 
+
     VkBorderColor result = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
 
     float minSad = -1.0f;
@@ -101,7 +125,7 @@ namespace dxvk {
       float sad = 0.0f;
 
       for (uint32_t i = 0; i < componentCount; i++)
-        sad += std::abs(m_key.borderColor.float32[i] - e.first.float32[i]);
+        sad += std::abs(info.customBorderColor.float32[i] - e.first.float32[i]);
 
       if (sad < minSad || minSad < 0.0f) {
         minSad = sad;
@@ -110,6 +134,43 @@ namespace dxvk {
     }
 
     return result;
+  }
+
+
+  VkClearColorValue DxvkSampler::swizzleBorderColor(const VkClearColorValue& color, VkComponentMapping mapping) {
+    // Normalize component mapping for inverse look-up
+    if (mapping.r == VK_COMPONENT_SWIZZLE_IDENTITY) mapping.r = VK_COMPONENT_SWIZZLE_R;
+    if (mapping.g == VK_COMPONENT_SWIZZLE_IDENTITY) mapping.g = VK_COMPONENT_SWIZZLE_G;
+    if (mapping.b == VK_COMPONENT_SWIZZLE_IDENTITY) mapping.b = VK_COMPONENT_SWIZZLE_B;
+    if (mapping.a == VK_COMPONENT_SWIZZLE_IDENTITY) mapping.a = VK_COMPONENT_SWIZZLE_A;
+
+    VkClearColorValue result = { };
+    result.float32[0] = mapBorderColorComponent(color, mapping, VK_COMPONENT_SWIZZLE_R);
+    result.float32[1] = mapBorderColorComponent(color, mapping, VK_COMPONENT_SWIZZLE_G);
+    result.float32[2] = mapBorderColorComponent(color, mapping, VK_COMPONENT_SWIZZLE_B);
+    result.float32[3] = mapBorderColorComponent(color, mapping, VK_COMPONENT_SWIZZLE_A);
+    return result;
+  }
+
+
+  float DxvkSampler::mapBorderColorComponent(const VkClearColorValue& color, const VkComponentMapping& mapping, VkComponentSwizzle which) {
+    // Apply inverse swizzle so that applying the view swizzle
+    // returns the intended border color to the extent possible.
+    if (mapping.r == which) return color.float32[0u];
+    if (mapping.g == which) return color.float32[1u];
+    if (mapping.b == which) return color.float32[2u];
+    if (mapping.a == which) return color.float32[3u];
+
+    // The border color component itself isn't used at all,
+    // check whether it is mapped to a special value.
+    VkComponentSwizzle swizzle = which;
+
+    if (which == VK_COMPONENT_SWIZZLE_R) swizzle = mapping.r;
+    if (which == VK_COMPONENT_SWIZZLE_G) swizzle = mapping.g;
+    if (which == VK_COMPONENT_SWIZZLE_B) swizzle = mapping.b;
+    if (which == VK_COMPONENT_SWIZZLE_A) swizzle = mapping.a;
+
+    return swizzle == VK_COMPONENT_SWIZZLE_ONE ? 1.0f : 0.0f;
   }
 
 
