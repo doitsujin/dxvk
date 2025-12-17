@@ -233,7 +233,11 @@ namespace dxvk {
 
     void release();
 
-    VkBorderColor determineBorderColorType() const;
+    VkBorderColor determineBorderColorType(const VkSamplerCustomBorderColorCreateInfoEXT& info) const;
+
+    static VkClearColorValue swizzleBorderColor(const VkClearColorValue& color, VkComponentMapping mapping);
+
+    static float mapBorderColorComponent(const VkClearColorValue& color, const VkComponentMapping& mapping, VkComponentSwizzle which);
 
   };
 
