@@ -180,7 +180,9 @@ namespace dxvk {
     }
 
 #ifdef _WIN32
-    const bool useGDIFallback = m_partialCopy && !SwapWithFrontBuffer();
+    const bool useGDIFallback = (m_partialCopy && !SwapWithFrontBuffer())
+      || m_parent->GetOptions()->gdiPresent;
+
     if (useGDIFallback)
       return PresentImageGDI(m_window);
 #endif

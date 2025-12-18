@@ -173,6 +173,9 @@ namespace dxvk {
 
     /// Use the uber shader for fixed function fragment shaders.
     bool ffUbershaderFS;
+
+    /// Use GDI present path
+    bool gdiPresent;
   };
 
 }
