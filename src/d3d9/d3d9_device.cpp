@@ -4877,26 +4877,24 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::ThrottleAllocation() {
+    // Threshold at which to submit eagerly. This is useful to ensure
+    // that staging buffer memory gets recycled relatively soon.
+    constexpr VkDeviceSize MaxMemoryPerSubmission = (env::is32BitHostPlatform() ? 10u : 30u) << 20u;
+
     // Treshold for staging memory in flight. Since the staging buffer granularity
     // is somewhat coars, it is possible for one additional allocation to be in use,
     // but otherwise this is a hard upper bound.
-    constexpr VkDeviceSize MaxStagingMemoryInFlight = env::is32BitHostPlatform()
-      ? StagingBufferSize * 4
-      : StagingBufferSize * 16;
-
-    // Threshold at which to submit eagerly. This is useful to ensure
-    // that staging buffer memory gets recycled relatively soon.
-    constexpr VkDeviceSize MaxStagingMemoryPerSubmission = MaxStagingMemoryInFlight / 3u;
+    constexpr VkDeviceSize MaxMemoryInFlight = MaxMemoryPerSubmission * 3u;
 
     DxvkStagingBufferStats stats = GetStagingMemoryStatistics();
 
     VkDeviceSize stagingBufferAllocated = stats.allocatedTotal;
 
-    if (stagingBufferAllocated > m_stagingMemorySignaled + MaxStagingMemoryPerSubmission) {
+    if (stagingBufferAllocated > m_stagingMemorySignaled + MaxMemoryPerSubmission) {
       // Perform submission. If the amount of staging memory allocated since the
       // last submission exceeds the hard limit, we need to submit to guarantee
       // forward progress. Ideally, this should not happen very often.
-      GpuFlushType flushType = stagingBufferAllocated <= m_stagingMemorySignaled + MaxStagingMemoryInFlight
+      GpuFlushType flushType = stagingBufferAllocated <= m_stagingMemorySignaled + MaxMemoryInFlight
         ? GpuFlushType::ImplicitSynchronization
         : GpuFlushType::ExplicitFlush;
 
@@ -4904,8 +4902,8 @@ namespace dxvk {
     }
 
     // Wait for staging memory to get recycled.
-    if (stagingBufferAllocated > MaxStagingMemoryInFlight)
-      m_dxvkDevice->waitForFence(*m_stagingBufferFence, stagingBufferAllocated - MaxStagingMemoryInFlight);
+    if (stagingBufferAllocated > MaxMemoryInFlight)
+      m_dxvkDevice->waitForFence(*m_stagingBufferFence, stagingBufferAllocated - MaxMemoryInFlight);
   }
 
 
