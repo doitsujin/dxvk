@@ -39,7 +39,6 @@ typedef BOOL WINBOOL;
 
 typedef uint16_t UINT16;
 typedef uint32_t UINT32;
-typedef uint64_t UINT64;
 typedef void VOID;
 typedef void* PVOID;
 typedef void* LPVOID;
@@ -131,8 +130,6 @@ typedef UINT_PTR* PUINT_PTR;
 #endif /*STRICT*/
 
 typedef char* LPSTR;
-typedef wchar_t* LPWSTR;
-typedef const char* LPCSTR;
 typedef const wchar_t* LPCWSTR;
 
 typedef struct LUID {
@@ -251,6 +248,7 @@ typedef struct RGNDATA {
 #define E_NOTIMPL     ((HRESULT)0x80004001)
 #define E_OUTOFMEMORY ((HRESULT)0x8007000E)
 #define E_POINTER     ((HRESULT)0x80004003)
+#define E_ABORT       ((HRESULT)0x80004004)
 
 #define STATUS_TIMEOUT                   ((NTSTATUS)0x00000102)
 
@@ -288,6 +286,7 @@ typedef struct RGNDATA {
 #define DXGI_ERROR_ACCESS_DENIED                 ((HRESULT)0x887A002B)
 #define DXGI_ERROR_NAME_ALREADY_EXISTS           ((HRESULT)0x887A002C)
 #define DXGI_ERROR_SDK_COMPONENT_MISSING         ((HRESULT)0x887A002D)
+#define DXGI_ERROR_ALREADY_EXISTS                ((HRESULT)0x887A0036)
 
 #define D3D11_ERROR_DEFERRED_CONTEXT_MAP_WITHOUT_INITIAL_DISCARD ((HRESULT)0x887C0004)
 
