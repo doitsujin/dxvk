@@ -1966,9 +1966,10 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::RegisterDeviceRemovedEvent: Not implemented");
+      Logger::warn("D3D11Device::RegisterDeviceRemovedEvent: Stub");
 
-    return E_NOTIMPL;
+    *pdwCookie = 0xdeadbeef;
+    return S_OK;
   }
 
 
