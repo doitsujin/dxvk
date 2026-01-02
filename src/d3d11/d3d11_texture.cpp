@@ -1039,11 +1039,11 @@ namespace dxvk {
 
     D3D11_MAP mapType;
 
-    if (MapFlags & (DXGI_MAP_READ | DXGI_MAP_WRITE))
+    if (MapFlags & DXGI_MAP_READ && MapFlags & DXGI_MAP_WRITE)
       mapType = D3D11_MAP_READ_WRITE;
     else if (MapFlags & DXGI_MAP_READ)
       mapType = D3D11_MAP_READ;
-    else if (MapFlags & (DXGI_MAP_WRITE | DXGI_MAP_DISCARD))
+    else if (MapFlags & DXGI_MAP_WRITE && MapFlags & DXGI_MAP_DISCARD)
       mapType = D3D11_MAP_WRITE_DISCARD;
     else if (MapFlags & DXGI_MAP_WRITE)
       mapType = D3D11_MAP_WRITE;
