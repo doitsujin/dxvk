@@ -636,6 +636,11 @@ namespace dxvk {
     D3D11DXGISurface(
             ID3D11Resource*     pResource,
             D3D11CommonTexture* pTexture);
+
+    D3D11DXGISurface(
+            ID3D11Resource*     pParentResource,
+            D3D11CommonTexture* pParentTexture,
+            UINT                Subresource);
     
     ~D3D11DXGISurface();
     
@@ -694,6 +699,8 @@ namespace dxvk {
 
   private:
     
+    bool                m_isSubresourceSurface = false;
+    UINT                m_subresource = 0;
     ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
     D3D11GDISurface*    m_gdiSurface;
