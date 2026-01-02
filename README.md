@@ -131,16 +131,20 @@ cd /your/target/directory/build.64
 ninja install
 ```
 
+To build with clang, add `--clang-compiler` to package-release.sh call.
+
 #### Compiling manually
 ```
 # 64-bit build. For 32-bit builds, replace
-# build-win64.txt with build-win32.txt
-meson setup --cross-file build-win64.txt --buildtype release --prefix /your/dxvk/directory build.w64
+# build-win64-gcc.txt with build-win32-gcc.txt
+meson setup --cross-file build-win64-gcc.txt --buildtype release --prefix /your/dxvk/directory build.w64
 cd build.w64
 ninja install
 ```
 
 The D3D8, D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`.
+
+To build with clang, use build-win64-clang.txt instead of build-win64-gcc.txt
 
 ### Build troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
