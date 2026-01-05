@@ -3508,7 +3508,7 @@ namespace dxvk {
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       spillRenderPass(true);
 
-    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+    syncResources(cmdBuffer, accessBatch.size(), accessBatch.data());
 
     auto bufferSlice = buffer->getSliceInfo(bufferOffset, dataSize);
 
