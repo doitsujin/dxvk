@@ -2064,10 +2064,7 @@ namespace dxvk {
     const DxvkClearBatch&           batch) {
     auto [entries, count] = batch.getRange();
 
-    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)) && count > 1)
-      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xe6f0dc, "Clear batch"));
-
-    // Batch barriers
+    // Batch barriers and try to hoist clears if possible
     small_vector<DxvkResourceAccess, 16> accessBatch;
 
     for (size_t i = 0u; i < count; i++) {
@@ -2091,7 +2088,10 @@ namespace dxvk {
         (entry.clearAspects | entry.discardAspects) == entry.view->info().aspects);
     }
 
-    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data(), false);
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer,
+      accessBatch.size(), accessBatch.data());
+
+    syncResources(cmdBuffer, accessBatch.size(), accessBatch.data(), false);
 
     // Execute clears
     for (size_t i = 0u; i < count; i++) {
@@ -2102,7 +2102,7 @@ namespace dxvk {
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
         const char* imageName = entry.view->image()->info().debugName;
-        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        m_cmd->cmdBeginDebugUtilsLabel(cmdBuffer,
           vk::makeLabel(0xe6f0dc, str::format("Clear render target (", imageName ? imageName : "unknown", ")").c_str()));
       }
 
@@ -2145,7 +2145,7 @@ namespace dxvk {
         renderingInfo.pColorAttachments = &attachmentInfo;
       }
 
-      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
+      m_cmd->cmdBeginRendering(cmdBuffer, &renderingInfo);
 
       if (useLateClear) {
         VkClearAttachment clearInfo = { };
@@ -2156,17 +2156,14 @@ namespace dxvk {
         clearRect.rect = renderingInfo.renderArea;
         clearRect.layerCount = renderingInfo.layerCount;
 
-        m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
+        m_cmd->cmdClearAttachments(cmdBuffer, 1, &clearInfo, 1, &clearRect);
       }
 
-      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
+      m_cmd->cmdEndRendering(cmdBuffer);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
-        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+        m_cmd->cmdEndDebugUtilsLabel(cmdBuffer);
     }
-
-    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)) && count > 1)
-      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
