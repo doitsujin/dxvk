@@ -9238,6 +9238,10 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
           DxvkAccess                access) {
+    // Sparse resources can alias, need to ignore.
+    if (unlikely(buffer.info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT))
+      return false;
+
     // If the resource hasn't been used yet or both uses are reads,
     // we can use this buffer in the init command buffer
     if (!buffer.isTracked(m_trackingId, access))
