@@ -108,7 +108,7 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderInfo);
 
     performDraw(ctx, dstView, dstRect,
       srcView, srcRect, composite);
@@ -121,7 +121,7 @@ namespace dxvk {
         renderCursor(ctx, dstView);
     }
 
-    ctx->cmdEndRendering();
+    ctx->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
     barrier.srcAccessMask = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT;
@@ -421,11 +421,11 @@ namespace dxvk {
     renderInfo.colorAttachmentCount = 1;
     renderInfo.pColorAttachments = &attachmentInfo;
 
-    ctx->cmdBeginRendering(&renderInfo);
+    ctx->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderInfo);
 
     m_hud->render(ctx, m_hudRtv);
 
-    ctx->cmdEndRendering();
+    ctx->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     // Make image shader-readable
     barrier.srcStageMask = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
