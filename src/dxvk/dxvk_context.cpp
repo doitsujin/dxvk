@@ -8507,9 +8507,20 @@ namespace dxvk {
     else if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
       cmdBuffer = DxvkCmdBuffer::SdmaBarriers;
 
-    // Flush any barriers affecting the resources
+    // For out-of-order operations we know that the resource can't have
+    // any pending accesses that would require synchronization.
     bool needsFlush = cmdBuffer != DxvkCmdBuffer::ExecBuffer;
 
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && flushClears) {
+      // If we need to flush any clears, we need to so *before* modifying any
+      // global state since clears themselves may need to issue barriers.
+      for (size_t i = 0u; i < count; i++) {
+        if (batch[i].image)
+          needsFlush |= flushDeferredClear(*batch[i].image, batch[i].image->getAvailableSubresources());
+      }
+    }
+
+    // Flush any barriers affecting the resources
     VkPipelineStageFlags2 srcStages = 0u;
     VkPipelineStageFlags2 dstStages = 0u;
 
@@ -8544,11 +8555,6 @@ namespace dxvk {
 
         m_cmd->track(e.buffer, access);
       } else if (e.image) {
-        // Ensure that images are not affected by legacy
-        // layout tracking, and have no pending clears etc.
-        if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && flushClears)
-          needsFlush |= flushDeferredClear(*e.image, e.image->getAvailableSubresources());
-
         if (!needsFlush) {
           if (!e.imageExtent.width) {
             if (!needsFlush) {
