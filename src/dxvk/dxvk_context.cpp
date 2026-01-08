@@ -6571,6 +6571,33 @@ namespace dxvk {
   }
 
 
+  DxvkDeferredResolve* DxvkContext::findOverlappingDeferredResolve(
+    const DxvkImage&              image,
+    const VkImageSubresourceRange& subresources) {
+    for (auto& entry : m_deferredResolves) {
+      if (entry.imageView && entry.imageView->image() == &image
+       && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources)))
+        return &entry;
+    }
+
+    return nullptr;
+  }
+
+
+  bool DxvkContext::isBoundAsRenderTarget(
+    const DxvkImage&              image,
+    const VkImageSubresourceRange& subresources) {
+    for (uint32_t i = 0; i < m_state.om.framebufferInfo.numAttachments(); i++) {
+      auto& view = m_state.om.framebufferInfo.getAttachment(i).view;
+
+      if (view && view->image() == &image && vk::checkSubresourceRangeOverlap(view->imageSubresources(), subresources))
+        return true;
+    }
+
+    return false;
+  }
+
+
   void DxvkContext::updateIndexBufferBinding() {
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
 
@@ -8416,13 +8443,13 @@ namespace dxvk {
     // If all subresources are in the correct layout, we don't need to do anything.
     // If we're discarding a render target, re-initialize the image since doing so
     // may lead to more efficient compression in some cases.
-    VkImageLayout srcLayout = image.queryLayout(subresources);
-
     VkImageUsageFlags rtUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                               | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-    if (discard && (image.info().usage & rtUsage))
-      srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImageLayout srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    if (!discard || !(image.info().usage & rtUsage))
+      srcLayout = image.queryLayout(subresources);
 
     if (srcLayout == dstLayout)
       return;
@@ -8463,6 +8490,10 @@ namespace dxvk {
       trackNonDefaultImageLayout(image);
 
     image.trackLayout(subresources, dstLayout);
+
+    // Need to track for writes here even if
+    // the actual access itself is read-only
+    m_cmd->track(&image, DxvkAccess::Write);
   }
 
 
@@ -9190,10 +9221,10 @@ namespace dxvk {
         : DxvkAccess::Read;
 
       if (e.buffer) {
-        if (!prepareOutOfOrderTransfer(e.buffer, e.bufferOffset, e.bufferSize, access))
+        if (!prepareOutOfOrderTransfer(*e.buffer, e.bufferOffset, e.bufferSize, access))
           return DxvkCmdBuffer::ExecBuffer;
       } else if (e.image) {
-        if (!prepareOutOfOrderTransfer(e.image, access))
+        if (!prepareOutOfOrderTransfer(*e.image, e.imageSubresources, e.imageLayout, e.discard, access))
           return DxvkCmdBuffer::ExecBuffer;
       }
     }
@@ -9203,23 +9234,23 @@ namespace dxvk {
 
 
   bool DxvkContext::prepareOutOfOrderTransfer(
-    const Rc<DxvkBuffer>&           buffer,
+          DxvkBuffer&               buffer,
           VkDeviceSize              offset,
           VkDeviceSize              size,
           DxvkAccess                access) {
     // If the resource hasn't been used yet or both uses are reads,
     // we can use this buffer in the init command buffer
-    if (!buffer->isTracked(m_trackingId, access))
+    if (!buffer.isTracked(m_trackingId, access))
       return true;
 
     // Otherwise, our only option is to discard. We can only do that if
     // we're writing the full buffer. Therefore, the resource being read
     // should always be checked first to avoid unnecessary discards.
-    if (access != DxvkAccess::Write || size < buffer->info().size || offset)
+    if (access != DxvkAccess::Write || size < buffer.info().size || offset)
       return false;
 
     // Check if the buffer can actually be discarded at all.
-    if (!buffer->canRelocate())
+    if (!buffer.canRelocate())
       return false;
 
     // Ignore large buffers to keep memory overhead in check. Use a higher
@@ -9237,43 +9268,47 @@ namespace dxvk {
       VkBufferUsageFlags xfbUsage = VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT
                                   | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
 
-      if (buffer->info().usage & xfbUsage)
+      if (buffer.info().usage & xfbUsage)
         this->spillRenderPass(true);
     }
 
     // Actually allocate and assign new backing storage
-    this->invalidateBuffer(buffer, buffer->allocateStorage());
+    this->invalidateBuffer(&buffer, buffer.allocateStorage());
     return true;
   }
 
 
   bool DxvkContext::prepareOutOfOrderTransfer(
-    const Rc<DxvkBufferView>&       bufferView,
-          VkDeviceSize              offset,
-          VkDeviceSize              size,
+          DxvkImage&                image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             layout,
+          bool                      discard,
           DxvkAccess                access) {
-    if (bufferView->info().format) {
-      offset *= bufferView->formatInfo()->elementSize;
-      size *= bufferView->formatInfo()->elementSize;
-    }
-
-    return prepareOutOfOrderTransfer(bufferView->buffer(),
-      offset + bufferView->info().offset, size, access);
-  }
-
-
-  bool DxvkContext::prepareOutOfOrderTransfer(
-    const Rc<DxvkImage>&            image,
-          DxvkAccess                access) {
-    // If the image can be used for rendering, some or all subresources
-    // might be in a non-default layout, and copies to or from render
-    // targets typically depend on rendering operations anyway. Skip.
-    if (image->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+    // Sparse resources can alias, need to ignore.
+    if (unlikely(image.info().flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
       return false;
 
-    // If the image hasn't been used yet or all uses are
-    // reads, we can use it in the init command buffer
-    return !image->isTracked(m_trackingId, access);
+    // Ensure correct order of operations in case the image is a render
+    // target and is either currently bound for rendering or has any
+    // pending clears or resolves.
+    if (image.info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      if (findOverlappingDeferredClear(image, subresources)
+       || findOverlappingDeferredResolve(image, subresources))
+        return false;
+
+      if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+        if (isBoundAsRenderTarget(image, subresources))
+          return false;
+      }
+    }
+
+    // If the image hasn't been used yet or all uses are reads,
+    // we can use it in the init command buffer. Crucially, this
+    // rejects any images that already had their layout changed.
+    if (discard || layout != image.queryLayout(subresources))
+      access = DxvkAccess::Write;
+
+    return !image.isTracked(m_trackingId, access);
   }
 
 

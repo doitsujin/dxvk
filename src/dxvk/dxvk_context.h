@@ -1723,6 +1723,14 @@ namespace dxvk {
       const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
+    DxvkDeferredResolve* findOverlappingDeferredResolve(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
+
+    bool isBoundAsRenderTarget(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
+
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
 
@@ -2102,19 +2110,16 @@ namespace dxvk {
       const DxvkResourceAccess*       accessBatch);
 
     bool prepareOutOfOrderTransfer(
-      const Rc<DxvkBuffer>&           buffer,
+            DxvkBuffer&               buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
             DxvkAccess                access);
 
     bool prepareOutOfOrderTransfer(
-      const Rc<DxvkBufferView>&       bufferView,
-            VkDeviceSize              offset,
-            VkDeviceSize              size,
-            DxvkAccess                access);
-
-    bool prepareOutOfOrderTransfer(
-      const Rc<DxvkImage>&            image,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             layout,
+            bool                      discard,
             DxvkAccess                access);
 
     template<VkPipelineBindPoint BindPoint, typename Pred>
