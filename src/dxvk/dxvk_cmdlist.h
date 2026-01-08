@@ -581,10 +581,11 @@ namespace dxvk {
 
 
     void cmdBeginRendering(
-      const VkRenderingInfo*        pRenderingInfo) {
-      m_cmd.execCommands = true;
+            DxvkCmdBuffer             cmdBuffer,
+      const VkRenderingInfo*          pRenderingInfo) {
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
-      m_vkd->vkCmdBeginRendering(getCmdBuffer(), pRenderingInfo);
+      m_vkd->vkCmdBeginRendering(getCmdBuffer(cmdBuffer), pRenderingInfo);
     }
 
 
@@ -692,11 +693,12 @@ namespace dxvk {
     
     
     void cmdClearAttachments(
+            DxvkCmdBuffer           cmdBuffer,
             uint32_t                attachmentCount,
       const VkClearAttachment*      pAttachments,
             uint32_t                rectCount,
       const VkClearRect*            pRects) {
-      m_vkd->vkCmdClearAttachments(getCmdBuffer(),
+      m_vkd->vkCmdClearAttachments(getCmdBuffer(cmdBuffer),
         attachmentCount, pAttachments, rectCount, pRects);
     }
     
@@ -922,11 +924,12 @@ namespace dxvk {
     }
     
     
-    void cmdEndRendering() {
-      m_vkd->vkCmdEndRendering(getCmdBuffer());
+    void cmdEndRendering(
+            DxvkCmdBuffer             cmdBuffer) {
+      m_vkd->vkCmdEndRendering(getCmdBuffer(cmdBuffer));
     }
 
-    
+
     void cmdEndTransformFeedback(
             uint32_t                  firstBuffer,
             uint32_t                  bufferCount,

@@ -1323,7 +1323,7 @@ namespace dxvk {
       accessBatch.emplace_back(*dstView,  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
       syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
-      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
         VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
@@ -1336,7 +1336,7 @@ namespace dxvk {
         sizeof(pushConstants), &pushConstants);
 
       m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
-      m_cmd->cmdEndRendering();
+      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
@@ -2145,7 +2145,7 @@ namespace dxvk {
         renderingInfo.pColorAttachments = &attachmentInfo;
       }
 
-      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
       if (useLateClear) {
         VkClearAttachment clearInfo = { };
@@ -2156,10 +2156,10 @@ namespace dxvk {
         clearRect.rect = renderingInfo.renderArea;
         clearRect.layerCount = renderingInfo.layerCount;
 
-        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+        m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
       }
 
-      m_cmd->cmdEndRendering();
+      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -2285,7 +2285,8 @@ namespace dxvk {
       clearRect.rect = m_state.om.renderingInfo.rendering.renderArea;
       clearRect.layerCount = m_state.om.renderingInfo.rendering.layerCount;
 
-      m_cmd->cmdClearAttachments(attachments.size(), attachments.data(), 1u, &clearRect);
+      m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer,
+        attachments.size(), attachments.data(), 1u, &clearRect);
 
       // Full clears require the render area to cover everything
       m_state.om.renderAreaLo = VkOffset2D { 0, 0 };
@@ -3301,7 +3302,7 @@ namespace dxvk {
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &attachmentInfo;
 
-    m_cmd->cmdBeginRendering(&renderingInfo);
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     // Bind pipeline
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
@@ -3367,7 +3368,7 @@ namespace dxvk {
       sizeof(pushConstants), &pushConstants);
 
     m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -3700,7 +3701,7 @@ namespace dxvk {
     if (image->formatInfo()->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
       renderingInfo.pStencilAttachment = &attachment;
 
-    m_cmd->cmdBeginRendering(&renderingInfo);
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     // Set up viewport and scissor state
     VkViewport viewport = { };
@@ -3768,7 +3769,7 @@ namespace dxvk {
         clearRect.baseArrayLayer = 0;
         clearRect.layerCount = renderingInfo.layerCount;
 
-        m_cmd->cmdClearAttachments(1, &clear, 1, &clearRect);
+        m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clear, 1, &clearRect);
       }
 
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
@@ -3786,7 +3787,7 @@ namespace dxvk {
       }
     }
 
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -4051,7 +4052,7 @@ namespace dxvk {
 
       // We cannot leverage render pass clears
       // because we clear only part of the view
-      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
     } else {
       // Make sure the render pass is active so
       // that we can actually perform the clear
@@ -4097,11 +4098,11 @@ namespace dxvk {
     clearRect.baseArrayLayer      = 0;
     clearRect.layerCount          = imageView->info().layerCount;
 
-    m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+    m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
 
     // Unbind temporary framebuffer
     if (attachmentIndex < 0) {
-      m_cmd->cmdEndRendering();
+      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -4413,7 +4414,7 @@ namespace dxvk {
       srcOffset.y - dstOffset.y };
 
     // Perform the actual copy operation
-    m_cmd->cmdBeginRendering(&renderingInfo);
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
@@ -4426,7 +4427,7 @@ namespace dxvk {
       sizeof(srcCoordOffset), &srcCoordOffset);
 
     m_cmd->cmdDraw(3, dstSubresource.layerCount, 0, 0);
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -4752,8 +4753,8 @@ namespace dxvk {
       renderingInfo.pColorAttachments = &attachment;
     }
 
-    m_cmd->cmdBeginRendering(&renderingInfo);
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -4889,7 +4890,7 @@ namespace dxvk {
       region.srcOffset.x - region.dstOffset.x,
       region.srcOffset.y - region.dstOffset.y };
     
-    m_cmd->cmdBeginRendering(&renderingInfo);
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
@@ -4903,7 +4904,7 @@ namespace dxvk {
 
     m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
 
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
@@ -5529,7 +5530,7 @@ namespace dxvk {
       m_cmd->beginSecondaryCommandBuffer(inheritance);
     } else {
       // Begin rendering right away on regular GPUs
-      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
     }
 
     if (lateClearCount) {
@@ -5538,7 +5539,7 @@ namespace dxvk {
       clearRect.rect.extent.height  = fbSize.height;
       clearRect.layerCount          = fbSize.layers;
 
-      m_cmd->cmdClearAttachments(lateClearCount, lateClears.data(), 1, &clearRect);
+      m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, lateClearCount, lateClears.data(), 1, &clearRect);
     }
 
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
@@ -5574,12 +5575,12 @@ namespace dxvk {
       finalizeLoadStoreOps();
 
       auto& renderingInfo = m_state.om.renderingInfo.rendering;
-      m_cmd->cmdBeginRendering(&renderingInfo);
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
       m_cmd->cmdExecuteCommands(1, &cmdBuffer);
     }
 
     // End actual rendering command
-    m_cmd->cmdEndRendering();
+    m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     // Emit render target barriers
     releaseRenderTargets();
