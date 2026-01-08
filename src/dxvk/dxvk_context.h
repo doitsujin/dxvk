@@ -1607,12 +1607,15 @@ namespace dxvk {
     VkAttachmentStoreOp determineClearStoreOp(
             VkAttachmentLoadOp        loadOp) const;
 
-    void performClear(
+    std::optional<DxvkClearInfo> batchClear(
       const Rc<DxvkImageView>&        imageView,
             int32_t                   attachmentIndex,
             VkImageAspectFlags        discardAspects,
             VkImageAspectFlags        clearAspects,
             VkClearValue              clearValue);
+
+    void performClears(
+      const DxvkClearBatch&           batch);
 
     void deferClear(
       const Rc<DxvkImageView>&        imageView,

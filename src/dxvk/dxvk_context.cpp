@@ -1973,7 +1973,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::performClear(
+  std::optional<DxvkClearInfo> DxvkContext::batchClear(
     const Rc<DxvkImageView>&        imageView,
           int32_t                   attachmentIndex,
           VkImageAspectFlags        discardAspects,
@@ -2018,92 +2018,24 @@ namespace dxvk {
     // Completely ignore pure discards here if we can't fold them into the next
     // render pass, since all we'd do is add an extra barrier for no reason.
     if (attachmentIndex < 0 && !clearAspects)
-      return;
+      return std::nullopt;
 
     if (attachmentIndex < 0) {
-      bool useLateClear = m_device->perfHints().renderPassClearFormatBug
-        && imageView->info().format != imageView->image()->info().format;
+      std::optional<DxvkClearInfo> result;
 
-      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
-        const char* imageName = imageView->image()->info().debugName;
-        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
-          vk::makeLabel(0xe6f0dc, str::format("Clear render target (", imageName ? imageName : "unknown", ")").c_str()));
+      auto& clearInfo = result.emplace();
+      clearInfo.view = imageView;
+      clearInfo.loadOp = colorOp.loadOp;
+      clearInfo.clearValue = clearValue;
+      clearInfo.clearAspects = clearAspects;
+      clearInfo.discardAspects = discardAspects;
+
+      if ((clearAspects | discardAspects) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        clearInfo.loadOp = depthOp.loadOpD;
+        clearInfo.loadOpS = depthOp.loadOpS;
       }
 
-      // Set up a temporary render pass to execute the clear
-      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-      attachmentInfo.imageView = imageView->handle();
-      attachmentInfo.imageLayout = imageView->getLayout();
-      attachmentInfo.clearValue = clearValue;
-
-      VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
-
-      VkExtent3D extent = imageView->mipLevelExtent(0);
-
-      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-      renderingInfo.renderArea.extent = { extent.width, extent.height };
-      renderingInfo.layerCount = imageView->info().layerCount;
-
-      VkPipelineStageFlags clearStages = 0;
-      VkAccessFlags        clearAccess = 0;
-      
-      if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
-        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                    |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-
-        attachmentInfo.loadOp = colorOp.loadOp;
-        attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-        if (useLateClear && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
-          attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-
-        renderingInfo.colorAttachmentCount = 1;
-        renderingInfo.pColorAttachments = &attachmentInfo;
-      } else {
-        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                    |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-
-        if (imageView->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-          renderingInfo.pDepthAttachment = &attachmentInfo;
-
-          attachmentInfo.loadOp = depthOp.loadOpD;
-          attachmentInfo.storeOp = determineClearStoreOp(depthOp.loadOpD);
-        }
-
-        if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-          renderingInfo.pStencilAttachment = &stencilInfo;
-
-          stencilInfo.loadOp = depthOp.loadOpS;
-          stencilInfo.storeOp = determineClearStoreOp(depthOp.loadOpS);
-        }
-      }
-
-      DxvkResourceAccess access(*imageView, clearStages, clearAccess,
-        (clearAspects | discardAspects) == imageView->info().aspects);
-      syncResources(DxvkCmdBuffer::ExecBuffer, 1u, &access, false);
-
-      m_cmd->cmdBeginRendering(&renderingInfo);
-
-      if (useLateClear) {
-        VkClearAttachment clearInfo = { };
-        clearInfo.aspectMask = clearAspects;
-        clearInfo.clearValue = clearValue;
-
-        VkClearRect clearRect = { };
-        clearRect.rect.extent.width = extent.width;
-        clearRect.rect.extent.height = extent.height;
-        clearRect.layerCount = imageView->info().layerCount;
-
-        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
-      }
-
-      m_cmd->cmdEndRendering();
-
-      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
-        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      return result;
     } else {
       // Perform the operation when starting the next render pass
       if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -2122,7 +2054,119 @@ namespace dxvk {
         m_state.om.renderPassOps.depthOps.loadOpS = depthOp.loadOpS;
         m_state.om.renderPassOps.depthOps.clearValue.stencil = clearValue.depthStencil.stencil;
       }
+
+      return std::nullopt;
     }
+  }
+
+
+  void DxvkContext::performClears(
+    const DxvkClearBatch&           batch) {
+    auto [entries, count] = batch.getRange();
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)) && count > 1)
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer, vk::makeLabel(0xe6f0dc, "Clear batch"));
+
+    // Batch barriers
+    small_vector<DxvkResourceAccess, 16> accessBatch;
+
+    for (size_t i = 0u; i < count; i++) {
+      const auto& entry = entries[i];
+
+      VkPipelineStageFlagBits2 clearStages = 0u;
+      VkAccessFlags2 clearAccess = 0u;
+
+      if ((entry.clearAspects | entry.discardAspects) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                    |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      } else {
+        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                    |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+      }
+
+      accessBatch.emplace_back(*entry.view, clearStages, clearAccess,
+        (entry.clearAspects | entry.discardAspects) == entry.view->info().aspects);
+    }
+
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data(), false);
+
+    // Execute clears
+    for (size_t i = 0u; i < count; i++) {
+      const auto& entry = entries[i];
+
+      bool useLateClear = m_device->perfHints().renderPassClearFormatBug
+        && entry.view->info().format != entry.view->image()->info().format;
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+        const char* imageName = entry.view->image()->info().debugName;
+        m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+          vk::makeLabel(0xe6f0dc, str::format("Clear render target (", imageName ? imageName : "unknown", ")").c_str()));
+      }
+
+      // Set up a temporary render pass to execute the clear
+      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+      attachmentInfo.imageView = entry.view->handle();
+      attachmentInfo.imageLayout = entry.view->getLayout();
+      attachmentInfo.clearValue = entry.clearValue;
+
+      VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
+
+      VkExtent3D extent = entry.view->mipLevelExtent(0);
+
+      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+      renderingInfo.renderArea.extent = { extent.width, extent.height };
+      renderingInfo.layerCount = entry.view->info().layerCount;
+
+      if ((entry.clearAspects | entry.discardAspects) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        if (entry.view->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+          renderingInfo.pDepthAttachment = &attachmentInfo;
+
+          attachmentInfo.loadOp = entry.loadOp;
+          attachmentInfo.storeOp = determineClearStoreOp(entry.loadOp);
+        }
+
+        if (entry.view->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+          renderingInfo.pStencilAttachment = &stencilInfo;
+
+          stencilInfo.loadOp = entry.loadOpS;
+          stencilInfo.storeOp = determineClearStoreOp(entry.loadOpS);
+        }
+      } else {
+        attachmentInfo.loadOp = entry.loadOp;
+        attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        if (useLateClear && entry.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+        renderingInfo.colorAttachmentCount = 1;
+        renderingInfo.pColorAttachments = &attachmentInfo;
+      }
+
+      m_cmd->cmdBeginRendering(&renderingInfo);
+
+      if (useLateClear) {
+        VkClearAttachment clearInfo = { };
+        clearInfo.aspectMask = entry.clearAspects;
+        clearInfo.clearValue = entry.clearValue;
+
+        VkClearRect clearRect = { };
+        clearRect.rect = renderingInfo.renderArea;
+        clearRect.layerCount = renderingInfo.layerCount;
+
+        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+      }
+
+      m_cmd->cmdEndRendering();
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+    }
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)) && count > 1)
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
@@ -2256,17 +2300,22 @@ namespace dxvk {
 
   void DxvkContext::flushClears(
           bool                      useRenderPass) {
+    DxvkClearBatch clearBatch;
+
     for (const auto& clear : m_deferredClears) {
       int32_t attachmentIndex = -1;
 
       if (useRenderPass && m_state.om.framebufferInfo.isFullSize(clear.imageView))
         attachmentIndex = m_state.om.framebufferInfo.findAttachment(clear.imageView);
 
-      this->performClear(clear.imageView, attachmentIndex,
-        clear.discardAspects, clear.clearAspects, clear.clearValue);
+      clearBatch.add(batchClear(clear.imageView, attachmentIndex,
+        clear.discardAspects, clear.clearAspects, clear.clearValue));
     }
 
     m_deferredClears.clear();
+
+    if (!clearBatch.empty())
+      performClears(clearBatch);
   }
 
 
@@ -6459,6 +6508,8 @@ namespace dxvk {
     if (!(image.info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
       return false;
 
+    DxvkClearBatch clearBatch;
+
     size_t srcIndex = 0u;
     size_t dstIndex = 0u;
 
@@ -6468,7 +6519,7 @@ namespace dxvk {
       if ((entry.imageView->image() == &image)
        && ((entry.clearAspects | entry.discardAspects) | subresources.aspectMask)
        && (vk::checkSubresourceRangeOverlap(entry.imageView->imageSubresources(), subresources))) {
-        performClear(entry.imageView, -1, entry.discardAspects, entry.clearAspects, entry.clearValue);
+        clearBatch.add(batchClear(entry.imageView, -1, entry.discardAspects, entry.clearAspects, entry.clearValue));
         srcIndex += 1u;
        } else {
         if (dstIndex < srcIndex)
@@ -6481,6 +6532,10 @@ namespace dxvk {
 
     if (dstIndex < srcIndex) {
       m_deferredClears.resize(dstIndex);
+
+      // Need to call this *after* removing the clear from the
+      // list since this will try to run clears out-of-order.
+      performClears(clearBatch);
       return true;
     } else {
       return false;
