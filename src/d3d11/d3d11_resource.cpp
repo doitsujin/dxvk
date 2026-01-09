@@ -349,9 +349,30 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::CreateSubresourceSurface(
           UINT                    index,
           IDXGISurface2**         ppSurface) {
-    InitReturnPtr(ppSurface);
-    Logger::err("D3D11DXGIResource::CreateSubresourceSurface: Stub");
-    return E_NOTIMPL;
+    auto buffer  = GetCommonBuffer (m_resource);
+    auto texture = GetCommonTexture(m_resource);
+    UINT subresourceCount;
+
+    if (buffer) {
+      subresourceCount = 1;
+    } else if (texture) {
+      D3D11_RESOURCE_DIMENSION resourceDim;
+
+      m_resource->GetType(&resourceDim);
+      if (resourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE3D && texture->Desc()->Depth > 1)
+        return E_INVALIDARG;
+
+      subresourceCount = texture->CountSubresources();
+    } else {
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
+    if (index >= subresourceCount)
+      return E_INVALIDARG;
+
+    const Com<D3D11DXGISurface> surface = new D3D11DXGISurface(m_resource, index);
+    *ppSurface = surface.ref();
+    return S_OK;
   }
   
 
