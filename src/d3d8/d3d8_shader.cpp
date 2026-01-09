@@ -85,14 +85,14 @@ namespace dxvk {
    */
   constexpr DWORD encodeDestRegister(d3d9::D3DSHADER_PARAM_REGISTER_TYPE type, UINT reg) {
     DWORD token = 0;
-    token    |= reg & 0x7FF;                  // bits 0:10   num
-    token    |= ((type & 0x07) << 28);        // bits 28:30  type[0:2]
-    token    |= ((type & 0x18) >>  3) << 11;  // bits 11:12  type[3:4]
-    // UINT addrMode : 1;                     // bit  13     hasRelative
-    token    |= 0b1111 << 16;                 // bits 16:19  DxsoRegMask
-    // UINT resultModifier : 3;               // bits 20:23
-    // UINT resultShift : 3;                  // bits 24:27
-    token    |= 1 << 31;                      // bit  31     always 1
+    token |= reg & 0x7FF;                  // bits 0:10   num
+    token |= ((type & 0x07) << 28);        // bits 28:30  type[0:2]
+    token |= ((type & 0x18) >>  3) << 11;  // bits 11:12  type[3:4]
+    // UINT addrMode : 1;                  // bit  13     hasRelative
+    token |= 0b1111 << 16;                 // bits 16:19  DxsoRegMask
+    // UINT resultModifier : 3;            // bits 20:23
+    // UINT resultShift : 3;               // bits 24:27
+    token |= 1u << 31;                     // bit  31     always 1
     return token;
   }
 
@@ -105,7 +105,7 @@ namespace dxvk {
     DWORD token = 0;
     token |= VSD_ENCODE(usage, D3DSP_DCL_USAGE);       // bits 0:4   DxsoUsage (TODO: missing MSB)
     token |= VSD_ENCODE(index, D3DSP_DCL_USAGEINDEX);  // bits 16:19 usageIndex
-    token |= 1 << 31;                                  // bit 31     always 1
+    token |= 1u << 31;                                 // bit 31     always 1
     return token;
   }
 
@@ -123,7 +123,6 @@ namespace dxvk {
 
     HRESULT res = D3D_OK;
 
-    std::vector<DWORD>& tokens = pTranslatedVS.function;
     std::vector<DWORD> defs; // Constant definitions
 
     // shaderInputRegisters:
@@ -279,6 +278,8 @@ namespace dxvk {
     }
 
     if (pFunction != nullptr) {
+      std::vector<DWORD>& tokens = pTranslatedVS.function;
+
       // Copy first token (version)
       tokens.push_back(pFunction[0]);
 

@@ -62,7 +62,7 @@ extern "C" {
       const size_t errorMessageSize = errorMessage.size() + 1;
       // Wine tests call HeapFree() on the returned error string,
       // so the expectation is for it to be allocated on the heap.
-      *pErrorString = (char*) HeapAlloc(GetProcessHeap(), 0, errorMessageSize);
+      *pErrorString = static_cast<char*>(HeapAlloc(GetProcessHeap(), 0, errorMessageSize));
       if (*pErrorString)
         memcpy(*pErrorString, errorMessage.c_str(), errorMessageSize);
     }
@@ -110,7 +110,7 @@ extern "C" {
       const size_t errorMessageSize = errorMessage.size() + 1;
       // Wine tests call HeapFree() on the returned error string,
       // so the expectation is for it to be allocated on the heap.
-      *pErrorString = (char*) HeapAlloc(GetProcessHeap(), 0, errorMessageSize);
+      *pErrorString = static_cast<char*>(HeapAlloc(GetProcessHeap(), 0, errorMessageSize));
       if (*pErrorString)
         memcpy(*pErrorString, errorMessage.c_str(), errorMessageSize);
     }
