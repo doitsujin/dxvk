@@ -1607,12 +1607,15 @@ namespace dxvk {
     VkAttachmentStoreOp determineClearStoreOp(
             VkAttachmentLoadOp        loadOp) const;
 
-    void performClear(
+    std::optional<DxvkClearInfo> batchClear(
       const Rc<DxvkImageView>&        imageView,
             int32_t                   attachmentIndex,
             VkImageAspectFlags        discardAspects,
             VkImageAspectFlags        clearAspects,
             VkClearValue              clearValue);
+
+    void performClears(
+      const DxvkClearBatch&           batch);
 
     void deferClear(
       const Rc<DxvkImageView>&        imageView,
@@ -1717,6 +1720,14 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources);
 
     DxvkDeferredClear* findOverlappingDeferredClear(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
+
+    DxvkDeferredResolve* findOverlappingDeferredResolve(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
+
+    bool isBoundAsRenderTarget(
       const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
@@ -2099,19 +2110,16 @@ namespace dxvk {
       const DxvkResourceAccess*       accessBatch);
 
     bool prepareOutOfOrderTransfer(
-      const Rc<DxvkBuffer>&           buffer,
+            DxvkBuffer&               buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
             DxvkAccess                access);
 
     bool prepareOutOfOrderTransfer(
-      const Rc<DxvkBufferView>&       bufferView,
-            VkDeviceSize              offset,
-            VkDeviceSize              size,
-            DxvkAccess                access);
-
-    bool prepareOutOfOrderTransfer(
-      const Rc<DxvkImage>&            image,
+            DxvkImage&                image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             layout,
+            bool                      discard,
             DxvkAccess                access);
 
     template<VkPipelineBindPoint BindPoint, typename Pred>

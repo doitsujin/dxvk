@@ -109,7 +109,7 @@ git clone --recursive https://github.com/doitsujin/dxvk.git
 ```
 
 ### Requirements:
-- [wine 7.1](https://www.winehq.org/) or newer
+- [wine 10.0](https://www.winehq.org/) or newer
 - [Meson](https://mesonbuild.com/) build system (at least version 0.58)
 - [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 10.0)
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
