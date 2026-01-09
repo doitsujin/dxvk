@@ -905,10 +905,6 @@ namespace dxvk {
           // for any relevant memory pools as necessary.
           if (refillAllocationCache(allocationCache, memoryRequirements, allocationInfo.properties))
             return allocationCache->allocateFromCache(createInfo.size);
-        } else {
-          // Do not suballocate buffers if debug mode is enabled in order
-          // to allow the application to set meaningful debug names.
-          allowSuballocation = !m_device->debugFlags().test(DxvkDebugFlag::Capture);
         }
 
         // If there is at least one memory type that supports the required
