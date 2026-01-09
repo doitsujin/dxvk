@@ -167,6 +167,10 @@ namespace dxvk::vk {
     #ifdef VK_EXT_swapchain_maintenance1
     VULKAN_FN(vkReleaseSwapchainImagesEXT);
     #endif
+
+    #ifdef VK_EXT_sample_locations
+    VULKAN_FN(vkGetPhysicalDeviceMultisamplePropertiesEXT);
+    #endif
   };
   
   
@@ -426,7 +430,6 @@ namespace dxvk::vk {
 
     #ifdef VK_EXT_sample_locations
     VULKAN_FN(vkCmdSetSampleLocationsEXT);
-    VULKAN_FN(vkGetPhysicalDeviceMultisamplePropertiesEXT);
     #endif
 
     #ifdef VK_EXT_shader_module_identifier
