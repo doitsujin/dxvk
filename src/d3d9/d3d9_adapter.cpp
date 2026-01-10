@@ -274,8 +274,46 @@ namespace dxvk {
     // Therefore...
     VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
 
-    auto availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferColorSampleCounts
-                        & m_adapter->deviceProperties().core.properties.limits.framebufferDepthSampleCounts;
+    VkSampleCountFlags availableFlags;
+    if (dst.FormatColor == VK_FORMAT_UNDEFINED)
+      availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferDepthSampleCounts
+                     & m_adapter->deviceProperties().core.properties.limits.framebufferColorSampleCounts;
+    else if (IsDepthStencilFormat(SurfaceFormat))
+      availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferDepthSampleCounts;
+    else
+      availableFlags = m_adapter->deviceProperties().core.properties.limits.framebufferColorSampleCounts;
+
+    if (!(availableFlags & sampleFlags) && dst.FormatColor != VK_FORMAT_UNDEFINED) {
+      // Adreno 7XX GPUs cannot report general support for 8x MSAA because they do not support it for 128 bit formats.
+      // So take the format into consideration when checking whether the sample count is supported.
+
+      DxvkFormatQuery query = { };
+      query.format = dst.FormatColor;
+      query.type   = VK_IMAGE_TYPE_2D; // D3D9 only allows using MSAA with 2D textures
+      query.tiling = VK_IMAGE_TILING_OPTIMAL;
+      query.usage  = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+
+      if (!IsDepthStencilFormat(SurfaceFormat)) {
+        query.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+        if (dst.FormatSrgb != VK_FORMAT_UNDEFINED)
+          query.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+      } else {
+        query.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      }
+
+      if (dst.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None)
+        query.usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+
+      if (m_adapter->features().extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout)
+        query.usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+      auto limits = m_adapter->getFormatLimits(query);
+      if (!limits.has_value())
+        return D3DERR_NOTAVAILABLE;
+
+      availableFlags = limits->sampleCounts;
+    }
 
     if (!(availableFlags & sampleFlags))
       return D3DERR_NOTAVAILABLE;
