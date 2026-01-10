@@ -176,10 +176,31 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    // Sample counts need to be valid
+    // Sample counts need to be valid and supported
     VkSampleCountFlagBits sampleCount;
-    if (FAILED(DecodeMultiSampleType(pDevice->GetDXVKDevice(), pDesc->MultiSample, pDesc->MultisampleQuality, &sampleCount)))
+    HRESULT hr = DecodeMultiSampleType(pDesc->MultiSample, pDesc->MultisampleQuality, &sampleCount);
+    if (FAILED(hr))
+      return hr;
+
+    if (ResourceType == D3DRTYPE_SURFACE) {
+      D3DMULTISAMPLE_TYPE d3dSampleCount = D3DMULTISAMPLE_TYPE(sampleCount);
+      // VK_SAMPLE_COUNT_1_BIT = 1 but the D3D9 equivalent we need is D3DMULTISAMPLE_NONE = 0
+      if (d3dSampleCount == D3DMULTISAMPLE_NONMASKABLE)
+        d3dSampleCount = D3DMULTISAMPLE_NONE;
+
+      hr = pDevice->GetAdapter()->CheckDeviceMultiSampleType(
+        D3DDEVTYPE_HAL,
+        pDesc->Format,
+        false,
+        d3dSampleCount,
+        nullptr
+      );
+      if (FAILED(hr))
+        return hr;
+    } else if (sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      // D3D9 only supports MSAA for surfaces
       return D3DERR_INVALIDCALL;
+    }
 
     // Using MANAGED pool with DYNAMIC usage is illegal
     if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
@@ -395,7 +416,7 @@ namespace dxvk {
       imageInfo.shared = true;
     }
 
-    DecodeMultiSampleType(m_device->GetDXVKDevice(), m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
+    DecodeMultiSampleType(m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
 
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
