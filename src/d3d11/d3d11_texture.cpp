@@ -937,13 +937,24 @@ namespace dxvk {
 
 
   D3D11DXGISurface::D3D11DXGISurface(
-          ID3D11Resource*     pResource,
-          D3D11CommonTexture* pTexture)
+          ID3D11Resource*     pResource)
   : m_resource  (pResource),
-    m_texture   (pTexture),
     m_gdiSurface(nullptr) {
-    if (pTexture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_GDI_COMPATIBLE)
+    auto texture = GetCommonTexture(pResource);
+    if (texture && texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_GDI_COMPATIBLE)
       m_gdiSurface = new D3D11GDISurface(m_resource, 0);
+  }
+
+  D3D11DXGISurface::D3D11DXGISurface(
+          ID3D11Resource*     pParentResource,
+          UINT                Subresource)
+  : m_isSubresourceSurface(true),
+    m_subresource         (Subresource),
+    m_resource            (pParentResource),
+    m_gdiSurface(nullptr) {
+    auto texture = GetCommonTexture(pParentResource);
+    if (texture && texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_GDI_COMPATIBLE)
+      m_gdiSurface = new D3D11GDISurface(m_resource, m_subresource);
   }
 
   
@@ -966,6 +977,24 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
+
+    InitReturnPtr(ppvObject);
+
+    // Only a subset of interfaces are available for subresource surfaces
+    if (m_isSubresourceSurface) {
+        if (riid == __uuidof(IUnknown)
+            || riid == __uuidof(IDXGIObject)
+            || riid == __uuidof(IDXGIDeviceSubObject)
+            || riid == __uuidof(IDXGISurface)
+            || riid == __uuidof(IDXGISurface1)
+            || riid == __uuidof(IDXGISurface2)) {
+            *ppvObject = ref(this);
+            return S_OK;
+        }
+
+        return E_NOINTERFACE;
+    }
+
     return m_resource->QueryInterface(riid, ppvObject);
   }
 
@@ -1011,15 +1040,50 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetDesc(
           DXGI_SURFACE_DESC*      pDesc) {
+    auto buffer  = GetCommonBuffer (m_resource);
+    auto texture = GetCommonTexture(m_resource);
+
     if (!pDesc)
       return DXGI_ERROR_INVALID_CALL;
 
-    auto desc = m_texture->Desc();
-    pDesc->Width      = desc->Width;
-    pDesc->Height     = desc->Height;
-    pDesc->Format     = desc->Format;
-    pDesc->SampleDesc = desc->SampleDesc;
-    return S_OK;
+    if (m_isSubresourceSurface) {
+      if (texture) {
+        D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+        auto desc = texture->Desc();
+
+        m_resource->GetType(&resourceDim);
+
+        pDesc->Width      = desc->Width >> (m_subresource % desc->MipLevels);
+        if (resourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE1D)
+          pDesc->Height   = 1;
+        else
+          pDesc->Height   = desc->Height >> (m_subresource % desc->MipLevels);
+        pDesc->Format     = desc->Format;
+        pDesc->SampleDesc = desc->SampleDesc;
+        return S_OK;
+      }
+      else if (buffer) {
+        auto desc = buffer->Desc();
+        pDesc->Width              = desc->ByteWidth;
+        pDesc->Height             = 1;
+        pDesc->Format             = DXGI_FORMAT_UNKNOWN;
+        pDesc->SampleDesc.Count   = 1;
+        pDesc->SampleDesc.Quality = 0;
+        return S_OK;
+      }
+      else
+        return DXGI_ERROR_INVALID_CALL;
+    }
+    else if (texture) {
+      auto desc = texture->Desc();
+      pDesc->Width      = desc->Width;
+      pDesc->Height     = desc->Height;
+      pDesc->Format     = desc->Format;
+      pDesc->SampleDesc = desc->SampleDesc;
+      return S_OK;
+    }
+    else
+      return DXGI_ERROR_INVALID_CALL;
   }
 
   
@@ -1051,7 +1115,7 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     D3D11_MAPPED_SUBRESOURCE sr;
-    HRESULT hr = context->Map(m_resource, 0,
+    HRESULT hr = context->Map(m_resource, m_subresource,
       mapType, 0, pLockedRect ? &sr : nullptr);
 
     if (hr != S_OK)
@@ -1070,7 +1134,7 @@ namespace dxvk {
     m_resource->GetDevice(&device);
     device->GetImmediateContext(&context);
     
-    context->Unmap(m_resource, 0);
+    context->Unmap(m_resource, m_subresource);
     return S_OK;
   }
 
@@ -1098,15 +1162,27 @@ namespace dxvk {
           REFIID                  riid,
           void**                  ppParentResource,
           UINT*                   pSubresourceIndex) {
-    HRESULT hr = m_resource->QueryInterface(riid, ppParentResource);
-    if (pSubresourceIndex)
-      *pSubresourceIndex = 0;
+    HRESULT hr;
+
+    if (!ppParentResource)
+        return E_POINTER;
+
+    InitReturnPtr(ppParentResource);
+    hr = m_resource->QueryInterface(riid, ppParentResource);
+    if (SUCCEEDED(hr))
+        *pSubresourceIndex = m_subresource;
+
     return hr;
   }
   
   
   bool D3D11DXGISurface::isSurfaceCompatible() const {
-    auto desc = m_texture->Desc();
+    auto texture = GetCommonTexture(m_resource);
+
+    if (!texture)
+        return false;
+
+    auto desc = texture->Desc();
 
     return desc->ArraySize == 1
         && desc->MipLevels == 1;
@@ -1217,7 +1293,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture1D>(pDevice),
     m_texture (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE1D, 0, VK_NULL_HANDLE, nullptr),
     m_interop (this, &m_texture),
-    m_surface (this, &m_texture),
+    m_surface (this),
     m_resource(this, pDevice),
     m_d3d10   (this),
     m_destructionNotifier(this) {
@@ -1334,7 +1410,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
     m_texture   (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE, hSharedHandle),
     m_interop   (this, &m_texture),
-    m_surface   (this, &m_texture),
+    m_surface   (this),
     m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr),
@@ -1350,7 +1426,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage, nullptr),
     m_interop   (this, &m_texture),
-    m_surface   (this, &m_texture),
+    m_surface   (this),
     m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr),
@@ -1367,7 +1443,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, VK_NULL_HANDLE, nullptr),
     m_interop   (this, &m_texture),
-    m_surface   (this, &m_texture),
+    m_surface   (this),
     m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (pSwapChain),
