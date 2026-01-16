@@ -220,6 +220,8 @@ namespace dxvk {
     // it is going to be used by the game.
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL && !isMultiPlane && imageInfo.sharing.mode == DxvkSharedHandleMode::None)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
+    if (imageInfo.sampleCount == VK_SAMPLE_COUNT_1_BIT)
+      imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
 
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {

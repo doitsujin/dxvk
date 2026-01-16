@@ -607,7 +607,7 @@ namespace dxvk {
      *    resource via transform feedback or a storage descriptor.
      */
     bool hasGfxStores() const {
-      return m_hasGfxStores;
+      return true; //m_hasGfxStores;
     }
 
     /**

@@ -2184,7 +2184,7 @@ namespace dxvk {
 
     template<VkPipelineBindPoint BindPoint>
     force_inline void trackUniformBufferBinding(const DxvkShaderDescriptor& binding, const DxvkBufferSlice& slice) {
-      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
+      if (true || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(slice.buffer()->hasGfxStores())) {
         accessBuffer(DxvkCmdBuffer::ExecBuffer, slice,
           util::pipelineStages(binding.getStageMask()), binding.getAccess(), DxvkAccessOp::None);
       }
@@ -2196,7 +2196,7 @@ namespace dxvk {
     force_inline void trackBufferViewBinding(const DxvkShaderDescriptor& binding, DxvkBufferView& view) {
       DxvkAccessOp accessOp = IsWritable ? binding.getAccessOp() : DxvkAccessOp::None;
 
-      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(view.buffer()->hasGfxStores())) {
+      if (true || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(view.buffer()->hasGfxStores())) {
         accessBuffer(DxvkCmdBuffer::ExecBuffer, view,
           util::pipelineStages(binding.getStageMask()), binding.getAccess(), accessOp);
       }
@@ -2210,7 +2210,7 @@ namespace dxvk {
     force_inline void trackImageViewBinding(const DxvkShaderDescriptor& binding, DxvkImageView& view) {
       DxvkAccessOp accessOp = IsWritable ? binding.getAccessOp() : DxvkAccessOp::None;
 
-      if (BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(view.hasGfxStores())) {
+      if (true || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE || unlikely(view.hasGfxStores())) {
         accessImage(DxvkCmdBuffer::ExecBuffer, view,
           util::pipelineStages(binding.getStageMask()), binding.getAccess(), accessOp);
       }

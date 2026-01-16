@@ -944,6 +944,7 @@ namespace dxvk {
 
 
   inline bool DxvkImageView::hasGfxStores() const {
+    return true;
     return (m_properties.access & (VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT))
         && (m_image->hasGfxStores());
   }

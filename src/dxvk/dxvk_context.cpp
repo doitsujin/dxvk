@@ -5258,15 +5258,15 @@ namespace dxvk {
       if (suspend)
         m_flags.set(DxvkContextFlag::GpRenderPassSuspended);
 
-      if (m_renderPassBarrierSrc.stages) {
-        accessMemory(DxvkCmdBuffer::ExecBuffer,
-          m_renderPassBarrierSrc.stages, m_renderPassBarrierSrc.access,
-          m_renderPassBarrierDst.stages, m_renderPassBarrierDst.access);
-
-        m_renderPassBarrierSrc = DxvkGlobalPipelineBarrier();
-      }
-
-      flushBarriers();
+      // if (m_renderPassBarrierSrc.stages) {
+      //   accessMemory(DxvkCmdBuffer::ExecBuffer,
+      //     m_renderPassBarrierSrc.stages, m_renderPassBarrierSrc.access,
+      //     m_renderPassBarrierDst.stages, m_renderPassBarrierDst.access);
+      //
+      //   m_renderPassBarrierSrc = DxvkGlobalPipelineBarrier();
+      // }
+      //
+      // flushBarriers();
       flushResolves();
 
       if (!suspend)
@@ -5278,7 +5278,7 @@ namespace dxvk {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
         m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
-        flushBarriers();
+        // flushBarriers();
       }
 
       // Ensure that all shader readable images are ready
@@ -5358,7 +5358,7 @@ namespace dxvk {
     // Unconditionally emit barriers here. We need to do this
     // even if there are no layout transitions, since we don't
     // track resource usage during render passes.
-    flushBarriers();
+    // flushBarriers();
 
     // Ignore clears, we should already have processed all of them
     acquireResources(DxvkCmdBuffer::ExecBuffer, m_rtAccess.size(), m_rtAccess.data(), false);
@@ -7112,8 +7112,10 @@ namespace dxvk {
       // edge case that it's likely irrelevant in practice.
       if (m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
                       DxvkContextFlag::GpDirtySpecConstants,
-                      DxvkContextFlag::GpDirtyXfbBuffers))
+                      DxvkContextFlag::GpDirtyXfbBuffers)) {
         this->spillRenderPass(true);
+        this->flushBarriers();
+      }
     }
 
     // If a depth-stencil image is bound used with non-default sample locations,
@@ -7137,19 +7139,21 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)
-     || m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
-                             DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
+    if (true) {
       // If either the current pipeline has side effects or if there are pending
       // writes from previous draws, check for hazards. This also tracks any
       // resources written for the first time, but does not emit any barriers
       // on its own so calling this outside a render pass is safe. This also
       // implicitly dirties all state for which we need to track resource access.
-      if (this->checkGraphicsHazards<Indexed, Indirect>())
+      if (this->checkGraphicsHazards<Indexed, Indirect>()) {
         this->spillRenderPass(true);
+        this->flushBarriers();
+      }
 
       // The render pass flag gets reset when the render pass ends, so set it late
-      m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
+      if (m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
+                               DxvkGraphicsPipelineFlag::HasTransformFeedback))
+        m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
     }
 
     // Start the render pass. This must happen before any render state
@@ -7199,6 +7203,7 @@ namespace dxvk {
         // If implicit resolves are required for any of the shader bindings, we need
         // to discard all the state setup that we've done so far and try again
         this->spillRenderPass(true);
+        this->flushBarriers();
         this->flushImplicitResolves();
 
         return this->commitGraphicsState<Indexed, Indirect, false>();
@@ -7223,7 +7228,7 @@ namespace dxvk {
   template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkResourceHazards(
     const DxvkPipelineBindings*     layout) {
-    constexpr bool IsGraphics = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS;
+    constexpr bool IsGraphics = false; // BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS;
 
     // Iterate over all resources that are actively being written by the shader pipeline.
     // On graphics, this must not exit early since extra resource tracking is required.
@@ -8735,8 +8740,8 @@ namespace dxvk {
         range.rangeStart = image.getTrackingAddress(
           subresources.baseMipLevel, subresources.baseArrayLayer);
         range.rangeEnd = image.getTrackingAddress(
-          subresources.baseMipLevel + subresources.levelCount,
-          subresources.baseArrayLayer + subresources.layerCount) - 1u;
+          subresources.baseMipLevel + subresources.levelCount - 1u,
+          subresources.baseArrayLayer + subresources.layerCount - 1u);
 
         if (hasWrite)
           m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -9125,16 +9130,16 @@ namespace dxvk {
     range.rangeStart = image.getTrackingAddress(
       subresources.baseMipLevel, subresources.baseArrayLayer);
     range.rangeEnd = image.getTrackingAddress(
-      subresources.baseMipLevel + subresources.levelCount,
-      subresources.baseArrayLayer + subresources.layerCount) - 1u;
+      subresources.baseMipLevel + subresources.levelCount - 1u,
+      subresources.baseArrayLayer + subresources.layerCount - 1u);
 
     // Probe all subresources first, only check individual mip levels
     // if there are overlaps and if we are checking a subset of array
     // layers of multiple mips.
     bool dirty = m_barrierTracker.findRange(range, access);
 
-    if (!dirty || subresources.levelCount == 1u || subresources.layerCount == layerCount)
-      return dirty;
+    // if (!dirty || subresources.levelCount == 1u || subresources.layerCount == layerCount)
+    //   return dirty;
 
     for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount && !dirty; i++) {
       range.rangeStart = image.getTrackingAddress(i, subresources.baseArrayLayer);
