@@ -52,15 +52,10 @@ namespace dxvk {
     if (unlikely(!IsHardwareCursor() && !IsActiveSoftwareCursor()))
       return m_visible;
 
-    if (IsHardwareCursor()) {
-      // Prevents the win32 cursor from being overwritten with nullptr
-      // in situations when a hardware cursor is set, but not shown.
-      if (!m_visible && !bShow)
-        return m_visible;
+    if (IsHardwareCursor())
       ::SetCursor(bShow ? m_hCursor : nullptr);
-    } else {
+    else
       m_sCursor.DrawCursor = bShow;
-    }
 
     return std::exchange(m_visible, bShow);
   }
