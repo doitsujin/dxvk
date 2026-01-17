@@ -53,10 +53,11 @@ namespace dxvk {
       return m_visible;
 
     if (IsHardwareCursor()) {
-      // Prevents the win32 cursor from being overwritten with nullptr
-      // in situations when a hardware cursor is set, but not shown.
-      if (!m_visible && !bShow)
-        return m_visible;
+      // We shouldn't technically override the Win32 cursor if our hardware cursor
+      // is already hidden, however that introduces various issues with overlay use,
+      // as on window refocus we're at times expected to hide the Win32 cursor they
+      // make visible. The Big Secret of a Small Town relies on us not doing this, but
+      // is broken in other ways, pertaining to how Win32 and D3D share cursor bitmaps.
       ::SetCursor(bShow ? m_hCursor : nullptr);
     } else {
       m_sCursor.DrawCursor = bShow;
