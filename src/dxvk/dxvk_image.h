@@ -543,7 +543,11 @@ namespace dxvk {
      * \returns A compatible image layout
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
+      if (m_unifiedLayout)
+          return VK_IMAGE_LAYOUT_GENERAL;
+
       if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
+
         if (layout != VK_IMAGE_LAYOUT_GENERAL
          && layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
          && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
@@ -559,7 +563,8 @@ namespace dxvk {
      * \param [in] layout New layout
      */
     void setLayout(VkImageLayout layout) {
-      m_info.layout = layout;
+      if (!m_unifiedLayout)
+        m_info.layout = layout;
     }
 
     /**
@@ -828,8 +833,9 @@ namespace dxvk {
     DxvkImageCreateInfo         m_info        = { };
 
     uint32_t                    m_version     = 0u;
-    VkBool32                    m_shared      = VK_FALSE;
-    VkBool32                    m_stableAddress = VK_FALSE;
+    bool                        m_shared      = false;
+    bool                        m_stableAddress = false;
+    bool                        m_unifiedLayout = false;
 
     Rc<DxvkKeyedMutex>          m_mutex       = nullptr;
 
