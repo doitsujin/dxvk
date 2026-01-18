@@ -227,7 +227,7 @@ namespace dxvk {
   void DxvkContext::changeImageLayout(
     const Rc<DxvkImage>&        image,
           VkImageLayout         layout) {
-    if (image->info().layout != layout) {
+    if (image->info().layout != image->pickLayout(layout)) {
       this->spillRenderPass(true);
 
       DxvkResourceAccess access(*image, image->getAvailableSubresources(),
@@ -5425,6 +5425,15 @@ namespace dxvk {
         colorInfoCount = i + 1;
 
         hasMipmappedRt |= colorTarget.view->image()->info().mipLevels > 1u;
+
+        if (colorTarget.view->info().layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
+         && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
+          auto& feedbackLoopInfo = m_state.om.renderingInfo.colorFeedbackLoop[i];
+          feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+          feedbackLoopInfo.feedbackLoopEnable = true;
+
+          colorInfo.pNext = &feedbackLoopInfo;
+        }
       }
     }
 
@@ -5457,6 +5466,15 @@ namespace dxvk {
       }
 
       renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
+
+      if (depthTarget.view->info().layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
+        && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
+        auto& feedbackLoopInfo = m_state.om.renderingInfo.depthStencilFeedbackLoop;
+        feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+        feedbackLoopInfo.feedbackLoopEnable = true;
+
+        depthInfo.pNext = &feedbackLoopInfo;
+      }
     }
 
     auto& stencilInfo = m_state.om.renderingInfo.stencil;

@@ -127,6 +127,10 @@ namespace dxvk {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
+    m_unifiedLayout = device->features().khrUnifiedImageLayouts.unifiedImageLayouts;
+
+    if (m_unifiedLayout)
+      m_info.layout = VK_IMAGE_LAYOUT_GENERAL;
 
     // Assign debug name to image
     if (device->debugFlags().test(DxvkDebugFlag::Capture)) {
@@ -369,7 +373,7 @@ namespace dxvk {
     m_info.stages |= usageInfo.stages;
     m_info.access |= usageInfo.access;
 
-    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED) {
+    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED && !m_unifiedLayout) {
       m_info.layout = usageInfo.layout;
       invalidateViews = true;
     }
