@@ -3086,6 +3086,7 @@ namespace dxvk {
   void DxvkContext::beginRenderPassDebugRegion() {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
+    bool hasFeedbackLoop = false;
     bool hasColorAttachments = false;
     bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
 
@@ -3112,6 +3113,9 @@ namespace dxvk {
 
         hasColorAttachments = true;
         sampleCount = m_state.om.renderTargets.color[i].view->image()->info().sampleCount;
+
+        hasFeedbackLoop = hasFeedbackLoop ||
+          (m_state.om.renderTargets.color[i].view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       }
     }
 
@@ -3123,6 +3127,9 @@ namespace dxvk {
       label << "DS:" << (imageName ? imageName : "unknown");
 
       sampleCount = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
+
+      hasFeedbackLoop = hasFeedbackLoop ||
+        (m_state.om.renderTargets.depth.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
     }
 
     if (!hasColorAttachments && !hasDepthAttachment)
@@ -3134,6 +3141,9 @@ namespace dxvk {
     label << ")";
 
     uint32_t color = sampleCount > VK_SAMPLE_COUNT_1_BIT ? 0xf0dcf0 : 0xf0e6dc;
+
+    if (hasFeedbackLoop)
+      color = 0xdceff0;
 
     pushDebugRegion(vk::makeLabel(color, label.str().c_str()),
       util::DxvkDebugLabelType::InternalRenderPass);
