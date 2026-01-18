@@ -1135,8 +1135,6 @@ namespace dxvk {
 
     void ResolveZ();
 
-    void TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout);
-
     void TransformImage(
             D3D9CommonTexture*       pResource,
       const VkImageSubresourceRange* pSubresources,

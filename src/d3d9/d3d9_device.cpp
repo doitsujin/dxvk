@@ -6645,10 +6645,23 @@ namespace dxvk {
     });
 
     for (uint32_t samplerIdx : bit::BitMask(m_textureSlotTracking.unresolvableHazardRT | m_textureSlotTracking.unresolvableHazardDS)) {
-      // Guaranteed to not be nullptr...
       auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
+
       if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
-        TransitionImage(tex, m_hazardLayout);
+        // Recreate image with feedback loop usage and layout
+        EmitCs([
+          cImage  = tex->GetImage(),
+          cLayout = m_hazardLayout
+        ] (DxvkContext* ctx) mutable {
+          DxvkImageUsageInfo usage = { };
+          usage.layout = cLayout;
+
+          if (cLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)
+            usage.usage = VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+          ctx->ensureImageCompatibility(std::move(cImage), usage);
+        });
+
         m_dirty.set(D3D9DeviceDirtyFlag::Framebuffer);
       }
     }
@@ -8659,17 +8672,6 @@ namespace dxvk {
     }
 
     dstTextureInfo->MarkAllNeedReadback();
-  }
-
-
-  void D3D9DeviceEx::TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout) {
-    EmitCs([
-      cImage        = pResource->GetImage(),
-      cNewLayout    = NewLayout
-    ] (DxvkContext* ctx) {
-      ctx->changeImageLayout(
-        cImage, cNewLayout);
-    });
   }
 
 
