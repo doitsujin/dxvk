@@ -913,12 +913,6 @@ namespace dxvk {
     if (Usage & VK_IMAGE_USAGE_STORAGE_BIT)
       return VK_IMAGE_LAYOUT_GENERAL;
 
-    // Also use GENERAL if the image cannot be rendered to. This
-    // should not harm any hardware in practice and may avoid some
-    // redundant layout transitions for regular textures.
-    if (!(Usage & ~VK_IMAGE_USAGE_SAMPLED_BIT))
-      return VK_IMAGE_LAYOUT_GENERAL;
-
     // If the image is used only as an attachment, we never
     // have to transform the image back to a different layout.
     if (Usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
