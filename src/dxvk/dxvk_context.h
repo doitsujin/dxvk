@@ -2123,6 +2123,9 @@ namespace dxvk {
             bool                      discard,
             DxvkAccess                access);
 
+    bool prepareOutOfOrderTransition(
+            DxvkImage&                image);
+
     template<VkPipelineBindPoint BindPoint, typename Pred>
     bool checkResourceBarrier(
       const Pred&                     pred,
