@@ -1645,6 +1645,8 @@ namespace dxvk {
 
     void releaseRenderTargets();
 
+    bool renderPassStartUnsynchronized();
+
     void renderPassBindFramebuffer(
       const DxvkFramebufferInfo&  framebufferInfo,
             DxvkRenderPassOps&    ops);
