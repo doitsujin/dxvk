@@ -13,11 +13,11 @@ namespace dxvk {
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device      (device),
     m_common      (&device->m_objects),
-    m_sdmaAcquires(DxvkCmdBuffer::SdmaBarriers),
-    m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
-    m_initAcquires(DxvkCmdBuffer::InitBarriers),
-    m_initBarriers(DxvkCmdBuffer::InitBuffer),
-    m_execBarriers(DxvkCmdBuffer::ExecBuffer),
+    m_sdmaAcquires(*device, DxvkCmdBuffer::SdmaBarriers),
+    m_sdmaBarriers(*device, DxvkCmdBuffer::SdmaBuffer),
+    m_initAcquires(*device, DxvkCmdBuffer::InitBarriers),
+    m_initBarriers(*device, DxvkCmdBuffer::InitBuffer),
+    m_execBarriers(*device, DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_descriptorWorker(device),
     m_implicitResolves(device) {
@@ -220,23 +220,6 @@ namespace dxvk {
     } else {
       this->blitImageHw(dstView, dstOffsets,
         srcView, srcOffsets, filter);
-    }
-  }
-
-
-  void DxvkContext::changeImageLayout(
-    const Rc<DxvkImage>&        image,
-          VkImageLayout         layout) {
-    if (image->info().layout != layout) {
-      this->spillRenderPass(true);
-
-      DxvkResourceAccess access(*image, image->getAvailableSubresources(),
-        layout, image->info().stages, image->info().access, false);
-
-      DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
-      acquireResources(cmdBuffer, 1u, &access);
-
-      image->setLayout(layout);
     }
   }
 
@@ -3103,6 +3086,7 @@ namespace dxvk {
   void DxvkContext::beginRenderPassDebugRegion() {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
+    bool hasFeedbackLoop = false;
     bool hasColorAttachments = false;
     bool hasDepthAttachment = m_state.om.renderTargets.depth.view != nullptr;
 
@@ -3129,6 +3113,9 @@ namespace dxvk {
 
         hasColorAttachments = true;
         sampleCount = m_state.om.renderTargets.color[i].view->image()->info().sampleCount;
+
+        hasFeedbackLoop = hasFeedbackLoop ||
+          (m_state.om.renderTargets.color[i].view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
       }
     }
 
@@ -3140,6 +3127,9 @@ namespace dxvk {
       label << "DS:" << (imageName ? imageName : "unknown");
 
       sampleCount = m_state.om.renderTargets.depth.view->image()->info().sampleCount;
+
+      hasFeedbackLoop = hasFeedbackLoop ||
+        (m_state.om.renderTargets.depth.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
     }
 
     if (!hasColorAttachments && !hasDepthAttachment)
@@ -3151,6 +3141,9 @@ namespace dxvk {
     label << ")";
 
     uint32_t color = sampleCount > VK_SAMPLE_COUNT_1_BIT ? 0xf0dcf0 : 0xf0e6dc;
+
+    if (hasFeedbackLoop)
+      color = 0xdceff0;
 
     pushDebugRegion(vk::makeLabel(color, label.str().c_str()),
       util::DxvkDebugLabelType::InternalRenderPass);
@@ -5425,6 +5418,15 @@ namespace dxvk {
         colorInfoCount = i + 1;
 
         hasMipmappedRt |= colorTarget.view->image()->info().mipLevels > 1u;
+
+        if ((colorTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+         && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
+          auto& feedbackLoopInfo = m_state.om.renderingInfo.colorFeedbackLoop[i];
+          feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+          feedbackLoopInfo.feedbackLoopEnable = true;
+
+          colorInfo.pNext = &feedbackLoopInfo;
+        }
       }
     }
 
@@ -5457,6 +5459,15 @@ namespace dxvk {
       }
 
       renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
+
+      if ((depthTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+       && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
+        auto& feedbackLoopInfo = m_state.om.renderingInfo.depthStencilFeedbackLoop;
+        feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+        feedbackLoopInfo.feedbackLoopEnable = true;
+
+        depthInfo.pNext = &feedbackLoopInfo;
+      }
     }
 
     auto& stencilInfo = m_state.om.renderingInfo.stencil;
@@ -8732,11 +8743,11 @@ namespace dxvk {
       range.accessOp = accessOp;
 
       if (subresources.levelCount == 1u || subresources.layerCount == layerCount) {
-        range.rangeStart = image.getTrackingAddress(
+        range.rangeStart = image.getSubresourceStartAddress(
           subresources.baseMipLevel, subresources.baseArrayLayer);
-        range.rangeEnd = image.getTrackingAddress(
-          subresources.baseMipLevel + subresources.levelCount,
-          subresources.baseArrayLayer + subresources.layerCount) - 1u;
+        range.rangeEnd = image.getSubresourceEndAddress(
+          subresources.baseMipLevel + subresources.levelCount - 1u,
+          subresources.baseArrayLayer + subresources.layerCount - 1u);
 
         if (hasWrite)
           m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -8744,8 +8755,8 @@ namespace dxvk {
           m_barrierTracker.insertRange(range, DxvkAccess::Read);
       } else {
         for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount; i++) {
-          range.rangeStart = image.getTrackingAddress(i, subresources.baseArrayLayer);
-          range.rangeEnd = image.getTrackingAddress(i, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+          range.rangeStart = image.getSubresourceStartAddress(i, subresources.baseArrayLayer);
+          range.rangeEnd = image.getSubresourceEndAddress(i, subresources.baseArrayLayer + subresources.layerCount - 1u);
 
           if (hasWrite)
             m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -8815,8 +8826,8 @@ namespace dxvk {
       range.accessOp = accessOp;
 
       if (extent == image.mipLevelExtent(subresources.mipLevel)) {
-        range.rangeStart = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer);
-        range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+        range.rangeStart = image.getSubresourceStartAddress(subresources.mipLevel, subresources.baseArrayLayer);
+        range.rangeEnd = image.getSubresourceEndAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount - 1u);
 
         if (hasWrite)
           m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -8829,8 +8840,8 @@ namespace dxvk {
         maxCoord.z += extent.depth - 1u;
 
         for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
-          range.rangeStart = image.getTrackingAddress(subresources.mipLevel, i, offset);
-          range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, i, maxCoord);
+          range.rangeStart = image.getSubresourceAddressAt(subresources.mipLevel, i, offset);
+          range.rangeEnd = image.getSubresourceAddressAt(subresources.mipLevel, i, maxCoord);
 
           if (hasWrite)
             m_barrierTracker.insertRange(range, DxvkAccess::Write);
@@ -9122,11 +9133,11 @@ namespace dxvk {
     DxvkAddressRange range;
     range.resource = image.getResourceId();
     range.accessOp = accessOp;
-    range.rangeStart = image.getTrackingAddress(
+    range.rangeStart = image.getSubresourceStartAddress(
       subresources.baseMipLevel, subresources.baseArrayLayer);
-    range.rangeEnd = image.getTrackingAddress(
-      subresources.baseMipLevel + subresources.levelCount,
-      subresources.baseArrayLayer + subresources.layerCount) - 1u;
+    range.rangeEnd = image.getSubresourceEndAddress(
+      subresources.baseMipLevel + subresources.levelCount - 1u,
+      subresources.baseArrayLayer + subresources.layerCount - 1u);
 
     // Probe all subresources first, only check individual mip levels
     // if there are overlaps and if we are checking a subset of array
@@ -9137,8 +9148,8 @@ namespace dxvk {
       return dirty;
 
     for (uint32_t i = subresources.baseMipLevel; i < subresources.baseMipLevel + subresources.levelCount && !dirty; i++) {
-      range.rangeStart = image.getTrackingAddress(i, subresources.baseArrayLayer);
-      range.rangeEnd = image.getTrackingAddress(i, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+      range.rangeStart = image.getSubresourceStartAddress(i, subresources.baseArrayLayer);
+      range.rangeEnd = image.getSubresourceEndAddress(i, subresources.baseArrayLayer + subresources.layerCount - 1u);
 
       dirty = m_barrierTracker.findRange(range, access);
     }
@@ -9164,8 +9175,8 @@ namespace dxvk {
     bool isFullSize = image.mipLevelExtent(subresources.mipLevel) == extent;
 
     if (subresources.layerCount > 1u || isFullSize) {
-      range.rangeStart = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer);
-      range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount) - 1u;
+      range.rangeStart = image.getSubresourceStartAddress(subresources.mipLevel, subresources.baseArrayLayer);
+      range.rangeEnd = image.getSubresourceEndAddress(subresources.mipLevel, subresources.baseArrayLayer + subresources.layerCount - 1u);
 
       bool dirty = m_barrierTracker.findRange(range, access);
 
@@ -9180,8 +9191,8 @@ namespace dxvk {
     maxCoord.z += extent.depth - 1u;
 
     for (uint32_t i = subresources.baseArrayLayer; i < subresources.baseArrayLayer + subresources.layerCount; i++) {
-      range.rangeStart = image.getTrackingAddress(subresources.mipLevel, i, offset);
-      range.rangeEnd = image.getTrackingAddress(subresources.mipLevel, i, maxCoord);
+      range.rangeStart = image.getSubresourceAddressAt(subresources.mipLevel, i, offset);
+      range.rangeEnd = image.getSubresourceAddressAt(subresources.mipLevel, i, maxCoord);
 
       if (m_barrierTracker.findRange(range, access))
         return true;

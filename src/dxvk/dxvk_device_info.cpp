@@ -57,6 +57,7 @@ namespace dxvk {
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMaintenance1);          \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
+    HANDLE_EXT(khrUnifiedImageLayouts);            \
     HANDLE_EXT(khrWin32KeyedMutex);                \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
@@ -474,6 +475,10 @@ namespace dxvk {
       if (!enableDescriptorBuffer)
         m_featuresSupported.extDescriptorBuffer.descriptorBuffer = VK_FALSE;
     }
+
+    // Disable unified layouts if disabled via config
+    if (!instance.options().enableUnifiedImageLayout)
+      m_featuresSupported.khrUnifiedImageLayouts.unifiedImageLayouts = VK_FALSE;
 
     if (env::is32BitHostPlatform()) {
       // CUDA interop is unnecessary on 32-bit, no games use it
@@ -948,6 +953,9 @@ namespace dxvk {
 
       /* Mutable format used to change srgb-ness of swapchain views */
       ENABLE_EXT(khrSwapchainMutableFormat, false),
+
+      /* Use GENERAL layout for everything */
+      ENABLE_EXT_FEATURE(khrUnifiedImageLayouts, unifiedImageLayouts, false),
 
       /* Keyed mutex support in wine */
       ENABLE_EXT(khrWin32KeyedMutex, false),

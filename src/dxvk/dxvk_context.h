@@ -419,18 +419,6 @@ namespace dxvk {
             VkFilter              filter);
     
     /**
-     * \brief Changes image layout
-     * 
-     * Permanently changes the layout for a given
-     * image. Immediately performs the transition.
-     * \param [in] image The image to transition
-     * \param [in] layout New image layout
-     */
-    void changeImageLayout(
-      const Rc<DxvkImage>&        image,
-            VkImageLayout         layout);
-    
-    /**
      * \brief Clears a buffer with a fixed value
      * 
      * Note that both \c offset and \c length must

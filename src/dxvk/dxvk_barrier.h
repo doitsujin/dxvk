@@ -301,7 +301,7 @@ namespace dxvk {
 
   public:
 
-    DxvkBarrierBatch(DxvkCmdBuffer cmdBuffer);
+    DxvkBarrierBatch(const DxvkDevice& device, DxvkCmdBuffer cmdBuffer);
     ~DxvkBarrierBatch();
 
     /**
@@ -371,6 +371,8 @@ namespace dxvk {
 
     VkPipelineStageFlags2 m_hostSrcStages = 0u;
     VkAccessFlags2        m_hostDstAccess = 0u;
+
+    bool                  m_keepImageBarriers = false;
 
     std::vector<VkImageMemoryBarrier2> m_imageBarriers = { };
 

@@ -543,6 +543,9 @@ namespace dxvk {
      * \returns A compatible image layout
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
+      if (m_unifiedLayoutEnabled)
+          return VK_IMAGE_LAYOUT_GENERAL;
+
       if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
         if (layout != VK_IMAGE_LAYOUT_GENERAL
          && layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
@@ -550,8 +553,8 @@ namespace dxvk {
           return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
       }
 
-      return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
-        ? VK_IMAGE_LAYOUT_GENERAL : layout;
+      return likely(m_info.tiling == VK_IMAGE_TILING_OPTIMAL)
+        ? layout : VK_IMAGE_LAYOUT_GENERAL;
     }
 
     /**
@@ -559,7 +562,8 @@ namespace dxvk {
      * \param [in] layout New layout
      */
     void setLayout(VkImageLayout layout) {
-      m_info.layout = layout;
+      if (!m_unifiedLayoutEnabled)
+        m_info.layout = layout;
     }
 
     /**
@@ -728,10 +732,20 @@ namespace dxvk {
      * \param [in] mip Mip level index
      * \param [in] layer Array layer index
      */
-    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer) const {
+    uint64_t getSubresourceStartAddress(uint32_t mip, uint32_t layer) const {
       // Put layers within the same mip into a contiguous range. This works well
       // for not only transfer operations but also most image view use cases.
       return uint64_t((m_info.numLayers * mip) + layer) << 48u;
+    }
+
+    /**
+     * \brief Computes virtual offset of the end of a subresource
+     *
+     * \param [in] mip Mip level index
+     * \param [in] layer Array layer index
+     */
+    uint64_t getSubresourceEndAddress(uint32_t mip, uint32_t layer) const {
+      return getSubresourceStartAddress(mip, layer) + (1ull << 48u) - 1ull;
     }
 
     /**
@@ -743,7 +757,7 @@ namespace dxvk {
      * \param [in] layer Array layer index
      * \param [in] coord Pixel coordinate within the subresource
      */
-    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const;
+    uint64_t getSubresourceAddressAt(uint32_t mip, uint32_t layer, VkOffset3D coord) const;
 
     /**
      * \brief Creates or retrieves an image view
@@ -828,8 +842,11 @@ namespace dxvk {
     DxvkImageCreateInfo         m_info        = { };
 
     uint32_t                    m_version     = 0u;
-    VkBool32                    m_shared      = VK_FALSE;
-    VkBool32                    m_stableAddress = VK_FALSE;
+    bool                        m_shared      = false;
+    bool                        m_stableAddress = false;
+
+    bool                        m_unifiedLayoutEnabled = false;
+    bool                        m_unifiedLayoutAvailable = false;
 
     Rc<DxvkKeyedMutex>          m_mutex       = nullptr;
 
@@ -863,6 +880,8 @@ namespace dxvk {
             DxvkDevice*           device,
       const VkImageCreateInfo&    createInfo,
       const DxvkSharedHandleInfo& sharingInfo) const;
+
+    bool canUseUnifiedLayout(const DxvkDevice& device) const;
 
     uint32_t computeSubresourceIndex(const VkImageSubresource& subresource) const {
       return subresource.arrayLayer
