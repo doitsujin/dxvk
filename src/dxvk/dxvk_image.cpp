@@ -727,6 +727,14 @@ namespace dxvk {
     if (!(key.usage & ViewUsage))
       return nullptr;
 
+    // If the image has feedback loops enabled, forward the required
+    // usage flags to the view as well.
+    if ((m_image->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+     && (key.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))) {
+      key.usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT
+                |  VK_IMAGE_USAGE_SAMPLED_BIT;
+    }
+
     // Only use one layer for non-arrayed view types
     if (type == VK_IMAGE_VIEW_TYPE_1D || type == VK_IMAGE_VIEW_TYPE_2D)
       key.layerCount = 1u;
