@@ -167,7 +167,9 @@ namespace dxvk {
     // significant overhead, and some games will not work with it enabled.
     std::string debugEnv = env::getEnvVar("DXVK_DEBUG");
 
-    bool capture = debugEnv.empty() && env::getEnvVar("ENABLE_VULKAN_RENDERDOC_CAPTURE") == "1";
+    bool capture = debugEnv.empty() && (
+      env::getEnvVar("ENABLE_VULKAN_RENDERDOC_CAPTURE") == "1" ||
+      env::getEnvVar("MESA_VK_TRACE") != "");
 
     if (debugEnv == "validation")
       m_debugFlags.set(DxvkDebugFlag::Validation);
