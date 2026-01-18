@@ -5303,6 +5303,12 @@ namespace dxvk {
           DxvkRenderPassOps&    ops) {
     m_rtAccess.clear();
 
+    // Try to perform the layout transitions on the init command buffer to avoid
+    // unnecessary synchronization, especially around unsynchronized render passes
+    // with a clear. We can't use the regular prepareOutOfOrderTransfer function
+    // here because that will ignore bound render targets.
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::InitBuffer;
+
     // Transition all images to the render layout as necessary
     const auto& depthAttachment = framebufferInfo.getDepthTarget();
 
@@ -5342,6 +5348,9 @@ namespace dxvk {
         preserveAspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
       m_rtAccess.emplace_back(*depthAttachment.view, depthStages, depthAccess, !preserveAspects);
+
+      if (!prepareOutOfOrderTransition(*depthAttachment.view->image()))
+        cmdBuffer = DxvkCmdBuffer::ExecBuffer;
     }
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
@@ -5362,6 +5371,9 @@ namespace dxvk {
                     || ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
         m_rtAccess.emplace_back(*colorAttachment.view, colorStages, colorAccess, discard);
+
+        if (!prepareOutOfOrderTransition(*colorAttachment.view->image()))
+          cmdBuffer = DxvkCmdBuffer::ExecBuffer;
       }
     }
 
@@ -5371,8 +5383,8 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized))
       flushBarriers();
 
-    // Ignore clears, we should already have processed all of them
-    acquireResources(DxvkCmdBuffer::ExecBuffer, m_rtAccess.size(), m_rtAccess.data(), false);
+    // Ignore clears, we should already have processed all of them.
+    acquireResources(cmdBuffer, m_rtAccess.size(), m_rtAccess.data(), false);
   }
 
 
@@ -9417,6 +9429,14 @@ namespace dxvk {
       access = DxvkAccess::Write;
 
     return !image.isTracked(m_trackingId, access);
+  }
+
+
+  bool DxvkContext::prepareOutOfOrderTransition(
+          DxvkImage&                image) {
+    // Sparse resources can alias, need to ignore.
+    return !(image.isTracked(m_trackingId, DxvkAccess::Write))
+        && !(image.info().flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT);
   }
 
 
