@@ -114,6 +114,7 @@
                 "VK_KHR_present_wait2": 1,
                 "VK_KHR_swapchain_maintenance1": 1,
                 "VK_KHR_swapchain_mutable_format": 1,
+                "VK_KHR_unified_image_layouts": 1,
                 "VK_EXT_border_color_swizzle": 1,
                 "VK_EXT_extended_dynamic_state3": 1,
                 "VK_EXT_line_rasterization": 1,
@@ -156,6 +157,9 @@
                 },
                 "VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT": {
                     "pageableDeviceLocalMemory": true
+                },
+                "VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR": {
+                    "unifiedImageLayouts": true
                 }
             }
         },

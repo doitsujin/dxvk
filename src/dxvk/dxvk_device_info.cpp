@@ -57,6 +57,7 @@ namespace dxvk {
     HANDLE_EXT(khrSwapchain);                      \
     HANDLE_EXT(khrSwapchainMaintenance1);          \
     HANDLE_EXT(khrSwapchainMutableFormat);         \
+    HANDLE_EXT(khrUnifiedImageLayouts);            \
     HANDLE_EXT(khrWin32KeyedMutex);                \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
@@ -948,6 +949,9 @@ namespace dxvk {
 
       /* Mutable format used to change srgb-ness of swapchain views */
       ENABLE_EXT(khrSwapchainMutableFormat, false),
+
+      /* Use GENERAL layout for everything */
+      ENABLE_EXT_FEATURE(khrUnifiedImageLayouts, unifiedImageLayouts, false),
 
       /* Keyed mutex support in wine */
       ENABLE_EXT(khrWin32KeyedMutex, false),
