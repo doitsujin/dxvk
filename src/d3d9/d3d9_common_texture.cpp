@@ -433,8 +433,6 @@ namespace dxvk {
       imageInfo.viewFormats     = m_mapping.Formats;
     }
 
-    const bool hasAttachmentFeedbackLoops =
-      m_device->GetDXVKDevice()->features().extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout;
     const bool isRT = m_desc.Usage & D3DUSAGE_RENDERTARGET;
     const bool isDS = m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
     const bool isAutoGen = m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP;
@@ -457,9 +455,6 @@ namespace dxvk {
       imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
                        |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
-
-    if (ResourceType == D3DRTYPE_TEXTURE && (isRT || isDS) && hasAttachmentFeedbackLoops)
-      imageInfo.usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 
     if (ResourceType == D3DRTYPE_CUBETEXTURE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
