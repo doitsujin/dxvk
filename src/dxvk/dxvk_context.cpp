@@ -3101,12 +3101,12 @@ namespace dxvk {
 
     std::stringstream label;
 
-    if (hasColorAttachments)
+    if (hasColorAttachments == hasDepthAttachment)
+      label << "Render";
+    else if (hasColorAttachments)
       label << "Color";
     else if (hasDepthAttachment)
       label << "Depth";
-    else
-      label << "Render";
 
     label << " pass " << uint32_t(++m_renderPassIndex) << " (";
 
