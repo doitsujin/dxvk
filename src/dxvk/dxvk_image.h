@@ -732,10 +732,20 @@ namespace dxvk {
      * \param [in] mip Mip level index
      * \param [in] layer Array layer index
      */
-    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer) const {
+    uint64_t getSubresourceStartAddress(uint32_t mip, uint32_t layer) const {
       // Put layers within the same mip into a contiguous range. This works well
       // for not only transfer operations but also most image view use cases.
       return uint64_t((m_info.numLayers * mip) + layer) << 48u;
+    }
+
+    /**
+     * \brief Computes virtual offset of the end of a subresource
+     *
+     * \param [in] mip Mip level index
+     * \param [in] layer Array layer index
+     */
+    uint64_t getSubresourceEndAddress(uint32_t mip, uint32_t layer) const {
+      return getSubresourceStartAddress(mip, layer) + (1ull << 48u) - 1ull;
     }
 
     /**
@@ -747,7 +757,7 @@ namespace dxvk {
      * \param [in] layer Array layer index
      * \param [in] coord Pixel coordinate within the subresource
      */
-    uint64_t getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const;
+    uint64_t getSubresourceAddressAt(uint32_t mip, uint32_t layer, VkOffset3D coord) const;
 
     /**
      * \brief Creates or retrieves an image view
