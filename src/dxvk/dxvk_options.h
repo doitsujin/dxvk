@@ -26,6 +26,9 @@ namespace dxvk {
     /// Enable descriptor buffer
     Tristate enableDescriptorBuffer = Tristate::Auto;
 
+    /// Enable unified image layout path
+    bool enableUnifiedImageLayout = true;
+
     /// Enables pipeline lifetime tracking
     Tristate trackPipelineLifetime = Tristate::Auto;
 
