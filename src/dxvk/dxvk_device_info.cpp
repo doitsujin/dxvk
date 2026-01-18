@@ -476,6 +476,10 @@ namespace dxvk {
         m_featuresSupported.extDescriptorBuffer.descriptorBuffer = VK_FALSE;
     }
 
+    // Disable unified layouts if disabled via config
+    if (!instance.options().enableUnifiedImageLayout)
+      m_featuresSupported.khrUnifiedImageLayouts.unifiedImageLayouts = VK_FALSE;
+
     if (env::is32BitHostPlatform()) {
       // CUDA interop is unnecessary on 32-bit, no games use it
       m_featuresSupported.nvxBinaryImport = VK_FALSE;
