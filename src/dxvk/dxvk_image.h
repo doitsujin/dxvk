@@ -547,15 +547,14 @@ namespace dxvk {
           return VK_IMAGE_LAYOUT_GENERAL;
 
       if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
-
         if (layout != VK_IMAGE_LAYOUT_GENERAL
          && layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
          && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
           return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
       }
 
-      return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
-        ? VK_IMAGE_LAYOUT_GENERAL : layout;
+      return likely(m_info.tiling == VK_IMAGE_TILING_OPTIMAL)
+        ? layout : VK_IMAGE_LAYOUT_GENERAL;
     }
 
     /**
