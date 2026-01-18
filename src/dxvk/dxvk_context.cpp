@@ -887,7 +887,8 @@ namespace dxvk {
       m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
       // The count will generally be written from streamout
-      if (likely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+      if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+       || m_state.id.cntBuffer.buffer()->hasGfxStores())
         accessDrawCountBuffer(counterOffset);
     }
   }
@@ -1756,7 +1757,8 @@ namespace dxvk {
           m_cmd->addStatCtr(DxvkStatCounter::CmdDrawsMerged, count - 1u);
         }
 
-        if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+        if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+         || m_state.id.argBuffer.buffer()->hasGfxStores())
           accessDrawBuffer(offset, count, stride, elementSize);
       } else {
         // If the pipeline has order-sensitive stores, submit one
@@ -1773,7 +1775,8 @@ namespace dxvk {
               argInfo.offset + offset, 1u, 0u);
           }
 
-          if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores()))
+          if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+           || m_state.id.argBuffer.buffer()->hasGfxStores())
             accessDrawBuffer(offset, 1u, stride, elementSize);
 
           offset += stride;
@@ -1809,13 +1812,15 @@ namespace dxvk {
 
       m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
-      if (unlikely(m_state.id.argBuffer.buffer()->hasGfxStores())) {
+      if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+       || m_state.id.argBuffer.buffer()->hasGfxStores()) {
         accessDrawBuffer(offset, maxCount, stride, Indexed
           ? sizeof(VkDrawIndexedIndirectCommand)
           : sizeof(VkDrawIndirectCommand));
       }
 
-      if (unlikely(m_state.id.cntBuffer.buffer()->hasGfxStores()))
+      if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+       || m_state.id.cntBuffer.buffer()->hasGfxStores())
         accessDrawCountBuffer(countOffset);
     }
   }
@@ -2380,6 +2385,7 @@ namespace dxvk {
       bool needsNewBackingStorage = (dstImage->info().stages & graphicsStages)
         && dstImage->isTracked(m_trackingId, DxvkAccess::Write);
 
+      // We never make MSAA passes unsynchronized, so this should be fine
       if (needsNewBackingStorage && dstImage->hasGfxStores()) {
         needsNewBackingStorage = resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Read, DxvkAccessOp::None)
                               || resourceHasAccess(*dstImage, dstSubresource, DxvkAccess::Write, DxvkAccessOp::None);
@@ -5234,9 +5240,17 @@ namespace dxvk {
   
   void DxvkContext::spillRenderPass(bool suspend) {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      bool unsynchronized = m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized);
+
+      if (unsynchronized) {
+        // Do not allow any graphics shader hazards across render passes
+        m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
+      }
+
       m_flags.clr(DxvkContextFlag::GpRenderPassBound,
                   DxvkContextFlag::GpRenderPassSideEffects,
-                  DxvkContextFlag::GpRenderPassNeedsFlush);
+                  DxvkContextFlag::GpRenderPassNeedsFlush,
+                  DxvkContextFlag::GpRenderPassUnsynchronized);
 
       this->pauseTransformFeedback();
 
@@ -5251,15 +5265,21 @@ namespace dxvk {
       if (suspend)
         m_flags.set(DxvkContextFlag::GpRenderPassSuspended);
 
-      if (m_renderPassBarrierSrc.stages) {
-        accessMemory(DxvkCmdBuffer::ExecBuffer,
-          m_renderPassBarrierSrc.stages, m_renderPassBarrierSrc.access,
-          m_renderPassBarrierDst.stages, m_renderPassBarrierDst.access);
+      // For unsynchronized passes, we have full barrier tracking info for all
+      // draws that were performed. Otherwise, emit a barrier to prevent hazards
+      // with resources that were not tracked due to perf reasons.
+      if (!unsynchronized) {
+        if (m_renderPassBarrierSrc.stages) {
+          accessMemory(DxvkCmdBuffer::ExecBuffer,
+            m_renderPassBarrierSrc.stages, m_renderPassBarrierSrc.access,
+            m_renderPassBarrierDst.stages, m_renderPassBarrierDst.access);
 
-        m_renderPassBarrierSrc = DxvkGlobalPipelineBarrier();
+          m_renderPassBarrierSrc = DxvkGlobalPipelineBarrier();
+        }
+
+        flushBarriers();
       }
 
-      flushBarriers();
       flushResolves();
 
       if (!suspend)
@@ -5268,11 +5288,8 @@ namespace dxvk {
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalRenderPass);
     } else if (!suspend) {
-      // We may end a previously suspended render pass
-      if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
-        m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
-        flushBarriers();
-      }
+      // We may be ending a previously suspended render pass
+      m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
 
       // Ensure that all shader readable images are ready
       // to be read and in their default layout
@@ -5348,10 +5365,11 @@ namespace dxvk {
       }
     }
 
-    // Unconditionally emit barriers here. We need to do this
-    // even if there are no layout transitions, since we don't
-    // track resource usage during render passes.
-    flushBarriers();
+    // For regularly synchronized render passes, emit barriers here. We need to do this
+    // even if there are no layout transitions, since we don't track resource usage during
+    // render passes.
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized))
+      flushBarriers();
 
     // Ignore clears, we should already have processed all of them
     acquireResources(DxvkCmdBuffer::ExecBuffer, m_rtAccess.size(), m_rtAccess.data(), false);
@@ -5995,22 +6013,24 @@ namespace dxvk {
   }
 
 
-  template<VkPipelineBindPoint BindPoint>
+  template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   bool DxvkContext::updateResourceBindings(const DxvkPipelineBindings* layout) {
     if (m_features.test(DxvkContextFeature::DescriptorBuffer)) {
-      if (!updateDescriptorBufferBindings<BindPoint>(layout))
+      if (!updateDescriptorBufferBindings<BindPoint, AlwaysTrack>(layout))
         return false;
     } else {
-      updateDescriptorSetsBindings<BindPoint>(layout);
+      updateDescriptorSetsBindings<BindPoint, AlwaysTrack>(layout);
     }
 
-    updatePushDataBindings<BindPoint>(layout);
+    updatePushDataBindings<BindPoint, AlwaysTrack>(layout);
     return true;
   }
 
 
-  template<VkPipelineBindPoint BindPoint>
+  template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   void DxvkContext::updateDescriptorSetsBindings(const DxvkPipelineBindings* layout) {
+    constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
+
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
@@ -6059,7 +6079,7 @@ namespace dxvk {
               descriptorInfo.buffer.offset = bufferInfo.offset;
               descriptorInfo.buffer.range = bufferInfo.size;
 
-              trackUniformBufferBinding<BindPoint>(binding, slice);
+              trackUniformBufferBinding<TrackBindings>(binding, slice);
             } else {
               descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
               descriptorInfo.buffer.offset = 0;
@@ -6078,7 +6098,7 @@ namespace dxvk {
                   if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                     descriptorInfo = descriptor->legacy;
 
-                    trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
+                    trackImageViewBinding<TrackBindings, false>(binding, *res.imageView);
                   } else {
                     auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
                     descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
@@ -6102,7 +6122,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
+                  trackImageViewBinding<TrackBindings, true>(binding, *res.imageView);
                 } else {
                   descriptorInfo.image.sampler = VK_NULL_HANDLE;
                   descriptorInfo.image.imageView = VK_NULL_HANDLE;
@@ -6120,7 +6140,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+                  trackBufferViewBinding<TrackBindings, false>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.bufferView = VK_NULL_HANDLE;
                 }
@@ -6136,7 +6156,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+                  trackBufferViewBinding<TrackBindings, true>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.bufferView = VK_NULL_HANDLE;
                 }
@@ -6152,7 +6172,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+                  trackBufferViewBinding<TrackBindings, false>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
                   descriptorInfo.buffer.offset = 0;
@@ -6170,7 +6190,7 @@ namespace dxvk {
                 if (descriptor) {
                   descriptorInfo = descriptor->legacy;
 
-                  trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+                  trackBufferViewBinding<TrackBindings, true>(binding, *res.bufferView);
                 } else {
                   descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
                   descriptorInfo.buffer.offset = 0;
@@ -6220,8 +6240,10 @@ namespace dxvk {
   }
 
 
-  template<VkPipelineBindPoint BindPoint>
+  template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   bool DxvkContext::updateDescriptorBufferBindings(const DxvkPipelineBindings* layout) {
+    constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
+
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
@@ -6285,7 +6307,7 @@ namespace dxvk {
           buffer.descriptorType = uint16_t(binding.getDescriptorType());
 
           if (likely(sliceInfo.size))
-            trackUniformBufferBinding<BindPoint>(binding, slice);
+            trackUniformBufferBinding<TrackBindings>(binding, slice);
         } else {
           const auto& res = m_resources[binding.getResourceIndex()];
 
@@ -6293,7 +6315,7 @@ namespace dxvk {
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
               if (res.imageView && likely(e.descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
-                  trackImageViewBinding<BindPoint, false>(binding, *res.imageView);
+                  trackImageViewBinding<TrackBindings, false>(binding, *res.imageView);
                   break;
                 } else {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
@@ -6310,7 +6332,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
               if (res.imageView && likely(e.descriptors[j] = res.imageView->getDescriptor(binding.getViewType()))) {
-                trackImageViewBinding<BindPoint, true>(binding, *res.imageView);
+                trackImageViewBinding<TrackBindings, true>(binding, *res.imageView);
                 break;
               }
 
@@ -6319,7 +6341,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
               if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(false))) {
-                trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+                trackBufferViewBinding<TrackBindings, false>(binding, *res.bufferView);
                 break;
               }
 
@@ -6328,7 +6350,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
               if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(false))) {
-                trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+                trackBufferViewBinding<TrackBindings, true>(binding, *res.bufferView);
                 break;
               }
 
@@ -6337,7 +6359,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
               if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(true))) {
-                trackBufferViewBinding<BindPoint, false>(binding, *res.bufferView);
+                trackBufferViewBinding<TrackBindings, false>(binding, *res.bufferView);
                 break;
               }
 
@@ -6346,7 +6368,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
               if (res.bufferView && likely(e.descriptors[j] = res.bufferView->getDescriptor(true))) {
-                trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+                trackBufferViewBinding<TrackBindings, true>(binding, *res.bufferView);
                 break;
               }
 
@@ -6383,8 +6405,10 @@ namespace dxvk {
   }
 
 
-  template<VkPipelineBindPoint BindPoint>
+  template<VkPipelineBindPoint BindPoint, bool AlwaysTrack>
   void DxvkContext::updatePushDataBindings(const DxvkPipelineBindings* layout) {
+    constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
+
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
 
     if (m_descriptorState.hasDirtyVas(layout->getNonemptyStageMask())) {
@@ -6405,13 +6429,13 @@ namespace dxvk {
           if (slice.length()) {
             va = slice.getSliceInfo().gpuAddress;
 
-            trackUniformBufferBinding<BindPoint>(binding, slice);
+            trackUniformBufferBinding<TrackBindings>(binding, slice);
           }
         } else {
           if (res.bufferView) {
             va = res.bufferView->getSliceInfo().gpuAddress;
 
-            trackBufferViewBinding<BindPoint, true>(binding, *res.bufferView);
+            trackBufferViewBinding<TrackBindings, true>(binding, *res.bufferView);
           }
         }
 
@@ -6443,7 +6467,7 @@ namespace dxvk {
 
 
   void DxvkContext::updateComputeShaderResources() {
-    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_COMPUTE>(
+    this->updateResourceBindings<VK_PIPELINE_BIND_POINT_COMPUTE, true>(
       m_state.cp.pipeline->getLayout());
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_COMPUTE_BIT);
@@ -6451,7 +6475,19 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsShaderResources() {
-    if (!updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->getLayout()))
+    bool status;
+
+    if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)) {
+      // Enable full resource tracking inside unsynchronized render passes. This
+      // does come at a hefty CPU performance cost, so at least optimize the code
+      // in such a way that we skip all the checks for GFX stores.
+      status = updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS, true>(m_state.gp.pipeline->getLayout());
+    } else {
+      // In regularly synchronized passes, only track resources with GFX stores.
+      status = updateResourceBindings<VK_PIPELINE_BIND_POINT_GRAPHICS, false>(m_state.gp.pipeline->getLayout());
+    }
+
+    if (!status)
       return false;
 
     m_descriptorState.clearStages(VK_SHADER_STAGE_ALL_GRAPHICS);
@@ -6619,7 +6655,8 @@ namespace dxvk {
         bufferInfo.buffer, bufferInfo.offset,
         length, m_state.vi.indexType);
 
-      if (unlikely(m_state.vi.indexBuffer.buffer()->hasGfxStores())) {
+      if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+       || m_state.vi.indexBuffer.buffer()->hasGfxStores()) {
         accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.indexBuffer,
           VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_INDEX_READ_BIT, DxvkAccessOp::None);
       }
@@ -6667,7 +6704,8 @@ namespace dxvk {
           newDynamicStrides &= strides[i] >= m_state.vi.vertexExtents[i];
         }
 
-        if (unlikely(m_state.vi.vertexBuffers[binding].buffer()->hasGfxStores())) {
+        if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
+         || m_state.vi.vertexBuffers[binding].buffer()->hasGfxStores()) {
           accessBuffer(DxvkCmdBuffer::ExecBuffer, m_state.vi.vertexBuffers[binding],
             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, DxvkAccessOp::None);
         }
@@ -7123,8 +7161,10 @@ namespace dxvk {
       // edge case that it's likely irrelevant in practice.
       if (m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
                       DxvkContextFlag::GpDirtySpecConstants,
-                      DxvkContextFlag::GpDirtyXfbBuffers))
+                      DxvkContextFlag::GpDirtyXfbBuffers)) {
         this->spillRenderPass(true);
+        this->flushBarriers();
+      }
     }
 
     // If a depth-stencil image is bound used with non-default sample locations,
@@ -7148,7 +7188,8 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)
+    if (m_flags.any(DxvkContextFlag::GpRenderPassSideEffects,
+                    DxvkContextFlag::GpRenderPassUnsynchronized)
      || m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
                              DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
       // If either the current pipeline has side effects or if there are pending
@@ -7156,11 +7197,19 @@ namespace dxvk {
       // resources written for the first time, but does not emit any barriers
       // on its own so calling this outside a render pass is safe. This also
       // implicitly dirties all state for which we need to track resource access.
-      if (this->checkGraphicsHazards<Indexed, Indirect>())
+      //
+      // If the render pass is currently unsynchronized, we need to manually
+      // flush barriers afterwards. We will have done full resource tracking,
+      // so skipping the global barrier is still fine in that case.
+      if (this->checkGraphicsHazards<Indexed, Indirect>()) {
         this->spillRenderPass(true);
+        this->flushBarriers();
+      }
 
       // The render pass flag gets reset when the render pass ends, so set it late
-      m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
+      if (m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
+                               DxvkGraphicsPipelineFlag::HasTransformFeedback))
+        m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
     }
 
     // Start the render pass. This must happen before any render state
@@ -7234,7 +7283,11 @@ namespace dxvk {
   template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::checkResourceHazards(
     const DxvkPipelineBindings*     layout) {
-    constexpr bool IsGraphics = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS;
+    // For performance reasons, we generall want to skip tracking resources that are
+    // not written from any graphics shaders, but in unsynchronized passes we have
+    // to check everything anyway.
+    bool checkEverything = BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE
+      || m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized);
 
     // Iterate over all resources that are actively being written by the shader pipeline.
     // On graphics, this must not exit early since extra resource tracking is required.
@@ -7251,7 +7304,7 @@ namespace dxvk {
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
               if (slot.bufferView) {
-                if (!IsGraphics || slot.bufferView->buffer()->hasGfxStores()) {
+                if (checkEverything || slot.bufferView->buffer()->hasGfxStores()) {
                   requiresBarrier = requiresBarrier || checkBufferViewBarrier<BindPoint>(
                     slot.bufferView, binding.getAccess(), binding.getAccessOp());
                 } else {
@@ -7262,7 +7315,7 @@ namespace dxvk {
 
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
               if (slot.imageView) {
-                if (!IsGraphics || slot.imageView->hasGfxStores()) {
+                if (checkEverything || slot.imageView->hasGfxStores()) {
                   requiresBarrier = requiresBarrier || checkImageViewBarrier<BindPoint>(
                     slot.imageView, binding.getAccess(), binding.getAccessOp());
                 } else {
@@ -7276,20 +7329,17 @@ namespace dxvk {
           }
 
           // On compute, we may exit immediately since no additional tracking is required.
-          if (!IsGraphics && requiresBarrier)
+          if (checkEverything && requiresBarrier)
             return true;
         }
 
-        // Once we've processed all written resources, we can exit on graphics as well
-        if (IsGraphics && requiresBarrier)
+        // Once we've processed all written resources, we can exit on graphics as well.
+        // If we ever transition an unsynchronized pass to a synchronized pass, we will
+        // have to issue a barrier since we may have skipped per-resource store tracking.
+        if (!checkEverything && requiresBarrier)
           return true;
       }
     }
-
-    // For graphics, if we are not currently inside a render pass, we'll
-    // issue a barrier anyway so checking hazards is not meaningful.
-    if (IsGraphics && (!m_flags.test(DxvkContextFlag::GpRenderPassBound)))
-      return true;
 
     // For read-only resources, it is sufficient to check dirty bindings since
     // any resource previously bound as read-only cannot have been written by
@@ -7313,7 +7363,7 @@ namespace dxvk {
             if (binding.isUniformBuffer()) {
               const auto& slot = m_uniformBuffers[binding.getResourceIndex()];
 
-              if (slot.length() && (!IsGraphics || slot.buffer()->hasGfxStores())) {
+              if (slot.length() && (checkEverything || slot.buffer()->hasGfxStores())) {
                 if (checkBufferBarrier<BindPoint>(slot, binding.getAccess(), DxvkAccessOp::None))
                   return true;
               }
@@ -7325,7 +7375,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
             const auto& slot = m_resources[binding.getResourceIndex()];
 
-            if (slot.bufferView && (!IsGraphics || slot.bufferView->buffer()->hasGfxStores())) {
+            if (slot.bufferView && (checkEverything || slot.bufferView->buffer()->hasGfxStores())) {
               if (checkBufferViewBarrier<BindPoint>(slot.bufferView, binding.getAccess(), DxvkAccessOp::None))
                 return true;
             }
@@ -7335,7 +7385,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
             const auto& slot = m_resources[binding.getResourceIndex()];
 
-            if (slot.imageView && (!IsGraphics || slot.imageView->hasGfxStores())) {
+            if (slot.imageView && (checkEverything || slot.imageView->hasGfxStores())) {
               if (checkImageViewBarrier<BindPoint>(slot.imageView, binding.getAccess(), DxvkAccessOp::None))
                 return true;
             }
@@ -7371,6 +7421,16 @@ namespace dxvk {
 
   template<bool Indexed, bool Indirect>
   bool DxvkContext::checkGraphicsHazards() {
+    // If the current pipeline does not have any stores, we only need to iterate
+    // over all resources if any stores are in the current barrier set. If the
+    // render pass has side effects, we know that there are writes already.
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassSideEffects)
+     && !m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
+                              DxvkGraphicsPipelineFlag::HasTransformFeedback)
+     && !m_execBarriers.hasLayoutTransitions()
+     && !m_execBarriers.hasPendingAccess(vk::AccessWriteMask))
+      return false;
+
     // Check shader resources on every draw to handle WAW hazards, and to make
     // sure that writes are handled properly. Checking dirty sets is sufficient
     // since we will unconditionally iterate over writable resources anyway.
@@ -7405,6 +7465,8 @@ namespace dxvk {
     if (requiresBarrier)
       return true;
 
+    bool unsynchronizedPass = m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized);
+
     // Check the draw buffer for indirect draw calls
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect) {
       std::array<DxvkBufferSlice*, 2> slices = {{
@@ -7413,7 +7475,7 @@ namespace dxvk {
       }};
 
       for (uint32_t i = 0; i < slices.size(); i++) {
-        if (slices[i]->length() && slices[i]->buffer()->hasGfxStores()) {
+        if (slices[i]->length() && (unsynchronizedPass || slices[i]->buffer()->hasGfxStores())) {
           if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(*slices[i],
               VK_ACCESS_INDIRECT_COMMAND_READ_BIT, DxvkAccessOp::None))
             return true;
@@ -7426,7 +7488,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
       const auto& indexBufferSlice = m_state.vi.indexBuffer;
 
-      if (indexBufferSlice.length() && indexBufferSlice.buffer()->hasGfxStores()) {
+      if (indexBufferSlice.length() && (unsynchronizedPass || indexBufferSlice.buffer()->hasGfxStores())) {
         if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(indexBufferSlice,
             VK_ACCESS_INDEX_READ_BIT, DxvkAccessOp::None))
           return true;
@@ -7441,7 +7503,7 @@ namespace dxvk {
         uint32_t binding = m_state.gp.state.ilBindings[i].binding();
         const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
 
-        if (vertexBufferSlice.length() && vertexBufferSlice.buffer()->hasGfxStores()) {
+        if (vertexBufferSlice.length() && (unsynchronizedPass || vertexBufferSlice.buffer()->hasGfxStores())) {
           if (checkBufferBarrier<VK_PIPELINE_BIND_POINT_GRAPHICS>(vertexBufferSlice,
               VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, DxvkAccessOp::None))
             return true;
@@ -8413,6 +8475,8 @@ namespace dxvk {
     // more granular for tilers as necessary. When changing this, we will
     // also need to ensure that we don't keep destroyed images alive.
     if (!m_nonDefaultLayoutImages.empty()) {
+      flushBarriers();
+
       restoreImageLayouts([] (DxvkImage& image) {
         return true;
       }, renderPass);
