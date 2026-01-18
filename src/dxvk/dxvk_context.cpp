@@ -13,11 +13,11 @@ namespace dxvk {
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device      (device),
     m_common      (&device->m_objects),
-    m_sdmaAcquires(DxvkCmdBuffer::SdmaBarriers),
-    m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
-    m_initAcquires(DxvkCmdBuffer::InitBarriers),
-    m_initBarriers(DxvkCmdBuffer::InitBuffer),
-    m_execBarriers(DxvkCmdBuffer::ExecBuffer),
+    m_sdmaAcquires(*device, DxvkCmdBuffer::SdmaBarriers),
+    m_sdmaBarriers(*device, DxvkCmdBuffer::SdmaBuffer),
+    m_initAcquires(*device, DxvkCmdBuffer::InitBarriers),
+    m_initBarriers(*device, DxvkCmdBuffer::InitBuffer),
+    m_execBarriers(*device, DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_descriptorWorker(device),
     m_implicitResolves(device) {

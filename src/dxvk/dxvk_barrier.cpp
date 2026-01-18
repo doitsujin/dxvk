@@ -1,4 +1,5 @@
 #include "dxvk_barrier.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
   
@@ -431,8 +432,8 @@ namespace dxvk {
 
 
 
-  DxvkBarrierBatch::DxvkBarrierBatch(DxvkCmdBuffer cmdBuffer)
-  : m_cmdBuffer(cmdBuffer) { }
+  DxvkBarrierBatch::DxvkBarrierBatch(const DxvkDevice& device, DxvkCmdBuffer cmdBuffer)
+  : m_cmdBuffer(cmdBuffer), m_keepImageBarriers(device.perfHints().preferRenderPassOps) { }
 
 
   DxvkBarrierBatch::~DxvkBarrierBatch() {
@@ -461,7 +462,9 @@ namespace dxvk {
       m_hostDstAccess |= barrier.dstAccessMask & vk::AccessHostMask;
     }
 
-    if (barrier.oldLayout != barrier.newLayout || barrier.srcQueueFamilyIndex != barrier.dstQueueFamilyIndex) {
+    if (barrier.oldLayout != barrier.newLayout
+     || barrier.srcQueueFamilyIndex != barrier.dstQueueFamilyIndex
+     || m_keepImageBarriers) {
       auto& entry = m_imageBarriers.emplace_back(barrier);
 
       entry.srcStageMask &= vk::StageDeviceMask;
