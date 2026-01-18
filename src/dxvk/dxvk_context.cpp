@@ -5426,7 +5426,7 @@ namespace dxvk {
 
         hasMipmappedRt |= colorTarget.view->image()->info().mipLevels > 1u;
 
-        if (colorTarget.view->info().layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
+        if ((colorTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
          && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
           auto& feedbackLoopInfo = m_state.om.renderingInfo.colorFeedbackLoop[i];
           feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
@@ -5467,8 +5467,8 @@ namespace dxvk {
 
       renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
 
-      if (depthTarget.view->info().layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
-        && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
+      if ((depthTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+       && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
         auto& feedbackLoopInfo = m_state.om.renderingInfo.depthStencilFeedbackLoop;
         feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
         feedbackLoopInfo.feedbackLoopEnable = true;
