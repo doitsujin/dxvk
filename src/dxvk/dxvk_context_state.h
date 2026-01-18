@@ -29,6 +29,7 @@ namespace dxvk {
     GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
     GpRenderPassSideEffects,    ///< Render pass has side effects
     GpRenderPassNeedsFlush,     ///< Render pass has pending resolves or discards
+    GpRenderPassUnsynchronized, ///< Render pass is not fully serialized.
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyRenderTargets,       ///< Bound render targets are out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date

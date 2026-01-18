@@ -363,6 +363,22 @@ namespace dxvk {
       return false;
     }
 
+    /**
+     * \brief Checks whether there are barriers using any of the given access flags
+     * \returns \c true if any barriers use the given source access flags
+     */
+    bool hasPendingAccess(VkAccessFlags2 access) const {
+      if (m_memoryBarrier.srcAccessMask & access)
+        return true;
+
+      for (const auto& b : m_imageBarriers) {
+        if (b.srcAccessMask & access)
+          return true;
+      }
+
+      return false;
+    }
+
   private:
 
     DxvkCmdBuffer         m_cmdBuffer;
