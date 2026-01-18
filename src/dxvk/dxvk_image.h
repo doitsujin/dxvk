@@ -543,7 +543,7 @@ namespace dxvk {
      * \returns A compatible image layout
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
-      if (m_unifiedLayout)
+      if (m_unifiedLayoutEnabled)
           return VK_IMAGE_LAYOUT_GENERAL;
 
       if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
@@ -563,7 +563,7 @@ namespace dxvk {
      * \param [in] layout New layout
      */
     void setLayout(VkImageLayout layout) {
-      if (!m_unifiedLayout)
+      if (!m_unifiedLayoutEnabled)
         m_info.layout = layout;
     }
 
@@ -835,7 +835,9 @@ namespace dxvk {
     uint32_t                    m_version     = 0u;
     bool                        m_shared      = false;
     bool                        m_stableAddress = false;
-    bool                        m_unifiedLayout = false;
+
+    bool                        m_unifiedLayoutEnabled = false;
+    bool                        m_unifiedLayoutAvailable = false;
 
     Rc<DxvkKeyedMutex>          m_mutex       = nullptr;
 
@@ -869,6 +871,8 @@ namespace dxvk {
             DxvkDevice*           device,
       const VkImageCreateInfo&    createInfo,
       const DxvkSharedHandleInfo& sharingInfo) const;
+
+    bool canUseUnifiedLayout(const DxvkDevice& device) const;
 
     uint32_t computeSubresourceIndex(const VkImageSubresource& subresource) const {
       return subresource.arrayLayer

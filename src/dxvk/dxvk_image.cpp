@@ -127,10 +127,7 @@ namespace dxvk {
     m_allocator->registerResource(this);
 
     copyFormatList(createInfo.viewFormatCount, createInfo.viewFormats);
-    m_unifiedLayout = device->features().khrUnifiedImageLayouts.unifiedImageLayouts;
-
-    if (m_unifiedLayout)
-      m_info.layout = VK_IMAGE_LAYOUT_GENERAL;
+    m_unifiedLayoutAvailable = device->features().khrUnifiedImageLayouts.unifiedImageLayouts;
 
     // Assign debug name to image
     if (device->debugFlags().test(DxvkDebugFlag::Capture)) {
@@ -145,6 +142,13 @@ namespace dxvk {
     // versions of these make little sense to begin with.
     if (lookupFormatInfo(createInfo.format)->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
       m_info.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    // Check whether the unified layout path can be used once
+    // we know all image properties
+    m_unifiedLayoutEnabled = canUseUnifiedLayout(*device);
+
+    if (m_unifiedLayoutEnabled)
+      m_info.layout = VK_IMAGE_LAYOUT_GENERAL;
 
     // Determine whether the image is shareable before creating the resource
     VkImageCreateInfo imageInfo = getImageCreateInfo(DxvkImageUsageInfo());
@@ -373,11 +377,6 @@ namespace dxvk {
     m_info.stages |= usageInfo.stages;
     m_info.access |= usageInfo.access;
 
-    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED && !m_unifiedLayout) {
-      m_info.layout = usageInfo.layout;
-      invalidateViews = true;
-    }
-
     if (usageInfo.colorSpace != VK_COLOR_SPACE_MAX_ENUM_KHR)
       m_info.colorSpace = usageInfo.colorSpace;
 
@@ -389,6 +388,16 @@ namespace dxvk {
     if (!m_viewFormats.empty()) {
       m_info.viewFormatCount = m_viewFormats.size();
       m_info.viewFormats = m_viewFormats.data();
+    }
+
+    // If feedback loops are enabled and the unified layout extension is
+    // not natively supported, we need to disable the unified layout path
+    if (m_info.usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+      m_unifiedLayoutEnabled = m_unifiedLayoutEnabled && m_unifiedLayoutAvailable;
+
+    if (usageInfo.layout != VK_IMAGE_LAYOUT_UNDEFINED && !m_unifiedLayoutEnabled) {
+      m_info.layout = usageInfo.layout;
+      invalidateViews = true;
     }
 
     m_stableAddress |= usageInfo.stableGpuAddress;
@@ -632,6 +641,28 @@ namespace dxvk {
     }
 
     return true;
+  }
+
+
+  bool DxvkImage::canUseUnifiedLayout(const DxvkDevice& device) const {
+    if (m_unifiedLayoutAvailable)
+      return true;
+
+    // Always respect the config option if the extension is not supported
+    if (!device.config().enableUnifiedImageLayout)
+      return false;
+
+    // Speshul case
+    if (m_info.usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
+      return false;
+
+    // On RDNA1/2 we can enable the unified path for everything
+    // that doesn't involve feedback loops or MSAA.
+    if (device.properties().vk12.driverID == VK_DRIVER_ID_MESA_RADV
+     && device.properties().vk13.minSubgroupSize == 32u)
+      return m_info.sampleCount == VK_SAMPLE_COUNT_1_BIT;
+
+    return false;
   }
 
 
