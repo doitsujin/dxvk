@@ -224,23 +224,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::changeImageLayout(
-    const Rc<DxvkImage>&        image,
-          VkImageLayout         layout) {
-    if (image->info().layout != image->pickLayout(layout)) {
-      this->spillRenderPass(true);
-
-      DxvkResourceAccess access(*image, image->getAvailableSubresources(),
-        layout, image->info().stages, image->info().access, false);
-
-      DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
-      acquireResources(cmdBuffer, 1u, &access);
-
-      image->setLayout(layout);
-    }
-  }
-
-
   void DxvkContext::clearBuffer(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset,
