@@ -233,11 +233,11 @@ namespace dxvk {
   }
 
 
-  uint64_t DxvkImage::getTrackingAddress(uint32_t mip, uint32_t layer, VkOffset3D coord) const {
+  uint64_t DxvkImage::getSubresourceAddressAt(uint32_t mip, uint32_t layer, VkOffset3D coord) const {
     // For 2D and 3D images, use morton codes to linearize the address ranges
     // of pixel blocks. This helps reduce false positives in common use cases
     // where the application copies aligned power-of-two blocks around.
-    uint64_t base = getTrackingAddress(mip, layer);
+    uint64_t base = getSubresourceStartAddress(mip, layer);
 
     if (likely(m_info.type == VK_IMAGE_TYPE_2D))
       return base + bit::interleave(coord.x, coord.y);
