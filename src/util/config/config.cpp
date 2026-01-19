@@ -177,7 +177,8 @@ namespace dxvk {
     { R"(\\h2m-mod\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* HMW-Mod - Modern Warfare Remastered        */
+    /* HMW-Mod - Modern Warfare Remastered        *
+     * AMD AGS crash                              */
     { R"(\\hmw-mod\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
