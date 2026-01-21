@@ -658,6 +658,14 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "0402" },
     }} },
+    /* Need for Speed: Most Wanted (2005)         *
+     * Descriptor buffer extension causes         *
+     * crashes on Intel Arc drivers.              */
+    { R"(\\speed\.exe$)", {{
+      { "d3d9.hideIntelGpu",                "False" },
+      { "dxvk.enableDescriptorBuffer",      "False" },
+      { "d3d9.cachedWriteOnlyBuffers",      "True" },
+    }} },
     /* Warhammer: Online                          *
      * Overly bright ground textures on Nvidia    */
     { R"(\\(WAR(-64)?|WARTEST(-64)?)\.exe$)", {{
