@@ -662,7 +662,6 @@ namespace dxvk {
      * Descriptor buffer extension causes         *
      * crashes on Intel Arc drivers.              */
     { R"(\\speed\.exe$)", {{
-      { "d3d9.hideIntelGpu",                "False" },
       { "dxvk.enableDescriptorBuffer",      "False" },
       { "d3d9.cachedWriteOnlyBuffers",      "True" },
     }} },
