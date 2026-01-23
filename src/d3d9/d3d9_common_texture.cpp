@@ -43,8 +43,7 @@ namespace dxvk {
                        (m_mapping.FormatColor == VK_FORMAT_D32_SFLOAT_S8_UINT || m_mapping.FormatColor == VK_FORMAT_D32_SFLOAT);
     m_supportsFetch4 = DetermineFetch4Compatibility();
 
-    const bool createImage = m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH && m_desc.Format != D3D9Format::NULL_FORMAT;
-    if (createImage) {
+    if (TextureUsesImage(&m_desc)) {
       m_image = CreatePrimaryImage(ResourceType, pSharedHandle);
 
       if (unlikely(m_image == nullptr && (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP))) {
@@ -182,7 +181,9 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
-    if (ResourceType == D3DRTYPE_SURFACE) {
+    // We never create an image for SCRATCH, SYSTEMMEM or NULL FMT D3D9 textures, so there's no point in checking
+    // whether the GPU supports the specified sampled count for those.
+    if (ResourceType == D3DRTYPE_SURFACE && TextureUsesImage(pDesc)) {
       D3DMULTISAMPLE_TYPE d3dSampleCount = D3DMULTISAMPLE_TYPE(sampleCount);
       // VK_SAMPLE_COUNT_1_BIT = 1 but the D3D9 equivalent we need is D3DMULTISAMPLE_NONE = 0
       if (d3dSampleCount == D3DMULTISAMPLE_NONMASKABLE)
