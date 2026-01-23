@@ -727,7 +727,6 @@ namespace dxvk {
     /* BlazBlue Centralfiction                    */
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
-      { "d3d9.textureMemory",                  "0" },
     }} },
     /* Limbo                                      */
     { R"(\\limbo\.exe$)", {{
