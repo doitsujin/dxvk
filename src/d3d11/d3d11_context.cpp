@@ -1645,7 +1645,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
-    SetClassInstances<D3D11ShaderType::eDomain>(shader->GetCommonShader(), ppClassInstances, NumClassInstances);
+    SetClassInstances<D3D11ShaderType::eDomain>(
+      shader ? shader->GetCommonShader() : nullptr, ppClassInstances, NumClassInstances);
 
     if (m_state.ds != shader) {
       m_state.ds = shader;
