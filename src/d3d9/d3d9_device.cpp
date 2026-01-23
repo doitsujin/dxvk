@@ -1207,7 +1207,7 @@ namespace dxvk {
                        || dstTexExtent.width > srcTexExtent.width
                        || dstTexExtent.height > srcTexExtent.height;
 
-    dstTexInfo->CreateBuffer(clearDst);
+    dstTexInfo->CreateBuffer(clearDst, dstTexInfo->GetTotalSize());
     DxvkBufferSlice dstBufferSlice      = dstTexInfo->GetBufferSlice(dst->GetSubresource());
     Rc<DxvkImage> srcImage              = srcTexInfo->GetImage();
     const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
@@ -5101,7 +5101,7 @@ namespace dxvk {
 
     if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED || needsReadback)) {
       // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
-      pResource->CreateBuffer(!needsReadback);
+      pResource->CreateBuffer(!needsReadback, pResource->GetTotalSize());
     }
 
     // Don't use MapTexture here to keep the mapped list small while the resource is still locked.

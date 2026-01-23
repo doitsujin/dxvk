@@ -487,9 +487,10 @@ namespace dxvk {
      * \brief Creates a buffer
      * Creates the mapping buffer if necessary
      * \param [in] Initialize Whether to copy over existing data (or clear if there is no data)
+     * \param [in] Size The size of the buffer
      * \returns Whether an allocation happened
      */
-    void CreateBuffer(bool Initialize);
+    void CreateBuffer(bool Initialize, uint32_t Size);
 
     ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
 
