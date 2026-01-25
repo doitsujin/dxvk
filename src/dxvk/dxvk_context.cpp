@@ -1215,22 +1215,19 @@ namespace dxvk {
     if (imageView->info().mipCount <= 1)
       return;
     
-    this->spillRenderPass(true);
-    this->invalidateState();
+    // Check whether we can use the single-pass mip gen compute shader. Its main
+    // advantage is that it does not require any internal synchronization as long
+    // as only a single pass is required to process all mips in the view.
+    bool useCs = filter == VK_FILTER_LINEAR
+      && imageView->image()->info().type == VK_IMAGE_TYPE_2D
+      && imageView->image()->info().sampleCount == VK_SAMPLE_COUNT_1_BIT
+      && m_common->metaMipGen().checkFormatSupport(imageView->info().format);
 
-    // Make sure we can both render to and read from the image
-    VkFormat viewFormat = imageView->info().format;
+    if (useCs) {
+      DxvkImageUsageInfo usageInfo;
+      usageInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
 
-    DxvkImageUsageInfo usageInfo;
-    usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-    usageInfo.viewFormatCount = 1;
-    usageInfo.viewFormats = &viewFormat;
-
-    if (!ensureImageCompatibility(imageView->image(), usageInfo)) {
-      Logger::err(str::format("DxvkContext: generateMipmaps: Unsupported operation:"
-        "\n  view format:  ", imageView->info().format,
-        "\n  image format: ", imageView->image()->info().format));
-      return;
+      useCs = ensureImageCompatibility(imageView->image(), usageInfo);
     }
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
@@ -1240,93 +1237,13 @@ namespace dxvk {
         str::format("Mip gen (", dstName ? dstName : "unknown", ")").c_str()));
     }
 
-    // Create image views, etc.
-    DxvkMetaMipGenViews mipGenerator(imageView);
-    
-    // Common descriptor set properties that we use to
-    // bind the source image view to the fragment shader
-    Rc<DxvkSampler> sampler = createBlitSampler(filter);
-
-    DxvkDescriptorWrite imageDescriptor = { };
-    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-    // Retrieve a compatible pipeline to use for rendering
-    auto resolveMode = filter == VK_FILTER_NEAREST
-      ? DxvkMetaBlitResolveMode::FilterNearest
-      : DxvkMetaBlitResolveMode::FilterLinear;
-
-    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
-      mipGenerator.getSrcViewType(), imageView->info().format,
-      VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, resolveMode);
-
-    for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
-      auto srcView = mipGenerator.getSrcView(i);
-      auto dstView = mipGenerator.getDstView(i);
-
-      imageDescriptor.descriptor = srcView->getDescriptor();
-
-      // Width, height and layer count for the current pass
-      VkExtent3D passExtent = mipGenerator.computePassExtent(i);
-
-      // Set up viewport and scissor rect
-      VkViewport viewport;
-      viewport.x        = 0.0f;
-      viewport.y        = 0.0f;
-      viewport.width    = float(passExtent.width);
-      viewport.height   = float(passExtent.height);
-      viewport.minDepth = 0.0f;
-      viewport.maxDepth = 1.0f;
-
-      VkRect2D scissor;
-      scissor.offset    = { 0, 0 };
-      scissor.extent    = { passExtent.width, passExtent.height };
-
-      // Set up rendering info
-      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-      attachmentInfo.imageView = dstView->handle();
-      attachmentInfo.imageLayout = dstView->getLayout();
-      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-      renderingInfo.renderArea = scissor;
-      renderingInfo.layerCount = passExtent.depth;
-      renderingInfo.colorAttachmentCount = 1;
-      renderingInfo.pColorAttachments = &attachmentInfo;
-
-      // Set up push constants
-      DxvkMetaBlitPushConstants pushConstants = { };
-      pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
-      pushConstants.srcCoord1  = { 1.0f, 1.0f, 1.0f };
-      pushConstants.layerCount = passExtent.depth;
-      pushConstants.sampler = sampler->getDescriptor().samplerIndex;
-
-      // Emit per-subresource barriers
-      small_vector<DxvkResourceAccess, 2u> accessBatch;
-      accessBatch.emplace_back(*srcView, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
-      accessBatch.emplace_back(*dstView,  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
-      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
-
-      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
-
-      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
-
-      m_cmd->cmdSetViewport(1, &viewport);
-      m_cmd->cmdSetScissor(1, &scissor);
-
-      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-        pipeInfo.layout, 1u, &imageDescriptor,
-        sizeof(pushConstants), &pushConstants);
-
-      m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
-      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
-    }
+    if (useCs)
+      generateMipmapsCs(imageView);
+    else
+      generateMipmapsFb(imageView, filter);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
-
-    m_cmd->track(std::move(sampler));
   }
   
   
@@ -4620,6 +4537,242 @@ namespace dxvk {
       if (info.regionCount)
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info);
     }
+  }
+
+
+  void DxvkContext::generateMipmapsFb(
+    const Rc<DxvkImageView>&        imageView,
+          VkFilter                  filter) {
+    this->spillRenderPass(true);
+    this->invalidateState();
+
+    // Make sure we can both render to and read from the image
+    VkFormat viewFormat = imageView->info().format;
+
+    DxvkImageUsageInfo usageInfo;
+    usageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+    usageInfo.viewFormatCount = 1;
+    usageInfo.viewFormats = &viewFormat;
+
+    if (!ensureImageCompatibility(imageView->image(), usageInfo)) {
+      Logger::err(str::format("DxvkContext: generateMipmaps: Unsupported operation:"
+        "\n  view format:  ", imageView->info().format,
+        "\n  image format: ", imageView->image()->info().format));
+      return;
+    }
+
+    // Create image views, etc.
+    DxvkMetaMipGenViews mipGenerator(imageView, VK_PIPELINE_BIND_POINT_GRAPHICS);
+
+    // Common descriptor set properties that we use to
+    // bind the source image view to the fragment shader
+    Rc<DxvkSampler> sampler = createBlitSampler(filter);
+
+    DxvkDescriptorWrite imageDescriptor = { };
+    imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+    // Retrieve a compatible pipeline to use for rendering
+    auto resolveMode = filter == VK_FILTER_NEAREST
+      ? DxvkMetaBlitResolveMode::FilterNearest
+      : DxvkMetaBlitResolveMode::FilterLinear;
+
+    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
+      mipGenerator.getSrcViewType(), imageView->info().format,
+      VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, resolveMode);
+
+    for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
+      auto srcView = mipGenerator.getSrcView(i);
+      auto dstView = mipGenerator.getDstView(i);
+
+      imageDescriptor.descriptor = srcView->getDescriptor();
+
+      // Width, height and layer count for the current pass
+      VkExtent3D passExtent = mipGenerator.computePassExtent(i);
+
+      // Set up viewport and scissor rect
+      VkViewport viewport;
+      viewport.x        = 0.0f;
+      viewport.y        = 0.0f;
+      viewport.width    = float(passExtent.width);
+      viewport.height   = float(passExtent.height);
+      viewport.minDepth = 0.0f;
+      viewport.maxDepth = 1.0f;
+
+      VkRect2D scissor;
+      scissor.offset    = { 0, 0 };
+      scissor.extent    = { passExtent.width, passExtent.height };
+
+      // Set up rendering info
+      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+      attachmentInfo.imageView = dstView->handle();
+      attachmentInfo.imageLayout = dstView->getLayout();
+      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+      renderingInfo.renderArea = scissor;
+      renderingInfo.layerCount = passExtent.depth;
+      renderingInfo.colorAttachmentCount = 1;
+      renderingInfo.pColorAttachments = &attachmentInfo;
+
+      // Set up push constants
+      DxvkMetaBlitPushConstants pushConstants = { };
+      pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
+      pushConstants.srcCoord1  = { 1.0f, 1.0f, 1.0f };
+      pushConstants.layerCount = passExtent.depth;
+      pushConstants.sampler = sampler->getDescriptor().samplerIndex;
+
+      // Emit per-subresource barriers
+      small_vector<DxvkResourceAccess, 2u> accessBatch;
+      accessBatch.emplace_back(*srcView, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+      accessBatch.emplace_back(*dstView,  VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT, true);
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+      m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
+
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+
+      m_cmd->cmdSetViewport(1, &viewport);
+      m_cmd->cmdSetScissor(1, &scissor);
+
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        pipeInfo.layout, 1u, &imageDescriptor,
+        sizeof(pushConstants), &pushConstants);
+
+      m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
+      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
+    }
+
+    m_cmd->track(std::move(sampler));
+  }
+
+
+  void DxvkContext::generateMipmapsCs(
+    const Rc<DxvkImageView>&        imageView) {
+    this->spillRenderPass(true);
+    this->invalidateState();
+
+    // Number of descriptors to bind, first is for source mip
+    constexpr uint32_t MaxDescriptorCount = DxvkMetaMipGenObjects::MipCount * 2u + 1u;
+
+    // Maximum image dimension that the mip gen shader can handle in on
+    // pass. If the image is any larger, we need to emit extra passes.
+    constexpr uint32_t MaxSinglePassSize = (2u << (DxvkMetaMipGenObjects::MipCount * 2u)) - 1u;
+
+    // Linear filtering only with the current implementation
+    Rc<DxvkSampler> sampler = createBlitSampler(VK_FILTER_LINEAR);
+
+    // Create views. These are actually going to be usable even in a two-pass
+    // scenario since the src view is *always* sampled rather than storage.
+    DxvkMetaMipGenViews mipGenerator(imageView, VK_PIPELINE_BIND_POINT_COMPUTE);
+
+    uint32_t layerCount = imageView->info().layerCount;
+
+    // Check if we need to run two passes. This is only going to be the case if
+    // the view's top level is larger than the largest mip would be in an image
+    // where we downsample *twice* the per-step mip count, because the shader can
+    // read back one mip and process it in the last running workgroup. However,
+    // this only works on the actual mip tail of the base image, regardless of
+    // which views are accessed, so we also need to make sure that the pre-pass
+    // only processes a single batch of mips.
+    VkExtent3D baseExtent = imageView->mipLevelExtent(0u);
+
+    bool requiresPrepass = std::max(baseExtent.width, baseExtent.height) > MaxSinglePassSize
+      && mipGenerator.getPassCount() > DxvkMetaMipGenObjects::MipCount;
+
+    // Allocate scratch memory for per-layer workgroup counters and zero it on
+    // the out-of-order init command buffer to avoid having to synchronize
+    uint32_t counterDwordCount = layerCount * (requiresPrepass ? 2u : 1u);
+
+    DxvkResourceBufferInfo counterMemory = allocateScratchMemory(
+      sizeof(uint32_t), sizeof(uint32_t) * counterDwordCount);
+
+    m_cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
+      counterMemory.buffer, counterMemory.offset, counterMemory.size, 0u);
+
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
+    barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
+    barrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+    barrier.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
+
+    m_initBarriers.addMemoryBarrier(barrier);
+
+    // Bind pipeline already, no reason to do it twice if we need a pre-pass
+    auto pipeline = m_common->metaMipGen().getPipeline(imageView->info().format);
+
+    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
+
+    uint32_t basePass = 0u;
+
+    while (basePass < mipGenerator.getPassCount()) {
+      small_vector<DxvkResourceAccess, MaxDescriptorCount> accessBatch;
+
+      DxvkMetaMipGenPushConstants pushData = { };
+      pushData.atomicCounterVa = counterMemory.gpuAddress;
+      pushData.samplerIndex = sampler->getDescriptor().samplerIndex;
+
+      if (requiresPrepass && !basePass) {
+        // It is beneficial to run this on the maximum mip count here because
+        // sampling the top-level mip tends to be the primary bottleneck. We
+        // already ensured that all these views are included anyway.
+        pushData.mipCount = DxvkMetaMipGenObjects::MipCount;
+      } else {
+        // If we can, just do a single pass.
+        pushData.mipCount = mipGenerator.getPassCount() - basePass;
+      }
+
+      // Bind views only for this pass, set null descriptors for unused mips.
+      std::array<DxvkDescriptorWrite, MaxDescriptorCount> descriptors = { };
+
+      size_t n = 0u;
+
+      auto& descriptor = descriptors.at(n++);
+      descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      descriptor.descriptor = mipGenerator.getSrcView(basePass)->getDescriptor();
+
+      accessBatch.emplace_back(*mipGenerator.getSrcView(basePass),
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+
+      for (uint32_t i = 0u; i < pushData.mipCount; i++) {
+        auto& descriptor = descriptors.at(n++);
+        descriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        descriptor.descriptor = mipGenerator.getDstView(basePass + i)->getDescriptor();
+
+        // Don't actually bother discarding mips here, there's *probably*
+        // no good reason to introduce an extra sync point just for that.
+        accessBatch.emplace_back(*mipGenerator.getDstView(basePass + i),
+          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+          VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT, false);
+      }
+
+      while (n < descriptors.size()) {
+        auto& descriptor = descriptors.at(n++);
+        descriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      }
+
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        pipeline.layout, descriptors.size(), descriptors.data(),
+        sizeof(pushData), &pushData);
+
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+      // Dispatch size must always match that of the bottom mip of one
+      // pass, even if that mip is not included in the view at all
+      VkExtent3D dispatchSize = imageView->mipLevelExtent(DxvkMetaMipGenObjects::MipCount);
+
+      m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
+        dispatchSize.width, dispatchSize.height, layerCount);
+
+      // Advance some stuff for the next pass
+      basePass += pushData.mipCount;
+
+      pushData.atomicCounterVa += layerCount * sizeof(uint32_t);
+    }
+
+    m_cmd->track(std::move(sampler));
   }
 
 

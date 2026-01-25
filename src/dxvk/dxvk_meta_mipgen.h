@@ -20,7 +20,8 @@ namespace dxvk {
   public:
     
     DxvkMetaMipGenViews(
-      const Rc<DxvkImageView>&  view);
+      const Rc<DxvkImageView>&  view,
+            VkPipelineBindPoint bindPoint);
     
     ~DxvkMetaMipGenViews();
     
@@ -136,6 +137,8 @@ namespace dxvk {
     };
 
     Rc<DxvkImageView> m_view;
+
+    VkPipelineBindPoint m_bindPoint;
     
     VkImageViewType m_srcViewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     VkImageViewType m_dstViewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
@@ -151,7 +154,7 @@ namespace dxvk {
    * \brief Push data layout for mip gen pass
    */
   struct DxvkMetaMipGenPushConstants {
-    uint64_t atomicCounterVa = 0u;
+    VkDeviceAddress atomicCounterVa = 0u;
     uint32_t samplerIndex = 0u;
     uint32_t mipCount = 0u;
   };
