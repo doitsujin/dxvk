@@ -6,8 +6,9 @@
 namespace dxvk {
 
   DxvkMetaMipGenViews::DxvkMetaMipGenViews(
-    const Rc<DxvkImageView>&  view)
-  : m_view(view) {
+    const Rc<DxvkImageView>&  view,
+          VkPipelineBindPoint bindPoint)
+  : m_view(view), m_bindPoint(bindPoint) {
     // Determine view type based on image type
     const std::array<std::pair<VkImageViewType, VkImageViewType>, 3> viewTypes = {{
       { VK_IMAGE_VIEW_TYPE_1D_ARRAY, VK_IMAGE_VIEW_TYPE_1D_ARRAY },
@@ -75,6 +76,11 @@ namespace dxvk {
     } else {
       dstViewInfo.layerIndex = 0;
       dstViewInfo.layerCount = dstExtent.depth;
+    }
+
+    if (m_bindPoint == VK_PIPELINE_BIND_POINT_COMPUTE) {
+      dstViewInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+      dstViewInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
     }
 
     result.dst = m_view->image()->createView(dstViewInfo);
