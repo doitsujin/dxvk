@@ -1,4 +1,7 @@
+#include "dxvk_device.h"
 #include "dxvk_meta_mipgen.h"
+
+#include <dxvk_mipgen.h>
 
 namespace dxvk {
 
@@ -79,4 +82,142 @@ namespace dxvk {
     return result;
   }
   
+
+  DxvkMetaMipGenObjects::DxvkMetaMipGenObjects(DxvkDevice* device)
+  : m_device(device), m_layout(createPipelineLayout()) {
+
+  }
+
+
+  DxvkMetaMipGenObjects::~DxvkMetaMipGenObjects() {
+
+  }
+
+
+  bool DxvkMetaMipGenObjects::checkFormatSupport(
+          VkFormat              viewFormat) {
+    std::lock_guard lock(m_mutex);
+    auto entry = m_formatSupport.find(viewFormat);
+
+    if (entry != m_formatSupport.end())
+      return entry->second;
+
+    bool support = queryFormatSupport(viewFormat);
+    m_formatSupport.insert({ viewFormat, support });
+
+    return support;
+  }
+
+
+  DxvkMetaMipGenPipeline DxvkMetaMipGenObjects::getPipeline(
+          VkFormat              viewFormat) {
+    std::lock_guard lock(m_mutex);
+
+    auto entry = m_pipelines.find(viewFormat);
+
+    if (entry != m_pipelines.end())
+      return entry->second;
+
+    DxvkMetaMipGenPipeline pipeline = createPipeline(viewFormat);
+    m_pipelines.insert({ viewFormat, pipeline });
+    return pipeline;
+  }
+
+
+  const DxvkPipelineLayout* DxvkMetaMipGenObjects::createPipelineLayout() const {
+    std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1u,                  VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MipCount + MipCount, VK_SHADER_STAGE_COMPUTE_BIT },
+    }};
+
+    return m_device->createBuiltInPipelineLayout(DxvkPipelineLayoutFlag::UsesSamplerHeap,
+      VK_SHADER_STAGE_COMPUTE_BIT, sizeof(DxvkMetaMipGenPushConstants), bindings.size(), bindings.data());
+  }
+
+
+  DxvkMetaMipGenPipeline DxvkMetaMipGenObjects::createPipeline(VkFormat format) const {
+    auto formatInfo = lookupFormatInfo(format);
+
+    const std::array<VkSpecializationMapEntry, 2u> specMap = {{
+      { 0u, offsetof(DxvkMetaMipGenSpecConstants, format),          sizeof(VkFormat) },
+      { 1u, offsetof(DxvkMetaMipGenSpecConstants, formatDwords),    sizeof(uint32_t) },
+    }};
+
+    DxvkMetaMipGenSpecConstants specConstants = { };
+    specConstants.format = format;
+    specConstants.formatDwords = std::max<uint32_t>(1u,
+      formatInfo->elementSize / sizeof(uint32_t));
+
+    VkSpecializationInfo specInfo = { };
+    specInfo.mapEntryCount = specMap.size();
+    specInfo.pMapEntries = specMap.data();
+    specInfo.dataSize = sizeof(specConstants);
+    specInfo.pData = &specConstants;
+
+    util::DxvkBuiltInShaderStage shader(dxvk_mipgen, &specInfo);
+
+    DxvkMetaMipGenPipeline pipeline = { };
+    pipeline.layout = m_layout;
+    pipeline.mipsPerStep = MipCount;
+    pipeline.pipeline = m_device->createBuiltInComputePipeline(m_layout, shader);
+
+    return pipeline;
+  }
+
+
+  bool DxvkMetaMipGenObjects::queryFormatSupport(
+          VkFormat              viewFormat) const {
+    // Fixed list of formats that the shader understands
+    static const std::array<VkFormat, 26> s_formats = {{
+      VK_FORMAT_R8_UNORM,
+      VK_FORMAT_R8_SNORM,
+      VK_FORMAT_R8G8_UNORM,
+      VK_FORMAT_R8G8_SNORM,
+      VK_FORMAT_R16_SFLOAT,
+      VK_FORMAT_R16G16_SFLOAT,
+      VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_A8B8G8R8_UNORM_PACK32,
+      VK_FORMAT_R8G8B8A8_SNORM,
+      VK_FORMAT_B8G8R8A8_SNORM,
+      VK_FORMAT_A8B8G8R8_SNORM_PACK32,
+      VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+      VK_FORMAT_A2B10G10R10_SNORM_PACK32,
+      VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_R16_UNORM,
+      VK_FORMAT_R16_SNORM,
+      VK_FORMAT_R32_SFLOAT,
+      VK_FORMAT_R16G16_UNORM,
+      VK_FORMAT_R16G16_SNORM,
+      VK_FORMAT_R32G32_SFLOAT,
+      VK_FORMAT_R16G16B16A16_UNORM,
+      VK_FORMAT_R16G16B16A16_SNORM,
+    }};
+
+    if (!m_device->perfHints().preferComputeMipGen)
+      return false;
+
+    // Check whether the shader actually supports the format in question
+    if (std::find(s_formats.begin(), s_formats.end(), viewFormat) == s_formats.end())
+      return false;
+
+    // The shader has some feature requirements that aren't otherwise
+    // needed to run DXVK, make sure everything is supported.
+    if (!m_device->features().vk12.shaderInt8
+     || !m_device->features().vk12.shaderFloat16)
+      return false;
+
+    // Ensure that the format can support the required usage patterns
+    auto formatFeatures = m_device->adapter()->getFormatFeatures(viewFormat);
+
+    if (!(formatFeatures.optimal & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)
+     || !(formatFeatures.optimal & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+      return false;
+
+    return true;
+  }
+
 }

@@ -66,6 +66,10 @@ namespace dxvk {
       return m_metaBlit.get(m_device);
     }
 
+    DxvkMetaMipGenObjects& metaMipGen() {
+      return m_metaMipGen.get(m_device);
+    }
+
     DxvkMetaClearObjects& metaClear() {
       return m_metaClear.get(m_device);
     }
@@ -94,6 +98,7 @@ namespace dxvk {
     DxvkUnboundResources          m_dummyResources;
 
     Lazy<DxvkMetaBlitObjects>     m_metaBlit;
+    Lazy<DxvkMetaMipGenObjects>   m_metaMipGen;
     Lazy<DxvkMetaClearObjects>    m_metaClear;
     Lazy<DxvkMetaCopyObjects>     m_metaCopy;
     Lazy<DxvkMetaResolveObjects>  m_metaResolve;
