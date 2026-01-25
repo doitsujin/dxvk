@@ -9571,4 +9571,43 @@ namespace dxvk {
       m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
+
+  DxvkResourceBufferInfo DxvkContext::allocateScratchMemory(
+          VkDeviceSize                alignment,
+          VkDeviceSize                size) {
+    if (unlikely(!m_scratchBuffer || m_scratchBuffer->info().size < size)) {
+      // We probably won't need a lot of scratch memory, so keep it small
+      DxvkBufferCreateInfo info = { };
+      info.size = DxvkPageAllocator::PageSize;
+      info.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                 | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+      info.stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT
+                  | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
+      info.access = VK_ACCESS_2_TRANSFER_READ_BIT
+                  | VK_ACCESS_2_TRANSFER_WRITE_BIT
+                  | VK_ACCESS_2_SHADER_READ_BIT
+                  | VK_ACCESS_2_SHADER_WRITE_BIT;
+      info.debugName = "Scratch buffer";
+
+      m_scratchBuffer = m_device->createBuffer(info,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+
+    // Suballocate slice from buffer
+    VkDeviceSize offset = align(m_scratchOffset, alignment);
+
+    if (offset + size < m_scratchBuffer->info().size) {
+      invalidateBuffer(m_scratchBuffer, m_scratchBuffer->allocateStorage());
+      m_scratchOffset = 0u;
+    }
+
+    DxvkResourceBufferInfo slice = m_scratchBuffer->getSliceInfo(m_scratchOffset, size);
+    m_scratchOffset += align(size, alignment);
+
+    // Unconditionally track for writing to not bother the caller with it.
+    m_cmd->track(m_scratchBuffer, DxvkAccess::Write);
+    return slice;
+  }
+
 }

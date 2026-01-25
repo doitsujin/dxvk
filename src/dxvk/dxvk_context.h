@@ -1340,6 +1340,9 @@ namespace dxvk {
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
 
+    Rc<DxvkBuffer>          m_scratchBuffer;
+    VkDeviceSize            m_scratchOffset = 0u;
+
     DxvkContextFlags        m_flags;
     DxvkContextState        m_state;
     DxvkContextFeatures     m_features;
@@ -2185,6 +2188,10 @@ namespace dxvk {
     void beginActiveDebugRegions();
 
     void endActiveDebugRegions();
+
+    DxvkResourceBufferInfo allocateScratchMemory(
+            VkDeviceSize                alignment,
+            VkDeviceSize                size);
 
     template<bool AlwaysTrack>
     force_inline void trackUniformBufferBinding(const DxvkShaderDescriptor& binding, const DxvkBufferSlice& slice) {
