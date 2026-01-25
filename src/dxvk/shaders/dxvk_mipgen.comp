@@ -1,0 +1,1236 @@
+#version 460
+
+#pragma use_vulkan_memory_model
+
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_null_initializer : enable
+#extension GL_EXT_samplerless_texture_functions : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types : enable
+#extension GL_EXT_shader_image_load_formatted : enable
+
+#extension GL_KHR_memory_scope_semantics : enable
+#extension GL_KHR_shader_subgroup_basic : enable
+#extension GL_KHR_shader_subgroup_ballot : enable
+#extension GL_KHR_shader_subgroup_shuffle : enable
+
+#extension GL_GOOGLE_include_directive : enable
+
+#define FORMAT_MODE_NONE  0
+#define FORMAT_MODE_F16x2 1
+#define FORMAT_MODE_F16x4 2
+#define FORMAT_MODE_F32x1 3
+#define FORMAT_MODE_F32x2 4
+#define FORMAT_MODE_F32x4 5
+
+#include "dxvk_formats.glsl"
+
+#define USE_SUBGROUP_PATH (1)
+
+#define MAX_MIP_COUNT (6)
+
+/* Workgroup size. Can be chosen somewhat arbitrarily, and for larger
+ * formats this shader may need to run with larger workgroups in order
+ * to not suffer too much from the increased LDS usage. */
+layout(local_size_x = 512) in;
+
+/* Image format */
+layout(constant_id = 0) const uint c_format = VK_FORMAT_UNDEFINED;
+
+/* Number of DWORDs required to store a single pixel in LDS. Must match
+ * the format size exactly as this will actually do packing. */
+layout(constant_id = 1) const uint c_format_dwords = 2u;
+
+
+/* Global sampler heap */
+layout(set = 0, binding = 0)
+uniform sampler s_samplers[];
+
+
+/* Source mip level */
+layout(set = 1, binding = 0)
+uniform texture2DArray s_base_mip;
+
+
+/* Mip levels that will be written */
+layout(set = 1, binding = 1)
+uniform queuefamilycoherent image2DArray s_dst_mips[MAX_MIP_COUNT + MAX_MIP_COUNT];
+
+
+/* Address of atomic counter used to synchronize workgroups.
+ * Must be initialized to 0 by app code once. */
+layout(buffer_reference, buffer_reference_align = 4, scalar)
+buffer workgroup_ctr_t {
+  uint counters[];
+};
+
+
+/* Shader parameters */
+layout(push_constant)
+uniform push_data_t {
+  workgroup_ctr_t ctr;
+  uint sampler_index;
+  uint mip_count;
+} push_args;
+
+
+
+/* Mip n of any given image can have a size of 2*size(n-1)+1, so we need to
+ * allocate for one extra mip minus one pixel. However, we can also skip the
+ * top-level mip since we will filter it directly, so it evens out. */
+const uint LDS_SIZE = (1u << MAX_MIP_COUNT) - 1u;
+
+/* Allocate given number of dwords per pixel, shouldn't be more than a total
+ * of 32k LDS per workgroup and even that is going to be stretching things a
+ * little w.r.t. occupancy. */
+shared uint g_pixels[LDS_SIZE * LDS_SIZE * c_format_dwords];
+
+
+/* Pixel type. We typically use FP16 internally, but for formats with larger
+ * value ranges, as well as 16-bit normalized formats, we want FP32 to be
+ * able to represent everything. */
+#define pixel_t uvec4
+
+
+/* Quad of pixels */
+struct quad_t {
+  pixel_t px00;
+  pixel_t px01;
+  pixel_t px10;
+  pixel_t px11;
+};
+
+
+uint determine_format_mode() {
+  switch (c_format) {
+    case VK_FORMAT_R8_UNORM:
+    case VK_FORMAT_R8_SNORM:
+    case VK_FORMAT_R8G8_UNORM:
+    case VK_FORMAT_R8G8_SNORM:
+    case VK_FORMAT_R16_SFLOAT:
+    case VK_FORMAT_R16G16_SFLOAT:
+      return FORMAT_MODE_F16x2;
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_B8G8R8A8_SNORM:
+    case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+    case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+    case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+    case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+    case VK_FORMAT_R16G16B16A16_SFLOAT:
+      return FORMAT_MODE_F16x4;
+
+    case VK_FORMAT_R16_UNORM:
+    case VK_FORMAT_R16_SNORM:
+    case VK_FORMAT_R32_SFLOAT:
+      return FORMAT_MODE_F32x1;
+
+    case VK_FORMAT_R16G16_UNORM:
+    case VK_FORMAT_R16G16_SNORM:
+    case VK_FORMAT_R32G32_SFLOAT:
+      return FORMAT_MODE_F32x2;
+
+    case VK_FORMAT_R16G16B16A16_UNORM:
+    case VK_FORMAT_R16G16B16A16_SNORM:
+      return FORMAT_MODE_F32x4;
+  }
+
+  return FORMAT_MODE_NONE;
+}
+
+
+pixel_t px_set_f16(f16vec4 f) {
+  pixel_t result = {};
+
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2: {
+      result.x = packFloat2x16(f.xy);
+    } break;
+
+    case FORMAT_MODE_F16x4: {
+      result.x = packFloat2x16(f.xy);
+      result.y = packFloat2x16(f.zw);
+    } break;
+
+    case FORMAT_MODE_F32x1: {
+      result.x = floatBitsToUint(float(f.x));
+    } break;
+
+    case FORMAT_MODE_F32x2: {
+      result.xy = floatBitsToUint(vec2(f.xy));
+    } break;
+
+    case FORMAT_MODE_F32x4: {
+      result = floatBitsToUint(vec4(f));
+    } break;
+  }
+
+  return result;
+}
+
+
+f16vec4 px_as_f16(pixel_t px) {
+  f16vec4 result = {};
+
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2: {
+      result.xy = unpackFloat2x16(px.x);
+    } break;
+
+    case FORMAT_MODE_F16x4: {
+      result.xy = unpackFloat2x16(px.x);
+      result.zw = unpackFloat2x16(px.y);
+    } break;
+
+    case FORMAT_MODE_F32x1: {
+      result.x = float16_t(uintBitsToFloat(px.x));
+    } break;
+
+    case FORMAT_MODE_F32x2: {
+      result.xy = f16vec2(uintBitsToFloat(px.xy));
+    } break;
+
+    case FORMAT_MODE_F32x4: {
+      result = f16vec4(uintBitsToFloat(px));
+    } break;
+  }
+
+  return result;
+}
+
+
+pixel_t px_set_f32(vec4 f) {
+  pixel_t result = {};
+
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2: {
+      result.x = packFloat2x16(f16vec2(f.xy));
+    } break;
+
+    case FORMAT_MODE_F16x4: {
+      result.x = packFloat2x16(f16vec2(f.xy));
+      result.y = packFloat2x16(f16vec2(f.zw));
+    } break;
+
+    case FORMAT_MODE_F32x1: {
+      result.x = floatBitsToUint(f.x);
+    } break;
+
+    case FORMAT_MODE_F32x2: {
+      result.xy = floatBitsToUint(f.xy);
+    } break;
+
+    case FORMAT_MODE_F32x4: {
+      result = floatBitsToUint(f);
+    } break;
+  }
+
+  return result;
+}
+
+
+vec4 px_as_f32(pixel_t px) {
+  vec4 result = {};
+
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2: {
+      result.xy = vec2(unpackFloat2x16(px.x));
+    } break;
+
+    case FORMAT_MODE_F16x4: {
+      result.xy = vec2(unpackFloat2x16(px.x));
+      result.zw = vec2(unpackFloat2x16(px.y));
+    } break;
+
+    case FORMAT_MODE_F32x1: {
+      result.x = uintBitsToFloat(px.x);
+    } break;
+
+    case FORMAT_MODE_F32x2: {
+      result.xy = uintBitsToFloat(px.xy);
+    } break;
+
+    case FORMAT_MODE_F32x4: {
+      result = uintBitsToFloat(px);
+    } break;
+  }
+
+  return result;
+}
+
+
+pixel_t px_fadd(pixel_t a, pixel_t b) {
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2:
+    case FORMAT_MODE_F16x4:
+      return px_set_f16(px_as_f16(a) + px_as_f16(b));
+
+    case FORMAT_MODE_F32x1:
+    case FORMAT_MODE_F32x2:
+    case FORMAT_MODE_F32x4:
+      return px_set_f32(px_as_f32(a) + px_as_f32(b));
+  }
+
+  return pixel_t(0u);
+}
+
+
+pixel_t px_fscale(pixel_t a, vec4 b) {
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2:
+    case FORMAT_MODE_F16x4:
+      return px_set_f16(px_as_f16(a) * f16vec4(b));
+
+    case FORMAT_MODE_F32x1:
+    case FORMAT_MODE_F32x2:
+    case FORMAT_MODE_F32x4:
+      return px_set_f32(px_as_f32(a) * b);
+  }
+
+  return pixel_t(0u);
+}
+
+
+pixel_t px_fmix(pixel_t a, pixel_t b, float x) {
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2:
+    case FORMAT_MODE_F16x4:
+      return px_set_f16(mix(px_as_f16(a), px_as_f16(b), float16_t(x)));
+
+    case FORMAT_MODE_F32x1:
+    case FORMAT_MODE_F32x2:
+    case FORMAT_MODE_F32x4:
+      return px_set_f32(mix(px_as_f32(a), px_as_f32(b), x));
+  }
+
+  return pixel_t(0u);
+}
+
+
+pixel_t px_quantize(pixel_t a, vec4 b) {
+  switch (determine_format_mode()) {
+    case FORMAT_MODE_F16x2:
+    case FORMAT_MODE_F16x4:
+      return px_set_f16(roundEven(px_as_f16(a) * f16vec4(b)) / f16vec4(b));
+
+    case FORMAT_MODE_F32x1:
+    case FORMAT_MODE_F32x2:
+    case FORMAT_MODE_F32x4:
+      return px_set_f32(roundEven(px_as_f32(a) * b) / b);
+  }
+
+  return pixel_t(0u);
+}
+
+
+/* Helper to decode unmasked 6-bit morton code into 2D coordinate.
+ * Used to establish Z-order curve for the subgroup operations. */
+uvec2 decode_morton_2d(uint tid) {
+  uint coord = tid | (tid << 7u);
+  coord &= 0x1515u;
+  coord += coord & 0x0101u;
+  coord += coord & 0x0606u;
+
+  return uvec2(
+    bitfieldExtract(coord,  2, 3),
+    bitfieldExtract(coord, 10, 3));
+}
+
+
+/* Pixel block dimensions (.x), pixel count (.y) and even mip count (.z).
+ * Known at compile time, and always small enough that one block fits into
+ * one subgroup. */
+uvec3 determine_block_size() {
+  if (gl_SubgroupSize <  4u) return uvec3(1u,  1u, 0u * USE_SUBGROUP_PATH);
+  if (gl_SubgroupSize < 16u) return uvec3(2u,  4u, 1u * USE_SUBGROUP_PATH);
+  if (gl_SubgroupSize < 64u) return uvec3(4u, 16u, 2u * USE_SUBGROUP_PATH);
+  return uvec3(8u, 64u, 3u * USE_SUBGROUP_PATH);
+}
+
+
+/* Base coordinate that the workgroup is going to write into the shared mip.
+ * Used to compute coordinates to read and write for individual threads. */
+uvec2 determine_base_coord(uint base_mip) {
+  return base_mip < MAX_MIP_COUNT ? gl_WorkGroupID.xy : uvec2(0u);
+}
+
+
+/* Computes size of a given mip level based on the top level mip. */
+uvec2 compute_mip_size(uvec2 mip0_size, uint mip) {
+  return max(mip0_size >> mip, 1u.xx);
+}
+
+
+/* Computes size of the shared mip based on the mip 0 size. The
+ * dispatch size must match this. */
+uvec2 compute_shared_mip_size(uvec2 mip0_size) {
+  return compute_mip_size(mip0_size, MAX_MIP_COUNT);
+}
+
+
+/* Computes mask of odd-sized mips in each dimension.
+ *
+ * This is actually equivalent to the image size itself. Since mips
+ * simply double in size, simply shifting the image size by the mip
+ * count will return 1 LSB for odd mips, and 0 LSB for even. */
+uvec2 compute_odd_mip_mask(uvec2 mip0_size) {
+  return mip0_size;
+}
+
+
+/* Computes flat mask of odd-sized mips, or-ing together
+ * the respective masks for all dimensions. */
+uint compute_odd_mip_mask_flat(uvec2 mip0_size) {
+  uvec2 mask = compute_odd_mip_mask(mip0_size);
+  return mask.x | mask.y;
+}
+
+
+/* Computes even mip mask. Sets bits for invalid mips to 0. */
+uvec2 compute_even_mip_mask(uvec2 mip0_size) {
+  return uvec2(
+    bitfieldExtract(mip0_size.x, 0, findMSB(mip0_size.x)),
+    bitfieldExtract(mip0_size.y, 0, findMSB(mip0_size.y)));
+}
+
+
+/* Computes flattened even mip mask. */
+uint compute_even_mip_mask_flat(uvec2 mip0_size) {
+  uvec2 mask = compute_even_mip_mask(mip0_size);
+  return mask.x | mask.y;
+}
+
+
+/* Convenience check on whether a mip is even. */
+bool is_mip_odd(uvec2 mip0_size, uint mip) {
+  return bitfieldExtract(compute_odd_mip_mask_flat(mip0_size), int(mip), 1) != 0;
+}
+
+
+/* Determines pixel coordinates that the current workgroup will read
+ * from the given mip to process the *next* mip, counting from the top
+ * of the mip chain. The .xy coordiates receive the top-left coordinate
+ * (inclusive), and the .zw coordiates the bottom right (exclusive). */
+uvec4 compute_read_rect(uvec2 mip0_size, uint mip) {
+  if (mip > MAX_MIP_COUNT)
+    return uvec4(0u, 0u, compute_mip_size(mip0_size, mip));
+
+  uvec2 odd_mask = compute_odd_mip_mask(mip0_size);
+
+  uvec2 this_group = (gl_WorkGroupID.xy + 0u) << (MAX_MIP_COUNT - mip);
+  uvec2 next_group = (gl_WorkGroupID.xy + 1u) << (MAX_MIP_COUNT - mip);
+
+  /* Take into account that odd mips need to read a 3x3 region for each
+   * pixel of the next smaller mip. */
+  next_group.x += bitfieldExtract(odd_mask.x, int(mip), int(MAX_MIP_COUNT - mip));
+  next_group.y += bitfieldExtract(odd_mask.y, int(mip), int(MAX_MIP_COUNT - mip));
+
+  return uvec4(this_group, next_group);
+}
+
+
+/* Determines pixel coordinates that the current workgroup will write
+ * for the given mip. This ensures that pixels are only ever written
+ * once, even if read image regions may overlap in some cases. */
+uvec4 compute_write_rect(uvec2 mip0_size, uint mip) {
+  uvec2 mip_size = compute_mip_size(mip0_size, mip);
+
+  if (mip > MAX_MIP_COUNT)
+    return uvec4(0u.xx, mip_size);
+
+  uvec2 this_group = (gl_WorkGroupID.xy + 0u) << (MAX_MIP_COUNT - mip);
+  uvec2 next_group = (gl_WorkGroupID.xy + 1u) << (MAX_MIP_COUNT - mip);
+
+  /* Make sure that the last group in each dimension writes everything */
+  uvec2 group_count = compute_shared_mip_size(mip0_size);
+
+  if (gl_WorkGroupID.x + 1u == group_count.x) next_group.x = mip_size.x;
+  if (gl_WorkGroupID.y + 1u == group_count.y) next_group.y = mip_size.y;
+
+  return uvec4(this_group, next_group);
+}
+
+
+/* Helper to quantize pixel data between interpolation steps. */
+pixel_t quantize_pixel(pixel_t data) {
+  switch (c_format) {
+    case VK_FORMAT_R8_UNORM:
+    case VK_FORMAT_R8G8_UNORM:
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+      return px_quantize(data, 255.0f.xxxx);
+
+    case VK_FORMAT_R8_SNORM:
+    case VK_FORMAT_R8G8_SNORM:
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_B8G8R8A8_SNORM:
+    case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+      return px_quantize(data, 127.0f.xxxx);
+
+    case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+      return px_quantize(data, vec4(1023.0f.xxx, 3.0f));
+
+    case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+      return px_quantize(data, vec4(511.0f.xxx, 1.0f));
+
+    /* Weird special case, ignore since rounding is painful */
+    case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+      return data;
+
+    case VK_FORMAT_R16_SFLOAT:
+    case VK_FORMAT_R16G16_SFLOAT:
+    case VK_FORMAT_R16G16B16A16_SFLOAT:
+      return data;
+
+    case VK_FORMAT_R16_UNORM:
+    case VK_FORMAT_R16G16_UNORM:
+    case VK_FORMAT_R16G16B16A16_UNORM:
+      return px_quantize(data, 65535.0f.xxxx);
+
+    case VK_FORMAT_R16_SNORM:
+    case VK_FORMAT_R16G16_SNORM:
+    case VK_FORMAT_R16G16B16A16_SNORM:
+      return px_quantize(data, 32767.0f.xxxx);
+
+    case VK_FORMAT_R32_SFLOAT:
+    case VK_FORMAT_R32G32_SFLOAT:
+      return data;
+
+    default:
+      return data;
+  }
+}
+
+
+/* Packs pixel data to compact LDS representation */
+void store_pixel_to_lds(uvec2 coord, pixel_t px) {
+  uint idx = LDS_SIZE * coord.y + coord.x;
+  idx *= c_format_dwords;
+
+  switch (c_format) {
+    case VK_FORMAT_R8_UNORM: {
+      float16_t data = float16_t(255.0f) * px_as_f16(px).x;
+      g_pixels[idx] = pack32(u8vec4(roundEven(data), 0u.xxx));
+    } break;
+
+    case VK_FORMAT_R8G8_UNORM: {
+      f16vec2 data = float16_t(255.0f) * px_as_f16(px).xy;
+      g_pixels[idx] = pack32(u8vec4(roundEven(data.xy), 0u.xx));
+    } break;
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_A8B8G8R8_UNORM_PACK32: {
+      f16vec4 data = float16_t(255.0f) * px_as_f16(px);
+      g_pixels[idx] = pack32(u8vec4(roundEven(data)));
+    } break;
+
+    case VK_FORMAT_R8_SNORM: {
+      float16_t data = float16_t(127.0f) * px_as_f16(px).x;
+      g_pixels[idx] = pack32(u8vec4(roundEven(data), 0u.xxx));
+    } break;
+
+    case VK_FORMAT_R8G8_SNORM: {
+      f16vec2 data = float16_t(127.0f) * px_as_f16(px).xy;
+      g_pixels[idx] = pack32(u8vec4(roundEven(data.xy), 0u.xx));
+    } break;
+
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_B8G8R8A8_SNORM:
+    case VK_FORMAT_A8B8G8R8_SNORM_PACK32: {
+      f16vec4 data = float16_t(127.0f) * px_as_f16(px);
+      g_pixels[idx] = pack32(u8vec4(roundEven(data)));
+    } break;
+
+    case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_UNORM_PACK32: {
+      f16vec4 data = f16vec4(1023.0f.xxx, 3.0f) * px_as_f16(px);
+      uvec4 udata = uvec4(roundEven(data));
+
+      g_pixels[idx] = (bitfieldExtract(udata.x, 0, 10) <<  0) |
+                      (bitfieldExtract(udata.y, 0, 10) << 10) |
+                      (bitfieldExtract(udata.z, 0, 10) << 20) |
+                      (bitfieldExtract(udata.w, 0,  2) << 30);
+    } break;
+
+    case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_SNORM_PACK32: {
+      f16vec4 data = f16vec4(511.0f.xxx, 1.0f) * px_as_f16(px);
+      uvec4 udata = uvec4(ivec4(roundEven(data)));
+
+      g_pixels[idx] = (bitfieldExtract(udata.x, 0, 10) <<  0) |
+                      (bitfieldExtract(udata.y, 0, 10) << 10) |
+                      (bitfieldExtract(udata.z, 0, 10) << 20) |
+                      (bitfieldExtract(udata.w, 0,  2) << 30);
+    } break;
+
+    case VK_FORMAT_B10G11R11_UFLOAT_PACK32: {
+      g_pixels[idx] = (bitfieldExtract(px.x,  4, 11) <<  0) |
+                      (bitfieldExtract(px.x, 20, 11) << 11) |
+                      (bitfieldExtract(px.y,  5, 10) << 22);
+    } break;
+
+    case VK_FORMAT_R16_SFLOAT:
+    case VK_FORMAT_R16G16_SFLOAT: {
+      g_pixels[idx] = packFloat2x16(px_as_f16(px).xy);
+    } break;
+
+    case VK_FORMAT_R16G16B16A16_SFLOAT: {
+      g_pixels[idx + 0u] = packFloat2x16(px_as_f16(px).xy);
+      g_pixels[idx + 1u] = packFloat2x16(px_as_f16(px).zw);
+    } break;
+
+    case VK_FORMAT_R16_UNORM: {
+      g_pixels[idx] = packUnorm2x16(vec2(px_as_f32(px).x, 0.0f));
+    } break;
+
+    case VK_FORMAT_R16_SNORM: {
+      g_pixels[idx] = packSnorm2x16(vec2(px_as_f32(px).x, 0.0f));
+    } break;
+
+    case VK_FORMAT_R16G16_UNORM: {
+      g_pixels[idx] = packUnorm2x16(px_as_f32(px).xy);
+    } break;
+
+    case VK_FORMAT_R16G16_SNORM: {
+      g_pixels[idx] = packSnorm2x16(px_as_f32(px).xy);
+    } break;
+
+    case VK_FORMAT_R16G16B16A16_UNORM: {
+      g_pixels[idx + 0u] = packUnorm2x16(px_as_f32(px).xy);
+      g_pixels[idx + 1u] = packUnorm2x16(px_as_f32(px).zw);
+    } break;
+
+    case VK_FORMAT_R16G16B16A16_SNORM: {
+      g_pixels[idx + 0u] = packSnorm2x16(px_as_f32(px).xy);
+      g_pixels[idx + 1u] = packSnorm2x16(px_as_f32(px).zw);
+    } break;
+
+    case VK_FORMAT_R32_SFLOAT: {
+      g_pixels[idx] = floatBitsToUint(px_as_f32(px).x);
+    } break;
+
+    case VK_FORMAT_R32G32_SFLOAT: {
+      g_pixels[idx + 0u] = floatBitsToUint(px_as_f32(px).x);
+      g_pixels[idx + 1u] = floatBitsToUint(px_as_f32(px).y);
+    } break;
+  }
+}
+
+
+/* Unpacks pixel from LDS reresentation */
+pixel_t load_pixel_from_lds(uvec2 coord, uvec2 ofs) {
+  uint idx = LDS_SIZE * coord.y + coord.x;
+  idx += LDS_SIZE * ofs.y + ofs.x;
+  idx *= c_format_dwords;
+
+  uvec2 px = {};
+  px.x = g_pixels[idx];
+
+  if (c_format_dwords >= 2u)
+    px.y = g_pixels[idx + 1u];
+
+  switch (c_format) {
+    case VK_FORMAT_R8_UNORM: {
+      float16_t data = float16_t(unpack8(px.x).x) / float16_t(255.0f);
+      return px_set_f16(f16vec4(data, 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R8G8_UNORM: {
+      f16vec2 data = f16vec2(unpack8(px.x).xy) / float16_t(255.0f);
+      return px_set_f16(f16vec4(data, 0.0f.xx));
+    }
+
+    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VK_FORMAT_A8B8G8R8_UNORM_PACK32: {
+      f16vec4 data = f16vec4(unpack8(px.x)) / float16_t(255.0f);
+      return px_set_f16(data);
+    }
+
+    case VK_FORMAT_R8_SNORM: {
+      float16_t data = float16_t(unpack8(int(px.x)).x) / float16_t(127.0f);
+      return px_set_f16(f16vec4(data, 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R8G8_SNORM: {
+      f16vec2 data = f16vec2(unpack8(int(px.x)).xy) / float16_t(127.0f);
+      return px_set_f16(f16vec4(data, 0.0f.xx));
+    }
+
+    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VK_FORMAT_B8G8R8A8_SNORM:
+    case VK_FORMAT_A8B8G8R8_SNORM_PACK32: {
+      f16vec4 data = f16vec4(unpack8(int(px.x))) / float16_t(127.0f);
+      return px_set_f16(data);
+    }
+
+    case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_UNORM_PACK32: {
+      u16vec4 udata = u16vec4(
+        bitfieldExtract(px.x,  0, 10),
+        bitfieldExtract(px.x, 10, 10),
+        bitfieldExtract(px.x, 20, 10),
+        bitfieldExtract(px.x, 30,  2));
+
+      f16vec4 data = f16vec4(udata) / f16vec4(1023.0f.xxx, 3.0f);
+      return px_set_f16(data);
+    }
+
+    case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+    case VK_FORMAT_A2B10G10R10_SNORM_PACK32: {
+      i16vec4 udata = i16vec4(
+        bitfieldExtract(px.x,  0, 10),
+        bitfieldExtract(px.x, 10, 10),
+        bitfieldExtract(px.x, 20, 10),
+        bitfieldExtract(px.x, 30,  2));
+
+      f16vec4 data = f16vec4(udata) / f16vec4(511.0f.xxx, 1.0f);
+      return px_set_f16(data);
+    }
+
+    case VK_FORMAT_B10G11R11_UFLOAT_PACK32: {
+      uvec2 udata = uvec2(
+        (bitfieldExtract(px.x,  0, 11) <<  4) |
+        (bitfieldExtract(px.x, 11, 11) << 20),
+        (bitfieldExtract(px.x, 22, 10) <<  5));
+
+      return px_set_f16(f16vec4(
+        unpackFloat2x16(udata.x),
+        unpackFloat2x16(udata.y)));
+    }
+
+    case VK_FORMAT_R16_SFLOAT: {
+      return px_set_f16(f16vec4(
+        unpackFloat2x16(px.x).x, 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R16G16_SFLOAT: {
+      return px_set_f16(f16vec4(
+        unpackFloat2x16(px.x), 0.0f.xx));
+    }
+
+    case VK_FORMAT_R16G16B16A16_SFLOAT: {
+      f16vec2 xy = unpackFloat2x16(px.x);
+      f16vec2 zw = unpackFloat2x16(px.y);
+
+      return px_set_f16(f16vec4(xy, zw));
+    }
+
+    case VK_FORMAT_R16_UNORM: {
+      float data = float(unpack16(px.x).x) / float(65535.0f);
+      return px_set_f32(vec4(data, 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R16_SNORM: {
+      float data = float(unpack16(int(px.x))) / float(32767.0f);
+      return px_set_f32(vec4(data, 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R16G16_UNORM: {
+      vec2 data = vec2(unpack16(px.x)) / float(65535.0f);
+      return px_set_f32(vec4(data, 0.0f.xx));
+    }
+
+    case VK_FORMAT_R16G16_SNORM: {
+      vec2 data = vec2(unpack16(int(px.x))) / float(32767.0f);
+      return px_set_f32(vec4(data, 0.0f.xx));
+    }
+
+    case VK_FORMAT_R16G16B16A16_UNORM: {
+      uvec2 xy = unpack16(px.x);
+      uvec2 zw = unpack16(px.y);
+
+      vec4 data = vec4(xy, zw) / float(65535.0f);
+      return px_set_f32(vec4(data));
+    }
+
+    case VK_FORMAT_R16G16B16A16_SNORM: {
+      uvec2 xy = unpack16(px.x);
+      uvec2 zw = unpack16(px.y);
+
+      vec4 data = vec4(xy, zw) / float(32767.0f);
+      return px_set_f32(vec4(data));
+    }
+
+    case VK_FORMAT_R32_SFLOAT: {
+      return px_set_f32(vec4(
+        uintBitsToFloat(px.x), 0.0f.xxx));
+    }
+
+    case VK_FORMAT_R32G32_SFLOAT: {
+      float x = uintBitsToFloat(px.x);
+      float y = uintBitsToFloat(px.y);
+
+      return px_set_f32(vec4(x, y, 0.0f.xx));
+    }
+  }
+
+  return pixel_t(0u);
+}
+
+
+/* Gigafast path to average and re-quantize four pixels.
+ * Must only be used for even-sized mips. */
+pixel_t interpolate_quad_center(quad_t q) {
+  pixel_t result = px_fscale(q.px00, 0.25f.xxxx);
+  result = px_fadd(result, px_fscale(q.px01, 0.25f.xxxx));
+  result = px_fadd(result, px_fscale(q.px10, 0.25f.xxxx));
+  result = px_fadd(result, px_fscale(q.px11, 0.25f.xxxx));
+  return result;
+}
+
+
+/* GLSL is such an awesome language that makes writing generic code
+ * really clean and easy, and needing special Vulkan features for
+ * shuffling f16 vectors that trivially map to uints is such a good
+ * design decision, mmmh I love it, so gooood */
+#define shuffle_interpolate(var, cluster_size) do {                 \
+  var = px_fscale(quantize_pixel(var), 0.25f.xxxx);                 \
+  var = px_fadd(var, subgroupShuffleXor(var, cluster_size / 4));    \
+  if (gl_SubgroupSize == cluster_size)                              \
+    var = px_fadd(var, subgroupBroadcast(var, cluster_size / 2));   \
+  else                                                              \
+    var = px_fadd(var, subgroupShuffleXor(var, cluster_size / 2));  \
+} while (false)
+
+/* Regular sampling path with interpolation. Use for odd-sized mips. */
+pixel_t interpolate_quad_at(quad_t q, vec2 coord) {
+  pixel_t r0 = px_fmix(q.px00, q.px01, fract(coord.x));
+  pixel_t r1 = px_fmix(q.px10, q.px11, fract(coord.x));
+  return px_fmix(r0, r1, fract(coord.y));
+}
+
+
+/* Load quad from shared mip from given image coordinate. */
+quad_t load_quad_from_shared_mip(uvec2 coord) {
+  uint z = gl_GlobalInvocationID.z;
+
+  quad_t result;
+  result.px00 = px_set_f32(imageLoad(s_dst_mips[MAX_MIP_COUNT - 1u], ivec3(coord, z) + ivec3(0, 0, 0)));
+  result.px10 = px_set_f32(imageLoad(s_dst_mips[MAX_MIP_COUNT - 1u], ivec3(coord, z) + ivec3(1, 0, 0)));
+  result.px01 = px_set_f32(imageLoad(s_dst_mips[MAX_MIP_COUNT - 1u], ivec3(coord, z) + ivec3(0, 1, 0)));
+  result.px11 = px_set_f32(imageLoad(s_dst_mips[MAX_MIP_COUNT - 1u], ivec3(coord, z) + ivec3(1, 1, 0)));
+  return result;
+}
+
+
+/* Store pixel into given mip level. Must not be used to write the
+ * shared mip, which has its own method. */
+void store_pixel_to_mip(uint mip, uvec2 coord, pixel_t data) {
+  uint z = gl_GlobalInvocationID.z;
+  vec4 px = px_as_f32(data);
+
+  imageStore(s_dst_mips[mip - 1u], ivec3(coord, z), px);
+}
+
+
+/* Load quad at given coordinate from LDS */
+quad_t load_quad_from_lds(uvec2 coord) {
+  quad_t result;
+  result.px00 = load_pixel_from_lds(coord, uvec2(0u, 0u));
+  result.px10 = load_pixel_from_lds(coord, uvec2(1u, 0u));
+  result.px01 = load_pixel_from_lds(coord, uvec2(0u, 1u));
+  result.px11 = load_pixel_from_lds(coord, uvec2(1u, 1u));
+  return result;
+}
+
+
+/* Samples base mip or the given destination coordinate. */
+pixel_t filter_base_mip(uvec2 mip0_size, uvec2 dst_coord) {
+  uvec2 dst_size = compute_mip_size(mip0_size, 1u);
+  vec2 src_coord_f = (vec2(dst_coord) + 0.5f) / vec2(dst_size);
+
+  vec4 data = textureLod(sampler2DArray(s_base_mip, s_samplers[push_args.sampler_index]),
+    vec3(src_coord_f, float(gl_GlobalInvocationID.z)), 0.0f);
+  return px_set_f32(data);
+}
+
+
+/* Samples shared mip for the given destination coordinate. */
+pixel_t filter_shared_mip(uvec2 mip0_size, uvec2 dst_coord) {
+  uvec2 src_size = compute_mip_size(mip0_size, MAX_MIP_COUNT);
+  uvec2 dst_size = compute_mip_size(src_size, 1u);
+
+  vec2 src_coord_f = (vec2(dst_coord) / vec2(dst_size)) * vec2(src_size) + 0.5f;
+  quad_t quad = load_quad_from_shared_mip(uvec2(src_coord_f));
+  return interpolate_quad_at(quad, src_coord_f);
+}
+
+
+/* Samples pixel data from LDS */
+pixel_t filter_lds_mip(uvec2 mip0_size, uint base_mip, uvec2 dst_coord) {
+  uvec2 src_size = compute_mip_size(mip0_size, base_mip);
+  uvec2 dst_size = compute_mip_size(src_size, 1u);
+
+  vec2 src_coord_f = (vec2(dst_coord) / vec2(dst_size)) * vec2(src_size) + 0.5f;
+  quad_t quad = load_quad_from_lds(uvec2(src_coord_f));
+  return interpolate_quad_at(quad, src_coord_f);
+}
+
+
+/* Processes the next set of even-sized mips, and returns the final result. The mip
+ * parameter will contain the mip index that the returned result was computed for.
+ * This writes out all computed mips to the image. */
+pixel_t process_even_mips(uint dst_mip, uint max_mip, uvec2 dst_coord, uvec2 max_coord, pixel_t px) {
+  uint sid = gl_SubgroupInvocationID;
+
+  /* Store given pixel data in next mip level */
+  if (all(lessThan(dst_coord, max_coord)))
+    store_pixel_to_mip(dst_mip, dst_coord, px);
+
+  /* Check if the mip level we just stored (and thus read in the next step)
+   * is odd-sized, and if so, exit so that it gets written to LDS. */
+  if (dst_mip >= max_mip)
+   return px;
+
+  /* Shuffle horizontally first, then vertically. This works because
+   * we use z-order curves to arrange threads within each subgroup. */
+  shuffle_interpolate(px, 4u);
+  dst_mip += 1u;
+
+  if (all(lessThan(dst_coord >> 1u, max_coord >> 1u)) && (sid % 4u == 0u))
+    store_pixel_to_mip(dst_mip, dst_coord >> 1u, px);
+
+  if (dst_mip >= max_mip)
+    return px;
+
+  /* Same thing as above, except one mip level deeper */
+  shuffle_interpolate(px, 16u);
+  dst_mip += 1u;
+
+  if (all(lessThan(dst_coord >> 2u, max_coord >> 2u)) && (sid % 16u == 0u))
+    store_pixel_to_mip(dst_mip, dst_coord >> 2u, px);
+
+  if (dst_mip >= max_mip)
+    return px;
+
+  /* Handle last mip that we can process in one subgroup */
+  shuffle_interpolate(px, 64u);
+  dst_mip += 1u;
+
+  if (all(lessThan(dst_coord >> 3u, max_coord >> 3u)) && (sid % 64u == 0u))
+    store_pixel_to_mip(dst_mip, dst_coord >> 3u, px);
+
+  return px;
+}
+
+
+/* Determines block properties for a given mip region to process. Returns:
+ * .x : Block count of the given region in x dimension.
+ * .y : Block count of the given region in y dimension.
+ * .z : Number of blocks that the workgroup can process in one go. */
+uvec3 compute_block_properties(uvec4 region) {
+  uvec3 block_size = determine_block_size();
+  uvec2 region_size = (region.zw - region.xy + block_size.x - 1u) / block_size.x;
+
+  uint block_count = gl_WorkGroupSize.x / block_size.y;
+  return uvec3(region_size, block_count);
+}
+
+
+/* Computes block base coordinate (.xy) and block-relative
+ * pixel coordinate (.zw) for the calling thread. */
+uvec4 compute_block_coord(uvec2 block_count, uint base_block) {
+  uvec3 block_size = determine_block_size();
+
+  uint tid = gl_SubgroupID * gl_SubgroupSize + gl_SubgroupInvocationID;
+
+  uint block_index = tid / block_size.y + base_block;
+  uint block_pixel = tid % block_size.y;
+
+  uvec2 pixel_coord = decode_morton_2d(block_pixel);
+
+  /* Block counts are small here but may not be powers of two */
+  uint block_y = uint((float(block_index) + 0.5f) / float(block_count.x));
+  uint block_x = block_index - block_y * block_count.x;
+
+  return uvec4(block_x, block_y, pixel_coord);
+}
+
+
+/* Cooperatively computes read/write areas and block properties for each
+ * mip and stores them in global registers. Only works for subgroup sizes
+ * of at least 16 since we process up to 12 mips in one go. */
+u16vec2 g_per_mip_base_area = {};
+u16vec2 g_per_mip_write_area = {};
+u16vec2 g_per_mip_read_area = {};
+uint32_t g_per_mip_block_info = {};
+
+void setup_per_mip_properties(uvec2 mip0_size) {
+#if USE_SUBGROUP_PATH
+  /* Dst mip index is 1-based, but mip counts should not really
+   * be powers of two anyway so this is fine. */
+  if (gl_SubgroupSize > MAX_MIP_COUNT + MAX_MIP_COUNT) {
+    uint mip = gl_SubgroupInvocationID;
+
+    uvec4 w_area = compute_write_rect(mip0_size, mip);
+    uvec4 r_area = compute_read_rect(mip0_size, mip);
+    uvec3 block_properties = compute_block_properties(r_area);
+
+    g_per_mip_base_area = u16vec2(w_area.xy);
+    g_per_mip_write_area = u16vec2(w_area.zw);
+    g_per_mip_read_area = u16vec2(r_area.zw);
+
+    g_per_mip_block_info = 0u;
+    g_per_mip_block_info = bitfieldInsert(g_per_mip_block_info, block_properties.x,  0,  8);
+    g_per_mip_block_info = bitfieldInsert(g_per_mip_block_info, block_properties.y,  8,  8);
+    g_per_mip_block_info = bitfieldInsert(g_per_mip_block_info, block_properties.z, 16, 16);
+  }
+#endif
+}
+
+uvec4 get_read_rect(uvec2 mip0_size, uint dst_mip) {
+#if USE_SUBGROUP_PATH
+  if (gl_SubgroupSize > MAX_MIP_COUNT + MAX_MIP_COUNT) {
+    u16vec2 xy = unpack16(subgroupBroadcast(pack32(g_per_mip_base_area), dst_mip));
+    u16vec2 zw = unpack16(subgroupBroadcast(pack32(g_per_mip_read_area), dst_mip));
+    return uvec4(xy, zw);
+  }
+#endif
+
+  return compute_read_rect(mip0_size, dst_mip);
+}
+
+uvec4 get_write_rect(uvec2 mip0_size, uint dst_mip) {
+#if USE_SUBGROUP_PATH
+  if (gl_SubgroupSize > MAX_MIP_COUNT + MAX_MIP_COUNT) {
+    u16vec2 xy = unpack16(subgroupBroadcast(pack32(g_per_mip_base_area), dst_mip));
+    u16vec2 zw = unpack16(subgroupBroadcast(pack32(g_per_mip_write_area), dst_mip));
+    return uvec4(xy, zw);
+  }
+#endif
+
+  return compute_write_rect(mip0_size, dst_mip);
+}
+
+uvec3 get_block_properties(uvec2 mip0_size, uint dst_mip) {
+#if USE_SUBGROUP_PATH
+  if (gl_SubgroupSize > MAX_MIP_COUNT + MAX_MIP_COUNT) {
+    uint32_t packed_data = subgroupBroadcast(g_per_mip_block_info, dst_mip);
+
+    return uvec3(
+      bitfieldExtract(packed_data,  0,  8),
+      bitfieldExtract(packed_data,  8,  8),
+      bitfieldExtract(packed_data, 16, 16));
+  }
+#endif
+
+  return compute_block_properties(get_read_rect(mip0_size, dst_mip));
+}
+
+
+/* Helper function to filter and process the mip stored in LDS */
+pixel_t process_lds_pixels(uvec2 mip0_size, uint base_mip, uint dst_mip, uvec2 local_coord, uvec2 pixel_coord, uvec4 write_area, uint even_count) {
+  pixel_t pixel = filter_lds_mip(mip0_size, base_mip, local_coord);
+
+  return process_even_mips(dst_mip, dst_mip + even_count,
+    pixel_coord, write_area.zw, pixel);
+}
+
+
+/* Helper function to conditionally write processed pixel back to LDS */
+void process_lds_writeback(uvec2 local_coord, uvec2 pixel_coord, uvec4 read_area, uint even_count, pixel_t pixel) {
+  if (all(lessThan(pixel_coord, read_area.zw))) {
+    /* Only use one the first thread of each block to store the result */
+    if (bitfieldExtract(gl_SubgroupInvocationID, 0, int(even_count + even_count)) == 0u)
+      store_pixel_to_lds(local_coord >> even_count, pixel);
+  }
+}
+
+
+/* Downsamples mip from image as well as all even-sized mips following it, and
+ * writes result to LDS as necessary. Returns the last mip level written. */
+uint process_base_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
+  uint odd_mask = compute_odd_mip_mask_flat(mip0_size);
+  uint dst_mip = base_mip + 1u;
+
+  /* Compute processing area of the first mip that we *write*. */
+  uvec4 dst_r_area = get_read_rect(mip0_size, dst_mip);
+  uvec4 dst_w_area = get_write_rect(mip0_size, dst_mip);
+
+  uvec3 block_size = determine_block_size();
+  uvec3 block_info = get_block_properties(mip0_size, dst_mip);
+
+  uint even_count = min(uint(findLSB(odd_mask >> dst_mip)), block_size.z);
+
+  /* Iterate over blocks */
+  for (uint i = 0u; i < block_info.x * block_info.y; i += block_info.z) {
+    uvec4 block_coord = compute_block_coord(block_info.xy, i);
+
+    if (block_coord.y < block_info.y) {
+      uvec2 local_coord = block_size.x * block_coord.xy + block_coord.zw;
+      uvec2 pixel_coord = dst_r_area.xy + local_coord;
+
+      pixel_t pixel;
+
+      if (base_mip == 0u)
+        pixel = filter_base_mip(mip0_size, pixel_coord);
+      else
+        pixel = filter_shared_mip(mip0_size, pixel_coord);
+
+      pixel = process_even_mips(dst_mip, dst_mip + even_count,
+        pixel_coord, dst_w_area.zw, pixel);
+
+      if (dst_mip + even_count < last_mip)
+        process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+    }
+  }
+
+  return dst_mip + even_count;
+}
+
+
+/* Downsamples mip from LDS, as well as all mips following it. */
+uint process_lds_mip(uvec2 mip0_size, uint base_mip, uint last_mip) {
+  uint odd_mask = compute_odd_mip_mask_flat(mip0_size);
+  uint dst_mip = base_mip + 1u;
+
+  /* Compute processing area of the first mip that we *write*. */
+  uvec4 dst_r_area = get_read_rect(mip0_size, dst_mip);
+  uvec4 dst_w_area = get_write_rect(mip0_size, dst_mip);
+
+  uvec3 block_size = determine_block_size();
+  uvec3 block_info = get_block_properties(mip0_size, dst_mip);
+
+  uint even_count = min(uint(findLSB(odd_mask >> dst_mip)), block_size.z);
+
+  uint block_count = block_info.x * block_info.y;
+  uint block_count_per_wave = gl_SubgroupSize / block_size.y;
+
+  if (block_count > block_count_per_wave) {
+    /* Iterate over blocks */
+    for (uint i = 0u; i < block_count; i += block_info.z) {
+      uvec4 block_coord = compute_block_coord(block_info.xy, i);
+
+      pixel_t pixel;
+
+      uvec2 local_coord = block_size.x * block_coord.xy + block_coord.zw;
+      uvec2 pixel_coord = dst_r_area.xy + local_coord;
+
+      if (block_coord.y < block_info.y) {
+        pixel = process_lds_pixels(mip0_size, base_mip, dst_mip,
+          local_coord, pixel_coord, dst_w_area, even_count);
+      }
+
+      if (dst_mip + even_count < last_mip) {
+        /* Ensure that all threads have finished reading LDS before overriding.
+         * This is safe since subsequent iterations will not be reading any of
+         * the pixels written here. */
+        controlBarrier(gl_ScopeWorkgroup, gl_ScopeWorkgroup,
+          gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
+
+        if (block_coord.y < block_info.y)
+          process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+      }
+    }
+  } else {
+    /* Special path for small, single-subgroup reductions. Basically the same
+     * as above, except we can actually avoid a full workgroup barrier and do
+     * some more constant-folding because there will only be one iteration.
+     * This is very common when downsampling typical render resolutions. */
+    uvec4 block_coord = compute_block_coord(block_info.xy, 0u);
+
+    uvec2 local_coord = block_size.x * block_coord.xy + block_coord.zw;
+    uvec2 pixel_coord = dst_r_area.xy + local_coord;
+
+    if (block_coord.y < block_info.y) {
+      pixel_t pixel = process_lds_pixels(mip0_size, base_mip, dst_mip,
+        local_coord, pixel_coord, dst_w_area, even_count);
+
+      controlBarrier(gl_ScopeSubgroup, gl_ScopeSubgroup,
+        gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
+
+      if (dst_mip + even_count < last_mip)
+        process_lds_writeback(local_coord, pixel_coord, dst_r_area, even_count, pixel);
+    }
+  }
+
+  return dst_mip + even_count;
+}
+
+
+/* Processes block of mips until there is only one active thread left. */
+void process_mips(uvec2 mip0_size, uint base_mip, uint last_mip) {
+  uint dst_mip = process_base_mip(mip0_size, base_mip, last_mip);
+
+  while (dst_mip < last_mip) {
+    controlBarrier(gl_ScopeWorkgroup, gl_ScopeWorkgroup,
+      gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
+
+    dst_mip = process_lds_mip(mip0_size, dst_mip, last_mip);
+  }
+}
+
+
+/* Helper to increment the atomic counter, making sure that all stores
+ * from this workgroup complete before returning, and making all stores
+ * from other workgroups visible. Returns true if this is the final
+ * workgroup that needs to process the mip tail. */
+shared uint g_subgroups_done;
+shared uint g_workgroups_done;
+
+bool finalize_group(uvec2 mip0_size) {
+  uint tid = gl_SubgroupID * gl_SubgroupSize + gl_SubgroupInvocationID;
+  uint z = gl_GlobalInvocationID.z;
+
+  uvec2 group_count = compute_mip_size(mip0_size, MAX_MIP_COUNT);
+  uint group_count_flat = group_count.x * group_count.y;
+
+  /* Wait for all stores in the current subgroup to complete before signaling
+   * that it is done with its work, then signal the workgroup once everything
+   * is done. This way we avoid one barrier that we'd need when signaling the
+   * workgroup from one thread directly. */
+  controlBarrier(gl_ScopeSubgroup, gl_ScopeQueueFamily,
+    gl_StorageSemanticsImage, gl_SemanticsRelease);
+
+  if (subgroupElect()) {
+    uint subgroups_done = atomicAdd(g_subgroups_done, 1u) + 1u;
+
+    if (subgroups_done == gl_WorkGroupSize.x / gl_SubgroupSize)
+      g_workgroups_done = atomicAdd(push_args.ctr.counters[z], 1u) + 1u;
+  }
+
+  /* Wait for broadcast to finish and check if this workgroup
+   * is the last one active. If so, downsample the mip tail. */
+  controlBarrier(gl_ScopeWorkgroup, gl_ScopeWorkgroup,
+    gl_StorageSemanticsShared, gl_SemanticsAcquireRelease);
+
+  if (g_workgroups_done != group_count_flat)
+    return false;
+
+  /* Make sure we can read from the shared mip level */
+  memoryBarrier(gl_ScopeQueueFamily, gl_StorageSemanticsImage, gl_SemanticsAcquire);
+  return true;
+}
+
+
+void main() {
+  /* There will be LDS sync at some point so this is fine */
+  g_subgroups_done = 0u;
+  g_workgroups_done = 0u;
+
+  /* Handle first set of mips */
+  uvec2 mip0_size = uvec2(textureSize(s_base_mip, 0).xy);
+  setup_per_mip_properties(mip0_size);
+
+  process_mips(mip0_size, 0, min(push_args.mip_count, MAX_MIP_COUNT));
+
+  /* Skip further processing if there are no more mips to process */
+  if (push_args.mip_count <= MAX_MIP_COUNT)
+    return;
+
+  /* Check if we're the last active workgroup and downsample mip tail */
+  if (finalize_group(mip0_size))
+    process_mips(mip0_size, MAX_MIP_COUNT, push_args.mip_count);
+}
