@@ -145,5 +145,86 @@ namespace dxvk {
     PassViews createViews(uint32_t pass) const;
     
   };
-  
+
+
+  /**
+   * \brief Push data layout for mip gen pass
+   */
+  struct DxvkMetaMipGenPushConstants {
+    uint64_t atomicCounterVa = 0u;
+    uint32_t samplerIndex = 0u;
+    uint32_t mipCount = 0u;
+  };
+
+
+  /**
+   * \brief Mip gen pipeline info
+   */
+  struct DxvkMetaMipGenPipeline {
+    const DxvkPipelineLayout* layout = nullptr;
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    uint32_t mipsPerStep = 0u;
+  };
+
+
+  /**
+   * \brief Spec constants for mip gen pipeline
+   */
+  struct DxvkMetaMipGenSpecConstants {
+    VkFormat format = VK_FORMAT_UNDEFINED;
+    uint32_t formatDwords = 0u;
+  };
+
+
+  /**
+   * \brief Mip gen pipeline objects
+   */
+  class DxvkMetaMipGenObjects {
+
+  public:
+
+    constexpr static uint32_t MipCount = 6u;
+
+    DxvkMetaMipGenObjects(DxvkDevice* device);
+    ~DxvkMetaMipGenObjects();
+
+    /**
+     * \brief Checks format-specific support
+     *
+     * \param [in] format Format to query
+     * \returns \c true if compute mip-gen can be used
+     *    for the given format on the given device.
+     */
+    bool checkFormatSupport(
+            VkFormat              viewFormat);
+
+    /**
+     * \brief Queries pipeline and properties of that pipeline
+     *
+     * Must only be called for supported formats.
+     * \param [in] format Format to create the pipeline for
+     * \returns Pipeline properties
+     */
+    DxvkMetaMipGenPipeline getPipeline(
+            VkFormat              viewFormat);
+
+  private:
+
+    DxvkDevice* m_device = nullptr;
+
+    dxvk::mutex m_mutex;
+
+    const DxvkPipelineLayout* m_layout;
+
+    std::unordered_map<VkFormat, bool> m_formatSupport;
+    std::unordered_map<VkFormat, DxvkMetaMipGenPipeline> m_pipelines;
+
+    const DxvkPipelineLayout* createPipelineLayout() const;
+
+    DxvkMetaMipGenPipeline createPipeline(VkFormat format) const;
+
+    bool queryFormatSupport(VkFormat viewFormat) const;
+
+  };
+
 }
