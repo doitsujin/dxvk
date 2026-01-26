@@ -51,9 +51,9 @@ namespace dxvk {
 #ifdef _WIN32
     // On Windows, we use NtDelayExecution which has units of 100ns.
     using TimerDuration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
-    using NtQueryTimerResolutionProc = UINT (WINAPI *) (ULONG*, ULONG*, ULONG*);
-    using NtSetTimerResolutionProc = UINT (WINAPI *) (ULONG, BOOL, ULONG*);
-    using NtDelayExecutionProc = UINT (WINAPI *) (BOOL, LARGE_INTEGER*);
+    using NtQueryTimerResolutionProc = LONG (NTAPI *) (ULONG*, ULONG*, ULONG*);
+    using NtSetTimerResolutionProc = LONG (NTAPI *) (ULONG, BOOLEAN, ULONG*);
+    using NtDelayExecutionProc = LONG (NTAPI *) (BOOLEAN, LARGE_INTEGER*);
     NtDelayExecutionProc NtDelayExecution = nullptr;
 #else
     // On other platforms, we use the std library, which calls through to nanosleep -- which is ns.
