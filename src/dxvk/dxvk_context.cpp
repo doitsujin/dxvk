@@ -1215,6 +1215,8 @@ namespace dxvk {
     if (imageView->info().mipCount <= 1)
       return;
     
+    this->spillRenderPass(true);
+
     // Check whether we can use the single-pass mip gen compute shader. Its main
     // advantage is that it does not require any internal synchronization as long
     // as only a single pass is required to process all mips in the view.
@@ -1230,6 +1232,23 @@ namespace dxvk {
       useCs = ensureImageCompatibility(imageView->image(), usageInfo);
     }
 
+    // If we can't use compute, use plain blits if the view format matches the image
+    // format exactly. Beneficial on hardware that has dedicated 2D engines.
+    bool useHw = !useCs
+      && imageView->info().format == imageView->image()->info().format
+      && imageView->image()->info().sampleCount == VK_SAMPLE_COUNT_1_BIT;
+
+    if (useHw) {
+      DxvkFormatFeatures formatFeatures = m_device->adapter()->getFormatFeatures(imageView->info().format);
+
+      VkFormatFeatureFlags2 features = imageView->image()->info().tiling == VK_IMAGE_TILING_OPTIMAL
+        ? formatFeatures.optimal
+        : formatFeatures.linear;
+
+      useHw = (features & VK_FORMAT_FEATURE_2_BLIT_DST_BIT)
+           && (features & VK_FORMAT_FEATURE_2_BLIT_SRC_BIT);
+    }
+
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = imageView->image()->info().debugName;
 
@@ -1239,6 +1258,8 @@ namespace dxvk {
 
     if (useCs)
       generateMipmapsCs(imageView);
+    else if (useHw)
+      generateMipmapsHw(imageView, filter);
     else
       generateMipmapsFb(imageView, filter);
 
@@ -4540,10 +4561,63 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::generateMipmapsHw(
+    const Rc<DxvkImageView>&        imageView,
+          VkFilter                  filter) {
+    auto image = imageView->image();
+
+    VkImageSubresourceRange subresources = imageView->imageSubresources();
+
+    VkImageSubresourceRange srcSubresource = subresources;
+    srcSubresource.levelCount = 1u;
+
+    VkImageSubresourceRange dstSubresource = subresources;
+    dstSubresource.baseMipLevel += 1u;
+    dstSubresource.levelCount -= 1u;
+
+    VkImageLayout srcLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    VkImageLayout dstLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    for (uint32_t i = 0u; i < subresources.levelCount - 1u; i++) {
+      // Transition and discard all levels that will be written in the first iteration,
+      // then just synchronize access as normal. Requires that the destination mip count
+      // is left intact for the first iteration.
+      small_vector<DxvkResourceAccess, 2u> accessBatch;
+      accessBatch.emplace_back(*image, srcSubresource, srcLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
+      accessBatch.emplace_back(*image, dstSubresource, dstLayout, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT, !i);
+      syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+      dstSubresource.levelCount = 1u;
+
+      VkExtent3D dstSize = image->mipLevelExtent(dstSubresource.baseMipLevel);
+      VkExtent3D srcSize = image->mipLevelExtent(srcSubresource.baseMipLevel);
+
+      VkImageBlit2 blit = { VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+      blit.dstSubresource = vk::pickSubresourceLayers(dstSubresource, 0u);
+      blit.srcSubresource = vk::pickSubresourceLayers(srcSubresource, 0u);
+      blit.dstOffsets[1u] = { int32_t(dstSize.width), int32_t(dstSize.height), int32_t(dstSize.depth) };
+      blit.srcOffsets[1u] = { int32_t(srcSize.width), int32_t(srcSize.height), int32_t(srcSize.depth) };
+
+      VkBlitImageInfo2 info = { VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
+      info.dstImage = image->handle();
+      info.dstImageLayout = dstLayout;
+      info.srcImage = image->handle();
+      info.srcImageLayout = srcLayout;
+      info.regionCount = 1u;
+      info.pRegions = &blit;
+      info.filter = filter;
+
+      m_cmd->cmdBlitImage(&info);
+
+      srcSubresource.baseMipLevel += 1u;
+      dstSubresource.baseMipLevel += 1u;
+    }
+  }
+
+
   void DxvkContext::generateMipmapsFb(
     const Rc<DxvkImageView>&        imageView,
           VkFilter                  filter) {
-    this->spillRenderPass(true);
     this->invalidateState();
 
     // Make sure we can both render to and read from the image
@@ -4650,7 +4724,6 @@ namespace dxvk {
 
   void DxvkContext::generateMipmapsCs(
     const Rc<DxvkImageView>&        imageView) {
-    this->spillRenderPass(true);
     this->invalidateState();
 
     // Number of descriptors to bind, first is for source mip

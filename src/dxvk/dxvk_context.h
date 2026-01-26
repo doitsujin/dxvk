@@ -1546,6 +1546,10 @@ namespace dxvk {
             uint32_t              maxCount,
             uint32_t              stride);
 
+    void generateMipmapsHw(
+      const Rc<DxvkImageView>&        imageView,
+            VkFilter                  filter);
+
     void generateMipmapsFb(
       const Rc<DxvkImageView>&        imageView,
             VkFilter                  filter);
