@@ -80,7 +80,7 @@ namespace dxvk {
 namespace dxvk::this_thread {
 
   bool isInModuleDetachment() {
-    using PFN_RtlDllShutdownInProgress = BOOLEAN (WINAPI *)();
+    using PFN_RtlDllShutdownInProgress = BOOLEAN (NTAPI *)();
 
     static auto RtlDllShutdownInProgress = reinterpret_cast<PFN_RtlDllShutdownInProgress>(
       ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "RtlDllShutdownInProgress"));
