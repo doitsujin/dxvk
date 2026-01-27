@@ -8874,6 +8874,10 @@ namespace dxvk {
       stage[DXVK_TSS_RESULTARG]             = D3DTA_CURRENT;
       stage[DXVK_TSS_CONSTANT]              = 0x00000000;
     }
+
+    // Projected is set based on DXVK_TSS_TEXTURETRANSFORMFLAGS
+    m_textureSlotTracking.projected = 0;
+
     m_dirty.set(D3D9DeviceDirtyFlag::SharedPixelShaderData);
     m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
 
