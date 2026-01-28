@@ -176,6 +176,7 @@ namespace dxvk {
   enum class DxvkPipelineLayoutType : uint16_t {
     Independent = 0u, ///< Fragment and pre-raster shaders use separate sets
     Merged      = 1u, ///< Fragment and pre-raster shaders use the same sets
+    BuiltIn     = 2u, ///< Built-in pipeline with special push data layout
   };
 
 
@@ -882,7 +883,15 @@ namespace dxvk {
      * \returns \c true if the set layout contains no descriptors
      */
     bool isEmpty() const {
-      return m_empty;
+      return !m_bindingCount;
+    }
+
+    /**
+     * \brif Queries number of bindings in set
+     * \returns Number of bindings
+     */
+    uint32_t getBindingCount() const {
+      return m_bindingCount;
     }
 
     /**
@@ -910,6 +919,19 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries binding type and offset in the set
+     *
+     * Can only be used when not using the legacy binding model.
+     * \param [in] binding Binding index
+     * \returns Binding layout info
+     */
+    DxvkDescriptorUpdateInfo getBindingInfo(uint32_t binding) const {
+      return binding < m_heap.bindingLayouts.size()
+        ? m_heap.bindingLayouts[binding]
+        : DxvkDescriptorUpdateInfo();
+    }
+
+    /**
      * \brief Updates descriptor memory
      *
      * Uses the pre-computed update list to write descriptors.
@@ -925,7 +947,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*                   m_device;
-    bool                          m_empty     = false;
+    uint32_t                      m_bindingCount = 0u;
 
     struct {
       VkDescriptorSetLayout       layout          = VK_NULL_HANDLE;
@@ -935,11 +957,15 @@ namespace dxvk {
     struct {
       VkDeviceSize                memorySize = 0u;
       DxvkDescriptorUpdateList    update;
+
+      small_vector<DxvkDescriptorUpdateInfo, 32> bindingLayouts;
     } m_heap;
 
     void initSetLayout(const DxvkDescriptorSetLayoutKey& key);
 
     void initDescriptorBufferUpdate(const DxvkDescriptorSetLayoutKey& key);
+
+    void initDescriptorHeapLayout(const DxvkDescriptorSetLayoutKey& key);
 
   };
 
@@ -1259,6 +1285,19 @@ namespace dxvk {
       return m_pushData.blocks[index];
     }
 
+    /**
+     * \brief Queries number of binding mappings
+     *
+     * Used when creating pipelines with descriptor heaps.
+     * \returns Binding mapping count
+     */
+    VkShaderDescriptorSetAndBindingMappingInfoEXT getMappingInfo() const {
+      VkShaderDescriptorSetAndBindingMappingInfoEXT result = { VK_STRUCTURE_TYPE_SHADER_DESCRIPTOR_SET_AND_BINDING_MAPPING_INFO_EXT };
+      result.mappingCount = m_mapping.mappings.size();
+      result.pMappings = m_mapping.mappings.data();
+      return result;
+    }
+
   private:
 
     DxvkDevice*             m_device;
@@ -1282,10 +1321,18 @@ namespace dxvk {
       VkDeviceSize      setMemorySize = 0u;
     } m_heap;
 
+    struct {
+      std::vector<VkDescriptorMappingSourcePushIndexEXT>  pushIndex;
+      std::vector<VkDescriptorSetAndBindingMappingEXT>    mappings;
+    } m_mapping;
+
     void initMetadata(
       const DxvkPipelineLayoutKey&      key);
 
     void initPipelineLayout(
+      const DxvkPipelineLayoutKey&      key);
+
+    void initMappigs(
       const DxvkPipelineLayoutKey&      key);
 
   };
@@ -1812,6 +1859,7 @@ namespace dxvk {
     buildPushDataBlocks(
             DxvkPipelineLayoutType      type,
             DxvkDevice*                 device,
+      const SetInfos&                   setInfos,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
 
@@ -1819,6 +1867,7 @@ namespace dxvk {
     buildDescriptorSetLayouts(
             DxvkPipelineLayoutType      type,
             DxvkPipelineLayoutFlags     flags,
+      const SetInfos&                   setInfos,
       const DxvkPipelineLayoutBuilder&  builder,
             DxvkPipelineManager*        manager);
 

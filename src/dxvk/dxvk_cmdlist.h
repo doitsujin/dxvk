@@ -516,7 +516,7 @@ namespace dxvk {
      * \param [in] inheritanceInfo Command buffer inheritance info
      */
     void beginSecondaryCommandBuffer(
-      const VkCommandBufferInheritanceInfo& inheritanceInfo);
+            VkCommandBufferInheritanceInfo inheritanceInfo);
 
     /**
      * \brief Ends secondary command buffer
@@ -961,8 +961,8 @@ namespace dxvk {
 
       m_vkd->vkCmdPipelineBarrier2(getCmdBuffer(cmdBuffer), dependencyInfo);
     }
-    
-    
+
+
     void cmdPushConstants(
             DxvkCmdBuffer           cmdBuffer,
             VkPipelineLayout        layout,
@@ -972,6 +972,13 @@ namespace dxvk {
       const void*                   pValues) {
       m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
         layout, stageFlags, offset, size, pValues);
+    }
+
+
+    void cmdPushData(
+            DxvkCmdBuffer           cmdBuffer,
+      const VkPushDataInfoEXT*      info) {
+      m_vkd->vkCmdPushDataEXT(getCmdBuffer(cmdBuffer), info);
     }
 
 
@@ -1331,6 +1338,14 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
+    void bindResourcesDescriptorHeap(
+            DxvkCmdBuffer                 cmdBuffer,
+      const DxvkPipelineLayout*           layout,
+            uint32_t                      descriptorCount,
+      const DxvkDescriptorWrite*          descriptorInfos,
+            size_t                        pushDataSize,
+      const void*                         pushData);
+
     void bindResourcesDescriptorBuffer(
             DxvkCmdBuffer                 cmdBuffer,
       const DxvkPipelineLayout*           layout,
@@ -1339,7 +1354,13 @@ namespace dxvk {
             size_t                        pushDataSize,
       const void*                         pushData);
 
+    void rebindResourceHeap();
+
     void rebindDescriptorBuffers();
+
+    void bindSamplerHeap(VkCommandBuffer cmdBuffer);
+
+    void bindResourceHeap(VkCommandBuffer cmdBuffer);
 
     void bindDescriptorBuffers(VkCommandBuffer cmdBuffer);
 
@@ -1350,6 +1371,14 @@ namespace dxvk {
     void countDescriptorStats(
       const Rc<DxvkResourceDescriptorRange>& range,
             VkDeviceSize                  baseOffset);
+
+    static VkBindHeapInfoEXT getHeapBindInfo(const DxvkDescriptorHeapBindingInfo& heapInfo) {
+      VkBindHeapInfoEXT bindInfo = { VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT };
+      bindInfo.heapRange.address = heapInfo.gpuAddress;
+      bindInfo.heapRange.size = heapInfo.bufferSize;
+      bindInfo.reservedRangeSize = heapInfo.reservedSize;
+      return bindInfo;
+    }
 
   };
   

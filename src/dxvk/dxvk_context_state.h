@@ -80,6 +80,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Binding model implementation
+   */
+  enum class DxvkBindingModel : uint32_t {
+    Legacy,
+    DescriptorBuffer,
+    DescriptorHeap,
+  };
+
+
+  /**
    * \brief Context feature bits
    */
   enum class DxvkContextFeature : uint32_t {
@@ -88,6 +98,7 @@ namespace dxvk {
     DebugUtils,
     DirectMultiDraw,
     DescriptorBuffer,
+    DescriptorHeap,
     FeatureCount
   };
 

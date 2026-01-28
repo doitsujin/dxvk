@@ -23,6 +23,9 @@ namespace dxvk {
     /// Enable graphics pipeline library
     Tristate enableGraphicsPipelineLibrary = Tristate::Auto;
 
+    /// Enable descriptor heap
+    bool enableDescriptorHeap = true;
+
     /// Enable descriptor buffer
     Tristate enableDescriptorBuffer = Tristate::Auto;
 

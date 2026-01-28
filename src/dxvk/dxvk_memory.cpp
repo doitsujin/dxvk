@@ -71,7 +71,25 @@ namespace dxvk {
       std::tuple(key), std::tuple()).first->second;
 
     if (key.format) {
-      if (m_device->canUseDescriptorBuffer()) {
+      if (m_device->canUseDescriptorHeap()) {
+        VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+        VkTexelBufferDescriptorInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_TEXEL_BUFFER_DESCRIPTOR_INFO_EXT };
+        bufferInfo.format = key.format;
+        bufferInfo.addressRange.address = m_va + key.offset;
+        bufferInfo.addressRange.size = key.size;
+
+        VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+        info.type = (key.usage == VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+          ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+          : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+        info.data.pTexelBuffer = &bufferInfo;
+
+        VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+        if (vr != VK_SUCCESS)
+          throw DxvkError(str::format("Failed to write Vulkan buffer view descriptor: ", vr));
+      } else if (m_device->canUseDescriptorBuffer()) {
         VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
         bufferInfo.address = m_va + key.offset;
         bufferInfo.range = key.size;
@@ -117,7 +135,22 @@ namespace dxvk {
       bufferInfo.offset = key.offset + baseOffset;
       bufferInfo.range = key.size;
 
-      if (m_device->canUseDescriptorBuffer()) {
+      if (m_device->canUseDescriptorHeap()) {
+        VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+        VkDeviceAddressRangeEXT bufferRange = { };
+        bufferRange.address = m_va + key.offset;
+        bufferRange.size = key.size;
+
+        VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        info.data.pAddressRange = &bufferRange;
+
+        VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+        if (vr != VK_SUCCESS)
+          throw DxvkError(str::format("Failed to write Vulkan buffer descriptor: ", vr));
+      } else if (m_device->canUseDescriptorBuffer()) {
         VkDescriptorAddressInfoEXT bufferInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_ADDRESS_INFO_EXT };
         bufferInfo.address = m_va + key.offset;
         bufferInfo.range = key.size;
@@ -173,26 +206,45 @@ namespace dxvk {
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
 
-    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usage };
-    info.image = m_image;
-    info.viewType = key.viewType;
-    info.format = key.format;
-    info.components = key.unpackSwizzle();
-    info.subresourceRange.aspectMask = key.aspects;
-    info.subresourceRange.baseMipLevel = key.mipIndex;
-    info.subresourceRange.levelCount = key.mipCount;
-    info.subresourceRange.baseArrayLayer = key.layerIndex;
-    info.subresourceRange.layerCount = key.layerCount;
+    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usage };
+    viewInfo.image = m_image;
+    viewInfo.viewType = key.viewType;
+    viewInfo.format = key.format;
+    viewInfo.components = key.unpackSwizzle();
+    viewInfo.subresourceRange.aspectMask = key.aspects;
+    viewInfo.subresourceRange.baseMipLevel = key.mipIndex;
+    viewInfo.subresourceRange.levelCount = key.mipCount;
+    viewInfo.subresourceRange.baseArrayLayer = key.layerIndex;
+    viewInfo.subresourceRange.layerCount = key.layerCount;
 
-    descriptor.legacy.image.imageLayout = key.layout;
+    if (!shaderResourceUsage || !m_device->canUseDescriptorHeap() || m_device->hasCudaInterop()) {
+      descriptor.legacy.image.imageLayout = key.layout;
 
-    VkResult vr = vk->vkCreateImageView(
-      vk->device(), &info, nullptr, &descriptor.legacy.image.imageView);
+      VkResult vr = vk->vkCreateImageView(
+        vk->device(), &viewInfo, nullptr, &descriptor.legacy.image.imageView);
 
-    if (vr != VK_SUCCESS)
-      throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+      if (vr != VK_SUCCESS)
+        throw DxvkError(str::format("Failed to create Vulkan image view: ", vr));
+    }
 
-    if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
+    if (shaderResourceUsage && m_device->canUseDescriptorHeap()) {
+      VkHostAddressRangeEXT hostAddress = descriptor.getHostAddressRange();
+
+      VkImageDescriptorInfoEXT imageInfo = { VK_STRUCTURE_TYPE_IMAGE_DESCRIPTOR_INFO_EXT };
+      imageInfo.pView = &viewInfo;
+      imageInfo.layout = key.layout;
+
+      VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
+      info.type = (key.usage == VK_IMAGE_USAGE_STORAGE_BIT)
+        ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
+        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      info.data.pImage = &imageInfo;
+
+      VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
+
+      if (vr != VK_SUCCESS)
+        throw DxvkError(str::format("Failed to write Vulkan image view descriptor: ", vr));
+    } else if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
       if (shaderResourceUsage == VK_IMAGE_USAGE_STORAGE_BIT) {
@@ -978,7 +1030,7 @@ namespace dxvk {
       // ca expect these to be long-lived and mapped, and potentially use a dedicated
       // memory type that may have unexpected size restrictions. Also make sure not
       // to ever relocate these buffers since they require a stable GPU address.
-      if (createInfo.usage & DescriptorBufferUsage) {
+      if (createInfo.usage & (DescriptorBufferUsage | DescriptorHeapUsage)) {
         VkMemoryDedicatedAllocateInfo dedicatedInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
         dedicatedInfo.buffer = buffer;
 
@@ -2030,6 +2082,9 @@ namespace dxvk {
     // set the descriptor heap usage flags themselves since we do not want any
     // non-descriptor allocation to enable those bits.
     VkBufferUsageFlags descriptorHeapUsage = 0u;
+
+    if (m_device->canUseDescriptorHeap())
+      descriptorHeapUsage |= DescriptorHeapUsage;
 
     if (m_device->canUseDescriptorBuffer())
       descriptorHeapUsage |= DescriptorBufferUsage;
