@@ -1130,14 +1130,18 @@ namespace dxvk {
     { R"(\\RRU(_demo)?\.exe$)", {{
       { "dxvk.zeroMappedMemory",            "True" },
     }} },
-    /* Sims 3                                    *
-     * Worse shadow quality on unknown AMD cards */
+    /* Sims 3                                     *
+     * Worse shadow quality on unknown AMD cards  */
     { R"(\\TS3(W)?\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "1080" },
       { "d3d9.customDeviceDesc", "Geforce GTX 580" },
     }} },
-
+    /* Sid Meier's Pirates!: Live the Life        *
+     * Fixes a crash on resolution change         */
+    { R"(\\Pirates!\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
