@@ -929,8 +929,6 @@ namespace dxvk {
     void BeginFrame(Rc<DxvkLatencyTracker> LatencyTracker, uint64_t FrameId);
     void EndFrame(Rc<DxvkLatencyTracker> LatencyTracker);
 
-    void UpdateActiveRTs(uint32_t index);
-
     template <uint32_t Index>
     void UpdateAnyColorWrites();
 

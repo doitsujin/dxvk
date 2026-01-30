@@ -6397,18 +6397,6 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
-    const uint32_t bit = 1 << index;
-
-    m_rtSlotTracking.canBeSampled &= ~bit;
-
-    if (HasRenderTargetBound(index) &&
-      m_state.renderTargets[index]->GetBaseTexture() != nullptr)
-      m_rtSlotTracking.canBeSampled |= bit;
-
-    UpdateActiveHazardsRT(std::numeric_limits<uint32_t>::max());
-  }
-
   template <uint32_t Index>
   inline void D3D9DeviceEx::UpdateAnyColorWrites() {
     // Writes to a render target have been enabled => check for hazards
