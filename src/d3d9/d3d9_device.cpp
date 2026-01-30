@@ -1754,7 +1754,7 @@ namespace dxvk {
 
     if (texInfo != nullptr) {
       // Update render target sampling usage bitmask for hazard tracking
-      m_rtSlotTracking.canBeSampled |= uint8_t(HasRenderTargetBound(RenderTargetIndex) &&
+      m_rtSlotTracking.canBeSampled |= uint8_t(!texInfo->IsNull() &&
         rt->GetBaseTexture() != nullptr) << RenderTargetIndex;
 
       // Update render target alpha swizzle bitmask if we need to fix up the alpha channel
