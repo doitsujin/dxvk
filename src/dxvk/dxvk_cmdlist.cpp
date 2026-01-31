@@ -688,7 +688,7 @@ namespace dxvk {
       setLayout->update(storage.mapPtr, descriptors.data());
 
       // Bind the set by updating the appropriate push constant
-      uint32_t setOffset = storage.offset;
+      uint32_t setOffset = storage.offset >> layout->getDescriptorOffsetShift();
 
       VkPushDataInfoEXT pushInfo = { VK_STRUCTURE_TYPE_PUSH_DATA_INFO_EXT };
       pushInfo.offset = pushDataBlock.getSize();

@@ -1220,6 +1220,7 @@ namespace dxvk {
     /**
      * \brief Queries Vulkan pipeline layout
      *
+     * Will be \c VK_NULL_HANDLE when descriptor heaps are used.
      * \param [in] independent Whether to return a pipeline
      *    layout that can be used with pipeline libraries.
      * \returns Pipeline layout handle
@@ -1241,11 +1242,23 @@ namespace dxvk {
     /**
      * \brief Queries specific descriptor set layout
      *
+     * Invalid when descriptor heaps are used.
      * \param [in] set Set index
      * \returns Set layout
      */
     const DxvkDescriptorSetLayout* getDescriptorSetLayout(uint32_t set) const {
       return m_setLayouts[set];
+    }
+
+    /**
+     * \brief Queries descriptor offset scale
+     *
+     * Returns the number of bits by which offsets must be
+     * shifted prior to passing them in as push data for
+     * heaps. With descriptor buffers, this will always be 0.
+     */
+    uint32_t getDescriptorOffsetShift() const {
+      return m_heap.offsetShift;
     }
 
     /**
@@ -1318,6 +1331,7 @@ namespace dxvk {
     } m_pushData;
 
     struct {
+      uint32_t          offsetShift   = 0u;
       VkDeviceSize      setMemorySize = 0u;
     } m_heap;
 
