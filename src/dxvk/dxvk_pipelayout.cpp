@@ -268,6 +268,11 @@ namespace dxvk {
       m_pushData.blocks[i] = key.getPushDataBlock(i);
       m_pushData.mergedBlock.merge(m_pushData.blocks[i]);
     }
+
+    // If we can use heaps, and if we're not on AMD or similarly working hardware,
+    // scale heap offsets by the minimum set alignment to make the driver aware.
+    if (m_device->canUseDescriptorHeap() && !m_device->perfHints().preferDescriptorByteOffsets)
+      m_heap.offsetShift = bit::tzcnt(m_device->getDescriptorProperties().getDescriptorSetAlignment());
   }
 
 
@@ -355,7 +360,7 @@ namespace dxvk {
         auto& pushIndex = entry.sourceData.pushIndex;
         pushIndex.heapOffset = bindingInfo.offset;
         pushIndex.pushOffset = pushBase + sizeof(uint32_t) * set;
-        pushIndex.heapIndexStride = 1u;
+        pushIndex.heapIndexStride = 1u << m_heap.offsetShift;
         pushIndex.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(bindingInfo.descriptorType).size;
       }
     }
