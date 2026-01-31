@@ -747,6 +747,13 @@ namespace dxvk {
                              || (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
                               && m_adapter->deviceProperties().vk13.minSubgroupSize == 32u));
 
+    // On AMD we can expect it to be optimal to simply pass the heap offset
+    // to descriptor memory through as-is to avoid some ALU. Some other
+    // vendors are more sensitive towards knowing descriptor alignment.
+    hints.preferDescriptorByteOffsets = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+                                     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE)
+                                     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY);
+
     return hints;
   }
 

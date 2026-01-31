@@ -6560,7 +6560,7 @@ namespace dxvk {
 
       // Allocate descriptor set in memory and query heap offset
       auto setStorage = m_cmd->allocateDescriptors(setLayout);
-      heapOffsets[setIndex] = setStorage.offset;
+      heapOffsets[setIndex] = setStorage.offset >> pipelineLayout->getDescriptorOffsetShift();
 
       // Allocate descriptor update entry to write descriptor pointers to
       auto e = m_descriptorWorker.allocEntry(setLayout, setStorage.mapPtr, range.bindingCount,
