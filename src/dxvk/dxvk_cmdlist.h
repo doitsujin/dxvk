@@ -1265,6 +1265,20 @@ namespace dxvk {
       m_descriptorSync = std::move(syncHandle);
     }
 
+    void ensureDescriptorHeapBinding() {
+      if (unlikely(m_descriptorHeapInvalidated)) {
+        this->rebindSamplerHeap();
+        this->rebindResourceHeap();
+
+        m_descriptorHeapInvalidated = false;
+      }
+    }
+
+    void invalidateDescriptorHeapBinding() {
+      // Re-bind heaps on next draw/dispatch
+      m_descriptorHeapInvalidated = true;
+    }
+
   private:
     
     DxvkDevice*               m_device;
@@ -1302,6 +1316,8 @@ namespace dxvk {
     VkDeviceSize                    m_descriptorOffset = 0u;
 
     std::vector<DxvkGraphicsPipeline*> m_pipelines;
+
+    bool m_descriptorHeapInvalidated = false;
 
     force_inline VkCommandBuffer getCmdBuffer() const {
       // Allocation logic will always provide an execution buffer
@@ -1353,6 +1369,8 @@ namespace dxvk {
       const DxvkDescriptorWrite*          descriptorInfos,
             size_t                        pushDataSize,
       const void*                         pushData);
+
+    void rebindSamplerHeap();
 
     void rebindResourceHeap();
 

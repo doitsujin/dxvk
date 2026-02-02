@@ -450,6 +450,10 @@ namespace dxvk {
 
   
   void DxvkCommandList::reset() {
+    // We will re-apply heap bindings first thing in a
+    // new command list, so reset this flag here
+    m_descriptorHeapInvalidated = false;
+
     // Free resources and other objects
     // that are no longer in use
     m_objectTracker.clear();
@@ -599,6 +603,10 @@ namespace dxvk {
           size_t                        pushDataSize,
     const void*                         pushData) {
     auto setLayout = layout->getDescriptorSetLayout(0u);
+
+    // Whether heaps are valid is command list state, not context state,
+    // to facilitate interactions with external rendering
+    this->ensureDescriptorHeapBinding();
 
     // For built-in pipelines, the push data layout will have shader-defined
     // consants first, then a byte offset to the descriptor set, in contrast
@@ -917,6 +925,13 @@ namespace dxvk {
   }
 
 
+  void DxvkCommandList::rebindSamplerHeap() {
+    // Secondary command buffer must not be active when this gets called
+    for (uint32_t i = uint32_t(DxvkCmdBuffer::ExecBuffer); i <= uint32_t(DxvkCmdBuffer::InitBarriers); i++)
+      bindSamplerHeap(m_cmd.cmdBuffers[i]);
+  }
+
+
   void DxvkCommandList::rebindResourceHeap() {
     // Secondary command buffer must not be active when this gets called
     for (uint32_t i = uint32_t(DxvkCmdBuffer::ExecBuffer); i <= uint32_t(DxvkCmdBuffer::InitBarriers); i++)
@@ -933,6 +948,9 @@ namespace dxvk {
 
   void DxvkCommandList::bindSamplerHeap(VkCommandBuffer cmdBuffer) {
     auto vk = m_device->vkd();
+
+    if (!cmdBuffer)
+      return;
 
     VkBindHeapInfoEXT bindInfo = getHeapBindInfo(m_device->getSamplerDescriptorHeap());
     vk->vkCmdBindSamplerHeapEXT(cmdBuffer, &bindInfo);

@@ -3002,6 +3002,16 @@ namespace dxvk {
 
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
+    if (m_features.test(DxvkContextFeature::DescriptorHeap)) {
+      // HACK: We want to use the driver-managed descriptor heap here, but
+      // there is no spec-legal way to bind it, not even by starting a new
+      // command buffer. For now, work around the problem by calling a
+      // legacy descriptor set function.
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_COMPUTE, VK_NULL_HANDLE, 0, 0, nullptr);
+      m_cmd->invalidateDescriptorHeapBinding();
+    }
+
     m_cmd->cmdLaunchCuKernel(nvxLaunchInfo);
   }
   
@@ -6546,7 +6556,10 @@ namespace dxvk {
     std::array<uint32_t, DxvkDescriptorSets::SetCount> bufferIndices = { };
     std::array<HeapOffset, DxvkDescriptorSets::SetCount> heapOffsets = { };
 
-    if constexpr (Model != DxvkBindingModel::DescriptorHeap) {
+    if constexpr (Model == DxvkBindingModel::DescriptorHeap) {
+      // Make sure the heaps are actually valid and usable
+      m_cmd->ensureDescriptorHeapBinding();
+    } else {
       // The resource heap is always bound at index 1
       for (auto& index : bufferIndices)
         index = 1u;
