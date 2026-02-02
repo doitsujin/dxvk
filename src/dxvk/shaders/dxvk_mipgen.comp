@@ -10,6 +10,7 @@
 #extension GL_EXT_scalar_block_layout : enable
 #extension GL_EXT_shader_explicit_arithmetic_types : enable
 #extension GL_EXT_shader_image_load_formatted : enable
+#extension GL_EXT_subgroup_uniform_control_flow : enable
 
 #extension GL_KHR_memory_scope_semantics : enable
 #extension GL_KHR_shader_subgroup_basic : enable
@@ -1215,7 +1216,7 @@ bool finalize_group(uvec2 mip0_size) {
 }
 
 
-void main() {
+void main() [[subgroup_uniform_control_flow]] {
   /* There will be LDS sync at some point so this is fine */
   g_subgroups_done = 0u;
   g_workgroups_done = 0u;

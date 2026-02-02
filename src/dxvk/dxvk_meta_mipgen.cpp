@@ -213,7 +213,8 @@ namespace dxvk {
     // The shader has some feature requirements that aren't otherwise
     // needed to run DXVK, make sure everything is supported.
     if (!m_device->features().vk12.shaderInt8
-     || !m_device->features().vk12.shaderFloat16)
+     || !m_device->features().vk12.shaderFloat16
+     || !m_device->features().khrShaderSubgroupUniformControlFlow.shaderSubgroupUniformControlFlow)
       return false;
 
     // Ensure that the format can support the required usage patterns
