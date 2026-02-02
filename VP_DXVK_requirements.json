@@ -112,6 +112,7 @@
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id2": 1,
                 "VK_KHR_present_wait2": 1,
+                "VK_KHR_shader_subgroup_uniform_control_flow": 1,
                 "VK_KHR_swapchain_maintenance1": 1,
                 "VK_KHR_swapchain_mutable_format": 1,
                 "VK_KHR_unified_image_layouts": 1,
@@ -160,6 +161,9 @@
                 },
                 "VkPhysicalDeviceUnifiedImageLayoutsFeaturesKHR": {
                     "unifiedImageLayouts": true
+                },
+                "VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR": {
+                    "shaderSubgroupUniformControlFlow": true
                 }
             }
         },
