@@ -1,4 +1,8 @@
 #include <utility>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "log.h"
 
@@ -7,12 +11,39 @@
 namespace dxvk {
   
   Logger::Logger(const std::string& fileName)
-  : m_minLevel(getMinLogLevel()), m_fileName(fileName) {
-
+  : m_minLevel(getMinLogLevel()), m_fileName(fileName), m_fileHandle(-1), m_fileMapping(nullptr), m_fileSize(0), m_fileOffset(0) {
+    auto path = getFileName(m_fileName);
+    if (!path.empty()) {
+      m_fileHandle = open(str::topath(path.c_str()).c_str(), O_RDWR | O_CREAT | O_TRUNC, 0666);
+      if (m_fileHandle != -1) {
+        // Allocate initial file size
+        m_fileSize = 4096;
+        if (ftruncate(m_fileHandle, m_fileSize) == 0) {
+          m_fileMapping = mmap(nullptr, m_fileSize, PROT_WRITE, MAP_SHARED, m_fileHandle, 0);
+          if (m_fileMapping == MAP_FAILED) {
+            m_fileMapping = nullptr;
+            close(m_fileHandle);
+            m_fileHandle = -1;
+          }
+        } else {
+          close(m_fileHandle);
+          m_fileHandle = -1;
+        }
+      }
+    }
   }
   
   
-  Logger::~Logger() { }
+  Logger::~Logger() {
+    if (m_fileMapping) {
+      msync(m_fileMapping, m_fileOffset, MS_SYNC);
+      munmap(m_fileMapping, m_fileSize);
+    }
+    if (m_fileHandle != -1) {
+      ftruncate(m_fileHandle, m_fileOffset);
+      close(m_fileHandle);
+    }
+  }
   
   
   void Logger::trace(const std::string& message) {
@@ -61,10 +92,6 @@ namespace dxvk {
         if (ntdll)
           m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(ntdll, "__wine_dbg_output"));
 #endif
-        auto path = getFileName(m_fileName);
-
-        if (!path.empty())
-          m_fileStream = std::ofstream(str::topath(path.c_str()).c_str());
       }
 
       std::stringstream stream(message);
@@ -112,9 +139,35 @@ namespace dxvk {
 #endif
         }
 
-        if (m_fileStream) {
-          m_fileStream << adjusted;
-          m_fileStream.flush();
+        if (m_fileMapping) {
+          size_t length = adjusted.length();
+          if (m_fileOffset + length > m_fileSize) {
+            // Remap
+            size_t newSize = m_fileSize * 2;
+            while (m_fileOffset + length > newSize)
+              newSize *= 2;
+
+            munmap(m_fileMapping, m_fileSize);
+            if (ftruncate(m_fileHandle, newSize) == 0) {
+              m_fileMapping = mmap(nullptr, newSize, PROT_WRITE, MAP_SHARED, m_fileHandle, 0);
+              if (m_fileMapping == MAP_FAILED) {
+                m_fileMapping = nullptr;
+                close(m_fileHandle);
+                m_fileHandle = -1;
+              } else {
+                m_fileSize = newSize;
+              }
+            } else {
+              m_fileMapping = nullptr;
+              close(m_fileHandle);
+              m_fileHandle = -1;
+            }
+          }
+
+          if (m_fileMapping) {
+            std::memcpy(static_cast<char*>(m_fileMapping) + m_fileOffset, adjusted.c_str(), length);
+            m_fileOffset += length;
+          }
         }
       }
     }

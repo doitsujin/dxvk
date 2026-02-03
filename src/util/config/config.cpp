@@ -5,6 +5,11 @@
 #include <regex>
 #include <utility>
 
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 #include "config.h"
 
 #include "../log/log.h"
@@ -1690,29 +1695,40 @@ namespace dxvk {
     std::string filePath = env::getEnvVar("DXVK_CONFIG_FILE");
     std::string confLine = env::getEnvVar("DXVK_CONFIG");
 
-    if (filePath == "")
-      filePath = "dxvk.conf";
+    if (filePath.empty())
+        filePath = "dxvk.conf";
 
-    // Open the file if it exists
-    std::ifstream stream(str::topath(filePath.c_str()).c_str());
+    int fd = open(str::topath(filePath.c_str()).c_str(), O_RDONLY);
 
-    if (!stream && confLine.empty())
-      return config;
+    if (fd == -1 && confLine.empty())
+        return config;
 
     // Initialize parser context
     ConfigContext ctx;
     ctx.active = true;
 
-    if (stream) {
-      // Inform the user that we loaded a file, might
-      // help when debugging configuration issues
-      Logger::info(str::format("Found config file: ", filePath));
+    if (fd != -1) {
+        struct stat st;
+        if (fstat(fd, &st) == 0) {
+            void* mapping = mmap(nullptr, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (mapping != MAP_FAILED) {
+                Logger::info(str::format("Found config file: ", filePath));
 
-      // Parse the file line by line
-      std::string line;
+                std::string_view view(static_cast<const char*>(mapping), st.st_size);
+                size_t pos = 0;
+                while (pos < view.size()) {
+                    size_t next = view.find('\n', pos);
+                    if (next == std::string_view::npos)
+                        next = view.size();
 
-      while (std::getline(stream, line))
-        parseUserConfigLine(config, ctx, line);
+                    parseUserConfigLine(config, ctx, std::string(view.substr(pos, next - pos)));
+                    pos = next + 1;
+                }
+
+                munmap(mapping, st.st_size);
+            }
+        }
+        close(fd);
     }
 
     if (!confLine.empty()) {

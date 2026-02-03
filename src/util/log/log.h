@@ -54,7 +54,11 @@ namespace dxvk {
     const std::string m_fileName;
     
     dxvk::mutex       m_mutex;
-    std::ofstream     m_fileStream;
+
+    int               m_fileHandle;
+    void*             m_fileMapping;
+    size_t            m_fileSize;
+    size_t            m_fileOffset;
 
     bool              m_initialized = false;
 #ifdef _WIN32
