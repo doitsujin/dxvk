@@ -356,7 +356,9 @@ namespace dxvk {
       SyncInterval = options->syncInterval;
 
     UpdateGlobalHDRState();
-    UpdateTargetFrameRate(SyncInterval);
+
+    if (!(PresentFlags & DXGI_PRESENT_TEST))
+      UpdateTargetFrameRate(SyncInterval);
 
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
     HRESULT hr = S_OK;
