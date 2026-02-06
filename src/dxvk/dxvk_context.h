@@ -26,6 +26,8 @@ namespace dxvk {
     constexpr static VkDeviceSize MaxDiscardSize     =  16u << 10u;
 
     constexpr static uint32_t DirectMultiDrawBatchSize = 256u;
+
+    constexpr static uint32_t MaxUnsynchronizedDraws = 64u;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
@@ -1336,7 +1338,8 @@ namespace dxvk {
 
     uint64_t                m_trackingId = 0u;
     uint32_t                m_renderPassIndex = 0u;
-    
+    uint32_t                m_unsynchronizedDrawCount = 0u;
+
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
 

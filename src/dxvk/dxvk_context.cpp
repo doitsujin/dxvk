@@ -7448,8 +7448,10 @@ namespace dxvk {
 
     // Check whether we can actually start the render pass as unsynchronized.
     if (!m_flags.any(DxvkContextFlag::GpRenderPassBound)) {
-      if (renderPassStartUnsynchronized())
+      if (renderPassStartUnsynchronized()) {
         m_flags.set(DxvkContextFlag::GpRenderPassUnsynchronized);
+        m_unsynchronizedDrawCount = 0u;
+      }
     }
 
     if (m_flags.any(DxvkContextFlag::GpRenderPassSideEffects,
@@ -7474,6 +7476,19 @@ namespace dxvk {
       if (m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
                                DxvkGraphicsPipelineFlag::HasTransformFeedback))
         m_flags.set(DxvkContextFlag::GpRenderPassSideEffects);
+
+      if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)) {
+        // In case we entered an unsynchronized render pass with no pending writes,
+        // i.e. if we issued a barrier before the pass, we can trivially revert the
+        // pass to the regularly synchronized mode if the render pass happens to be
+        // big. This isn't common, but Ashes of the Singularity hits this case.
+        //
+        // Doing this is safe even in case shader writes are used, because we keep
+        // the actual tracking info intact. On the other hand, we cannot safely do
+        // this if there are any pending writes without issuing a barrier.
+        if ((++m_unsynchronizedDrawCount == MaxUnsynchronizedDraws) && m_execBarriers.hasPendingAccess(vk::AccessWriteMask))
+          m_flags.clr(DxvkContextFlag::GpRenderPassUnsynchronized);
+      }
     }
 
     // Start the render pass. This must happen before any render state
