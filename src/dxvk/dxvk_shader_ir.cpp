@@ -245,6 +245,19 @@ namespace dxvk {
             iter = handleSpecConstant(iter);
           } break;
 
+          case dxbc_spv::ir::OpCode::eSetGsInputPrimitive: {
+            iter = handleInputTopology(iter);
+          } break;
+
+          case dxbc_spv::ir::OpCode::eSetGsOutputPrimitive:
+          case dxbc_spv::ir::OpCode::eSetTessDomain: {
+            iter = handleOutputTopology(iter);
+          } break;
+
+          case dxbc_spv::ir::OpCode::eSetTessPrimitive: {
+            iter = handleTessPrimitive(iter);
+          } break;
+
           default:
             ++iter;
         }
@@ -652,6 +665,78 @@ namespace dxvk {
     dxbc_spv::ir::Builder::iterator handleSpecConstant(dxbc_spv::ir::Builder::iterator op) {
       auto specId = uint32_t(op->getOperand(op->getFirstLiteralOperandIndex()));
       m_metadata.specConstantMask |= 1u << specId;
+      return ++op;
+    }
+
+
+    dxbc_spv::ir::Builder::iterator handleInputTopology(dxbc_spv::ir::Builder::iterator op) {
+      auto type = dxbc_spv::ir::PrimitiveType(op->getOperand(1u));
+
+      switch (type) {
+        case dxbc_spv::ir::PrimitiveType::ePoints: {
+          m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eLines: {
+          m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eLinesAdj: {
+          m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eTriangles: {
+          m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eTrianglesAdj: {
+          m_metadata.inputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eQuads:
+        case dxbc_spv::ir::PrimitiveType::ePatch: {
+          Logger::err(str::format("Unhandled input topology: ", type));
+        } break;
+      }
+
+      return ++op;
+    }
+
+
+    dxbc_spv::ir::Builder::iterator handleOutputTopology(dxbc_spv::ir::Builder::iterator op) {
+      auto type = dxbc_spv::ir::PrimitiveType(op->getOperand(1u));
+
+      switch (type) {
+        case dxbc_spv::ir::PrimitiveType::ePoints: {
+          m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eLines: {
+          m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eTriangles:
+        case dxbc_spv::ir::PrimitiveType::eQuads: {
+          m_metadata.outputTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        } break;
+
+        case dxbc_spv::ir::PrimitiveType::eLinesAdj:
+        case dxbc_spv::ir::PrimitiveType::eTrianglesAdj:
+        case dxbc_spv::ir::PrimitiveType::ePatch: {
+          Logger::err(str::format("Unhandled output topology: ", type));
+        } break;
+      }
+
+      return ++op;
+    }
+
+
+    dxbc_spv::ir::Builder::iterator handleTessPrimitive(dxbc_spv::ir::Builder::iterator op) {
+      auto type = dxbc_spv::ir::PrimitiveType(op->getOperand(1u));
+
+      if (type == dxbc_spv::ir::PrimitiveType::ePoints)
+        m_metadata.flags.set(DxvkShaderFlag::TessellationPoints);
+
       return ++op;
     }
 
