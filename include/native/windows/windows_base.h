@@ -353,6 +353,7 @@ typedef struct RGNDATA {
 #endif // CONST_VTABLE
 #define DECLARE_INTERFACE_(x, y) DECLARE_INTERFACE(x)
 #endif // __cplusplus
+#define DECLARE_INTERFACE_IID_(x, y, z) DECLARE_INTERFACE_(x, y)
 
 #define BEGIN_INTERFACE
 #define END_INTERFACE
