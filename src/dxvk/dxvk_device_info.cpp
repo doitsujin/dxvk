@@ -458,7 +458,6 @@ namespace dxvk {
     if (m_featuresSupported.extDescriptorBuffer.descriptorBuffer) {
       bool enableDescriptorBuffer = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
-                                 || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS
                                  || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE;
 
       // Pascal reportedly sees massive perf drops with descriptor buffer
