@@ -40,6 +40,26 @@ namespace dxvk {
             UINT*                 pExtensionCount,
       const char**                ppExtensions);
 
+    HRESULT STDMETHODCALLTYPE QueryDeviceExtensions(
+            UINT                      Adapter,
+            uint32_t*                 Count,
+            VkExtensionProperties*    Extensions);
+
+    HRESULT STDMETHODCALLTYPE QueryDeviceQueues(
+            UINT                      Adapter,
+            uint32_t*                 Count,
+            VkDeviceQueueCreateInfo*  Queues);
+
+    HRESULT STDMETHODCALLTYPE QueryDeviceFeatures(
+            UINT                      Adapter,
+            size_t*                   Size,
+            void*                     Data);
+
+    HRESULT STDMETHODCALLTYPE ImportDevice(
+          UINT                        Adapter,
+          D3D9VkDeviceImportInfo*     pInfo,
+          IDirect3DDevice9Ex**        ppReturnedDevice);
+
   private:
 
     D3D9InterfaceEx* m_interface;
