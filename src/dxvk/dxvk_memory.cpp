@@ -634,7 +634,12 @@ namespace dxvk {
       if (totalSize && totalSize + iter->first.size > size)
         break;
 
-      totalSize += iter->first.size;
+      // Reduce number of resource evictions performed per request by
+      // overestimating the amount of memory moved. May reduce stutter
+      // in high-ish frame rate scenarios.
+      totalSize += iter->second.mode == DxvkAllocationMode::NoDeviceMemory
+        ? iter->first.size * 16u
+        : iter->first.size;
 
       result.push_back(std::move(iter->second));
       m_entries.erase(iter);
