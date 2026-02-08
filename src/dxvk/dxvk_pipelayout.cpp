@@ -49,19 +49,25 @@ namespace dxvk {
   DxvkDescriptorSetLayout::DxvkDescriptorSetLayout(
           DxvkDevice*                 device,
     const DxvkDescriptorSetLayoutKey& key)
-  : m_device(device), m_empty(!key.getBindingCount()) {
-    initSetLayout(key);
+  : m_device(device), m_bindingCount(key.getBindingCount()) {
+    if (device->canUseDescriptorHeap()) {
+      initDescriptorHeapLayout(key);
+    } else {
+      initSetLayout(key);
 
-    if (m_device->canUseDescriptorBuffer())
-      initDescriptorBufferUpdate(key);
+      if (m_device->canUseDescriptorBuffer())
+        initDescriptorBufferUpdate(key);
+    }
   }
 
 
   DxvkDescriptorSetLayout::~DxvkDescriptorSetLayout() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.layout, nullptr);
-    vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_legacy.updateTemplate, nullptr);
+    if (!m_device->canUseDescriptorHeap()) {
+      vk->vkDestroyDescriptorSetLayout(vk->device(), m_legacy.layout, nullptr);
+      vk->vkDestroyDescriptorUpdateTemplate(vk->device(), m_legacy.updateTemplate, nullptr);
+    }
   }
 
 
@@ -138,10 +144,78 @@ namespace dxvk {
       VkDeviceSize offset = 0u;
       vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.layout, i, &offset);
 
+      auto& info = m_heap.bindingLayouts.emplace_back();
+      info.descriptorType = binding.getDescriptorType();
+      info.offset = uint32_t(offset);
+
       for (uint32_t j = 0u; j < binding.getDescriptorCount(); j++) {
         auto& e = descriptors.emplace_back();
         e.descriptorType = binding.getDescriptorType();
         e.offset = uint32_t(offset) + j * m_device->getDescriptorProperties().getDescriptorTypeInfo(e.descriptorType).size;
+      }
+    }
+
+    m_heap.update = DxvkDescriptorUpdateList(m_device,
+      m_heap.memorySize, descriptors.size(), descriptors.data());
+  }
+
+
+  void DxvkDescriptorSetLayout::initDescriptorHeapLayout(const DxvkDescriptorSetLayoutKey& key) {
+    // As a small optimization, order descriptors by size alignment from
+    // large to small. This way, we're guaranteed tight packing and Will
+    // only ever have one area of padding at the end of the set.
+    uint32_t typeAlignmentMask = 0u;
+
+    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+      const auto& binding = key.getBinding(i);
+
+      auto size = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType()).size;
+      size &= -size;
+
+      typeAlignmentMask |= size;
+    }
+
+    // Compute the actual binding layout by iterating over the bindings
+    // until we've processed all unique descriptor size alignments
+    m_heap.bindingLayouts.resize(key.getBindingCount());
+
+    uint32_t offset = 0u;
+
+    while (typeAlignmentMask) {
+      uint32_t msb = (0x80000000u >> bit::lzcnt(typeAlignmentMask));
+
+      for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+        const auto& binding = key.getBinding(i);
+
+        auto type = m_device->getDescriptorProperties().getDescriptorTypeInfo(binding.getDescriptorType());
+
+        if ((type.size & -type.size) != msb)
+          continue;
+
+        offset = align(offset, type.alignment);
+
+        auto& info = m_heap.bindingLayouts[i];
+        info.descriptorType = binding.getDescriptorType();
+        info.offset = offset;
+
+        offset += type.size * binding.getDescriptorCount();
+      }
+
+      typeAlignmentMask -= msb;
+    }
+
+    m_heap.memorySize = align(offset, m_device->getDescriptorProperties().getDescriptorSetAlignment());
+
+    // Iterate over everything again to create the descriptor update list
+    small_vector<DxvkDescriptorUpdateInfo, 32u> descriptors;
+
+    for (uint32_t i = 0u; i < key.getBindingCount(); i++) {
+      auto& info = m_heap.bindingLayouts[i];
+
+      for (uint32_t j = 0u; j < key.getBinding(i).getDescriptorCount(); j++) {
+        auto& e = descriptors.emplace_back();
+        e.descriptorType = info.descriptorType;
+        e.offset = info.offset + j * m_device->getDescriptorProperties().getDescriptorTypeInfo(e.descriptorType).size;
       }
     }
 
@@ -155,14 +229,19 @@ namespace dxvk {
     const DxvkPipelineLayoutKey&      key)
   : m_device(device), m_flags(key.getFlags()) {
     initMetadata(key);
-    initPipelineLayout(key);
+
+    if (m_device->canUseDescriptorHeap())
+      initMappings(key);
+    else
+      initPipelineLayout(key);
   }
 
 
   DxvkPipelineLayout::~DxvkPipelineLayout() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyPipelineLayout(vk->device(), m_legacy.layout, nullptr);
+    if (!m_device->canUseDescriptorHeap())
+      vk->vkDestroyPipelineLayout(vk->device(), m_legacy.layout, nullptr);
   }
 
 
@@ -189,6 +268,11 @@ namespace dxvk {
       m_pushData.blocks[i] = key.getPushDataBlock(i);
       m_pushData.mergedBlock.merge(m_pushData.blocks[i]);
     }
+
+    // If we can use heaps, and if we're not on AMD or similarly working hardware,
+    // scale heap offsets by the minimum set alignment to make the driver aware.
+    if (m_device->canUseDescriptorHeap() && !m_device->perfHints().preferDescriptorByteOffsets)
+      m_heap.offsetShift = bit::tzcnt(m_device->getDescriptorProperties().getDescriptorSetAlignment());
   }
 
 
@@ -227,6 +311,59 @@ namespace dxvk {
 
     if (vk->vkCreatePipelineLayout(vk->device(), &layoutInfo, nullptr, &m_legacy.layout))
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
+  }
+
+
+  void DxvkPipelineLayout::initMappings(
+    const DxvkPipelineLayoutKey&      key) {
+    uint32_t setIndex = 0u;
+
+    // Set up sampler heap mapping at binding (0,0) if used by the layout
+    if (m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap)) {
+      auto& entry = m_mapping.mappings.emplace_back();
+      entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+      entry.descriptorSet = setIndex++;
+      entry.firstBinding = 0u;
+      entry.bindingCount = 1u;
+      entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_SAMPLER_BIT_EXT;
+      entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_CONSTANT_OFFSET_EXT;
+
+      auto& samplers = entry.sourceData.constantOffset;
+      samplers.heapOffset = m_device->getSamplerDescriptorHeap().reservedSize;
+      samplers.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
+    }
+
+    // We generally put set offsets first, unless it's a built-in
+    // pipeline with a hardcoded push data layout.
+    uint32_t pushBase = 0u;
+
+    if (key.getType() == DxvkPipelineLayoutType::BuiltIn)
+      pushBase = m_pushData.mergedBlock.getSize();
+
+    for (uint32_t set = 0u; set < m_setLayouts.size(); set++) {
+      auto layout = m_setLayouts[set];
+
+      if (!layout)
+        continue;
+
+      for (uint32_t i = 0u; i < layout->getBindingCount(); i++) {
+        auto bindingInfo = layout->getBindingInfo(i);
+
+        auto& entry = m_mapping.mappings.emplace_back();
+        entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+        entry.descriptorSet = setIndex + set;
+        entry.firstBinding = i;
+        entry.bindingCount = 1u;
+        entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+        entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
+
+        auto& pushIndex = entry.sourceData.pushIndex;
+        pushIndex.heapOffset = bindingInfo.offset;
+        pushIndex.pushOffset = pushBase + sizeof(uint32_t) * set;
+        pushIndex.heapIndexStride = 1u << m_heap.offsetShift;
+        pushIndex.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(bindingInfo.descriptorType).size;
+      }
+    }
   }
 
 
@@ -312,10 +449,14 @@ namespace dxvk {
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
     auto flags = getPipelineLayoutFlags(type, builder);
-    auto pushDataBlocks = buildPushDataBlocks(type, device, builder, manager);
+
+    auto setInfos = computeSetMaskAndCount(type,
+      builder.getStageMask(), builder.getBindings());
+
+    auto pushDataBlocks = buildPushDataBlocks(type, device, setInfos, builder, manager);
 
     // Descriptor processing needs to know the exact push data offsets
-    auto setLayouts = buildDescriptorSetLayouts(type, flags, builder, manager);
+    auto setLayouts = buildDescriptorSetLayouts(type, flags, setInfos, builder, manager);
 
     // Create the actual pipeline layout
     DxvkPipelineLayoutKey key(type, flags, builder.getStageMask(),
@@ -331,6 +472,7 @@ namespace dxvk {
   DxvkPipelineBindings::buildPushDataBlocks(
           DxvkPipelineLayoutType      type,
           DxvkDevice*                 device,
+    const SetInfos&                   setInfos,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
     auto& layout = m_layouts[uint32_t(type)];
@@ -340,6 +482,10 @@ namespace dxvk {
 
     uint32_t pushDataMask = builder.getPushDataMask();
     uint32_t pushDataSize = 0u;
+
+    // Reserve push data space for heap offsets
+    if (type != DxvkPipelineLayoutType::BuiltIn && device->canUseDescriptorHeap())
+      pushDataSize += sizeof(uint32_t) * setInfos.count;
 
     if (type == DxvkPipelineLayoutType::Independent) {
       // For independent layouts, we don't know in advance how the other stages
@@ -409,15 +555,12 @@ namespace dxvk {
   DxvkPipelineBindings::buildDescriptorSetLayouts(
           DxvkPipelineLayoutType      type,
           DxvkPipelineLayoutFlags     flags,
+    const SetInfos&                   setInfos,
     const DxvkPipelineLayoutBuilder&  builder,
           DxvkPipelineManager*        manager) {
-    auto stageMask = builder.getStageMask();
     auto bindings = builder.getBindings();
 
     auto& layout = m_layouts[uint32_t(type)];
-
-    // Determine descriptor sets covered by this layout
-    SetInfos setInfos = computeSetMaskAndCount(type, stageMask, bindings);
 
     // Generate descriptor set layout keys from all bindings
     std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };

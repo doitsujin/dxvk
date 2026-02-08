@@ -94,22 +94,26 @@ namespace dxvk {
   VkPipeline DxvkComputePipeline::createPipeline(
     const DxvkComputePipelineStateInfo& state) const {
     auto vk = m_device->vkd();
+    auto layout = m_layout.getLayout(DxvkPipelineLayoutType::Merged);
 
     DxvkPipelineSpecConstantState scState(m_shaders.cs->metadata().specConstantMask, state.sc);
     
-    DxvkShaderStageInfo stageInfo(m_device);
+    DxvkShaderStageInfo stageInfo(m_device, layout);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
       m_shaders.cs->getCode(m_layout.getBindingMap(DxvkPipelineLayoutType::Merged), nullptr),
       &scState.scInfo);
 
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
 
+    if (m_device->canUseDescriptorHeap())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = *stageInfo.getStageInfos();
-    info.layout               = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
+    info.layout               = layout->getPipelineLayout();
     info.basePipelineIndex    = -1;
 
     if (flags.flags)

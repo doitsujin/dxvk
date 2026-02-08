@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "dxvk_buffer.h"
 #include "dxvk_device.h"
 #include "dxvk_format.h"
@@ -174,10 +176,11 @@ namespace dxvk {
           DxvkDevice*               device,
           uint32_t                  size)
   : m_device(device), m_descriptorCount(size) {
-    initDescriptorLayout();
+    if (!device->canUseDescriptorHeap())
+      initDescriptorLayout();
 
-    if (device->canUseDescriptorBuffer())
-      initDescriptorBuffer();
+    if (device->canUseDescriptorHeap() || device->canUseDescriptorBuffer())
+      initDescriptorHeap();
     else
       initDescriptorPool();
   }
@@ -205,8 +208,11 @@ namespace dxvk {
     DxvkDescriptorHeapBindingInfo result = { };
     result.buffer = bufferInfo.buffer;
     result.gpuAddress = bufferInfo.gpuAddress;
-    result.heapSize = m_heap.descriptorSize * m_descriptorCount;
     result.bufferSize = bufferInfo.size;
+
+    if (m_device->canUseDescriptorHeap())
+      result.reservedSize = m_heap.reservedSize;
+
     return result;
   }
 
@@ -219,12 +225,45 @@ namespace dxvk {
     DxvkSamplerDescriptor descriptor = { };
     descriptor.samplerIndex = index;
 
-    VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
+    if (!m_device->canUseDescriptorHeap() || m_device->hasCudaInterop()) {
+      VkResult vr = vk->vkCreateSampler(vk->device(), createInfo, nullptr, &descriptor.samplerObject);
 
-    if (vr)
-      throw DxvkError(str::format("Failed to create sampler object: ", vr));
+      if (vr)
+        throw DxvkError(str::format("Failed to create sampler object: ", vr));
+    }
 
-    if (m_heap.buffer) {
+    if (m_device->canUseDescriptorHeap()) {
+      auto borderColorInfo = findBorderColorInfo(createInfo->pNext);
+
+      VkSamplerCreateInfo samplerInfo = *createInfo;
+
+      // Find or allocate custom border color, and fall back to
+      // TRANSPARENT_BLACK if this fails.
+      VkSamplerCustomBorderColorIndexCreateInfoEXT borderColorIndex = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_INDEX_CREATE_INFO_EXT };
+
+      if (borderColorInfo) {
+        borderColorIndex.index = allocBorderColor(index, borderColorInfo);
+
+        if (borderColorIndex.index != InvalidBorderColor) {
+          borderColorIndex.pNext = std::exchange(samplerInfo.pNext, &borderColorIndex);
+        } else {
+          samplerInfo.borderColor = (samplerInfo.borderColor == VK_BORDER_COLOR_INT_CUSTOM_EXT)
+            ? VK_BORDER_COLOR_INT_TRANSPARENT_BLACK
+            : VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+        }
+      }
+
+      VkHostAddressRangeEXT hostRange = { };
+      hostRange.address = m_heap.buffer->mapPtr(m_heap.reservedSize + m_heap.descriptorSize * index);
+      hostRange.size = m_heap.descriptorSize;
+
+      VkResult vr = vk->vkWriteSamplerDescriptorsEXT(vk->device(), 1u, &samplerInfo, &hostRange);
+
+      if (vr) {
+        freeBorderColor(index);
+        throw DxvkError(str::format("Failed to write Vulkan sampler descriptor: ", vr));
+      }
+    } else if (m_device->canUseDescriptorBuffer()) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
       info.type = VK_DESCRIPTOR_TYPE_SAMPLER;
       info.data.pSampler = &descriptor.samplerObject;
@@ -252,6 +291,9 @@ namespace dxvk {
   void DxvkSamplerDescriptorHeap::freeSampler(
           DxvkSamplerDescriptor sampler) {
     auto vk = m_device->vkd();
+
+    if (m_device->canUseDescriptorHeap())
+      freeBorderColor(sampler.samplerIndex);
 
     vk->vkDestroySampler(vk->device(), sampler.samplerObject, nullptr);
   }
@@ -319,16 +361,31 @@ namespace dxvk {
   }
 
 
-  void DxvkSamplerDescriptorHeap::initDescriptorBuffer() {
+  void DxvkSamplerDescriptorHeap::initDescriptorHeap() {
     auto vk = m_device->vkd();
 
     DxvkBufferCreateInfo bufferInfo = { };
-    bufferInfo.usage = VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT
-                     | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferInfo.usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
     bufferInfo.debugName = "Sampler heap";
 
-    vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.setLayout, &bufferInfo.size);
-    vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.setLayout, 0u, &m_heap.descriptorOffset);
+    if (m_device->canUseDescriptorHeap()) {
+      const auto& properties = m_device->properties().extDescriptorHeap;
+
+      // Descriptor size may be smaller than the required alignment, be sure to pad
+      m_heap.descriptorSize = align(properties.samplerDescriptorSize, properties.samplerDescriptorAlignment);
+      m_heap.reservedSize = properties.minSamplerHeapReservedRange;
+
+      bufferInfo.usage |= VK_BUFFER_USAGE_DESCRIPTOR_HEAP_BIT_EXT;
+      bufferInfo.size = m_heap.reservedSize + m_heap.descriptorSize * m_descriptorCount;
+    } else {
+      const auto& properties = m_device->properties().extDescriptorBuffer;
+      m_heap.descriptorSize = properties.samplerDescriptorSize;
+
+      bufferInfo.usage |= VK_BUFFER_USAGE_SAMPLER_DESCRIPTOR_BUFFER_BIT_EXT;
+
+      vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), m_legacy.setLayout, &bufferInfo.size);
+      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), m_legacy.setLayout, 0u, &m_heap.descriptorOffset);
+    }
 
     Logger::info(str::format("Creating sampler descriptor heap (", bufferInfo.size >> 10u, " kB)"));
 
@@ -336,9 +393,106 @@ namespace dxvk {
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    m_heap.descriptorSize = m_device->getDescriptorProperties().getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLER).size;
   }
+
+
+  uint32_t DxvkSamplerDescriptorHeap::registerBorderColor(
+    const VkSamplerCustomBorderColorCreateInfoEXT*  borderColor) {
+    // Make sure not to pass any random pNext chains to the driver
+    VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = *borderColor;
+    borderColorInfo.pNext = nullptr;
+
+    // Try to find matching border color before registering a new one
+    for (uint32_t i = 0u; i < m_borderColors.infos.size(); i++) {
+      auto& color = m_borderColors.infos.at(i);
+
+      if (color.useCount) {
+        bool match = color.format == borderColorInfo.format;
+
+        for (uint32_t i = 0u; i < 4u && match; i++)
+          match = color.color.uint32[i] == borderColorInfo.customBorderColor.uint32[i];
+
+        if (match) {
+          color.useCount++;
+          return i;
+        }
+      }
+    }
+
+    // Try to register a new border color at a free index, but account for
+    // the possibility that an external source may have already registered
+    // that index.
+    auto vk = m_device->vkd();
+
+    for (uint32_t i = 0u; i < m_device->properties().extCustomBorderColor.maxCustomBorderColorSamplers; i++) {
+      if (i < m_borderColors.infos.size() && m_borderColors.infos[i].useCount)
+        continue;
+
+      if (vk->vkRegisterCustomBorderColorEXT(vk->device(), &borderColorInfo, VK_TRUE, &i) == VK_SUCCESS) {
+        if (i >= m_borderColors.infos.size())
+          m_borderColors.infos.resize(i + 1u);
+
+        auto& color = m_borderColors.infos.at(i);
+        color.format = borderColorInfo.format;
+        color.color = borderColorInfo.customBorderColor;
+        color.useCount = 1u;
+        return i;
+      }
+    }
+
+    Logger::err(str::format("Failed to register border color"));
+    return InvalidBorderColor;
+  }
+
+
+  uint32_t DxvkSamplerDescriptorHeap::allocBorderColor(
+          uint16_t                                  sampler,
+    const VkSamplerCustomBorderColorCreateInfoEXT*  borderColor) {
+    std::lock_guard lock(m_borderColors.mutex);
+
+    uint32_t borderColorIndex = registerBorderColor(borderColor);
+
+    if (sampler >= m_borderColors.indexForSampler.size())
+      m_borderColors.indexForSampler.resize(sampler + 1u);
+
+    m_borderColors.indexForSampler.at(sampler) = borderColorIndex;
+    return borderColorIndex;
+  }
+
+
+  void DxvkSamplerDescriptorHeap::freeBorderColor(uint16_t sampler) {
+    std::lock_guard lock(m_borderColors.mutex);
+
+    // Check border color index for the given sampler, if it
+    // is invalid then there will be nothing to do.
+    uint32_t index = InvalidBorderColor;
+
+    if (sampler < m_borderColors.indexForSampler.size())
+      index = m_borderColors.indexForSampler.at(sampler);
+
+    if (index == InvalidBorderColor)
+      return;
+
+    // Decrement use count and free border color if it reaches 0.
+    auto& entry = m_borderColors.infos.at(index);
+
+    if (!(--entry.useCount)) {
+      auto vk = m_device->vkd();
+      vk->vkUnregisterCustomBorderColorEXT(vk->device(), index);
+    }
+  }
+
+
+  const VkSamplerCustomBorderColorCreateInfoEXT* DxvkSamplerDescriptorHeap::findBorderColorInfo(const void* s) {
+    auto chain = reinterpret_cast<const VkBaseInStructure*>(s);
+
+    while (chain && chain->sType != VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT)
+      chain = chain->pNext;
+
+    return reinterpret_cast<const VkSamplerCustomBorderColorCreateInfoEXT*>(chain);
+  }
+
+
 
 
 

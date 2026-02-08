@@ -236,6 +236,9 @@ namespace dxvk {
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
     flags.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR;
 
+    if (m_device->canUseDescriptorHeap())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
@@ -516,6 +519,9 @@ namespace dxvk {
 
     if (state.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
       flags.flags |= VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+    if (m_device->canUseDescriptorHeap())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
@@ -1354,6 +1360,9 @@ namespace dxvk {
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
     flags.flags = vs.linkFlags | fs.linkFlags;
 
+    if (m_device->canUseDescriptorHeap())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
@@ -1404,8 +1413,9 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
     const DxvkGraphicsPipelineFastInstanceKey& key) const {
     auto vk = m_device->vkd();
+    auto layout = m_layout.getLayout(DxvkPipelineLayoutType::Merged);
 
-    DxvkShaderStageInfo stageInfo(m_device);
+    DxvkShaderStageInfo stageInfo(m_device, layout);
     stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(*m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 
     if (m_shaders.tcs != nullptr)
@@ -1425,6 +1435,9 @@ namespace dxvk {
     if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
       flags.flags |= VK_PIPELINE_CREATE_2_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 
+    if (m_device->canUseDescriptorHeap())
+      flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
+
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
@@ -1440,7 +1453,7 @@ namespace dxvk {
     info.pDepthStencilState       = &key.fsState.dsInfo;
     info.pColorBlendState         = &key.foState.cbInfo;
     info.pDynamicState            = &key.dyState.dyInfo;
-    info.layout                   = m_layout.getLayout(DxvkPipelineLayoutType::Merged)->getPipelineLayout();
+    info.layout                   = layout->getPipelineLayout();
     info.basePipelineIndex        = -1;
     
     if (!key.prState.tsInfo.patchControlPoints)

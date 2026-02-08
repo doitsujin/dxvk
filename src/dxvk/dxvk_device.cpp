@@ -39,6 +39,8 @@ namespace dxvk {
 
     if (env::getEnvVar("DXVK_SHADER_CACHE") != "0" && DxvkShader::getShaderDumpPath().empty())
       m_shaderCache = DxvkShaderCache::getInstance();
+
+    logBindingModel();
   }
   
   
@@ -263,7 +265,7 @@ namespace dxvk {
           VkDeviceSize                    pushDataSize,
           uint32_t                        bindingCount,
     const DxvkDescriptorSetLayoutBinding* bindings) {
-    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::Merged, flags);
+    DxvkPipelineLayoutKey key(DxvkPipelineLayoutType::BuiltIn, flags);
 
     if (pushDataSize) {
       key.addStages(pushDataStages);
@@ -293,11 +295,19 @@ namespace dxvk {
   VkPipeline DxvkDevice::createBuiltInComputePipeline(
     const DxvkPipelineLayout*             layout,
     const util::DxvkBuiltInShaderStage&   stage) {
+    auto mappingInfo = layout->getMappingInfo();
+
     VkShaderModuleCreateInfo moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = stage.size;
     moduleInfo.pCode = stage.code;
 
+    if (canUseDescriptorHeap())
+      moduleInfo.pNext = &mappingInfo;
+
     VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (canUseDescriptorHeap())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
     if (canUseDescriptorBuffer())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
@@ -332,6 +342,8 @@ namespace dxvk {
     const util::DxvkBuiltInGraphicsState& state) {
     constexpr size_t MaxStages = 3u;
 
+    auto mappingInfo = layout->getMappingInfo();
+
     // Build shader stage infos
     small_vector<std::pair<VkShaderStageFlagBits, util::DxvkBuiltInShaderStage>, MaxStages> stages;
 
@@ -346,6 +358,9 @@ namespace dxvk {
       info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
       info.codeSize = stages[i].second.size;
       info.pCode = stages[i].second.code;
+
+      if (canUseDescriptorHeap())
+        info.pNext = &mappingInfo;
     }
 
     small_vector<VkPipelineShaderStageCreateInfo, MaxStages> stageInfos;
@@ -451,6 +466,9 @@ namespace dxvk {
       renderingInfo.stencilAttachmentFormat = state.depthFormat;
 
     VkPipelineCreateFlags2CreateInfo pipelineFlags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+
+    if (canUseDescriptorHeap())
+      pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
 
     if (canUseDescriptorBuffer())
       pipelineFlags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
@@ -729,6 +747,13 @@ namespace dxvk {
                              || (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
                               && m_adapter->deviceProperties().vk13.minSubgroupSize == 32u));
 
+    // On AMD we can expect it to be optimal to simply pass the heap offset
+    // to descriptor memory through as-is to avoid some ALU. Some other
+    // vendors are more sensitive towards knowing descriptor alignment.
+    hints.preferDescriptorByteOffsets = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+                                     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE)
+                                     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY);
+
     return hints;
   }
 
@@ -862,6 +887,18 @@ namespace dxvk {
         m_features.vk12.shaderUniformTexelBufferArrayNonUniformIndexing &&
         m_features.vk12.shaderStorageTexelBufferArrayNonUniformIndexing)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
+  }
+
+
+  void DxvkDevice::logBindingModel() {
+    const char* descriptorModel = "Legacy";
+
+    if (canUseDescriptorHeap())
+      descriptorModel = "Descriptor heap";
+    else if (canUseDescriptorBuffer())
+      descriptorModel = "Descriptor buffer";
+
+    Logger::info(str::format("Binding model: ", descriptorModel));
   }
 
 }
