@@ -645,6 +645,10 @@ namespace dxvk {
 
 
   bool DxvkImage::canUseUnifiedLayout(const DxvkDevice& device) const {
+    if (device.properties().vk12.driverID == VK_DRIVER_ID_MESA_RADV
+     && (m_info.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      return false;
+
     if (m_unifiedLayoutAvailable)
       return true;
 
