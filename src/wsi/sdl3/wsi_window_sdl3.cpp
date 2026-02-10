@@ -79,7 +79,7 @@ namespace dxvk::wsi {
       return false;
     }
 
-    if (!SDL_SetWindowPosition(window, bounds.x, bounds.y)) {
+    if (!ModeSwitch && !SDL_SetWindowPosition(window, bounds.x, bounds.y)) {
       Logger::err(str::format("SDL3 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
       return false;
     }
