@@ -3610,26 +3610,35 @@ namespace dxvk {
       : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     small_vector<DxvkResourceAccess, 2u> accessBatch;
-    accessBatch.emplace_back(*bufferView,
-      VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_2_SHADER_READ_BIT);
+    accessBatch.emplace_back(*bufferView, VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
     accessBatch.emplace_back(*imageView, stages, access, discard);
-
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     // Bind image for rendering
     VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachment.imageView = imageView->handle();
     attachment.imageLayout = imageView->getLayout();
-    attachment.loadOp = discard
-      ? VK_ATTACHMENT_LOAD_OP_DONT_CARE
-      : VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    VkExtent3D mipExtent = imageView->mipLevelExtent(0u);
+    // Don't bother optimizing load ops for the partial copy case,
+    // that should basically never happen to begin with
+    if (imageSubresource.aspectMask != image->formatInfo()->aspectMask)
+      attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+    VkViewport viewport = { };
+    viewport.x = imageOffset.x;
+    viewport.y = imageOffset.y;
+    viewport.width = imageExtent.width;
+    viewport.height = imageExtent.height;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = { };
+    scissor.offset = { imageOffset.x, imageOffset.y };
+    scissor.extent = { imageExtent.width, imageExtent.height };
 
     VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.renderArea.extent = { mipExtent.width, mipExtent.height };
+    renderingInfo.renderArea = scissor;
     renderingInfo.layerCount = imageViewInfo.layerCount;
 
     if (image->formatInfo()->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
@@ -3646,19 +3655,7 @@ namespace dxvk {
     m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     // Set up viewport and scissor state
-    VkViewport viewport = { };
-    viewport.x = imageOffset.x;
-    viewport.y = imageOffset.y;
-    viewport.width = imageExtent.width;
-    viewport.height = imageExtent.height;
-    viewport.maxDepth = 1.0f;
-
     m_cmd->cmdSetViewport(1, &viewport);
-
-    VkRect2D scissor = { };
-    scissor.offset = { imageOffset.x, imageOffset.y };
-    scissor.extent = { imageExtent.width, imageExtent.height };
-
     m_cmd->cmdSetScissor(1, &scissor);
 
     // Get pipeline and descriptor set layout. All pipelines
