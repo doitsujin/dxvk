@@ -4361,20 +4361,18 @@ namespace dxvk {
     scissor.offset = { dstOffset.x, dstOffset.y };
     scissor.extent = { extent.width, extent.height };
 
-    VkExtent3D mipExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
-
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = views.dstImageView->handle();
     attachmentInfo.imageLayout = dstLayout;
-    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    if (doDiscard)
-      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    // Don't bother optimizing load ops for the partial copy case, shouldn't happen
+    if (dstSubresource.aspectMask != dstImage->formatInfo()->aspectMask)
+      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 
     VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
-    renderingInfo.renderArea.extent = VkExtent2D { mipExtent.width, mipExtent.height };
+    renderingInfo.renderArea = scissor;
     renderingInfo.layerCount = dstSubresource.layerCount;
 
     VkImageAspectFlags dstAspects = dstImage->formatInfo()->aspectMask;
