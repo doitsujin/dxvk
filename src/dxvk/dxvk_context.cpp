@@ -3939,15 +3939,31 @@ namespace dxvk {
           VkExtent3D            extent,
           VkImageAspectFlags    aspect,
           VkClearValue          value) {
-    this->updateRenderTargets();
+    // Ensure that the clear region is actually within the bounds of the given view
+    VkExtent3D mipExtent = imageView->mipLevelExtent(0);
 
-    VkPipelineStageFlags clearStages = 0;
-    VkAccessFlags clearAccess = 0;
+    offset.x = std::clamp(offset.x, 0, int32_t(mipExtent.width));
+    offset.y = std::clamp(offset.y, 0, int32_t(mipExtent.height));
+
+    extent.width  = std::clamp(extent.width,  0u, mipExtent.width  - uint32_t(offset.x));
+    extent.height = std::clamp(extent.height, 0u, mipExtent.height - uint32_t(offset.y));
+
+    if (unlikely(!extent.width || !extent.height))
+      return;
+
+    // Use regular render target clear path if we're clearing the
+    // entire view to hit some additional optimizations.
+    if (extent == imageView->mipLevelExtent(0u)) {
+      clearRenderTarget(imageView, aspect, value, 0u);
+      return;
+    }
 
     // Find out if the render target view is currently bound,
     // so that we can avoid spilling the render pass if it is.
+    this->updateRenderTargets();
+
     int32_t attachmentIndex = -1;
-    
+
     if (m_state.om.framebufferInfo.isFullSize(imageView))
       attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
 
@@ -3964,33 +3980,64 @@ namespace dxvk {
           str::format("Clear view (", dstName ? dstName : "unknown", ")").c_str()));
       }
 
-      VkExtent3D extent = imageView->mipLevelExtent(0);
-
+      // Use render area to limit the actual clear region
       VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
       attachmentInfo.imageView = imageView->handle();
       attachmentInfo.imageLayout = imageView->getLayout();
-      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
       attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+      attachmentInfo.clearValue = value;
+
+      VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
 
       VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+      renderingInfo.renderArea.offset = { offset.x,     offset.y };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
       renderingInfo.layerCount = imageView->info().layerCount;
+
+      VkPipelineStageFlags clearStages = 0;
+      VkAccessFlags clearAccess = 0;
 
       if (imageView->info().aspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
         clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                     |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                    |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
         if (imageView->info().aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
           renderingInfo.pDepthAttachment = &attachmentInfo;
 
         if (imageView->info().aspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-          renderingInfo.pStencilAttachment = &attachmentInfo;
+          renderingInfo.pStencilAttachment = &stencilInfo;
+
+        if (imageView->info().aspects != aspect) {
+          if (m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess
+           && m_device->features().khrLoadStoreOpNone) {
+            if (!(aspect & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+              attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_NONE;
+              attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+            }
+
+            if (!(aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+              stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_NONE;
+              stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+            }
+          } else {
+            clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+            if (!(aspect & VK_IMAGE_ASPECT_DEPTH_BIT)) {
+              attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+              attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            }
+
+            if (!(aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+              stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+              stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+            }
+          }
+        }
       } else {
         clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                    |  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &attachmentInfo;
@@ -3999,9 +4046,11 @@ namespace dxvk {
       DxvkResourceAccess access(*imageView, clearStages, clearAccess, false);
       syncResources(DxvkCmdBuffer::ExecBuffer, 1u, &access);
 
-      // We cannot leverage render pass clears
-      // because we clear only part of the view
       m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
+      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
+
+      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
     } else {
       // Make sure the render pass is active so
       // that we can actually perform the clear
@@ -4028,33 +4077,25 @@ namespace dxvk {
       m_state.om.renderAreaHi = VkOffset2D {
         std::max(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
         std::max(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
-    }
 
-    // Perform the actual clear operation
-    VkClearAttachment clearInfo;
-    clearInfo.aspectMask          = aspect;
-    clearInfo.colorAttachment     = 0;
-    clearInfo.clearValue          = value;
+      // Perform the actual clear operation
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask = aspect;
+      clearInfo.colorAttachment = 0;
+      clearInfo.clearValue = value;
 
-    if ((aspect & VK_IMAGE_ASPECT_COLOR_BIT) && (attachmentIndex >= 0))
-      clearInfo.colorAttachment   = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+      if ((aspect & VK_IMAGE_ASPECT_COLOR_BIT) && (attachmentIndex >= 0))
+        clearInfo.colorAttachment = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
 
-    VkClearRect clearRect;
-    clearRect.rect.offset.x       = offset.x;
-    clearRect.rect.offset.y       = offset.y;
-    clearRect.rect.extent.width   = extent.width;
-    clearRect.rect.extent.height  = extent.height;
-    clearRect.baseArrayLayer      = 0;
-    clearRect.layerCount          = imageView->info().layerCount;
+      VkClearRect clearRect;
+      clearRect.rect.offset.x = offset.x;
+      clearRect.rect.offset.y = offset.y;
+      clearRect.rect.extent.width = extent.width;
+      clearRect.rect.extent.height = extent.height;
+      clearRect.baseArrayLayer = 0;
+      clearRect.layerCount = imageView->info().layerCount;
 
-    m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
-
-    // Unbind temporary framebuffer
-    if (attachmentIndex < 0) {
-      m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
-
-      if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
-        m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
+      m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
     }
   }
 
