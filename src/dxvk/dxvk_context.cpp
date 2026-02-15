@@ -5089,8 +5089,6 @@ namespace dxvk {
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
     // Create a framebuffer and pipeline for the resolve op
-    VkExtent3D passExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
-
     DxvkMetaResolvePipeline pipeInfo = m_common->metaResolve().getPipeline(
       dstFormat, srcImage->info().sampleCount, depthMode, stencilMode);
 
@@ -5108,7 +5106,7 @@ namespace dxvk {
       imagePlane1Descriptor.descriptor = views.srcStencilView->getDescriptor();
 
     // Set up render state    
-    VkViewport viewport;
+    VkViewport viewport = { };
     viewport.x        = float(region.dstOffset.x);
     viewport.y        = float(region.dstOffset.y);
     viewport.width    = float(region.extent.width);
@@ -5116,22 +5114,18 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    VkRect2D scissor;
-    scissor.offset    = { region.dstOffset.x,  region.dstOffset.y   };
-    scissor.extent    = { region.extent.width, region.extent.height };
+    VkRect2D scissor = { };
+    scissor.offset = { region.dstOffset.x,  region.dstOffset.y   };
+    scissor.extent = { region.extent.width, region.extent.height };
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = views.dstImageView->handle();
     attachmentInfo.imageLayout = dstLayout;
-    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    if (doDiscard)
-      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-
     VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
-    renderingInfo.renderArea.extent = VkExtent2D { passExtent.width, passExtent.height };
+    renderingInfo.renderArea = scissor;
     renderingInfo.layerCount = region.dstSubresource.layerCount;
     
     VkImageAspectFlags dstAspects = dstImage->formatInfo()->aspectMask;
