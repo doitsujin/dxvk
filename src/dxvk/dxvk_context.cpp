@@ -4939,17 +4939,12 @@ namespace dxvk {
      && srcLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
       srcLayout = srcImage->pickLayout(writableLayout);
 
-    VkPipelineStageFlags2 stages = isDepthStencil
-      ? VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT
-      : VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
+    // For some reason, someone somewhere decided that even depth-stencil
+    // resolves are performed with COLOR_ATTACHMENT stage and access
+    VkPipelineStageFlags2 stages = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT;
 
-    VkAccessFlags2 srcAccess = isDepthStencil
-      ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-      : VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-
-    VkAccessFlags2 dstAccess = isDepthStencil
-      ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-      : VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkAccessFlags2 srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    VkAccessFlags2 dstAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
     small_vector<DxvkResourceAccess, 2u> accessBatch;
     accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout, stages, srcAccess, false);
