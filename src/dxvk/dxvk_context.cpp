@@ -3234,33 +3234,12 @@ namespace dxvk {
         resolveMode = DxvkMetaBlitResolveMode::ResolveAverage;
     }
 
-    // Begin render pass
-    VkExtent3D imageExtent = dstView->mipLevelExtent(0);
-
-    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = dstView->handle();
-    attachmentInfo.imageLayout = dstView->getLayout();
-    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-
-    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.renderArea = VkRect2D {
-      VkOffset2D { 0, 0 },
-      VkExtent2D { imageExtent.width, imageExtent.height } };
-    renderingInfo.layerCount = dstView->info().layerCount;
-    renderingInfo.colorAttachmentCount = 1;
-    renderingInfo.pColorAttachments = &attachmentInfo;
-
-    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
-
-    // Bind pipeline
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       dstView->info().viewType, dstView->info().format,
       srcView->image()->info().sampleCount,
       dstView->image()->info().sampleCount, resolveMode);
 
-    // Set up viewport
-    VkViewport viewport;
+    VkViewport viewport = { };
     viewport.x = float(dstOffsetsAdjusted[0].x);
     viewport.y = float(dstOffsetsAdjusted[0].y);
     viewport.width = float(dstExtent.width);
@@ -3268,10 +3247,24 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    VkRect2D scissor;
+    VkRect2D scissor = { };
     scissor.offset = { dstOffsetsAdjusted[0].x, dstOffsetsAdjusted[0].y  };
     scissor.extent = { dstExtent.width, dstExtent.height };
 
+    // Begin render pass
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
+    attachmentInfo.imageView = dstView->handle();
+    attachmentInfo.imageLayout = dstView->getLayout();
+    attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    renderingInfo.renderArea = scissor;
+    renderingInfo.layerCount = dstView->info().layerCount;
+    renderingInfo.colorAttachmentCount = 1;
+    renderingInfo.pColorAttachments = &attachmentInfo;
+
+    m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
