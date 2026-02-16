@@ -98,6 +98,8 @@ namespace dxvk {
       return m_9On12Args;
     }
 
+    void RefreshFormatsTable() const;
+
     bool IsExtended() const;
 
     bool IsD3D8Compatible() const;
@@ -153,7 +155,7 @@ namespace dxvk {
     std::vector<D3DDISPLAYMODEEX>            m_modes;
     D3D9Format                               m_modeCacheFormat;
 
-    std::unique_ptr<const D3D9VkFormatTable> m_d3d9Formats;
+    std::unique_ptr<D3D9VkFormatTable>       m_d3d9Formats;
 
   };
 
