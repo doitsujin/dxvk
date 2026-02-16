@@ -949,8 +949,9 @@ namespace dxvk {
       ENABLE_EXT(khrExternalMemoryWin32, false),
       ENABLE_EXT(khrExternalSemaphoreWin32, false),
 
-      /* LOAD_OP_NONE for certain tiler optimizations */
-      ENABLE_EXT(khrLoadStoreOpNone, false),
+      /* LOAD_OP_NONE for certain tiler optimizations. Core feature
+       * in Vulkan 1.4, so probably supported by everything we need. */
+      ENABLE_EXT(khrLoadStoreOpNone, true),
 
       /* Maintenance features, relied on in various parts of the code */
       ENABLE_EXT_FEATURE(khrMaintenance5, maintenance5, true),
