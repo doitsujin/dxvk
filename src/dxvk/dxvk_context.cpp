@@ -5637,22 +5637,8 @@ namespace dxvk {
 
 
   bool DxvkContext::renderPassStartUnsynchronized() {
-    // Don't even try if there is a depth buffer bound, this is most likely
-    // either a shadow pass or an otherwise expensive main render pass.
-    //
-    // This will create some false positives, but that is okay.
-    if (m_state.om.framebufferInfo.getDepthTarget().view)
-      return false;
-
-    // Same for MSAA. This is actually necessary for correctness as well
-    // since handling render pass resolves gets all sorts of problematic,
-    // and those cases are currently not handled.
-    if (m_state.gp.state.ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT)
-      return false;
-
-    // Otherwise, we are probably good. Post-processing and UI passes don't
-    // typically have a lot of draws, or a lot of resources per draw.
-    return true;
+    // Don't enable this in stable Proton for now to avoid potential bugs.
+    return false;
   }
 
 
