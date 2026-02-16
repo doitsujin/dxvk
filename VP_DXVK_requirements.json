@@ -75,6 +75,7 @@
         },
         "dxvk_common_required": {
             "extensions": {
+                "VK_KHR_load_store_op_none": 1,
                 "VK_KHR_maintenance5": 1,
                 "VK_KHR_maintenance6": 1,
                 "VK_EXT_depth_clip_enable": 1
@@ -108,7 +109,6 @@
         },
         "dxvk_common_optional": {
             "extensions": {
-                "VK_KHR_load_store_op_none": 1,
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_present_id2": 1,
                 "VK_KHR_present_wait2": 1,
