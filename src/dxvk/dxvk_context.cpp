@@ -7492,6 +7492,13 @@ namespace dxvk {
         m_flags.set(DxvkContextFlag::GpRenderPassUnsynchronized);
         m_unsynchronizedDrawCount = 0u;
       }
+
+      // Dirty all descriptor sets if there is no active render pass so that we
+      // actually check all bound resources for hazards as necessary. Otherwise,
+      // descriptor state will only be dirtied once we actually start the render
+      // pass, which may be too late.
+      if (!m_flags.any(DxvkContextFlag::GpRenderPassBound))
+        m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
     }
 
     if (m_flags.any(DxvkContextFlag::GpRenderPassSideEffects,
