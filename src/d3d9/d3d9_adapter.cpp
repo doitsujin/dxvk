@@ -865,6 +865,11 @@ namespace dxvk {
   }
 
 
+  void D3D9Adapter::RefreshFormatsTable() const {
+    m_d3d9Formats->RefreshFormatSupport(this);
+  }
+
+
   bool D3D9Adapter::IsExtended() const {
     return m_parent->IsExtended();
   }

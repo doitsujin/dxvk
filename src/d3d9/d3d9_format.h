@@ -222,6 +222,9 @@ namespace dxvk {
     const DxvkFormatInfo* GetUnsupportedFormatInfo(
       D3D9Format            Format) const;
 
+    void RefreshFormatSupport(
+      const D3D9Adapter*          pParent);
+
   private:
 
     bool CheckImageFormatSupport(
@@ -230,13 +233,13 @@ namespace dxvk {
             VkFormatFeatureFlags2 Features) const;
 
     bool m_isExtended;
-    bool m_isD3D8Compatible;
 
     bool m_d24s8Support;
     bool m_d16s8Support;
 
     bool m_dfSupport;
     bool m_x4r4g4b4Support;
+    bool m_w11v11u10Support;
     bool m_d16lockableSupport;
 
     bool m_d32flockableSupport;
