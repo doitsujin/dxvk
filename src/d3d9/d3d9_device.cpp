@@ -1926,6 +1926,7 @@ namespace dxvk {
       return D3D_OK;
 
     D3D9DeviceLock lock = LockDevice();
+    BindFramebuffer();
 
     // D3DCLEAR_ZBUFFER and D3DCLEAR_STENCIL are invalid flags
     // if there is no currently bound DS (which can be the autoDS)
