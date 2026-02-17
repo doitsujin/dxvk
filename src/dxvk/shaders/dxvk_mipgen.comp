@@ -785,10 +785,21 @@ pixel_t interpolate_quad_center(quad_t q) {
 } while (false)
 
 /* Regular sampling path with interpolation. Use for odd-sized mips. */
-pixel_t interpolate_quad_at(quad_t q, vec2 coord) {
-  pixel_t r0 = px_fmix(q.px00, q.px01, fract(coord.x));
-  pixel_t r1 = px_fmix(q.px10, q.px11, fract(coord.x));
-  return px_fmix(r0, r1, fract(coord.y));
+pixel_t interpolate_quad_at(quad_t q, vec2 coord, uvec2 mip_size) {
+  pixel_t r0 = q.px00;
+  pixel_t r1 = q.px01;
+
+  [[flatten]]
+  if (mip_size.x > 1u) {
+    r0 = px_fmix(r0, q.px10, fract(coord.x));
+    r1 = px_fmix(r1, q.px11, fract(coord.x));
+  }
+
+  [[flatten]]
+  if (mip_size.y > 1u)
+    r0 = px_fmix(r0, r1, fract(coord.y));
+
+  return r0;
 }
 
 
@@ -844,7 +855,7 @@ pixel_t filter_shared_mip(uvec2 mip0_size, uvec2 dst_coord) {
 
   vec2 src_coord_f = (vec2(dst_coord) / vec2(dst_size)) * vec2(src_size) + 0.5f;
   quad_t quad = load_quad_from_shared_mip(uvec2(src_coord_f));
-  return interpolate_quad_at(quad, src_coord_f);
+  return interpolate_quad_at(quad, src_coord_f, src_size);
 }
 
 
@@ -855,7 +866,7 @@ pixel_t filter_lds_mip(uvec2 mip0_size, uint base_mip, uvec2 dst_coord) {
 
   vec2 src_coord_f = (vec2(dst_coord) / vec2(dst_size)) * vec2(src_size) + 0.5f;
   quad_t quad = load_quad_from_lds(uvec2(src_coord_f));
-  return interpolate_quad_at(quad, src_coord_f);
+  return interpolate_quad_at(quad, src_coord_f, src_size);
 }
 
 
