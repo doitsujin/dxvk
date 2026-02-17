@@ -221,9 +221,10 @@ namespace dxvk {
   
   struct DxvkDeferredResolve {
     Rc<DxvkImageView> imageView;
-    uint32_t layerMask;
-    VkResolveModeFlagBits depthMode;
-    VkResolveModeFlagBits stencilMode;
+    uint32_t layerMask = 0u;
+    VkResolveModeFlagBits depthMode   = { };
+    VkResolveModeFlagBits stencilMode = { };
+    VkRenderingAttachmentFlagsKHR flags = 0u;
   };
 
 
