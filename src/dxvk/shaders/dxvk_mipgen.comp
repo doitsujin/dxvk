@@ -378,34 +378,15 @@ uvec2 compute_shared_mip_size(uvec2 mip0_size) {
 
 /* Computes mask of odd-sized mips in each dimension.
  *
- * This is actually equivalent to the image size itself. Since mips
- * simply double in size, simply shifting the image size by the mip
- * count will return 1 LSB for odd mips, and 0 LSB for even. */
-uvec2 compute_odd_mip_mask(uvec2 mip0_size) {
-  return mip0_size;
-}
-
-
-/* Computes flat mask of odd-sized mips, or-ing together
- * the respective masks for all dimensions. */
+ * This is actually almost equivalent to the image size itself. Since
+ * mips simply double in size, simply shifting the image size by the
+ * mip count will return 1 LSB for odd mips, and 0 LSB for even.
+ *
+ * We also need to consider any mips as odd hat have a size of 1 in
+ * any given dimension, so we actually need to scan both bit masks. */
 uint compute_odd_mip_mask_flat(uvec2 mip0_size) {
-  uvec2 mask = compute_odd_mip_mask(mip0_size);
-  return mask.x | mask.y;
-}
-
-
-/* Computes even mip mask. Sets bits for invalid mips to 0. */
-uvec2 compute_even_mip_mask(uvec2 mip0_size) {
-  return uvec2(
-    bitfieldExtract(mip0_size.x, 0, findMSB(mip0_size.x)),
-    bitfieldExtract(mip0_size.y, 0, findMSB(mip0_size.y)));
-}
-
-
-/* Computes flattened even mip mask. */
-uint compute_even_mip_mask_flat(uvec2 mip0_size) {
-  uvec2 mask = compute_even_mip_mask(mip0_size);
-  return mask.x | mask.y;
+  int msb = min(findMSB(mip0_size.x), findMSB(mip0_size.y));
+  return bitfieldInsert(~0u, mip0_size.x | mip0_size.y, 0, msb);
 }
 
 
@@ -423,15 +404,13 @@ uvec4 compute_read_rect(uvec2 mip0_size, uint mip) {
   if (mip > MAX_MIP_COUNT)
     return uvec4(0u, 0u, compute_mip_size(mip0_size, mip));
 
-  uvec2 odd_mask = compute_odd_mip_mask(mip0_size);
-
   uvec2 this_group = (gl_WorkGroupID.xy + 0u) << (MAX_MIP_COUNT - mip);
   uvec2 next_group = (gl_WorkGroupID.xy + 1u) << (MAX_MIP_COUNT - mip);
 
   /* Take into account that odd mips need to read a 3x3 region for each
    * pixel of the next smaller mip. */
-  next_group.x += bitfieldExtract(odd_mask.x, int(mip), int(MAX_MIP_COUNT - mip));
-  next_group.y += bitfieldExtract(odd_mask.y, int(mip), int(MAX_MIP_COUNT - mip));
+  next_group.x += bitfieldExtract(mip0_size.x, int(mip), int(MAX_MIP_COUNT - mip));
+  next_group.y += bitfieldExtract(mip0_size.y, int(mip), int(MAX_MIP_COUNT - mip));
 
   return uvec4(this_group, next_group);
 }
