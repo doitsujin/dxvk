@@ -51,6 +51,7 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance8);                   \
     HANDLE_EXT(khrMaintenance9);                   \
+    HANDLE_EXT(khrMaintenance10);                  \
     HANDLE_EXT(khrPipelineLibrary);                \
     HANDLE_EXT(khrPresentId);                      \
     HANDLE_EXT(khrPresentId2);                     \
@@ -85,7 +86,8 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance5);                   \
     HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
-    HANDLE_EXT(khrMaintenance9);
+    HANDLE_EXT(khrMaintenance9);                   \
+    HANDLE_EXT(khrMaintenance10);
 
 
   DxvkDeviceCapabilities::DxvkDeviceCapabilities(
@@ -962,6 +964,7 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(khrMaintenance7, maintenance7, false),
       ENABLE_EXT_FEATURE(khrMaintenance8, maintenance8, false),
       ENABLE_EXT_FEATURE(khrMaintenance9, maintenance9, false),
+      ENABLE_EXT_FEATURE(khrMaintenance10, maintenance10, false),
 
       /* Dependency for graphics pipeline library */
       ENABLE_EXT(khrPipelineLibrary, true),
