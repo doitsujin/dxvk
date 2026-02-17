@@ -197,15 +197,13 @@ namespace dxvk {
       dstView->info().unpackSwizzle(),
       srcView->info().unpackSwizzle());
 
+    // Use render pass path if we need format reinterpretation or if any
+    // of the images are multisampled, which HW blit does not support.
     bool useFb = dstView->image()->info().sampleCount != VK_SAMPLE_COUNT_1_BIT
               || srcView->image()->info().sampleCount != VK_SAMPLE_COUNT_1_BIT
               || dstView->image()->info().format != dstView->info().format
               || srcView->image()->info().format != srcView->info().format
               || !util::isIdentityMapping(mapping);
-
-    // Use render pass path if we already have the correct usage flags anyway
-    useFb |= (dstView->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-          && (srcView->info().usage & (VK_IMAGE_USAGE_SAMPLED_BIT));
 
     if (!useFb) {
       // Otherwise, verify that the vkCmdBlit path is supported for the given formats
