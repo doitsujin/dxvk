@@ -111,6 +111,7 @@
             "extensions": {
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_maintenance8": 1,
+                "VK_KHR_maintenance9": 1,
                 "VK_KHR_present_id2": 1,
                 "VK_KHR_present_wait2": 1,
                 "VK_KHR_shader_subgroup_uniform_control_flow": 1,
@@ -135,6 +136,9 @@
                 },
                 "VkPhysicalDeviceMaintenance8FeaturesKHR": {
                     "maintenance8": true
+                },
+                "VkPhysicalDeviceMaintenance9FeaturesKHR": {
+                    "maintenance9": true
                 },
                 "VkPhysicalDevicePresentId2FeaturesKHR": {
                     "presentId2": true
