@@ -3943,13 +3943,17 @@ namespace dxvk {
       return;
     }
 
-    // Find out if the render target view is currently bound,
-    // so that we can avoid spilling the render pass if it is.
+    // Find out if the render target view is currently bound, so that
+    // we can avoid spilling the render pass if it is. Don't try to
+    // use the render pass if the framebuffer size is too small.
     this->updateRenderTargets();
 
     int32_t attachmentIndex = -1;
 
-    if (m_state.om.framebufferInfo.isFullSize(imageView))
+    DxvkFramebufferSize fbSize = m_state.om.framebufferInfo.size();
+
+    if (uint32_t(offset.x) + extent.width <= fbSize.width
+     && uint32_t(offset.y) + extent.height <= fbSize.height)
       attachmentIndex = m_state.om.framebufferInfo.findAttachment(imageView);
 
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, aspect))
@@ -4043,17 +4047,6 @@ namespace dxvk {
       if (findOverlappingDeferredClear(*imageView->image(), imageView->imageSubresources()))
         flushClearsInline();
 
-      if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
-        uint32_t colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
-        m_state.om.attachmentMask.trackColorWrite(colorIndex);
-      }
-
-      if (aspect & VK_IMAGE_ASPECT_DEPTH_BIT)
-        m_state.om.attachmentMask.trackDepthWrite();
-
-      if (aspect & VK_IMAGE_ASPECT_STENCIL_BIT)
-        m_state.om.attachmentMask.trackStencilWrite();
-
       // Inline clears may affect render area
       m_state.om.renderAreaLo = VkOffset2D {
         std::min(m_state.om.renderAreaLo.x, offset.x),
@@ -4062,24 +4055,59 @@ namespace dxvk {
         std::max(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
         std::max(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
 
-      // Perform the actual clear operation
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask = aspect;
-      clearInfo.colorAttachment = 0;
+      // Check whether we can fold the clear into the curret render pass. This is the
+      // case when the framebuffer size matches the clear size, even if the clear itself
+      // does not cover the entire view, and if the view has not been accessed yet.
+      bool hoistClear = m_flags.test(DxvkContextFlag::GpRenderPassSecondaryCmd)
+        && extent.width == fbSize.width && extent.height == fbSize.height;
+
+      DxvkDeferredClear clearInfo = { };
+      clearInfo.imageView = imageView;
+      clearInfo.clearAspects = aspect;
       clearInfo.clearValue = value;
 
-      if ((aspect & VK_IMAGE_ASPECT_COLOR_BIT) && (attachmentIndex >= 0))
-        clearInfo.colorAttachment = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+      uint32_t colorIndex = 0u;
 
-      VkClearRect clearRect;
+      if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+        colorIndex = m_state.om.framebufferInfo.getColorAttachmentIndex(attachmentIndex);
+
+        if (hoistClear && m_state.om.attachmentMask.getColorAccess(colorIndex) == DxvkAccess::None)
+          hoistInlineClear(clearInfo, m_state.om.renderingInfo.color[colorIndex], VK_IMAGE_ASPECT_COLOR_BIT);
+      } else {
+        if (hoistClear && m_state.om.attachmentMask.getDepthAccess() == DxvkAccess::None)
+          hoistInlineClear(clearInfo, m_state.om.renderingInfo.depth, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+        if (hoistClear && m_state.om.attachmentMask.getStencilAccess() == DxvkAccess::None)
+          hoistInlineClear(clearInfo, m_state.om.renderingInfo.stencil, VK_IMAGE_ASPECT_STENCIL_BIT);
+      }
+
+      // If we hoisted everything, there's nothing left to do
+      if (!clearInfo.clearAspects)
+        return;
+
+      if (clearInfo.clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+        m_state.om.attachmentMask.trackColorWrite(colorIndex);
+
+      if (clearInfo.clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+        m_state.om.attachmentMask.trackDepthWrite();
+
+      if (clearInfo.clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+        m_state.om.attachmentMask.trackStencilWrite();
+
+      // Perform the actual clear operation
+      VkClearAttachment clear = { };
+      clear.aspectMask = aspect;
+      clear.colorAttachment = colorIndex;
+      clear.clearValue = value;
+
+      VkClearRect clearRect = { };
       clearRect.rect.offset.x = offset.x;
       clearRect.rect.offset.y = offset.y;
       clearRect.rect.extent.width = extent.width;
       clearRect.rect.extent.height = extent.height;
-      clearRect.baseArrayLayer = 0;
       clearRect.layerCount = imageView->info().layerCount;
 
-      m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clearInfo, 1, &clearRect);
+      m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clear, 1, &clearRect);
     }
   }
 
