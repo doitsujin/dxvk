@@ -2387,6 +2387,9 @@ namespace dxvk {
         color.resolveMode = VK_RESOLVE_MODE_AVERAGE_BIT;
         color.resolveImageView = resolve.imageView->handle();
         color.resolveImageLayout = newLayout;
+
+        auto& flags = m_state.om.renderingInfo.colorAttachmentFlags[index];
+        flags.flags |= resolve.flags;
       } else {
         if (resolve.depthMode) {
           auto& depth = m_state.om.renderingInfo.depth;
@@ -5396,6 +5399,14 @@ namespace dxvk {
     resolve.depthMode = depthMode;
     resolve.stencilMode = stencilMode;
 
+    // Ensure that the resolve happens in linear space only if the resolve format is sRGB
+    if (dstView->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+     && m_device->properties().khrMaintenance10.resolveSrgbFormatSupportsTransferFunctionControl) {
+      resolve.flags = lookupFormatInfo(format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+        ? VK_RENDERING_ATTACHMENT_RESOLVE_ENABLE_TRANSFER_FUNCTION_BIT_KHR
+        : VK_RENDERING_ATTACHMENT_RESOLVE_SKIP_TRANSFER_FUNCTION_BIT_KHR;
+    }
+
     // Ensure resolves get flushed before the next draw
     m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
     return true;
@@ -5774,9 +5785,15 @@ namespace dxvk {
          && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
           auto& feedbackLoopInfo = m_state.om.renderingInfo.colorFeedbackLoop[i];
           feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+          feedbackLoopInfo.pNext = std::exchange(colorInfo.pNext, &feedbackLoopInfo);
           feedbackLoopInfo.feedbackLoopEnable = true;
+        }
 
-          colorInfo.pNext = &feedbackLoopInfo;
+        // Attachment flags are used to control sRGB resolves
+        if (m_device->features().khrMaintenance10.maintenance10) {
+          auto& flagInfo = m_state.om.renderingInfo.colorAttachmentFlags[i];
+          flagInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR };
+          flagInfo.pNext = std::exchange(colorInfo.pNext, &flagInfo);
         }
       }
     }
@@ -5815,9 +5832,8 @@ namespace dxvk {
        && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
         auto& feedbackLoopInfo = m_state.om.renderingInfo.depthStencilFeedbackLoop;
         feedbackLoopInfo = { VK_STRUCTURE_TYPE_ATTACHMENT_FEEDBACK_LOOP_INFO_EXT };
+        feedbackLoopInfo.pNext = std::exchange(depthInfo.pNext, &feedbackLoopInfo);
         feedbackLoopInfo.feedbackLoopEnable = true;
-
-        depthInfo.pNext = &feedbackLoopInfo;
       }
     }
 
