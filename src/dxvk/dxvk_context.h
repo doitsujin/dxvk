@@ -1751,7 +1751,10 @@ namespace dxvk {
 
     template<VkPipelineBindPoint BindPoint>
     void updatePushData();
-    
+
+    void beginComputePass();
+    void endComputePass();
+
     template<bool Indirect, bool Resolve = true>
     bool commitComputeState();
     

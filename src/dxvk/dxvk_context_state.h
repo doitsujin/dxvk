@@ -62,6 +62,7 @@ namespace dxvk {
     GpHasPushData,              ///< Graphics pipeline uses push data
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
 
+    CpComputePassActive,        ///< Whether we are inside a compute pass
     CpDirtyPipelineState,       ///< Compute pipeline is out of date
     CpDirtySpecConstants,       ///< Compute spec constants are out of date
     CpHasPushData,              ///< Compute pipeline uses push data

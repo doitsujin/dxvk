@@ -5435,6 +5435,7 @@ namespace dxvk {
       prepareShaderReadableImages(true);
 
       // Make sure all graphics state gets reapplied on the next draw
+      m_descriptorState.clearStages(VK_SHADER_STAGE_COMPUTE_BIT);
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
       m_flags.set(
@@ -5541,6 +5542,7 @@ namespace dxvk {
 
   void DxvkContext::endCurrentPass(bool suspend) {
     endRenderPass(suspend);
+    endComputePass();
   }
 
 
@@ -7404,11 +7406,30 @@ namespace dxvk {
         pushInfo.offset, pushInfo.data.size, pushInfo.data.address);
     }
   }
-  
+
+
+  void DxvkContext::beginComputePass() {
+    m_flags.set(DxvkContextFlag::CpComputePassActive);
+
+    // Mark compute descriptors as dirty so that hazards are checked properly
+    // between dispatches even when none of the resources were re-bound. This
+    // can happen when a bound resource got written by a transfer op.
+    m_descriptorState.clearStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+    m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
+  }
+
+
+  void DxvkContext::endComputePass() {
+    m_flags.clr(DxvkContextFlag::CpComputePassActive);
+  }
+
 
   template<bool Indirect, bool Resolve>
   bool DxvkContext::commitComputeState() {
     this->endRenderPass(false);
+
+    if (!m_flags.test(DxvkContextFlag::CpComputePassActive))
+      this->beginComputePass();
 
     if (m_flags.any(DxvkContextFlag::CpDirtyPipelineState,
                     DxvkContextFlag::CpDirtySpecConstants)) {
@@ -8461,7 +8482,8 @@ namespace dxvk {
     m_flags.clr(
       DxvkContextFlag::GpRenderPassActive,
       DxvkContextFlag::GpXfbActive,
-      DxvkContextFlag::GpIndependentSets);
+      DxvkContextFlag::GpIndependentSets,
+      DxvkContextFlag::CpComputePassActive);
 
     m_flags.set(
       DxvkContextFlag::GpDirtyRenderTargets,
