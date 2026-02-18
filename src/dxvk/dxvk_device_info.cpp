@@ -427,8 +427,25 @@ namespace dxvk {
     uint32_t queueCount = 0u;
     vk->vkGetPhysicalDeviceQueueFamilyProperties2(adapter, &queueCount, nullptr);
 
-    m_queuesAvailable.resize(queueCount, { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
-    vk->vkGetPhysicalDeviceQueueFamilyProperties2(adapter, &queueCount, m_queuesAvailable.data());
+    // Use local array of base structures as the API requires,
+    // then copy the base structure back to the metadata array
+    std::vector<VkQueueFamilyProperties2> queueFamilies(queueCount, { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 });
+
+    // Chain extension structs directly into the metadata structure
+    m_queuesAvailable.resize(queueCount);
+
+    for (uint32_t i = 0u; i < queueCount; i++) {
+      auto& base = queueFamilies[i];
+      auto& meta = m_queuesAvailable[i];
+
+      if (m_featuresSupported.khrMaintenance9.maintenance9)
+        meta.ownershipTransfer.pNext = std::exchange(base.pNext, &meta.ownershipTransfer);
+    }
+
+    vk->vkGetPhysicalDeviceQueueFamilyProperties2(adapter, &queueCount, queueFamilies.data());
+
+    for (uint32_t i = 0u; i < queueCount; i++)
+      m_queuesAvailable[i].core = queueFamilies[i];
 
     if (deviceInfo) {
       // Only mark queues available that the device has been created with
@@ -440,7 +457,7 @@ namespace dxvk {
             queueCount = deviceInfo->pQueueCreateInfos[j].queueCount;
         }
 
-        m_queuesAvailable[i].queueFamilyProperties.queueCount = queueCount;
+        m_queuesAvailable[i].core.queueFamilyProperties.queueCount = queueCount;
       }
     }
   }
@@ -628,7 +645,7 @@ namespace dxvk {
       m_queueMapping.transfer.family = computeQueue;
 
     // Prefer using the graphics queue as a sparse binding queue if possible
-    auto& graphicsQueue = m_queuesAvailable[m_queueMapping.graphics.family];
+    auto& graphicsQueue = m_queuesAvailable[m_queueMapping.graphics.family].core;
 
     if (graphicsQueue.queueFamilyProperties.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
       m_queueMapping.sparse.family = m_queueMapping.graphics.family;
@@ -679,8 +696,8 @@ namespace dxvk {
           VkQueueFlags                mask,
           VkQueueFlags                flags) const {
     for (uint32_t i = 0; i < m_queuesAvailable.size(); i++) {
-      if ((m_queuesAvailable[i].queueFamilyProperties.queueFlags & mask) == flags
-       && (m_queuesAvailable[i].queueFamilyProperties.queueCount))
+      if ((m_queuesAvailable[i].core.queueFamilyProperties.queueFlags & mask) == flags
+       && (m_queuesAvailable[i].core.queueFamilyProperties.queueCount))
         return i;
     }
 
