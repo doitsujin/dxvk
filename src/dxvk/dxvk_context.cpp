@@ -4951,6 +4951,8 @@ namespace dxvk {
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT, false);
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
+    VkResolveImageModeInfoKHR resolveMode = { VK_STRUCTURE_TYPE_RESOLVE_IMAGE_MODE_INFO_KHR };
+
     VkImageResolve2 resolveRegion = { VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2 };
     resolveRegion.srcSubresource = region.srcSubresource;
     resolveRegion.srcOffset = region.srcOffset;
@@ -4965,6 +4967,13 @@ namespace dxvk {
     resolveInfo.dstImageLayout = dstLayout;
     resolveInfo.regionCount = 1;
     resolveInfo.pRegions = &resolveRegion;
+
+    if (srcImage->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+     && m_device->features().khrMaintenance10.maintenance10
+     && m_device->properties().khrMaintenance10.resolveSrgbFormatSupportsTransferFunctionControl) {
+      resolveMode.pNext = std::exchange(resolveInfo.pNext, &resolveMode);
+      resolveMode.flags = VK_RESOLVE_IMAGE_ENABLE_TRANSFER_FUNCTION_BIT_KHR;
+    }
 
     m_cmd->cmdResolveImage(&resolveInfo);
   }
