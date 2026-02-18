@@ -1142,6 +1142,12 @@ namespace dxvk {
     { R"(\\Pirates!\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
     }} },
+    /* Total War Pharaoh Dynasties: Broken menu
+     * because the game doesn't manage to respect
+     * pitch for an A8_UNORM image                */
+    { R"(\\Pharaoh\.exe$)", {{
+      { "d3d11.disableDirectImageMapping",  "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
