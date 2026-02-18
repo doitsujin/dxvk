@@ -54,9 +54,11 @@ namespace dxvk {
    * queue family that it belongs to.
    */
   struct DxvkDeviceQueue {
-    VkQueue   queueHandle = VK_NULL_HANDLE;
-    uint32_t  queueFamily = 0;
-    uint32_t  queueIndex  = 0;
+    VkQueue       queueHandle = VK_NULL_HANDLE;
+    uint32_t      queueFamily = 0u;
+    uint32_t      queueIndex  = 0u;
+
+    DxvkDeviceQueueInfo properties = { };
   };
 
   /**
