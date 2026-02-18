@@ -2251,6 +2251,10 @@ namespace dxvk {
       m_cmd->track(view.image(), access);
     }
 
+    bool formatsAreImageCopyCompatible(
+            VkFormat                  dstFormat,
+            VkFormat                  srcFormat);
+
     static uint32_t computePushDataBlockOffset(uint32_t index) {
       return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
     }
@@ -2259,7 +2263,7 @@ namespace dxvk {
       const DxvkStencilOp&            op,
             bool                      writable);
 
-    static bool formatsAreCopyCompatible(
+    static bool formatsAreBufferCopyCompatible(
             VkFormat                  imageFormat,
             VkFormat                  bufferFormat);
 
