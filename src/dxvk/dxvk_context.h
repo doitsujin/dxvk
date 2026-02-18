@@ -1653,8 +1653,10 @@ namespace dxvk {
             VkRenderingAttachmentInfo&  attachment,
             DxvkAccess                  access) const;
 
-    void startRenderPass();
-    void spillRenderPass(bool suspend);
+    void beginRenderPass();
+    void endRenderPass(bool suspend);
+
+    void endCurrentPass(bool suspend);
     
     void acquireRenderTargets(
       const DxvkFramebufferInfo&  framebufferInfo,

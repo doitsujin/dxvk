@@ -191,7 +191,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&    srcView,
     const VkOffset3D*           srcOffsets,
           VkFilter              filter) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     auto mapping = util::resolveSrcComponentMapping(
       dstView->info().unpackSwizzle(),
@@ -241,7 +241,7 @@ namespace dxvk {
       DxvkCmdBuffer::InitBuffer, 1u, &access);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      spillRenderPass(true);
+      endCurrentPass(true);
 
     syncResources(cmdBuffer, 1u, &access);
 
@@ -275,7 +275,7 @@ namespace dxvk {
       DxvkCmdBuffer::InitBuffer, 1u, &access);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
-      spillRenderPass(true);
+      endCurrentPass(true);
       invalidateState();
     }
 
@@ -347,11 +347,11 @@ namespace dxvk {
       // 3) The clear gets executed separately, in which case updateRenderTargets
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
     } else if (!m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects)) {
       // We cannot inline clears if the clear aspects are not writable. End the
       // render pass on the next draw to ensure that the image gets cleared.
-      if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      if (m_flags.test(DxvkContextFlag::GpRenderPassActive))
         m_flags.set(DxvkContextFlag::GpRenderPassNeedsFlush);
     }
 
@@ -415,7 +415,7 @@ namespace dxvk {
     DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch.size(), accessBatch.data());
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
 
     syncResources(cmdBuffer, accessBatch.size(), accessBatch.data());
 
@@ -500,7 +500,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
       return;
@@ -632,7 +632,7 @@ namespace dxvk {
           VkExtent3D            srcSize,
           VkExtent3D            extent,
           VkDeviceSize          elementSize) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
     this->invalidateState();
 
     // We'll use texel buffer views with an appropriately
@@ -1136,7 +1136,7 @@ namespace dxvk {
         srcStages, srcAccess, dstStages, dstAccess);
     }
 
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     // Flush barriers if there was no active render pass.
     // This is necessary because there are no resources
@@ -1173,7 +1173,7 @@ namespace dxvk {
       DxvkCmdBuffer::InitBarriers, 1u, &access);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      spillRenderPass(true);
+      endCurrentPass(true);
 
     if (access.image && access.imageLayout != access.image->info().layout) {
       // External release barrier and layout transition in one go
@@ -1192,7 +1192,7 @@ namespace dxvk {
   void DxvkContext::releaseExternalResource(
     const Rc<DxvkPagedResource>&    resource,
           VkImageLayout             layout) {
-    spillRenderPass(true);
+    endCurrentPass(true);
 
     DxvkResourceAccess access;
     access.stages = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
@@ -1220,7 +1220,7 @@ namespace dxvk {
     if (imageView->info().mipCount <= 1)
       return;
     
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     // Check whether we can use the single-pass mip gen compute shader. Its main
     // advantage is that it does not require any internal synchronization as long
@@ -1354,7 +1354,7 @@ namespace dxvk {
       if (found) {
         m_flags.set(DxvkContextFlag::GpDirtyRenderTargets);
 
-        spillRenderPass(true);
+        endCurrentPass(true);
         flushDeferredClear(*image, image->getAvailableSubresources());
       }
     }
@@ -1362,14 +1362,14 @@ namespace dxvk {
     // If there are any pending accesses that may involve
     // layout transitions, ensure that they are done
     if (resourceHasAccess(*image, image->getAvailableSubresources(), DxvkAccess::Write, DxvkAccessOp::None)) {
-      spillRenderPass(true);
+      endCurrentPass(true);
       flushBarriers();
     }
 
     // Ensure that the image is in its default layout. No need to explicitly
     // track it here though since we track the storage object instead.
     if (image->queryLayout(image->getAvailableSubresources()) != image->info().layout) {
-      spillRenderPass(true);
+      endCurrentPass(true);
 
       transitionImageLayout(DxvkCmdBuffer::ExecBuffer, *image,
         image->getAvailableSubresources(),
@@ -1439,7 +1439,7 @@ namespace dxvk {
     }
 
     // Ensure the image is accessible and in its default layout
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     DxvkResourceAccess access(*image, image->getAvailableSubresources(),
       image->info().layout, image->info().stages, image->info().access, false);
@@ -1857,7 +1857,7 @@ namespace dxvk {
     if (!useHw && !useFb && resolveImageInline(dstImage, srcImage, region, format, mode, stencilMode))
       return;
 
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     if (unlikely(useHw)) {
       // Only used as a fallback if we can't use the images any other way,
@@ -1880,7 +1880,7 @@ namespace dxvk {
     const VkImageSubresourceRange&  dstSubresources,
           VkImageLayout             srcLayout,
           VkImageLayout             dstLayout) {
-    this->spillRenderPass(false);
+    this->endCurrentPass(false);
 
     if (srcLayout != dstLayout) {
       DxvkResourceAccess access(*dstImage, dstSubresources,
@@ -2117,7 +2117,7 @@ namespace dxvk {
         
         return;
       } else if (entry.imageView->checkSubresourceOverlap(imageView)) {
-        this->spillRenderPass(false);
+        this->endCurrentPass(false);
         break;
       }
     }
@@ -2136,7 +2136,7 @@ namespace dxvk {
         entry.clearAspects &= ~discardAspects;
         return;
       } else if (entry.imageView->checkSubresourceOverlap(imageView)) {
-        this->spillRenderPass(false);
+        this->endCurrentPass(false);
         break;
       }
     }
@@ -2573,7 +2573,7 @@ namespace dxvk {
     DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      spillRenderPass(true);
+      endCurrentPass(true);
 
     syncResources(cmdBuffer, 1u, &access);
 
@@ -2851,7 +2851,7 @@ namespace dxvk {
     // flags inside a render pass to avoid performance regressions when an
     // application uses this feature but we already have an app profile.
     // Barriers get flushed when beginning or ending a render pass anyway.
-    DxvkBarrierControlFlags mask = m_flags.test(DxvkContextFlag::GpRenderPassBound)
+    DxvkBarrierControlFlags mask = m_flags.test(DxvkContextFlag::GpRenderPassActive)
       ? DxvkBarrierControlFlags(DxvkBarrierControl::GraphicsAllowReadWriteOverlap)
       : DxvkBarrierControlFlags(DxvkBarrierControl::ComputeAllowReadWriteOverlap,
                                 DxvkBarrierControl::ComputeAllowWriteOnlyOverlap);
@@ -2959,7 +2959,7 @@ namespace dxvk {
 
 
   void DxvkContext::signalGpuEvent(const Rc<DxvkEvent>& event) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
     
     Rc<DxvkGpuEvent> gpuEvent = m_common->eventPool().allocEvent();
     event->assignGpuEvent(gpuEvent);
@@ -2986,7 +2986,7 @@ namespace dxvk {
     // The resources in the std::vectors above are called-out
     // explicitly in the API for barrier and tracking purposes
     // since they're being used bindlessly.
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     std::vector<DxvkResourceAccess> accessBatch;
 
@@ -3505,7 +3505,7 @@ namespace dxvk {
       accessBatch.size(), accessBatch.data());
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
-      spillRenderPass(true);
+      endCurrentPass(true);
 
     syncResources(cmdBuffer, accessBatch.size(), accessBatch.data());
 
@@ -3527,7 +3527,7 @@ namespace dxvk {
           VkDeviceSize          bufferRowAlignment,
           VkDeviceSize          bufferSliceAlignment,
           VkFormat              bufferFormat) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
     this->invalidateState();
 
     bool isDepthStencil = imageSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
@@ -3752,7 +3752,7 @@ namespace dxvk {
           VkImageSubresourceLayers imageSubresource,
           VkOffset3D            imageOffset,
           VkExtent3D            imageExtent) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
 
     VkDeviceSize dataSize = imageSubresource.layerCount * util::computeImageDataSize(
       image->info().format, imageExtent, imageSubresource.aspectMask);
@@ -3797,7 +3797,7 @@ namespace dxvk {
           VkImageSubresourceLayers imageSubresource,
           VkOffset3D            imageOffset,
           VkExtent3D            imageExtent) {
-    this->spillRenderPass(true);
+    this->endCurrentPass(true);
     this->invalidateState();
 
     // Ensure we can read the source image
@@ -3955,7 +3955,7 @@ namespace dxvk {
       attachmentIndex = -1;
 
     if (attachmentIndex < 0) {
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
 
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
         const char* dstName = imageView->image()->info().debugName;
@@ -4005,7 +4005,7 @@ namespace dxvk {
     } else {
       // Make sure the render pass is active so
       // that we can actually perform the clear
-      this->startRenderPass();
+      this->beginRenderPass();
 
       if (findOverlappingDeferredClear(*imageView->image(), imageView->imageSubresources()))
         flushClearsInline();
@@ -4070,7 +4070,7 @@ namespace dxvk {
     DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, 1u, &access);
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) {
-      spillRenderPass(true);
+      endCurrentPass(true);
       invalidateState();
     }
 
@@ -5186,7 +5186,7 @@ namespace dxvk {
       return false;
 
     // End current render pass and prepare the destination image
-    spillRenderPass(true);
+    endCurrentPass(true);
 
     // Create an image view that we can use to perform the clear
     DxvkImageViewKey key = { };
@@ -5427,8 +5427,8 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::startRenderPass() {
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+  void DxvkContext::beginRenderPass() {
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassActive)) {
       if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
         popDebugRegion(util::DxvkDebugLabelType::InternalBarrierControl);
 
@@ -5438,7 +5438,7 @@ namespace dxvk {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
       m_flags.set(
-        DxvkContextFlag::GpRenderPassBound,
+        DxvkContextFlag::GpRenderPassActive,
         DxvkContextFlag::GpDirtyPipelineState,
         DxvkContextFlag::GpDirtyVertexBuffers,
         DxvkContextFlag::GpDirtyIndexBuffer,
@@ -5479,8 +5479,8 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::spillRenderPass(bool suspend) {
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+  void DxvkContext::endRenderPass(bool suspend) {
+    if (m_flags.test(DxvkContextFlag::GpRenderPassActive)) {
       bool unsynchronized = m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized);
 
       if (unsynchronized) {
@@ -5488,7 +5488,7 @@ namespace dxvk {
         m_flags.set(DxvkContextFlag::ForceWriteAfterWriteSync);
       }
 
-      m_flags.clr(DxvkContextFlag::GpRenderPassBound,
+      m_flags.clr(DxvkContextFlag::GpRenderPassActive,
                   DxvkContextFlag::GpRenderPassSideEffects,
                   DxvkContextFlag::GpRenderPassNeedsFlush,
                   DxvkContextFlag::GpRenderPassUnsynchronized);
@@ -5536,6 +5536,11 @@ namespace dxvk {
       // to be read and in their default layout
       prepareShaderReadableImages(false);
     }
+  }
+
+
+  void DxvkContext::endCurrentPass(bool suspend) {
+    endRenderPass(suspend);
   }
 
 
@@ -6803,7 +6808,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyRenderTargets)) {
       m_flags.clr(DxvkContextFlag::GpDirtyRenderTargets);
 
-      if (m_flags.test(DxvkContextFlag::GpRenderPassBound) && !m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
+      if (m_flags.test(DxvkContextFlag::GpRenderPassActive) && !m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
         // Only interrupt an active render pass if the render targets have actually
         // changed since the last update. There are cases where client APIs cannot
         // know in advance that consecutive draws use the same set of render targets.
@@ -6814,7 +6819,7 @@ namespace dxvk {
       // End active render pass and reset load/store ops for the new render targets.
       DxvkFramebufferInfo fbInfo = makeFramebufferInfo(m_state.om.renderTargets);
 
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
 
       this->resetRenderPassOps(
         m_state.om.renderTargets,
@@ -6840,7 +6845,7 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     } else if (m_flags.test(DxvkContextFlag::GpRenderPassNeedsFlush)) {
       // End render pass to flush pending resolves
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
     }
   }
 
@@ -7403,7 +7408,7 @@ namespace dxvk {
 
   template<bool Indirect, bool Resolve>
   bool DxvkContext::commitComputeState() {
-    this->spillRenderPass(false);
+    this->endRenderPass(false);
 
     if (m_flags.any(DxvkContextFlag::CpDirtyPipelineState,
                     DxvkContextFlag::CpDirtySpecConstants)) {
@@ -7460,7 +7465,7 @@ namespace dxvk {
       if (m_flags.any(DxvkContextFlag::GpDirtyPipelineState,
                       DxvkContextFlag::GpDirtySpecConstants,
                       DxvkContextFlag::GpDirtyXfbBuffers)) {
-        this->spillRenderPass(true);
+        this->endCurrentPass(true);
         this->flushBarriers();
       }
     }
@@ -7475,7 +7480,7 @@ namespace dxvk {
           auto flags = m_state.om.renderTargets.depth.view->image()->info().flags;
 
           if (!(flags & VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT)) {
-            this->spillRenderPass(true);
+            this->endCurrentPass(true);
 
             DxvkImageUsageInfo usage = { };
             usage.flags = VK_IMAGE_CREATE_SAMPLE_LOCATIONS_COMPATIBLE_DEPTH_BIT_EXT;
@@ -7487,7 +7492,7 @@ namespace dxvk {
     }
 
     // Check whether we can actually start the render pass as unsynchronized.
-    if (!m_flags.any(DxvkContextFlag::GpRenderPassBound)) {
+    if (!m_flags.any(DxvkContextFlag::GpRenderPassActive)) {
       if (renderPassStartUnsynchronized()) {
         m_flags.set(DxvkContextFlag::GpRenderPassUnsynchronized);
         m_unsynchronizedDrawCount = 0u;
@@ -7497,7 +7502,7 @@ namespace dxvk {
       // actually check all bound resources for hazards as necessary. Otherwise,
       // descriptor state will only be dirtied once we actually start the render
       // pass, which may be too late.
-      if (!m_flags.any(DxvkContextFlag::GpRenderPassBound))
+      if (!m_flags.any(DxvkContextFlag::GpRenderPassActive))
         m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
     }
 
@@ -7515,7 +7520,7 @@ namespace dxvk {
       // flush barriers afterwards. We will have done full resource tracking,
       // so skipping the global barrier is still fine in that case.
       if (this->checkGraphicsHazards<Indexed, Indirect>()) {
-        this->spillRenderPass(true);
+        this->endCurrentPass(true);
         this->flushBarriers();
       }
 
@@ -7540,8 +7545,8 @@ namespace dxvk {
 
     // Start the render pass. This must happen before any render state
     // is set up so that we can safely use secondary command buffers.
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->startRenderPass();
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassActive))
+      this->beginRenderPass();
 
     // If there are any pending clears, record them now
     if (unlikely(!m_deferredClears.empty()))
@@ -7574,7 +7579,7 @@ namespace dxvk {
         // Technically it would be sufficient to only restart the secondary
         // command buffer, but this should almost never happen in practice
         // anyway so avoid the complexity and just suspend the render pass.
-        this->spillRenderPass(true);
+        this->endCurrentPass(true);
 
         m_cmd->createDescriptorRange();
 
@@ -7584,7 +7589,7 @@ namespace dxvk {
       if (unlikely(Resolve && m_implicitResolves.hasPendingResolves())) {
         // If implicit resolves are required for any of the shader bindings, we need
         // to discard all the state setup that we've done so far and try again
-        this->spillRenderPass(true);
+        this->endCurrentPass(true);
         this->flushImplicitResolves();
 
         return this->commitGraphicsState<Indexed, Indirect, false>();
@@ -7926,7 +7931,7 @@ namespace dxvk {
     // invalidating the buffer, since otherwise we may invalidate a bound buffer.
     if ((buffer->info().usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT)
      && (m_flags.test(DxvkContextFlag::GpXfbActive)))
-      this->spillRenderPass(true);
+      this->endCurrentPass(true);
 
     this->invalidateBuffer(buffer, buffer->allocateStorage());
     return true;
@@ -8423,7 +8428,7 @@ namespace dxvk {
 
 
   void DxvkContext::flushImplicitResolves() {
-    spillRenderPass(true);
+    endCurrentPass(true);
 
     DxvkImplicitResolveOp op;
 
@@ -8454,7 +8459,7 @@ namespace dxvk {
     // undefined, so we have to bind and set up everything
     // before any draw or dispatch command is recorded.
     m_flags.clr(
-      DxvkContextFlag::GpRenderPassBound,
+      DxvkContextFlag::GpRenderPassActive,
       DxvkContextFlag::GpXfbActive,
       DxvkContextFlag::GpIndependentSets);
 
@@ -8498,7 +8503,7 @@ namespace dxvk {
 
 
   void DxvkContext::endCurrentCommands() {
-    spillRenderPass(true);
+    endCurrentPass(true);
 
     prepareSharedImages();
 
@@ -9664,7 +9669,7 @@ namespace dxvk {
 
     // Ignore large buffers to keep memory overhead in check. Use a higher
     // threshold when a render pass is active to avoid interrupting it.
-    VkDeviceSize threshold = !m_flags.test(DxvkContextFlag::GpRenderPassBound)
+    VkDeviceSize threshold = !m_flags.test(DxvkContextFlag::GpRenderPassActive)
       ? MaxDiscardSizeInRp
       : MaxDiscardSize;
 
@@ -9678,7 +9683,7 @@ namespace dxvk {
                                   | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
 
       if (buffer.info().usage & xfbUsage)
-        this->spillRenderPass(true);
+        this->endCurrentPass(true);
     }
 
     // Actually allocate and assign new backing storage
@@ -9705,7 +9710,7 @@ namespace dxvk {
        || findOverlappingDeferredResolve(image, subresources))
         return false;
 
-      if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      if (m_flags.test(DxvkContextFlag::GpRenderPassActive)) {
         if (isBoundAsRenderTarget(image, subresources))
           return false;
       }
