@@ -24,7 +24,7 @@ namespace dxvk {
    * has changed and/or needs to be updated.
    */
   enum class DxvkContextFlag : uint64_t  {
-    GpRenderPassBound,          ///< Render pass is currently bound
+    GpRenderPassActive,         ///< Render pass is currently bound
     GpRenderPassSuspended,      ///< Render pass is currently suspended
     GpRenderPassSecondaryCmd,   ///< Render pass uses secondary command buffer
     GpRenderPassSideEffects,    ///< Render pass has side effects
