@@ -498,8 +498,6 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    this->spillRenderPass(true);
-
     if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
       return;
 
@@ -4224,7 +4222,14 @@ namespace dxvk {
       srcAccess.imageExtent = extent;
     }
 
-    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+    // Try to do the copy out of order to avoid barrier spam
+    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(
+      DxvkCmdBuffer::InitBuffer, accessBatch.size(), accessBatch.data());
+
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+      this->spillRenderPass(true);
+
+    syncResources(cmdBuffer, accessBatch.size(), accessBatch.data());
 
     auto dstAspects = dstSubresource.aspectMask;
     auto srcAspects = srcSubresource.aspectMask;
@@ -4261,7 +4266,7 @@ namespace dxvk {
       copyInfo.regionCount = 1;
       copyInfo.pRegions = &copyRegion;
 
-      m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
+      m_cmd->cmdCopyImage(cmdBuffer, &copyInfo);
     }
   }
 
@@ -4274,6 +4279,8 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
+    this->spillRenderPass(true);
+
     DxvkMetaCopyFormats viewFormats = m_common->metaCopy().getCopyImageFormats(
       dstImage->info().format, dstSubresource.aspectMask,
       srcImage->info().format, srcSubresource.aspectMask);
@@ -4445,6 +4452,8 @@ namespace dxvk {
           VkExtent3D            dstExtent,
     const Rc<DxvkImage>&        srcImage,
           VkImageSubresourceLayers srcSubresource) {
+    this->spillRenderPass(true);
+
     // If the source image has a pending deferred clear, we can
     // implement the copy by clearing the destination image to
     // the same clear value.
