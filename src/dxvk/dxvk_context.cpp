@@ -5031,6 +5031,8 @@ namespace dxvk {
     DxvkMetaResolveViews views(dstImage, region.dstSubresource,
       srcImage, region.srcSubresource, format);
 
+    VkRenderingAttachmentFlagsInfoKHR attachmentFlags = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR };
+
     VkRenderingAttachmentInfo attachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachment.imageView = views.srcView->handle();
     attachment.imageLayout = srcLayout;
@@ -5039,6 +5041,13 @@ namespace dxvk {
     attachment.resolveImageLayout = dstLayout;
     attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachment.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+
+    if (srcImage->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+     && m_device->features().khrMaintenance10.maintenance10
+     && m_device->properties().khrMaintenance10.resolveSrgbFormatSupportsTransferFunctionControl) {
+      attachmentFlags.pNext = std::exchange(attachment.pNext, &attachmentFlags);
+      attachmentFlags.flags = VK_RENDERING_ATTACHMENT_RESOLVE_ENABLE_TRANSFER_FUNCTION_BIT_KHR;
+    }
 
     VkRenderingAttachmentInfo stencilAttachment = attachment;
     stencilAttachment.resolveMode = stencilMode;
