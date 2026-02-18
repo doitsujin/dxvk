@@ -476,7 +476,7 @@ namespace dxvk {
           VkDeviceSize          rowAlignment,
           VkDeviceSize          sliceAlignment,
           VkFormat              srcFormat) {
-    bool useFb = !formatsAreCopyCompatible(dstImage->info().format, srcFormat)
+    bool useFb = !formatsAreBufferCopyCompatible(dstImage->info().format, srcFormat)
               || dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
     if (useFb) {
@@ -503,7 +503,7 @@ namespace dxvk {
     if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
       return;
 
-    bool useFb = dstSubresource.aspectMask != srcSubresource.aspectMask;
+    bool useFb = !formatsAreImageCopyCompatible(dstImage->info().format, srcImage->info().format);
 
     if (m_device->perfHints().preferFbDepthStencilCopy) {
       useFb |= (dstSubresource.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
@@ -606,7 +606,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            srcExtent) {
-    bool useFb = !formatsAreCopyCompatible(srcImage->info().format, dstFormat);
+    bool useFb = !formatsAreBufferCopyCompatible(srcImage->info().format, dstFormat);
 
     if (useFb) {
       copyImageToBufferCs(dstBuffer, dstOffset, rowAlignment, sliceAlignment,
@@ -2616,7 +2616,7 @@ namespace dxvk {
     // Always use framebuffer path for depth-stencil images since we know
     // they are writeable and can't use Vulkan transfer queues. Stencil
     // data is interleaved and needs to be decoded manually anyway.
-    bool useFb = !formatsAreCopyCompatible(image->info().format, format)
+    bool useFb = !formatsAreBufferCopyCompatible(image->info().format, format)
               || image->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
     if (useFb)
@@ -4185,19 +4185,12 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
 
+    auto srcFormatInfo = srcImage->formatInfo();
     auto dstFormatInfo = dstImage->formatInfo();
 
     // If we copy between disjoint regions of the same image subresources,
     // make sure that we only do one single transition to GENERAL.
     bool hasOvelap = dstImage == srcImage && vk::checkSubresourceRangeOverlap(dstSubresourceRange, srcSubresourceRange);
-
-    VkImageSubresourceRange overlapSubresourceRange = { };
-    overlapSubresourceRange.aspectMask = srcSubresource.aspectMask | dstSubresource.aspectMask;
-    overlapSubresourceRange.baseArrayLayer = std::min(srcSubresource.baseArrayLayer, dstSubresource.baseArrayLayer);
-    overlapSubresourceRange.baseMipLevel = srcSubresource.mipLevel;
-    overlapSubresourceRange.layerCount = std::max(srcSubresource.baseArrayLayer, dstSubresource.baseArrayLayer)
-      + dstSubresource.layerCount - overlapSubresourceRange.baseArrayLayer;
-    overlapSubresourceRange.levelCount = 1u;
 
     small_vector<DxvkResourceAccess, 2u> accessBatch;
 
@@ -4205,6 +4198,14 @@ namespace dxvk {
     VkImageLayout srcImageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     if (hasOvelap) {
+      VkImageSubresourceRange overlapSubresourceRange = { };
+      overlapSubresourceRange.aspectMask = srcSubresource.aspectMask | dstSubresource.aspectMask;
+      overlapSubresourceRange.baseArrayLayer = std::min(srcSubresource.baseArrayLayer, dstSubresource.baseArrayLayer);
+      overlapSubresourceRange.baseMipLevel = srcSubresource.mipLevel;
+      overlapSubresourceRange.layerCount = std::max(srcSubresource.baseArrayLayer, dstSubresource.baseArrayLayer)
+        + dstSubresource.layerCount - overlapSubresourceRange.baseArrayLayer;
+      overlapSubresourceRange.levelCount = 1u;
+
       accessBatch.emplace_back(*dstImage, overlapSubresourceRange, dstImageLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT | VK_ACCESS_2_TRANSFER_WRITE_BIT, false);
     } else {
@@ -4225,22 +4226,27 @@ namespace dxvk {
 
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
-    for (auto aspects = dstSubresource.aspectMask; aspects; ) {
-      auto aspect = vk::getNextAspect(aspects);
+    auto dstAspects = dstSubresource.aspectMask;
+    auto srcAspects = srcSubresource.aspectMask;
 
+    while (dstAspects && srcAspects) {
       VkImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
       copyRegion.srcSubresource = srcSubresource;
-      copyRegion.srcSubresource.aspectMask = aspect;
+      copyRegion.srcSubresource.aspectMask = vk::getNextAspect(srcAspects);
       copyRegion.srcOffset = srcOffset;
       copyRegion.dstSubresource = dstSubresource;
-      copyRegion.dstSubresource.aspectMask = aspect;
+      copyRegion.dstSubresource.aspectMask = vk::getNextAspect(dstAspects);
       copyRegion.dstOffset = dstOffset;
       copyRegion.extent = extent;
 
-      if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-        auto plane = &dstFormatInfo->planes[vk::getPlaneIndex(aspect)];
+      if (srcFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &srcFormatInfo->planes[vk::getPlaneIndex(copyRegion.srcSubresource.aspectMask)];
         copyRegion.srcOffset.x /= plane->blockSize.width;
         copyRegion.srcOffset.y /= plane->blockSize.height;
+      }
+
+      if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &dstFormatInfo->planes[vk::getPlaneIndex(copyRegion.dstSubresource.aspectMask)];
         copyRegion.dstOffset.x /= plane->blockSize.width;
         copyRegion.dstOffset.y /= plane->blockSize.height;
         copyRegion.extent.width /= plane->blockSize.width;
@@ -9811,7 +9817,7 @@ namespace dxvk {
   }
 
 
-  bool DxvkContext::formatsAreCopyCompatible(
+  bool DxvkContext::formatsAreBufferCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {
     if (!bufferFormat)
@@ -9823,6 +9829,42 @@ namespace dxvk {
     auto bufferFormatInfo = lookupFormatInfo(bufferFormat);
 
     return !((imageFormatInfo->aspectMask | bufferFormatInfo->aspectMask) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+  }
+
+
+  bool DxvkContext::formatsAreImageCopyCompatible(
+          VkFormat                  dstFormat,
+          VkFormat                  srcFormat) {
+    // Assume compatibility as long as no depth/stencil formats
+    // are involved, or if the aspect masks are equal
+    constexpr VkImageAspectFlags DsAspects = VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    auto dstAspects = lookupFormatInfo(dstFormat)->aspectMask;
+    auto srcAspects = lookupFormatInfo(srcFormat)->aspectMask;
+
+    if (srcAspects == dstAspects || !((srcAspects | dstAspects) & DsAspects))
+      return true;
+
+    // If maintenance8 is enabled on the device, we can use copy functions
+    // directly when copying between certain formats. Don't bother with
+    // stencil since depth-stencil aspects are interleaved in our model.
+    if (m_device->features().khrMaintenance8.maintenance8) {
+      auto depthFormat = (dstAspects & VK_IMAGE_ASPECT_DEPTH_BIT) ? dstFormat : srcFormat;
+      auto colorFormat = (dstAspects & VK_IMAGE_ASPECT_COLOR_BIT) ? dstFormat : srcFormat;
+
+      if (depthFormat == VK_FORMAT_D16_UNORM) {
+        return colorFormat == VK_FORMAT_R16_SFLOAT
+            || colorFormat == VK_FORMAT_R16_UNORM
+            || colorFormat == VK_FORMAT_R16_UINT;
+      }
+
+      if (depthFormat == VK_FORMAT_D32_SFLOAT) {
+        return colorFormat == VK_FORMAT_R32_SFLOAT
+            || colorFormat == VK_FORMAT_R32_UINT;
+      }
+    }
+
+    return false;
   }
 
 
