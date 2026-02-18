@@ -6365,11 +6365,15 @@ namespace dxvk {
                     descriptorInfo = descriptor->legacy;
 
                     trackImageViewBinding<TrackBindings, false>(binding, *res.imageView);
-                  } else {
+                  } else if (m_device->config().enableImplicitResolves) {
                     auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
                     descriptorInfo = view->getDescriptor(binding.getViewType())->legacy;
 
                     m_cmd->track(view->image(), DxvkAccess::Read);
+                  } else {
+                    descriptorInfo.image.sampler = VK_NULL_HANDLE;
+                    descriptorInfo.image.imageView = VK_NULL_HANDLE;
+                    descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                   }
                 } else {
                   descriptorInfo.image.sampler = VK_NULL_HANDLE;
@@ -6591,7 +6595,7 @@ namespace dxvk {
                 if (likely(!res.imageView->isMultisampled() || binding.isMultisampled())) {
                   trackImageViewBinding<TrackBindings, false>(binding, *res.imageView);
                   break;
-                } else {
+                } else if (m_device->config().enableImplicitResolves) {
                   auto view = m_implicitResolves.getResolveView(*res.imageView, m_trackingId);
 
                   if (likely(e.descriptors[j] = view->getDescriptor(binding.getViewType()))) {
