@@ -181,6 +181,15 @@ namespace dxvk {
 
 
   /**
+   * \brief Queue family properties with extension structs
+   */
+  struct DxvkDeviceQueueInfo {
+    VkQueueFamilyProperties2                    core              = { VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2 };
+    VkQueueFamilyOwnershipTransferPropertiesKHR ownershipTransfer = { VK_STRUCTURE_TYPE_QUEUE_FAMILY_OWNERSHIP_TRANSFER_PROPERTIES_KHR };
+  };
+
+
+  /**
    * \brief Queue family and index
    */
   struct DxvkDeviceQueueIndex {
@@ -242,6 +251,19 @@ namespace dxvk {
      */
     const auto& getMemoryInfo() const {
       return m_memory;
+    }
+
+    /**
+     * \brief Queries queue properties for a valid queue family
+     *
+     * Must only be used to query queues that will actually be
+     * used by DXVK, thus no function to query the queue family
+     * count is provided.
+     * \param [in] family Queue family index
+     * \returns Queue properties
+     */
+    const auto& getQueueProperties(uint32_t family) const {
+      return m_queuesAvailable[family];
     }
 
     /**
@@ -346,7 +368,7 @@ namespace dxvk {
 
     std::vector<const VkExtensionProperties*> m_extensionList;
 
-    std::vector<VkQueueFamilyProperties2> m_queuesAvailable;
+    std::vector<DxvkDeviceQueueInfo>      m_queuesAvailable;
     std::vector<VkDeviceQueueCreateInfo>  m_queuesEnabled;
     std::vector<float>                    m_queuePriorities;
 
