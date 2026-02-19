@@ -1218,6 +1218,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries shader stage mask that use resources
+     * \returns Shader stage mask
+     */
+    VkShaderStageFlags getShaderStageMask() const {
+      return m_stageMask;
+    }
+
+    /**
      * \brief Queries Vulkan pipeline layout
      *
      * Will be \c VK_NULL_HANDLE when descriptor heaps are used.
@@ -1317,6 +1325,7 @@ namespace dxvk {
 
     DxvkPipelineLayoutFlags m_flags;
     VkPipelineBindPoint     m_bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    VkShaderStageFlags      m_stageMask = 0u;
 
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
