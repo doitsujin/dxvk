@@ -93,15 +93,15 @@ namespace dxvk {
       info.pNext = &formatList;
     }
 
-    VkImageSubresource2KHR subresourceInfo = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2_KHR };
+    VkImageSubresource2 subresourceInfo = { VK_STRUCTURE_TYPE_IMAGE_SUBRESOURCE_2 };
     subresourceInfo.imageSubresource = subresource;
 
-    VkDeviceImageSubresourceInfoKHR query = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO_KHR };
+    VkDeviceImageSubresourceInfo query = { VK_STRUCTURE_TYPE_DEVICE_IMAGE_SUBRESOURCE_INFO };
     query.pCreateInfo = &info;
     query.pSubresource = &subresourceInfo;
 
-    VkSubresourceLayout2KHR layout = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2_KHR };
-    m_vkd->vkGetDeviceImageSubresourceLayoutKHR(m_vkd->device(), &query, &layout);
+    VkSubresourceLayout2 layout = { VK_STRUCTURE_TYPE_SUBRESOURCE_LAYOUT_2 };
+    m_vkd->vkGetDeviceImageSubresourceLayout(m_vkd->device(), &query, &layout);
     return layout.subresourceLayout;
   }
 

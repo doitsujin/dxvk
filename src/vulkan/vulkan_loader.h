@@ -503,13 +503,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
     #endif
 
-    #ifdef VK_KHR_maintenance5
-    VULKAN_FN(vkCmdBindIndexBuffer2KHR);
-    VULKAN_FN(vkGetRenderingAreaGranularityKHR);
-    VULKAN_FN(vkGetDeviceImageSubresourceLayoutKHR);
-    VULKAN_FN(vkGetImageSubresourceLayout2KHR);
-    #endif
-
     #ifdef VK_KHR_maintenance6
     VULKAN_FN(vkCmdBindDescriptorSets2KHR);
     VULKAN_FN(vkCmdPushConstants2KHR);
