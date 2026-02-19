@@ -601,14 +601,8 @@ namespace dxvk {
     
     void cmdBindDescriptorSets(
             DxvkCmdBuffer             cmdBuffer,
-            VkPipelineBindPoint       pipeline,
-            VkPipelineLayout          pipelineLayout,
-            uint32_t                  firstSet,
-            uint32_t                  descriptorSetCount,
-      const VkDescriptorSet*          descriptorSets) {
-      m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
-        pipeline, pipelineLayout, firstSet, descriptorSetCount,
-        descriptorSets, 0, nullptr);
+      const VkBindDescriptorSetsInfo* info) {
+      m_vkd->vkCmdBindDescriptorSets2(getCmdBuffer(cmdBuffer), info);
     }
 
 

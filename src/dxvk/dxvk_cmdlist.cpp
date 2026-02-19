@@ -571,10 +571,14 @@ namespace dxvk {
 
       sets.push_back(set);
 
-      this->cmdBindDescriptorSets(cmdBuffer,
-        layout->getBindPoint(),
-        layout->getPipelineLayout(),
-        0u, sets.size(), sets.data());
+      VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+      bindInfo.stageFlags = layout->getShaderStageMask();
+      bindInfo.layout = layout->getPipelineLayout();
+      bindInfo.firstSet = 0u;
+      bindInfo.descriptorSetCount = sets.size();
+      bindInfo.pDescriptorSets = sets.data();
+
+      this->cmdBindDescriptorSets(cmdBuffer, &bindInfo);
     }
 
     // Update push constants
