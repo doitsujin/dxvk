@@ -114,7 +114,7 @@ namespace dxvk {
     }
 
     if (bindingCount) {
-      bool supportsDivisor = device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
+      bool supportsDivisor = device->features().vk14.vertexAttributeInstanceRateDivisor;
 
       viInfo.vertexBindingDescriptionCount = bindingCount;
       viInfo.pVertexBindingDescriptions = viBindings.data();

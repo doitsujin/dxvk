@@ -43,7 +43,6 @@ namespace dxvk {
     HANDLE_EXT(extSwapchainColorSpace);            \
     HANDLE_EXT(extSwapchainMaintenance1);          \
     HANDLE_EXT(extTransformFeedback);              \
-    HANDLE_EXT(extVertexAttributeDivisor);         \
     HANDLE_EXT(khrExternalMemoryWin32);            \
     HANDLE_EXT(khrExternalSemaphoreWin32);         \
     HANDLE_EXT(khrMaintenance7);                   \
@@ -80,7 +79,6 @@ namespace dxvk {
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extTransformFeedback);              \
-    HANDLE_EXT(extVertexAttributeDivisor);         \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance9);                   \
     HANDLE_EXT(khrMaintenance10);
@@ -557,12 +555,6 @@ namespace dxvk {
     if (m_featuresSupported.extRobustness2.robustImageAccess2)
       m_featuresSupported.vk13.robustImageAccess = VK_FALSE;
 
-    // Vertex attribute divisor is unusable before spec version 3
-    if (m_extensionsSupported.extVertexAttributeDivisor.specVersion < 3u) {
-      m_featuresSupported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = VK_FALSE;
-      m_featuresSupported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = VK_FALSE;
-    }
-
     // For line rasterization, ensure that the feature set actually makes sense
     if (!m_featuresSupported.core.features.wideLines || !m_featuresSupported.extLineRasterization.rectangularLines) {
       m_featuresSupported.core.features.wideLines = VK_FALSE;
@@ -871,6 +863,8 @@ namespace dxvk {
 
       ENABLE_FEATURE(vk14, maintenance5, true),
       ENABLE_FEATURE(vk14, maintenance6, true),
+      ENABLE_FEATURE(vk14, vertexAttributeInstanceRateDivisor, false),
+      ENABLE_FEATURE(vk14, vertexAttributeInstanceRateZeroDivisor, false),
 
       /* Allows sampling currently bound render targets for client APIs */
       ENABLE_EXT_FEATURE(extAttachmentFeedbackLoopLayout, attachmentFeedbackLoopLayout, false),
@@ -963,10 +957,6 @@ namespace dxvk {
       /* Transform feedback, required for some client APIs */
       ENABLE_EXT_FEATURE(extTransformFeedback, transformFeedback, false),
       ENABLE_EXT_FEATURE(extTransformFeedback, geometryStreams, false),
-
-      /* Vertex attribute divisor, used by client APIs */
-      ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateDivisor, false),
-      ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateZeroDivisor, false),
 
       /* External memory features for wine */
       ENABLE_EXT(khrExternalMemoryWin32, false),
