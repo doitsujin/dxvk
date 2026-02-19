@@ -585,12 +585,14 @@ namespace dxvk {
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
-      this->cmdPushConstants(cmdBuffer,
-        layout->getPipelineLayout(),
-        pushDataBlock.getStageMask(),
-        pushDataBlock.getOffset(),
-        pushDataBlock.getSize(),
-        dataCopy.data());
+      VkPushConstantsInfo pushInfo = { VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO };
+      pushInfo.layout = layout->getPipelineLayout();
+      pushInfo.stageFlags = pushDataBlock.getStageMask();
+      pushInfo.offset = pushDataBlock.getOffset();
+      pushInfo.size = pushDataBlock.getSize();
+      pushInfo.pValues = dataCopy.data();
+
+      this->cmdPushConstants(cmdBuffer, &pushInfo);
     }
   }
 
@@ -816,12 +818,14 @@ namespace dxvk {
       std::memcpy(dataCopy.data(), pushData,
         std::min(dataCopy.size(), pushDataSize));
 
-      this->cmdPushConstants(cmdBuffer,
-        layout->getPipelineLayout(),
-        pushDataBlock.getStageMask(),
-        pushDataBlock.getOffset(),
-        pushDataBlock.getSize(),
-        dataCopy.data());
+      VkPushConstantsInfo pushInfo = { VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO };
+      pushInfo.layout = layout->getPipelineLayout();
+      pushInfo.stageFlags = pushDataBlock.getStageMask();
+      pushInfo.offset = pushDataBlock.getOffset();
+      pushInfo.size = pushDataBlock.getSize();
+      pushInfo.pValues = dataCopy.data();
+
+      this->cmdPushConstants(cmdBuffer, &pushInfo);
     }
   }
 
