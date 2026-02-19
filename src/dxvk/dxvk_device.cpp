@@ -870,7 +870,7 @@ namespace dxvk {
     if (m_properties.vk12.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::IndependentDenormMode);
 
-    if (m_features.khrShaderFloatControls2.shaderFloatControls2)
+    if (m_features.vk14.shaderFloatControls2)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
 
     // Set up resource indexing flags

@@ -53,7 +53,6 @@ namespace dxvk {
     HANDLE_EXT(khrPresentId2);                     \
     HANDLE_EXT(khrPresentWait);                    \
     HANDLE_EXT(khrPresentWait2);                   \
-    HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrShaderSubgroupUniformControlFlow);\
     HANDLE_EXT(khrShaderUntypedPointers);          \
     HANDLE_EXT(khrSwapchain);                      \
@@ -860,6 +859,7 @@ namespace dxvk {
       ENABLE_FEATURE(vk14, maintenance5, true),
       ENABLE_FEATURE(vk14, maintenance6, true),
       ENABLE_FEATURE(vk14, rectangularLines,  false),
+      ENABLE_FEATURE(vk14, shaderFloatControls2, false),
       ENABLE_FEATURE(vk14, smoothLines, false),
       ENABLE_FEATURE(vk14, vertexAttributeInstanceRateDivisor, false),
       ENABLE_FEATURE(vk14, vertexAttributeInstanceRateZeroDivisor, false),
@@ -970,9 +970,6 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(khrPresentId2, presentId2, false),
       ENABLE_EXT_FEATURE(khrPresentWait, presentWait, false),
       ENABLE_EXT_FEATURE(khrPresentWait2, presentWait2, false),
-
-      /* Used for shader compilation in addition to regular float_controls features */
-      ENABLE_EXT_FEATURE(khrShaderFloatControls2, shaderFloatControls2, false),
 
       /* Subgroup uniform control flow for some built-in shaders */
       ENABLE_EXT_FEATURE(khrShaderSubgroupUniformControlFlow, shaderSubgroupUniformControlFlow, false),
