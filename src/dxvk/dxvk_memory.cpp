@@ -1821,8 +1821,12 @@ namespace dxvk {
 
       auto vk = m_device->vkd();
 
-      VkResult vr = vk->vkMapMemory(vk->device(),
-        memory.memory, 0, memory.size, 0, &memory.mapPtr);
+      VkMemoryMapInfo mapInfo = { VK_STRUCTURE_TYPE_MEMORY_MAP_INFO };
+      mapInfo.memory = memory.memory;
+      mapInfo.offset = 0u;
+      mapInfo.size = memory.size;
+
+      VkResult vr = vk->vkMapMemory2(vk->device(), &mapInfo, &memory.mapPtr);
 
       if (vr != VK_SUCCESS) {
         throw DxvkError(str::format("Failed to map Vulkan memory: ", vr,
@@ -1840,7 +1844,11 @@ namespace dxvk {
         return;
 
       auto vk = m_device->vkd();
-      vk->vkUnmapMemory(vk->device(), memory.memory);
+
+      VkMemoryUnmapInfo unmapInfo = { VK_STRUCTURE_TYPE_MEMORY_UNMAP_INFO };
+      unmapInfo.memory = memory.memory;
+
+      vk->vkUnmapMemory2(vk->device(), &unmapInfo);
 
       Logger::debug(str::format("Unmapped memory region 0x", std::hex,
         reinterpret_cast<uintptr_t>(memory.mapPtr), " - 0x",
