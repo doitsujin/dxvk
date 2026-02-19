@@ -38,7 +38,7 @@ namespace dxvk {
     m_state.setConservativeMode(DecodeConservativeRasterizationMode(desc.ConservativeRaster));
     m_state.setSampleCount(desc.ForcedSampleCount);
     m_state.setFlatShading(false);
-    m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
+    m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT);
 
     m_depthBias.depthBiasConstant = float(desc.DepthBias);
     m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
@@ -48,11 +48,11 @@ namespace dxvk {
     const auto& features = device->GetDXVKDevice()->features();
 
     if (desc.MultisampleEnable) {
-      if (features.extLineRasterization.rectangularLines)
-        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT);
+      if (features.vk14.rectangularLines)
+        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR);
     } else if (desc.AntialiasedLineEnable) {
-      if (features.extLineRasterization.smoothLines)
-        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT);
+      if (features.vk14.smoothLines)
+        m_state.setLineMode(VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH);
     }
   }
   

@@ -30,7 +30,6 @@ namespace dxvk {
     HANDLE_EXT(extFullScreenExclusive);            \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
     HANDLE_EXT(extHdrMetadata);                    \
-    HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMemoryBudget);                   \
     HANDLE_EXT(extMemoryPriority);                 \
     HANDLE_EXT(extMultiDraw);                      \
@@ -74,7 +73,6 @@ namespace dxvk {
     HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
-    HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMultiDraw);                      \
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
@@ -556,10 +554,10 @@ namespace dxvk {
       m_featuresSupported.vk13.robustImageAccess = VK_FALSE;
 
     // For line rasterization, ensure that the feature set actually makes sense
-    if (!m_featuresSupported.core.features.wideLines || !m_featuresSupported.extLineRasterization.rectangularLines) {
+    if (!m_featuresSupported.core.features.wideLines || !m_featuresSupported.vk14.rectangularLines) {
       m_featuresSupported.core.features.wideLines = VK_FALSE;
-      m_featuresSupported.extLineRasterization.rectangularLines = VK_FALSE;
-      m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
+      m_featuresSupported.vk14.rectangularLines = VK_FALSE;
+      m_featuresSupported.vk14.smoothLines = VK_FALSE;
     }
 
     // Ensure we only enable one of present_id or present_id_2
@@ -863,6 +861,8 @@ namespace dxvk {
 
       ENABLE_FEATURE(vk14, maintenance5, true),
       ENABLE_FEATURE(vk14, maintenance6, true),
+      ENABLE_FEATURE(vk14, rectangularLines,  false),
+      ENABLE_FEATURE(vk14, smoothLines, false),
       ENABLE_FEATURE(vk14, vertexAttributeInstanceRateDivisor, false),
       ENABLE_FEATURE(vk14, vertexAttributeInstanceRateZeroDivisor, false),
 
@@ -915,10 +915,6 @@ namespace dxvk {
 
       /* HDR metadata */
       ENABLE_EXT(extHdrMetadata, false),
-
-      /* Line rasterization features for client APIs */
-      ENABLE_EXT_FEATURE(extLineRasterization, rectangularLines,  false),
-      ENABLE_EXT_FEATURE(extLineRasterization, smoothLines, false),
 
       /* Memory budget and priority for improved memory management */
       ENABLE_EXT(extMemoryBudget, false),
