@@ -396,7 +396,9 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetDescriptorEXT);
     VULKAN_FN(vkCmdBindDescriptorBuffersEXT);
     VULKAN_FN(vkCmdSetDescriptorBufferOffsetsEXT);
+    VULKAN_FN(vkCmdSetDescriptorBufferOffsets2EXT);
     VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplersEXT);
+    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplers2EXT);
     VULKAN_FN(vkGetBufferOpaqueCaptureDescriptorDataEXT);
     VULKAN_FN(vkGetImageOpaqueCaptureDescriptorDataEXT);
     VULKAN_FN(vkGetImageViewOpaqueCaptureDescriptorDataEXT);
@@ -501,15 +503,6 @@ namespace dxvk::vk {
     #ifdef VK_KHR_external_semaphore_win32
     VULKAN_FN(vkGetSemaphoreWin32HandleKHR);
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
-    #endif
-
-    #ifdef VK_KHR_maintenance6
-    VULKAN_FN(vkCmdBindDescriptorSets2KHR);
-    VULKAN_FN(vkCmdPushConstants2KHR);
-    VULKAN_FN(vkCmdPushDescriptorSet2KHR);
-    VULKAN_FN(vkCmdPushDescriptorSetWithTemplate2KHR);
-    VULKAN_FN(vkCmdSetDescriptorBufferOffsets2EXT);
-    VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplers2EXT);
     #endif
 
     #ifdef VK_KHR_present_wait
