@@ -7492,9 +7492,14 @@ namespace dxvk {
     if (m_features.test(DxvkContextFeature::DescriptorHeap)) {
       m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
     } else {
-      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        layout->getPipelineLayout(), pushData.getStageMask(),
-        pushInfo.offset, pushInfo.data.size, pushInfo.data.address);
+      VkPushConstantsInfo pushConstants = { VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO };
+      pushConstants.layout = layout->getPipelineLayout();
+      pushConstants.stageFlags = pushData.getStageMask();
+      pushConstants.offset = pushInfo.offset;
+      pushConstants.size = pushInfo.data.size;
+      pushConstants.pValues = pushInfo.data.address;
+
+      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, &pushConstants);
     }
   }
 
