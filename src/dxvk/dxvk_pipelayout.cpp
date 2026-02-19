@@ -251,6 +251,7 @@ namespace dxvk {
     m_bindPoint = (key.getStageMask() == VK_SHADER_STAGE_COMPUTE_BIT)
       ? VK_PIPELINE_BIND_POINT_COMPUTE
       : VK_PIPELINE_BIND_POINT_GRAPHICS;
+    m_stageMask = key.getStageMask();
 
     // Get set layouts from pipeline layout key and compute memory size
     for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++) {
