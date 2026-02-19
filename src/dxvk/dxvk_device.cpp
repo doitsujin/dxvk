@@ -887,6 +887,10 @@ namespace dxvk {
         m_features.vk12.shaderUniformTexelBufferArrayNonUniformIndexing &&
         m_features.vk12.shaderStorageTexelBufferArrayNonUniformIndexing)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
+
+    // Descriptor heap implicitly also enables resource indexing
+    if (canUseDescriptorHeap())
+      m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsResourceIndexing);
   }
 
 
