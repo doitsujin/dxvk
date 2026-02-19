@@ -52,9 +52,6 @@ namespace dxvk {
     if (key.u.p.legacyCube && m_pool->m_device->features().extNonSeamlessCubeMap.nonSeamlessCubeMap)
       samplerInfo.flags |= VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT;
 
-    if (!m_pool->m_device->features().core.features.samplerAnisotropy)
-      samplerInfo.anisotropyEnable = VK_FALSE;
-
     if (key.u.p.hasBorder) {
       samplerInfo.borderColor = determineBorderColorType(borderColorInfo);
 
