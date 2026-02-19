@@ -46,7 +46,6 @@ namespace dxvk {
     HANDLE_EXT(extVertexAttributeDivisor);         \
     HANDLE_EXT(khrExternalMemoryWin32);            \
     HANDLE_EXT(khrExternalSemaphoreWin32);         \
-    HANDLE_EXT(khrLoadStoreOpNone);                \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance8);                   \
     HANDLE_EXT(khrMaintenance9);                   \
@@ -970,10 +969,6 @@ namespace dxvk {
       /* External memory features for wine */
       ENABLE_EXT(khrExternalMemoryWin32, false),
       ENABLE_EXT(khrExternalSemaphoreWin32, false),
-
-      /* LOAD_OP_NONE for certain tiler optimizations. Core feature
-       * in Vulkan 1.4, so probably supported by everything we need. */
-      ENABLE_EXT(khrLoadStoreOpNone, true),
 
       /* Maintenance features, relied on in various parts of the code */
       ENABLE_EXT_FEATURE(khrMaintenance7, maintenance7, false),
