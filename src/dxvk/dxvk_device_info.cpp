@@ -790,7 +790,7 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, pipelineStatisticsQuery, false),
       ENABLE_FEATURE(core.features, robustBufferAccess, true),
       ENABLE_FEATURE(core.features, sampleRateShading, true),
-      ENABLE_FEATURE(core.features, samplerAnisotropy, false),
+      ENABLE_FEATURE(core.features, samplerAnisotropy, true),
       ENABLE_FEATURE(core.features, shaderClipDistance, true),
       ENABLE_FEATURE(core.features, shaderCullDistance, true),
       ENABLE_FEATURE(core.features, shaderFloat64, false),
