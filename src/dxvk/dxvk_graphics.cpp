@@ -591,11 +591,11 @@ namespace dxvk {
     }
 
     // Set up line rasterization mode as requested by the application.
-    if (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering(shaders, state)) {
+    if (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT && isLineRendering(shaders, state)) {
       rsLineInfo.pNext = std::exchange(rsInfo.pNext, &rsLineInfo);
       rsLineInfo.lineRasterizationMode = state.rs.lineMode();
 
-      if (rsLineInfo.lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT) {
+      if (rsLineInfo.lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR) {
         // This line width matches expected D3D behaviour, hard-code this
         // so that we don't need to introduce an extra bit of render state.
         rsInfo.lineWidth = 1.4f;
@@ -607,7 +607,7 @@ namespace dxvk {
           || (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading));
 
         if (needsOverride)
-          rsLineInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+          rsLineInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR;
       }
     }
   }
@@ -1227,7 +1227,7 @@ namespace dxvk {
 
     if (state.rs.polygonMode() != VK_POLYGON_MODE_FILL
      || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT
-     || (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering))
+     || (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT && isLineRendering))
       return false;
 
     // Depth clip is assumed to be enabled. If the driver does not
