@@ -4780,7 +4780,7 @@ namespace dxvk {
 
 
   bool D3D9DeviceEx::SupportsSWVP() {
-    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics && m_dxvkDevice->features().vk12.shaderInt8;
+    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics;
   }
 
 
