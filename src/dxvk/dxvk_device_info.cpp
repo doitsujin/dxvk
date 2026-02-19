@@ -783,6 +783,7 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, geometryShader, true),
       ENABLE_FEATURE(core.features, imageCubeArray, true),
       ENABLE_FEATURE(core.features, independentBlend, true),
+      ENABLE_FEATURE(core.features, largePoints, false),
       ENABLE_FEATURE(core.features, logicOp, false),
       ENABLE_FEATURE(core.features, multiDrawIndirect, true),
       ENABLE_FEATURE(core.features, multiViewport, true),
