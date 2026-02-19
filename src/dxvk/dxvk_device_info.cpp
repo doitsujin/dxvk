@@ -14,6 +14,7 @@ namespace dxvk {
     HANDLE_CORE(vk11);                             \
     HANDLE_CORE(vk12);                             \
     HANDLE_CORE(vk13);                             \
+    HANDLE_CORE(vk14);
 
   #define EXTENSIONS_WITH_FEATURES                 \
     HANDLE_EXT(extAttachmentFeedbackLoopLayout);   \
