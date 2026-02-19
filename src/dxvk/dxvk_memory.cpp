@@ -109,7 +109,7 @@ namespace dxvk {
           m_device->getDescriptorProperties().getDescriptorTypeInfo(info.type).size,
           descriptor.descriptor.data());
       } else {
-        VkBufferUsageFlags2CreateInfoKHR flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO_KHR };
+        VkBufferUsageFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_BUFFER_USAGE_FLAGS_2_CREATE_INFO };
         flags.usage = key.usage;
 
         VkBufferViewCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO, &flags };
