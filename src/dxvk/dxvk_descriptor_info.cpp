@@ -346,7 +346,7 @@ namespace dxvk {
     // texel buffer descriptors.
     auto properties = device->properties().extDescriptorHeap;
 
-    std::array<std::pair<VkDescriptorType, VkDeviceSize>, 7> types = {{
+    std::array<std::pair<VkDescriptorType, VkDeviceSize>, 8> types = {{
       { VK_DESCRIPTOR_TYPE_SAMPLER,              properties.samplerDescriptorAlignment },
       { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,       properties.bufferDescriptorAlignment  },
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       properties.bufferDescriptorAlignment  },
@@ -354,6 +354,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, properties.imageDescriptorAlignment   },
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        properties.imageDescriptorAlignment   },
       { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        properties.imageDescriptorAlignment   },
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,     properties.imageDescriptorAlignment   },
     }};
 
     for (const auto& s : types) {
@@ -388,7 +389,7 @@ namespace dxvk {
     auto vk = device->vkd();
     auto properties = device->properties().extDescriptorBuffer;
 
-    std::array<std::pair<VkDescriptorType, size_t>, 7u> sizes = {{
+    std::array<std::pair<VkDescriptorType, size_t>, 8u> sizes = {{
       { VK_DESCRIPTOR_TYPE_SAMPLER,               properties.samplerDescriptorSize                  },
       { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,        properties.robustUniformBufferDescriptorSize      },
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,        properties.robustStorageBufferDescriptorSize      },
@@ -396,6 +397,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,  properties.robustStorageTexelBufferDescriptorSize },
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,         properties.sampledImageDescriptorSize             },
       { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,         properties.storageImageDescriptorSize             },
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,      properties.inputAttachmentDescriptorSize          },
     }};
 
     for (const auto& s : sizes) {
@@ -430,7 +432,8 @@ namespace dxvk {
       "\n  Uniform texel buffer : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER).size,
       "\n  Storage texel buffer : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER).size,
       "\n  Sampled image        : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE).size,
-      "\n  Storage image        : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE).size));
+      "\n  Storage image        : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE).size,
+      "\n  Input attachment     : ", getDescriptorTypeInfo(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT).size));
   }
 
 }
