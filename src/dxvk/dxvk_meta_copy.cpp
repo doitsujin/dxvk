@@ -264,7 +264,7 @@ namespace dxvk {
     if (aspect & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
       state.depthFormat = key.format;
     else
-      state.colorFormat = key.format;
+      state.colorFormats[0] = key.format;
 
     pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
     return pipeline;
@@ -349,7 +349,7 @@ namespace dxvk {
         ? util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_u, &specInfo)
         : util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_f, &specInfo);
 
-      state.colorFormat = key.imageFormat;
+      state.colorFormats[0] = key.imageFormat;
     }
 
     pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);

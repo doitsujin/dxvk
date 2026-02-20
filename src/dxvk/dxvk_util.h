@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_include.h"
+#include "dxvk_limits.h"
 
 namespace dxvk::util {
 
@@ -82,7 +83,7 @@ namespace dxvk::util {
     /** Fragment shader. */
     DxvkBuiltInShaderStage fs;
     /** Color attachment format. */
-    VkFormat colorFormat = VK_FORMAT_UNDEFINED;
+    std::array<VkFormat, MaxNumRenderTargets> colorFormats = { };
     /** Depth-stencil attachment format */
     VkFormat depthFormat = VK_FORMAT_UNDEFINED;
     /** Sample count */

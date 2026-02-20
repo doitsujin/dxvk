@@ -101,7 +101,7 @@ namespace dxvk {
       }
     }
 
-    state.colorFormat = key.viewFormat;
+    state.colorFormats[0] = key.viewFormat;
     state.sampleCount = key.dstSamples;
 
     return { m_layout, m_device->createBuiltInGraphicsPipeline(m_layout, state) };

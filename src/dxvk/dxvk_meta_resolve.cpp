@@ -158,7 +158,7 @@ namespace dxvk {
       state.depthFormat = key.format;
       state.dsState = &dsState;
     } else {
-      state.colorFormat = key.format;
+      state.colorFormats[0] = key.format;
     }
 
     pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);

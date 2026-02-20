@@ -523,7 +523,7 @@ namespace dxvk::hud {
     state.vs = util::DxvkBuiltInShaderStage(hud_graph_vert, nullptr);
     state.fs = util::DxvkBuiltInShaderStage(hud_graph_frag, &specInfo);
     state.iaState = &iaState;
-    state.colorFormat = key.format;
+    state.colorFormats[0] = key.format;
     state.cbAttachment = &cbAttachment;
 
     return m_device->createBuiltInGraphicsPipeline(m_gfxPipelineLayout, state);
@@ -1148,7 +1148,7 @@ namespace dxvk::hud {
 
     util::DxvkBuiltInGraphicsState state = { };
     state.iaState = &iaState;
-    state.colorFormat = key.format;
+    state.colorFormats[0] = key.format;
     state.cbAttachment = &cbAttachment;
 
     state.vs = util::DxvkBuiltInShaderStage(hud_chunk_vert_background, nullptr);

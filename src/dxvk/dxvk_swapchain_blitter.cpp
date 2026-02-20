@@ -763,7 +763,7 @@ namespace dxvk {
         : util::DxvkBuiltInShaderStage(dxvk_present_frag_ms, &specInfo);
     }
 
-    state.colorFormat = key.dstFormat;
+    state.colorFormats[0] = key.dstFormat;
     return m_device->createBuiltInGraphicsPipeline(m_blitLayout, state);
   }
 
@@ -818,7 +818,7 @@ namespace dxvk {
     util::DxvkBuiltInGraphicsState state = { };
     state.vs = util::DxvkBuiltInShaderStage(dxvk_cursor_vert, nullptr);
     state.fs = util::DxvkBuiltInShaderStage(dxvk_cursor_frag, &specInfo);
-    state.colorFormat = key.dstFormat;
+    state.colorFormats[0] = key.dstFormat;
     state.iaState = &iaState;
     state.cbAttachment = &cbAttachment;
 
