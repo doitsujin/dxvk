@@ -9773,7 +9773,7 @@ namespace dxvk {
         if (!prepareOutOfOrderTransfer(*e.buffer, e.bufferOffset, e.bufferSize, access))
           return DxvkCmdBuffer::ExecBuffer;
       } else if (e.image) {
-        if (!prepareOutOfOrderTransfer(*e.image, e.imageSubresources, e.imageLayout, e.discard, access))
+        if (!prepareOutOfOrderTransfer(*e.image, e.imageSubresources, e.discard, access))
           return DxvkCmdBuffer::ExecBuffer;
       }
     }
@@ -9834,11 +9834,15 @@ namespace dxvk {
   bool DxvkContext::prepareOutOfOrderTransfer(
           DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
-          VkImageLayout             layout,
           bool                      discard,
           DxvkAccess                access) {
     // Sparse resources can alias, need to ignore.
     if (unlikely(image.info().flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
+      return false;
+
+    // Reject any images that use non-default image layouts since
+    // per-subresource layout tracking relies on proper ordering
+    if (unlikely(!image.hasUnifiedLayout()))
       return false;
 
     // Ensure correct order of operations in case the image is a render
@@ -9856,9 +9860,9 @@ namespace dxvk {
     }
 
     // If the image hasn't been used yet or all uses are reads,
-    // we can use it in the init command buffer. Crucially, this
-    // rejects any images that already had their layout changed.
-    if (discard || layout != image.queryLayout(subresources))
+    // we can use it in the init command buffer. Treat discards
+    // as a write since we will reinitialize the image.
+    if (discard)
       access = DxvkAccess::Write;
 
     return !image.isTracked(m_trackingId, access);
