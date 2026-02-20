@@ -438,7 +438,7 @@ namespace dxvk {
     state.vs = vsSpirv;
     state.fs = psSpirv;
     state.sampleCount = key.dstSamples;
-    state.colorFormat = aspect == VK_IMAGE_ASPECT_COLOR_BIT ? key.dstFormat : VK_FORMAT_UNDEFINED;
+    state.colorFormats[0] = aspect == VK_IMAGE_ASPECT_COLOR_BIT ? key.dstFormat : VK_FORMAT_UNDEFINED;
     state.depthFormat = aspect == VK_IMAGE_ASPECT_DEPTH_BIT ? key.dstFormat : VK_FORMAT_UNDEFINED;
 
     result.pipeline = m_device->createBuiltInGraphicsPipeline(result.layout, state);

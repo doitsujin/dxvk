@@ -393,7 +393,7 @@ namespace dxvk {
     state.fs = psSpirv;
 
     if (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-      state.colorFormat = key.format;
+      state.colorFormats[0] = key.format;
 
     if (formatInfo->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
       state.depthFormat = key.format;
@@ -405,6 +405,8 @@ namespace dxvk {
       // a time by adjusting the write mask. Add the corresponding dynamic state.
       state.dynamicStateCount = dynState.size();
       state.dynamicStates = dynState.data();
+    } else {
+      state.colorFormats[0] = key.format;
     }
 
     pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
