@@ -567,6 +567,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether layout transitions are disabled for this image
+     * \returns \c true if the image will always remain in `GENERAL`.
+     */
+    bool hasUnifiedLayout() const {
+      return m_unifiedLayoutEnabled;
+    }
+
+    /**
      * \brief Checks whether a subresource is entirely covered
      * 
      * This can be used to determine whether an image can or
