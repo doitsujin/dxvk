@@ -863,12 +863,14 @@ namespace dxvk {
       ENABLE_FEATURE(vk12, uniformBufferStandardLayout, true),
       ENABLE_FEATURE(vk12, vulkanMemoryModel, true),
 
+      ENABLE_FEATURE(vk13, computeFullSubgroups, true),
       ENABLE_FEATURE(vk13, dynamicRendering, true),
       ENABLE_FEATURE(vk13, maintenance4, true),
       ENABLE_FEATURE(vk13, robustImageAccess, false),
       ENABLE_FEATURE(vk13, pipelineCreationCacheControl, false),
       ENABLE_FEATURE(vk13, shaderDemoteToHelperInvocation, true),
       ENABLE_FEATURE(vk13, shaderZeroInitializeWorkgroupMemory, true),
+      ENABLE_FEATURE(vk13, subgroupSizeControl, true),
       ENABLE_FEATURE(vk13, synchronization2, true),
 
       /* Allows sampling currently bound render targets for client APIs */
