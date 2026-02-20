@@ -2137,7 +2137,6 @@ namespace dxvk {
     bool prepareOutOfOrderTransfer(
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
-            VkImageLayout             layout,
             bool                      discard,
             DxvkAccess                access);
 
