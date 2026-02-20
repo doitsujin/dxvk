@@ -549,7 +549,8 @@ namespace dxvk {
           } break;
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             if (info.descriptor)
               descriptor.image = info.descriptor->legacy.image;
           } break;
@@ -675,7 +676,8 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             auto descriptor = info.descriptor;
 
             if (!descriptor)
@@ -770,7 +772,8 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
             auto descriptor = info.descriptor;
 
             if (!descriptor)

@@ -179,7 +179,7 @@ namespace dxvk {
    * Not meaningful if the legacy descriptor model is used.
    */
   class DxvkDescriptorProperties {
-    constexpr static uint32_t TypeCount = uint32_t(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) + 1u;
+    constexpr static uint32_t TypeCount = uint32_t(VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) + 1u;
   public:
 
     DxvkDescriptorProperties(DxvkDevice* device);
