@@ -1127,7 +1127,9 @@ namespace dxvk {
       VkCommandBuffer cmdBuffer = getCmdBuffer();
 
       m_vkd->vkCmdSetSampleLocationsEnableEXT(cmdBuffer, enable);
-      m_vkd->vkCmdSetSampleLocationsEXT(cmdBuffer, sampleLocations);
+
+      if (enable)
+        m_vkd->vkCmdSetSampleLocationsEXT(cmdBuffer, sampleLocations);
     }
 
     void cmdSetScissor(
