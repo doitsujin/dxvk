@@ -823,7 +823,7 @@ namespace dxvk {
       state.depthFormat = dstFormat;
       state.dsState = &dsState;
     } else {
-      state.colorFormat = dstFormat;
+      state.colorFormats[0] = dstFormat;
     }
 
     if ((dstAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && bitwiseStencil) {

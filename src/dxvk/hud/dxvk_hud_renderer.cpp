@@ -489,7 +489,7 @@ namespace dxvk::hud {
     util::DxvkBuiltInGraphicsState state;
     state.vs = util::DxvkBuiltInShaderStage(hud_text_vert, nullptr);
     state.fs = util::DxvkBuiltInShaderStage(hud_text_frag, &specInfo);
-    state.colorFormat = key.format;
+    state.colorFormats[0] = key.format;
     state.cbAttachment = &cbAttachment;
 
     return m_device->createBuiltInGraphicsPipeline(m_textPipelineLayout, state);

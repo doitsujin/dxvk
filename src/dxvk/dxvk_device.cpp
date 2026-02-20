@@ -377,6 +377,14 @@ namespace dxvk {
     // Attachment format infos, useful to set up state
     auto depthFormatInfo = lookupFormatInfo(state.depthFormat);
 
+    // Find highest non-null color attachment
+    uint32_t colorAttachmentCount = 0u;
+
+    for (uint32_t i = 0u; i < MaxNumRenderTargets; i++) {
+      if (state.colorFormats[i])
+        colorAttachmentCount = i + 1u;
+    }
+
     // Default vertex input state
     VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
 
@@ -428,16 +436,16 @@ namespace dxvk {
     }
 
     // Default blend state, only used if color attachments are present
-    VkPipelineColorBlendAttachmentState cbAttachment = { };
-    cbAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments = { };
+
+    for (auto& cbAttachment : cbAttachments) {
+      cbAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                  | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    }
 
     VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-
-    if (state.colorFormat) {
-      cbState.attachmentCount = 1u;
-      cbState.pAttachments = state.cbAttachment ? state.cbAttachment : &cbAttachment;
-    }
+    cbState.attachmentCount = colorAttachmentCount;
+    cbState.pAttachments = state.cbAttachment ? state.cbAttachment : cbAttachments.data();
 
     // Prepare dynamic states
     small_vector<VkDynamicState, 4> dynamicStates;
@@ -454,9 +462,9 @@ namespace dxvk {
     // Build rendering attachment info
     VkPipelineRenderingCreateInfo renderingInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
-    if (state.colorFormat) {
-      renderingInfo.colorAttachmentCount = 1u;
-      renderingInfo.pColorAttachmentFormats = &state.colorFormat;
+    if (colorAttachmentCount) {
+      renderingInfo.colorAttachmentCount = colorAttachmentCount;
+      renderingInfo.pColorAttachmentFormats = state.colorFormats.data();
     }
 
     if (state.depthFormat && (depthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
@@ -482,7 +490,7 @@ namespace dxvk {
     pipelineInfo.pRasterizationState = state.rsState ? state.rsState : &rsState;
     pipelineInfo.pMultisampleState = &msState;
     pipelineInfo.pDepthStencilState = state.depthFormat ? (state.dsState ? state.dsState : &dsState) : nullptr;
-    pipelineInfo.pColorBlendState = state.colorFormat ? &cbState : nullptr;
+    pipelineInfo.pColorBlendState = colorAttachmentCount ? &cbState : nullptr;
     pipelineInfo.pDynamicState = &dyState;
     pipelineInfo.layout = layout->getPipelineLayout();
     pipelineInfo.basePipelineIndex = -1;
