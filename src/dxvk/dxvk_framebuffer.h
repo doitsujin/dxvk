@@ -58,15 +58,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Render target layouts
-   */
-  struct DxvkRenderTargetLayouts {
-    VkImageLayout color[MaxNumRenderTargets];
-    VkImageLayout depth;
-  };
-
-
-  /**
    * \brief Rendering info
    */
   struct DxvkRenderingInfo {
