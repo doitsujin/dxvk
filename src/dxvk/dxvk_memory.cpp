@@ -202,7 +202,7 @@ namespace dxvk {
       std::tuple(key), std::tuple()).first->second;
 
     VkImageUsageFlags renderTargetUsage = key.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    VkImageUsageFlags shaderResourceUsage = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
+    VkImageUsageFlags shaderResourceUsage = key.usage & (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
     VkImageViewUsageCreateInfo usage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usage.usage = key.usage;
@@ -236,10 +236,14 @@ namespace dxvk {
       imageInfo.layout = key.layout;
 
       VkResourceDescriptorInfoEXT info = { VK_STRUCTURE_TYPE_RESOURCE_DESCRIPTOR_INFO_EXT };
-      info.type = (key.usage == VK_IMAGE_USAGE_STORAGE_BIT)
-        ? VK_DESCRIPTOR_TYPE_STORAGE_IMAGE
-        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
       info.data.pImage = &imageInfo;
+
+      if (key.usage & VK_IMAGE_USAGE_STORAGE_BIT)
+        info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      else if (key.usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+        info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+      else
+        info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
       VkResult vr = vk->vkWriteResourceDescriptorsEXT(vk->device(), 1u, &info, &hostAddress);
 
@@ -248,9 +252,12 @@ namespace dxvk {
     } else if (m_device->canUseDescriptorBuffer() && shaderResourceUsage) {
       VkDescriptorGetInfoEXT info = { VK_STRUCTURE_TYPE_DESCRIPTOR_GET_INFO_EXT };
 
-      if (shaderResourceUsage == VK_IMAGE_USAGE_STORAGE_BIT) {
+      if (shaderResourceUsage & VK_IMAGE_USAGE_STORAGE_BIT) {
         info.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         info.data.pStorageImage = &descriptor.legacy.image;
+      } else if (shaderResourceUsage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) {
+        info.type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+        info.data.pInputAttachmentImage = &descriptor.legacy.image;
       } else {
         info.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
         info.data.pSampledImage = &descriptor.legacy.image;
