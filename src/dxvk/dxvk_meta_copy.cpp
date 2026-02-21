@@ -22,6 +22,8 @@
 #include <dxvk_copy_depth_stencil_1d.h>
 #include <dxvk_copy_depth_stencil_2d.h>
 #include <dxvk_copy_depth_stencil_ms.h>
+#include <dxvk_copy_rt_f.h>
+#include <dxvk_copy_rt_u.h>
 
 namespace dxvk {
 
@@ -98,6 +100,9 @@ namespace dxvk {
     for (const auto& p : m_imageToBufferPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
+    for (const auto& p : m_inputAttachmentPipelines)
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
+
     vk->vkDestroyPipeline(vk->device(), m_copyBufferImagePipeline.pipeline, nullptr);
   }
 
@@ -135,7 +140,7 @@ namespace dxvk {
           VkSampleCountFlags    samples) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    DxvkMetaBufferImageCopyPipelineKey key;
+    DxvkMetaBufferImageCopyPipelineKey key = { };
     key.imageFormat = dstFormat;
     key.bufferFormat = srcFormat;
     key.imageAspects = aspects;
@@ -156,7 +161,7 @@ namespace dxvk {
           VkFormat              dstFormat) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    DxvkMetaBufferImageCopyPipelineKey key;
+    DxvkMetaBufferImageCopyPipelineKey key = { };
     key.imageViewType = viewType;
     key.imageFormat = VK_FORMAT_UNDEFINED;
     key.bufferFormat = dstFormat;
@@ -178,7 +183,7 @@ namespace dxvk {
           VkSampleCountFlagBits dstSamples) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    DxvkMetaImageCopyPipelineKey key;
+    DxvkMetaImageCopyPipelineKey key = { };
     key.viewType = viewType;
     key.format   = dstFormat;
     key.samples  = dstSamples;
@@ -189,6 +194,37 @@ namespace dxvk {
 
     DxvkMetaCopyPipeline pipeline = createCopyImagePipeline(key);
     m_copyImagePipelines.insert({ key, pipeline });
+    return pipeline;
+  }
+
+
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyFromInputAttachmentPipeline(
+          uint32_t              attachmentIndex,
+    const DxvkFramebufferInfo&  framebuffer) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    const auto& depthView = framebuffer.getDepthTarget().view;
+
+    DxvkMetaInputAttachmentCopyPipelineKey key = { };
+    key.attachmentIndex = attachmentIndex;
+
+    if (depthView)
+      key.depthFormat = depthView->info().format;
+
+    for (uint32_t i = 0u; i < key.colorFormats.size(); i++) {
+      const auto& colorView = framebuffer.getColorTarget(i).view;
+
+      if (colorView)
+        key.colorFormats[i] = colorView->info().format;
+    }
+
+    auto entry = m_inputAttachmentPipelines.find(key);
+
+    if (entry != m_inputAttachmentPipelines.end())
+      return entry->second;
+
+    DxvkMetaCopyPipeline pipeline = createCopyInputAttachmentPipeline(key);
+    m_inputAttachmentPipelines.insert({ key, pipeline });
     return pipeline;
   }
 
@@ -389,6 +425,74 @@ namespace dxvk {
       : util::DxvkBuiltInShaderStage(dxvk_image_to_buffer_f, &specInfo);
 
     pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout, stage);
+    return pipeline;
+  }
+
+
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyInputAttachmentPipeline(
+    const DxvkMetaInputAttachmentCopyPipelineKey& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,     1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,  1, VK_SHADER_STAGE_FRAGMENT_BIT },
+    }};
+
+    auto formatInfo = lookupFormatInfo(key.colorFormats[key.attachmentIndex]);
+
+    // Determine whether the format requires sRGB handling
+    VkBool32 formatIsSrgb = formatInfo->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+    VkSpecializationMapEntry specEntry = { 0u, 0u, sizeof(formatIsSrgb) };
+
+    VkSpecializationInfo specInfo = { };
+    specInfo.mapEntryCount = 1u;
+    specInfo.pMapEntries = &specEntry;
+    specInfo.dataSize = sizeof(formatIsSrgb);
+    specInfo.pData = &formatIsSrgb;
+
+    // Disable blending and all write masks, we only want to read the input attachment
+    static const std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> blendState = { };
+    static const VkPipelineDepthStencilStateCreateInfo depthState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+
+    DxvkMetaCopyPipeline pipeline = { };
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
+      sizeof(DxvkInputAttachmentCopyArgs), bindings.size(), bindings.data());
+
+    util::DxvkBuiltInGraphicsState state = { };
+
+    if (m_device->features().vk12.shaderOutputLayer) {
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
+    } else {
+      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_vert, nullptr);
+      state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
+    }
+
+    // Determine shader to use based on the image format
+    auto code = formatInfo->flags.any(DxvkFormatFlag::SampledUInt, DxvkFormatFlag::SampledSInt)
+      ? SpirvCodeBuffer(dxvk_copy_rt_u)
+      : SpirvCodeBuffer(dxvk_copy_rt_f);
+
+    // Patch input attachment index
+    bool foundInputAttachmentIndex = false;
+
+    for (auto ins : code) {
+      if (ins.opCode() == spv::OpDecorate && ins.arg(2) == spv::DecorationInputAttachmentIndex) {
+        ins.setArg(3, key.attachmentIndex);
+        foundInputAttachmentIndex = true;
+      }
+    }
+
+    if (!foundInputAttachmentIndex) {
+      Logger::err("DXVK: Failed to patch input attachment index in copy pipeline");
+      return DxvkMetaCopyPipeline();
+    }
+
+    state.fs = util::DxvkBuiltInShaderStage(code.size(), code.data(), &specInfo);
+
+    state.colorFormats = key.colorFormats;
+    state.depthFormat = key.depthFormat;
+    state.cbAttachment = blendState.data();
+    state.dsState = &depthState;
+
+    pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
     return pipeline;
   }
 

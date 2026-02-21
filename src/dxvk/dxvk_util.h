@@ -63,6 +63,9 @@ namespace dxvk::util {
     DxvkBuiltInShaderStage(const uint32_t (&dwords)[N], const VkSpecializationInfo* s)
     : size(N * sizeof(uint32_t)), code(&dwords[0]), spec(s) { }
 
+    DxvkBuiltInShaderStage(size_t byteSize, const uint32_t* dwords, const VkSpecializationInfo* s)
+    : size(byteSize), code(dwords), spec(s) { }
+
     size_t                      size = 0u;
     const uint32_t*             code = nullptr;
     const VkSpecializationInfo* spec = nullptr;

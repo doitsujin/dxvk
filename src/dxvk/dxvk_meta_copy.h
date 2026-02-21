@@ -81,6 +81,48 @@ namespace dxvk {
   };
 
   /**
+   * \brief Input attachment copy arguments
+   */
+  struct DxvkInputAttachmentCopyArgs {
+    VkOffset2D dstOffset;
+    VkOffset2D srcOffset;
+    uint32_t dstLayer;
+    uint32_t srcLayer;
+  };
+
+  /**
+   * \brief Render target copy pipeline key
+   *
+   * Looks up input attachmet copy pipeline based
+   * on the given properties.
+   */
+  struct DxvkMetaInputAttachmentCopyPipelineKey {
+    uint32_t attachmentIndex = 0u;
+    VkFormat depthFormat = VK_FORMAT_UNDEFINED;
+    std::array<VkFormat, MaxNumRenderTargets> colorFormats = { };
+
+    bool eq(const DxvkMetaInputAttachmentCopyPipelineKey& other) const {
+      bool eq = attachmentIndex == other.attachmentIndex && depthFormat == other.depthFormat;
+
+      for (uint32_t i = 0u; i < colorFormats.size() && eq; i++)
+        eq = colorFormats[i] == other.colorFormats[i];
+
+      return eq;
+    }
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(attachmentIndex);
+      hash.add(uint32_t(depthFormat));
+
+      for (uint32_t i = 0u; i < colorFormats.size(); i++)
+        hash.add(uint32_t(colorFormats[i]));
+
+      return hash;
+    }
+  };
+
+  /**
    * \brief Buffer to image copy pipeline key
    */
   struct DxvkMetaBufferImageCopyPipelineKey {
@@ -208,6 +250,17 @@ namespace dxvk {
             VkSampleCountFlagBits dstSamples);
 
     /**
+     * \brief Creates pipeline for input attachment copy
+     *
+     * \param [in] attachmentIndex Attachment index to read
+     * \param [in] framebuffer Current framebuffer properties
+     * \returns Pipeline for input attachment copies
+     */
+    DxvkMetaCopyPipeline getCopyFromInputAttachmentPipeline(
+            uint32_t              attachmentIndex,
+      const DxvkFramebufferInfo&  framebuffer);
+
+    /**
      * \brief Creates pipeline for buffer image copy
      * \returns Compute pipeline for buffer image copies
      */
@@ -228,6 +281,9 @@ namespace dxvk {
     std::unordered_map<DxvkMetaBufferImageCopyPipelineKey,
       DxvkMetaCopyPipeline, DxvkHash, DxvkEq> m_imageToBufferPipelines;
 
+    std::unordered_map<DxvkMetaInputAttachmentCopyPipelineKey,
+      DxvkMetaCopyPipeline, DxvkHash, DxvkEq> m_inputAttachmentPipelines;
+
     DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
 
     DxvkMetaCopyPipeline createCopyFormattedBufferPipeline();
@@ -240,7 +296,10 @@ namespace dxvk {
 
     DxvkMetaCopyPipeline createCopyImageToBufferPipeline(
       const DxvkMetaBufferImageCopyPipelineKey& key);
-    
+
+    DxvkMetaCopyPipeline createCopyInputAttachmentPipeline(
+      const DxvkMetaInputAttachmentCopyPipelineKey& key);
+
   };
   
 }

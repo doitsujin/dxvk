@@ -30,6 +30,8 @@ dxvk_shaders = files([
   'shaders/dxvk_copy_depth_stencil_1d.frag',
   'shaders/dxvk_copy_depth_stencil_2d.frag',
   'shaders/dxvk_copy_depth_stencil_ms.frag',
+  'shaders/dxvk_copy_rt_f.frag',
+  'shaders/dxvk_copy_rt_u.frag',
 
   'shaders/dxvk_cursor_vert.vert',
   'shaders/dxvk_cursor_frag.frag',
