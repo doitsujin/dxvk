@@ -2556,6 +2556,16 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::adjustRenderArea(const VkRect2D& rect) {
+    m_state.om.renderAreaLo = VkOffset2D {
+      std::min(m_state.om.renderAreaLo.x, rect.offset.x),
+      std::min(m_state.om.renderAreaLo.y, rect.offset.y) };
+    m_state.om.renderAreaHi = VkOffset2D {
+      std::max(m_state.om.renderAreaHi.x, int32_t(rect.offset.x + rect.extent.width)),
+      std::max(m_state.om.renderAreaHi.y, int32_t(rect.offset.y + rect.extent.height)) };
+  }
+
+
   void DxvkContext::updateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,
@@ -4049,12 +4059,14 @@ namespace dxvk {
         flushClearsInline();
 
       // Inline clears may affect render area
-      m_state.om.renderAreaLo = VkOffset2D {
-        std::min(m_state.om.renderAreaLo.x, offset.x),
-        std::min(m_state.om.renderAreaLo.y, offset.y) };
-      m_state.om.renderAreaHi = VkOffset2D {
-        std::max(m_state.om.renderAreaHi.x, int32_t(offset.x + extent.width)),
-        std::max(m_state.om.renderAreaHi.y, int32_t(offset.y + extent.height)) };
+      VkClearRect clearRect = { };
+      clearRect.rect.offset.x = offset.x;
+      clearRect.rect.offset.y = offset.y;
+      clearRect.rect.extent.width = extent.width;
+      clearRect.rect.extent.height = extent.height;
+      clearRect.layerCount = imageView->info().layerCount;
+
+      adjustRenderArea(clearRect.rect);
 
       // Check whether we can fold the clear into the curret render pass. This is the
       // case when the framebuffer size matches the clear size, even if the clear itself
@@ -4100,13 +4112,6 @@ namespace dxvk {
       clear.aspectMask = aspect;
       clear.colorAttachment = colorIndex;
       clear.clearValue = value;
-
-      VkClearRect clearRect = { };
-      clearRect.rect.offset.x = offset.x;
-      clearRect.rect.offset.y = offset.y;
-      clearRect.rect.extent.width = extent.width;
-      clearRect.rect.extent.height = extent.height;
-      clearRect.layerCount = imageView->info().layerCount;
 
       m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer, 1, &clear, 1, &clearRect);
     }
@@ -7241,12 +7246,7 @@ namespace dxvk {
           std::min(scissor.extent.height, uint32_t(hi.y - lo.y)) };
 
         // Extend render area based on the final scissor rect
-        m_state.om.renderAreaLo = {
-          std::min(m_state.om.renderAreaLo.x, dst.offset.x),
-          std::min(m_state.om.renderAreaLo.y, dst.offset.y) };
-        m_state.om.renderAreaHi = {
-          std::max(m_state.om.renderAreaHi.x, int32_t(dst.offset.x + dst.extent.width)),
-          std::max(m_state.om.renderAreaHi.y, int32_t(dst.offset.y + dst.extent.height)) };
+        adjustRenderArea(dst);
       }
 
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
