@@ -1506,6 +1506,15 @@ namespace dxvk {
       const Rc<DxvkImage>&        srcImage,
             VkImageSubresourceLayers srcSubresource);
 
+    bool copyImageInline(
+            DxvkImage&            dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset3D            dstOffset,
+            DxvkImage&            srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset3D            srcOffset,
+            VkExtent3D            extent);
+
     template<bool ToBuffer>
     void copySparsePages(
       const Rc<DxvkPagedResource>& sparse,
@@ -1740,6 +1749,10 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources);
 
     bool isBoundAsRenderTarget(
+      const DxvkImage&              image,
+      const VkImageSubresourceRange& subresources);
+
+    int32_t findColorAttachmentIndex(
       const DxvkImage&              image,
       const VkImageSubresourceRange& subresources);
 
