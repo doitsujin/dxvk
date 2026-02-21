@@ -1151,6 +1151,10 @@ namespace dxvk {
       { "d3d11.disableDirectImageMapping",  "True"  },
       { "dxvk.enableImplicitResolves",      "False" },
     }} },
+    /* Dawn of War DE - Vertex explosions         */
+    { R"(\\Dawn of War Definitive Edition\\W40k\.exe$)", {{
+      { "dxvk.zeroMappedMemory",            "True"  },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
