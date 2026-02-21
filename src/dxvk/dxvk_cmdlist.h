@@ -601,14 +601,8 @@ namespace dxvk {
     
     void cmdBindDescriptorSets(
             DxvkCmdBuffer             cmdBuffer,
-            VkPipelineBindPoint       pipeline,
-            VkPipelineLayout          pipelineLayout,
-            uint32_t                  firstSet,
-            uint32_t                  descriptorSetCount,
-      const VkDescriptorSet*          descriptorSets) {
-      m_vkd->vkCmdBindDescriptorSets(getCmdBuffer(cmdBuffer),
-        pipeline, pipelineLayout, firstSet, descriptorSetCount,
-        descriptorSets, 0, nullptr);
+      const VkBindDescriptorSetsInfo* info) {
+      m_vkd->vkCmdBindDescriptorSets2(getCmdBuffer(cmdBuffer), info);
     }
 
 
@@ -626,21 +620,12 @@ namespace dxvk {
 
 
 
-    void cmdBindIndexBuffer(
-            VkBuffer                buffer,
-            VkDeviceSize            offset,
-            VkIndexType             indexType) {
-      m_vkd->vkCmdBindIndexBuffer(getCmdBuffer(),
-        buffer, offset, indexType);
-    }
-    
-    
     void cmdBindIndexBuffer2(
             VkBuffer                buffer,
             VkDeviceSize            offset,
             VkDeviceSize            size,
             VkIndexType             indexType) {
-      m_vkd->vkCmdBindIndexBuffer2KHR(getCmdBuffer(),
+      m_vkd->vkCmdBindIndexBuffer2(getCmdBuffer(),
         buffer, offset, size, indexType);
     }
 
@@ -965,13 +950,8 @@ namespace dxvk {
 
     void cmdPushConstants(
             DxvkCmdBuffer           cmdBuffer,
-            VkPipelineLayout        layout,
-            VkShaderStageFlags      stageFlags,
-            uint32_t                offset,
-            uint32_t                size,
-      const void*                   pValues) {
-      m_vkd->vkCmdPushConstants(getCmdBuffer(cmdBuffer),
-        layout, stageFlags, offset, size, pValues);
+      const VkPushConstantsInfo*    info) {
+      m_vkd->vkCmdPushConstants2(getCmdBuffer(cmdBuffer), info);
     }
 
 

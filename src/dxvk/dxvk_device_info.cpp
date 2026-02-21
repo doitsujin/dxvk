@@ -14,6 +14,7 @@ namespace dxvk {
     HANDLE_CORE(vk11);                             \
     HANDLE_CORE(vk12);                             \
     HANDLE_CORE(vk13);                             \
+    HANDLE_CORE(vk14);
 
   #define EXTENSIONS_WITH_FEATURES                 \
     HANDLE_EXT(extAttachmentFeedbackLoopLayout);   \
@@ -29,7 +30,6 @@ namespace dxvk {
     HANDLE_EXT(extFullScreenExclusive);            \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
     HANDLE_EXT(extHdrMetadata);                    \
-    HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMemoryBudget);                   \
     HANDLE_EXT(extMemoryPriority);                 \
     HANDLE_EXT(extMultiDraw);                      \
@@ -42,12 +42,8 @@ namespace dxvk {
     HANDLE_EXT(extSwapchainColorSpace);            \
     HANDLE_EXT(extSwapchainMaintenance1);          \
     HANDLE_EXT(extTransformFeedback);              \
-    HANDLE_EXT(extVertexAttributeDivisor);         \
     HANDLE_EXT(khrExternalMemoryWin32);            \
     HANDLE_EXT(khrExternalSemaphoreWin32);         \
-    HANDLE_EXT(khrLoadStoreOpNone);                \
-    HANDLE_EXT(khrMaintenance5);                   \
-    HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance8);                   \
     HANDLE_EXT(khrMaintenance9);                   \
@@ -57,7 +53,6 @@ namespace dxvk {
     HANDLE_EXT(khrPresentId2);                     \
     HANDLE_EXT(khrPresentWait);                    \
     HANDLE_EXT(khrPresentWait2);                   \
-    HANDLE_EXT(khrShaderFloatControls2);           \
     HANDLE_EXT(khrShaderSubgroupUniformControlFlow);\
     HANDLE_EXT(khrShaderUntypedPointers);          \
     HANDLE_EXT(khrSwapchain);                      \
@@ -77,14 +72,10 @@ namespace dxvk {
     HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
-    HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMultiDraw);                      \
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extTransformFeedback);              \
-    HANDLE_EXT(extVertexAttributeDivisor);         \
-    HANDLE_EXT(khrMaintenance5);                   \
-    HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance9);                   \
     HANDLE_EXT(khrMaintenance10);
@@ -561,17 +552,11 @@ namespace dxvk {
     if (m_featuresSupported.extRobustness2.robustImageAccess2)
       m_featuresSupported.vk13.robustImageAccess = VK_FALSE;
 
-    // Vertex attribute divisor is unusable before spec version 3
-    if (m_extensionsSupported.extVertexAttributeDivisor.specVersion < 3u) {
-      m_featuresSupported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = VK_FALSE;
-      m_featuresSupported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = VK_FALSE;
-    }
-
     // For line rasterization, ensure that the feature set actually makes sense
-    if (!m_featuresSupported.core.features.wideLines || !m_featuresSupported.extLineRasterization.rectangularLines) {
+    if (!m_featuresSupported.core.features.wideLines || !m_featuresSupported.vk14.rectangularLines) {
       m_featuresSupported.core.features.wideLines = VK_FALSE;
-      m_featuresSupported.extLineRasterization.rectangularLines = VK_FALSE;
-      m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
+      m_featuresSupported.vk14.rectangularLines = VK_FALSE;
+      m_featuresSupported.vk14.smoothLines = VK_FALSE;
     }
 
     // Ensure we only enable one of present_id or present_id_2
@@ -579,9 +564,6 @@ namespace dxvk {
       m_featuresSupported.khrPresentId.presentId = VK_FALSE;
 
     // Sanitize features with other feature dependencies
-    if (!m_featuresSupported.core.features.shaderInt16)
-      m_featuresSupported.vk11.storagePushConstant16 = VK_FALSE;
-
     if (!m_featuresSupported.khrPresentId2.presentId2)
       m_featuresSupported.khrPresentWait2.presentWait2 = VK_FALSE;
 
@@ -728,9 +710,6 @@ namespace dxvk {
       }
     }
 
-    if (!m_featuresEnabled.extDescriptorHeap.descriptorHeap && m_properties.core.properties.limits.maxPushConstantsSize < MaxTotalPushDataSize)
-      return str::format("Device does not support ", MaxTotalPushDataSize, " of push data");
-
     return std::nullopt;
   }
 
@@ -793,11 +772,12 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, drawIndirectFirstInstance, false),
       ENABLE_FEATURE(core.features, dualSrcBlend, true),
       ENABLE_FEATURE(core.features, fillModeNonSolid, true),
-      ENABLE_FEATURE(core.features, fragmentStoresAndAtomics, false),
+      ENABLE_FEATURE(core.features, fragmentStoresAndAtomics, true),
       ENABLE_FEATURE(core.features, fullDrawIndexUint32, true),
       ENABLE_FEATURE(core.features, geometryShader, true),
       ENABLE_FEATURE(core.features, imageCubeArray, true),
       ENABLE_FEATURE(core.features, independentBlend, true),
+      ENABLE_FEATURE(core.features, largePoints, false),
       ENABLE_FEATURE(core.features, logicOp, false),
       ENABLE_FEATURE(core.features, multiDrawIndirect, true),
       ENABLE_FEATURE(core.features, multiViewport, true),
@@ -805,12 +785,12 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, pipelineStatisticsQuery, false),
       ENABLE_FEATURE(core.features, robustBufferAccess, true),
       ENABLE_FEATURE(core.features, sampleRateShading, true),
-      ENABLE_FEATURE(core.features, samplerAnisotropy, false),
+      ENABLE_FEATURE(core.features, samplerAnisotropy, true),
       ENABLE_FEATURE(core.features, shaderClipDistance, true),
       ENABLE_FEATURE(core.features, shaderCullDistance, true),
       ENABLE_FEATURE(core.features, shaderFloat64, false),
       ENABLE_FEATURE(core.features, shaderImageGatherExtended, true),
-      ENABLE_FEATURE(core.features, shaderInt16, false),
+      ENABLE_FEATURE(core.features, shaderInt16, true),
       ENABLE_FEATURE(core.features, shaderInt64, true),
       ENABLE_FEATURE(core.features, shaderUniformBufferArrayDynamicIndexing, false),
       ENABLE_FEATURE(core.features, shaderSampledImageArrayDynamicIndexing, true),
@@ -856,7 +836,7 @@ namespace dxvk {
       ENABLE_FEATURE(vk12, samplerMirrorClampToEdge, true),
       ENABLE_FEATURE(vk12, scalarBlockLayout, true),
       ENABLE_FEATURE(vk12, shaderFloat16, false),
-      ENABLE_FEATURE(vk12, shaderInt8, false),
+      ENABLE_FEATURE(vk12, shaderInt8, true),
       ENABLE_FEATURE(vk12, shaderOutputViewportIndex, false),
       ENABLE_FEATURE(vk12, shaderOutputLayer, false),
       ENABLE_FEATURE(vk12, timelineSemaphore, true),
@@ -872,6 +852,14 @@ namespace dxvk {
       ENABLE_FEATURE(vk13, shaderZeroInitializeWorkgroupMemory, true),
       ENABLE_FEATURE(vk13, subgroupSizeControl, true),
       ENABLE_FEATURE(vk13, synchronization2, true),
+
+      ENABLE_FEATURE(vk14, maintenance5, true),
+      ENABLE_FEATURE(vk14, maintenance6, true),
+      ENABLE_FEATURE(vk14, rectangularLines,  false),
+      ENABLE_FEATURE(vk14, shaderFloatControls2, false),
+      ENABLE_FEATURE(vk14, smoothLines, false),
+      ENABLE_FEATURE(vk14, vertexAttributeInstanceRateDivisor, false),
+      ENABLE_FEATURE(vk14, vertexAttributeInstanceRateZeroDivisor, false),
 
       /* Allows sampling currently bound render targets for client APIs */
       ENABLE_EXT_FEATURE(extAttachmentFeedbackLoopLayout, attachmentFeedbackLoopLayout, false),
@@ -923,10 +911,6 @@ namespace dxvk {
       /* HDR metadata */
       ENABLE_EXT(extHdrMetadata, false),
 
-      /* Line rasterization features for client APIs */
-      ENABLE_EXT_FEATURE(extLineRasterization, rectangularLines,  false),
-      ENABLE_EXT_FEATURE(extLineRasterization, smoothLines, false),
-
       /* Memory budget and priority for improved memory management */
       ENABLE_EXT(extMemoryBudget, false),
       ENABLE_EXT_FEATURE(extMemoryPriority, memoryPriority, false),
@@ -965,21 +949,11 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(extTransformFeedback, transformFeedback, false),
       ENABLE_EXT_FEATURE(extTransformFeedback, geometryStreams, false),
 
-      /* Vertex attribute divisor, used by client APIs */
-      ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateDivisor, false),
-      ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateZeroDivisor, false),
-
       /* External memory features for wine */
       ENABLE_EXT(khrExternalMemoryWin32, false),
       ENABLE_EXT(khrExternalSemaphoreWin32, false),
 
-      /* LOAD_OP_NONE for certain tiler optimizations. Core feature
-       * in Vulkan 1.4, so probably supported by everything we need. */
-      ENABLE_EXT(khrLoadStoreOpNone, true),
-
       /* Maintenance features, relied on in various parts of the code */
-      ENABLE_EXT_FEATURE(khrMaintenance5, maintenance5, true),
-      ENABLE_EXT_FEATURE(khrMaintenance6, maintenance6, true),
       ENABLE_EXT_FEATURE(khrMaintenance7, maintenance7, false),
       ENABLE_EXT_FEATURE(khrMaintenance8, maintenance8, false),
       ENABLE_EXT_FEATURE(khrMaintenance9, maintenance9, false),
@@ -993,9 +967,6 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(khrPresentId2, presentId2, false),
       ENABLE_EXT_FEATURE(khrPresentWait, presentWait, false),
       ENABLE_EXT_FEATURE(khrPresentWait2, presentWait2, false),
-
-      /* Used for shader compilation in addition to regular float_controls features */
-      ENABLE_EXT_FEATURE(khrShaderFloatControls2, shaderFloatControls2, false),
 
       /* Subgroup uniform control flow for some built-in shaders */
       ENABLE_EXT_FEATURE(khrShaderSubgroupUniformControlFlow, shaderSubgroupUniformControlFlow, false),

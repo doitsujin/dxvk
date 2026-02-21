@@ -3001,8 +3001,10 @@ namespace dxvk {
       // there is no spec-legal way to bind it, not even by starting a new
       // command buffer. For now, work around the problem by calling a
       // legacy descriptor set function.
-      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_COMPUTE, VK_NULL_HANDLE, 0, 0, nullptr);
+      VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+      bindInfo.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
       m_cmd->invalidateDescriptorHeapBinding();
     }
 
@@ -6378,8 +6380,13 @@ namespace dxvk {
     } else {
       VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
 
-      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-        BindPoint, layout->getPipelineLayout(), 0u, 1u, &set);
+      VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+      bindInfo.stageFlags = layout->getShaderStageMask();
+      bindInfo.layout = layout->getPipelineLayout();
+      bindInfo.descriptorSetCount = 1u;
+      bindInfo.pDescriptorSets = &set;
+
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
     }
   }
 
@@ -6606,11 +6613,14 @@ namespace dxvk {
         uint32_t count = bit::bsf(countMask) - first;
 
         // Global sampler set will always be bound to index 0
-        uint32_t setIndex = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+        bindInfo.stageFlags = pipelineLayout->getShaderStageMask();
+        bindInfo.layout = pipelineLayout->getPipelineLayout();
+        bindInfo.firstSet = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        bindInfo.descriptorSetCount = count;
+        bindInfo.pDescriptorSets = &sets[first];
 
-        m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, pipelineLayout->getPipelineLayout(),
-          setIndex, count, &sets[first]);
+        m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
 
         dirtySetMask &= countMask;
       } while (dirtySetMask);
@@ -7492,9 +7502,14 @@ namespace dxvk {
     if (m_features.test(DxvkContextFeature::DescriptorHeap)) {
       m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
     } else {
-      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer,
-        layout->getPipelineLayout(), pushData.getStageMask(),
-        pushInfo.offset, pushInfo.data.size, pushInfo.data.address);
+      VkPushConstantsInfo pushConstants = { VK_STRUCTURE_TYPE_PUSH_CONSTANTS_INFO };
+      pushConstants.layout = layout->getPipelineLayout();
+      pushConstants.stageFlags = pushData.getStageMask();
+      pushConstants.offset = pushInfo.offset;
+      pushConstants.size = pushInfo.data.size;
+      pushConstants.pValues = pushInfo.data.address;
+
+      m_cmd->cmdPushConstants(DxvkCmdBuffer::ExecBuffer, &pushConstants);
     }
   }
 
