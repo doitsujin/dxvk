@@ -126,6 +126,18 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries depth-stencil format
+     *
+     * \param [in] id Target Index
+     * \returns The depth-stencil format
+     */
+    VkFormat getDepthFormat() const {
+      return getDepthTarget().view
+        ? getDepthTarget().view->info().format
+        : VK_FORMAT_UNDEFINED;
+    }
+
+    /**
      * \brief Color target
      *
      * \param [in] id Target Index
@@ -133,6 +145,18 @@ namespace dxvk {
      */
     const DxvkAttachment& getColorTarget(uint32_t id) const {
       return m_renderTargets.color[id];
+    }
+
+    /**
+     * \brief Queries color format
+     *
+     * \param [in] id Target Index
+     * \returns The color target format
+     */
+    VkFormat getColorFormat(uint32_t id) const {
+      return getColorTarget(id).view
+        ? getColorTarget(id).view->info().format
+        : VK_FORMAT_UNDEFINED;
     }
 
     /**
