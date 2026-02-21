@@ -616,5 +616,21 @@ namespace dxvk {
     
     return nullptr;
   }
-  
+
+
+  VkFormat getLinearFormat(VkFormat format) {
+    static const std::array<std::pair<VkFormat, VkFormat>, 3> s_fmt = {{
+      { VK_FORMAT_R8G8B8A8_SRGB,        VK_FORMAT_R8G8B8A8_UNORM },
+      { VK_FORMAT_B8G8R8A8_SRGB,        VK_FORMAT_B8G8R8A8_UNORM },
+      { VK_FORMAT_A8B8G8R8_SRGB_PACK32, VK_FORMAT_A8B8G8R8_UNORM_PACK32 },
+    }};
+
+    for (const auto& e : s_fmt) {
+      if (format == e.first)
+        return e.second;
+    }
+
+    return format;
+  }
+
 }
