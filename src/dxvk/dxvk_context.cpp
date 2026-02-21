@@ -5767,13 +5767,22 @@ namespace dxvk {
 
     bool hasMipmappedRt = false;
 
+    bool drlr = m_device->features().vk14.dynamicRenderingLocalRead
+             && m_device->features().khrMaintenance10.maintenance10;
+
+    auto& renderingInfo = m_state.om.renderingInfo.rendering;
+    renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
+    renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
+    renderingInfo.renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
+    renderingInfo.layerCount = fbSize.layers;
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
 
       auto& colorInfo = m_state.om.renderingInfo.color[i];
       colorInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
-      if (colorTarget.view != nullptr) {
+      if (colorTarget.view) {
         colorFormats[i] = colorTarget.view->info().format;
 
         colorInfo.imageView = colorTarget.view->handle();
@@ -5800,6 +5809,9 @@ namespace dxvk {
         colorInfoCount = i + 1;
 
         hasMipmappedRt |= colorTarget.view->image()->info().mipLevels > 1u;
+
+        if (drlr && (colorTarget.view->image()->info().usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
+          renderingInfo.flags |= VK_RENDERING_LOCAL_READ_CONCURRENT_ACCESS_CONTROL_BIT_KHR;
 
         if ((colorTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
          && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
@@ -5848,6 +5860,9 @@ namespace dxvk {
 
       renderingInheritance.rasterizationSamples = depthTarget.view->image()->info().sampleCount;
 
+      if (drlr && (depthTarget.view->image()->info().usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))
+        renderingInfo.flags |= VK_RENDERING_LOCAL_READ_CONCURRENT_ACCESS_CONTROL_BIT_KHR;
+
       if ((depthTarget.view->image()->info().usage & VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT)
        && m_device->features().khrUnifiedImageLayouts.unifiedImageLayouts) {
         auto& feedbackLoopInfo = m_state.om.renderingInfo.depthStencilFeedbackLoop;
@@ -5870,12 +5885,6 @@ namespace dxvk {
         stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       }
     }
-
-    auto& renderingInfo = m_state.om.renderingInfo.rendering;
-    renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
-    renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
-    renderingInfo.renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
-    renderingInfo.layerCount = fbSize.layers;
 
     if (colorInfoCount) {
       renderingInfo.colorAttachmentCount = colorInfoCount;

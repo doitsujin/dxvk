@@ -853,6 +853,7 @@ namespace dxvk {
       ENABLE_FEATURE(vk13, subgroupSizeControl, true),
       ENABLE_FEATURE(vk13, synchronization2, true),
 
+      ENABLE_FEATURE(vk14, dynamicRenderingLocalRead, false),
       ENABLE_FEATURE(vk14, maintenance5, true),
       ENABLE_FEATURE(vk14, maintenance6, true),
       ENABLE_FEATURE(vk14, rectangularLines,  false),
