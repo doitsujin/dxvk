@@ -492,6 +492,15 @@ namespace dxvk {
     { R"(\\Rapture_Release\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "a" },
     }} },
+    /* Total War Pharaoh Dynasties: Broken menu   *
+     * because the game doesn't manage to respect *
+     * pitch for an A8_UNORM image. Resolves are  *
+     * not needed because the game dynamically    *
+     * checks sample count in affected shaders.   */
+    { R"(\\Pharaoh\.exe$)", {{
+      { "d3d11.disableDirectImageMapping",  "True" },
+      { "dxvk.enableImplicitResolves",     "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -1142,18 +1151,10 @@ namespace dxvk {
     { R"(\\Pirates!\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
     }} },
-    /* Total War Pharaoh Dynasties: Broken menu   *
-     * because the game doesn't manage to respect *
-     * pitch for an A8_UNORM image. Resolves are  *
-     * not needed because the game dynamically    *
-     * checks sample count in affected shaders.   */
-    { R"(\\Pharaoh\.exe$)", {{
-      { "d3d11.disableDirectImageMapping",  "True"  },
-      { "dxvk.enableImplicitResolves",      "False" },
-    }} },
-    /* Dawn of War DE - Vertex explosions         */
-    { R"(\\Dawn of War Definitive Edition\\W40k\.exe$)", {{
-      { "dxvk.zeroMappedMemory",            "True"  },
+    /* Warhammer 40,000: Dawn of War DE           *
+     * Fixes occasional vertex explosions         */
+    { R"(\\W40k(_gog)?\.exe$)", {{
+      { "dxvk.zeroMappedMemory",            "True" },
     }} },
 
     /**********************************************/
