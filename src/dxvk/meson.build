@@ -114,6 +114,7 @@ dxvk_src = [
   'dxvk_queue.cpp',
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
+  'dxvk_shader_builtin.cpp',
   'dxvk_shader_cache.cpp',
   'dxvk_shader_io.cpp',
   'dxvk_shader_ir.cpp',
