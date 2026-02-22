@@ -64,6 +64,10 @@ ID3D9VkInteropTexture : public IUnknown {
    * Retrieves both the image handle as well as the image's
    * properties. Any of the given pointers may be \c nullptr.
    * 
+   * The VkImage returned by this function is only guaranteed
+   * to be safe for images created by ID3D9VkInteropDeviceCreateImage
+   * with the D3D9_VK_IMAGE_STABLE_ADDRESS flag.
+   * 
    * If \c pInfo is not \c nullptr, the following rules apply:
    * - \c pInfo->sType \e must be \c VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
    * - \c pInfo->pNext \e must be \c nullptr or point to a supported
@@ -99,9 +103,29 @@ ID3D9VkInteropTexture : public IUnknown {
           VkImageCreateInfo*    pInfo) = 0;
 };
 
+/**
+ * \brief D3D9 extended image flags
+ */
+enum D3D9VkExtImageFlagBits : uint32_t {
+    /// Image is used externally so it needs to be
+    /// in its default layout after each submission
+    D3D9_VK_IMAGE_STABLE_LAYOUT = 1 << 0,
+
+    /// Requests the image to not be relocated in the future. This ensures
+    /// that the handle returned by GetVulkanImageInfo will remain stable.
+    /// NOTE: This will prevent memory defragmentation for this image.
+    D3D9_VK_IMAGE_STABLE_ADDRESS = 1 << 1,
+};
 
 /**
- * \brief D3D9 image description
+ * \brief D3D9 extended image flags
+ * 
+ * A bitfield of \c D3D9VkExtImageFlagBits
+ */
+using D3D9VkExtImageFlags = uint32_t;
+
+/**
+ * \brief D3D9 extended image description
  */
 struct D3D9VkExtImageDesc {
   D3DRESOURCETYPE     Type;               // Can be SURFACE, TEXTURE, CUBETEXTURE, VOLUMETEXTURE
@@ -118,6 +142,7 @@ struct D3D9VkExtImageDesc {
   bool                IsAttachmentOnly;   // If false, then VK_IMAGE_USAGE_SAMPLED_BIT will be added
   bool                IsLockable;
   VkImageUsageFlags   ImageUsage;         // Additional image usage flags
+  D3D9VkExtImageFlags Flags;
 };
 
 /**
