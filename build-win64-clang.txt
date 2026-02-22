@@ -1,0 +1,17 @@
+[binaries]
+c = [ 'clang', '--target=x86_64-w64-mingw32' ]
+cpp = [ 'clang++', '--target=x86_64-w64-mingw32' ]
+ar = 'llvm-ar'
+strip = 'llvm-strip'
+windres = [ 'llvm-windres', '--target=x86_64-w64-mingw32' ]
+c_ld = [ 'lld', '--target=x86_64-w64-mingw32' ]
+cpp_ld = [ 'lld', '--target=x86_64-w64-mingw32' ]
+
+[properties]
+needs_exe_wrapper = true
+
+[host_machine]
+system = 'windows'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'
