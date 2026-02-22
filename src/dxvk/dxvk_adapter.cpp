@@ -257,17 +257,36 @@ namespace dxvk {
     const DxvkDeviceImportInfo& args) {
     const float queuePriority = 1.0f;
 
-    VkDeviceQueueCreateInfo queueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
-    queueInfo.queueFamilyIndex = args.queueFamily;
-    queueInfo.queueCount = 1u;
-    queueInfo.pQueuePriorities = &queuePriority;
+    std::vector<VkDeviceQueueCreateInfo> queueInfos;
+
+    VkDeviceQueueCreateInfo graphicsQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+    graphicsQueueInfo.queueFamilyIndex = args.queueFamily;
+    graphicsQueueInfo.queueCount = 1u;
+    graphicsQueueInfo.pQueuePriorities = &queuePriority;
+    queueInfos.push_back(graphicsQueueInfo);
+
+    if (args.transferQueue != VK_NULL_HANDLE && args.transferQueue != args.queue && args.transferQueueFamily != VK_QUEUE_FAMILY_IGNORED) {
+      VkDeviceQueueCreateInfo transferQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+      transferQueueInfo.queueFamilyIndex = args.transferQueueFamily;
+      transferQueueInfo.queueCount = 1u;
+      transferQueueInfo.pQueuePriorities = &queuePriority;
+      queueInfos.push_back(transferQueueInfo);
+    }
+
+    if (args.sparseQueue != VK_NULL_HANDLE && args.sparseQueue != args.queue && args.sparseQueueFamily != VK_QUEUE_FAMILY_IGNORED) {
+      VkDeviceQueueCreateInfo sparseQueueInfo = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
+      sparseQueueInfo.queueFamilyIndex = args.sparseQueueFamily;
+      sparseQueueInfo.queueCount = 1u;
+      sparseQueueInfo.pQueuePriorities = &queuePriority;
+      queueInfos.push_back(sparseQueueInfo);
+    }
 
     VkDeviceCreateInfo deviceInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
     deviceInfo.pNext = args.features;
     deviceInfo.enabledExtensionCount = args.extensionCount;
     deviceInfo.ppEnabledExtensionNames = args.extensionNames;
-    deviceInfo.queueCreateInfoCount = 1u;
-    deviceInfo.pQueueCreateInfos = &queueInfo;
+    deviceInfo.queueCreateInfoCount = queueInfos.size();
+    deviceInfo.pQueueCreateInfos = queueInfos.data();
 
     DxvkDeviceCapabilities importCaps(*m_instance, m_handle, &deviceInfo);
 
