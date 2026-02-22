@@ -257,4 +257,14 @@ namespace dxvk::str {
     return true;
   }
 
+  /** Converts ASCII string to lower case */
+  inline std::string tolower(std::string str) {
+    for (size_t i = 0u; i < str.size(); i++) {
+      if (str[i] >= 'A' && str[i] <= 'Z')
+        str[i] += 'a' - 'A';
+    }
+
+    return str;
+  }
+
 }

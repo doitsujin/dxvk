@@ -288,8 +288,11 @@ namespace dxvk {
     }
 
     // Query pipeline objects to use for this clear operation
-    DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
-      lookupFormatInfo(bufferView->info().format)->flags);
+    DxvkMetaClear::Key metaKey = { };
+    metaKey.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    metaKey.format = bufferView->info().format;
+
+    DxvkMetaClear meta = m_common->metaClear().getPipeline(metaKey);
 
     // Create a descriptor set pointing to the view
     DxvkDescriptorWrite descriptor = { };
@@ -297,18 +300,18 @@ namespace dxvk {
     descriptor.descriptor = bufferView->getDescriptor(false);
 
     // Prepare shader arguments
-    DxvkMetaClearArgs pushArgs = { };
+    DxvkMetaClear::Args pushArgs = { };
     pushArgs.clearValue = value;
     pushArgs.offset = VkOffset3D {  int32_t(offset), 0, 0 };
     pushArgs.extent = VkExtent3D { uint32_t(length), 1, 1 };
 
     VkExtent3D workgroups = util::computeBlockCount(
-      pushArgs.extent, pipeInfo.workgroupSize);
+      pushArgs.extent, meta.workgroupSize);
 
     m_cmd->cmdBindPipeline(cmdBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
+      VK_PIPELINE_BIND_POINT_COMPUTE, meta.pipeline);
 
-    m_cmd->bindResources(cmdBuffer, pipeInfo.layout,
+    m_cmd->bindResources(cmdBuffer, meta.layout,
       1u, &descriptor, sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(cmdBuffer,
@@ -4136,8 +4139,11 @@ namespace dxvk {
     }
 
     // Query pipeline objects to use for this clear operation
-    DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
-      imageView->type(), lookupFormatInfo(imageView->info().format)->flags);
+    DxvkMetaClear::Key metaKey = { };
+    metaKey.viewType = imageView->info().viewType;
+    metaKey.format = imageView->info().format;
+
+    DxvkMetaClear meta = m_common->metaClear().getPipeline(metaKey);
 
     // Create a descriptor set pointing to the view
     DxvkDescriptorWrite imageDescriptor = { };
@@ -4145,23 +4151,21 @@ namespace dxvk {
     imageDescriptor.descriptor = imageView->getDescriptor();
     
     // Prepare shader arguments
-    DxvkMetaClearArgs pushArgs = { };
+    DxvkMetaClear::Args pushArgs = { };
     pushArgs.clearValue = value.color;
     pushArgs.offset = offset;
     pushArgs.extent = extent;
 
-    VkExtent3D workgroups = util::computeBlockCount(
-      pushArgs.extent, pipeInfo.workgroupSize);
+    VkExtent3D workgroups = util::computeBlockCount(pushArgs.extent, meta.workgroupSize);
 
-    if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
-      workgroups.height = imageView->subresources().layerCount;
-    else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+    if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY
+     || imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
       workgroups.depth = imageView->subresources().layerCount;
 
     m_cmd->cmdBindPipeline(cmdBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
+      VK_PIPELINE_BIND_POINT_COMPUTE, meta.pipeline);
 
-    m_cmd->bindResources(cmdBuffer, pipeInfo.layout,
+    m_cmd->bindResources(cmdBuffer, meta.layout,
       1u, &imageDescriptor, sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(cmdBuffer,
