@@ -27,6 +27,13 @@ namespace dxvk::env {
    * \returns Value of the variable
    */
   std::string getEnvVar(const char* name);
+
+  /**
+   * \brief Sets environment variable
+   * \param [in] name Name of the variable
+   * \param [in] value New value to set
+   */
+  void setEnvVar(const char* name, const char* value);
   
   /**
    * \brief Checks whether a file name has a given extension
