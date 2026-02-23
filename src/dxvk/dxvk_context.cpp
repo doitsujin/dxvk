@@ -5034,8 +5034,9 @@ namespace dxvk {
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data(), flushClears);
 
     // Create a pair of views for the attachment resolve
-    DxvkMetaResolveViews views(dstImage, region.dstSubresource,
-      srcImage, region.srcSubresource, format);
+    DxvkMetaResolveViews views(
+      dstImage, region.dstSubresource, format,
+      srcImage, region.srcSubresource, format, 0u);
 
     VkRenderingAttachmentFlagsInfoKHR attachmentFlags = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_FLAGS_INFO_KHR };
 
@@ -5110,14 +5111,15 @@ namespace dxvk {
     VkFormat dstFormat = format ? format : dstImage->info().format;
     VkFormat srcFormat = format ? format : srcImage->info().format;
 
-    DxvkMetaCopyViews views(
+    DxvkMetaResolveViews views(
       dstImage, region.dstSubresource, dstFormat,
-      srcImage, region.srcSubresource, srcFormat);
+      srcImage, region.srcSubresource, srcFormat,
+      VK_SHADER_STAGE_FRAGMENT_BIT);
 
     // Discard the destination image if we're fully writing it,
     // and transition the image layout if necessary
-    VkImageLayout dstLayout = views.dstImageView->getLayout();
-    VkImageLayout srcLayout = views.srcImageView->getLayout();
+    VkImageLayout dstLayout = views.dstView->getLayout();
+    VkImageLayout srcLayout = views.srcView->getLayout();
 
     bool doDiscard = dstImage->isFullSubresource(region.dstSubresource, region.extent);
 
@@ -5126,8 +5128,8 @@ namespace dxvk {
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
       doDiscard &= stencilMode != VK_RESOLVE_MODE_NONE;
 
-    VkPipelineStageFlags dstStages;
-    VkAccessFlags dstAccess;
+    VkPipelineStageFlags dstStages = 0u;
+    VkAccessFlags dstAccess = 0u;
 
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
       dstStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -5150,16 +5152,17 @@ namespace dxvk {
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
-    // Create a framebuffer and pipeline for the resolve op
-    DxvkMetaResolvePipeline pipeInfo = m_common->metaResolve().getPipeline(
-      dstFormat, srcImage->info().sampleCount, depthMode, stencilMode);
+    // Check whether we need to resolve stencil one bit at a time
+    bool useBitwiseStencil = (stencilMode != VK_RESOLVE_MODE_NONE)
+      && (region.srcSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+      && (!m_device->features().extShaderStencilExport);
 
     // Create and initialize descriptor set
     std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
     auto& imagePlane0Descriptor = descriptors[0u];
     imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    imagePlane0Descriptor.descriptor = views.srcImageView->getDescriptor();
+    imagePlane0Descriptor.descriptor = views.srcView->getDescriptor();
 
     auto& imagePlane1Descriptor = descriptors[1u];
     imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -5181,10 +5184,12 @@ namespace dxvk {
     scissor.extent = { region.extent.width, region.extent.height };
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = views.dstImageView->handle();
+    attachmentInfo.imageView = views.dstView->handle();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
 
     VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea = scissor;
@@ -5196,30 +5201,105 @@ namespace dxvk {
       renderingInfo.colorAttachmentCount = 1;
       renderingInfo.pColorAttachments = &attachmentInfo;
     } else {
-      if (dstAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      if (dstAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
         renderingInfo.pDepthAttachment = &attachmentInfo;
-      if (dstAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-        renderingInfo.pStencilAttachment = &attachmentInfo;
+
+        if (depthMode == VK_RESOLVE_MODE_NONE) {
+          attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+          if (m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess) {
+            attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_NONE;
+            attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+          }
+        }
+      }
+
+      if (dstAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        renderingInfo.pStencilAttachment = &stencilInfo;
+
+        if (stencilMode != VK_RESOLVE_MODE_NONE) {
+          // For bitwise stencil, we need to initialize stencil to zero
+          if (useBitwiseStencil)
+            stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        } else {
+          stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+
+          if (m_device->properties().khrMaintenance7.separateDepthStencilAttachmentAccess) {
+            stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_NONE;
+            stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_NONE;
+          }
+        }
+      }
     }
 
+    // Create a pipeline for the resolve op. If stencil discard is used,
+    // we will need to create a separate pipeline for that.
+    DxvkMetaResolve::Key metaKey = { };
+    metaKey.viewType = views.dstView->info().viewType;
+    metaKey.format = views.dstView->info().format;
+    metaKey.samples = srcImage->info().sampleCount;
+    metaKey.mode = depthMode;
+
+    if ((region.srcSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && !useBitwiseStencil)
+      metaKey.modeStencil = stencilMode;
+
     // Perform the actual resolve operation
-    VkOffset2D srcOffset = {
-      region.srcOffset.x - region.dstOffset.x,
-      region.srcOffset.y - region.dstOffset.y };
+    DxvkMetaResolve::Args pushArgs = { };
+    pushArgs.srcOffset = { region.srcOffset.x, region.srcOffset.y };
+    pushArgs.extent = { region.extent.width, region.extent.height };
     
     m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+    // Do first resolve pass. This may be skipped when resolving only stencil
+    // on hardware that requires us to use bit-wise stencil resolves.
+    if (metaKey.mode != VK_RESOLVE_MODE_NONE || metaKey.modeStencil != VK_RESOLVE_MODE_NONE) {
+      DxvkMetaResolve meta = m_common->metaResolve().getPipeline(metaKey);
 
-    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.layout, descriptors.size(), descriptors.data(),
-      sizeof(srcOffset), &srcOffset);
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
 
-    m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        meta.layout, descriptors.size(), descriptors.data(),
+        0u, nullptr);
+
+      for (pushArgs.layer = 0u; pushArgs.layer < renderingInfo.layerCount; pushArgs.layer++) {
+        m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+          meta.layout, 0u, nullptr, sizeof(pushArgs), &pushArgs);
+
+        m_cmd->cmdDraw(3u, 1u, 0u, 0u);
+      }
+    }
+
+    if (useBitwiseStencil) {
+      // Run separate stencil resolve pass if we need to do a bitwise
+      // resolve. Requires that the stencil attachment is cleared.
+      metaKey.mode = VK_RESOLVE_MODE_NONE;
+      metaKey.modeStencil = stencilMode;
+      metaKey.bitwiseStencil = VK_TRUE;
+
+      DxvkMetaResolve meta = m_common->metaResolve().getPipeline(metaKey);
+
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
+
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        meta.layout, descriptors.size(), descriptors.data(),
+        0u, nullptr);
+
+      for (pushArgs.layer = 0u; pushArgs.layer < renderingInfo.layerCount; pushArgs.layer++) {
+        // Issue one draw per stencil bit to set
+        for (pushArgs.stencilBit = 0x1u; pushArgs.stencilBit < 0x100u; pushArgs.stencilBit <<= 1u) {
+          m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+            meta.layout, 0u, nullptr, sizeof(pushArgs), &pushArgs);
+
+          m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_FRONT_AND_BACK, pushArgs.stencilBit);
+          m_cmd->cmdDraw(3u, 1u, 0u, 0u);
+        }
+      }
+    }
 
     m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
