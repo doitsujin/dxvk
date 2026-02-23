@@ -33,12 +33,6 @@ dxvk_shaders = files([
   'shaders/dxvk_present_frag_ms_blit.frag',
   'shaders/dxvk_present_vert.vert',
 
-  'shaders/dxvk_resolve_frag_d.frag',
-  'shaders/dxvk_resolve_frag_ds.frag',
-  'shaders/dxvk_resolve_frag_f.frag',
-  'shaders/dxvk_resolve_frag_i.frag',
-  'shaders/dxvk_resolve_frag_u.frag',
-
   'hud/shaders/hud_chunk_frag_background.frag',
   'hud/shaders/hud_chunk_frag_visualize.frag',
   'hud/shaders/hud_chunk_vert_background.vert',
