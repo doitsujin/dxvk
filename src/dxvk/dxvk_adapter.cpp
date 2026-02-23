@@ -11,10 +11,11 @@ namespace dxvk {
     DxvkDeviceQueue result = { };
     result.queueFamily = queue.family;
     result.queueIndex = queue.index;
-    result.properties = caps.getQueueProperties(queue.family);
 
-    if (queue.family != VK_QUEUE_FAMILY_IGNORED)
+    if (queue.family != VK_QUEUE_FAMILY_IGNORED) {
+      result.properties = caps.getQueueProperties(queue.family);
       vkd->vkGetDeviceQueue(vkd->device(), queue.family, queue.index, &result.queueHandle);
+    }
 
     return result;
   }
