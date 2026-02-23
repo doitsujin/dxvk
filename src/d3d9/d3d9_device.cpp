@@ -1480,7 +1480,8 @@ namespace dxvk {
       dstViewInfo.packedSwizzle = DxvkImageViewKey::packSwizzle(dstTextureInfo->GetMapping().Swizzle);
 
       DxvkImageViewKey srcViewInfo;
-      srcViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      srcViewInfo.viewType = blitInfo.srcSubresource.layerCount > 1u
+        ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
       srcViewInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
       srcViewInfo.format = srcImage->info().format;
       srcViewInfo.aspects = blitInfo.srcSubresource.aspectMask;
