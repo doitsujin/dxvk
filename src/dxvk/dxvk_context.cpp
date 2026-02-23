@@ -8957,7 +8957,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::transitionImageLayout(
+  bool DxvkContext::transitionImageLayout(
           DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           VkPipelineStageFlags2     srcStages,
@@ -8977,8 +8977,8 @@ namespace dxvk {
     if (!discard || !(image.info().usage & rtUsage))
       srcLayout = image.queryLayout(subresources);
 
-    if (srcLayout == dstLayout)
-      return;
+    if (likely(srcLayout == dstLayout))
+      return false;
 
     if (srcLayout == VK_IMAGE_LAYOUT_MAX_ENUM) {
       VkImageAspectFlags aspects = subresources.aspectMask;
@@ -9020,6 +9020,7 @@ namespace dxvk {
     // Need to track for writes here even if
     // the actual access itself is read-only
     m_cmd->track(&image, DxvkAccess::Write);
+    return true;
   }
 
 
@@ -9045,6 +9046,11 @@ namespace dxvk {
           needsFlush |= flushDeferredClear(*batch[i].image, batch[i].image->getAvailableSubresources());
       }
     }
+
+    // Even if we have to perform the current operation on the main command buffer,
+    // we can still try to move layout transitions that may be necessary to an
+    // out-of-order command buffer in order to avoid additional barriers.
+    bool promoteTransitions = m_imageLayoutTransitions.empty();
 
     // Flush any barriers affecting the resources
     VkPipelineStageFlags2 srcStages = 0u;
@@ -9113,9 +9119,14 @@ namespace dxvk {
           dstAccess |= e.access;
         }
 
-        transitionImageLayout(*e.image, e.imageSubresources,
+        bool canPromote = !e.image->isTracked(m_trackingId, DxvkAccess::Write);
+
+        bool hasTransition = transitionImageLayout(*e.image, e.imageSubresources,
           e.image->info().stages, e.image->info().access,
           e.imageLayout, e.stages, e.access, e.discard);
+
+        if (hasTransition && !canPromote)
+          promoteTransitions = false;
 
         m_cmd->track(e.image, access);
       }
@@ -9130,6 +9141,10 @@ namespace dxvk {
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && needsFlush)
       flushBarriers();
+
+    // Move layout transitions and discards to init command buffer if possible
+    if (cmdBuffer == DxvkCmdBuffer::ExecBuffer && promoteTransitions)
+      cmdBuffer = DxvkCmdBuffer::InitBarriers;
 
     flushImageLayoutTransitions(cmdBuffer);
   }
