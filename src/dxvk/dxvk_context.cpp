@@ -3218,7 +3218,12 @@ namespace dxvk {
 
     // Determine resolve mode for when the source is multisampled. If
     // there is no stretching going on, do a regular resolve.
-    auto resolveMode = filter == VK_FILTER_NEAREST
+    DxvkMetaBlit::Key metaKey = { };
+    metaKey.srcViewType = srcView->info().viewType;
+    metaKey.dstFormat = dstView->info().format;
+    metaKey.dstSamples = dstView->image()->info().sampleCount;
+    metaKey.srcSamples = srcView->image()->info().sampleCount;
+    metaKey.resolveMode = filter == VK_FILTER_NEAREST
       ? DxvkMetaBlitResolveMode::FilterNearest
       : DxvkMetaBlitResolveMode::FilterLinear;
 
@@ -3228,13 +3233,10 @@ namespace dxvk {
                        && (std::abs(dstOffsets[1].z - dstOffsets[0].z) == std::abs(srcOffsets[1].z - srcOffsets[0].z));
 
       if (isSameExtent)
-        resolveMode = DxvkMetaBlitResolveMode::ResolveAverage;
+        metaKey.resolveMode = DxvkMetaBlitResolveMode::ResolveAverage;
     }
 
-    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
-      dstView->info().viewType, dstView->info().format,
-      srcView->image()->info().sampleCount,
-      dstView->image()->info().sampleCount, resolveMode);
+    DxvkMetaBlit meta = m_common->metaBlit().getPipeline(metaKey);
 
     VkViewport viewport = { };
     viewport.x = float(dstOffsetsAdjusted[0].x);
@@ -3273,40 +3275,30 @@ namespace dxvk {
     imageDescriptor.descriptor = srcView->getDescriptor();
     
     // Compute shader parameters for the operation
-    VkExtent3D srcExtent = srcView->mipLevelExtent(0);
-
-    DxvkMetaBlitPushConstants pushConstants = { };
-    pushConstants.layerCount = dstView->info().layerCount;
-    pushConstants.sampler = sampler->getDescriptor().samplerIndex;
-    if (srcView->image()->info().sampleCount == VK_SAMPLE_COUNT_1_BIT) {
-      pushConstants.srcCoord0 = {
-        float(srcOffsetsAdjusted[0].x) / float(srcExtent.width),
-        float(srcOffsetsAdjusted[0].y) / float(srcExtent.height),
-        float(srcOffsetsAdjusted[0].z) / float(srcExtent.depth) };
-      pushConstants.srcCoord1 = {
-        float(srcOffsetsAdjusted[1].x) / float(srcExtent.width),
-        float(srcOffsetsAdjusted[1].y) / float(srcExtent.height),
-        float(srcOffsetsAdjusted[1].z) / float(srcExtent.depth) };
-    } else {
-      // Src coords are in texels rather than 0.0 - 1.0
-      pushConstants.srcCoord0 = {
-        float(srcOffsetsAdjusted[0].x),
-        float(srcOffsetsAdjusted[0].y),
-        float(srcOffsetsAdjusted[0].z) };
-      pushConstants.srcCoord1 = {
-        float(srcOffsetsAdjusted[1].x),
-        float(srcOffsetsAdjusted[1].y),
-        float(srcOffsetsAdjusted[1].z) };
-    }
+    DxvkMetaBlit::Args pushArgs = { };
+    pushArgs.srcCoord0 = srcOffsetsAdjusted[0];
+    pushArgs.srcCoord1 = srcOffsetsAdjusted[1];
+    pushArgs.sampler = sampler->getDescriptor().samplerIndex;
+    pushArgs.layerCount = dstView->info().layerCount;
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+      VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
 
     m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.layout, 1u, &imageDescriptor,
-      sizeof(pushConstants), &pushConstants);
+      meta.layout, 1u, &imageDescriptor, 0, nullptr);
 
-    m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
+    // 3D blits are instanced, layered blits need multiple draws
+    uint32_t instances = srcView->info().viewType == VK_IMAGE_VIEW_TYPE_3D
+      ? dstView->info().layerCount : 1u;
+
+    while (pushArgs.layerIndex < pushArgs.layerCount) {
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        meta.layout, 0, nullptr, sizeof(pushArgs), &pushArgs);
+
+      m_cmd->cmdDraw(3u, instances, 0u, 0u);
+      pushArgs.layerIndex += instances;
+    }
+
     m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
@@ -4732,13 +4724,11 @@ namespace dxvk {
     imageDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
     // Retrieve a compatible pipeline to use for rendering
-    auto resolveMode = filter == VK_FILTER_NEAREST
-      ? DxvkMetaBlitResolveMode::FilterNearest
-      : DxvkMetaBlitResolveMode::FilterLinear;
+    DxvkMetaBlit::Key metaKey = { };
+    metaKey.srcViewType = mipGenerator.getSrcViewType();
+    metaKey.dstFormat = imageView->info().format;
 
-    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
-      mipGenerator.getSrcViewType(), imageView->info().format,
-      VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_1_BIT, resolveMode);
+    DxvkMetaBlit meta = m_common->metaBlit().getPipeline(metaKey);
 
     for (uint32_t i = 0; i < mipGenerator.getPassCount(); i++) {
       auto srcView = mipGenerator.getSrcView(i);
@@ -4750,17 +4740,17 @@ namespace dxvk {
       VkExtent3D passExtent = mipGenerator.computePassExtent(i);
 
       // Set up viewport and scissor rect
-      VkViewport viewport;
-      viewport.x        = 0.0f;
-      viewport.y        = 0.0f;
-      viewport.width    = float(passExtent.width);
-      viewport.height   = float(passExtent.height);
+      VkViewport viewport = { };
+      viewport.x = 0.0f;
+      viewport.y = 0.0f;
+      viewport.width = float(passExtent.width);
+      viewport.height = float(passExtent.height);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
 
-      VkRect2D scissor;
-      scissor.offset    = { 0, 0 };
-      scissor.extent    = { passExtent.width, passExtent.height };
+      VkRect2D scissor = { };
+      scissor.offset = { 0, 0 };
+      scissor.extent = { passExtent.width, passExtent.height };
 
       // Set up rendering info
       VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
@@ -4776,11 +4766,14 @@ namespace dxvk {
       renderingInfo.pColorAttachments = &attachmentInfo;
 
       // Set up push constants
-      DxvkMetaBlitPushConstants pushConstants = { };
-      pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
-      pushConstants.srcCoord1  = { 1.0f, 1.0f, 1.0f };
-      pushConstants.layerCount = passExtent.depth;
-      pushConstants.sampler = sampler->getDescriptor().samplerIndex;
+      VkExtent3D srcExtent = srcView->mipLevelExtent(0u);
+
+      DxvkMetaBlit::Args pushArgs = { };
+      pushArgs.srcCoord1.x = srcExtent.width;
+      pushArgs.srcCoord1.y = srcExtent.height;
+      pushArgs.srcCoord1.z = srcExtent.depth;
+      pushArgs.layerCount = passExtent.depth;
+      pushArgs.sampler = sampler->getDescriptor().samplerIndex;
 
       // Emit per-subresource barriers
       small_vector<DxvkResourceAccess, 2u> accessBatch;
@@ -4791,16 +4784,25 @@ namespace dxvk {
       m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
 
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-        VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+        VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
 
       m_cmd->cmdSetViewport(1, &viewport);
       m_cmd->cmdSetScissor(1, &scissor);
 
       m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-        pipeInfo.layout, 1u, &imageDescriptor,
-        sizeof(pushConstants), &pushConstants);
+        meta.layout, 1u, &imageDescriptor, 0u, nullptr);
 
-      m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
+      // 3D blits are instanced, layered blits need multiple draws
+      uint32_t instances = srcView->info().viewType == VK_IMAGE_VIEW_TYPE_3D ? passExtent.depth : 1u;
+
+      while (pushArgs.layerIndex < pushArgs.layerCount) {
+        m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+          meta.layout, 0u, nullptr, sizeof(pushArgs), &pushArgs);
+
+        m_cmd->cmdDraw(3u, instances, 0u, 0u);
+        pushArgs.layerIndex += instances;
+      }
+
       m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
     }
 
