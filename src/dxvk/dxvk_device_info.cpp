@@ -574,9 +574,12 @@ namespace dxvk {
       m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
     }
 
-    // Ensure we only enable one of present_id or present_id_2
-    if (m_featuresSupported.khrPresentId2.presentId2)
-      m_featuresSupported.khrPresentId.presentId = VK_FALSE;
+    // Ensure we only enable one of present_id or present_id_2. Prefer the
+    // older versions of the present_id/wait extensions since the newer ones
+    // cause issues with external layers and apparently some Wayland setups
+    // on Mesa for unknown reasons.
+    if (m_featuresSupported.khrPresentId.presentId)
+      m_featuresSupported.khrPresentId2.presentId2 = VK_FALSE;
 
     // Sanitize features with other feature dependencies
     if (!m_featuresSupported.core.features.shaderInt16)
