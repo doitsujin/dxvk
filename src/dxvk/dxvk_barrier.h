@@ -368,11 +368,35 @@ namespace dxvk {
      * \returns \c true if any barriers use the given source access flags
      */
     bool hasPendingAccess(VkAccessFlags2 access) const {
+      access |= VK_ACCESS_2_MEMORY_WRITE_BIT;
+
       if (m_memoryBarrier.srcAccessMask & access)
         return true;
 
       for (const auto& b : m_imageBarriers) {
         if (b.srcAccessMask & access)
+          return true;
+      }
+
+      return false;
+    }
+
+    /**
+     * \brief Checks whether there are barriers targeting any of the given access flags
+     *
+     * \param [in] access Access flags to check. Will implicitly also include
+     *             checks for memory read/write as necessary.
+     * \returns \c true if any barriers use the given source access flags
+     */
+    bool hasTargetAccess(VkAccessFlags2 access) const {
+      if (access & vk::AccessReadMask) access |= VK_ACCESS_2_MEMORY_READ_BIT;
+      if (access & vk::AccessWriteMask) access |= VK_ACCESS_2_MEMORY_WRITE_BIT;
+
+      if (m_memoryBarrier.dstAccessMask & access)
+        return true;
+
+      for (const auto& b : m_imageBarriers) {
+        if (b.dstAccessMask & access)
           return true;
       }
 
