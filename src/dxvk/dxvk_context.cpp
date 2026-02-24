@@ -4322,19 +4322,19 @@ namespace dxvk {
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
 
     // Create source and destination image views
-    DxvkMetaCopyViews views(
+    DxvkMetaResolveViews views(
       dstImage, dstSubresource, viewFormats.dstFormat,
-      srcImage, srcSubresource, viewFormats.srcFormat);
+      srcImage, srcSubresource, viewFormats.srcFormat,
+      VK_SHADER_STAGE_FRAGMENT_BIT);
 
-    VkAccessFlags dstAccess = views.srcImageView->getLayout();
-    VkImageLayout dstLayout = views.dstImageView->getLayout();
+    VkImageLayout dstLayout = views.dstView->getLayout();
 
-    // Flag used to determine whether we can do an UNDEFINED transition
     bool doDiscard = dstImage->isFullSubresource(dstSubresource, extent);
 
     // This function can process both color and depth-stencil images, so
     // some things change a lot depending on the destination image type
-    VkPipelineStageFlags dstStages;
+    VkAccessFlags2 dstAccess = 0u;
+    VkPipelineStageFlags2 dstStages = 0u;
 
     if (dstSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
       dstStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -4352,27 +4352,20 @@ namespace dxvk {
     }
 
     // Might have to transition source image as well
-    VkImageLayout srcLayout = (srcSubresource.aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-      ? srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-      : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+    VkImageLayout srcLayout = views.srcView->getLayout();
 
     small_vector<DxvkResourceAccess, 2u> accessBatch;
-    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout,
-      dstStages, dstAccess, doDiscard);
+    accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstLayout, dstStages, dstAccess, doDiscard);
     accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
-
-    // Create pipeline for the copy operation
-    DxvkMetaCopyPipeline pipeInfo = m_common->metaCopy().getCopyImagePipeline(
-      views.srcImageView->info().viewType, viewFormats.dstFormat, dstImage->info().sampleCount);
 
     // Create and initialize descriptor set
     std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
     auto& imagePlane0Descriptor = descriptors[0u];
     imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    imagePlane0Descriptor.descriptor = views.srcImageView->getDescriptor();
+    imagePlane0Descriptor.descriptor = views.srcView->getDescriptor();
 
     auto& imagePlane1Descriptor = descriptors[1u];
     imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
@@ -4389,19 +4382,34 @@ namespace dxvk {
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    VkRect2D scissor;
+    VkRect2D scissor = { };
     scissor.offset = { dstOffset.x, dstOffset.y };
     scissor.extent = { extent.width, extent.height };
 
     VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
-    attachmentInfo.imageView = views.dstImageView->handle();
+    attachmentInfo.imageView = views.dstView->handle();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    // Don't bother optimizing load ops for the partial copy case, shouldn't happen
-    if (dstSubresource.aspectMask != dstImage->formatInfo()->aspectMask)
-      attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
+
+    // Clear stencil aspect to 0 if we need to do bitwise stencil copies.
+    // Don't bother optimizing load/store ops for partial copies, as that
+    // should not happen in practice.
+    bool useBitwiseStencil = false;
+
+    if (dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      useBitwiseStencil = !m_device->features().extShaderStencilExport;
+
+      if (useBitwiseStencil)
+        stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+      if (!(dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT))
+        attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    } else {
+      stencilInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    }
 
     VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea = scissor;
@@ -4416,12 +4424,8 @@ namespace dxvk {
       if (dstAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
         renderingInfo.pDepthAttachment = &attachmentInfo;
       if (dstAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-        renderingInfo.pStencilAttachment = &attachmentInfo;
+        renderingInfo.pStencilAttachment = &stencilInfo;
     }
-
-    VkOffset2D srcCoordOffset = {
-      srcOffset.x - dstOffset.x,
-      srcOffset.y - dstOffset.y };
 
     // Perform the actual copy operation
     m_cmd->cmdBeginRendering(DxvkCmdBuffer::ExecBuffer, &renderingInfo);
@@ -4429,14 +4433,64 @@ namespace dxvk {
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeline);
+    // Set up push data for the copy shaders
+    DxvkMetaImageCopy::Args pushArgs = { };
+    pushArgs.srcOffset = srcOffset;
+    pushArgs.extent = extent;
 
-    m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.layout, descriptors.size(), descriptors.data(),
-      sizeof(srcCoordOffset), &srcCoordOffset);
+    // Create pipeline for the copy operation
+    if (!useBitwiseStencil || dstSubresource.aspectMask != VK_IMAGE_ASPECT_STENCIL_BIT) {
+      DxvkMetaImageCopy::Key metaKey = { };
+      metaKey.srcViewType = views.srcView->info().viewType;
+      metaKey.dstFormat = viewFormats.dstFormat;
+      metaKey.dstAspects = dstSubresource.aspectMask;
+      metaKey.samples = dstImage->info().sampleCount;
 
-    m_cmd->cmdDraw(3, dstSubresource.layerCount, 0, 0);
+      if (useBitwiseStencil)
+         metaKey.dstAspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+
+      DxvkMetaImageCopy meta = m_common->metaCopy().getPipeline(metaKey);
+
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
+
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        meta.layout, descriptors.size(), descriptors.data(), 0, nullptr);
+
+      for (pushArgs.layerIndex = 0u; pushArgs.layerIndex < dstSubresource.layerCount; pushArgs.layerIndex++) {
+        m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+          meta.layout, 0, nullptr, sizeof(pushArgs), &pushArgs);
+        m_cmd->cmdDraw(3u, extent.depth, 0u, 0u);
+      }
+    }
+
+    if (useBitwiseStencil) {
+      DxvkMetaImageCopy::Key metaKey = { };
+      metaKey.srcViewType = views.srcView->info().viewType;
+      metaKey.dstFormat = viewFormats.dstFormat;
+      metaKey.dstAspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+      metaKey.samples = dstImage->info().sampleCount;
+      metaKey.bitwiseStencil = VK_TRUE;
+
+      DxvkMetaImageCopy meta = m_common->metaCopy().getPipeline(metaKey);
+
+      m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
+        VK_PIPELINE_BIND_POINT_GRAPHICS, meta.pipeline);
+
+      m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+        meta.layout, descriptors.size(), descriptors.data(), 0, nullptr);
+
+      for (pushArgs.layerIndex = 0u; pushArgs.layerIndex < dstSubresource.layerCount; pushArgs.layerIndex++) {
+        for (pushArgs.stencilBit = 0x1u; pushArgs.stencilBit < 0x100u; pushArgs.stencilBit <<= 1u) {
+          m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
+            meta.layout, 0, nullptr, sizeof(pushArgs), &pushArgs);
+
+          m_cmd->cmdSetStencilWriteMask(VK_STENCIL_FACE_FRONT_AND_BACK, pushArgs.stencilBit);
+          m_cmd->cmdDraw(3u, extent.depth, 0u, 0u);
+        }
+      }
+    }
+
     m_cmd->cmdEndRendering(DxvkCmdBuffer::ExecBuffer);
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
