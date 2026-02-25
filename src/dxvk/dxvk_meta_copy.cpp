@@ -160,61 +160,6 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyViews::DxvkMetaCopyViews(
-    const Rc<DxvkImage>&            dstImage,
-    const VkImageSubresourceLayers& dstSubresources,
-          VkFormat                  dstFormat,
-    const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources,
-          VkFormat                  srcFormat) {
-    VkImageAspectFlags dstAspects = dstImage->formatInfo()->aspectMask;
-    VkImageAspectFlags srcAspects = srcImage->formatInfo()->aspectMask;
-
-    // We don't support 3D here, so we can safely ignore that case
-    VkImageViewType dstViewType = dstImage->info().type == VK_IMAGE_TYPE_1D
-      ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    VkImageViewType srcViewType = srcImage->info().type == VK_IMAGE_TYPE_1D
-      ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-
-    DxvkImageViewKey dstViewInfo;
-    dstViewInfo.viewType = dstViewType;
-    dstViewInfo.format = dstFormat;
-    dstViewInfo.aspects = dstSubresources.aspectMask;
-    dstViewInfo.mipIndex = dstSubresources.mipLevel;
-    dstViewInfo.mipCount = 1u;
-    dstViewInfo.layerIndex = dstSubresources.baseArrayLayer;
-    dstViewInfo.layerCount = dstSubresources.layerCount;
-    dstViewInfo.usage = (dstAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-      ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    dstImageView = dstImage->createView(dstViewInfo);
-
-    // Create source image views
-    DxvkImageViewKey srcViewInfo;
-    srcViewInfo.viewType = srcViewType;
-    srcViewInfo.format = srcFormat;
-    srcViewInfo.aspects = srcSubresources.aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT;
-    srcViewInfo.mipIndex = srcSubresources.mipLevel;
-    srcViewInfo.mipCount = 1u;
-    srcViewInfo.layerIndex = srcSubresources.baseArrayLayer;
-    srcViewInfo.layerCount = srcSubresources.layerCount;
-    srcViewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-
-    srcImageView = srcImage->createView(srcViewInfo);
-
-    if (srcAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-      srcViewInfo.aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
-      srcStencilView = srcImage->createView(srcViewInfo);
-    }
-  }
-  
-
-  DxvkMetaCopyViews::~DxvkMetaCopyViews() {
-
-  }
-
-  
   DxvkMetaCopyObjects::DxvkMetaCopyObjects(DxvkDevice* device)
   : m_device(device) {
 
