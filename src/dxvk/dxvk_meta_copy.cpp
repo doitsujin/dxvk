@@ -3,8 +3,6 @@
 #include "dxvk_shader_builtin.h"
 #include "dxvk_util.h"
 
-#include <dxvk_copy_buffer_image.h>
-
 namespace dxvk {
 
   struct DxvkMetaImageCopyPushArgs {
@@ -175,7 +173,7 @@ namespace dxvk {
     for (const auto& p : m_imageBufferCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
-    vk->vkDestroyPipeline(vk->device(), m_copyBufferImagePipeline.pipeline, nullptr);
+    vk->vkDestroyPipeline(vk->device(), m_packedImageBufferCopyPipeline.pipeline, nullptr);
   }
 
 
@@ -218,6 +216,16 @@ namespace dxvk {
   }
 
 
+  DxvkMetaPackedBufferImageCopy DxvkMetaCopyObjects::getPipeline(const DxvkMetaPackedBufferImageCopy::Key& key) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    if (!m_packedImageBufferCopyPipeline.pipeline)
+      m_packedImageBufferCopyPipeline = createPackedImageBufferCopyPipeline(key);
+
+    return m_packedImageBufferCopyPipeline;
+  }
+
+
   DxvkMetaCopyFormats DxvkMetaCopyObjects::getCopyImageFormats(
           VkFormat              dstFormat,
           VkImageAspectFlags    dstAspect,
@@ -253,31 +261,6 @@ namespace dxvk {
     }
 
     return { VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED };
-  }
-
-
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyFormattedBufferPipeline() {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-
-    if (!m_copyBufferImagePipeline.pipeline)
-      m_copyBufferImagePipeline = createCopyFormattedBufferPipeline();
-
-    return m_copyBufferImagePipeline;
-  }
-  
-  
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyFormattedBufferPipeline() {
-    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
-    }};
-
-    DxvkMetaCopyPipeline pipeline;
-    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
-      sizeof(DxvkFormattedBufferCopyArgs), bindings.size(), bindings.data());
-    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout,
-      util::DxvkBuiltInShaderStage(dxvk_copy_buffer_image, nullptr));
-    return pipeline;
   }
 
 
@@ -673,6 +656,45 @@ namespace dxvk {
   }
 
 
+  std::vector<uint32_t> DxvkMetaCopyObjects::createCsCopyPackedBufferImage(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaPackedBufferImageCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "cs"));
+    DxvkBuiltInComputeShader compute = helper.buildComputeShader(builder, determineWorkgroupSize(key));
+
+    // Declare resources. We don't know the exact format, but it's going to be something uint.
+    ir::SsaDef uav = helper.declareTexelBufferUav(builder, 0u, "dst_buf", VK_FORMAT_R32G32B32A32_UINT);
+    ir::SsaDef srv = helper.declareTexelBufferSrv(builder, 1u, "src_buf", VK_FORMAT_R32G32B32A32_UINT);
+
+    // Declare push data. We always need all three components here.
+    ir::BasicType coordType2D(ir::ScalarType::eU32, 2u);
+    ir::BasicType coordType3D(ir::ScalarType::eU32, 3u);
+
+    ir::SsaDef dstOffset = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaPackedBufferImageCopy::Args, dstOffset), "dst_offset");
+    ir::SsaDef dstLayout = helper.declarePushData(builder, coordType2D, offsetof(DxvkMetaPackedBufferImageCopy::Args, dstLayout), "dst_layout");
+    ir::SsaDef srcOffset = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaPackedBufferImageCopy::Args, srcOffset), "src_offset");
+    ir::SsaDef srcLayout = helper.declarePushData(builder, coordType2D, offsetof(DxvkMetaPackedBufferImageCopy::Args, srcLayout), "src_layout");
+    ir::SsaDef extent = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaPackedBufferImageCopy::Args, extent), "extent");
+
+    helper.emitConditionalBlock(builder, helper.emitBoundCheck(builder, compute.globalId, extent, 3u));
+
+    ir::SsaDef srcCoord = builder.add(ir::Op::IAdd(coordType3D, srcOffset, compute.globalId));
+    ir::SsaDef dstCoord = builder.add(ir::Op::IAdd(coordType3D, dstOffset, compute.globalId));
+
+    ir::SsaDef srcIndex = flattenBufferImageCoord(builder, helper, srcCoord, ir::SsaDef(), srcLayout);
+    ir::SsaDef dstIndex = flattenBufferImageCoord(builder, helper, dstCoord, ir::SsaDef(), dstLayout);
+
+    ir::BasicType pixelType(ir::ScalarType::eU32, 4u);
+
+    ir::SsaDef value = builder.add(ir::Op::BufferLoad(pixelType, srv, srcIndex, 0u));
+    builder.add(ir::Op::BufferStore(uav, dstIndex, value, 0u));
+
+    return helper.buildShader(builder);
+  }
+
+
   VkPipeline DxvkMetaCopyObjects::createCopyToImagePipeline(
     const DxvkPipelineLayout*           layout,
     const util::DxvkBuiltInShaderStage& vs,
@@ -781,6 +803,25 @@ namespace dxvk {
   }
 
 
+  DxvkMetaPackedBufferImageCopy DxvkMetaCopyObjects::createPackedImageBufferCopyPipeline(
+    const DxvkMetaPackedBufferImageCopy::Key& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+    }};
+
+    DxvkMetaPackedBufferImageCopy pipeline = { };
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
+      sizeof(DxvkMetaPackedBufferImageCopy::Args), bindings.size(), bindings.data());
+
+    auto csSpirv = createCsCopyPackedBufferImage(pipeline.layout, key);
+
+    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout, csSpirv);
+    pipeline.workgroupSize = determineWorkgroupSize(key);
+    return pipeline;
+  }
+
+
   std::string DxvkMetaCopyObjects::getName(const DxvkMetaImageCopy::Key& key, const char* type) {
     std::stringstream name;
     name << "meta_" << type << "_copy_image";
@@ -816,6 +857,13 @@ namespace dxvk {
   }
 
 
+  std::string DxvkMetaCopyObjects::getName(const DxvkMetaPackedBufferImageCopy::Key& key, const char* type) {
+    std::stringstream name;
+    name << "meta_" << type << "_copy_packed_image_buffer";
+    return str::tolower(name.str());
+  }
+
+
   VkExtent3D DxvkMetaCopyObjects::determineWorkgroupSize(const DxvkMetaImageToBufferCopy::Key& key) {
     VkExtent3D workgroupSize = { 64u, 1u, 1u };
 
@@ -843,6 +891,13 @@ namespace dxvk {
     }
 
     return workgroupSize;
+  }
+
+
+  VkExtent3D DxvkMetaCopyObjects::determineWorkgroupSize(const DxvkMetaPackedBufferImageCopy::Key& key) {
+    // Use linear workgroup setup for this pipeline since
+    // memory is laid out linearly in buffers anyway.
+    return VkExtent3D { 64u, 1u, 1u };
   }
 
 }

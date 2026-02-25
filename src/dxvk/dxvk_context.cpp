@@ -634,6 +634,16 @@ namespace dxvk {
     this->endCurrentPass(true);
     this->invalidateState();
 
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
+      const char* dstName = dstBuffer->info().debugName;
+      const char* srcName = srcBuffer->info().debugName;
+
+      m_cmd->cmdBeginDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0xf0dcdc, str::format("Copy packed buffer (",
+          dstName ? dstName : "unknown", ", ",
+          srcName ? srcName : "unknown", ")").c_str()));
+    }
+
     // We'll use texel buffer views with an appropriately
     // sized integer format to perform the copy
     VkFormat format = VK_FORMAT_UNDEFINED;
@@ -712,7 +722,8 @@ namespace dxvk {
     accessBatch.emplace_back(*dstView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
     syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
 
-    auto pipeInfo = m_common->metaCopy().getCopyFormattedBufferPipeline();
+    DxvkMetaPackedBufferImageCopy::Key metaKey = { };
+    DxvkMetaPackedBufferImageCopy meta = m_common->metaCopy().getPipeline(metaKey);
 
     std::array<DxvkDescriptorWrite, 2> descriptors = { };
 
@@ -724,24 +735,27 @@ namespace dxvk {
     srcDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
     srcDescriptor.descriptor = srcView->getDescriptor(false);
 
-    DxvkFormattedBufferCopyArgs args = { };
-    args.dstOffset = dstOffset;
-    args.srcOffset = srcOffset;
-    args.extent = extent;
-    args.dstSize = { dstSize.width, dstSize.height };
-    args.srcSize = { srcSize.width, srcSize.height };
+    DxvkMetaPackedBufferImageCopy::Args pushArgs = { };
+    pushArgs.dstOffset = dstOffset;
+    pushArgs.srcOffset = srcOffset;
+    pushArgs.dstLayout = { dstSize.width, dstSize.height };
+    pushArgs.srcLayout = { srcSize.width, srcSize.height };
+    pushArgs.extent = extent;
+
+    VkExtent3D workgroupCount = util::computeBlockCount(extent, meta.workgroupSize);
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeInfo.pipeline);
+      VK_PIPELINE_BIND_POINT_COMPUTE, meta.pipeline);
 
     m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-      pipeInfo.layout, descriptors.size(), descriptors.data(),
-      sizeof(args), &args);
+      meta.layout, descriptors.size(), descriptors.data(),
+      sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
-      (extent.width  + 7) / 8,
-      (extent.height + 7) / 8,
-      extent.depth);
+      workgroupCount.width, workgroupCount.height, workgroupCount.depth);
+
+    if (unlikely(m_features.test(DxvkContextFeature::DebugUtils)))
+      m_cmd->cmdEndDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer);
   }
 
 
