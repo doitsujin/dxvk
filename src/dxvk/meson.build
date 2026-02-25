@@ -1,10 +1,4 @@
 dxvk_shaders = files([
-  'shaders/dxvk_buffer_to_image_d.frag',
-  'shaders/dxvk_buffer_to_image_ds_export.frag',
-  'shaders/dxvk_buffer_to_image_f.frag',
-  'shaders/dxvk_buffer_to_image_s_discard.frag',
-  'shaders/dxvk_buffer_to_image_u.frag',
-
   'shaders/dxvk_copy_buffer_image.comp',
 
   'shaders/dxvk_cursor_vert.vert',
