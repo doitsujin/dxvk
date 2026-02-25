@@ -3817,7 +3817,7 @@ namespace dxvk {
           srcName ? srcName : "unknown", ")").c_str()));
     }
 
-    auto formatInfo = lookupFormatInfo(bufferFormat);
+    auto formatInfo = lookupFormatInfo(sanitizeTexelBufferFormat(bufferFormat));
 
     if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
       Logger::err(str::format("DxvkContext: Planar formats not supported for shader-based image to buffer copies"));
@@ -3848,43 +3848,20 @@ namespace dxvk {
 
     Rc<DxvkBufferView> bufferView = buffer->createView(bufferViewInfo);
 
-    // Transition image to a layout we can use for reading as necessary
-    VkImageLayout imageLayout = (image->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-      ? image->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-      : image->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    small_vector<DxvkResourceAccess, 2u> accessBatch;
-    accessBatch.emplace_back(*bufferView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
-
-    auto& srcAccess = accessBatch.emplace_back(*image, vk::makeSubresourceRange(imageSubresource),
-      imageLayout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
-    srcAccess.imageOffset = imageOffset;
-    srcAccess.imageExtent = imageExtent;
-
-    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
-
-    // Retrieve pipeline
-    VkImageViewType viewType = image->info().type == VK_IMAGE_TYPE_1D
-      ? VK_IMAGE_VIEW_TYPE_1D_ARRAY
-      : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-
-    if (image->info().type == VK_IMAGE_TYPE_3D)
-      viewType = VK_IMAGE_VIEW_TYPE_3D;
-
-    DxvkMetaCopyPipeline pipeline = m_common->metaCopy().getCopyImageToBufferPipeline(viewType, bufferFormat);
-
-    // Create image views  for the main and stencil aspects
-    std::array<DxvkDescriptorWrite, 3> descriptors = { };
-
+    // Create image views
     DxvkImageViewKey imageViewInfo;
-    imageViewInfo.viewType = viewType;
+    imageViewInfo.viewType = DxvkMetaResolveViews::viewType(*image, imageSubresource, VK_IMAGE_USAGE_SAMPLED_BIT);
     imageViewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageViewInfo.format = image->info().format;
-    imageViewInfo.layout = imageLayout;
+    imageViewInfo.format = getLinearFormat(image->info().format);
+    imageViewInfo.aspects = image->formatInfo()->aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT;
     imageViewInfo.mipIndex = imageSubresource.mipLevel;
     imageViewInfo.mipCount = 1;
     imageViewInfo.layerIndex = imageSubresource.baseArrayLayer;
     imageViewInfo.layerCount = imageSubresource.layerCount;
+
+    Rc<DxvkImageView> imageView = image->createView(imageViewInfo);
+
+    std::array<DxvkDescriptorWrite, 3> descriptors = { };
 
     auto& bufferDescriptor = descriptors[0u];
     bufferDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
@@ -3892,35 +3869,54 @@ namespace dxvk {
 
     auto& imagePlane0Descriptor = descriptors[1u];
     imagePlane0Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-    if ((imageViewInfo.aspects = (imageSubresource.aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT))))
-      imagePlane0Descriptor.descriptor = image->createView(imageViewInfo)->getDescriptor();
+    imagePlane0Descriptor.descriptor = imageView->getDescriptor();
 
     auto& imagePlane1Descriptor = descriptors[2u];
     imagePlane1Descriptor.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 
-    if ((imageViewInfo.aspects = (imageSubresource.aspectMask & (VK_IMAGE_ASPECT_STENCIL_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT))))
+    if (imageSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      imageViewInfo.aspects = VK_IMAGE_ASPECT_STENCIL_BIT;
       imagePlane1Descriptor.descriptor = image->createView(imageViewInfo)->getDescriptor();
+    }
+
+    // Transition image to a layout we can use for reading as necessary
+    small_vector<DxvkResourceAccess, 2u> accessBatch;
+    accessBatch.emplace_back(*bufferView, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT);
+
+    VkImageLayout layout = imageView->getLayout();
+
+    auto& srcAccess = accessBatch.emplace_back(*image, vk::makeSubresourceRange(imageSubresource),
+      layout, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT, false);
+    srcAccess.imageOffset = imageOffset;
+    srcAccess.imageExtent = imageExtent;
+
+    syncResources(DxvkCmdBuffer::ExecBuffer, accessBatch.size(), accessBatch.data());
+
+    // Retrieve pipeline
+    DxvkMetaImageToBufferCopy::Key metaKey = { };
+    metaKey.srcViewType = imageViewInfo.viewType;
+    metaKey.srcFormat = bufferFormat;
+    metaKey.dstFormat = sanitizeTexelBufferFormat(bufferFormat);
+
+    DxvkMetaImageToBufferCopy meta = m_common->metaCopy().getPipeline(metaKey);
 
     // Compute number of workgroups
-    VkExtent3D workgroupCount = imageExtent;
+    VkExtent3D workgroupCount = util::computeBlockCount(imageExtent, meta.workgroupSize);
     workgroupCount.depth *= imageSubresource.layerCount;
-    workgroupCount = util::computeBlockCount(workgroupCount, { 16, 16, 1 });
 
     // Set up shader arguments and dispatch shader
-    DxvkBufferImageCopyArgs pushConst = { };
-    pushConst.imageOffset = imageOffset;
-    pushConst.bufferOffset = 0u;
-    pushConst.imageExtent = imageExtent;
-    pushConst.bufferImageWidth = rowPitch / formatInfo->elementSize;
-    pushConst.bufferImageHeight = slicePitch / rowPitch;
+    DxvkMetaImageToBufferCopy::Args pushArgs = { };
+    pushArgs.dstExtent.width = rowPitch / formatInfo->elementSize;
+    pushArgs.dstExtent.height = slicePitch / rowPitch;
+    pushArgs.srcOffset = imageOffset;
+    pushArgs.srcExtent = imageExtent;
 
     m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
-      VK_PIPELINE_BIND_POINT_COMPUTE, pipeline.pipeline);
+      VK_PIPELINE_BIND_POINT_COMPUTE, meta.pipeline);
 
     m_cmd->bindResources(DxvkCmdBuffer::ExecBuffer,
-      pipeline.layout, descriptors.size(), descriptors.data(),
-      sizeof(pushConst), &pushConst);
+      meta.layout, descriptors.size(), descriptors.data(),
+      sizeof(pushArgs), &pushArgs);
 
     m_cmd->cmdDispatch(DxvkCmdBuffer::ExecBuffer,
       workgroupCount.width,
