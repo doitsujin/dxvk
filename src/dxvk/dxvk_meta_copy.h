@@ -160,15 +160,30 @@ namespace dxvk {
 
 
   /**
-   * \brief Push constants for formatted buffer copies
+   * \brief Packed buffer image copy pipeline
+   *
+   * Used to copy data between images that that are stored
+   * as buffers in memory.
    */
-  struct DxvkFormattedBufferCopyArgs {
-    VkOffset3D dstOffset; uint32_t pad0;
-    VkOffset3D srcOffset; uint32_t pad1;
-    VkExtent3D extent;    uint32_t pad2;
-    VkExtent2D dstSize;
-    VkExtent2D srcSize;
+  struct DxvkMetaPackedBufferImageCopy {
+    /** Look-up key. Currently empty because there only needs to
+     *  be one variant of the pipeline with the current setup. */
+    struct Key { };
+
+    /** Shader args for packed buffer image copies */
+    struct Args {
+      VkOffset3D dstOffset = { };
+      VkExtent2D dstLayout = { };
+      VkOffset3D srcOffset = { };
+      VkExtent2D srcLayout = { };
+      VkExtent3D extent = { };
+    };
+
+    const DxvkPipelineLayout* layout = nullptr;
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkExtent3D workgroupSize = { };
   };
+
 
   /**
    * \brief Pair of view formats for copy operation
@@ -176,17 +191,6 @@ namespace dxvk {
   struct DxvkMetaCopyFormats {
     VkFormat dstFormat = VK_FORMAT_UNDEFINED;
     VkFormat srcFormat = VK_FORMAT_UNDEFINED;
-  };
-
-  /**
-   * \brief Copy pipeline
-   * 
-   * Stores the objects for a single pipeline
-   * that is used for fragment shader copies.
-   */
-  struct DxvkMetaCopyPipeline {
-    const DxvkPipelineLayout* layout   = nullptr;
-    VkPipeline                pipeline = VK_NULL_HANDLE;
   };
 
 
@@ -228,6 +232,14 @@ namespace dxvk {
     DxvkMetaImageToBufferCopy getPipeline(const DxvkMetaImageToBufferCopy::Key& key);
 
     /**
+     * \brief Gets or creates pipeline for packed image buffer copies
+     *
+     * \param [in] key Pipeline properties
+     * \returns Pipeline object
+     */
+    DxvkMetaPackedBufferImageCopy getPipeline(const DxvkMetaPackedBufferImageCopy::Key& key);
+
+    /**
      * \brief Queries color format for d->c copies
      * 
      * Returns the color format that we need to use
@@ -245,12 +257,6 @@ namespace dxvk {
             VkFormat              srcFormat,
             VkImageAspectFlags    srcAspect) const;
 
-    /**
-     * \brief Creates pipeline for buffer image copy
-     * \returns Compute pipeline for buffer image copies
-     */
-    DxvkMetaCopyPipeline getCopyFormattedBufferPipeline();
-
   private:
 
     DxvkDevice* m_device = nullptr;
@@ -261,9 +267,7 @@ namespace dxvk {
     std::unordered_map<DxvkMetaBufferToImageCopy::Key, DxvkMetaBufferToImageCopy, DxvkHash, DxvkEq> m_bufferImageCopyPipelines;
     std::unordered_map<DxvkMetaImageToBufferCopy::Key, DxvkMetaImageToBufferCopy, DxvkHash, DxvkEq> m_imageBufferCopyPipelines;
 
-    DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
-
-    DxvkMetaCopyPipeline createCopyFormattedBufferPipeline();
+    DxvkMetaPackedBufferImageCopy m_packedImageBufferCopyPipeline = { };
 
     std::vector<uint32_t> createVsCopyImage(
       const DxvkPipelineLayout*           layout,
@@ -285,6 +289,10 @@ namespace dxvk {
       const DxvkPipelineLayout*           layout,
       const DxvkMetaImageToBufferCopy::Key& key);
 
+    std::vector<uint32_t> createCsCopyPackedBufferImage(
+      const DxvkPipelineLayout*           layout,
+      const DxvkMetaPackedBufferImageCopy::Key& key);
+
     VkPipeline createCopyToImagePipeline(
       const DxvkPipelineLayout*           layout,
       const util::DxvkBuiltInShaderStage& vs,
@@ -303,13 +311,20 @@ namespace dxvk {
     DxvkMetaImageToBufferCopy createImageToBufferCopyPipeline(
       const DxvkMetaImageToBufferCopy::Key& key);
 
+    DxvkMetaPackedBufferImageCopy createPackedImageBufferCopyPipeline(
+      const DxvkMetaPackedBufferImageCopy::Key& key);
+
     static std::string getName(const DxvkMetaImageCopy::Key& key, const char* type);
 
     static std::string getName(const DxvkMetaBufferToImageCopy::Key& key, const char* type);
 
     static std::string getName(const DxvkMetaImageToBufferCopy::Key& key, const char* type);
 
+    static std::string getName(const DxvkMetaPackedBufferImageCopy::Key& key, const char* type);
+
     static VkExtent3D determineWorkgroupSize(const DxvkMetaImageToBufferCopy::Key& key);
+
+    static VkExtent3D determineWorkgroupSize(const DxvkMetaPackedBufferImageCopy::Key& key);
 
   };
   
