@@ -6,10 +6,6 @@ dxvk_shaders = files([
 
   'shaders/dxvk_dummy_frag.frag',
 
-  'shaders/dxvk_fullscreen_geom.geom',
-  'shaders/dxvk_fullscreen_vert.vert',
-  'shaders/dxvk_fullscreen_layer_vert.vert',
-
   'shaders/dxvk_image_to_buffer_ds.comp',
   'shaders/dxvk_image_to_buffer_f.comp',
 
