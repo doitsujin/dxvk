@@ -8197,7 +8197,7 @@ namespace dxvk {
             dstBarrier.image = info.storage->getImageInfo().image;
             dstBarrier.subresourceRange = subresourceRange;
 
-            if (info.image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) {
+            if (info.image->info().type == VK_IMAGE_TYPE_3D) {
               dstBarrier.subresourceRange.baseArrayLayer = 0u;
               dstBarrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
             }
@@ -8216,7 +8216,7 @@ namespace dxvk {
             srcBarrier.image = oldStorage->getImageInfo().image;
             srcBarrier.subresourceRange = subresourceRange;
 
-            if (info.image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) {
+            if (info.image->info().type == VK_IMAGE_TYPE_3D) {
               srcBarrier.subresourceRange.baseArrayLayer = 0u;
               srcBarrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
             }
@@ -8349,7 +8349,7 @@ namespace dxvk {
               dstBarrier.image = info.storage->getImageInfo().image;
               dstBarrier.subresourceRange = vk::makeSubresourceRange(region.dstSubresource);
 
-              if (info.image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) {
+              if (info.image->info().type == VK_IMAGE_TYPE_3D) {
                 dstBarrier.subresourceRange.baseArrayLayer = 0u;
                 dstBarrier.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
               }
