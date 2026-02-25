@@ -3,9 +3,6 @@
 #include "dxvk_shader_builtin.h"
 #include "dxvk_util.h"
 
-#include <dxvk_image_to_buffer_ds.h>
-#include <dxvk_image_to_buffer_f.h>
-
 #include <dxvk_copy_buffer_image.h>
 
 namespace dxvk {
@@ -175,7 +172,7 @@ namespace dxvk {
     for (const auto& p : m_bufferImageCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
-    for (const auto& p : m_imageToBufferPipelines)
+    for (const auto& p : m_imageBufferCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
     vk->vkDestroyPipeline(vk->device(), m_copyBufferImagePipeline.pipeline, nullptr);
@@ -204,6 +201,19 @@ namespace dxvk {
 
     DxvkMetaBufferToImageCopy pipeline = createBufferToImageCopyPipeline(key);
     m_bufferImageCopyPipelines.insert({ key, pipeline });
+    return pipeline;
+  }
+
+
+  DxvkMetaImageToBufferCopy DxvkMetaCopyObjects::getPipeline(const DxvkMetaImageToBufferCopy::Key& key) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    auto entry = m_imageBufferCopyPipelines.find(key);
+    if (entry != m_imageBufferCopyPipelines.end())
+      return entry->second;
+
+    DxvkMetaImageToBufferCopy pipeline = createImageToBufferCopyPipeline(key);
+    m_imageBufferCopyPipelines.insert({ key, pipeline });
     return pipeline;
   }
 
@@ -246,27 +256,6 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyImageToBufferPipeline(
-          VkImageViewType       viewType,
-          VkFormat              dstFormat) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-
-    DxvkMetaBufferImageCopyPipelineKey key;
-    key.imageViewType = viewType;
-    key.imageFormat = VK_FORMAT_UNDEFINED;
-    key.bufferFormat = dstFormat;
-    key.imageAspects = lookupFormatInfo(dstFormat)->aspectMask;
-
-    auto entry = m_imageToBufferPipelines.find(key);
-    if (entry != m_imageToBufferPipelines.end())
-      return entry->second;
-
-    DxvkMetaCopyPipeline pipeline = createCopyImageToBufferPipeline(key);
-    m_imageToBufferPipelines.insert({ key, pipeline });
-    return pipeline;
-  }
-
-
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyFormattedBufferPipeline() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
@@ -288,42 +277,6 @@ namespace dxvk {
       sizeof(DxvkFormattedBufferCopyArgs), bindings.size(), bindings.data());
     pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout,
       util::DxvkBuiltInShaderStage(dxvk_copy_buffer_image, nullptr));
-    return pipeline;
-  }
-
-
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyImageToBufferPipeline(
-    const DxvkMetaBufferImageCopyPipelineKey& key) {
-    DxvkMetaCopyPipeline pipeline = { };
-
-    static const std::array<DxvkDescriptorSetLayoutBinding, 3> bindings = {{
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
-    }};
-
-    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
-      sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
-
-    if (key.imageViewType != VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
-      Logger::err(str::format("DxvkMetaCopyObjects: Unsupported view type: ", key.imageViewType));
-      return DxvkMetaCopyPipeline();
-    }
-
-    VkSpecializationMapEntry specMap = { };
-    specMap.size = sizeof(VkFormat);
-
-    VkSpecializationInfo specInfo = { };
-    specInfo.mapEntryCount = 1;
-    specInfo.pMapEntries = &specMap;
-    specInfo.dataSize = sizeof(VkFormat);
-    specInfo.pData = &key.bufferFormat;
-
-    util::DxvkBuiltInShaderStage stage = (key.imageAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-      ? util::DxvkBuiltInShaderStage(dxvk_image_to_buffer_ds, &specInfo)
-      : util::DxvkBuiltInShaderStage(dxvk_image_to_buffer_f, &specInfo);
-
-    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout, stage);
     return pipeline;
   }
 
@@ -560,6 +513,166 @@ namespace dxvk {
   }
 
 
+  std::vector<uint32_t> DxvkMetaCopyObjects::createCsCopyImageToBuffer(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaImageToBufferCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "cs"));
+    DxvkBuiltInComputeShader compute = helper.buildComputeShader(builder, determineWorkgroupSize(key));
+
+    ir::SsaDef uav = helper.declareTexelBufferUav(builder, 0u, "buf", key.dstFormat);
+
+    auto srcFormatInfo = lookupFormatInfo(key.srcFormat);
+
+    ir::SsaDef srv0 = helper.declareImageSrv(builder, 1u, "img", key.srcViewType, key.srcFormat,
+      VkImageAspectFlagBits(srcFormatInfo->aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT), VK_SAMPLE_COUNT_1_BIT);
+    ir::SsaDef srv1 = { };
+
+    if (srcFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      srv1 = helper.declareImageSrv(builder, 2u, "img_stencil",
+        key.srcViewType, key.srcFormat, VK_IMAGE_ASPECT_STENCIL_BIT, VK_SAMPLE_COUNT_1_BIT);
+    }
+
+    ir::BasicType coordType2D(ir::ScalarType::eU32, 2u);
+    ir::BasicType coordType3D(ir::ScalarType::eU32, 3u);
+
+    ir::SsaDef dstOffset = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaImageToBufferCopy::Args, dstOffset), "dst_offset");
+    ir::SsaDef dstExtent = helper.declarePushData(builder, coordType2D, offsetof(DxvkMetaImageToBufferCopy::Args, dstExtent), "dst_extent");
+    ir::SsaDef srcOffset = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaImageToBufferCopy::Args, srcOffset), "src_offset");
+    ir::SsaDef srcExtent = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaImageToBufferCopy::Args, srcExtent), "src_extent");
+
+    ir::ResourceKind kind = helper.determineResourceKind(key.srcViewType, VK_SAMPLE_COUNT_1_BIT);
+    uint32_t coordDims = ir::resourceCoordComponentCount(kind);
+
+    helper.emitConditionalBlock(builder, helper.emitBoundCheck(
+      builder, compute.globalId, srcExtent, coordDims));
+
+    ir::SsaDef layer = ir::resourceIsLayered(kind)
+      ? helper.emitExtractVector(builder, compute.globalId, 2u, 1u)
+      : ir::SsaDef();
+
+    ir::SsaDef mip = builder.makeConstant(0u);
+
+    ir::SsaDef srcCoord = builder.add(ir::Op::IAdd(coordType3D, srcOffset, compute.globalId));
+    ir::SsaDef dstCoord = builder.add(ir::Op::IAdd(coordType3D, dstOffset, compute.globalId));
+
+    srcCoord = helper.emitExtractVector(builder, srcCoord, 0u, coordDims);
+    dstCoord = helper.emitExtractVector(builder, dstCoord, 0u, coordDims);
+
+    // Perform actual image loads
+    VkImageAspectFlagBits srcAspect = VkImageAspectFlagBits(srcFormatInfo->aspectMask & ~VK_IMAGE_ASPECT_STENCIL_BIT);
+
+    ir::BasicType typeOut = ir::BasicType(helper.determineSampledType(key.dstFormat, VK_IMAGE_ASPECT_COLOR_BIT), 4u);
+    ir::BasicType type0 = ir::BasicType(helper.determineSampledType(key.srcFormat, srcAspect), 4u);
+    ir::BasicType type1 = { };
+
+    ir::SsaDef value0 = builder.add(ir::Op::ImageLoad(type0, srv0, mip, layer, srcCoord, ir::SsaDef(), ir::SsaDef()));
+    ir::SsaDef value1 = { };
+
+    if (srv1) {
+      type1 = ir::BasicType(helper.determineSampledType(key.srcFormat, VK_IMAGE_ASPECT_STENCIL_BIT), 4u);
+      value1 = builder.add(ir::Op::ImageLoad(type1, srv1, mip, layer, srcCoord, ir::SsaDef(), ir::SsaDef()));
+    }
+
+    ir::SsaDef index = flattenBufferImageCoord(builder, helper, dstCoord, layer, dstExtent);
+    ir::SsaDef result;
+
+    switch (key.srcFormat) {
+      case VK_FORMAT_D16_UNORM: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth, builder.makeConstant(float(0xffffu))));
+        depth = builder.add(ir::Op::ConvertFtoI(ir::ScalarType::eU32, depth));
+
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_D16_UNORM_S8_UINT: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth, builder.makeConstant(float(0xffffu))));
+        depth = builder.add(ir::Op::ConvertFtoI(ir::ScalarType::eU32, depth));
+
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value1, 0u, 1u);
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, stencil, zero, zero));
+      } break;
+
+      case VK_FORMAT_X8_D24_UNORM_PACK32: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth, builder.makeConstant(float(0xffffffu))));
+        depth = builder.add(ir::Op::ConvertFtoI(ir::ScalarType::eU32, depth));
+
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_D24_UNORM_S8_UINT: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth, builder.makeConstant(float(0xffffffu))));
+        depth = builder.add(ir::Op::ConvertFtoI(ir::ScalarType::eU32, depth));
+
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value1, 0u, 1u);
+        depth = builder.add(ir::Op::IBitInsert(ir::ScalarType::eU32, depth, stencil,
+          builder.makeConstant(24u), builder.makeConstant(8u)));
+
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_D32_SFLOAT: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::Cast(ir::ScalarType::eU32, depth));
+
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_D32_SFLOAT_S8_UINT: {
+        ir::SsaDef zero = builder.makeConstant(0u);
+
+        ir::SsaDef depth = helper.emitExtractVector(builder, value0, 0u, 1u);
+        depth = builder.add(ir::Op::Cast(ir::ScalarType::eU32, depth));
+
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value1, 0u, 1u);
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, depth, stencil, zero, zero));
+      } break;
+
+      case VK_FORMAT_A8_UNORM: {
+        ir::SsaDef alpha = helper.emitExtractVector(builder, value0, 3u, 1u);
+        ir::SsaDef zero = builder.makeConstant(0.0f);
+
+        result = builder.add(ir::Op::CompositeConstruct(type0, alpha, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_B8G8R8A8_SRGB:
+      case VK_FORMAT_B8G8R8A8_UNORM:
+      case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+      case VK_FORMAT_A2R10G10B10_SNORM_PACK32: {
+        ir::SsaDef r = helper.emitExtractVector(builder, value0, 0u, 1u);
+        ir::SsaDef g = helper.emitExtractVector(builder, value0, 1u, 1u);
+        ir::SsaDef b = helper.emitExtractVector(builder, value0, 2u, 1u);
+        ir::SsaDef a = helper.emitExtractVector(builder, value0, 3u, 1u);
+
+        result = builder.add(ir::Op::CompositeConstruct(type0, b, g, r, a));
+      } break;
+
+      default: {
+        // Eliminate components not part of the format
+        result = helper.emitFormatVector(builder, key.srcFormat, value0);
+      }
+    }
+
+    builder.add(ir::Op::ImageStore(uav, layer, index, result));
+    return helper.buildShader(builder);
+  }
+
+
   VkPipeline DxvkMetaCopyObjects::createCopyToImagePipeline(
     const DxvkPipelineLayout*           layout,
     const util::DxvkBuiltInShaderStage& vs,
@@ -648,6 +761,26 @@ namespace dxvk {
   }
 
 
+  DxvkMetaImageToBufferCopy DxvkMetaCopyObjects::createImageToBufferCopyPipeline(
+    const DxvkMetaImageToBufferCopy::Key& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 3> bindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        1, VK_SHADER_STAGE_COMPUTE_BIT },
+    }};
+
+    DxvkMetaImageToBufferCopy pipeline = { };
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_COMPUTE_BIT,
+      sizeof(DxvkMetaImageToBufferCopy::Args), bindings.size(), bindings.data());
+
+    auto csSpirv = createCsCopyImageToBuffer(pipeline.layout, key);
+
+    pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout, csSpirv);
+    pipeline.workgroupSize = determineWorkgroupSize(key);
+    return pipeline;
+  }
+
+
   std::string DxvkMetaCopyObjects::getName(const DxvkMetaImageCopy::Key& key, const char* type) {
     std::stringstream name;
     name << "meta_" << type << "_copy_image";
@@ -671,6 +804,45 @@ namespace dxvk {
       name << "_msx" << uint32_t(key.samples);
 
     return str::tolower(name.str());
+  }
+
+
+  std::string DxvkMetaCopyObjects::getName(const DxvkMetaImageToBufferCopy::Key& key, const char* type) {
+    std::stringstream name;
+    name << "meta_" << type << "_copy_image_to_buffer";
+    name << "_" << str::format(key.srcViewType).substr(std::strlen("VK_IMAGE_VIEW_TYPE_"));
+    name << "_" << str::format(key.srcFormat).substr(std::strlen("VK_FORMAT_"));
+    return str::tolower(name.str());
+  }
+
+
+  VkExtent3D DxvkMetaCopyObjects::determineWorkgroupSize(const DxvkMetaImageToBufferCopy::Key& key) {
+    VkExtent3D workgroupSize = { 64u, 1u, 1u };
+
+    switch (key.srcViewType) {
+      case VK_IMAGE_VIEW_TYPE_1D:
+      case VK_IMAGE_VIEW_TYPE_1D_ARRAY:
+        workgroupSize.width = 64u;
+        break;
+
+      case VK_IMAGE_VIEW_TYPE_2D:
+      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+        workgroupSize.width = 8u;
+        workgroupSize.height = 8u;
+        break;
+
+      case VK_IMAGE_VIEW_TYPE_3D:
+        workgroupSize.width = 4u;
+        workgroupSize.height = 4u;
+        workgroupSize.depth = 4u;
+        break;
+
+      default:
+        Logger::err(str::format("DxvkMetaClearObjects: Unhandled view type: ", key.srcViewType));
+        break;
+    }
+
+    return workgroupSize;
   }
 
 }
