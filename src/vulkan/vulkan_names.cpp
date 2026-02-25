@@ -231,6 +231,7 @@ std::ostream& operator << (std::ostream& os, VkFormat e) {
     ENUM_NAME(VK_FORMAT_ASTC_12x10_SRGB_BLOCK);
     ENUM_NAME(VK_FORMAT_ASTC_12x12_UNORM_BLOCK);
     ENUM_NAME(VK_FORMAT_ASTC_12x12_SRGB_BLOCK);
+    ENUM_NAME(VK_FORMAT_A8_UNORM);
     ENUM_DEFAULT(e);
   }
   return os;
