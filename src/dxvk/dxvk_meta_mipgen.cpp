@@ -96,7 +96,10 @@ namespace dxvk {
 
 
   DxvkMetaMipGenObjects::~DxvkMetaMipGenObjects() {
+    auto vk = m_device->vkd();
 
+    for (const auto& p : m_pipelines)
+      vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
   }
 
 
