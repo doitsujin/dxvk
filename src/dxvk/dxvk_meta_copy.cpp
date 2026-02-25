@@ -3,16 +3,6 @@
 #include "dxvk_shader_builtin.h"
 #include "dxvk_util.h"
 
-#include <dxvk_fullscreen_geom.h>
-#include <dxvk_fullscreen_vert.h>
-#include <dxvk_fullscreen_layer_vert.h>
-
-#include <dxvk_buffer_to_image_d.h>
-#include <dxvk_buffer_to_image_ds_export.h>
-#include <dxvk_buffer_to_image_f.h>
-#include <dxvk_buffer_to_image_s_discard.h>
-#include <dxvk_buffer_to_image_u.h>
-
 #include <dxvk_image_to_buffer_ds.h>
 #include <dxvk_image_to_buffer_f.h>
 
@@ -28,14 +18,37 @@ namespace dxvk {
   };
 
 
+  struct DxvkMetaBufferToImageCopyPushArgs {
+    ir::SsaDef srcOffset  = { };
+    ir::SsaDef srcExtent  = { };
+    ir::SsaDef dstExtent  = { };
+    ir::SsaDef layerIndex = { };
+    ir::SsaDef stencilBit = { };
+  };
+
+
   static DxvkMetaImageCopyPushArgs loadImageCopyPushArgs(ir::Builder& builder, DxvkBuiltInShader& helper) {
     ir::BasicType coordType(ir::ScalarType::eU32, 3u);
 
     DxvkMetaImageCopyPushArgs result = { };
-    result.srcOffset  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, srcOffset), "srcOffset");
+    result.srcOffset  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, srcOffset), "src_offset");
     result.extent     = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, extent), "extent");
     result.layerIndex = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, layerIndex), "layer_index");
     result.stencilBit = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, stencilBit), "stencil_bit");
+    return result;
+  }
+
+
+  static DxvkMetaBufferToImageCopyPushArgs loadBufferToImageCopyPushArgs(ir::Builder& builder, DxvkBuiltInShader& helper) {
+    ir::BasicType coordType2D(ir::ScalarType::eU32, 2u);
+    ir::BasicType coordType3D(ir::ScalarType::eU32, 3u);
+
+    DxvkMetaBufferToImageCopyPushArgs result = { };
+    result.srcOffset  = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaBufferToImageCopy::Args, srcOffset), "src_offset");
+    result.srcExtent  = helper.declarePushData(builder, coordType2D, offsetof(DxvkMetaBufferToImageCopy::Args, srcExtent), "src_extent");
+    result.dstExtent  = helper.declarePushData(builder, coordType3D, offsetof(DxvkMetaBufferToImageCopy::Args, dstExtent), "dst_extent");
+    result.layerIndex = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaBufferToImageCopy::Args, layerIndex), "layer_index");
+    result.stencilBit = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaBufferToImageCopy::Args, stencilBit), "stencil_bit");
     return result;
   }
 
@@ -73,6 +86,79 @@ namespace dxvk {
       helper.exportOutput(builder, 0u, value, "color");
     }
   }
+
+
+  static ir::SsaDef flattenBufferImageCoord(
+          ir::Builder&            builder,
+          DxvkBuiltInShader&      helper,
+          ir::SsaDef              coord,
+          ir::SsaDef              layer,
+          ir::SsaDef              extent) {
+    // Figure out how many coordinate dimensions we have to work with backwards.
+    ir::BasicType type = builder.getOp(coord).getType().getBaseType(0u);
+    uint32_t coordDims = type.getVectorSize();
+
+    // Treat the layer index as a coordinate of the highest dimension.
+    // This logic works because 3D images can never be layered.
+    ir::SsaDef index = layer;
+
+    for (uint32_t i = coordDims; i; i--) {
+      if (index) {
+        ir::SsaDef size = helper.emitExtractVector(builder, extent, i - 1u, 1u);
+        index = builder.add(ir::Op::IMul(ir::ScalarType::eU32, index, size));
+      }
+
+      ir::SsaDef scalar = helper.emitExtractVector(builder, coord, i - 1u, 1u);
+      index = index ? builder.add(ir::Op::IAdd(ir::ScalarType::eU32, scalar, index)) : scalar;
+    }
+
+    return index;
+  }
+
+
+  static std::vector<uint32_t> createCopyToImageVs(
+          dxbc_spv::ir::Builder&        builder,
+          DxvkBuiltInShader&            helper,
+    const DxvkBuiltInVertexShader&      vertex,
+          VkImageViewType               viewType,
+          VkSampleCountFlagBits         samples,
+          ir::SsaDef                    srcOffsetArg,
+          ir::SsaDef                    dstExtentArg,
+          ir::SsaDef                    layerIndexArg) {
+    ir::ResourceKind srcKind = helper.determineResourceKind(viewType, samples);
+    uint32_t coordDims = ir::resourceCoordComponentCount(srcKind);
+
+    // Use instance index as layer for 3D images, otherwise use the per-draw push constant.
+    ir::SsaDef layer = coordDims > 2u ? vertex.instanceIndex : layerIndexArg;
+
+    if (ir::resourceIsLayered(srcKind) || coordDims > 2u)
+      helper.exportBuiltIn(builder, ir::BuiltIn::eLayerIndex, layer);
+
+    // Apply source offset and extent to the normalized vertex coordinate
+    ir::BasicType coordType2D(ir::ScalarType::eF32, 2u);
+    ir::BasicType coordType3D(ir::ScalarType::eF32, 3u);
+
+    ir::SsaDef dstExtent = builder.add(ir::Op::ConvertItoF(coordType3D, dstExtentArg));
+    ir::SsaDef srcOffset = builder.add(ir::Op::ConvertItoF(coordType3D, srcOffsetArg));
+
+    ir::SsaDef coord = builder.add(ir::Op::FMad(coordType2D, vertex.coord,
+      helper.emitExtractVector(builder, dstExtent, 0u, 2u),
+      helper.emitExtractVector(builder, srcOffset, 0u, 2u)));
+
+    // Use layer index as Z coordinate for 3D images
+    ir::SsaDef zCoord = helper.emitExtractVector(builder, srcOffsetArg, 2u, 1u);
+    zCoord = builder.add(ir::Op::IAdd(ir::ScalarType::eU32, zCoord, layer));
+
+    coord = helper.emitConcatVector(builder, coord,
+      builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, zCoord)));
+
+    // Export only the coordinate components required for the given view type
+    coord = helper.emitExtractVector(builder, coord, 0u, coordDims);
+
+    helper.exportOutput(builder, 0u, coord, "coord");
+    return helper.buildShader(builder);
+  }
+
 
   DxvkMetaCopyViews::DxvkMetaCopyViews(
     const Rc<DxvkImage>&            dstImage,
@@ -141,7 +227,7 @@ namespace dxvk {
     for (const auto& p : m_imageCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
-    for (const auto& p : m_bufferToImagePipelines)
+    for (const auto& p : m_bufferImageCopyPipelines)
       vk->vkDestroyPipeline(vk->device(), p.second.pipeline, nullptr);
 
     for (const auto& p : m_imageToBufferPipelines)
@@ -160,6 +246,19 @@ namespace dxvk {
 
     DxvkMetaImageCopy pipeline = createImageCopyPipeline(key);
     m_imageCopyPipelines.insert({ key, pipeline });
+    return pipeline;
+  }
+
+
+  DxvkMetaBufferToImageCopy DxvkMetaCopyObjects::getPipeline(const DxvkMetaBufferToImageCopy::Key& key) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    auto entry = m_bufferImageCopyPipelines.find(key);
+    if (entry != m_bufferImageCopyPipelines.end())
+      return entry->second;
+
+    DxvkMetaBufferToImageCopy pipeline = createBufferToImageCopyPipeline(key);
+    m_bufferImageCopyPipelines.insert({ key, pipeline });
     return pipeline;
   }
 
@@ -190,29 +289,6 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferToImagePipeline(
-          VkFormat              dstFormat,
-          VkFormat              srcFormat,
-          VkImageAspectFlags    aspects,
-          VkSampleCountFlags    samples) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-
-    DxvkMetaBufferImageCopyPipelineKey key;
-    key.imageFormat = dstFormat;
-    key.bufferFormat = srcFormat;
-    key.imageAspects = aspects;
-    key.sampleCount = VkSampleCountFlagBits(samples);
-
-    auto entry = m_bufferToImagePipelines.find(key);
-    if (entry != m_bufferToImagePipelines.end())
-      return entry->second;
-
-    DxvkMetaCopyPipeline pipeline = createCopyBufferToImagePipeline(key);
-    m_bufferToImagePipelines.insert({ key, pipeline });
-    return pipeline;
-  }
-
-
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyImageToBufferPipeline(
           VkImageViewType       viewType,
           VkFormat              dstFormat) {
@@ -224,12 +300,12 @@ namespace dxvk {
     key.bufferFormat = dstFormat;
     key.imageAspects = lookupFormatInfo(dstFormat)->aspectMask;
 
-    auto entry = m_bufferToImagePipelines.find(key);
-    if (entry != m_bufferToImagePipelines.end())
+    auto entry = m_imageToBufferPipelines.find(key);
+    if (entry != m_imageToBufferPipelines.end())
       return entry->second;
 
     DxvkMetaCopyPipeline pipeline = createCopyImageToBufferPipeline(key);
-    m_bufferToImagePipelines.insert({ key, pipeline });
+    m_imageToBufferPipelines.insert({ key, pipeline });
     return pipeline;
   }
 
@@ -255,92 +331,6 @@ namespace dxvk {
       sizeof(DxvkFormattedBufferCopyArgs), bindings.size(), bindings.data());
     pipeline.pipeline = m_device->createBuiltInComputePipeline(pipeline.layout,
       util::DxvkBuiltInShaderStage(dxvk_copy_buffer_image, nullptr));
-    return pipeline;
-  }
-
-
-  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyBufferToImagePipeline(
-    const DxvkMetaBufferImageCopyPipelineKey& key) {
-    static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT }
-    }};
-
-    DxvkMetaCopyPipeline pipeline;
-    pipeline.layout = m_device->createBuiltInPipelineLayout(0u, VK_SHADER_STAGE_FRAGMENT_BIT,
-      sizeof(DxvkBufferImageCopyArgs), bindings.size(), bindings.data());
-
-    VkStencilOpState stencilOp = { };
-    stencilOp.failOp      = VK_STENCIL_OP_REPLACE;
-    stencilOp.passOp      = VK_STENCIL_OP_REPLACE;
-    stencilOp.depthFailOp = VK_STENCIL_OP_REPLACE;
-    stencilOp.compareOp   = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask = 0xff;
-    stencilOp.writeMask   = 0xff;
-    stencilOp.reference   = 0xff;
-
-    // Clear stencil when writing depth aspect
-    if (!m_device->features().extShaderStencilExport && key.imageAspects != VK_IMAGE_ASPECT_STENCIL_BIT)
-      stencilOp.reference = 0x00;
-
-    VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    dsState.depthTestEnable   = !!(key.imageAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
-    dsState.depthWriteEnable  = dsState.depthTestEnable;
-    dsState.depthCompareOp    = VK_COMPARE_OP_ALWAYS;
-    dsState.stencilTestEnable = !!(key.imageAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
-    dsState.front             = stencilOp;
-    dsState.back              = stencilOp;
-
-    // Set up dynamic states. Stencil write mask is
-    // only required for the stencil discard shader.
-    VkDynamicState dynamicStencilWriteMask = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
-
-    // Determine fragment shader to use. Always use the DS export shader
-    // if possible, it can support writing to one aspect exclusively.
-    VkSpecializationMapEntry specMap = { };
-    specMap.size = sizeof(VkFormat);
-
-    VkSpecializationInfo specInfo = { };
-    specInfo.mapEntryCount = 1;
-    specInfo.pMapEntries = &specMap;
-    specInfo.dataSize = sizeof(VkFormat);
-    specInfo.pData = &key.bufferFormat;
-
-    // Set up final pipeline state
-    util::DxvkBuiltInGraphicsState state = { };
-    state.sampleCount = key.sampleCount;
-
-    if (m_device->features().vk12.shaderOutputLayer) {
-      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_layer_vert, nullptr);
-    } else {
-      state.vs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_vert, nullptr);
-      state.gs = util::DxvkBuiltInShaderStage(dxvk_fullscreen_geom, nullptr);
-    }
-
-    if (key.imageAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      if (m_device->features().extShaderStencilExport) {
-        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_ds_export, &specInfo);
-      } else if (key.imageAspects == VK_IMAGE_ASPECT_STENCIL_BIT) {
-        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_s_discard, &specInfo);
-
-        state.dynamicStateCount = 1u;
-        state.dynamicStates = &dynamicStencilWriteMask;
-      } else {
-        state.fs = util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_d, &specInfo);
-      }
-
-      state.depthFormat = key.imageFormat;
-      state.dsState = &dsState;
-    } else {
-      const auto* formatInfo = lookupFormatInfo(key.imageFormat);
-
-      state.fs = formatInfo->flags.any(DxvkFormatFlag::SampledUInt, DxvkFormatFlag::SampledSInt)
-        ? util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_u, &specInfo)
-        : util::DxvkBuiltInShaderStage(dxvk_buffer_to_image_f, &specInfo);
-
-      state.colorFormat = key.imageFormat;
-    }
-
-    pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
     return pipeline;
   }
 
@@ -381,52 +371,37 @@ namespace dxvk {
   }
 
 
-  std::vector<uint32_t> DxvkMetaCopyObjects::createVsCopyImage(const DxvkPipelineLayout* layout, const DxvkMetaImageCopy::Key& key) {
+  std::vector<uint32_t> DxvkMetaCopyObjects::createVsCopyImage(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaImageCopy::Key&       key) {
     dxbc_spv::ir::Builder builder;
-
     DxvkBuiltInShader helper(m_device, layout, getName(key, "vs"));
+
     DxvkBuiltInVertexShader vertex = helper.buildFullscreenVertexShader(builder);
-
-    ir::ResourceKind srcKind = helper.determineResourceKind(key.srcViewType, key.samples);
-    uint32_t coordDims = ir::resourceCoordComponentCount(srcKind);
-
-    // Use instance index as layer for 3D images, otherwise use the per-draw push constant.
     DxvkMetaImageCopyPushArgs pushArgs = loadImageCopyPushArgs(builder, helper);
 
-    ir::SsaDef layer = coordDims > 2u
-      ? vertex.instanceIndex
-      : pushArgs.layerIndex;
-
-    if (ir::resourceIsLayered(srcKind) || coordDims > 2u)
-      helper.exportBuiltIn(builder, ir::BuiltIn::eLayerIndex, layer);
-
-    // Apply source offset and extent to the normalized vertex coordinate
-    ir::BasicType coordType2D(ir::ScalarType::eF32, 2u);
-    ir::BasicType coordType3D(ir::ScalarType::eF32, 3u);
-
-    ir::SsaDef dstExtent = builder.add(ir::Op::ConvertItoF(coordType3D, pushArgs.extent));
-    ir::SsaDef srcOffset = builder.add(ir::Op::ConvertItoF(coordType3D, pushArgs.srcOffset));
-
-    ir::SsaDef coord = builder.add(ir::Op::FMad(coordType2D, vertex.coord,
-      helper.emitExtractVector(builder, dstExtent, 0u, 2u),
-      helper.emitExtractVector(builder, srcOffset, 0u, 2u)));
-
-    // Use layer index as Z coordinate for 3D images
-    ir::SsaDef zCoord = helper.emitExtractVector(builder, pushArgs.srcOffset, 2u, 1u);
-    zCoord = builder.add(ir::Op::IAdd(ir::ScalarType::eU32, zCoord, layer));
-
-    coord = helper.emitConcatVector(builder, coord,
-      builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, zCoord)));
-
-    // Export only the coordinate components required for the given view type
-    coord = helper.emitExtractVector(builder, coord, 0u, coordDims);
-
-    helper.exportOutput(builder, 0u, coord, "coord");
-    return helper.buildShader(builder);
+    return createCopyToImageVs(builder, helper, vertex, key.srcViewType,
+      key.samples, pushArgs.srcOffset, pushArgs.extent, pushArgs.layerIndex);
   }
 
 
-  std::vector<uint32_t> DxvkMetaCopyObjects::createPsCopyImage(const DxvkPipelineLayout* layout, const DxvkMetaImageCopy::Key& key) {
+  std::vector<uint32_t> DxvkMetaCopyObjects::createVsCopyBufferToImage(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaBufferToImageCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "vs"));
+
+    DxvkBuiltInVertexShader vertex = helper.buildFullscreenVertexShader(builder);
+    DxvkMetaBufferToImageCopyPushArgs pushArgs = loadBufferToImageCopyPushArgs(builder, helper);
+
+    return createCopyToImageVs(builder, helper, vertex, key.dstViewType,
+      key.samples, pushArgs.srcOffset, pushArgs.dstExtent, pushArgs.layerIndex);
+  }
+
+
+  std::vector<uint32_t> DxvkMetaCopyObjects::createPsCopyImage(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaImageCopy::Key&       key) {
     dxbc_spv::ir::Builder builder;
 
     DxvkBuiltInShader helper(m_device, layout, getName(key, "ps"));
@@ -484,6 +459,146 @@ namespace dxvk {
 
     exportCopyToImagePs(builder, helper, key.dstAspects, value0, value1,
       key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+    return helper.buildShader(builder);
+  }
+
+
+  std::vector<uint32_t> DxvkMetaCopyObjects::createPsCopyBufferToImage(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaBufferToImageCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "ps"));
+    helper.buildPixelShader(builder);
+
+    DxvkMetaBufferToImageCopyPushArgs pushArgs = loadBufferToImageCopyPushArgs(builder, helper);
+
+    ir::SsaDef srv = helper.declareTexelBufferSrv(builder, 0u, "buf", key.bufferFormat);
+
+    // Load source coordinate and flatten it according to the
+    // buffer image dimensions supplied via push data.
+    ir::ResourceKind kind = helper.determineResourceKind(key.dstViewType, key.samples);
+    uint32_t coordDims = ir::resourceCoordComponentCount(kind);
+
+    ir::BasicType coordTypeF(ir::ScalarType::eF32, coordDims);
+    ir::BasicType coordTypeU(ir::ScalarType::eU32, coordDims);
+
+    ir::SsaDef coord = helper.declareInput(builder, coordTypeF, 0u, "coord");
+    coord = builder.add(ir::Op::ConvertFtoI(coordTypeU, coord));
+
+    ir::SsaDef layer = resourceIsLayered(kind) ? pushArgs.layerIndex : ir::SsaDef();
+
+    ir::SsaDef flatIndex = flattenBufferImageCoord(
+      builder, helper, coord, layer, pushArgs.srcExtent);
+
+    // Load source texel and do some format-specific processing.
+    ir::BasicType valueType(helper.determineSampledType(key.bufferFormat, VK_IMAGE_ASPECT_COLOR_BIT), 4u);
+    ir::SsaDef value = builder.add(ir::Op::BufferLoad(valueType, srv, flatIndex, 0u));
+
+    switch (key.srcFormat) {
+      case VK_FORMAT_S8_UINT: {
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value, 0u, 1u);
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, ir::SsaDef(), stencil,
+          key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_D16_UNORM: {
+        ir::SsaDef depth = helper.emitExtractVector(builder, value, 0u, 1u);
+        depth = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, depth));
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth,
+          builder.makeConstant(1.0f / float(0xffffu))));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, ir::SsaDef(), ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_D16_UNORM_S8_UINT: {
+        ir::SsaDef depth = helper.emitExtractVector(builder, value, 0u, 1u);
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value, 1u, 1u);
+
+        depth = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, depth));
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth,
+          builder.makeConstant(1.0f / float(0xffffu))));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, stencil,
+          key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_X8_D24_UNORM_PACK32: {
+        ir::SsaDef depth = helper.emitExtractVector(builder, value, 0u, 1u);
+        depth = builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, depth,
+          builder.makeConstant(0u), builder.makeConstant(24u)));
+        depth = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, depth));
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth,
+          builder.makeConstant(1.0f / float(0xffffffu))));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, ir::SsaDef(), ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_D24_UNORM_S8_UINT: {
+        ir::SsaDef packed = helper.emitExtractVector(builder, value, 0u, 1u);
+
+        ir::SsaDef depth = builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
+          packed, builder.makeConstant(0u), builder.makeConstant(24u)));
+        depth = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, depth));
+        depth = builder.add(ir::Op::FMul(ir::ScalarType::eF32, depth,
+          builder.makeConstant(1.0f / float(0xffffffu))));
+
+        ir::SsaDef stencil = builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
+          packed, builder.makeConstant(24u), builder.makeConstant(8u)));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, stencil,
+          key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_D32_SFLOAT: {
+        ir::SsaDef depth = helper.emitExtractVector(builder, value, 0u, 1u);
+        depth = builder.add(ir::Op::Cast(ir::ScalarType::eF32, depth));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, ir::SsaDef(), ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_D32_SFLOAT_S8_UINT: {
+        ir::SsaDef depth = helper.emitExtractVector(builder, value, 0u, 1u);
+        ir::SsaDef stencil = helper.emitExtractVector(builder, value, 1u, 1u);
+
+        depth = builder.add(ir::Op::Cast(ir::ScalarType::eF32, depth));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, depth, stencil,
+          key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_A8_UNORM: {
+        ir::SsaDef color = helper.emitExtractVector(builder, value, 0u, 1u);
+        ir::SsaDef zero = builder.makeConstant(0.0f);
+
+        color = builder.add(ir::Op::CompositeConstruct(
+          ir::BasicType(ir::ScalarType::eF32, 4u), zero, zero, zero, color));
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, color, ir::SsaDef(), ir::SsaDef());
+      } break;
+
+      case VK_FORMAT_B8G8R8A8_SRGB:
+      case VK_FORMAT_B8G8R8A8_UNORM:
+      case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+      case VK_FORMAT_A2R10G10B10_SNORM_PACK32: {
+        ir::BasicType type = builder.getOp(value).getType().getBaseType(0u);
+
+        ir::SsaDef b = helper.emitExtractVector(builder, value, 0u, 1u);
+        ir::SsaDef g = helper.emitExtractVector(builder, value, 1u, 1u);
+        ir::SsaDef r = helper.emitExtractVector(builder, value, 2u, 1u);
+        ir::SsaDef a = helper.emitExtractVector(builder, value, 3u, 1u);
+
+        ir::SsaDef color = builder.add(ir::Op::CompositeConstruct(type, r, g, b, a));
+        exportCopyToImagePs(builder, helper, key.dstAspects, color, ir::SsaDef(), ir::SsaDef());
+      } break;
+
+      default: {
+        ir::SsaDef color = helper.emitFormatVector(builder, key.dstFormat, value);
+        exportCopyToImagePs(builder, helper, key.dstAspects, color, ir::SsaDef(), ir::SsaDef());
+      } break;
+    }
+
     return helper.buildShader(builder);
   }
 
@@ -557,11 +672,43 @@ namespace dxvk {
   }
 
 
+  DxvkMetaBufferToImageCopy DxvkMetaCopyObjects::createBufferToImageCopyPipeline(const DxvkMetaBufferToImageCopy::Key& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 1> bindings = {{
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
+    }};
+
+    DxvkMetaBufferToImageCopy pipeline = { };
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u,
+      VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
+      sizeof(DxvkMetaBufferToImageCopy::Args), bindings.size(), bindings.data());
+
+    auto vsSpirv = createVsCopyBufferToImage(pipeline.layout, key);
+    auto psSpirv = createPsCopyBufferToImage(pipeline.layout, key);
+
+    pipeline.pipeline = createCopyToImagePipeline(pipeline.layout, vsSpirv, psSpirv,
+      key.dstFormat, key.dstAspects, key.samples, key.bitwiseStencil);
+    return pipeline;
+  }
+
+
   std::string DxvkMetaCopyObjects::getName(const DxvkMetaImageCopy::Key& key, const char* type) {
     std::stringstream name;
-    name << "meta_" << type << "_copy";
+    name << "meta_" << type << "_copy_image";
     name << "_" << str::format(key.srcViewType).substr(std::strlen("VK_IMAGE_VIEW_TYPE_"));
     name << "_" << str::format(key.dstFormat).substr(std::strlen("VK_FORMAT_"));
+
+    if (key.samples > VK_SAMPLE_COUNT_1_BIT)
+      name << "_msx" << uint32_t(key.samples);
+
+    return str::tolower(name.str());
+  }
+
+
+  std::string DxvkMetaCopyObjects::getName(const DxvkMetaBufferToImageCopy::Key& key, const char* type) {
+    std::stringstream name;
+    name << "meta_" << type << "_copy_buffer_to_image";
+    name << "_" << str::format(key.dstViewType).substr(std::strlen("VK_IMAGE_VIEW_TYPE_"));
+    name << "_" << str::format(key.srcFormat).substr(std::strlen("VK_FORMAT_"));
 
     if (key.samples > VK_SAMPLE_COUNT_1_BIT)
       name << "_msx" << uint32_t(key.samples);
