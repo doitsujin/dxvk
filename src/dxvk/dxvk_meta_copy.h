@@ -25,7 +25,7 @@ namespace dxvk {
     /** Shader args for image to image copies */
     struct Args {
       VkOffset3D srcOffset  = { };
-      VkExtent3D extent     = { };
+      VkExtent3D srcExtent  = { };
       uint32_t   layerIndex = 0u;
       uint32_t   stencilBit = 0u;
     };

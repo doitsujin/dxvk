@@ -4301,11 +4301,12 @@ namespace dxvk {
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
     this->endCurrentPass(true);
+    this->invalidateState();
 
     DxvkMetaCopyFormats viewFormats = m_common->metaCopy().getCopyImageFormats(
       dstImage->info().format, dstSubresource.aspectMask,
       srcImage->info().format, srcSubresource.aspectMask);
-    
+
     // Guarantee that we can render to or sample the images
     DxvkImageUsageInfo dstUsage = { };
     dstUsage.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -4315,10 +4316,28 @@ namespace dxvk {
     if (dstImage->formatInfo()->aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
       dstUsage.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
+    if (dstImage->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      VkExtent3D blockSize = dstImage->formatInfo()->blockSize;
+      dstOffset = util::computeBlockOffset(dstOffset, blockSize);
+
+      dstUsage.flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
+    }
+
+    if (dstImage->info().type == VK_IMAGE_TYPE_3D)
+      dstUsage.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
+
     DxvkImageUsageInfo srcUsage = { };
     srcUsage.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     srcUsage.viewFormatCount = 1;
     srcUsage.viewFormats = &viewFormats.srcFormat;
+
+    if (srcImage->formatInfo()->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      VkExtent3D blockSize = srcImage->formatInfo()->blockSize;
+      srcOffset = util::computeBlockOffset(srcOffset, blockSize);
+      extent = util::computeBlockCount(extent, blockSize);
+
+      srcUsage.flags |= VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT;
+    }
 
     if (!ensureImageCompatibility(dstImage, dstUsage)
      || !ensureImageCompatibility(srcImage, srcUsage)) {
@@ -4327,8 +4346,6 @@ namespace dxvk {
         "\n  src format: ", srcImage->info().format));
       return;
     }
-
-    this->invalidateState();
 
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       const char* dstName = dstImage->info().debugName;
@@ -4459,7 +4476,7 @@ namespace dxvk {
     // Set up push data for the copy shaders
     DxvkMetaImageCopy::Args pushArgs = { };
     pushArgs.srcOffset = srcOffset;
-    pushArgs.extent = extent;
+    pushArgs.srcExtent = extent;
 
     DxvkMetaImageCopy::Key metaKey = { };
     metaKey.srcViewType = views.srcView->info().viewType;
