@@ -12,7 +12,7 @@ namespace dxvk {
 
   struct DxvkMetaImageCopyPushArgs {
     ir::SsaDef srcOffset  = { };
-    ir::SsaDef extent     = { };
+    ir::SsaDef srcExtent  = { };
     ir::SsaDef layerIndex = { };
     ir::SsaDef stencilBit = { };
   };
@@ -32,7 +32,7 @@ namespace dxvk {
 
     DxvkMetaImageCopyPushArgs result = { };
     result.srcOffset  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, srcOffset), "src_offset");
-    result.extent     = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, extent), "extent");
+    result.srcExtent  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, srcExtent), "src_extent");
     result.layerIndex = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, layerIndex), "layer_index");
     result.stencilBit = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, stencilBit), "stencil_bit");
     return result;
@@ -268,8 +268,20 @@ namespace dxvk {
           VkImageAspectFlags    dstAspect,
           VkFormat              srcFormat,
           VkImageAspectFlags    srcAspect) const {
+    auto srcFormatInfo = lookupFormatInfo(srcFormat);
+    auto dstFormatInfo = lookupFormatInfo(dstFormat);
+
+    if (dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed)
+     || srcFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
+      VkFormat uintFormat = dstFormatInfo->elementSize > 8u
+        ? VK_FORMAT_R32G32B32A32_UINT
+        : VK_FORMAT_R32G32_UINT;
+
+      return { uintFormat, uintFormat };
+    }
+
     if (dstAspect == srcAspect)
-      return { dstFormat, srcFormat };
+      return { dstFormat, dstFormat };
 
     if (dstAspect == VK_IMAGE_ASPECT_COLOR_BIT && srcAspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
       switch (srcFormat) {
@@ -381,7 +393,7 @@ namespace dxvk {
     DxvkMetaImageCopyPushArgs pushArgs = loadImageCopyPushArgs(builder, helper);
 
     return createCopyToImageVs(builder, helper, vertex, key.srcViewType,
-      key.samples, pushArgs.srcOffset, pushArgs.extent, pushArgs.layerIndex);
+      key.samples, pushArgs.srcOffset, pushArgs.srcExtent, pushArgs.layerIndex);
   }
 
 
