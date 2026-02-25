@@ -213,32 +213,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Copy view objects
-   * 
-   * Creates and manages views used in a
-   * framebuffer-based copy operations.
-   */
-  class DxvkMetaCopyViews {
-
-  public:
-
-    DxvkMetaCopyViews(
-      const Rc<DxvkImage>&            dstImage,
-      const VkImageSubresourceLayers& dstSubresources,
-            VkFormat                  dstFormat,
-      const Rc<DxvkImage>&            srcImage,
-      const VkImageSubresourceLayers& srcSubresources,
-            VkFormat                  srcFormat);
-    
-    ~DxvkMetaCopyViews();
-
-    Rc<DxvkImageView> dstImageView;
-    Rc<DxvkImageView> srcImageView;
-    Rc<DxvkImageView> srcStencilView;
-
-  };
-
-  /**
    * \brief Meta copy objects
    * 
    * Meta copy operations are necessary in order
