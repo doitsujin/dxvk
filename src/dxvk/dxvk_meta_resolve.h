@@ -88,6 +88,10 @@ namespace dxvk {
     Rc<DxvkImageView> srcView;
     Rc<DxvkImageView> srcStencilView;
 
+    static VkImageViewType viewType(
+      const DxvkImage&                image,
+      const VkImageSubresourceLayers& subresources,
+            VkImageUsageFlags         usage);
   };
 
 

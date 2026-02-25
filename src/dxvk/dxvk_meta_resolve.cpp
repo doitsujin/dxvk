@@ -168,9 +168,6 @@ namespace dxvk {
           VkFormat                  srcFormat,
           VkShaderStageFlags        shaderStage) {
     DxvkImageViewKey viewInfo;
-    viewInfo.viewType = dstSubresources.layerCount > 1u
-      ? VK_IMAGE_VIEW_TYPE_2D_ARRAY
-      : VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = dstFormat;
     viewInfo.aspects = dstSubresources.aspectMask;
     viewInfo.mipIndex = dstSubresources.mipLevel;
@@ -183,6 +180,8 @@ namespace dxvk {
 
     if (shaderStage & VK_SHADER_STAGE_COMPUTE_BIT)
       viewInfo.usage = VK_IMAGE_USAGE_STORAGE_BIT;
+
+    viewInfo.viewType = viewType(*dstImage, dstSubresources, viewInfo.usage);
 
     dstView = dstImage->createView(viewInfo);
 
@@ -197,6 +196,8 @@ namespace dxvk {
       viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
     }
 
+    viewInfo.viewType = viewType(*srcImage, srcSubresources, viewInfo.usage);
+
     srcView = srcImage->createView(viewInfo);
 
     if (shaderStage && (srcSubresources.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -210,6 +211,25 @@ namespace dxvk {
 
   DxvkMetaResolveViews::~DxvkMetaResolveViews() {
 
+  }
+
+
+  VkImageViewType DxvkMetaResolveViews::viewType(
+    const DxvkImage&                image,
+    const VkImageSubresourceLayers& subresources,
+          VkImageUsageFlags         usage) {
+    VkImageUsageFlags rtFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                              | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    bool isLayered = subresources.layerCount > 1u;
+    bool isRenderTarget = bool(usage & rtFlags);
+
+    switch (image.info().type) {
+      case VK_IMAGE_TYPE_1D: return isLayered ? VK_IMAGE_VIEW_TYPE_1D_ARRAY : VK_IMAGE_VIEW_TYPE_1D;
+      case VK_IMAGE_TYPE_2D: return isLayered ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D;
+      case VK_IMAGE_TYPE_3D: return isRenderTarget ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_3D;
+      default: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    }
   }
 
 
