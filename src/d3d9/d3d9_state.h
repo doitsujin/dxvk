@@ -419,7 +419,7 @@ namespace dxvk {
   using D3D9DeviceState = D3D9State<static_item>;
 
   template <
-    DxsoProgramType  ProgramType,
+    D3D9ShaderType   ShaderType,
     D3D9ConstantType ConstantType,
     typename         T,
     typename         StateType>
@@ -464,7 +464,7 @@ namespace dxvk {
       return D3D_OK;
     };
 
-    return ProgramType == DxsoProgramTypes::VertexShader
+    return ShaderType == D3D9ShaderType::VertexShader
       ? UpdateHelper(pState->vsConsts)
       : UpdateHelper(pState->psConsts);
   }

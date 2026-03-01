@@ -283,7 +283,7 @@ namespace dxvk {
     const float* pConstantData,
           UINT   Vector4fCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::VertexShader,
+      D3D9ShaderType::VertexShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -296,7 +296,7 @@ namespace dxvk {
     const int* pConstantData,
           UINT Vector4iCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::VertexShader,
+      D3D9ShaderType::VertexShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -309,7 +309,7 @@ namespace dxvk {
     const BOOL* pConstantData,
           UINT  BoolCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::VertexShader,
+      D3D9ShaderType::VertexShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -322,7 +322,7 @@ namespace dxvk {
     const float* pConstantData,
           UINT   Vector4fCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::PixelShader,
+      D3D9ShaderType::PixelShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -335,7 +335,7 @@ namespace dxvk {
     const int* pConstantData,
           UINT Vector4iCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::PixelShader,
+      D3D9ShaderType::PixelShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -348,7 +348,7 @@ namespace dxvk {
     const BOOL* pConstantData,
           UINT  BoolCount) {
     return SetShaderConstants<
-      DxsoProgramTypes::PixelShader,
+      D3D9ShaderType::PixelShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,

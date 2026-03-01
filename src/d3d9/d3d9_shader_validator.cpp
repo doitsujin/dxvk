@@ -141,14 +141,14 @@ namespace dxvk {
 
     DxsoReader reader = { reinterpret_cast<const char*>(pdwInst) };
     uint32_t headerToken = reader.readu32();
-    uint32_t shaderType  = headerToken & 0xffff0000;
-    DxsoProgramType programType;
+    uint32_t shaderTypeDword  = headerToken & 0xffff0000;
+    D3D9ShaderType shaderType;
 
-    if (shaderType == 0xffff0000) { // Pixel Shader
-      programType = DxsoProgramTypes::PixelShader;
+    if (shaderTypeDword == 0xffff0000) { // Pixel Shader
+      shaderType = D3D9ShaderType::PixelShader;
       m_isPixelShader = true;
-    } else if (shaderType == 0xfffe0000) { // Vertex Shader
-      programType = DxsoProgramTypes::VertexShader;
+    } else if (shaderTypeDword == 0xfffe0000) { // Vertex Shader
+      shaderType = D3D9ShaderType::VertexShader;
       m_isPixelShader = false;
     } else {
       return ErrorCallback(pFile, Line, 0x6, pdwInst, cdw,
@@ -158,7 +158,7 @@ namespace dxvk {
 
     m_majorVersion = D3DSHADER_VERSION_MAJOR(headerToken);
     m_minorVersion = D3DSHADER_VERSION_MINOR(headerToken);
-    m_ctx   = std::make_unique<DxsoDecodeContext>(DxsoProgramInfo{ programType, m_minorVersion, m_majorVersion });
+    m_ctx   = std::make_unique<DxsoDecodeContext>(DxsoProgramInfo{ shaderType, m_minorVersion, m_majorVersion });
     m_state = D3D9ShaderValidatorState::ValidatingInstructions;
 
     const char* shaderTypeOutput = m_isPixelShader ? "PS" : "VS";

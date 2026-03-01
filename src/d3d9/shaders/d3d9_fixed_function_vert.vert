@@ -131,7 +131,7 @@ const uint TCIMask = (7 << TCIOffset);
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
-//     DxsoProgramType::VertexShader,
+//     D3D9ShaderType::VertexShader,
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSFixedFunction
 // ) = 4
@@ -145,7 +145,7 @@ layout(push_constant, scalar, row_major) uniform RenderStates {
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
-//     DxsoProgramType::VertexShader,
+//     D3D9ShaderType::VertexShader,
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSVertexBlendData
 // ) = 5
@@ -156,7 +156,7 @@ layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData 
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
-//     DxsoProgramType::VertexShader,
+//     D3D9ShaderType::VertexShader,
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::VSClipPlanes
 // ) = 3

@@ -2,6 +2,8 @@
 
 #include "dxso_include.h"
 
+#include "../d3d9/d3d9_include.h"
+
 #include <cstdint>
 
 namespace dxvk {
@@ -12,14 +14,8 @@ namespace dxvk {
  * Defines the shader stage that a DXSO
  * module has been compiled for.
  */
-  namespace DxsoProgramTypes {
-    enum DxsoProgramType : uint16_t {
-      VertexShader = 0,
-      PixelShader  = 1,
-      Count        = 2,
-    };
-  }
-  using DxsoProgramType = DxsoProgramTypes::DxsoProgramType;
+  using DxsoProgramType = D3D9ShaderType;
+  using DxsoProgramTypes = D3D9ShaderType;
 
   class DxsoProgramInfo {
 

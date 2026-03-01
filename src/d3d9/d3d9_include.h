@@ -103,3 +103,8 @@ IDirect3DDevice9On12 : public IUnknown {
 __CRT_UUID_DECL(IDirect3DDevice9On12,      0xe7fda234,0xb589,0x4049,0x94,0x0d,0x88,0x78,0x97,0x75,0x31,0xc8);
 #endif
 
+enum class D3D9ShaderType : uint16_t {
+  VertexShader = 0,
+  PixelShader  = 1,
+};
+

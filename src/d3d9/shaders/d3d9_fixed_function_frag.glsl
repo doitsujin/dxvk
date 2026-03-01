@@ -114,7 +114,7 @@ const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextur
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
-//     DxsoProgramType::PixelShader,
+//     D3D9ShaderType::PixelShader,
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::PSFixedFunction
 // ) = 11
@@ -124,7 +124,7 @@ layout(set = 0, binding = 11, scalar, row_major) uniform ShaderData {
 
 // Bindings have to match with computeResourceSlotId in dxso_util.h
 // computeResourceSlotId(
-//     DxsoProgramType::PixelShader,
+//     D3D9ShaderType::PixelShader,
 //     DxsoBindingType::ConstantBuffer,
 //     DxsoConstantBuffers::PSShared
 // ) = 12

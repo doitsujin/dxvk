@@ -852,7 +852,7 @@ namespace dxvk {
     uint32_t emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector);
     uint32_t emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix);
 
-    bool isVS() { return m_programType == DxsoProgramType::VertexShader; }
+    bool isVS() { return m_shaderType == D3D9ShaderType::VertexShader; }
     bool isPS() { return !isVS(); }
 
     std::string           m_filename;
@@ -865,7 +865,7 @@ namespace dxvk {
     uint32_t              m_outputMask      = 0u;
     uint32_t              m_flatShadingMask = 0u;
 
-    DxsoProgramType       m_programType;
+    D3D9ShaderType        m_shaderType;
     D3D9FFShaderKeyVS     m_vsKey;
     D3D9FFShaderKeyFS     m_fsKey;
 
@@ -907,7 +907,7 @@ namespace dxvk {
           D3D9FixedFunctionOptions Options)
   : m_filename    ( Name )
   , m_module      ( spvVersion(1, 3) )
-  , m_programType ( DxsoProgramTypes::VertexShader )
+  , m_shaderType  ( D3D9ShaderType::VertexShader )
   , m_vsKey       ( Key )
   , m_options     ( Options ) { }
 
@@ -919,7 +919,7 @@ namespace dxvk {
           D3D9FixedFunctionOptions Options)
   : m_filename    ( Name )
   , m_module      ( spvVersion(1, 3) )
-  , m_programType ( DxsoProgramTypes::PixelShader )
+  , m_shaderType  ( D3D9ShaderType::PixelShader )
   , m_fsKey       ( Key )
   , m_options     ( Options ) { }
 
@@ -1702,7 +1702,7 @@ namespace dxvk {
     m_module.setDebugName(m_vs.constantBuffer, "consts");
 
     const uint32_t bindingId = computeResourceSlotId(
-      DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+      D3D9ShaderType::VertexShader, DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::VSFixedFunction);
 
     m_module.decorateDescriptorSet(m_vs.constantBuffer, 0);
@@ -1741,7 +1741,7 @@ namespace dxvk {
     m_module.setDebugName(m_vs.vertexBlendData, "VertexBlendData");
 
     const uint32_t bindingId = computeResourceSlotId(
-      DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+      D3D9ShaderType::VertexShader, DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::VSVertexBlendData);
 
     m_module.decorateDescriptorSet(m_vs.vertexBlendData, 0);
@@ -2448,7 +2448,7 @@ namespace dxvk {
     m_module.setDebugName(m_ps.constantBuffer, "consts");
 
     const uint32_t bindingId = computeResourceSlotId(
-      DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+      D3D9ShaderType::PixelShader, DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::PSFixedFunction);
 
     m_module.decorateDescriptorSet(m_ps.constantBuffer, 0);
@@ -2475,7 +2475,7 @@ namespace dxvk {
 
     // Samplers
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      const uint32_t imageBindingId = computeResourceSlotId(DxsoProgramType::PixelShader,
+      const uint32_t imageBindingId = computeResourceSlotId(D3D9ShaderType::PixelShader,
         DxsoBindingType::Image, i);
 
       auto& imageBinding = m_bindings.emplace_back();
@@ -2548,7 +2548,7 @@ namespace dxvk {
     m_ps.sharedState = GetSharedConstants(m_module);
 
     const uint32_t bindingId = computeResourceSlotId(
-      m_programType, DxsoBindingType::ConstantBuffer,
+      m_shaderType, DxsoBindingType::ConstantBuffer,
       PSShared);
 
     m_module.decorateDescriptorSet(m_ps.sharedState, 0);
@@ -2588,7 +2588,7 @@ namespace dxvk {
     m_module.memberDecorateOffset (clipPlaneStruct, 0, 0);
 
     uint32_t bindingId = computeResourceSlotId(
-      DxsoProgramType::VertexShader,
+      D3D9ShaderType::VertexShader,
       DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::VSClipPlanes);
 
@@ -2738,9 +2738,9 @@ namespace dxvk {
 
   D3D9FFShader::D3D9FFShader(
           D3D9DeviceEx*         pDevice,
-          DxsoProgramType       ProgramType) {
+          D3D9ShaderType        ShaderType) {
 
-    bool isVS = ProgramType == DxsoProgramType::VertexShader;
+    bool isVS = ShaderType == D3D9ShaderType::VertexShader;
 
     if (isVS) {
       std::array<DxvkBindingInfo, 4> bindings;
@@ -2755,7 +2755,7 @@ namespace dxvk {
       specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t fixedFunctionDataBindingId = computeResourceSlotId(
-        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        D3D9ShaderType::VertexShader, DxsoBindingType::ConstantBuffer,
         DxsoConstantBuffers::VSFixedFunction);
       auto& fixedFunctionDataBinding = bindings[1];
       fixedFunctionDataBinding.set             = 0u;
@@ -2766,7 +2766,7 @@ namespace dxvk {
       fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t vertexBlendBindingId = computeResourceSlotId(
-        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        D3D9ShaderType::VertexShader, DxsoBindingType::ConstantBuffer,
         DxsoConstantBuffers::VSVertexBlendData);
       auto& vertexBlendBinding = bindings[2];
       vertexBlendBinding.set             = 0u;
@@ -2777,7 +2777,7 @@ namespace dxvk {
       vertexBlendBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t clipPlanesBindingId = computeResourceSlotId(
-        DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+        D3D9ShaderType::VertexShader, DxsoBindingType::ConstantBuffer,
         DxsoConstantBuffers::VSClipPlanes);
       auto& clipPlanesBinding = bindings[3];
       clipPlanesBinding.set             = 0u;
@@ -2810,7 +2810,7 @@ namespace dxvk {
       specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t fixedFunctionDataBindingId = computeResourceSlotId(
-        DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+        D3D9ShaderType::PixelShader, DxsoBindingType::ConstantBuffer,
         DxsoConstantBuffers::PSFixedFunction);
       auto& fixedFunctionDataBinding = bindings.emplace_back();
       fixedFunctionDataBinding.set             = 0u;
@@ -2821,7 +2821,7 @@ namespace dxvk {
       fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t sharedDataBindingId = computeResourceSlotId(
-        DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+        D3D9ShaderType::PixelShader, DxsoBindingType::ConstantBuffer,
         DxsoConstantBuffers::PSShared);
       auto& sharedDataBinding = bindings.emplace_back();
       sharedDataBinding.set             = 0u;
@@ -2832,7 +2832,7 @@ namespace dxvk {
       sharedDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
       constexpr uint32_t textureBindingId = computeResourceSlotId(
-        DxsoProgramType::PixelShader,
+        D3D9ShaderType::PixelShader,
         DxsoBindingType::Image,
         0);
       auto& textureBinding = bindings.emplace_back();
@@ -2845,7 +2845,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         uint32_t samplerBindingId = computeResourceSlotId(
-          DxsoProgramType::PixelShader,
+          D3D9ShaderType::PixelShader,
           DxsoBindingType::Image,
           i);
 
@@ -2897,8 +2897,8 @@ namespace dxvk {
 
 
   D3D9FFShaderModuleSet::D3D9FFShaderModuleSet(D3D9DeviceEx* pDevice)
-    : m_vsUbershader(pDevice, DxsoProgramType::VertexShader)
-    , m_fsUbershader(pDevice, DxsoProgramType::PixelShader) {}
+    : m_vsUbershader(pDevice, D3D9ShaderType::VertexShader)
+    , m_fsUbershader(pDevice, D3D9ShaderType::PixelShader) {}
 
 
   D3D9FFShader D3D9FFShaderModuleSet::GetShaderModule(

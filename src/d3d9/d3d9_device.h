@@ -1030,10 +1030,10 @@ namespace dxvk {
 
     inline void* CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size);
 
-    template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
+    template <D3D9ShaderType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
     inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
 
-    template <DxsoProgramType ShaderStage>
+    template <D3D9ShaderType ShaderStage>
     void UploadConstants();
 
     void UpdateClipPlanes();
@@ -1085,11 +1085,11 @@ namespace dxvk {
 
     void EnsureSamplerLimit();
 
-    template <DxsoProgramType ShaderStage>
+    template <D3D9ShaderType ShaderStage>
     void BindShader(
     const D3D9CommonShader*                 pShaderModule);
 
-    template <DxsoProgramType ShaderStage>
+    template <D3D9ShaderType ShaderStage>
     void BindFFUbershader();
 
     void BindInputLayout();
@@ -1139,8 +1139,8 @@ namespace dxvk {
             VkImageLayout            OldLayout,
             VkImageLayout            NewLayout);
 
-    const D3D9ConstantLayout& GetVertexConstantLayout() { return m_consts[DxsoProgramType::VertexShader].layout; }
-    const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_consts[DxsoProgramType::PixelShader].layout; }
+    const D3D9ConstantLayout& GetVertexConstantLayout() { return m_consts[uint32_t(D3D9ShaderType::VertexShader)].layout; }
+    const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_consts[uint32_t(D3D9ShaderType::PixelShader)].layout; }
 
     void ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters);
     HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
@@ -1364,10 +1364,10 @@ namespace dxvk {
     }
 
     // So we don't do OOB.
-    template <DxsoProgramType  ProgramType,
+    template <D3D9ShaderType   ShaderType,
               D3D9ConstantType ConstantType>
     inline static constexpr uint32_t DetermineSoftwareRegCount() {
-      constexpr bool isVS = ProgramType == DxsoProgramType::VertexShader;
+      constexpr bool isVS = ShaderType == D3D9ShaderType::VertexShader;
 
       switch (ConstantType) {
         default:
@@ -1378,10 +1378,10 @@ namespace dxvk {
     }
 
     // So we don't copy more than we need.
-    template <DxsoProgramType  ProgramType,
+    template <D3D9ShaderType   ShaderType,
               D3D9ConstantType ConstantType>
     inline uint32_t DetermineHardwareRegCount() const {
-      const auto& layout = m_consts[ProgramType].layout;
+      const auto& layout = m_consts[uint32_t(ShaderType)].layout;
 
       switch (ConstantType) {
         default:
@@ -1396,7 +1396,7 @@ namespace dxvk {
     }
 
     template <
-      DxsoProgramType  ProgramType,
+      D3D9ShaderType   ShaderType,
       D3D9ConstantType ConstantType,
       typename         T>
       HRESULT SetShaderConstants(
@@ -1405,7 +1405,7 @@ namespace dxvk {
               UINT  Count);
 
     template <
-      DxsoProgramType  ProgramType,
+      D3D9ShaderType   ShaderType,
       D3D9ConstantType ConstantType,
       typename         T>
     HRESULT GetShaderConstants(
@@ -1413,8 +1413,8 @@ namespace dxvk {
             T*   pConstantData,
             UINT Count) {
       auto GetHelper = [&] (const auto& set) {
-        const     uint32_t regCountHardware = DetermineHardwareRegCount<ProgramType, ConstantType>();
-        constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount<ProgramType, ConstantType>();
+        const     uint32_t regCountHardware = DetermineHardwareRegCount<ShaderType, ConstantType>();
+        constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount<ShaderType, ConstantType>();
 
         if (StartRegister + Count > regCountSoftware)
           return D3DERR_INVALIDCALL;
@@ -1458,7 +1458,7 @@ namespace dxvk {
         return D3D_OK;
       };
 
-      return ProgramType == DxsoProgramTypes::VertexShader
+      return ShaderType == D3D9ShaderType::VertexShader
         ? GetHelper(m_state.vsConsts)
         : GetHelper(m_state.psConsts);
     }
@@ -1679,7 +1679,7 @@ namespace dxvk {
     uint32_t                        m_robustSSBOAlignment     = 1;
     uint32_t                        m_robustUBOAlignment      = 1;
 
-    D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
+    D3D9ConstantSets                m_consts[uint32_t(D3D9ShaderType::PixelShader) + 1];
 
     D3D9UserDefinedAnnotation*      m_annotation = nullptr;
 
