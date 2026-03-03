@@ -922,8 +922,7 @@ namespace dxvk {
           m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, m_layout->floatCount);
         } else {
           m_meta.maxConstIndexF = m_layout->floatCount;
-          m_meta.needsConstantCopies |= m_moduleInfo.options.strictConstantCopies
-                                     || m_cFloat.at(reg.id.num) != 0;
+          m_meta.needsConstantCopies |= m_cFloat.at(reg.id.num) != 0;
         }
         break;
       
@@ -973,21 +972,6 @@ namespace dxvk {
         cBufferId, indices.size(), indices.data());
 
       result.id = m_module.opLoad(typeId, ptrId);
-
-      if (relative && !m_moduleInfo.options.robustness2Supported) {
-        uint32_t constCount = m_module.constu32(m_layout->floatCount);
-
-        // Expand condition to bvec4 since the result has four components
-        uint32_t cond = m_module.opULessThan(m_module.defBoolType(), relativeIdx, constCount);
-        std::array<uint32_t, 4> condIds = { cond, cond, cond, cond };
-
-        cond = m_module.opCompositeConstruct(
-          m_module.defVectorType(m_module.defBoolType(), 4),
-          condIds.size(), condIds.data());
-
-        result.id = m_module.opSelect(typeId, cond, result.id,
-          m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
-      }
     } else {
       // Bool constants have no relative indexing, so we can do the bitfield
       // magic for SWVP at compile time.
@@ -2065,7 +2049,7 @@ namespace dxvk {
 
         result.id = m_module.opPow(typeId, base, exponent);
 
-        if (m_moduleInfo.options.strictPow && m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Disabled) {
+        if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Disabled) {
           DxsoRegisterValue cmp;
           cmp.type  = { DxsoScalarType::Bool, result.type.ccount };
           cmp.id    = m_module.opFOrdEqual(getVectorTypeId(cmp.type),
@@ -3600,9 +3584,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       spv::StorageClassOutput);
 
     m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
-
-    if (m_moduleInfo.options.invariantPosition)
-      m_module.decorate(m_vs.oPos.id, spv::DecorationInvariant);
+    m_module.decorate(m_vs.oPos.id, spv::DecorationInvariant);
     
     const uint32_t positionPtr = m_vs.oPos.id;
 

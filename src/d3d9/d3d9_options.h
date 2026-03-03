@@ -52,14 +52,6 @@ namespace dxvk {
     /// Whether or not to set the process as DPI aware in Windows when the API interface is created.
     bool dpiAware;
 
-    /// True:  Copy our constant set into UBO if we are relative indexing ever.
-    /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
-    /// Why?:  In theory, FXC should never generate code where this would be an issue.
-    bool strictConstantCopies;
-
-    /// Whether or not we should care about pow(0, 0) = 1
-    bool strictPow;
-
     /// Whether or not to do a fast path clear if we're close enough to the whole render target.
     bool lenientClear;
 
@@ -94,10 +86,6 @@ namespace dxvk {
     /// Specifically to work around a game
     /// bug in The Sims 2 that happens on native too!
     bool disableA8RT;
-
-    /// Work around a NV driver quirk
-    /// Fixes flickering/z-fighting in some games.
-    bool invariantPosition;
 
     /// Whether or not to respect memory tracking for
     /// failing resource allocation.

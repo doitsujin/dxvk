@@ -46,8 +46,6 @@ namespace dxvk {
     this->presentInterval               = config.getOption<int32_t>     ("d3d9.presentInterval",               -1);
     this->shaderModel                   = config.getOption<int32_t>     ("d3d9.shaderModel",                   3u);
     this->dpiAware                      = config.getOption<bool>        ("d3d9.dpiAware",                      true);
-    this->strictConstantCopies          = config.getOption<bool>        ("d3d9.strictConstantCopies",          false);
-    this->strictPow                     = config.getOption<bool>        ("d3d9.strictPow",                     true);
     this->lenientClear                  = config.getOption<bool>        ("d3d9.lenientClear",                  false);
     this->deferSurfaceCreation          = config.getOption<bool>        ("d3d9.deferSurfaceCreation",          false);
     this->samplerAnisotropy             = config.getOption<int32_t>     ("d3d9.samplerAnisotropy",             -1);
@@ -56,7 +54,6 @@ namespace dxvk {
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
     this->useD32forD24                  = config.getOption<bool>        ("d3d9.useD32forD24",                  false);
     this->disableA8RT                   = config.getOption<bool>        ("d3d9.disableA8RT",                   false);
-    this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             true);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
     this->forceSamplerTypeSpecConstants = config.getOption<bool>        ("d3d9.forceSamplerTypeSpecConstants", false);
     this->forceSampleRateShading        = config.getOption<bool>        ("d3d9.forceSampleRateShading",        false);
