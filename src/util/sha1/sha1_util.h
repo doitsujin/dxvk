@@ -54,6 +54,14 @@ namespace dxvk {
       return compute(&data, sizeof(T));
     }
 
+    const uint8_t* digest() const {
+      return m_digest.data();
+    }
+
+    size_t digestLength() const {
+      return m_digest.size();
+    }
+
   private:
     
     Sha1Digest m_digest;
