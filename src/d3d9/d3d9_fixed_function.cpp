@@ -2696,7 +2696,7 @@ namespace dxvk {
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyVS&    Key) {
     Sha1Hash hash = Sha1Hash::compute(&Key, sizeof(Key));
-    DxvkShaderKey shaderKey = { VK_SHADER_STAGE_VERTEX_BIT, hash };
+    DxvkShaderHash shaderKey(VK_SHADER_STAGE_VERTEX_BIT,  0u, hash.digest(), hash.digestLength());
 
     std::string name = str::format("FF_", shaderKey.toString());
 
@@ -2717,7 +2717,7 @@ namespace dxvk {
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyFS&    Key) {
     Sha1Hash hash = Sha1Hash::compute(&Key, sizeof(Key));
-    DxvkShaderKey shaderKey = { VK_SHADER_STAGE_FRAGMENT_BIT, hash };
+    DxvkShaderHash shaderKey(VK_SHADER_STAGE_FRAGMENT_BIT, 0u, hash.digest(), hash.digestLength());
 
     std::string name = str::format("FF_", shaderKey.toString());
 

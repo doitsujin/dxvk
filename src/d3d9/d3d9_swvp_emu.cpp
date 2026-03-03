@@ -338,7 +338,7 @@ namespace dxvk {
     Sha1Hash hash = Sha1Hash::compute(
       elements.data(), elements.size() * sizeof(elements[0]));
 
-    DxvkShaderKey key = { VK_SHADER_STAGE_GEOMETRY_BIT , hash };
+    DxvkShaderHash key(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, hash.digest(), hash.digestLength());
     std::string name = str::format("SWVP_", key.toString());
     
     // This shader has not been compiled yet, so we have to create a

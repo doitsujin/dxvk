@@ -30,7 +30,7 @@ namespace dxvk {
     D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,
-      const DxvkShaderKey&        Key,
+      const DxvkShaderHash&       Key,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode,
       const DxsoAnalysisInfo&     AnalysisInfo,
@@ -218,7 +218,7 @@ namespace dxvk {
     dxvk::mutex m_mutex;
     
     std::unordered_map<
-      DxvkShaderKey,
+      DxvkShaderHash,
       D3D9CommonShader,
       DxvkHash, DxvkEq> m_modules;
     
