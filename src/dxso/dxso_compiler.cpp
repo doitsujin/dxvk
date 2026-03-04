@@ -2,9 +2,9 @@
 #include "dxso_compiler.h"
 #include "dxso_util.h"
 
+#define DXSO
 #include "../d3d9/d3d9_caps.h"
 #include "../d3d9/d3d9_constant_set.h"
-#include "../d3d9/d3d9_state.h"
 #include "../d3d9/d3d9_spec_constants.h"
 #include "../d3d9/d3d9_fixed_function.h"
 
