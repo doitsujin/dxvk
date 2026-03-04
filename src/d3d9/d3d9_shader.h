@@ -4,6 +4,9 @@
 
 #include "../dxvk/dxvk_shader.h"
 #include "../dxvk/dxvk_shader_key.h"
+#ifndef DXSO
+#include "../dxvk/dxvk_shader_ir.h"
+#endif
 
 #include "d3d9_resource.h"
 #include "d3d9_util.h"
@@ -12,6 +15,41 @@
 #include <array>
 
 namespace dxvk {
+
+#ifndef DXSO
+
+  struct D3D9ShaderOptions {
+    /** Whether the device is configured to do SWVP.
+     * This must only be true for vertex shaders.
+     * It results in significantly larger amounts of shader constants.
+     */
+    bool isSWVP;
+
+    /** Whether to emulate d3d9 float behaviour using clampps
+     * True:  Perform emulation to emulate behaviour (ie. anything * 0 = 0)
+     * False: Don't do anything.
+     */
+    D3D9FloatEmulation d3d9FloatEmulation;
+
+    /** Always use a spec constant to determine sampler type (instead of just in PS 1.x)
+     * Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
+     */
+    bool forceSamplerTypeSpecConstants;
+  };
+
+  struct D3D9ShaderCreateInfo {
+    DxvkIrShaderCreateInfo irCreateInfo;
+
+    D3D9ShaderOptions shaderOptions;
+
+    DxsoAnalysisInfo analysisInfo;
+  };
+
+#else
+
+  struct D3D9ShaderCreateInfo {};
+
+#endif
 
 
   /**
@@ -29,12 +67,9 @@ namespace dxvk {
 
     D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
-            VkShaderStageFlagBits ShaderStage,
-      const DxvkShaderHash&       Key,
-      const DxsoModuleInfo*       pDxbcModuleInfo,
-      const void*                 pShaderBytecode,
-      const DxsoAnalysisInfo&     AnalysisInfo,
-            DxsoModule*           pModule);
+      const DxvkShaderHash&       ShaderKey,
+      const D3D9ShaderCreateInfo& ModuleInfo,
+      const void*                 pShaderBytecode);
 
 
     Rc<DxvkShader> GetShader() const {
@@ -69,6 +104,12 @@ namespace dxvk {
     }
 
   private:
+
+    void CreateLegacyShader(
+            D3D9DeviceEx*         pDevice,
+      const DxvkShaderHash&       ShaderKey,
+      const D3D9ShaderCreateInfo& ModuleInfo,
+      const void*                 pShaderBytecode);
 
     DxsoIsgn              m_isgn;
     uint32_t              m_usedSamplers;
@@ -205,13 +246,12 @@ namespace dxvk {
     
   public:
     
-    void GetShaderModule(
-            D3D9DeviceEx*         pDevice,
-            D3D9CommonShader*     pShaderModule,
-            uint32_t*             pLength,
-            VkShaderStageFlagBits ShaderStage,
-      const DxsoModuleInfo*       pDxbcModuleInfo,
-      const void*                 pShaderBytecode);
+    HRESULT GetShaderModule(
+            D3D9DeviceEx*           pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const D3D9ShaderCreateInfo&   ModuleInfo,
+      const void*                   pShaderBytecode,
+            D3D9CommonShader*       pShader);
     
   private:
     

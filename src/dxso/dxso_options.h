@@ -9,9 +9,6 @@ namespace dxvk {
   struct D3D9Options;
 
   struct DxsoOptions {
-    DxsoOptions();
-    DxsoOptions(D3D9DeviceEx* pDevice, const D3D9Options& options);
-
     /// Whether to emulate d3d9 float behaviour using clampps
     /// True:  Perform emulation to emulate behaviour (ie. anything * 0 = 0)
     /// False: Don't do anything.
