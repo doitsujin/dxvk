@@ -1328,12 +1328,11 @@ namespace dxvk {
 
     DxvkStagingBufferStats GetStagingMemoryStatistics() const;
 
-    HRESULT               CreateShaderModule(
+    HRESULT CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
-            uint32_t*             pLength,
+            size_t*               pLength,
             VkShaderStageFlagBits ShaderStage,
-      const DWORD*                pShaderBytecode,
-      const DxsoModuleInfo*       pModuleInfo);
+      const DWORD*                pShaderBytecode);
 
     inline uint32_t GetUPDataSize(uint32_t vertexCount, uint32_t stride) {
       return vertexCount * stride;
@@ -1580,6 +1579,8 @@ namespace dxvk {
 
     bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
 
+    void InitShaderOptions();
+
     Com<D3D9InterfaceEx>            m_parent;
     D3D9Options                     m_d3d9Options;
     D3DDEVTYPE                      m_deviceType;
@@ -1633,7 +1634,8 @@ namespace dxvk {
 
     Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
 
-    DxsoOptions                     m_dxsoOptions;
+    D3D9ShaderOptions               m_shaderOptions;
+    DxvkShaderOptions               m_dxvkShaderOptions;
 
     std::unordered_map<
       DWORD,
