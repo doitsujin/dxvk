@@ -1,47 +1,8 @@
 dxvk_shaders = files([
-  'shaders/dxvk_blit_frag_1d.frag',
-  'shaders/dxvk_blit_frag_2d.frag',
-  'shaders/dxvk_blit_frag_3d.frag',
-  'shaders/dxvk_blit_frag_2d_ms.frag',
-
-  'shaders/dxvk_buffer_to_image_d.frag',
-  'shaders/dxvk_buffer_to_image_ds_export.frag',
-  'shaders/dxvk_buffer_to_image_f.frag',
-  'shaders/dxvk_buffer_to_image_s_discard.frag',
-  'shaders/dxvk_buffer_to_image_u.frag',
-
-  'shaders/dxvk_clear_buffer_u.comp',
-  'shaders/dxvk_clear_buffer_f.comp',
-  'shaders/dxvk_clear_image1d_u.comp',
-  'shaders/dxvk_clear_image1d_f.comp',
-  'shaders/dxvk_clear_image1darr_u.comp',
-  'shaders/dxvk_clear_image1darr_f.comp',
-  'shaders/dxvk_clear_image2d_u.comp',
-  'shaders/dxvk_clear_image2d_f.comp',
-  'shaders/dxvk_clear_image2darr_u.comp',
-  'shaders/dxvk_clear_image2darr_f.comp',
-  'shaders/dxvk_clear_image3d_u.comp',
-  'shaders/dxvk_clear_image3d_f.comp',
-
-  'shaders/dxvk_copy_buffer_image.comp',
-  'shaders/dxvk_copy_color_1d.frag',
-  'shaders/dxvk_copy_color_2d.frag',
-  'shaders/dxvk_copy_color_ms.frag',
-  'shaders/dxvk_copy_depth_stencil_1d.frag',
-  'shaders/dxvk_copy_depth_stencil_2d.frag',
-  'shaders/dxvk_copy_depth_stencil_ms.frag',
-
   'shaders/dxvk_cursor_vert.vert',
   'shaders/dxvk_cursor_frag.frag',
 
   'shaders/dxvk_dummy_frag.frag',
-
-  'shaders/dxvk_fullscreen_geom.geom',
-  'shaders/dxvk_fullscreen_vert.vert',
-  'shaders/dxvk_fullscreen_layer_vert.vert',
-
-  'shaders/dxvk_image_to_buffer_ds.comp',
-  'shaders/dxvk_image_to_buffer_f.comp',
 
   'shaders/dxvk_mipgen.comp',
 
@@ -50,12 +11,6 @@ dxvk_shaders = files([
   'shaders/dxvk_present_frag_ms.frag',
   'shaders/dxvk_present_frag_ms_blit.frag',
   'shaders/dxvk_present_vert.vert',
-
-  'shaders/dxvk_resolve_frag_d.frag',
-  'shaders/dxvk_resolve_frag_ds.frag',
-  'shaders/dxvk_resolve_frag_f.frag',
-  'shaders/dxvk_resolve_frag_i.frag',
-  'shaders/dxvk_resolve_frag_u.frag',
 
   'hud/shaders/hud_chunk_frag_background.frag',
   'hud/shaders/hud_chunk_frag_visualize.frag',
@@ -114,6 +69,7 @@ dxvk_src = [
   'dxvk_queue.cpp',
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
+  'dxvk_shader_builtin.cpp',
   'dxvk_shader_cache.cpp',
   'dxvk_shader_io.cpp',
   'dxvk_shader_ir.cpp',
