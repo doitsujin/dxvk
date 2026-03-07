@@ -270,9 +270,10 @@ namespace dxvk {
     { R"(\\armoredwarfare\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "c" },
     }} },
-    /* Nioh 2                                     */
+    /* Nioh 2 - Fixes some fires looking glitchy  */
     { R"(\\nioh2\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
+      { "dxvk.zeroMappedMemory",            "True" },
     }} },
     /* Crazy Machines 3 - crashes on long device  *
      * descriptions                               */
