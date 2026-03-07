@@ -5726,9 +5726,6 @@ namespace dxvk {
 
 
   bool DxvkContext::renderPassStartUnsynchronized() {
-    // TODO re-enable once we iron out the bugs.
-    return false;
-
     // Don't even try if there is a depth buffer bound, this is most likely
     // either a shadow pass or an otherwise expensive main render pass.
     //
@@ -7503,7 +7500,8 @@ namespace dxvk {
 
 
   void DxvkContext::beginComputePass() {
-    m_flags.set(DxvkContextFlag::CpComputePassActive);
+    m_flags.set(DxvkContextFlag::CpComputePassActive,
+                DxvkContextFlag::DirtyDrawBuffer);
 
     // Mark compute descriptors as dirty so that hazards are checked properly
     // between dispatches even when none of the resources were re-bound. This
@@ -7607,18 +7605,22 @@ namespace dxvk {
     }
 
     // Check whether we can actually start the render pass as unsynchronized.
-    if (!m_flags.any(DxvkContextFlag::GpRenderPassActive)) {
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassActive)) {
       if (renderPassStartUnsynchronized()) {
         m_flags.set(DxvkContextFlag::GpRenderPassUnsynchronized);
         m_unsynchronizedDrawCount = 0u;
       }
 
-      // Dirty all descriptor sets if there is no active render pass so that we
-      // actually check all bound resources for hazards as necessary. Otherwise,
-      // descriptor state will only be dirtied once we actually start the render
-      // pass, which may be too late.
-      if (!m_flags.any(DxvkContextFlag::GpRenderPassActive))
-        m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+      // Dirty all relevant state and descriptor sets if there is no active
+      // render pass so that we actually check all bound resources for hazards
+      // as necessary. Otherwise, descriptor state will only be dirtied once
+      // we actually start the render pass, which may be too late.
+      m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+
+      m_flags.set(DxvkContextFlag::DirtyDrawBuffer,
+                  DxvkContextFlag::GpDirtyIndexBuffer,
+                  DxvkContextFlag::GpDirtyVertexBuffers,
+                  DxvkContextFlag::GpDirtyXfbBuffers);
     }
 
     if (m_flags.any(DxvkContextFlag::GpRenderPassSideEffects,
@@ -7787,6 +7789,15 @@ namespace dxvk {
       }
     }
 
+    // Only check read-only resources if there are any pending writes targeting them.
+    VkAccessFlags2 shaderReadAccess = VK_ACCESS_2_UNIFORM_READ_BIT
+      | VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_SAMPLED_READ_BIT
+      | VK_ACCESS_2_SHADER_STORAGE_READ_BIT;
+
+    if (!m_execBarriers.hasPendingAccess(vk::AccessWriteMask)
+     || !m_execBarriers.hasTargetAccess(shaderReadAccess))
+      return false;
+
     // For read-only resources, it is sufficient to check dirty bindings since
     // any resource previously bound as read-only cannot have been written by
     // the same pipeline.
@@ -7878,8 +7889,7 @@ namespace dxvk {
       return false;
 
     // Check shader resources on every draw to handle WAW hazards, and to make
-    // sure that writes are handled properly. Checking dirty sets is sufficient
-    // since we will unconditionally iterate over writable resources anyway.
+    // sure that writes are handled properly.
     bool requiresBarrier = checkResourceHazards<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->getLayout());
 
     // Transform feedback buffer writes won't overlap, so we also only need to
@@ -7908,13 +7918,12 @@ namespace dxvk {
 
     // From now on, we only have read-only resources to check and can
     // exit early if we find a hazard.
-    if (requiresBarrier)
-      return true;
+    if (requiresBarrier || !m_execBarriers.hasPendingAccess(vk::AccessWriteMask))
+      return requiresBarrier;
 
     bool unsynchronizedPass = m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized);
 
-    // Check the draw buffer for indirect draw calls
-    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect) {
+    if (m_execBarriers.hasTargetAccess(VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT) && Indirect) {
       std::array<DxvkBufferSlice*, 2> slices = {{
         &m_state.id.argBuffer,
         &m_state.id.cntBuffer,
@@ -7929,9 +7938,11 @@ namespace dxvk {
       }
     }
 
-    // Read-only stage, so we only have to check this if
-    // the bindngs have actually changed between draws
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
+    // Only checking index and vertex buffers when dirty works because client
+    // APIs prohibit binding them for reading and writing at the same time.
+    // This does not extend to indirect draw buffers.
+    if (m_execBarriers.hasTargetAccess(VK_ACCESS_2_INDEX_READ_BIT) && Indexed
+     && m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       const auto& indexBufferSlice = m_state.vi.indexBuffer;
 
       if (indexBufferSlice.length() && (unsynchronizedPass || indexBufferSlice.buffer()->hasGfxStores())) {
@@ -7941,8 +7952,8 @@ namespace dxvk {
       }
     }
 
-    // Same here, also ignore unused vertex bindings
-    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
+    if (m_execBarriers.hasTargetAccess(VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT)
+     && m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       uint32_t bindingCount = m_state.gp.state.il.bindingCount();
 
       for (uint32_t i = 0; i < bindingCount; i++) {
