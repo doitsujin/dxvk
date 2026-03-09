@@ -699,4 +699,13 @@ namespace dxvk::bit {
     }
   };
 
+#if defined(__APPLE__)
+  // macOS arm64: uintptr_t is 'unsigned long', distinct from
+  // uint32_t (unsigned int) and uint64_t (unsigned long long).
+  // Explicit overloads to resolve template ambiguity.
+  inline uint32_t tzcnt(uintptr_t n) { return tzcnt(static_cast<uint64_t>(n)); }
+  inline uint32_t lzcnt(uintptr_t n) { return lzcnt(static_cast<uint64_t>(n)); }
+#endif
+
+
 }

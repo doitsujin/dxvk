@@ -187,7 +187,15 @@ namespace dxvk {
       appInfo.engineVersion         = VK_MAKE_API_VERSION(0, 2, 6, 0);
       appInfo.apiVersion            = VK_MAKE_API_VERSION(0, 1, 3, 0);
 
+      // MoltenVK/macOS requires VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR
+      // when VK_KHR_portability_enumeration is enabled, otherwise
+      // vkEnumeratePhysicalDevices returns VK_ERROR_INCOMPATIBLE_DRIVER.
+      VkInstanceCreateFlags createFlags = 0;
+      if (m_extensionSet.supports(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME))
+        createFlags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+
       VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+      info.flags                    = createFlags;
       info.pApplicationInfo         = &appInfo;
       info.enabledLayerCount        = layerList.count();
       info.ppEnabledLayerNames      = layerList.names();
@@ -226,6 +234,9 @@ namespace dxvk {
       &ext.extSurfaceMaintenance1,
       &ext.khrGetSurfaceCapabilities2,
       &ext.khrSurface,
+      // MoltenVK/macOS: VK_KHR_portability_enumeration must be enabled or
+      // vkEnumeratePhysicalDevices returns VK_ERROR_INCOMPATIBLE_DRIVER (-9).
+      &ext.khrPortabilityEnumeration,
     }};
 
     if (withDebug)

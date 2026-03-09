@@ -751,7 +751,11 @@ namespace dxvk {
       DxsoBindingType::Image,
       idx);
 
-    const bool implicit = m_programInfo.majorVersion() < 2 || m_moduleInfo.options.forceSamplerTypeSpecConstants;
+    // GeneralsX Patch 13: MoltenVK/SPIRV-Cross does not declare dummy variables for inactive
+    // sampler type variants in the MSL entry-point wrapper. Removing the majorVersion() < 2
+    // auto-trigger prevents DXVK from emitting all-type SPIR-V for PS1.x shaders. Only
+    // forceSamplerTypeSpecConstants=True (explicit opt-in) enables multi-type mode.
+    const bool implicit = m_moduleInfo.options.forceSamplerTypeSpecConstants;
 
     if (!implicit) {
       DxsoSamplerType samplerType = 
@@ -3012,7 +3016,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, isNull);
     };
 
-    if (m_programInfo.majorVersion() >= 2 && !m_moduleInfo.options.forceSamplerTypeSpecConstants) {
+    // GeneralsX Patch 13b: Remove majorVersion() < 2 auto-trigger for spec-constant sampler
+    // type switching. Same rationale as Patch 13: for PS1.x + forceSamplerTypeSpecConstants=False,
+    // emit a direct 2D sample call instead of an OpSwitch over {2D, 3D, Cube} spec constants.
+    // SPIRV-Cross generates ps_main() params for every OpSwitch case label even when those
+    // samplers were not declared as SPIR-V bindings → "undeclared identifier" in Metal MSL.
+    if (!m_moduleInfo.options.forceSamplerTypeSpecConstants) {
       DxsoSamplerType samplerType =
         SamplerTypeFromTextureType(sampler.type);
 

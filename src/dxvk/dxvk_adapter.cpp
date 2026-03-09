@@ -1,9 +1,24 @@
+// macOS: Enable Vulkan beta extensions to expose VK_KHR_portability_subset types
+// (VkPhysicalDevicePortabilitySubsetFeaturesKHR, VK_STRUCTURE_TYPE_*_PORTABILITY_SUBSET_*).
+// These are guarded by VK_ENABLE_BETA_EXTENSIONS in vulkan_core.h and vulkan_beta.h.
+// This define MUST appear before any Vulkan header is pulled in.
+#ifdef __APPLE__
+#define VK_ENABLE_BETA_EXTENSIONS
+#endif
+
 #include <cstring>
 #include <unordered_set>
 
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
+
+// macOS: VkPhysicalDevicePortabilitySubsetFeaturesKHR lives in vulkan_beta.h.
+// Included after dxvk headers (which pull in vulkan.h) but VK_ENABLE_BETA_EXTENSIONS
+// defined above ensures the portability types are active in vulkan_core.h too.
+#ifdef __APPLE__
+#include <vulkan/vulkan_beta.h>
+#endif
 
 namespace dxvk {
 
@@ -321,7 +336,27 @@ namespace dxvk {
     
     // Enable additional extensions if necessary
     extensionsEnabled.merge(m_extraExtensions);
+
+    // macOS/MoltenVK: VK_KHR_portability_subset MUST be enabled when the device supports it.
+    // Without it, vkCreateDevice rejects valid features (robustBufferAccess2, nullDescriptor, etc.)
+    // with VK_ERROR_FEATURE_NOT_PRESENT due to MoltenVK's portability subset enforcement.
+    const bool hasPortabilitySubset =
+      m_deviceExtensions.supports(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME) != 0u;
+    if (hasPortabilitySubset)
+      extensionsEnabled.add(VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME);
+
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
+
+    // macOS/MoltenVK: mask all core features against actual device capabilities.
+    // Prevents requesting tessellationShader, shaderFloat64, etc. that M1 reports as 0,
+    // which MoltenVK rejects with VK_ERROR_FEATURE_NOT_PRESENT in vkCreateDevice.
+    {
+      const VkBool32* src = reinterpret_cast<const VkBool32*>(&m_deviceFeatures.core.features);
+      VkBool32*       dst = reinterpret_cast<VkBool32*>(&enabledFeatures.core.features);
+      const size_t  count = sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32);
+      for (size_t i = 0; i < count; ++i)
+        dst[i] = dst[i] & src[i];
+    }
 
     // Always enable robust buffer access
     enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
@@ -431,9 +466,18 @@ namespace dxvk {
     // Require robustBufferAccess2 since we use the robustness alignment
     // info in a number of places, and require null descriptor support
     // since we no longer have a fallback for those in the backend
+    // macOS/MoltenVK: despite reporting these features as supported via
+    // vkGetPhysicalDeviceFeatures2, vkCreateDevice rejects them with
+    // VK_ERROR_FEATURE_NOT_PRESENT when VK_KHR_portability_subset is active.
+#ifdef __APPLE__
+    enabledFeatures.extRobustness2.robustBufferAccess2 = VK_FALSE;
+    enabledFeatures.extRobustness2.robustImageAccess2 = VK_FALSE;
+    enabledFeatures.extRobustness2.nullDescriptor = VK_FALSE;
+#else
     enabledFeatures.extRobustness2.robustBufferAccess2 = VK_TRUE;
     enabledFeatures.extRobustness2.robustImageAccess2 = m_deviceFeatures.extRobustness2.robustImageAccess2;
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
+#endif
 
     // We use this to avoid decompressing SPIR-V shaders in some situations
     enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
@@ -471,6 +515,19 @@ namespace dxvk {
 
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
+
+    // macOS/MoltenVK: when VK_KHR_portability_subset is enabled, the Vulkan spec requires
+    // VkPhysicalDevicePortabilitySubsetFeaturesKHR in VkDeviceCreateInfo.pNext set to
+    // device-queried values. Without this, MoltenVK may reject features it reported as
+    // supported in vkGetPhysicalDeviceFeatures2 (e.g. robustBufferAccess2, nullDescriptor).
+    VkPhysicalDevicePortabilitySubsetFeaturesKHR portabilityFeatures = {
+      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR };
+    if (hasPortabilitySubset) {
+      VkPhysicalDeviceFeatures2 query = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+      query.pNext = &portabilityFeatures;
+      m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &query);
+      portabilityFeatures.pNext = std::exchange(enabledFeatures.core.pNext, &portabilityFeatures);
+    }
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"

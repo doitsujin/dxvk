@@ -120,8 +120,13 @@ namespace dxvk {
           m_stream->GetPtr(draw.MinVertex * m_stride),
           m_stride);
 
-        m_device->SetStreamSource(0, D3D8VertexBuffer::GetD3D9Nullable(m_stream), 0, m_stride);
-        m_device->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(m_indices));
+        // GeneralsX Patch 11: do NOT restore D3D9 state here.
+        // m_stream is a CPU-only D3D8BatchBuffer with null D3D9 backing;
+        // GetD3D9Nullable returns null and would overwrite the real D3D9
+        // stream source already set by D3D8Device::SetStreamSource before
+        // triggering this StateChange(). DrawIndexedPrimitiveUP has already
+        // unbound stream 0 and indices per D3D9 spec. The D3D8Device layer
+        // is responsible for re-setting correct state before the next draw.
 
         draw.PrimitiveType = D3DPRIMITIVETYPE(0);
         draw.Offset = 0;

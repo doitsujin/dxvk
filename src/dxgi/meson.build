@@ -17,7 +17,9 @@ dxgi_ld_args      = []
 dxgi_link_depends = []
 
 if platform != 'windows'
+  if platform != 'darwin'
   dxgi_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'dxgi.sym') ]
+  endif
   dxgi_link_depends += files('dxgi.sym')
 endif
 
