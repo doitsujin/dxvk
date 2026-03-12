@@ -133,4 +133,12 @@ namespace dxvk {
     return getDefaultResolveMode(lookupFormatInfo(format));
   }
 
+  /**
+   * \brief Queries non-sRGB format for a given format
+   *
+   * \param [in] format Format
+   * \returns Linear format that corresponds to \c format.
+   */
+  VkFormat getLinearFormat(VkFormat format);
+
 }
