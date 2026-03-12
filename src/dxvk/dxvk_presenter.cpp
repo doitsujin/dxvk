@@ -853,6 +853,8 @@ namespace dxvk {
 
     m_dynamicModes = std::move(dynamicModes);
 
+    m_hasPresentModeFifoLatestReady = m_device->features().khrPresentModeFifoLatestReady.presentModeFifoLatestReady;
+
     // Set up feature support for present wait / id, and launch sync thread as necessary
     m_hasPresentId = presentId2Caps.presentId2Supported || m_device->features().khrPresentId.presentId;
     m_hasPresentWait = presentWait2Caps.presentWait2Supported || m_device->features().khrPresentWait.presentWait;
@@ -1119,7 +1121,7 @@ namespace dxvk {
           uint32_t                  numSupported,
     const VkPresentModeKHR*         pSupported,
           uint32_t                  syncInterval) {
-    std::array<VkPresentModeKHR, 2> desired = { };
+    std::array<VkPresentModeKHR, 3> desired = { };
     uint32_t numDesired = 0;
 
     Tristate tearFree = m_device->config().tearFree;
@@ -1127,6 +1129,8 @@ namespace dxvk {
     if (!syncInterval) {
       if (tearFree != Tristate::True)
         desired[numDesired++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      if (m_hasPresentModeFifoLatestReady)
+        desired[numDesired++] = VK_PRESENT_MODE_FIFO_LATEST_READY_KHR;
       desired[numDesired++] = VK_PRESENT_MODE_MAILBOX_KHR;
     } else {
       if (tearFree == Tristate::False)
