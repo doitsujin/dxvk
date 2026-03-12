@@ -289,6 +289,7 @@ namespace dxvk {
     bool                        m_dirtySwapchain = false;
     bool                        m_dirtySurface = false;
 
+    bool                        m_hasPresentModeFifoLatestReady = false;
     bool                        m_hasPresentId = false;
     bool                        m_hasPresentWait = false;
     bool                        m_hasSwapchainMaintenance1 = false;

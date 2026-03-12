@@ -55,6 +55,7 @@ namespace dxvk {
     HANDLE_EXT(khrPipelineLibrary);                \
     HANDLE_EXT(khrPresentId);                      \
     HANDLE_EXT(khrPresentId2);                     \
+    HANDLE_EXT(khrPresentModeFifoLatestReady);     \
     HANDLE_EXT(khrPresentWait);                    \
     HANDLE_EXT(khrPresentWait2);                   \
     HANDLE_EXT(khrShaderFloatControls2);           \
@@ -990,6 +991,9 @@ namespace dxvk {
 
       /* Dependency for graphics pipeline library */
       ENABLE_EXT(khrPipelineLibrary, true),
+
+      /* Present mode FIFO Latest Ready */
+      ENABLE_EXT_FEATURE(khrPresentModeFifoLatestReady, presentModeFifoLatestReady, false),
 
       /* Present wait, used for frame pacing and statistics */
       ENABLE_EXT_FEATURE(khrPresentId, presentId, false),
