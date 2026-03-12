@@ -4670,11 +4670,18 @@ namespace dxvk {
         m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
     }
 
+    // We pick a different address mode for cubemaps, so we might need to update the sampler state.
     bool oldTextureIsCube = oldTexture != nullptr && oldTexture->IsCube();
     bool newTextureIsCube = newTexture != nullptr && newTexture->IsCube();
-    if (unlikely(oldTextureIsCube != newTextureIsCube)) {
+    if (unlikely(oldTextureIsCube != newTextureIsCube))
       m_textureSlotTracking.samplerStateDirty |= 1u << StateSampler;
-    }
+
+    // We disable anisotropic filtering if the texture only has a single mip map,
+    // so wie might need to update the sampler state.
+    bool oldTextureHasMultipleMips = oldTexture != nullptr && oldTexture->Desc()->MipLevels > 1u;
+    bool newTextureHasMultipleMips = newTexture != nullptr && newTexture->Desc()->MipLevels > 1u;
+    if (unlikely(oldTextureHasMultipleMips != newTextureHasMultipleMips))
+      m_textureSlotTracking.samplerStateDirty |= 1u << StateSampler;
 
     DWORD oldUsage = oldTexture != nullptr ? oldTexture->Desc()->Usage : 0;
     DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
@@ -4685,10 +4692,9 @@ namespace dxvk {
 
     // If the texture format changes and the corresponding sampler uses
     // border colors, we may need to update the border color swizzle
-    if (!oldTexture || !newTexture || oldTexture->Desc()->Format != newTexture->Desc()->Format) {
-      if (SamplerUsesBorderColor(StateSampler))
+    if ((!oldTexture || !newTexture || oldTexture->Desc()->Format != newTexture->Desc()->Format)
+      && SamplerUsesBorderColor(StateSampler))
         m_textureSlotTracking.samplerStateDirty |= 1u << StateSampler;
-    }
 
     return D3D_OK;
   }
