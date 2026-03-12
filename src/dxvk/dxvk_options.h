@@ -41,8 +41,8 @@ namespace dxvk {
     /// HUD elements
     std::string hud;
 
-    /// Forces swap chain into MAILBOX (if true)
-    /// or FIFO_RELAXED (if false) present mode
+    /// Forces swap chain into FIFO_LATEST_READY or
+    /// MAILBOX (if true) or FIFO_RELAXED (if false).
     Tristate tearFree = Tristate::Auto;
 
     /// Enables latency sleep
