@@ -9,7 +9,7 @@
 
 namespace dxvk {
 
-  constexpr uint32_t DxvkVulkanApiVersion = VK_API_VERSION_1_3;
+  constexpr uint32_t DxvkVulkanApiVersion = VK_API_VERSION_1_4;
 
   /**
    * \brief Vulkan instance creation parameters

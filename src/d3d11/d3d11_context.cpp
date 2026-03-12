@@ -6003,7 +6003,7 @@ namespace dxvk {
     rsState.setConservativeMode(VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
     rsState.setSampleCount(0);
     rsState.setFlatShading(false);
-    rsState.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT);
+    rsState.setLineMode(VK_LINE_RASTERIZATION_MODE_DEFAULT);
     return rsState;
   }
 
