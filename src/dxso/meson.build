@@ -1,6 +1,5 @@
 dxso_src = files([
   'dxso_common.cpp',
-  'dxso_options.cpp',
   'dxso_module.cpp',
   'dxso_reader.cpp',
   'dxso_header.cpp',
