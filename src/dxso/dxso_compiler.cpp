@@ -2991,6 +2991,15 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // Only do the check for depth comp. samplers
       // if we aren't a 3D texture
       if (samplerType != SamplerTypeTexture3D) {
+    #ifdef __APPLE__
+        // GeneralsX @bugfix BenderAI 13/03/2026
+        // MoltenVK/SPIRV-Cross can emit MSL wrappers referencing shadow sampler
+        // symbols (e.g. s0_2d_shadowSmplr) that are never declared, causing
+        // VK_ERROR_INITIALIZATION_FAILED during terrain pipeline compilation.
+        // Emit the color-sampling path only on macOS to avoid generating the
+        // problematic shadow-sampler entry-point parameters.
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, isNull);
+    #else
         uint32_t colorLabel  = m_module.allocateId();
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
@@ -3011,6 +3020,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opBranch(endLabel);
 
         m_module.opLabel(endLabel);
+#endif
       }
       else
         SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, isNull);
