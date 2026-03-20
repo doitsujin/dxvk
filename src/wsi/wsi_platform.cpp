@@ -33,6 +33,15 @@ namespace dxvk::wsi {
         // for other platforms however we _need_ to know which WSI to use!
 #if defined(DXVK_WSI_WIN32)
         hint = "Win32";
+// GeneralsX @bugfix fbraz3 20/03/2026 Auto-select the best available native WSI
+// instead of aborting when DXVK_WSI_DRIVER is not set. SDL3 takes priority over
+// SDL2 since the game windowing layer uses SDL3.
+#elif defined(DXVK_WSI_SDL3)
+        hint = "SDL3";
+#elif defined(DXVK_WSI_SDL2)
+        hint = "SDL2";
+#elif defined(DXVK_WSI_GLFW)
+        hint = "GLFW";
 #else
         throw DxvkError("DXVK_WSI_DRIVER environment variable unset");
 #endif
