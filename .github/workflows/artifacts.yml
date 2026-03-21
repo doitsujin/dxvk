@@ -36,7 +36,9 @@ jobs:
 
   artifacts-steamrt-sniper:
     runs-on: ubuntu-latest
-    container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta
+    container: 
+      image: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta
+      options: --user 1001
 
     steps:
     - name: Checkout code
