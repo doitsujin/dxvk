@@ -380,7 +380,7 @@ namespace dxvk {
 
     auto iter = m_shaderLibraries.emplace(
       std::piecewise_construct,
-      std::tuple(),
+      std::tuple(key),
       std::tuple(m_device, this, key));
     return &iter.first->second;
   }
