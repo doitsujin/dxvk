@@ -159,34 +159,41 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return E_INVALIDARG;
 
-    const auto& deviceId = m_adapter->deviceProperties().vk11;
+    auto adapterInfo = m_adapter->info();
 
-    std::array<const LUID*, 2> adapterLUIDs = { };
-    uint32_t numLUIDs = 0;
+    small_vector<LUID, 2> adapterLUIDs = { };
+    small_vector<const LUID*, 2> luidPointers;
 
     if (m_adapter->isLinkedToDGPU())
       return DXGI_ERROR_NOT_FOUND;
 
-    if (deviceId.deviceLUIDValid)
-      adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+    if (adapterInfo.luidIsValid) {
+      auto& luid = adapterLUIDs.emplace_back();
+      std::memcpy(&luid, adapterInfo.deviceLuid, sizeof(luid));
+    }
 
     auto linkedAdapter = m_adapter->linkedIGPUAdapter();
 
     // If either LUID is not valid, enumerate all monitors.
-    if (numLUIDs && linkedAdapter != nullptr) {
-      const auto& deviceId = linkedAdapter->deviceProperties().vk11;
+    if (!adapterLUIDs.empty() && linkedAdapter != nullptr) {
+      auto linkedInfo = linkedAdapter->info();
 
-      if (deviceId.deviceLUIDValid)
-        adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
-      else
-        numLUIDs = 0;
+      if (linkedInfo.luidIsValid) {
+        auto& luid = adapterLUIDs.emplace_back();
+        std::memcpy(&luid, linkedInfo.deviceLuid, sizeof(luid));
+      } else {
+        adapterLUIDs.clear();
+      }
     }
 
     // Enumerate all monitors if the robustness fallback is active.
     if (m_factory->UseMonitorFallback())
-      numLUIDs = 0;
+      adapterLUIDs.clear();
 
-    HMONITOR monitor = wsi::enumMonitors(adapterLUIDs.data(), numLUIDs, Output);
+    for (const auto& luid : adapterLUIDs)
+      luidPointers.push_back(&luid);
+
+    HMONITOR monitor = wsi::enumMonitors(luidPointers.data(), luidPointers.size(), Output);
 
     if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
