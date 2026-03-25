@@ -51,8 +51,8 @@ namespace dxvk {
     m_d3d11Formats      (m_dxvkDevice),
     m_d3d11Options      (m_dxvkDevice->instance()->config()),
     m_shaderOptions     (GetShaderOptions(m_dxvkDevice, m_d3d11Options)),
-    m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
-    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_d3d11Options, m_featureLevel) {
+    m_maxFeatureLevel   (D3D11DeviceFeatures::GetMaxFeatureLevel(*m_dxvkDevice)),
+    m_deviceFeatures    (*m_dxvkDevice, m_d3d11Options, m_featureLevel) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());
@@ -1346,10 +1346,7 @@ namespace dxvk {
 
     if (m_featureLevel < featureLevel) {
       m_featureLevel = featureLevel;
-      m_deviceFeatures = D3D11DeviceFeatures(
-        m_dxvkDevice->instance(),
-        m_dxvkDevice->adapter(),
-        m_d3d11Options, m_featureLevel);
+      m_deviceFeatures = D3D11DeviceFeatures(*m_dxvkDevice, m_d3d11Options, m_featureLevel);
     }
 
     if (pChosenFeatureLevel)
@@ -2008,9 +2005,7 @@ namespace dxvk {
   }
   
   
-  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
-    const Rc<DxvkInstance>& Instance,
-    const Rc<DxvkAdapter>&  Adapter) {
+  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const DxvkDevice& Device) {
     // The feature level override always takes precedence
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
       { "12_1", D3D_FEATURE_LEVEL_12_1 },
@@ -2024,7 +2019,7 @@ namespace dxvk {
       { "9_1",  D3D_FEATURE_LEVEL_9_1  },
     }};
     
-    std::string maxLevel = Instance->config().getOption<std::string>("d3d11.maxFeatureLevel");
+    std::string maxLevel = Device.instance()->config().getOption<std::string>("d3d11.maxFeatureLevel");
 
     auto entry = std::find_if(s_featureLevels.begin(), s_featureLevels.end(),
       [&] (const std::pair<std::string, D3D_FEATURE_LEVEL>& pair) {
@@ -2035,7 +2030,7 @@ namespace dxvk {
       return entry->second;
 
     // Otherwise, check the actually available device features
-    return D3D11DeviceFeatures::GetMaxFeatureLevel(Instance, Adapter);
+    return D3D11DeviceFeatures::GetMaxFeatureLevel(Device);
   }
   
   
