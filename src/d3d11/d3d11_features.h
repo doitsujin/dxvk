@@ -20,8 +20,7 @@ namespace dxvk {
     D3D11DeviceFeatures();
 
     D3D11DeviceFeatures(
-      const Rc<DxvkInstance>&     Instance,
-      const Rc<DxvkAdapter>&      Adapter,
+      const DxvkDevice&           Device,
       const D3D11Options&         Options,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
@@ -59,18 +58,12 @@ namespace dxvk {
     /**
      * \brief Tests maximum supported feature level
      *
-     * \param [in] Instance DXVK instance
-     * \param [in] Adapter DXVK adapter
+     * \param [in] Device DXVK device
      * \returns Highest supported feature level
      */
-    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
-      const Rc<DxvkInstance>&     Instance,
-      const Rc<DxvkAdapter>&      Adapter);
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(const DxvkDevice& Device);
 
   private:
-
-    DxvkDeviceFeatures  m_features;
-    DxvkDeviceInfo      m_properties;
 
     D3D11_FEATURE_DATA_ARCHITECTURE_INFO              m_architectureInfo            = { };
     D3D11_FEATURE_DATA_D3D9_OPTIONS                   m_d3d9Options                 = { };
@@ -101,25 +94,25 @@ namespace dxvk {
     }
 
     D3D11_CONSERVATIVE_RASTERIZATION_TIER DetermineConservativeRasterizationTier(
+      const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     D3D11_SHARED_RESOURCE_TIER DetermineSharedResourceTier(
-      const Rc<DxvkAdapter>&      Adapter,
+      const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     D3D11_TILED_RESOURCES_TIER DetermineTiledResourcesTier(
+      const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     BOOL DetermineUavExtendedTypedLoadSupport(
-      const Rc<DxvkAdapter>&      Adapter,
+      const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     BOOL CheckFormatSharingSupport(
-      const Rc<DxvkAdapter>&      Adapter,
+      const DxvkDevice&           Device,
             VkFormat              Format,
             VkExternalMemoryHandleTypeFlagBits HandleType);
-
-    D3D_FEATURE_LEVEL GetMaxFeatureLevel() const;
 
   };
 

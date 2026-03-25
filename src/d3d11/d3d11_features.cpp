@@ -10,12 +10,11 @@ namespace dxvk {
 
 
   D3D11DeviceFeatures::D3D11DeviceFeatures(
-    const Rc<DxvkInstance>&     Instance,
-    const Rc<DxvkAdapter>&      Adapter,
+    const DxvkDevice&           Device,
     const D3D11Options&         Options,
-          D3D_FEATURE_LEVEL     FeatureLevel)
-  : m_features    (Adapter->features()),
-    m_properties  (Adapter->deviceProperties()) {
+          D3D_FEATURE_LEVEL     FeatureLevel) {
+    const auto& features = Device.features();
+
     // Assume no TBDR. DXVK does not optimize for TBDR architectures
     // anyway, and D3D11 does not really provide meaningful support.
     m_architectureInfo.TileBasedDeferredRenderer          = FALSE;
@@ -36,10 +35,10 @@ namespace dxvk {
     m_d3d10Options.ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x = TRUE;
 
     // D3D11.1 options. All of these are required for Feature Level 11_1.
-    auto sharedResourceTier = DetermineSharedResourceTier(Adapter, FeatureLevel);
+    auto sharedResourceTier = DetermineSharedResourceTier(Device, FeatureLevel);
 
-    bool hasDoublePrecisionSupport = m_features.core.features.shaderFloat64
-                                  && m_features.core.features.shaderInt64;
+    bool hasDoublePrecisionSupport = features.core.features.shaderFloat64
+                                  && features.core.features.shaderInt64;
 
     m_d3d11Options.DiscardAPIsSeenByDriver                = TRUE;
     m_d3d11Options.FlagsForUpdateAndCopySeenByDriver      = TRUE;
@@ -52,7 +51,7 @@ namespace dxvk {
     m_d3d11Options.ExtendedResourceSharing                = sharedResourceTier > D3D11_SHARED_RESOURCE_TIER_0;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      m_d3d11Options.OutputMergerLogicOp                  = m_features.core.features.logicOp;
+      m_d3d11Options.OutputMergerLogicOp                  = features.core.features.logicOp;
       m_d3d11Options.MultisampleRTVWithForcedSampleCountOne = TRUE; // Not really
     }
 
@@ -63,7 +62,7 @@ namespace dxvk {
     }
 
     // D3D11.2 options.
-    auto tiledResourcesTier = DetermineTiledResourcesTier(FeatureLevel);
+    auto tiledResourcesTier = DetermineTiledResourcesTier(Device, FeatureLevel);
     m_d3d11Options1.TiledResourcesTier                    = tiledResourcesTier;
     m_d3d11Options1.MinMaxFiltering                       = tiledResourcesTier >= D3D11_TILED_RESOURCES_TIER_2;
     m_d3d11Options1.ClearViewAlsoSupportsDepthOnlyFormats = TRUE;
@@ -72,8 +71,8 @@ namespace dxvk {
       m_d3d11Options1.MapOnDefaultBuffers                 = TRUE;
 
     // D3D11.3 options
-    m_d3d11Options2.TypedUAVLoadAdditionalFormats         = DetermineUavExtendedTypedLoadSupport(Adapter, FeatureLevel);
-    m_d3d11Options2.ConservativeRasterizationTier         = DetermineConservativeRasterizationTier(FeatureLevel);
+    m_d3d11Options2.TypedUAVLoadAdditionalFormats         = DetermineUavExtendedTypedLoadSupport(Device, FeatureLevel);
+    m_d3d11Options2.ConservativeRasterizationTier         = DetermineConservativeRasterizationTier(Device, FeatureLevel);
     m_d3d11Options2.TiledResourcesTier                    = tiledResourcesTier;
     m_d3d11Options2.StandardSwizzle                       = FALSE;
     m_d3d11Options2.UnifiedMemoryArchitecture             = FALSE;
@@ -82,15 +81,15 @@ namespace dxvk {
       m_d3d11Options2.MapOnDefaultTextures                = TRUE;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_1) {
-      m_d3d11Options2.ROVsSupported                       = m_features.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
-      m_d3d11Options2.PSSpecifiedStencilRefSupported      = m_features.extShaderStencilExport;
+      m_d3d11Options2.ROVsSupported                       = features.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
+      m_d3d11Options2.PSSpecifiedStencilRefSupported      = features.extShaderStencilExport;
     }
 
     // More D3D11.3 options
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0) {
       m_d3d11Options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer =
-        m_features.vk12.shaderOutputViewportIndex &&
-        m_features.vk12.shaderOutputLayer;
+        features.vk12.shaderOutputViewportIndex &&
+        features.vk12.shaderOutputLayer;
     }
 
     // D3D11.4 options
@@ -108,7 +107,7 @@ namespace dxvk {
     m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess = 40;
 
     // Marker support only depends on the debug utils extension
-    m_marker.Profile = !Instance->debugFlags().isClear();
+    m_marker.Profile = !Device.debugFlags().isClear();
 
     // DXVK will keep all shaders in memory once created, and all Vulkan
     // drivers that we know of that can run DXVK have an on-disk cache.
@@ -116,7 +115,7 @@ namespace dxvk {
                                | D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_DISK_CACHE;
 
     // 16-bit precision is supported on capable devices
-    auto minPrecision = Adapter->features().core.features.shaderInt16 && Adapter->features().vk12.shaderFloat16
+    auto minPrecision = features.core.features.shaderInt16 && features.vk12.shaderFloat16
       ? D3D11_SHADER_MIN_PRECISION_16_BIT
       : D3D11_SHADER_MIN_PRECISION_SUPPORT(0u);
 
@@ -184,28 +183,55 @@ namespace dxvk {
   }
 
 
-  D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel(
-    const Rc<DxvkInstance>&     Instance,
-    const Rc<DxvkAdapter>&      Adapter) {
-    D3D11Options options(Instance->config());
-    D3D11DeviceFeatures features(Instance, Adapter, options, D3D_FEATURE_LEVEL_12_1);
-    return features.GetMaxFeatureLevel();
+  D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel(const DxvkDevice& Device) {
+    D3D11Options config(Device.instance()->config());
+    D3D11DeviceFeatures options(Device, config, D3D_FEATURE_LEVEL_12_1);
+
+    const auto& features = Device.features();
+
+    // Check Feature Level 11_0 features
+    if (!features.core.features.drawIndirectFirstInstance
+     || !features.core.features.fragmentStoresAndAtomics
+     || !features.core.features.multiDrawIndirect
+     || !features.core.features.tessellationShader)
+      return D3D_FEATURE_LEVEL_10_1;
+
+    // Check Feature Level 11_1 features
+    if (!options.m_d3d11Options.OutputMergerLogicOp
+     || !features.core.features.vertexPipelineStoresAndAtomics)
+      return D3D_FEATURE_LEVEL_11_0;
+
+    // Check Feature Level 12_0 features
+    if (options.m_d3d11Options2.TiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2
+     || !options.m_d3d11Options2.TypedUAVLoadAdditionalFormats)
+      return D3D_FEATURE_LEVEL_11_1;
+
+    // Check Feature Level 12_1 features
+    if (!options.m_d3d11Options2.ConservativeRasterizationTier
+     || !options.m_d3d11Options2.ROVsSupported)
+      return D3D_FEATURE_LEVEL_12_0;
+
+    return D3D_FEATURE_LEVEL_12_1;
   }
 
 
   D3D11_CONSERVATIVE_RASTERIZATION_TIER D3D11DeviceFeatures::DetermineConservativeRasterizationTier(
+    const DxvkDevice&           Device,
           D3D_FEATURE_LEVEL     FeatureLevel) {
+    const auto& features = Device.features();
+    const auto& properties = Device.properties();
+
     if (FeatureLevel < D3D_FEATURE_LEVEL_11_1
-     || !m_features.extConservativeRasterization)
+     || !features.extConservativeRasterization)
       return D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
 
     // We don't really have a way to query uncertainty regions,
     // so just check degenerate triangle behaviour
-    if (!m_properties.extConservativeRasterization.degenerateTrianglesRasterized)
+    if (!properties.extConservativeRasterization.degenerateTrianglesRasterized)
       return D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
 
     // Inner coverage is required for Tier 3 support
-    if (!m_properties.extConservativeRasterization.fullyCoveredFragmentShaderInputVariable)
+    if (!properties.extConservativeRasterization.fullyCoveredFragmentShaderInputVariable)
       return D3D11_CONSERVATIVE_RASTERIZATION_TIER_2;
 
     return D3D11_CONSERVATIVE_RASTERIZATION_TIER_3;
@@ -213,13 +239,13 @@ namespace dxvk {
 
 
   D3D11_SHARED_RESOURCE_TIER D3D11DeviceFeatures::DetermineSharedResourceTier(
-    const Rc<DxvkAdapter>&      Adapter,
+    const DxvkDevice&           Device,
           D3D_FEATURE_LEVEL     FeatureLevel) {
     static std::atomic<bool> s_errorShown = { false };
 
     // Lie about supporting Tier 1 since that's the
     // minimum required tier for Feature Level 11_1
-    if (!Adapter->features().khrExternalMemoryWin32) {
+    if (!Device.features().khrExternalMemoryWin32) {
       if (!s_errorShown.exchange(true))
         Logger::warn("D3D11DeviceFeatures: External memory features not supported");
 
@@ -265,8 +291,8 @@ namespace dxvk {
     bool allNtHandlesSupported = true;
 
     for (auto f : requiredFormats) {
-      allKmtHandlesSupported &= CheckFormatSharingSupport(Adapter, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT);
-      allNtHandlesSupported &= CheckFormatSharingSupport(Adapter, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
+      allKmtHandlesSupported &= CheckFormatSharingSupport(Device, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT);
+      allNtHandlesSupported &= CheckFormatSharingSupport(Device, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
     }
 
     // Again, lie about at least tier 1 support
@@ -283,7 +309,7 @@ namespace dxvk {
 
     // Tier 3 additionally requires R11G11B10 to be
     // shareable with D3D12
-    if (!CheckFormatSharingSupport(Adapter, VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT))
+    if (!CheckFormatSharingSupport(Device, VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT))
       return D3D11_SHARED_RESOURCE_TIER_2;
 
     return D3D11_SHARED_RESOURCE_TIER_3;
@@ -291,26 +317,30 @@ namespace dxvk {
 
 
   D3D11_TILED_RESOURCES_TIER D3D11DeviceFeatures::DetermineTiledResourcesTier(
+    const DxvkDevice&           Device,
           D3D_FEATURE_LEVEL     FeatureLevel) {
+    const auto& features = Device.features();
+    const auto& properties = Device.properties();
+
     if (FeatureLevel < D3D_FEATURE_LEVEL_11_0
-     || !m_features.core.features.sparseBinding
-     || !m_features.core.features.sparseResidencyBuffer
-     || !m_features.core.features.sparseResidencyImage2D
-     || !m_features.core.features.sparseResidencyAliased
-     || !m_properties.core.properties.sparseProperties.residencyStandard2DBlockShape)
+     || !features.core.features.sparseBinding
+     || !features.core.features.sparseResidencyBuffer
+     || !features.core.features.sparseResidencyImage2D
+     || !features.core.features.sparseResidencyAliased
+     || !properties.core.properties.sparseProperties.residencyStandard2DBlockShape)
       return D3D11_TILED_RESOURCES_NOT_SUPPORTED;
 
     if (FeatureLevel < D3D_FEATURE_LEVEL_11_1
-     || !m_features.core.features.shaderResourceResidency
-     || !m_features.core.features.shaderResourceMinLod
-     || !m_features.vk12.samplerFilterMinmax
-     || !m_properties.vk12.filterMinmaxSingleComponentFormats
-     || !m_properties.core.properties.sparseProperties.residencyNonResidentStrict
-     || m_properties.core.properties.sparseProperties.residencyAlignedMipSize)
+     || !features.core.features.shaderResourceResidency
+     || !features.core.features.shaderResourceMinLod
+     || !features.vk12.samplerFilterMinmax
+     || !properties.vk12.filterMinmaxSingleComponentFormats
+     || !properties.core.properties.sparseProperties.residencyNonResidentStrict
+     || properties.core.properties.sparseProperties.residencyAlignedMipSize)
       return D3D11_TILED_RESOURCES_TIER_1;
 
-    if (!m_features.core.features.sparseResidencyImage3D
-     || !m_properties.core.properties.sparseProperties.residencyStandard3DBlockShape)
+    if (!features.core.features.sparseResidencyImage3D
+     || !properties.core.properties.sparseProperties.residencyStandard3DBlockShape)
       return D3D11_TILED_RESOURCES_TIER_2;
 
     return D3D11_TILED_RESOURCES_TIER_3;
@@ -318,7 +348,7 @@ namespace dxvk {
 
 
   BOOL D3D11DeviceFeatures::DetermineUavExtendedTypedLoadSupport(
-    const Rc<DxvkAdapter>&      Adapter,
+    const DxvkDevice&           Device,
           D3D_FEATURE_LEVEL     FeatureLevel) {
     static const std::array<VkFormat, 18> s_formats = {{
       VK_FORMAT_R32_SFLOAT,
@@ -344,8 +374,10 @@ namespace dxvk {
     if (FeatureLevel < D3D_FEATURE_LEVEL_11_0)
       return FALSE;
 
+    auto adapter = Device.adapter();
+
     for (auto f : s_formats) {
-      DxvkFormatFeatures features = Adapter->getFormatFeatures(f);
+      DxvkFormatFeatures features = adapter->getFormatFeatures(f);
       VkFormatFeatureFlags2 imgFeatures = features.optimal | features.linear;
 
       if (!(imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT))
@@ -357,9 +389,11 @@ namespace dxvk {
 
 
   BOOL D3D11DeviceFeatures::CheckFormatSharingSupport(
-    const Rc<DxvkAdapter>&      Adapter,
+    const DxvkDevice&           Device,
           VkFormat              Format,
           VkExternalMemoryHandleTypeFlagBits HandleType) {
+    Rc<DxvkAdapter> adapter = Device.adapter();
+
     DxvkFormatQuery query = { };
     query.format = Format;
     query.type = VK_IMAGE_TYPE_2D;
@@ -371,35 +405,8 @@ namespace dxvk {
       = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT
       | VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
 
-    auto limits = Adapter->getFormatLimits(query);
+    auto limits = adapter->getFormatLimits(query);
     return limits && (limits->externalFeatures & featureMask);
-  }
-
-
-  D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel() const {
-    // Check Feature Level 11_0 features
-    if (!m_features.core.features.drawIndirectFirstInstance
-     || !m_features.core.features.fragmentStoresAndAtomics
-     || !m_features.core.features.multiDrawIndirect
-     || !m_features.core.features.tessellationShader)
-      return D3D_FEATURE_LEVEL_10_1;
-
-    // Check Feature Level 11_1 features
-    if (!m_d3d11Options.OutputMergerLogicOp
-     || !m_features.core.features.vertexPipelineStoresAndAtomics)
-      return D3D_FEATURE_LEVEL_11_0;
-
-    // Check Feature Level 12_0 features
-    if (m_d3d11Options2.TiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2
-     || !m_d3d11Options2.TypedUAVLoadAdditionalFormats)
-      return D3D_FEATURE_LEVEL_11_1;
-
-    // Check Feature Level 12_1 features
-    if (!m_d3d11Options2.ConservativeRasterizationTier
-     || !m_d3d11Options2.ROVsSupported)
-      return D3D_FEATURE_LEVEL_12_0;
-
-    return D3D_FEATURE_LEVEL_12_1;
   }
 
 }
