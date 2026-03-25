@@ -8,9 +8,7 @@ namespace dxvk {
 
   DxsoOptions::DxsoOptions(D3D9DeviceEx* pDevice, const D3D9Options& options) {
     const Rc<DxvkDevice> device = pDevice->GetDXVKDevice();
-    const Rc<DxvkAdapter> adapter = device->adapter();
-
-    const DxvkDeviceInfo& devInfo = adapter->deviceProperties();
+    const DxvkDeviceInfo& devInfo = device->properties();
 
     // Apply shader-related options
     d3d9FloatEmulation   = options.d3d9FloatEmulation;
