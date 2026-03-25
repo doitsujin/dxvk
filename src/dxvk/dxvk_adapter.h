@@ -154,27 +154,6 @@ namespace dxvk {
     DxvkAdapterInfo info() const;
     
     /**
-     * \brief Physical device properties
-     * 
-     * Returns a read-only reference to the core
-     * properties of the Vulkan physical device.
-     * \returns Physical device core properties
-     */
-    const DxvkDeviceInfo& deviceProperties() const {
-      return m_capabilities.getProperties();
-    }
-    
-    /**
-     * \brief Supportred device features
-     * 
-     * Queries the supported device features.
-     * \returns Device features
-     */
-    const DxvkDeviceFeatures& features() const {
-      return m_capabilities.getFeatures();
-    }
-    
-    /**
      * \brief Memory properties
      *
      * Queries the memory types and memory heaps of
