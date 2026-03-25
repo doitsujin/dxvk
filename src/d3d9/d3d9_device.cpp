@@ -5997,12 +5997,11 @@ namespace dxvk {
 
 
   int64_t D3D9DeviceEx::DetermineInitialTextureMemory() {
-    auto memoryProp = m_adapter->GetDXVKAdapter()->memoryProperties();
+    auto adapterInfo = m_dxvkDevice->adapter()->info();
 
-    VkDeviceSize availableTextureMemory = 0;
-
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++)
-      availableTextureMemory += memoryProp.memoryHeaps[i].size;
+    // Apparently we need to return video and system memory combined:
+    // https://github.com/doitsujin/dxvk/pull/1436
+    VkDeviceSize availableTextureMemory = adapterInfo.deviceMemory + adapterInfo.systemMemory;
 
     constexpr VkDeviceSize Megabytes = 1024 * 1024;
     // Windows will typically "reserve" some amount of video memory,
