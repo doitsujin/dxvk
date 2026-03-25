@@ -179,38 +179,36 @@ namespace dxvk {
     std::vector<char> extensionList;
     DWORD len;
 
-    if (m_vr_key)
-    {
-        LSTATUS status;
-        char name[256];
-        DWORD type;
+    if (m_vr_key) {
+      LSTATUS status;
+      char name[256];
+      DWORD type;
 
-        if (!this->waitVrKeyReady())
-            return DxvkExtensionList();
+      if (!this->waitVrKeyReady())
+        return DxvkExtensionList();
 
-        sprintf(name, "PCIID:%04x:%04x",
-          adapter->deviceProperties().core.properties.vendorID,
-          adapter->deviceProperties().core.properties.deviceID);
+      auto adapterInfo = adapter->info();
+      sprintf(name, "PCIID:%04x:%04x", adapterInfo.vendorId, adapterInfo.deviceId);
 
-        len = 0;
-        if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, nullptr, &len)))
-        {
-            Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkExtensionList();
-        }
-        extensionList.resize(len);
-        if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len)))
-        {
-            Logger::err(str::format("OpenVR: could not query value, status ", status));
-            return DxvkExtensionList();
-        }
+      len = 0;
+
+      if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, nullptr, &len))) {
+        Logger::err(str::format("OpenVR: could not query value, status ", status));
+        return DxvkExtensionList();
+      }
+
+      extensionList.resize(len);
+
+      if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len))) {
+        Logger::err(str::format("OpenVR: could not query value, status ", status));
+        return DxvkExtensionList();
+      }
+    } else {
+      len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), nullptr, 0);
+      extensionList.resize(len);
+      len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), extensionList.data(), len);
     }
-    else
-    {
-        len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), nullptr, 0);
-        extensionList.resize(len);
-        len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), extensionList.data(), len);
-    }
+
     return parseExtensionList(std::string(extensionList.data(), len));
   }
   
