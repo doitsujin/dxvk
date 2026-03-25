@@ -51,7 +51,7 @@ namespace dxvk {
 
         if (adapter != nullptr) {
           const auto* d3d9On12Args = Find9On12Args(adapter, pOverrideList, OverrideCount);
-          m_adapters.emplace_back(this, d3d9On12Args, adapter, adapterOrdinal++, i - 1);
+          m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, adapter, adapterOrdinal++, i - 1));
         }
       }
     }
@@ -63,7 +63,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < adapterCount; i++) {
         const auto* d3d9On12Args = Find9On12Args(m_instance->enumAdapters(i), pOverrideList, OverrideCount);
-        m_adapters.emplace_back(this, d3d9On12Args, m_instance->enumAdapters(i), i, 0);
+        m_adapters.emplace_back(new D3D9Adapter(this, d3d9On12Args, m_instance, m_instance->enumAdapters(i), i, 0));
       }
     }
 

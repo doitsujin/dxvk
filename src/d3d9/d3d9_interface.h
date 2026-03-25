@@ -135,7 +135,7 @@ namespace dxvk {
 
     D3D9Adapter* GetAdapter(UINT Ordinal) {
       return Ordinal < m_adapters.size()
-        ? &m_adapters[Ordinal]
+        ? m_adapters[Ordinal].ptr()
         : nullptr;
     }
 
@@ -163,7 +163,7 @@ namespace dxvk {
 
     inline void RefreshAdapterFormatTables() {
       for (auto& adapter : m_adapters)
-        adapter.RefreshFormatsTable();
+        adapter->RefreshFormatsTable();
     }
 
     Rc<DxvkInstance>              m_instance;
@@ -176,7 +176,7 @@ namespace dxvk {
 
     D3D9Options                   m_d3d9Options;
 
-    std::vector<D3D9Adapter>      m_adapters;
+    std::vector<Rc<D3D9Adapter>>  m_adapters;
 
     D3D9VkInteropInterface        m_d3d9Interop;
 
