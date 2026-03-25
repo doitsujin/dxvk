@@ -73,6 +73,26 @@ namespace dxvk {
 
 
   /**
+   * \brief Limited adapter properties
+   */
+  struct DxvkAdapterInfo {
+    uint32_t vendorId = 0u;
+    uint32_t deviceId = 0u;
+    VkPhysicalDeviceType deviceType = VK_PHYSICAL_DEVICE_TYPE_OTHER;
+    char deviceName[VK_MAX_PHYSICAL_DEVICE_NAME_SIZE];
+    uint8_t deviceUuid[VK_UUID_SIZE];
+    uint8_t deviceLuid[VK_LUID_SIZE];
+    bool luidIsValid = false;
+    VkDriverId driverId = VK_DRIVER_ID_MAX_ENUM;
+    char driverName[VK_MAX_DRIVER_NAME_SIZE];
+    char driverInfo[VK_MAX_DRIVER_INFO_SIZE];
+    uint32_t driverVersion = 0u;
+    VkDeviceSize deviceMemory = 0u;
+    VkDeviceSize systemMemory = 0u;
+  };
+
+
+  /**
    * \brief Device import info
    */
   struct DxvkDeviceImportInfo {
@@ -123,6 +143,15 @@ namespace dxvk {
     D3DKMT_HANDLE kmtLocal() const {
       return m_kmtLocal;
     }
+
+    /**
+     * \brief Limited device properties
+     *
+     * Returns some device properties that we can consider immutable,
+     * and are useful for device selection or identification.
+     * \returns Device properties
+     */
+    DxvkAdapterInfo info() const;
     
     /**
      * \brief Physical device properties

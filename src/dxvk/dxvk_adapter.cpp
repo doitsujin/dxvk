@@ -55,6 +55,40 @@ namespace dxvk {
   }
 
   
+  DxvkAdapterInfo DxvkAdapter::info() const {
+    const auto& properties = m_capabilities.getProperties();
+    const auto& memory = m_capabilities.getMemoryInfo().core.memoryProperties;
+
+    DxvkAdapterInfo result = {};
+    result.vendorId = properties.core.properties.vendorID;
+    result.deviceId = properties.core.properties.deviceID;
+    result.deviceType = properties.core.properties.deviceType;
+    std::memcpy(result.deviceName, properties.core.properties.deviceName, sizeof(result.deviceName));
+    std::memcpy(result.deviceUuid, properties.vk11.deviceUUID, sizeof(result.deviceUuid));
+
+    if ((result.luidIsValid = properties.vk11.deviceLUIDValid))
+      std::memcpy(result.deviceLuid, properties.vk11.deviceLUID, sizeof(result.deviceLuid));
+
+    result.driverId = properties.vk12.driverID;
+    std::memcpy(result.driverName, properties.vk12.driverName, sizeof(result.driverName));
+    std::memcpy(result.driverInfo, properties.vk12.driverInfo, sizeof(result.driverInfo));
+    result.driverVersion = properties.core.properties.driverVersion;
+
+    for (uint32_t i = 0u; i < memory.memoryHeapCount; i++) {
+      if (memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+        // In general we'll have one large device-local heap, and an additional
+        // smaller heap on dGPUs in case ReBAR is not supported. Assume that
+        // the largest available heap is the total amount of available VRAM.
+        result.deviceMemory = std::max(result.deviceMemory, memory.memoryHeaps[i].size);
+      } else {
+        result.systemMemory += memory.memoryHeaps[i].size;
+      }
+    }
+
+    return result;
+  }
+
+
   bool DxvkAdapter::isCompatible(std::string& error) {
     std::array<char, 1024u> message = { };
 
@@ -323,7 +357,7 @@ namespace dxvk {
 
 
   bool DxvkAdapter::isUnifiedMemoryArchitecture() const {
-    auto memory = this->memoryProperties();
+    auto memory = m_capabilities.getMemoryInfo().core.memoryProperties;
     bool result = true;
 
     for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
