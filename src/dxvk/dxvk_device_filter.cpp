@@ -41,12 +41,13 @@ namespace dxvk {
 
 
   bool DxvkDeviceFilter::testAdapter(DxvkAdapter& adapter) const {
-    const auto& properties = adapter.deviceProperties();
+    auto adapterInfo = adapter.info();
+    auto driverVersion = DxvkDeviceCapabilities::decodeDriverVersion(adapterInfo.driverId, adapterInfo.driverVersion);
 
     Logger::info(str::format("Found device: ",
-      properties.core.properties.deviceName, " (",
-      properties.vk12.driverName, " ",
-      properties.driverVersion.toString(), ")"));
+      adapterInfo.deviceName, " (",
+      adapterInfo.driverName, " ",
+      driverVersion.toString(), ")"));
 
     std::string compatError;
 
@@ -56,14 +57,14 @@ namespace dxvk {
     }
 
     if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceName)) {
-      if (std::string(properties.core.properties.deviceName).find(m_matchDeviceName) == std::string::npos) {
+      if (std::string(adapterInfo.deviceName).find(m_matchDeviceName) == std::string::npos) {
         Logger::info("  Skipping: Device filter");
         return false;
       }
     }
 
     if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceUUID)) {
-      std::string uuidStr = convertUUID(properties.vk11.deviceUUID);
+      std::string uuidStr = convertUUID(adapterInfo.deviceUuid);
 
       if (uuidStr.find(m_matchDeviceUUID) == std::string::npos) {
         Logger::info("  Skipping: UUID filter");
@@ -72,7 +73,7 @@ namespace dxvk {
     }
 
     if (m_flags.test(DxvkDeviceFilterFlag::SkipCpuDevices)) {
-      if (properties.core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+      if (adapterInfo.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
         Logger::info("  Skipping: Software driver");
         return false;
       }
