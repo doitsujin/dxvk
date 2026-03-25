@@ -18,8 +18,16 @@ namespace dxvk {
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
 
+    auto texture = GetCommonTexture(pResource);
+
     DxvkImageViewKey viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
+
+    // Match promoted format (e.g. D16 -> D32 for shadow maps)
+    if (viewInfo.format == VK_FORMAT_D16_UNORM &&
+        texture->GetImage()->info().format == VK_FORMAT_D32_SFLOAT) {
+      viewInfo.format = VK_FORMAT_D32_SFLOAT;
+    }
     viewInfo.layout = GetViewLayout();
     viewInfo.aspects = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;

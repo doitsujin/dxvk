@@ -25,6 +25,16 @@ namespace dxvk {
     DXGI_VK_FORMAT_INFO   formatPacked = m_device->LookupPackedFormat(m_desc.Format, formatMode);
     m_packedFormat = formatPacked.Format;
 
+    // Promote D16 to D32 when the texture is used as both depth and shader resource.
+    // D16 shadow maps sampled with SampleCmp produce visible banding artifacts on
+    // Vulkan that are not present on native D3D11 or OpenGL, likely because those
+    // APIs or their drivers use higher internal precision for D16 depth buffers.
+    if (formatInfo.Format == VK_FORMAT_D16_UNORM &&
+        (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) &&
+        (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE)) {
+      formatInfo.Format = VK_FORMAT_D32_SFLOAT;
+    }
+
     DxvkImageCreateInfo imageInfo;
     imageInfo.type            = GetVkImageType();
     imageInfo.format          = formatInfo.Format;

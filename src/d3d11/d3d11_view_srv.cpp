@@ -74,7 +74,14 @@ namespace dxvk {
     } else {
       auto texture = GetCommonTexture(pResource);
       auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
-      
+
+      // If the image format was promoted (e.g. D16 -> D32 for shadow maps),
+      // use the actual image format for the view instead of the D3D11 format.
+      if (formatInfo.Format == VK_FORMAT_D16_UNORM &&
+          texture->GetImage()->info().format == VK_FORMAT_D32_SFLOAT) {
+        formatInfo.Format = VK_FORMAT_D32_SFLOAT;
+      }
+
       DxvkImageViewKey viewInfo;
       viewInfo.format = formatInfo.Format;
       viewInfo.aspects = formatInfo.Aspect;
