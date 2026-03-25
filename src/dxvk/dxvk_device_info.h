@@ -343,6 +343,14 @@ namespace dxvk {
      */
     void logDeviceInfo();
 
+    /**
+     * \brief Decodes vendor-specific driver version into something readable
+     *
+     * \param [in] driverId Driver ID
+     * \param [in] version Raw Vulkan driver version
+     */
+    static Version decodeDriverVersion(VkDriverId driverId, uint32_t version);
+
   private:
 
     struct FeatureEntry {
@@ -424,8 +432,6 @@ namespace dxvk {
             DxvkDeviceInfo&             properties);
 
     std::vector<FeatureEntry> getFeatureList();
-
-    static Version decodeDriverVersion(VkDriverId driverId, uint32_t version);
 
     template<typename T>
     static void copyFeature(
