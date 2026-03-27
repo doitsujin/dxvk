@@ -6059,6 +6059,7 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::CpHasPushData);
 
     m_state.cp.pipeline = nullptr;
+    m_state.cp.layout = nullptr;
   }
   
   
@@ -6075,10 +6076,14 @@ namespace dxvk {
     if (unlikely(!newPipeline))
       return false;
 
-    auto newLayout = newPipeline->getLayout()->getLayout(DxvkPipelineLayoutType::Merged);
+    const auto* layoutInfo = newPipeline->getLayout();
+    const auto* newLayout = layoutInfo->getLayout(DxvkPipelineLayoutType::Merged);
+    const uint32_t specConstantMask = newPipeline->getSpecConstantMask();
 
-    if (unlikely(newPipeline->getSpecConstantMask() != m_state.cp.constants.mask))
-      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>(newPipeline->getSpecConstantMask());
+    m_state.cp.layout = newLayout;
+
+    if (unlikely(specConstantMask != m_state.cp.constants.mask))
+      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>(specConstantMask);
 
     if (m_flags.test(DxvkContextFlag::CpDirtySpecConstants))
       this->updateSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
@@ -6139,6 +6144,8 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::GpHasPushData);
 
     m_state.gp.pipeline = nullptr;
+    m_state.gp.layout = nullptr;
+    m_state.gp.layoutType = DxvkPipelineLayoutType::Merged;
   }
   
   
@@ -6157,8 +6164,10 @@ namespace dxvk {
     if (m_features.test(DxvkContextFeature::TrackGraphicsPipeline))
       m_cmd->trackGraphicsPipeline(newPipeline);
 
-    if (unlikely(newPipeline->getSpecConstantMask() != m_state.gp.constants.mask))
-      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>(newPipeline->getSpecConstantMask());
+    const uint32_t specConstantMask = newPipeline->getSpecConstantMask();
+
+    if (unlikely(specConstantMask != m_state.gp.constants.mask))
+      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>(specConstantMask);
 
     DxvkGraphicsPipelineFlags oldFlags = m_state.gp.flags;
     DxvkGraphicsPipelineFlags newFlags = newPipeline->flags();
@@ -6177,7 +6186,7 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsPipelineState() {
-    auto oldPipelineLayoutType = getActivePipelineLayoutType(VK_PIPELINE_BIND_POINT_GRAPHICS);
+    auto oldPipelineLayoutType = m_state.gp.layoutType;
 
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
@@ -6275,6 +6284,9 @@ namespace dxvk {
 
     // Also update push constant status when we know the final layout
     auto layout = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType);
+    m_state.gp.layoutType = newPipelineLayoutType;
+    m_state.gp.layout = layout;
+
     auto pushData = layout->getPushData();
 
     if (!pushData.isEmpty()) {
@@ -6405,12 +6417,19 @@ namespace dxvk {
   void DxvkContext::updateDescriptorSetsBindings(const DxvkPipelineBindings* layout) {
     constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
 
-    DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
-    const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
+    DxvkPipelineLayoutType pipelineLayoutType;
+    const DxvkPipelineLayout* pipelineLayout;
 
-    // Ensure that the arrays we write descriptor info to are big enough
-    if (unlikely(layout->getDescriptorCount() > m_legacyDescriptors.infos.size()))
-      this->resizeDescriptorArrays(layout->getDescriptorCount());
+    if constexpr (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      pipelineLayoutType = m_state.gp.layoutType;
+      pipelineLayout = m_state.gp.layout;
+    } else {
+      pipelineLayoutType = DxvkPipelineLayoutType::Merged;
+      pipelineLayout = m_state.cp.layout;
+    }
+
+    if (unlikely(!pipelineLayout))
+      pipelineLayout = layout->getLayout(pipelineLayoutType);
 
     // Find out which sets we actually need to update based on the pipeline
     // layout. This may be an empty mask if only unrelated resources were
@@ -6418,10 +6437,15 @@ namespace dxvk {
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
     if (likely(dirtySetMask)) {
+      // Ensure that the arrays we write descriptor info to are big enough
+      if (unlikely(layout->getDescriptorCount() > m_legacyDescriptors.infos.size()))
+        this->resizeDescriptorArrays(layout->getDescriptorCount());
+
       // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
       // to struct conversion, so we should use descriptor update templates.
       // For 64-bit applications, using templates is slower on some drivers.
       constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
+      const bool usesSamplerHeap = pipelineLayout->usesSamplerHeap();
 
       std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
       m_descriptorPool->alloc(m_trackingId, pipelineLayout, dirtySetMask, sets.data());
@@ -6606,7 +6630,7 @@ namespace dxvk {
         uint32_t count = bit::bsf(countMask) - first;
 
         // Global sampler set will always be bound to index 0
-        uint32_t setIndex = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        uint32_t setIndex = first + uint32_t(usesSamplerHeap);
 
         m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer,
           BindPoint, pipelineLayout->getPipelineLayout(),
@@ -6623,8 +6647,19 @@ namespace dxvk {
     constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
     using HeapOffset = std::conditional_t<Model == DxvkBindingModel::DescriptorHeap, uint32_t, VkDeviceSize>;
 
-    DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
-    const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
+    DxvkPipelineLayoutType pipelineLayoutType;
+    const DxvkPipelineLayout* pipelineLayout;
+
+    if constexpr (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      pipelineLayoutType = m_state.gp.layoutType;
+      pipelineLayout = m_state.gp.layout;
+    } else {
+      pipelineLayoutType = DxvkPipelineLayoutType::Merged;
+      pipelineLayout = m_state.cp.layout;
+    }
+
+    if (unlikely(!pipelineLayout))
+      pipelineLayout = layout->getLayout(pipelineLayoutType);
 
     // Check if there's anything to do; the mask can be empty
     // in case only unrelated bindings have been updated.
@@ -6805,9 +6840,12 @@ namespace dxvk {
   void DxvkContext::updatePushDataBindings(const DxvkPipelineBindings* layout) {
     constexpr bool TrackBindings = AlwaysTrack || BindPoint == VK_PIPELINE_BIND_POINT_COMPUTE;
 
-    DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
+    DxvkPipelineLayoutType pipelineLayoutType = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.layoutType
+      : DxvkPipelineLayoutType::Merged;
+    VkShaderStageFlags nonemptyStageMask = layout->getNonemptyStageMask();
 
-    if (m_descriptorState.hasDirtyVas(layout->getNonemptyStageMask())) {
+    if (m_descriptorState.hasDirtyVas(nonemptyStageMask)) {
       auto range = layout->getVaBindings(pipelineLayoutType);
 
       if (range.bindingCount)
@@ -6839,7 +6877,7 @@ namespace dxvk {
       }
     }
 
-    if (m_descriptorState.hasDirtySamplers(layout->getNonemptyStageMask())) {
+    if (m_descriptorState.hasDirtySamplers(nonemptyStageMask)) {
       auto range = layout->getSamplers(pipelineLayoutType);
 
       if (range.bindingCount)
@@ -7190,6 +7228,19 @@ namespace dxvk {
 
   
   void DxvkContext::updateDynamicState() {
+    if (likely(!m_flags.any(DxvkContextFlag::GpDirtyViewport,
+                            DxvkContextFlag::GpDirtyDepthClip,
+                            DxvkContextFlag::GpDirtyMultisampleState,
+                            DxvkContextFlag::GpDirtySampleLocations,
+                            DxvkContextFlag::GpDirtyBlendConstants,
+                            DxvkContextFlag::GpDirtyRasterizerState,
+                            DxvkContextFlag::GpDirtyDepthTest,
+                            DxvkContextFlag::GpDirtyStencilTest,
+                            DxvkContextFlag::GpDirtyStencilRef,
+                            DxvkContextFlag::GpDirtyDepthBias,
+                            DxvkContextFlag::GpDirtyDepthBounds)))
+      return;
+
     if (unlikely(m_flags.test(DxvkContextFlag::GpDirtyViewport))) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
@@ -7425,11 +7476,22 @@ namespace dxvk {
 
     // Optimized pipelines may have push constants trimmed, so look
     // up the exact layout used for the currently bound pipeline.
-    auto layoutType = getActivePipelineLayoutType(BindPoint);
+    const DxvkPipelineLayout* layout = nullptr;
 
-    auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_state.gp.pipeline->getLayout()->getLayout(layoutType)
-      : m_state.cp.pipeline->getLayout()->getLayout(layoutType);
+    if constexpr (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+      layout = m_state.gp.layout;
+    else
+      layout = m_state.cp.layout;
+
+    if (unlikely(!layout)) {
+      auto layoutType = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? m_state.gp.layoutType
+        : DxvkPipelineLayoutType::Merged;
+
+      layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? m_state.gp.pipeline->getLayout()->getLayout(layoutType)
+        : m_state.cp.pipeline->getLayout()->getLayout(layoutType);
+    }
 
     auto pushData = layout->getPushData();
 

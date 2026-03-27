@@ -187,6 +187,8 @@ namespace dxvk {
     DxvkGraphicsPipelineStateInfo state;
     DxvkGraphicsPipelineFlags     flags;
     DxvkGraphicsPipeline*         pipeline = nullptr;
+    const DxvkPipelineLayout*     layout = nullptr;
+    DxvkPipelineLayoutType        layoutType = DxvkPipelineLayoutType::Merged;
     DxvkSpecConstantState         constants;
   };
   
@@ -195,6 +197,7 @@ namespace dxvk {
     DxvkComputePipelineShaders    shaders;
     DxvkComputePipelineStateInfo  state;
     DxvkComputePipeline*          pipeline = nullptr;
+    const DxvkPipelineLayout*     layout = nullptr;
     DxvkSpecConstantState         constants;
   };
 

@@ -1251,20 +1251,22 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
+      uint32_t slot = StartSlot + i;
+      auto& binding = m_state.ia.vertexBuffers[slot];
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
 
-      if (m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer) {
-        m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
-        m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
-        m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
+      if (binding.buffer != newBuffer) {
+        binding.buffer = newBuffer;
+        binding.offset = pOffsets[i];
+        binding.stride = pStrides[i];
 
-        BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
-      } else if (m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
-              || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i]) {
-        m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
-        m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
+        BindVertexBuffer(slot, newBuffer, pOffsets[i], pStrides[i]);
+      } else if (binding.offset != pOffsets[i]
+              || binding.stride != pStrides[i]) {
+        binding.offset = pOffsets[i];
+        binding.stride = pStrides[i];
 
-        BindVertexBufferRange(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
+        BindVertexBufferRange(slot, newBuffer, pOffsets[i], pStrides[i]);
       }
     }
 
@@ -4592,11 +4594,12 @@ namespace dxvk {
           uint32_t                          Slot,
           bool                              IsNull) {
     uint32_t idx = Slot / 64u;
+    uint32_t shift = Slot % 64u;
 
     return DirtyBindingGeneric(ShaderStage,
       m_state.lazy.bindingsUsed[ShaderStage].srvMask[idx],
       m_state.lazy.bindingsDirty[ShaderStage].srvMask[idx],
-      uint64_t(1u) << Slot, IsNull);
+      uint64_t(1u) << shift, IsNull);
   }
 
 
@@ -5174,22 +5177,24 @@ namespace dxvk {
     auto& bindings = m_state.cbv[ShaderStage];
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
+      uint32_t slot = StartSlot + i;
+      auto& binding = bindings.buffers[slot];
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
 
       uint32_t constantCount = newBuffer
         ? std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT))
         : 0u;
 
-      if (bindings.buffers[StartSlot + i].buffer         != newBuffer
-       || bindings.buffers[StartSlot + i].constantOffset != 0
-       || bindings.buffers[StartSlot + i].constantCount  != constantCount) {
-        bindings.buffers[StartSlot + i].buffer         = newBuffer;
-        bindings.buffers[StartSlot + i].constantOffset = 0;
-        bindings.buffers[StartSlot + i].constantCount  = constantCount;
-        bindings.buffers[StartSlot + i].constantBound  = constantCount;
+      if (binding.buffer         != newBuffer
+       || binding.constantOffset != 0
+       || binding.constantCount  != constantCount) {
+        binding.buffer         = newBuffer;
+        binding.constantOffset = 0;
+        binding.constantCount  = constantCount;
+        binding.constantBound  = constantCount;
 
-        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
-          BindConstantBuffer(ShaderStage, StartSlot + i, newBuffer, 0, constantCount);
+        if (!DirtyConstantBuffer(ShaderStage, slot, !newBuffer))
+          BindConstantBuffer(ShaderStage, slot, newBuffer, 0, constantCount);
       }
     }
 
@@ -5209,6 +5214,8 @@ namespace dxvk {
     auto& bindings = m_state.cbv[ShaderStage];
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
+      uint32_t slot = StartSlot + i;
+      auto& binding = bindings.buffers[slot];
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
 
       UINT constantOffset;
@@ -5240,22 +5247,22 @@ namespace dxvk {
       }
 
       // Do a full rebind if either the buffer changes
-      if (bindings.buffers[StartSlot + i].buffer != newBuffer) {
-        bindings.buffers[StartSlot + i].buffer = newBuffer;
-        bindings.buffers[StartSlot + i].constantOffset = constantOffset;
-        bindings.buffers[StartSlot + i].constantCount  = constantCount;
-        bindings.buffers[StartSlot + i].constantBound  = constantBound;
+      if (binding.buffer != newBuffer) {
+        binding.buffer = newBuffer;
+        binding.constantOffset = constantOffset;
+        binding.constantCount  = constantCount;
+        binding.constantBound  = constantBound;
 
-        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
-          BindConstantBuffer(ShaderStage, StartSlot + i, newBuffer, constantOffset, constantBound);
-      } else if (bindings.buffers[StartSlot + i].constantOffset != constantOffset
-              || bindings.buffers[StartSlot + i].constantCount  != constantCount) {
-        bindings.buffers[StartSlot + i].constantOffset = constantOffset;
-        bindings.buffers[StartSlot + i].constantCount  = constantCount;
-        bindings.buffers[StartSlot + i].constantBound  = constantBound;
+        if (!DirtyConstantBuffer(ShaderStage, slot, !newBuffer))
+          BindConstantBuffer(ShaderStage, slot, newBuffer, constantOffset, constantBound);
+      } else if (binding.constantOffset != constantOffset
+              || binding.constantCount  != constantCount) {
+        binding.constantOffset = constantOffset;
+        binding.constantCount  = constantCount;
+        binding.constantBound  = constantBound;
 
-        if (!DirtyConstantBuffer(ShaderStage, StartSlot + i, !newBuffer))
-          BindConstantBufferRange(ShaderStage, StartSlot + i, constantOffset, constantBound);
+        if (!DirtyConstantBuffer(ShaderStage, slot, !newBuffer))
+          BindConstantBufferRange(ShaderStage, slot, constantOffset, constantBound);
       }
     }
 
@@ -5273,9 +5280,11 @@ namespace dxvk {
     auto& bindings = m_state.srv[ShaderStage];
 
     for (uint32_t i = 0; i < NumResources; i++) {
+      uint32_t slot = StartSlot + i;
+      auto& binding = bindings.views[slot];
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
 
-      if (bindings.views[StartSlot + i] != resView) {
+      if (binding != resView) {
         if (likely(resView != nullptr)) {
           if (unlikely(resView->TestHazards())) {
             if (TestSrvHazards<ShaderStage>(resView))
@@ -5284,14 +5293,14 @@ namespace dxvk {
             // Only set if necessary, but don't reset it on every
             // bind as this would be more expensive than a few
             // redundant checks in OMSetRenderTargets and friends.
-            bindings.hazardous.set(StartSlot + i, resView);
+            bindings.hazardous.set(slot, resView);
           }
         }
 
-        bindings.views[StartSlot + i] = resView;
+        binding = resView;
 
-        if (!DirtyShaderResource(ShaderStage, StartSlot + i, !resView))
-          BindShaderResource(ShaderStage, StartSlot + i, resView);
+        if (!DirtyShaderResource(ShaderStage, slot, !resView))
+          BindShaderResource(ShaderStage, slot, resView);
       }
     }
 
@@ -5309,13 +5318,15 @@ namespace dxvk {
     auto& bindings = m_state.samplers[ShaderStage];
 
     for (uint32_t i = 0; i < NumSamplers; i++) {
+      uint32_t slot = StartSlot + i;
+      auto& binding = bindings.samplers[slot];
       auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
 
-      if (bindings.samplers[StartSlot + i] != sampler) {
-        bindings.samplers[StartSlot + i] = sampler;
+      if (binding != sampler) {
+        binding = sampler;
 
-        if (!DirtySampler(ShaderStage, StartSlot + i, !sampler))
-          BindSampler(ShaderStage, StartSlot + i, sampler);
+        if (!DirtySampler(ShaderStage, slot, !sampler))
+          BindSampler(ShaderStage, slot, sampler);
       }
     }
 
