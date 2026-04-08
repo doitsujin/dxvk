@@ -480,13 +480,12 @@ namespace dxvk {
   void DxvkDeviceCapabilities::disableUnusedFeatures(
     const DxvkInstance&               instance) {
     if (m_featuresSupported.extDescriptorHeap.descriptorHeap) {
-      // Only enable descriptor heaps on drivers that are either known to work,
-      // or are maintained well enough that any issues are likely to get fixed
+      // Only enable descriptor heaps on drivers that are known to work
+      // and don't have known performance regressions currently.
+      // TODO revisit w.r.t. Nvidia, Intel, Turnip.
       bool enableDescriptorHeap = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
-                               || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK
                                || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE
-                               || m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA
-                               || m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY;
+                               || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY;
 
       applyTristate(enableDescriptorHeap, instance.options().enableDescriptorHeap);
 
