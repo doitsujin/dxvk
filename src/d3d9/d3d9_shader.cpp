@@ -26,21 +26,6 @@ namespace dxvk {
 
       std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".sm3_dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
       file.write(reinterpret_cast<const char*>(pShaderBytecode), bytecodeLength);
-
-      char comment[2048];
-      Com<ID3DBlob> blob;
-      HRESULT hr = DisassembleShader(
-        pShaderBytecode,
-        TRUE,
-        comment,
-        &blob);
-
-      if (SUCCEEDED(hr)) {
-        std::ofstream disassembledOut(str::topath(str::format(dumpPath, "/", name, ".sm3_dxbc.dis").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
-        disassembledOut.write(
-          reinterpret_cast<const char*>(blob->GetBufferPointer()),
-          blob->GetBufferSize());
-      }
     }
 
     CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode);
