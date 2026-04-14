@@ -94,8 +94,7 @@ namespace dxvk::wsi {
     }
 
     if (!SDL_SetWindowPosition(window, bounds.x, bounds.y)) {
-      Logger::err(str::format("SDL3 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
-      return false;
+      Logger::warn(str::format("SDL3 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
     }
 
     SDL_DisplayMode closestMode = { };
