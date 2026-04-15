@@ -441,7 +441,7 @@ namespace dxvk {
                                     | D3DDEVCAPS_EXECUTEVIDEOMEMORY
                                     | D3DDEVCAPS_TLVERTEXSYSTEMMEMORY
                                     | D3DDEVCAPS_TLVERTEXVIDEOMEMORY
-                                 /* | D3DDEVCAPS_TEXTURESYSTEMMEMORY */
+                                    | D3DDEVCAPS_TEXTURESYSTEMMEMORY
                                     | D3DDEVCAPS_TEXTUREVIDEOMEMORY
                                     | D3DDEVCAPS_DRAWPRIMTLVERTEX
                                     | D3DDEVCAPS_CANRENDERAFTERFLIP
