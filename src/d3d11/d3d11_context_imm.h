@@ -140,6 +140,8 @@ namespace dxvk {
 
     std::string             m_flushReason;
 
+    bool                    m_hasPendingUnresolvedPass = false;
+
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
             D3D11_MAP                   MapType,
@@ -212,7 +214,14 @@ namespace dxvk {
     void ThrottleDiscard(
             VkDeviceSize                Size);
 
-    void NotifyRenderPassBoundary();
+    void NotifyRenderPassBoundary(
+            bool                        IsMultisampled);
+
+    void NotifyResolve();
+
+    void RequestFlush(
+            D3D11_CONTEXT_TYPE          ContextType,
+            HANDLE                      hEvent);
 
     DxvkStagingBufferStats GetStagingMemoryStatistics();
 
