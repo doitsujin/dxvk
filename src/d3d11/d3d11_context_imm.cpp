@@ -164,27 +164,17 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
-    D3D10DeviceLock lock = LockContext();
-
-    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      m_flushReason = "Explicit Flush";
-
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+    RequestFlush(D3D11_CONTEXT_TYPE_ALL, nullptr);
   }
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush1(
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
-    D3D10DeviceLock lock = LockContext();
-
-    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
-      m_flushReason = "Explicit Flush";
-
-    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
+    RequestFlush(ContextType, hEvent);
   }
-  
-  
+
+
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
@@ -1112,6 +1102,8 @@ namespace dxvk {
     if (!GetPendingCsChunks() && !hEvent)
       return;
 
+    m_hasPendingUnresolvedPass = false;
+
     // Unbind unused resources
     ApplyDirtyNullBindings();
 
@@ -1195,11 +1187,14 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::NotifyRenderPassBoundary() {
+  void D3D11ImmediateContext::NotifyRenderPassBoundary(bool IsMultisampled) {
     // Doing this makes it less likely to flush during render passes
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     if (m_device->perfHints().preferRenderPassOps) {
+      // Make sure that explicit flushes get ignored until the next resolve
+      m_hasPendingUnresolvedPass = m_hasPendingUnresolvedPass || IsMultisampled;
+
       // On tilers, we want to avoid submitting during a render pass or a sequence
       // of render passes as much as possible, but if a submission request has been
       // rejected before, we should do it now in order to avoid read-back delays.
@@ -1208,6 +1203,29 @@ namespace dxvk {
       if (pending != GpuFlushType::None)
         ExecuteFlush(pending, nullptr, false);
     }
+  }
+
+
+  void D3D11ImmediateContext::NotifyResolve() {
+    m_hasPendingUnresolvedPass = false;
+  }
+
+
+  void D3D11ImmediateContext::RequestFlush(
+          D3D11_CONTEXT_TYPE          ContextType,
+          HANDLE                      hEvent) {
+    D3D10DeviceLock lock = LockContext();
+
+    // If we're in tiler mode and a render pass hasn't been resolved yet,
+    // ignore explicit flushes. This is a very dirty heuristic to work
+    // around some Unity Engine performance issues.
+    if (m_hasPendingUnresolvedPass && !m_parent->Is11on12Device())
+      return;
+
+    if (unlikely(m_device->debugFlags().test(DxvkDebugFlag::Capture)))
+      m_flushReason = "Explicit Flush";
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
 
 

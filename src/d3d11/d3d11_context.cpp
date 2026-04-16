@@ -903,6 +903,9 @@ namespace dxvk {
       });
     }
 
+    if constexpr (!IsDeferred)
+      GetTypedContext()->NotifyResolve();
+
     if (dstTextureInfo->HasSequenceNumber())
       GetTypedContext()->TrackTextureSequenceNumber(dstTextureInfo, DstSubresource);
   }
@@ -5337,6 +5340,7 @@ namespace dxvk {
       return;
 
     bool needsUpdate = false;
+    bool isMultisampled = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -5357,6 +5361,8 @@ namespace dxvk {
           if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
             ResolveOmUavHazards(rtv);
         }
+
+        isMultisampled = isMultisampled || (rtv && rtv->GetSampleCount() > 1u);
       }
 
       auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
@@ -5411,7 +5417,7 @@ namespace dxvk {
       BindFramebuffer();
 
       if constexpr (!IsDeferred)
-        GetTypedContext()->NotifyRenderPassBoundary();
+        GetTypedContext()->NotifyRenderPassBoundary(isMultisampled);
     }
   }
 
