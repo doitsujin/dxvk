@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <unordered_map>
 
 #include "d3d11_include.h"
@@ -52,40 +53,48 @@ namespace dxvk {
      */
     T* Create(D3D11Device* device, const DescType& desc) {
       std::lock_guard<dxvk::mutex> lock(m_mutex);
-      
+
       auto entry = m_objects.find(desc);
-      
+
       if (entry != m_objects.end())
-        return ref(&entry->second);
-      
-      auto result = m_objects.emplace(
-        std::piecewise_construct,
-        std::tuple(desc),
-        std::tuple(device, desc, this));
-      return ref(&result.first->second);
+        return ref(entry->second.get());
+
+      auto result = m_objects.insert({ desc,
+        std::make_unique<T>(device, desc, this) });
+      return ref(result.first->second.get());
     }
 
     /**
      * \brief Destroys a state object
      *
      * If the object is no longer in use, it will be
-     * removed from the look-ip table.
+     * removed from the look-up table.
      * \param [in] object Pointer to object to destroy
      */
     void Destroy(T* object, uint32_t version) {
-      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      std::unique_ptr<T> allocation;
 
-      if (object->IsCurrent(version)) {
-        DescType desc = object->Desc();
-        m_objects.erase(desc);
+      // This code can re-enter via destruction notifier callbacks,
+      // Make sure that we keep the look-up table in a valid state
+      // at the time the actual state object gets destroyed.
+      { std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+        if (object->IsCurrent(version)) {
+          auto entry = m_objects.find(object->Desc());
+
+          if (entry != m_objects.end()) {
+            allocation = std::move(entry->second);
+            m_objects.erase(entry);
+          }
+        }
       }
     }
 
   private:
     
-    dxvk::mutex                                m_mutex;
-    std::unordered_map<DescType, T,
-      D3D11StateDescHash, D3D11StateDescEqual> m_objects;
+    dxvk::mutex                                 m_mutex;
+    std::unordered_map<DescType, std::unique_ptr<T>,
+      D3D11StateDescHash, D3D11StateDescEqual>  m_objects;
     
   };
   
