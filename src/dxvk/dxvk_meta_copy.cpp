@@ -471,6 +471,50 @@ namespace dxvk {
         exportCopyToImagePs(builder, helper, key.dstAspects, color, ir::SsaDef(), ir::SsaDef());
       } break;
 
+      case VK_FORMAT_B5G6R5_UNORM_PACK16:
+      case VK_FORMAT_R5G6B5_UNORM_PACK16:
+      case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
+      case VK_FORMAT_A1R5G5B5_UNORM_PACK16: {
+        uint32_t bitIndex = 0u;
+
+        // Manually pack to 16-bit uint one component at a time
+        bool hasAlpha = key.srcFormat == VK_FORMAT_A1B5G5R5_UNORM_PACK16
+                     || key.srcFormat == VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+
+        bool isBgr = key.srcFormat == VK_FORMAT_R5G6B5_UNORM_PACK16
+                  || key.srcFormat == VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+
+        small_vector<ir::SsaDef, 4u> components = { };
+
+        for (uint32_t i = 0u; i < (hasAlpha ? 4u : 3u); i++) {
+          uint32_t bitCount = 5u;
+
+          if (i == 1u) bitCount = hasAlpha ? 5u : 6u;
+          if (i == 3u) bitCount = 1u;
+
+          ir::SsaDef scale = builder.makeConstant(1.0f / float((1u << bitCount) - 1u));
+
+          ir::SsaDef channel = builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
+            value, builder.makeConstant(bitIndex), builder.makeConstant(bitCount)));
+          channel = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, channel));
+          channel = builder.add(ir::Op::FMul(ir::ScalarType::eF32, channel, scale));
+          components.push_back(channel);
+
+          bitIndex += bitCount;
+        }
+
+        if (isBgr)
+          std::swap(components[0u], components[2u]);
+
+        // Pack vector in correct component order
+        ir::SsaDef color = components[0u];
+
+        for (uint32_t i = 1u; i < components.size(); i++)
+          color = helper.emitConcatVector(builder, color, components[i]);
+
+        exportCopyToImagePs(builder, helper, key.dstAspects, color, ir::SsaDef(), ir::SsaDef());
+      } break;
+
       case VK_FORMAT_B8G8R8A8_SRGB:
       case VK_FORMAT_B8G8R8A8_UNORM:
       case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
@@ -631,6 +675,51 @@ namespace dxvk {
         ir::SsaDef zero = builder.makeConstant(0.0f);
 
         result = builder.add(ir::Op::CompositeConstruct(type0, alpha, zero, zero, zero));
+      } break;
+
+      case VK_FORMAT_B5G6R5_UNORM_PACK16:
+      case VK_FORMAT_R5G6B5_UNORM_PACK16:
+      case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
+      case VK_FORMAT_A1R5G5B5_UNORM_PACK16: {
+        uint32_t bitIndex = 0u;
+
+        // Manually pack to 16-bit uint one component at a time
+        bool hasAlpha = key.srcFormat == VK_FORMAT_A1B5G5R5_UNORM_PACK16
+                     || key.srcFormat == VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+
+        bool isBgr = key.srcFormat == VK_FORMAT_R5G6B5_UNORM_PACK16
+                  || key.srcFormat == VK_FORMAT_A1R5G5B5_UNORM_PACK16;
+
+        ir::SsaDef packed = builder.makeConstant(0u);
+
+        for (uint32_t i = 0u; i < (hasAlpha ? 4u : 3u); i++) {
+          ir::SsaDef channel = helper.emitExtractVector(builder, value0, i, 1u);
+
+          uint32_t bitCount = 5u;
+
+          if (i == 1u) bitCount = hasAlpha ? 5u : 6u;
+          if (i == 3u) bitCount = 1u;
+
+          uint32_t bitShift = bitIndex;
+
+          if (isBgr && i < 3u)
+            bitShift = (hasAlpha ? 10u : 11u) - bitShift;
+
+          ir::SsaDef scale = builder.makeConstant(float((1u << bitCount) - 1u));
+          channel = builder.add(ir::Op::FMul(ir::ScalarType::eF32, channel, scale));
+          channel = builder.add(ir::Op::FRound(ir::ScalarType::eF32, channel, ir::RoundMode::eNearestEven));
+          channel = builder.add(ir::Op::ConvertFtoI(ir::ScalarType::eU32, channel));
+
+          packed = builder.add(ir::Op::IBitInsert(ir::ScalarType::eU32, packed, channel,
+            builder.makeConstant(bitShift),
+            builder.makeConstant(bitCount)));
+
+          bitIndex += bitCount;
+        }
+
+        // Need to pad to a vec4
+        ir::SsaDef zero = builder.makeConstant(0u);
+        result = builder.add(ir::Op::CompositeConstruct(typeOut, packed, zero, zero, zero));
       } break;
 
       case VK_FORMAT_B8G8R8A8_SRGB:
