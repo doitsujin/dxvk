@@ -60,8 +60,20 @@ done
 if [ $opt_clang_btver2 -eq 1 ]; then
   CC=${CC:="clang"}
   CXX=${CXX:="clang++"}
-  AR=${AR:="llvm-ar"}
-  RANLIB=${RANLIB:="llvm-ranlib"}
+  if [ -z "${AR+x}" ]; then
+    if command -v llvm-ar >/dev/null 2>&1; then
+      AR="llvm-ar"
+    else
+      AR="ar"
+    fi
+  fi
+  if [ -z "${RANLIB+x}" ]; then
+    if command -v llvm-ranlib >/dev/null 2>&1; then
+      RANLIB="llvm-ranlib"
+    else
+      RANLIB="ranlib"
+    fi
+  fi
 else
   CC=${CC:="gcc"}
   CXX=${CXX:="g++"}
