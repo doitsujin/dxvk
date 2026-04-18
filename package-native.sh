@@ -102,9 +102,9 @@ PY
 function build_arch {  
   cd "$DXVK_SRC_DIR"
 
-  opt_strip=
+  local install_args=()
   if [ $opt_devbuild -eq 0 ]; then
-    opt_strip=--strip
+    install_args+=(--strip)
   fi
 
   local meson_args=(
@@ -118,10 +118,6 @@ function build_arch {
 
   if [ $opt_clang_btver2 -eq 1 ]; then
     meson_args+=(-Db_lto=true)
-  fi
-
-  if [ -n "$opt_strip" ]; then
-    meson_args+=("$opt_strip")
   fi
 
   local cflags="-m$1"
@@ -142,7 +138,8 @@ function build_arch {
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
-  ninja install
+  ninja
+  meson install -C . "${install_args[@]}"
 
   if [ $opt_devbuild -eq 0 ]; then
     rm -r "$DXVK_BUILD_DIR/build.$1"
