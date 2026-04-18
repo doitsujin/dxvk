@@ -475,6 +475,8 @@ namespace dxvk {
       case VK_FORMAT_R5G6B5_UNORM_PACK16:
       case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
       case VK_FORMAT_A1R5G5B5_UNORM_PACK16: {
+        ir::SsaDef packed = helper.emitExtractVector(builder, value, 0u, 1u);
+
         uint32_t bitIndex = 0u;
 
         // Manually pack to 16-bit uint one component at a time
@@ -495,7 +497,7 @@ namespace dxvk {
           ir::SsaDef scale = builder.makeConstant(1.0f / float((1u << bitCount) - 1u));
 
           ir::SsaDef channel = builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
-            value, builder.makeConstant(bitIndex), builder.makeConstant(bitCount)));
+            packed, builder.makeConstant(bitIndex), builder.makeConstant(bitCount)));
           channel = builder.add(ir::Op::ConvertItoF(ir::ScalarType::eF32, channel));
           channel = builder.add(ir::Op::FMul(ir::ScalarType::eF32, channel, scale));
           components.push_back(channel);
