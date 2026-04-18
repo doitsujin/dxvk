@@ -89,10 +89,22 @@ new2 = """    auto normalizedInt = normalized.first;
     auto operand = [dstType, normalizedInt, normalizedFloat] {"""
 
 updated = text
+did_first = False
+did_second = False
 if old in updated:
   updated = updated.replace(old, new, 1)
+  did_first = True
 if old2 in updated:
   updated = updated.replace(old2, new2, 1)
+  did_second = True
+
+already_first = new in text
+already_second = new2 in text
+
+if not (did_first or already_first):
+  raise SystemExit('Failed to apply dxbc-spirv compat patch (first pattern missing)')
+if not (did_second or already_second):
+  raise SystemExit('Failed to apply dxbc-spirv compat patch (second pattern missing)')
 
 if updated != text:
   path.write_text(updated)
@@ -117,6 +129,7 @@ function build_arch {
   )
 
   if [ $opt_clang_btver2 -eq 1 ]; then
+    # Keep dxbc-spirv at C++17 for SteamRT clang11/libstdc++ compatibility.
     meson_args+=(-Db_lto=true)
   fi
 
