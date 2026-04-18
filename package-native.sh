@@ -65,6 +65,40 @@ else
   CXX=${CXX:="g++"}
 fi
 
+function patch_dxbc_spirv_cpp17_compat {
+  local file="$DXVK_SRC_DIR/subprojects/dxbc-spirv/ir/ir_utils.cpp"
+
+  if [ ! -f "$file" ]; then
+    return
+  fi
+
+  python - "$file" <<'PY'
+import pathlib
+import sys
+
+path = pathlib.Path(sys.argv[1])
+text = path.read_text()
+
+old = """    auto [normalizedInt, normalizedFloat] = [src, srcType] {"""
+new = """    auto normalized = [src, srcType] {"""
+
+old2 = """    auto operand = [dstType, normalizedInt, normalizedFloat] {"""
+new2 = """    auto normalizedInt = normalized.first;
+    auto normalizedFloat = normalized.second;
+
+    auto operand = [dstType, normalizedInt, normalizedFloat] {"""
+
+updated = text
+if old in updated:
+  updated = updated.replace(old, new, 1)
+if old2 in updated:
+  updated = updated.replace(old2, new2, 1)
+
+if updated != text:
+  path.write_text(updated)
+PY
+}
+
 function build_arch {  
   cd "$DXVK_SRC_DIR"
 
@@ -84,7 +118,6 @@ function build_arch {
 
   if [ $opt_clang_btver2 -eq 1 ]; then
     meson_args+=(-Db_lto=true)
-    meson_args+=(-Ddxbc-spirv:cpp_std=c++20)
   fi
 
   if [ -n "$opt_strip" ]; then
@@ -96,6 +129,8 @@ function build_arch {
   local ldflags="-m$1"
 
   if [ $opt_clang_btver2 -eq 1 ]; then
+    patch_dxbc_spirv_cpp17_compat
+
     local tune_flags="-march=btver2 -mtune=btver2 -O3 -ffast-math -flto=full"
     cflags+=" $tune_flags"
     cxxflags+=" $tune_flags"
