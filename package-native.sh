@@ -84,6 +84,7 @@ function build_arch {
 
   if [ $opt_clang_btver2 -eq 1 ]; then
     meson_args+=(-Db_lto=true)
+    meson_args+=(-Ddxbc-spirv:cpp_std=c++20)
   fi
 
   if [ -n "$opt_strip" ]; then
