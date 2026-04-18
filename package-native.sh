@@ -102,9 +102,9 @@ already_first = new in text
 already_second = new2 in text
 
 if not (did_first or already_first):
-  raise SystemExit('Failed to apply dxbc-spirv compat patch (first pattern missing)')
+  raise SystemExit('Failed to apply dxbc-spirv compat patch: first pattern not found and patch not already applied')
 if not (did_second or already_second):
-  raise SystemExit('Failed to apply dxbc-spirv compat patch (second pattern missing)')
+  raise SystemExit('Failed to apply dxbc-spirv compat patch: second pattern not found and patch not already applied')
 
 if updated != text:
   path.write_text(updated)
@@ -151,6 +151,7 @@ function build_arch {
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
+  # Build first, then install/strip to avoid racing install-time strip with link steps.
   ninja
   meson install -C . "${install_args[@]}"
 
