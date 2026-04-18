@@ -5,7 +5,7 @@ set -e
 shopt -s extglob
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--build-id] [--64-only] [--32-only] [--clang-btver2]"
   exit 1
 fi
 
@@ -27,9 +27,7 @@ opt_devbuild=0
 opt_buildid=false
 opt_64_only=0
 opt_32_only=0
-
-CC=${CC:="gcc"}
-CXX=${CXX:="g++"}
+opt_clang_btver2=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -49,12 +47,23 @@ while [ $# -gt 0 ]; do
   "--32-only")
     opt_32_only=1
     ;;
+  "--clang-btver2")
+    opt_clang_btver2=1
+    ;;
   *)
     echo "Unrecognized option: $1" >&2
     exit 1
   esac
   shift
 done
+
+if [ $opt_clang_btver2 -eq 1 ]; then
+  CC=${CC:="clang"}
+  CXX=${CXX:="clang++"}
+else
+  CC=${CC:="gcc"}
+  CXX=${CXX:="g++"}
+fi
 
 function build_arch {  
   cd "$DXVK_SRC_DIR"
@@ -64,14 +73,36 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  CC="$CC -m$1" CXX="$CXX -m$1" meson setup  \
-        --buildtype "release"                \
-        --prefix "$DXVK_BUILD_DIR/usr"       \
-        $opt_strip                           \
-        --bindir "$2"                        \
-        --libdir "$2"                        \
-        -Dbuild_id=$opt_buildid              \
-        --force-fallback-for=libdisplay-info \
+  local meson_args=(
+    --buildtype "release"
+    --prefix "$DXVK_BUILD_DIR/usr"
+    --bindir "$2"
+    --libdir "$2"
+    -Dbuild_id=$opt_buildid
+    --force-fallback-for=libdisplay-info
+  )
+
+  if [ $opt_clang_btver2 -eq 1 ]; then
+    meson_args+=(-Db_lto=true)
+  fi
+
+  if [ -n "$opt_strip" ]; then
+    meson_args+=("$opt_strip")
+  fi
+
+  local cflags="-m$1"
+  local cxxflags="-m$1"
+  local ldflags="-m$1"
+
+  if [ $opt_clang_btver2 -eq 1 ]; then
+    local tune_flags="-march=btver2 -mtune=btver2 -O3 -ffast-math -flto=full"
+    cflags+=" $tune_flags"
+    cxxflags+=" $tune_flags"
+    ldflags+=" -flto=full"
+  fi
+
+  CC="$CC" CXX="$CXX" CFLAGS="$CFLAGS $cflags" CXXFLAGS="$CXXFLAGS $cxxflags" LDFLAGS="$LDFLAGS $ldflags" meson setup \
+        "${meson_args[@]}" \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
