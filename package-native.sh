@@ -60,9 +60,13 @@ done
 if [ $opt_clang_btver2 -eq 1 ]; then
   CC=${CC:="clang"}
   CXX=${CXX:="clang++"}
+  AR=${AR:="llvm-ar"}
+  RANLIB=${RANLIB:="llvm-ranlib"}
 else
   CC=${CC:="gcc"}
   CXX=${CXX:="g++"}
+  AR=${AR:="ar"}
+  RANLIB=${RANLIB:="ranlib"}
 fi
 
 function patch_dxbc_spirv_cpp17_compat {
@@ -146,7 +150,7 @@ function build_arch {
     ldflags+=" -flto=full"
   fi
 
-  CC="$CC" CXX="$CXX" CFLAGS="$CFLAGS $cflags" CXXFLAGS="$CXXFLAGS $cxxflags" LDFLAGS="$LDFLAGS $ldflags" meson setup \
+  CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS $cflags" CXXFLAGS="$CXXFLAGS $cxxflags" LDFLAGS="$LDFLAGS $ldflags" meson setup \
         "${meson_args[@]}" \
         "$DXVK_BUILD_DIR/build.$1"
 
