@@ -93,21 +93,21 @@ new2 = """    auto normalizedInt = normalized.first;
     auto operand = [dstType, normalizedInt, normalizedFloat] {"""
 
 updated = text
-did_first = False
-did_second = False
+applied_normalized_patch = False
+applied_operand_patch = False
 if old in updated:
   updated = updated.replace(old, new, 1)
-  did_first = True
+  applied_normalized_patch = True
 if old2 in updated:
   updated = updated.replace(old2, new2, 1)
-  did_second = True
+  applied_operand_patch = True
 
-already_first = new in text
-already_second = new2 in text
+normalized_already_patched = new in text
+operand_already_patched = new2 in text
 
-if not (did_first or already_first):
+if not (applied_normalized_patch or normalized_already_patched):
   raise SystemExit('Failed to apply dxbc-spirv compat patch: first pattern not found and patch not already applied')
-if not (did_second or already_second):
+if not (applied_operand_patch or operand_already_patched):
   raise SystemExit('Failed to apply dxbc-spirv compat patch: second pattern not found and patch not already applied')
 
 if updated != text:
