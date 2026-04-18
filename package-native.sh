@@ -28,6 +28,9 @@ opt_buildid=false
 opt_64_only=0
 opt_32_only=0
 opt_clang_btver2=0
+opt_clang_btver2_lto=0
+auto_selected_ar=0
+auto_selected_ranlib=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -57,22 +60,32 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+function find_first_tool {
+  for tool in "$@"; do
+    if command -v "$tool" >/dev/null 2>&1; then
+      echo "$tool"
+      return 0
+    fi
+  done
+  return 1
+}
+
 if [ $opt_clang_btver2 -eq 1 ]; then
   CC=${CC:="clang"}
   CXX=${CXX:="clang++"}
+  opt_clang_btver2_lto=1
   if [ -z "${AR+x}" ]; then
-    if command -v llvm-ar >/dev/null 2>&1; then
-      AR="llvm-ar"
-    else
-      AR="ar"
-    fi
+    AR=$(find_first_tool llvm-ar llvm-ar-20 llvm-ar-19 llvm-ar-18 llvm-ar-17 llvm-ar-16 llvm-ar-15 llvm-ar-14 llvm-ar-13 llvm-ar-12 llvm-ar-11 llvm-ar-10 gcc-ar ar)
+    auto_selected_ar=1
   fi
   if [ -z "${RANLIB+x}" ]; then
-    if command -v llvm-ranlib >/dev/null 2>&1; then
-      RANLIB="llvm-ranlib"
-    else
-      RANLIB="ranlib"
-    fi
+    RANLIB=$(find_first_tool llvm-ranlib llvm-ranlib-20 llvm-ranlib-19 llvm-ranlib-18 llvm-ranlib-17 llvm-ranlib-16 llvm-ranlib-15 llvm-ranlib-14 llvm-ranlib-13 llvm-ranlib-12 llvm-ranlib-11 llvm-ranlib-10 gcc-ranlib ranlib)
+    auto_selected_ranlib=1
+  fi
+
+  if [ $auto_selected_ar -eq 1 ] && [ $auto_selected_ranlib -eq 1 ] && [[ "$AR" != llvm-ar* || "$RANLIB" != llvm-ranlib* ]]; then
+    echo "warning: LLVM binutils not fully available ($AR/$RANLIB), disabling LTO for --clang-btver2 build" >&2
+    opt_clang_btver2_lto=0
   fi
 else
   CC=${CC:="gcc"}
@@ -144,7 +157,7 @@ function build_arch {
     --force-fallback-for=libdisplay-info
   )
 
-  if [ $opt_clang_btver2 -eq 1 ]; then
+  if [ $opt_clang_btver2_lto -eq 1 ]; then
     # Keep dxbc-spirv at C++17 for SteamRT clang11/libstdc++ compatibility.
     meson_args+=(-Db_lto=true)
   fi
@@ -156,10 +169,13 @@ function build_arch {
   if [ $opt_clang_btver2 -eq 1 ]; then
     patch_dxbc_spirv_cpp17_compat
 
-    local tune_flags="-march=btver2 -mtune=btver2 -O3 -ffast-math -flto=full"
+    local tune_flags="-march=btver2 -mtune=btver2 -O3 -ffast-math"
+    if [ $opt_clang_btver2_lto -eq 1 ]; then
+      tune_flags+=" -flto=full"
+      ldflags+=" -flto=full"
+    fi
     cflags+=" $tune_flags"
     cxxflags+=" $tune_flags"
-    ldflags+=" -flto=full"
   fi
 
   CC="$CC" CXX="$CXX" AR="$AR" RANLIB="$RANLIB" CFLAGS="$CFLAGS $cflags" CXXFLAGS="$CXXFLAGS $cxxflags" LDFLAGS="$LDFLAGS $ldflags" meson setup \
