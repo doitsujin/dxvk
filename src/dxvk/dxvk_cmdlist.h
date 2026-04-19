@@ -608,14 +608,8 @@ namespace dxvk {
 
     void cmdSetDescriptorBufferOffsetsEXT(
             DxvkCmdBuffer             cmdBuffer,
-            VkPipelineBindPoint       pipeline,
-            VkPipelineLayout          layout,
-            uint32_t                  firstSet,
-            uint32_t                  setCount,
-      const uint32_t*                 pBufferIndices,
-      const VkDeviceSize*             pOffsets) {
-      m_vkd->vkCmdSetDescriptorBufferOffsetsEXT(getCmdBuffer(cmdBuffer),
-        pipeline, layout, firstSet, setCount, pBufferIndices, pOffsets);
+      const VkSetDescriptorBufferOffsetsInfoEXT* info) {
+      m_vkd->vkCmdSetDescriptorBufferOffsets2EXT(getCmdBuffer(cmdBuffer), info);
     }
 
 

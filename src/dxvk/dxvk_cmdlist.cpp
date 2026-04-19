@@ -806,12 +806,15 @@ namespace dxvk {
       bufferOffsets[setCount] = storage.offset;
       setCount++;
 
-      cmdSetDescriptorBufferOffsetsEXT(cmdBuffer,
-        layout->getBindPoint(),
-        layout->getPipelineLayout(),
-        0u, setCount,
-        bufferIndices.data(),
-        bufferOffsets.data());
+      VkSetDescriptorBufferOffsetsInfoEXT bindInfo = { VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT };
+      bindInfo.stageFlags = layout->getShaderStageMask();
+      bindInfo.layout = layout->getPipelineLayout();
+      bindInfo.firstSet = 0u;
+      bindInfo.setCount = setCount;
+      bindInfo.pBufferIndices = bufferIndices.data();
+      bindInfo.pOffsets = bufferOffsets.data();
+
+      cmdSetDescriptorBufferOffsetsEXT(cmdBuffer, &bindInfo);
     }
 
     // Update push constants

@@ -6559,9 +6559,15 @@ namespace dxvk {
       const uint32_t     bufferIndex = 0u;
       const VkDeviceSize bufferOffset = 0u;
 
-      m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer,
-        BindPoint, layout->getPipelineLayout(), 0u, 1u,
-        &bufferIndex, &bufferOffset);
+      VkSetDescriptorBufferOffsetsInfoEXT bindInfo = { VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT };
+      bindInfo.stageFlags = layout->getShaderStageMask();
+      bindInfo.layout = layout->getPipelineLayout();
+      bindInfo.firstSet = 0u;
+      bindInfo.setCount = 1u;
+      bindInfo.pBufferIndices = &bufferIndex;
+      bindInfo.pOffsets = &bufferOffset;
+
+      m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer, &bindInfo);
     } else {
       VkDescriptorSet set = m_device->getSamplerDescriptorSet().set;
 
@@ -6982,11 +6988,15 @@ namespace dxvk {
         m_cmd->cmdPushData(DxvkCmdBuffer::ExecBuffer, &pushInfo);
       } else {
         // Global sampler set will always be bound to index 0 if used
-        uint32_t setIndex = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        VkSetDescriptorBufferOffsetsInfoEXT bindInfo = { VK_STRUCTURE_TYPE_SET_DESCRIPTOR_BUFFER_OFFSETS_INFO_EXT };
+        bindInfo.stageFlags = pipelineLayout->getShaderStageMask();
+        bindInfo.layout = pipelineLayout->getPipelineLayout();
+        bindInfo.firstSet = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        bindInfo.setCount = count;
+        bindInfo.pBufferIndices = &bufferIndices[first];
+        bindInfo.pOffsets = &heapOffsets[first];
 
-        m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer,
-          BindPoint, pipelineLayout->getPipelineLayout(), setIndex, count,
-          &bufferIndices[first], &heapOffsets[first]);
+        m_cmd->cmdSetDescriptorBufferOffsetsEXT(DxvkCmdBuffer::ExecBuffer, &bindInfo);
       }
 
       dirtySetMask &= countMask;
