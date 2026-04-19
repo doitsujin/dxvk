@@ -82,9 +82,13 @@
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
+                    "fragmentStoresAndAtomics": true,
+                    "samplerAnisotropy": true,
+                    "shaderInt16": true,
                     "shaderSampledImageArrayDynamicIndexing" : true
                 },
                 "VkPhysicalDeviceVulkan12Features": {
+                    "shaderInt8": true,
                     "descriptorIndexing" : true,
                     "descriptorBindingSampledImageUpdateAfterBind" : true,
                     "descriptorBindingUpdateUnusedWhilePending" : true,
@@ -103,7 +107,9 @@
             },
             "properties": {
                 "VkPhysicalDeviceProperties": {
-                    "maxPushConstantsSize" : 256
+                    "limits": {
+                            "maxPushConstantsSize" : 256
+                    }
                 }
             }
         },
@@ -126,10 +132,10 @@
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
+                    "largePoints": true,
                     "wideLines": true
                 },
                 "VkPhysicalDeviceVulkan11Features": {
-                    "shaderInt16": true,
                     "storagePushConstant16": true
                 },
                 "VkPhysicalDeviceMaintenance7FeaturesKHR": {
@@ -223,8 +229,7 @@
                 "VkPhysicalDeviceFeatures": {
                     "depthBounds": true,
                     "vertexPipelineStoresAndAtomics": true,
-                    "pipelineStatisticsQuery": true,
-                    "samplerAnisotropy": true
+                    "pipelineStatisticsQuery": true
                 },
                 "VkPhysicalDeviceMemoryPriorityFeaturesEXT": {
                     "memoryPriority": true
@@ -304,8 +309,7 @@
                 "VkPhysicalDeviceFeatures": {
                     "depthBounds": true,
                     "pipelineStatisticsQuery": true,
-                    "logicOp": true,
-                    "samplerAnisotropy": true
+                    "logicOp": true
                 },
                 "VkPhysicalDeviceMemoryPriorityFeaturesEXT": {
                     "memoryPriority": true
@@ -332,7 +336,6 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "drawIndirectFirstInstance": true,
-                    "fragmentStoresAndAtomics": true,
                     "multiDrawIndirect": true,
                     "tessellationShader": true
                 }
