@@ -625,16 +625,6 @@ namespace dxvk {
     }
 
 
-
-    void cmdBindIndexBuffer(
-            VkBuffer                buffer,
-            VkDeviceSize            offset,
-            VkIndexType             indexType) {
-      m_vkd->vkCmdBindIndexBuffer(getCmdBuffer(),
-        buffer, offset, indexType);
-    }
-    
-    
     void cmdBindIndexBuffer2(
             VkBuffer                buffer,
             VkDeviceSize            offset,
