@@ -220,6 +220,7 @@ namespace dxvk {
   struct DxvkShaderLinkage {
     bool fsDualSrcBlend  = false;
     bool fsFlatShading   = false;
+    bool sampleLocations = false;
     bool semanticIo      = false;
 
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;

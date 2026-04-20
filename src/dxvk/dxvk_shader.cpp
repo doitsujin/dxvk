@@ -15,8 +15,10 @@ namespace dxvk {
 
 
   bool DxvkShaderLinkage::eq(const DxvkShaderLinkage& other) const {
-    bool eq = fsDualSrcBlend == other.fsDualSrcBlend
-           && fsFlatShading == other.fsFlatShading;
+    bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
+           && fsFlatShading   == other.fsFlatShading
+           && sampleLocations == other.sampleLocations
+           && semanticIo      == other.semanticIo;
 
     if (eq) {
       eq = prevStageOutputs.getVarCount() == other.prevStageOutputs.getVarCount();
@@ -40,6 +42,8 @@ namespace dxvk {
     DxvkHashState hash;
     hash.add(uint32_t(fsDualSrcBlend));
     hash.add(uint32_t(fsFlatShading));
+    hash.add(uint32_t(sampleLocations));
+    hash.add(uint32_t(semanticIo));
 
     for (uint32_t i = 0; i < prevStageOutputs.getVarCount(); i++)
       hash.add(prevStageOutputs.getVar(i).hash());

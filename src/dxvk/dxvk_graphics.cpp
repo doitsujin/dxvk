@@ -882,6 +882,7 @@ namespace dxvk {
 
       info.fsDualSrcBlend = state.useDualSourceBlending();
       info.fsFlatShading = state.rs.flatShading() && shader->metadata().flatShadingInputs;
+      info.sampleLocations = state.useSampleLocations();
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if ((fsOutputMask & (1u << i)) && state.writesRenderTarget(i))
@@ -1308,6 +1309,11 @@ namespace dxvk {
         if (!canUseDynamicAlphaToCoverage
          && (state.ms.enableAlphaToCoverage())
          && !m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
+          return false;
+
+        // We need to not enable sample rate shading for the the
+        // shader in case sample locations are used to avoid UB.
+        if (state.useSampleLocations())
           return false;
       }
     }
