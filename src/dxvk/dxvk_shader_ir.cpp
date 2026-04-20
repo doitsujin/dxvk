@@ -184,7 +184,8 @@ namespace dxvk {
     : m_builder (builder),
       m_shader  (shader),
       m_info    (info) {
-
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading))
+        m_metadata.flags.set(DxvkShaderFlag::HasSampleRateShading);
     }
 
     /**
