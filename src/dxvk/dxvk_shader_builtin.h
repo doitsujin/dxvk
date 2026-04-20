@@ -384,6 +384,19 @@ namespace dxvk {
             ir::SsaDef            b);
 
     /**
+     * \brief Replicates scalar into a vector
+     *
+     * \param [in,out] builder Shader builder
+     * \param [in] type Vector type
+     * \param [in] value Scalar value
+     * \returns Concatenated vector
+     */
+    ir::SsaDef emitReplicateScalar(
+            ir::Builder&          builder,
+            ir::BasicType         type,
+            ir::SsaDef            value);
+
+    /**
      * \brief Masks output vector for a given format
      *
      * Replaces all color components that are not part of the given
