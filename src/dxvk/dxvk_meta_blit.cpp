@@ -231,7 +231,10 @@ namespace dxvk {
     }
 
     // Compute average and export
-    result = builder.add(ir::Op::FMul(pixelType, result, builder.makeConstant(1.0f / float(sampleIterations))));
+    ir::SsaDef factor = helper.emitReplicateScalar(builder, pixelType,
+      builder.makeConstant(1.0f / float(sampleIterations)));
+
+    result = builder.add(ir::Op::FMul(pixelType, result, factor));
     result = helper.emitFormatVector(builder, key.dstFormat, result);
 
     if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT)

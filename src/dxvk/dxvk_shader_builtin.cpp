@@ -465,6 +465,22 @@ namespace dxvk {
   }
 
 
+  ir::SsaDef DxvkBuiltInShader::emitReplicateScalar(
+          ir::Builder&          builder,
+          ir::BasicType         type,
+          ir::SsaDef            value) {
+    if (type.isScalar())
+      return value;
+
+    ir::Op compositeOp(ir::OpCode::eCompositeConstruct, type);
+
+    for (uint32_t i = 0u; i < type.getVectorSize(); i++)
+      compositeOp.addOperand(value);
+
+    return builder.add(std::move(compositeOp));
+  }
+
+
   ir::SsaDef DxvkBuiltInShader::emitFormatVector(
           ir::Builder&          builder,
           VkFormat              format,
