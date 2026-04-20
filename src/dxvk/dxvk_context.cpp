@@ -83,6 +83,8 @@ namespace dxvk {
     m_cmd = cmdList;
     m_cmd->init();
 
+    m_trackingId += 1u;
+
     this->beginCurrentCommands();
   }
   
@@ -8326,6 +8328,7 @@ namespace dxvk {
 
     for (size_t i = 0u; i < bufferCount; i++) {
       const auto& e = bufferInfos[i];
+      m_cmd->track(e.buffer, DxvkAccess::Move);
 
       accessBatch.emplace_back(*e.buffer, 0u, e.buffer->info().size,
         e.buffer->info().stages, e.buffer->info().access);
@@ -8333,6 +8336,7 @@ namespace dxvk {
 
     for (size_t i = 0u; i < imageCount; i++) {
       const auto& e = imageInfos[i];
+      m_cmd->track(e.image, DxvkAccess::Move);
 
       if (e.image->isInitialized(e.image->getAvailableSubresources())) {
         accessBatch.emplace_back(*e.image, e.image->getAvailableSubresources(),
@@ -8483,7 +8487,6 @@ namespace dxvk {
       invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
 
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copy);
-      m_cmd->track(info.buffer, DxvkAccess::Move);
 
       memoryBarrier.dstStageMask |= info.buffer->info().stages;
       memoryBarrier.dstAccessMask |= info.buffer->info().access;
@@ -8581,7 +8584,6 @@ namespace dxvk {
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo, finalLayout);
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
-      m_cmd->track(info.image, DxvkAccess::Move);
     }
 
     if (!imageBarriers.empty()) {
@@ -8833,7 +8835,7 @@ namespace dxvk {
     m_state.gp.pipeline = nullptr;
     m_state.cp.pipeline = nullptr;
 
-    m_cmd->setTrackingId(++m_trackingId);
+    m_cmd->setTrackingId(m_trackingId);
 
     if (m_features.any(DxvkContextFeature::DescriptorHeap,
                        DxvkContextFeature::DescriptorBuffer)) {
@@ -8867,6 +8869,7 @@ namespace dxvk {
     // command list object for subsequent commands.
     this->endCurrentCommands();
 
+    m_trackingId += 1u;
     m_cmd->next();
 
     this->beginCurrentCommands();
