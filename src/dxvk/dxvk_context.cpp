@@ -3705,18 +3705,31 @@ namespace dxvk {
     pushArgs.dstExtent = imageExtent;
 
     // Need to pass the unmodified view type here to handle 3D properly
+    VkImageAspectFlags dstAspects = imageView->info().aspects;
+
+    if (isDepthStencil) {
+      // In some cases we map a depth-only format to a depth-stencil
+      // format, don't try to write stencil in that case.
+      auto packedFormat = lookupFormatInfo(bufferFormat);
+
+      if (dstAspects & packedFormat->aspectMask)
+        dstAspects &= packedFormat->aspectMask;
+
+      dstAspects &= imageSubresource.aspectMask;
+    }
+
     DxvkMetaBufferToImageCopy::Key metaKey = { };
     metaKey.dstViewType = DxvkMetaResolveViews::viewType(*image, imageSubresource, 0u);
     metaKey.dstFormat = imageView->info().format;
-    metaKey.dstAspects = imageView->info().aspects;
+    metaKey.dstAspects = dstAspects;
     metaKey.srcFormat = bufferFormat;
     metaKey.bufferFormat = bufferView->info().format;
     metaKey.samples = image->info().sampleCount;
 
     if (useBitwiseStencil)
-        metaKey.dstAspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+      metaKey.dstAspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    if (!useBitwiseStencil || imageSubresource.aspectMask != VK_IMAGE_ASPECT_STENCIL_BIT) {
+    if (!useBitwiseStencil || dstAspects != VK_IMAGE_ASPECT_STENCIL_BIT) {
       DxvkMetaBufferToImageCopy meta = m_common->metaCopy().getPipeline(metaKey);
 
       m_cmd->cmdBindPipeline(DxvkCmdBuffer::ExecBuffer,
@@ -3732,7 +3745,7 @@ namespace dxvk {
       }
     }
 
-    if (useBitwiseStencil) {
+    if (useBitwiseStencil && (dstAspects & VK_IMAGE_ASPECT_STENCIL_BIT)) {
       metaKey.dstAspects = VK_IMAGE_ASPECT_STENCIL_BIT;
       metaKey.bitwiseStencil = VK_TRUE;
 
