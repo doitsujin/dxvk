@@ -134,12 +134,24 @@ namespace dxvk {
      || InterfaceName == __uuidof(ID3D10Device1))
       hr = S_OK;
 
-    // Windows drivers return something along the lines of 32.0.xxxxx.yyyy,
-    // so just be conservative here and return a high number. We cannot
-    // reconstruct meaningful UMD versions from Vulkan driver versions.
+    // Windows drivers return something along the lines of 35.0.xxxxx.yyyy,
+    // so just be conservative here and return a high number by default.
+    // On Nvidia UMD driver version translates to public version using the lower decimal digits, e. g., 32.0.15.7628
+    // corresponds to 576.28 and some games will check public version extracted from UMD version extracted, e. g., as
+    // (10000 * v1 % 100000 + v2) % 100000, where uint32_t v1 = LowPart >> 32, uint32_t v2 = LowPart && 0xffff
+    // (so LowPart 0xffffffff gives too low version of 155.35). 0x0013270f corresponds to [35.0.]1999.99 which converts
+    // to 999.99 public version.
     if (SUCCEEDED(hr) && pUMDVersion) {
-      pUMDVersion->HighPart = 0x00200000u;
-      pUMDVersion->LowPart  = 0xffffffffu;
+      pUMDVersion->HighPart = 0x00230000u;
+      switch (DxvkGpuVendor(m_desc.VendorId)) {
+        case DxvkGpuVendor::Nvidia:
+          pUMDVersion->LowPart  = 0x0013270fu;
+          break;
+
+        default:
+          pUMDVersion->LowPart  = 0xffffffffu;
+          break;
+      }
     }
 
     if (FAILED(hr)) {
