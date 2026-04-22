@@ -13,7 +13,7 @@ namespace dxvk {
   #define CORE_VERSIONS                            \
     HANDLE_CORE(vk11);                             \
     HANDLE_CORE(vk12);                             \
-    HANDLE_CORE(vk13);                             \
+    HANDLE_CORE(vk13);
 
   #define EXTENSIONS_WITH_FEATURES                 \
     HANDLE_EXT(extAttachmentFeedbackLoopLayout);   \
@@ -43,6 +43,7 @@ namespace dxvk {
     HANDLE_EXT(extSwapchainMaintenance1);          \
     HANDLE_EXT(extTransformFeedback);              \
     HANDLE_EXT(extVertexAttributeDivisor);         \
+    HANDLE_EXT(khrDynamicRenderingLocalRead);      \
     HANDLE_EXT(khrExternalMemoryWin32);            \
     HANDLE_EXT(khrExternalSemaphoreWin32);         \
     HANDLE_EXT(khrLoadStoreOpNone);                \
@@ -968,6 +969,9 @@ namespace dxvk {
       /* Vertex attribute divisor, used by client APIs */
       ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateDivisor, false),
       ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateZeroDivisor, false),
+
+      /* Tiler stuff */
+      ENABLE_EXT_FEATURE(khrDynamicRenderingLocalRead, dynamicRenderingLocalRead, false),
 
       /* External memory features for wine */
       ENABLE_EXT(khrExternalMemoryWin32, false),
