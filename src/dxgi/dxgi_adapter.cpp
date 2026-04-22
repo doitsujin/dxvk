@@ -143,7 +143,7 @@ namespace dxvk {
     // to 999.99 public version.
     if (SUCCEEDED(hr) && pUMDVersion) {
       pUMDVersion->HighPart = 0x00230000u;
-      switch (static_cast<DxvkGpuVendor>(m_desc.VendorId)) {
+      switch (DxvkGpuVendor(m_desc.VendorId)) {
         case DxvkGpuVendor::Nvidia:
           pUMDVersion->LowPart  = 0x0013270fu;
           break;
