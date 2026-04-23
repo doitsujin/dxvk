@@ -731,6 +731,7 @@ namespace dxvk {
 
     applyTristate(tilerMode, m_options.tilerMode);
     hints.preferRenderPassOps = tilerMode;
+    hints.preferCachedMemory = tilerMode;
 
     // Honeykrisp does not have native support for secondary command buffers
     // and would suffer from added CPU overhead, so be less aggressive.
