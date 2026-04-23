@@ -254,6 +254,25 @@ namespace dxvk {
       const char*                 name);
 
     /**
+     * \brief Helper to declare an input target
+     *
+     * \param [in,out] builder Shader builder
+     * \param [in] binding Binding index
+     * \param [in] name Debug name
+     * \param [in] attachment Render target index
+     * \param [in] format Render target format
+     * \param [in] samples Sample count
+     * \returns SSA def of the descriptor load
+     */
+    ir::SsaDef declareInputTarget(
+            ir::Builder&          builder,
+            uint32_t              binding,
+      const char*                 name,
+            uint32_t              attachment,
+            VkFormat              format,
+            VkSampleCountFlagBits samples);
+
+    /**
      * \brief Declares and loads push data parameter
      *
      * For graphics shaders, push data is unconditionally made

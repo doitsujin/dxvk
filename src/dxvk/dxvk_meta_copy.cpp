@@ -22,6 +22,14 @@ namespace dxvk {
   };
 
 
+  struct DxvkMetaInputAttachmentImageCopyPushArgs {
+    ir::SsaDef srcOffset  = { };
+    ir::SsaDef dstOffset  = { };
+    ir::SsaDef srcLayer   = { };
+    ir::SsaDef dstLayer   = { };
+  };
+
+
   static DxvkMetaImageCopyPushArgs loadImageCopyPushArgs(ir::Builder& builder, DxvkBuiltInShader& helper) {
     ir::BasicType coordType(ir::ScalarType::eU32, 3u);
 
@@ -30,6 +38,18 @@ namespace dxvk {
     result.srcExtent  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaImageCopy::Args, srcExtent), "src_extent");
     result.layerIndex = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, layerIndex), "layer_index");
     result.stencilBit = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaImageCopy::Args, stencilBit), "stencil_bit");
+    return result;
+  }
+
+
+  static DxvkMetaInputAttachmentImageCopyPushArgs loadInputAttachmentImageCopyPushArgs(ir::Builder& builder, DxvkBuiltInShader& helper) {
+    ir::BasicType coordType(ir::ScalarType::eU32, 2u);
+
+    DxvkMetaInputAttachmentImageCopyPushArgs result = { };
+    result.srcOffset  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaInputAttachmentImageCopy::Args, srcOffset), "src_offset");
+    result.dstOffset  = helper.declarePushData(builder, coordType, offsetof(DxvkMetaInputAttachmentImageCopy::Args, dstOffset), "dst_offset");
+    result.srcLayer   = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaInputAttachmentImageCopy::Args, srcLayer), "src_layer");
+    result.dstLayer   = helper.declarePushData(builder, ir::ScalarType::eU32, offsetof(DxvkMetaInputAttachmentImageCopy::Args, dstLayer), "dst_layer");
     return result;
   }
 
@@ -190,6 +210,19 @@ namespace dxvk {
   }
 
 
+  DxvkMetaInputAttachmentImageCopy DxvkMetaCopyObjects::getPipeline(const DxvkMetaInputAttachmentImageCopy::Key& key) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    auto entry = m_inputAttachmentImageCopyPipelines.find(key);
+    if (entry != m_inputAttachmentImageCopyPipelines.end())
+      return entry->second;
+
+    DxvkMetaInputAttachmentImageCopy pipeline = createInputAttachmentCopyPipeline(key);
+    m_inputAttachmentImageCopyPipelines.insert({ key, pipeline });
+    return pipeline;
+  }
+
+
   DxvkMetaBufferToImageCopy DxvkMetaCopyObjects::getPipeline(const DxvkMetaBufferToImageCopy::Key& key) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
@@ -278,6 +311,25 @@ namespace dxvk {
   }
 
 
+  std::vector<uint32_t> DxvkMetaCopyObjects::createVsCopyInputAttachment(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaInputAttachmentImageCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "vs"));
+
+    helper.buildFullscreenVertexShader(builder);
+
+    ir::ResourceKind srcKind = helper.determineResourceKind(key.srcViewType, VK_SAMPLE_COUNT_1_BIT);
+
+    if (ir::resourceIsLayered(srcKind)) {
+      DxvkMetaInputAttachmentImageCopyPushArgs pushArgs = loadInputAttachmentImageCopyPushArgs(builder, helper);
+      helper.exportBuiltIn(builder, ir::BuiltIn::eLayerIndex, pushArgs.srcLayer);
+    }
+
+    return helper.buildShader(builder);
+  }
+
+
   std::vector<uint32_t> DxvkMetaCopyObjects::createVsCopyBufferToImage(
     const DxvkPipelineLayout*           layout,
     const DxvkMetaBufferToImageCopy::Key& key) {
@@ -352,6 +404,59 @@ namespace dxvk {
 
     exportCopyToImagePs(builder, helper, key.dstAspects, value0, value1,
       key.bitwiseStencil ? pushArgs.stencilBit : ir::SsaDef());
+    return helper.buildShader(builder);
+  }
+
+
+  std::vector<uint32_t> DxvkMetaCopyObjects::createPsCopyInputAttachment(
+    const DxvkPipelineLayout*           layout,
+    const DxvkMetaInputAttachmentImageCopy::Key& key) {
+    dxbc_spv::ir::Builder builder;
+
+    DxvkBuiltInShader helper(m_device, layout, getName(key, "ps"));
+    helper.buildPixelShader(builder);
+
+    DxvkMetaInputAttachmentImageCopyPushArgs pushArgs = loadInputAttachmentImageCopyPushArgs(builder, helper);
+
+    ir::ResourceKind kind = helper.determineResourceKind(key.dstViewType, VK_SAMPLE_COUNT_1_BIT);
+    uint32_t coordDims = ir::resourceCoordComponentCount(kind);
+
+    ir::BasicType coordTypeF(ir::ScalarType::eF32, 4u);
+    ir::BasicType coordTypeU(ir::ScalarType::eU32, coordDims);
+
+    ir::SsaDef coord = helper.declareBuiltInInput(builder, coordTypeF, ir::BuiltIn::ePosition);
+    coord = helper.emitExtractVector(builder, coord, 0u, coordDims);
+    coord = builder.add(ir::Op::ConvertFtoI(coordTypeU, coord));
+    coord = builder.add(ir::Op::ISub(coordTypeU, coord, helper.emitExtractVector(builder, pushArgs.srcOffset, 0u, coordDims)));
+    coord = builder.add(ir::Op::IAdd(coordTypeU, coord, helper.emitExtractVector(builder, pushArgs.dstOffset, 0u, coordDims)));
+
+    ir::SsaDef layer = resourceIsLayered(kind) ? pushArgs.dstLayer : ir::SsaDef();
+    ir::BasicType valueType(helper.determineSampledType(key.dstFormat, VK_IMAGE_ASPECT_COLOR_BIT), 4u);
+
+    ir::SsaDef imgSrc = helper.declareInputTarget(builder, 0u, "img_src",
+      key.srcAttachment, key.colorFormats[key.srcAttachment], VK_SAMPLE_COUNT_1_BIT);
+    ir::SsaDef imgDst = helper.declareImageUav(builder, 1u, "img_dst",
+      key.dstViewType, key.dstFormat);
+
+    ir::SsaDef value = builder.add(ir::Op::InputTargetLoad(valueType, imgSrc, ir::SsaDef()));
+    value = helper.emitFormatVector(builder, key.dstFormat, value);
+
+    auto resultType = builder.getOp(value).getType();
+
+    // Emit linear to sRGB conversion as necessary
+    auto srcFormatInfo = lookupFormatInfo(key.colorFormats[key.srcAttachment]);
+    auto dstFormatInfo = lookupFormatInfo(key.dstFormat);
+
+    ir::SsaDef conversionFunction = { };
+
+    if (srcFormatInfo->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+     && !dstFormatInfo->flags.test(DxvkFormatFlag::ColorSpaceSrgb))
+      conversionFunction = helper.buildLinearToSrgbFn(builder, resultType);
+
+    if (conversionFunction)
+      value = builder.add(ir::Op::FunctionCall(resultType, conversionFunction).addOperand(value));
+
+    builder.add(ir::Op::ImageStore(imgDst, layer, coord, value));
     return helper.buildShader(builder);
   }
 
@@ -835,6 +940,43 @@ namespace dxvk {
   }
 
 
+  DxvkMetaInputAttachmentImageCopy DxvkMetaCopyObjects::createInputAttachmentCopyPipeline(const DxvkMetaInputAttachmentImageCopy::Key& key) {
+    static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
+      { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,  1, VK_SHADER_STAGE_FRAGMENT_BIT },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,     1, VK_SHADER_STAGE_FRAGMENT_BIT },
+    }};
+
+    // Disable depth-stencil writes
+    VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+    dsState.depthTestEnable = VK_FALSE;
+    dsState.depthWriteEnable = VK_FALSE;
+    dsState.stencilTestEnable = VK_FALSE;
+
+    DxvkMetaInputAttachmentImageCopy pipeline;
+    pipeline.layout = m_device->createBuiltInPipelineLayout(0u,
+      VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT,
+      sizeof(DxvkMetaInputAttachmentImageCopy::Args), bindings.size(), bindings.data());
+
+    auto vsSpirv = createVsCopyInputAttachment(pipeline.layout, key);
+    auto psSpirv = createPsCopyInputAttachment(pipeline.layout, key);
+
+    // Disable all color writes
+    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments = { };
+
+    util::DxvkBuiltInGraphicsState state = { };
+    state.vs = vsSpirv;
+    state.fs = psSpirv;
+    state.dsState = &dsState;
+    state.cbAttachment = cbAttachments.data();
+    state.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    state.depthFormat = key.depthFormat;
+    state.colorFormats = key.colorFormats;
+
+    pipeline.pipeline = m_device->createBuiltInGraphicsPipeline(pipeline.layout, state);
+    return pipeline;
+  }
+
+
   DxvkMetaImageCopy DxvkMetaCopyObjects::createImageCopyPipeline(const DxvkMetaImageCopy::Key& key) {
     static const std::array<DxvkDescriptorSetLayoutBinding, 2> bindings = {{
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT },
@@ -922,6 +1064,17 @@ namespace dxvk {
     if (key.samples > VK_SAMPLE_COUNT_1_BIT)
       name << "_msx" << uint32_t(key.samples);
 
+    return str::tolower(name.str());
+  }
+
+
+  std::string DxvkMetaCopyObjects::getName(const DxvkMetaInputAttachmentImageCopy::Key& key, const char* type) {
+    std::stringstream name;
+    name << "meta_" << type << "_copy_input_attachment";
+    name << "_" << str::format(key.srcViewType).substr(std::strlen("VK_IMAGE_VIEW_TYPE_"));
+    name << "_to_" << str::format(key.dstViewType).substr(std::strlen("VK_IMAGE_VIEW_TYPE_"));
+    name << "_" << str::format(key.colorFormats[key.srcAttachment]).substr(std::strlen("VK_FORMAT_"));
+    name << "_rt" << key.srcAttachment;
     return str::tolower(name.str());
   }
 
