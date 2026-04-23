@@ -5955,6 +5955,7 @@ namespace dxvk {
     std::array<VkClearAttachment, MaxNumRenderTargets> lateClears = { };
 
     bool hasMipmappedRt = false;
+    bool hasInputAttachmentRt = false;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
@@ -5962,7 +5963,7 @@ namespace dxvk {
       auto& colorInfo = m_state.om.renderingInfo.color[i];
       colorInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
-      if (colorTarget.view != nullptr) {
+      if (colorTarget.view) {
         colorFormats[i] = colorTarget.view->info().format;
 
         colorInfo.imageView = colorTarget.view->handle();
@@ -5971,6 +5972,8 @@ namespace dxvk {
         colorInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
         renderingInheritance.rasterizationSamples = colorTarget.view->image()->info().sampleCount;
+
+        hasInputAttachmentRt |= bool(colorTarget.view->image()->info().usage & VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
         if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
           colorInfo.clearValue.color = ops.colorOps[i].clearValue;
@@ -6082,6 +6085,12 @@ namespace dxvk {
       renderingInfo.pStencilAttachment = &stencilInfo;
       renderingInheritance.stencilAttachmentFormat = depthStencilFormat;
     }
+
+    // Make sure we get compression with input attachments whenever possible
+    if (hasInputAttachmentRt
+     && m_device->features().khrMaintenance10.maintenance10
+     && m_device->features().khrDynamicRenderingLocalRead.dynamicRenderingLocalRead)
+      renderingInfo.flags |= VK_RENDERING_LOCAL_READ_CONCURRENT_ACCESS_CONTROL_BIT_KHR;
 
     // Reset render area tracking, will be adjusted when drawing with viewports.
     m_state.om.renderAreaLo = VkOffset2D { int32_t(fbSize.width), int32_t(fbSize.height) };
