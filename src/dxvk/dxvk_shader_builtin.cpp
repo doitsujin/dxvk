@@ -126,7 +126,7 @@ namespace dxvk {
     auto resource = builder.add(ir::Op::DclSrv(type, entry, 0u, binding, 1u, kind));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, builder.makeConstant(0u)));
   }
 
 
@@ -143,7 +143,7 @@ namespace dxvk {
     auto resource = builder.add(ir::Op::DclSrv(type, entry, 0u, binding, 1u, ir::ResourceKind::eBufferTyped));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, builder.makeConstant(0u)));
   }
 
 
@@ -160,7 +160,7 @@ namespace dxvk {
     auto resource = builder.add(ir::Op::DclSrv(type, entry, 0u, binding, 1u, ir::ResourceKind::eBufferStructured));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSrv, resource, builder.makeConstant(0u)));
   }
 
 
@@ -180,7 +180,7 @@ namespace dxvk {
       0u, binding, 1u, kind, ir::UavFlag::eWriteOnly));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, builder.makeConstant(0u)));
   }
 
 
@@ -198,7 +198,7 @@ namespace dxvk {
       0u, binding, 1u, ir::ResourceKind::eBufferTyped, ir::UavFlag::eWriteOnly));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, builder.makeConstant(0u)));
   }
 
 
@@ -216,7 +216,7 @@ namespace dxvk {
       0u, binding, 1u, ir::ResourceKind::eBufferStructured, ir::UavFlag::eWriteOnly));
     builder.add(ir::Op::DebugName(resource, name));
 
-    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, ir::SsaDef()));
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eUav, resource, builder.makeConstant(0u)));
   }
 
 
@@ -245,6 +245,30 @@ namespace dxvk {
 
     // Emit descriptor load using the loaded index
     return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eSampler, samplerHeap, index));
+  }
+
+
+  ir::SsaDef DxvkBuiltInShader::declareInputTarget(
+          ir::Builder&          builder,
+          uint32_t              binding,
+    const char*                 name,
+          uint32_t              attachment,
+          VkFormat              format,
+          VkSampleCountFlagBits samples) {
+    auto entry = findEntryPoint(builder);
+    dxbc_spv_assert(entry);
+
+    auto type = determineSampledType(format, VK_IMAGE_ASPECT_COLOR_BIT);
+
+    auto kind = samples > VK_SAMPLE_COUNT_1_BIT
+      ? ir::ResourceKind::eImage2DMS
+      : ir::ResourceKind::eImage2D;
+
+    auto resource = builder.add(ir::Op::DclInputTarget(type,
+      entry, 0u, binding, 1u, kind, attachment));
+    builder.add(ir::Op::DebugName(resource, name));
+
+    return builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eInputTarget, resource, builder.makeConstant(0u)));
   }
 
 
