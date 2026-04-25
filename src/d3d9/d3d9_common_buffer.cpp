@@ -18,6 +18,8 @@ namespace dxvk {
 
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       m_dirtyRange = D3D9Range(0, m_desc.Size);
+
+    m_uploadAtDraw = m_parent->GetOptions()->forceDrawTimeBufferUpload;
   }
 
   D3D9CommonBuffer::~D3D9CommonBuffer() {
@@ -81,11 +83,6 @@ namespace dxvk {
   D3D9_COMMON_BUFFER_MAP_MODE D3D9CommonBuffer::DetermineMapMode(const D3D9Options* options) const {
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-
-    // CSGO keeps vertex buffers locked across multiple frames and writes to it. It uses them for drawing without unlocking first.
-    // Tests show that D3D9 DEFAULT + USAGE_DYNAMIC behaves like a directly mapped buffer even when unlocked.
-    // DEFAULT + WRITEONLY does not behave like a directly mapped buffer EXCEPT if its locked at the moment.
-    // TODO: Work around that by adding option that maps WRITEONLY directly or disables the staging buffer for buffer uploads.
 
     if (!(m_desc.Usage & D3DUSAGE_DYNAMIC))
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;

@@ -5702,7 +5702,7 @@ namespace dxvk {
 
     // Only D3DPOOL_DEFAULT buffers get uploaded in UnlockBuffer.
     // D3DPOOL_SYSTEMMEM and D3DPOOL_MANAGED get uploaded at draw time.
-    if (pResource->Desc()->Pool != D3DPOOL_DEFAULT)
+    if (pResource->Desc()->Pool != D3DPOOL_DEFAULT || m_d3d9Options.forceDrawTimeBufferUpload)
       return D3D_OK;
 
     FlushBuffer(pResource);

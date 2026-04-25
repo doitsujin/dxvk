@@ -176,7 +176,7 @@ namespace dxvk {
     /**
      * \brief Whether or not the staging buffer needs to be copied to the actual buffer
      */
-    inline bool NeedsUpload() const { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
+    inline bool NeedsUpload() const { return (m_desc.Pool != D3DPOOL_DEFAULT || m_uploadAtDraw) && m_mapMode != D3D9_COMMON_BUFFER_MAP_MODE_DIRECT && !m_dirtyRange.IsDegenerate(); }
 
     void PreLoad();
 
@@ -232,6 +232,7 @@ namespace dxvk {
     DWORD                       m_mapFlags = 0;
     bool                        m_needsReadback = false;
     D3D9_COMMON_BUFFER_MAP_MODE m_mapMode;
+    bool                        m_uploadAtDraw = false;
 
     Rc<DxvkBuffer>              m_buffer;
     Rc<DxvkBuffer>              m_stagingBuffer;
