@@ -122,6 +122,12 @@ namespace dxvk {
     /// Disable direct buffer mapping
     bool allowDirectBufferMapping;
 
+    /// Force flushing D3DPOOL_DEFAULT buffers at draw time rather than on unlock
+    /// Used to work around game bugs in source engine games like CSGO and Insurgency.
+    /// Those games write to buffers after unlocking them. Uploading on unlock leads to black
+    /// objects because they never get their proper UVs.
+    bool forceDrawTimeBufferUpload;
+
     /// Don't use non seamless cube maps
     bool seamlessCubes;
 
