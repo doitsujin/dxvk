@@ -567,7 +567,7 @@ namespace dxvk {
      */
     bool trackId(uint64_t trackingId, DxvkAccess access) {
       // Encode write access in the least significant bit
-      uint64_t trackId = (trackingId << 1u) + uint64_t(access == DxvkAccess::Write);
+      uint64_t trackId = (trackingId << 1u) + uint64_t(access >= DxvkAccess::Write);
 
       if (trackId <= m_trackId)
         return false;
