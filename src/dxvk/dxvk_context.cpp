@@ -7955,7 +7955,7 @@ namespace dxvk {
 
     // Ensure that all images are in their default layout and are
     // safely accessible, but ignore any uninitialized subresources.
-    std::vector<DxvkResourceAccess> accessBatch;
+    small_vector<DxvkResourceAccess, 16> accessBatch;
 
     for (size_t i = 0u; i < bufferCount; i++) {
       const auto& e = bufferInfos[i];
@@ -8113,6 +8113,7 @@ namespace dxvk {
       invalidateBuffer(info.buffer, Rc<DxvkResourceAllocation>(info.storage));
 
       m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copy);
+      m_cmd->track(info.buffer, DxvkAccess::Move);
 
       memoryBarrier.dstStageMask |= info.buffer->info().stages;
       memoryBarrier.dstAccessMask |= info.buffer->info().access;
@@ -8210,6 +8211,7 @@ namespace dxvk {
       invalidateImageWithUsage(info.image, Rc<DxvkResourceAllocation>(info.storage), info.usageInfo, finalLayout);
 
       m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copy);
+      m_cmd->track(info.image, DxvkAccess::Move);
     }
 
     if (!imageBarriers.empty()) {
