@@ -1484,34 +1484,23 @@ namespace dxvk {
     // Ensure that the image can support the requested usage
     VkFormatFeatureFlagBits2 required = 0u;
 
-    switch (usageInfo.usage) {
-      case VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT:
-        required |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
-        break;
+    if (usageInfo.usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      required |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
 
-      case VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT:
-        required |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
-        break;
+    if (usageInfo.usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      required |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-      case VK_IMAGE_USAGE_SAMPLED_BIT:
-        required |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
-        break;
+    if (usageInfo.usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+      required |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
-      case VK_IMAGE_USAGE_STORAGE_BIT:
-        required |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
-        break;
+    if (usageInfo.usage & VK_IMAGE_USAGE_STORAGE_BIT)
+      required |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
 
-      case VK_IMAGE_USAGE_TRANSFER_SRC_BIT:
-        required |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
-        break;
+    if (usageInfo.usage & VK_IMAGE_USAGE_TRANSFER_SRC_BIT)
+      required |= VK_FORMAT_FEATURE_2_TRANSFER_SRC_BIT;
 
-      case VK_IMAGE_USAGE_TRANSFER_DST_BIT:
-        required |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
-        break;
-
-      default:
-        break;
-    }
+    if (usageInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+      required |= VK_FORMAT_FEATURE_2_TRANSFER_DST_BIT;
 
     // Make sure to use the correct set of feature flags for this image
     auto features = m_device->getFormatFeatures(image->info().format);
