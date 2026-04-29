@@ -132,7 +132,7 @@ namespace dxvk {
       m_module.setDebugName(pushConst, "pc");
 
       // Setup the buffer
-      uint32_t bufferSlot = getSWVPBufferSlot();
+      uint32_t bufferSlot = D3D9ShaderResourceMapping::getSWVPBufferSlot();
 
       uint32_t arrayType    = m_module.defRuntimeArrayTypeUnique(uint_t);
       m_module.decorateArrayStride(arrayType, sizeof(uint32_t));
