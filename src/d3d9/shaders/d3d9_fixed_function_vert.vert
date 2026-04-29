@@ -129,12 +129,9 @@ const uint TCIOffset = 16;
 const uint TCIMask = (7 << TCIOffset);
 
 
-// Bindings have to match with computeResourceSlotId in dxso_util.h
-// computeResourceSlotId(
-//     D3D9ShaderType::VertexShader,
-//     DxsoBindingType::ConstantBuffer,
-//     DxsoConstantBuffers::VSFixedFunction
-// ) = 4
+// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
+// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::Vertex,
+//         D3D9ShaderResourceMapping::ConstantBuffers::VSFixedFunction) = 4
 layout(set = 0, binding = 4, scalar, row_major) uniform ShaderData {
     D3D9FixedFunctionVS data;
 };
@@ -143,23 +140,17 @@ layout(push_constant, scalar, row_major) uniform RenderStates {
     D3D9RenderStateInfo rs;
 };
 
-// Bindings have to match with computeResourceSlotId in dxso_util.h
-// computeResourceSlotId(
-//     D3D9ShaderType::VertexShader,
-//     DxsoBindingType::ConstantBuffer,
-//     DxsoConstantBuffers::VSVertexBlendData
-// ) = 5
+// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
+// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::Vertex,
+//         D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData) = 5
 layout(set = 0, binding = 5, std140, row_major) readonly buffer VertexBlendData {
     mat4 WorldViewArray[];
 };
 
 
-// Bindings have to match with computeResourceSlotId in dxso_util.h
-// computeResourceSlotId(
-//     D3D9ShaderType::VertexShader,
-//     DxsoBindingType::ConstantBuffer,
-//     DxsoConstantBuffers::VSClipPlanes
-// ) = 3
+// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
+// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::Vertex,
+//         D3D9ShaderResourceMapping::ConstantBuffers::VSClipPlanes) = 3
 layout(set = 0, binding = 3, std140) uniform ClipPlanes {
     vec4 clipPlanes[MaxClipPlaneCount];
 };

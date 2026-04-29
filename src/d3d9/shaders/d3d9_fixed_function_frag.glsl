@@ -112,22 +112,16 @@ const uint VK_COMPARE_OP_ALWAYS           = 7;
 const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextureStage0ColorOp;
 
 
-// Bindings have to match with computeResourceSlotId in dxso_util.h
-// computeResourceSlotId(
-//     D3D9ShaderType::PixelShader,
-//     DxsoBindingType::ConstantBuffer,
-//     DxsoConstantBuffers::PSFixedFunction
-// ) = 11
+// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
+// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::PixelShader,
+//         D3D9ShaderResourceMapping::ConstantBuffers::PSFixedFunction) = 11
 layout(set = 0, binding = 11, scalar, row_major) uniform ShaderData {
     D3D9FixedFunctionPS data;
 };
 
-// Bindings have to match with computeResourceSlotId in dxso_util.h
-// computeResourceSlotId(
-//     D3D9ShaderType::PixelShader,
-//     DxsoBindingType::ConstantBuffer,
-//     DxsoConstantBuffers::PSShared
-// ) = 12
+// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
+// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::PixelShader,
+//         D3D9ShaderResourceMapping::ConstantBuffers::PSShared) = 12
 layout(set = 0, binding = 12, scalar, row_major) uniform SharedData {
     D3D9SharedPS sharedData;
 };

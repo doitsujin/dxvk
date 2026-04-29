@@ -3396,10 +3396,10 @@ namespace dxvk {
       uint32_t byteOffset = cBufferOffset;
 
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(std::move(shader));
-      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), std::move(bufferView));
+      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), std::move(bufferView));
       ctx->pushData(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, sizeof(byteOffset), &byteOffset);
       ctx->draw(1u, &draw);
-      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), nullptr);
+      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), nullptr);
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
     });
 
@@ -6023,47 +6023,47 @@ namespace dxvk {
 
     m_consts[uint32_t(D3D9ShaderType::VertexShader)].buffer = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSConstantBuffer,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSConstantBuffer,
       DefaultConstantBufferSize);
 
     m_consts[uint32_t(D3D9ShaderType::VertexShader)].swvp.intBuffer = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSIntConstantBuffer,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSIntConstantBuffer,
       SmallConstantBufferSize);
 
     m_consts[uint32_t(D3D9ShaderType::VertexShader)].swvp.boolBuffer = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSBoolConstantBuffer,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSBoolConstantBuffer,
       SmallConstantBufferSize);
 
     m_consts[uint32_t(D3D9ShaderType::PixelShader)].buffer = D3D9ConstantBuffer(this,
       D3D9ShaderType::PixelShader,
-      DxsoConstantBuffers::PSConstantBuffer,
+      D3D9ShaderResourceMapping::ConstantBuffers::PSConstantBuffer,
       DefaultConstantBufferSize);
 
     m_vsClipPlanes = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSClipPlanes,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSClipPlanes,
       caps::MaxClipPlanes * sizeof(D3D9ClipPlane));
 
     m_vsFixedFunction = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSFixedFunction,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSFixedFunction,
       sizeof(D3D9FixedFunctionVS));
 
     m_psFixedFunction = D3D9ConstantBuffer(this,
       D3D9ShaderType::PixelShader,
-      DxsoConstantBuffers::PSFixedFunction,
+      D3D9ShaderResourceMapping::ConstantBuffers::PSFixedFunction,
       sizeof(D3D9FixedFunctionPS));
 
     m_psShared = D3D9ConstantBuffer(this,
       D3D9ShaderType::PixelShader,
-      DxsoConstantBuffers::PSShared,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData,
       sizeof(D3D9SharedPS));
 
     m_vsVertexBlend = D3D9ConstantBuffer(this,
       D3D9ShaderType::VertexShader,
-      DxsoConstantBuffers::VSVertexBlendData,
+      D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData,
       CanSWVP()
         ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
         : sizeof(D3D9FixedFunctionVertexBlendDataHW));
@@ -6073,7 +6073,7 @@ namespace dxvk {
       m_specBuffer = D3D9ConstantBuffer(this,
         VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        getSpecConstantBufferSlot(),
+        D3D9ShaderResourceMapping::getSpecConstantBufferSlot(),
         D3D9SpecializationInfo::UBOSize);
     }
   }
@@ -7435,9 +7435,8 @@ namespace dxvk {
   void D3D9DeviceEx::BindSampler(DWORD Sampler) {
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
-    const uint32_t slot = computeResourceSlotId(
-      samplerInfo.first, DxsoBindingType::Image,
-      samplerInfo.second);
+    const uint32_t slot = D3D9ShaderResourceMapping::computeTextureBinding(
+      samplerInfo.first, uint32_t(samplerInfo.second));
 
     m_samplerBindCount++;
 
@@ -7523,8 +7522,8 @@ namespace dxvk {
   void D3D9DeviceEx::BindTexture(DWORD StateSampler) {
     auto shaderSampler = RemapStateSamplerShader(StateSampler);
 
-    uint32_t slot = computeResourceSlotId(shaderSampler.first,
-      DxsoBindingType::Image, uint32_t(shaderSampler.second));
+    uint32_t slot = D3D9ShaderResourceMapping::computeTextureBinding(shaderSampler.first,
+      uint32_t(shaderSampler.second));
 
     const bool srgb =
       m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] & 0x1;
@@ -7551,8 +7550,8 @@ namespace dxvk {
       for (uint32_t i : bit::BitMask(cMask)) {
         auto shaderSampler = RemapStateSamplerShader(i);
 
-        uint32_t slot = computeResourceSlotId(shaderSampler.first,
-          DxsoBindingType::Image, uint32_t(shaderSampler.second));
+        uint32_t slot = D3D9ShaderResourceMapping::computeTextureBinding(shaderSampler.first,
+          uint32_t(shaderSampler.second));
 
         VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
         ctx->bindResourceImageView(stage, slot, nullptr);
@@ -9032,12 +9031,10 @@ namespace dxvk {
     EmitCs([
       cSize = m_state.textures->size()
     ](DxvkContext* ctx) {
-      VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
       for (uint32_t i = 0; i < cSize; i++) {
         auto samplerInfo = RemapStateSamplerShader(DWORD(i));
-        uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
-        ctx->bindResourceImageView(stage, slot, nullptr);
+        uint32_t slot = D3D9ShaderResourceMapping::computeTextureBinding(samplerInfo.first, uint32_t(samplerInfo.second));
+        ctx->bindResourceImageView(GetShaderStage(samplerInfo.first), slot, nullptr);
       }
     });
 

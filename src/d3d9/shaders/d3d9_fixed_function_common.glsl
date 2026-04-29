@@ -37,7 +37,7 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 
 
 // Dynamic "spec constants"
-// Binding has to match with getSpecConstantBufferSlot in dxso_util.h
+// Binding has to match with getSpecConstantBufferSlot in d3d9_shader.h
 layout(set = 0, binding = 31, scalar) uniform SpecConsts {
     uint dynamicSpecConstDword[20];
 };
