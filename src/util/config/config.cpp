@@ -1474,6 +1474,14 @@ namespace dxvk {
 
       ctx.active = key.str() == env::getExeName();
     } else {
+      // Allow '*.OptionName=value' type options
+      // n + 4 here is a minimum valid option size, e.g. '*.a=b'
+      // and '*' not in isValidKeyChar to prevent some *b*u*l*l*s*h*i*t=true
+      if (line.size() >= (n + 4) && line[n] == '*' && line[n+1] == '.') {
+        key << "*.";
+        n += 2;
+      }
+
       while (n < line.size() && isValidKeyChar(line[n]))
         key << line[n++];
 
@@ -1498,7 +1506,13 @@ namespace dxvk {
       }
 
       if (ctx.active)
-        config.setOption(key.str(), value.str());
+        if (key.str().substr(0, 2) == "*.") {
+          // Use actual valid key prefixes in place of '*'
+          // exept "dxvk" because it's core options
+          for (auto pre : {"dxgi", "d3d11", "d3d9", "d3d8"})
+            config.setOption(pre + key.str().substr(1), value.str());
+        } else
+          config.setOption(key.str(), value.str());
     }
   }
 
