@@ -9,7 +9,10 @@ namespace dxvk {
     switch (Format) {
       case D3D9Format::Unknown: return {};
 
-      case D3D9Format::R8G8B8: return {}; // Unsupported
+      case D3D9Format::R8G8B8: return {
+        VK_FORMAT_B8G8R8_UNORM,
+        VK_FORMAT_B8G8R8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::A8R8G8B8: return {
         VK_FORMAT_B8G8R8A8_UNORM,
