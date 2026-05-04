@@ -101,7 +101,7 @@ namespace dxvk {
 
       case D3D9Format::L8: return {
         VK_FORMAT_R8_UNORM,
-        VK_FORMAT_R8_SRGB,
+        VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
           VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }};
