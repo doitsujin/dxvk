@@ -93,7 +93,7 @@ namespace dxvk {
       return S_OK;
     }
 
-    D3D11_CONSERVATIVE_RASTERIZATION_TIER DetermineConservativeRasterizationTier(
+static D3D11_CONSERVATIVE_RASTERIZATION_TIER DetermineConservativeRasterizationTier(
       const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
@@ -101,14 +101,13 @@ namespace dxvk {
       const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
-    D3D11_TILED_RESOURCES_TIER DetermineTiledResourcesTier(
+static D3D11_TILED_RESOURCES_TIER DetermineTiledResourcesTier(
       const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
-    BOOL DetermineUavExtendedTypedLoadSupport(
+static BOOL DetermineUavExtendedTypedLoadSupport(
       const DxvkDevice&           Device,
             D3D_FEATURE_LEVEL     FeatureLevel);
-
     BOOL CheckFormatSharingSupport(
       const DxvkDevice&           Device,
             VkFormat              Format,

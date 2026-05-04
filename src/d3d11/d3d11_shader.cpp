@@ -7,19 +7,17 @@
 
 namespace dxvk {
 
-  class D3D11ShaderConverter : public DxvkIrShaderConverter {
-
+class D3D11ShaderConverter : public DxvkIrShaderConverter {
   public:
-
     D3D11ShaderConverter(
       const DxvkShaderHash&         ShaderKey,
       const DxvkIrShaderCreateInfo& ModuleInfo,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
             bool                    LowerIcb)
-    : m_key(ShaderKey), m_info(ModuleInfo), m_lowerIcb(LowerIcb) {
-      m_dxbc.resize(BytecodeLength);
-      std::memcpy(m_dxbc.data(), pShaderBytecode, BytecodeLength);
+    : m_key(ShaderKey), m_info(ModuleInfo), m_lowerIcb(LowerIcb),
+      m_bytecodeData(pShaderBytecode), m_bytecodeLength(BytecodeLength) {
+      // Removed m_dxbc.resize and std::memcpy to avoid heap allocation
     }
 
     ~D3D11ShaderConverter() { }
@@ -39,7 +37,7 @@ namespace dxvk {
       options.classInstanceRegisterIndex = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT + 1u;
       options.limitTessFactor = true;
 
-      dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
+      dxbc_spv::dxbc::Container container(m_bytecodeData, m_bytecodeLength);
 
       dxbc_spv::dxbc::ShaderInfo shaderInfo =
         dxbc_spv::dxbc::Parser(container.getCodeChunk()).getShaderInfo();
@@ -91,7 +89,8 @@ namespace dxvk {
 
   private:
 
-    std::vector<uint8_t> m_dxbc;
+    const void*             m_bytecodeData;   
+    size_t                  m_bytecodeLength; 
 
     DxvkShaderHash          m_key;
     DxvkIrShaderCreateInfo  m_info;
@@ -173,33 +172,37 @@ namespace dxvk {
 
 
   void D3D11CommonShader::GatherInterefaceInfo(
-          D3D11ClassLinkage*      pLinkage,
-    const void*                   pShaderBytecode,
-          size_t                  BytecodeLength) {
-    dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
-    dxbc_spv::util::ByteReader ifaceChunk(container.getInterfaceChunk());
+        D3D11ClassLinkage*      pLinkage,
+  const void*                   pShaderBytecode,
+        size_t                  BytecodeLength) {
+  dxbc_spv::dxbc::Container container(pShaderBytecode, BytecodeLength);
+  dxbc_spv::util::ByteReader ifaceChunk(container.getInterfaceChunk());
 
-    if (!ifaceChunk)
-      return;
+  if (!ifaceChunk)
+    return;
 
-    dxbc_spv::dxbc::InterfaceChunk ifaceInfo(ifaceChunk);
+  dxbc_spv::dxbc::InterfaceChunk ifaceInfo(ifaceChunk);
+  if (!ifaceInfo)
+    return;
 
-    if (!ifaceInfo)
-      return;
+  auto typeInfos = ifaceInfo.getClassTypes();
+  auto slotInfos = ifaceInfo.getInterfaceSlots();
 
-    auto typeInfos = ifaceInfo.getClassTypes();
-    auto slotInfos = ifaceInfo.getInterfaceSlots();
+  // Optimization: Reference the name directly to avoid repeated string construction
+  for (auto i = typeInfos.first; i != typeInfos.second; i++) {
+    const char* typeName = i->name.c_str(); 
+    m_interfaces.AddType(i->id, typeName);
+    pLinkage->AddType(typeName, i->cbSize, i->srvCount, i->samplerCount);
+  }
 
-    for (auto i = typeInfos.first; i != typeInfos.second; i++) {
-      m_interfaces.AddType(i->id, i->name.c_str());
-      pLinkage->AddType(i->name.c_str(), i->cbSize, i->srvCount, i->samplerCount);
-    }
+  for (auto i = slotInfos.first; i != slotInfos.second; i++) {
+    uint32_t slotIndex = i->index;
+    uint32_t slotCount = i->count;
+    for (const auto& e : i->entries)
+      m_interfaces.AddSlotInfo(slotIndex, slotCount, e.typeId, e.tableId);
+  }
 
-    for (auto i = slotInfos.first; i != slotInfos.second; i++) {
-      for (const auto& e : i->entries)
-        m_interfaces.AddSlotInfo(i->index, i->count, e.typeId, e.tableId);
-    }
-
+}
     auto instances = ifaceInfo.getClassInstances();
 
     for (auto i = instances.first; i != instances.second; i++) {

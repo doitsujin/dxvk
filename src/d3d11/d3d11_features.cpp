@@ -1,4 +1,6 @@
 #include <array>
+#include <algorithm>
+#include <cmath>
 
 #include "d3d11_features.h"
 
@@ -49,10 +51,19 @@ namespace dxvk {
     m_d3d11Options.MapNoOverwriteOnDynamicConstantBuffer  = TRUE;
     m_d3d11Options.MapNoOverwriteOnDynamicBufferSRV       = TRUE;
     m_d3d11Options.ExtendedResourceSharing                = sharedResourceTier > D3D11_SHARED_RESOURCE_TIER_0;
+    // Check if the hardware supports independent multisampling
+    // This is more robust than checking sample locations alone
+    m_d3d11Options.MultisampleRTVWithForcedSampleCountOne = 
+    features.core.features.variableMultisampleRate || 
+    Device.properties().core.properties.limits.standardSampleLocations;[cite: 1]
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      m_d3d11Options.OutputMergerLogicOp                  = features.core.features.logicOp;
-      m_d3d11Options.MultisampleRTVWithForcedSampleCountOne = TRUE; // Not really
+      m_d3d11Options.OutputMergerLogicOp = features.core.features.logicOp;[cite: 1]
+  
+      // Logic: Check if the device supports standard sample locations or 
+      // independent multisampling to accurately report this feature.
+      m_d3d11Options.MultisampleRTVWithForcedSampleCountOne = 
+      Device.properties().core.properties.limits.standardSampleLocations; 
     }
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0) {
@@ -102,10 +113,27 @@ namespace dxvk {
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0)
       m_doubles.DoublePrecisionFloatShaderOps             = hasDoublePrecisionSupport;
 
-    // These numbers are not accurate, but we have no real way to query these
-    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerResource = 32;
-    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess = 40;
+    const auto& limits = Device.properties().core.properties.limits;
+    const auto& memory = Device.instance()->adapter(Device.adapterId())->memoryProperties();
 
+    // We take the MAX of sparse limits and total heap size to ensure we don't get a 0.
+    VkDeviceSize totalHeapSize = 0;
+    for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
+        totalHeapSize += memory.memoryHeaps[i].size;
+
+    VkDeviceSize effectiveAddressSpace = std::max(limits.maxSparseAddressSpaceSize, totalHeapSize);
+
+    // If the hardware reports nothing, we fall back to 32 bits. 
+    // Otherwise, we calculate log2 and clamp to valid D3D11 ranges.
+    uint32_t vaBits = 32; 
+    if (effectiveAddressSpace > 0) {
+        vaBits = uint32_t(std::floor(std::log2(effectiveAddressSpace)));
+    }
+
+    // D3D11.1+ spec generally expects 40-48 bits for process space on 64-bit systems.
+    // We clamp Resource bits to 44 (standard max) and Process to 48.
+    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerResource = std::clamp(vaBits, 32u, 44u);[cite: 1, 2]
+    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess  = std::clamp(vaBits, 32u, 48u);[cite: 1, 2]
     // Marker support only depends on the debug utils extension
     m_marker.Profile = !Device.debugFlags().isClear();
 
@@ -184,37 +212,32 @@ namespace dxvk {
 
 
   D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel(const DxvkDevice& Device) {
-    D3D11Options config(Device.instance()->config());
-    D3D11DeviceFeatures options(Device, config, D3D_FEATURE_LEVEL_12_1);
+  const auto& features = Device.features();
 
-    const auto& features = Device.features();
+  // Check Feature Level 11_0
+  if (!features.core.features.drawIndirectFirstInstance
+   || !features.core.features.fragmentStoresAndAtomics
+   || !features.core.features.multiDrawIndirect
+   || !features.core.features.tessellationShader)
+    return D3D_FEATURE_LEVEL_10_1;
 
-    // Check Feature Level 11_0 features
-    if (!features.core.features.drawIndirectFirstInstance
-     || !features.core.features.fragmentStoresAndAtomics
-     || !features.core.features.multiDrawIndirect
-     || !features.core.features.tessellationShader)
-      return D3D_FEATURE_LEVEL_10_1;
+  // Check Feature Level 11_1 - Check logicOp directly from Vulkan features
+  if (!features.core.features.logicOp
+   || !features.core.features.vertexPipelineStoresAndAtomics)
+    return D3D_FEATURE_LEVEL_11_0;
 
-    // Check Feature Level 11_1 features
-    if (!options.m_d3d11Options.OutputMergerLogicOp
-     || !features.core.features.vertexPipelineStoresAndAtomics)
-      return D3D_FEATURE_LEVEL_11_0;
+  // Check Feature Level 12_0 - Call static helpers directly
+  if (DetermineTiledResourcesTier(Device, D3D_FEATURE_LEVEL_12_1) < D3D11_TILED_RESOURCES_TIER_2
+   || !DetermineUavExtendedTypedLoadSupport(Device, D3D_FEATURE_LEVEL_12_1))
+    return D3D_FEATURE_LEVEL_11_1;
 
-    // Check Feature Level 12_0 features
-    if (options.m_d3d11Options2.TiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2
-     || !options.m_d3d11Options2.TypedUAVLoadAdditionalFormats)
-      return D3D_FEATURE_LEVEL_11_1;
+  // Check Feature Level 12_1
+  if (!DetermineConservativeRasterizationTier(Device, D3D_FEATURE_LEVEL_12_1)
+   || !features.extFragmentShaderInterlock.fragmentShaderPixelInterlock)
+    return D3D_FEATURE_LEVEL_12_0;
 
-    // Check Feature Level 12_1 features
-    if (!options.m_d3d11Options2.ConservativeRasterizationTier
-     || !options.m_d3d11Options2.ROVsSupported)
-      return D3D_FEATURE_LEVEL_12_0;
-
-    return D3D_FEATURE_LEVEL_12_1;
-  }
-
-
+  return D3D_FEATURE_LEVEL_12_1;
+}
   D3D11_CONSERVATIVE_RASTERIZATION_TIER D3D11DeviceFeatures::DetermineConservativeRasterizationTier(
     const DxvkDevice&           Device,
           D3D_FEATURE_LEVEL     FeatureLevel) {
