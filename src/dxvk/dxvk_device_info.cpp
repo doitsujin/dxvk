@@ -960,7 +960,7 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(khrMaintenance7, maintenance7, false),
 
       /* Dependency for graphics pipeline library */
-      ENABLE_EXT(khrPipelineLibrary, true),
+      ENABLE_EXT(khrPipelineLibrary, false),
 
       /* Present wait, used for frame pacing and statistics */
       ENABLE_EXT_FEATURE(khrPresentId, presentId, false),
