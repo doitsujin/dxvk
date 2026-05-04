@@ -484,10 +484,14 @@ namespace dxvk {
     if (m_featuresSupported.extDescriptorHeap.descriptorHeap) {
       // Only enable descriptor heaps on drivers that are known to work
       // and don't have known performance regressions currently.
-      // TODO revisit w.r.t. Nvidia, Intel, Turnip.
+      // TODO revisit w.r.t. Intel, Turnip.
       bool enableDescriptorHeap = m_properties.vk12.driverID == VK_DRIVER_ID_MESA_RADV
                                || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_LLVMPIPE
                                || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY;
+
+      // Heap regresses performance on the initial NV driver releases
+      if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
+        enableDescriptorHeap = m_featuresSupported.khrMaintenance11.maintenance11;
 
       applyTristate(enableDescriptorHeap, instance.options().enableDescriptorHeap);
 
