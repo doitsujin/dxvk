@@ -115,6 +115,7 @@
         },
         "dxvk_common_optional": {
             "extensions": {
+                "VK_KHR_calibrated_timestamps": 1,
                 "VK_KHR_maintenance7": 1,
                 "VK_KHR_maintenance8": 1,
                 "VK_KHR_maintenance9": 1,
