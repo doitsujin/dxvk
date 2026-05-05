@@ -35,6 +35,7 @@ namespace dxvk {
     HANDLE_EXT(extMultiDraw);                      \
     HANDLE_EXT(extNonSeamlessCubeMap);             \
     HANDLE_EXT(extPageableDeviceLocalMemory);      \
+    HANDLE_EXT(extPresentTiming);                  \
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extShaderModuleIdentifier);         \
@@ -584,14 +585,26 @@ namespace dxvk {
       m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
     }
 
-    // Ensure we only enable one of present_id or present_id_2. Prefer the
-    // older versions of the present_id/wait extensions since the newer ones
-    // cause issues with external layers and apparently some Wayland setups
-    // on Mesa for unknown reasons.
-    if (m_featuresSupported.khrPresentId.presentId)
+    // The present_id2/wait2 features are somewhat broken on Nvidia
+    // before 595, prefer the older variants on those drivers.
+    if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+     && m_properties.driverVersion.major() < 595)
       m_featuresSupported.khrPresentId2.presentId2 = VK_FALSE;
 
+    // Only enable one of the present_id/wait extensions
+    if (m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.khrPresentId.presentId = VK_FALSE;
+
     // Sanitize features with other feature dependencies
+    if (!m_featuresSupported.khrCalibratedTimestamps
+     || !m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.extPresentTiming.presentTiming = VK_FALSE;
+
+    if (!m_featuresSupported.extPresentTiming.presentTiming) {
+      m_featuresSupported.extPresentTiming.presentAtAbsoluteTime = VK_FALSE;
+      m_featuresSupported.extPresentTiming.presentAtRelativeTime = VK_FALSE;
+    }
+
     if (!m_featuresSupported.khrPresentId2.presentId2)
       m_featuresSupported.khrPresentWait2.presentWait2 = VK_FALSE;
 
@@ -950,6 +963,11 @@ namespace dxvk {
 
       /* Enables more dynamic driver-side memory management */
       ENABLE_EXT_FEATURE(extPageableDeviceLocalMemory, pageableDeviceLocalMemory, false),
+
+      /* Present timing features, try to enable everything */
+      ENABLE_EXT_FEATURE(extPresentTiming, presentTiming, false),
+      ENABLE_EXT_FEATURE(extPresentTiming, presentAtAbsoluteTime, false),
+      ENABLE_EXT_FEATURE(extPresentTiming, presentAtRelativeTime, false),
 
       /* Robustness, all features effectively required for correctness */
       ENABLE_EXT_FEATURE(extRobustness2, robustBufferAccess2, true),

@@ -77,6 +77,7 @@ namespace dxvk {
     VkPhysicalDeviceMultiDrawFeaturesEXT                      extMultiDraw                    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_FEATURES_EXT };
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap           = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT };
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT      extPageableDeviceLocalMemory    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT };
+    VkPhysicalDevicePresentTimingFeaturesEXT                  extPresentTiming                = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_TIMING_FEATURES_EXT };
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2                  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT };
     VkBool32                                                  extSampleLocations              = VK_FALSE;
     VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier       = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT };
@@ -149,6 +150,7 @@ namespace dxvk {
     VkExtensionProperties extMultiDraw                      = vk::makeExtension(VK_EXT_MULTI_DRAW_EXTENSION_NAME);
     VkExtensionProperties extNonSeamlessCubeMap             = vk::makeExtension(VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME);
     VkExtensionProperties extPageableDeviceLocalMemory      = vk::makeExtension(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
+    VkExtensionProperties extPresentTiming                  = vk::makeExtension(VK_EXT_PRESENT_TIMING_EXTENSION_NAME);
     VkExtensionProperties extRobustness2                    = vk::makeExtension(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
     VkExtensionProperties extSampleLocations                = vk::makeExtension(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
     VkExtensionProperties extShaderModuleIdentifier         = vk::makeExtension(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME);
