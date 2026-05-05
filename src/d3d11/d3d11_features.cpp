@@ -1,6 +1,7 @@
 #include <array>
 #include <algorithm>
 #include <cmath>
+#include "util/util_bit.h"
 
 #include "d3d11_features.h"
 
@@ -55,10 +56,10 @@ namespace dxvk {
     // This is more robust than checking sample locations alone
     m_d3d11Options.MultisampleRTVWithForcedSampleCountOne = 
     features.core.features.variableMultisampleRate || 
-    Device.properties().core.properties.limits.standardSampleLocations;[cite: 1]
+    Device.properties().core.properties.limits.standardSampleLocations;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      m_d3d11Options.OutputMergerLogicOp = features.core.features.logicOp;[cite: 1]
+      m_d3d11Options.OutputMergerLogicOp = features.core.features.logicOp;
   
       // Logic: Check if the device supports standard sample locations or 
       // independent multisampling to accurately report this feature.
@@ -114,26 +115,23 @@ namespace dxvk {
       m_doubles.DoublePrecisionFloatShaderOps             = hasDoublePrecisionSupport;
 
     const auto& limits = Device.properties().core.properties.limits;
-    const auto& memory = Device.instance()->adapter(Device.adapterId())->memoryProperties();
+    const auto& memory = Device.adapter()->memoryProperties();
 
-    // We take the MAX of sparse limits and total heap size to ensure we don't get a 0.
     VkDeviceSize totalHeapSize = 0;
     for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
-        totalHeapSize += memory.memoryHeaps[i].size;
+      totalHeapSize += memory.memoryHeaps[i].size;
 
-    VkDeviceSize effectiveAddressSpace = std::max(limits.maxSparseAddressSpaceSize, totalHeapSize);
+    VkDeviceSize effectiveAddressSpace = std::max(limits.sparseAddressSpaceSize, totalHeapSize);
 
-    // If the hardware reports nothing, we fall back to 32 bits. 
-    // Otherwise, we calculate log2 and clamp to valid D3D11 ranges.
     uint32_t vaBits = 32; 
     if (effectiveAddressSpace > 0) {
-        vaBits = uint32_t(std::floor(std::log2(effectiveAddressSpace)));
+        vaBits = 63 - __builtin_clzll(uint64_t(effectiveAddressSpace));
     }
 
     // D3D11.1+ spec generally expects 40-48 bits for process space on 64-bit systems.
     // We clamp Resource bits to 44 (standard max) and Process to 48.
-    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerResource = std::clamp(vaBits, 32u, 44u);[cite: 1, 2]
-    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess  = std::clamp(vaBits, 32u, 48u);[cite: 1, 2]
+    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerResource = std::clamp(vaBits, 32u, 44u);
+    m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess  = std::clamp(vaBits, 32u, 48u);
     // Marker support only depends on the debug utils extension
     m_marker.Profile = !Device.debugFlags().isClear();
 

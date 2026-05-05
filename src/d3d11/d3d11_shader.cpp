@@ -17,13 +17,15 @@ class D3D11ShaderConverter : public DxvkIrShaderConverter {
             bool                    LowerIcb)
     : m_key(ShaderKey), m_info(ModuleInfo), m_lowerIcb(LowerIcb),
       m_bytecodeData(pShaderBytecode), m_bytecodeLength(BytecodeLength) {
-      // Removed m_dxbc.resize and std::memcpy to avoid heap allocation
+      m_dxbc.assign(
+        reinterpret_cast<const uint8_t*>(pShaderBytecode),
+        reinterpret_cast<const uint8_t*>(pShaderBytecode) + BytecodeLength);
+    }
     }
 
     ~D3D11ShaderConverter() { }
 
-    void convertShader(
-            dxbc_spv::ir::Builder&    builder) {
+    void convertShader(dxbc_spv::ir::Builder&    builder) {
       auto debugName = m_key.toString();
 
       dxbc_spv::dxbc::Converter::Options options = { };
@@ -38,6 +40,7 @@ class D3D11ShaderConverter : public DxvkIrShaderConverter {
       options.limitTessFactor = true;
 
       dxbc_spv::dxbc::Container container(m_bytecodeData, m_bytecodeLength);
+      dxbc_spv::dxbc::Container container(m_dxbc.data(), m_dxbc.size());
 
       dxbc_spv::dxbc::ShaderInfo shaderInfo =
         dxbc_spv::dxbc::Parser(container.getCodeChunk()).getShaderInfo();
@@ -91,10 +94,9 @@ class D3D11ShaderConverter : public DxvkIrShaderConverter {
 
     const void*             m_bytecodeData;   
     size_t                  m_bytecodeLength; 
-
+    std::vector<uint8_t>    m_dxbc;
     DxvkShaderHash          m_key;
     DxvkIrShaderCreateInfo  m_info;
-
     bool                    m_lowerIcb = false;
 
   };
@@ -127,48 +129,47 @@ class D3D11ShaderConverter : public DxvkIrShaderConverter {
   }
 
 
-  void D3D11CommonShader::CreateIrShader(
-          D3D11Device*            pDevice,
-    const DxvkShaderHash&         ShaderKey,
-    const DxvkIrShaderCreateInfo& ModuleInfo,
-    const void*                   pShaderBytecode,
-          size_t                  BytecodeLength,
-    const D3D11ShaderIcbInfo&     Icb) {
-    constexpr size_t MaxEmbeddedIcbSize = 64u;
+void D3D11CommonShader::CreateIrShader(
+        D3D11Device*            pDevice,
+  const DxvkShaderHash&         ShaderKey,
+  const DxvkIrShaderCreateInfo& ModuleInfo,
+  const void*                   pShaderBytecode,
+        size_t                  BytecodeLength,
+  const D3D11ShaderIcbInfo&     Icb) {
+  constexpr size_t MaxEmbeddedIcbSize = 64u;
 
-    // Create icb if lowering is required
-    size_t icbSizeInBytes = Icb.size * sizeof(*Icb.data);
+  size_t icbSizeInBytes = Icb.size * sizeof(uint32_t);
 
-    if (ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) && icbSizeInBytes > MaxEmbeddedIcbSize) {
-      DxvkBufferCreateInfo info = { };
-      info.size   = align(icbSizeInBytes, 256u);
-      info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                  | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                  | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-      info.stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT
-                  | util::pipelineStages(ShaderKey.stage());
-      info.access = VK_ACCESS_UNIFORM_READ_BIT
-                  | VK_ACCESS_TRANSFER_READ_BIT
-                  | VK_ACCESS_TRANSFER_WRITE_BIT;
-      info.debugName = "Icb";
+  if (ModuleInfo.options.flags.test(DxvkShaderCompileFlag::LowerConstantArrays) 
+   && icbSizeInBytes > MaxEmbeddedIcbSize) {
+    DxvkBufferCreateInfo info = { };
+    info.size   = align(icbSizeInBytes, 256u);
+    info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_2_TRANSFER_BIT
+                | util::pipelineStages(ShaderKey.stage());
+    info.access = VK_ACCESS_UNIFORM_READ_BIT
+                | VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
+    info.debugName = "Icb";
 
-      m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_buffer = pDevice->GetDXVKDevice()->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      pDevice->InitShaderIcb(this, icbSizeInBytes, Icb.data);
-    }
-
-    // Create actual shader converter
-    m_shader = pDevice->GetDXVKDevice()->createCachedShader(
-      ShaderKey.toString(), ModuleInfo, nullptr);
-
-    if (!m_shader) {
-      Rc<D3D11ShaderConverter> converter = new D3D11ShaderConverter(ShaderKey,
-        ModuleInfo, pShaderBytecode, BytecodeLength, bool(m_buffer));
-
-      m_shader = pDevice->GetDXVKDevice()->createCachedShader(
-        ShaderKey.toString(), ModuleInfo, std::move(converter));
-    }
+    pDevice->InitShaderIcb(this, icbSizeInBytes, Icb.data);
   }
+
+  m_shader = pDevice->GetDXVKDevice()->createCachedShader(
+    ShaderKey, ModuleInfo, nullptr);
+
+  if (m_shader == nullptr) {
+    Rc<D3D11ShaderConverter> converter = new D3D11ShaderConverter(
+      ShaderKey, ModuleInfo, pShaderBytecode, BytecodeLength, m_buffer != nullptr);
+
+    m_shader = pDevice->GetDXVKDevice()->createCachedShader(
+      ShaderKey, ModuleInfo, std::move(converter));
+  }
+}
 
 
   void D3D11CommonShader::GatherInterefaceInfo(
