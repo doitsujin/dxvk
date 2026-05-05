@@ -36,6 +36,7 @@ namespace dxvk {
     HANDLE_EXT(extMultiDraw);                      \
     HANDLE_EXT(extNonSeamlessCubeMap);             \
     HANDLE_EXT(extPageableDeviceLocalMemory);      \
+    HANDLE_EXT(extPresentTiming);                  \
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extShaderModuleIdentifier);         \
@@ -602,14 +603,30 @@ namespace dxvk {
     if (!instance.options().enableNvRawAccessChains)
       m_featuresSupported.nvRawAccessChains.shaderRawAccessChains = VK_FALSE;
 
+    // Disable somewhat broken present_id2 on older Nvidia drivers.
+    if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+     && m_properties.driverVersion < Version(595u, 0u, 0u))
+      m_featuresSupported.khrPresentId2.presentId2 = VK_FALSE;
+
     // Ensure we only enable one of present_id or present_id_2. Prefer the
-    // older versions of the present_id/wait extensions since the newer ones
-    // cause issues with external layers and apparently some Wayland setups
-    // on Mesa for unknown reasons.
-    if (m_featuresSupported.khrPresentId.presentId)
+    // older versions of these extensions if we don't have present timing
+    // support since the newer ones are causing issues in some environments.
+    if (m_featuresSupported.khrPresentId2.presentId2
+     && m_featuresSupported.extPresentTiming.presentTiming)
+      m_featuresSupported.khrPresentId.presentId = VK_FALSE;
+    else if (m_featuresSupported.khrPresentId.presentId)
       m_featuresSupported.khrPresentId2.presentId2 = VK_FALSE;
 
     // Sanitize features with other feature dependencies
+    if (!m_featuresSupported.khrCalibratedTimestamps
+     || !m_featuresSupported.khrPresentId2.presentId2)
+      m_featuresSupported.extPresentTiming.presentTiming = VK_FALSE;
+
+    if (!m_featuresSupported.extPresentTiming.presentTiming) {
+      m_featuresSupported.extPresentTiming.presentAtAbsoluteTime = VK_FALSE;
+      m_featuresSupported.extPresentTiming.presentAtRelativeTime = VK_FALSE;
+    }
+
     if (!m_featuresSupported.khrPresentId2.presentId2)
       m_featuresSupported.khrPresentWait2.presentWait2 = VK_FALSE;
 
@@ -984,6 +1001,11 @@ namespace dxvk {
 
       /* Enables more dynamic driver-side memory management */
       ENABLE_EXT_FEATURE(extPageableDeviceLocalMemory, pageableDeviceLocalMemory, false),
+
+      /* Present timing features, try to enable everything */
+      ENABLE_EXT_FEATURE(extPresentTiming, presentTiming, false),
+      ENABLE_EXT_FEATURE(extPresentTiming, presentAtAbsoluteTime, false),
+      ENABLE_EXT_FEATURE(extPresentTiming, presentAtRelativeTime, false),
 
       /* Robustness, all features effectively required for correctness */
       ENABLE_EXT_FEATURE(extRobustness2, robustBufferAccess2, true),
