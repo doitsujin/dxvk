@@ -157,6 +157,9 @@ namespace dxvk {
 
   bool DxvkShaderPipelineLibraryKey::eq(
     const DxvkShaderPipelineLibraryKey& other) const {
+    if (m_shaders.size() != other.m_shaders.size())
+      return false;
+
     bool eq = true;
 
     for (uint32_t i = 0; i < m_shaders.size() && eq; i++)
