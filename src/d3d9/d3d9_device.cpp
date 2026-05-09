@@ -6058,7 +6058,7 @@ namespace dxvk {
 
     m_psShared = D3D9ConstantBuffer(this,
       D3D9ShaderType::PixelShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData,
+      D3D9ShaderResourceMapping::ConstantBuffers::PSShared,
       sizeof(D3D9SharedPS));
 
     m_vsVertexBlend = D3D9ConstantBuffer(this,
