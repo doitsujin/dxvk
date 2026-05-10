@@ -7734,6 +7734,8 @@ namespace dxvk {
 
       UpdatePixelShaderSamplerSpec(textureTypes, fetch4);
 
+      UpdatePixelShaderModelSpec(programInfo.majorVersion() >= 3);
+
       UpdatePixelBoolSpec(
         m_state.psConsts->bConsts[0] &
         m_consts[uint32_t(D3D9ShaderType::PixelShader)].meta.boolConstantMask);
@@ -7746,6 +7748,7 @@ namespace dxvk {
       }
 
       UpdatePixelBoolSpec(0);
+      UpdatePixelShaderModelSpec(false);
       UpdatePixelShaderSamplerSpec(m_textureSlotTracking.textureType, 0u);
 
       UpdateFixedFunctionPS();
@@ -9074,6 +9077,7 @@ namespace dxvk {
     UpdatePixelShaderSamplerSpec(0u, 0u);
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
+    UpdatePixelShaderModelSpec(false);
     UpdateCommonSamplerSpec(0u, 0u, 0u, 0u);
 
     UpdateAnyColorWrites<0>();
@@ -9334,6 +9338,12 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdatePixelBoolSpec(uint32_t value) {
     if (m_specInfo.set<SpecPixelShaderBools>(value))
+      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdatePixelShaderModelSpec(bool isSM3) {
+    if (m_specInfo.set<SpecIsPSShaderModel3>(isSM3))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
 

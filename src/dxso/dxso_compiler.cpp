@@ -3474,14 +3474,23 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (semantic == DxsoSemantic{ DxsoUsage::Color, 0}) {
         value = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
       } else if (semantic.usage == DxsoUsage::Color) {
-        value = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
+        if (semantic.usageIndex == 1) {
+          // If it's used with a SM3 PS, we need to export 0,0,0,0 as the default for color1.
+          uint32_t isSM3 = m_spec.get(m_module, m_specUbo, SpecIsPSShaderModel3);
+          isSM3 = m_module.opINotEqual(m_module.defBoolType(), isSM3, m_module.constu32(0));
+
+          value = m_module.opSelect(getVectorTypeId({ DxsoScalarType::Float32, 4 }),
+            isSM3,
+            m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+            m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
+        } else {
+          value = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
+        }
       } else if (semantic == DxsoSemantic{ DxsoUsage::Fog, 0}) {
         value = m_module.constf32(0.0);
       } else {
         value = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
       }
-      // TODO: If it's used with a SM3 PS, we need to export 0,0,0,0 as the default for color1.
-      //       Implement that using a spec constant.
 
       uint32_t outputPtr = emitNewVariableDefault(info, value);
 
@@ -3500,6 +3509,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // If they do, the backend handles it. Color 0 is the exception because that needs a different value.
       if (!outputtedColor[0]) {
         OutputDefault(DxsoSemantic{ DxsoUsage::Color, 0 });
+      }
+      if (!outputtedColor[1]) {
+        OutputDefault(DxsoSemantic{ DxsoUsage::Color, 1 });
       }
     } else {
       // Emit the outputs that fixed function expects but the shader didn't emit itself.
