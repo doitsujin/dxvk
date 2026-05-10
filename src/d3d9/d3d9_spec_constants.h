@@ -119,6 +119,7 @@ namespace dxvk {
     SpecFFTextureStage5AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
     SpecFFTextureStage6AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
     SpecFFTextureStage7AlphaArg0, // Range: 0 -> 6 + 2 flags  | Bits: 5
+    SpecIsPSShaderModel3,         // Bool                     | Bits: 1
 
     SpecConstantCount,
   };
@@ -249,6 +250,7 @@ namespace dxvk {
       { 16,  5, 5 },  // FFTextureStage5AlphaArg0
       { 16, 10, 5 },  // FFTextureStage6AlphaArg0
       { 16, 15, 5 },  // FFTextureStage7AlphaArg0
+      { 16, 20, 1 },  // SpecIsPSShaderModel3
     }};
 
     template <D3D9SpecConstantId Id, typename T>

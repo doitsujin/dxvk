@@ -1481,6 +1481,7 @@ namespace dxvk {
     void UpdateAlphaTestSpec(VkCompareOp alphaOp, uint32_t precision);
     void UpdateVertexBoolSpec(uint32_t value);
     void UpdatePixelBoolSpec(uint32_t value);
+    void UpdatePixelShaderModelSpec(bool isSM3);
     void UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t fetch4);
     void UpdateCommonSamplerSpec(uint32_t boundMask, uint32_t depthMask, uint32_t drefMask, uint32_t projections);
     void UpdatePointModeSpec(uint32_t mode);
