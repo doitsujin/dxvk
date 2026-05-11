@@ -9,13 +9,13 @@ jobs:
     steps:
     - name: Checkout code
       id: checkout-code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: recursive
         fetch-depth: 0
 
     - name: Setup problem matcher
-      uses: Joshua-Ashton/gcc-problem-matcher@v3
+      uses: Joshua-Ashton/gcc-problem-matcher@master
 
     - name: Build release
       id: build-release
@@ -28,7 +28,7 @@ jobs:
 
     - name: Upload artifacts
       id: upload-artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: dxvk-win-${{ env.VERSION_NAME }}
         path: build/dxvk-${{ env.VERSION_NAME }}
@@ -43,13 +43,13 @@ jobs:
     steps:
     - name: Checkout code
       id: checkout-code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: recursive
         fetch-depth: 0
 
     - name: Setup problem matcher
-      uses: Joshua-Ashton/gcc-problem-matcher@v3
+      uses: Joshua-Ashton/gcc-problem-matcher@master
 
     - name: Build release
       id: build-release
@@ -61,7 +61,7 @@ jobs:
 
     - name: Upload artifacts
       id: upload-artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: dxvk-native-${{ env.VERSION_NAME }}
         path: build/dxvk-native-${{ env.VERSION_NAME }}.tar.gz
@@ -78,7 +78,7 @@ jobs:
           echo "VERSION_NAME=${GITHUB_REF##*/}-${GITHUB_SHA##*/}" >> $GITHUB_ENV
 
       - name: Merge Artifacts
-        uses: actions/upload-artifact/merge@v4
+        uses: actions/upload-artifact/merge@v7
         with:
           name: dxvk-${{ env.VERSION_NAME }}
           pattern: dxvk*

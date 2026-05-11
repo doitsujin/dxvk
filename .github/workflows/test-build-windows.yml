@@ -9,7 +9,7 @@ jobs:
     steps:
     - name: Checkout code
       id: checkout-code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: recursive
         fetch-depth: 0
@@ -75,7 +75,7 @@ jobs:
           | cp -Destination (Join-Path -Path (pwd) -ChildPath artifacts\x64)
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: dxvk-${{ env.VERSION_NAME }}-msvc-output
         path: artifacts\*
