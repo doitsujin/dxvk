@@ -506,7 +506,7 @@ void alphaTest() {
         // Adjust alpha to the given range and round
         float alphaFactor = float((256u << alphaPrecision) - 1u);
 
-        alpha = round(alpha * alphaFactor);
+        alpha = roundEven(alpha * alphaFactor);
     } else {
         alphaRef = float(alphaRefInitial) / 255.0;
     }
