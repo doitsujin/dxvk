@@ -207,7 +207,8 @@ namespace dxvk {
     DxvkDeviceCapabilities(
       const DxvkInstance&               instance,
             VkPhysicalDevice            adapter,
-      const VkDeviceCreateInfo*         deviceInfo);
+      const VkDeviceCreateInfo*         deviceInfo,
+            bool                        safeMode = false);
 
     DxvkDeviceCapabilities(const DxvkDeviceCapabilities&) = delete;
 
@@ -370,7 +371,8 @@ namespace dxvk {
             VkPhysicalDevice            adapter);
 
     void disableUnusedFeatures(
-      const DxvkInstance&               instance);
+      const DxvkInstance&               instance,
+            bool                        safeMode);
 
     void enableFeaturesAndExtensions();
 

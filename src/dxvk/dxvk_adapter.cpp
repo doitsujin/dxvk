@@ -161,26 +161,41 @@ namespace dxvk {
 
 
   Rc<DxvkDevice> DxvkAdapter::createDevice() {
+    Rc<DxvkDevice> device = createDevice(false);
+
+    if (!device)
+      device = createDevice(true);
+
+    if (!device)
+      throw DxvkError("Failed to initialize DXVK device.");
+
+    return device;
+  }
+
+
+  Rc<DxvkDevice> DxvkAdapter::createDevice(bool safeMode) {
     auto vk = m_instance->vki();
 
+    DxvkDeviceCapabilities caps(*m_instance, m_handle, nullptr, safeMode);
+
     Logger::info("Creating device:");
-    m_capabilities.logDeviceInfo();
+    caps.logDeviceInfo();
 
     // Get device features to enable
     size_t featureBlobSize = 0u;
-    m_capabilities.queryDeviceFeatures(&featureBlobSize, nullptr);
+    caps.queryDeviceFeatures(&featureBlobSize, nullptr);
 
     std::vector<char> featureBlob(featureBlobSize);
-    m_capabilities.queryDeviceFeatures(&featureBlobSize, featureBlob.data());
+    caps.queryDeviceFeatures(&featureBlobSize, featureBlob.data());
 
     auto features = reinterpret_cast<const VkPhysicalDeviceFeatures2*>(featureBlob.data());
 
     // Get extension list and add extra extensions
     uint32_t extensionCount = 0u;
-    m_capabilities.queryDeviceExtensions(&extensionCount, nullptr);
+    caps.queryDeviceExtensions(&extensionCount, nullptr);
 
     std::vector<VkExtensionProperties> extensions(extensionCount);
-    m_capabilities.queryDeviceExtensions(&extensionCount, extensions.data());
+    caps.queryDeviceExtensions(&extensionCount, extensions.data());
 
     for (const auto& extra : m_extraExtensions) {
       bool found = false;
@@ -202,13 +217,13 @@ namespace dxvk {
       extensionNames.push_back(ext.extensionName);
 
     // Query queue infos
-    DxvkDeviceQueueMapping queueMapping = m_capabilities.getQueueMapping();
+    DxvkDeviceQueueMapping queueMapping = caps.getQueueMapping();
 
     uint32_t queueCount = { };
-    m_capabilities.queryDeviceQueues(&queueCount, nullptr);
+    caps.queryDeviceQueues(&queueCount, nullptr);
 
     std::vector<VkDeviceQueueCreateInfo> queues(queueCount, { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO });
-    m_capabilities.queryDeviceQueues(&queueCount, queues.data());
+    caps.queryDeviceQueues(&queueCount, queues.data());
 
     uint32_t priorityCount = 0u;
 
@@ -224,7 +239,7 @@ namespace dxvk {
       priorityIndex += q.queueCount;
     }
 
-    m_capabilities.queryDeviceQueues(&queueCount, queues.data());
+    caps.queryDeviceQueues(&queueCount, queues.data());
 
     // Create the actual Vulkan device
     VkDeviceCreateInfo deviceInfo = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
@@ -238,8 +253,11 @@ namespace dxvk {
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateDevice(m_handle, &deviceInfo, nullptr, &device);
 
-    if (vr)
-      throw DxvkError(str::format("Failed to create Vulkan device: ", vr));
+    if (vr) {
+      Logger::err(str::format("Failed to create Vulkan device: ", vr,
+        safeMode ? "" : ", retrying 'safe mode'."));
+      return nullptr;
+    }
 
     Rc<vk::DeviceFn> vkd = new vk::DeviceFn(vk, true, device);
 
@@ -248,7 +266,7 @@ namespace dxvk {
     deviceQueues.transfer = getDeviceQueue(vkd, queueMapping.transfer);
     deviceQueues.sparse   = getDeviceQueue(vkd, queueMapping.sparse);
 
-    return new DxvkDevice(m_instance, this, vkd, m_capabilities.getFeatures(), deviceQueues, DxvkQueueCallback());
+    return new DxvkDevice(m_instance, this, vkd, caps.getFeatures(), deviceQueues, DxvkQueueCallback());
   }
 
 
