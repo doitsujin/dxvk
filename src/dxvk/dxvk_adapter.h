@@ -330,6 +330,8 @@ namespace dxvk {
 
     std::array<DxvkAdapterMemoryStats, VK_MAX_MEMORY_HEAPS> m_memoryStats = { };
 
+    Rc<DxvkDevice> createDevice(bool safeMode);
+
   };
   
 }

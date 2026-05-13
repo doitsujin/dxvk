@@ -197,9 +197,22 @@ namespace dxvk {
 
 
   Rc<DxvkDevice> DxvkAdapter::createDevice() {
+    Rc<DxvkDevice> device = createDevice(false);
+
+    if (!device)
+      device = createDevice(true);
+
+    if (!device)
+      throw DxvkError("Failed to initialize DXVK device.");
+
+    return device;
+  }
+
+
+  Rc<DxvkDevice> DxvkAdapter::createDevice(bool safeMode) {
     auto vk = m_instance->vki();
 
-    DxvkDeviceCapabilities caps(*m_instance, m_handle, nullptr);
+    DxvkDeviceCapabilities caps(*m_instance, m_handle, nullptr, safeMode);
 
     Logger::info("Creating device:");
     caps.logDeviceInfo();
@@ -276,8 +289,11 @@ namespace dxvk {
     VkDevice device = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateDevice(m_handle, &deviceInfo, nullptr, &device);
 
-    if (vr)
-      throw DxvkError(str::format("Failed to create Vulkan device: ", vr));
+    if (vr) {
+      Logger::err(str::format("Failed to create Vulkan device: ", vr,
+        safeMode ? "" : ", retrying 'safe mode'."));
+      return nullptr;
+    }
 
     Rc<vk::DeviceFn> vkd = new vk::DeviceFn(vk, true, device);
 

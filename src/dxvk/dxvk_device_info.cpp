@@ -95,7 +95,8 @@ namespace dxvk {
   DxvkDeviceCapabilities::DxvkDeviceCapabilities(
     const DxvkInstance&               instance,
           VkPhysicalDevice            adapter,
-    const VkDeviceCreateInfo*         deviceInfo) {
+    const VkDeviceCreateInfo*         deviceInfo,
+          bool                        safeMode) {
     // Can't query anything on a Vulkan 1.0 device
     auto vk = instance.vki();
     vk->vkGetPhysicalDeviceProperties(adapter, &m_properties.core.properties);
@@ -109,7 +110,7 @@ namespace dxvk {
     initQueueProperties(instance, adapter, deviceInfo);
     initMemoryProperties(instance, adapter);
 
-    disableUnusedFeatures(instance);
+    disableUnusedFeatures(instance, safeMode);
 
     enableFeaturesAndExtensions();
     enableQueues();
@@ -480,7 +481,8 @@ namespace dxvk {
 
 
   void DxvkDeviceCapabilities::disableUnusedFeatures(
-    const DxvkInstance&               instance) {
+    const DxvkInstance&               instance,
+          bool                        safeMode) {
     if (m_featuresSupported.extDescriptorHeap.descriptorHeap) {
       // Only enable descriptor heaps on drivers that are known to work
       // and don't have known performance regressions currently.
@@ -529,14 +531,16 @@ namespace dxvk {
     if (!instance.options().enableUnifiedImageLayout)
       m_featuresSupported.khrUnifiedImageLayouts.unifiedImageLayouts = VK_FALSE;
 
-    if (env::is32BitHostPlatform()) {
-      // CUDA interop is unnecessary on 32-bit, no games use it
+    if (env::is32BitHostPlatform() || safeMode) {
+      // CUDA interop is unnecessary on 32-bit, no games use it. These extensions
+      // can also cause device creation errors for unknown reasons.
       m_featuresSupported.nvxBinaryImport = VK_FALSE;
       m_featuresSupported.nvxImageViewHandle = VK_FALSE;
-
-      // Reflex is broken on 32-bit
-      m_featuresSupported.nvLowLatency2 = VK_FALSE;
     }
+
+    // Reflex is broken on 32-bit
+    if (env::is32BitHostPlatform())
+      m_featuresSupported.nvLowLatency2 = VK_FALSE;
 
     // EXT_multi_draw is broken on proprietary qcom on some devices
     if (m_properties.vk12.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY)
