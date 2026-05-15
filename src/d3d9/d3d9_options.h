@@ -76,6 +76,9 @@ namespace dxvk {
     /// Whether shaders use FP16 for partial precision instructions
     bool useFP16;
 
+    /// Support depth formats for cube textures
+    bool supportCubeDepthFormats;
+
     /// Support the DF16 & DF24 texture format
     bool supportDFFormats;
 

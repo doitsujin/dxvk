@@ -50,6 +50,7 @@ namespace dxvk {
     this->deferSurfaceCreation          = config.getOption<bool>        ("d3d9.deferSurfaceCreation",          false);
     this->samplerAnisotropy             = config.getOption<int32_t>     ("d3d9.samplerAnisotropy",             -1);
     this->maxAvailableMemory            = config.getOption<int32_t>     ("d3d9.maxAvailableMemory",            4096);
+    this->supportCubeDepthFormats       = config.getOption<bool>        ("d3d9.supportCubeDepthFormats",       false);
     this->supportDFFormats              = config.getOption<bool>        ("d3d9.supportDFFormats",              true);
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
     this->useD32forD24                  = config.getOption<bool>        ("d3d9.useD32forD24",                  false);

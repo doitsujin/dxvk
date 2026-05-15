@@ -139,9 +139,12 @@ namespace dxvk {
         options->disableA8RT)
       return D3DERR_INVALIDCALL;
 
-    // Cube textures with depth formats are not supported on any native
+    // Cube textures with depth formats are not supported on any modern native
     // driver, and allowing them triggers a broken code path in Gothic 3.
-    if (ResourceType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT)
+    // Older drivers, however, both exposed support and allowed their use, and
+    // games such as SimCity Societies: Destinations will crash on startup otherwise.
+    if (ResourceType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT
+     && !options->supportCubeDepthFormats)
       return D3DERR_INVALIDCALL;
 
     // If the mapping is invalid then lets return invalid

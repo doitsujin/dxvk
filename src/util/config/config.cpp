@@ -1163,6 +1163,12 @@ namespace dxvk {
     { R"(\\insurgency\.exe$)", {{
       { "d3d9.forceDrawTimeBufferUpload",   "True" },
     }} },
+    /* SimCity Societies: Destinations            *
+     * Needs depth format cube texture support    *
+     * in order to start up properly              */
+    { R"(\\SCSDestinations\.exe$)", {{
+      { "d3d9.supportCubeDepthFormats",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
