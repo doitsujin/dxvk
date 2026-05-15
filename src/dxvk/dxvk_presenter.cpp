@@ -57,12 +57,7 @@ namespace dxvk {
     destroyLatencySemaphore();
 
     if (m_frameThread.joinable()) {
-      { std::lock_guard lock(m_frameMutex);
-
-        m_frameQueue.push(PresenterFrame());
-        m_frameCond.notify_one();
-      }
-
+      pushFrame(PresenterFrame());
       m_frameThread.join();
     }
   }
@@ -249,15 +244,13 @@ namespace dxvk {
 
     // Add frame to waiter queue with current properties
     if (m_hasPresentWait) {
-      std::lock_guard lock(m_frameMutex);
-
-      auto& frame = m_frameQueue.emplace();
+      PresenterFrame frame;
       frame.frameId = frameId;
       frame.tracker = tracker;
       frame.mode = m_presentMode;
       frame.result = status;
 
-      m_frameCond.notify_one();
+      pushFrame(frame);
     }
 
     // On a successful present, try to acquire next image already, in
@@ -1231,7 +1224,7 @@ namespace dxvk {
     std::unique_lock lock(m_frameMutex);
 
     m_frameDrain.wait(lock, [this] {
-      return m_frameQueue.empty();
+      return m_frameQueuePopId == m_frameQueuePushId;
     });
 
     for (auto& sem : m_semaphores)
@@ -1300,6 +1293,22 @@ namespace dxvk {
   }
 
 
+  void Presenter::pushFrame(const PresenterFrame& frame) {
+    std::unique_lock lock(m_frameMutex);
+
+    // This should realistically never stall; this acts more as a safeguard
+    // in case the frame worker is being starved by the system.
+    m_frameDrain.wait(lock, [this] {
+      return m_frameQueuePushId - m_frameQueuePopId < m_frameQueue.size();
+    });
+
+    m_frameQueue[m_frameQueuePushId % m_frameQueue.size()] = frame;
+    m_frameQueuePushId += 1u;
+
+    m_frameCond.notify_one();
+  }
+
+
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
@@ -1311,14 +1320,14 @@ namespace dxvk {
       { std::unique_lock lock(m_frameMutex);
 
         m_frameCond.wait(lock, [this] {
-          return !m_frameQueue.empty();
+          return m_frameQueuePushId > m_frameQueuePopId;
         });
 
         // Use a frame ID of 0 as an exit condition
-        frame = m_frameQueue.front();
+        frame = m_frameQueue[m_frameQueuePopId % m_frameQueue.size()];
 
         if (!frame.frameId) {
-          m_frameQueue.pop();
+          m_frameQueuePopId += 1u;
           return;
         }
       }
@@ -1360,8 +1369,7 @@ namespace dxvk {
       bool canSignal = false;
 
       { std::unique_lock lock(m_frameMutex);
-
-        m_frameQueue.pop();
+        m_frameQueuePopId += 1u;
         m_frameDrain.notify_one();
 
         m_lastCompleted = frame.frameId;
