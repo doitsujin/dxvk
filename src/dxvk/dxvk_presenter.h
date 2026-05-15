@@ -56,10 +56,10 @@ namespace dxvk {
    * \brief Queued frame
    */
   struct PresenterFrame {
-    uint64_t                frameId   = 0u;
-    Rc<DxvkLatencyTracker>  tracker   = nullptr;
-    VkPresentModeKHR        mode      = VK_PRESENT_MODE_FIFO_KHR;
-    VkResult                result    = VK_NOT_READY;
+    uint64_t                frameId       = 0u;
+    Rc<DxvkLatencyTracker>  tracker       = nullptr;
+    VkPresentModeKHR        mode          = VK_PRESENT_MODE_FIFO_KHR;
+    VkResult                result        = VK_NOT_READY;
   };
 
   /**
@@ -69,6 +69,59 @@ namespace dxvk {
     VkColorSpaceKHR colorSpace;
     size_t formatCount;
     const VkFormat* formats;
+  };
+
+  /**
+   * \brief Presenter time domain entry
+   *
+   * Used for timestamp calibration. Reference times are given in units
+   * of nanoseconds, except for QPC which is given in raw QPC ticks.
+   * QPC will be unavailable in dxvk-native environments.
+   */
+  struct PresenterTimeDomain {
+    VkTimeDomainKHR timeDomain = VK_TIME_DOMAIN_MAX_ENUM_KHR;
+    uint64_t timeDomainId = 0u;
+    uint64_t referenceTime = 0u;
+  };
+
+  /**
+   * \brief Presenter time domain info
+   *
+   * Stores info and calibration for all time domains that we need to
+   * keep track of. This will generally include a QPC entry on Windows
+   * so that we can accurately return frame statistics.
+   */
+  struct PresenterTimeDomainInfo {
+    dxvk::high_resolution_clock::time_point lastCalibration = { };
+    uint64_t updateCounter = 0u;
+    small_vector<PresenterTimeDomain, 16u> domains;
+  };
+
+  /**
+   * \brief Display timing properties
+   */
+  struct PresenterDisplayInfo {
+    uint64_t updateCounter = 0u;
+    uint64_t refreshIntervalNs = 0u;
+    bool isVariableRefresh = false;
+  };
+
+  /**
+   * \brief Present timing mode for the swapchain
+   *
+   * Stores reference time point for absolute present timing, and
+   * whether or not to use relative timing for frame pacing purposes.
+   */
+  struct PresenterTimingInfo {
+    VkPresentStageFlagsEXT presentStage = 0u;
+    bool supportsRelative = false;
+    bool supportsAbsolute = false;
+    bool relativeTiming = false;
+    bool absoluteTiming = false;
+    uint64_t timeDomainId = 0u;
+    uint64_t frameIntervalNs = 0u;
+    uint64_t referenceTime = 0u;
+    uint64_t referenceFrameId = 0u;
   };
 
   /**
@@ -326,6 +379,13 @@ namespace dxvk {
     uint64_t                    m_lastCompleted = 0u;
 
     alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                             m_timingMutex;
+
+    std::optional<PresenterTimeDomainInfo>  m_timingDomains;
+    std::optional<PresenterDisplayInfo>     m_timingDisplayInfo;
+    PresenterTimingInfo                     m_timingMode = { };
+
+    alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
 
     bool                        m_hasGamescopeFenceSignalBug = false;
@@ -375,6 +435,14 @@ namespace dxvk {
     uint32_t pickImageCount(
             uint32_t                  minImageCount,
             uint32_t                  maxImageCount);
+
+    void updateTimingDomains();
+
+    void updateDisplayTiming();
+
+    void updateTimingMode(VkPresentModeKHR presentMode);
+
+    void recalibrateTimeDomains();
 
     VkResult createSurface();
 

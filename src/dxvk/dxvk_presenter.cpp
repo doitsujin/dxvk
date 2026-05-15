@@ -1164,6 +1164,238 @@ namespace dxvk {
   }
 
 
+  void Presenter::updateTimingDomains() {
+    // Reset domain info in case there's an error
+    m_timingDomains = std::nullopt;
+
+    uint64_t updateCounter = 0u;
+
+    small_vector<VkTimeDomainKHR, 16u> domains;
+    small_vector<uint64_t, 16u> domainIds;
+
+    VkResult status = VK_INCOMPLETE;
+
+    while (status == VK_INCOMPLETE) {
+      VkSwapchainTimeDomainPropertiesEXT domainInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_TIME_DOMAIN_PROPERTIES_EXT };
+
+      status = m_vkd->vkGetSwapchainTimeDomainPropertiesEXT(
+        m_vkd->device(), m_swapchain, &domainInfo, nullptr);
+
+      if (status != VK_SUCCESS)
+        break;
+
+      domains.resize(domainInfo.timeDomainCount);
+      domainIds.resize(domainInfo.timeDomainCount);
+
+      // Fetch update counter now. If the internal counter increases between
+      // the first and the second call, we may end up with a different number
+      // of available domains, so handle VK_INCOMPLETE returns here and resize
+      // the arrays appropriately.
+      domainInfo.pTimeDomains = domains.data();
+      domainInfo.pTimeDomainIds = domainIds.data();
+
+      status = m_vkd->vkGetSwapchainTimeDomainPropertiesEXT(
+        m_vkd->device(), m_swapchain, &domainInfo, &updateCounter);
+
+      domains.resize(domainInfo.timeDomainCount);
+      domainIds.resize(domainInfo.timeDomainCount);
+    }
+
+    if (status != VK_SUCCESS) {
+      Logger::warn(str::format("Presenter: Failed to query swapchain time domains: ", status));
+      return;
+    }
+
+    // We're guaranteed at least one PRESENT_STAGE_LOCAL domain. Just
+    // use that for actual timing purposes and ignore everything else.
+    // We will add report time domains on demand.
+    auto& info = m_timingDomains.emplace();
+    info.updateCounter = updateCounter;
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      if (domains[i] == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT) {
+        auto& domain = info.domains.emplace_back();
+        domain.timeDomain = domains[i];
+        domain.timeDomainId = domainIds[i];
+      }
+    }
+
+    // Check if there is a QPC domain and add it as necessary.
+    uint32_t timeDomainCount = 0u;
+
+    status = m_vki->vkGetPhysicalDeviceCalibrateableTimeDomainsKHR(
+      m_device->adapter()->handle(), &timeDomainCount, nullptr);
+
+    if (status == VK_SUCCESS) {
+      domains.resize(timeDomainCount);
+
+      status = m_vki->vkGetPhysicalDeviceCalibrateableTimeDomainsKHR(
+        m_device->adapter()->handle(), &timeDomainCount, domains.data());
+    }
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query time domains: ", status));
+      return;
+    }
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      if (domains[i] == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+        auto& domain = info.domains.emplace_back();
+        domain.timeDomain = domains[i];
+      }
+    }
+  }
+
+
+  void Presenter::updateDisplayTiming() {
+    // Reset state in case of an error
+    m_timingDisplayInfo = std::nullopt;
+
+    uint64_t updateCounter = 0u;
+
+    VkSwapchainTimingPropertiesEXT swapchainTiming = { VK_STRUCTURE_TYPE_SWAPCHAIN_TIMING_PROPERTIES_EXT };
+    VkResult status = m_vkd->vkGetSwapchainTimingPropertiesEXT(
+      m_vkd->device(), m_swapchain, &swapchainTiming, &updateCounter);
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query display timing: ", status));
+      return;
+    }
+
+    auto& info = m_timingDisplayInfo.emplace();
+    info.updateCounter = updateCounter;
+
+    // This can happen on some platforms. We can't meaningfully enable timing.
+    if (!swapchainTiming.refreshDuration && !swapchainTiming.refreshInterval) {
+      Logger::warn(str::format("Presenter: Unable to determine display refresh rate"));
+      return;
+    }
+
+    // Swapchain timing is all sorts of weird, values of 0 generally indicate that
+    // the corresponding property is unknown, and UINT64_MAX for refreshInterval
+    // implies variable refresh rate.
+    info.isVariableRefresh = swapchainTiming.refreshInterval == uint64_t(-1);
+    info.refreshIntervalNs = swapchainTiming.refreshDuration;
+
+    if (!info.refreshIntervalNs && !info.isVariableRefresh)
+      info.refreshIntervalNs = swapchainTiming.refreshInterval;
+  }
+
+
+  void Presenter::updateTimingMode(VkPresentModeKHR presentMode) {
+    m_timingMode.relativeTiming = false;
+    m_timingMode.absoluteTiming = false;
+
+    // Can't meaningfully do timing if we don't know about display timing
+    if (!m_timingDomains || !m_timingDisplayInfo)
+      return;
+
+    uint64_t frameIntervalNs = m_timingMode.frameIntervalNs;
+    uint64_t displayRefreshNs = m_timingDisplayInfo->refreshIntervalNs;
+
+    // Timing isn't useful on IMMEDIATE / MAILBOX, or if there's no frame
+    // rate limit, of if the limit is higher than display refresh.
+    bool isFifoMode = presentMode == VK_PRESENT_MODE_FIFO_KHR
+                   || presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+
+    if (!m_timingMode.presentStage || frameIntervalNs <= displayRefreshNs || !isFifoMode) {
+      Logger::info("Presenter: Present timing disabled");
+      return;
+    }
+
+    // Probe relative timing first since that is most likely to give us
+    // consistent pacing, without any setup work required from our side.
+    if (m_timingMode.supportsRelative) {
+      if (m_timingDisplayInfo->isVariableRefresh) {
+        // Always enable relative timing for VRR
+        m_timingMode.relativeTiming = true;
+      } else if (displayRefreshNs) {
+        // Otherwise, check if the frame duration is reasonably close
+        // to a multiple of the display refresh rate.
+        uint64_t maxDeltaNs = frameIntervalNs / 100u;
+        uint64_t realDeltaNs = (frameIntervalNs + maxDeltaNs) % displayRefreshNs;
+
+        m_timingMode.relativeTiming = realDeltaNs <= 2u * maxDeltaNs;
+
+        if (m_timingMode.relativeTiming)
+          m_timingMode.frameIntervalNs = (frameIntervalNs + maxDeltaNs) - realDeltaNs;
+      }
+    }
+
+    // Fall back to absolute timing if we cannot use relative timimg.
+    if (m_timingMode.supportsAbsolute)
+      m_timingMode.absoluteTiming = !m_timingMode.relativeTiming;
+
+    // Reset reference time and frame ID for absolute timing
+    // so that we don't end up submitting bogus timestamps.
+    m_timingMode.referenceTime = 0u;
+    m_timingMode.referenceFrameId = 0u;
+
+    if (m_timingMode.relativeTiming)
+      Logger::info("Presenter: Present timing enabled (relative)");
+    else if (m_timingMode.absoluteTiming)
+      Logger::info("Presenter: Present timing enabled (absolute)");
+    else
+      Logger::info("Presenter: Present timing disabled (absolute timing unsupported)");
+  }
+
+
+  void Presenter::recalibrateTimeDomains() {
+    if (!m_timingDomains)
+      return;
+
+    // Calibrate all known time domains at once
+    auto& domains = m_timingDomains->domains;
+
+    small_vector<VkSwapchainCalibratedTimestampInfoEXT, 16u> swapchainInfo(domains.size(),
+      VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT });
+    small_vector<VkCalibratedTimestampInfoKHR, 16u> calibrationInfo(domains.size(),
+      VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR });
+    small_vector<uint64_t, 16u> timestamps(domains.size());
+
+    for (size_t i = 0u; i < domains.size(); i++) {
+      calibrationInfo[i].timeDomain = domains[i].timeDomain;
+
+      if (domains[i].timeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT
+       || domains[i].timeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        swapchainInfo[i].swapchain = m_swapchain;
+        swapchainInfo[i].timeDomainId = domains[i].timeDomainId;
+
+        if (domains[i].timeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT)
+          swapchainInfo[i].presentStage = m_timingMode.presentStage;
+
+        calibrationInfo[i].pNext = &swapchainInfo[i];
+      }
+    }
+
+    // Retry calibration until we get reasonable precision (150us)
+    constexpr uint32_t MaxAttempts = 5u;
+    constexpr uint64_t MaxDeviation = 1500000u;
+
+    uint64_t maxDeviation = 0u;
+
+    for (uint32_t i = 0u; i < MaxAttempts; i++) {
+      VkResult status = m_vkd->vkGetCalibratedTimestampsKHR(m_vkd->device(),
+        domains.size(), calibrationInfo.data(), timestamps.data(), &maxDeviation);
+
+      if (status && !i) {
+        Logger::warn(str::format("Presenter: Failed to calibrate timestamps: ", status));
+        return;
+      }
+
+      if (status || maxDeviation <= MaxDeviation)
+        break;
+    }
+
+    for (size_t i = 0u; i < domains.size(); i++)
+      domains[i].referenceTime = timestamps[i];
+
+    // Remember when we last calibrated everything so that we can periodically
+    // re-query. Clock drift is a real issue on certain hardware configurations.
+    m_timingDomains->lastCalibration = dxvk::high_resolution_clock::now();
+  }
+
+
   VkResult Presenter::createSurface() {
     VkResult vr = m_surfaceProc(&m_surface);
 
