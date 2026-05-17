@@ -15,6 +15,7 @@ dxso_src = files([
 
 dxso_lib = static_library('dxso', dxso_src,
   include_directories : [ dxvk_include_path ],
+  dependencies : [ dxbc_spirv_dep ],
 )
 
 dxso_dep = declare_dependency(
