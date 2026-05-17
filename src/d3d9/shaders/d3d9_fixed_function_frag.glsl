@@ -201,7 +201,6 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
         case D3DFOG_LINEAR:
             fogFactor = fogEnd - depth;
             fogFactor = fogFactor * fogScale;
-            fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
             break;
 
         // 1 / (e^[d * density])^2
@@ -218,6 +217,8 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
             fogFactor = exp(fogFactor);
             break;
     }
+
+    fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
 
     vec4 color = oColor;
     vec3 color3 = color.rgb;
