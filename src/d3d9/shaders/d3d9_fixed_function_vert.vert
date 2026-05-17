@@ -233,7 +233,7 @@ bool vertexClipping() {
 }
 
 
-float calculateFog(vec4 vPos, vec4 oColor) {
+float calculateFog(vec4 vPos) {
     vec4 specular = in_Color1;
     bool hasSpecular = vertexHasColor1();
 
@@ -692,7 +692,7 @@ void main() {
         //       Implement that using a spec constant.
     }
 
-    out_Fog = calculateFog(vtx, vec4(0.0));
+    out_Fog = calculateFog(vtx);
 
     gl_PointSize = calculatePointSize(vtx);
 
