@@ -376,7 +376,7 @@ void main() {
             for (uint i = 0; i <= vertexBlendCount(); i++) {
                 uint arrayIndex;
                 if (vertexBlendIndexed()) {
-                    arrayIndex = uint(round(in_BlendIndices[i]));
+                    arrayIndex = uint(roundEven(in_BlendIndices[i]));
                 } else {
                     arrayIndex = i;
                 }
