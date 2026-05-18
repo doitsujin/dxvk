@@ -1077,7 +1077,7 @@ namespace dxvk {
 
           if (m_vsKey.Data.Contents.VertexBlendIndexed) {
             uint32_t index = m_module.opCompositeExtract(m_floatType, m_vs.in.BLENDINDICES, 1, &i);
-                     index = m_module.opConvertFtoU(m_uint32Type, m_module.opRound(m_floatType, index));
+                     index = m_module.opConvertFtoU(m_uint32Type, m_module.opRoundEven(m_floatType, index));
 
             arrayIndices = { m_module.constu32(0), index };
           }
