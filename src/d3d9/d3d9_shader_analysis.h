@@ -93,6 +93,10 @@ public:
 
   const D3D9InputSignature& GetInputSignature() const { return m_inputSignature; }
 
+  uint32_t GetFlatShadingMask() const {
+    return m_flatShadingMask;
+  }
+
   explicit operator bool() const {
     return m_length != 0u;
   }
@@ -109,6 +113,8 @@ private:
 
   bool HandleDcl(const dxbc_spv::sm3::Instruction& op);
 
+  std::optional<uint32_t> FindLocationInFixedFunctionIO(dxbc_spv::sm3::Semantic semantic) const;
+
   bool m_isSWVP = false;
 
   uint32_t m_length = 0u;
@@ -124,6 +130,8 @@ private:
   D3D9SamplerMask m_usedSamplers = 0u;
 
   std::array<VkImageViewType, 16u> m_imageViewTypes = {};
+
+  uint32_t m_flatShadingMask = 0u;
 
   D3D9InputSignature m_inputSignature    = {};
 
