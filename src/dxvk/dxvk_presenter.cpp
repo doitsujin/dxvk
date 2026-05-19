@@ -207,6 +207,13 @@ namespace dxvk {
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
 
+    // Treat a QUEUE_FULL error as a hint to recreate the swapchain with
+    // a larger queue size. This could probably be done more robustly,
+    // but since we have latency constraints in the frontend APIs, we
+    // should never run into this scenario in practice anyway.
+    if (status == VK_ERROR_PRESENT_TIMING_QUEUE_FULL_EXT)
+      m_timingQueueSize *= 2u;
+
     // Maintain valid state if presentation succeeded, even if we want to
     // recreate the swapchain. Spec says that 'queue' operations, i.e. the
     // semaphore and fence signals, still happen if present fails with
@@ -562,6 +569,7 @@ namespace dxvk {
     // Query surface capabilities. Some properties might have changed,
     // including the size limits and supported present modes, so we'll
     // just query everything again.
+    VkPresentTimingSurfaceCapabilitiesEXT presentTimingCaps = { VK_STRUCTURE_TYPE_PRESENT_TIMING_SURFACE_CAPABILITIES_EXT };
     VkSurfaceCapabilitiesPresentWait2KHR presentWait2Caps = { VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_WAIT_2_KHR };
     VkSurfaceCapabilitiesPresentId2KHR presentId2Caps = { VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_PRESENT_ID_2_KHR };
 
@@ -572,6 +580,9 @@ namespace dxvk {
 
       if (m_device->features().khrPresentWait2.presentWait2)
         presentWait2Caps.pNext = std::exchange(caps.pNext, &presentWait2Caps);
+
+      if (m_device->features().extPresentTiming.presentTiming)
+        presentTimingCaps.pNext = std::exchange(caps.pNext, &presentTimingCaps);
     }
 
     std::vector<VkSurfaceFormatKHR> formats;
@@ -701,6 +712,38 @@ namespace dxvk {
       dynamicModes.clear();
     }
 
+    // If present timing is supported, also check if there is a useful present
+    // stage we can use. Prioritize the latest available stage for absolute
+    // timing since we need to correlate with timing reports.
+    // Also, opt out of timing if we have issues keeping the report queue to
+    // a reasonable size.
+    if (presentTimingCaps.presentTimingSupported && presentId2Caps.presentId2Supported
+     && presentWait2Caps.presentWait2Supported && m_timingQueueSize <= MaxFrameQueueSize) {
+      small_vector<VkPresentStageFlagBitsEXT, 3> stages;
+
+      if (presentTimingCaps.presentAtAbsoluteTimeSupported) {
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT);
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT);
+      } else {
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_OUT_BIT_EXT);
+        stages.push_back(VK_PRESENT_STAGE_IMAGE_FIRST_PIXEL_VISIBLE_BIT_EXT);
+      }
+
+      stages.push_back(VK_PRESENT_STAGE_REQUEST_DEQUEUED_BIT_EXT);
+
+      for (auto stage : stages) {
+        if (presentTimingCaps.presentStageQueries & stage) {
+          m_timingMode.presentStage = stage;
+          break;
+        }
+      }
+
+      if (m_timingMode.presentStage) {
+        m_timingMode.supportsRelative = presentTimingCaps.presentAtRelativeTimeSupported;
+        m_timingMode.supportsAbsolute = presentTimingCaps.presentAtAbsoluteTimeSupported;
+      }
+    }
+
     // Compute swap chain image count based on available info
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = m_fullscreenMode;
@@ -742,6 +785,9 @@ namespace dxvk {
     if (presentWait2Caps.presentWait2Supported)
       swapInfo.flags |= VK_SWAPCHAIN_CREATE_PRESENT_WAIT_2_BIT_KHR;
 
+    if (m_timingMode.presentStage)
+      swapInfo.flags |= VK_SWAPCHAIN_CREATE_PRESENT_TIMING_BIT_EXT;
+
     if (m_device->features().extFullScreenExclusive)
       fullScreenInfo.pNext = const_cast<void*>(std::exchange(swapInfo.pNext, &fullScreenInfo));
 
@@ -753,12 +799,14 @@ namespace dxvk {
 
     Logger::info(str::format(
       "Presenter: Actual swapchain properties:"
-      "\n  Format:       ", swapInfo.imageFormat,
-      "\n  Color space:  ", swapInfo.imageColorSpace,
-      "\n  Present mode: ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
-      "\n  Buffer size:  ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
-      "\n  Image count:  ", swapInfo.minImageCount));
-    
+      "\n  Format:          ", swapInfo.imageFormat,
+      "\n  Color space:     ", swapInfo.imageColorSpace,
+      "\n  Present mode:    ", swapInfo.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
+      "\n  Buffer size:     ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
+      "\n  Image count:     ", swapInfo.minImageCount,
+      "\n  Absolute timimg: ", m_timingMode.supportsAbsolute ? "yes" : "no",
+      "\n  Relative timimg: ", m_timingMode.supportsRelative ? "yes" : "no"));
+
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_swapchain))) {
       Logger::err(str::format("Presenter: Failed to create Vulkan swapchain: ", status));
       return status;
@@ -852,6 +900,18 @@ namespace dxvk {
 
     if (m_signal && m_hasPresentWait && !m_frameThread.joinable())
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
+
+    // Set up initial present timing state
+    if (m_timingMode.presentStage) {
+      m_vkd->vkSetSwapchainPresentTimingQueueSizeEXT(m_vkd->device(), m_swapchain, m_timingQueueSize);
+
+      updateDisplayTiming();
+
+      updateTimingDomains();
+      recalibrateTimeDomains();
+
+      updateTimingMode(m_presentMode);
+    }
 
     return VK_SUCCESS;
   }
@@ -1464,6 +1524,10 @@ namespace dxvk {
 
     m_hasPresentId = false;
     m_hasPresentWait = false;
+
+    m_timingDomains = std::nullopt;
+    m_timingDisplayInfo = std::nullopt;
+    m_timingMode = PresenterTimingInfo();
   }
 
 
