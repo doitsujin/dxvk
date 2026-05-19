@@ -2,6 +2,7 @@
 
 #include "d3d9_shader_analysis.h"
 #include "d3d9_util.h"
+#include "d3d9_fixed_function.h"
 
 #include <utility>
 
@@ -10,6 +11,23 @@
 using namespace dxbc_spv::sm3;
 
 namespace dxvk {
+
+  static std::array<Semantic, 12u> s_ffLocations = {{
+    {SemanticUsage::eNormal,   0u},
+    {SemanticUsage::eTexCoord, 0u},
+    {SemanticUsage::eTexCoord, 1u},
+    {SemanticUsage::eTexCoord, 2u},
+    {SemanticUsage::eTexCoord, 3u},
+    {SemanticUsage::eTexCoord, 4u},
+    {SemanticUsage::eTexCoord, 5u},
+    {SemanticUsage::eTexCoord, 6u},
+    {SemanticUsage::eTexCoord, 7u},
+
+    {SemanticUsage::eColor,    0u},
+    {SemanticUsage::eColor,    1u},
+
+    {SemanticUsage::eFog,      0u},
+  }};
 
   D3D9ShaderAnalysis::D3D9ShaderAnalysis(dxbc_spv::util::ByteReader code, bool isSWVP)
     : m_isSWVP(isSWVP) {
@@ -30,7 +48,7 @@ namespace dxvk {
     : m_isSWVP(other.m_isSWVP), m_length(other.m_length), m_shaderInfo(other.m_shaderInfo),
       m_constants(other.m_constants), m_immediateConstants(std::move(other.m_immediateConstants)),
       m_usedRTs(other.m_usedRTs), m_usedSamplers(other.m_usedSamplers), m_imageViewTypes(other.m_imageViewTypes),
-      m_inputSignature(std::move(other.m_inputSignature)) {
+      m_flatShadingMask(other.m_flatShadingMask), m_inputSignature(std::move(other.m_inputSignature)) {
     other.m_length = 0u;
   }
 
@@ -38,7 +56,7 @@ namespace dxvk {
     : m_isSWVP(other.m_isSWVP), m_length(other.m_length), m_shaderInfo(other.m_shaderInfo),
       m_constants(other.m_constants), m_immediateConstants(other.m_immediateConstants), m_usedRTs(other.m_usedRTs),
       m_usedSamplers(other.m_usedSamplers), m_imageViewTypes(other.m_imageViewTypes),
-      m_inputSignature(other.m_inputSignature) { }
+      m_flatShadingMask(other.m_flatShadingMask), m_inputSignature(other.m_inputSignature) { }
 
   bool D3D9ShaderAnalysis::RunAnalysis(Parser& parser) {
     m_shaderInfo = parser.getShaderInfo();
@@ -259,7 +277,38 @@ namespace dxvk {
       return true;
     }
 
+    if (GetShaderInfo().getType() == ShaderType::ePixel
+      && dcl.getSemanticUsage() == SemanticUsage::eColor
+      && dcl.getSemanticIndex() < 2u) {
+      Semantic semantic = { dcl.getSemanticUsage(), dcl.getSemanticIndex() };
+
+      auto location = FindLocationInFixedFunctionIO(semantic);
+
+      if (!location.has_value()) {
+        // Should never happen. The semantics we're looking for are at indices 9 and 10.
+        dxbc_spv_unreachable();
+        return false;
+      }
+
+      // The flat shading mask is applied before Semantic IO, so it uses the locations that are set by the compiler.
+      m_flatShadingMask |= 1u << *location;
+    }
+
     return true;
+  }
+
+
+  std::optional<uint32_t> D3D9ShaderAnalysis::FindLocationInFixedFunctionIO(dxbc_spv::sm3::Semantic semantic) const {
+    // Outputs by the FF vertex shader and inputs by the FF pixel shader.
+    // The locations of those semantics are reserved to make sure programmable shaders and FF are compatible.
+    // The compiler does the same thing when determining IO locations.
+    for (uint32_t i = 0u; i < s_ffLocations.size(); i++) {
+      const auto& ffInputSemantic = s_ffLocations[i];
+      if (ffInputSemantic == semantic) {
+        return i;
+      }
+    }
+    return std::nullopt;
   }
 
 
@@ -275,6 +324,7 @@ namespace dxvk {
     m_usedRTs = other.m_usedRTs;
     m_usedSamplers = other.m_usedSamplers;
     m_imageViewTypes = other.m_imageViewTypes;
+    m_flatShadingMask = other.m_flatShadingMask;
     m_inputSignature = other.m_inputSignature;
 
     return *this;
@@ -292,6 +342,7 @@ namespace dxvk {
     m_usedRTs = other.m_usedRTs;
     m_usedSamplers = other.m_usedSamplers;
     m_imageViewTypes = other.m_imageViewTypes;
+    m_flatShadingMask = other.m_flatShadingMask;
     m_inputSignature = std::move(other.m_inputSignature);
     other.m_length = 0u;
 
