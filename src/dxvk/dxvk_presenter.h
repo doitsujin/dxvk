@@ -446,6 +446,13 @@ namespace dxvk {
 
     void recalibrateTimeDomains();
 
+    uint64_t translateTimestamp(
+            VkTimeDomainKHR           srcTimeDomain,
+            uint64_t                  srcTimeDomainId,
+            uint64_t                  srcTimestamp,
+            VkTimeDomainKHR           dstTimeDomain,
+            uint64_t                  dstTimeDomainId);
+
     VkResult createSurface();
 
     VkResult createLatencySemaphore();

@@ -1456,6 +1456,136 @@ namespace dxvk {
   }
 
 
+  uint64_t Presenter::translateTimestamp(
+          VkTimeDomainKHR           srcTimeDomain,
+          uint64_t                  srcTimeDomainId,
+          uint64_t                  srcTimestamp,
+          VkTimeDomainKHR           dstTimeDomain,
+          uint64_t                  dstTimeDomainId) {
+    // Don't need to do anything if the time domains already match anyway
+    if (srcTimeDomain == dstTimeDomain && srcTimeDomainId == dstTimeDomainId)
+      return srcTimestamp;
+
+    // Can't do anything if we can't calibrate time stamps
+    if (!m_timingDomains)
+      return 0u;
+
+    // Determine tick frequency for QPC timestamps. Our internal high resolution
+    // clock is QPC on Windows, so this should work whenever the time domain is
+    // actually present.
+    static std::atomic<int64_t> s_qpcFreq = { 0 };
+    int64_t qpcFreq = s_qpcFreq.load(std::memory_order_relaxed);
+
+    if (unlikely(!qpcFreq)) {
+      qpcFreq = dxvk::high_resolution_clock::get_frequency();
+      s_qpcFreq.store(qpcFreq, std::memory_order_relaxed);
+    }
+
+    // If the last calibration is older than a second, recalibrate.
+    uint64_t calibrationAgeNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+      dxvk::high_resolution_clock::now() - m_timingDomains->lastCalibration).count();
+
+    if (calibrationAgeNs > 1000000000ull)
+      recalibrateTimeDomains();
+
+    // Check whether the source and destination time domains are known
+    // and compute the delta in terms of nanoseconds or QPC ticks.
+    uint64_t refTimeSrcDomain = 0u;
+    uint64_t refTimeDstDomain = 0u;
+
+    for (size_t i = 0u; i < m_timingDomains->domains.size(); i++) {
+      if (m_timingDomains->domains[i].timeDomain == srcTimeDomain
+       && m_timingDomains->domains[i].timeDomainId == srcTimeDomainId)
+        refTimeSrcDomain = m_timingDomains->domains[i].referenceTime;
+
+      if (m_timingDomains->domains[i].timeDomain == dstTimeDomain
+       && m_timingDomains->domains[i].timeDomainId == dstTimeDomainId)
+        refTimeDstDomain = m_timingDomains->domains[i].referenceTime;
+    }
+
+    // If we couldn't find one of the time domains, try to calibrate
+    if (!refTimeSrcDomain || !refTimeDstDomain) {
+      std::array<VkSwapchainCalibratedTimestampInfoEXT, 2u> swapchainInfo = {{
+        VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT },
+        VkSwapchainCalibratedTimestampInfoEXT { VK_STRUCTURE_TYPE_SWAPCHAIN_CALIBRATED_TIMESTAMP_INFO_EXT },
+      }};
+
+      std::array<VkCalibratedTimestampInfoKHR, 2u> calibrationInfo = {{
+        VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR },
+        VkCalibratedTimestampInfoKHR { VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_KHR },
+      }};
+
+      calibrationInfo[0].timeDomain = srcTimeDomain;
+      calibrationInfo[1].timeDomain = dstTimeDomain;
+
+      if (srcTimeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT || srcTimeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        calibrationInfo[0].pNext = &swapchainInfo[0];
+
+        swapchainInfo[0].swapchain = m_swapchain;
+        swapchainInfo[0].presentStage = m_timingMode.presentStage;
+        swapchainInfo[0].timeDomainId = srcTimeDomainId;
+      }
+
+      if (dstTimeDomain == VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT || dstTimeDomain == VK_TIME_DOMAIN_SWAPCHAIN_LOCAL_EXT) {
+        calibrationInfo[1].pNext = &swapchainInfo[1];
+
+        swapchainInfo[1].swapchain = m_swapchain;
+        swapchainInfo[1].presentStage = m_timingMode.presentStage;
+        swapchainInfo[1].timeDomainId = dstTimeDomainId;
+      }
+
+      // Try to get reference timestamps for the two domains
+      std::array<uint64_t, 2u> timestamps = { };
+
+      uint64_t maxDeviation = 0u;
+
+      VkResult status = m_vkd->vkGetCalibratedTimestampsKHR(m_vkd->device(),
+        calibrationInfo.size(), calibrationInfo.data(), timestamps.data(), &maxDeviation);
+
+      if (status) {
+        Logger::err(str::format("Presenter: Failed to map timestamp from ",
+          srcTimeDomain, "@", srcTimeDomainId," to domain ",
+          dstTimeDomain, "@", dstTimeDomainId, ": ", status));
+        return 0u;
+      }
+
+      // On success, add the domains to the domain list as necessary
+      // and recalibrate all known domains for subsequent steps
+      if (!refTimeSrcDomain) {
+        auto& domain = m_timingDomains->domains.emplace_back();
+        domain.timeDomain = srcTimeDomain;
+        domain.timeDomainId = srcTimeDomainId;
+      }
+
+      if (!refTimeDstDomain) {
+        auto& domain = m_timingDomains->domains.emplace_back();
+        domain.timeDomain = dstTimeDomain;
+        domain.timeDomainId = dstTimeDomainId;
+      }
+
+      refTimeSrcDomain = timestamps[0];
+      refTimeDstDomain = timestamps[1];
+
+      recalibrateTimeDomains();
+    }
+
+    // Compute time delta in terms of the destination time domain
+    int64_t timeDelta = int64_t(srcTimestamp - refTimeSrcDomain);
+
+    if (srcTimeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+      timeDelta *= 1000000000;
+      timeDelta /= qpcFreq;
+    }
+
+    if (dstTimeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR) {
+      timeDelta *= qpcFreq;
+      timeDelta /= 1000000000;
+    }
+
+    return uint64_t(refTimeDstDomain + timeDelta);
+  }
+
+
   VkResult Presenter::createSurface() {
     VkResult vr = m_surfaceProc(&m_surface);
 
