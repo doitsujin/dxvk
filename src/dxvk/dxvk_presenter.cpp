@@ -278,6 +278,7 @@ namespace dxvk {
       frame.mode = m_presentMode;
       frame.result = status;
       frame.deadline = frameDeadline;
+      frame.isTimed = bool(timingInfo.targetTime);
 
       pushFrame(frame);
     }
@@ -1536,6 +1537,7 @@ namespace dxvk {
 
     // Update display timing and time domains as necessary
     bool updateMode = false;
+
     if (!m_timingDisplayInfo || m_timingDisplayInfo->updateCounter != timingProperties.timingPropertiesCounter) {
       updateMode = true;
       updateDisplayTiming();
@@ -1581,6 +1583,8 @@ namespace dxvk {
         m_timingMode.lastFrameTimeLocal = reportTimeLocal;
         m_timingMode.lastFrameTimeQpc = reportTimeQpc;
 
+        // Implicitly handles the case where deadline is 0, i.e. no
+        // absolute timing was used to control the actual presentation.
         for (const auto& frame : m_frameQueue) {
           if (frame.frameId == report.presentId)
             hasMissedDeadline = reportTimeLocal > frame.deadline;
@@ -1907,8 +1911,6 @@ namespace dxvk {
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
 
-      updatePresentTiming();
-
       // Signal latency tracker right away to get more accurate
       // measurements if the frame rate limiter is enabled.
       if (frame.tracker) {
@@ -1919,7 +1921,8 @@ namespace dxvk {
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      m_fpsLimiter.delay();
+      if (!updatePresentTiming() || !frame.isTimed)
+        m_fpsLimiter.delay();
 
       // Wake up any thread that may be waiting for the queue to become empty
       bool canSignal = false;
