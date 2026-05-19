@@ -6,14 +6,13 @@
 
 namespace dxvk {
 
-  D3D9CommonShader::D3D9CommonShader() {}
-
   D3D9CommonShader::D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
       const DxvkShaderHash&       ShaderKey,
+            D3D9ShaderAnalysis&&  ShaderAnalysis,
       const D3D9ShaderCreateInfo& ModuleInfo,
-      const void*                 pShaderBytecode) {
-
+      const void*                 pShaderBytecode)
+        : m_analysis(std::move(ShaderAnalysis)) {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
@@ -22,7 +21,7 @@ namespace dxvk {
     const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
     
     if (dumpPath.size() != 0) {
-      const uint32_t bytecodeLength = ModuleInfo.analysisInfo.bytecodeByteLength;
+      const uint32_t bytecodeLength = m_analysis.GetLength();
 
       std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".sm3_dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
       file.write(reinterpret_cast<const char*>(pShaderBytecode), bytecodeLength);
@@ -62,31 +61,14 @@ namespace dxvk {
     moduleInfo.options.forceSampleRateShading = ModuleInfo.irCreateInfo.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
     moduleInfo.options.vertexFloatConstantBufferAsSSBO = ModuleInfo.irCreateInfo.options.maxUniformBufferSize < constantLayout.totalSize();
 
-    m_shader       = module.compile(moduleInfo, ShaderKey.toString(), ModuleInfo.analysisInfo, constantLayout);
-    m_isgn         = module.isgn();
-    m_usedSamplers = module.usedSamplers();
-    m_textureTypes = module.textureTypes();
-
-    // Shift up these sampler bits so we can just
-    // do an or per-draw in the device.
-    // We shift by 17 because 16 ps samplers + 1 dmap (tess)
-    if (module.info().shaderStage() == VK_SHADER_STAGE_VERTEX_BIT)
-      m_usedSamplers <<= FirstVSSamplerSlot;
-
-    m_usedRTs              = module.usedRTs();
-
-    m_info                 = module.info();
-    m_meta                 = module.meta();
-    m_constants            = module.constants();
-    m_maxDefinedFloatConst = module.maxDefinedFloatConstant();
-    m_maxDefinedIntConst   = module.maxDefinedIntConstant();
-    m_maxDefinedBoolConst  = module.maxDefinedBoolConstant();
+    m_shader       = module.compile(moduleInfo, ShaderKey.toString(), module.analyze(), constantLayout);
   }
 
 
   HRESULT D3D9ShaderModuleSet::GetShaderModule(
           D3D9DeviceEx*           pDevice,
     const DxvkShaderHash&         ShaderKey,
+          D3D9ShaderAnalysis&&    ShaderAnalysis,
     const D3D9ShaderCreateInfo&   ModuleInfo,
     const void*                   pShaderBytecode,
           D3D9CommonShader*       pShader) {
@@ -103,7 +85,7 @@ namespace dxvk {
 
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    *pShader = D3D9CommonShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode);
+    *pShader = D3D9CommonShader(pDevice, ShaderKey, std::move(ShaderAnalysis), ModuleInfo, pShaderBytecode);
 
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return

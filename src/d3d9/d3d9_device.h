@@ -1331,7 +1331,7 @@ namespace dxvk {
     HRESULT CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
             size_t*               pLength,
-            VkShaderStageFlagBits ShaderStage,
+            D3D9ShaderType        ShaderType,
       const DWORD*                pShaderBytecode);
 
     inline uint32_t GetUPDataSize(uint32_t vertexCount, uint32_t stride) {
