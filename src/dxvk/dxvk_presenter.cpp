@@ -169,6 +169,8 @@ namespace dxvk {
   VkResult Presenter::presentImage(uint64_t frameId, const Rc<DxvkLatencyTracker>& tracker) {
     PresenterSync& currSync = m_semaphores.at(m_frameIndex);
 
+    uint64_t frameDeadline = 0u;
+
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
     presentId.swapchainCount = 1;
     presentId.pPresentIds   = &frameId;
@@ -185,6 +187,33 @@ namespace dxvk {
     modeInfo.swapchainCount = 1;
     modeInfo.pPresentModes  = &m_presentMode;
 
+    VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
+    timingInfo.presentStageQueries = m_timingMode.presentStage;
+
+    if (m_timingMode.presentStage) {
+      std::lock_guard lock(m_timingMutex);
+
+      if (m_timingMode.relativeTiming) {
+        timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_RELATIVE_TIME_BIT_EXT;
+        timingInfo.targetTime = m_timingMode.frameIntervalNs;
+        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+        timingInfo.timeDomainId = m_timingMode.timeDomainId;
+      } else if (m_timingMode.absoluteTiming && m_timingMode.referenceFrameId) {
+        timingInfo.targetTime = m_timingMode.referenceTime + (frameId - m_timingMode.referenceFrameId) * m_timingMode.frameIntervalNs;
+        timingInfo.targetTimeDomainPresentStage = m_timingMode.presentStage;
+        timingInfo.timeDomainId = m_timingMode.timeDomainId;
+
+        if (m_timingDisplayInfo && !m_timingDisplayInfo->isVariableRefresh)
+          timingInfo.flags |= VK_PRESENT_TIMING_INFO_PRESENT_AT_NEAREST_REFRESH_CYCLE_BIT_EXT;
+
+        frameDeadline = timingInfo.targetTime + m_timingMode.frameIntervalNs;
+      }
+    }
+
+    VkPresentTimingsInfoEXT timingsInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMINGS_INFO_EXT };
+    timingsInfo.swapchainCount = 1u;
+    timingsInfo.pTimingInfos = &timingInfo;
+
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores    = &currSync.present;
@@ -197,6 +226,9 @@ namespace dxvk {
         presentId2.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId2));
       else
         presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
+
+      if (timingInfo.presentStageQueries)
+        timingsInfo.pNext = std::exchange(info.pNext, &timingsInfo);
     }
 
     if (m_hasSwapchainMaintenance1) {
@@ -241,6 +273,7 @@ namespace dxvk {
       frame.tracker = tracker;
       frame.mode = m_presentMode;
       frame.result = status;
+      frame.deadline = frameDeadline;
 
       pushFrame(frame);
     }
@@ -1462,6 +1495,7 @@ namespace dxvk {
     if (!m_timingMode.presentStage)
       return false;
 
+    // Need to access both timing stuff and the frame queue here
     std::lock_guard lock(m_timingMutex);
 
     // Still need to drain the queue even if everything is messed up
@@ -1509,8 +1543,11 @@ namespace dxvk {
     if (updateMode)
       updateTimingMode(presentMode);
 
-    // Find latest available report and update present statistics
-    bool hasValidReport = false;
+    // Find latest available report and update present statistics. If we run
+    // absolute timing and any given frame missed its deadline, restart the
+    // sequence.
+    std::lock_guard frameLock(m_frameMutex);
+    bool hasMissedDeadline = false;
 
     for (size_t i = 0u; i < timingProperties.presentationTimingCount; i++) {
       const auto& time = stageTimes[i];
@@ -1536,11 +1573,14 @@ namespace dxvk {
         m_timingMode.lastFrameTimeLocal = reportTimeLocal;
         m_timingMode.lastFrameTimeQpc = reportTimeQpc;
 
-        hasValidReport = true;
+        for (const auto& frame : m_frameQueue) {
+          if (frame.frameId == report.presentId)
+            hasMissedDeadline = reportTimeLocal > frame.deadline;
+        }
       }
     }
 
-    if (!m_timingMode.referenceFrameId && hasValidReport) {
+    if (!m_timingMode.referenceFrameId || hasMissedDeadline) {
       m_timingMode.referenceFrameId = m_timingMode.lastFrameId;
       m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
     }
