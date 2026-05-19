@@ -6,6 +6,8 @@
 
 #include "d3d9_state.h"
 
+#include "d3d9_shader_analysis.h"
+
 #include "../dxvk/dxvk_shader.h"
 
 #include "../dxso/dxso_isgn.h"
@@ -207,8 +209,8 @@ namespace dxvk {
   };
 
 
-  inline const DxsoIsgn& GetFixedFunctionIsgn() {
-    extern DxsoIsgn g_ffIsgn;
+  inline const D3D9InputSignature& GetFixedFunctionIsgn() {
+    extern D3D9InputSignature g_ffIsgn;
 
     return g_ffIsgn;
   }

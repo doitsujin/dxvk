@@ -8,11 +8,16 @@
 #include "../dxvk/dxvk_shader_ir.h"
 #endif
 
+#include <sm3/sm3_parser.h>
+
 #include "d3d9_resource.h"
 #include "d3d9_util.h"
 #include "d3d9_mem.h"
 
 #include <array>
+#include <string>
+
+#include "d3d9_shader_analysis.h"
 
 namespace dxvk {
 
@@ -41,8 +46,6 @@ namespace dxvk {
     DxvkIrShaderCreateInfo irCreateInfo;
 
     D3D9ShaderOptions shaderOptions;
-
-    DxsoAnalysisInfo analysisInfo;
   };
 
 #else
@@ -113,11 +116,12 @@ namespace dxvk {
 
   public:
 
-    D3D9CommonShader();
+    D3D9CommonShader() = default;
 
     D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
       const DxvkShaderHash&       ShaderKey,
+            D3D9ShaderAnalysis&&  Analysis,
       const D3D9ShaderCreateInfo& ModuleInfo,
       const void*                 pShaderBytecode);
 
@@ -130,28 +134,18 @@ namespace dxvk {
       return m_shader->debugName();
     }
 
-    const DxsoIsgn& GetIsgn() const {
-      return m_isgn;
+    const D3D9InputSignature& GetInputSignature() const {
+      return m_analysis.GetInputSignature();
     }
 
-    const DxsoShaderMetaInfo& GetMeta() const { return m_meta; }
-    const DxsoDefinedConstants& GetConstants() const { return m_constants; }
+    const D3D9ShaderConstantsInfo& GetConstantsInfo() const { return m_analysis.GetConstantsInfo(); }
+    const D3D9ImmediateConstants& GetImmediateConstants() const { return m_analysis.GetImmediateConstants(); }
 
-    D3D9ShaderMasks GetShaderMask() const { return D3D9ShaderMasks{ m_usedSamplers, m_usedRTs }; }
+    D3D9ShaderMasks GetShaderMask() const { return D3D9ShaderMasks{ m_analysis.GetSamplerMask(), m_analysis.GetRenderTargetMask() }; }
 
-    const DxsoProgramInfo& GetInfo() const { return m_info; }
+    dxbc_spv::sm3::ShaderInfo GetInfo() const { return m_analysis.GetShaderInfo(); }
 
-    int32_t GetMaxDefinedFloatConstant() const { return m_maxDefinedFloatConst; }
-
-    int32_t GetMaxDefinedIntConstant() const { return m_maxDefinedIntConst; }
-
-    int32_t GetMaxDefinedBoolConstant() const { return m_maxDefinedBoolConst; }
-
-    VkImageViewType GetImageViewType(uint32_t samplerSlot) const {
-      const uint32_t offset = samplerSlot * 2;
-      const uint32_t mask = 0b11;
-      return static_cast<VkImageViewType>((m_textureTypes >> offset) & mask);
-    }
+    VkImageViewType GetImageViewType(uint32_t samplerSlot) const { return m_analysis.GetImageViewType(samplerSlot); }
 
   private:
 
@@ -161,17 +155,7 @@ namespace dxvk {
       const D3D9ShaderCreateInfo& ModuleInfo,
       const void*                 pShaderBytecode);
 
-    DxsoIsgn              m_isgn;
-    uint32_t              m_usedSamplers;
-    uint32_t              m_usedRTs;
-    uint32_t              m_textureTypes;
-
-    DxsoProgramInfo       m_info;
-    DxsoShaderMetaInfo    m_meta;
-    DxsoDefinedConstants  m_constants;
-    int32_t               m_maxDefinedFloatConst = -1;
-    int32_t               m_maxDefinedIntConst = -1;
-    int32_t               m_maxDefinedBoolConst = -1;
+    D3D9ShaderAnalysis    m_analysis;
 
     Rc<DxvkShader>        m_shader;
 
@@ -299,6 +283,7 @@ namespace dxvk {
     HRESULT GetShaderModule(
             D3D9DeviceEx*           pDevice,
       const DxvkShaderHash&         ShaderKey,
+            D3D9ShaderAnalysis&&    ShaderAnalysis,
       const D3D9ShaderCreateInfo&   ModuleInfo,
       const void*                   pShaderBytecode,
             D3D9CommonShader*       pShader);

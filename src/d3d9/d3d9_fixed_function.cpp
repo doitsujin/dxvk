@@ -2971,26 +2971,26 @@ namespace dxvk {
   }
 
 
-  static inline DxsoIsgn CreateFixedFunctionIsgn() {
-    DxsoIsgn ffIsgn;
+  static inline D3D9InputSignature CreateFixedFunctionIsgn() {
+    D3D9InputSignature ffIsgn;
 
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 1 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 1 };
-    for (uint32_t i = 0; i < 8; i++)
-      ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 1 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::PointSize, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendWeight, 0 };
-    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendIndices, 0 };
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 1u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 1u });
+    for (uint32_t i = 0u; i < 8u; i++)
+      ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eTexCoord, i });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 1u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eFog, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePointSize, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendWeight, 0u });
+    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendIndices, 0u });
 
     return ffIsgn;
   }
 
 
-  DxsoIsgn g_ffIsgn = CreateFixedFunctionIsgn();
+  D3D9InputSignature g_ffIsgn = CreateFixedFunctionIsgn();
 
 }
