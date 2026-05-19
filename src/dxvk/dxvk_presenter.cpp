@@ -1277,6 +1277,8 @@ namespace dxvk {
         auto& domain = info.domains.emplace_back();
         domain.timeDomain = domains[i];
         domain.timeDomainId = domainIds[i];
+
+        m_timingMode.timeDomainId = domainIds[i];
       }
     }
 
@@ -1453,6 +1455,110 @@ namespace dxvk {
     // Remember when we last calibrated everything so that we can periodically
     // re-query. Clock drift is a real issue on certain hardware configurations.
     m_timingDomains->lastCalibration = dxvk::high_resolution_clock::now();
+  }
+
+
+  bool Presenter::updatePresentTiming(VkPresentModeKHR presentMode) {
+    if (!m_timingMode.presentStage)
+      return false;
+
+    std::lock_guard lock(m_timingMutex);
+
+    // Still need to drain the queue even if everything is messed up
+    small_vector<VkPresentStageTimeEXT, FrameQueueSize> stageTimes;
+    small_vector<VkPastPresentationTimingEXT, FrameQueueSize> reports;
+
+    stageTimes.resize(m_timingQueueSize);
+    reports.resize(m_timingQueueSize);
+
+    for (size_t i = 0u; i < m_timingQueueSize; i++) {
+      reports[i].sType = VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_EXT;
+      reports[i].presentStageCount = 1u;
+      reports[i].pPresentStages = &stageTimes[i];
+    }
+
+    VkPastPresentationTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_INFO_EXT };
+    timingInfo.swapchain = m_swapchain;
+
+    VkPastPresentationTimingPropertiesEXT timingProperties = { VK_STRUCTURE_TYPE_PAST_PRESENTATION_TIMING_PROPERTIES_EXT };
+    timingProperties.presentationTimingCount = reports.size();
+    timingProperties.pPresentationTimings = reports.data();
+
+    VkResult status = m_vkd->vkGetPastPresentationTimingEXT(m_vkd->device(),
+      &timingInfo, &timingProperties);
+
+    if (status) {
+      Logger::warn(str::format("Presenter: Failed to query past present timings: ", status));
+      return false;
+    }
+
+    // Update display timing and time domains as necessary
+    bool updateMode = false;
+    if (!m_timingDisplayInfo || m_timingDisplayInfo->updateCounter != timingProperties.timingPropertiesCounter) {
+      updateMode = true;
+      updateDisplayTiming();
+    }
+
+    if (!m_timingDomains || m_timingDomains->updateCounter != timingProperties.timeDomainsCounter) {
+      updateMode = true;
+      updateTimingDomains();
+
+      recalibrateTimeDomains();
+    }
+
+    if (updateMode)
+      updateTimingMode(presentMode);
+
+    // Find latest available report and update present statistics
+    bool hasValidReport = false;
+
+    for (size_t i = 0u; i < timingProperties.presentationTimingCount; i++) {
+      const auto& time = stageTimes[i];
+      const auto& report = reports[i];
+
+      if (!report.reportComplete || !time.time || time.stage != m_timingMode.presentStage)
+        continue;
+
+      uint64_t reportTimeLocal = translateTimestamp(
+        report.timeDomain, report.timeDomainId, time.time,
+        VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId);
+
+      uint64_t reportTimeQpc = 0u;
+
+      if (hasQpcDomain()) {
+        reportTimeQpc = translateTimestamp(
+          report.timeDomain, report.timeDomainId, time.time,
+          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+      }
+
+      if (reportTimeLocal) {
+        m_timingMode.lastFrameId = report.presentId;
+        m_timingMode.lastFrameTimeLocal = reportTimeLocal;
+        m_timingMode.lastFrameTimeQpc = reportTimeQpc;
+
+        hasValidReport = true;
+      }
+    }
+
+    if (!m_timingMode.referenceFrameId && hasValidReport) {
+      m_timingMode.referenceFrameId = m_timingMode.lastFrameId;
+      m_timingMode.referenceTime = m_timingMode.lastFrameTimeLocal;
+    }
+
+    return true;
+  }
+
+
+  bool Presenter::hasQpcDomain() {
+    if (!m_timingDomains)
+      return false;
+
+    for (const auto& domain : m_timingDomains->domains) {
+      if (domain.timeDomain == VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR)
+        return true;
+    }
+
+    return false;
   }
 
 
@@ -1752,6 +1858,8 @@ namespace dxvk {
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
+
+      updatePresentTiming(frame.mode);
 
       // Signal latency tracker right away to get more accurate
       // measurements if the frame rate limiter is enabled.

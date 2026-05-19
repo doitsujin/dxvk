@@ -122,6 +122,9 @@ namespace dxvk {
     uint64_t frameIntervalNs = 0u;
     uint64_t referenceTime = 0u;
     uint64_t referenceFrameId = 0u;
+    uint64_t lastFrameTimeLocal = 0u;
+    uint64_t lastFrameTimeQpc = 0u;
+    uint64_t lastFrameId = 0u;
   };
 
   /**
@@ -445,6 +448,10 @@ namespace dxvk {
     void updateTimingMode(VkPresentModeKHR presentMode);
 
     void recalibrateTimeDomains();
+
+    bool updatePresentTiming(VkPresentModeKHR presentMode);
+
+    bool hasQpcDomain();
 
     uint64_t translateTimestamp(
             VkTimeDomainKHR           srcTimeDomain,
