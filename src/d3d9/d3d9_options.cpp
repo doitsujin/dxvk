@@ -76,6 +76,7 @@ namespace dxvk {
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
     this->ffUbershaderVS                = config.getOption<bool>        ("d3d9.ffUbershaderVS",                true);
     this->ffUbershaderFS                = config.getOption<bool>        ("d3d9.ffUbershaderFS",                true);
+    this->useDxbcSpirv                  = config.getOption<bool>        ("d3d9.useDxbcSpirv",                  false);
 
     // D3D8 options
     this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);
@@ -85,6 +86,11 @@ namespace dxvk {
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 
+    bool hasMulz = adapter != nullptr
+                  && (adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
+                   || adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE, Version(2, 0, 316), Version())
+                   || adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(565, 57, 1), Version()));
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
       this->d3d9FloatEmulation = D3D9FloatEmulation::Strict;
@@ -93,12 +99,14 @@ namespace dxvk {
     } else if (floatEmulation == "true") {
       this->d3d9FloatEmulation = D3D9FloatEmulation::Enabled;
     } else {
-      bool hasMulz = adapter != nullptr
-                  && (adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
-                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
-                   || adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE, Version(2, 0, 316), Version())
-                   || adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(565, 57, 1), Version()));
       this->d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
+    }
+
+    Tristate useFP16 = config.getOption<Tristate>("d3d9.useFP16", Tristate::Auto);
+    if (useFP16 == Tristate::Auto) {
+      this->useFP16 = !hasMulz;
+    } else {
+      this->useFP16 = useFP16 == Tristate::True;
     }
 
     this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
