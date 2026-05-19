@@ -4,7 +4,33 @@
 #include "d3d9_device.h"
 #include "d3d9_util.h"
 
+#include <sm3/sm3_parser.h>
+#include <sm3/sm3_converter.h>
+#include <sm3/sm3_types.h>
+
 namespace dxvk {
+
+  class D3D9SpecializationConstantLayout : public dxbc_spv::sm3::SpecializationConstantLayout {
+
+  public:
+
+    dxbc_spv::sm3::SpecializationConstantBits getSpecConstantLayout(dxbc_spv::sm3::SpecConstantId id) const {
+      D3D9SpecConstantId specConstId = D3D9SpecConstantId(id);
+      const auto& layoutEntry = D3D9SpecializationInfo::Layout[specConstId];
+      return { layoutEntry.dwordOffset, layoutEntry.bitOffset, layoutEntry.sizeInBits };
+    }
+
+    uint32_t getSamplerSpecConstIndex(dxbc_spv::sm3::ShaderType shaderType, uint32_t perShaderSamplerIndex) {
+      return shaderType == dxbc_spv::sm3::ShaderType::eVertex
+        ? perShaderSamplerIndex + FirstVSSamplerSlot
+        : perShaderSamplerIndex;
+    }
+
+    uint32_t getOptimizedDwordOffset() const {
+      return MaxNumSpecConstants;
+    }
+
+  };
 
   D3D9CommonShader::D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
