@@ -60,6 +60,7 @@ namespace dxvk {
     Rc<DxvkLatencyTracker>  tracker       = nullptr;
     VkPresentModeKHR        mode          = VK_PRESENT_MODE_FIFO_KHR;
     VkResult                result        = VK_NOT_READY;
+    uint64_t                deadline      = 0u;
   };
 
   /**
