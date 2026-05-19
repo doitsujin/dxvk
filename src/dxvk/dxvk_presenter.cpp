@@ -199,11 +199,15 @@ namespace dxvk {
     regionInfo.swapchainCount = 1;
     regionInfo.pRegions = &region;
 
+    // Present timing isn't useful with Immediate or Mailbox
+    bool isFifoMode = m_presentMode == VK_PRESENT_MODE_FIFO_KHR
+                   || m_presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+
     VkPresentTimingInfoEXT timingInfo = { VK_STRUCTURE_TYPE_PRESENT_TIMING_INFO_EXT };
     timingInfo.presentStageQueries = m_timingMode.presentStage;
     timingInfo.timeDomainId = m_timingMode.timeDomainId;
 
-    if (m_timingMode.presentStage) {
+    if (m_timingMode.presentStage && isFifoMode) {
       std::lock_guard lock(m_timingMutex);
 
       if (m_timingMode.relativeTiming) {
@@ -527,6 +531,13 @@ namespace dxvk {
 
   void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
     m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
+
+    std::lock_guard lock(m_timingMutex);
+
+    if (m_frameRateLimit != frameRate) {
+      m_frameRateLimit = frameRate;
+      updateTimingMode();
+    }
   }
 
 
@@ -968,7 +979,7 @@ namespace dxvk {
       updateTimingDomains();
       recalibrateTimeDomains();
 
-      updateTimingMode(m_presentMode);
+      updateTimingMode();
     }
 
     return VK_SUCCESS;
@@ -1402,7 +1413,7 @@ namespace dxvk {
   }
 
 
-  void Presenter::updateTimingMode(VkPresentModeKHR presentMode) {
+  void Presenter::updateTimingMode() {
     m_timingMode.relativeTiming = false;
     m_timingMode.absoluteTiming = false;
 
@@ -1410,15 +1421,12 @@ namespace dxvk {
     if (!m_timingDomains || !m_timingDisplayInfo)
       return;
 
-    uint64_t frameIntervalNs = m_timingMode.frameIntervalNs;
-    uint64_t displayRefreshNs = m_timingDisplayInfo->refreshIntervalNs;
+    // Compute target frame interval from frame rate limit
+    m_timingMode.frameIntervalNs = m_frameRateLimit != 0.0
+      ? uint64_t(1000000000.0 / std::abs(m_frameRateLimit))
+      : uint64_t(0u);
 
-    // Timing isn't useful on IMMEDIATE / MAILBOX, or if there's no frame
-    // rate limit, of if the limit is higher than display refresh.
-    bool isFifoMode = presentMode == VK_PRESENT_MODE_FIFO_KHR
-                   || presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-
-    if (!m_timingMode.presentStage || frameIntervalNs <= displayRefreshNs || !isFifoMode) {
+    if (!m_timingMode.presentStage || m_timingMode.frameIntervalNs <= m_timingDisplayInfo->refreshIntervalNs) {
       Logger::info("Presenter: Present timing disabled");
       return;
     }
@@ -1429,16 +1437,16 @@ namespace dxvk {
       if (m_timingDisplayInfo->isVariableRefresh) {
         // Always enable relative timing for VRR
         m_timingMode.relativeTiming = true;
-      } else if (displayRefreshNs) {
+      } else if (m_timingDisplayInfo->refreshIntervalNs) {
         // Otherwise, check if the frame duration is reasonably close
         // to a multiple of the display refresh rate.
-        uint64_t maxDeltaNs = frameIntervalNs / 100u;
-        uint64_t realDeltaNs = (frameIntervalNs + maxDeltaNs) % displayRefreshNs;
+        uint64_t maxDeltaNs = m_timingMode.frameIntervalNs / 100u;
+        uint64_t realDeltaNs = (m_timingMode.frameIntervalNs + maxDeltaNs) % m_timingDisplayInfo->refreshIntervalNs;
 
         m_timingMode.relativeTiming = realDeltaNs <= 2u * maxDeltaNs;
 
         if (m_timingMode.relativeTiming)
-          m_timingMode.frameIntervalNs = (frameIntervalNs + maxDeltaNs) - realDeltaNs;
+          m_timingMode.frameIntervalNs = (m_timingMode.frameIntervalNs + maxDeltaNs) - realDeltaNs;
       }
     }
 
@@ -1452,9 +1460,9 @@ namespace dxvk {
     m_timingMode.referenceFrameId = 0u;
 
     if (m_timingMode.relativeTiming)
-      Logger::info("Presenter: Present timing enabled (relative)");
+      Logger::info("Presenter: Present timing enabled for FIFO modes (relative)");
     else if (m_timingMode.absoluteTiming)
-      Logger::info("Presenter: Present timing enabled (absolute)");
+      Logger::info("Presenter: Present timing enabled for FIFO modes (absolute)");
     else
       Logger::info("Presenter: Present timing disabled (absolute timing unsupported)");
   }
@@ -1516,7 +1524,7 @@ namespace dxvk {
   }
 
 
-  bool Presenter::updatePresentTiming(VkPresentModeKHR presentMode) {
+  bool Presenter::updatePresentTiming() {
     if (!m_timingMode.presentStage)
       return false;
 
@@ -1566,7 +1574,7 @@ namespace dxvk {
     }
 
     if (updateMode)
-      updateTimingMode(presentMode);
+      updateTimingMode();
 
     // Find latest available report and update present statistics. If we run
     // absolute timing and any given frame missed its deadline, restart the
@@ -1926,7 +1934,7 @@ namespace dxvk {
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
 
-      updatePresentTiming(frame.mode);
+      updatePresentTiming();
 
       // Signal latency tracker right away to get more accurate
       // measurements if the frame rate limiter is enabled.
