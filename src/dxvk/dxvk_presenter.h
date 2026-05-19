@@ -397,6 +397,8 @@ namespace dxvk {
     PresenterTimingInfo                     m_timingMode = { };
     uint32_t                                m_timingQueueSize = FrameQueueSize;
 
+    double                      m_frameRateLimit = 0.0;
+
     alignas(CACHE_LINE_SIZE)
     FpsLimiter                  m_fpsLimiter;
 
@@ -452,11 +454,11 @@ namespace dxvk {
 
     void updateDisplayTiming();
 
-    void updateTimingMode(VkPresentModeKHR presentMode);
+    void updateTimingMode();
 
     void recalibrateTimeDomains();
 
-    bool updatePresentTiming(VkPresentModeKHR presentMode);
+    bool updatePresentTiming();
 
     bool hasQpcDomain();
 
