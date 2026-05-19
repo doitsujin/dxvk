@@ -8103,10 +8103,19 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::InitShaderOptions() {
+    if (m_d3d9Options.useDxbcSpirv)
+      Logger::info("Using DXBC-SPIRV!");
+
     m_dxvkShaderOptions = m_dxvkDevice->getShaderCompileOptions();
+    m_dxvkShaderOptions.flags.set(DxvkShaderCompileFlag::SemanticIo);
 
     if (m_d3d9Options.forceSampleRateShading)
       m_dxvkShaderOptions.flags.set(DxvkShaderCompileFlag::EnableSampleRateShading);
+
+    if (!m_d3d9Options.useFP16)
+      m_dxvkShaderOptions.flags.clr(DxvkShaderCompileFlag::Supports16BitArithmetic);
+    else
+      Logger::info("Using FP16.");
 
     m_shaderOptions.d3d9FloatEmulation = m_d3d9Options.d3d9FloatEmulation;
     m_shaderOptions.isSWVP = CanSWVP();
@@ -8251,9 +8260,10 @@ namespace dxvk {
     D3D9CommonShader commonShader = { };
 
     D3D9ShaderCreateInfo moduleInfo;
-    moduleInfo.irCreateInfo         = {};
-    moduleInfo.irCreateInfo.options = m_dxvkShaderOptions;
-    moduleInfo.shaderOptions        = m_shaderOptions;
+    moduleInfo.irCreateInfo                   = {};
+    moduleInfo.irCreateInfo.options           = m_dxvkShaderOptions;
+    moduleInfo.irCreateInfo.flatShadingInputs = analysis.GetFlatShadingMask();
+    moduleInfo.shaderOptions                  = m_shaderOptions;
 
     HRESULT hr = m_shaderModules->GetShaderModule(this,
       key, std::move(analysis), moduleInfo, pShaderBytecode, &commonShader);

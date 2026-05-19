@@ -42,6 +42,8 @@ namespace dxvk {
     bool forceSamplerTypeSpecConstants;
   };
 
+  static_assert(sizeof(D3D9ShaderOptions) == 3u);
+
   struct D3D9ShaderCreateInfo {
     DxvkIrShaderCreateInfo irCreateInfo;
 
@@ -148,6 +150,13 @@ namespace dxvk {
     VkImageViewType GetImageViewType(uint32_t samplerSlot) const { return m_analysis.GetImageViewType(samplerSlot); }
 
   private:
+
+    void CreateIrShader(
+            D3D9DeviceEx*           pDevice,
+      const DxvkShaderHash&         ShaderKey,
+      const D3D9ShaderCreateInfo&   ModuleInfo,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength);
 
     void CreateLegacyShader(
             D3D9DeviceEx*         pDevice,
