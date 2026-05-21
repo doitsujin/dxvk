@@ -401,13 +401,13 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
             return arg.arg2;
 
         case D3DTOP_MODULATE4X:
-            return arg.arg1 * arg.arg2 * 4.0;
+            return saturate(arg.arg1 * arg.arg2 * 4.0);
 
         case D3DTOP_MODULATE2X:
-            return arg.arg1 * arg.arg2 * 2.0;
+            return saturate(arg.arg1 * arg.arg2 * 2.0);
 
         case D3DTOP_MODULATE:
-            return arg.arg1 * arg.arg2;
+            return saturate(arg.arg1 * arg.arg2);
 
         case D3DTOP_ADDSIGNED2X:
             return saturate(2.0 * (arg.arg1 + (arg.arg2 - vec4(0.5))));
@@ -422,7 +422,7 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
             return saturate(arg.arg1 - arg.arg2);
 
         case D3DTOP_ADDSMOOTH:
-            return fma(complement(arg.arg1), arg.arg2, arg.arg1);
+            return saturate(fma(complement(arg.arg1), arg.arg2, arg.arg1));
 
         case D3DTOP_BLENDDIFFUSEALPHA:
             return mix(arg.arg2, arg.arg1, in_Color0.aaaa);
