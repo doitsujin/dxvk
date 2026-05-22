@@ -3,6 +3,8 @@
 #include "dxvk_device.h"
 #include "dxvk_presenter.h"
 
+#include "../util/util_sleep.h"
+
 #include "../wsi/wsi_window.h"
 
 namespace dxvk {
@@ -277,6 +279,7 @@ namespace dxvk {
       frame.tracker = tracker;
       frame.mode = m_presentMode;
       frame.result = status;
+      frame.targetTime = frameDeadline ? timingInfo.targetTime : 0u;
       frame.deadline = frameDeadline;
       frame.isTimed = bool(timingInfo.targetTime);
 
@@ -1601,6 +1604,28 @@ namespace dxvk {
   }
 
 
+  void Presenter::waitUntilFrameTargetTime(
+    const PresenterFrame&           frame) {
+    if (!frame.targetTime)
+      return;
+
+    uint64_t qpcTargetTime = 0u;
+
+    { std::lock_guard lock(m_timingMutex);
+      if (hasQpcDomain()) {
+        qpcTargetTime = translateTimestamp(
+          VK_TIME_DOMAIN_PRESENT_STAGE_LOCAL_EXT, m_timingMode.timeDomainId, frame.targetTime,
+          VK_TIME_DOMAIN_QUERY_PERFORMANCE_COUNTER_KHR, 0u);
+      }
+    }
+
+    if (qpcTargetTime) {
+      auto dxvkTargetTime = dxvk::high_resolution_clock::get_time_from_counter(qpcTargetTime);
+      Sleep::sleepUntil(dxvk::high_resolution_clock::now(), dxvkTargetTime);
+    }
+  }
+
+
   bool Presenter::hasQpcDomain() {
     if (!m_timingDomains)
       return false;
@@ -1921,7 +1946,9 @@ namespace dxvk {
       // Apply FPS limiter here to align it as closely with scanout as we can,
       // and delay signaling the frame latency event to emulate behaviour of a
       // low refresh rate display as closely as we can.
-      if (!updatePresentTiming() || !frame.isTimed)
+      if (updatePresentTiming() && frame.isTimed)
+        waitUntilFrameTargetTime(frame);
+      else
         m_fpsLimiter.delay();
 
       // Wake up any thread that may be waiting for the queue to become empty
