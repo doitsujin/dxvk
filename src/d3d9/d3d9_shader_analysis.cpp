@@ -59,7 +59,8 @@ namespace dxvk {
       m_flatShadingMask(other.m_flatShadingMask), m_inputSignature(other.m_inputSignature) { }
 
   bool D3D9ShaderAnalysis::RunAnalysis(Parser& parser) {
-    m_shaderInfo = parser.getShaderInfo();
+    if (!(m_shaderInfo = parser.getShaderInfo()))
+      return false;
 
     if (m_shaderInfo.getVersion().first == 1u && m_shaderInfo.getType() == dxbc_spv::sm3::ShaderType::ePixel)
       m_usedRTs = 0b1u;
@@ -67,7 +68,7 @@ namespace dxvk {
     while (parser) {
       dxbc_spv::sm3::Instruction instruction = parser.parseInstruction();
 
-      if (!HandleInstruction(instruction))
+      if (!instruction || !HandleInstruction(instruction))
         return false;
     }
 
