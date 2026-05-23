@@ -1556,6 +1556,8 @@ namespace dxvk {
           return spv::BuiltInLocalInvocationIndex;
         case dxbc_spv::ir::BuiltIn::ePointSize:
           return spv::BuiltInPointSize;
+        case dxbc_spv::ir::BuiltIn::ePointCoord:
+          return spv::BuiltInPointCoord;
         case dxbc_spv::ir::BuiltIn::eTessFactorLimit:
           return std::nullopt;
       }
@@ -2112,6 +2114,10 @@ namespace dxvk {
         return dxbc_spv::ir::BuiltIn::eLocalThreadId;
       case spv::BuiltInLocalInvocationIndex:
         return dxbc_spv::ir::BuiltIn::eLocalThreadIndex;
+      case spv::BuiltInPointSize:
+        return dxbc_spv::ir::BuiltIn::ePointSize;
+      case spv::BuiltInPointCoord:
+        return dxbc_spv::ir::BuiltIn::ePointCoord;
       default:
         return std::nullopt;
     }
