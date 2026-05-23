@@ -2117,6 +2117,8 @@ namespace dxvk {
         return dxbc_spv::ir::BuiltIn::eLocalThreadId;
       case spv::BuiltInLocalInvocationIndex:
         return dxbc_spv::ir::BuiltIn::eLocalThreadIndex;
+      case spv::BuiltInPointSize:
+        return dxbc_spv::ir::BuiltIn::ePointSize;
       case spv::BuiltInPointCoord:
         return dxbc_spv::ir::BuiltIn::ePointCoord;
       default:
