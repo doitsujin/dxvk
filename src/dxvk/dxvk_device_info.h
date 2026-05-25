@@ -31,6 +31,7 @@ namespace dxvk {
     VkPhysicalDeviceDescriptorBufferPropertiesEXT             extDescriptorBuffer             = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_BUFFER_PROPERTIES_EXT };
     VkPhysicalDeviceDescriptorHeapPropertiesEXT               extDescriptorHeap               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_PROPERTIES_EXT };
     VkPhysicalDeviceExtendedDynamicState3PropertiesEXT        extExtendedDynamicState3        = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT };
+    VkPhysicalDeviceFragmentShadingRatePropertiesKHR          khrFragmentShadingRate          = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_PROPERTIES_KHR };
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT      extGraphicsPipelineLibrary      = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT };
     VkPhysicalDeviceLineRasterizationPropertiesEXT            extLineRasterization            = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT };
     VkPhysicalDeviceMultiDrawPropertiesEXT                    extMultiDraw                    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTI_DRAW_PROPERTIES_EXT };
@@ -68,6 +69,7 @@ namespace dxvk {
     VkPhysicalDeviceDescriptorHeapFeaturesEXT                 extDescriptorHeap               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_HEAP_FEATURES_EXT };
     VkPhysicalDeviceExtendedDynamicState3FeaturesEXT          extExtendedDynamicState3        = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT };
     VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT        extFragmentShaderInterlock      = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT };
+    VkPhysicalDeviceFragmentShadingRateFeaturesKHR            khrFragmentShadingRate          = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_FEATURES_KHR };
     VkBool32                                                  extFullScreenExclusive          = VK_FALSE;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT        extGraphicsPipelineLibrary      = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT };
     VkBool32                                                  extHdrMetadata                  = VK_FALSE;
@@ -139,6 +141,7 @@ namespace dxvk {
     VkExtensionProperties extDescriptorHeap                 = vk::makeExtension(VK_EXT_DESCRIPTOR_HEAP_EXTENSION_NAME);
     VkExtensionProperties extExtendedDynamicState3          = vk::makeExtension(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME);
     VkExtensionProperties extFragmentShaderInterlock        = vk::makeExtension(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME);
+    VkExtensionProperties khrFragmentShadingRate            = vk::makeExtension(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME);
     VkExtensionProperties extFullScreenExclusive            = vk::makeExtension(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME);
     VkExtensionProperties extGraphicsPipelineLibrary        = vk::makeExtension(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME);
     VkExtensionProperties extHdrMetadata                    = vk::makeExtension(VK_EXT_HDR_METADATA_EXTENSION_NAME);

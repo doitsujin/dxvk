@@ -292,6 +292,21 @@ namespace dxvk {
 
     feedbackLoop = state.om.feedbackLoop();
 
+    // Two classifications:
+    //   - hasAnyBlend: any color attachment has blend enabled. Gates the
+    //     pipeline-level sampleShadingEnable below. REQUIRED for VRS to
+    //     take effect: per-sample shading would otherwise force the GPU
+    //     back to a 1x1 shading rate even when we set {2,2}. Also recovers
+    //     per-sample cost on alpha-blend (text/UI/glass) when
+    //     d3d9.forceSampleRateShading is on.
+    //   - isAdditivePass: blend is additive (dst=ONE) or multiplicative
+    //     (DST_COLOR+ZERO). Narrower than hasAnyBlend. Drives the VRS 2x2
+    //     coarse rate + SampleRateShading capability strip. Excludes
+    //     standard alpha-blend (SrcAlpha+InvSrcAlpha) used by text/UI so
+    //     those stay at native shading rate and remain sharp.
+    bool isAdditivePass = false;
+    bool hasAnyBlend    = false;
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       rtColorFormats[i] = state.rt.getColorFormat(i);
 
@@ -316,6 +331,20 @@ namespace dxvk {
           if (writeMask) {
             cbAttachments[i] = state.omBlend[i].state();
             cbAttachments[i].colorWriteMask = writeMask;
+
+            if (cbAttachments[i].blendEnable) {
+              hasAnyBlend = true;
+              VkBlendFactor src = cbAttachments[i].srcColorBlendFactor;
+              VkBlendFactor dst = cbAttachments[i].dstColorBlendFactor;
+              // Additive: src=(ONE|SRC_ALPHA), dst=ONE
+              // Multiplicative: src=DST_COLOR, dst=ZERO
+              bool additive = dst == VK_BLEND_FACTOR_ONE
+                           && (src == VK_BLEND_FACTOR_ONE || src == VK_BLEND_FACTOR_SRC_ALPHA);
+              bool multiplicative = src == VK_BLEND_FACTOR_DST_COLOR
+                                 && dst == VK_BLEND_FACTOR_ZERO;
+              if (additive || multiplicative)
+                isAdditivePass = true;
+            }
 
             // If we're rendering to an emulated alpha-only render target, fix up blending
             if (cbAttachments[i].blendEnable && formatInfo->componentMask == VK_COLOR_COMPONENT_R_BIT && state.omSwizzle[i].rIndex() == 3) {
@@ -361,10 +390,24 @@ namespace dxvk {
         : VK_SAMPLE_COUNT_1_BIT;
     }
 
-    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading)) {
+    // Per-sample shading is only enabled for opaque pipelines. Any blend
+    // draw (additive fire/glow, standard alpha-blend text/UI) skips it.
+    // Required so the VRS 2x2 rate set below for additive draws actually
+    // applies — sampleShadingEnable = TRUE silently downgrades the rate
+    // back to 1x1 regardless of what we requested. Also recovers per-sample
+    // cost on alpha-blend pipelines when d3d9.forceSampleRateShading is on.
+    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading) && !hasAnyBlend) {
       msInfo.sampleShadingEnable  = VK_TRUE;
       msInfo.minSampleShading     = 1.0f;
     }
+
+    // Pipeline-level fragment shading rate. Only additive/multiplicative
+    // blend modes get a coarse rate — those are the classic "kill-FPS"
+    // transparent layers (fire/glow/smoke). Standard alpha blend used by
+    // text/UI stays at {1,1} so it remains sharp.
+    if (isAdditivePass
+     && device->features().khrFragmentShadingRate.pipelineFragmentShadingRate)
+      shadingRate = { 2u, 2u };
 
     // Alpha to coverage is not supported with sample mask exports.
     cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask);
@@ -394,7 +437,9 @@ namespace dxvk {
            && msSampleMask                    == other.msSampleMask
            && cbUseDynamicBlendConstants      == other.cbUseDynamicBlendConstants
            && cbUseDynamicAlphaToCoverage     == other.cbUseDynamicAlphaToCoverage
-           && feedbackLoop                    == other.feedbackLoop;
+           && feedbackLoop                    == other.feedbackLoop
+           && shadingRate.width               == other.shadingRate.width
+           && shadingRate.height              == other.shadingRate.height;
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount && eq; i++)
       eq = rtColorFormats[i] == other.rtColorFormats[i];
@@ -435,6 +480,8 @@ namespace dxvk {
     hash.add(uint32_t(cbUseDynamicBlendConstants));
     hash.add(uint32_t(cbUseDynamicAlphaToCoverage));
     hash.add(uint32_t(feedbackLoop));
+    hash.add(uint32_t(shadingRate.width));
+    hash.add(uint32_t(shadingRate.height));
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount; i++)
       hash.add(uint32_t(rtColorFormats[i]));
@@ -888,6 +935,29 @@ namespace dxvk {
         if ((fsOutputMask & (1u << i)) && state.writesRenderTarget(i))
           info.rtSwizzles[i] = state.omSwizzle[i].mapping();
       }
+
+      // Strip SampleRateShading on additive/multiplicative draws so the
+      // KHR_fragment_shading_rate coarse rate set in FragmentOutputState
+      // actually applies. Only meaningful when the PS originally declared
+      // the capability (e.g. via d3d9.forceSampleRateShading). Standard
+      // alpha-blend used by text/UI/glass is excluded so it keeps
+      // per-sample shading and stays sharp.
+      if (shaderMeta.flags.test(DxvkShaderFlag::HasSampleRateShading)) {
+        for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+          if (!state.rt.getColorFormat(i) || !state.omBlend[i].blendEnable())
+            continue;
+          VkBlendFactor src = state.omBlend[i].srcColorBlendFactor();
+          VkBlendFactor dst = state.omBlend[i].dstColorBlendFactor();
+          bool additive = dst == VK_BLEND_FACTOR_ONE
+                       && (src == VK_BLEND_FACTOR_ONE || src == VK_BLEND_FACTOR_SRC_ALPHA);
+          bool multiplicative = src == VK_BLEND_FACTOR_DST_COLOR
+                             && dst == VK_BLEND_FACTOR_ZERO;
+          if (additive || multiplicative) {
+            info.fsStripSampleRateShading = true;
+            break;
+          }
+        }
+      }
     }
 
     // Deal with undefined shader inputs
@@ -1222,6 +1292,26 @@ namespace dxvk {
     if (!m_device->canUseGraphicsPipelineLibrary())
       return false;
 
+    // VRS state is pre-rasterization in the GPL split, but our decision
+    // to coarsen the rate depends on per-pipeline blend state which the
+    // pre-rasterization library doesn't see. Force the monolithic compile
+    // path whenever an additive/multiplicative draw would opt into VRS
+    // so the shading rate can be baked correctly.
+    if (m_device->features().khrFragmentShadingRate.pipelineFragmentShadingRate) {
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        if (!state.rt.getColorFormat(i) || !state.omBlend[i].blendEnable())
+          continue;
+        VkBlendFactor src = state.omBlend[i].srcColorBlendFactor();
+        VkBlendFactor dst = state.omBlend[i].dstColorBlendFactor();
+        bool additive = dst == VK_BLEND_FACTOR_ONE
+                     && (src == VK_BLEND_FACTOR_ONE || src == VK_BLEND_FACTOR_SRC_ALPHA);
+        bool multiplicative = src == VK_BLEND_FACTOR_DST_COLOR
+                           && dst == VK_BLEND_FACTOR_ZERO;
+        if (additive || multiplicative)
+          return false;
+      }
+    }
+
     // We do not implement setting certain rarely used render
     // states dynamically since they are generally not used
     bool isLineRendering = DxvkGraphicsPipelinePreRasterizationState::isLineRendering(m_shaders, state);
@@ -1447,6 +1537,17 @@ namespace dxvk {
     if (m_device->canUseDescriptorBuffer())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
+    // Chain VRS state when this pipeline opted into a coarse shading rate.
+    // Combiners are KEEP so per-primitive / per-attachment rates (which we
+    // don't use) won't override the pipeline-level value.
+    VkPipelineFragmentShadingRateStateCreateInfoKHR vrsInfo = { VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR };
+    vrsInfo.fragmentSize    = key.foState.shadingRate;
+    vrsInfo.combinerOps[0]  = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+    vrsInfo.combinerOps[1]  = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
+
+    const bool wantsVrs = key.foState.shadingRate.width  != 1u
+                       || key.foState.shadingRate.height != 1u;
+
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &key.foState.rtInfo };
     info.stageCount               = stageInfo.getStageCount();
     info.pStages                  = stageInfo.getStageInfos();
@@ -1467,7 +1568,10 @@ namespace dxvk {
 
     if (flags.flags)
       flags.pNext = std::exchange(info.pNext, &flags);
-    
+
+    if (wantsVrs)
+      vrsInfo.pNext = std::exchange(info.pNext, &vrsInfo);
+
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 

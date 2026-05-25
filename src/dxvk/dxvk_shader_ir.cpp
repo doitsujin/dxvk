@@ -1792,7 +1792,14 @@ namespace dxvk {
     dxbc_spv::spirv::SpirvBuilder spirvBuilder(irBuilder, mapping, options);
     spirvBuilder.buildSpirvBinary();
 
-    return SpirvCodeBuffer(spirvBuilder.getSpirvBinary());
+    SpirvCodeBuffer spirvCode(spirvBuilder.getSpirvBinary());
+
+    // Strip SampleRateShading + Sample decorations when the pipeline
+    // opts into VRS coarse rate (see DxvkShaderLinkage comment).
+    if (linkage && m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsStripSampleRateShading)
+      DxvkShader::stripSampleRateShading(spirvCode);
+
+    return spirvCode;
   }
 
 

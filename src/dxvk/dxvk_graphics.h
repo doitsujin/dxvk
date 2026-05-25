@@ -121,6 +121,13 @@ namespace dxvk {
 
     VkImageAspectFlags                              feedbackLoop = 0u;
 
+    // VK_KHR_fragment_shading_rate pipeline-level rate. Defaults to {1,1}
+    // (per-pixel). Set to {2,2} for additive/multiplicative blend passes
+    // (fire/glow/smoke). The pipeline is forced off the graphics-pipeline-
+    // library fast path because VRS state is part of pre-rasterization
+    // state and our decision is per-pipeline.
+    VkExtent2D                                      shadingRate = { 1u, 1u };
+
     bool eq(const DxvkGraphicsPipelineFragmentOutputState& other) const;
 
     size_t hash() const;

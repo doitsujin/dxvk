@@ -15,10 +15,11 @@ namespace dxvk {
 
 
   bool DxvkShaderLinkage::eq(const DxvkShaderLinkage& other) const {
-    bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
-           && fsFlatShading   == other.fsFlatShading
-           && sampleLocations == other.sampleLocations
-           && semanticIo      == other.semanticIo;
+    bool eq = fsDualSrcBlend            == other.fsDualSrcBlend
+           && fsFlatShading             == other.fsFlatShading
+           && sampleLocations           == other.sampleLocations
+           && semanticIo                == other.semanticIo
+           && fsStripSampleRateShading  == other.fsStripSampleRateShading;
 
     if (eq) {
       eq = prevStageOutputs.getVarCount() == other.prevStageOutputs.getVarCount();
@@ -44,6 +45,7 @@ namespace dxvk {
     hash.add(uint32_t(fsFlatShading));
     hash.add(uint32_t(sampleLocations));
     hash.add(uint32_t(semanticIo));
+    hash.add(uint32_t(fsStripSampleRateShading));
 
     for (uint32_t i = 0; i < prevStageOutputs.getVarCount(); i++)
       hash.add(prevStageOutputs.getVar(i).hash());
@@ -76,7 +78,30 @@ namespace dxvk {
   }
 
 
-  
+  void DxvkShader::stripSampleRateShading(SpirvCodeBuffer& code) {
+    // Collect offsets of OpCapability SampleRateShading and every
+    // OpDecorate %x Sample. We erase them in reverse order so earlier
+    // offsets stay valid through the mutation.
+    std::vector<std::pair<size_t, size_t>> removals;
+
+    for (auto ins : code) {
+      if (ins.opCode() == spv::OpCapability
+       && ins.arg(1) == spv::CapabilitySampleRateShading) {
+        removals.emplace_back(ins.offset(), ins.length());
+      } else if (ins.opCode() == spv::OpDecorate
+              && ins.arg(2) == spv::DecorationSample) {
+        removals.emplace_back(ins.offset(), ins.length());
+      }
+    }
+
+    for (auto it = removals.rbegin(); it != removals.rend(); ++it) {
+      code.beginInsertion(it->first);
+      code.erase(it->second);
+    }
+
+    code.endInsertion();
+  }
+
 
   DxvkShaderStageInfo::DxvkShaderStageInfo(const DxvkDevice* device, const DxvkPipelineLayout* layout)
   : m_device(device) {

@@ -223,6 +223,14 @@ namespace dxvk {
     bool sampleLocations = false;
     bool semanticIo      = false;
 
+    // Strip OpCapability SampleRateShading + OpDecorate Sample from the FS
+    // SPIR-V before compile. Used by the selective VRS path: per-sample
+    // shading would otherwise force the pipeline's shading rate back to
+    // 1x1 regardless of what we requested via KHR_fragment_shading_rate.
+    // Set in DxvkGraphicsPipelineShaderState::getLinkage() when the shader
+    // declares SampleRateShading and the pipeline opts into VRS coarsening.
+    bool fsStripSampleRateShading = false;
+
     VkPrimitiveTopology inputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
 
     VkShaderStageFlagBits prevStage = VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
@@ -371,6 +379,16 @@ namespace dxvk {
      * \returns Shader dump path, or empty string
      */
     static const std::string& getShaderDumpPath();
+
+    /**
+     * \brief Strips SampleRateShading capability + Sample decorations
+     *
+     * Mutates the given SPIR-V module in place. Idempotent: safe to call
+     * on code that doesn't declare the capability (no-op in that case).
+     * Used by the selective VRS path so the pipeline's coarse shading
+     * rate is not silently downgraded back to 1x1 by per-sample shading.
+     */
+    static void stripSampleRateShading(SpirvCodeBuffer& code);
 
   private:
 

@@ -95,6 +95,11 @@ namespace dxvk {
       // Emit input decorations for flat shading as necessary
       if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsFlatShading)
         emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
+
+      // Strip SampleRateShading + Sample decorations when the pipeline
+      // opts into VRS coarse rate (see DxvkShaderLinkage comment).
+      if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT && linkage->fsStripSampleRateShading)
+        DxvkShader::stripSampleRateShading(spirvCode);
     }
 
     return spirvCode;

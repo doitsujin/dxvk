@@ -27,6 +27,7 @@ namespace dxvk {
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extFragmentShaderInterlock);        \
     HANDLE_EXT(extFullScreenExclusive);            \
+    HANDLE_EXT(khrFragmentShadingRate);            \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
     HANDLE_EXT(extHdrMetadata);                    \
     HANDLE_EXT(extLineRasterization);              \
@@ -78,6 +79,7 @@ namespace dxvk {
     HANDLE_EXT(extDescriptorBuffer);               \
     HANDLE_EXT(extDescriptorHeap);                 \
     HANDLE_EXT(extExtendedDynamicState3);          \
+    HANDLE_EXT(khrFragmentShadingRate);            \
     HANDLE_EXT(extGraphicsPipelineLibrary);        \
     HANDLE_EXT(extLineRasterization);              \
     HANDLE_EXT(extMultiDraw);                      \
@@ -926,6 +928,12 @@ namespace dxvk {
 
       /* Windows-only extension to work around driver-side FSE issues */
       ENABLE_EXT(extFullScreenExclusive, false),
+
+      /* Variable rate shading — used to apply coarse shading rate to
+       * heavy transparent passes (fire/smoke/glow) for big perf wins
+       * with minimal visual impact. Only pipelineFragmentShadingRate
+       * is required; primitive/attachment rates are not used. */
+      ENABLE_EXT_FEATURE(khrFragmentShadingRate, pipelineFragmentShadingRate, false),
 
       /* Graphics pipeline libraries for stutter-free gameplay */
       ENABLE_EXT_FEATURE(extGraphicsPipelineLibrary, graphicsPipelineLibrary, false),
