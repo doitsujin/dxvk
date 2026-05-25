@@ -266,6 +266,23 @@ namespace dxvk {
   }
 
 
+  // Returns the validated effective shading rate for transparent
+  // pipelines, or {1,1} if VRS is off / unsupported / unsupported-by-hw.
+  // The caller still needs to gate on whether the pipeline is actually
+  // additive/multiplicative.
+  static VkExtent2D getEffectiveShadingRate(const DxvkDevice* device) {
+    if (!device->features().khrFragmentShadingRate.pipelineFragmentShadingRate)
+      return { 1u, 1u };
+    VkExtent2D rate = device->config().transparentShadingRate;
+    if (rate.width <= 1u && rate.height <= 1u)
+      return { 1u, 1u };
+    VkExtent2D maxSize = device->properties().khrFragmentShadingRate.maxFragmentSize;
+    if (rate.width > maxSize.width || rate.height > maxSize.height)
+      return { 1u, 1u };
+    return rate;
+  }
+
+
   DxvkGraphicsPipelineFragmentOutputState::DxvkGraphicsPipelineFragmentOutputState() {
 
   }
@@ -382,29 +399,27 @@ namespace dxvk {
         : VK_SAMPLE_COUNT_1_BIT;
     }
 
-    // Per-sample shading is skipped only on the pipelines we coarsen with
-    // VRS (additive/multiplicative). It MUST be off there: with
-    // sampleShadingEnable = TRUE, the driver silently downgrades the
-    // requested shading rate back to 1x1 — VRS would do nothing.
+    // Resolve the effective VRS rate from config + hardware support.
+    // {1,1} means "disabled" (off / unsupported / clamped by hw).
+    VkExtent2D effectiveRate = getEffectiveShadingRate(device);
+    bool vrsActive = (effectiveRate.width > 1u || effectiveRate.height > 1u)
+                  && isAdditivePass;
+
+    // Per-sample shading is skipped only on pipelines we're actively
+    // coarsening (vrsActive). MUST be off there: sampleShadingEnable =
+    // TRUE forces the driver to downgrade the requested rate to 1x1.
     //
     // Standard alpha-blend (text/UI/glass, soft-edge foliage) keeps
-    // per-sample shading on. Disabling it across all blend modes is
-    // tempting (it recovers per-sample cost on alpha-blend when
-    // d3d9.forceSampleRateShading is on) but visibly degrades alpha-blend
-    // edge quality — foliage aliases in particular. The narrower gate
-    // trades that perf win for correct rendering.
-    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading) && !isAdditivePass) {
+    // per-sample shading on — disabling it across all blend modes
+    // visibly aliases foliage edges.
+    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading) && !vrsActive) {
       msInfo.sampleShadingEnable  = VK_TRUE;
       msInfo.minSampleShading     = 1.0f;
     }
 
-    // Pipeline-level fragment shading rate. Only additive/multiplicative
-    // blend modes get a coarse rate — those are the classic "kill-FPS"
-    // transparent layers (fire/glow/smoke). Standard alpha blend used by
-    // text/UI stays at {1,1} so it remains sharp.
-    if (isAdditivePass
-     && device->features().khrFragmentShadingRate.pipelineFragmentShadingRate)
-      shadingRate = { 2u, 2u };
+    // Pipeline-level fragment shading rate (dxvk.transparentShadingRate).
+    if (vrsActive)
+      shadingRate = effectiveRate;
 
     // Alpha to coverage is not supported with sample mask exports.
     cbUseDynamicAlphaToCoverage = !shaders.fs || !shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask);
@@ -878,13 +893,14 @@ namespace dxvk {
 
 
   DxvkGraphicsPipelineShaderState::DxvkGraphicsPipelineShaderState(
+    const DxvkDevice*                     device,
     const DxvkGraphicsPipelineShaders&    shaders,
     const DxvkGraphicsPipelineStateInfo&  state)
-  : vsInfo  (getLinkage(shaders, shaders.vs, state)),
-    tcsInfo (getLinkage(shaders, shaders.tcs, state)),
-    tesInfo (getLinkage(shaders, shaders.tes, state)),
-    gsInfo  (getLinkage(shaders, shaders.gs, state)),
-    fsInfo  (getLinkage(shaders, shaders.fs, state)) {
+  : vsInfo  (getLinkage(device, shaders, shaders.vs, state)),
+    tcsInfo (getLinkage(device, shaders, shaders.tcs, state)),
+    tesInfo (getLinkage(device, shaders, shaders.tes, state)),
+    gsInfo  (getLinkage(device, shaders, shaders.gs, state)),
+    fsInfo  (getLinkage(device, shaders, shaders.fs, state)) {
 
   }
 
@@ -910,6 +926,7 @@ namespace dxvk {
 
 
   DxvkShaderLinkage DxvkGraphicsPipelineShaderState::getLinkage(
+    const DxvkDevice*                     device,
     const DxvkGraphicsPipelineShaders&    shaders,
     const Rc<DxvkShader>&                 shader,
     const DxvkGraphicsPipelineStateInfo&  state) {
@@ -939,7 +956,9 @@ namespace dxvk {
       // the capability (e.g. via d3d9.forceSampleRateShading). Standard
       // alpha-blend used by text/UI/glass is excluded so it keeps
       // per-sample shading and stays sharp.
-      if (shaderMeta.flags.test(DxvkShaderFlag::HasSampleRateShading)) {
+      VkExtent2D vrsRate = getEffectiveShadingRate(device);
+      bool vrsEnabled = vrsRate.width > 1u || vrsRate.height > 1u;
+      if (vrsEnabled && shaderMeta.flags.test(DxvkShaderFlag::HasSampleRateShading)) {
         for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
           if (!state.rt.getColorFormat(i) || !state.omBlend[i].blendEnable())
             continue;
@@ -1294,7 +1313,8 @@ namespace dxvk {
     // pre-rasterization library doesn't see. Force the monolithic compile
     // path whenever an additive/multiplicative draw would opt into VRS
     // so the shading rate can be baked correctly.
-    if (m_device->features().khrFragmentShadingRate.pipelineFragmentShadingRate) {
+    VkExtent2D vrsRate = getEffectiveShadingRate(m_device);
+    if (vrsRate.width > 1u || vrsRate.height > 1u) {
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if (!state.rt.getColorFormat(i) || !state.omBlend[i].blendEnable())
           continue;

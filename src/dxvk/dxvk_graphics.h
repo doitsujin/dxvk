@@ -246,6 +246,7 @@ namespace dxvk {
     DxvkGraphicsPipelineShaderState();
 
     DxvkGraphicsPipelineShaderState(
+      const DxvkDevice*                     device,
       const DxvkGraphicsPipelineShaders&    shaders,
       const DxvkGraphicsPipelineStateInfo&  state);
 
@@ -262,6 +263,7 @@ namespace dxvk {
   private:
 
     DxvkShaderLinkage getLinkage(
+      const DxvkDevice*                     device,
       const DxvkGraphicsPipelineShaders&    shaders,
       const Rc<DxvkShader>&                 shader,
       const DxvkGraphicsPipelineStateInfo&  state);
@@ -438,7 +440,7 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&    state,
             DxvkGraphicsPipelineFlags         flags,
             uint32_t                          specConstantMask)
-    : shState(shaders, state),
+    : shState(device, shaders, state),
       dyState(device, state, flags),
       viState(device, state, shaders),
       prState(device, state, shaders),

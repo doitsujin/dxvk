@@ -2,6 +2,22 @@
 
 namespace dxvk {
 
+  static VkExtent2D parseShadingRate(const std::string& s) {
+    // Accept "WxH" (W, H in {1,2,4}) or "off". Case-insensitive.
+    std::string lower; lower.reserve(s.size());
+    for (char c : s) lower.push_back(c >= 'A' && c <= 'Z' ? char(c + 32) : c);
+
+    if (lower.empty() || lower == "off" || lower == "1x1") return { 1u, 1u };
+    if (lower == "2x1") return { 2u, 1u };
+    if (lower == "1x2") return { 1u, 2u };
+    if (lower == "2x2") return { 2u, 2u };
+    if (lower == "4x2") return { 4u, 2u };
+    if (lower == "2x4") return { 2u, 4u };
+    if (lower == "4x4") return { 4u, 4u };
+    // Unknown — keep default rather than silently going to {1,1}.
+    return { 2u, 2u };
+  }
+
   DxvkOptions::DxvkOptions(const Config& config) {
     enableDebugUtils      = config.getOption<bool>    ("dxvk.enableDebugUtils",       false);
     enableMemoryDefrag    = config.getOption<Tristate>("dxvk.enableMemoryDefrag",     Tristate::Auto);
@@ -27,6 +43,9 @@ namespace dxvk {
 
     auto budget = config.getOption<int32_t>("dxvk.maxMemoryBudget", 0);
     maxMemoryBudget = VkDeviceSize(std::max(budget, 0)) << 20u;
+
+    transparentShadingRate = parseShadingRate(
+      config.getOption<std::string>("dxvk.transparentShadingRate", "2x2"));
   }
 
 }

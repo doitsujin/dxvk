@@ -81,6 +81,16 @@ namespace dxvk {
 
     /// Device name
     std::string deviceFilter;
+
+    /// Fragment shading rate applied to additive/multiplicative blend
+    /// pipelines (fire/glow/smoke/particles). Defaults to {2,2} (4x FS
+    /// reduction). Values: Off / 1x1 (patch disabled), 2x1 / 1x2 (2x
+    /// reduction, less visible pixelation), 2x2 (4x reduction), 4x2 /
+    /// 2x4 / 4x4 (8x-16x reduction, hardware-dependent and visibly
+    /// blocky on small effects). Parsed from "dxvk.transparentShadingRate".
+    /// Validated against device khrFragmentShadingRate.maxFragmentSize;
+    /// invalid or unsupported values fall back to {1,1}.
+    VkExtent2D transparentShadingRate = { 2u, 2u };
   };
 
 }
