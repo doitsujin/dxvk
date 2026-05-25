@@ -292,20 +292,13 @@ namespace dxvk {
 
     feedbackLoop = state.om.feedbackLoop();
 
-    // Two classifications:
-    //   - hasAnyBlend: any color attachment has blend enabled. Gates the
-    //     pipeline-level sampleShadingEnable below. REQUIRED for VRS to
-    //     take effect: per-sample shading would otherwise force the GPU
-    //     back to a 1x1 shading rate even when we set {2,2}. Also recovers
-    //     per-sample cost on alpha-blend (text/UI/glass) when
-    //     d3d9.forceSampleRateShading is on.
-    //   - isAdditivePass: blend is additive (dst=ONE) or multiplicative
-    //     (DST_COLOR+ZERO). Narrower than hasAnyBlend. Drives the VRS 2x2
-    //     coarse rate + SampleRateShading capability strip. Excludes
-    //     standard alpha-blend (SrcAlpha+InvSrcAlpha) used by text/UI so
-    //     those stay at native shading rate and remain sharp.
+    // isAdditivePass: blend is additive (dst=ONE) or multiplicative
+    // (DST_COLOR+ZERO). Drives the VRS 2x2 coarse rate, the
+    // SampleRateShading capability strip, and the sampleShadingEnable
+    // gate. Excludes standard alpha-blend (SrcAlpha+InvSrcAlpha) used by
+    // text/UI/glass and soft-edge foliage — those keep native per-pixel
+    // shading and stay sharp.
     bool isAdditivePass = false;
-    bool hasAnyBlend    = false;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       rtColorFormats[i] = state.rt.getColorFormat(i);
@@ -333,7 +326,6 @@ namespace dxvk {
             cbAttachments[i].colorWriteMask = writeMask;
 
             if (cbAttachments[i].blendEnable) {
-              hasAnyBlend = true;
               VkBlendFactor src = cbAttachments[i].srcColorBlendFactor;
               VkBlendFactor dst = cbAttachments[i].dstColorBlendFactor;
               // Additive: src=(ONE|SRC_ALPHA), dst=ONE
@@ -390,13 +382,18 @@ namespace dxvk {
         : VK_SAMPLE_COUNT_1_BIT;
     }
 
-    // Per-sample shading is only enabled for opaque pipelines. Any blend
-    // draw (additive fire/glow, standard alpha-blend text/UI) skips it.
-    // Required so the VRS 2x2 rate set below for additive draws actually
-    // applies — sampleShadingEnable = TRUE silently downgrades the rate
-    // back to 1x1 regardless of what we requested. Also recovers per-sample
-    // cost on alpha-blend pipelines when d3d9.forceSampleRateShading is on.
-    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading) && !hasAnyBlend) {
+    // Per-sample shading is skipped only on the pipelines we coarsen with
+    // VRS (additive/multiplicative). It MUST be off there: with
+    // sampleShadingEnable = TRUE, the driver silently downgrades the
+    // requested shading rate back to 1x1 — VRS would do nothing.
+    //
+    // Standard alpha-blend (text/UI/glass, soft-edge foliage) keeps
+    // per-sample shading on. Disabling it across all blend modes is
+    // tempting (it recovers per-sample cost on alpha-blend when
+    // d3d9.forceSampleRateShading is on) but visibly degrades alpha-blend
+    // edge quality — foliage aliases in particular. The narrower gate
+    // trades that perf win for correct rendering.
+    if (shaders.fs && shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading) && !isAdditivePass) {
       msInfo.sampleShadingEnable  = VK_TRUE;
       msInfo.minSampleShading     = 1.0f;
     }
