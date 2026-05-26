@@ -4256,7 +4256,7 @@ namespace dxvk {
       auto& dstAccess = accessBatch.emplace_back(*dstImage, dstSubresourceRange, dstImageLayout,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
         dstImage->isFullSubresource(dstSubresource, extent));
-      dstAccess.imageOffset = srcOffset;
+      dstAccess.imageOffset = dstOffset;
       dstAccess.imageExtent = extent;
 
       auto& srcAccess = accessBatch.emplace_back(*srcImage, srcSubresourceRange, srcImageLayout,
