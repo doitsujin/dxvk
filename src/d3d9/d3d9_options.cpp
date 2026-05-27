@@ -76,7 +76,7 @@ namespace dxvk {
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
     this->ffUbershaderVS                = config.getOption<bool>        ("d3d9.ffUbershaderVS",                true);
     this->ffUbershaderFS                = config.getOption<bool>        ("d3d9.ffUbershaderFS",                true);
-    this->useDxbcSpirv                  = config.getOption<bool>        ("d3d9.useDxbcSpirv",                  false);
+    this->useDxbcSpirv                  = config.getOption<bool>        ("d3d9.useDxbcSpirv",                  true);
 
     // D3D8 options
     this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);
