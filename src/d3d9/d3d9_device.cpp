@@ -3346,20 +3346,20 @@ namespace dxvk {
         decl = iter->second.ptr();
     }
 
-    uint32_t offset = DestIndex * decl->GetSize(0);
-
     D3D9CompactVertexElements elements;
     for (const D3DVERTEXELEMENT9& element : decl->GetElements()) {
       elements.emplace_back(element);
     }
+
+    uint32_t dstSliceOffset = DestIndex * decl->GetSize(0);
+    uint32_t dstSliceLength = VertexCount * decl->GetSize(0);
 
     EmitCs([this,
       cVertexElements = std::move(elements),
       cVertexCount    = VertexCount,
       cStartIndex     = SrcStartIndex,
       cInstanceCount  = GetInstanceCount(),
-      cBufferSlice    = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(),
-      cBufferOffset   = offset
+      cBufferSlice    = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(dstSliceOffset, dstSliceLength)
     ](DxvkContext* ctx) mutable {
       // Create a pass-through geometry shader for vertex shader stream output
       Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, std::move(cVertexElements));
@@ -3393,11 +3393,15 @@ namespace dxvk {
       draw.instanceCount = drawInfo.instanceCount;
       draw.firstVertex   = cStartIndex;
 
-      uint32_t byteOffset = cBufferOffset;
+      D3D9SwvpShaderArgs args = { };
+      args.viewportX = float(m_state.viewport.X);
+      args.viewportY = float(m_state.viewport.Y + m_state.viewport.Height);
+      args.viewportW = float(m_state.viewport.Width);
+      args.viewportH = -float(m_state.viewport.Height);
 
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(std::move(shader));
       ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), std::move(bufferView));
-      ctx->pushData(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, sizeof(byteOffset), &byteOffset);
+      ctx->pushData(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, sizeof(args), &args);
       ctx->draw(1u, &draw);
       ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), nullptr);
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
@@ -3414,13 +3418,11 @@ namespace dxvk {
     }
 
     if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
-      uint32_t copySize = VertexCount * decl->GetSize(0);
-
       EmitCs([
         cSrcBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(),
         cDstBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
-        cOffset    = offset,
-        cCopySize  = copySize
+        cOffset    = dstSliceOffset,
+        cCopySize  = dstSliceLength
       ](DxvkContext* ctx) {
         ctx->copyBuffer(cDstBuffer, cOffset, cSrcBuffer, cOffset, cCopySize);
       });
