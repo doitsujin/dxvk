@@ -53,11 +53,7 @@ namespace dxvk::hud {
 
 
   void HudFixedFunctionShaders::update(dxvk::high_resolution_clock::time_point time) {
-    m_ffShaderCount = str::format(
-      "VS: ", m_device->GetOptions()->ffUbershaderVS ? "1*" : str::format(m_device->GetFixedFunctionVSCount()),
-      ", FS: ", m_device->GetOptions()->ffUbershaderFS ? "1*" : str::format(m_device->GetFixedFunctionFSCount()),
-      ", SWVP: ", m_device->GetSWVPShaderCount()
-    );
+    m_ffShaderCount = str::format("SWVP: ", m_device->GetSWVPShaderCount());
   }
 
 
