@@ -74,8 +74,6 @@ namespace dxvk {
     this->countLosableResources         = config.getOption<bool>        ("d3d9.countLosableResources",         true);
     this->reproducibleCommandStream     = config.getOption<bool>        ("d3d9.reproducibleCommandStream",     false);
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
-    this->ffUbershaderVS                = config.getOption<bool>        ("d3d9.ffUbershaderVS",                true);
-    this->ffUbershaderFS                = config.getOption<bool>        ("d3d9.ffUbershaderFS",                true);
     this->useDxbcSpirv                  = config.getOption<bool>        ("d3d9.useDxbcSpirv",                  true);
 
     // D3D8 options
