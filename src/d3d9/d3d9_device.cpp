@@ -7901,21 +7901,15 @@ namespace dxvk {
 
   template <D3D9ShaderType ShaderStage>
   void D3D9DeviceEx::BindFFUbershader() {
-    if (ShaderStage == D3D9ShaderType::VertexShader) {
-      EmitCs([
-       &cShaders = m_ffModules
-      ](DxvkContext* ctx) {
-        auto shader = cShaders.GetVSUbershaderModule();
-        ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(shader.GetShader());
-      });
-    } else {
-      EmitCs([
-       &cShaders = m_ffModules
-      ](DxvkContext* ctx) {
-        auto shader = cShaders.GetFSUbershaderModule();
-        ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(shader.GetShader());
-      });
-    }
+    constexpr VkShaderStageFlagBits Stage = ShaderStage == D3D9ShaderType::VertexShader
+      ? VK_SHADER_STAGE_VERTEX_BIT
+      : VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    EmitCs([
+      cShader = m_ffModules.GetShader<ShaderStage>()
+    ](DxvkContext* ctx) mutable {
+      ctx->bindShader<Stage>(std::move(cShader));
+    });
   }
 
 
