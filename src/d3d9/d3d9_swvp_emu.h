@@ -15,6 +15,13 @@ namespace dxvk {
     uint32_t exportOffset;
   };
 
+  struct D3D9SwvpShaderArgs {
+    float viewportX;
+    float viewportY;
+    float viewportW;
+    float viewportH;
+  };
+
   struct D3D9CompactVertexElement {
       uint16_t Stream : 4;
       uint16_t Type : 5;
