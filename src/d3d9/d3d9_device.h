@@ -1227,20 +1227,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Returns the number of vertex shader modules generated for fixed function state.
-     */
-    UINT GetFixedFunctionVSCount() const {
-      return m_ffModules.GetVSCount();
-    }
-
-    /**
-     * \brief Returns the number of fragment shader modules generated for fixed function state.
-     */
-    UINT GetFixedFunctionFSCount() const {
-      return m_ffModules.GetFSCount();
-    }
-
-    /**
      * \brief Returns the number of shader modules generated for ProcessVertices.
      */
     UINT GetSWVPShaderCount() const {

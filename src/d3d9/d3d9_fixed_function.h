@@ -49,12 +49,6 @@ namespace dxvk {
     uint32_t alphaRefId;
   };
 
-  struct D3D9FixedFunctionOptions {
-    D3D9FixedFunctionOptions(const D3D9Options* options);
-
-    bool    forceSampleRateShading;
-  };
-
   constexpr uint32_t GetGlobalSamplerSetIndex() {
     // arbitrary, but must not conflict with bindings
     return 15u;
@@ -114,51 +108,6 @@ namespace dxvk {
 
   constexpr uint32_t TextureArgCount = 3;
 
-  struct D3D9FFShaderKeyHash {
-    size_t operator () (const D3D9FFShaderKeyVS& key) const;
-    size_t operator () (const D3D9FFShaderKeyFS& key) const;
-  };
-
-  bool operator == (const D3D9FFShaderKeyVS& a, const D3D9FFShaderKeyVS& b);
-  bool operator != (const D3D9FFShaderKeyVS& a, const D3D9FFShaderKeyVS& b);
-  bool operator == (const D3D9FFShaderKeyFS& a, const D3D9FFShaderKeyFS& b);
-  bool operator != (const D3D9FFShaderKeyFS& a, const D3D9FFShaderKeyFS& b);
-
-  struct D3D9FFShaderKeyEq {
-    bool operator () (const D3D9FFShaderKeyVS& a, const D3D9FFShaderKeyVS& b) const;
-    bool operator () (const D3D9FFShaderKeyFS& a, const D3D9FFShaderKeyFS& b) const;
-  };
-
-  class D3D9FFShader {
-
-  public:
-
-    D3D9FFShader(
-            D3D9DeviceEx*         pDevice,
-      const D3D9FFShaderKeyVS&    Key);
-
-    D3D9FFShader(
-            D3D9DeviceEx*         pDevice,
-      const D3D9FFShaderKeyFS&    Key);
-
-    D3D9FFShader(
-            D3D9DeviceEx*         pDevice,
-            D3D9ShaderType        ShaderType);
-
-    template <typename T>
-    void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
-
-    Rc<DxvkShader> GetShader() const {
-      return m_shader;
-    }
-
-  private:
-
-    Rc<DxvkShader> m_shader;
-
-  };
-
-
   class D3D9FFShaderModuleSet : public RcObject {
 
   public:
@@ -167,44 +116,18 @@ namespace dxvk {
 
     explicit D3D9FFShaderModuleSet(D3D9DeviceEx* pDevice);
 
-    D3D9FFShader GetShaderModule(
-            D3D9DeviceEx*         pDevice,
-      const D3D9FFShaderKeyVS&    ShaderKey);
-
-    D3D9FFShader GetShaderModule(
-            D3D9DeviceEx*         pDevice,
-      const D3D9FFShaderKeyFS&    ShaderKey);
-
-    const D3D9FFShader& GetVSUbershaderModule() const {
-      return m_vsUbershader;
-    }
-
-    const D3D9FFShader& GetFSUbershaderModule() const {
-      return m_fsUbershader;
-    }
-
-    UINT GetVSCount() const {
-      return m_vsModules.size();
-    }
-
-    UINT GetFSCount() const {
-      return m_fsModules.size();
+    template<D3D9ShaderType Stage>
+    Rc<DxvkShader> GetShader() {
+      return Stage == D3D9ShaderType::VertexShader ? m_vs : m_fs;
     }
 
   private:
 
-    std::unordered_map<
-      D3D9FFShaderKeyVS,
-      D3D9FFShader,
-      D3D9FFShaderKeyHash, D3D9FFShaderKeyEq> m_vsModules;
+    Rc<DxvkShader> m_vs;
+    Rc<DxvkShader> m_fs;
 
-    std::unordered_map<
-      D3D9FFShaderKeyFS,
-      D3D9FFShader,
-      D3D9FFShaderKeyHash, D3D9FFShaderKeyEq> m_fsModules;
-
-    D3D9FFShader m_vsUbershader;
-    D3D9FFShader m_fsUbershader;
+    static Rc<DxvkShader> buildVs();
+    static Rc<DxvkShader> buildFs(D3D9DeviceEx* pDevice);
 
   };
 
