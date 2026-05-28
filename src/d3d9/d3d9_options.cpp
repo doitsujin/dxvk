@@ -100,7 +100,7 @@ namespace dxvk {
       this->d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
 
-    Tristate useFP16 = config.getOption<Tristate>("d3d9.useFP16", Tristate::Auto);
+    Tristate useFP16 = config.getOption<Tristate>("d3d9.useFP16", Tristate::False);
     if (useFP16 == Tristate::Auto) {
       this->useFP16 = !hasMulz;
     } else {
