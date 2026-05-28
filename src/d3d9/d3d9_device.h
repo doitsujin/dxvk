@@ -1259,6 +1259,10 @@ namespace dxvk {
       return m_adapter;
     }
 
+    DxvkShaderOptions GetShaderOptions() const {
+      return m_dxvkShaderOptions;
+    }
+
   private:
 
     template<bool AllowFlush = true, typename Cmd>

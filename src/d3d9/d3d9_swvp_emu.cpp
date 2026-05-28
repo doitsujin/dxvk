@@ -727,29 +727,22 @@ namespace dxvk {
         return entry->second;
     }
 
-    Sha1Hash hash = Sha1Hash::compute(
-      elements.data(), elements.size() * sizeof(elements[0]));
-
+    Sha1Hash hash = Sha1Hash::compute(elements.data(), elements.size() * sizeof(elements[0]));
     DxvkShaderHash key(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, hash.digest(), hash.digestLength());
-    std::string name = str::format("SWVP_", key.toString());
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D9SWVPEmulatorGenerator generator(name);
-    generator.compile(elements);
-    Rc<DxvkShader> shader = generator.finalize();
+    DxvkIrShaderCreateInfo createInfo = { };
+    createInfo.options = pDevice->GetShaderOptions();
+
+    Rc<DxvkShader> shader = pDevice->GetDXVKDevice()->createCachedShader(key.toString(), createInfo, nullptr);
+
+    if (!shader) {
+      shader = pDevice->GetDXVKDevice()->createCachedShader(key.toString(), createInfo,
+        new D3D9SWVPShaderGenerator(key, elements));
+    }
 
     pDevice->GetDXVKDevice()->registerShader(shader);
-
-    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
-
-    if (dumpPath.size() != 0) {
-      std::ofstream dumpStream(
-        str::format(dumpPath, "/", name, ".spv"),
-        std::ios_base::binary | std::ios_base::trunc);
-
-      shader->dump(dumpStream);
-    }
     
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return
