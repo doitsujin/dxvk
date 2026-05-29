@@ -1,3 +1,5 @@
+#include <sm3/sm3_io_map.h>
+
 #include "d3d9_fixed_function.h"
 
 #include "d3d9_device.h"
@@ -776,8 +778,9 @@ namespace dxvk {
       bindings.push_back(samplerBinding);
     }
 
-    uint32_t flatShadingMask = (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 0 }))
-      | (1u << RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 1 }));
+    uint32_t flatShadingMask =
+      (1u << dxbc_spv::sm3::IoMap::findFixedFunctionLocation(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 0u }).value()) |
+      (1u << dxbc_spv::sm3::IoMap::findFixedFunctionLocation(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 1u }).value());
 
     uint32_t samplerCount = caps::TextureStageCount;
     uint32_t samplerDwordCount = (samplerCount + 1u) / 2u;
