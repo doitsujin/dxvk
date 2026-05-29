@@ -54,52 +54,41 @@ namespace dxvk {
     if (m_state == D3D9ShaderValidatorState::ValidatingHeader)
       return ValidateHeader(pFile, Line, pdwInst, cdw);
 
-    DxsoCodeIter pdwInstIter{ reinterpret_cast<const uint32_t*>(pdwInst) };
-    bool isEndToken = !m_ctx->decodeInstruction(pdwInstIter);
-    const DxsoInstructionContext instContext = m_ctx->getInstructionContext();
+    dxbc_spv::util::ByteReader reader(pdwInst, sizeof(*pdwInst) * cdw);
+    dxbc_spv::sm3::Instruction op(reader, m_header);
 
-    if (isEndToken)
+    if (!op) {
+      return ErrorCallback(pFile, Line, 0x2, pdwInst, cdw,
+        D3D9ShaderValidatorMessage::MissingEndToken,
+        str::format("IDirect3DShaderValidator9::Instruction: Failed to parse instruction."));
+    }
+
+    if (op.getOpCode() == dxbc_spv::sm3::OpCode::eEnd)
       return ValidateEndToken(pFile, Line, pdwInst, cdw);
 
-    // TODO: DxsoDecodeContext::decodeInstructionLength() does not currently appear
-    // to return the correct token length in many cases, and as such dwordLength
-    // will not be equal to cdw in many situations that are expected to pass validation
-    //
-    /*Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: opcode ", instContext.instruction.opcode));
-    // + 1 to account for the opcode...
-    uint32_t dwordLength = instContext.instruction.tokenLength + 1;
-    Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: cdw ", cdw));
-    Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: dwordLength ", dwordLength));
-    if (unlikely(cdw != dwordLength)) {
-      return ErrorCallback(pFile, Line, 0x2,
-        D3D9ShaderValidatorMessage::BadInstructionLength,
-        str::format("Instruction length specified for instruction (", cdw, ") does not match the token count encountered (", dwordLength, "). Aborting validation."));
-    }*/
-
-    // a maximum of 10 inputs are supported with PS 3.0 (validation required by The Void)
-    if (m_isPixelShader && m_majorVersion == 3) {
-      switch (instContext.instruction.opcode) {
-        case DxsoOpcode::Comment:
-        case DxsoOpcode::Def:
-        case DxsoOpcode::DefB:
-        case DxsoOpcode::DefI:
+    // The Void relies on validating that there are at most 10 PS inputs
+    if (m_header.getType() == dxbc_spv::sm3::ShaderType::ePixel
+     && m_header.getVersion().first == 3u) {
+      switch (op.getOpCode()) {
+        case dxbc_spv::sm3::OpCode::eComment:
+        case dxbc_spv::sm3::OpCode::eDef:
+        case dxbc_spv::sm3::OpCode::eDefB:
+        case dxbc_spv::sm3::OpCode::eDefI:
           break;
 
-        default:
-          // Iterate over register tokens. Bit 31 of register tokens is always 1.
-          for (uint32_t instNum = 1; instNum < cdw && (pdwInst[instNum] >> 31); instNum++) {
-            DWORD regType  = ((pdwInst[instNum] & D3DSP_REGTYPE_MASK)  >> D3DSP_REGTYPE_SHIFT)
-                            | ((pdwInst[instNum] & D3DSP_REGTYPE_MASK2) >> D3DSP_REGTYPE_SHIFT2);
-            DWORD regIndex = pdwInst[instNum] & D3DSP_REGNUM_MASK;
+        default: {
+          for (uint32_t i = 0u; i < op.getSrcCount(); i++) {
+            const auto& operand = op.getSrc(i);
 
-            if (unlikely(regType == static_cast<DWORD>(DxsoRegisterType::Input) && regIndex >= 10)) {
+            if (operand.getRegisterType() == dxbc_spv::sm3::RegisterType::eInput && operand.getIndex() >= 10u) {
               return ErrorCallback(pFile, Line, 0x2, pdwInst, cdw,
-                instContext.instruction.opcode == DxsoOpcode::Dcl ?
+                op.getOpCode() == dxbc_spv::sm3::OpCode::eDcl ?
                   D3D9ShaderValidatorMessage::BadInputRegisterDeclaration :
                   D3D9ShaderValidatorMessage::BadInputRegister,
-                str::format("IDirect3DShaderValidator9::Instruction: PS input registers index #", regIndex, " not valid for operand ", instNum, "."));
+                str::format("IDirect3DShaderValidator9::Instruction: PS input registers index #", operand.getIndex(), " not valid for source operand #", i, "."));
             }
           }
+        }
       }
     }
 
@@ -121,13 +110,9 @@ namespace dxvk {
     }
 
     m_state    = D3D9ShaderValidatorState::Begin;
-    m_isPixelShader = false;
-    m_majorVersion  = 0;
-    m_minorVersion  = 0;
+    m_header   = dxbc_spv::sm3::ShaderInfo();
     m_callback = nullptr;
     m_userData = nullptr;
-    m_ctx      = nullptr;
-
     return D3D_OK;
   }
 
@@ -139,31 +124,18 @@ namespace dxvk {
         "IDirect3DShaderValidator9::Instruction: Bad version token. DWORD count > 1 given. Expected DWORD count to be 1 for version token.");
     }
 
-    DxsoReader reader = { reinterpret_cast<const char*>(pdwInst) };
-    uint32_t headerToken = reader.readu32();
-    uint32_t shaderTypeDword  = headerToken & 0xffff0000;
-    D3D9ShaderType shaderType;
+    dxbc_spv::util::ByteReader reader(pdwInst, sizeof(*pdwInst) * cdw);
 
-    if (shaderTypeDword == 0xffff0000) { // Pixel Shader
-      shaderType = D3D9ShaderType::PixelShader;
-      m_isPixelShader = true;
-    } else if (shaderTypeDword == 0xfffe0000) { // Vertex Shader
-      shaderType = D3D9ShaderType::VertexShader;
-      m_isPixelShader = false;
-    } else {
+    if (!(m_header = dxbc_spv::sm3::ShaderInfo(reader))) {
       return ErrorCallback(pFile, Line, 0x6, pdwInst, cdw,
         D3D9ShaderValidatorMessage::BadVersionTokenType,
         "IDirect3DShaderValidator9::Instruction: Bad version token. It indicates neither a pixel shader nor a vertex shader.");
     }
 
-    m_majorVersion = D3DSHADER_VERSION_MAJOR(headerToken);
-    m_minorVersion = D3DSHADER_VERSION_MINOR(headerToken);
-    m_ctx   = std::make_unique<DxsoDecodeContext>(DxsoProgramInfo{ shaderType, m_minorVersion, m_majorVersion });
     m_state = D3D9ShaderValidatorState::ValidatingInstructions;
 
-    const char* shaderTypeOutput = m_isPixelShader ? "PS" : "VS";
     Logger::debug(str::format("IDirect3DShaderValidator9::Instruction: Validating ",
-                              shaderTypeOutput, " version ", m_majorVersion, ".", m_minorVersion));
+      m_header.getType(), " version ", m_header.getVersion().first, ".", m_header.getVersion().second));
 
     return D3D_OK;
   }
@@ -178,7 +150,6 @@ namespace dxvk {
     }
 
     m_state = D3D9ShaderValidatorState::EndOfShader;
-
     return D3D_OK;
   }
 

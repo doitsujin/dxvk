@@ -1,9 +1,8 @@
 #pragma once
 
-#include "d3d9_include.h"
+#include <sm3/sm3_parser.h>
 
-#include "../dxso/dxso_header.h"
-#include "../dxso/dxso_decoder.h"
+#include "d3d9_include.h"
 
 namespace dxvk {
 
@@ -91,15 +90,11 @@ namespace dxvk {
               D3D9ShaderValidatorMessage MessageID,
         const std::string&               Message);
 
-    bool                        m_isPixelShader = false;
-    uint32_t                    m_majorVersion  = 0;
-    uint32_t                    m_minorVersion  = 0;
+    dxbc_spv::sm3::ShaderInfo   m_header        = { };
 
     D3D9ShaderValidatorState    m_state         = D3D9ShaderValidatorState::Begin;
     D3D9ShaderValidatorCallback m_callback      = nullptr;
     void*                       m_userData      = nullptr;
-
-    std::unique_ptr<DxsoDecodeContext> m_ctx;
   };
 
 }
