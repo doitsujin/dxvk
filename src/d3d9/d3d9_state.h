@@ -2,13 +2,12 @@
 
 #include "d3d9_caps.h"
 #include "d3d9_constant_set.h"
-#include "../dxso/dxso_common.h"
-#include "../util/util_matrix.h"
-
 #include "d3d9_surface.h"
 #include "d3d9_shader.h"
 #include "d3d9_vertex_declaration.h"
 #include "d3d9_buffer.h"
+
+#include "../util/util_matrix.h"
 
 #include <array>
 #include <bitset>

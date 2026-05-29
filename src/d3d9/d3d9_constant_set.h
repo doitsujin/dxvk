@@ -4,9 +4,6 @@
 #include "d3d9_constant_buffer.h"
 #include "d3d9_constant_layout.h"
 
-
-#include "../dxso/dxso_isgn.h"
-
 #include "../util/util_vector.h"
 
 #include <cstdint>
