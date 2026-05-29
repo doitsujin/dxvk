@@ -10,10 +10,9 @@ namespace dxvk {
   DxvkSpirvShader::DxvkSpirvShader(
     const DxvkSpirvShaderCreateInfo&  info,
           SpirvCodeBuffer&&           spirv)
-  : m_info(info), m_layout(getShaderStage(spirv)) {
+  : m_info(info), m_code(std::move(spirv)), m_layout(getShaderStage(m_code)) {
     m_info.bindings = nullptr;
 
-    SpirvCodeBuffer code = std::move(spirv);
     m_metadata.stage = VkShaderStageFlagBits(m_layout.getStageMask());
     m_metadata.flatShadingInputs = info.flatShadingInputs;
     m_metadata.rasterizedStream = info.xfbRasterizedStream;
@@ -27,8 +26,8 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
-    gatherIdOffsets(code);
-    gatherMetadata(code);
+    gatherIdOffsets(m_code);
+    gatherMetadata(m_code);
 
     if (m_info.samplerHeap.getStageMask() & m_metadata.stage) {
       m_layout.addSamplerHeap(DxvkShaderBinding(m_metadata.stage,
@@ -40,8 +39,6 @@ namespace dxvk {
       m_debugName = info.debugName;
     else if (m_debugName.empty())
       m_debugName = std::to_string(getCookie());
-
-    m_code = SpirvCompressedBuffer(code);
   }
 
 
@@ -63,7 +60,7 @@ namespace dxvk {
   SpirvCodeBuffer DxvkSpirvShader::getCode(
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {
-    SpirvCodeBuffer spirvCode = m_code.decompress();
+    SpirvCodeBuffer spirvCode = m_code;
     patchResourceBindingsAndIoLocations(spirvCode, bindings, linkage);
 
     // Undefined I/O handling is coarse, and not supported for tessellation shaders.
@@ -107,7 +104,7 @@ namespace dxvk {
 
 
   void DxvkSpirvShader::dump(std::ostream& outputStream) {
-    m_code.decompress().store(outputStream);
+    m_code.store(outputStream);
   }
 
 

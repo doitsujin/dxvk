@@ -9,7 +9,6 @@
 #include "dxvk_shader_io.h"
 
 #include "../spirv/spirv_code_buffer.h"
-#include "../spirv/spirv_compression.h"
 
 namespace dxvk {
   
