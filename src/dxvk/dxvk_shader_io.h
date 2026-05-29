@@ -3,7 +3,7 @@
 #include "dxvk_include.h"
 #include "dxvk_hash.h"
 
-#include "../spirv/spirv_module.h"
+#include "../spirv/spirv_include.h"
 
 namespace dxvk {
 

@@ -8,6 +8,11 @@
 
 namespace dxvk {
   
+  /** SPIR-V version token builder */
+  constexpr uint32_t spvVersion(uint32_t major, uint32_t minor) {
+    return (major << 16) | (minor << 8);
+  }
+
   /**
    * \brief SPIR-V code buffer
    * 

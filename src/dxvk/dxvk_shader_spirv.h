@@ -4,6 +4,8 @@
 
 #include "dxvk_shader.h"
 
+#include "../spirv/spirv_code_buffer.h"
+
 namespace dxvk {
 
   /**
