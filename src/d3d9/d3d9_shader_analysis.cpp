@@ -1,3 +1,5 @@
+#include <sm3/sm3_io_map.h>
+
 #include "../dxvk/dxvk_include.h"
 
 #include "d3d9_shader_analysis.h"
@@ -11,23 +13,6 @@
 using namespace dxbc_spv::sm3;
 
 namespace dxvk {
-
-  static std::array<Semantic, 12u> s_ffLocations = {{
-    {SemanticUsage::eNormal,   0u},
-    {SemanticUsage::eTexCoord, 0u},
-    {SemanticUsage::eTexCoord, 1u},
-    {SemanticUsage::eTexCoord, 2u},
-    {SemanticUsage::eTexCoord, 3u},
-    {SemanticUsage::eTexCoord, 4u},
-    {SemanticUsage::eTexCoord, 5u},
-    {SemanticUsage::eTexCoord, 6u},
-    {SemanticUsage::eTexCoord, 7u},
-
-    {SemanticUsage::eColor,    0u},
-    {SemanticUsage::eColor,    1u},
-
-    {SemanticUsage::eFog,      0u},
-  }};
 
   D3D9ShaderAnalysis::D3D9ShaderAnalysis(dxbc_spv::util::ByteReader code, bool isSWVP)
     : m_isSWVP(isSWVP) {
@@ -303,13 +288,7 @@ namespace dxvk {
     // Outputs by the FF vertex shader and inputs by the FF pixel shader.
     // The locations of those semantics are reserved to make sure programmable shaders and FF are compatible.
     // The compiler does the same thing when determining IO locations.
-    for (uint32_t i = 0u; i < s_ffLocations.size(); i++) {
-      const auto& ffInputSemantic = s_ffLocations[i];
-      if (ffInputSemantic == semantic) {
-        return i;
-      }
-    }
-    return std::nullopt;
+    return IoMap::findFixedFunctionLocation(semantic);
   }
 
 
