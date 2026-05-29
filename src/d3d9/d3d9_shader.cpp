@@ -1135,39 +1135,6 @@ namespace dxvk {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
-    // If requested by the user, dump both the raw DXBC
-    // shader and the compiled SPIR-V module to a file.
-    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
-    
-    if (dumpPath.size() != 0) {
-      const uint32_t bytecodeLength = m_analysis.GetLength();
-
-      std::ofstream file(str::topath(str::format(dumpPath, "/", name, ".sm3_dxbc").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
-      file.write(reinterpret_cast<const char*>(pShaderBytecode), bytecodeLength);
-    }
-
-    if (pDevice->GetOptions()->useDxbcSpirv)
-      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, m_analysis);
-    else
-      CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode);
-
-    if (!dumpPath.empty()) {
-      std::ofstream dumpStream(
-        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
-        std::ios_base::binary | std::ios_base::trunc);
-      m_shader->dump(dumpStream);
-    }
-
-    pDevice->GetDXVKDevice()->registerShader(m_shader);
-  }
-
-
-  void D3D9CommonShader::CreateIrShader(
-          D3D9DeviceEx*           pDevice,
-    const DxvkShaderHash&         ShaderKey,
-    const D3D9ShaderCreateInfo&   ModuleInfo,
-    const void*                   pShaderBytecode,
-    const D3D9ShaderAnalysis&     ShaderAnalysis) {
     m_shader = pDevice->GetDXVKDevice()->createCachedShader(
       ShaderKey.toString(), ModuleInfo.irCreateInfo, nullptr);
 
@@ -1178,31 +1145,8 @@ namespace dxvk {
       m_shader = pDevice->GetDXVKDevice()->createCachedShader(
         ShaderKey.toString(), ModuleInfo.irCreateInfo, std::move(converter));
     }
-  }
 
-
-  void D3D9CommonShader::CreateLegacyShader(
-            D3D9DeviceEx*         pDevice,
-      const DxvkShaderHash&       ShaderKey,
-      const D3D9ShaderCreateInfo& ModuleInfo,
-      const void*                 pShaderBytecode) {
-
-    DxsoReader reader(
-      reinterpret_cast<const char*>(pShaderBytecode));
-    DxsoModule module(reader);
-
-    const D3D9ConstantLayout& constantLayout = module.info().shaderStage() == VK_SHADER_STAGE_VERTEX_BIT
-      ? pDevice->GetVertexConstantLayout()
-      : pDevice->GetPixelConstantLayout();
-
-    DxsoModuleInfo moduleInfo;
-    moduleInfo.options.d3d9FloatEmulation = ModuleInfo.shaderOptions.d3d9FloatEmulation;
-    moduleInfo.options.forceSamplerTypeSpecConstants = ModuleInfo.shaderOptions.forceSamplerTypeSpecConstants;
-    moduleInfo.options.sincosEmulation = ModuleInfo.irCreateInfo.options.flags.test(DxvkShaderCompileFlag::LowerSinCos);
-    moduleInfo.options.forceSampleRateShading = ModuleInfo.irCreateInfo.options.flags.test(DxvkShaderCompileFlag::EnableSampleRateShading);
-    moduleInfo.options.vertexFloatConstantBufferAsSSBO = ModuleInfo.irCreateInfo.options.maxUniformBufferSize < constantLayout.totalSize();
-
-    m_shader       = module.compile(moduleInfo, ShaderKey.toString(), module.analyze(), constantLayout);
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
 

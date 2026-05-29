@@ -151,21 +151,7 @@ namespace dxvk {
 
   private:
 
-    void CreateIrShader(
-            D3D9DeviceEx*           pDevice,
-      const DxvkShaderHash&         ShaderKey,
-      const D3D9ShaderCreateInfo&   ModuleInfo,
-      const void*                   pShaderBytecode,
-      const D3D9ShaderAnalysis&     ShaderAnalysis);
-
-    void CreateLegacyShader(
-            D3D9DeviceEx*         pDevice,
-      const DxvkShaderHash&       ShaderKey,
-      const D3D9ShaderCreateInfo& ModuleInfo,
-      const void*                 pShaderBytecode);
-
     D3D9ShaderAnalysis    m_analysis;
-
     Rc<DxvkShader>        m_shader;
 
   };
