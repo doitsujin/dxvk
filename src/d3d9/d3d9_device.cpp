@@ -8115,9 +8115,6 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::InitShaderOptions() {
-    if (m_d3d9Options.useDxbcSpirv)
-      Logger::info("Using DXBC-SPIRV!");
-
     m_dxvkShaderOptions = m_dxvkDevice->getShaderCompileOptions();
     m_dxvkShaderOptions.flags.set(DxvkShaderCompileFlag::SemanticIo);
 
@@ -8126,8 +8123,9 @@ namespace dxvk {
 
     if (!m_d3d9Options.useFP16)
       m_dxvkShaderOptions.flags.clr(DxvkShaderCompileFlag::Supports16BitArithmetic);
-    else
-      Logger::info("Using FP16.");
+
+    if (m_dxvkShaderOptions.flags.test(DxvkShaderCompileFlag::Supports16BitArithmetic))
+      Logger::info("D3D9: Using FP16 for partial precision shader instructions.");
 
     m_shaderOptions.d3d9FloatEmulation = m_d3d9Options.d3d9FloatEmulation;
     m_shaderOptions.isSWVP = CanSWVP();
