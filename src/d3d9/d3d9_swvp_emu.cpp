@@ -8,8 +8,6 @@
 
 #include "../dxvk/dxvk_shader_spirv.h"
 
-#include "../spirv/spirv_module.h"
-
 namespace dxvk {
 
   // Doesn't compare everything, only what we use in SWVP.

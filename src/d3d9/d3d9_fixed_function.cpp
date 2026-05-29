@@ -11,8 +11,6 @@
 
 #include "../util/util_small_vector.h"
 
-#include "../spirv/spirv_module.h"
-
 #include <cfloat>
 
 #include <d3d9_fixed_function_vert.h>
