@@ -435,19 +435,15 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, D3D9CompactVertexElements&& elements) {
-    // Use the shader's unique key for the lookup
-    { std::unique_lock<dxvk::mutex> lock(m_mutex);
-      
-      auto entry = m_modules.find(elements);
-      if (entry != m_modules.end())
-        return entry->second;
-    }
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
+    auto entry = m_modules.find(elements);
+
+    if (entry != m_modules.end())
+      return entry->second;
 
     Sha1Hash hash = Sha1Hash::compute(elements.data(), elements.size() * sizeof(elements[0]));
     DxvkShaderHash key(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, hash.digest(), hash.digestLength());
-    
-    // This shader has not been compiled yet, so we have to create a
-    // new module. This takes a while, so we won't lock the structure.
+
     DxvkIrShaderCreateInfo createInfo = { };
     createInfo.options = pDevice->GetShaderOptions();
 
@@ -459,18 +455,8 @@ namespace dxvk {
     }
 
     pDevice->GetDXVKDevice()->registerShader(shader);
-    
-    // Insert the new module into the lookup table. If another thread
-    // has compiled the same shader in the meantime, we should return
-    // that object instead and discard the newly created module.
-    { std::unique_lock<dxvk::mutex> lock(m_mutex);
-      
-      std::pair<D3D9CompactVertexElements, Rc<DxvkShader>> pair = { std::move(elements), shader };
-      auto status = m_modules.insert(std::move(pair));
-      if (!status.second)
-        return status.first->second;
-    }
 
+    m_modules.insert({ std::move(elements), shader });
     return shader;
   }
 
