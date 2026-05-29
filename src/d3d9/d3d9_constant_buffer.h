@@ -2,8 +2,6 @@
 
 #include "../dxvk/dxvk_buffer.h"
 
-#include "../dxso/dxso_util.h"
-
 #include "../util/util_math.h"
 
 #include "d3d9_include.h"

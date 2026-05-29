@@ -7,7 +7,6 @@
 
 #include "d3d9_format.h"
 
-#include "../dxso/dxso_common.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "../util/util_matrix.h"

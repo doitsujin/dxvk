@@ -10,8 +10,6 @@
 
 #include "../dxvk/dxvk_shader.h"
 
-#include "../dxso/dxso_isgn.h"
-
 #include <utility>
 #include <unordered_map>
 

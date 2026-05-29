@@ -23,7 +23,6 @@ if get_option('enable_d3d10')
 endif
 
 if get_option('enable_d3d9')
-  subdir('dxso')
   subdir('d3d9')
 endif
 

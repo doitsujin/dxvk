@@ -17,11 +17,6 @@
 
 #include "d3d9_options.h"
 
-#include "../dxso/dxso_module.h"
-#include "../dxso/dxso_util.h"
-#include "../dxso/dxso_options.h"
-#include "../dxso/dxso_modinfo.h"
-
 #include "d3d9_fixed_function.h"
 #include "d3d9_swvp_emu.h"
 

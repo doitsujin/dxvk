@@ -1,12 +1,8 @@
 #pragma once
 
-#include "../dxso/dxso_module.h"
-
 #include "../dxvk/dxvk_shader.h"
 #include "../dxvk/dxvk_shader_key.h"
-#ifndef DXSO
 #include "../dxvk/dxvk_shader_ir.h"
-#endif
 
 #include <sm3/sm3_parser.h>
 
@@ -20,8 +16,6 @@
 #include "d3d9_shader_analysis.h"
 
 namespace dxvk {
-
-#ifndef DXSO
 
   struct D3D9ShaderOptions {
     /** Whether the device is configured to do SWVP.
@@ -49,12 +43,6 @@ namespace dxvk {
 
     D3D9ShaderOptions shaderOptions;
   };
-
-#else
-
-  struct D3D9ShaderCreateInfo {};
-
-#endif
 
   /**
    * \brief Shader resource mapping
