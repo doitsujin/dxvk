@@ -47,25 +47,25 @@ namespace dxvk::hud {
     return position;
   }
 
-  HudFixedFunctionShaders::HudFixedFunctionShaders(D3D9DeviceEx* device)
+  HudSWVPShaders::HudSWVPShaders(D3D9DeviceEx* device)
   : m_device        (device)
-  , m_ffShaderCount ("") {}
+  , m_swvpShaderCount ("") {}
 
 
-  void HudFixedFunctionShaders::update(dxvk::high_resolution_clock::time_point time) {
-    m_ffShaderCount = str::format("SWVP: ", m_device->GetSWVPShaderCount());
+  void HudSWVPShaders::update(dxvk::high_resolution_clock::time_point time) {
+    m_swvpShaderCount = str::format(m_device->GetSWVPShaderCount());
   }
 
 
-  HudPos HudFixedFunctionShaders::render(
+  HudPos HudSWVPShaders::render(
     const Rc<DxvkCommandList>&ctx,
     const HudPipelineKey&     key,
     const HudOptions&         options,
           HudRenderer&        renderer,
           HudPos              position) {
     position.y += 16;
-    renderer.drawText(16, position, 0xffc0ff00u, "FF Shaders:");
-    renderer.drawText(16, { position.x + 155, position.y }, 0xffffffffu, m_ffShaderCount);
+    renderer.drawText(16, position, 0xffc0ff00u, "SWVP Shaders:");
+    renderer.drawText(16, { position.x + 180, position.y }, 0xffffffffu, m_swvpShaderCount);
 
     position.y += 8;
     return position;
