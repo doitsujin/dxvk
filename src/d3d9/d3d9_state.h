@@ -141,7 +141,6 @@ namespace dxvk {
         uint32_t TransformFlags : 24;
 
         uint32_t LightCount : 4;
-        uint32_t SpecularEnabled : 1;
 
         // End of uint32_t
 
@@ -213,10 +212,6 @@ namespace dxvk {
         uint32_t     AlphaArg2 : 6;
 
         uint32_t     ResultIsTemp : 1;
-
-        // Included in here, read from Stage 0 for packing reasons
-        // Affects all stages.
-        uint32_t     GlobalSpecularEnable : 1;
       } Contents;
 
       uint32_t Primitive[2];

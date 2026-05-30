@@ -163,7 +163,7 @@ namespace dxvk {
       { 5, 24, 2 },  // PointMode
       { 5, 26, 5 },  // DrefScaling
 
-      { 6, 31, 1 },  // FFGlobalSpecularEnabled.
+      { 6, 31, 1 },  // FFGlobalSpecularEnabled
       // Packed with Texture stage 0 but placed here out of order so every texture stage
       // has the same number of entries in the Layout array.
 

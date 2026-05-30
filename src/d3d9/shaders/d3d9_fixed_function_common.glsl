@@ -187,7 +187,7 @@ const BitfieldPosition SpecConstLayout[SpecConstantCount] = {
     { 5, 24, 2 },  // PointMode
     { 5, 26, 5 },  // DrefScaling
 
-    { 6, 31, 1 },  // FFGlobalSpecularEnabled.
+    { 6, 31, 1 },  // FFGlobalSpecularEnabled
 
     { 6,  0, 5 },  // FFTextureStage0ColorOp
     { 6,  5, 5 },  // FFTextureStage0ColorArg1
