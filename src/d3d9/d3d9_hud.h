@@ -41,13 +41,13 @@ namespace dxvk::hud {
 
 
   /**
-   * \brief HUD item to display amount of generated fixed function shaders
+   * \brief HUD item to display amount of generated SWVP shaders
    */
-  class HudFixedFunctionShaders : public HudItem {
+  class HudSWVPShaders : public HudItem {
 
   public:
 
-    HudFixedFunctionShaders(D3D9DeviceEx* device);
+    HudSWVPShaders(D3D9DeviceEx* device);
 
     void update(dxvk::high_resolution_clock::time_point time);
 
@@ -62,7 +62,7 @@ namespace dxvk::hud {
 
     D3D9DeviceEx* m_device;
 
-    std::string m_ffShaderCount;
+    std::string m_swvpShaderCount;
 
   };
 
