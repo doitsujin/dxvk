@@ -80,6 +80,7 @@ namespace dxvk {
     FFPixelShader,
     FFViewport,
     FFPixelData,
+    FFGlobalSpecular,
     SharedPixelShaderData,
     DepthBounds,
     PointScale,
@@ -1037,6 +1038,8 @@ namespace dxvk {
     void UploadConstants();
 
     void UpdateClipPlanes();
+
+    void UpdateGlobalSpecular();
 
     /**
      * \brief Updates the push constant data at the given offset with data from the specified pointer.
