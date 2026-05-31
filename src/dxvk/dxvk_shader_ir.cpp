@@ -1561,6 +1561,16 @@ namespace dxvk {
           return std::nullopt;
         case dxbc_spv::ir::BuiltIn::ePointCoord:
           return spv::BuiltInPointCoord;
+        case dxbc_spv::ir::BuiltIn::eLegacyAlphaTest:
+        case dxbc_spv::ir::BuiltIn::eLegacyFog:
+        case dxbc_spv::ir::BuiltIn::eLegacyClipPlanes:
+        case dxbc_spv::ir::BuiltIn::eLegacyPointArgs:
+        case dxbc_spv::ir::BuiltIn::eLegacySamplerState:
+        case dxbc_spv::ir::BuiltIn::eLegacyTextureStage:
+        case dxbc_spv::ir::BuiltIn::eLegacyConstFloat:
+        case dxbc_spv::ir::BuiltIn::eLegacyConstInt:
+        case dxbc_spv::ir::BuiltIn::eLegacyConstBool:
+          return std::nullopt;
       }
 
       return std::nullopt;
