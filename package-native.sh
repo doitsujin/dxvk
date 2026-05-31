@@ -56,12 +56,6 @@ done
 # Detect architecture if not specified
 if [ -z "$opt_arch" ]; then
   opt_arch=$(uname -m)
-  # Normalize
-  if [ "$opt_arch" = "arm64" ]; then
-    opt_arch="arm64"
-  else
-    opt_arch="x86_64"
-  fi
 fi
 
 echo "Building SpockD3D9 $DXVK_VERSION for macOS $opt_arch"

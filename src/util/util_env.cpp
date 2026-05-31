@@ -3,17 +3,15 @@
 #include <filesystem>
 #include <numeric>
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 #include <unistd.h>
 #include <limits.h>
-#elif defined(__APPLE__)
+#endif
+
+#ifdef __APPLE__
 #include <mach-o/dyld.h>
-#include <unistd.h>
-#include <limits.h>
 #elif defined(__FreeBSD__)
 #include <sys/sysctl.h>
-#include <unistd.h>
-#include <limits.h>
 #endif
 
 #include "util_env.h"
