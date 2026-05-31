@@ -3,13 +3,15 @@
 #include <filesystem>
 #include <numeric>
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
 #include <unistd.h>
 #include <limits.h>
+#endif
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
 #elif defined(__FreeBSD__)
 #include <sys/sysctl.h>
-#include <unistd.h>
-#include <limits.h>
 #endif
 
 #include "util_env.h"
@@ -87,6 +89,18 @@ namespace dxvk::env {
     exePath.resize(len + 1);
 
     return str::fromws(exePath.data());
+#elif defined(__APPLE__)
+    char exePath[PATH_MAX] = {};
+    uint32_t size = PATH_MAX;
+
+    if (_NSGetExecutablePath(exePath, &size) != 0)
+      return "";
+
+    char realPath[PATH_MAX] = {};
+    if (realpath(exePath, realPath))
+      return std::string(realPath);
+
+    return std::string(exePath);
 #elif defined(__linux__)
     std::array<char, PATH_MAX> exePath = {};
 
@@ -127,7 +141,11 @@ namespace dxvk::env {
 #else
     std::array<char, 16> posixName = {};
     dxvk::str::strlcpy(posixName.data(), name.c_str(), 16);
+#ifdef __APPLE__
+    ::pthread_setname_np(posixName.data());
+#else
     ::pthread_setname_np(pthread_self(), posixName.data());
+#endif
 #endif
   }
 

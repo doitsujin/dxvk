@@ -56,7 +56,7 @@ d3d9_src = [
 d3d9_ld_args      = []
 d3d9_link_depends = []
 
-if platform != 'windows'
+if platform != 'windows' and platform != 'darwin'
   d3d9_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d9.sym') ]
   d3d9_link_depends += files('d3d9.sym')
 endif

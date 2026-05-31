@@ -1,0 +1,55 @@
+name: Build macOS (D3D9)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build-macos:
+    strategy:
+      matrix:
+        arch: [arm64, x86_64]
+        include:
+          - arch: arm64
+            runner: macos-14   # Apple Silicon
+          - arch: x86_64
+            runner: macos-13   # Intel
+
+    runs-on: ${{ matrix.runner }}
+    name: macOS ${{ matrix.arch }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Install dependencies
+      run: |
+        brew install meson ninja glslang sdl2 vulkan-headers spirv-headers
+
+    - name: Get version
+      id: get-version
+      run: |
+        echo "VERSION_NAME=${GITHUB_REF##*/}-${GITHUB_SHA::8}" >> $GITHUB_ENV
+
+    - name: Build D3D9 native (${{ matrix.arch }})
+      run: |
+        ./package-native.sh ${{ env.VERSION_NAME }} build \
+          --no-package --dev-build --arch ${{ matrix.arch }}
+
+    - name: Verify built libraries
+      run: |
+        echo "=== Built files ==="
+        find build/ -name "*.dylib" -o -name "*.so" | head -20
+        echo "=== Library architectures ==="
+        for f in $(find build/ -name "*.dylib" 2>/dev/null); do
+          echo "$f:"
+          file "$f"
+        done
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: spockd3d9-macos-${{ matrix.arch }}-${{ env.VERSION_NAME }}
+        path: build/spockd3d9-${{ env.VERSION_NAME }}/
+        if-no-files-found: warn

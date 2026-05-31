@@ -14,6 +14,9 @@ namespace dxvk::vk {
 #ifdef _WIN32
       "winevulkan.dll",
       "vulkan-1.dll",
+#elif defined(__APPLE__)
+      "libvulkan.dylib",
+      "libMoltenVK.dylib",
 #else
       "libvulkan.so",
       "libvulkan.so.1",
