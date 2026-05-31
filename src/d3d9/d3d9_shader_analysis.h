@@ -19,7 +19,7 @@ struct D3D9ImmediateFloatConstant {
   Vector4 value;
 };
 
-using D3D9ImmediateFloatConstants = std::vector<D3D9ImmediateFloatConstant>;
+using D3D9ImmediateFloatConstants = small_vector<D3D9ImmediateFloatConstant, 16u>;
 
 struct D3D9ImmediateConstants {
   uint32_t floatCount = 0u;
