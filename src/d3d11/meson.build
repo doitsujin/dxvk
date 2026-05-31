@@ -72,8 +72,10 @@ d3d11_link_depends = []
 if platform == 'windows'
   d3d11_dxgi_deps = [ lib_gdi32, lib_dxgi ]
 else
-  d3d11_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d11.sym') ]
-  d3d11_link_depends += files('d3d11.sym')
+  if platform != 'darwin'
+    d3d11_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d11.sym') ]
+    d3d11_link_depends += files('d3d11.sym')
+  endif
   d3d11_dxgi_deps = [ dxgi_dep ]
 endif
 

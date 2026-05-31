@@ -10,10 +10,6 @@ cc = meson.get_compiler('c')
 dxvk_is_msvc = cpp.get_argument_syntax() == 'msvc'
 
 compiler_args = [
-  '-msse',
-  '-msse2',
-  '-msse3',
-  '-mfpmath=sse',
   '-Wimplicit-fallthrough',
   # gcc
   '-Wno-missing-field-initializers',
@@ -28,9 +24,19 @@ compiler_args = [
   '-Wno-missing-braces',
 ]
 
+# SSE flags only apply to x86/x86_64, not ARM
+if cpu_family == 'x86' or cpu_family == 'x86_64'
+  compiler_args += [
+    '-msse',
+    '-msse2',
+    '-msse3',
+    '-mfpmath=sse',
+  ]
+endif
+
 link_args = []
 
-if get_option('build_id')
+if get_option('build_id') and platform != 'darwin'
   link_args += [
     '-Wl,--build-id',
   ]
@@ -127,6 +133,7 @@ if platform == 'windows'
   dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
+  # Native (non-Windows) build — macOS or Linux
   dxvk_abi_version = '0'
   dxvk_version_raw = meson.project_version().strip('v').split('.')
   dxvk_version = [ dxvk_version_raw[0] ]
@@ -161,16 +168,19 @@ else
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
   if (not lib_sdl3.found() and not lib_sdl2.found() and not lib_glfw.found())
-    error('SDL3, SDL2, or GLFW are required to build dxvk-native')
+    error('SDL3, SDL2, or GLFW are required to build SpockD3D9 native. On macOS: brew install sdl2')
   endif
   
   dxvk_name_prefix = 'dxvk_'
   dxvk_pkg_prefix = 'dxvk-'
 
-  link_args += [
-    '-static-libgcc',
-    '-static-libstdc++',
-  ]
+  # Static linking flags - not applicable to Apple Clang
+  if platform != 'darwin'
+    link_args += [
+      '-static-libgcc',
+      '-static-libstdc++',
+    ]
+  endif
 endif
 
 dxbc_spirv = subproject('dxbc-spirv')

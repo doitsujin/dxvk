@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
+# SpockD3D9 - macOS native D3D9 packaging script
+# Builds for the host architecture (arm64 or x86_64) by default.
+# Use --arch to override (e.g. --arch arm64, --arch x86_64).
 
 set -e
 
-shopt -s extglob
-
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--arch arm64|x86_64]"
   exit 1
 fi
 
 DXVK_VERSION="$1"
-DXVK_SRC_DIR=$(readlink -f "$0")
-DXVK_SRC_DIR=$(dirname "$DXVK_SRC_DIR")
-DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-native-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-native-$DXVK_VERSION.tar.gz"
+DXVK_SRC_DIR=$(dirname "$(realpath "$0")")
+DXVK_BUILD_DIR=$(realpath "$2")"/spockd3d9-$DXVK_VERSION"
+DXVK_ARCHIVE_PATH=$(realpath "$2")"/spockd3d9-$DXVK_VERSION.tar.gz"
 
 if [ -e "$DXVK_BUILD_DIR" ]; then
   echo "Build directory $DXVK_BUILD_DIR already exists"
@@ -25,11 +25,10 @@ shift 2
 opt_nopackage=0
 opt_devbuild=0
 opt_buildid=false
-opt_64_only=0
-opt_32_only=0
+opt_arch=""
 
-CC=${CC:="gcc"}
-CXX=${CXX:="g++"}
+CC=${CC:="cc"}
+CXX=${CXX:="c++"}
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -43,11 +42,9 @@ while [ $# -gt 0 ]; do
   "--build-id")
     opt_buildid=true
     ;;
-  "--64-only")
-    opt_64_only=1
-    ;;
-  "--32-only")
-    opt_32_only=1
+  "--arch")
+    shift
+    opt_arch="$1"
     ;;
   *)
     echo "Unrecognized option: $1" >&2
@@ -56,7 +53,20 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-function build_arch {  
+# Detect architecture if not specified
+if [ -z "$opt_arch" ]; then
+  opt_arch=$(uname -m)
+  # Normalize
+  if [ "$opt_arch" = "arm64" ]; then
+    opt_arch="arm64"
+  else
+    opt_arch="x86_64"
+  fi
+fi
+
+echo "Building SpockD3D9 $DXVK_VERSION for macOS $opt_arch"
+
+function build_arch {
   cd "$DXVK_SRC_DIR"
 
   opt_strip=
@@ -64,13 +74,19 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  CC="$CC -m$1" CXX="$CXX -m$1" meson setup  \
+  CC="$CC" CXX="$CXX" CFLAGS="-arch $1" CXXFLAGS="-arch $1" \
+    meson setup \
         --buildtype "release"                \
         --prefix "$DXVK_BUILD_DIR/usr"       \
         $opt_strip                           \
-        --bindir "$2"                        \
-        --libdir "$2"                        \
+        --bindir "lib"                       \
+        --libdir "lib"                       \
         -Dbuild_id=$opt_buildid              \
+        -Denable_d3d9=true                   \
+        -Denable_d3d8=false                  \
+        -Denable_d3d10=false                 \
+        -Denable_d3d11=false                 \
+        -Denable_dxgi=false                  \
         --force-fallback-for=libdisplay-info \
         "$DXVK_BUILD_DIR/build.$1"
 
@@ -86,16 +102,13 @@ function package {
   cd "$DXVK_BUILD_DIR"
   tar -czf "$DXVK_ARCHIVE_PATH" "usr"
   cd ".."
-  rm -R "dxvk-native-$DXVK_VERSION"
+  rm -R "spockd3d9-$DXVK_VERSION"
 }
 
-if [ $opt_32_only -eq 0 ]; then
-  build_arch 64 lib
-fi
-if [ $opt_64_only -eq 0 ]; then
-  build_arch 32 lib32
-fi
+build_arch "$opt_arch"
 
 if [ $opt_nopackage -eq 0 ]; then
   package
 fi
+
+echo "Done. Output: $DXVK_BUILD_DIR"
