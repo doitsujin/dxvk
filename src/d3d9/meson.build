@@ -81,4 +81,13 @@ if platform != 'windows'
     filebase: dxvk_pkg_prefix + 'd3d9',
     subdirs:  'dxvk',
   )
+
+  lib_sdl2_sample = dependency('sdl2', required: true)
+
+  executable('d3d9-clear', 'examples/d3d9_clear.cpp',
+    dependencies        : [ d3d9_dep, lib_sdl2_sample ],
+    include_directories : [ dxvk_include_path ],
+    install             : true,
+    install_rpath       : '@loader_path',
+  )
 endif

@@ -47,19 +47,18 @@ jobs:
           file "$f"
         done
 
-    - name: Verify MoltenVK is loadable
+    - name: Smoke test d3d9-clear sample
       run: |
-        python3 - <<'PY'
-        import ctypes, ctypes.util
-        path = ctypes.util.find_library("MoltenVK") or ctypes.util.find_library("vulkan")
-        if not path:
-            raise SystemExit("MoltenVK/Vulkan library not found after brew install")
-        lib = ctypes.CDLL(path)
-        vk_get = getattr(lib, "vkGetInstanceProcAddr", None)
-        if not vk_get:
-            raise SystemExit(f"No vkGetInstanceProcAddr in {path}")
-        print(f"OK: {path}")
-        PY
+        LIB_DIR=$(find build -path '*/usr/lib' -type d 2>/dev/null | head -1)
+        if [ -z "$LIB_DIR" ] || [ ! -x "$LIB_DIR/d3d9-clear" ]; then
+          echo "d3d9-clear binary not found under build/*/usr/lib"
+          find build -name 'd3d9-clear' 2>/dev/null || true
+          exit 1
+        fi
+        export DYLD_LIBRARY_PATH="$LIB_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+        export DXVK_WSI_DRIVER=SDL2
+        export DXVK_LOG_LEVEL=info
+        "$LIB_DIR/d3d9-clear" 3
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4

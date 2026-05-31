@@ -65,6 +65,18 @@ ninja install
 
 The D3D9 shared library will be at `/your/install/dir/lib/libdxvk_d3d9.dylib`.
 
+### Smoke test (`d3d9-clear`)
+
+After building, a minimal SDL2 sample is installed next to the library. It creates a D3D9 device, clears the back buffer, and presents a few frames:
+
+```bash
+export DYLD_LIBRARY_PATH="/your/install/dir/lib"
+export DXVK_WSI_DRIVER=SDL2
+/your/install/dir/lib/d3d9-clear 60   # optional frame count (default: 60)
+```
+
+On success it prints `d3d9-clear: OK` and exits with code 0.
+
 ### Cross-Architecture Build
 
 To build for a specific architecture on a universal Mac:
@@ -133,10 +145,6 @@ SpockD3D9 reads configuration from `dxvk.conf`. Key settings:
 - **[DXVK](https://github.com/doitsujin/dxvk)**: The upstream project. SpockD3D9 is a focused fork retaining only D3D9 support and targeting macOS natively.
 - **[dxmt](https://github.com/3Shain/dxmt)**: A separate project that translates D3D11/D3D10 directly to Metal (no Vulkan intermediate). SpockD3D9 takes architectural inspiration from dxmt's macOS build patterns but uses a different approach (Vulkan via MoltenVK) and targets a different API (D3D9).
 - **[MoltenVK](https://github.com/KhronosGroup/MoltenVK)**: The Vulkan-to-Metal translation layer that SpockD3D9 depends on.
-
-## Roadmap
-
-Development priorities and milestones are tracked in [ROADMAP.md](ROADMAP.md).
 
 ## Known Limitations
 

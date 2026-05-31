@@ -58,7 +58,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 ### Milestone A — Builds and presents a pixel
 
 - [x] CI installs MoltenVK and verifies Vulkan loader is present
-- [ ] Minimal native sample: `Direct3DCreate9` → device → clear → present (SDL2)
+- [x] Minimal native sample: `d3d9-clear` (SDL2 clear + present)
 - [x] GLFW `setWindowMode` height typo fix
 - [x] GLFW / SDL2 fullscreen targets the requested monitor (not always primary)
 - [x] GLFW `getWindowMonitor` uses window position / fullscreen monitor
