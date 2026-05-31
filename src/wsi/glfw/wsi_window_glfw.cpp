@@ -126,12 +126,41 @@ namespace dxvk::wsi {
 
 
   HMONITOR GlfwWsiDriver::getWindowMonitor(HWND hWindow) {
-    // TODO: implement this with glfwGetWindowMonitor 
-    //  (or maybe not? glfwGetWindowMonitor only seems to reference *fullscreen* windows)
-    // GLFWwindow* window = fromHwnd(hWindow);
-    const int32_t displayId = 0;
+    GLFWwindow* window = fromHwnd(hWindow);
 
-    return toHmonitor(displayId);
+    GLFWmonitor* monitor = glfwGetWindowMonitor(window);
+    if (monitor) {
+      int32_t displayCount = 0;
+      GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+
+      for (int32_t i = 0; i < displayCount; i++) {
+        if (monitors[i] == monitor)
+          return toHmonitor(i);
+      }
+    }
+
+    int32_t wx = 0, wy = 0;
+    glfwGetWindowPos(window, &wx, &wy);
+    int32_t ww = 0, wh = 0;
+    glfwGetWindowSize(window, &ww, &wh);
+
+    const int32_t cx = wx + ww / 2;
+    const int32_t cy = wy + wh / 2;
+
+    int32_t displayCount = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+
+    for (int32_t i = 0; i < displayCount; i++) {
+      int32_t mx = 0, my = 0;
+      glfwGetMonitorPos(monitors[i], &mx, &my);
+      const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
+
+      if (cx >= mx && cx < mx + mode->width
+       && cy >= my && cy < my + mode->height)
+        return toHmonitor(i);
+    }
+
+    return getDefaultMonitor();
   }
 
 

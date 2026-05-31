@@ -134,6 +134,10 @@ SpockD3D9 reads configuration from `dxvk.conf`. Key settings:
 - **[dxmt](https://github.com/3Shain/dxmt)**: A separate project that translates D3D11/D3D10 directly to Metal (no Vulkan intermediate). SpockD3D9 takes architectural inspiration from dxmt's macOS build patterns but uses a different approach (Vulkan via MoltenVK) and targets a different API (D3D9).
 - **[MoltenVK](https://github.com/KhronosGroup/MoltenVK)**: The Vulkan-to-Metal translation layer that SpockD3D9 depends on.
 
+## Roadmap
+
+Development priorities and milestones are tracked in [ROADMAP.md](ROADMAP.md).
+
 ## Known Limitations
 
 - **MoltenVK constraints**: Some Vulkan features may not be fully supported on all Mac hardware. Check [MoltenVK's supported features](https://github.com/KhronosGroup/MoltenVK#supported-vulkan-features).

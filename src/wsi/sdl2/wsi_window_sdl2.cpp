@@ -101,12 +101,29 @@ namespace dxvk::wsi {
     if (!isDisplayValid(displayId))
       return false;
 
+    if (SDL_SetWindowPosition(window,
+          SDL_WINDOWPOS_CENTERED_DISPLAY(displayId),
+          SDL_WINDOWPOS_CENTERED_DISPLAY(displayId)) != 0) {
+      Logger::warn(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
+    }
+
+    if (ModeSwitch) {
+      SDL_DisplayMode mode = { };
+      if (SDL_GetDesktopDisplayMode(displayId, &mode) != 0) {
+        Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_GetDesktopDisplayMode: ", SDL_GetError()));
+        return false;
+      }
+
+      if (SDL_SetWindowDisplayMode(window, &mode) != 0) {
+        Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowDisplayMode: ", SDL_GetError()));
+        return false;
+      }
+    }
+
     uint32_t flags = ModeSwitch
         ? SDL_WINDOW_FULLSCREEN
         : SDL_WINDOW_FULLSCREEN_DESKTOP;
-    
-    // TODO: Set this on the correct monitor.
-    // Docs aren't clear on this...
+
     if (SDL_SetWindowFullscreen(window, flags) != 0) {
       Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
       return false;

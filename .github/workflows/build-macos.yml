@@ -47,6 +47,20 @@ jobs:
           file "$f"
         done
 
+    - name: Verify MoltenVK is loadable
+      run: |
+        python3 - <<'PY'
+        import ctypes, ctypes.util
+        path = ctypes.util.find_library("MoltenVK") or ctypes.util.find_library("vulkan")
+        if not path:
+            raise SystemExit("MoltenVK/Vulkan library not found after brew install")
+        lib = ctypes.CDLL(path)
+        vk_get = getattr(lib, "vkGetInstanceProcAddr", None)
+        if not vk_get:
+            raise SystemExit(f"No vkGetInstanceProcAddr in {path}")
+        print(f"OK: {path}")
+        PY
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
