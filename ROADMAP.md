@@ -35,7 +35,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Tiler GPU hints (`VK_DRIVER_ID_MOLTENVK`) | Done (upstream) |
 | Runtime smoke test / sample app | Not started |
 | Game compatibility matrix | Not started |
-| macOS EDID / HDR metadata | Not started |
+| macOS EDID / HDR metadata | Partial (EDID read; HDR path uses it) |
 | Native D3D9 cursor | Stubbed |
 | Universal binary (`lipo`) packaging | Not started |
 
@@ -72,7 +72,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 
 ### Milestone C — Fullscreen and display correctness
 
-- [ ] `getMonitorEdid` on macOS (IOKit / CoreGraphics or SDL3 display props)
+- [x] `getMonitorEdid` on macOS (IOKit + CoreGraphics, SDL2/SDL3/GLFW WSI)
 - [ ] `saveWindowState` / `restoreWindowState` for native WSI (all backends)
 - [ ] SDL2 parity with SDL3 fullscreen path (display bounds, closest mode)
 - [ ] `isOccluded` for present throttling
