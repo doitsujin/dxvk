@@ -49,6 +49,22 @@ namespace dxvk::wsi {
             HWND             hWindow,
             DxvkWindowState* pState,
             bool             saveStyle) {
+    if (!pState)
+      return;
+
+    SDL_Window* window = fromHwnd(hWindow);
+    auto& state = pState->sdl3;
+
+    if (!SDL_GetWindowPosition(window, &state.x, &state.y))
+      Logger::warn(str::format("SDL3 WSI: saveWindowState: SDL_GetWindowPosition: ", SDL_GetError()));
+
+    if (!SDL_GetWindowSize(window, &state.width, &state.height))
+      Logger::warn(str::format("SDL3 WSI: saveWindowState: SDL_GetWindowSize: ", SDL_GetError()));
+
+    state.windowFlags = SDL_GetWindowFlags(window);
+    state.valid = true;
+
+    (void)saveStyle;
   }
 
 
@@ -56,6 +72,33 @@ namespace dxvk::wsi {
             HWND             hWindow,
             DxvkWindowState* pState,
             bool             restoreCoordinates) {
+    if (!pState || !pState->sdl3.valid)
+      return;
+
+    SDL_Window* window = fromHwnd(hWindow);
+    const auto& state = pState->sdl3;
+
+    if (restoreCoordinates) {
+      if (!SDL_SetWindowPosition(window, state.x, state.y))
+        Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_SetWindowPosition: ", SDL_GetError()));
+
+      if (!SDL_SetWindowSize(window, state.width, state.height))
+        Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_SetWindowSize: ", SDL_GetError()));
+    }
+
+    if (!SDL_SetWindowBordered(window, !(state.windowFlags & SDL_WINDOW_BORDERLESS)))
+      Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_SetWindowBordered: ", SDL_GetError()));
+
+    if (state.windowFlags & SDL_WINDOW_MAXIMIZED) {
+      if (!SDL_MaximizeWindow(window))
+        Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_MaximizeWindow: ", SDL_GetError()));
+    } else if (state.windowFlags & SDL_WINDOW_MINIMIZED) {
+      if (!SDL_MinimizeWindow(window))
+        Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_MinimizeWindow: ", SDL_GetError()));
+    } else if (!(state.windowFlags & SDL_WINDOW_FULLSCREEN)) {
+      if (!SDL_RestoreWindow(window))
+        Logger::warn(str::format("SDL3 WSI: restoreWindowState: SDL_RestoreWindow: ", SDL_GetError()));
+    }
   }
 
 

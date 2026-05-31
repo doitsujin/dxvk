@@ -45,6 +45,18 @@ namespace dxvk::wsi {
           HWND             hWindow,
           DxvkWindowState* pState,
           bool             saveStyle) {
+    if (!pState)
+      return;
+
+    SDL_Window* window = fromHwnd(hWindow);
+    auto& state = pState->sdl2;
+
+    SDL_GetWindowPosition(window, &state.x, &state.y);
+    SDL_GetWindowSize(window, &state.width, &state.height);
+    state.windowFlags = SDL_GetWindowFlags(window);
+    state.valid = true;
+
+    (void)saveStyle;
   }
 
 
@@ -52,6 +64,26 @@ namespace dxvk::wsi {
           HWND             hWindow,
           DxvkWindowState* pState,
           bool             restoreCoordinates) {
+    if (!pState || !pState->sdl2.valid)
+      return;
+
+    SDL_Window* window = fromHwnd(hWindow);
+    const auto& state = pState->sdl2;
+
+    if (restoreCoordinates) {
+      SDL_SetWindowPosition(window, state.x, state.y);
+      SDL_SetWindowSize(window, state.width, state.height);
+    }
+
+    SDL_SetWindowBordered(window,
+      (state.windowFlags & SDL_WINDOW_BORDERLESS) ? SDL_FALSE : SDL_TRUE);
+
+    if (state.windowFlags & SDL_WINDOW_MAXIMIZED)
+      SDL_MaximizeWindow(window);
+    else if (state.windowFlags & SDL_WINDOW_MINIMIZED)
+      SDL_MinimizeWindow(window);
+    else if (!(state.windowFlags & (SDL_WINDOW_FULLSCREEN | SDL_WINDOW_FULLSCREEN_DESKTOP)))
+      SDL_RestoreWindow(window);
   }
 
 

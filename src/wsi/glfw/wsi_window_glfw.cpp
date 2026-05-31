@@ -46,6 +46,20 @@ namespace dxvk::wsi {
       HWND Window,
       DxvkWindowState* pState,
       bool saveStyle) {
+    if (!pState)
+      return;
+
+    GLFWwindow* window = fromHwnd(Window);
+    auto& state = pState->glfw;
+
+    glfwGetWindowPos(window, &state.x, &state.y);
+    glfwGetWindowSize(window, &state.width, &state.height);
+    state.decorated = glfwGetWindowAttrib(window, GLFW_DECORATED) == GLFW_TRUE;
+    state.maximized = glfwGetWindowAttrib(window, GLFW_MAXIMIZED) == GLFW_TRUE;
+    state.iconified = glfwGetWindowAttrib(window, GLFW_ICONIFIED) == GLFW_TRUE;
+    state.valid = true;
+
+    (void)saveStyle;
   }
 
 
@@ -53,6 +67,23 @@ namespace dxvk::wsi {
       HWND hWindow,
       DxvkWindowState* pState,
       bool restoreCoordinates) {
+    if (!pState || !pState->glfw.valid)
+      return;
+
+    GLFWwindow* window = fromHwnd(hWindow);
+    const auto& state = pState->glfw;
+
+    if (restoreCoordinates)
+      glfwSetWindowMonitor(window, nullptr, state.x, state.y, state.width, state.height, GLFW_DONT_CARE);
+
+    glfwSetWindowAttrib(window, GLFW_DECORATED, state.decorated ? GLFW_TRUE : GLFW_FALSE);
+
+    if (state.maximized)
+      glfwMaximizeWindow(window);
+    else if (state.iconified)
+      glfwIconifyWindow(window);
+    else
+      glfwRestoreWindow(window);
   }
 
 
@@ -79,7 +110,7 @@ namespace dxvk::wsi {
                  : 0;
     // TODO: Implement lookup format for bitsPerPixel here.
 
-    glfwSetWindowMonitor(window, monitor, 0, 0, wantedMode.width, wantedMode.width, wantedMode.refreshRate);
+    glfwSetWindowMonitor(window, monitor, 0, 0, wantedMode.width, wantedMode.height, wantedMode.refreshRate);
 
     return true;
   }
@@ -95,12 +126,21 @@ namespace dxvk::wsi {
     if (!isDisplayValid(displayId))
       return false;
 
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    auto videoMode = glfwGetVideoMode(monitor);
+    int32_t displayCount = 0;
+    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor* monitor = monitors[displayId];
+    const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
 
-    // TODO: Set this on the correct monitor.
-    // Docs aren't clear on this...
-    glfwSetWindowMonitor(window, monitor, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
+    int32_t mx = 0, my = 0;
+    glfwGetMonitorPos(monitor, &mx, &my);
+
+    if (ModeSwitch) {
+      glfwSetWindowMonitor(window, monitor, mx, my,
+        videoMode->width, videoMode->height, videoMode->refreshRate);
+    } else {
+      glfwSetWindowMonitor(window, nullptr, mx, my,
+        videoMode->width, videoMode->height, GLFW_DONT_CARE);
+    }
 
     return true;
   }
@@ -111,9 +151,12 @@ namespace dxvk::wsi {
       DxvkWindowState* pState) {
     GLFWwindow* window = fromHwnd(hWindow);
 
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    auto videoMode = glfwGetVideoMode(monitor);
-    glfwSetWindowMonitor(window, nullptr, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
+    if (pState && pState->glfw.valid) {
+      const auto& state = pState->glfw;
+      glfwSetWindowMonitor(window, nullptr, state.x, state.y, state.width, state.height, GLFW_DONT_CARE);
+    } else {
+      glfwSetWindowMonitor(window, nullptr, 0, 0, 800, 600, GLFW_DONT_CARE);
+    }
 
     return true;
   }
