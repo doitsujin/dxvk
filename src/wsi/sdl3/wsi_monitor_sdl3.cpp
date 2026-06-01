@@ -148,8 +148,36 @@ namespace dxvk::wsi {
 
 
   std::vector<uint8_t> Sdl3WsiDriver::getMonitorEdid(HMONITOR hMonitor) {
-    Logger::err("getMonitorEdid not implemented on this platform.");
-    return {};
+#if defined(__APPLE__)
+    const SDL_DisplayID displayId = fromHmonitor(hMonitor);
+
+    if (!displayId)
+      return { };
+
+    int count = 0;
+    SDL_DisplayID* displays = SDL_GetDisplays(&count);
+
+    if (!displays)
+      return { };
+
+    uint32_t displayIndex = UINT32_MAX;
+
+    for (int i = 0; i < count; i++) {
+      if (displays[i] == displayId) {
+        displayIndex = uint32_t(i);
+        break;
+      }
+    }
+
+    SDL_free(displays);
+
+    if (displayIndex == UINT32_MAX)
+      return { };
+
+    return darwin::getMonitorEdidByIndex(displayIndex);
+#else
+    return { };
+#endif
   }
 
 }

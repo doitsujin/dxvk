@@ -65,6 +65,18 @@ ninja install
 
 The D3D9 shared library will be at `/your/install/dir/lib/libdxvk_d3d9.dylib`.
 
+### Smoke test (`d3d9-clear`)
+
+After building, a minimal SDL2 sample is installed next to the library. It creates a D3D9 device, clears the back buffer, and presents a few frames:
+
+```bash
+export DYLD_LIBRARY_PATH="/your/install/dir/lib"
+export DXVK_WSI_DRIVER=SDL2
+/your/install/dir/lib/d3d9-clear 60   # optional frame count (default: 60)
+```
+
+On success it prints `d3d9-clear: OK` and exits with code 0.
+
 ### Cross-Architecture Build
 
 To build for a specific architecture on a universal Mac:

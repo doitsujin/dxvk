@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include <windows.h>
 
 #include "wsi_monitor.h"
@@ -21,15 +23,38 @@ namespace dxvk::wsi {
 #endif
 #if defined(DXVK_WSI_SDL3)
     struct {
-      WsiMode fullscreenMode = { };
+      WsiMode  fullscreenMode = { };
+      int32_t  x              = 0;
+      int32_t  y              = 0;
+      int32_t  width          = 0;
+      int32_t  height         = 0;
+      uint64_t windowFlags    = 0;
+      bool     valid          = false;
     } sdl3;
 #endif
 #if defined(DXVK_WSI_SDL2)
-    // Nothing to store
+    struct {
+      int32_t  x           = 0;
+      int32_t  y           = 0;
+      int32_t  width       = 0;
+      int32_t  height      = 0;
+      uint32_t windowFlags = 0;
+      bool     valid       = false;
+    } sdl2;
 #endif
 #if defined(DXVK_WSI_GLFW)
-    // Nothing to store
+    struct {
+      int32_t x         = 0;
+      int32_t y         = 0;
+      int32_t width     = 0;
+      int32_t height    = 0;
+      bool    decorated = true;
+      bool    maximized = false;
+      bool    iconified = false;
+      bool    valid     = false;
+    } glfw;
 #endif
+
   };
 
   /**

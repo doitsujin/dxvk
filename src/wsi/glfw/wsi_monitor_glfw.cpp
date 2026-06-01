@@ -162,8 +162,16 @@ namespace dxvk::wsi {
   }
 
   std::vector<uint8_t> GlfwWsiDriver::getMonitorEdid(HMONITOR hMonitor) {
-    Logger::err("getMonitorEdid not implemented on this platform.");
-    return {};
+#if defined(__APPLE__)
+    const int32_t displayId = fromHmonitor(hMonitor);
+
+    if (!isDisplayValid(displayId))
+      return { };
+
+    return darwin::getMonitorEdidByIndex(uint32_t(displayId));
+#else
+    return { };
+#endif
   }
 
 }

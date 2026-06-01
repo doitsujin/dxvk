@@ -17,6 +17,11 @@ wsi_src = [
 
 wsi_deps = [ dep_displayinfo ]
 
+if platform == 'darwin'
+  wsi_src += 'darwin/wsi_edid_darwin.mm'
+  wsi_deps += dependency('appleframeworks', modules : [ 'CoreGraphics', 'Foundation', 'IOKit' ])
+endif
+
 if platform == 'windows'
   lib_setupapi = cpp.find_library('setupapi')
   wsi_deps += [ lib_setupapi ]

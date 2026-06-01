@@ -64,6 +64,9 @@ namespace dxvk {
     , m_d3d9On12Args       ( pAdapter->Get9On12Args() )
     , m_d3d9On12           ( this )
     , m_d3d8Bridge         ( this ) {
+#ifndef _WIN32
+    m_cursor.SetWindow(hFocusWindow);
+#endif
 
     InitShaderOptions();
 
