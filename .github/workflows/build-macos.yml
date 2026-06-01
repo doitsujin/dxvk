@@ -87,6 +87,7 @@ jobs:
 
         export DXVK_WSI_DRIVER=SDL2
         export DXVK_LOG_LEVEL=info
+        export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
         "$LIB_DIR/d3d9-clear" 3 || { [ -f d3d9.log ] && sed -n '1,200p' d3d9.log; exit 1; }
 
     - name: Upload artifacts
