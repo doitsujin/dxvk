@@ -39,8 +39,15 @@ export DXVK_WSI_DRIVER=SDL2    # or SDL3, GLFW
 
 Install all dependencies with Homebrew:
 ```bash
-brew install meson ninja glslang sdl2 molten-vk vulkan-headers spirv-headers
+brew install meson ninja glslang sdl2 molten-vk vulkan-loader vulkan-headers spirv-headers
 ```
+
+`vulkan-loader` (the Khronos `libvulkan.dylib`) is optional but recommended:
+with it installed, SpockD3D9 runs through the Vulkan loader — which is required
+for validation layers and lets the loader expose MoltenVK as a portability
+adapter (SpockD3D9 enables portability enumeration automatically). Without it,
+SpockD3D9 falls back to loading `libMoltenVK.dylib` directly, which renders fine
+but cannot load instance layers such as `VK_LAYER_KHRONOS_validation`.
 
 ## Building
 
@@ -74,6 +81,14 @@ export DYLD_LIBRARY_PATH="/your/install/dir/lib"
 export DXVK_WSI_DRIVER=SDL2
 /your/install/dir/lib/d3d9-clear 60   # optional frame count (default: 60)
 ```
+
+> **MoltenVK discovery:** SpockD3D9 automatically searches the common Homebrew
+> prefixes (`/opt/homebrew` on Apple Silicon, `/usr/local` on Intel, or
+> `$HOMEBREW_PREFIX`) for `libvulkan.dylib` / `libMoltenVK.dylib` and the
+> MoltenVK ICD manifest, so a Homebrew-installed MoltenVK works without setting
+> `DYLD_LIBRARY_PATH` or `VK_ICD_FILENAMES`. Set those variables to override the
+> auto-detected MoltenVK (e.g. a custom build). `DYLD_LIBRARY_PATH` above is only
+> needed to locate your freshly built `libdxvk_d3d9.dylib`.
 
 On success it prints `d3d9-clear: OK` and exits with code 0.
 
@@ -128,7 +143,7 @@ See `dxvk.conf` for full option documentation, including macOS-specific notes on
 | `DXVK_LOG_PATH=/some/directory` | Log file output directory |
 | `DXVK_HUD=fps,devinfo` | Show FPS and GPU info overlay |
 | `DXVK_HUD=full` | Show all HUD elements |
-| `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` | Enable Vulkan validation |
+| `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` | Enable Vulkan validation (requires the Vulkan loader, i.e. `brew install vulkan-loader`) |
 | `MTL_DEBUG_LAYER=1` | Enable Metal debug layer (MoltenVK) |
 
 ## Architecture

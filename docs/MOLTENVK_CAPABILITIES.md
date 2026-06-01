@@ -85,7 +85,7 @@ SpockD3D9 validates sample counts via:
 | 16K textures | `MaxTextureWidth/Height` follow `maxImageDimension2D` (typically 16 384 on Apple Silicon). |
 | Anisotropy | Capped at min(driver limit, 16) in `GetDeviceCaps`. |
 | Shader model 3 / fixed function | Translated to SPIR-V → MSL; rare edge cases may need title-specific `dxvk.conf` tweaks. |
-| `VK_KHR_portability_subset` | MoltenVK is a portability device; SpockD3D9 enables portability enumeration on macOS. |
+| Portability enumeration | MoltenVK is a portability driver. When it advertises `VK_KHR_portability_enumeration`, SpockD3D9 enables that instance extension and sets `VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR`, so the Khronos Vulkan loader reports the MoltenVK adapter instead of failing with "No adapters found". |
 
 ---
 
