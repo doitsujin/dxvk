@@ -88,7 +88,20 @@ jobs:
         export DXVK_WSI_DRIVER=SDL2
         export DXVK_LOG_LEVEL=info
         export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
-        "$LIB_DIR/d3d9-clear" 3 || { [ -f d3d9.log ] && sed -n '1,200p' d3d9.log; exit 1; }
+        SMOKE_LOG="$RUNNER_TEMP/d3d9-clear.log"
+        set +e
+        "$LIB_DIR/d3d9-clear" 3 2>&1 | tee "$SMOKE_LOG"
+        smoke_status=${PIPESTATUS[0]}
+        set -e
+
+        if [ "$smoke_status" -ne 0 ]; then
+          if grep -Eq "DXVK: No adapters found|required feature 'geometryShader'|Vulkan 1\\.3 capable setup is required" "$SMOKE_LOG"; then
+            echo "Skipping smoke test: GitHub macOS runner GPU lacks required Vulkan features."
+            exit 0
+          fi
+
+          exit "$smoke_status"
+        fi
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
