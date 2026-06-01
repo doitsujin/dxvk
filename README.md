@@ -1,8 +1,17 @@
 # SpockD3D9
 
-A native macOS port of Direct3D 9 — translating D3D9 API calls to Vulkan (via [MoltenVK](https://github.com/KhronosGroup/MoltenVK)) on Apple Silicon and Intel Macs.
+A macOS-native Direct3D 9 translation layer — translating D3D9 API calls to Vulkan (via [MoltenVK](https://github.com/KhronosGroup/MoltenVK)) on Apple Silicon and Intel Macs.
 
-This is a focused fork of [DXVK](https://github.com/doitsujin/dxvk), stripped down to only the D3D9 translation layer and targeting macOS as a first-class native platform. It uses [DXVK Native](https://github.com/doitsujin/dxvk#dxvk-native) mode with SDL2/SDL3/GLFW for window management — no Wine required.
+This is a focused fork of [DXVK](https://github.com/doitsujin/dxvk), stripped down to only the D3D9 translation layer and targeting macOS as a first-class platform. It uses [DXVK Native](https://github.com/doitsujin/dxvk#dxvk-native) mode with SDL2/SDL3/GLFW for window management.
+
+## Project Direction
+
+SpockD3D9 is working toward **full compatibility with Windows D3D9 games on macOS**, including retail titles like Fallout 3 (Steam). The project has two complementary goals:
+
+1. **Native D3D9 port library** — applications (or wrapper layers) link `libdxvk_d3d9.dylib` directly, using SDL2/SDL3/GLFW for windowing instead of Win32. This path works today for native ports and custom renderers.
+2. **Windows D3D9 game compatibility** — through a wrapper or translation layer that hosts Windows game logic and routes D3D9 calls through SpockD3D9. This path requires closing Win32 compatibility gaps and validating against real game titles.
+
+The primary compatibility target is **Fallout 3 (Steam, Windows, D3D9 / Gamebryo engine)**. See [COMPATIBILITY.md](COMPATIBILITY.md) for the per-title tracker and [docs/FALLOUT3_COMPAT.md](docs/FALLOUT3_COMPAT.md) for the detailed Fallout 3 compatibility checklist.
 
 ## Supported Platforms
 
@@ -171,7 +180,8 @@ See `dxvk.conf` for full option documentation, including macOS-specific notes on
 - **MoltenVK constraints**: Some Vulkan features are synthesized or unavailable on Metal. SpockD3D9 queries MoltenVK at runtime for format and MSAA support; see [docs/MOLTENVK_CAPABILITIES.md](docs/MOLTENVK_CAPABILITIES.md) for BCn (DXT), depth/stencil, and MSAA behavior on macOS.
 - **Tiler GPU behavior**: Apple GPUs are tile-based renderers. SpockD3D9 enables tiler-aware submission when MoltenVK is detected (`dxvk.tilerMode = Auto`). Apps that rely on many mid-pass clears or non-render-pass patterns may perform differently than on desktop GPUs; see `dxvk.conf` for tuning notes.
 - **Compatibility matrix**: Community-tested titles and suggested profiles are tracked in [COMPATIBILITY.md](COMPATIBILITY.md).
-- **No Wine required**: This is a native port. If you need to run Windows executables, use DXVK with Wine instead.
+- **Win32 compatibility shims**: Several Win32 API stubs in `src/util/util_win32_compat.h` are not yet implemented (semaphores, handles, GDI). These must be closed for full Windows game compatibility; see [ROADMAP.md](ROADMAP.md) for priorities.
+- **Windows game hosting**: Running unmodified Windows `.exe` games requires a wrapper or translation layer (e.g., Wine or a custom loader) that routes D3D9 calls to SpockD3D9. This integration path is under development.
 
 ## License
 

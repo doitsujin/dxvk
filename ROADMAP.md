@@ -1,13 +1,15 @@
 # SpockD3D9 Roadmap
 
-Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenVK → Metal). This document tracks what is done, what is in progress, and what remains for a production-ready native library.
+macOS D3D9 translation layer — D3D9 API calls translated to Vulkan (MoltenVK → Metal). This document tracks what is done, what is in progress, and what remains for production-ready game compatibility.
 
 ## Goals
 
 - Ship `libdxvk_d3d9.dylib` for Apple Silicon (arm64) and Intel Mac (x86_64)
-- Support SDL2, SDL3, and GLFW for window/surface integration (no Wine)
+- Support SDL2, SDL3, and GLFW for window/surface integration
 - Default builds include **D3D9 only** (D3D8/10/11/DXGI disabled in `meson_options.txt`)
 - Optimize for Apple tiler GPUs via MoltenVK detection and upstream tiler heuristics
+- **Achieve playable compatibility with Fallout 3 (Steam, Windows, Gamebryo/D3D9)** as the primary target title
+- Close Win32 compatibility gaps needed for Windows game hosting
 
 ## Architecture
 
@@ -103,6 +105,37 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 - [x] Performance notes for tiler mode (`dxvk.tilerMode` in `dxvk.conf`)
 - [x] macOS-focused issue template (`.github/ISSUE_TEMPLATE/bug_report_macos.md`)
 
+### Milestone E — Win32 compatibility shims
+
+Close gaps in `src/util/util_win32_compat.h` and related native shims needed for Windows game compatibility.
+
+| Task | Status | Priority | Notes |
+|------|--------|----------|-------|
+| `GetCurrentProcessId` / `GetCurrentProcess` | Stub (returns 0/null) | High | Games use for session/save-path logic |
+| `CloseHandle` | Stub | High | Resource cleanup; many code paths depend on it |
+| `CreateSemaphoreA` / `ReleaseSemaphore` | Stub | High | Synchronization primitives used by game engines |
+| `SetEvent` | Stub | High | Event signaling for threading |
+| `DuplicateHandle` | Stub | Medium | Handle duplication for cross-thread resource sharing |
+| `ProcessIdToSessionId` | Stub | Low | Session management; rarely critical |
+| `CreateCompatibleDC` / `DeleteDC` | Stub | Low | GDI device contexts; only needed if game uses GDI blitting |
+
+### Milestone F — Fallout 3 compatibility
+
+Primary target: Fallout 3 (Steam, Windows) running on macOS via SpockD3D9. See [docs/FALLOUT3_COMPAT.md](docs/FALLOUT3_COMPAT.md) for the detailed checklist.
+
+| Task | Status | Notes |
+|------|--------|-------|
+| Define execution model (wrapper / translation layer) | Not started | Decide how Windows binary is hosted on macOS |
+| D3D9 device creation (Gamebryo) | Not started | Validate `Direct3DCreate9` → device → swapchain path |
+| Shader compilation (SM2/SM3 + fixed-function) | Not started | Gamebryo uses mixed paths; test DXSO → SPIR-V → MSL chain |
+| Texture format support (DXT1–5, depth) | Not started | Verify BCn + D24S8 on MoltenVK |
+| Fullscreen / resolution enumeration | Not started | `EnumAdapterModes` → `Reset` cycle |
+| Device lost / reset handling | Not started | Gamebryo calls `TestCooperativeLevel` + `Reset` on focus loss |
+| `dxvk.conf` Fallout 3 profile | Not started | Title-specific quirk configuration |
+| Boot-to-menu validation | Not started | First end-to-end milestone |
+| In-game rendering validation | Not started | Outdoor + interior + NPC + effects |
+| Save / load stability | Not started | Requires wrapper filesystem support |
+
 ---
 
 ## High Priority
@@ -156,10 +189,10 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 
 ## Out of Scope (default builds)
 
-- Wine / Proton integration (use upstream DXVK for that)
 - D3D9On12 (`d3d9_on_12.cpp` stubs)
 - DXGI / D3D10 / D3D11 (source retained; disabled via meson options)
 - Direct Metal translation (see [dxmt](https://github.com/3Shain/dxmt))
+- Non-D3D9 game APIs (DirectSound, DirectInput, XInput — needed for full game compatibility but outside SpockD3D9's responsibility; a wrapper layer must provide these)
 
 ---
 
