@@ -9,10 +9,12 @@
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
 #include "../util/sync/sync_signal.h"
+#include "../util/util_time.h"
 
 #include "../wsi/wsi_window.h"
 #include "../wsi/wsi_monitor.h"
 
+#include <chrono>
 #include <vector>
 
 namespace dxvk {
@@ -174,6 +176,10 @@ namespace dxvk {
     double                    m_displayRefreshRate = 0.0;
     bool                      m_displayRefreshRateDirty = true;
 
+    dxvk::high_resolution_clock::time_point m_presentStatsBaseTime = dxvk::high_resolution_clock::now();
+    UINT                      m_presentCount = 0;
+    UINT                      m_presentRefreshCount = 0;
+
     bool                      m_warnedAboutGDIFallback = false;
 
     VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
@@ -207,6 +213,12 @@ namespace dxvk {
     void UpdateTargetFrameRate(uint32_t SyncInterval);
 
     uint32_t GetActualFrameLatency();
+
+    std::chrono::nanoseconds GetRefreshPeriod();
+
+    uint64_t GetRefreshCount(dxvk::high_resolution_clock::time_point Time);
+
+    void UpdatePresentStats();
 
     VkSurfaceFormatKHR GetSurfaceFormat();
     
