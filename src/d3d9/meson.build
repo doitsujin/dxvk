@@ -53,6 +53,17 @@ d3d9_src = [
   'd3d9_shader_analysis.cpp',
 ]
 
+d3d9_deps = [ dxso_dep, dxvk_dep, dxbc_spirv_dep ]
+
+if platform != 'windows'
+  d3d9_src += 'd3d9_cursor_native.cpp'
+  d3d9_deps += dependency('sdl2')
+  lib_glfw_cursor = dependency('glfw3', required: false)
+  if lib_glfw_cursor.found()
+    d3d9_deps += lib_glfw_cursor
+  endif
+endif
+
 d3d9_ld_args      = []
 d3d9_link_depends = []
 
