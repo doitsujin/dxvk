@@ -25,7 +25,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install meson ninja glslang sdl2 molten-vk vulkan-headers spirv-headers
+        brew install meson ninja glslang sdl2 sdl3 molten-vk vulkan-headers spirv-headers
 
     - name: Verify MoltenVK / Vulkan loader
       run: |
