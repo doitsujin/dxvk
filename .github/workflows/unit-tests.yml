@@ -1,0 +1,30 @@
+name: Unit tests (native shims)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  win32-compat:
+    runs-on: ubuntu-latest
+    name: Win32 compat shims
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # The native Win32 compatibility shims (src/util/util_win32_compat.h) emulate
+    # Windows handle objects on macOS/Linux. The unit test is hermetic — it needs
+    # only a C++ toolchain and the in-tree native Windows headers, no Vulkan/SDL.
+    - name: Build and run
+      run: |
+        g++ -std=c++17 -O2 -Wall -Wextra -pthread \
+          -Isrc/util -Iinclude/native/windows \
+          tests/util/test_win32_compat.cpp -o test_win32_compat
+        ./test_win32_compat
+
+    # The handle objects are concurrency primitives; run the same test under
+    # ThreadSanitizer to catch data races in the reference counting and waits.
+    - name: Build and run (ThreadSanitizer)
+      run: |
+        g++ -std=c++17 -O1 -g -fsanitize=thread -pthread \
+          -Isrc/util -Iinclude/native/windows \
+          tests/util/test_win32_compat.cpp -o test_win32_compat_tsan
+        ./test_win32_compat_tsan

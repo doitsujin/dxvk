@@ -180,7 +180,7 @@ See `dxvk.conf` for full option documentation, including macOS-specific notes on
 - **MoltenVK constraints**: Some Vulkan features are synthesized or unavailable on Metal. SpockD3D9 queries MoltenVK at runtime for format and MSAA support; see [docs/MOLTENVK_CAPABILITIES.md](docs/MOLTENVK_CAPABILITIES.md) for BCn (DXT), depth/stencil, and MSAA behavior on macOS.
 - **Tiler GPU behavior**: Apple GPUs are tile-based renderers. SpockD3D9 enables tiler-aware submission when MoltenVK is detected (`dxvk.tilerMode = Auto`). Apps that rely on many mid-pass clears or non-render-pass patterns may perform differently than on desktop GPUs; see `dxvk.conf` for tuning notes.
 - **Compatibility matrix**: Community-tested titles and suggested profiles are tracked in [COMPATIBILITY.md](COMPATIBILITY.md).
-- **Win32 compatibility shims**: Several Win32 API stubs in `src/util/util_win32_compat.h` are not yet implemented (semaphores, handles, GDI). These must be closed for full Windows game compatibility; see [ROADMAP.md](ROADMAP.md) for priorities.
+- **Win32 compatibility shims**: `src/util/util_win32_compat.h` emulates Win32 handle objects natively — semaphores, auto/manual-reset events (`SetEvent`/`ResetEvent`), `WaitForSingleObject`, and reference-counted `DuplicateHandle`/`CloseHandle` (unit-tested in `tests/util/test_win32_compat.cpp`). GDI device-context APIs remain safe no-op stubs. See [ROADMAP.md](ROADMAP.md) (Milestone E) for the full status.
 - **Windows game hosting**: Running unmodified Windows `.exe` games requires a wrapper or translation layer (e.g., Wine or a custom loader) that routes D3D9 calls to SpockD3D9. This integration path is under development.
 
 ## License
