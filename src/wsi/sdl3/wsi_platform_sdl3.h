@@ -16,6 +16,8 @@ namespace dxvk::wsi {
       pfn_##name name;
     #include "wsi_platform_sdl3_funcs.h"
 
+    uint64_t m_lastFocusTimestamp = 0;
+
     static void convertMode(const SDL_DisplayMode& mode, WsiMode* pMode) {
       pMode->width          = uint32_t(mode.w);
       pMode->height         = uint32_t(mode.h);

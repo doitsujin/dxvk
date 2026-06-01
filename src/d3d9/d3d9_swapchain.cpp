@@ -152,6 +152,10 @@ namespace dxvk {
     if (!UpdateWindowCtx())
       return D3D_OK;
 
+#ifndef _WIN32
+    PollWindowFocusForHook(m_window);
+#endif
+
     if (options->deferSurfaceCreation && IsDeviceReset(m_wctx))
       m_wctx->presenter->invalidateSurface();
 

@@ -204,7 +204,16 @@ namespace dxvk::wsi {
 
 
   bool Sdl3WsiDriver::isOccluded(HWND hWindow) {
-    return false;
+    SDL_Window* window = fromHwnd(hWindow);
+
+    const bool hasFocus = (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+
+    if (hasFocus) {
+      m_lastFocusTimestamp = SDL_GetTicks();
+      return false;
+    }
+
+    return m_lastFocusTimestamp != 0 && SDL_GetTicks() - m_lastFocusTimestamp > 100;
   }
 
 
