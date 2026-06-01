@@ -5,15 +5,10 @@
 #include <windows.h>
 #include <dlfcn.h>
 #include <unistd.h>
-
-#include "log/log.h"
-
-#ifdef __APPLE__
-#include <dispatch/dispatch.h>
-#else
 #include <mutex>
 #include <condition_variable>
-#endif
+
+#include "log/log.h"
 
 inline HMODULE LoadLibraryA(LPCSTR lpLibFileName) {
   return dlopen(lpLibFileName, RTLD_NOW);
@@ -46,20 +41,14 @@ struct NativeHandleHeader {
   NativeHandleKind kind;
 };
 
-// Semaphore handle.
-// On Apple platforms we use Grand Central Dispatch (dispatch_semaphore_t).
-// Counts are capped at maxCount to match Windows semantics.
+// Semaphore handle backed by a mutex + condition variable.
+// Windows HANDLE is void*; we cast the pointer to HANDLE and back.
 struct NativeSemaphoreHandle {
-  NativeHandleHeader header;
-  LONG               maxCount;
-#ifdef __APPLE__
-  dispatch_semaphore_t dsema;
-#else
-  // Fallback for non-Apple unix: mutex + condition variable
+  NativeHandleHeader      header;
+  LONG                    maxCount;
   std::mutex              mtx;
   std::condition_variable cv;
   LONG                    count;
-#endif
 };
 
 // ---------------------------------------------------------------------------
@@ -77,17 +66,7 @@ inline HANDLE CreateSemaphoreA(
   auto* s = new NativeSemaphoreHandle();
   s->header.kind = NativeHandleKind::Semaphore;
   s->maxCount    = lMaximumCount;
-
-#ifdef __APPLE__
-  s->dsema = dispatch_semaphore_create(lInitialCount);
-  if (!s->dsema) {
-    delete s;
-    return nullptr;
-  }
-#else
-  s->count = lInitialCount;
-#endif
-
+  s->count       = lInitialCount;
   return static_cast<HANDLE>(s);
 }
 #define CreateSemaphore CreateSemaphoreA
@@ -99,21 +78,16 @@ inline BOOL ReleaseSemaphore(
   if (!hSemaphore || hSemaphore == INVALID_HANDLE_VALUE || lReleaseCount < 1)
     return FALSE;
 
-  auto* s = static_cast<NativeSemaphoreHandle*>(hSemaphore);
-  if (s->header.kind != NativeHandleKind::Semaphore)
+  // Check the kind tag through the base header before casting to the full type.
+  auto* header = static_cast<NativeHandleHeader*>(hSemaphore);
+  if (header->kind != NativeHandleKind::Semaphore)
     return FALSE;
 
-#ifdef __APPLE__
-  // GCD does not expose the current count, so we cannot check maxCount.
-  // Signal lReleaseCount times.
-  if (lpPreviousCount)
-    *lpPreviousCount = 0;  // count not retrievable from GCD semaphore
-
-  for (LONG i = 0; i < lReleaseCount; ++i)
-    dispatch_semaphore_signal(s->dsema);
-#else
+  auto* s = static_cast<NativeSemaphoreHandle*>(hSemaphore);
   std::unique_lock<std::mutex> lock(s->mtx);
-  if (s->count + lReleaseCount > s->maxCount)
+
+  // Guard against overflow and against exceeding the declared maximum count.
+  if (lReleaseCount > s->maxCount - s->count)
     return FALSE;
 
   if (lpPreviousCount)
@@ -121,9 +95,9 @@ inline BOOL ReleaseSemaphore(
 
   s->count += lReleaseCount;
   lock.unlock();
+
   for (LONG i = 0; i < lReleaseCount; ++i)
     s->cv.notify_one();
-#endif
 
   return TRUE;
 }
@@ -160,19 +134,17 @@ inline BOOL DuplicateHandle(
 // ---------------------------------------------------------------------------
 
 inline BOOL CloseHandle(HANDLE hObject) {
+  // Reject null and INVALID_HANDLE_VALUE (-1), which also covers the
+  // GetCurrentProcess() pseudo-handle that returns (HANDLE)-1.
   if (!hObject || hObject == INVALID_HANDLE_VALUE)
     return FALSE;
 
+  // Inspect the kind tag through the base header before casting.
   auto* header = static_cast<NativeHandleHeader*>(hObject);
   switch (header->kind) {
-    case NativeHandleKind::Semaphore: {
-      auto* s = static_cast<NativeSemaphoreHandle*>(hObject);
-#ifdef __APPLE__
-      dispatch_release(s->dsema);
-#endif
-      delete s;
+    case NativeHandleKind::Semaphore:
+      delete static_cast<NativeSemaphoreHandle*>(hObject);
       return TRUE;
-    }
     default:
       dxvk::Logger::warn("CloseHandle: unknown handle type.");
       return FALSE;
@@ -184,8 +156,10 @@ inline BOOL CloseHandle(HANDLE hObject) {
 // ---------------------------------------------------------------------------
 
 inline HANDLE GetCurrentProcess() {
-  // Windows returns (HANDLE)-1 as the pseudo-handle for the current process.
-  return reinterpret_cast<HANDLE>(static_cast<intptr_t>(-1));
+  // Windows convention: the pseudo-handle for the current process is -1,
+  // which is the same value as INVALID_HANDLE_VALUE.  CloseHandle on this
+  // value is a no-op on Windows, and our CloseHandle does the same.
+  return INVALID_HANDLE_VALUE;
 }
 
 inline DWORD GetCurrentProcessId() {
@@ -193,7 +167,8 @@ inline DWORD GetCurrentProcessId() {
 }
 
 // ---------------------------------------------------------------------------
-// Session management — macOS has no Win32 session concept; return session 0
+// Session management — macOS/Linux have no Win32 session concept.
+// Return session 0 for any existing process.
 // ---------------------------------------------------------------------------
 
 inline BOOL ProcessIdToSessionId(DWORD /* pid */, DWORD* id) {
