@@ -111,13 +111,13 @@ Close gaps in `src/util/util_win32_compat.h` and related native shims needed for
 
 | Task | Status | Priority | Notes |
 |------|--------|----------|-------|
-| `GetCurrentProcessId` / `GetCurrentProcess` | Stub (returns 0/null) | High | Games use for session/save-path logic |
-| `CloseHandle` | Stub | High | Resource cleanup; many code paths depend on it |
-| `CreateSemaphoreA` / `ReleaseSemaphore` | Stub | High | Synchronization primitives used by game engines |
-| `SetEvent` | Stub | High | Event signaling for threading |
-| `DuplicateHandle` | Stub | Medium | Handle duplication for cross-thread resource sharing |
-| `ProcessIdToSessionId` | Stub | Low | Session management; rarely critical |
-| `CreateCompatibleDC` / `DeleteDC` | Stub | Low | GDI device contexts; only needed if game uses GDI blitting |
+| `GetCurrentProcessId` / `GetCurrentProcess` | **Done** | High | `getpid()` / pseudo-handle `(HANDLE)-1` |
+| `CloseHandle` | **Done** | High | Dispatches on `NativeHandleKind` tag; handles semaphore objects |
+| `CreateSemaphoreA` / `ReleaseSemaphore` | **Done** | High | `dispatch_semaphore_t` on Apple; mutex+cv fallback on other unix |
+| `SetEvent` | Stub (warns) | High | Event objects not yet implemented; no D3D9 code path calls this |
+| `DuplicateHandle` | Stub (warns) | Medium | Not yet implemented; no active D3D9 code path calls this |
+| `ProcessIdToSessionId` | **Done** | Low | Returns TRUE, session 0 (no Win32 sessions on macOS) |
+| `CreateCompatibleDC` / `DeleteDC` | Stub (silent) | Low | GDI DC; Windows-only; returns nullptr/FALSE safely |
 
 ### Milestone F — Fallout 3 compatibility
 
