@@ -5,6 +5,10 @@
 #include "d3d9_hud.h"
 #include "d3d9_window.h"
 
+#include "../util/util_misc.h"
+#include "../util/util_sleep.h"
+#include "../util/util_time.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -528,7 +532,7 @@ namespace dxvk {
       dxvk::high_resolution_clock::now())
       .time_since_epoch();
 
-    auto frametimeUs = std::chrono::microseconds(1000000u / mode.RefreshRate);
+    auto frametimeUs = std::chrono::duration_cast<std::chrono::microseconds>(GetRefreshPeriod());
     auto scanLineUs  = frametimeUs / scanLineCount;
 
     pRasterStatus->ScanLine = (nowUs % frametimeUs) / scanLineUs;
@@ -574,28 +578,29 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetLastPresentCount(UINT* pLastPresentCount) {
-    static bool s_errorShown = false;
+    if (unlikely(pLastPresentCount == nullptr))
+      return D3DERR_INVALIDCALL;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9SwapChainEx::GetLastPresentCount: Stub");
-
-    if (likely(pLastPresentCount != nullptr))
-      *pLastPresentCount = 0;
-
+    *pLastPresentCount = m_presentCount;
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetPresentStats(D3DPRESENTSTATS* pPresentationStatistics) {
-    static bool s_errorShown = false;
+    if (unlikely(pPresentationStatistics == nullptr))
+      return D3DERR_INVALIDCALL;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9SwapChainEx::GetPresentStats: Stub");
+    auto syncQpcTime = dxvk::high_resolution_clock::get_counter();
+    auto syncTime = dxvk::high_resolution_clock::get_time_from_counter(syncQpcTime);
 
-    if (likely(pPresentationStatistics != nullptr)) {
-      D3DPRESENTSTATS presentationStatistics = { };
-      *pPresentationStatistics = presentationStatistics;
-    }
+    D3DPRESENTSTATS presentationStatistics = { };
+    presentationStatistics.PresentCount        = m_presentCount;
+    presentationStatistics.PresentRefreshCount = m_presentRefreshCount;
+    presentationStatistics.SyncRefreshCount    = UINT(GetRefreshCount(syncTime));
+    presentationStatistics.SyncQPCTime.QuadPart = syncQpcTime;
+    presentationStatistics.SyncGPUTime.QuadPart = 0;
+
+    *pPresentationStatistics = presentationStatistics;
 
     return D3D_OK;
   }
@@ -677,10 +682,12 @@ namespace dxvk {
 
 
   HRESULT D3D9SwapChainEx::WaitForVBlank() {
-    static bool s_errorShown = false;
+    auto refreshPeriod = GetRefreshPeriod();
+    auto t1 = dxvk::high_resolution_clock::now();
+    auto refreshCount = computeRefreshCount(m_presentStatsBaseTime, t1, refreshPeriod);
+    auto t2 = m_presentStatsBaseTime + (refreshCount + 1) * refreshPeriod;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9SwapChainEx::WaitForVBlank: Stub");
+    Sleep::sleepUntil(t1, t2);
 
     return D3D_OK;
   }
@@ -922,6 +929,8 @@ namespace dxvk {
       });
 
       m_parent->FlushCsChunk();
+
+      UpdatePresentStats();
     }
 
     if (m_latencyTracker) {
@@ -1151,6 +1160,42 @@ namespace dxvk {
     // Wait for the sync event so that we respect the maximum frame latency
     m_wctx->frameLatencySignal->wait(m_wctx->frameId - GetActualFrameLatency());
   }
+
+
+  std::chrono::nanoseconds D3D9SwapChainEx::GetRefreshPeriod() {
+    constexpr std::chrono::nanoseconds fallbackRefreshPeriod = std::chrono::nanoseconds(16'666'667);
+
+    if (m_displayRefreshRate > 0.0) {
+      auto duration = std::chrono::duration<double>(1.0 / m_displayRefreshRate);
+      auto period = std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+      if (period.count() > 0)
+        return period;
+    }
+
+    D3DDISPLAYMODEEX mode;
+    mode.Size = sizeof(mode);
+
+    if (SUCCEEDED(GetDisplayModeEx(&mode, nullptr)) && mode.RefreshRate)
+      return computeRefreshPeriod(mode.RefreshRate, 1);
+
+    return fallbackRefreshPeriod;
+  }
+
+
+  uint64_t D3D9SwapChainEx::GetRefreshCount(dxvk::high_resolution_clock::time_point Time) {
+    return computeRefreshCount(m_presentStatsBaseTime, Time, GetRefreshPeriod());
+  }
+
+
+  void D3D9SwapChainEx::UpdatePresentStats() {
+    auto presentQpcTime = dxvk::high_resolution_clock::get_counter();
+    auto presentTime = dxvk::high_resolution_clock::get_time_from_counter(presentQpcTime);
+
+    m_presentCount += 1;
+    m_presentRefreshCount = UINT(GetRefreshCount(presentTime));
+  }
+
 
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
     uint32_t maxFrameLatency = m_parent->GetFrameLatency();
