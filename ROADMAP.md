@@ -32,7 +32,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Universal dylib (`lipo`) packaging | Done |
 | GitHub Actions macOS matrix build | Done |
 | SDL2 / SDL3 / GLFW WSI backends | Done (multi-monitor FS; GLFW borderless partial) |
-| MoltenVK loader (`libvulkan.dylib` / `libMoltenVK.dylib`) | Done |
+| MoltenVK loader (`libvulkan.dylib` / `libMoltenVK.dylib`) | Done (auto-discovers Homebrew prefixes + ICD manifest) |
 | Tiler GPU hints (`VK_DRIVER_ID_MOLTENVK`) | Done (upstream) |
 | Runtime smoke test / sample app | Done (`d3d9-clear` SDL2 + SDL3, CI smoke step) |
 | Game compatibility matrix | Partial (`COMPATIBILITY.md` — profiles + reference ports; needs macOS testing) |
@@ -51,6 +51,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 - [x] macOS meson adjustments (no `--build-id`, no static libgcc on darwin, native headers)
 - [x] WSI driver selection via `DXVK_WSI_DRIVER` and SDL2/SDL3/GLFW compile-time flags
 - [x] Vulkan loader tries MoltenVK on macOS (`src/vulkan/vulkan_loader.cpp`)
+- [x] Vulkan loader auto-discovers Homebrew-installed MoltenVK (`/opt/homebrew`, `/usr/local`, `$HOMEBREW_PREFIX`) and points the loader at the MoltenVK ICD manifest when no `DYLD_LIBRARY_PATH` / `VK_ICD_FILENAMES` is set (`src/vulkan/vulkan_loader.cpp`)
 - [x] CI workflow: build both architectures, upload artifacts (`.github/workflows/build-macos.yml`)
 - [x] README: build instructions, configuration, debugging env vars
 - [x] D3D9 Vulkan interop exports (`d3d9_interop.cpp`) for native apps that need Vk handles

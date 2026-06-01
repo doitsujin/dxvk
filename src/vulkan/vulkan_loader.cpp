@@ -1,4 +1,8 @@
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <tuple>
+#include <vector>
 
 #include "vulkan_loader.h"
 
@@ -9,7 +13,7 @@
 
 namespace dxvk::vk {
 
-  static std::pair<HMODULE, PFN_vkGetInstanceProcAddr> loadVulkanLibrary() {
+  static std::vector<std::string> getVulkanLibraryCandidates() {
     static const std::array<const char*, 2> dllNames = {{
 #ifdef _WIN32
       "winevulkan.dll",
@@ -23,8 +27,81 @@ namespace dxvk::vk {
 #endif
     }};
 
-    for (auto dllName : dllNames) {
-      HMODULE library = LoadLibraryA(dllName);
+    std::vector<std::string> candidates;
+
+    // Try the bare soname first so an explicit DYLD_LIBRARY_PATH / LD_LIBRARY_PATH
+    // or @rpath entry (if the loader was configured with one) takes precedence.
+    for (auto dllName : dllNames)
+      candidates.emplace_back(dllName);
+
+#if defined(__APPLE__)
+    // Homebrew installs libvulkan.dylib (vulkan-loader) and libMoltenVK.dylib
+    // (molten-vk) into <prefix>/lib, which is not on dyld's default search path.
+    // Without this fallback the library only loads when the host app exports
+    // DYLD_LIBRARY_PATH. Probe the common Homebrew prefixes so MoltenVK is found
+    // out of the box on both Apple Silicon and Intel Macs.
+    std::vector<std::string> prefixes;
+
+    if (const char* brewPrefix = std::getenv("HOMEBREW_PREFIX"))
+      prefixes.emplace_back(brewPrefix);
+
+    prefixes.emplace_back("/opt/homebrew"); // Apple Silicon default
+    prefixes.emplace_back("/usr/local");    // Intel default
+
+    for (const auto& prefix : prefixes) {
+      for (auto dllName : dllNames)
+        candidates.emplace_back(str::format(prefix, "/lib/", dllName));
+    }
+#endif
+
+    return candidates;
+  }
+
+#if defined(__APPLE__)
+  static bool fileExists(const std::string& path) {
+    if (FILE* file = std::fopen(path.c_str(), "r")) {
+      std::fclose(file);
+      return true;
+    }
+    return false;
+  }
+
+  // When using the full Vulkan loader (libvulkan.dylib) the MoltenVK ICD is
+  // discovered via a manifest in <prefix>/share/vulkan/icd.d. Homebrew's prefix
+  // is not on the loader's default manifest search path, so point it at the
+  // MoltenVK manifest if the user has not already selected an ICD. Loading
+  // libMoltenVK.dylib directly ignores this and is unaffected.
+  static void setupMoltenVkIcd() {
+    if (std::getenv("VK_ICD_FILENAMES") || std::getenv("VK_DRIVER_FILES"))
+      return;
+
+    std::vector<std::string> prefixes;
+
+    if (const char* brewPrefix = std::getenv("HOMEBREW_PREFIX"))
+      prefixes.emplace_back(brewPrefix);
+
+    prefixes.emplace_back("/opt/homebrew");
+    prefixes.emplace_back("/usr/local");
+
+    for (const auto& prefix : prefixes) {
+      std::string manifest = str::format(prefix, "/share/vulkan/icd.d/MoltenVK_icd.json");
+
+      if (fileExists(manifest)) {
+        setenv("VK_ICD_FILENAMES", manifest.c_str(), 0);
+        Logger::info(str::format("Vulkan: Using MoltenVK ICD manifest ", manifest));
+        return;
+      }
+    }
+  }
+#endif
+
+  static std::pair<HMODULE, PFN_vkGetInstanceProcAddr> loadVulkanLibrary() {
+#if defined(__APPLE__)
+    setupMoltenVkIcd();
+#endif
+
+    for (const auto& dllName : getVulkanLibraryCandidates()) {
+      HMODULE library = LoadLibraryA(dllName.c_str());
 
       if (!library)
         continue;
