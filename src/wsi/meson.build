@@ -24,17 +24,40 @@ if platform == 'windows'
   wsi_soname_conf.set('WSI_GLFW_SONAME', 'glfw.dll')
 else
   fs = import('fs')
+  find = find_program('find')
 
-  wsi_soname_conf.set('WSI_SDL2_SONAME', 'libSDL2-2.0.0.dylib' if platform == 'darwin' else 'libSDL2-2.0.so.0')
-  wsi_soname_conf.set('WSI_SDL3_SONAME', 'libSDL3.0.dylib' if platform == 'darwin' else 'libSDL3.so.0')
-  wsi_soname_conf.set('WSI_GLFW_SONAME', 'libglfw.3.dylib' if platform == 'darwin' else 'libglfw.so.3')
+  if platform == 'darwin'
+    wsi_soname_conf.set('WSI_SDL2_SONAME', 'libSDL2-2.0.0.dylib')
+    wsi_soname_conf.set('WSI_SDL3_SONAME', 'libSDL3.0.dylib')
+    wsi_soname_conf.set('WSI_GLFW_SONAME', 'libglfw.3.dylib')
+  else
+    wsi_soname_conf.set('WSI_SDL2_SONAME', 'libSDL2-2.0.so.0')
+    wsi_soname_conf.set('WSI_SDL3_SONAME', 'libSDL3.so.0')
+    wsi_soname_conf.set('WSI_GLFW_SONAME', 'libglfw.so.3')
+  endif
 
   if lib_sdl2.found()
     sdl2_libdir = lib_sdl2.get_variable(pkgconfig: 'libdir', default_value: '')
     if sdl2_libdir != ''
-      sdl2_lib = cpp.find_library('SDL2', dirs: sdl2_libdir, required: false)
-      if sdl2_lib.found()
-        wsi_soname_conf.set('WSI_SDL2_SONAME', fs.name(sdl2_lib.full_path()))
+      if platform == 'darwin'
+        sdl2_glob = 'libSDL2*.dylib'
+      else
+        sdl2_glob = 'libSDL2*.so*'
+      endif
+      sdl2_find = run_command(find, sdl2_libdir, '-maxdepth', '1', '-name', sdl2_glob, check: false)
+      if sdl2_find.returncode() == 0
+        foreach sdl2_lib : sdl2_find.stdout().strip().split('\n')
+          if sdl2_lib != ''
+            sdl2_name = fs.name(sdl2_lib)
+            if platform == 'darwin'
+              wsi_soname_conf.set('WSI_SDL2_SONAME', sdl2_name)
+              break
+            elif sdl2_name.endswith('.so.0') and not sdl2_name.contains('.so.0.')
+              wsi_soname_conf.set('WSI_SDL2_SONAME', sdl2_name)
+              break
+            endif
+          endif
+        endforeach
       endif
     endif
   endif
@@ -42,9 +65,25 @@ else
   if lib_sdl3.found()
     sdl3_libdir = lib_sdl3.get_variable(pkgconfig: 'libdir', default_value: '')
     if sdl3_libdir != ''
-      sdl3_lib = cpp.find_library('SDL3', dirs: sdl3_libdir, required: false)
-      if sdl3_lib.found()
-        wsi_soname_conf.set('WSI_SDL3_SONAME', fs.name(sdl3_lib.full_path()))
+      if platform == 'darwin'
+        sdl3_glob = 'libSDL3*.dylib'
+      else
+        sdl3_glob = 'libSDL3*.so*'
+      endif
+      sdl3_find = run_command(find, sdl3_libdir, '-maxdepth', '1', '-name', sdl3_glob, check: false)
+      if sdl3_find.returncode() == 0
+        foreach sdl3_lib : sdl3_find.stdout().strip().split('\n')
+          if sdl3_lib != ''
+            sdl3_name = fs.name(sdl3_lib)
+            if platform == 'darwin'
+              wsi_soname_conf.set('WSI_SDL3_SONAME', sdl3_name)
+              break
+            elif sdl3_name.endswith('.so.0') and not sdl3_name.contains('.so.0.')
+              wsi_soname_conf.set('WSI_SDL3_SONAME', sdl3_name)
+              break
+            endif
+          endif
+        endforeach
       endif
     endif
   endif
@@ -52,9 +91,25 @@ else
   if lib_glfw.found()
     glfw_libdir = lib_glfw.get_variable(pkgconfig: 'libdir', default_value: '')
     if glfw_libdir != ''
-      glfw_lib = cpp.find_library('glfw', dirs: glfw_libdir, required: false)
-      if glfw_lib.found()
-        wsi_soname_conf.set('WSI_GLFW_SONAME', fs.name(glfw_lib.full_path()))
+      if platform == 'darwin'
+        glfw_glob = 'libglfw*.dylib'
+      else
+        glfw_glob = 'libglfw*.so*'
+      endif
+      glfw_find = run_command(find, glfw_libdir, '-maxdepth', '1', '-name', glfw_glob, check: false)
+      if glfw_find.returncode() == 0
+        foreach glfw_lib : glfw_find.stdout().strip().split('\n')
+          if glfw_lib != ''
+            glfw_name = fs.name(glfw_lib)
+            if platform == 'darwin'
+              wsi_soname_conf.set('WSI_GLFW_SONAME', glfw_name)
+              break
+            elif glfw_name.endswith('.so.3') and not glfw_name.contains('.so.3.')
+              wsi_soname_conf.set('WSI_GLFW_SONAME', glfw_name)
+              break
+            endif
+          endif
+        endforeach
       endif
     endif
   endif
