@@ -173,11 +173,9 @@ namespace dxvk::wsi {
     }
 
     // Position the window on the target display before going fullscreen.
-    if (SDL_SetWindowPosition(window,
-          SDL_WINDOWPOS_CENTERED_DISPLAY(displayId),
-          SDL_WINDOWPOS_CENTERED_DISPLAY(displayId)) != 0) {
-      Logger::warn(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
-    }
+    SDL_SetWindowPosition(window,
+        SDL_WINDOWPOS_CENTERED_DISPLAY(displayId),
+        SDL_WINDOWPOS_CENTERED_DISPLAY(displayId));
 
     uint32_t flags = ModeSwitch
         ? SDL_WINDOW_FULLSCREEN

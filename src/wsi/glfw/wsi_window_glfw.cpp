@@ -25,7 +25,7 @@ namespace dxvk::wsi {
       int32_t displayCount = 0;
       GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
 
-      if (!isDisplayValid(displayId))
+      if (displayId < 0 || displayId >= displayCount)
         return nullptr;
 
       return monitors[displayId];

@@ -1,6 +1,10 @@
 #include "d3d9_cursor.h"
 #include "d3d9_util.h"
 
+#ifndef _WIN32
+#include "d3d9_cursor_native.h"
+#endif
+
 #include <utility>
 
 namespace dxvk {
@@ -105,8 +109,6 @@ namespace dxvk {
   }
 
 #else
-
-#include "d3d9_cursor_native.h"
 
   D3D9Cursor::~D3D9Cursor() {
     native_cursor::Reset();
