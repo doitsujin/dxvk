@@ -2348,6 +2348,11 @@ namespace dxvk {
         if (dstSubresource != imageSubresource || !isFullWrite || !dstImage->canRelocate())
           continue;
 
+        // On desktop there's no real point in allocating extra memory, just do
+        // the resolve late instead.
+        if (!m_device->perfHints().preferRenderPassOps)
+          continue;
+
         // Allocate and assign new backing storage. Deliberately don't go through
         // invalidateImageWithUsage here since we know we only need a subset of
         // state invalidations here and that method may mess with render passes.
