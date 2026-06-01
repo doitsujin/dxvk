@@ -14,9 +14,9 @@ namespace dxvk::wsi::darwin {
   namespace {
 
 #if defined(kIOMainPortDefault)
-    constexpr mach_port_t kDxvkIoPort = kIOMainPortDefault;
+    const mach_port_t kDxvkIoPort = kIOMainPortDefault;
 #else
-    constexpr mach_port_t kDxvkIoPort = kIOMasterPortDefault;
+    const mach_port_t kDxvkIoPort = kIOMasterPortDefault;
 #endif
 
     bool getCgDisplayId(uint32_t displayIndex, CGDirectDisplayID& displayId) {
