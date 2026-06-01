@@ -2340,7 +2340,7 @@ namespace dxvk {
 
       // Enable tracking so that we don't unnecessarily hit slow paths in the future
       if (dstImage->info().stages & graphicsStages)
-        dstImage->trackGfxStores();
+        needsNewBackingStorage |= !dstImage->trackGfxStores();
 
       if (needsNewBackingStorage) {
         auto imageSubresource = dstImage->getAvailableSubresources();
