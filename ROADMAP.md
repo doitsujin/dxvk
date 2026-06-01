@@ -192,7 +192,7 @@ Primary target: Fallout 3 (Steam, Windows) running on macOS via SpockD3D9. See [
 - D3D9On12 (`d3d9_on_12.cpp` stubs)
 - DXGI / D3D10 / D3D11 (source retained; disabled via meson options)
 - Direct Metal translation (see [dxmt](https://github.com/3Shain/dxmt))
-- Non-D3D9 game APIs (DirectSound, DirectInput, XInput — needed for full game compat but outside SpockD3D9's responsibility; a wrapper layer must provide these)
+- Non-D3D9 game APIs (DirectSound, DirectInput, XInput — needed for full game compatibility but outside SpockD3D9's responsibility; a wrapper layer must provide these)
 
 ---
 

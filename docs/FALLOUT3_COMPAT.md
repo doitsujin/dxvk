@@ -82,9 +82,7 @@ These are the D3D9 features Fallout 3 / Gamebryo is known to use. SpockD3D9 must
 
 ### Swap chain and presentation
 
-- [ ] `Present` with
- 
- 
+- [ ] `Present` with various swap effects (`D3DSWAPEFFECT_DISCARD`, `_FLIP`, `_COPY`)
 - [ ] Windowed mode presentation
 - [ ] Exclusive fullscreen presentation
 - [ ] `D3DPRESENT_INTERVAL_ONE` / `_IMMEDIATE` (vsync control)
