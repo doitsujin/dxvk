@@ -32,7 +32,7 @@ namespace dxvk {
 
   class DxvkIrShader;
   class DxvkIrShaderConverter;
-  class DxvkIrShaderCreateInfo;
+  struct DxvkIrShaderCreateInfo;
 
   /**
    * \brief Device performance hints
