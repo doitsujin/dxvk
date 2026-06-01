@@ -13,6 +13,12 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
+
+  static HMONITOR getSwapChainTargetMonitor(HWND window) {
+    HMONITOR monitor = wsi::getWindowMonitor(window);
+    return monitor ? monitor : wsi::getDefaultMonitor();
+  }
+
   D3D9SwapChainEx::D3D9SwapChainEx(
           D3D9DeviceEx*          pDevice,
           D3DPRESENT_PARAMETERS* pPresentParams,
@@ -608,7 +614,7 @@ namespace dxvk {
 
       wsi::WsiMode devMode = { };
 
-      if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &devMode)) {
+      if (!wsi::getCurrentDisplayMode(getSwapChainTargetMonitor(m_window), &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
@@ -825,7 +831,7 @@ namespace dxvk {
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
     else {
-      wsi::getMonitorClientSize(wsi::getDefaultMonitor(),
+      wsi::getMonitorClientSize(getSwapChainTargetMonitor(pPresentParams->hDeviceWindow),
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
@@ -1242,7 +1248,7 @@ namespace dxvk {
 
     D3D9WindowMessageFilter filter(m_window);
     
-    m_monitor = wsi::getDefaultMonitor();
+    m_monitor = getSwapChainTargetMonitor(m_window);
 
     wsi::saveWindowState(m_window, &m_windowState, true);
 
@@ -1298,7 +1304,7 @@ namespace dxvk {
 
     wsi::WsiMode wsiMode = ConvertDisplayMode(mode);
     
-    HMONITOR monitor = wsi::getDefaultMonitor();
+    HMONITOR monitor = getSwapChainTargetMonitor(m_window);
 
     if (!wsi::setWindowMode(monitor, m_window, &m_windowState, wsiMode))
       return D3DERR_NOTAVAILABLE;
@@ -1452,7 +1458,7 @@ namespace dxvk {
           D3D9VkExtOutputMetadata   *pOutputDesc) {
     HMONITOR monitor = m_swapchain->m_monitor;
     if (!monitor)
-      monitor = wsi::getDefaultMonitor();
+      monitor = getSwapChainTargetMonitor(m_swapchain->m_window);
     // ^ this should be the display we are mostly covering someday.
 
     wsi::WsiEdidData edidData = wsi::getMonitorEdid(monitor);

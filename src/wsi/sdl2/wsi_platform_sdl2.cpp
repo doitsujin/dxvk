@@ -1,6 +1,7 @@
 #if defined(DXVK_WSI_SDL2)
 
 #include "wsi_platform_sdl2.h"
+#include "../wsi_sonames.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
 #include "../../util/util_win32_compat.h"
@@ -10,15 +11,7 @@
 namespace dxvk::wsi {
 
   Sdl2WsiDriver::Sdl2WsiDriver() {
-    libsdl = LoadLibraryA( // FIXME: Get soname as string from meson
-#if defined(_WIN32)
-        "SDL2.dll"
-#elif defined(__APPLE__)
-        "libSDL2-2.0.0.dylib"
-#else
-        "libSDL2-2.0.so.0"
-#endif
-      );
+    libsdl = LoadLibraryA(WSI_SDL2_SONAME);
     if (libsdl == nullptr)
       throw DxvkError("SDL2 WSI: Failed to load SDL2 DLL.");
 

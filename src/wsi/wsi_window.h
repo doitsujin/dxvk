@@ -45,14 +45,15 @@ namespace dxvk::wsi {
 #endif
 #if defined(DXVK_WSI_GLFW)
     struct {
-      int32_t x         = 0;
-      int32_t y         = 0;
-      int32_t width     = 0;
-      int32_t height    = 0;
-      bool    decorated = true;
-      bool    maximized = false;
-      bool    iconified = false;
-      bool    valid     = false;
+      WsiMode  fullscreenMode = { };
+      int32_t  x              = 0;
+      int32_t  y              = 0;
+      int32_t  width          = 0;
+      int32_t  height         = 0;
+      bool     decorated      = true;
+      bool     maximized      = false;
+      bool     iconified      = false;
+      bool     valid          = false;
     } glfw;
 #endif
 

@@ -12,9 +12,91 @@
 #include "../../vulkan/vulkan_loader.h"
 #include <GLFW/glfw3.h>
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
+#include <limits>
 
 namespace dxvk::wsi {
+
+  namespace {
+
+    GLFWmonitor* getGlfwMonitor(int32_t displayId) {
+      int32_t displayCount = 0;
+      GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+
+      if (!isDisplayValid(displayId))
+        return nullptr;
+
+      return monitors[displayId];
+    }
+
+
+    int32_t getRequestedRefreshRate(const WsiMode& mode) {
+      if (mode.refreshRate.denominator == 0)
+        return 0;
+
+      return int32_t(mode.refreshRate.numerator / mode.refreshRate.denominator);
+    }
+
+
+    bool getClosestVideoMode(
+            GLFWmonitor* monitor,
+      const WsiMode&         requested,
+            GLFWvidmode*       outMode) {
+      int32_t count = 0;
+      const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
+
+      if (!modes || count == 0) {
+        *outMode = *glfwGetVideoMode(monitor);
+        return true;
+      }
+
+      const int32_t reqRefresh = getRequestedRefreshRate(requested);
+      const uint64_t reqPixels = uint64_t(requested.width) * uint64_t(requested.height);
+
+      const GLFWvidmode* best = modes;
+      uint64_t bestScore = std::numeric_limits<uint64_t>::max();
+
+      for (int32_t i = 0; i < count; i++) {
+        const uint64_t modePixels = uint64_t(modes[i].width) * uint64_t(modes[i].height);
+        const uint64_t pixelDiff = modePixels > reqPixels
+          ? modePixels - reqPixels
+          : reqPixels - modePixels;
+
+        const int32_t refreshDiff = reqRefresh != 0
+          ? std::abs(modes[i].refreshRate - reqRefresh)
+          : 0;
+
+        const uint64_t score = pixelDiff * 100000ull + uint64_t(refreshDiff);
+
+        if (score < bestScore) {
+          bestScore = score;
+          best = &modes[i];
+        }
+      }
+
+      *outMode = *best;
+      return true;
+    }
+
+
+    bool getMonitorBounds(HMONITOR hMonitor, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+      const int32_t displayId = fromHmonitor(hMonitor);
+      GLFWmonitor* monitor = getGlfwMonitor(displayId);
+
+      if (!monitor)
+        return false;
+
+      glfwGetMonitorPos(monitor, x, y);
+      const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+      *w = mode->width;
+      *h = mode->height;
+      return true;
+    }
+
+  }
+
 
   void GlfwWsiDriver::getWindowSize(
       HWND hWindow,
@@ -90,58 +172,54 @@ namespace dxvk::wsi {
 
 
   bool GlfwWsiDriver::setWindowMode(
-      HMONITOR hMonitor,
-      HWND hWindow,
-      DxvkWindowState* pState,
-      const WsiMode& pMode) {
+          HMONITOR         hMonitor,
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          const WsiMode&   pMode) {
     const int32_t displayId = fromHmonitor(hMonitor);
-    GLFWwindow* window = fromHwnd(hWindow);
 
     if (!isDisplayValid(displayId))
       return false;
 
-    int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
-    GLFWmonitor* monitor = monitors[displayId];
-
-    GLFWvidmode wantedMode = {};
-    wantedMode.width = pMode.width;
-    wantedMode.height = pMode.height;
-    wantedMode.refreshRate = pMode.refreshRate.numerator != 0
-                 ? pMode.refreshRate.numerator / pMode.refreshRate.denominator
-                 : 0;
-    // TODO: Implement lookup format for bitsPerPixel here.
-
-    glfwSetWindowMonitor(window, monitor, 0, 0, wantedMode.width, wantedMode.height, wantedMode.refreshRate);
+    if (pState)
+      pState->glfw.fullscreenMode = pMode;
 
     return true;
   }
 
+
   bool GlfwWsiDriver::enterFullscreenMode(
-      HMONITOR hMonitor,
-      HWND hWindow,
-      DxvkWindowState* pState,
-      bool ModeSwitch) {
+          HMONITOR         hMonitor,
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             ModeSwitch) {
     const int32_t displayId = fromHmonitor(hMonitor);
     GLFWwindow* window = fromHwnd(hWindow);
+    GLFWmonitor* monitor = getGlfwMonitor(displayId);
 
-    if (!isDisplayValid(displayId))
+    if (!monitor)
       return false;
 
-    int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
-    GLFWmonitor* monitor = monitors[displayId];
-    const GLFWvidmode* videoMode = glfwGetVideoMode(monitor);
+    int32_t mx = 0, my = 0, mw = 0, mh = 0;
+    if (!getMonitorBounds(hMonitor, &mx, &my, &mw, &mh))
+      return false;
 
-    int32_t mx = 0, my = 0;
-    glfwGetMonitorPos(monitor, &mx, &my);
+    WsiMode requested = { };
+    if (pState && pState->glfw.fullscreenMode.width != 0)
+      requested = pState->glfw.fullscreenMode;
+    else
+      wsi::getCurrentDisplayMode(hMonitor, &requested);
+
+    GLFWvidmode videoMode = { };
+    if (!getClosestVideoMode(monitor, requested, &videoMode))
+      return false;
 
     if (ModeSwitch) {
       glfwSetWindowMonitor(window, monitor, mx, my,
-        videoMode->width, videoMode->height, videoMode->refreshRate);
+        videoMode.width, videoMode.height, videoMode.refreshRate);
     } else {
-      glfwSetWindowMonitor(window, nullptr, mx, my,
-        videoMode->width, videoMode->height, GLFW_DONT_CARE);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, GLFW_FALSE);
+      glfwSetWindowMonitor(window, nullptr, mx, my, mw, mh, GLFW_DONT_CARE);
     }
 
     return true;
@@ -156,6 +234,7 @@ namespace dxvk::wsi {
     if (pState && pState->glfw.valid) {
       const auto& state = pState->glfw;
       glfwSetWindowMonitor(window, nullptr, state.x, state.y, state.width, state.height, GLFW_DONT_CARE);
+      glfwSetWindowAttrib(window, GLFW_DECORATED, state.decorated ? GLFW_TRUE : GLFW_FALSE);
     } else {
       glfwSetWindowMonitor(window, nullptr, 0, 0, 800, 600, GLFW_DONT_CARE);
     }
@@ -196,12 +275,12 @@ namespace dxvk::wsi {
     GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
 
     for (int32_t i = 0; i < displayCount; i++) {
-      int32_t mx = 0, my = 0;
-      glfwGetMonitorPos(monitors[i], &mx, &my);
-      const GLFWvidmode* mode = glfwGetVideoMode(monitors[i]);
+      int32_t mx = 0, my = 0, mw = 0, mh = 0;
+      if (!getMonitorBounds(toHmonitor(i), &mx, &my, &mw, &mh))
+        continue;
 
-      if (cx >= mx && cx < mx + mode->width
-       && cy >= my && cy < my + mode->height)
+      if (cx >= mx && cx < mx + mw
+       && cy >= my && cy < my + mh)
         return toHmonitor(i);
     }
 
@@ -240,10 +319,21 @@ namespace dxvk::wsi {
 
 
   void GlfwWsiDriver::updateFullscreenWindow(
-      HMONITOR hMonitor,
-      HWND     hWindow,
-      bool     forceTopmost) {
-    // Don't need to do anything with GLFW here.
+          HMONITOR hMonitor,
+          HWND     hWindow,
+          bool     forceTopmost) {
+    (void)forceTopmost;
+
+    GLFWwindow* window = fromHwnd(hWindow);
+    if (!glfwGetWindowMonitor(window))
+      return;
+
+    int32_t mx = 0, my = 0, mw = 0, mh = 0;
+    if (!getMonitorBounds(hMonitor, &mx, &my, &mw, &mh))
+      return;
+
+    glfwSetWindowPos(window, mx, my);
+    glfwSetWindowSize(window, mw, mh);
   }
 
   VkResult GlfwWsiDriver::createSurface(

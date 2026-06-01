@@ -1,0 +1,5 @@
+#pragma once
+
+#define WSI_SDL2_SONAME "@WSI_SDL2_SONAME@"
+#define WSI_SDL3_SONAME "@WSI_SDL3_SONAME@"
+#define WSI_GLFW_SONAME "@WSI_GLFW_SONAME@"
