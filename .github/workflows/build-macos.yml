@@ -70,10 +70,24 @@ jobs:
           find build -name 'd3d9-clear' 2>/dev/null || true
           exit 1
         fi
-        export DYLD_LIBRARY_PATH="$LIB_DIR${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+        BREW_PREFIX="$(brew --prefix)"
+        export DYLD_LIBRARY_PATH="$LIB_DIR:$BREW_PREFIX/lib${DYLD_LIBRARY_PATH:+:$DYLD_LIBRARY_PATH}"
+
+        for icd in \
+          "$BREW_PREFIX/share/vulkan/icd.d/MoltenVK_icd.json" \
+          /opt/homebrew/share/vulkan/icd.d/MoltenVK_icd.json \
+          /usr/local/share/vulkan/icd.d/MoltenVK_icd.json; do
+          if [ -f "$icd" ]; then
+            export VK_ICD_FILENAMES="$icd"
+            export VK_DRIVER_FILES="$icd"
+            echo "Using MoltenVK ICD: $icd"
+            break
+          fi
+        done
+
         export DXVK_WSI_DRIVER=SDL2
         export DXVK_LOG_LEVEL=info
-        "$LIB_DIR/d3d9-clear" 3
+        "$LIB_DIR/d3d9-clear" 3 || { [ -f d3d9.log ] && sed -n '1,200p' d3d9.log; exit 1; }
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
