@@ -29,6 +29,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 |------|--------|
 | Meson native build (arm64 / x86_64) | Done |
 | `package-native.sh` packaging | Done |
+| Universal dylib (`lipo`) packaging | Done |
 | GitHub Actions macOS matrix build | Done |
 | SDL2 / SDL3 / GLFW WSI backends | Partial |
 | MoltenVK loader (`libvulkan.dylib` / `libMoltenVK.dylib`) | Done |
@@ -37,7 +38,10 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Game compatibility matrix | Not started |
 | macOS EDID / HDR metadata | Partial (EDID read; HDR path uses it) |
 | Native D3D9 cursor | Partial (SDL2/GLFW HW + software compositing) |
-| Universal binary (`lipo`) packaging | Not started |
+| `isOccluded` for present throttling | Done (SDL2/SDL3/GLFW focus tracking) |
+| Window focus/resize → `NotifyWindowActivated` | Done (SDL/GLFW polling path) |
+| SDL2 fullscreen parity with SDL3 | Done |
+| `GetDeviceCaps` Vulkan-derived limits | Done (anisotropy, texture dims, MSAA honesty) |
 
 ---
 
@@ -50,6 +54,12 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 - [x] CI workflow: build both architectures, upload artifacts (`.github/workflows/build-macos.yml`)
 - [x] README: build instructions, configuration, debugging env vars
 - [x] D3D9 Vulkan interop exports (`d3d9_interop.cpp`) for native apps that need Vk handles
+- [x] `isOccluded` implemented for SDL2, SDL3, and GLFW (focus-loss with 100 ms hysteresis)
+- [x] SDL2 `enterFullscreenMode` now uses the mode saved by `setWindowMode` (parity with SDL3)
+- [x] GLFW `getDesktopDisplayMode` returns the largest available mode (native resolution)
+- [x] Universal binary (`lipo`) via `./package-native.sh … --arch universal`
+- [x] SDL/GLFW window focus polling → `NotifyWindowActivated` (device-loss-on-focus path)
+- [x] `GetDeviceCaps` uses Vulkan-derived texture dims, anisotropy, and volume extent; removes false MSAA-toggle and wideLines-conditioned AA-lines cap
 
 ---
 
@@ -65,22 +75,22 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 
 ### Milestone B — Playable windowed D3D9 app
 
-- [ ] Window resize/focus without Win32 `WM_*` messages (SDL/GLFW event path → `NotifyWindowActivated`)
+- [x] Window resize/focus without Win32 `WM_*` messages (SDL/GLFW event path → `NotifyWindowActivated`)
 - [x] Software/hardware cursor support (`d3d9_cursor_native`, SDL2/GLFW)
-- [ ] `GetDeviceCaps` / adapter caps aligned with queried Vulkan/MoltenVK features
+- [x] `GetDeviceCaps` / adapter caps aligned with queried Vulkan/MoltenVK features
 - [ ] Document MoltenVK format limits (BCn, depth, MSAA) and known gaps
 
 ### Milestone C — Fullscreen and display correctness
 
 - [x] `getMonitorEdid` on macOS (IOKit + CoreGraphics, SDL2/SDL3/GLFW WSI)
 - [x] `saveWindowState` / `restoreWindowState` for native WSI (SDL2, SDL3, GLFW)
-- [ ] SDL2 parity with SDL3 fullscreen path (display bounds, closest mode)
-- [ ] `isOccluded` for present throttling
+- [x] SDL2 parity with SDL3 fullscreen path (display bounds, closest mode)
+- [x] `isOccluded` for present throttling
 
 ### Milestone D — Production hardening
 
 - [ ] Game compatibility table (title → status → `dxvk.conf` profile)
-- [ ] Universal dylib via `lipo` in `package-native.sh`
+- [x] Universal dylib via `lipo` in `package-native.sh`
 - [ ] Performance notes for tiler mode (`dxvk.tilerMode` in `dxvk.conf`)
 - [x] macOS-focused issue template (`.github/ISSUE_TEMPLATE/bug_report_macos.md`)
 
@@ -93,8 +103,6 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Task | Files |
 |------|-------|
 | Multi-monitor exclusive/borderless fullscreen | `src/wsi/sdl2/wsi_window_sdl2.cpp`, `src/wsi/glfw/wsi_window_glfw.cpp` |
-| `getWindowMonitor` for GLFW (not hardcoded display 0) | `src/wsi/glfw/wsi_window_glfw.cpp` |
-| Fix GLFW `getDesktopDisplayMode` hack | `src/wsi/glfw/wsi_monitor_glfw.cpp` |
 | SDL soname from Meson instead of hardcoded dylib names | `src/wsi/*/wsi_platform_*.cpp` |
 
 ### 2. Runtime validation
@@ -102,13 +110,11 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Task | Files |
 |------|-------|
 | CI smoke test with MoltenVK | `.github/workflows/build-macos.yml`, new `examples/` or `tests/` |
-| Minimal SDL2 present loop sample | new `examples/d3d9-clear/` |
 
 ### 3. MoltenVK capability audit
 
 | Task | Files |
 |------|-------|
-| Tie advertised D3D9 caps to Vulkan feature queries | `src/d3d9/d3d9_adapter.cpp` |
 | Document BCn / depth / MSAA support vs MoltenVK release | `ROADMAP.md`, README |
 
 ### 4. Native cursor

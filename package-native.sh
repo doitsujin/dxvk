@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # SpockD3D9 - macOS native D3D9 packaging script
 # Builds for the host architecture (arm64 or x86_64) by default.
-# Use --arch to override (e.g. --arch arm64, --arch x86_64).
+# Use --arch universal for an arm64 + x86_64 fat binary via lipo.
 
 set -e
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--arch arm64|x86_64]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--arch arm64|x86_64|universal] [--build-id]"
   exit 1
 fi
 
@@ -60,19 +60,26 @@ fi
 
 echo "Building SpockD3D9 $DXVK_VERSION for macOS $opt_arch"
 
-function build_arch {
+# Build a single-architecture slice and install it into $2 (prefix root).
+# $1 = target arch (arm64 or x86_64)
+# $2 = install prefix (e.g. $DXVK_BUILD_DIR/usr)
+function build_arch_to {
+  local arch="$1"
+  local prefix="$2"
+  local builddir="$DXVK_BUILD_DIR/build.$arch"
+
   cd "$DXVK_SRC_DIR"
 
-  opt_strip=
+  local strip_flag=
   if [ $opt_devbuild -eq 0 ]; then
-    opt_strip=--strip
+    strip_flag=--strip
   fi
 
-  CC="$CC" CXX="$CXX" CFLAGS="-arch $1" CXXFLAGS="-arch $1" \
+  CC="$CC" CXX="$CXX" CFLAGS="-arch $arch" CXXFLAGS="-arch $arch" \
     meson setup \
         --buildtype "release"                \
-        --prefix "$DXVK_BUILD_DIR/usr"       \
-        $opt_strip                           \
+        --prefix "$prefix"                   \
+        $strip_flag                          \
         --bindir "lib"                       \
         --libdir "lib"                       \
         -Dbuild_id=$opt_buildid              \
@@ -82,14 +89,49 @@ function build_arch {
         -Denable_d3d11=false                 \
         -Denable_dxgi=false                  \
         --force-fallback-for=libdisplay-info \
-        "$DXVK_BUILD_DIR/build.$1"
+        "$builddir"
 
-  cd "$DXVK_BUILD_DIR/build.$1"
+  cd "$builddir"
   ninja install
 
   if [ $opt_devbuild -eq 0 ]; then
-    rm -r "$DXVK_BUILD_DIR/build.$1"
+    rm -rf "$builddir"
   fi
+}
+
+# Convenience wrapper that installs into the default $DXVK_BUILD_DIR/usr prefix.
+function build_arch {
+  build_arch_to "$1" "$DXVK_BUILD_DIR/usr"
+}
+
+# Merge two per-arch staging trees into a universal (fat) binary tree using lipo.
+# $1 = arch A (e.g. arm64)
+# $2 = arch B (e.g. x86_64)
+# $3 = output prefix (e.g. $DXVK_BUILD_DIR/usr)
+function lipo_merge {
+  local src_a="$DXVK_BUILD_DIR/usr.$1"
+  local src_b="$DXVK_BUILD_DIR/usr.$2"
+  local out="$3"
+
+  mkdir -p "$out"
+
+  # Copy non-binary files from arch A (headers, pkg-config, etc.)
+  rsync -a --exclude='*.dylib' --exclude='*.a' "$src_a/" "$out/"
+
+  # lipo-merge every dylib and static lib.
+  find "$src_a" \( -name '*.dylib' -o -name '*.a' \) | while read -r lib_a; do
+    local rel="${lib_a#$src_a/}"
+    local lib_b="$src_b/$rel"
+    local dest="$out/$rel"
+    mkdir -p "$(dirname "$dest")"
+
+    if [ -f "$lib_b" ]; then
+      lipo -create "$lib_a" "$lib_b" -output "$dest"
+    else
+      echo "Warning: $lib_b not found; copying $1 slice only" >&2
+      cp "$lib_a" "$dest"
+    fi
+  done
 }
 
 function package {
@@ -99,7 +141,22 @@ function package {
   rm -R "spockd3d9-$DXVK_VERSION"
 }
 
-build_arch "$opt_arch"
+if [ "$opt_arch" = "universal" ]; then
+  mkdir -p "$DXVK_BUILD_DIR"
+
+  echo "Building arm64 slice..."
+  build_arch_to "arm64"  "$DXVK_BUILD_DIR/usr.arm64"
+
+  echo "Building x86_64 slice..."
+  build_arch_to "x86_64" "$DXVK_BUILD_DIR/usr.x86_64"
+
+  echo "Merging slices into universal binary..."
+  lipo_merge "arm64" "x86_64" "$DXVK_BUILD_DIR/usr"
+
+  rm -rf "$DXVK_BUILD_DIR/usr.arm64" "$DXVK_BUILD_DIR/usr.x86_64"
+else
+  build_arch "$opt_arch"
+fi
 
 if [ $opt_nopackage -eq 0 ]; then
   package

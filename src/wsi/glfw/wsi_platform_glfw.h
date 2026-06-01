@@ -15,6 +15,8 @@ namespace dxvk::wsi {
       pfn_##name name;
     #include "wsi_platform_glfw_funcs.h"
 
+    uint64_t m_lastFocusTimestamp = 0;
+
     inline bool isDisplayValid(int32_t displayId) {
       int32_t displayCount = 0;
       glfwGetMonitors(&displayCount);

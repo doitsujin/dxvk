@@ -12,6 +12,8 @@
 #include "../../vulkan/vulkan_loader.h"
 #include <GLFW/glfw3.h>
 
+#include <chrono>
+
 namespace dxvk::wsi {
 
   void GlfwWsiDriver::getWindowSize(
@@ -220,7 +222,20 @@ namespace dxvk::wsi {
 
 
   bool GlfwWsiDriver::isOccluded(HWND hWindow) {
-    return false;
+    GLFWwindow* window = fromHwnd(hWindow);
+
+    const bool hasFocus = glfwGetWindowAttrib(window, GLFW_FOCUSED) != 0;
+
+    // Use milliseconds via steady_clock for a platform-neutral timestamp.
+    const uint64_t nowMs = uint64_t(std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now().time_since_epoch()).count());
+
+    if (hasFocus) {
+      m_lastFocusTimestamp = nowMs;
+      return false;
+    }
+
+    return m_lastFocusTimestamp != 0 && nowMs - m_lastFocusTimestamp > 100;
   }
 
 

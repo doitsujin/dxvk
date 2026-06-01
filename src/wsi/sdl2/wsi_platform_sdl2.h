@@ -14,6 +14,8 @@ namespace dxvk::wsi {
       pfn_##name name;
     #include "wsi_platform_sdl2_funcs.h"
 
+    uint64_t m_lastFocusTimestamp = 0;
+
     inline bool isDisplayValid(int32_t displayId) {
       const int32_t displayCount = SDL_GetNumVideoDisplays();
 

@@ -117,6 +117,11 @@ namespace dxvk::wsi {
       return false;
     }
 
+    // Save the requested mode so enterFullscreenMode can use it instead of
+    // falling back to the desktop display mode (parity with SDL3 backend).
+    if (pState)
+      pState->sdl2.fullscreenMode = pMode;
+
     return true;
   }
 
@@ -133,23 +138,45 @@ namespace dxvk::wsi {
     if (!isDisplayValid(displayId))
       return false;
 
+    if (ModeSwitch) {
+      // Use the mode previously saved by setWindowMode when available.
+      // This matches the SDL3 backend which stores the requested mode in
+      // pState->sdl3.fullscreenMode and then calls SDL_GetClosestFullscreenDisplayMode
+      // in enterFullscreenMode, rather than always fetching the desktop mode.
+      SDL_DisplayMode wantedMode = { };
+      if (pState && pState->sdl2.fullscreenMode.width != 0) {
+        const auto& saved = pState->sdl2.fullscreenMode;
+        wantedMode.w            = saved.width;
+        wantedMode.h            = saved.height;
+        wantedMode.refresh_rate = saved.refreshRate.numerator != 0
+          ? saved.refreshRate.numerator / saved.refreshRate.denominator
+          : 0;
+      }
+
+      SDL_DisplayMode closestMode = { };
+      if (wantedMode.w != 0) {
+        if (SDL_GetClosestDisplayMode(displayId, &wantedMode, &closestMode) == nullptr) {
+          Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_GetClosestDisplayMode: ", SDL_GetError()));
+          return false;
+        }
+      } else {
+        if (SDL_GetDesktopDisplayMode(displayId, &closestMode) != 0) {
+          Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_GetDesktopDisplayMode: ", SDL_GetError()));
+          return false;
+        }
+      }
+
+      if (SDL_SetWindowDisplayMode(window, &closestMode) != 0) {
+        Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowDisplayMode: ", SDL_GetError()));
+        return false;
+      }
+    }
+
+    // Position the window on the target display before going fullscreen.
     if (SDL_SetWindowPosition(window,
           SDL_WINDOWPOS_CENTERED_DISPLAY(displayId),
           SDL_WINDOWPOS_CENTERED_DISPLAY(displayId)) != 0) {
       Logger::warn(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowPosition: ", SDL_GetError()));
-    }
-
-    if (ModeSwitch) {
-      SDL_DisplayMode mode = { };
-      if (SDL_GetDesktopDisplayMode(displayId, &mode) != 0) {
-        Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_GetDesktopDisplayMode: ", SDL_GetError()));
-        return false;
-      }
-
-      if (SDL_SetWindowDisplayMode(window, &mode) != 0) {
-        Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowDisplayMode: ", SDL_GetError()));
-        return false;
-      }
     }
 
     uint32_t flags = ModeSwitch
@@ -206,7 +233,16 @@ namespace dxvk::wsi {
 
 
   bool Sdl2WsiDriver::isOccluded(HWND hWindow) {
-    return false;
+    SDL_Window* window = fromHwnd(hWindow);
+
+    const bool hasFocus = (SDL_GetWindowFlags(window) & SDL_WINDOW_INPUT_FOCUS) != 0;
+
+    if (hasFocus) {
+      m_lastFocusTimestamp = SDL_GetTicks();
+      return false;
+    }
+
+    return m_lastFocusTimestamp != 0 && SDL_GetTicks() - m_lastFocusTimestamp > 100;
   }
 
 

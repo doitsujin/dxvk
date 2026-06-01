@@ -155,9 +155,26 @@ namespace dxvk::wsi {
     GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
-    //TODO: actually implement this properly, currently we just grab the current one
-    convertMode(*glfwGetVideoMode(monitor), pMode);
+    // GLFW does not expose a dedicated "desktop mode" query separate from the
+    // current video mode.  On macOS the primary display's native resolution is
+    // always the largest mode reported by glfwGetVideoModes, so we pick the
+    // mode with the highest pixel count as the desktop/native mode.
+    int32_t count = 0;
+    const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
 
+    if (!modes || count == 0) {
+      // Fallback: use whatever mode is currently active.
+      convertMode(*glfwGetVideoMode(monitor), pMode);
+      return true;
+    }
+
+    const GLFWvidmode* best = &modes[0];
+    for (int32_t i = 1; i < count; i++) {
+      if (modes[i].width * modes[i].height > best->width * best->height)
+        best = &modes[i];
+    }
+
+    convertMode(*best, pMode);
     return true;
   }
 

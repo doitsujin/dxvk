@@ -2,6 +2,12 @@
 
 #include "d3d9_swapchain.h"
 
+#ifndef _WIN32
+#include "../wsi/wsi_window.h"
+#include "../util/thread.h"
+#include <unordered_map>
+#endif
+
 namespace dxvk
 {
 
@@ -156,27 +162,84 @@ namespace dxvk
   void ActivateFocusWindow(HWND window) {
       SetWindowPos(window, nullptr, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
   }
-#else
-  D3D9WindowMessageFilter::D3D9WindowMessageFilter(HWND window, bool filter) {
 
+  // On Win32 focus transitions are delivered via the subclassed WndProc;
+  // this polling path is only used on non-Win32 backends.
+  void PollWindowFocusForHook(HWND window) {
+  }
+
+#else
+  // ---------------------------------------------------------------------------
+  // Non-Win32 (SDL2 / SDL3 / GLFW) window focus tracking
+  //
+  // On non-Win32 backends there is no passive WndProc hook, so we maintain a
+  // simple {HWND → {swapchain, lastFocused}} map and poll WSI each frame from
+  // Present via PollWindowFocusForHook.
+  // ---------------------------------------------------------------------------
+
+  struct NativeWindowData {
+    D3D9SwapChainEx* swapchain = nullptr;
+    bool             lastFocus = false;
+  };
+
+  static dxvk::mutex                                        g_nativeWindowMutex;
+  static std::unordered_map<HWND, NativeWindowData>         g_nativeWindowMap;
+
+  D3D9WindowMessageFilter::D3D9WindowMessageFilter(HWND window, bool filter) {
   }
 
   D3D9WindowMessageFilter::~D3D9WindowMessageFilter() {
-
   }
 
   void ResetWindowProc(HWND window) {
-
+    std::lock_guard lock(g_nativeWindowMutex);
+    g_nativeWindowMap.erase(window);
   }
 
   void HookWindowProc(HWND window, D3D9SwapChainEx* swapchain) {
+    std::lock_guard lock(g_nativeWindowMutex);
 
+    // Seed lastFocus from current WSI state so we don't fire a spurious
+    // de-activation on the first poll for a newly-created fullscreen window.
+    NativeWindowData data;
+    data.swapchain  = swapchain;
+    data.lastFocus  = !wsi::isOccluded(window);
+    g_nativeWindowMap[window] = data;
   }
 
   void SetActivateProcessed(HWND window, bool processed) {
   }
 
   void ActivateFocusWindow(HWND window) {
+  }
+
+  void PollWindowFocusForHook(HWND window) {
+    NativeWindowData entry;
+
+    {
+      std::lock_guard lock(g_nativeWindowMutex);
+      auto it = g_nativeWindowMap.find(window);
+      if (it == g_nativeWindowMap.end())
+        return;
+      entry = it->second;
+    }
+
+    // isOccluded returns true only after the window has lost focus for >100ms,
+    // giving the same hysteresis as the Win32 GetForegroundWindow approach.
+    const bool hasFocus = !wsi::isOccluded(window);
+
+    if (hasFocus == entry.lastFocus)
+      return;
+
+    {
+      std::lock_guard lock(g_nativeWindowMutex);
+      auto it = g_nativeWindowMap.find(window);
+      if (it != g_nativeWindowMap.end())
+        it->second.lastFocus = hasFocus;
+    }
+
+    if (entry.swapchain)
+      entry.swapchain->GetParent()->NotifyWindowActivated(window, hasFocus);
   }
 
 #endif

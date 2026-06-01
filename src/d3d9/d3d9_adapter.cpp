@@ -403,8 +403,10 @@ namespace dxvk {
     const uint32_t maxShaderModel = m_parent->IsD3D8Compatible() ? std::min(1u, options.shaderModel) : options.shaderModel;
     const auto& limits = m_caps.getProperties().core.properties.limits;
 
-    // TODO: Actually care about what the adapter supports here.
-    // ^ For Intel and older cards most likely here.
+    // Where possible, caps are derived from the Vulkan device's reported limits
+    // rather than being hard-coded.  Per-format checks (e.g. MSAA sample counts,
+    // BCn/depth texture support) are performed inside CheckDeviceFormat /
+    // CheckDeviceMultiSampleType, which already query Vulkan properties.
 
     // Device Type
     pCaps->DeviceType               = DeviceType;
@@ -491,8 +493,10 @@ namespace dxvk {
                                     | D3DPRASTERCAPS_COLORPERSPECTIVE
                                     | D3DPRASTERCAPS_SCISSORTEST
                                     | D3DPRASTERCAPS_SLOPESCALEDEPTHBIAS
-                                    | D3DPRASTERCAPS_DEPTHBIAS
-                                    | D3DPRASTERCAPS_MULTISAMPLE_TOGGLE; // <-- TODO! (but difficult in Vk)
+                                    | D3DPRASTERCAPS_DEPTHBIAS;
+                                    // D3DPRASTERCAPS_MULTISAMPLE_TOGGLE would require
+                                    // the ability to enable/disable MSAA within a single
+                                    // render pass, which is not supported in Vulkan.
     // Z Comparison Caps
     pCaps->ZCmpCaps                 = D3DPCMPCAPS_NEVER
                                     | D3DPCMPCAPS_LESS
@@ -581,20 +585,29 @@ namespace dxvk {
                                     | D3DLINECAPS_ZTEST
                                     | D3DLINECAPS_BLEND
                                     | D3DLINECAPS_ALPHACMP
-                                    | D3DLINECAPS_FOG
-                                    | D3DLINECAPS_ANTIALIAS; //<-- Lying about doing AA lines here, we don't *fully* support that.
+                                    | D3DLINECAPS_FOG;
+    // AA lines require either wideLines or wideLineInterpolation hardware support.
+    // MoltenVK exposes wide lines on Apple Silicon; report ANTIALIAS only when the
+    // underlying Vulkan adapter supports wide/non-1px line rasterization.
+    if (m_caps.getFeatures().core.features.wideLines)
+      pCaps->LineCaps              |= D3DLINECAPS_ANTIALIAS;
+    // Max Texture Width / Height: respect the Vulkan implementation's actual limit
+    // (MoltenVK / Metal typically supports 16 384 px on Apple Silicon).
+    const uint32_t maxDim2D         = std::min(limits.maxImageDimension2D,
+                                               uint32_t(MaxTextureDimension));
     // Max Texture Width
-    pCaps->MaxTextureWidth          = MaxTextureDimension;
+    pCaps->MaxTextureWidth          = maxDim2D;
     // Max Texture Height
-    pCaps->MaxTextureHeight         = MaxTextureDimension;
-    // Max Volume Extent
-    pCaps->MaxVolumeExtent          = 8192;
-    // Max Texture Repeat
-    pCaps->MaxTextureRepeat         = 8192;
-    // Max Texture Aspect Ratio
-    pCaps->MaxTextureAspectRatio    = 8192;
-    // Max Anisotropy
-    pCaps->MaxAnisotropy            = 16;
+    pCaps->MaxTextureHeight         = maxDim2D;
+    // Max Volume Extent: use the Vulkan 3-D image dimension limit.
+    pCaps->MaxVolumeExtent          = limits.maxImageDimension3D;
+    // Max Texture Repeat: no Vulkan analogue; cap conservatively at the 2-D dim.
+    pCaps->MaxTextureRepeat         = maxDim2D;
+    // Max Texture Aspect Ratio: 0 means "unbounded" per D3D9 spec.
+    pCaps->MaxTextureAspectRatio    = 0;
+    // Max Anisotropy: use what the Vulkan driver actually supports, capped to 16
+    // because D3D9 apps rarely need more and some drivers report oddly large values.
+    pCaps->MaxAnisotropy            = std::min(uint32_t(limits.maxSamplerAnisotropy), 16u);
     // Max Vertex W
     pCaps->MaxVertexW               = 1e10f;
     // Guard Bands
