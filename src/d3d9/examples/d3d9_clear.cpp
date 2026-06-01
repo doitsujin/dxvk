@@ -1,16 +1,28 @@
 /**
  * Minimal SpockD3D9 / DXVK-native smoke test.
  *
- * Creates an SDL2 window, a D3D9 device, clears the back buffer, and presents.
- * Exits after a configurable number of frames (default: 60).
+ * Creates an SDL2 or SDL3 window, a D3D9 device, clears the back buffer, and
+ * presents. Exits after a configurable number of frames (default: 60).
+ *
+ * Compiled twice: the default build targets SDL2; defining D3D9_CLEAR_SDL3
+ * targets SDL3 (and selects the matching DXVK_WSI_DRIVER).
  */
 
 #include <cstdio>
 #include <cstdlib>
 
+#if defined(D3D9_CLEAR_SDL3)
+#include <SDL3/SDL.h>
+#if defined(__APPLE__)
+#include <SDL3/SDL_vulkan.h>
+#endif
+#define D3D9_CLEAR_WSI_DRIVER "SDL3"
+#else
 #include <SDL.h>
 #if defined(__APPLE__)
 #include <SDL_vulkan.h>
+#endif
+#define D3D9_CLEAR_WSI_DRIVER "SDL2"
 #endif
 #include <windows.h>
 #include <d3d9.h>
@@ -19,9 +31,9 @@ namespace {
 
   void configureWsiDriver() {
 #if defined(_WIN32)
-    _putenv_s("DXVK_WSI_DRIVER", "SDL2");
+    _putenv_s("DXVK_WSI_DRIVER", D3D9_CLEAR_WSI_DRIVER);
 #else
-    setenv("DXVK_WSI_DRIVER", "SDL2", 1);
+    setenv("DXVK_WSI_DRIVER", D3D9_CLEAR_WSI_DRIVER, 1);
 #endif
   }
 
@@ -38,8 +50,17 @@ namespace {
   }
 
 #if defined(__APPLE__)
+  // SDL3's SDL_Vulkan_LoadLibrary returns true on success; SDL2's returns 0.
+  bool vulkanLibraryLoaded(const char* path) {
+#if defined(D3D9_CLEAR_SDL3)
+    return SDL_Vulkan_LoadLibrary(path);
+#else
+    return SDL_Vulkan_LoadLibrary(path) == 0;
+#endif
+  }
+
   bool loadVulkanPortabilityLibrary() {
-    if (SDL_Vulkan_LoadLibrary(nullptr) == 0)
+    if (vulkanLibraryLoaded(nullptr))
       return true;
 
     const char* const candidates[] = {
@@ -54,7 +75,7 @@ namespace {
       if (path == nullptr || path[0] == '\0')
         continue;
 
-      if (SDL_Vulkan_LoadLibrary(path) == 0)
+      if (vulkanLibraryLoaded(path))
         return true;
     }
 
@@ -69,7 +90,11 @@ int main(int argc, char** argv) {
 
   configureWsiDriver();
 
+#if defined(D3D9_CLEAR_SDL3)
+  if (!SDL_Init(SDL_INIT_VIDEO)) {
+#else
   if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+#endif
     std::fprintf(stderr, "d3d9-clear: SDL_Init failed: %s\n", SDL_GetError());
     return 1;
   }
@@ -85,6 +110,13 @@ int main(int argc, char** argv) {
   constexpr uint32_t kWidth  = 640;
   constexpr uint32_t kHeight = 480;
 
+#if defined(D3D9_CLEAR_SDL3)
+  SDL_Window* window = SDL_CreateWindow(
+    "SpockD3D9 d3d9-clear",
+    int(kWidth),
+    int(kHeight),
+    SDL_WINDOW_VULKAN);
+#else
   SDL_Window* window = SDL_CreateWindow(
     "SpockD3D9 d3d9-clear",
     SDL_WINDOWPOS_CENTERED,
@@ -92,6 +124,7 @@ int main(int argc, char** argv) {
     kWidth,
     kHeight,
     SDL_WINDOW_SHOWN | SDL_WINDOW_VULKAN);
+#endif
 
   if (!window) {
     std::fprintf(stderr, "d3d9-clear: SDL_CreateWindow failed: %s\n", SDL_GetError());
@@ -143,7 +176,11 @@ int main(int argc, char** argv) {
   for (int frame = 0; frame < frameCount && !quit; frame++) {
     SDL_Event event = { };
     while (SDL_PollEvent(&event)) {
+#if defined(D3D9_CLEAR_SDL3)
+      if (event.type == SDL_EVENT_QUIT)
+#else
       if (event.type == SDL_QUIT)
+#endif
         quit = true;
     }
 

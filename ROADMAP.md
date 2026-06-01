@@ -34,7 +34,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | SDL2 / SDL3 / GLFW WSI backends | Done (multi-monitor FS; GLFW borderless partial) |
 | MoltenVK loader (`libvulkan.dylib` / `libMoltenVK.dylib`) | Done |
 | Tiler GPU hints (`VK_DRIVER_ID_MOLTENVK`) | Done (upstream) |
-| Runtime smoke test / sample app | Done (`d3d9-clear`, CI smoke step) |
+| Runtime smoke test / sample app | Done (`d3d9-clear` SDL2 + SDL3, CI smoke step) |
 | Game compatibility matrix | Partial (`COMPATIBILITY.md` — profiles + reference ports; needs macOS testing) |
 | macOS EDID / HDR metadata | Partial (EDID read; HDR path uses it) |
 | Native D3D9 cursor | Done (SDL2/SDL3/GLFW HW + software compositing) |
