@@ -36,7 +36,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Runtime smoke test / sample app | Not started |
 | Game compatibility matrix | Not started |
 | macOS EDID / HDR metadata | Partial (EDID read; HDR path uses it) |
-| Native D3D9 cursor | Stubbed |
+| Native D3D9 cursor | Partial (SDL2/GLFW HW + software compositing) |
 | Universal binary (`lipo`) packaging | Not started |
 
 ---
@@ -66,14 +66,14 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 ### Milestone B — Playable windowed D3D9 app
 
 - [ ] Window resize/focus without Win32 `WM_*` messages (SDL/GLFW event path → `NotifyWindowActivated`)
-- [ ] Software/hardware cursor support (`d3d9_cursor.cpp` currently stubs)
+- [x] Software/hardware cursor support (`d3d9_cursor_native`, SDL2/GLFW)
 - [ ] `GetDeviceCaps` / adapter caps aligned with queried Vulkan/MoltenVK features
 - [ ] Document MoltenVK format limits (BCn, depth, MSAA) and known gaps
 
 ### Milestone C — Fullscreen and display correctness
 
 - [x] `getMonitorEdid` on macOS (IOKit + CoreGraphics, SDL2/SDL3/GLFW WSI)
-- [ ] `saveWindowState` / `restoreWindowState` for native WSI (all backends)
+- [x] `saveWindowState` / `restoreWindowState` for native WSI (SDL2, SDL3, GLFW)
 - [ ] SDL2 parity with SDL3 fullscreen path (display bounds, closest mode)
 - [ ] `isOccluded` for present throttling
 

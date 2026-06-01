@@ -62,7 +62,7 @@ if platform != 'windows' and platform != 'darwin'
 endif
 
 d3d9_dll = shared_library(dxvk_name_prefix+'d3d9', d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
-  dependencies        : [ dxso_dep, dxvk_dep, dxbc_spirv_dep ],
+  dependencies        : d3d9_deps,
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d9'+def_spec_ext,
@@ -80,14 +80,5 @@ if platform != 'windows'
   pkg.generate(d3d9_dll,
     filebase: dxvk_pkg_prefix + 'd3d9',
     subdirs:  'dxvk',
-  )
-
-  lib_sdl2_sample = dependency('sdl2', required: true)
-
-  executable('d3d9-clear', 'examples/d3d9_clear.cpp',
-    dependencies        : [ d3d9_dep, lib_sdl2_sample ],
-    include_directories : [ dxvk_include_path ],
-    install             : true,
-    install_rpath       : '@loader_path',
   )
 endif

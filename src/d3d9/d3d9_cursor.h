@@ -37,6 +37,10 @@ namespace dxvk {
       if (m_hCursor != nullptr)
         ::DestroyCursor(m_hCursor);
     }
+#else
+    ~D3D9Cursor();
+
+    void SetWindow(HWND window);
 #endif
 
     void ResetCursor();
@@ -69,6 +73,8 @@ namespace dxvk {
     inline bool IsHardwareCursor() const {
       return m_hCursor != nullptr;
     }
+#else
+    bool IsHardwareCursor() const;
 #endif
 
   private:
@@ -78,6 +84,8 @@ namespace dxvk {
 
 #ifdef _WIN32
     HCURSOR               m_hCursor = nullptr;
+#else
+    HWND                  m_window  = nullptr;
 #endif
 
   };

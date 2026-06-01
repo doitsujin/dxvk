@@ -6,6 +6,7 @@
 namespace dxvk {
 
 #ifdef _WIN32
+
   void D3D9Cursor::ResetCursor() {
     m_visible = FALSE;
     ShowCursor(m_visible);
@@ -104,40 +105,101 @@ namespace dxvk {
   }
 
 #else
+
+#include "d3d9_cursor_native.h"
+
+  D3D9Cursor::~D3D9Cursor() {
+    native_cursor::Reset();
+  }
+
+
+  void D3D9Cursor::SetWindow(HWND window) {
+    m_window = window;
+    native_cursor::SetWindow(window);
+  }
+
+
+  bool D3D9Cursor::IsHardwareCursor() const {
+    return native_cursor::HasHardwareCursor();
+  }
+
+
   void D3D9Cursor::ResetCursor() {
-    Logger::warn("D3D9Cursor::ResetCursor: Not supported on current platform.");
+    m_visible = FALSE;
+    ShowCursor(m_visible);
+
+    if (IsHardwareCursor())
+      ResetHardwareCursor();
+    else if (IsActiveSoftwareCursor())
+      ResetSoftwareCursor();
   }
 
 
   void D3D9Cursor::ResetHardwareCursor() {
-    Logger::warn("D3D9Cursor::ResetHardwareCursor: Not supported on current platform.");
+    native_cursor::ResetHardwareCursor();
   }
 
 
   void D3D9Cursor::ResetSoftwareCursor() {
-    Logger::warn("D3D9Cursor::ResetSoftwareCursor: Not supported on current platform.");
+    m_sCursor.DrawCursor  = false;
+    m_sCursor.ClearCursor = true;
   }
 
 
   void D3D9Cursor::UpdateCursor(int X, int Y) {
-    Logger::warn("D3D9Cursor::UpdateCursor: Not supported on current platform.");
+    m_sCursor.X = X;
+    m_sCursor.Y = Y;
+
+    if (IsActiveSoftwareCursor())
+      return;
+
+    if (IsHardwareCursor() && m_window != nullptr)
+      native_cursor::UpdateHardwareCursorPosition(m_window, X, Y);
   }
 
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
-    Logger::warn("D3D9Cursor::ShowCursor: Not supported on current platform.");
+    if (unlikely(!IsHardwareCursor() && !IsActiveSoftwareCursor()))
+      return m_visible;
+
+    if (IsHardwareCursor()) {
+      if (m_window != nullptr)
+        native_cursor::ShowHardwareCursor(m_window, bShow);
+    } else {
+      m_sCursor.DrawCursor = bShow;
+    }
+
     return std::exchange(m_visible, bShow);
   }
 
 
   void D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
-    Logger::warn("D3D9Cursor::SetHardwareCursor: Not supported on current platform.");
+    if (IsActiveSoftwareCursor())
+      ResetSoftwareCursor();
+
+    if (m_window != nullptr)
+      native_cursor::SetHardwareCursor(m_window, XHotSpot, YHotSpot, bitmap);
+
+    ShowCursor(m_visible);
   }
 
 
   void D3D9Cursor::SetSoftwareCursor(UINT XHotSpot, UINT YHotSpot, UINT Width, UINT Height) {
-    Logger::warn("D3D9Cursor::SetSoftwareCursor: Not supported on current platform.");
+    if (m_window != nullptr)
+      native_cursor::PrepareSoftwareCursor(m_window);
+
+    if (IsHardwareCursor())
+      ResetHardwareCursor();
+
+    m_sCursor.Width       = Width;
+    m_sCursor.Height      = Height;
+    m_sCursor.XHotSpot    = XHotSpot;
+    m_sCursor.YHotSpot    = YHotSpot;
+    m_sCursor.ClearCursor = false;
+
+    ShowCursor(m_visible);
   }
+
 #endif
 
 }
