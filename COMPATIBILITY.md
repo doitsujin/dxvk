@@ -1,6 +1,10 @@
 # SpockD3D9 Compatibility Matrix
 
-Native macOS D3D9 applications and ports using SpockD3D9 (`libdxvk_d3d9.dylib`). This table tracks known-good titles, broken cases, and suggested `dxvk.conf` profiles.
+D3D9 applications and games targeting macOS via SpockD3D9 (`libdxvk_d3d9.dylib`). This table tracks known-good titles, broken cases, and suggested `dxvk.conf` profiles.
+
+SpockD3D9 supports two usage paths:
+1. **Native ports** — applications link `libdxvk_d3d9.dylib` directly using SDL2/SDL3/GLFW.
+2. **Windows game compatibility** — a wrapper or translation layer hosts Windows game logic and routes D3D9 calls through SpockD3D9.
 
 **Status legend**
 
@@ -10,9 +14,32 @@ Native macOS D3D9 applications and ports using SpockD3D9 (`libdxvk_d3d9.dylib`).
 | **Partial** | Runs but with visual glitches, performance issues, or missing features |
 | **Broken** | Crashes, black screen, or unusable |
 | **Untested** | Expected to work in theory; not yet verified on macOS |
-| **N/A** | Windows/Wine binary only — use upstream DXVK + Wine, not SpockD3D9 |
+| **Blocked** | Cannot run yet due to missing infrastructure (e.g., Win32 shims, wrapper layer) |
 
 Contributions welcome: test a title, add a row, and open a PR. For bugs use the [macOS bug report template](.github/ISSUE_TEMPLATE/bug_report_macos.md).
+
+---
+
+## Primary compatibility target
+
+| Title | Status | Engine / API | Path | Notes | Detailed tracker |
+|-------|--------|--------------|------|-------|-----------------|
+| **Fallout 3 (Steam, Windows)** | **Blocked** | Gamebryo / D3D9 | Windows game compat | Primary target title; requires Win32 shim + wrapper layer | [docs/FALLOUT3_COMPAT.md](docs/FALLOUT3_COMPAT.md) |
+
+### Fallout 3 — key compatibility areas
+
+| Area | Status | Notes |
+|------|--------|-------|
+| Boot / device creation | **Blocked** | Needs wrapper layer to host Windows binary and route D3D9 calls |
+| Rendering (fixed-function + SM3) | **Untested** | Gamebryo uses mixed fixed-function and shader paths |
+| Fullscreen / resolution switching | **Untested** | Expects `Reset` / mode enumeration; SpockD3D9 supports this via WSI |
+| Input (keyboard / mouse / gamepad) | **Blocked** | Windows binary uses DirectInput / Win32 messages |
+| Audio | **Blocked** | Uses DirectSound / XAudio2; out of SpockD3D9 scope but needed for playability |
+| Save / load | **Blocked** | Win32 filesystem APIs; needs wrapper support |
+| Shader cache / stutter | **Untested** | MoltenVK SPIR-V → MSL compilation; `dxvk.enableShaderCache = True` recommended |
+| DXT texture loading | **Untested** | BCn support on Apple Silicon via MoltenVK; see [MoltenVK caps](docs/MOLTENVK_CAPABILITIES.md) |
+
+See [docs/FALLOUT3_COMPAT.md](docs/FALLOUT3_COMPAT.md) for the full per-subsystem checklist.
 
 ---
 
@@ -39,10 +66,11 @@ These projects ship native builds using [DXVK Native](https://github.com/doitsuj
 
 ## D3D9 port profiles (from upstream DXVK)
 
-Configuration presets for **native ports** of titles that are known to need D3D9 quirks on Vulkan. Windows retail builds running under Wine are **N/A** for SpockD3D9 — use upstream DXVK instead.
+Configuration presets for titles that are known to need D3D9 quirks on Vulkan.
 
 | Title / pattern | Status (native macOS) | Typical issue | Suggested `dxvk.conf` |
 |-----------------|----------------------|---------------|----------------------|
+| **Fallout 3 (Gamebryo)** | **Blocked** | Requires wrapper layer; potential refresh-rate + float issues | `dxvk.enableShaderCache = True`, `d3d9.forceRefreshRate = 60`, `d3d9.floatEmulation = Strict` |
 | The Sims 2 | **Untested** | Non-standard formats (X4R4G4B4), A8 RT misuse | `d3d9.supportX4R4G4B4 = True`, `d3d9.disableA8RT = True` |
 | AquaNox / AquaNox 2 | **Untested** | Breaks when too many display modes are enumerated | `d3d9.modeCountCompatibility = True` |
 | Halo: Combat Evolved | **Untested** | Wrong sampler/image type combinations | `d3d9.forceSamplerTypeSpecConstants = True` |
@@ -74,13 +102,14 @@ your_app
 
 ---
 
-## Out of scope (Wine / Windows binaries)
+## Windows game compatibility (in progress)
 
 | Category | Status | Notes |
 |----------|--------|-------|
-| Windows `.exe` via Wine + DXVK | **N/A** | Use [upstream DXVK](https://github.com/doitsujin/dxvk) or a Wine build |
-| D3D10 / D3D11 titles | **N/A** | Disabled in default SpockD3D9 builds (`enable_d3d9` only) |
-| Retail Steam D3D9 games (no source) | **N/A** | Require a native macOS port or wrapper that links SpockD3D9 |
+| Windows `.exe` via wrapper + SpockD3D9 | **Blocked** | Requires a wrapper/translation layer to host Windows binaries and route D3D9 to SpockD3D9 |
+| Windows `.exe` via Wine + upstream DXVK | Separate project | Use [upstream DXVK](https://github.com/doitsujin/dxvk) with Wine for a proven path today |
+| D3D10 / D3D11 titles | Not supported | Disabled in default SpockD3D9 builds (`enable_d3d9` only) |
+| Retail Steam D3D9 games (e.g., Fallout 3) | **Blocked** | Primary target; see [Fallout 3 tracker](#primary-compatibility-target) above |
 
 ---
 
