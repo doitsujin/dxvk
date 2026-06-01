@@ -1,6 +1,7 @@
 #if defined(DXVK_WSI_SDL3)
 
 #include "wsi_platform_sdl3.h"
+#include "../wsi_sonames.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
 #include "../../util/util_win32_compat.h"
@@ -10,15 +11,7 @@
 namespace dxvk::wsi {
 
   Sdl3WsiDriver::Sdl3WsiDriver() {
-    libsdl = LoadLibraryA( // FIXME: Get soname as string from meson
-#if defined(_WIN32)
-        "SDL3.dll"
-#elif defined(__APPLE__)
-        "libSDL3.0.dylib"
-#else
-        "libSDL3.so.0"
-#endif
-      );
+    libsdl = LoadLibraryA(WSI_SDL3_SONAME);
     if (libsdl == nullptr)
       throw DxvkError("SDL3 WSI: Failed to load SDL3 DLL.");
 

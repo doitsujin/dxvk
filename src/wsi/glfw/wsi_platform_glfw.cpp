@@ -1,6 +1,7 @@
 #if defined(DXVK_WSI_GLFW)
 
 #include "wsi_platform_glfw.h"
+#include "../wsi_sonames.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
 #include "../../util/util_win32_compat.h"
@@ -8,15 +9,7 @@
 namespace dxvk::wsi {
 
   GlfwWsiDriver::GlfwWsiDriver() {
-    libglfw = LoadLibraryA( // FIXME: Get soname as string from meson
-#if defined(_WIN32)
-        "glfw.dll"
-#elif defined(__APPLE__)
-        "libglfw.3.dylib"
-#else
-        "libglfw.so.3"
-#endif
-      );
+    libglfw = LoadLibraryA(WSI_GLFW_SONAME);
     if (libglfw == nullptr)
       throw DxvkError("GLFW WSI: Failed to load GLFW DLL.");
 

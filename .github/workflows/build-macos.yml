@@ -25,7 +25,22 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install meson ninja glslang sdl2 vulkan-headers spirv-headers
+        brew install meson ninja glslang sdl2 molten-vk vulkan-headers spirv-headers
+
+    - name: Verify MoltenVK / Vulkan loader
+      run: |
+        echo "=== MoltenVK (Homebrew) ==="
+        brew info molten-vk || true
+        for lib in \
+          /opt/homebrew/lib/libMoltenVK.dylib \
+          /usr/local/lib/libMoltenVK.dylib \
+          /opt/homebrew/lib/libvulkan.dylib \
+          /usr/local/lib/libvulkan.dylib; do
+          if [ -f "$lib" ]; then
+            echo "Found: $lib"
+            file "$lib"
+          fi
+        done
 
     - name: Get version
       id: get-version

@@ -111,9 +111,14 @@ SpockD3D9 reads configuration from `dxvk.conf`. Key settings:
 # Force a specific GPU
 # dxvk.filterDeviceName = "Apple M1"
 
-# Shader cache (recommended for faster subsequent launches)
+# Shader cache (recommended — MoltenVK compiles SPIR-V to MSL at runtime)
 # dxvk.enableShaderCache = True
+
+# Tiler GPU heuristics (Auto enables on MoltenVK / Apple GPUs)
+# dxvk.tilerMode = Auto
 ```
+
+See `dxvk.conf` for full option documentation, including macOS-specific notes on `dxvk.tilerMode`.
 
 ## Debugging
 
@@ -148,8 +153,9 @@ SpockD3D9 reads configuration from `dxvk.conf`. Key settings:
 
 ## Known Limitations
 
-- **MoltenVK constraints**: Some Vulkan features may not be fully supported on all Mac hardware. Check [MoltenVK's supported features](https://github.com/KhronosGroup/MoltenVK#supported-vulkan-features).
-- **Tiler GPU behavior**: Apple GPUs are tile-based renderers. SpockD3D9 includes tiler-aware optimizations (via MoltenVK driver detection) but some rendering patterns may perform differently than on desktop GPUs.
+- **MoltenVK constraints**: Some Vulkan features are synthesized or unavailable on Metal. SpockD3D9 queries MoltenVK at runtime for format and MSAA support; see [docs/MOLTENVK_CAPABILITIES.md](docs/MOLTENVK_CAPABILITIES.md) for BCn (DXT), depth/stencil, and MSAA behavior on macOS.
+- **Tiler GPU behavior**: Apple GPUs are tile-based renderers. SpockD3D9 enables tiler-aware submission when MoltenVK is detected (`dxvk.tilerMode = Auto`). Apps that rely on many mid-pass clears or non-render-pass patterns may perform differently than on desktop GPUs; see `dxvk.conf` for tuning notes.
+- **Compatibility matrix**: Community-tested titles and suggested profiles are tracked in [COMPATIBILITY.md](COMPATIBILITY.md).
 - **No Wine required**: This is a native port. If you need to run Windows executables, use DXVK with Wine instead.
 
 ## License
