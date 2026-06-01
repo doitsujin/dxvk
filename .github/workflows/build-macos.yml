@@ -119,6 +119,54 @@ jobs:
         run_smoke d3d9-clear
         run_smoke d3d9-clear-sdl3
 
+    - name: Smoke test MoltenVK auto-discovery (clean env)
+      run: |
+        LIB_DIR=$(find build -path '*/usr/lib' -type d 2>/dev/null | head -1)
+        if [ -z "$LIB_DIR" ] || [ ! -x "$LIB_DIR/d3d9-clear" ]; then
+          echo "::warning::d3d9-clear not built; skipping auto-discovery smoke test."
+          exit 0
+        fi
+
+        # Intentionally provide NO MoltenVK hints: the Homebrew lib dir is kept
+        # off DYLD_LIBRARY_PATH and VK_ICD_FILENAMES / VK_DRIVER_FILES are unset.
+        # Only the install lib dir is exported so the host app can resolve
+        # libdxvk_d3d9.dylib. The Vulkan loader must then auto-discover the
+        # Homebrew MoltenVK runtime + ICD manifest on its own
+        # (src/vulkan/vulkan_loader.cpp). This regression-tests that path, which
+        # the manual smoke test above masks by exporting both variables.
+        unset VK_ICD_FILENAMES VK_DRIVER_FILES
+        export DYLD_LIBRARY_PATH="$LIB_DIR"
+        export DXVK_LOG_LEVEL=info
+        export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
+
+        log="$RUNNER_TEMP/d3d9-clear-autodiscover.log"
+        set +e
+        "$LIB_DIR/d3d9-clear" 3 2>&1 | tee "$log"
+        status=${PIPESTATUS[0]}
+        set -e
+
+        # The loader logs this when it cannot find vkGetInstanceProcAddr in any
+        # candidate. With a clean environment that is the exact signature of an
+        # auto-discovery regression.
+        if grep -q "Vulkan: vkGetInstanceProcAddr not found" "$log"; then
+          echo "::error::Vulkan loader failed to auto-discover MoltenVK with a clean environment."
+          exit 1
+        fi
+
+        if grep -Eq "Using MoltenVK ICD manifest|Found vkGetInstanceProcAddr in (/opt/homebrew|/usr/local)" "$log"; then
+          echo "Confirmed: Vulkan loader auto-discovered the Homebrew MoltenVK runtime."
+        else
+          echo "::warning::No explicit Homebrew discovery log line; MoltenVK may already be on the default search path."
+        fi
+
+        if [ "$status" -ne 0 ]; then
+          if grep -Eq "DXVK: No adapters found|required feature 'geometryShader'|Vulkan 1\.3 capable setup is required" "$log"; then
+            echo "Skipping auto-discovery smoke test: GitHub macOS runner GPU lacks required Vulkan features."
+            exit 0
+          fi
+          exit "$status"
+        fi
+
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
