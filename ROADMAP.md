@@ -37,7 +37,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 | Runtime smoke test / sample app | Done (`d3d9-clear`, CI smoke step) |
 | Game compatibility matrix | Partial (`COMPATIBILITY.md` — profiles + reference ports; needs macOS testing) |
 | macOS EDID / HDR metadata | Partial (EDID read; HDR path uses it) |
-| Native D3D9 cursor | Partial (SDL2/GLFW HW + software compositing) |
+| Native D3D9 cursor | Done (SDL2/SDL3/GLFW HW + software compositing) |
 | `isOccluded` for present throttling | Done (SDL2/SDL3/GLFW focus tracking) |
 | Window focus/resize → `NotifyWindowActivated` | Done (SDL/GLFW polling path) |
 | SDL2 fullscreen parity with SDL3 | Done |
@@ -82,7 +82,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 ### Milestone B — Playable windowed D3D9 app
 
 - [x] Window resize/focus without Win32 `WM_*` messages (SDL/GLFW event path → `NotifyWindowActivated`)
-- [x] Software/hardware cursor support (`d3d9_cursor_native`, SDL2/GLFW)
+- [x] Software/hardware cursor support (`d3d9_cursor_native`, SDL2/SDL3/GLFW)
 - [x] `GetDeviceCaps` / adapter caps aligned with queried Vulkan/MoltenVK features
 - [x] Document MoltenVK format limits (BCn, depth, MSAA) and known gaps
 
@@ -128,7 +128,7 @@ Native macOS port of Direct3D 9 — D3D9 API calls translated to Vulkan (MoltenV
 
 | Task | Files |
 |------|-------|
-| Implement or delegate `SetCursor` / `ShowCursor` | `src/d3d9/d3d9_cursor.cpp` |
+| ~~Implement or delegate `SetCursor` / `ShowCursor`~~ | Done — SDL2/SDL3/GLFW hardware + software cursor (`src/d3d9/d3d9_cursor.cpp`, `d3d9_cursor_native.cpp`) |
 
 ---
 

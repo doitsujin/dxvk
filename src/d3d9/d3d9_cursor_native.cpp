@@ -8,7 +8,21 @@
 #include <strings.h>
 #include <strings.h>
 
-#if defined(DXVK_WSI_SDL2)
+// The SDL2 and SDL3 public headers cannot coexist in a single translation
+// unit (they redefine the same symbols). When a build enables both backends,
+// prefer SDL3 here — it is the preferred macOS backend — so the native cursor
+// links against one SDL major. SDL2-only builds keep full SDL2 cursor support.
+#if defined(DXVK_WSI_SDL3)
+  #define D3D9_CURSOR_SDL3
+#elif defined(DXVK_WSI_SDL2)
+  #define D3D9_CURSOR_SDL2
+#endif
+
+#if defined(D3D9_CURSOR_SDL3)
+#include <SDL3/SDL.h>
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
 #include <SDL.h>
 #endif
 
@@ -22,13 +36,18 @@ namespace dxvk::native_cursor {
 
     enum class WsiKind {
       None,
+      Sdl3,
       Sdl2,
       Glfw,
     };
 
     HWND g_window = nullptr;
 
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+    SDL_Cursor* g_sdl3Cursor = nullptr;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
     SDL_Cursor* g_sdlCursor = nullptr;
 #endif
 
@@ -41,7 +60,12 @@ namespace dxvk::native_cursor {
       if (driver == nullptr)
         return WsiKind::None;
 
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      if (!strcasecmp(driver, "SDL3"))
+        return WsiKind::Sdl3;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       if (!strcasecmp(driver, "SDL2"))
         return WsiKind::Sdl2;
 #endif
@@ -54,7 +78,28 @@ namespace dxvk::native_cursor {
       return WsiKind::None;
     }
 
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+    SDL_Window* toSdl3Window(HWND window) {
+      return reinterpret_cast<SDL_Window*>(window);
+    }
+
+
+    void destroySdl3Cursor() {
+      if (g_sdl3Cursor != nullptr) {
+        SDL_DestroyCursor(g_sdl3Cursor);
+        g_sdl3Cursor = nullptr;
+      }
+    }
+
+
+    void hideSdl3Cursor() {
+      destroySdl3Cursor();
+      SDL_SetCursor(nullptr);
+      SDL_HideCursor();
+    }
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
     SDL_Window* toSdlWindow(HWND window) {
       return reinterpret_cast<SDL_Window*>(window);
     }
@@ -110,7 +155,11 @@ namespace dxvk::native_cursor {
 
 
   bool HasHardwareCursor() {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+    if (g_sdl3Cursor != nullptr)
+      return true;
+#endif
+#if defined(D3D9_CURSOR_SDL2)
     if (g_sdlCursor != nullptr)
       return true;
 #endif
@@ -124,7 +173,15 @@ namespace dxvk::native_cursor {
 
   void ResetHardwareCursor() {
     switch (getWsiKind()) {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      case WsiKind::Sdl3:
+        destroySdl3Cursor();
+        if (g_window != nullptr)
+          SDL_HideCursor();
+        return;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       case WsiKind::Sdl2:
         destroySdlCursor();
         if (g_window != nullptr)
@@ -153,7 +210,37 @@ namespace dxvk::native_cursor {
           UINT               hotY,
     const CursorBitmap&      bitmap) {
     switch (getWsiKind()) {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      case WsiKind::Sdl3: {
+        (void)window;
+
+        SDL_Surface* surface = SDL_CreateSurfaceFrom(
+          HardwareCursorWidth,
+          HardwareCursorHeight,
+          SDL_PIXELFORMAT_ABGR8888,
+          const_cast<uint8_t*>(bitmap),
+          HardwareCursorPitch);
+
+        if (surface == nullptr) {
+          Logger::err(str::format("D3D9Cursor: SDL_CreateSurfaceFrom: ", SDL_GetError()));
+          return;
+        }
+
+        destroySdl3Cursor();
+        g_sdl3Cursor = SDL_CreateColorCursor(surface, int(hotX), int(hotY));
+        SDL_DestroySurface(surface);
+
+        if (g_sdl3Cursor == nullptr) {
+          Logger::err(str::format("D3D9Cursor: SDL_CreateColorCursor: ", SDL_GetError()));
+          return;
+        }
+
+        SDL_SetCursor(g_sdl3Cursor);
+        return;
+      }
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       case WsiKind::Sdl2: {
         SDL_Window* sdlWindow = toSdlWindow(window);
 
@@ -207,7 +294,7 @@ namespace dxvk::native_cursor {
 #endif
 
       default:
-        Logger::warn("D3D9Cursor: Hardware cursor requires DXVK_WSI_DRIVER=SDL2 or GLFW.");
+        Logger::warn("D3D9Cursor: Hardware cursor requires DXVK_WSI_DRIVER=SDL3, SDL2, or GLFW.");
         return;
     }
   }
@@ -215,7 +302,14 @@ namespace dxvk::native_cursor {
 
   void PrepareSoftwareCursor(HWND window) {
     switch (getWsiKind()) {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      case WsiKind::Sdl3:
+        (void)window;
+        hideSdl3Cursor();
+        return;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       case WsiKind::Sdl2:
         hideSdlCursor(toSdlWindow(window));
         return;
@@ -235,7 +329,21 @@ namespace dxvk::native_cursor {
 
   void ShowHardwareCursor(HWND window, BOOL visible) {
     switch (getWsiKind()) {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      case WsiKind::Sdl3:
+        (void)window;
+        if (!HasHardwareCursor())
+          return;
+
+        SDL_SetCursor(g_sdl3Cursor);
+        if (visible)
+          SDL_ShowCursor();
+        else
+          SDL_HideCursor();
+        return;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       case WsiKind::Sdl2:
         if (!HasHardwareCursor())
           return;
@@ -262,7 +370,15 @@ namespace dxvk::native_cursor {
 
   void UpdateHardwareCursorPosition(HWND window, int x, int y) {
     switch (getWsiKind()) {
-#if defined(DXVK_WSI_SDL2)
+#if defined(D3D9_CURSOR_SDL3)
+      case WsiKind::Sdl3:
+        if (!HasHardwareCursor())
+          return;
+        SDL_WarpMouseInWindow(toSdl3Window(window), float(x), float(y));
+        return;
+#endif
+
+#if defined(D3D9_CURSOR_SDL2)
       case WsiKind::Sdl2:
         if (!HasHardwareCursor())
           return;

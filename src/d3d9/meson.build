@@ -57,10 +57,17 @@ d3d9_deps = [ dxso_dep, dxvk_dep, dxbc_spirv_dep ]
 
 if platform != 'windows'
   d3d9_src += 'd3d9_cursor_native.cpp'
-  d3d9_deps += dependency('sdl2')
-  lib_glfw_cursor = dependency('glfw3', required: false)
-  if lib_glfw_cursor.found()
-    d3d9_deps += lib_glfw_cursor
+  # The native cursor talks directly to whichever WSI backends were enabled in
+  # the top-level meson.build, so link only against the libraries that were
+  # actually found instead of forcing SDL2 onto SDL3- or GLFW-only builds.
+  if lib_sdl3.found()
+    d3d9_deps += lib_sdl3
+  endif
+  if lib_sdl2.found()
+    d3d9_deps += lib_sdl2
+  endif
+  if lib_glfw.found()
+    d3d9_deps += lib_glfw
   endif
 endif
 
