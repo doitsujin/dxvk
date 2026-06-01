@@ -163,7 +163,7 @@ struct BitfieldPosition {
 };
 
 // Needs to match d3d9_spec_constants.h
-BitfieldPosition SpecConstLayout[SpecConstantCount] = {
+const BitfieldPosition SpecConstLayout[SpecConstantCount] = {
     { 0, 0, 32 },  // SamplerType
 
     { 1, 0,  21 }, // SamplerDepthMode
