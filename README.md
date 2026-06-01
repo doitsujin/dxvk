@@ -39,8 +39,15 @@ export DXVK_WSI_DRIVER=SDL2    # or SDL3, GLFW
 
 Install all dependencies with Homebrew:
 ```bash
-brew install meson ninja glslang sdl2 molten-vk vulkan-headers spirv-headers
+brew install meson ninja glslang sdl2 molten-vk vulkan-loader vulkan-headers spirv-headers
 ```
+
+`vulkan-loader` (the Khronos `libvulkan.dylib`) is optional but recommended:
+with it installed, SpockD3D9 runs through the Vulkan loader — which is required
+for validation layers and lets the loader expose MoltenVK as a portability
+adapter (SpockD3D9 enables portability enumeration automatically). Without it,
+SpockD3D9 falls back to loading `libMoltenVK.dylib` directly, which renders fine
+but cannot load instance layers such as `VK_LAYER_KHRONOS_validation`.
 
 ## Building
 
@@ -136,7 +143,7 @@ See `dxvk.conf` for full option documentation, including macOS-specific notes on
 | `DXVK_LOG_PATH=/some/directory` | Log file output directory |
 | `DXVK_HUD=fps,devinfo` | Show FPS and GPU info overlay |
 | `DXVK_HUD=full` | Show all HUD elements |
-| `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` | Enable Vulkan validation |
+| `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` | Enable Vulkan validation (requires the Vulkan loader, i.e. `brew install vulkan-loader`) |
 | `MTL_DEBUG_LAYER=1` | Enable Metal debug layer (MoltenVK) |
 
 ## Architecture

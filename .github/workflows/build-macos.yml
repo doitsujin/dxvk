@@ -25,7 +25,11 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install meson ninja glslang sdl2 sdl3 molten-vk vulkan-headers spirv-headers
+        # vulkan-loader provides libvulkan.dylib (the Khronos loader). Installing
+        # it means the smoke tests run through the real loader rather than loading
+        # libMoltenVK.dylib directly, which exercises the portability-enumeration
+        # path required to surface the MoltenVK adapter through the loader.
+        brew install meson ninja glslang sdl2 sdl3 molten-vk vulkan-loader vulkan-headers spirv-headers
 
     - name: Verify MoltenVK / Vulkan loader
       run: |
