@@ -589,7 +589,9 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
         || (colorArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (alphaArgs.arg0 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
         || (alphaArgs.arg1 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (alphaArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE;
+        || (alphaArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
+        || (colorOp == D3DTOP_BLENDTEXTUREALPHA || colorOp == D3DTOP_BLENDTEXTUREALPHAPM)
+        || (alphaOp == D3DTOP_BLENDTEXTUREALPHA || alphaOp == D3DTOP_BLENDTEXTUREALPHAPM);
 
     if (usesTexture) {
         // We need to replace TEXCOORD inputs with gl_PointCoord
