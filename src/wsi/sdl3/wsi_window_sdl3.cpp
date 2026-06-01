@@ -112,6 +112,9 @@ namespace dxvk::wsi {
     if (!displayId)
       return false;
 
+    if (!pState)
+      return false;
+
     pState->sdl3.fullscreenMode = pMode;
     return true;
   }
@@ -129,10 +132,13 @@ namespace dxvk::wsi {
     if (!displayId)
       return false;
 
+    if (ModeSwitch && !pState)
+      return false;
+
     SDL_Rect bounds = { };
 
-    if (!SDL_GetDisplayUsableBounds(displayId, &bounds)) {
-      Logger::err(str::format("SDL3 WSI: enterFullscreenMode: SDL_GetDisplayUsableBounds: ", SDL_GetError()));
+    if (!SDL_GetDisplayBounds(displayId, &bounds)) {
+      Logger::err(str::format("SDL3 WSI: enterFullscreenMode: SDL_GetDisplayBounds: ", SDL_GetError()));
       return false;
     }
 

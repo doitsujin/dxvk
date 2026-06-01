@@ -64,12 +64,13 @@ namespace dxvk::wsi {
     int32_t y;
     int32_t w;
     int32_t h;
-    glfwGetMonitorWorkarea(monitor, &x, &y, &w, &h);
+    glfwGetMonitorPos(monitor, &x, &y);
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
     pRect->left = x;
     pRect->top = y;
-    pRect->right = x + w;
-    pRect->bottom = y + h;
+    pRect->right = x + mode->width;
+    pRect->bottom = y + mode->height;
 
     return true;
   }
