@@ -944,7 +944,7 @@ namespace dxvk {
      * in mod New Vegas Reloaded. Nvidia path in  *
      * same mod use NvAPI_D3D9_StretchRectEx for  *
      * depth buffer resolves                      */
-    { R"(\\FalloutNV(Launcher)?\.exe$)", {{
+    { R"(\\FalloutNV(Launcher)?|Launcher)\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
       { "d3d9.hideNvidiaGpu",               "True" },
     }} },
