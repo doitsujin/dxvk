@@ -25,7 +25,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        brew install meson ninja glslang sdl2 molten-vk vulkan-headers spirv-headers
+        brew install meson ninja glslang sdl2 sdl3 molten-vk vulkan-headers spirv-headers
 
     - name: Verify MoltenVK / Vulkan loader
       run: |
@@ -67,7 +67,7 @@ jobs:
         LIB_DIR=$(find build -path '*/usr/lib' -type d 2>/dev/null | head -1)
         if [ -z "$LIB_DIR" ] || [ ! -x "$LIB_DIR/d3d9-clear" ]; then
           echo "d3d9-clear binary not found under build/*/usr/lib"
-          find build -name 'd3d9-clear' 2>/dev/null || true
+          find build -name 'd3d9-clear*' 2>/dev/null || true
           exit 1
         fi
         BREW_PREFIX="$(brew --prefix)"
@@ -85,23 +85,39 @@ jobs:
           fi
         done
 
-        export DXVK_WSI_DRIVER=SDL2
         export DXVK_LOG_LEVEL=info
         export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
-        SMOKE_LOG="$RUNNER_TEMP/d3d9-clear.log"
-        set +e
-        "$LIB_DIR/d3d9-clear" 3 2>&1 | tee "$SMOKE_LOG"
-        smoke_status=${PIPESTATUS[0]}
-        set -e
 
-        if [ "$smoke_status" -ne 0 ]; then
-          if grep -Eq "DXVK: No adapters found|required feature 'geometryShader'|Vulkan 1\\.3 capable setup is required" "$SMOKE_LOG"; then
-            echo "Skipping smoke test: GitHub macOS runner GPU lacks required Vulkan features."
-            exit 0
+        # Run one smoke binary. The binary forces its own DXVK_WSI_DRIVER, so we
+        # only need to point at the right executable. Returns 0 on success or on
+        # a known runner-GPU capability gap; non-zero on a real failure.
+        run_smoke() {
+          local binary="$1"
+          local bin_path="$LIB_DIR/$binary"
+          if [ ! -x "$bin_path" ]; then
+            echo "::warning::$binary not built; skipping its smoke test."
+            return 0
           fi
+          echo "=== Smoke test: $binary ==="
+          local log="$RUNNER_TEMP/$binary.log"
+          set +e
+          "$bin_path" 3 2>&1 | tee "$log"
+          local status=${PIPESTATUS[0]}
+          set -e
+          if [ "$status" -ne 0 ]; then
+            if grep -Eq "DXVK: No adapters found|required feature 'geometryShader'|Vulkan 1\\.3 capable setup is required" "$log"; then
+              echo "Skipping $binary smoke test: GitHub macOS runner GPU lacks required Vulkan features."
+              return 0
+            fi
+            return "$status"
+          fi
+          return 0
+        }
 
-          exit "$smoke_status"
-        fi
+        # SDL2 binary is required; the SDL3 binary is best-effort (only built
+        # when the sdl3 dependency is present).
+        run_smoke d3d9-clear
+        run_smoke d3d9-clear-sdl3
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
