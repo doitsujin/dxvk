@@ -9,6 +9,9 @@
 #include <cstdlib>
 
 #include <SDL.h>
+#if defined(__APPLE__)
+#include <SDL_vulkan.h>
+#endif
 #include <windows.h>
 #include <d3d9.h>
 
@@ -34,6 +37,31 @@ namespace {
     return int(value);
   }
 
+#if defined(__APPLE__)
+  bool loadVulkanPortabilityLibrary() {
+    if (SDL_Vulkan_LoadLibrary(nullptr) == 0)
+      return true;
+
+    const char* const candidates[] = {
+      std::getenv("SDL_VULKAN_LIBRARY"),
+      "/opt/homebrew/lib/libMoltenVK.dylib",
+      "/usr/local/lib/libMoltenVK.dylib",
+      "/opt/homebrew/lib/libvulkan.1.dylib",
+      "/usr/local/lib/libvulkan.1.dylib",
+    };
+
+    for (const char* path : candidates) {
+      if (path == nullptr || path[0] == '\0')
+        continue;
+
+      if (SDL_Vulkan_LoadLibrary(path) == 0)
+        return true;
+    }
+
+    return false;
+  }
+#endif
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -45,6 +73,14 @@ int main(int argc, char** argv) {
     std::fprintf(stderr, "d3d9-clear: SDL_Init failed: %s\n", SDL_GetError());
     return 1;
   }
+
+#if defined(__APPLE__)
+  if (!loadVulkanPortabilityLibrary()) {
+    std::fprintf(stderr, "d3d9-clear: failed to load Vulkan portability library: %s\n", SDL_GetError());
+    SDL_Quit();
+    return 1;
+  }
+#endif
 
   constexpr uint32_t kWidth  = 640;
   constexpr uint32_t kHeight = 480;
@@ -127,6 +163,9 @@ int main(int argc, char** argv) {
   device->Release();
   d3d9->Release();
   SDL_DestroyWindow(window);
+#if defined(__APPLE__)
+  SDL_Vulkan_UnloadLibrary();
+#endif
   SDL_Quit();
 
   std::printf("d3d9-clear: OK\n");

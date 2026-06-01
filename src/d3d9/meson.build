@@ -93,3 +93,12 @@ if platform != 'windows'
     subdirs:  'dxvk',
   )
 endif
+
+if platform != 'windows' and lib_sdl2.found()
+  executable('d3d9-clear',
+    'examples/d3d9_clear.cpp',
+    dependencies        : [ d3d9_dep, lib_sdl2 ],
+    include_directories : dxvk_include_path,
+    install             : true,
+  )
+endif

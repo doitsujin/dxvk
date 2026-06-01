@@ -8,6 +8,10 @@
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
 
+#if defined(__APPLE__)
+#include "../darwin/wsi_edid_darwin.h"
+#endif
+
 #include <string>
 #include <sstream>
 

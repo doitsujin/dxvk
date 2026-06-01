@@ -12,8 +12,11 @@ fi
 
 DXVK_VERSION="$1"
 DXVK_SRC_DIR=$(dirname "$(realpath "$0")")
-DXVK_BUILD_DIR=$(realpath "$2")"/spockd3d9-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH=$(realpath "$2")"/spockd3d9-$DXVK_VERSION.tar.gz"
+DXVK_OUT_DIR="$2"
+mkdir -p "$DXVK_OUT_DIR"
+DXVK_OUT_DIR=$(cd "$DXVK_OUT_DIR" && pwd -P)
+DXVK_BUILD_DIR="$DXVK_OUT_DIR/spockd3d9-$DXVK_VERSION"
+DXVK_ARCHIVE_PATH="$DXVK_OUT_DIR/spockd3d9-$DXVK_VERSION.tar.gz"
 
 if [ -e "$DXVK_BUILD_DIR" ]; then
   echo "Build directory $DXVK_BUILD_DIR already exists"

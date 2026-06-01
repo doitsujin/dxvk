@@ -5,6 +5,11 @@ cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
 fs = import('fs')
 
+if platform == 'darwin'
+  # Darwin builds compile WSI Objective-C++ sources (.mm).
+  add_languages('objc', 'objcpp', native: false, required: true)
+endif
+
 cpp = meson.get_compiler('cpp')
 cc = meson.get_compiler('c')
 dxvk_is_msvc = cpp.get_argument_syntax() == 'msvc'
