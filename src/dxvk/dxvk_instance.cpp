@@ -217,6 +217,27 @@ namespace dxvk {
         extensionsEnabled.insert(ext);
     }
 
+#if defined(__APPLE__)
+    // MoltenVK is exposed through the Khronos Vulkan loader as a portability
+    // driver. The loader only reports portability physical devices when the
+    // instance opts in via VK_KHR_portability_enumeration together with the
+    // VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR flag; otherwise
+    // vkEnumeratePhysicalDevices returns no adapters. Enable it whenever the
+    // runtime advertises support so MoltenVK is found both through the loader
+    // and when libMoltenVK.dylib is loaded directly.
+    bool enablePortabilityEnumeration = false;
+
+    {
+      auto entry = extensionsSupported.find(
+        vk::makeExtension(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME));
+
+      if (entry != extensionsSupported.end()) {
+        extensionsEnabled.insert(*entry);
+        enablePortabilityEnumeration = true;
+      }
+    }
+#endif
+
     Logger::info("Enabled instance extensions:");
 
     for (const auto& ext : extensionsEnabled) {
@@ -252,6 +273,11 @@ namespace dxvk {
       info.ppEnabledLayerNames      = layerNames.data();
       info.enabledExtensionCount    = extensionNames.size();
       info.ppEnabledExtensionNames  = extensionNames.data();
+
+#if defined(__APPLE__)
+      if (enablePortabilityEnumeration)
+        info.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
 
       VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &instance);
 
