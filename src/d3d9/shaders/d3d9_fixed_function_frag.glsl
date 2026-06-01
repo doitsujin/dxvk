@@ -554,6 +554,28 @@ struct TextureStageState {
     vec4 previousStageTextureVal;
 };
 
+vec4 getTexCoord(uint stage) {
+    const uint pointMode = specUint(SpecPointMode);
+
+    // If point sprites are enabled, we need to replace the
+    // input texture coordinate with the point coordinate
+    if (bitfieldExtract(pointMode, 1, 1) == 1u)
+        return vec4(gl_PointCoord, 0.0f, 0.0f);
+
+    switch (stage) {
+        case 0: return in_Texcoord0;
+        case 1: return in_Texcoord1;
+        case 2: return in_Texcoord2;
+        case 3: return in_Texcoord3;
+        case 4: return in_Texcoord4;
+        case 5: return in_Texcoord5;
+        case 6: return in_Texcoord6;
+        case 7: return in_Texcoord7;
+    }
+
+    return vec4(0.0f);
+}
+
 TextureStageState runTextureStage(uint stage, TextureStageState state) {
     if (stage > specUint(SpecFFLastActiveTextureStage)) {
         return state;
@@ -583,38 +605,10 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
         specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage)) : alphaArg2(stage)
     };
 
-    vec4 textureVal = vec4(0.0);
-    bool usesTexture = (colorArgs.arg0 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (colorArgs.arg1 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (colorArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (alphaArgs.arg0 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (alphaArgs.arg1 & D3DTA_SELECTMASK) == D3DTA_TEXTURE
-        || (alphaArgs.arg2 & D3DTA_SELECTMASK) == D3DTA_TEXTURE;
+    vec4 textureVal = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-    if (usesTexture) {
-        // We need to replace TEXCOORD inputs with gl_PointCoord
-        // if D3DRS_POINTSPRITEENABLE is set.
-        const uint pointMode = specUint(SpecPointMode);
-        const bool isSprite = bitfieldExtract(pointMode, 1, 1) == 1u;
-
-        vec4 texCoord;
-        if (isSprite) {
-            texCoord = vec4(gl_PointCoord, 0.0, 0.0);
-        } else {
-            switch (stage) {
-                case 0: texCoord = in_Texcoord0; break;
-                case 1: texCoord = in_Texcoord1; break;
-                case 2: texCoord = in_Texcoord2; break;
-                case 3: texCoord = in_Texcoord3; break;
-                case 4: texCoord = in_Texcoord4; break;
-                case 5: texCoord = in_Texcoord5; break;
-                case 6: texCoord = in_Texcoord6; break;
-                case 7: texCoord = in_Texcoord7; break;
-            }
-        }
-        const vec4 unboundTextureConst = vec4(0.0, 0.0, 0.0, 1.0);
-        textureVal = !specBool(SpecSamplerNull, stage) ? sampleTexture(stage, texCoord, state.previousStageTextureVal) : unboundTextureConst;
-    }
+    if (!specBool(SpecSamplerNull, stage))
+        textureVal = sampleTexture(stage, getTexCoord(stage), state.previousStageTextureVal);
 
     // Fast path if alpha/color path is identical.
     // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
