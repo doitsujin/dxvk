@@ -81,23 +81,28 @@ namespace dxvk {
 
   void DxvkPipelineWorkers::startWorkers() {
     if (!std::exchange(m_workersRunning, true)) {
-      // Use all available cores by default
-      uint32_t workerCount = dxvk::thread::hardware_concurrency();
+      // Determine number of available CPU cores, and clamp to a useful
+      // range. DXVK is not tested on extremely high core counts, and
+      // parallelism may be limited past a certain point.
+      uint32_t coreCount = dxvk::thread::hardware_concurrency();
+      coreCount = std::clamp(coreCount, 1u, 64u);
 
-      if (workerCount <  1) workerCount =  1;
-      if (workerCount > 64) workerCount = 64;
+      if (m_device->config().numCompilerThreads > 0)
+        coreCount = m_device->config().numCompilerThreads;
 
       // Reduce worker count on 32-bit to save adderss space
+      uint32_t workerCount = coreCount;
+
       if (env::is32BitHostPlatform())
         workerCount = std::min(workerCount, 16u);
 
-      if (m_device->config().numCompilerThreads > 0)
-        workerCount = m_device->config().numCompilerThreads;
-
       // Number of workers that can process pipeline pipelines with normal
       // priority. Any other workers can only build high-priority pipelines.
-      uint32_t npWorkerCount = std::max(((workerCount - 1) * 5) / 7, 1u);
-      uint32_t lpWorkerCount = std::max(((workerCount - 1) * 2) / 7, 1u);
+      // Base this on the available core count, not the worker count, since
+      // that is what determines the impact of having multiple threads do
+      // heavy CPU work.
+      uint32_t npWorkerCount = std::clamp(((coreCount - 1) * 5) / 7, 1u, workerCount);
+      uint32_t lpWorkerCount = std::clamp(((coreCount - 1) * 2) / 7, 1u, workerCount);
 
       m_workers.reserve(workerCount);
 
