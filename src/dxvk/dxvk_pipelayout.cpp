@@ -365,6 +365,21 @@ namespace dxvk {
         pushIndex.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(bindingInfo.descriptorType).size;
       }
     }
+
+    for (uint32_t i = 0u; i < key.getVaBindingCount(); i++) {
+      auto bindingInfo = key.getVaBinding(i);
+
+      auto& entry = m_mapping.mappings.emplace_back();
+      entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+      entry.descriptorSet = DxvkDescriptorSets::Virtual;
+      entry.firstBinding = bindingInfo.binding;
+      entry.bindingCount = 1u;
+      entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_UNIFORM_BUFFER_BIT_EXT
+                         | VK_SPIRV_RESOURCE_TYPE_READ_ONLY_STORAGE_BUFFER_BIT_EXT
+                         | VK_SPIRV_RESOURCE_TYPE_READ_WRITE_STORAGE_BUFFER_BIT_EXT;
+      entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_ADDRESS_EXT;
+      entry.sourceData.pushAddressOffset = bindingInfo.vaOffset;
+    }
   }
 
 
@@ -460,11 +475,13 @@ namespace dxvk {
     auto setLayouts = buildDescriptorSetLayouts(type, flags, setInfos, builder, manager);
 
     // Create the actual pipeline layout
+    auto& layout = m_layouts[uint32_t(type)];
+
     DxvkPipelineLayoutKey key(type, flags, builder.getStageMask(),
       pushDataBlocks.size(), pushDataBlocks.data(),
-      setLayouts.size(), setLayouts.data());
+      setLayouts.size(), setLayouts.data(),
+      layout.vaBindings.size(), layout.vaBindings.data());
 
-    auto& layout = m_layouts[uint32_t(type)];
     layout.layout = manager->createPipelineLayout(key);
   }
 
@@ -563,6 +580,8 @@ namespace dxvk {
 
     auto& layout = m_layouts[uint32_t(type)];
 
+    uint32_t virtualBindingCount = 0u;
+
     // Generate descriptor set layout keys from all bindings
     std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };
 
@@ -582,9 +601,13 @@ namespace dxvk {
         auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
         dstMapping = DxvkShaderBinding(binding.getStageMask(), realSet, bindingIndex);
 
-        layout.bindingMap.addBinding(srcMapping, dstMapping);
         layout.setStateMasks[set] |= computeStateMask(binding);
+      } else {
+        dstMapping = DxvkShaderBinding(binding.getStageMask(),
+          DxvkDescriptorSets::Virtual, virtualBindingCount++);
       }
+
+      layout.bindingMap.addBinding(srcMapping, dstMapping);
 
       if (binding.getDescriptorCount()) {
         if (binding.usesDescriptor()) {

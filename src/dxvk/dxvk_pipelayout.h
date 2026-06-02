@@ -85,6 +85,10 @@ namespace dxvk {
 
     // Maximum number of descriptor sets per layout
     static constexpr uint32_t SetCount                  = 2u;
+
+    // Virtual descriptor set index, only used for mapping purposes
+    // on the descriptor heap path. Not backed by actual descriptors.
+    static constexpr uint32_t Virtual                   = 15u;
   };
 
 
@@ -971,6 +975,25 @@ namespace dxvk {
 
 
   /**
+   * \brief Binding to push address mapping
+   *
+   * Can be used as a descriptor heap fast path for certain resources.
+   */
+  struct DxvkPipelineLayoutVaBinding {
+    uint16_t binding  = 0u;
+    uint16_t vaOffset = 0u;
+
+    bool eq(const DxvkPipelineLayoutVaBinding& other) const {
+      return binding == other.binding && vaOffset == other.vaOffset;
+    }
+
+    size_t hash() const {
+      return size_t(binding) | (size_t(vaOffset) << 16u);
+    }
+  };
+
+
+  /**
    * \brief Pipeline layout key
    *
    * Used to look up pipeline layout objects. Stores a reference to the
@@ -980,7 +1003,7 @@ namespace dxvk {
    * unique as well.
    */
   class DxvkPipelineLayoutKey {
-
+    static constexpr uint32_t MaxVaBindings = MaxTotalPushDataSize / sizeof(VkDeviceAddress);
   public:
 
     constexpr static uint32_t MaxSets = uint32_t(DxvkDescriptorSets::SetCount);
@@ -1000,12 +1023,17 @@ namespace dxvk {
             uint32_t                  pushDataBlockCount,
       const DxvkPushDataBlock*        pushDataBlocks,
             uint32_t                  setCount,
-      const DxvkDescriptorSetLayout** setLayouts)
+      const DxvkDescriptorSetLayout** setLayouts,
+            uint32_t                  vaBindingCount,
+      const DxvkShaderDescriptor*     vaBindings)
     : m_type          (type),
       m_flags         (flags),
       m_stages        (uint8_t(stageMask)) {
       for (uint32_t i = 0u; i < pushDataBlockCount; i++)
         addPushData(pushDataBlocks[i]);
+
+      for (uint32_t i = 0u; i < vaBindingCount; i++)
+        addVaBinding(vaBindings[i]);
 
       setDescriptorSetLayouts(setCount, setLayouts);
     }
@@ -1048,6 +1076,18 @@ namespace dxvk {
         m_pushMask |= 1u << index;
         m_pushData[index].merge(block);
       }
+    }
+
+    /**
+     * \brief Adds a VA binding
+     *
+     * The binding must use the virtual set index.
+     * \param [in] binding Binding to add
+     */
+    void addVaBinding(const DxvkShaderDescriptor& binding) {
+      auto& va = m_vaBindings.at(m_vaCount++);
+      va.binding = binding.getBinding();
+      va.vaOffset = binding.getBlockOffset();
     }
 
     /**
@@ -1136,6 +1176,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries VA binding mapping count
+     * \returns Number of VA binding mappings
+     */
+    uint32_t getVaBindingCount() const {
+      return m_vaCount;
+    }
+
+    /**
+     * \brief Queries VA binding info
+     *
+     * \param [in] index VA binding index
+     * \returns Mapping info for the given binding
+     */
+    DxvkPipelineLayoutVaBinding getVaBinding(uint32_t index) const {
+      return m_vaBindings[index];
+    }
+
+    /**
      * \brief Checks for equality
      *
      * \param [in] other Pipeline layout key to compare to
@@ -1146,13 +1204,17 @@ namespace dxvk {
              && m_flags     == other.m_flags
              && m_stages    == other.m_stages
              && m_pushMask  == other.m_pushMask
-             && m_setCount  == other.m_setCount;
+             && m_setCount  == other.m_setCount
+             && m_vaCount   == other.m_vaCount;
 
       for (auto i : bit::BitMask(uint32_t(m_pushMask)))
         eq &= m_pushData[i].eq(other.m_pushData[i]);
 
       for (uint32_t i = 0; i < m_setCount && eq; i++)
         eq = m_sets[i] == other.m_sets[i];
+
+      for (uint32_t i = 0; i < m_vaCount && eq; i++)
+        eq = m_vaBindings[i].eq(other.m_vaBindings[i]);
 
       return eq;
     }
@@ -1166,14 +1228,18 @@ namespace dxvk {
       hash.add(uint16_t(m_type));
       hash.add(m_flags.raw());
       hash.add(m_stages);
-      hash.add(m_setCount);
       hash.add(m_pushMask);
+      hash.add(m_setCount);
+      hash.add(m_vaCount);
 
       for (auto i : bit::BitMask(uint32_t(m_pushMask)))
         hash.add(m_pushData[i].hash());
 
       for (uint32_t i = 0; i < m_setCount; i++)
         hash.add(reinterpret_cast<uintptr_t>(m_sets[i]));
+
+      for (uint32_t i = 0; i < m_vaCount; i++)
+        hash.add(m_vaBindings[i].hash());
 
       return hash;
     }
@@ -1185,8 +1251,10 @@ namespace dxvk {
     uint8_t                 m_stages    = 0u;
     uint8_t                 m_pushMask  = 0u;
     uint8_t                 m_setCount  = 0u;
+    uint8_t                 m_vaCount   = 0u;
 
     std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> m_pushData = { };
+    std::array<DxvkPipelineLayoutVaBinding, MaxVaBindings> m_vaBindings = { };
 
     std::array<const DxvkDescriptorSetLayout*, MaxSets> m_sets = { };
 
