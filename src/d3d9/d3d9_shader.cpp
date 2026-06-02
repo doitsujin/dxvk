@@ -10,28 +10,6 @@
 
 namespace dxvk {
 
-  class D3D9SpecializationConstantLayout : public dxbc_spv::sm3::SpecializationConstantLayout {
-
-  public:
-
-    dxbc_spv::sm3::SpecializationConstantBits getSpecConstantLayout(dxbc_spv::sm3::SpecConstantId id) const {
-      D3D9SpecConstantId specConstId = D3D9SpecConstantId(id);
-      const auto& layoutEntry = D3D9SpecializationInfo::Layout[specConstId];
-      return { layoutEntry.dwordOffset, layoutEntry.bitOffset, layoutEntry.sizeInBits };
-    }
-
-    uint32_t getSamplerSpecConstIndex(dxbc_spv::sm3::ShaderType shaderType, uint32_t perShaderSamplerIndex) {
-      return shaderType == dxbc_spv::sm3::ShaderType::eVertex
-        ? perShaderSamplerIndex + FirstVSSamplerSlot
-        : perShaderSamplerIndex;
-    }
-
-    uint32_t getOptimizedDwordOffset() const {
-      return MaxNumSpecConstants;
-    }
-
-  };
-
   enum class D3D9IrCbvIndex : uint32_t {
     SpecData        = 0u,
     VsClipping      = 1u,
@@ -1059,17 +1037,18 @@ namespace dxvk {
             dxbc_spv::ir::Builder&    builder) {
       auto debugName = m_key.toString();
 
+      bool isVs = m_key.stage() == VK_SHADER_STAGE_VERTEX_BIT;
+
       dxbc_spv::sm3::Converter::Options options = { };
       options.name = debugName.c_str();
       options.includeDebugNames = true;
       options.fastFloatEmulation = m_options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
-      options.isSWVP = m_options.isSWVP && m_key.stage() == VK_SHADER_STAGE_VERTEX_BIT;
+      options.isSWVP = m_options.isSWVP && isVs;
+      options.forceDynamicTextureType = m_options.forceSamplerTypeSpecConstants && !isVs;
 
       dxbc_spv::util::ByteReader reader(m_dxbc.data(), m_dxbc.size());
 
-      D3D9SpecializationConstantLayout specConstLayout;
-
-      dxbc_spv::sm3::Converter converter(reader, specConstLayout, options);
+      dxbc_spv::sm3::Converter converter(reader, options);
 
       if (!converter.convertShader(builder))
         throw DxvkError(str::format("Failed to convert shader: ", m_key.toString()));
