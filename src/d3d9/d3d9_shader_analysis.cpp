@@ -1,12 +1,13 @@
-#include <sm3/sm3_io_map.h>
+#include <algorithm>
+#include <utility>
 
 #include "../dxvk/dxvk_include.h"
 
+#include <sm3/sm3_io_map.h>
+
+#include "d3d9_fixed_function.h"
 #include "d3d9_shader_analysis.h"
 #include "d3d9_util.h"
-#include "d3d9_fixed_function.h"
-
-#include <utility>
 
 #include "../util/log/log.h"
 
@@ -29,20 +30,6 @@ namespace dxvk {
     }
   }
 
-  D3D9ShaderAnalysis::D3D9ShaderAnalysis(D3D9ShaderAnalysis&& other)
-    : m_isSWVP(other.m_isSWVP), m_length(other.m_length), m_shaderInfo(other.m_shaderInfo),
-      m_constants(other.m_constants), m_immediateConstants(std::move(other.m_immediateConstants)),
-      m_usedRTs(other.m_usedRTs), m_usedSamplers(other.m_usedSamplers), m_imageViewTypes(other.m_imageViewTypes),
-      m_flatShadingMask(other.m_flatShadingMask), m_inputSignature(std::move(other.m_inputSignature)) {
-    other.m_length = 0u;
-  }
-
-  D3D9ShaderAnalysis::D3D9ShaderAnalysis(const D3D9ShaderAnalysis& other)
-    : m_isSWVP(other.m_isSWVP), m_length(other.m_length), m_shaderInfo(other.m_shaderInfo),
-      m_constants(other.m_constants), m_immediateConstants(other.m_immediateConstants), m_usedRTs(other.m_usedRTs),
-      m_usedSamplers(other.m_usedSamplers), m_imageViewTypes(other.m_imageViewTypes),
-      m_flatShadingMask(other.m_flatShadingMask), m_inputSignature(other.m_inputSignature) { }
-
   bool D3D9ShaderAnalysis::RunAnalysis(Parser& parser) {
     if (!(m_shaderInfo = parser.getShaderInfo()))
       return false;
@@ -50,14 +37,62 @@ namespace dxvk {
     if (m_shaderInfo.getVersion().first == 1u && m_shaderInfo.getType() == dxbc_spv::sm3::ShaderType::ePixel)
       m_usedRTs = 0b1u;
 
+    // No real point in gathering bool masks here. For HWVP we have to
+    // use a different mechanism anyway, and in SWVP mode we can just
+    // use the entire bit array up to the highest accessed constant.
+    ConstantMask constMaskF;
+    ConstantMask constMaskI;
+
     while (parser) {
       dxbc_spv::sm3::Instruction instruction = parser.parseInstruction();
 
-      if (!instruction || !HandleInstruction(instruction))
+      if (!instruction || !HandleInstruction(instruction, constMaskF, constMaskI))
         return false;
     }
 
     m_length = parser.getByteOffset();
+
+    // Sort immediate constants by index since the
+    // constant layout code relies on it
+    std::sort(m_immediateConstants.floats.begin(), m_immediateConstants.floats.end(),
+      [] (const D3D9ImmediateFloatConstant& a, const D3D9ImmediateFloatConstant& b) {
+        return a.index < b.index;
+      });
+
+    if (m_constants.floatsAccessedDynamically) {
+      // Repurpose float mask as shader-defined constant mask
+      // as a mask of defined constants as necessary
+      m_defConstants.reserve(m_immediateConstants.floats.size());
+
+      constMaskF.clear();
+
+      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++) {
+        setBit(constMaskF, m_immediateConstants.floats[i].index);
+        m_defConstants.push_back(m_immediateConstants.floats[i].value);
+      }
+    } else {
+      // The compiler will always constant-fold inline constants that
+      // are statically indexed, so there is no need to keep them around
+      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++)
+        clrBit(constMaskF, m_immediateConstants.floats[i].index);
+    }
+
+    D3D9ConstantBufferLayout constLayoutF = m_constants.floatsAccessedDynamically
+      ? D3D9ConstantBufferLayout(m_constants.floatCount, constMaskF.size(), constMaskF.data())
+      : D3D9ConstantBufferLayout(constMaskF.size(), constMaskF.data());
+
+    D3D9ConstantBufferLayout constLayoutI(constMaskI.size(), constMaskI.data());
+    D3D9ConstantBufferLayout constLayoutB;
+
+    if (m_isSWVP) {
+      // Pad bool constants to a multiple of 16 bytes so we
+      // can trivially keep all the other constants aligned
+      uint32_t dwordCount = align(m_constants.boolCount, 32u) / 32u;
+      constLayoutB = D3D9ConstantBufferLayout(align(dwordCount, 4u));
+    }
+
+    m_constLayout = D3D9ConstantBufferCopy(std::move(constLayoutF),
+      std::move(constLayoutI), std::move(constLayoutB));
 
     // Shift up these sampler bits so we can just
     // do an or per-draw in the device.
@@ -68,7 +103,10 @@ namespace dxvk {
     return true;
   }
 
-  bool D3D9ShaderAnalysis::HandleInstruction(const Instruction& op) {
+  bool D3D9ShaderAnalysis::HandleInstruction(
+    const dxbc_spv::sm3::Instruction&   op,
+          ConstantMask&                 constMaskF,
+          ConstantMask&                 constMaskI) {
     auto matrixSize = getMatrixSize(op.getOpCode());
 
     /* Determine whether we're accessing float constants dynamically
@@ -79,17 +117,21 @@ namespace dxvk {
       auto registerType = src.getRegisterType();
 
       uint32_t index = src.getIndex();
+      uint32_t count = 1u;
 
       if (i && matrixSize)
-        index += matrixSize->second - 1u;
+        count = matrixSize->second;
 
       switch (registerType) {
         case RegisterType::eConstInt:
-          m_constants.intCount = std::max(m_constants.intCount, index + 1u);
+          m_constants.intCount = std::max(m_constants.intCount, index + count);
+
+          for (uint32_t j = 0u; j < count; j++)
+            setBit(constMaskI, index + j);
           break;
 
         case RegisterType::eConstBool: {
-          m_constants.boolCount = std::max(m_constants.boolCount, index + 1u);
+          m_constants.boolCount = std::max(m_constants.boolCount, index + count);
 
           if (!m_isSWVP) // SWVP raises the constant limit too high to use bit mask.
             m_constants.boolMask |= 1u << index;
@@ -99,7 +141,7 @@ namespace dxvk {
         case RegisterType::eConst2:
         case RegisterType::eConst3:
         case RegisterType::eConst4: {
-          m_constants.floatCount = std::max(m_constants.floatCount, index + 1u);
+          m_constants.floatCount = std::max(m_constants.floatCount, index + count);
 
           if (src.hasRelativeAddressing()) {
             uint32_t hwvpFloatConstantsCount = GetShaderInfo().getType() == ShaderType::ePixel ? MaxFloatConstantsPS : MaxFloatConstantsVS;
@@ -108,6 +150,12 @@ namespace dxvk {
               m_isSWVP ? MaxFloatConstantsSoftware : hwvpFloatConstantsCount);
 
             m_constants.floatsAccessedDynamically = true;
+          }
+
+          // Access mask is useless if we have dynamic indexing
+          if (!m_constants.floatsAccessedDynamically) {
+            for (uint32_t j = 0u; j < count; j++)
+              setBit(constMaskF, index + j);
           }
         } break;
 
@@ -292,41 +340,23 @@ namespace dxvk {
   }
 
 
-  D3D9ShaderAnalysis& D3D9ShaderAnalysis::operator=(const D3D9ShaderAnalysis& other) {
-    if (this == &other)
-      return *this;
+  void D3D9ShaderAnalysis::setBit(ConstantMask& mask, uint32_t bit) {
+    uint32_t index = bit / 32u;
+    uint32_t shift = bit % 32u;
 
-    m_isSWVP = other.m_isSWVP;
-    m_length = other.m_length;
-    m_shaderInfo = other.m_shaderInfo;
-    m_constants = other.m_constants;
-    m_immediateConstants = other.m_immediateConstants;
-    m_usedRTs = other.m_usedRTs;
-    m_usedSamplers = other.m_usedSamplers;
-    m_imageViewTypes = other.m_imageViewTypes;
-    m_flatShadingMask = other.m_flatShadingMask;
-    m_inputSignature = other.m_inputSignature;
+    if (index >= mask.size())
+      mask.resize(index + 1u);
 
-    return *this;
+    mask[index] |= 1u << shift;
   }
 
-  D3D9ShaderAnalysis& D3D9ShaderAnalysis::operator=(D3D9ShaderAnalysis&& other) {
-    if (this == &other)
-      return *this;
 
-    m_isSWVP = other.m_isSWVP;
-    m_length = other.m_length;
-    m_shaderInfo = other.m_shaderInfo;
-    m_constants = other.m_constants;
-    m_immediateConstants = std::move(other.m_immediateConstants);
-    m_usedRTs = other.m_usedRTs;
-    m_usedSamplers = other.m_usedSamplers;
-    m_imageViewTypes = other.m_imageViewTypes;
-    m_flatShadingMask = other.m_flatShadingMask;
-    m_inputSignature = std::move(other.m_inputSignature);
-    other.m_length = 0u;
+  void D3D9ShaderAnalysis::clrBit(ConstantMask& mask, uint32_t bit) {
+    uint32_t index = bit / 32u;
+    uint32_t shift = bit % 32u;
 
-    return *this;
+    if (index < mask.size())
+      mask[index] &= ~(1u << shift);
   }
 
 }
