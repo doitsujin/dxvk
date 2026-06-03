@@ -401,11 +401,10 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef emitSpecConstantCbv() {
       using namespace dxbc_spv;
 
-      auto result = m_builder.add(ir::Op::DclCbv(
-        ir::Type(ir::ScalarType::eU32).addArrayDimension(DxvkLimits::MaxNumSpecConstants),
-        m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::SpecData), 1u));
-      m_builder.add(ir::Op::DebugName(result, "spec_data"));
-
+      auto specDataType = ir::Type(ir::ScalarType::eU32).addArrayDimension(DxvkLimits::MaxNumSpecConstants);
+      auto result = m_builder.add(ir::Op::DclCbv(specDataType, m_entryPoint,
+        0u, uint32_t(D3D9IrCbvIndex::SpecData), 1u).setFlags(ir::OpFlag::eInBounds));
+      m_builder.add(ir::Op::DebugName(result, "specData"));
       return result;
     }
 
@@ -428,7 +427,8 @@ namespace dxvk {
         m_specCbv = emitSpecConstantCbv();
 
       auto cbvDescriptor = m_builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eCbv, m_specCbv, m_builder.makeConstant(0u)));
-      auto cbvLoad = m_builder.add(ir::Op::BufferLoad(ir::ScalarType::eU32, cbvDescriptor, m_builder.makeConstant(layout.dwordOffset), 4u));
+      auto cbvLoad = m_builder.add(ir::Op::BufferLoad(ir::ScalarType::eU32, cbvDescriptor,
+        m_builder.makeConstant(layout.dwordOffset), 4u).setFlags(ir::OpFlag::eInBounds));
 
       auto dword = m_builder.add(ir::Op::Select(ir::ScalarType::eU32, m_specSelector, specDef, cbvLoad));
 
@@ -716,7 +716,8 @@ namespace dxvk {
 
       if (!m_clipPlaneCbv) {
         m_clipPlaneCbv = m_builder.add(ir::Op::DclCbv(clipCbvType,
-          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::VsClipping), 1u));
+          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::VsClipping), 1u)
+          .setFlags(ir::OpFlag::eInBounds));
         m_builder.add(ir::Op::DebugName(m_clipPlaneCbv, "clipPlanes"));
       }
 
@@ -740,8 +741,8 @@ namespace dxvk {
               ir::ScalarType::eCbv, m_clipPlaneCbv, m_builder.makeConstant(0u)));
             auto index = m_builder.makeConstant(i - uint32_t(ir::LegacyClipPlaneLayout::eClipPlane0));
 
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::BufferLoad(
-              clipCbvType.getSubType(0u), descriptor, index, 16u)));
+            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::BufferLoad(clipCbvType.getSubType(0u),
+              descriptor, index, 16u).setFlags(ir::OpFlag::eInBounds)));
           } break;
         }
       }
@@ -900,7 +901,8 @@ namespace dxvk {
 
       if (!m_textureStageCbv) {
         m_textureStageCbv = m_builder.add(ir::Op::DclCbv(textureStageCbvType,
-          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::PsTextureStages), 1u));
+          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::PsTextureStages), 1u)
+          .setFlags(ir::OpFlag::eInBounds));
 
         m_builder.add(ir::Op::DebugName(m_textureStageCbv, "textureStages"));
         m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 0u, "constant"));
@@ -936,7 +938,8 @@ namespace dxvk {
         // Members in this struct are naturally aligned
         resultOp.addOperand(m_builder.addBefore(ref, ir::Op::BufferLoad(
           textureStageCbvType.getBaseType(member), descriptor, address,
-          textureStageCbvType.getBaseType(member).byteSize())));
+          textureStageCbvType.getBaseType(member).byteSize())
+          .setFlags(ir::OpFlag::eInBounds)));
       }
 
       return m_builder.addBefore(ref, std::move(resultOp));
