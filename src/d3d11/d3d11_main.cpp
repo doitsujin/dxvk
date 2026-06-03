@@ -140,7 +140,13 @@ extern "C" {
       // We'll treat everything as hardware, even if the
       // Vulkan device is actually a software device.
       if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
-        Logger::warn("D3D11CreateDevice: Unsupported driver type");
+      {
+        Logger::warn(str::format("D3D11CreateDevice: Unsupported driver type ", DriverType, ", Flags ", Flags));
+        if (DriverType == D3D_DRIVER_TYPE_UNKNOWN || DriverType == D3D_DRIVER_TYPE_SOFTWARE)
+          return E_INVALIDARG;
+        if (Flags & D3D11_CREATE_DEVICE_VIDEO_SUPPORT)
+          return DXGI_ERROR_UNSUPPORTED;
+      }
       
       // We'll use the first adapter returned by a DXGI factory
       hr = CreateDXGIFactory1(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory));
