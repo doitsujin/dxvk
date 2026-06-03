@@ -265,6 +265,7 @@ namespace dxvk {
       }
 
       rewriteSamplers();
+      rewriteConstantBuffers();
       rewriteUavCounters();
 
       if (m_sharedPushDataOffset) {
@@ -311,6 +312,10 @@ namespace dxvk {
     }
 
   private:
+
+    struct CbvInfo {
+      dxbc_spv::ir::SsaDef cbv = { };
+    };
 
     struct SamplerInfo {
       dxbc_spv::ir::SsaDef sampler = { };
@@ -372,6 +377,7 @@ namespace dxvk {
 
     uint32_t                      m_sharedPushDataOffset = 0u;
 
+    small_vector<CbvInfo,         16u>  m_cbv;
     small_vector<SamplerInfo,     16u>  m_samplers;
     small_vector<UavCounterInfo,  64u>  m_uavCounters;
 
@@ -478,25 +484,8 @@ namespace dxvk {
 
 
     dxbc_spv::ir::Builder::iterator handleCbv(dxbc_spv::ir::Builder::iterator op) {
-      auto regSpace = uint32_t(op->getOperand(1u));
-      auto regIndex = uint32_t(op->getOperand(2u));
-      auto regCount = uint32_t(op->getOperand(3u));
-
-      DxvkBindingInfo binding = { };
-      binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eCbv);
-      binding.binding = regIndex;
-      binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
-        dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
-      binding.descriptorType = determineDescriptorType(*op);
-      binding.descriptorCount = regCount;
-      binding.access = VK_ACCESS_UNIFORM_READ_BIT;
-
-      if (binding.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
-        binding.access = VK_ACCESS_SHADER_READ_BIT;
-
-      binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
-
-      addBinding(binding);
+      auto& e = m_cbv.emplace_back();
+      e.cbv = op->getDef();
       return ++op;
     }
 
@@ -918,6 +907,119 @@ namespace dxvk {
       }
 
       return m_builder.iter(m_builder.remove(op->getDef()));
+    }
+
+
+    void rewriteCbvUseAsBda(const dxbc_spv::ir::Op& cbv, const dxbc_spv::ir::Type& type, const dxbc_spv::ir::Op& use) {
+      // Replace descriptor load with push data load and pointer instruction
+      auto load = m_builder.addBefore(use.getDef(), dxbc_spv::ir::Op::PushDataLoad(
+        dxbc_spv::ir::ScalarType::eU64, cbv.getDef(), dxbc_spv::ir::SsaDef()));
+
+      m_builder.rewriteOp(use.getDef(), dxbc_spv::ir::Op::Pointer(
+        type, load, dxbc_spv::ir::UavFlag::eReadOnly));
+
+      // Replace all buffer loads with memory loads
+      small_vector<dxbc_spv::ir::SsaDef, 256u> uses;
+      m_builder.getUses(use.getDef(), uses);
+
+      for (auto use : uses) {
+        const auto& useOp = m_builder.getOp(use);
+
+        if (useOp.getOpCode() == dxbc_spv::ir::OpCode::eBufferLoad) {
+          dxbc_spv::ir::Op newOp(dxbc_spv::ir::OpCode::eMemoryLoad, useOp.getType());
+
+          for (uint32_t i = 0u; i < useOp.getOperandCount(); i++)
+            newOp.addOperand(useOp.getOperand(i));
+
+          newOp.setFlags(useOp.getFlags());
+          m_builder.rewriteOp(use, std::move(newOp));
+        }
+      }
+    }
+
+
+    void rewriteCbvAsBda(const dxbc_spv::ir::Op& cbv, uint32_t pushDataOffset) {
+      // Replace all descriptor loads with a push data load and conversion to
+      // pointer, and in turn replace all buffer loads with raw memory loads
+      small_vector<dxbc_spv::ir::SsaDef, 16u> uses;
+      m_builder.getUses(cbv.getDef(), uses);
+
+      // Rewrite CBV declaration as a 64-bit push data declaration.
+      // Keeps the debug name intact.
+      auto cbvType = cbv.getType();
+      auto entryPoint = dxbc_spv::ir::SsaDef(cbv.getOperand(0u));
+
+      m_builder.rewriteOp(cbv.getDef(), dxbc_spv::ir::Op::DclPushData(
+        dxbc_spv::ir::ScalarType::eU64, entryPoint, pushDataOffset, m_stage));
+
+      for (auto use : uses) {
+        const auto& useOp = m_builder.getOp(use);
+
+        switch (useOp.getOpCode()) {
+          case dxbc_spv::ir::OpCode::eDescriptorLoad: {
+            rewriteCbvUseAsBda(cbv, cbvType, useOp);
+          } break;
+
+          case dxbc_spv::ir::OpCode::eDebugName:
+            break;
+
+          case dxbc_spv::ir::OpCode::eDebugMemberName: {
+            // Can't do much with member names here
+            m_builder.remove(use);
+          } break;
+
+          default:
+            dxbc_spv_unreachable();
+            break;
+        }
+      }
+    }
+
+
+    void rewriteConstantBuffers() {
+      for (const auto& e : m_cbv) {
+        const auto& op = m_builder.getOp(e.cbv);
+
+        auto regSpace = uint32_t(op.getOperand(1u));
+        auto regIndex = uint32_t(op.getOperand(2u));
+        auto regCount = uint32_t(op.getOperand(3u));
+
+        DxvkBindingInfo binding = { };
+        binding.set = DxvkShaderResourceMapping::setIndexForType(dxbc_spv::ir::ScalarType::eCbv);
+        binding.binding = regIndex;
+        binding.resourceIndex = m_shader.determineResourceIndex(m_stage,
+          dxbc_spv::ir::ScalarType::eCbv, regSpace, regIndex);
+        binding.descriptorType = determineDescriptorType(op);
+        binding.descriptorCount = regCount;
+        binding.access = VK_ACCESS_UNIFORM_READ_BIT;
+
+        if (binding.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+          binding.access = VK_ACCESS_SHADER_READ_BIT;
+
+        binding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+
+        // If we can use BDA or push address mapping with at least the same
+        // level of performance as a constant buffer, rewrite the binding.
+        bool useHeap = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDescriptorHeap);
+        bool useBda = m_info.options.flags.test(DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
+
+        if ((useHeap || useBda) && (op.getFlags() & dxbc_spv::ir::OpFlag::eInBounds)
+         && (m_localPushDataOffset + sizeof(uint64_t) <= MaxPerStagePushDataSize)) {
+          m_localPushDataAlign = std::max<uint32_t>(m_localPushDataAlign, sizeof(uint64_t));
+          m_localPushDataOffset = align(m_localPushDataOffset, m_localPushDataAlign);
+
+          binding.blockOffset = MaxSharedPushDataSize + m_localPushDataOffset;
+          binding.flags.set(DxvkDescriptorFlag::PushData);
+
+          if (!useHeap)
+            rewriteCbvAsBda(op, m_localPushDataOffset);
+
+          m_localPushDataResourceMask |= 0x3ull << (m_localPushDataOffset / sizeof(uint32_t));
+          m_localPushDataOffset += sizeof(uint64_t);
+        }
+
+        addBinding(binding);
+      }
     }
 
 
