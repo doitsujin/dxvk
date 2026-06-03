@@ -808,6 +808,12 @@ namespace dxvk {
         DxvkShaderCompileFlag::LowerF32toF16);
     }
 
+    // On AMD, push constant BDA will not be worse than going through a descriptor
+    if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
+     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE)
+     || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY))
+      m_shaderOptions.flags.set(DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
+
     // Converting unsigned integers to float should return an unsigned float,
     // but Nvidia drivers prior to 580 don't agree
     if (m_adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(), Version(580u, 0u, 0u)))
@@ -881,6 +887,9 @@ namespace dxvk {
 
     if (m_features.khrShaderFloatControls2.shaderFloatControls2)
       m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsFloatControls2);
+
+    if (canUseDescriptorHeap())
+      m_shaderOptions.spirv.set(DxvkShaderSpirvFlag::SupportsDescriptorHeap);
 
     // Set up resource indexing flags
     if (m_features.core.features.shaderUniformBufferArrayDynamicIndexing &&
