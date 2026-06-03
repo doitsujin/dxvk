@@ -1,5 +1,7 @@
 #pragma once
 
+#include "d3d9_constant_copy.h"
+
 #include "../util/util_vector.h"
 #include "../util/util_small_vector.h"
 
@@ -51,13 +53,11 @@ public:
 
   D3D9ShaderAnalysis(dxbc_spv::util::ByteReader code, bool isSWVP);
 
-  D3D9ShaderAnalysis(D3D9ShaderAnalysis&& other);
+  D3D9ShaderAnalysis(const D3D9ShaderAnalysis& other) = default;
+  D3D9ShaderAnalysis(D3D9ShaderAnalysis&& other) = default;
 
-  D3D9ShaderAnalysis(const D3D9ShaderAnalysis& other);
-
-  D3D9ShaderAnalysis& operator=(const D3D9ShaderAnalysis& other);
-
-  D3D9ShaderAnalysis& operator=(D3D9ShaderAnalysis&& other);
+  D3D9ShaderAnalysis& operator = (const D3D9ShaderAnalysis& other) = default;
+  D3D9ShaderAnalysis& operator = (D3D9ShaderAnalysis&& other) = default;
 
   dxbc_spv::sm3::ShaderInfo GetShaderInfo() const {
     return m_shaderInfo;
@@ -71,12 +71,20 @@ public:
     return m_constants;
   }
 
+  const Vector4* GetShaderDefinedConstants() const {
+    return m_defConstants.data();
+  }
+
   const D3D9ImmediateConstants& GetImmediateConstants() const {
     return m_immediateConstants;
   }
 
   D3D9RenderTargetMask GetRenderTargetMask() const {
     return m_usedRTs;
+  }
+
+  const D3D9ConstantBufferCopy& GetConstantLayout() const {
+    return m_constLayout;
   }
 
   D3D9SamplerMask GetSamplerMask() const {
@@ -103,9 +111,14 @@ public:
 
 private:
 
+  using ConstantMask = small_vector<uint32_t, 64u>;
+
   bool RunAnalysis(dxbc_spv::sm3::Parser& parser);
 
-  bool HandleInstruction(const dxbc_spv::sm3::Instruction& op);
+  bool HandleInstruction(
+    const dxbc_spv::sm3::Instruction&   op,
+          ConstantMask&                 constMaskF,
+          ConstantMask&                 constMaskI);
 
   bool HandleDef(const dxbc_spv::sm3::Instruction& op);
 
@@ -122,8 +135,10 @@ private:
   dxbc_spv::sm3::ShaderInfo m_shaderInfo;
 
   D3D9ShaderConstantsInfo m_constants;
-
+  D3D9ConstantBufferCopy m_constLayout;
   D3D9ImmediateConstants m_immediateConstants;
+
+  small_vector<Vector4, 16u> m_defConstants;
 
   D3D9RenderTargetMask m_usedRTs = 0u;
 
@@ -133,7 +148,11 @@ private:
 
   uint32_t m_flatShadingMask = 0u;
 
-  D3D9InputSignature m_inputSignature    = {};
+  D3D9InputSignature m_inputSignature = {};
+
+  static void setBit(ConstantMask& mask, uint32_t bit);
+
+  static void clrBit(ConstantMask& mask, uint32_t bit);
 
 };
 
