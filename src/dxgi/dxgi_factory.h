@@ -200,6 +200,8 @@ namespace dxvk {
     UINT             m_flags;
     BOOL             m_monitorFallback;
 
+    HMODULE          m_igdExt = nullptr;
+
     D3DDestructionNotifier m_destructionNotifier;
       
 
@@ -210,6 +212,11 @@ namespace dxvk {
       const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
             IDXGIOutput*          pRestrictToOutput,
             IDXGISwapChain1**     ppSwapChain);
+
+    void LoadIntelIgdLibrary();
+
+    void FreeIntelIgdLibrary();
+
   };
   
 }

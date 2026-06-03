@@ -130,10 +130,13 @@ namespace dxvk {
     // fallback to always enumerate all monitors.
     if ((m_monitorFallback = !monitors.empty()))
       Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
+
+    LoadIntelIgdLibrary();
   }
   
   
   DxgiFactory::~DxgiFactory() {
+    FreeIntelIgdLibrary();
     g_dxvkInstance.release();
   }
   
@@ -580,6 +583,32 @@ namespace dxvk {
   DXVK_VK_GLOBAL_HDR_STATE DxgiFactory::GlobalHDRState() {
     std::unique_lock lock(s_globalHDRStateMutex);
     return s_globalHDRState;
+  }
+
+
+  void DxgiFactory::LoadIntelIgdLibrary() {
+    #ifdef _WIN32
+    bool hasIntelGpu = false;
+
+    for (uint32_t i = 0u; i < m_instance->adapterCount() && !hasIntelGpu; i++) {
+      auto adapter = m_instance->enumAdapters(i);
+      hasIntelGpu = adapter->info().vendorId == uint32_t(DxvkGpuVendor::Intel);
+    }
+
+    if (!hasIntelGpu)
+      return;
+
+    if (!(m_igdExt = ::LoadLibrary("igdext64.dll")))
+      Logger::warn("Failed to load igdext64.dll, Intel D3D extensions unavailable.");
+    #endif
+  }
+
+
+  void DxgiFactory::FreeIntelIgdLibrary() {
+    #ifdef _WIN32
+    if (m_igdExt)
+      ::FreeLibrary(m_igdExt);
+    #endif
   }
 
 }
