@@ -40,10 +40,10 @@ namespace dxvk {
       const DxvkShaderHash&           ShaderKey,
       const D3D9ShaderOptions&        Options,
       const void*                     pShaderBytecode,
-            size_t                    BytecodeLength)
-    : m_key(ShaderKey), m_options(Options) {
-      m_dxbc.resize(BytecodeLength);
-      std::memcpy(m_dxbc.data(), pShaderBytecode, BytecodeLength);
+      const D3D9ShaderAnalysis&       ShaderAnalysis)
+    : m_key(ShaderKey), m_options(Options), m_analysis(ShaderAnalysis) {
+      m_dxbc.resize(m_analysis.GetLength());
+      std::memcpy(m_dxbc.data(), pShaderBytecode, m_dxbc.size());
     }
 
     ~D3D9ShaderConverter() { }
@@ -139,6 +139,7 @@ namespace dxvk {
     DxvkShaderHash       m_key;
 
     D3D9ShaderOptions    m_options;
+    D3D9ShaderAnalysis   m_analysis;
 
   };
 
@@ -148,7 +149,7 @@ namespace dxvk {
             D3D9ShaderAnalysis&&  ShaderAnalysis,
       const D3D9ShaderCreateInfo& ModuleInfo,
       const void*                 pShaderBytecode)
-        : m_analysis(std::move(ShaderAnalysis)) {
+  : m_analysis(std::move(ShaderAnalysis)) {
     const std::string name = ShaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
@@ -164,7 +165,7 @@ namespace dxvk {
     }
 
     if (pDevice->GetOptions()->useDxbcSpirv)
-      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, m_analysis.GetLength());
+      CreateIrShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode, m_analysis);
     else
       CreateLegacyShader(pDevice, ShaderKey, ModuleInfo, pShaderBytecode);
 
@@ -184,13 +185,13 @@ namespace dxvk {
     const DxvkShaderHash&         ShaderKey,
     const D3D9ShaderCreateInfo&   ModuleInfo,
     const void*                   pShaderBytecode,
-          size_t                  BytecodeLength) {
+    const D3D9ShaderAnalysis&     ShaderAnalysis) {
     m_shader = pDevice->GetDXVKDevice()->createCachedShader(
       ShaderKey.toString(), ModuleInfo.irCreateInfo, nullptr);
 
     if (!m_shader) {
-      Rc<D3D9ShaderConverter> converter = new D3D9ShaderConverter(ShaderKey, ModuleInfo.shaderOptions,
-        pShaderBytecode, BytecodeLength);
+      Rc<D3D9ShaderConverter> converter = new D3D9ShaderConverter(ShaderKey,
+        ModuleInfo.shaderOptions, pShaderBytecode, ShaderAnalysis);
 
       m_shader = pDevice->GetDXVKDevice()->createCachedShader(
         ShaderKey.toString(), ModuleInfo.irCreateInfo, std::move(converter));
