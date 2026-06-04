@@ -983,6 +983,9 @@ namespace dxvk {
 
     void BindDepthBias();
 
+    template<D3D9ShaderType ShaderType>
+    void UpdateShaderConstants();
+
     inline void UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout);
 
     inline void* CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size);
