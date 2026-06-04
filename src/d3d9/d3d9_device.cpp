@@ -5991,6 +5991,15 @@ namespace dxvk {
     psConst.buffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
       D3D9ShaderResourceMapping::CbvIndex::PSConstantBuffer, DefaultConstantBufferSize);
 
+    m_psStaticConstants = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants, DefaultConstantBufferSize);
+
+    m_vsStaticConstants = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSStaticConstants, DefaultConstantBufferSize);
+
+    m_vsDynamicConstants = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, DefaultConstantBufferSize);
+
     m_vsClipPlanes = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
       D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes,
       caps::MaxClipPlanes * sizeof(D3D9ClipPlane));
