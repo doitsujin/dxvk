@@ -6034,6 +6034,100 @@ namespace dxvk {
   }
 
 
+  template<D3D9ShaderType ShaderType>
+  void D3D9DeviceEx::UpdateShaderConstants() {
+    auto& constants = m_consts[uint32_t(ShaderType)];
+
+    if (!constants.dirty)
+      return;
+
+    auto shader = ShaderType == D3D9ShaderType::VertexShader
+      ? GetCommonShader(m_state.vertexShader)
+      : GetCommonShader(m_state.pixelShader);
+
+    const auto& layout = shader->GetConstantLayout();
+
+    // Dynamic indexing is only a thing in VS, so nope out on the PS path.
+    uint32_t dynamicFloatCount = 0u;
+
+    if (ShaderType == D3D9ShaderType::VertexShader)
+      dynamicFloatCount = constants.changedFloatCount;
+
+    bool isDynamicallyIndexed = ShaderType == D3D9ShaderType::VertexShader
+      && layout.getLayout(D3D9ConstantType::Float).isDynamicallyIndexed();
+
+    // Compute amount of storage required for each constant type
+    auto dataSize = layout.getAllocationSizes(dynamicFloatCount);
+
+    if (ShaderType == D3D9ShaderType::PixelShader)
+      dataSize.boolBufferSize = 0u;
+
+    // Compute data layout of the respective buffers
+    auto staticSize = dataSize.boolBufferSize + dataSize.intBufferSize;
+    auto dynamicSize = dataSize.floatBufferSize;
+
+    if (!isDynamicallyIndexed) {
+      staticSize += dynamicSize;
+      dynamicSize = 0u;
+    }
+
+    // Set up and perform the actual data copy
+    D3D9ConstantBufferCopyArgs copyArgs = {};
+    copyArgs.floatConstantCount = dynamicFloatCount;
+    copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
+
+    if (staticSize) {
+      // Allocate storage for statically indexed constants
+      auto& buffer = ShaderType == D3D9ShaderType::VertexShader
+        ? m_vsStaticConstants : m_psStaticConstants;
+      staticSize = align(staticSize, buffer.GetAlignment());
+
+      auto staticData = buffer.Alloc(staticSize);
+      auto staticOffset = 0u;
+
+      if (!dynamicSize) {
+        copyArgs.floatBuffer = reinterpret_cast<char*>(staticData) + staticOffset;
+        copyArgs.floatBufferSize = dataSize.floatBufferSize;
+        staticOffset += dataSize.floatBufferSize;
+      }
+
+      copyArgs.intBuffer = reinterpret_cast<char*>(staticData) + staticOffset;
+      copyArgs.intBufferSize = dataSize.intBufferSize;
+      staticOffset += dataSize.intBufferSize;
+
+      // Pad last block so we always write full cache lines
+      copyArgs.boolBuffer = reinterpret_cast<char*>(staticData) + staticOffset;
+      copyArgs.boolBufferSize = staticSize - staticOffset;
+    }
+
+    if (dynamicSize) {
+      // Allocate storage for dynamically indexed floats. Pad this
+      // to the full allocation size as well so we write everything.
+      dynamicSize = align(dynamicSize, m_vsDynamicConstants.GetAlignment());
+
+      copyArgs.floatBuffer = m_vsDynamicConstants.Alloc(dynamicSize);
+      copyArgs.floatBufferSize = dynamicSize;
+    }
+
+    if (ShaderType == D3D9ShaderType::VertexShader) {
+      // Need shader-defined constants for dynamic
+      // indexing, and boolean constants for SWVP.
+      copyArgs.constFloatApi = m_state.vsConsts->fConsts;
+      copyArgs.constFloatDef = shader->GetConstantData();
+      copyArgs.constIntApi = m_state.vsConsts->iConsts;
+      copyArgs.constBoolApi = m_state.vsConsts->bConsts;
+    } else {
+      // Don't need any of the above for PS, fast path
+      copyArgs.constFloatApi = m_state.psConsts->fConsts;
+      copyArgs.constIntApi = m_state.psConsts->iConsts;
+    }
+
+    layout.copyConstantData(copyArgs);
+
+    constants.dirty = false;
+  }
+
+
   inline void D3D9DeviceEx::UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout) {
     /*
      * SWVP raises the amount of constants by a lot.
