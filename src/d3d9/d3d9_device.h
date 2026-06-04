@@ -1621,7 +1621,6 @@ namespace dxvk {
 
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
-    bool                            m_usingGraphicsPipelines = false;
     uint32_t                        m_resetCtr = 0u;
 
     DxvkDepthBiasRepresentation     m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
