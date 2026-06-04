@@ -3556,21 +3556,11 @@ namespace dxvk {
     if (shader == m_state.vertexShader.ptr())
       return D3D_OK;
 
-    auto* oldShader = GetCommonShader(m_state.vertexShader);
     auto* newShader = GetCommonShader(shader);
 
-    bool oldCopies = oldShader && oldShader->GetConstantsInfo().floatsAccessedDynamically;
-    bool newCopies = newShader && newShader->GetConstantsInfo().floatsAccessedDynamically;
-
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].dirty |= oldCopies || newCopies || !oldShader;
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].shaderConstantsInfo  = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
-
-    if (newShader && oldShader) {
-      m_consts[uint32_t(D3D9ShaderType::VertexShader)].dirty
-        |= newShader->GetConstantsInfo().floatCount > oldShader->GetConstantsInfo().floatCount
-        || newShader->GetConstantsInfo().intCount > oldShader->GetConstantsInfo().intCount
-        || newShader->GetConstantsInfo().boolCount > oldShader->GetConstantsInfo().boolCount;
-    }
+    auto& vsConstants = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
+    vsConstants.dirty = true;
+    vsConstants.shaderConstantsInfo = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
 
     const bool wasUsingProgrammableVS = UseProgrammableVS();
 
@@ -3909,21 +3899,11 @@ namespace dxvk {
     if (shader == m_state.pixelShader.ptr())
       return D3D_OK;
 
-    auto* oldShader = GetCommonShader(m_state.pixelShader);
     auto* newShader = GetCommonShader(shader);
 
-    bool oldCopies = oldShader && oldShader->GetConstantsInfo().floatsAccessedDynamically;
-    bool newCopies = newShader && newShader->GetConstantsInfo().floatsAccessedDynamically;
-
-    m_consts[uint32_t(D3D9ShaderType::PixelShader)].dirty |= oldCopies || newCopies || !oldShader;
-    m_consts[uint32_t(D3D9ShaderType::PixelShader)].shaderConstantsInfo  = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
-
-    if (newShader && oldShader) {
-      m_consts[uint32_t(D3D9ShaderType::PixelShader)].dirty
-        |= newShader->GetConstantsInfo().floatCount > oldShader->GetConstantsInfo().floatCount
-        || newShader->GetConstantsInfo().intCount > oldShader->GetConstantsInfo().intCount
-        || newShader->GetConstantsInfo().boolCount > oldShader->GetConstantsInfo().boolCount;
-    }
+    auto& psConstants = m_consts[uint32_t(D3D9ShaderType::PixelShader)];
+    psConstants.dirty = true;
+    psConstants.shaderConstantsInfo = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
 
     const D3D9ShaderMasks oldShaderMasks = PSShaderMasks();
     m_state.pixelShader = shader;
@@ -7928,15 +7908,13 @@ namespace dxvk {
     m_state.vsConsts->bConsts[idx] &= ~mask;
     m_state.vsConsts->bConsts[idx] |= bits & mask;
 
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].dirty = true;
+    m_consts[uint32_t(D3D9ShaderType::VertexShader)].dirty |= CanSWVP();
   }
 
 
   void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
     m_state.psConsts->bConsts[idx] &= ~mask;
     m_state.psConsts->bConsts[idx] |= bits & mask;
-
-    m_consts[uint32_t(D3D9ShaderType::PixelShader)].dirty = true;
   }
 
 
@@ -8113,73 +8091,59 @@ namespace dxvk {
   }
 
 
-  template <
-    D3D9ShaderType   ShaderType,
-    D3D9ConstantType ConstantType,
-    typename         T>
-    HRESULT D3D9DeviceEx::SetShaderConstants(
-            UINT  StartRegister,
-      const T*    pConstantData,
-            UINT  Count) {
-    const     uint32_t regCountHardware = DetermineHardwareRegCount<ShaderType, ConstantType>();
-    constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount<ShaderType, ConstantType>();
+  template<D3D9ShaderType ShaderType, D3D9ConstantType ConstantType, typename T>
+  HRESULT D3D9DeviceEx::SetShaderConstants(
+          UINT  StartRegister,
+    const T*    pConstantData,
+          UINT  Count) {
+    uint32_t maxRegCount = DetermineSoftwareRegCount<ShaderType, ConstantType>();
 
     // Error out in case of StartRegister + Count overflow
-    if (unlikely(StartRegister > std::numeric_limits<uint32_t>::max() - Count))
+    if (unlikely(StartRegister > maxRegCount) || unlikely(Count > maxRegCount - StartRegister))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(StartRegister + Count > regCountSoftware))
-      return D3DERR_INVALIDCALL;
-
-    Count = UINT(
-      std::max<INT>(
-        std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
-        0));
-
-    if (unlikely(Count == 0))
+    if (unlikely(!Count))
       return D3D_OK;
 
-    if (unlikely(pConstantData == nullptr))
+    // Clamp count to the maximum that we are going to access in shaders.
+    // For PS or SWVP VS, constant counts won't change, so skip.
+    if (ShaderType == D3D9ShaderType::VertexShader && likely(!CanSWVP())) {
+      maxRegCount = DetermineHardwareRegCount<ShaderType, ConstantType>();
+
+      if (unlikely(StartRegister >= maxRegCount))
+        return D3D_OK;
+
+      Count = std::min(maxRegCount - StartRegister, Count);
+    }
+
+    if (unlikely(!pConstantData))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(ShouldRecord()))
+    if (unlikely(ShouldRecord())) {
       return m_recorder->SetShaderConstants<ShaderType, ConstantType, T>(
-        StartRegister,
-        pConstantData,
-        Count);
+        StartRegister, pConstantData, Count);
+    }
 
     D3D9ConstantSets& constSet = m_consts[uint32_t(ShaderType)];
 
-    if constexpr (ConstantType == D3D9ConstantType::Float) {
-      constSet.changedFloatCount = std::max(constSet.changedFloatCount, StartRegister + Count);
-    } else if constexpr (ConstantType == D3D9ConstantType::Int && ShaderType == D3D9ShaderType::VertexShader) {
-      // We only track changed int constants for vertex shaders (and it's only used when the device uses the SWVP UBO layout).
-      // Pixel shaders (and vertex shaders on HWVP devices) always copy all int constants into the same UBO as the float constants
-      constSet.changedIntCount = std::max(constSet.changedIntCount, StartRegister + Count);
-    } else  if constexpr (ConstantType == D3D9ConstantType::Bool && ShaderType == D3D9ShaderType::VertexShader) {
-      // We only track changed bool constants for vertex shaders (and it's only used when the device uses the SWVP UBO layout).
-      // Pixel shaders (and vertex shaders on HWVP devices) always put all bool constants into a single spec constant.
-      constSet.changedBoolCount = std::max(constSet.changedBoolCount, StartRegister + Count);
+    if (ConstantType == D3D9ConstantType::Float) {
+      // Check whether the constant range has any effect on the bound shader.
+      // Also update the dynamic float count for vertex shaders, which is used
+      // to reduce the number of constants copied with dynamic indexing.q
+      constSet.dirty |= StartRegister < constSet.shaderConstantsInfo.floatCount;
+
+      if (ShaderType == D3D9ShaderType::VertexShader)
+        constSet.changedFloatCount = std::max(constSet.changedFloatCount, StartRegister + Count);
+    } else if (ConstantType == D3D9ConstantType::Int) {
+      // Same logic as above except we need to check against the used integer count.
+      constSet.dirty |= StartRegister < constSet.shaderConstantsInfo.intCount;
+    } else if (ConstantType == D3D9ConstantType::Bool && ShaderType == D3D9ShaderType::VertexShader) {
+      // Bool constants are only backed by memory for SWVP vertex shaders
+      constSet.dirty |= StartRegister < constSet.shaderConstantsInfo.boolCount && CanSWVP();
     }
 
-    if constexpr (ConstantType != D3D9ConstantType::Bool) {
-      uint32_t count = ConstantType == D3D9ConstantType::Float
-        ? constSet.shaderConstantsInfo.floatCount
-        : constSet.shaderConstantsInfo.intCount;
-
-      constSet.dirty |= StartRegister < count;
-    } else if constexpr (ShaderType == D3D9ShaderType::VertexShader) {
-      if (unlikely(CanSWVP())) {
-        constSet.dirty |= StartRegister < constSet.shaderConstantsInfo.boolCount;
-      }
-    }
-
-    UpdateStateConstants<ShaderType, ConstantType, T>(
-      &m_state,
-      StartRegister,
-      pConstantData,
-      Count,
-      m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled);
+    UpdateStateConstants<ShaderType, ConstantType, T>(&m_state,
+      StartRegister, pConstantData, Count, false);
 
     return D3D_OK;
   }
