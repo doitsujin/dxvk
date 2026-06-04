@@ -170,7 +170,7 @@ namespace dxvk {
       dxbc_spv_assert(stage == dxbc_spv::ir::ShaderStage::eGeometry);
       dxbc_spv_assert(type == dxbc_spv::ir::ScalarType::eUav && !regSpace && !regIndex);
 
-      return D3D9ShaderResourceMapping::getSWVPBufferSlot();
+      return D3D9ShaderResourceMapping::getSwvpBufferIndex();
     }
 
     void dumpSource(const std::string& path) const {

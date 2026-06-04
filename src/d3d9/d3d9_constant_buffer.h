@@ -22,13 +22,6 @@ namespace dxvk {
 
     D3D9ConstantBuffer(
             D3D9DeviceEx*         pDevice,
-            D3D9ShaderType        ShaderStage,
-            D3D9ShaderResourceMapping::ConstantBuffers BufferType,
-            VkDeviceSize          Size);
-
-    D3D9ConstantBuffer(
-            D3D9DeviceEx*         pDevice,
-            VkBufferUsageFlags    Usage,
             VkShaderStageFlags    Stages,
             uint32_t              ResourceSlot,
             VkDeviceSize          Size);

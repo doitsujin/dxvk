@@ -1074,27 +1074,24 @@ namespace dxvk {
         case dxbc_spv::ir::ScalarType::eCbv:
           switch (D3D9IrCbvIndex(regIndex)) {
             case D3D9IrCbvIndex::SpecData:
-              return D3D9ShaderResourceMapping::getSpecConstantBufferSlot();
+              return D3D9ShaderResourceMapping::CbvIndex::SpecData;
 
             case D3D9IrCbvIndex::VsClipping:
-              return D3D9ShaderResourceMapping::computeCbvBinding(shaderType,
-                D3D9ShaderResourceMapping::ConstantBuffers::VSClipPlanes);
+              return D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes;
 
             case D3D9IrCbvIndex::PsTextureStages:
-              return D3D9ShaderResourceMapping::computeCbvBinding(shaderType,
-                D3D9ShaderResourceMapping::ConstantBuffers::PSShared);
+              return D3D9ShaderResourceMapping::CbvIndex::PSShared;
 
             case D3D9IrCbvIndex::ConstFloat:
-              return D3D9ShaderResourceMapping::computeCbvBinding(shaderType,
-                D3D9ShaderResourceMapping::ConstantBuffers::VSFloatConstantBuffer);
+              return shaderType == D3D9ShaderType::PixelShader
+                ? D3D9ShaderResourceMapping::CbvIndex::PSConstantBuffer
+                : D3D9ShaderResourceMapping::CbvIndex::VSConstantBuffer;
 
             case D3D9IrCbvIndex::ConstInt:
-              return D3D9ShaderResourceMapping::computeCbvBinding(shaderType,
-                D3D9ShaderResourceMapping::ConstantBuffers::VSIntConstantBuffer);
+              return D3D9ShaderResourceMapping::CbvIndex::VSIntConstantBuffer;
 
             case D3D9IrCbvIndex::ConstBool:
-              return D3D9ShaderResourceMapping::computeCbvBinding(shaderType,
-                D3D9ShaderResourceMapping::ConstantBuffers::VSBoolConstantBuffer);
+              return D3D9ShaderResourceMapping::CbvIndex::VSBoolConstantBuffer;
           } break;
 
         case dxbc_spv::ir::ScalarType::eSrv:

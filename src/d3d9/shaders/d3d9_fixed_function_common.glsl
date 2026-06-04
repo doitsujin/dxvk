@@ -35,10 +35,25 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec2 spvNClamp(vec2, vec2, vec2
 spirv_instruction(set = "GLSL.std.450", id = 81) vec3 spvNClamp(vec3, vec3, vec3);
 spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4);
 
+// Bindings have to match D3D9ShaderResourceMapping.
+// Set numbers are arbitrarily set in d3d9_fixed_function.cpp
+#define SAMPLER_SET             0
 
-// Dynamic "spec constants"
-// Binding has to match with getSpecConstantBufferSlot in d3d9_shader.h
-layout(set = 0, binding = 31, scalar) uniform SpecConsts {
+#define SRV_SET                 1
+#define SRV_PS_BASE             0
+
+#define CBV_SET                 2
+
+#define CBV_VS_CLIP_PLANES      3
+#define CBV_VS_FIXED_FUNCTION   4
+#define CBV_VS_VERTEX_BLEND     5
+
+#define CBV_PS_FIXED_FUNCTION   11
+#define CBV_PS_SHARED           12
+
+#define CBV_SPEC_DATA           20
+
+layout(set = CBV_SET, binding = CBV_SPEC_DATA, scalar) uniform SpecConsts {
     uint dynamicSpecConstDword[20];
 };
 
