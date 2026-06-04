@@ -117,8 +117,8 @@ namespace dxvk {
 
 
   VkDeviceSize D3D9ConstantBuffer::getAlignment(const Rc<DxvkDevice>& device) const {
-    return std::max(std::max(
-      device->properties().core.properties.limits.minUniformBufferOffsetAlignment,
+    return std::max(std::max(std::max(VkDeviceSize(CACHE_LINE_SIZE),
+      device->properties().core.properties.limits.minUniformBufferOffsetAlignment),
       device->properties().core.properties.limits.minStorageBufferOffsetAlignment),
       device->properties().extRobustness2.robustUniformBufferAccessSizeAlignment);
   }
