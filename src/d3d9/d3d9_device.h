@@ -1025,16 +1025,6 @@ namespace dxvk {
     template<D3D9ShaderType ShaderType>
     void UpdateShaderConstants();
 
-    inline void UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout);
-
-    inline void* CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size);
-
-    template <D3D9ShaderType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-    inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
-
-    template <D3D9ShaderType ShaderStage>
-    void UploadConstants();
-
     void UpdateClipPlanes();
 
     void UpdateGlobalSpecular();

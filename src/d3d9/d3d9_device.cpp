@@ -6128,146 +6128,6 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout) {
-    /*
-     * SWVP raises the amount of constants by a lot.
-     * To avoid copying huge amounts of data for every draw call,
-     * we track the highest set constant and only use a buffer big enough
-     * to fit that. We rely on robustness to return 0 for OOB reads.
-    */
-
-    D3D9ConstantSets& constSet = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
-
-    if (!constSet.dirty)
-      return;
-
-    constSet.dirty = false;
-
-    // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
-    uint32_t floatCount = constSet.changedFloatCount;
-    if (constSet.shaderConstantsInfo.floatsAccessedDynamically) {
-      // If the shader requires us to preserve shader defined constants,
-      // we copy those over. We need to adjust the amount of used floats accordingly.
-      auto shader = GetCommonShader(m_state.vertexShader);
-      floatCount = std::max(floatCount, shader->GetImmediateConstants().floatCount);
-    }
-    // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
-    floatCount = std::min(floatCount, constSet.shaderConstantsInfo.floatCount);
-
-    // Calculate data sizes for each constant type.
-    const uint32_t floatDataSize = floatCount * sizeof(Vector4);
-    const uint32_t intDataSize   = std::min(constSet.shaderConstantsInfo.intCount, constSet.changedIntCount) * sizeof(Vector4i);
-    const uint32_t boolDataSize  = divCeil(std::min(constSet.shaderConstantsInfo.boolCount, constSet.changedBoolCount), 32u) * uint32_t(sizeof(uint32_t));
-
-    // Max copy source size is 8192 * 16 => always aligned to any plausible value
-    // => we won't copy out of bounds
-    if (likely(floatDataSize != 0u)) {
-      auto mapPtr = CopySoftwareConstants(constSet.buffer, Src.fConsts, floatDataSize);
-
-      if (constSet.shaderConstantsInfo.floatsAccessedDynamically) {
-        // Copy shader defined constants over so they can be accessed
-        // with relative addressing.
-        Vector4* data = reinterpret_cast<Vector4*>(mapPtr);
-
-        const auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetImmediateConstants().floats;
-
-        for (const auto& constant : shaderConsts) {
-          if (constant.index < constSet.shaderConstantsInfo.floatCount)
-            data[constant.index] = constant.value;
-        }
-      }
-    }
-
-    // Max copy source size is 2048 * 16 => always aligned to any plausible value
-    // => we won't copy out of bounds
-    if (likely(intDataSize != 0u))
-      CopySoftwareConstants(constSet.swvp.intBuffer, Src.iConsts, intDataSize);
-
-    if (likely(boolDataSize != 0u))
-      CopySoftwareConstants(constSet.swvp.boolBuffer, Src.bConsts, boolDataSize);
-  }
-
-
-  inline void* D3D9DeviceEx::CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size) {
-    uint32_t alignment = dstBuffer.GetAlignment();
-    size = std::max(size, alignment);
-    size = align(size, alignment);
-
-    auto mapPtr = dstBuffer.Alloc(size);
-    std::memcpy(mapPtr, src, size);
-    return mapPtr;
-  }
-
-
-  template <D3D9ShaderType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-  inline void D3D9DeviceEx::UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader) {
-    /*
-     * We just copy the float constants that have been set by the application and rely on robustness
-     * to return 0 on OOB reads.
-    */
-    D3D9ConstantSets& constSet = m_consts[uint32_t(ShaderStage)];
-
-    if (!constSet.dirty)
-      return;
-
-    constSet.dirty = false;
-
-    uint32_t floatCount = constSet.changedFloatCount;
-    if (constSet.shaderConstantsInfo.floatsAccessedDynamically) {
-      // If the shader requires us to preserve shader defined constants,
-      // we copy those over. We need to adjust the amount of used floats accordingly.
-      auto shader = GetCommonShader(Shader);
-      floatCount = std::max(floatCount, shader->GetImmediateConstants().floatCount);
-    }
-    // If we statically know which is the last float constant accessed by the shader, we don't need to copy the rest.
-    floatCount = std::min(floatCount, constSet.shaderConstantsInfo.floatCount);
-
-    // There are very few int constants, so we put those into the same buffer at the start.
-    // We always allocate memory for all possible int constants to make sure alignment works out.
-    const uint32_t intRange = caps::MaxOtherConstants * sizeof(Vector4i);
-    uint32_t floatDataSize = floatCount * sizeof(Vector4);
-    // Determine amount of floats and buffer size based on highest used float constant and alignment
-    const uint32_t alignment = constSet.buffer.GetAlignment();
-    const uint32_t bufferSize = align(std::max(floatDataSize + intRange, alignment), alignment);
-    floatDataSize = bufferSize - intRange;
-
-    void* mapPtr = constSet.buffer.Alloc(bufferSize);
-    auto* dst = reinterpret_cast<HardwareLayoutType*>(mapPtr);
-
-    const uint32_t intDataSize = constSet.shaderConstantsInfo.intCount * sizeof(Vector4i);
-    if (intDataSize != 0u)
-      std::memcpy(dst->iConsts, Src.iConsts, intDataSize);
-    if (floatDataSize != 0u)
-      std::memcpy(dst->fConsts, Src.fConsts, floatDataSize);
-
-    if (constSet.shaderConstantsInfo.floatsAccessedDynamically) {
-      // Copy shader defined constants over so they can be accessed
-      // with relative addressing.
-      Vector4* data = reinterpret_cast<Vector4*>(dst->fConsts);
-
-      const auto& shaderConsts = GetCommonShader(Shader)->GetImmediateConstants().floats;
-
-      for (const auto& constant : shaderConsts) {
-        if (constant.index < constSet.shaderConstantsInfo.floatCount)
-          data[constant.index] = constant.value;
-      }
-    }
-  }
-
-
-  template <D3D9ShaderType ShaderStage>
-  void D3D9DeviceEx::UploadConstants() {
-    if constexpr (ShaderStage == D3D9ShaderType::VertexShader) {
-      if (CanSWVP())
-        return UploadSoftwareConstantSet(m_state.vsConsts.get(), m_consts[uint32_t(ShaderStage)].layout);
-      else
-        return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts.get(), m_consts[uint32_t(ShaderStage)].layout, m_state.vertexShader);
-    } else {
-      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>(m_state.psConsts.get(), m_consts[uint32_t(ShaderStage)].layout, m_state.pixelShader);
-    }
-  }
-
-
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_dirty.clr(D3D9DeviceDirtyFlag::ClipPlanes);
 
@@ -7753,7 +7613,7 @@ namespace dxvk {
       UpdateGlobalSpecular();
 
     if (likely(UseProgrammableVS())) {
-      UploadConstants<D3D9ShaderType::VertexShader>();
+      UpdateShaderConstants<D3D9ShaderType::VertexShader>();
 
       if (likely(!CanSWVP())) {
         UpdateVertexBoolSpec(
@@ -7772,7 +7632,7 @@ namespace dxvk {
 
     uint32_t projected = m_textureSlotTracking.projected;
     if (likely(UseProgrammablePS())) {
-      UploadConstants<D3D9ShaderType::PixelShader>();
+      UpdateShaderConstants<D3D9ShaderType::PixelShader>();
 
       const uint32_t psTextureMask = usedTextureMask & ((1u << caps::MaxTexturesPS) - 1u);
       const uint32_t fetch4        = m_textureSlotTracking.fetch4    & psTextureMask;
