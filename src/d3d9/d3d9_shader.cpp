@@ -17,6 +17,8 @@ namespace dxvk {
     ConstFloat      = 3u,
     ConstInt        = 4u,
     ConstBool       = 5u,
+    ConstStatic     = 6u,
+    ConstDynamic    = 7u,
   };
 
   class D3D9ShaderLowerLegacyInputPass {
@@ -34,6 +36,9 @@ namespace dxvk {
 
       std::tie(m_entryPoint, m_shaderStage) = findEntryPoint();
       dxbc_spv_assert(m_entryPoint);
+
+      setupStaticCbv();
+      setupDynamicCbv();
 
       dxvk::small_vector<ir::SsaDef, 32u> inputs;
 
@@ -83,9 +88,16 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef      m_entryPoint = {};
     dxbc_spv::ir::SsaDef      m_specSelector = {};
     dxbc_spv::ir::SsaDef      m_specCbv = {};
-    dxbc_spv::ir::SsaDef      m_mergedCbv = {};
     dxbc_spv::ir::SsaDef      m_clipPlaneCbv = {};
     dxbc_spv::ir::SsaDef      m_textureStageCbv = {};
+
+    dxbc_spv::ir::SsaDef      m_mergedCbv = {};
+
+    dxbc_spv::ir::SsaDef      m_staticCbv = {};
+    dxbc_spv::ir::SsaDef      m_dynamicCbv = {};
+
+    uint32_t                  m_firstConstInt  = 0u;
+    uint32_t                  m_firstConstBool = 0u;
 
     dxbc_spv::ir::SsaDef      m_fogPushData = {};
     dxbc_spv::ir::SsaDef      m_alphaTestPushData = {};
@@ -107,89 +119,234 @@ namespace dxvk {
       return {};
     }
 
+    dxbc_spv::ir::SsaDef findDeclarationForBuiltIn(dxbc_spv::ir::BuiltIn builtIn) {
+      using namespace dxbc_spv;
+
+      for (auto iter = m_builder.getDeclarations().first;
+                iter != m_builder.getDeclarations().second; iter++) {
+        if (iter->getOpCode() == ir::OpCode::eDclInputBuiltIn
+         && builtIn == ir::BuiltIn(iter->getOperand(iter->getFirstLiteralOperandIndex())))
+          return iter->getDef();
+      }
+
+      return ir::SsaDef();
+    }
+
+    void emitStaticConstantRanges(
+            dxbc_spv::ir::BuiltIn     builtIn,
+            dxbc_spv::ir::SsaDef      cbv,
+            dxbc_spv::ir::Type&       cbvType,
+      const D3D9ConstantBufferLayout& layout) {
+      using namespace dxbc_spv;
+
+      auto decl = m_builder.getOp(findDeclarationForBuiltIn(builtIn));
+
+      if (!decl)
+        return;
+
+      auto type = decl.getType().getBaseType(0u);
+
+      for (uint32_t i = 0u; i < layout.getRangeCount(); i++) {
+        const auto& range = layout.getRange(i);
+
+        for (uint32_t n = 0u; n < range.count; n++) {
+          uint32_t memberIndex = cbvType.getStructMemberCount();
+          cbvType.addStructMember(type);
+
+          auto debugName = getDebugName(decl, range.srcIndex + n);
+
+          if (debugName) {
+            m_builder.rewriteOp(debugName, ir::Op(m_builder.getOp(debugName))
+              .setOperand(0u, cbv)
+              .setOperand(1u, memberIndex));
+          } else {
+            std::string name;
+
+            switch (builtIn) {
+              case ir::BuiltIn::eLegacyConstBool: name = str::format("b", range.srcIndex + n); break;
+              case ir::BuiltIn::eLegacyConstInt:  name = str::format("i", range.srcIndex + n); break;
+              default: name = str::format("c", range.srcIndex + n); break;
+            }
+
+            m_builder.add(ir::Op::DebugMemberName(cbv, memberIndex, name.c_str()));
+          }
+        }
+      }
+    }
+
+    void fixupStaticCbvDebugName() {
+      // If the static buffer only has one struct member, any OpDebugMemberName
+      // instruction will not apply properly, so just set it as the debug name
+      // for the constant buffer itself.
+      using namespace dxbc_spv;
+
+      const auto& op = m_builder.getOp(m_staticCbv);
+
+      if (op.getType().getStructMemberCount() != 1u)
+        return;
+
+      ir::Op debugName = {};
+
+      small_vector<ir::SsaDef, 4u> uses;
+      m_builder.getUses(op.getDef(), uses);
+
+      for (auto use : uses) {
+        const auto& useOp = m_builder.getOp(use);
+
+        switch (useOp.getOpCode()) {
+          case ir::OpCode::eDebugName:
+            m_builder.remove(use);
+            break;
+
+          case ir::OpCode::eDebugMemberName: {
+            if (!uint32_t(useOp.getOperand(1u)))
+              debugName = useOp;
+
+            m_builder.remove(use);
+          } break;
+
+          default:
+            break;
+        }
+      }
+
+      if (debugName) {
+        auto name = debugName.getLiteralString(2u);
+        m_builder.add(ir::Op::DebugName(m_staticCbv, name.c_str()));
+      }
+    }
+
+    void setupStaticCbv() {
+      using namespace dxbc_spv;
+
+      const auto& layoutB = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Bool);
+      const auto& layoutI = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Int);
+      const auto& layoutF = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Float);
+
+      auto constantCountF = 0u;
+      auto constantCountI = layoutI.computeConstantCount(0u);
+      auto constantCountB = layoutB.computeConstantCount(0u);
+
+      if (!layoutF.isDynamicallyIndexed())
+        constantCountF = layoutF.computeConstantCount(0u);
+
+      uint32_t totalCount = constantCountF + constantCountI + constantCountB;
+
+      if (!totalCount)
+        return;
+
+      m_firstConstInt = constantCountF;
+      m_firstConstBool = constantCountF + constantCountI;
+
+      if (totalCount <= ir::Type::MaxStructMembers && !constantCountB) {
+        // Put floats first, then integer constants, then bools. Emit a dummy CBV
+        // declaration first so we can accumulate type info and add debug names,
+        // then fix it up later with the proper type.
+        auto cbvType = ir::Type();
+
+        m_staticCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
+          0u, uint32_t(D3D9IrCbvIndex::ConstStatic), 1u).setFlags(ir::OpFlag::eInBounds));
+
+        if (!layoutF.isDynamicallyIndexed())
+          emitStaticConstantRanges(ir::BuiltIn::eLegacyConstFloat, m_staticCbv, cbvType, layoutF);
+
+        emitStaticConstantRanges(ir::BuiltIn::eLegacyConstInt, m_staticCbv, cbvType, layoutI);
+        emitStaticConstantRanges(ir::BuiltIn::eLegacyConstBool, m_staticCbv, cbvType, layoutB);
+
+        m_builder.rewriteOp(m_staticCbv, ir::Op(m_builder.getOp(m_staticCbv)).setType(std::move(cbvType)));
+        m_builder.add(ir::Op::DebugName(m_staticCbv, "c"));
+
+        fixupStaticCbvDebugName();
+      } else {
+        // SWVP fallback. Just emit everything as a dword array that we can
+        // dynamically index into, which will be needed for booleans.
+        uint32_t boolCount = layoutB.computeConstantCount(0u);
+        uint32_t vec4Count = layoutI.computeConstantCount(0u) + align(boolCount, 4u) / 4u;
+
+        if (!layoutF.isDynamicallyIndexed())
+          vec4Count += layoutF.computeConstantCount(0u);
+
+        auto cbvType = ir::Type(ir::ScalarType::eU32, 4u).addArrayDimension(vec4Count);
+
+        m_staticCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
+          0u, uint32_t(D3D9IrCbvIndex::ConstStatic), 1u).setFlags(ir::OpFlag::eInBounds));
+        m_builder.add(ir::Op::DebugName(m_staticCbv, "c"));
+      }
+    }
+
+    void setupDynamicCbv() {
+      using namespace dxbc_spv;
+
+      const auto& layout = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Float);
+
+      if (!layout.isDynamicallyIndexed())
+        return;
+
+      // Trivial, just emit a float vector array with the maximum required size.
+      auto cbvSize = layout.computeConstantCount(-1u);
+      auto cbvType = ir::Type(ir::ScalarType::eF32, 4u).addArrayDimension(cbvSize);
+
+      m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
+        0u, uint32_t(D3D9IrCbvIndex::ConstDynamic), 1u));
+      m_builder.add(ir::Op::DebugName(m_dynamicCbv, "cF"));
+    }
+
     void lowerLegacyConstInput(const dxbc_spv::ir::Op& decl, dxbc_spv::ir::BuiltIn builtIn) {
       using namespace dxbc_spv;
 
-      // Declare constant buffer for given constant type
-      ir::SsaDef cbv = { };
+      // Check which layout to use for constant mappings
+      bool isFloat = builtIn == ir::BuiltIn::eLegacyConstFloat;
 
-      uint32_t indexOffset = 0u;
+      const auto& layout = m_analysis.GetConstantLayout().getLayout(
+        isFloat ? D3D9ConstantType::Float : D3D9ConstantType::Int);
 
-      if (m_options.isSWVP && m_shaderStage == ir::ShaderStage::eVertex) {
-        cbv = emitConstantCbv(decl, builtIn);
-      } else {
-        if (!m_mergedCbv)
-          m_mergedCbv = emitMergedConstantCbv();
-
-        cbv = m_mergedCbv;
-
-        if (builtIn == ir::BuiltIn::eLegacyConstFloat)
-          indexOffset = caps::MaxOtherConstants;
-      }
-
-      if (!cbv)
-        return;
-
-      // Replace all input loads with equivalent constant buffer loads,
-      // and apply the constant index offset when using the merged buffer.
+      // We already emitted all the constant buffers that we might need.
+      // Replace all input loads with loads from the relevant buffer.
       dxvk::small_vector<ir::SsaDef, 256u> uses;
       m_builder.getUses(decl.getDef(), uses);
 
       for (auto use : uses) {
         const auto& useOp = m_builder.getOp(use);
 
-        switch (useOp.getOpCode()) {
-          case ir::OpCode::eInputLoad: {
-            const auto& addressOp = m_builder.getOpForOperand(useOp, 1u);
-            auto address = addressOp.getDef();
+        if (useOp.getOpCode() == ir::OpCode::eInputLoad) {
+          const auto& addressOp = m_builder.getOpForOperand(useOp, 1u);
 
-            if (indexOffset) {
-              // Adjust index offset
-              if (addressOp.isConstant()) {
-                address = m_builder.add(ir::Op(addressOp).setOperand(0u,
-                  uint32_t(addressOp.getOperand(0u)) + indexOffset));
-              } else {
-                auto srcTy = addressOp.getType().getBaseType(0u);
-                auto dstTy = ir::BasicType(ir::ScalarType::eU32, srcTy.getVectorSize());
+          if (layout.isDynamicallyIndexed()) {
+            dxbc_spv_assert(isFloat);
+            dxbc_spv_assert(m_dynamicCbv);
 
-                auto offsetConst = ir::Op(ir::OpCode::eConstant, dstTy).addOperand(indexOffset);
+            // Trivially forward the load to the dynamically indexed buffer
+            auto cbvDescriptor = m_builder.addBefore(use, ir::Op::DescriptorLoad(
+              ir::ScalarType::eCbv, m_dynamicCbv, m_builder.makeConstant(0u)));
 
-                for (uint32_t i = 1u; i < dstTy.getVectorSize(); i++)
-                  offsetConst.addOperand(0u);
+            m_builder.rewriteOp(use, ir::Op::BufferLoad(useOp.getType(),
+              cbvDescriptor, addressOp.getDef(), useOp.getType().byteSize()));
+          } else {
+            // For compacted constants, we need to map the source constant
+            // to a member index in the static constant buffer struct.
+            dxbc_spv_assert(addressOp.isConstant());
+            dxbc_spv_assert(m_staticCbv);
 
-                address = m_builder.addBefore(use, ir::Op::ConsumeAs(dstTy, address));
-                address = m_builder.addBefore(use, ir::Op::IAdd(dstTy, address, m_builder.add(offsetConst)));
-              }
-            }
+            auto cbvDescriptor = m_builder.addBefore(use, ir::Op::DescriptorLoad(
+              ir::ScalarType::eCbv, m_staticCbv, m_builder.makeConstant(0u)));
 
-            // Emit actual buffer load using the adjusted address
-            auto descriptor = m_builder.addBefore(use, ir::Op::DescriptorLoad(
-              ir::ScalarType::eCbv, cbv, m_builder.makeConstant(0u)));
+            auto srcIndex = uint32_t(addressOp.getOperand(0u));
+            auto dstIndex = layout.findConstant(srcIndex);
 
-            // Merged CBV is annoying and may force us to load the
-            // wrong type if the CBV itself is arrayed.
-            auto loadType = useOp.getType();
+            dxbc_spv_assert(dstIndex);
 
-            if (m_builder.getOp(cbv).getType().isArrayType())
-              loadType = m_builder.getOp(cbv).getType().getBaseType(0u);
+            auto memberIndex = dstIndex.value_or(0u) + (isFloat ? 0u : m_firstConstInt);
+            auto memberType = m_builder.getOp(m_staticCbv).getType().getBaseType(memberIndex);
 
-            auto load = m_builder.addBefore(use, ir::Op::BufferLoad(
-              loadType, descriptor, address, 16u));
+            if (addressOp.getOperandCount() > 1u)
+              memberType = memberType.getBaseType();
 
-            if (useOp.getType() != loadType)
-              load = m_builder.addBefore(use, ir::Op::ConsumeAs(useOp.getType(), load));
+            auto newAddress = m_builder.add(ir::Op(addressOp).setOperand(0u, memberIndex));
 
-            m_builder.rewriteDef(use, load);
-          } break;
-
-          case ir::OpCode::eDebugName:
-          case ir::OpCode::eDebugMemberName: {
-            m_builder.remove(use);
-          } break;
-
-          default:
-            dxbc_spv_unreachable();
-            break;
+            auto bufferLoad = m_builder.addBefore(use, ir::Op::BufferLoad(memberType,
+              cbvDescriptor, newAddress, useOp.getType().byteSize()).setFlags(ir::OpFlag::eInBounds));
+            m_builder.rewriteOp(use, ir::Op::ConsumeAs(useOp.getType(), bufferLoad));
+          }
         }
       }
     }
@@ -197,10 +354,11 @@ namespace dxvk {
     void lowerLegacyConstBoolInput(const dxbc_spv::ir::Op& decl) {
       using namespace dxbc_spv;
 
-      // Bools are special: In HWVP, we simply map them tp 16 bits of spec
-      // data, in SWVP we need to load them from an actual constant buffer.
-      // Build helper function to actually fetch a single boolean from the
-      // source.
+      // Bools are special: In HWVP, we simply map them tp 16 bits of spec data,
+      // in SWVP we need to load them from an actual constant buffer. Build helper
+      // function to actually fetch a single boolean from the source.
+      const auto& layout = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Bool);
+
       auto ref = m_builder.getCode().first->getDef();
 
       auto loadArg = m_builder.add(ir::Op::DclParam(ir::ScalarType::eU32));
@@ -211,7 +369,7 @@ namespace dxvk {
 
       auto cursor = m_builder.setCursor(loadFn);
 
-      if (!m_options.isSWVP) {
+      if (!layout.computeConstantCount(0u)) {
         // Build helper function to extract boolean from spec constant
         auto constIndex = m_builder.add(ir::Op::ParamLoad(ir::ScalarType::eU32, loadFn, loadArg));
 
@@ -225,25 +383,44 @@ namespace dxvk {
         result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
         m_builder.add(ir::Op::Return(ir::ScalarType::eBool, result));
       } else {
-        uint32_t bitCount = getUsedConstantCount(ir::BuiltIn::eLegacyConstBool)
-          .value_or(caps::MaxOtherConstantsSoftware);
-        uint32_t dwordCount = (bitCount + 31u) / 32u;
+        dxbc_spv_assert(m_staticCbv);
 
-        // Declare constant buffer as a dword array, one bit per constant
-        auto cbvType = ir::Type(ir::ScalarType::eU32).addArrayDimension(dwordCount);
-        auto cbvDef = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::ConstBool), 1u));
-        m_builder.add(ir::Op::DebugName(cbvDef, "cB"));
-
+        // This is all extremely awful, but compilers should be able to constant-fold
+        // all the indices and optimize. We should basically never hit this, anyway.
         auto constIndex = m_builder.add(ir::Op::ParamLoad(ir::ScalarType::eU32, loadFn, loadArg));
-        auto dwordIndex = m_builder.add(ir::Op::UShr(ir::ScalarType::eU32, constIndex, m_builder.makeConstant(5u)));
-        auto dwordShift = m_builder.add(ir::Op::IAnd(ir::ScalarType::eU32, constIndex, m_builder.makeConstant(0x1fu)));
 
-        auto descriptor = m_builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eCbv, cbvDef, m_builder.makeConstant(0u)));
-        auto dwordLoad = m_builder.add(ir::Op::BufferLoad(ir::ScalarType::eU32, descriptor, dwordIndex, 4u));
-        auto dwordMask = m_builder.add(ir::Op::IShl(ir::ScalarType::eU32, m_builder.makeConstant(1u), dwordShift));
+        auto cbvType = m_builder.getOp(m_staticCbv).getType().getBaseType(0u);
+        auto cbvDescriptor = m_builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eCbv, m_staticCbv, m_builder.makeConstant(0u)));
 
-        auto result = m_builder.add(ir::Op::IAnd(ir::ScalarType::eU32, dwordLoad, dwordMask));
+        auto vectorIndex = m_builder.add(ir::Op::UShr(ir::ScalarType::eU32, constIndex, m_builder.makeConstant(7u)));
+        vectorIndex = m_builder.add(ir::Op::IAdd(ir::ScalarType::eU32, vectorIndex, m_builder.makeConstant(m_firstConstBool)));
+
+        auto vectorLoad = m_builder.add(ir::Op::BufferLoad(cbvType,
+          cbvDescriptor, vectorIndex, 16u).setFlags(ir::OpFlag::eInBounds));
+        vectorLoad = m_builder.add(ir::Op::ConsumeAs(ir::BasicType(ir::ScalarType::eU32, 4u), vectorLoad));
+
+        auto dwordIndex = m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
+          constIndex, m_builder.makeConstant(5u), m_builder.makeConstant(2u)));
+
+        // Select correct dword from vector load
+        auto dword = m_builder.add(ir::Op::CompositeExtract(ir::ScalarType::eU32, vectorLoad, m_builder.makeConstant(0u)));
+
+        for (uint32_t i = 1u; i < 4u; i++) {
+          dword = m_builder.add(ir::Op::Select(ir::ScalarType::eU32,
+            m_builder.add(ir::Op::IEq(ir::ScalarType::eBool, dwordIndex, m_builder.makeConstant(i))),
+            m_builder.add(ir::Op::CompositeExtract(ir::ScalarType::eU32, vectorLoad, m_builder.makeConstant(i))),
+            dword));
+        }
+
+        // Test whether the requested bit is set in the bit mask
+        auto bitIndex = m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32,
+          constIndex, m_builder.makeConstant(0u), m_builder.makeConstant(5u)));
+
+        auto dwordMask = m_builder.add(ir::Op::IShl(ir::ScalarType::eU32, m_builder.makeConstant(1u), bitIndex));
+
+        auto result = m_builder.add(ir::Op::IAnd(ir::ScalarType::eU32, dword, dwordMask));
         result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
+
         m_builder.add(ir::Op::Return(ir::ScalarType::eBool, result));
       }
 
@@ -258,23 +435,12 @@ namespace dxvk {
       for (auto use : uses) {
         const auto& useOp = m_builder.getOp(use);
 
-        switch (useOp.getOpCode()) {
-          case ir::OpCode::eInputLoad: {
-            const auto& addressOp = m_builder.getOpForOperand(useOp, 1u);
-            dxbc_spv_assert(addressOp.getType().isScalarType());
+        if (useOp.getOpCode() == ir::OpCode::eInputLoad) {
+          const auto& addressOp = m_builder.getOpForOperand(useOp, 1u);
+          dxbc_spv_assert(addressOp.getType().isScalarType());
 
-            auto address = m_builder.addBefore(use, ir::Op::ConsumeAs(ir::ScalarType::eU32, addressOp.getDef()));
-            m_builder.rewriteOp(use, ir::Op::FunctionCall(useOp.getType(), loadFn).addOperand(address));
-          } break;
-
-          case ir::OpCode::eDebugName:
-          case ir::OpCode::eDebugMemberName: {
-            m_builder.remove(use);
-          } break;
-
-          default:
-            dxbc_spv_unreachable();
-            break;
+          auto address = m_builder.addBefore(use, ir::Op::ConsumeAs(ir::ScalarType::eU32, addressOp.getDef()));
+          m_builder.rewriteOp(use, ir::Op::FunctionCall(useOp.getType(), loadFn).addOperand(address));
         }
       }
     }
@@ -507,106 +673,6 @@ namespace dxvk {
       using namespace dxbc_spv;
 
       return emitSpecConstantLoadIndexed(specConstant, name, ref, type, 0u, 0u, ir::SsaDef());
-    }
-
-    dxbc_spv::ir::SsaDef emitConstantCbv(const dxbc_spv::ir::Op& decl, dxbc_spv::ir::BuiltIn builtIn) {
-      using namespace dxbc_spv;
-
-      // Declare CBV as array if dynamically indexed, or as an actual
-      // structure if statically indexed so we can use debug names.
-      auto constantsUsed = getUsedConstantCount(builtIn);
-      auto constantCount = constantsUsed.value_or(decl.getType().getArraySize(0u));
-
-      if (!constantCount)
-        return ir::SsaDef();
-
-      ir::Type cbvType;
-
-      if (constantsUsed && constantCount < ir::Type::MaxStructMembers) {
-        auto baseType = decl.getType().getBaseType(0u);
-
-        for (uint32_t i = 0u; i < constantCount; i++)
-          cbvType.addStructMember(baseType);
-      } else {
-        cbvType = decl.getType().getBaseType(0u);
-        cbvType.addArrayDimension(constantCount);
-      }
-
-      auto cbvIndex = builtIn == ir::BuiltIn::eLegacyConstFloat
-        ? D3D9IrCbvIndex::ConstFloat
-        : D3D9IrCbvIndex::ConstInt;
-      auto cbv = m_builder.add(ir::Op::DclCbv(std::move(cbvType), m_entryPoint, 0u, uint32_t(cbvIndex), 1u));
-
-      if (constantsUsed && constantCount < ir::Type::MaxStructMembers)
-        copyConstantNames(cbv, 0u, constantCount, decl.getDef(), "c");
-
-      m_builder.add(ir::Op::DebugName(cbv, builtIn == ir::BuiltIn::eLegacyConstFloat ? "cF" : "cI"));
-      return cbv;
-    }
-
-    dxbc_spv::ir::SsaDef emitMergedConstantCbv() {
-      using namespace dxbc_spv;
-
-      // Count number of constants used by type. If any dynamic
-      // indexing is involved, either number will be undefined.
-      ir::SsaDef constInt = {};
-      ir::SsaDef constFloat = {};
-
-      auto numIntConstants = getUsedConstantCount(ir::BuiltIn::eLegacyConstInt);
-      auto numFloatConstants = getUsedConstantCount(ir::BuiltIn::eLegacyConstFloat);
-
-      auto [a, b] = m_builder.getDeclarations();
-
-      for (auto iter = a; iter != b; iter++) {
-        if (iter->getOpCode() == ir::OpCode::eDclInputBuiltIn) {
-          auto builtIn = ir::BuiltIn(iter->getOperand(iter->getFirstLiteralOperandIndex()));
-
-          if (builtIn == ir::BuiltIn::eLegacyConstFloat)
-            constFloat = iter->getDef();
-          else if (builtIn == ir::BuiltIn::eLegacyConstInt)
-            constInt = iter->getDef();
-        }
-      }
-
-      // No constants declared at all
-      if (!constInt && !constFloat)
-        return ir::SsaDef();
-
-      // Declare the merged buffer with a float type since that will be the
-      // most common access type. The merged buffer is not used in SWVP mode,
-      // so using the regular constant counts is fine here.
-      // TODO rework CBV binding to always keep int constants separate.
-      auto cbvInts = caps::MaxOtherConstants;
-      auto cbvFloats = numFloatConstants.value_or(m_shaderStage == ir::ShaderStage::eVertex
-        ? caps::MaxFloatConstantsVS : caps::MaxSM3FloatConstantsPS);
-
-      auto cbvConstants = cbvFloats + cbvInts;
-
-      // If there is no dynamic indexing going on, declare constants as
-      // individual members.
-      ir::Type cbvType = ir::Type(ir::ScalarType::eF32, 4u).addArrayDimension(cbvConstants);
-
-      if (numIntConstants && numFloatConstants) {
-        cbvType = ir::Type();
-
-        for (uint32_t i = 0u; i < caps::MaxOtherConstants; i++)
-          cbvType.addStructMember(ir::ScalarType::eI32, 4u);
-
-        for (uint32_t i = 0u; i < cbvFloats; i++)
-          cbvType.addStructMember(ir::ScalarType::eF32, 4u);
-      }
-
-      auto cbv = m_builder.add(ir::Op::DclCbv(std::move(cbvType),
-        m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::ConstFloat), 1u));
-      m_builder.add(ir::Op::DebugName(cbv, "c"));
-
-      // Copy debug names for individual constants if possible
-      if (numIntConstants && numFloatConstants) {
-        copyConstantNames(cbv, 0u, cbvInts, constInt, "i");
-        copyConstantNames(cbv, cbvInts, cbvFloats, constFloat, "c");
-      }
-
-      return cbv;
     }
 
     dxbc_spv::ir::SsaDef loadAlphaTestArgs(dxbc_spv::ir::SsaDef ref) {
@@ -958,66 +1024,6 @@ namespace dxvk {
 
       return ir::SsaDef();
     }
-
-    void copyConstantNames(
-            dxbc_spv::ir::SsaDef    dstDecl,
-            uint32_t                dstIndex,
-            uint32_t                dstCount,
-            dxbc_spv::ir::SsaDef    srcDecl,
-      const char*                   prefix) {
-      using namespace dxbc_spv;
-
-      auto memberCount = m_builder.getOp(dstDecl).getType().getStructMemberCount();
-
-      if (memberCount == 1u)
-        return;
-
-      dxvk::small_vector<ir::SsaDef, 272u> names;
-      dxvk::small_vector<ir::SsaDef, 256u> uses;
-      m_builder.getUses(srcDecl, uses);
-
-      // Assign dummy IDs to avoid assigning debug names for unused
-      // constants. Simply assign a 0 ID to mark constants as used.
-      names.resize(dstCount, dstDecl);
-
-      for (auto use : uses) {
-        const auto& useOp = m_builder.getOp(use);
-
-        if (useOp.getOpCode() == ir::OpCode::eInputLoad) {
-          const auto& addressOp = m_builder.getOpForOperand(useOp, 1u);
-          dxbc_spv_assert(addressOp.isConstant());
-
-          uint32_t index = uint32_t(addressOp.getOperand(0u));
-          dxbc_spv_assert(index < dstCount);
-
-          names[index] = ir::SsaDef();
-        }
-      }
-
-      // Copy existing debug names for indexed constants
-      for (auto use : uses) {
-        const auto& useOp = m_builder.getOp(use);
-
-        if (useOp.getOpCode() == ir::OpCode::eDebugMemberName) {
-          auto index = uint32_t(useOp.getOperand(useOp.getFirstLiteralOperandIndex()));
-
-          if (index < dstCount && index + dstIndex < memberCount && !names[index]) {
-            names[index] = m_builder.add(ir::Op(useOp)
-              .setOperand(0u, dstDecl)
-              .setOperand(1u, dstIndex + index));
-          }
-        }
-      }
-
-      // Assign fallback names for used constants that have no name
-      for (uint32_t i = 0u; i < dstCount && dstIndex + i < memberCount; i++) {
-        if (!names[i]) {
-          names[i] = m_builder.add(ir::Op::DebugMemberName(
-            dstDecl, dstIndex + i, str::format(prefix, i).c_str()));
-        }
-      }
-    }
-
   };
 
   class D3D9ShaderConverter : public DxvkIrShaderConverter {
@@ -1092,6 +1098,14 @@ namespace dxvk {
 
             case D3D9IrCbvIndex::ConstBool:
               return D3D9ShaderResourceMapping::CbvIndex::VSBoolConstantBuffer;
+
+            case D3D9IrCbvIndex::ConstStatic:
+              return shaderType == D3D9ShaderType::PixelShader
+                ? D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants
+                : D3D9ShaderResourceMapping::CbvIndex::VSStaticConstants;
+
+            case D3D9IrCbvIndex::ConstDynamic:
+              return D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants;
           } break;
 
         case dxbc_spv::ir::ScalarType::eSrv:
