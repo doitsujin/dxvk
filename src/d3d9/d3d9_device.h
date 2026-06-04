@@ -1344,8 +1344,7 @@ namespace dxvk {
     }
 
     // So we don't do OOB.
-    template <D3D9ShaderType   ShaderType,
-              D3D9ConstantType ConstantType>
+    template <D3D9ShaderType ShaderType, D3D9ConstantType ConstantType>
     inline static constexpr uint32_t DetermineSoftwareRegCount() {
       constexpr bool isVS = ShaderType == D3D9ShaderType::VertexShader;
 
@@ -1358,16 +1357,15 @@ namespace dxvk {
     }
 
     // So we don't copy more than we need.
-    template <D3D9ShaderType   ShaderType,
-              D3D9ConstantType ConstantType>
+    template<D3D9ShaderType ShaderType, D3D9ConstantType ConstantType>
     inline uint32_t DetermineHardwareRegCount() const {
-      const auto& layout = m_consts[uint32_t(ShaderType)].layout;
+      constexpr bool isVS = ShaderType == D3D9ShaderType::VertexShader;
 
       switch (ConstantType) {
         default:
-        case D3D9ConstantType::Float:  return layout.floatCount;
-        case D3D9ConstantType::Int:    return layout.intCount;
-        case D3D9ConstantType::Bool:   return layout.boolCount;
+        case D3D9ConstantType::Float:  return isVS ? caps::MaxFloatConstantsVS : caps::MaxSM3FloatConstantsPS;
+        case D3D9ConstantType::Int:    return caps::MaxOtherConstants;
+        case D3D9ConstantType::Bool:   return caps::MaxOtherConstants;
       }
     }
 
