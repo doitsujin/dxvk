@@ -70,7 +70,7 @@ namespace dxvk {
 
 
   void DxvkShaderCache::addShader(Rc<DxvkIrShader> shader) {
-    if (!ensureStatus(Status::OpenReadWrite))
+    if (!ensureStatus(Status::OpenWriteOnly))
       return;
 
     LutKey k = { };
@@ -124,7 +124,7 @@ namespace dxvk {
     }
 
     if (openWriteOnlyLocked())
-      return Status::OpenReadWrite;
+      return Status::OpenWriteOnly;
 
     return Status::CacheDisabled;
   }
