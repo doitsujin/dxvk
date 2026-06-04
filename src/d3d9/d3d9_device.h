@@ -1599,6 +1599,10 @@ namespace dxvk {
 
     D3D9ConstantBuffer              m_vsClipPlanes;
 
+    D3D9ConstantBuffer              m_psStaticConstants;
+    D3D9ConstantBuffer              m_vsStaticConstants;
+    D3D9ConstantBuffer              m_vsDynamicConstants;
+
     D3D9ConstantBuffer              m_vsFixedFunction;
     D3D9ConstantBuffer              m_vsVertexBlend;
     D3D9ConstantBuffer              m_psFixedFunction;

@@ -58,9 +58,12 @@ namespace dxvk {
       VSClipPlanes            = 3u,
       VSFixedFunction         = 4u,
       VSVertexBlendData       = 5u,
+      VSStaticConstants       = 6u,
+      VSDynamicConstants      = 7u,
       PSConstantBuffer        = 10u,
       PSFixedFunction         = 11u,
       PSShared                = 12u,
+      PSStaticConstants       = 13u,
       SpecData                = 20u,
     };
 
