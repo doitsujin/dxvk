@@ -27,45 +27,34 @@ namespace dxvk {
   Rc<DxvkShader> D3D9FFShaderModuleSet::buildVs() {
     small_vector<DxvkBindingInfo, 4> bindings = {};
 
-    constexpr uint32_t specConstantBufferBindingId = D3D9ShaderResourceMapping::getSpecConstantBufferSlot();
-
     auto& specConstantBufferBinding = bindings.emplace_back();
-    specConstantBufferBinding.set = 0u;
-    specConstantBufferBinding.binding        = specConstantBufferBindingId;
-    specConstantBufferBinding.resourceIndex  = specConstantBufferBindingId;
+    specConstantBufferBinding.set            = CbvSet;
+    specConstantBufferBinding.binding        = D3D9ShaderResourceMapping::CbvIndex::SpecData;
+    specConstantBufferBinding.resourceIndex  = D3D9ShaderResourceMapping::CbvIndex::SpecData;
     specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
     specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t fixedFunctionDataBindingId = D3D9ShaderResourceMapping::computeCbvBinding(
-      D3D9ShaderType::VertexShader, D3D9ShaderResourceMapping::ConstantBuffers::VSFixedFunction);
-
     auto& fixedFunctionDataBinding = bindings.emplace_back();
-    fixedFunctionDataBinding.set             = 0u;
-    fixedFunctionDataBinding.binding         = fixedFunctionDataBindingId;
-    fixedFunctionDataBinding.resourceIndex   = fixedFunctionDataBindingId;
+    fixedFunctionDataBinding.set             = CbvSet;
+    fixedFunctionDataBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::VSFixedFunction;
+    fixedFunctionDataBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::VSFixedFunction;
     fixedFunctionDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     fixedFunctionDataBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
     fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t vertexBlendBindingId = D3D9ShaderResourceMapping::computeCbvBinding(
-      D3D9ShaderType::VertexShader, D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData);
-
     auto& vertexBlendBinding = bindings.emplace_back();
-    vertexBlendBinding.set             = 0u;
-    vertexBlendBinding.binding         = vertexBlendBindingId;
-    vertexBlendBinding.resourceIndex   = vertexBlendBindingId;
+    vertexBlendBinding.set             = CbvSet;
+    vertexBlendBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::VSVertexBlendData;
+    vertexBlendBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::VSVertexBlendData;
     vertexBlendBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     vertexBlendBinding.access          = VK_ACCESS_SHADER_READ_BIT;
     vertexBlendBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t clipPlanesBindingId = D3D9ShaderResourceMapping::computeCbvBinding(
-      D3D9ShaderType::VertexShader, D3D9ShaderResourceMapping::ConstantBuffers::VSClipPlanes);
-
     auto& clipPlanesBinding = bindings.emplace_back();
-    clipPlanesBinding.set             = 0u;
-    clipPlanesBinding.binding         = clipPlanesBindingId;
-    clipPlanesBinding.resourceIndex   = clipPlanesBindingId;
+    clipPlanesBinding.set             = CbvSet;
+    clipPlanesBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes;
+    clipPlanesBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes;
     clipPlanesBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     clipPlanesBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
     clipPlanesBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
@@ -86,46 +75,38 @@ namespace dxvk {
   Rc<DxvkShader> D3D9FFShaderModuleSet::buildFs(D3D9DeviceEx* pDevice) {
     small_vector<DxvkBindingInfo, 12> bindings = {};
 
-    constexpr uint32_t specConstantBufferBindingId = D3D9ShaderResourceMapping::getSpecConstantBufferSlot();
-
     auto& specConstantBufferBinding = bindings.emplace_back();
-    specConstantBufferBinding.set = 0u;
-    specConstantBufferBinding.binding        = specConstantBufferBindingId;
-    specConstantBufferBinding.resourceIndex  = specConstantBufferBindingId;
+    specConstantBufferBinding.set            = CbvSet;
+    specConstantBufferBinding.binding        = D3D9ShaderResourceMapping::CbvIndex::SpecData;
+    specConstantBufferBinding.resourceIndex  = D3D9ShaderResourceMapping::CbvIndex::SpecData;
     specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
     specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t fixedFunctionDataBindingId = D3D9ShaderResourceMapping::computeCbvBinding(
-      D3D9ShaderType::PixelShader, D3D9ShaderResourceMapping::ConstantBuffers::PSFixedFunction);
-
     auto& fixedFunctionDataBinding = bindings.emplace_back();
-    fixedFunctionDataBinding.set             = 0u;
-    fixedFunctionDataBinding.binding         = fixedFunctionDataBindingId;
-    fixedFunctionDataBinding.resourceIndex   = fixedFunctionDataBindingId;
+    fixedFunctionDataBinding.set             = CbvSet;
+    fixedFunctionDataBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction;
+    fixedFunctionDataBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction;
     fixedFunctionDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     fixedFunctionDataBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
     fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t sharedDataBindingId = D3D9ShaderResourceMapping::computeCbvBinding(
-      D3D9ShaderType::PixelShader, D3D9ShaderResourceMapping::ConstantBuffers::PSShared);
-
     auto& sharedDataBinding = bindings.emplace_back();
-    sharedDataBinding.set             = 0u;
-    sharedDataBinding.binding         = sharedDataBindingId;
-    sharedDataBinding.resourceIndex   = sharedDataBindingId;
+    sharedDataBinding.set             = CbvSet;
+    sharedDataBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::PSShared;
+    sharedDataBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::PSShared;
     sharedDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     sharedDataBinding.access          = VK_ACCESS_SHADER_READ_BIT;
     sharedDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    constexpr uint32_t textureBindingId = D3D9ShaderResourceMapping::computeTextureBinding(D3D9ShaderType::PixelShader, 0u);
+    uint32_t textureBindingId = D3D9ShaderResourceMapping::computeTextureBinding(D3D9ShaderType::PixelShader, 0u);
 
     auto& textureBinding = bindings.emplace_back();
-    textureBinding.set             = 0u;
+    textureBinding.set             = SrvSet;
     textureBinding.binding         = textureBindingId;
     textureBinding.resourceIndex   = textureBindingId;
     textureBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    textureBinding.access       = VK_ACCESS_SHADER_READ_BIT;
+    textureBinding.access          = VK_ACCESS_SHADER_READ_BIT;
     textureBinding.descriptorCount = caps::TextureStageCount;
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
@@ -153,7 +134,7 @@ namespace dxvk {
     info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9RenderStateInfo), 4u, 0u);
     info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, GetPushSamplerOffset(0u),
       samplerDwordCount * sizeof(uint32_t), sizeof(uint32_t), (1u << samplerDwordCount) - 1u);
-    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, 1u, 0u);
+    info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, SamplerSet, 0u);
     info.debugName = "FF FS";
 
     return pDevice->GetOptions()->forceSampleRateShading

@@ -111,32 +111,28 @@ const uint VK_COMPARE_OP_ALWAYS           = 7;
 
 const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextureStage0ColorOp;
 
-
-// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
-// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::PixelShader,
-//         D3D9ShaderResourceMapping::ConstantBuffers::PSFixedFunction) = 11
-layout(set = 0, binding = 11, scalar, row_major) uniform ShaderData {
+layout(set = CBV_SET, binding = CBV_PS_FIXED_FUNCTION, scalar, row_major)
+uniform ShaderData {
     D3D9FixedFunctionPS data;
 };
 
-// Bindings have to match with D3D9ShaderResourceMapping in d3d9_shader.h
-// D3D9ShaderResourceMapping::computeCbvBinding(D3D9ShaderType::PixelShader,
-//         D3D9ShaderResourceMapping::ConstantBuffers::PSShared) = 12
-layout(set = 0, binding = 12, scalar, row_major) uniform SharedData {
+layout(set = CBV_SET, binding = CBV_PS_SHARED, scalar, row_major)
+uniform SharedData {
     D3D9SharedPS sharedData;
 };
 
-layout(push_constant, scalar, row_major) uniform RenderStates {
+layout(push_constant, scalar, row_major)
+uniform RenderStates {
     D3D9RenderStateInfo rs;
 
     layout(offset = MaxSharedPushDataSize) uint packedSamplerIndices[TextureStageCount / 2];
 };
 
-layout(set = 0, binding = 13) uniform texture2D t2d[TextureStageCount];
-layout(set = 0, binding = 13) uniform textureCube tcube[TextureStageCount];
-layout(set = 0, binding = 13) uniform texture3D t3d[TextureStageCount];
+layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture2D t2d[TextureStageCount];
+layout(set = SRV_SET, binding = SRV_PS_BASE) uniform textureCube tcube[TextureStageCount];
+layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageCount];
 
-layout(set = 1, binding = 0) uniform sampler sampler_heap[];
+layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
 
 // Functions to extract information from the packed texture stages
