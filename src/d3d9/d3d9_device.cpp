@@ -96,9 +96,6 @@ namespace dxvk {
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
 
-    // Check for VK_EXT_graphics_pipeline_libraries
-    m_usingGraphicsPipelines = dxvkDevice->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary;
-
     // Check for VK_EXT_depth_bias_control and set up initial state
     m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
     if (dxvkDevice->features().extDepthBiasControl.depthBiasControl) {
@@ -6036,14 +6033,12 @@ namespace dxvk {
         ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
         : sizeof(D3D9FixedFunctionVertexBlendDataHW));
 
-    // Allocate constant buffer for values that would otherwise get passed as spec constants for fast-linked pipelines to use.
-    if (m_usingGraphicsPipelines) {
-      m_specBuffer = D3D9ConstantBuffer(this,
-        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-        VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-        D3D9ShaderResourceMapping::getSpecConstantBufferSlot(),
-        D3D9SpecializationInfo::UBOSize);
-    }
+    // Allocate constant buffer for dynamic spec constants, needed for GPL
+    m_specBuffer = D3D9ConstantBuffer(this,
+      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::getSpecConstantBufferSlot(),
+      D3D9SpecializationInfo::UBOSize);
   }
 
 
@@ -9338,11 +9333,10 @@ namespace dxvk {
     });
 
     // Write spec constants into buffer for fast-linked pipelines to use it.
-    if (m_usingGraphicsPipelines) {
-      // TODO: Make uploading specialization information less naive.
-      auto mapPtr = m_specBuffer.AllocSlice();
-      memcpy(mapPtr, m_specInfo.data.data(), D3D9SpecializationInfo::UBOSize);
-    }
+    // TODO get rid of the fallback buffer and rework everything to use push
+    // data instead.
+    auto mapPtr = m_specBuffer.AllocSlice();
+    memcpy(mapPtr, m_specInfo.data.data(), D3D9SpecializationInfo::UBOSize);
 
     m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
