@@ -412,55 +412,105 @@ namespace dxvk {
   using D3D9CapturableState = D3D9State<dynamic_item>;
   using D3D9DeviceState = D3D9State<static_item>;
 
-  template <
-    D3D9ShaderType   ShaderType,
-    D3D9ConstantType ConstantType,
-    typename         T,
-    typename         StateType>
-  HRESULT UpdateStateConstants(
+  template<D3D9ShaderType ShaderType, D3D9ConstantType ConstantType, typename T, typename StateType>
+  bool UpdateStateConstants(
           StateType*           pState,
           UINT                 StartRegister,
     const T*                   pConstantData,
-          UINT                 Count,
-          bool                 FloatEmu) {
-    auto UpdateHelper = [&] (auto& set) {
+          UINT                 Count) {
+    if constexpr (ConstantType == D3D9ConstantType::Bool) {
+      uint32_t* dstData = ShaderType == D3D9ShaderType::VertexShader
+        ? pState->vsConsts->bConsts
+        : pState->psConsts->bConsts;
+
+      for (uint32_t i = 0; i < Count; i++) {
+        const uint32_t constantIdx = StartRegister + i;
+        const uint32_t arrayIdx    = constantIdx / 32;
+        const uint32_t bitIdx      = constantIdx % 32;
+
+        const uint32_t bit = 1u << bitIdx;
+
+        dstData[arrayIdx] &= ~bit;
+
+        if (pConstantData[i])
+          dstData[arrayIdx] |= bit;
+      }
+
+      return true;
+    } else {
+      static_assert(sizeof(T) == 4u);
+
+      Vector4Base<T>* dstData = nullptr;
+
       if constexpr (ConstantType == D3D9ConstantType::Float) {
-
-        if (!FloatEmu) {
-          size_t size = Count * sizeof(Vector4);
-
-          std::memcpy(set->fConsts[StartRegister].data, pConstantData, size);
-        }
-        else {
-          for (UINT i = 0; i < Count; i++)
-            set->fConsts[StartRegister + i] = replaceNaN(pConstantData + (i * 4));
-        }
-      }
-      else if constexpr (ConstantType == D3D9ConstantType::Int) {
-        size_t size = Count * sizeof(Vector4i);
-
-        std::memcpy(set->iConsts[StartRegister].data, pConstantData, size);
-      }
-      else {
-        for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t constantIdx = StartRegister + i;
-          const uint32_t arrayIdx    = constantIdx / 32;
-          const uint32_t bitIdx      = constantIdx % 32;
-
-          const uint32_t bit = 1u << bitIdx;
-
-          set->bConsts[arrayIdx] &= ~bit;
-          if (pConstantData[i])
-            set->bConsts[arrayIdx] |= bit;
-        }
+        dstData = ShaderType == D3D9ShaderType::VertexShader
+          ? pState->vsConsts->fConsts
+          : pState->psConsts->fConsts;
+      } else if constexpr (ConstantType == D3D9ConstantType::Int) {
+        dstData = ShaderType == D3D9ShaderType::VertexShader
+          ? pState->vsConsts->iConsts
+          : pState->psConsts->iConsts;
       }
 
-      return D3D_OK;
-    };
+      dstData += StartRegister;
 
-    return ShaderType == D3D9ShaderType::VertexShader
-      ? UpdateHelper(pState->vsConsts)
-      : UpdateHelper(pState->psConsts);
+      #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+      auto* dstPtr = reinterpret_cast<      __m128i*>(dstData);
+      auto* srcPtr = reinterpret_cast<const __m128i*>(pConstantData);
+
+      // In the first loop, find the first contant that has changed, if any, and
+      // only copy that. Basically a glorified memcmp. The idea is to give feedback
+      // to the caller on whether any constant values have changed.
+      bool dirty = false;
+
+      uint32_t index = 0u;
+
+      while (index < Count) {
+        __m128i srcData = _mm_loadu_si128(srcPtr + index);
+        __m128i dstData = _mm_loadu_si128(dstPtr + index);
+
+        __m128i eqMask = _mm_cmpeq_epi32(srcData, dstData);
+
+        dirty = _mm_movemask_epi8(eqMask) != 0xffff;
+        index += 1u;
+
+        if (dirty) {
+          _mm_storeu_si128(dstPtr + index - 1u, srcData);
+          break;
+        }
+      }
+
+      if (unlikely(!dirty))
+        return false;
+
+      // Once we know constants have changed, just copy the rest.
+      while (index + 2u <= Count) {
+        __m128i src0 = _mm_loadu_si128(srcPtr + index + 0u);
+        __m128i src1 = _mm_loadu_si128(srcPtr + index + 1u);
+
+        _mm_storeu_si128(dstPtr + index + 0u, src0);
+        _mm_storeu_si128(dstPtr + index + 1u, src1);
+
+        index += 2u;
+      }
+
+      if (index < Count) {
+        __m128i srcData = _mm_loadu_si128(srcPtr + index);
+        _mm_storeu_si128(dstPtr + index, srcData);
+      }
+
+      return true;
+      // If any mask bit is 0, a constant has changed
+      #else
+      size_t dataSize = Count * sizeof(*dstData);
+
+      if (!std::memcmp(&dstData->data, pConstantData, dataSize))
+        return false;
+
+      std::memcpy(&dstData->data, pConstantData, dataSize);
+      return true;
+      #endif
+    }
   }
 
   struct Direct3DState9 : public D3D9DeviceState {
