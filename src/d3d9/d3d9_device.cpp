@@ -96,42 +96,6 @@ namespace dxvk {
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
 
-    // Check if VK_EXT_robustness2 is supported, so we can optimize the number of constants we need to copy.
-    // Also check the required alignments.
-    const bool supportsRobustness2 = m_dxvkDevice->features().extRobustness2.robustBufferAccess2;
-    bool useRobustConstantAccess = supportsRobustness2;
-    D3D9ConstantSets& vsConstSet = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
-    D3D9ConstantSets& psConstSet = m_consts[uint32_t(D3D9ShaderType::PixelShader)];
-    if (useRobustConstantAccess) {
-      m_robustSSBOAlignment = m_dxvkDevice->properties().extRobustness2.robustStorageBufferAccessSizeAlignment;
-      m_robustUBOAlignment  = m_dxvkDevice->properties().extRobustness2.robustUniformBufferAccessSizeAlignment;
-      if (canSWVP) {
-        const uint32_t floatBufferAlignment =
-          vsConstSet.layout.totalSize() < m_dxvkShaderOptions.maxUniformBufferSize
-          ? m_robustSSBOAlignment
-          : m_robustUBOAlignment;
-
-        useRobustConstantAccess &= vsConstSet.layout.floatSize() % floatBufferAlignment == 0;
-        useRobustConstantAccess &= vsConstSet.layout.intSize() % m_robustUBOAlignment == 0;
-        useRobustConstantAccess &= vsConstSet.layout.bitmaskSize() % m_robustUBOAlignment == 0;
-      } else {
-        useRobustConstantAccess &= vsConstSet.layout.totalSize() % m_robustUBOAlignment == 0;
-      }
-      useRobustConstantAccess &= psConstSet.layout.totalSize() % m_robustUBOAlignment == 0;
-    }
-
-    if (!useRobustConstantAccess) {
-      // Disable optimized constant copies, we always have to copy all constants.
-      vsConstSet.changedFloatCount = vsConstSet.layout.floatCount;
-      vsConstSet.changedIntCount   = vsConstSet.layout.intCount;
-      vsConstSet.changedBoolCount  = vsConstSet.layout.boolCount;
-      psConstSet.changedFloatCount = psConstSet.layout.floatCount;
-
-      if (supportsRobustness2) {
-        Logger::warn("Disabling robust constant buffer access because of alignment.");
-      }
-    }
-
     // Check for VK_EXT_graphics_pipeline_libraries
     m_usingGraphicsPipelines = dxvkDevice->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
