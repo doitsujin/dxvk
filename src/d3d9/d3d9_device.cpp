@@ -8203,6 +8203,13 @@ namespace dxvk {
         StartRegister, pConstantData, Count);
     }
 
+    // Only mark constants as dirty if any of the actual data has changed
+    bool anyConstantDirty = UpdateStateConstants<ShaderType, ConstantType, T>(
+      &m_state, StartRegister, pConstantData, Count);
+
+    if (unlikely(!anyConstantDirty))
+      return D3D_OK;
+
     D3D9ConstantSets& constSet = m_consts[uint32_t(ShaderType)];
 
     if (ConstantType == D3D9ConstantType::Float) {
@@ -8220,9 +8227,6 @@ namespace dxvk {
       // Bool constants are only backed by memory for SWVP vertex shaders
       constSet.dirty |= StartRegister < constSet.shaderConstantsInfo.boolCount && CanSWVP();
     }
-
-    UpdateStateConstants<ShaderType, ConstantType, T>(&m_state,
-      StartRegister, pConstantData, Count, false);
 
     return D3D_OK;
   }

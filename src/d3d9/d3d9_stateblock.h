@@ -368,15 +368,8 @@ namespace dxvk {
             setCaptures.bConsts.set(reg, true);
         }
 
-        UpdateStateConstants<
-          ShaderType,
-          ConstantType,
-          T>(
-            &m_state,
-            StartRegister,
-            pConstantData,
-            Count,
-            false);
+        UpdateStateConstants<ShaderType, ConstantType, T>(
+          &m_state, StartRegister, pConstantData, Count);
 
         return D3D_OK;
       };
