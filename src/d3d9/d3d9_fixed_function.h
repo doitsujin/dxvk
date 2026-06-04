@@ -30,7 +30,9 @@ namespace dxvk {
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
 
   class D3D9FFShaderModuleSet : public RcObject {
-
+    static constexpr uint32_t SamplerSet = 0u;
+    static constexpr uint32_t SrvSet = 1u;
+    static constexpr uint32_t CbvSet = 2u;
   public:
 
     D3D9FFShaderModuleSet() = delete;

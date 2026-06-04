@@ -3364,10 +3364,10 @@ namespace dxvk {
       args.viewportH = -float(m_state.viewport.Height);
 
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(std::move(shader));
-      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), std::move(bufferView));
+      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSwvpBufferIndex(), std::move(bufferView));
       ctx->pushData(VK_SHADER_STAGE_GEOMETRY_BIT, 0u, sizeof(args), &args);
       ctx->draw(1u, &draw);
-      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSWVPBufferSlot(), nullptr);
+      ctx->bindResourceBufferView(VK_SHADER_STAGE_GEOMETRY_BIT, D3D9ShaderResourceMapping::getSwvpBufferIndex(), nullptr);
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
     });
 
@@ -5976,59 +5976,42 @@ namespace dxvk {
     constexpr VkDeviceSize DefaultConstantBufferSize  = 1024ull << 10;
     constexpr VkDeviceSize SmallConstantBufferSize    =   64ull << 10;
 
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].buffer = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSConstantBuffer,
-      DefaultConstantBufferSize);
+    auto& vsConst = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
+    auto& psConst = m_consts[uint32_t(D3D9ShaderType::PixelShader)];
 
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].swvp.intBuffer = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSIntConstantBuffer,
-      SmallConstantBufferSize);
+    vsConst.buffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSConstantBuffer, DefaultConstantBufferSize);
 
-    m_consts[uint32_t(D3D9ShaderType::VertexShader)].swvp.boolBuffer = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSBoolConstantBuffer,
-      SmallConstantBufferSize);
+    vsConst.swvp.intBuffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSIntConstantBuffer, SmallConstantBufferSize);
 
-    m_consts[uint32_t(D3D9ShaderType::PixelShader)].buffer = D3D9ConstantBuffer(this,
-      D3D9ShaderType::PixelShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::PSConstantBuffer,
-      DefaultConstantBufferSize);
+    vsConst.swvp.boolBuffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSBoolConstantBuffer, SmallConstantBufferSize);
 
-    m_vsClipPlanes = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSClipPlanes,
+    psConst.buffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::PSConstantBuffer, DefaultConstantBufferSize);
+
+    m_vsClipPlanes = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes,
       caps::MaxClipPlanes * sizeof(D3D9ClipPlane));
 
-    m_vsFixedFunction = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSFixedFunction,
-      sizeof(D3D9FixedFunctionVS));
+    m_vsFixedFunction = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSFixedFunction, sizeof(D3D9FixedFunctionVS));
 
-    m_psFixedFunction = D3D9ConstantBuffer(this,
-      D3D9ShaderType::PixelShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::PSFixedFunction,
-      sizeof(D3D9FixedFunctionPS));
+    m_psFixedFunction = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction, sizeof(D3D9FixedFunctionPS));
 
-    m_psShared = D3D9ConstantBuffer(this,
-      D3D9ShaderType::PixelShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::PSShared,
-      sizeof(D3D9SharedPS));
+    m_psShared = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::PSShared, sizeof(D3D9SharedPS));
 
-    m_vsVertexBlend = D3D9ConstantBuffer(this,
-      D3D9ShaderType::VertexShader,
-      D3D9ShaderResourceMapping::ConstantBuffers::VSVertexBlendData,
-      CanSWVP()
+    m_vsVertexBlend = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::VSVertexBlendData, CanSWVP()
         ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
         : sizeof(D3D9FixedFunctionVertexBlendDataHW));
 
-    // Allocate constant buffer for dynamic spec constants, needed for GPL
-    m_specBuffer = D3D9ConstantBuffer(this,
-      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-      D3D9ShaderResourceMapping::getSpecConstantBufferSlot(),
-      D3D9SpecializationInfo::UBOSize);
+    // Constant buffer for dynamic spec constants, needed for GPL pipelines
+    m_specBuffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+      D3D9ShaderResourceMapping::CbvIndex::SpecData, D3D9SpecializationInfo::UBOSize);
   }
 
 
