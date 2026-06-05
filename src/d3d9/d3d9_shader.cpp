@@ -1143,7 +1143,7 @@ namespace dxvk {
 
     if (!m_shader) {
       Rc<D3D9ShaderConverter> converter = new D3D9ShaderConverter(ShaderKey,
-        ModuleInfo.shaderOptions, pShaderBytecode, ShaderAnalysis);
+        ModuleInfo.shaderOptions, pShaderBytecode, m_analysis);
 
       m_shader = pDevice->GetDXVKDevice()->createCachedShader(
         ShaderKey.toString(), ModuleInfo.irCreateInfo, std::move(converter));
