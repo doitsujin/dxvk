@@ -10,6 +10,7 @@
 #include "d3d9_multithread.h"
 #include "d3d9_adapter.h"
 #include "d3d9_constant_buffer.h"
+#include "d3d9_constant_copy.h"
 #include "d3d9_constant_set.h"
 #include "d3d9_mem.h"
 
@@ -31,6 +32,7 @@
 #include <vector>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "../util/util_flush.h"
 #include "../util/util_lru.h"
@@ -1254,6 +1256,11 @@ namespace dxvk {
       return m_dxvkShaderOptions;
     }
 
+    const D3D9ConstantBufferCopy* GetOrCreateConstantLayout(
+            D3D9ConstantBufferLayout  FloatLayout,
+            D3D9ConstantBufferLayout  IntLayout,
+            D3D9ConstantBufferLayout  BoolLayout);
+
   private:
 
     template<bool AllowFlush = true, typename Cmd>
@@ -1692,6 +1699,10 @@ namespace dxvk {
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
 #endif
+
+    dxvk::mutex                     m_constantLayoutMutex;
+    std::unordered_set<D3D9ConstantBufferCopy,
+      DxvkHash, DxvkEq>             m_constantLayouts;
 
     // m_state should be declared last (i.e. freed first), because it
     // references objects that can call back into the device when freed.
