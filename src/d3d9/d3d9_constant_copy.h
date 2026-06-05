@@ -16,6 +16,11 @@ namespace dxvk {
     Bool
   };
 
+  struct D3D9ImmediateFloatConstant {
+    uint32_t index;
+    Vector4 value;
+  };
+
   /**
    * \brief Constant range
    *
@@ -89,8 +94,14 @@ namespace dxvk {
      * \param [in] maxCount Maximum available constant count
      * \param [in] defLength Number of dwords in shader-defined constant mask
      * \param [in] defMask Bit mask of shader-defined constants
+     * \param [in] defData Actual shader-defined constant data
      */
-    D3D9ConstantBufferLayout(uint32_t maxCount, uint32_t defLength, const uint32_t* defMask);
+    D3D9ConstantBufferLayout(
+            uint32_t            maxCount,
+            uint32_t            defLength,
+      const uint32_t*           defMask,
+            size_t              defCount,
+      const D3D9ImmediateFloatConstant* defData);
 
     ~D3D9ConstantBufferLayout();
 
@@ -153,6 +164,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves shader-defined constants
+     * \returns Shader-defined constants, if any
+     */
+    const Vector4* getShaderDefinedConstants() const {
+      return m_constantData.data();
+    }
+
+    /**
      * \brief Checks whether two layouts fully match
      *
      * Two identical layouts can use the same constant buffers.
@@ -169,6 +188,7 @@ namespace dxvk {
   private:
 
     small_vector<D3D9ConstantRange, 16u> m_ranges;
+    small_vector<Vector4, 16u> m_constantData;
 
     uint32_t m_minCount = 0u;
     uint32_t m_maxCount = 0u;
@@ -176,6 +196,11 @@ namespace dxvk {
     bool m_dynamicIndexing = false;
 
     void addRange(const D3D9ConstantRange& range);
+
+    void addConstantData(
+      const D3D9ConstantRange&          range,
+            size_t                      defCount,
+      const D3D9ImmediateFloatConstant* defData);
 
   };
 

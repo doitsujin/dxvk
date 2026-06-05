@@ -48,7 +48,12 @@ namespace dxvk {
     m_maxCount = dstIndex;
   }
 
-  D3D9ConstantBufferLayout::D3D9ConstantBufferLayout(uint32_t maxCount, uint32_t defLength, const uint32_t* defMask)
+  D3D9ConstantBufferLayout::D3D9ConstantBufferLayout(
+          uint32_t            maxCount,
+          uint32_t            defLength,
+    const uint32_t*           defMask,
+          size_t              defCount,
+    const D3D9ImmediateFloatConstant* defData)
   : m_minCount(0u), m_maxCount(maxCount), m_dynamicIndexing(true) {
     uint32_t defIndex = 0u;
     uint32_t dstIndex = 0u;
@@ -81,6 +86,8 @@ namespace dxvk {
 
         dstIndex = defRange.dstIndex + defRange.count;
         defIndex = defRange.srcIndex + defRange.count;
+
+        addConstantData(defRange, defCount, defData);
 
         m_minCount = std::max(m_minCount, dstIndex);
 
@@ -123,14 +130,33 @@ namespace dxvk {
   }
 
 
+  void D3D9ConstantBufferLayout::addConstantData(
+    const D3D9ConstantRange&          range,
+          size_t                      defCount,
+    const D3D9ImmediateFloatConstant* defData) {
+    for (uint32_t i = 0u; i < range.count; i++) {
+      for (uint32_t j = 0u; j < defCount; j++) {
+        if (defData[j].index == range.dstIndex + i) {
+          m_constantData.push_back(defData[j].value);
+          break;
+        }
+      }
+    }
+  }
+
+
   bool D3D9ConstantBufferLayout::eq(const D3D9ConstantBufferLayout& other) const {
-    bool eq = m_minCount == other.m_minCount
-           && m_maxCount == other.m_maxCount
-           && m_dynamicIndexing == other.m_dynamicIndexing
-           && m_ranges.size() == other.m_ranges.size();
+    bool eq = m_minCount            == other.m_minCount
+           && m_maxCount            == other.m_maxCount
+           && m_dynamicIndexing     == other.m_dynamicIndexing
+           && m_ranges.size()       == other.m_ranges.size()
+           && m_constantData.size() == other.m_constantData.size();
 
     for (size_t i = 0u; i < m_ranges.size() && eq; i++)
       eq = m_ranges[i].eq(other.m_ranges[i]);
+
+    for (size_t i = 0u; i < m_constantData.size() && eq; i++)
+      eq = !std::memcmp(&m_constantData[i], &other.m_constantData[i], sizeof(Vector4));
 
     return eq;
   }
@@ -141,6 +167,14 @@ namespace dxvk {
 
     for (const auto& range : m_ranges)
       hash.add(range.hash());
+
+    for (const auto& c : m_constantData) {
+      for (uint32_t i = 0u; i < 4u; i++) {
+        uint32_t dword = 0u;
+        std::memcpy(&dword, &c[i], sizeof(dword));
+        hash.add(dword);
+      }
+    }
 
     hash.add(m_minCount);
     hash.add(m_maxCount);
@@ -235,7 +269,9 @@ namespace dxvk {
       maxCount - std::min<uint32_t>(range.dstIndex, maxCount));
 
     // Need to select the correct source array
-    auto srcBuffer = range.isShaderDefined ? args.constFloatDef : args.constFloatApi;
+    auto srcBuffer = range.isShaderDefined
+      ? m_floatLayout.getShaderDefinedConstants()
+      : args.constFloatApi;
     auto srcPtr = reinterpret_cast<const Vector4*>(srcBuffer) + range.srcIndex;
 
     #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
