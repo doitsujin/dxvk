@@ -83,7 +83,7 @@ public:
     return m_usedRTs;
   }
 
-  const D3D9ConstantBufferCopy& GetConstantLayout() const {
+  const D3D9ConstantBufferCopy* GetConstantLayout() const {
     return m_constLayout;
   }
 
@@ -135,8 +135,8 @@ private:
   dxbc_spv::sm3::ShaderInfo m_shaderInfo;
 
   D3D9ShaderConstantsInfo m_constants;
-  D3D9ConstantBufferCopy m_constLayout;
   D3D9ImmediateConstants m_immediateConstants;
+  const D3D9ConstantBufferCopy* m_constLayout;
 
   small_vector<Vector4, 16u> m_defConstants;
 
