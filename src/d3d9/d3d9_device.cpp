@@ -3556,10 +3556,14 @@ namespace dxvk {
     if (shader == m_state.vertexShader.ptr())
       return D3D_OK;
 
+    auto* oldShader = GetCommonShader(m_state.vertexShader);
     auto* newShader = GetCommonShader(shader);
 
+    auto oldLayout = oldShader ? oldShader->GetConstantLayout() : nullptr;
+    auto newLayout = newShader ? newShader->GetConstantLayout() : nullptr;
+
     auto& vsConstants = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
-    vsConstants.dirty = true;
+    vsConstants.dirty |= oldLayout != newLayout;
     vsConstants.shaderConstantsInfo = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
 
     const bool wasUsingProgrammableVS = UseProgrammableVS();
@@ -3901,10 +3905,14 @@ namespace dxvk {
     if (shader == m_state.pixelShader.ptr())
       return D3D_OK;
 
+    auto* oldShader = GetCommonShader(m_state.pixelShader);
     auto* newShader = GetCommonShader(shader);
 
+    auto oldLayout = oldShader ? oldShader->GetConstantLayout() : nullptr;
+    auto newLayout = newShader ? newShader->GetConstantLayout() : nullptr;
+
     auto& psConstants = m_consts[uint32_t(D3D9ShaderType::PixelShader)];
-    psConstants.dirty = true;
+    psConstants.dirty |= oldLayout != newLayout;
     psConstants.shaderConstantsInfo = newShader ? newShader->GetConstantsInfo() : D3D9ShaderConstantsInfo();
 
     const D3D9ShaderMasks oldShaderMasks = PSShaderMasks();
