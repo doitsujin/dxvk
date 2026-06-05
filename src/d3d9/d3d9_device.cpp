@@ -5846,6 +5846,21 @@ namespace dxvk {
   }
 
 
+  const D3D9ConstantBufferCopy* D3D9DeviceEx::GetOrCreateConstantLayout(
+          D3D9ConstantBufferLayout  FloatLayout,
+          D3D9ConstantBufferLayout  IntLayout,
+          D3D9ConstantBufferLayout  BoolLayout) {
+    std::lock_guard lock(m_constantLayoutMutex);
+
+    auto entry = m_constantLayouts.emplace(
+      std::move(FloatLayout),
+      std::move(IntLayout),
+      std::move(BoolLayout));
+
+    return &(*entry.first);
+  }
+
+
   void D3D9DeviceEx::InjectCsChunk(
           DxvkCsChunkRef&&            Chunk,
           bool                        Synchronize) {
