@@ -120,6 +120,32 @@ namespace dxvk {
   }
 
 
+  bool D3D9ConstantBufferLayout::eq(const D3D9ConstantBufferLayout& other) const {
+    bool eq = m_minCount == other.m_minCount
+           && m_maxCount == other.m_maxCount
+           && m_dynamicIndexing == other.m_dynamicIndexing
+           && m_ranges.size() == other.m_ranges.size();
+
+    for (size_t i = 0u; i < m_ranges.size() && eq; i++)
+      eq = m_ranges[i].eq(other.m_ranges[i]);
+
+    return eq;
+  }
+
+
+  size_t D3D9ConstantBufferLayout::hash() const {
+    DxvkHashState hash;
+
+    for (const auto& range : m_ranges)
+      hash.add(range.hash());
+
+    hash.add(m_minCount);
+    hash.add(m_maxCount);
+    hash.add(uint32_t(m_dynamicIndexing));
+    return hash;
+  }
+
+
   D3D9ConstantBufferCopy::D3D9ConstantBufferCopy() {
 
   }
@@ -136,6 +162,22 @@ namespace dxvk {
 
   D3D9ConstantBufferCopy::~D3D9ConstantBufferCopy() {
 
+  }
+
+
+  bool D3D9ConstantBufferCopy::eq(const D3D9ConstantBufferCopy& other) const {
+    return m_floatLayout.eq(other.m_floatLayout)
+        && m_intLayout.eq(other.m_intLayout)
+        && m_boolLayout.eq(other.m_boolLayout);
+  }
+
+
+  size_t D3D9ConstantBufferCopy::hash() const {
+    DxvkHashState hash;
+    hash.add(m_floatLayout.hash());
+    hash.add(m_intLayout.hash());
+    hash.add(m_boolLayout.hash());
+    return hash;
   }
 
 
