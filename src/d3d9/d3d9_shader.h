@@ -52,15 +52,11 @@ namespace dxvk {
    */
   struct D3D9ShaderResourceMapping {
     enum CbvIndex : uint32_t {
-      VSConstantBuffer        = 0u,
-      VSIntConstantBuffer     = 1u,
-      VSBoolConstantBuffer    = 2u,
       VSClipPlanes            = 3u,
       VSFixedFunction         = 4u,
       VSVertexBlendData       = 5u,
       VSStaticConstants       = 6u,
       VSDynamicConstants      = 7u,
-      PSConstantBuffer        = 10u,
       PSFixedFunction         = 11u,
       PSShared                = 12u,
       PSStaticConstants       = 13u,

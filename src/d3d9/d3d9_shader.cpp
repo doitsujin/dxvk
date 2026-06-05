@@ -10,17 +10,6 @@
 
 namespace dxvk {
 
-  enum class D3D9IrCbvIndex : uint32_t {
-    SpecData        = 0u,
-    VsClipping      = 1u,
-    PsTextureStages = 2u,
-    ConstFloat      = 3u,
-    ConstInt        = 4u,
-    ConstBool       = 5u,
-    ConstStatic     = 6u,
-    ConstDynamic    = 7u,
-  };
-
   class D3D9ShaderLowerLegacyInputPass {
 
   public:
@@ -235,6 +224,10 @@ namespace dxvk {
       if (!totalCount)
         return;
 
+      uint32_t regIndex = m_shaderStage == ir::ShaderStage::eVertex
+        ? D3D9ShaderResourceMapping::CbvIndex::VSStaticConstants
+        : D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants;
+
       m_firstConstInt = constantCountF;
       m_firstConstBool = constantCountF + constantCountI;
 
@@ -245,7 +238,7 @@ namespace dxvk {
         auto cbvType = ir::Type();
 
         m_staticCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
-          0u, uint32_t(D3D9IrCbvIndex::ConstStatic), 1u).setFlags(ir::OpFlag::eInBounds));
+          0u, regIndex, 1u).setFlags(ir::OpFlag::eInBounds));
 
         if (!layoutF.isDynamicallyIndexed())
           emitStaticConstantRanges(ir::BuiltIn::eLegacyConstFloat, m_staticCbv, cbvType, layoutF);
@@ -269,7 +262,7 @@ namespace dxvk {
         auto cbvType = ir::Type(ir::ScalarType::eU32, 4u).addArrayDimension(vec4Count);
 
         m_staticCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
-          0u, uint32_t(D3D9IrCbvIndex::ConstStatic), 1u).setFlags(ir::OpFlag::eInBounds));
+          0u, regIndex, 1u).setFlags(ir::OpFlag::eInBounds));
         m_builder.add(ir::Op::DebugName(m_staticCbv, "c"));
       }
     }
@@ -287,7 +280,7 @@ namespace dxvk {
       auto cbvType = ir::Type(ir::ScalarType::eF32, 4u).addArrayDimension(cbvSize);
 
       m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
-        0u, uint32_t(D3D9IrCbvIndex::ConstDynamic), 1u));
+        0u, D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, 1u));
       m_builder.add(ir::Op::DebugName(m_dynamicCbv, "cF"));
     }
 
@@ -569,7 +562,7 @@ namespace dxvk {
 
       auto specDataType = ir::Type(ir::ScalarType::eU32).addArrayDimension(DxvkLimits::MaxNumSpecConstants);
       auto result = m_builder.add(ir::Op::DclCbv(specDataType, m_entryPoint,
-        0u, uint32_t(D3D9IrCbvIndex::SpecData), 1u).setFlags(ir::OpFlag::eInBounds));
+        0u, D3D9ShaderResourceMapping::CbvIndex::SpecData, 1u).setFlags(ir::OpFlag::eInBounds));
       m_builder.add(ir::Op::DebugName(result, "specData"));
       return result;
     }
@@ -782,7 +775,7 @@ namespace dxvk {
 
       if (!m_clipPlaneCbv) {
         m_clipPlaneCbv = m_builder.add(ir::Op::DclCbv(clipCbvType,
-          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::VsClipping), 1u)
+          m_entryPoint, 0u, D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes, 1u)
           .setFlags(ir::OpFlag::eInBounds));
         m_builder.add(ir::Op::DebugName(m_clipPlaneCbv, "clipPlanes"));
       }
@@ -967,7 +960,7 @@ namespace dxvk {
 
       if (!m_textureStageCbv) {
         m_textureStageCbv = m_builder.add(ir::Op::DclCbv(textureStageCbvType,
-          m_entryPoint, 0u, uint32_t(D3D9IrCbvIndex::PsTextureStages), 1u)
+          m_entryPoint, 0u, D3D9ShaderResourceMapping::CbvIndex::PSShared, 1u)
           .setFlags(ir::OpFlag::eInBounds));
 
         m_builder.add(ir::Op::DebugName(m_textureStageCbv, "textureStages"));
@@ -1078,35 +1071,7 @@ namespace dxvk {
 
       switch (type) {
         case dxbc_spv::ir::ScalarType::eCbv:
-          switch (D3D9IrCbvIndex(regIndex)) {
-            case D3D9IrCbvIndex::SpecData:
-              return D3D9ShaderResourceMapping::CbvIndex::SpecData;
-
-            case D3D9IrCbvIndex::VsClipping:
-              return D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes;
-
-            case D3D9IrCbvIndex::PsTextureStages:
-              return D3D9ShaderResourceMapping::CbvIndex::PSShared;
-
-            case D3D9IrCbvIndex::ConstFloat:
-              return shaderType == D3D9ShaderType::PixelShader
-                ? D3D9ShaderResourceMapping::CbvIndex::PSConstantBuffer
-                : D3D9ShaderResourceMapping::CbvIndex::VSConstantBuffer;
-
-            case D3D9IrCbvIndex::ConstInt:
-              return D3D9ShaderResourceMapping::CbvIndex::VSIntConstantBuffer;
-
-            case D3D9IrCbvIndex::ConstBool:
-              return D3D9ShaderResourceMapping::CbvIndex::VSBoolConstantBuffer;
-
-            case D3D9IrCbvIndex::ConstStatic:
-              return shaderType == D3D9ShaderType::PixelShader
-                ? D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants
-                : D3D9ShaderResourceMapping::CbvIndex::VSStaticConstants;
-
-            case D3D9IrCbvIndex::ConstDynamic:
-              return D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants;
-          } break;
+          return regIndex;
 
         case dxbc_spv::ir::ScalarType::eSrv:
         case dxbc_spv::ir::ScalarType::eSampler:

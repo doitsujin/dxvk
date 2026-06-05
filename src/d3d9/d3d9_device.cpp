@@ -5986,23 +5986,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::CreateConstantBuffers() {
-    constexpr VkDeviceSize DefaultConstantBufferSize  = 1024ull << 10;
-    constexpr VkDeviceSize SmallConstantBufferSize    =   64ull << 10;
-
-    auto& vsConst = m_consts[uint32_t(D3D9ShaderType::VertexShader)];
-    auto& psConst = m_consts[uint32_t(D3D9ShaderType::PixelShader)];
-
-    vsConst.buffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
-      D3D9ShaderResourceMapping::CbvIndex::VSConstantBuffer, DefaultConstantBufferSize);
-
-    vsConst.swvp.intBuffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
-      D3D9ShaderResourceMapping::CbvIndex::VSIntConstantBuffer, SmallConstantBufferSize);
-
-    vsConst.swvp.boolBuffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_VERTEX_BIT,
-      D3D9ShaderResourceMapping::CbvIndex::VSBoolConstantBuffer, SmallConstantBufferSize);
-
-    psConst.buffer = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
-      D3D9ShaderResourceMapping::CbvIndex::PSConstantBuffer, DefaultConstantBufferSize);
+    constexpr VkDeviceSize DefaultConstantBufferSize = 1024ull << 10;
 
     m_psStaticConstants = D3D9ConstantBuffer(this, VK_SHADER_STAGE_FRAGMENT_BIT,
       D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants, DefaultConstantBufferSize);
