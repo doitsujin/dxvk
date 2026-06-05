@@ -8046,7 +8046,8 @@ namespace dxvk {
 
     dxbc_spv::util::ByteReader reader(pShaderBytecode, std::numeric_limits<size_t>::max());
 
-    D3D9ShaderAnalysis analysis(reader, m_isSWVP);
+    D3D9ShaderAnalysis analysis(reader, CanSWVP());
+
     if (!analysis) {
       Logger::err("CreateShaderModule: Shader analysis prepass failed");
       return D3DERR_INVALIDCALL;
