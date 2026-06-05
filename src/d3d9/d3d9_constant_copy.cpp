@@ -6,6 +6,9 @@
 
 namespace dxvk {
 
+  dxvk::mutex D3D9ConstantBufferCopy::s_mutex;
+  std::unordered_set<D3D9ConstantBufferCopy, DxvkHash, DxvkEq> D3D9ConstantBufferCopy::s_layouts;
+
   D3D9ConstantBufferLayout::D3D9ConstantBufferLayout() { }
 
   D3D9ConstantBufferLayout::D3D9ConstantBufferLayout(uint32_t maxCount)
@@ -152,16 +155,31 @@ namespace dxvk {
 
 
   D3D9ConstantBufferCopy::D3D9ConstantBufferCopy(
-          D3D9ConstantBufferLayout Floats,
-          D3D9ConstantBufferLayout Ints,
-          D3D9ConstantBufferLayout Bools)
-  : m_floatLayout (std::move(Floats)),
-    m_intLayout   (std::move(Ints)),
-    m_boolLayout  (std::move(Bools)) { }
+          D3D9ConstantBufferLayout floats,
+          D3D9ConstantBufferLayout ints,
+          D3D9ConstantBufferLayout bools)
+  : m_floatLayout (std::move(floats)),
+    m_intLayout   (std::move(ints)),
+    m_boolLayout  (std::move(bools)) { }
 
 
   D3D9ConstantBufferCopy::~D3D9ConstantBufferCopy() {
 
+  }
+
+
+  const D3D9ConstantBufferCopy* D3D9ConstantBufferCopy::getOrCreate(
+          D3D9ConstantBufferLayout floats,
+          D3D9ConstantBufferLayout ints,
+          D3D9ConstantBufferLayout bools) {
+    std::lock_guard lock(s_mutex);
+
+    auto entry = s_layouts.emplace(
+      std::move(floats),
+      std::move(ints),
+      std::move(bools));
+
+    return &(*entry.first);
   }
 
 

@@ -219,9 +219,9 @@ namespace dxvk {
     void setupStaticCbv() {
       using namespace dxbc_spv;
 
-      const auto& layoutB = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Bool);
-      const auto& layoutI = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Int);
-      const auto& layoutF = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Float);
+      const auto& layoutB = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Bool);
+      const auto& layoutI = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Int);
+      const auto& layoutF = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Float);
 
       auto constantCountF = 0u;
       auto constantCountI = layoutI.computeConstantCount(0u);
@@ -277,7 +277,7 @@ namespace dxvk {
     void setupDynamicCbv() {
       using namespace dxbc_spv;
 
-      const auto& layout = m_analysis.GetConstantLayout().getLayout(D3D9ConstantType::Float);
+      const auto& layout = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Float);
 
       if (!layout.isDynamicallyIndexed())
         return;
@@ -297,7 +297,7 @@ namespace dxvk {
       // Check which layout to use for constant mappings
       bool isFloat = builtIn == ir::BuiltIn::eLegacyConstFloat;
 
-      const auto& layout = m_analysis.GetConstantLayout().getLayout(
+      const auto& layout = m_analysis.GetConstantLayout()->getLayout(
         isFloat ? D3D9ConstantType::Float : D3D9ConstantType::Int);
 
       // We already emitted all the constant buffers that we might need.

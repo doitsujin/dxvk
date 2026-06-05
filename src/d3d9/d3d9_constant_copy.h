@@ -235,9 +235,9 @@ namespace dxvk {
     D3D9ConstantBufferCopy();
 
     D3D9ConstantBufferCopy(
-            D3D9ConstantBufferLayout Floats,
-            D3D9ConstantBufferLayout Ints,
-            D3D9ConstantBufferLayout Bools);
+            D3D9ConstantBufferLayout floats,
+            D3D9ConstantBufferLayout ints,
+            D3D9ConstantBufferLayout bools);
 
     ~D3D9ConstantBufferCopy();
 
@@ -280,11 +280,29 @@ namespace dxvk {
 
     size_t hash() const;
 
+    /**
+     * \brief Retrieves globally unique constant buffer layout
+     *
+     * The returned pointer will never be invalidated, and this function
+     * will return the same pointer for compatible constant layouts.
+     * \param [in] floats Float constant layout
+     * \param [in] ints Integer constant layout
+     * \param [in] bools Boolean constant layout
+     * \returns Pointer to unique layout
+     */
+    static const D3D9ConstantBufferCopy* getOrCreate(
+            D3D9ConstantBufferLayout floats,
+            D3D9ConstantBufferLayout ints,
+            D3D9ConstantBufferLayout bools);
+
   private:
 
     D3D9ConstantBufferLayout m_floatLayout  = {};
     D3D9ConstantBufferLayout m_intLayout    = {};
     D3D9ConstantBufferLayout m_boolLayout   = {};
+
+    static dxvk::mutex s_mutex;
+    static std::unordered_set<D3D9ConstantBufferCopy, DxvkHash, DxvkEq> s_layouts;
 
     template<bool FlushNan>
     void writeFloatBuffer(const D3D9ConstantBufferCopyArgs& args) const;

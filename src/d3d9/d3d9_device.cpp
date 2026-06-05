@@ -6040,7 +6040,7 @@ namespace dxvk {
       ? GetCommonShader(m_state.vertexShader)
       : GetCommonShader(m_state.pixelShader);
 
-    const auto& layout = shader->GetConstantLayout();
+    const auto* layout = shader->GetConstantLayout();
 
     // Dynamic indexing is only a thing in VS, so nope out on the PS path.
     uint32_t dynamicFloatCount = 0u;
@@ -6049,10 +6049,10 @@ namespace dxvk {
       dynamicFloatCount = constants.changedFloatCount;
 
     bool isDynamicallyIndexed = ShaderType == D3D9ShaderType::VertexShader
-      && layout.getLayout(D3D9ConstantType::Float).isDynamicallyIndexed();
+      && layout->getLayout(D3D9ConstantType::Float).isDynamicallyIndexed();
 
     // Compute amount of storage required for each constant type
-    auto dataSize = layout.getAllocationSizes(dynamicFloatCount);
+    auto dataSize = layout->getAllocationSizes(dynamicFloatCount);
 
     if (ShaderType == D3D9ShaderType::PixelShader)
       dataSize.boolBufferSize = 0u;
@@ -6117,7 +6117,7 @@ namespace dxvk {
       copyArgs.constIntApi = m_state.psConsts->iConsts;
     }
 
-    layout.copyConstantData(copyArgs);
+    layout->copyConstantData(copyArgs);
 
     constants.dirty = false;
   }

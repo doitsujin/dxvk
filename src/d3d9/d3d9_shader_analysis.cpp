@@ -91,8 +91,10 @@ namespace dxvk {
       constLayoutB = D3D9ConstantBufferLayout(align(dwordCount, 4u));
     }
 
-    m_constLayout = D3D9ConstantBufferCopy(std::move(constLayoutF),
-      std::move(constLayoutI), std::move(constLayoutB));
+    m_constLayout = D3D9ConstantBufferCopy::getOrCreate(
+      std::move(constLayoutF),
+      std::move(constLayoutI),
+      std::move(constLayoutB));
 
     // Shift up these sampler bits so we can just
     // do an or per-draw in the device.
