@@ -16,14 +16,15 @@
 
 namespace dxvk {
 
-using D3D9ImmediateFloatConstants = small_vector<D3D9ImmediateFloatConstant, 16u>;
+struct D3D9ImmediateConstantsData {
+  small_vector<D3D9ImmediateFloatConstant, 16u> floats;
+  small_vector<int16_t, 16u> ints;
+};
 
-struct D3D9ImmediateConstants {
+struct D3D9ImmediateConstantsInfo {
   uint32_t floatCount = 0u;
   uint32_t intCount   = 0u;
   uint32_t boolCount  = 0u;
-
-  D3D9ImmediateFloatConstants floats;
 };
 
 struct D3D9ShaderConstantsInfo {
@@ -66,7 +67,7 @@ public:
     return m_constants;
   }
 
-  const D3D9ImmediateConstants& GetImmediateConstants() const {
+  const D3D9ImmediateConstantsInfo& GetImmediateConstants() const {
     return m_immediateConstants;
   }
 
@@ -109,9 +110,12 @@ private:
   bool HandleInstruction(
     const dxbc_spv::sm3::Instruction&   op,
           ConstantMask&                 constMaskF,
-          ConstantMask&                 constMaskI);
+          ConstantMask&                 constMaskI,
+          D3D9ImmediateConstantsData&   shaderDefs);
 
-  bool HandleDef(const dxbc_spv::sm3::Instruction& op);
+  bool HandleDef(
+    const dxbc_spv::sm3::Instruction&   op,
+          D3D9ImmediateConstantsData&   shaderDefs);
 
   bool HandleTextureSample(const dxbc_spv::sm3::Instruction& op);
 
@@ -126,7 +130,7 @@ private:
   dxbc_spv::sm3::ShaderInfo m_shaderInfo;
 
   D3D9ShaderConstantsInfo m_constants;
-  D3D9ImmediateConstants m_immediateConstants;
+  D3D9ImmediateConstantsInfo m_immediateConstants;
   const D3D9ConstantBufferCopy* m_constLayout;
 
   D3D9RenderTargetMask m_usedRTs = 0u;
