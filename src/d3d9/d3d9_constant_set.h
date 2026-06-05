@@ -30,15 +30,8 @@ namespace dxvk {
     uint32_t bConsts[1];
   };
 
-  struct D3D9SwvpConstantBuffers {
-    D3D9ConstantBuffer        intBuffer;
-    D3D9ConstantBuffer        boolBuffer;
-  };
-
   struct D3D9ConstantSets {
     D3D9ConstantLayout        layout;
-    D3D9SwvpConstantBuffers   swvp;
-    D3D9ConstantBuffer        buffer;
     D3D9ShaderConstantsInfo   shaderConstantsInfo;
     bool                      dirty = true;
     uint32_t                  changedFloatCount = 0u;
