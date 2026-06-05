@@ -107,7 +107,7 @@ namespace dxvk {
     }
 
     const D3D9ShaderConstantsInfo& GetConstantsInfo() const { return m_analysis.GetConstantsInfo(); }
-    const D3D9ImmediateConstants& GetImmediateConstants() const { return m_analysis.GetImmediateConstants(); }
+    const D3D9ImmediateConstantsInfo& GetImmediateConstants() const { return m_analysis.GetImmediateConstants(); }
 
     const D3D9ConstantBufferCopy* GetConstantLayout() const {
       return m_analysis.GetConstantLayout();

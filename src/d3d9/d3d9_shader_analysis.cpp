@@ -40,13 +40,15 @@ namespace dxvk {
     // No real point in gathering bool masks here. For HWVP we have to
     // use a different mechanism anyway, and in SWVP mode we can just
     // use the entire bit array up to the highest accessed constant.
+    D3D9ImmediateConstantsData shaderDefs;
+
     ConstantMask constMaskF;
     ConstantMask constMaskI;
 
     while (parser) {
       dxbc_spv::sm3::Instruction instruction = parser.parseInstruction();
 
-      if (!instruction || !HandleInstruction(instruction, constMaskF, constMaskI))
+      if (!instruction || !HandleInstruction(instruction, constMaskF, constMaskI, shaderDefs))
         return false;
     }
 
@@ -57,18 +59,22 @@ namespace dxvk {
       // as a mask of defined constants as necessary
       constMaskF.clear();
 
-      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++)
-        setBit(constMaskF, m_immediateConstants.floats[i].index);
+      for (size_t i = 0u; i < shaderDefs.floats.size(); i++)
+        setBit(constMaskF, shaderDefs.floats[i].index);
     } else {
       // The compiler will always constant-fold inline constants that
       // are statically indexed, so there is no need to keep them around
-      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++)
-        clrBit(constMaskF, m_immediateConstants.floats[i].index);
+      for (size_t i = 0u; i < shaderDefs.floats.size(); i++)
+        clrBit(constMaskF, shaderDefs.floats[i].index);
     }
+
+    // Same for shader-defied floats, they will never be read from the buffer.
+    for (size_t i = 0u; i < shaderDefs.ints.size(); i++)
+      clrBit(constMaskI, shaderDefs.ints[i]);
 
     D3D9ConstantBufferLayout constLayoutF = m_constants.floatsAccessedDynamically
       ? D3D9ConstantBufferLayout(m_constants.floatCount, constMaskF.size(), constMaskF.data(),
-          m_immediateConstants.floats.size(), m_immediateConstants.floats.data())
+          shaderDefs.floats.size(), shaderDefs.floats.data())
       : D3D9ConstantBufferLayout(constMaskF.size(), constMaskF.data());
 
     D3D9ConstantBufferLayout constLayoutI(constMaskI.size(), constMaskI.data());
@@ -98,7 +104,8 @@ namespace dxvk {
   bool D3D9ShaderAnalysis::HandleInstruction(
     const dxbc_spv::sm3::Instruction&   op,
           ConstantMask&                 constMaskF,
-          ConstantMask&                 constMaskI) {
+          ConstantMask&                 constMaskI,
+          D3D9ImmediateConstantsData&   shaderDefs) {
     auto matrixSize = getMatrixSize(op.getOpCode());
 
     /* Determine whether we're accessing float constants dynamically
@@ -165,7 +172,7 @@ namespace dxvk {
       case OpCode::eDef:
       case OpCode::eDefI:
       case OpCode::eDefB:
-        if (!HandleDef(op))
+        if (!HandleDef(op, shaderDefs))
           return false;
         break;
 
@@ -200,7 +207,9 @@ namespace dxvk {
     return true;
   }
 
-  bool D3D9ShaderAnalysis::HandleDef(const Instruction& op) {
+  bool D3D9ShaderAnalysis::HandleDef(
+    const Instruction&                  op,
+          D3D9ImmediateConstantsData&   shaderDefs) {
     dxbc_spv_assert(op.hasDst());
     uint32_t index = op.getDst().getIndex();
 
@@ -214,9 +223,11 @@ namespace dxvk {
         imm.getImmediate<float>(0u), imm.getImmediate<float>(1u),
         imm.getImmediate<float>(2u), imm.getImmediate<float>(3u)
       };
-      m_immediateConstants.floats.push_back({ index, value });
+
+      shaderDefs.floats.push_back({ index, value });
     } else if (op.getOpCode() == OpCode::eDefI) {
       m_immediateConstants.intCount = std::max(m_immediateConstants.intCount, index + 1u);
+      shaderDefs.ints.push_back(index);
     } else if (op.getOpCode() == OpCode::eDefB) {
       m_immediateConstants.boolCount = std::max(m_immediateConstants.boolCount, index + 1u);
     } else {
