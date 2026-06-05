@@ -16,11 +16,6 @@
 
 namespace dxvk {
 
-struct D3D9ImmediateFloatConstant {
-  uint32_t index;
-  Vector4 value;
-};
-
 using D3D9ImmediateFloatConstants = small_vector<D3D9ImmediateFloatConstant, 16u>;
 
 struct D3D9ImmediateConstants {
@@ -69,10 +64,6 @@ public:
 
   const D3D9ShaderConstantsInfo& GetConstantsInfo() const {
     return m_constants;
-  }
-
-  const Vector4* GetShaderDefinedConstants() const {
-    return m_defConstants.data();
   }
 
   const D3D9ImmediateConstants& GetImmediateConstants() const {
@@ -137,8 +128,6 @@ private:
   D3D9ShaderConstantsInfo m_constants;
   D3D9ImmediateConstants m_immediateConstants;
   const D3D9ConstantBufferCopy* m_constLayout;
-
-  small_vector<Vector4, 16u> m_defConstants;
 
   D3D9RenderTargetMask m_usedRTs = 0u;
 

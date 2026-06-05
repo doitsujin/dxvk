@@ -117,10 +117,6 @@ namespace dxvk {
       return m_analysis.GetConstantLayout();
     }
 
-    const Vector4* GetConstantData() const {
-      return m_analysis.GetShaderDefinedConstants();
-    }
-
     D3D9ShaderMasks GetShaderMask() const { return D3D9ShaderMasks{ m_analysis.GetSamplerMask(), m_analysis.GetRenderTargetMask() }; }
 
     dxbc_spv::sm3::ShaderInfo GetInfo() const { return m_analysis.GetShaderInfo(); }
