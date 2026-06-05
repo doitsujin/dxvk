@@ -6095,14 +6095,10 @@ namespace dxvk {
     }
 
     if (ShaderType == D3D9ShaderType::VertexShader) {
-      // Need shader-defined constants for dynamic
-      // indexing, and boolean constants for SWVP.
       copyArgs.constFloatApi = m_state.vsConsts->fConsts;
-      copyArgs.constFloatDef = shader->GetConstantData();
       copyArgs.constIntApi = m_state.vsConsts->iConsts;
       copyArgs.constBoolApi = m_state.vsConsts->bConsts;
     } else {
-      // Don't need any of the above for PS, fast path
       copyArgs.constFloatApi = m_state.psConsts->fConsts;
       copyArgs.constIntApi = m_state.psConsts->iConsts;
     }

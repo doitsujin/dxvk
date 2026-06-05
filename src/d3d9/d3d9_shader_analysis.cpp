@@ -52,24 +52,13 @@ namespace dxvk {
 
     m_length = parser.getByteOffset();
 
-    // Sort immediate constants by index since the
-    // constant layout code relies on it
-    std::sort(m_immediateConstants.floats.begin(), m_immediateConstants.floats.end(),
-      [] (const D3D9ImmediateFloatConstant& a, const D3D9ImmediateFloatConstant& b) {
-        return a.index < b.index;
-      });
-
     if (m_constants.floatsAccessedDynamically) {
       // Repurpose float mask as shader-defined constant mask
       // as a mask of defined constants as necessary
-      m_defConstants.reserve(m_immediateConstants.floats.size());
-
       constMaskF.clear();
 
-      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++) {
+      for (size_t i = 0u; i < m_immediateConstants.floats.size(); i++)
         setBit(constMaskF, m_immediateConstants.floats[i].index);
-        m_defConstants.push_back(m_immediateConstants.floats[i].value);
-      }
     } else {
       // The compiler will always constant-fold inline constants that
       // are statically indexed, so there is no need to keep them around
@@ -78,7 +67,8 @@ namespace dxvk {
     }
 
     D3D9ConstantBufferLayout constLayoutF = m_constants.floatsAccessedDynamically
-      ? D3D9ConstantBufferLayout(m_constants.floatCount, constMaskF.size(), constMaskF.data())
+      ? D3D9ConstantBufferLayout(m_constants.floatCount, constMaskF.size(), constMaskF.data(),
+          m_immediateConstants.floats.size(), m_immediateConstants.floats.data())
       : D3D9ConstantBufferLayout(constMaskF.size(), constMaskF.data());
 
     D3D9ConstantBufferLayout constLayoutI(constMaskI.size(), constMaskI.data());
