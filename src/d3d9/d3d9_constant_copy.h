@@ -37,6 +37,24 @@ namespace dxvk {
      *  shader defined data rather than API state.
      *  Only useful with dynamic indexing. */
     bool isShaderDefined = false;
+
+    bool eq(const D3D9ConstantRange& other) const {
+      return dstIndex             == other.dstIndex
+          && srcIndex             == other.srcIndex
+          && count                == other.count
+          && isDynamicallyIndexed == other.isDynamicallyIndexed
+          && isShaderDefined      == other.isShaderDefined;
+    }
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(dstIndex);
+      hash.add(srcIndex);
+      hash.add(count);
+      hash.add(uint32_t(isDynamicallyIndexed));
+      hash.add(uint32_t(isShaderDefined));
+      return hash;
+    }
   };
 
 
@@ -133,6 +151,20 @@ namespace dxvk {
 
       return std::nullopt;
     }
+
+    /**
+     * \brief Checks whether two layouts fully match
+     *
+     * Two identical layouts can use the same constant buffers.
+     * \param [in] other The other layout to check
+     * \returns \c true if both layouts are identical
+     */
+    bool eq(const D3D9ConstantBufferLayout& other) const;
+
+    /**
+     * \brief Computes layout hash
+     */
+    size_t hash() const;
 
   private:
 
@@ -239,6 +271,14 @@ namespace dxvk {
      * \param [in] Args Constant pointers and copy parameters
      */
     void copyConstantData(const D3D9ConstantBufferCopyArgs& args) const;
+
+    /**
+     * \brief Checks whether two layouts fully match
+     * \returns \c true if both layouts are identical
+     */
+    bool eq(const D3D9ConstantBufferCopy& other) const;
+
+    size_t hash() const;
 
   private:
 
