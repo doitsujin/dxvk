@@ -186,16 +186,8 @@ namespace dxvk {
     D3D9FFShaderKeyVSData Key;
   };
 
-
-  struct D3D9FixedFunctionVertexBlendDataHW {
-    Matrix4 WorldView[8];
-  };
-
-
-  struct D3D9FixedFunctionVertexBlendDataSW {
-    Matrix4 WorldView[256];
-  };
-
+  static constexpr uint32_t D3D9MaxVertexBlendTransformsHw = 8u;
+  static constexpr uint32_t D3D9MaxVertexBlendTransformsSw = 256u;
 
   struct D3D9FFShaderStage {
     union {
