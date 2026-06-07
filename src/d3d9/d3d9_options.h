@@ -123,7 +123,7 @@ namespace dxvk {
     bool cachedWriteOnlyBuffers;
 
     /// Use device local memory for constant buffers.
-    bool deviceLocalConstantBuffers;
+    Tristate deviceLocalConstantBuffers;
 
     /// Disable direct buffer mapping
     bool allowDirectBufferMapping;
