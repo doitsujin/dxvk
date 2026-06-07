@@ -121,9 +121,10 @@ namespace dxvk {
         cBuffer       = buffer,
         cStagingSlice = std::move(stagingSlice)
       ] (DxvkContext* ctx) {
-        ctx->uploadBuffer(cBuffer,
+        ctx->uploadBuffer(cBuffer, 0u,
           cStagingSlice.buffer(),
-          cStagingSlice.offset());
+          cStagingSlice.offset(),
+          cStagingSlice.length());
       });
     } else {
       m_transferCommands += 1;
