@@ -148,6 +148,9 @@ namespace dxvk {
 
       case Kind::SpecData:
         return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+      case Kind::Count:
+        break;
     }
 
     return 0u;
