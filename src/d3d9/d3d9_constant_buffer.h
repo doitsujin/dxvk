@@ -122,6 +122,10 @@ namespace dxvk {
     static VkMemoryPropertyFlags DetermineMemoryType(
             Kind                CbvType);
 
+    static bool DetermineDmaUsage(
+            D3D9DeviceEx*       pDevice,
+            Kind                CbvType);
+
   };
 
 }
