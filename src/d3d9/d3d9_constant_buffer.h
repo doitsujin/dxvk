@@ -21,6 +21,11 @@ namespace dxvk {
     using Kind = D3D9ShaderResourceMapping::CbvIndex;
   public:
 
+    struct StreamCommand {
+      VkDeviceSize offset = 0u;
+      VkDeviceSize size = 0u;
+    };
+
     D3D9ConstantBuffer();
 
     D3D9ConstantBuffer(
@@ -42,6 +47,9 @@ namespace dxvk {
     /**
      * \brief Allocates a given amount of memory
      *
+     * \note: Requires that all data is written to the buffer before
+     * submitting the next set of commands to the CS chunk, otherwise
+     * the GPU may read stale data.
      * \param [in] size Number of bytes to allocate
      * \returns Map pointer of the allocated region
      */
@@ -58,6 +66,17 @@ namespace dxvk {
       return reinterpret_cast<T*>(Alloc(Count * sizeof(T)));
     }
 
+    /**
+     * \brief Resets current stream command
+     *
+     * This \e must unconditionally be called when the
+     * device's current CS chunk gets submitted to the
+     * worker to avoid accessing stale data.
+     */
+    void ResetStreamCommand() {
+      m_streamCmd = nullptr;
+    }
+
   private:
 
     D3D9DeviceEx*         m_device  = nullptr;
@@ -69,12 +88,21 @@ namespace dxvk {
     VkDeviceSize          m_align   = 0ull;
     VkMemoryPropertyFlags m_memType = 0u;
     VkDeviceSize          m_offset  = 0ull;
+    bool                  m_useDma  = false;
 
     Rc<DxvkBuffer>        m_cpuBuffer = nullptr;
+    Rc<DxvkBuffer>        m_gpuBuffer = nullptr;
 
     Rc<DxvkResourceAllocation> m_cpuSlice = nullptr;
 
-    Rc<DxvkResourceAllocation> createBuffer();
+    StreamCommand*        m_streamCmd = nullptr;
+
+    Rc<DxvkResourceAllocation> CreateBuffer();
+
+    void SetupStreamCommand(
+            VkDeviceSize        Offset,
+            VkDeviceSize        Size,
+            bool                Discard);
 
     static VkDeviceSize DetermineSize(
             Kind                CbvType);
