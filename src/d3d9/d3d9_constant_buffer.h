@@ -15,16 +15,17 @@ namespace dxvk {
    * \brief Constant buffer
    */
   class D3D9ConstantBuffer {
+    static constexpr VkDeviceSize ShaderConstSize = 1024ull << 10;
+    static constexpr VkDeviceSize MiscSize        =   64ull << 10;
 
+    using Kind = D3D9ShaderResourceMapping::CbvIndex;
   public:
 
     D3D9ConstantBuffer();
 
     D3D9ConstantBuffer(
             D3D9DeviceEx*         pDevice,
-            VkShaderStageFlags    Stages,
-            uint32_t              ResourceSlot,
-            VkDeviceSize          Size);
+            Kind                  CbvType);
 
     ~D3D9ConstantBuffer();
 
@@ -47,14 +48,6 @@ namespace dxvk {
     void* Alloc(VkDeviceSize size);
 
     /**
-     * \brief Allocates a full buffer slice
-     *
-     * This must not be called if \ref Alloc is used.
-     * \returns Map pointer of the allocated region
-     */
-    void* AllocSlice();
-
-    /**
      * \brief Allocates typed data
      *
      * \param [in] count Number of items to allocate
@@ -69,19 +62,37 @@ namespace dxvk {
 
     D3D9DeviceEx*         m_device  = nullptr;
 
-    uint32_t              m_binding = 0u;
+    Kind                  m_kind    = {};
+    VkDeviceSize          m_size    = 0ull;
     VkBufferUsageFlags    m_usage   = 0u;
     VkShaderStageFlags    m_stages  = 0u;
-    VkDeviceSize          m_size    = 0ull;
     VkDeviceSize          m_align   = 0ull;
+    VkMemoryPropertyFlags m_memType = 0u;
     VkDeviceSize          m_offset  = 0ull;
 
-    Rc<DxvkBuffer>        m_buffer  = nullptr;
-    Rc<DxvkResourceAllocation> m_slice = nullptr;
+    Rc<DxvkBuffer>        m_cpuBuffer = nullptr;
+
+    Rc<DxvkResourceAllocation> m_cpuSlice = nullptr;
 
     Rc<DxvkResourceAllocation> createBuffer();
 
-    VkDeviceSize getAlignment(const Rc<DxvkDevice>& device) const;
+    static VkDeviceSize DetermineSize(
+            Kind                CbvType);
+
+    static VkBufferUsageFlags DetermineUsage(
+            D3D9DeviceEx*       pDevice,
+            Kind                CbvType,
+            VkDeviceSize        Size);
+
+    static VkShaderStageFlags DetermineStages(
+            Kind                CbvType);
+
+    static VkDeviceSize DetermineAlignment(
+            D3D9DeviceEx*       pDevice,
+            VkBufferUsageFlags  Usage);
+
+    static VkMemoryPropertyFlags DetermineMemoryType(
+            Kind                CbvType);
 
   };
 
