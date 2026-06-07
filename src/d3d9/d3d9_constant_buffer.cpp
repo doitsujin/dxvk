@@ -261,6 +261,10 @@ namespace dxvk {
           D3D9DeviceEx*       pDevice,
           Kind                CbvType) {
     auto dxvkDevice = pDevice->GetDXVKDevice();
+    auto option = pDevice->GetOptions()->deviceLocalConstantBuffers;
+
+    if (option != Tristate::Auto)
+      return option == Tristate::True;
 
     // No point whatsoever in streaming the spec data buffer to
     // VRAM since it won't be used most of the time anyway
