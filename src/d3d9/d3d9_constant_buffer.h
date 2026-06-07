@@ -37,7 +37,7 @@ namespace dxvk {
     VkDeviceSize GetAlignment() const {
       return m_align;
     }
-    
+
     /**
      * \brief Allocates a given amount of memory
      *
@@ -53,6 +53,17 @@ namespace dxvk {
      * \returns Map pointer of the allocated region
      */
     void* AllocSlice();
+
+    /**
+     * \brief Allocates typed data
+     *
+     * \param [in] count Number of items to allocate
+     * \returns Allocated data slice
+     */
+    template<typename T>
+    T* AllocTyped(size_t Count) {
+      return reinterpret_cast<T*>(Alloc(Count * sizeof(T)));
+    }
 
   private:
 

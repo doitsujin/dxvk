@@ -135,8 +135,6 @@ namespace dxvk {
     // Spec const word 0 determines whether the other spec constants are used rather than the spec const UBO
     static constexpr uint32_t MaxSpecDwords = 17;
 
-    static constexpr size_t UBOSize = MaxSpecDwords * sizeof(uint32_t);
-
     static constexpr std::array<BitfieldPosition, SpecConstantCount> Layout{{
       { 0, 0, 32 },  // SamplerType
 
