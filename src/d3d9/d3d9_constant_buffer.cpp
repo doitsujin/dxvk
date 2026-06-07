@@ -29,7 +29,7 @@ namespace dxvk {
 
   void* D3D9ConstantBuffer::Alloc(VkDeviceSize size) {
     if (unlikely(!m_cpuBuffer))
-      m_cpuSlice = createBuffer();
+      m_cpuSlice = CreateBuffer();
 
     size = align(size, m_align);
 
@@ -37,18 +37,19 @@ namespace dxvk {
       m_cpuSlice = m_cpuBuffer->allocateStorage();
 
       m_device->EmitCs([
-        cBinding  = uint32_t(m_kind),
-        cStages   = m_stages,
-        cBuffer   = m_cpuBuffer,
-        cSlice    = m_cpuSlice,
-        cSize     = size
+        cBinding    = uint32_t(m_kind),
+        cStages     = m_stages,
+        cCpuBuffer  = m_cpuBuffer,
+        cCpuSlice   = m_cpuSlice,
+        cSize       = size
       ] (DxvkContext* ctx) mutable {
-        ctx->invalidateBuffer(cBuffer, std::move(cSlice));
+        ctx->invalidateBuffer(cCpuBuffer, std::move(cCpuSlice));
         ctx->bindUniformBufferRange(cStages, cBinding, 0u, cSize);
       });
 
-      m_offset = size;
+      SetupStreamCommand(0u, size, true);
 
+      m_offset = size;
       return m_cpuSlice->mapPtr();
     } else {
       m_device->EmitCs([
@@ -60,6 +61,8 @@ namespace dxvk {
         ctx->bindUniformBufferRange(cStages, cBinding, cOffset, cSize);
       });
 
+      SetupStreamCommand(m_offset, size, false);
+
       void* mapPtr = reinterpret_cast<char*>(m_cpuSlice->mapPtr()) + m_offset;
       m_offset += size;
       return mapPtr;
@@ -67,9 +70,9 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkResourceAllocation> D3D9ConstantBuffer::createBuffer() {
-    // Buffer usage and access flags don't make much of a difference
-    // in the backend, so set both STORAGE and UNIFORM usage/access.
+  Rc<DxvkResourceAllocation> D3D9ConstantBuffer::CreateBuffer() {
+    auto dxvkDevice = m_device->GetDXVKDevice();
+
     DxvkBufferCreateInfo bufferInfo;
     bufferInfo.size   = align(m_size, m_align);
     bufferInfo.usage  = m_usage;
@@ -82,17 +85,67 @@ namespace dxvk {
     if (m_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
       bufferInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
-    m_cpuBuffer = m_device->GetDXVKDevice()->createBuffer(bufferInfo, m_memType);
+    if (m_useDma) {
+      // Create the CPU buffer as a pure staging buffer
+      auto cpuInfo = bufferInfo;
+      cpuInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+      cpuInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      cpuInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
+
+      m_cpuBuffer = dxvkDevice->createBuffer(cpuInfo, m_memType);
+
+      // Create the GPU buffer as the actual uniform buffer
+      auto gpuInfo = bufferInfo;
+      gpuInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      gpuInfo.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+      gpuInfo.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
+
+      m_gpuBuffer = dxvkDevice->createBuffer(gpuInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    } else {
+      // Create a single buffer for both CPU writes and GPU reads
+      m_cpuBuffer = dxvkDevice->createBuffer(bufferInfo, m_memType);
+      m_gpuBuffer = m_cpuBuffer;
+    }
 
     m_device->EmitCs([
       cBinding  = uint32_t(m_kind),
       cStages   = m_stages,
-      cSlice    = DxvkBufferSlice(m_cpuBuffer)
+      cSlice    = DxvkBufferSlice(m_gpuBuffer)
     ] (DxvkContext* ctx) mutable {
       ctx->bindUniformBuffer(cStages, cBinding, std::move(cSlice));
     });
 
     return m_cpuBuffer->storage();
+  }
+
+
+  void D3D9ConstantBuffer::SetupStreamCommand(
+          VkDeviceSize        Offset,
+          VkDeviceSize        Size,
+          bool                Discard) {
+    if (!m_useDma)
+      return;
+
+    if (m_streamCmd && !Discard) {
+      // Simply adjust the data size for the existing command
+      m_streamCmd->size = Offset + Size - m_streamCmd->offset;
+    } else {
+      // Need to discard GPU buffer as well so that we can safely
+      // use the asynchronous transfer queue for uploads.
+      m_streamCmd = m_device->EmitCsCmd<StreamCommand>(1u, [
+        cCpuBuffer = m_cpuBuffer,
+        cGpuBuffer = m_gpuBuffer,
+        cDiscard   = Discard
+      ] (DxvkContext* ctx, const StreamCommand* cmd, uint32_t) {
+        if (cDiscard)
+          ctx->invalidateBuffer(cGpuBuffer, cGpuBuffer->allocateStorage());
+
+        ctx->uploadBuffer(cGpuBuffer, cmd->offset, cCpuBuffer, cmd->offset, cmd->size);
+      });
+
+      m_streamCmd->offset = Offset;
+      m_streamCmd->size = Size;
+    }
   }
 
 
