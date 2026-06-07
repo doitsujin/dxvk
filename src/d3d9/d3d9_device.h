@@ -1255,8 +1255,7 @@ namespace dxvk {
       return m_resetCtr;
     }
 
-    template <bool Synchronize9On12>
-    void ExecuteFlush();
+    void ExecuteFlush(bool Synchronize9On12);
 
     void DetermineConstantLayouts(bool canSWVP);
 
