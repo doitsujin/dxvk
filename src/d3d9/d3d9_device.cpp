@@ -6114,8 +6114,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_dirty.clr(D3D9DeviceDirtyFlag::ClipPlanes);
 
-    auto mapPtr = m_vsClipPlanes.AllocSlice();
-    auto dst = reinterpret_cast<D3D9ClipPlane*>(mapPtr);
+    auto dst = m_vsClipPlanes.AllocTyped<D3D9ClipPlane>(caps::MaxClipPlanes);
 
     uint32_t clipPlaneCount = 0u;
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
@@ -7666,8 +7665,7 @@ namespace dxvk {
     if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::SharedPixelShaderData))) {
       m_dirty.clr(D3D9DeviceDirtyFlag::SharedPixelShaderData);
 
-      auto mapPtr = m_psShared.AllocSlice();
-      D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(mapPtr);
+      auto data = m_psShared.AllocTyped<D3D9SharedPS>(1u);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][DXVK_TSS_CONSTANT]), data->Stages[i].Constant);
@@ -8364,12 +8362,10 @@ namespace dxvk {
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFVertexData)) {
       m_dirty.clr(D3D9DeviceDirtyFlag::FFVertexData);
 
-      auto mapPtr = m_vsFixedFunction.AllocSlice();
-
       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       auto NormalMatrix = inverse(WorldView);
 
-      D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(mapPtr);
+      auto data = m_vsFixedFunction.AllocTyped<D3D9FixedFunctionVS>(1u);
       data->WorldView    = WorldView;
       data->NormalMatrix = NormalMatrix;
       data->InverseView  = transpose(inverse(m_state.transforms[GetTransformIndex(D3DTS_VIEW)]));
@@ -8399,15 +8395,16 @@ namespace dxvk {
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
       m_dirty.clr(D3D9DeviceDirtyFlag::FFVertexBlend);
 
-      auto mapPtr = m_vsVertexBlend.AllocSlice();
-      auto UploadVertexBlendData = [&](auto data) {
-        for (uint32_t i = 0; i < std::size(data->WorldView); i++)
-          data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
-      };
+      uint32_t matrixCount = m_isSWVP && indexedVertexBlend
+        ? D3D9MaxVertexBlendTransformsSw
+        : D3D9MaxVertexBlendTransformsHw;
 
-      (m_isSWVP && indexedVertexBlend)
-        ? UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataSW*>(mapPtr))
-        : UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataHW*>(mapPtr));
+      auto data = m_vsVertexBlend.AllocTyped<Matrix4>(matrixCount);
+
+      for (uint32_t i = 0; i < matrixCount; i++) {
+        data[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] *
+          m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
+      }
     }
   }
 
@@ -8545,11 +8542,10 @@ namespace dxvk {
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelData)) {
       m_dirty.clr(D3D9DeviceDirtyFlag::FFPixelData);
 
-      auto mapPtr = m_psFixedFunction.AllocSlice();
       auto& rs = m_state.renderStates;
 
-      D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(mapPtr);
-      DecodeD3DCOLOR((D3DCOLOR)rs[D3DRS_TEXTUREFACTOR], data->textureFactor.data);
+      auto data = m_psFixedFunction.AllocTyped<D3D9FixedFunctionPS>(1u);
+      DecodeD3DCOLOR(D3DCOLOR(rs[D3DRS_TEXTUREFACTOR]), data->textureFactor.data);
       data->Key = key;
     }
   }
@@ -9254,8 +9250,8 @@ namespace dxvk {
     // Write spec constants into buffer for fast-linked pipelines to use it.
     // TODO get rid of the fallback buffer and rework everything to use push
     // data instead.
-    auto mapPtr = m_specBuffer.AllocSlice();
-    memcpy(mapPtr, m_specInfo.data.data(), D3D9SpecializationInfo::UBOSize);
+    auto mapPtr = m_specBuffer.Alloc(sizeof(m_specInfo.data));
+    memcpy(mapPtr, m_specInfo.data.data(), sizeof(m_specInfo.data));
 
     m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
