@@ -225,6 +225,8 @@ namespace dxvk {
     friend class D3D9UserDefinedAnnotation;
     friend class DxvkD3D8Bridge;
     friend D3D9VkInteropDevice;
+
+    using CbvIndex = D3D9ShaderResourceMapping::CbvIndex;
   public:
 
     D3D9DeviceEx(
@@ -1551,6 +1553,10 @@ namespace dxvk {
         : FixedFunctionMask;
     }
 
+    D3D9ConstantBuffer& GetConstantBuffer(CbvIndex Index) {
+      return m_constantBuffers[uint32_t(Index)];
+    }
+
     GpuFlushType GetMaxFlushType() const;
 
     bool ValidateSharedTexture(
@@ -1594,17 +1600,7 @@ namespace dxvk {
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
-    D3D9ConstantBuffer              m_vsClipPlanes;
-
-    D3D9ConstantBuffer              m_psStaticConstants;
-    D3D9ConstantBuffer              m_vsStaticConstants;
-    D3D9ConstantBuffer              m_vsDynamicConstants;
-
-    D3D9ConstantBuffer              m_vsFixedFunction;
-    D3D9ConstantBuffer              m_vsVertexBlend;
-    D3D9ConstantBuffer              m_psFixedFunction;
-    D3D9ConstantBuffer              m_psShared;
-    D3D9ConstantBuffer              m_specBuffer;
+    std::array<D3D9ConstantBuffer, CbvIndex::Count> m_constantBuffers;
 
     Rc<DxvkBuffer>                  m_upBuffer;
     VkDeviceSize                    m_upBufferOffset  = 0ull;

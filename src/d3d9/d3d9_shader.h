@@ -61,6 +61,8 @@ namespace dxvk {
       PSShared                = 12u,
       PSStaticConstants       = 13u,
       SpecData                = 20u,
+
+      Count
     };
 
     static constexpr uint32_t computeTextureBinding(D3D9ShaderType shaderType, uint32_t index) {

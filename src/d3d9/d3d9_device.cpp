@@ -5986,15 +5986,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::CreateConstantBuffers() {
-    m_psStaticConstants = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::PSStaticConstants);
-    m_vsStaticConstants = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::VSStaticConstants);
-    m_vsDynamicConstants = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants);
-    m_vsClipPlanes = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::VSClipPlanes);
-    m_vsFixedFunction = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::VSFixedFunction);
-    m_psFixedFunction = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction);
-    m_psShared = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::PSShared);
-    m_vsVertexBlend = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::VSVertexBlendData);
-    m_specBuffer = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex::SpecData);
+    for (uint32_t i = 0u; i < m_constantBuffers.size(); i++)
+      m_constantBuffers[i] = D3D9ConstantBuffer(this, D3D9ShaderResourceMapping::CbvIndex(i));
   }
 
 
@@ -6042,8 +6035,9 @@ namespace dxvk {
 
     if (staticSize) {
       // Allocate storage for statically indexed constants
-      auto& buffer = ShaderType == D3D9ShaderType::VertexShader
-        ? m_vsStaticConstants : m_psStaticConstants;
+      auto& buffer = GetConstantBuffer(ShaderType == D3D9ShaderType::VertexShader
+        ? CbvIndex::VSStaticConstants
+        : CbvIndex::PSStaticConstants);
       staticSize = align(staticSize, buffer.GetAlignment());
 
       auto staticData = buffer.Alloc(staticSize);
@@ -6067,9 +6061,10 @@ namespace dxvk {
     if (dynamicSize) {
       // Allocate storage for dynamically indexed floats. Pad this
       // to the full allocation size as well so we write everything.
-      dynamicSize = align(dynamicSize, m_vsDynamicConstants.GetAlignment());
+      auto& buffer = GetConstantBuffer(CbvIndex::VSDynamicConstants);
+      dynamicSize = align(dynamicSize, buffer.GetAlignment());
 
-      copyArgs.floatBuffer = m_vsDynamicConstants.Alloc(dynamicSize);
+      copyArgs.floatBuffer = buffer.Alloc(dynamicSize);
       copyArgs.floatBufferSize = dynamicSize;
     }
 
@@ -6091,7 +6086,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_dirty.clr(D3D9DeviceDirtyFlag::ClipPlanes);
 
-    auto dst = m_vsClipPlanes.AllocTyped<D3D9ClipPlane>(caps::MaxClipPlanes);
+    auto dst = GetConstantBuffer(CbvIndex::VSClipPlanes).AllocTyped<D3D9ClipPlane>(caps::MaxClipPlanes);
 
     uint32_t clipPlaneCount = 0u;
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
@@ -7642,7 +7637,7 @@ namespace dxvk {
     if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::SharedPixelShaderData))) {
       m_dirty.clr(D3D9DeviceDirtyFlag::SharedPixelShaderData);
 
-      auto data = m_psShared.AllocTyped<D3D9SharedPS>(1u);
+      auto data = GetConstantBuffer(CbvIndex::PSShared).AllocTyped<D3D9SharedPS>(1u);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][DXVK_TSS_CONSTANT]), data->Stages[i].Constant);
@@ -8342,7 +8337,7 @@ namespace dxvk {
       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       auto NormalMatrix = inverse(WorldView);
 
-      auto data = m_vsFixedFunction.AllocTyped<D3D9FixedFunctionVS>(1u);
+      auto data = GetConstantBuffer(CbvIndex::VSFixedFunction).AllocTyped<D3D9FixedFunctionVS>(1u);
       data->WorldView    = WorldView;
       data->NormalMatrix = NormalMatrix;
       data->InverseView  = transpose(inverse(m_state.transforms[GetTransformIndex(D3DTS_VIEW)]));
@@ -8376,7 +8371,7 @@ namespace dxvk {
         ? D3D9MaxVertexBlendTransformsSw
         : D3D9MaxVertexBlendTransformsHw;
 
-      auto data = m_vsVertexBlend.AllocTyped<Matrix4>(matrixCount);
+      auto data = GetConstantBuffer(CbvIndex::VSVertexBlendData).AllocTyped<Matrix4>(matrixCount);
 
       for (uint32_t i = 0; i < matrixCount; i++) {
         data[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] *
@@ -8521,7 +8516,7 @@ namespace dxvk {
 
       auto& rs = m_state.renderStates;
 
-      auto data = m_psFixedFunction.AllocTyped<D3D9FixedFunctionPS>(1u);
+      auto data = GetConstantBuffer(CbvIndex::PSFixedFunction).AllocTyped<D3D9FixedFunctionPS>(1u);
       DecodeD3DCOLOR(D3DCOLOR(rs[D3DRS_TEXTUREFACTOR]), data->textureFactor.data);
       data->Key = key;
     }
@@ -9227,7 +9222,7 @@ namespace dxvk {
     // Write spec constants into buffer for fast-linked pipelines to use it.
     // TODO get rid of the fallback buffer and rework everything to use push
     // data instead.
-    auto mapPtr = m_specBuffer.Alloc(sizeof(m_specInfo.data));
+    auto mapPtr = GetConstantBuffer(CbvIndex::SpecData).Alloc(sizeof(m_specInfo.data));
     memcpy(mapPtr, m_specInfo.data.data(), sizeof(m_specInfo.data));
 
     m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
