@@ -5881,6 +5881,11 @@ namespace dxvk {
     // can processe them before the first use.
     m_initializer->FlushCsChunk();
 
+    // Constant buffers may hold a pointer into the current chunk,
+    // reset that here so the data won't get overwritten.
+    for (auto& cbv : m_constantBuffers)
+      cbv.ResetStreamCommand();
+
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
   }
 

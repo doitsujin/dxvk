@@ -1239,6 +1239,25 @@ namespace dxvk {
       }
     }
 
+    template<typename M, bool AllowFlush = true, typename Cmd>
+    M* EmitCsCmd(size_t count, Cmd&& command) {
+      auto csData = m_csChunk->pushCmd<M, Cmd>(command, count);
+
+      if (unlikely(!csData)) {
+        EmitCsChunk(std::move(m_csChunk));
+        m_csChunk = AllocCsChunk();
+
+        if constexpr (AllowFlush)
+          ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
+        // We must record this command after the potential
+        // flush since the caller may still access the data
+        csData = m_csChunk->pushCmd<M, Cmd>(command, count);
+      }
+
+      return reinterpret_cast<M*>(csData->first());
+    }
+
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
     void FlushCsChunk() {
