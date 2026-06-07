@@ -17,7 +17,8 @@ namespace dxvk {
   , m_usage     (DetermineUsage(pDevice, CbvType, m_size))
   , m_stages    (DetermineStages(CbvType))
   , m_align     (DetermineAlignment(pDevice, m_usage))
-  , m_memType   (DetermineMemoryType(CbvType)) {
+  , m_memType   (DetermineMemoryType(CbvType))
+  , m_useDma    (DetermineDmaUsage(pDevice, CbvType)) {
 
   }
 
@@ -253,6 +254,18 @@ namespace dxvk {
       flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     return flags;
+  }
+
+
+  bool D3D9ConstantBuffer::DetermineDmaUsage(
+          D3D9DeviceEx*       pDevice,
+          Kind                CbvType) {
+    auto dxvkDevice = pDevice->GetDXVKDevice();
+
+    // No point whatsoever in streaming the spec data buffer to
+    // VRAM since it won't be used most of the time anyway
+    return dxvkDevice->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+      && CbvType != Kind::SpecData;
   }
 
 }
