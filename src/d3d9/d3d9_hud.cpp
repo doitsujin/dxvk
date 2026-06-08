@@ -47,38 +47,16 @@ namespace dxvk::hud {
     return position;
   }
 
-  HudSWVPShaders::HudSWVPShaders(D3D9DeviceEx* device)
-  : m_device        (device)
-  , m_swvpShaderCount ("") {}
-
-
-  void HudSWVPShaders::update(dxvk::high_resolution_clock::time_point time) {
-    m_swvpShaderCount = str::format(m_device->GetSWVPShaderCount());
-  }
-
-
-  HudPos HudSWVPShaders::render(
-    const Rc<DxvkCommandList>&ctx,
-    const HudPipelineKey&     key,
-    const HudOptions&         options,
-          HudRenderer&        renderer,
-          HudPos              position) {
-    position.y += 16;
-    renderer.drawText(16, position, 0xffc0ff00u, "SWVP Shaders:");
-    renderer.drawText(16, { position.x + 180, position.y }, 0xffffffffu, m_swvpShaderCount);
-
-    position.y += 8;
-    return position;
-  }
-
 
   HudSWVPState::HudSWVPState(D3D9DeviceEx* device)
-          : m_device          (device)
-          , m_isSWVPText ("") {}
+  : m_device(device)  {
 
+  }
 
 
   void HudSWVPState::update(dxvk::high_resolution_clock::time_point time) {
+    m_swvpShaderCount = str::format(m_device->GetSWVPShaderCount());
+
     if (m_device->IsSWVP()) {
       if (m_device->CanOnlySWVP()) {
         m_isSWVPText = "SWVP";
@@ -104,6 +82,10 @@ namespace dxvk::hud {
     position.y += 16;
     renderer.drawText(16, position, 0xffc0ff00u, "Vertex Processing:");
     renderer.drawText(16, { position.x + 240, position.y }, 0xffffffffu, m_isSWVPText);
+
+    position.y += 20;
+    renderer.drawText(16, position, 0xffc0ff00u, "SWVP Shaders:");
+    renderer.drawText(16, { position.x + 168, position.y }, 0xffffffffu, m_swvpShaderCount);
 
     position.y += 8;
     return position;
