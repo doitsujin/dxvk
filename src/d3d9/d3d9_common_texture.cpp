@@ -717,6 +717,7 @@ namespace dxvk {
     viewInfo.aspects   = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage     = UsageFlags;
     viewInfo.viewType  = GetImageViewTypeFromResourceType(m_type, Layer);
+    viewInfo.allowTypeMismatch = !(UsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT);
     viewInfo.mipIndex  = Lod;
     viewInfo.mipCount  = m_desc.MipLevels - Lod;
     viewInfo.layerIndex = Layer == AllLayers ? 0 : Layer;
