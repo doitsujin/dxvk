@@ -719,11 +719,17 @@ namespace dxvk {
       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 
+    // If we're not allowed to reinterpret the view type, behave
+    // as-if no resource was bound at all
+    if (!m_key.allowTypeMismatch && type != m_key.viewType)
+      return nullptr;
+
     // Legalize view usage. We allow creating transfer-only view
     // objects so that some internal APIs can be more consistent.
     DxvkImageViewKey key = m_key;
     key.viewType = type;
     key.layout = getLayout();
+    key.allowTypeMismatch = VK_FALSE;
 
     if (!(key.usage & ViewUsage))
       return nullptr;

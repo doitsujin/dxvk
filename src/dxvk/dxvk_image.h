@@ -323,6 +323,7 @@ namespace dxvk {
     DxvkImageViewKey        m_key       = { };
 
     uint32_t                m_version   = 0u;
+    uint32_t                m_types     = 0u;
 
     DxvkImageViewImageProperties m_properties = { };
 
