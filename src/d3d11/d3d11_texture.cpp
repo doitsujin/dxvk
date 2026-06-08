@@ -712,10 +712,11 @@ namespace dxvk {
 
         auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
 
-        if (!result.RowPitch) {
-          result.RowPitch   = elementSize * blockCount.width;
-          result.DepthPitch = elementSize * blockCount.width * blockCount.height;
-        }
+        if (!result.RowPitch)
+          result.RowPitch = elementSize * blockCount.width;
+
+        if (!result.DepthPitch || formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+          result.DepthPitch += elementSize * blockCount.width * blockCount.height;
 
         VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
 
