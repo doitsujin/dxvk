@@ -6029,11 +6029,10 @@ namespace dxvk {
     }
 
     // Set up and perform the actual data copy
-    D3D9ConstantBufferCopyArgs copyArgs = {};
-    copyArgs.floatConstantCount = dynamicFloatCount;
-    copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
-
     if (staticSize) {
+      D3D9ConstantBufferCopyArgs copyArgs = {};
+      copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
+
       // Allocate storage for statically indexed constants
       auto& buffer = GetConstantBuffer(ShaderType == D3D9ShaderType::VertexShader
         ? CbvIndex::VSStaticConstants
@@ -6056,9 +6055,24 @@ namespace dxvk {
       // Pad last block so we always write full cache lines
       copyArgs.boolBuffer = reinterpret_cast<char*>(staticData) + staticOffset;
       copyArgs.boolBufferSize = staticSize - staticOffset;
+
+      if (ShaderType == D3D9ShaderType::VertexShader) {
+        copyArgs.constFloatApi = m_state.vsConsts->fConsts;
+        copyArgs.constIntApi = m_state.vsConsts->iConsts;
+        copyArgs.constBoolApi = m_state.vsConsts->bConsts;
+      } else {
+        copyArgs.constFloatApi = m_state.psConsts->fConsts;
+        copyArgs.constIntApi = m_state.psConsts->iConsts;
+      }
+
+      layout->copyConstantData(copyArgs);
     }
 
     if (dynamicSize) {
+      D3D9ConstantBufferCopyArgs copyArgs = {};
+      copyArgs.floatConstantCount = dynamicFloatCount;
+      copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
+
       // Allocate storage for dynamically indexed floats. Pad this
       // to the full allocation size as well so we write everything.
       auto& buffer = GetConstantBuffer(CbvIndex::VSDynamicConstants);
@@ -6066,18 +6080,10 @@ namespace dxvk {
 
       copyArgs.floatBuffer = buffer.Alloc(dynamicSize);
       copyArgs.floatBufferSize = dynamicSize;
-    }
-
-    if (ShaderType == D3D9ShaderType::VertexShader) {
       copyArgs.constFloatApi = m_state.vsConsts->fConsts;
-      copyArgs.constIntApi = m_state.vsConsts->iConsts;
-      copyArgs.constBoolApi = m_state.vsConsts->bConsts;
-    } else {
-      copyArgs.constFloatApi = m_state.psConsts->fConsts;
-      copyArgs.constIntApi = m_state.psConsts->iConsts;
-    }
 
-    layout->copyConstantData(copyArgs);
+      layout->copyConstantData(copyArgs);
+    }
 
     constants.dirty = false;
   }
