@@ -341,6 +341,9 @@ namespace dxvk {
     VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
     /// Aspect flags to include in this view
     VkImageAspectFlags aspects = 0u;
+    /// If true, allow reinterpreting the view type, otherwise
+    /// bind a null descriptor if the type does not match.
+    VkBool32 allowTypeMismatch = VK_TRUE;
     /// First mip
     uint8_t mipIndex = 0u;
     /// Number of mips
@@ -359,6 +362,7 @@ namespace dxvk {
       hash.add(uint32_t(format));
       hash.add(uint32_t(layout));
       hash.add(uint32_t(aspects));
+      hash.add(uint32_t(allowTypeMismatch));
       hash.add(uint32_t(mipIndex) | (uint32_t(mipCount) << 16));
       hash.add(uint32_t(layerIndex) | (uint32_t(layerCount) << 16));
       hash.add(uint32_t(packedSwizzle));
@@ -371,6 +375,7 @@ namespace dxvk {
           && format == other.format
           && layout == other.layout
           && aspects == other.aspects
+          && allowTypeMismatch == other.allowTypeMismatch
           && mipIndex == other.mipIndex
           && mipCount == other.mipCount
           && layerIndex == other.layerIndex
