@@ -1240,13 +1240,19 @@ namespace dxvk {
       m_descriptorSync = std::move(syncHandle);
     }
 
-    void ensureDescriptorHeapBinding() {
-      if (unlikely(m_descriptorHeapInvalidated)) {
-        this->rebindSamplerHeap();
-        this->rebindResourceHeap();
+    bool ensureDescriptorHeapBinding() {
+      if (likely(!m_descriptorHeapInvalidated))
+        return true;
 
-        m_descriptorHeapInvalidated = false;
-      }
+      // Can't rebind inside secondaries
+      if (unlikely(m_execBuffer))
+        return false;
+
+      this->rebindSamplerHeap();
+      this->rebindResourceHeap();
+
+      m_descriptorHeapInvalidated = false;
+      return true;
     }
 
     void invalidateDescriptorHeapBinding() {

@@ -850,8 +850,9 @@ namespace dxvk {
     m_descriptorRange = m_descriptorHeap->allocRange();
     auto newBaseAddress = m_descriptorRange->getHeapInfo().gpuAddress;
 
-    if (newBaseAddress != oldBaseAddress) {
+    if (unlikely(newBaseAddress != oldBaseAddress)) {
       if (m_execBuffer) {
+        // Can't rebind heap on secondary
         m_descriptorRange = nullptr;
         return false;
       }

@@ -7134,7 +7134,8 @@ namespace dxvk {
 
     if constexpr (Model == DxvkBindingModel::DescriptorHeap) {
       // Make sure the heaps are actually valid and usable
-      m_cmd->ensureDescriptorHeapBinding();
+      if (unlikely(!m_cmd->ensureDescriptorHeapBinding()))
+        return false;
     } else {
       // The resource heap is always bound at index 1
       for (auto& index : bufferIndices)
@@ -8201,6 +8202,7 @@ namespace dxvk {
         this->endCurrentPass(true);
 
         m_cmd->createDescriptorRange();
+        m_cmd->ensureDescriptorHeapBinding();
 
         return this->commitGraphicsState<Indexed, Indirect>();
       }
