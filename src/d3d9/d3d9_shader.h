@@ -135,8 +135,6 @@ namespace dxvk {
 
     dxbc_spv::sm3::ShaderInfo GetInfo() const { return m_analysis.GetShaderInfo(); }
 
-    VkImageViewType GetImageViewType(uint32_t samplerSlot) const { return m_analysis.GetImageViewType(samplerSlot); }
-
   private:
 
     D3D9ShaderAnalysis    m_analysis;
