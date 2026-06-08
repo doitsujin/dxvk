@@ -43,33 +43,6 @@ namespace dxvk::hud {
   /**
    * \brief HUD item to display amount of generated SWVP shaders
    */
-  class HudSWVPShaders : public HudItem {
-
-  public:
-
-    HudSWVPShaders(D3D9DeviceEx* device);
-
-    void update(dxvk::high_resolution_clock::time_point time);
-
-    HudPos render(
-      const Rc<DxvkCommandList>&ctx,
-      const HudPipelineKey&     key,
-      const HudOptions&         options,
-            HudRenderer&        renderer,
-            HudPos              position);
-
-  private:
-
-    D3D9DeviceEx* m_device;
-
-    std::string m_swvpShaderCount;
-
-  };
-
-
-  /**
-   * \brief HUD item to whether or not we're in SWVP mode
-   */
   class HudSWVPState : public HudItem {
 
   public:
@@ -90,6 +63,7 @@ namespace dxvk::hud {
     D3D9DeviceEx* m_device;
 
     std::string m_isSWVPText;
+    std::string m_swvpShaderCount;
 
   };
 
