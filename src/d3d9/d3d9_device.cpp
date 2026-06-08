@@ -3619,8 +3619,6 @@ namespace dxvk {
 
     if (usesProgrammableVS) {
       BindShader<D3D9ShaderType::VertexShader>(GetCommonShader(shader));
-
-      UpdateTextureTypeMismatchesForShader(newShader, VSShaderMasks().samplerMask, FirstVSSamplerSlot);
     } else if (wasUsingProgrammableVS) {
       m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
       BindFFUbershader<D3D9ShaderType::VertexShader>();
@@ -3973,8 +3971,6 @@ namespace dxvk {
     if (shader != nullptr) {
       BindShader<D3D9ShaderType::PixelShader>(newShader);
 
-      UpdateTextureTypeMismatchesForShader(newShader, newShaderMasks.samplerMask, 0);
-
       bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(0u);
       constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
@@ -3996,12 +3992,6 @@ namespace dxvk {
     else {
       m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
       BindFFUbershader<D3D9ShaderType::PixelShader>();
-
-      // TODO: What fixed function textures are in use?
-      // Currently we are making all 8 of them as in use here.
-      // Fixed function always uses spec constants to decide the texture type.
-      m_textureSlotTracking.textureDirty |= newShaderMasks.samplerMask & m_textureSlotTracking.mismatchingTextureType;
-      m_textureSlotTracking.mismatchingTextureType &= ~newShaderMasks.samplerMask;
     }
 
     // Check whether the color output mask or the mask of the used samplers
@@ -6424,7 +6414,6 @@ namespace dxvk {
     m_textureSlotTracking.bound                  &= ~bit;
     m_textureSlotTracking.needsUpload            &= ~bit;
     m_textureSlotTracking.needsMipGen            &= ~bit;
-    m_textureSlotTracking.mismatchingTextureType &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
 
@@ -6473,8 +6462,6 @@ namespace dxvk {
 
       if (unlikely(m_textureSlotTracking.fetch4SamplerState & bit))
         UpdateActiveFetch4(index);
-
-      UpdateTextureTypeMismatchesForTexture(index);
     } else {
       if (unlikely(m_textureSlotTracking.fetch4 & bit))
         UpdateActiveFetch4(index);
@@ -6704,72 +6691,6 @@ namespace dxvk {
       UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]));
 
     m_textureSlotTracking.needsUpload &= ~mask;
-  }
-
-
-  void D3D9DeviceEx::UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset) {
-    const uint32_t stageCorrectedShaderSamplerMask = shaderSamplerMask << shaderSamplerOffset;
-    if (unlikely(shader->GetInfo().getVersion().first < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
-      // SM 1 shaders don't define the texture type in the shader.
-      // We always use spec constants for those.
-      m_textureSlotTracking.textureDirty |= stageCorrectedShaderSamplerMask & m_textureSlotTracking.mismatchingTextureType;
-      m_textureSlotTracking.mismatchingTextureType &= ~stageCorrectedShaderSamplerMask;
-      return;
-    }
-
-    for (const uint32_t i : bit::BitMask(stageCorrectedShaderSamplerMask)) {
-      const D3D9CommonTexture* texture = GetCommonTexture(m_state.textures[i]);
-      if (unlikely(texture == nullptr)) {
-        // Unbound textures are not mismatching texture types
-        m_textureSlotTracking.textureDirty |= m_textureSlotTracking.mismatchingTextureType & (1 << i);
-        m_textureSlotTracking.mismatchingTextureType &= ~(1 << i);
-        continue;
-      }
-
-      VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(texture->GetType(), D3D9CommonTexture::AllLayers);
-      VkImageViewType shaderViewType = shader->GetImageViewType(i - shaderSamplerOffset);
-      if (unlikely(boundViewType != shaderViewType)) {
-        m_textureSlotTracking.textureDirty |= 1 << i;
-        m_textureSlotTracking.mismatchingTextureType |= 1 << i;
-      } else {
-        // The texture type is no longer mismatching, make sure we bind the texture now.
-        m_textureSlotTracking.textureDirty |= m_textureSlotTracking.mismatchingTextureType & (1 << i);
-        m_textureSlotTracking.mismatchingTextureType &= ~(1 << i);
-      }
-    }
-  }
-
-
-  void D3D9DeviceEx::UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler) {
-    uint32_t shaderTextureIndex;
-    const D3D9CommonShader* shader;
-    if (likely(IsPSSampler(stateSampler))) {
-      shader = GetCommonShader(m_state.pixelShader);
-      shaderTextureIndex = stateSampler;
-    } else if (unlikely(IsVSSampler(stateSampler))) {
-      shader = GetCommonShader(m_state.vertexShader);
-      shaderTextureIndex = stateSampler - caps::MaxTexturesPS - 1;
-    } else {
-      // Do not type check the fixed function displacement map texture.
-      return;
-    }
-
-    if (unlikely(shader == nullptr || shader->GetInfo().getVersion().first < 2 || m_d3d9Options.forceSamplerTypeSpecConstants)) {
-      // This function only gets called by UpdateTextureBitmasks
-      // which clears the dirty and mismatching bits for the texture before anyway.
-      return;
-    }
-
-    const D3D9CommonTexture* tex = GetCommonTexture(m_state.textures[stateSampler]);
-    VkImageViewType boundViewType  = D3D9CommonTexture::GetImageViewTypeFromResourceType(tex->GetType(), D3D9CommonTexture::AllLayers);
-    VkImageViewType shaderViewType = shader->GetImageViewType(shaderTextureIndex);
-    // D3D9 does not have 1D textures. The value of VIEW_TYPE_1D is 0
-    // which is the default when there is no declaration for the type.
-    bool shaderUsesTexture = shaderViewType != VkImageViewType(0);
-    if (unlikely(boundViewType != shaderViewType && shaderUsesTexture)) {
-      const uint32_t samplerBit = 1u << stateSampler;
-      m_textureSlotTracking.mismatchingTextureType |= samplerBit;
-    }
   }
 
 
@@ -7586,8 +7507,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtyTextures(uint32_t usedMask) {
-    const uint32_t activeMask   = usedMask &  (m_textureSlotTracking.bound & ~m_textureSlotTracking.mismatchingTextureType);
-    const uint32_t inactiveMask = usedMask & (~m_textureSlotTracking.bound | m_textureSlotTracking.mismatchingTextureType);
+    const uint32_t activeMask   = usedMask & m_textureSlotTracking.bound;
+    const uint32_t inactiveMask = usedMask & ~m_textureSlotTracking.bound;
 
     for (uint32_t i : bit::BitMask(activeMask))
       BindTexture(i);

@@ -124,9 +124,6 @@ namespace dxvk {
      * There's 3 texture types, so every texture/sampler slot uses 2 bits. */
     uint32_t textureType = 0;
 
-    /** Whether the type of the texture currently bound to each slot matches the texture type that the shader expects */
-    uint32_t mismatchingTextureType = 0;
-
     /** Whether projected texture lookup is enabled for each texture/sampler slot. This is only used for generating fixed function shaders. */
     uint32_t projected = 0;
 
@@ -937,42 +934,6 @@ namespace dxvk {
     void EmitFeedbackLoopBarriers();
 
     void UpdateActiveFetch4(uint32_t stateSampler);
-
-    /**
-     * @brief Sets the mismatching texture type bits for all samplers if necessary.
-     *
-     * This function will check all samplers the shader uses and set the  set the mismatching texture type bit for the given sampler if it does not
-     * match the texture type expected by the respective shader.
-     *
-     * It will *not* unset the bit if the texture type does match.
-     *
-     * @param stateSampler Sampler index (according to our internal way of storing samplers)
-     */
-
-     /**
-      * @brief Sets the mismatching texture type bits for all samplers if necessary.
-      *
-      * This function will check all samplers the shader uses and set the  set the mismatching texture type bit for the given sampler if it does not
-      * match the texture type expected by the shader.
-      *
-      * @param shader The shader
-      * @param shaderSamplerMask Mask of all samplers that the shader uses (according to our internal way of storing samplers)
-      * @param shaderSamplerOffset First index of the shader's samplers according to our internal way of storing samplers.
-      *                            Used to transform the sampler indices that are relative to the entire pipeline to ones relative to the shader.
-      */
-    void UpdateTextureTypeMismatchesForShader(const D3D9CommonShader* shader, uint32_t shaderSamplerMask, uint32_t shaderSamplerOffset);
-
-    /**
-     * @brief Sets the mismatching texture type bit for the given sampler.
-     *
-     * This function will set the mismatching texture type bit for the given sampler if it does not
-     * match the texture type expected by the respective shader.
-     *
-     * It will *not* unset the bit if the texture type does match.
-     *
-     * @param stateSampler Sampler index (according to our internal way of storing samplers)
-     */
-    void UpdateTextureTypeMismatchesForTexture(uint32_t stateSampler);
 
     void UploadManagedTexture(D3D9CommonTexture* pResource);
 
