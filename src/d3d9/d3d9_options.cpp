@@ -42,7 +42,8 @@ namespace dxvk {
     this->hideAmdGpu                    = config.getOption<Tristate>    ("d3d9.hideAmdGpu",                    Tristate::Auto) == Tristate::True;
     this->hideIntelGpu                  = config.getOption<Tristate>    ("d3d9.hideIntelGpu",                  Tristate::True) == Tristate::True;
     this->maxFrameLatency               = config.getOption<int32_t>     ("d3d9.maxFrameLatency",               0);
-    this->maxFrameRate                  = config.getOption<int32_t>     ("d3d9.maxFrameRate",                  0);
+    this->maxFrameRate                  = config.getOption<int32_t>     ("dxvk.maxFrameRate",
+                                          config.getOption<int32_t>     ("d3d9.maxFrameRate",                  0));
     this->presentInterval               = config.getOption<int32_t>     ("d3d9.presentInterval",               -1);
     this->shaderModel                   = config.getOption<int32_t>     ("d3d9.shaderModel",                   3u);
     this->dpiAware                      = config.getOption<bool>        ("d3d9.dpiAware",                      true);
@@ -77,10 +78,10 @@ namespace dxvk {
     this->extraFrontbuffer              = config.getOption<bool>        ("d3d9.extraFrontbuffer",              false);
 
     // D3D8 options
-    this->drefScaling                   = config.getOption<int32_t>     ("d3d8.scaleDref",                     0);
+    this->drefScaling = config.getOption<int32_t>("d3d8.scaleDref", 0);
 
     // Clamp the shader model value between 0 and 3
-    this->shaderModel    = dxvk::clamp(this->shaderModel, 0u, 3u);
+    this->shaderModel = dxvk::clamp(this->shaderModel, 0u, 3u);
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 
