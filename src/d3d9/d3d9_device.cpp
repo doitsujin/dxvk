@@ -8297,44 +8297,86 @@ namespace dxvk {
   }
 
 
-  D3D9FFShaderKeyFS D3D9DeviceEx::BuildFFKeyFS() const {
-     // Used args for a given operation.
-    auto ArgsMask = [](DWORD Op) {
-      switch (Op) {
-        case D3DTOP_DISABLE:
-          return 0b000u; // No Args
-        case D3DTOP_SELECTARG1:
-        case D3DTOP_PREMODULATE:
-          return 0b010u; // Arg 1
-        case D3DTOP_SELECTARG2:
-          return 0b100u; // Arg 2
-        case D3DTOP_MULTIPLYADD:
-        case D3DTOP_LERP:
-          return 0b111u; // Arg 0, 1, 2
-        default:
-          return 0b110u; // Arg 1, 2
-      }
-    };
+  D3D9TextureStageStateFlags D3D9DeviceEx::GetTextureStageStateFlags(
+          D3DTEXTUREOP          Op,
+          UINT                  Arg0,
+          UINT                  Arg1,
+          UINT                  Arg2) {
+    uint32_t usedArgMask;
 
+    switch (Op) {
+      // No args
+      case D3DTOP_DISABLE: {
+        usedArgMask = 0b000u;
+      } break;
+
+      // Arg 1 only
+      case D3DTOP_SELECTARG1:
+      case D3DTOP_PREMODULATE: {
+        usedArgMask = 0b010u;
+      } break;
+
+      // Arg 2 only
+      case D3DTOP_SELECTARG2: {
+        usedArgMask = 0b100u;
+      } break;
+
+      // Arg 0, 1, 2
+      case D3DTOP_MULTIPLYADD:
+      case D3DTOP_LERP: {
+        usedArgMask = 0b111u;
+      } break;
+
+      // Arg 1, 2
+      default: {
+        usedArgMask = 0b110u;
+      } break;
+    }
+
+    // Some ops inherently sample the texture or use the current
+    // accumulator even if there is no explicit texture argument
+    D3D9TextureStageStateFlags result = {};
+
+    if (Op == D3DTOP_BLENDTEXTUREALPHA
+     || Op == D3DTOP_BLENDTEXTUREALPHAPM)
+      result.set(D3D9TextureStageStateFlag::UsesTexture);
+
+    if (Op == D3DTOP_BLENDCURRENTALPHA)
+      result.set(D3D9TextureStageStateFlag::UsesCurrent);
+
+    // Check stage arguments actually used by the op
+    std::array<UINT, 3u> args = { Arg0, Arg1, Arg2 };
+
+    for (uint32_t i = 0u; i < args.size(); i++) {
+      if (usedArgMask & (1u << i)) {
+        auto arg = args[i] & D3DTA_SELECTMASK;
+
+        if (arg == D3DTA_TEXTURE)
+          result.set(D3D9TextureStageStateFlag::UsesTexture);
+        else if (arg == D3DTA_CURRENT)
+          result.set(D3D9TextureStageStateFlag::UsesCurrent);
+        else if (arg == D3DTA_TEMP)
+          result.set(D3D9TextureStageStateFlag::UsesTemp);
+      }
+    }
+
+    return result;
+  }
+
+
+  std::pair<D3D9FFShaderKeyFS, uint32_t> D3D9DeviceEx::BuildFFKeyFS() const {
     D3D9FFShaderKeyFS key;
 
     uint32_t activeTextureStageCount = 0;
+
+    uint32_t currTextureMask = 0u;
+    uint32_t tempTextureMask = 0u;
+
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      auto& stage = key.Stages[i].Contents;
       auto& data  = m_state.textureStages[i];
 
-      // Subsequent stages do not occur if this is true.
-      if (data[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
-        break;
-
-      // If the stage is invalid (ie. no texture bound),
-      // this and all subsequent stages get disabled.
-      if (m_state.textures[i] == nullptr) {
-        if (((data[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 0u)))
-         || ((data[DXVK_TSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 1u)))
-         || ((data[DXVK_TSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 2u))))
-          break;
-      }
+      D3D9FFShaderStage stageUnion = {};
+      auto& stage = stageUnion.Contents;
 
       stage.ColorOp = data[DXVK_TSS_COLOROP];
       stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
@@ -8349,6 +8391,34 @@ namespace dxvk {
 
       stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
 
+      // Subsequent stages do not occur if this is true.
+      if (stage.ColorOp == D3DTOP_DISABLE)
+        break;
+
+      auto stageFlags = GetTextureStageStateFlags(D3DTEXTUREOP(stage.ColorOp), stage.ColorArg0, stage.ColorArg1, stage.ColorArg2)
+                      | GetTextureStageStateFlags(D3DTEXTUREOP(stage.AlphaOp), stage.AlphaArg0, stage.AlphaArg1, stage.AlphaArg2);
+
+      // If the stage is invalid (ie. no texture bound),
+      // this and all subsequent stages get disabled.
+      if (stageFlags.test(D3D9TextureStageStateFlag::UsesTexture) && !m_state.textures[i])
+        break;
+
+      uint32_t stageTextureMask = 0u;
+
+      if (stageFlags.test(D3D9TextureStageStateFlag::UsesTexture))
+        stageTextureMask |= 1u << i;
+      if (stageFlags.test(D3D9TextureStageStateFlag::UsesCurrent))
+        stageTextureMask |= currTextureMask;
+      if (stageFlags.test(D3D9TextureStageStateFlag::UsesTemp))
+        stageTextureMask |= tempTextureMask;
+
+      if (stage.ResultIsTemp)
+        tempTextureMask = stageTextureMask;
+      else
+        currTextureMask = stageTextureMask;
+
+      key.Stages[i].Contents = stage;
+
       activeTextureStageCount = i + 1;
     }
 
@@ -8362,10 +8432,12 @@ namespace dxvk {
     }
 
     // The last stage *always* writes to current.
-    if (activeTextureStageCount >= 1)
+    if (activeTextureStageCount >= 1 && key.Stages[activeTextureStageCount - 1].Contents.ResultIsTemp) {
       key.Stages[activeTextureStageCount - 1].Contents.ResultIsTemp = false;
+      currTextureMask = tempTextureMask;
+    }
 
-    return key;
+    return std::make_pair(key, currTextureMask);
   }
 
 
@@ -8374,7 +8446,7 @@ namespace dxvk {
       return;
 
     // Shader...
-    D3D9FFShaderKeyFS key = BuildFFKeyFS();
+    auto [key, textureMask] = BuildFFKeyFS();
 
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader)) {
       // The flags are set based on the specialized shaders.

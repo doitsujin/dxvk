@@ -1454,7 +1454,7 @@ namespace dxvk {
     void UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode);
 
     D3D9FFShaderKeyVS BuildFFKeyVS(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend) const;
-    D3D9FFShaderKeyFS BuildFFKeyFS() const;
+    std::pair<D3D9FFShaderKeyFS, uint32_t> BuildFFKeyFS() const;
 
     void BindSpecConstants();
 
@@ -1551,6 +1551,12 @@ namespace dxvk {
     bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
 
     void InitShaderOptions();
+
+    static D3D9TextureStageStateFlags GetTextureStageStateFlags(
+            D3DTEXTUREOP          Op,
+            UINT                  Arg0,
+            UINT                  Arg1,
+            UINT                  Arg2);
 
     Com<D3D9InterfaceEx>            m_parent;
     D3D9Options                     m_d3d9Options;
