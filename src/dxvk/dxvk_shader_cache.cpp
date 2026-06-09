@@ -227,6 +227,21 @@ namespace dxvk {
       m_lut.insert_or_assign(k, e);
     }
 
+    auto cacheSize = m_binFile.size();;
+
+    std::stringstream message;
+    message << "Cache: " << m_lut.size() << " shaders (";
+
+    if (cacheSize >= (1ull << 20)) {
+      auto mib = (10ull * cacheSize) >> 20;
+      message << (mib / 10ull) << "." << (mib % 10ull) << " MB";
+    } else {
+      message << (cacheSize >> 10u) << " kB";
+    }
+
+    message << ")";
+
+    Logger::info(message.str());
     return true;
   }
 
