@@ -142,23 +142,22 @@ namespace dxvk {
           uint32_t memberIndex = cbvType.getStructMemberCount();
           cbvType.addStructMember(type);
 
-          auto debugName = getDebugName(decl, range.srcIndex + n);
+          const auto& debugName = m_builder.getOp(getDebugName(decl, range.srcIndex + n));
 
-          if (debugName) {
-            m_builder.rewriteOp(debugName, ir::Op(m_builder.getOp(debugName))
-              .setOperand(0u, cbv)
-              .setOperand(1u, memberIndex));
-          } else {
-            std::string name;
+          std::stringstream name;
 
-            switch (builtIn) {
-              case ir::BuiltIn::eLegacyConstBool: name = str::format("b", range.srcIndex + n); break;
-              case ir::BuiltIn::eLegacyConstInt:  name = str::format("i", range.srcIndex + n); break;
-              default: name = str::format("c", range.srcIndex + n); break;
-            }
-
-            m_builder.add(ir::Op::DebugMemberName(cbv, memberIndex, name.c_str()));
+          switch (builtIn) {
+            case ir::BuiltIn::eLegacyConstBool: name << "b"; break;
+            case ir::BuiltIn::eLegacyConstInt: name << "i"; break;
+            default: name << "c";
           }
+
+          name << range.srcIndex + n;
+
+          if (debugName)
+            name << "_" << debugName.getLiteralString(2u);
+
+          m_builder.add(ir::Op::DebugMemberName(cbv, memberIndex, name.str().c_str()));
         }
       }
     }
