@@ -3798,7 +3798,9 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetStreamSourceFreq(StreamNumber, Setting);
 
-    if (m_state.streamFreq[StreamNumber] == Setting)
+    UINT oldSetting = m_state.streamFreq[StreamNumber];
+
+    if (oldSetting == Setting)
       return D3D_OK;
 
     m_state.streamFreq[StreamNumber] = Setting;
@@ -3808,7 +3810,10 @@ namespace dxvk {
     else
       m_vbSlotTracking.instanced &= ~(1u << StreamNumber);
 
-    m_dirty.set(D3D9DeviceDirtyFlag::InputLayout);
+    // If both the previous and current setting are vertex data, the
+    // change only affects the instance count, not the input layout.
+    if ((oldSetting | Setting) & D3DSTREAMSOURCE_INSTANCEDATA)
+      m_dirty.set(D3D9DeviceDirtyFlag::InputLayout);
 
     return D3D_OK;
   }
@@ -7777,6 +7782,7 @@ namespace dxvk {
           binding.extent = vertexSizes[attrib.binding];
 
           uint32_t instanceData = cStreamFreq[binding.binding % caps::MaxStreams];
+
           if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
             binding.divisor = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
             binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
