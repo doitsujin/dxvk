@@ -8123,7 +8123,7 @@ namespace dxvk {
   }
 
 
-  D3D9FFShaderKeyVS D3D9DeviceEx::BuildFFKeyVS(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend) const {
+  D3D9FFShaderKeyVS D3D9DeviceEx::BuildFFKeyVS(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend, uint32_t lightCount) const {
     D3D9FFShaderKeyVS key;
     key.Data.Contents.VertexHasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
     key.Data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0);
@@ -8149,16 +8149,7 @@ namespace dxvk {
     key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
     key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
 
-    uint32_t lightCount = 0;
-
-    if (key.Data.Contents.UseLighting) {
-      for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
-        if (m_state.enabledLightIndices[i] != std::numeric_limits<uint32_t>::max())
-          lightCount++;
-      }
-    }
-
-    key.Data.Contents.LightCount = lightCount;
+    key.Data.Contents.LightCount       = key.Data.Contents.UseLighting ? lightCount : 0;
 
     for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
       uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
@@ -8272,12 +8263,18 @@ namespace dxvk {
         if (idx == std::numeric_limits<uint32_t>::max())
           continue;
 
-        data->Lights[lightIdx++] = D3D9Light(m_state.lights[idx].value(), m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);
+        // D3D8/9 will allow lights with invalid types to be set and retrieved,
+        // and even enabled, however they won't affect overall lighting
+        const D3DLIGHT9& light = m_state.lights[idx].value();
+        if (unlikely(light.Type == 0 || light.Type > D3DLIGHT_DIRECTIONAL))
+          continue;
+
+        data->Lights[lightIdx++] = D3D9Light(light, m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);
       }
 
       data->Material = m_state.material;
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
-      data->Key = BuildFFKeyVS(vertexBlendMode, indexedVertexBlend).Data;
+      data->Key = BuildFFKeyVS(vertexBlendMode, indexedVertexBlend, lightIdx).Data;
     }
 
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
