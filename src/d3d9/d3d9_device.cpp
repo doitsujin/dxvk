@@ -7720,15 +7720,15 @@ namespace dxvk {
         streamFreq[i] = m_state.streamFreq[i];
 
       Com<D3D9VertexDecl,   false> vertexDecl = m_state.vertexDecl;
-      Com<D3D9VertexShader, false> vertexShader;
 
-      if (UseProgrammableVS())
-        vertexShader = m_state.vertexShader;
+      const auto& inputSignature = UseProgrammableVS()
+        ? GetCommonShader(m_state.vertexShader)->GetInputSignature()
+        : GetFixedFunctionIsgn();
 
       EmitCs([
         &cIaState         = m_iaState,
         cVertexDecl       = std::move(vertexDecl),
-        cVertexShader     = std::move(vertexShader),
+        cInputSignature   = inputSignature,
         cStreamsInstanced = m_vbSlotTracking.instanced,
         cStreamFreq       = streamFreq
       ] (DxvkContext* ctx) {
@@ -7740,15 +7740,10 @@ namespace dxvk {
         std::array<uint16_t,        caps::MaxStreams + 1u> vertexSizes = { };
 
         uint32_t bindMask = 0;
-
-        const auto& isgn = cVertexShader != nullptr
-          ? GetCommonShader(cVertexShader)->GetInputSignature()
-          : GetFixedFunctionIsgn();
-
-        uint32_t attrCount = isgn.size();
+        uint32_t attrCount = cInputSignature.size();
 
         for (uint32_t i = 0; i < attrCount; i++) {
-          const auto& shaderElementSemantic = isgn[i];
+          const auto& shaderElementSemantic = cInputSignature.get(i);
 
           DxvkVertexAttribute attrib = { };
           attrib.location = i;

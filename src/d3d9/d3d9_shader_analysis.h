@@ -39,7 +39,64 @@ struct D3D9ShaderConstantsInfo {
 
 using D3D9RenderTargetMask = uint8_t;
 using D3D9SamplerMask      = uint32_t;
-using D3D9InputSignature   = small_vector<dxbc_spv::sm3::Semantic, 16u>;
+
+/**
+ * \brief Packed semantic
+ *
+ * Extremely compact representation of a semantic
+ * that can be used for look-up purposes.
+ */
+struct D3D9PackedSemantic {
+  D3D9PackedSemantic() = default;
+
+  explicit D3D9PackedSemantic(dxbc_spv::sm3::Semantic semantic)
+  : usage(uint8_t(semantic.usage))
+  , index(uint8_t(semantic.index)) { }
+
+  explicit operator dxbc_spv::sm3::Semantic() const {
+    dxbc_spv::sm3::Semantic semantic = {};
+    semantic.usage = dxbc_spv::sm3::SemanticUsage(usage);
+    semantic.index = index;
+    return semantic;
+  }
+
+  uint8_t usage : 4u;
+  uint8_t index : 4u;
+};
+
+/**
+ * \brief Input signature
+ *
+ * Fixed-size structure that stores the semantic that
+ * corresponds to any given vertex shader inputs.
+ */
+class D3D9InputSignature {
+
+public:
+
+  uint32_t size() const {
+    return m_size;
+  }
+
+  D3D9PackedSemantic getPacked(uint32_t index) const {
+    return m_entries[index];
+  }
+
+  dxbc_spv::sm3::Semantic get(uint32_t index) const {
+    return dxbc_spv::sm3::Semantic(getPacked(index));
+  }
+
+  void add(dxbc_spv::sm3::Semantic semantic) {
+    dxbc_spv_assert(semantic.index < 16u);
+    m_entries.at(m_size++) = D3D9PackedSemantic(semantic);
+  }
+
+private:
+
+  uint8_t                             m_size = 0u;
+  std::array<D3D9PackedSemantic, 31u> m_entries = {};
+
+};
 
 class D3D9ShaderAnalysis {
 

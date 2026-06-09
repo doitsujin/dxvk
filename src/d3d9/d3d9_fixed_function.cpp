@@ -146,18 +146,18 @@ namespace dxvk {
   static inline D3D9InputSignature CreateFixedFunctionIsgn() {
     D3D9InputSignature ffIsgn;
 
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 1u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 1u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePosition, 1u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eNormal, 1u });
     for (uint32_t i = 0u; i < 8u; i++)
-      ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eTexCoord, i });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 1u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eFog, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePointSize, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendWeight, 0u });
-    ffIsgn.push_back(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendIndices, 0u });
+      ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eTexCoord, i });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eColor, 1u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eFog, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::ePointSize, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendWeight, 0u });
+    ffIsgn.add(dxbc_spv::sm3::Semantic { dxbc_spv::sm3::SemanticUsage::eBlendIndices, 0u });
 
     return ffIsgn;
   }

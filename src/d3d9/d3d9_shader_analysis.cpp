@@ -310,7 +310,7 @@ namespace dxvk {
     }
 
     if (registerType == RegisterType::eInput && GetShaderInfo().getType() == ShaderType::eVertex) {
-      m_inputSignature.push_back(Semantic { dcl.getSemanticUsage(), dcl.getSemanticIndex() });
+      m_inputSignature.add(Semantic { dcl.getSemanticUsage(), dcl.getSemanticIndex() });
       return true;
     }
 
