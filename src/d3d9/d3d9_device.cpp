@@ -7732,23 +7732,22 @@ namespace dxvk {
         cStreamsInstanced = m_vbSlotTracking.instanced,
         cStreamFreq       = streamFreq
       ] (DxvkContext* ctx) {
-        cIaState.streamsInstanced = cStreamsInstanced;
-        cIaState.streamsUsed      = 0;
-
         const auto& elements = cVertexDecl->GetElements();
 
-        std::array<DxvkVertexInput, 2 * caps::InputRegisterCount> attrList = { };
-        std::array<DxvkVertexInput, 2 * caps::InputRegisterCount> bindList = { };
-        std::array<uint32_t, 2 * caps::InputRegisterCount> vertexSizes = { };
+        // Fixed-function can have a lot of attributes...
+        std::array<DxvkVertexInput, caps::InputRegisterCount * 2u> attrList;
+        std::array<DxvkVertexInput, caps::MaxStreams + 1u> bindList;
+        std::array<uint16_t,        caps::MaxStreams + 1u> vertexSizes = { };
 
-        uint32_t attrMask = 0;
         uint32_t bindMask = 0;
 
         const auto& isgn = cVertexShader != nullptr
           ? GetCommonShader(cVertexShader)->GetInputSignature()
           : GetFixedFunctionIsgn();
 
-        for (uint32_t i = 0; i < isgn.size(); i++) {
+        uint32_t attrCount = isgn.size();
+
+        for (uint32_t i = 0; i < attrCount; i++) {
           const auto& shaderElementSemantic = isgn[i];
 
           DxvkVertexAttribute attrib = { };
@@ -7758,7 +7757,10 @@ namespace dxvk {
           attrib.offset   = 0;
 
           for (const auto& element : elements) {
-            dxbc_spv::sm3::Semantic elementSemantic = { static_cast<dxbc_spv::sm3::SemanticUsage>(element.Usage), element.UsageIndex };
+            dxbc_spv::sm3::Semantic elementSemantic = {};
+            elementSemantic.usage = dxbc_spv::sm3::SemanticUsage(element.Usage);
+            elementSemantic.index = element.UsageIndex;
+
             if (elementSemantic.usage == dxbc_spv::sm3::SemanticUsage::ePositionT)
               elementSemantic.usage = dxbc_spv::sm3::SemanticUsage::ePosition;
 
@@ -7767,7 +7769,7 @@ namespace dxvk {
               attrib.format  = DecodeDecltype(D3DDECLTYPE(element.Type));
               attrib.offset  = element.Offset;
 
-              cIaState.streamsUsed |= 1u << attrib.binding;
+              bindMask |= 1u << attrib.binding;
               break;
             }
           }
@@ -7775,37 +7777,45 @@ namespace dxvk {
           attrList[i] = DxvkVertexInput(attrib);
 
           vertexSizes[attrib.binding] = std::max(vertexSizes[attrib.binding],
-            uint32_t(attrib.offset + lookupFormatInfo(attrib.format)->elementSize));
-
-          DxvkVertexBinding binding = { };
-          binding.binding = attrib.binding;
-          binding.extent = vertexSizes[attrib.binding];
-
-          uint32_t instanceData = cStreamFreq[binding.binding % caps::MaxStreams];
-
-          if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
-            binding.divisor = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
-            binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-          }
-          else {
-            binding.divisor = 0u;
-            binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-          }
-
-          bindList[binding.binding] = DxvkVertexInput(binding);
-
-          attrMask |= 1u << i;
-          bindMask |= 1u << binding.binding;
+            uint16_t(attrib.offset + lookupFormatInfo(attrib.format)->elementSize));
         }
 
-        // Compact the attribute and binding lists to filter
-        // out attributes and bindings not used by the shader
-        uint32_t attrCount = CompactSparseList(attrList.data(), attrMask);
-        uint32_t bindCount = CompactSparseList(bindList.data(), bindMask);
+        // Set up compacted bindings for all streams referenced by the
+        // attributes, including a dummy null binding if necessary.
+        uint32_t bindCount = 0u;
+
+        for (auto i : bit::BitMask(bindMask)) {
+          DxvkVertexBinding binding = { };
+          binding.binding = i;
+          binding.extent = vertexSizes[i];
+
+          if (likely(i < NullStreamIdx)) {
+            uint32_t instanceData = cStreamFreq[binding.binding % caps::MaxStreams];
+
+            if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
+              // Remove instance packed-in flags in the data.
+              binding.divisor = instanceData & 0x7fffffu;
+              binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+            } else {
+              binding.divisor = 0u;
+              binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+            }
+          } else {
+            // Dummy binding, just fetch the same null value
+            binding.divisor = 0u;
+            binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+          }
+
+          bindList[bindCount++] = DxvkVertexInput(binding);
+        }
 
         ctx->setInputLayout(
           attrCount, attrList.data(),
           bindCount, bindList.data());
+
+        // Write feedback. This is only used on the CS thread.
+        cIaState.streamsInstanced = cStreamsInstanced;
+        cIaState.streamsUsed = bindMask;
       });
     }
   }
