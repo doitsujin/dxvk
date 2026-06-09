@@ -464,23 +464,34 @@ namespace dxvk {
     bool stop = false;
 
     while (!stop) {
-      std::unique_lock lock(m_writeMutex);
+      bool drain = false;
 
-      m_writeCond.wait(lock, [this] {
-        return !m_writeQueue.empty();
-      });
+      while (!drain) {
+        std::unique_lock lock(m_writeMutex);
 
-      auto entry = std::move(m_writeQueue.front());
-      m_writeQueue.pop();
+        bool status = m_writeCond.wait_for(lock, std::chrono::seconds(10),
+          [this] { return !m_writeQueue.empty(); });
 
-      lock.unlock();
+        if (status) {
+          // Buffer shaders locally first so that we avoid hitting paths where this
+          // thread would compile the shader in place of any of the designated workers.
+          // This can still happen and is somewhat harmless, but should be rare.
+          Rc<DxvkIrShader> entry = std::move(m_writeQueue.front());
 
-      stop = !entry;
-      bool drain = stop;
+          if (entry) {
+            localQueue.push_back(std::move(entry));
+            drain = localQueue.size() == localQueue.capacity();
+          } else {
+            stop = true;
+            drain = true;
+          }
 
-      if (entry) {
-        localQueue.push_back(std::move(entry));
-        drain = localQueue.size() == localQueue.capacity();
+          m_writeQueue.pop();
+        } else {
+          // Write out pending shaders if we have timed out on the wait.
+          // They probably have finished compiling by this point anyway.
+          drain = !localQueue.empty();
+        }
       }
 
       if (drain) {
