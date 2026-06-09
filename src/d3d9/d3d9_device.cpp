@@ -7707,66 +7707,67 @@ namespace dxvk {
   void D3D9DeviceEx::BindInputLayout() {
     m_dirty.clr(D3D9DeviceDirtyFlag::InputLayout);
 
-    if (m_state.vertexDecl == nullptr) {
-      EmitCs([&cIaState = m_iaState] (DxvkContext* ctx) {
-        cIaState.streamsUsed = 0;
-        ctx->setInputLayout(0, nullptr, 0, nullptr);
-      });
-    }
-    else {
+    if (likely(m_state.vertexDecl)) {
       std::array<uint32_t, caps::MaxStreams> streamFreq;
 
       for (uint32_t i = 0; i < caps::MaxStreams; i++)
         streamFreq[i] = m_state.streamFreq[i];
 
-      Com<D3D9VertexDecl,   false> vertexDecl = m_state.vertexDecl;
+      const auto& vertexElements = m_state.vertexDecl->GetElements();
 
       const auto& inputSignature = UseProgrammableVS()
         ? GetCommonShader(m_state.vertexShader)->GetInputSignature()
         : GetFixedFunctionIsgn();
 
-      EmitCs([
+      auto elementCount = vertexElements.size();
+      auto elementData = EmitCsCmd<D3DVERTEXELEMENT9>(elementCount, [
         &cIaState         = m_iaState,
-        cVertexDecl       = std::move(vertexDecl),
         cInputSignature   = inputSignature,
         cStreamsInstanced = m_vbSlotTracking.instanced,
         cStreamFreq       = streamFreq
-      ] (DxvkContext* ctx) {
-        const auto& elements = cVertexDecl->GetElements();
-
-        // Fixed-function can have a lot of attributes...
-        std::array<DxvkVertexInput, caps::InputRegisterCount * 2u> attrList;
-        std::array<DxvkVertexInput, caps::MaxStreams + 1u> bindList;
-        std::array<uint16_t,        caps::MaxStreams + 1u> vertexSizes = { };
-
-        uint32_t bindMask = 0;
+      ] (DxvkContext* ctx, const D3DVERTEXELEMENT9* elements, uint32_t elementCount) {
         uint32_t attrCount = cInputSignature.size();
 
+        // Map each vertex declaration entry to an attribute
+        std::array<uint8_t, caps::InputRegisterCount * 2u> attrMap;
+        std::fill(attrMap.begin(), attrMap.end(), 0xffu);
+
+        for (uint32_t i = 0u; i < elementCount; i++) {
+          dxbc_spv::sm3::Semantic elementSemantic = {};
+          elementSemantic.usage = dxbc_spv::sm3::SemanticUsage(elements[i].Usage);
+          elementSemantic.index = elements[i].UsageIndex;
+
+          if (elementSemantic.usage == dxbc_spv::sm3::SemanticUsage::ePositionT)
+            elementSemantic.usage = dxbc_spv::sm3::SemanticUsage::ePosition;
+
+          uint32_t index = cInputSignature.find(elementSemantic);
+
+          if (index < attrCount)
+            attrMap[index] = uint8_t(i);
+        }
+
+        // Fixed-function can have a lot of attributes...
+        std::array<DxvkVertexInput, caps::InputRegisterCount * 2u> attrList = {};
+        std::array<DxvkVertexInput, caps::MaxStreams + 1u> bindList = {};
+        std::array<uint16_t,        caps::MaxStreams + 1u> vertexSizes = {};
+
+        uint32_t bindMask = 0;
+
         for (uint32_t i = 0; i < attrCount; i++) {
-          const auto& shaderElementSemantic = cInputSignature.get(i);
-
-          DxvkVertexAttribute attrib = { };
+          DxvkVertexAttribute attrib = {};
           attrib.location = i;
-          attrib.binding  = NullStreamIdx;
-          attrib.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
-          attrib.offset   = 0;
 
-          for (const auto& element : elements) {
-            dxbc_spv::sm3::Semantic elementSemantic = {};
-            elementSemantic.usage = dxbc_spv::sm3::SemanticUsage(element.Usage);
-            elementSemantic.index = element.UsageIndex;
+          if (likely(attrMap[i] < elementCount)) {
+            const auto& element = elements[attrMap[i]];
+            attrib.binding = uint32_t(element.Stream);
+            attrib.format = DecodeDecltype(D3DDECLTYPE(element.Type));
+            attrib.offset = element.Offset;
 
-            if (elementSemantic.usage == dxbc_spv::sm3::SemanticUsage::ePositionT)
-              elementSemantic.usage = dxbc_spv::sm3::SemanticUsage::ePosition;
-
-            if (elementSemantic == shaderElementSemantic) {
-              attrib.binding = uint32_t(element.Stream);
-              attrib.format  = DecodeDecltype(D3DDECLTYPE(element.Type));
-              attrib.offset  = element.Offset;
-
-              bindMask |= 1u << attrib.binding;
-              break;
-            }
+            bindMask |= 1u << attrib.binding;
+          } else {
+            attrib.binding = NullStreamIdx;
+            attrib.format = VK_FORMAT_R32G32B32A32_SFLOAT;
+            attrib.offset = 0;
           }
 
           attrList[i] = DxvkVertexInput(attrib);
@@ -7811,6 +7812,14 @@ namespace dxvk {
         // Write feedback. This is only used on the CS thread.
         cIaState.streamsInstanced = cStreamsInstanced;
         cIaState.streamsUsed = bindMask;
+      });
+
+      for (uint32_t i = 0u; i < elementCount; i++)
+        elementData[i] = vertexElements[i];
+    } else {
+      EmitCs([&cIaState = m_iaState] (DxvkContext* ctx) {
+        cIaState.streamsUsed = 0;
+        ctx->setInputLayout(0, nullptr, 0, nullptr);
       });
     }
   }
