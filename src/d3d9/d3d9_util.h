@@ -78,30 +78,15 @@ namespace dxvk {
     return Sampler;
   }
 
-  /**
-   * @brief Remaps the sampler from an index applying to the entire pipeline to one relative to the shader stage and returns the shader type
-   *
-   * The displacement map sampler will be treated as a 17th pixel shader sampler.
-   *
-   * @param Sampler Sampler index (according to our internal way of storing samplers)
-   * @return std::pair<D3D9ShaderType, DWORD> Shader stage that it belongs to and the relative sampler index
-   */
-  inline std::pair<D3D9ShaderType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
-    if (Sampler >= FirstVSSamplerSlot)
-      return std::make_pair(D3D9ShaderType::VertexShader, Sampler - FirstVSSamplerSlot);
-
-    return std::make_pair(D3D9ShaderType::PixelShader, Sampler);
-  }
 
   /**
    * @brief Returns whether the sampler belongs to the vertex shader.
    *
    * The displacement map sampler is part of a fixed function feature,
    * so it does not belong to the vertex shader.
-   *
    * @param Sampler Sampler index (according to our internal way of storing samplers)
    */
-  inline bool IsVSSampler(uint32_t Sampler) {
+  constexpr bool IsVSSampler(uint32_t Sampler) {
     return Sampler >= FirstVSSamplerSlot;
   }
 
@@ -109,25 +94,13 @@ namespace dxvk {
    * @brief Returns whether the sampler belongs to the pixel shader.
    *
    * The displacement map sampler is part of a fixed function feature,
-   * so (unlike in RemapStateSamplerShader) it does not belong to the pixel shader.
-   *
+   * so it does not belong to the pixel shader.
    * @param Sampler Sampler index (according to our internal way of storing samplers)
    */
-  inline bool IsPSSampler(uint32_t Sampler) {
+  constexpr bool IsPSSampler(uint32_t Sampler) {
     return Sampler <= caps::MaxTexturesPS;
   }
 
-  /**
-   * @brief Remaps the sampler from an index (counted according to the API) to one relative to the shader stage and returns the shader type
-   *
-   * @param Sampler Sampler index (according to the API)
-   * @return std::pair<D3D9ShaderType, DWORD> Shader stage that it belongs to and the relative sampler index
-   */
-  inline std::pair<D3D9ShaderType, DWORD> RemapSamplerShader(DWORD Sampler) {
-    Sampler = RemapSamplerState(Sampler);
-
-    return RemapStateSamplerShader(Sampler);
-  }
 
   template <typename T, typename J>
   void CastRefPrivate(J* ptr, bool AddRef) {

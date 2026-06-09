@@ -73,6 +73,11 @@ namespace dxvk {
     static constexpr uint32_t getSwvpBufferIndex() {
       return caps::MaxTextures;
     }
+
+    static constexpr std::pair<VkShaderStageFlags, uint32_t> getTextureSlotInfo(uint32_t index) {
+      // Sampler slot and binding indices match 1:1, see above
+      return std::make_pair(IsVSSampler(index) ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT, index);
+    }
   };
 
   /**
