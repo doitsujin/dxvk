@@ -8,7 +8,7 @@ const uint D3DFOG_EXP    = 1;
 const uint D3DFOG_EXP2   = 2;
 const uint D3DFOG_LINEAR = 3;
 
-const uint MaxSharedPushDataSize = 64;
+const uint MaxSharedPushDataSize = 32;
 
 struct D3D9VsPushData {
     uint packedReservedAndPointSize;
