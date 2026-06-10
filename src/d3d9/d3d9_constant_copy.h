@@ -92,14 +92,14 @@ namespace dxvk {
      * \brief Builds constant layout for dynamic indexing
      *
      * \param [in] maxCount Maximum available constant count
-     * \param [in] defLength Number of dwords in shader-defined constant mask
-     * \param [in] defMask Bit mask of shader-defined constants
+     * \param [in] useLength Number of dwords in constant mask
+     * \param [in] useMask Bit mask of statically indexed constants
      * \param [in] defData Actual shader-defined constant data
      */
     D3D9ConstantBufferLayout(
             uint32_t            maxCount,
-            uint32_t            defLength,
-      const uint32_t*           defMask,
+            uint32_t            useLength,
+      const uint32_t*           useMask,
             size_t              defCount,
       const D3D9ImmediateFloatConstant* defData);
 
