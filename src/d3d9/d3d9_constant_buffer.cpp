@@ -195,7 +195,6 @@ namespace dxvk {
       case Kind::VSDynamicConstants:
         return VK_SHADER_STAGE_VERTEX_BIT;
 
-      case Kind::PSFixedFunction:
       case Kind::PSShared:
       case Kind::PSStaticConstants:
         return VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -246,7 +245,6 @@ namespace dxvk {
     bool useCached = CbvType == Kind::VSClipPlanes
                   || CbvType == Kind::VSFixedFunction
                   || CbvType == Kind::VSVertexBlendData
-                  || CbvType == Kind::PSFixedFunction
                   || CbvType == Kind::PSShared
                   || CbvType == Kind::SpecData;
 

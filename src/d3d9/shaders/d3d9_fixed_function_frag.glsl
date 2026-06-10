@@ -33,15 +33,6 @@ const uint MaxSharedPushDataSize = 64;
 
 #include "d3d9_fixed_function_common.glsl"
 
-struct D3D9FFTextureStage {
-    uint Primitive[2];
-};
-
-struct D3D9FixedFunctionPS {
-    vec4 textureFactor;
-    D3D9FFTextureStage Stages[8];
-};
-
 struct D3D9SharedPSStage {
     float Constant[4];
     float BumpEnvMat[2][2];
@@ -110,11 +101,6 @@ const uint VK_COMPARE_OP_GREATER_OR_EQUAL = 6;
 const uint VK_COMPARE_OP_ALWAYS           = 7;
 
 const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextureStage0ColorOp;
-
-layout(set = CBV_SET, binding = CBV_PS_FIXED_FUNCTION, scalar, row_major)
-uniform ShaderData {
-    D3D9FixedFunctionPS data;
-};
 
 layout(set = CBV_SET, binding = CBV_PS_SHARED, scalar, row_major)
 uniform SharedData {
@@ -307,7 +293,7 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
             reg = textureVal;
             break;
         case D3DTA_TFACTOR:
-            reg = data.textureFactor;
+            reg = decodeD3DColor(rs.textureFactor);
             break;
     }
 
@@ -394,7 +380,7 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
             return mix(arg.arg2, arg.arg1, textureVal.aaaa);
 
         case D3DTOP_BLENDFACTORALPHA:
-            return mix(arg.arg2, arg.arg1, data.textureFactor.aaaa);
+            return mix(arg.arg2, arg.arg1, decodeD3DColor(rs.textureFactor).aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHAPM:
             return saturate(fma(arg.arg2, complement(textureVal.aaaa), arg.arg1));

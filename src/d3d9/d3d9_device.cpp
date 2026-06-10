@@ -148,7 +148,6 @@ namespace dxvk {
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
     m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
     m_dirty.set(D3D9DeviceDirtyFlag::FFViewport);
-    m_dirty.set(D3D9DeviceDirtyFlag::FFPixelData);
     m_dirty.set(D3D9DeviceDirtyFlag::FFGlobalSpecular);
     m_dirty.set(D3D9DeviceDirtyFlag::SharedPixelShaderData);
     m_dirty.set(D3D9DeviceDirtyFlag::DepthBounds);
@@ -2452,7 +2451,7 @@ namespace dxvk {
           break;
 
         case D3DRS_TEXTUREFACTOR:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFPixelData);
+          UpdatePushConstant<D3D9RenderStateItem::TextureFactor>();
           break;
 
         case D3DRS_DIFFUSEMATERIALSOURCE:
@@ -6183,6 +6182,10 @@ namespace dxvk {
 
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleC), sizeof(float)>(&scale);
     }
+    else if constexpr (Item == D3D9RenderStateItem::TextureFactor) {
+      uint32_t textureFactor = bit::cast<uint32_t>(rs[D3DRS_TEXTUREFACTOR]);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, textureFactor), sizeof(uint32_t)>(&textureFactor);
+    }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
@@ -8381,7 +8384,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
-    if (unlikely(!m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader) && !m_dirty.test(D3D9DeviceDirtyFlag::FFPixelData)))
+    if (unlikely(!m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader)))
       return;
 
     // Shader...
@@ -8390,7 +8393,6 @@ namespace dxvk {
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader)) {
       // The flags are set based on the specialized shaders.
       m_dirty.clr(D3D9DeviceDirtyFlag::FFPixelShader);
-      m_dirty.set(D3D9DeviceDirtyFlag::FFPixelData);
 
       // Spec constants...
       uint32_t activeTextureStageCount;
@@ -8432,20 +8434,8 @@ namespace dxvk {
           dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg0 + i), 0u);
         }
       }
-      if (dirty) {
+      if (dirty)
         m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-      }
-    }
-
-    // Constants...
-    if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelData)) {
-      m_dirty.clr(D3D9DeviceDirtyFlag::FFPixelData);
-
-      auto& rs = m_state.renderStates;
-
-      auto data = GetConstantBuffer(CbvIndex::PSFixedFunction).AllocTyped<D3D9FixedFunctionPS>(1u);
-      DecodeD3DCOLOR(D3DCOLOR(rs[D3DRS_TEXTUREFACTOR]), data->textureFactor.data);
-      data->Key = key;
     }
   }
 
@@ -8653,7 +8643,7 @@ namespace dxvk {
     BindMultiSampleState();
 
     rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
-    m_dirty.set(D3D9DeviceDirtyFlag::FFPixelData);
+    UpdatePushConstant<D3D9RenderStateItem::TextureFactor>();
 
     rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
     rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
