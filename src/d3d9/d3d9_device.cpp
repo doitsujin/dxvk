@@ -6069,6 +6069,10 @@ namespace dxvk {
     }
 
     if (dynamicSize) {
+      // Pad the allocation size by one extra constant so that we
+      // can always safely access the last element and read zero.
+      dynamicSize += sizeof(Vector4);
+
       D3D9ConstantBufferCopyArgs copyArgs = {};
       copyArgs.floatConstantCount = dynamicFloatCount;
       copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
@@ -6083,6 +6087,9 @@ namespace dxvk {
       copyArgs.constFloatApi = m_state.vsConsts->fConsts;
 
       layout->copyConstantData(copyArgs);
+
+      m_vsPushData.maxConstant = dynamicFloatCount;
+      m_dirty.set(D3D9DeviceDirtyFlag::VsPushData);
     }
 
     constants.dirty = false;
@@ -6110,6 +6117,18 @@ namespace dxvk {
 
     if (m_specInfo.set<SpecClipPlaneCount>(clipPlaneCount))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdatePushData() {
+    if (m_dirty.test(D3D9DeviceDirtyFlag::VsPushData)) {
+      EmitCs([cData = m_vsPushData] (DxvkContext* ctx) {
+        ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
+          sizeof(D3D9RenderStateInfo), sizeof(cData), &cData);
+      });
+    }
+
+    m_dirty.clr(D3D9DeviceDirtyFlag::VsPushData);
   }
 
 
@@ -7607,6 +7626,9 @@ namespace dxvk {
       BindIndices();
       m_dirty.clr(D3D9DeviceDirtyFlag::IndexBuffer);
     }
+
+    if (m_dirty.any(D3D9DeviceDirtyFlag::VsPushData))
+      UpdatePushData();
   }
 
 

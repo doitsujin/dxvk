@@ -67,6 +67,13 @@ namespace dxvk {
   };
 
 
+  struct D3D9VsPushData {
+    // Maximum safe constant index for dynamic indexing.
+    uint16_t maxConstant;
+    uint16_t reserved;
+  };
+
+
   // This is needed in fixed function for POSITION_T support.
   // These are constants we need to * and add to move
   // Window Coords -> Real Coords w/ respect to the viewport.
