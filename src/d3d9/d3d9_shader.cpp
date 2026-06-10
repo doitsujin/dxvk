@@ -26,6 +26,9 @@ namespace dxvk {
       std::tie(m_entryPoint, m_shaderStage) = findEntryPoint();
       dxbc_spv_assert(m_entryPoint);
 
+      if (m_shaderStage == ir::ShaderStage::eVertex)
+        setupVsPushData();
+
       setupStaticCbv();
       setupDynamicCbv();
 
@@ -91,6 +94,7 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef      m_fogPushData = {};
     dxbc_spv::ir::SsaDef      m_alphaTestPushData = {};
     dxbc_spv::ir::SsaDef      m_pointSizePushData = {};
+    dxbc_spv::ir::SsaDef      m_vsPushData = {};
 
     std::array<dxbc_spv::ir::SsaDef, DxvkLimits::MaxNumSpecConstants> m_specConstants = { };
     std::array<dxbc_spv::ir::SsaDef, D3D9SpecConstantId::SpecConstantCount> m_specFunctions = { };
@@ -204,6 +208,50 @@ namespace dxvk {
       }
     }
 
+
+    void setupVsPushData() {
+      using namespace dxbc_spv;
+
+      auto type = ir::Type()
+        .addStructMember(ir::ScalarType::eU16)
+        .addStructMember(ir::ScalarType::eU16);
+
+      // VS push data alone doesn't actually have enough space to hold all
+      // constant buffers, samplers and arguments, so use global data. This
+      // is fine because VS is always going to be present anyway.
+      m_vsPushData = m_builder.add(ir::Op::DclPushData(type, m_entryPoint,
+        sizeof(D3D9RenderStateInfo), ir::ShaderStage::eVertex | ir::ShaderStage::ePixel));
+
+      m_builder.add(ir::Op::DebugName(m_vsPushData, "vsArgs"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 0u, "cFSize"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 1u, "reserved"));
+    }
+
+    dxbc_spv::ir::SsaDef emitClampConstantIndex(dxbc_spv::ir::SsaDef access, dxbc_spv::ir::SsaDef address) {
+      using namespace dxbc_spv;
+
+      // Constant indices are always in bounds
+      const auto& addressOp = m_builder.getOp(address);
+
+      if (addressOp.isConstant())
+        return addressOp.getDef();
+
+      // Clamp index to float count passed in via push data
+      auto cursor = m_builder.setCursor(m_builder.getPrev(access));
+
+      auto maxIndex = m_builder.add(ir::Op::PushDataLoad(ir::ScalarType::eU16, m_vsPushData, m_builder.makeConstant(0u)));
+      maxIndex = m_builder.add(ir::Op::ConvertItoI(ir::ScalarType::eU32, maxIndex));
+
+      auto addressType = addressOp.getType().getBaseType(0u);
+
+      ir::SsaDef result = extractFromVector(m_builder, address, 0u);
+      result = m_builder.add(ir::Op::UMin(addressType.getBaseType(), result, maxIndex));
+      result = insertIntoVector(m_builder, address, 0u, result);
+
+      m_builder.setCursor(cursor);
+      return result;
+    }
+
     void setupStaticCbv() {
       using namespace dxbc_spv;
 
@@ -274,12 +322,14 @@ namespace dxvk {
       if (!layout.isDynamicallyIndexed())
         return;
 
-      // Trivial, just emit a float vector array with the maximum required size.
-      auto cbvSize = layout.computeConstantCount(-1u);
+      // Emit a vec4 array with the maximum possible size, plus one. The front-end
+      // will promise to bind *at least* all statically indexed constants and provide
+      // a zero element at the end of the bound buffer.
+      auto cbvSize = layout.computeConstantCount(-1u) + 1u;
       auto cbvType = ir::Type(ir::ScalarType::eF32, 4u).addArrayDimension(cbvSize);
 
-      m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
-        0u, D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, 1u));
+      m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint, 0u,
+        D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, 1u).setFlags(ir::OpFlag::eInBounds));
       m_builder.add(ir::Op::DebugName(m_dynamicCbv, "cF"));
     }
 
@@ -307,12 +357,13 @@ namespace dxvk {
             dxbc_spv_assert(isFloat);
             dxbc_spv_assert(m_dynamicCbv);
 
-            // Trivially forward the load to the dynamically indexed buffer
+            // Forward the load to the dynamically indexed buffer
             auto cbvDescriptor = m_builder.addBefore(use, ir::Op::DescriptorLoad(
               ir::ScalarType::eCbv, m_dynamicCbv, m_builder.makeConstant(0u)));
+            auto address = emitClampConstantIndex(use, addressOp.getDef());
 
             m_builder.rewriteOp(use, ir::Op::BufferLoad(useOp.getType(),
-              cbvDescriptor, addressOp.getDef(), useOp.getType().byteSize()));
+              cbvDescriptor, address, useOp.getType().byteSize()).setFlags(ir::OpFlag::eInBounds));
           } else {
             // For compacted constants, we need to map the source constant
             // to a member index in the static constant buffer struct.

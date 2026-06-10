@@ -82,6 +82,8 @@ namespace dxvk {
     DepthBounds,
     PointScale,
 
+    VsPushData,
+
     SpecializationEntries,
   };
 
@@ -994,6 +996,8 @@ namespace dxvk {
 
     void UpdateGlobalSpecular();
 
+    void UpdatePushData();
+
     /**
      * \brief Updates the push constant data at the given offset with data from the specified pointer.
      *
@@ -1619,6 +1623,8 @@ namespace dxvk {
     D3D9VBSlotTracking              m_vbSlotTracking;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
+
+    D3D9VsPushData                  m_vsPushData = {};
 
     bool                            m_isSWVP;
     bool                            m_isD3D8Compatible;
