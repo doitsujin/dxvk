@@ -2737,18 +2737,30 @@ namespace dxvk {
     const DxvkVertexInput*     attributes,
           uint32_t             bindingCount,
     const DxvkVertexInput*     bindings) {
-    m_flags.set(
-      DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyVertexBuffers);
+    // Avoiding redundant input layout setups from the front-end can be
+    // hard, but at least avoid rebinding the pipeline redundantly.
+    bool dirty = m_state.gp.state.il.attributeCount() != attributeCount
+              || m_state.gp.state.il.bindingCount() != bindingCount;
 
     for (uint32_t i = 0; i < bindingCount; i++) {
-      auto binding = bindings[i].binding();
+      auto newBinding = bindings[i].binding();
 
-      m_state.gp.state.ilBindings[i] = DxvkIlBinding(
-        binding.binding, 0,
-        binding.inputRate,
-        binding.divisor);
-      m_state.vi.vertexExtents[i] = binding.extent;
+      if (!dirty) {
+        auto oldExtent = m_state.vi.vertexExtents[i];
+        auto oldBinding = m_state.gp.state.ilBindings[i];
+
+        dirty = oldBinding.binding() != newBinding.binding
+             || oldBinding.inputRate() != newBinding.inputRate
+             || oldBinding.divisor() != newBinding.divisor
+             || oldExtent != newBinding.extent;
+      }
+
+      if (dirty) {
+        m_state.gp.state.ilBindings[i] = DxvkIlBinding(
+          newBinding.binding, 0, newBinding.inputRate,
+          newBinding.divisor);
+        m_state.vi.vertexExtents[i] = newBinding.extent;
+      }
     }
 
     for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++) {
@@ -2757,19 +2769,33 @@ namespace dxvk {
     }
 
     for (uint32_t i = 0; i < attributeCount; i++) {
-      auto attribute = attributes[i].attribute();
+      auto newAttribute = attributes[i].attribute();
 
-      m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
-        attribute.location,
-        attribute.binding,
-        attribute.format,
-        attribute.offset);
+      if (!dirty) {
+        auto oldAttribute = m_state.gp.state.ilAttributes[i];
+
+        dirty = oldAttribute.location() != newAttribute.location
+             || oldAttribute.binding() != newAttribute.binding
+             || oldAttribute.format() != newAttribute.format
+             || oldAttribute.offset() != newAttribute.offset;
+      }
+
+      if (dirty) {
+        m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
+          newAttribute.location, newAttribute.binding,
+          newAttribute.format,   newAttribute.offset);
+      }
     }
 
     for (uint32_t i = attributeCount; i < m_state.gp.state.il.attributeCount(); i++)
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute();
 
     m_state.gp.state.il = DxvkIlInfo(attributeCount, bindingCount);
+
+    if (dirty) {
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState,
+                  DxvkContextFlag::GpDirtyVertexBuffers);
+    }
   }
 
 
