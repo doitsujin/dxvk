@@ -134,39 +134,6 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
-
-// Functions to extract information from the packed texture stages
-uint colorOp(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 0, 5);
-}
-uint colorArg0(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 5, 6);
-}
-uint colorArg1(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 11, 6);
-}
-uint colorArg2(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 17, 6);
-}
-
-uint alphaOp(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[0], 23, 5);
-}
-uint alphaArg0(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 0, 6);
-}
-uint alphaArg1(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 6, 6);
-}
-uint alphaArg2(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 12, 6);
-}
-
-bool resultIsTemp(uint stageIndex) {
-    return bitfieldExtract(data.Stages[stageIndex].Primitive[1], 18, 1) != 0;
-}
-
-
 vec4 calculateFog(vec4 vPos, vec4 oColor) {
     vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
     float fogScale = rs.fogScale;
@@ -261,7 +228,7 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
 
     uint previousStageColorOp = 0;
     if (stage > 0) {
-        previousStageColorOp = specIsOptimized() ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1)) : colorOp(stage - 1);
+        previousStageColorOp = specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1));
     }
 
     if (stage != 0 && (
@@ -577,28 +544,28 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
         return state;
     }
 
-    const uint colorOp = specIsOptimized() ? specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage) : colorOp(stage);
+    const uint colorOp = specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage);
 
     // This cancels all subsequent stages.
     if (colorOp == D3DTOP_DISABLE)
         return state;
 
-    const bool resultIsTemp = specIsOptimized() ? specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage) : resultIsTemp(stage);
+    const bool resultIsTemp = specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage);
     vec4 dst = resultIsTemp ? state.temp : state.current;
 
-    const uint alphaOp = specIsOptimized() ? specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage) : alphaOp(stage);
+    const uint alphaOp = specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage);
 
     const TextureStageArguments colorArgs = {
         // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg0 + stage))                             : colorArg0(stage),
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)) : colorArg1(stage),
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage)) : colorArg2(stage)
+        repackArg(specUint(SpecFFTextureStage0ColorArg0 + stage)),
+        repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)),
+        repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage))
     };
     const TextureStageArguments alphaArgs = {
         // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg0 + stage))                             : alphaArg0(stage),
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)) : alphaArg1(stage),
-        specIsOptimized() ? repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage)) : alphaArg2(stage)
+        repackArg(specUint(SpecFFTextureStage0AlphaArg0 + stage)),
+        repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)),
+        repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage))
     };
 
     vec4 textureVal = vec4(0.0f, 0.0f, 0.0f, 1.0f);
