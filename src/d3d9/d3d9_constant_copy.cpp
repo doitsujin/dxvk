@@ -50,17 +50,33 @@ namespace dxvk {
 
   D3D9ConstantBufferLayout::D3D9ConstantBufferLayout(
           uint32_t            maxCount,
-          uint32_t            defLength,
-    const uint32_t*           defMask,
+          uint32_t            useLength,
+    const uint32_t*           useMask,
           size_t              defCount,
     const D3D9ImmediateFloatConstant* defData)
   : m_minCount(0u), m_maxCount(maxCount), m_dynamicIndexing(true) {
     uint32_t defIndex = 0u;
     uint32_t dstIndex = 0u;
 
+    // Build mask of shader-defined constants
+    small_vector<uint32_t, 64u> defMask(align(maxCount, 32u) / 32u);
+
+    for (uint32_t i = 0u; i < defCount; i++) {
+      if (defData[i].index < maxCount)
+        defMask[defData[i].index / 32u] |= 1u << (defData[i].index % 32u);
+    }
+
+    // Find index of highest statically indexed constant
+    for (uint32_t i = useLength; i; i--) {
+      if (useMask[i - 1u]) {
+        m_minCount = std::min(32u * i + bit::tzcnt(useMask[i - 1u]) - 31u, maxCount);
+        break;
+      }
+    }
+
     // More or less the inverse of the above logic. Keep all constants intact,
     // but insert ranges for any constants that are shader-defined.
-    for (uint32_t i = 0u; i < defLength; i++) {
+    for (uint32_t i = 0u; i < defMask.size(); i++) {
       uint32_t mask = defMask[i];
 
       while (mask) {
