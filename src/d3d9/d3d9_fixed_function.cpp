@@ -83,14 +83,6 @@ namespace dxvk {
     specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
     specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
 
-    auto& fixedFunctionDataBinding = bindings.emplace_back();
-    fixedFunctionDataBinding.set             = CbvSet;
-    fixedFunctionDataBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction;
-    fixedFunctionDataBinding.resourceIndex   = D3D9ShaderResourceMapping::CbvIndex::PSFixedFunction;
-    fixedFunctionDataBinding.descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    fixedFunctionDataBinding.access          = VK_ACCESS_UNIFORM_READ_BIT;
-    fixedFunctionDataBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
-
     auto& sharedDataBinding = bindings.emplace_back();
     sharedDataBinding.set             = CbvSet;
     sharedDataBinding.binding         = D3D9ShaderResourceMapping::CbvIndex::PSShared;

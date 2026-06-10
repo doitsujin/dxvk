@@ -22,6 +22,8 @@ struct D3D9RenderStateInfo {
     float pointScaleA;
     float pointScaleB;
     float pointScaleC;
+
+    uint textureFactor;
 };
 
 
@@ -48,8 +50,7 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 #define CBV_VS_FIXED_FUNCTION   4
 #define CBV_VS_VERTEX_BLEND     5
 
-#define CBV_PS_FIXED_FUNCTION   11
-#define CBV_PS_SHARED           12
+#define CBV_PS_SHARED           11
 
 #define CBV_SPEC_DATA           20
 
@@ -363,4 +364,8 @@ bool specBool(uint specConstIdx, uint bitOffset) {
 
 bool specBool(uint specConstIdx) {
     return specUint(specConstIdx) != 0u;
+}
+
+vec4 decodeD3DColor(uint color) {
+    return unpackUnorm4x8(color).bgra;
 }

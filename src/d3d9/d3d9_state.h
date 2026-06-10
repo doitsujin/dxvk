@@ -47,6 +47,8 @@ namespace dxvk {
     float pointScaleA  = 1.0f;
     float pointScaleB  = 0.0f;
     float pointScaleC  = 0.0f;
+
+    uint32_t textureFactor = 0u;
   };
 
   enum class D3D9RenderStateItem {
@@ -62,6 +64,8 @@ namespace dxvk {
     PointScaleA,
     PointScaleB,
     PointScaleC,
+
+    TextureFactor,
 
     Count
   };
@@ -222,11 +226,6 @@ namespace dxvk {
     }
 
     D3D9FFShaderStage Stages[caps::TextureStageCount];
-  };
-
-  struct D3D9FixedFunctionPS {
-    Vector4 textureFactor;
-    D3D9FFShaderKeyFS Key;
   };
 
   enum D3D9SharedPSStages {

@@ -57,9 +57,8 @@ namespace dxvk {
       VSVertexBlendData       = 5u,
       VSStaticConstants       = 6u,
       VSDynamicConstants      = 7u,
-      PSFixedFunction         = 11u,
-      PSShared                = 12u,
-      PSStaticConstants       = 13u,
+      PSShared                = 11u,
+      PSStaticConstants       = 12u,
       SpecData                = 20u,
 
       Count
