@@ -708,6 +708,50 @@ namespace dxvk {
       return remainder ? 0u : (bit::tzcnt(uint32_t(stageMask)) + 1u);
     }
 
+    /**
+     * \brief Computes push data block offset for a given block index
+     *
+     * \param [in] index Block index, see \c computeIndex
+     * \returns Absolute offset of push data block in global push data
+     */
+    static uint32_t computeBlockOffsetForIndex(uint32_t index) {
+      return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
+    }
+
+    /**
+     * \brief Computes push data block offset for a given stage
+     *
+     * \param [in] stageMask Shader stage mask
+     * \returns Push data offset for given stage
+     */
+    static uint32_t computeBlockOffsetForStage(VkShaderStageFlags stageMask) {
+      return computeBlockOffsetForIndex(computeIndex(stageMask));
+    }
+
+    /**
+     * \brief Computes maximum push data size for given shader stage
+     *
+     * For graphics pipelines, fragment shaders will be able to use all
+     * data from the block offset to the reserved block. This is useful
+     * because fragment shaders will often have a lot of sampler indices.
+     * \param [in] stageMask Shader stage mask
+     * \returns Push data size that the given stage can use
+     */
+    static uint32_t computeBlockSizeForStage(VkShaderStageFlags stageMask) {
+      if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+        return MaxTotalPushDataSize - MaxReservedPushDataSize;
+
+      if (stageMask & (stageMask - 1u))
+        return MaxSharedPushDataSize;
+
+      if (stageMask == VK_SHADER_STAGE_FRAGMENT_BIT) {
+        uint32_t size = MaxTotalPushDataSize - MaxReservedPushDataSize;
+        return size - computeBlockOffsetForStage(VK_SHADER_STAGE_FRAGMENT_BIT);
+      }
+
+      return MaxPerStagePushDataSize;
+    }
+
   private:
 
     uint16_t  m_stageMask     = 0u;

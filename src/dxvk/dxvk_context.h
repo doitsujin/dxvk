@@ -960,9 +960,7 @@ namespace dxvk {
             uint32_t                  offset,
             uint32_t                  size,
       const void*                     data) {
-      uint32_t index = DxvkPushDataBlock::computeIndex(stages);
-
-      uint32_t baseOffset = computePushDataBlockOffset(index);
+      uint32_t baseOffset = DxvkPushDataBlock::computeBlockOffsetForStage(stages);
       std::memcpy(&m_state.pc.constantData[baseOffset + offset], data, size);
 
       m_flags.set(DxvkContextFlag::DirtyPushData);
@@ -2271,10 +2269,6 @@ namespace dxvk {
     bool formatsAreImageCopyCompatible(
             VkFormat                  dstFormat,
             VkFormat                  srcFormat);
-
-    static uint32_t computePushDataBlockOffset(uint32_t index) {
-      return index ? MaxSharedPushDataSize + MaxPerStagePushDataSize * (index - 1u) : 0u;
-    }
 
     static VkStencilOpState convertStencilOp(
       const DxvkStencilOp&            op,
