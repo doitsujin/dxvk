@@ -22,7 +22,7 @@ namespace dxvk {
     MaxTotalPushDataSize        =   256,
     MaxSharedPushDataSize       =    64,
     MaxPerStagePushDataSize     =    32,
-    MaxReservedPushDataSize     =    32,
+    MaxReservedPushDataSize     =    24,
   };
   
 }
