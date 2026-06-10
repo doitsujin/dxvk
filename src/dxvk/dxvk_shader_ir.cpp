@@ -919,11 +919,13 @@ namespace dxvk {
 
         // If we can use BDA or push address mapping with at least the same
         // level of performance as a constant buffer, rewrite the binding.
+        uint32_t maxPushDataSize = DxvkPushDataBlock::computeBlockSizeForStage(convertShaderStage(m_stage));
+
         bool useHeap = m_info.options.spirv.test(DxvkShaderSpirvFlag::SupportsDescriptorHeap);
         bool useBda = m_info.options.flags.test(DxvkShaderCompileFlag::LowerInBoundsCbvToBda);
 
         if ((useHeap || useBda) && (op.getFlags() & dxbc_spv::ir::OpFlag::eInBounds)
-         && (m_localPushDataOffset + sizeof(uint64_t) <= MaxPerStagePushDataSize)) {
+         && (m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize)) {
           m_localPushDataAlign = std::max<uint32_t>(m_localPushDataAlign, sizeof(uint64_t));
           m_localPushDataOffset = align(m_localPushDataOffset, m_localPushDataAlign);
 
@@ -1215,11 +1217,8 @@ namespace dxvk {
       // In compute shaders, we can freely use push data space
       auto ssboAlignment = m_info.options.minStorageBufferAlignment;
 
-      size_t maxPushDataSize = m_stage == dxbc_spv::ir::ShaderStage::eCompute
-        ? MaxTotalPushDataSize - MaxReservedPushDataSize
-        : MaxPerStagePushDataSize;
-
-      size_t uavCounterIndex = 0u;
+      uint32_t maxPushDataSize = DxvkPushDataBlock::computeBlockSizeForStage(convertShaderStage(m_stage));
+      uint32_t uavCounterIndex = 0u;
 
       if (m_localPushDataOffset + sizeof(uint64_t) <= maxPushDataSize && ssboAlignment <= 4u && !hasUavCounterArray()) {
         // Align push data to a multiple of 8 bytes before emitting counters
@@ -1229,7 +1228,7 @@ namespace dxvk {
         // Declare push data variable and type
         dxbc_spv::ir::Type pushDataType = { };
 
-        size_t maxUavCounters = std::min<size_t>(m_uavCounters.size(),
+        uint32_t maxUavCounters = std::min<uint32_t>(m_uavCounters.size(),
           (maxPushDataSize - m_localPushDataOffset) / sizeof(uint64_t));
 
         for (uint32_t i = 0u; i < maxUavCounters; i++)

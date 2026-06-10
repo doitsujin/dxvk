@@ -522,12 +522,13 @@ namespace dxvk {
 
       for (auto i : bit::BitMask(stageMask)) {
         auto stage = VkShaderStageFlagBits(1u << i);
+        auto size = DxvkPushDataBlock::computeBlockSizeForStage(stage);
         index = DxvkPushDataBlock::computeIndex(stage);
 
         pushDataBlocks[index] = DxvkPushDataBlock(stage,
-          pushDataSize, MaxPerStagePushDataSize, 8u, 0u);
+          pushDataSize, size, 8u, 0u);
 
-        pushDataSize += MaxPerStagePushDataSize;
+        pushDataSize += size;
         pushDataMask |= 1u << index;
       }
 

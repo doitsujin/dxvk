@@ -7984,7 +7984,7 @@ namespace dxvk {
         auto block = layout->getPushDataBlock(i);
         auto blockSize = block.getSize();
 
-        auto srcOffset = computePushDataBlockOffset(i);
+        auto srcOffset = DxvkPushDataBlock::computeBlockOffsetForIndex(i);
         auto dstOffset = block.getOffset();
 
         auto constantData = &m_state.pc.constantData[srcOffset];
