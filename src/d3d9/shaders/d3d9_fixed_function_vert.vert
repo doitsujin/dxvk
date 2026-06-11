@@ -146,9 +146,21 @@ uniform ClipPlanes {
 
 layout(push_constant, scalar, row_major)
 uniform RenderStates {
-    D3D9RenderStateInfo rs;
+    D3D9SharedPushData global;
+    D3D9VsPushData vs;
+
+    layout(offset = MaxSharedPushDataSize)
+    D3D9FfvsPushData ffvs;
 };
 
+// Return point size, min, max as raw float
+vec3 decodePointSize() {
+    uvec3 pointData = uvec3(
+        bitfieldExtract(vs.packedReservedAndPointSize, 16, 16),
+        bitfieldExtract(vs.packedPointSizeMinMax,  0, 16),
+        bitfieldExtract(vs.packedPointSizeMinMax, 16, 16));
+    return vec3(pointData) / 8.0f;
+}
 
 // Functions to extract information from the VS data
 // We can't use bools or uint8_t so we have to do this.
@@ -236,14 +248,14 @@ float calculateFog(vec4 vPos) {
     vec4 specular = in_Color1;
     bool hasSpecular = vertexHasColor1();
 
-    float fogScale = rs.fogScale;
-    float fogEnd = rs.fogEnd;
-    float fogDensity = rs.fogDensity;
+    float fogScale = global.fogDistanceScale;
+    float fogEnd = global.fogDistanceEnd;
+    float fogDensity = global.fogDensity;
+
     D3DFOGMODE fogMode = specUint(SpecVertexFogMode);
-    bool fogEnabled = specBool(SpecFogEnabled);
-    if (!fogEnabled) {
+
+    if (!specBool(SpecFogEnabled))
         return 0.0;
-    }
 
     float w = vPos.w;
     float z = vPos.z;
@@ -259,6 +271,7 @@ float calculateFog(vec4 vPos) {
         fogFactor = hasSpecular ? specular.w : 1.0;
     } else {
         switch (fogMode) {
+            default:
             case D3DFOG_NONE:
                 fogFactor = hasSpecular ? specular.w : 1.0;
                 break;
@@ -291,12 +304,14 @@ float calculateFog(vec4 vPos) {
 
 
 float calculatePointSize(vec4 vtx) {
-    float value = vertexHasPointSize() ? in_PointSize : rs.pointSize;
+    vec3 pointSizeArgs = decodePointSize();
+
+    float value = vertexHasPointSize() ? in_PointSize : pointSizeArgs.x;
     uint pointMode = specUint(SpecPointMode);
     bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
-    float scaleC = rs.pointScaleC;
-    float scaleB = rs.pointScaleB;
-    float scaleA = rs.pointScaleA;
+    float scaleC = ffvs.pointScaleC;
+    float scaleB = ffvs.pointScaleB;
+    float scaleA = ffvs.pointScaleA;
 
     vec3 vtx3 = vtx.xyz;
 
@@ -310,8 +325,8 @@ float calculatePointSize(vec4 vtx) {
 
     value = isScale ? scaleValue : value;
 
-    float pointSizeMin = rs.pointSizeMin;
-    float pointSizeMax = rs.pointSizeMax;
+    float pointSizeMin = pointSizeArgs.y;
+    float pointSizeMax = pointSizeArgs.z;
 
     return clamp(value, pointSizeMin, pointSizeMax);
 }

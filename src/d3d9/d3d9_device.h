@@ -76,6 +76,11 @@ namespace dxvk {
     DepthBounds,
     PointScale,
 
+    PushDataShared,
+    PushDataVs,
+    PushDataFfvs,
+    PushDataFfps,
+
     SpecializationEntries,
   };
 
@@ -988,23 +993,10 @@ namespace dxvk {
 
     void UpdateGlobalSpecular();
 
-    /**
-     * \brief Updates the push constant data at the given offset with data from the specified pointer.
-     *
-     * \param Offset Offset at which the push constant data gets written.
-     * \param Length Length of the push constant data to write.
-     * \param pData Push constant data
-     */
-    template <uint32_t Offset, uint32_t Length>
-    void UpdatePushConstant(const void* pData);
+    template<typename T>
+    void UpdatePushDataBlock(const T& Block);
 
-    /**
-     * \brief Updates the specified push constant based on the device state.
-     *
-     * \param Item Render state push constant to update
-     */
-    template <D3D9RenderStateItem Item>
-    void UpdatePushConstant();
+    void UpdatePushData();
 
     void BindSampler(DWORD Sampler);
 
@@ -1524,6 +1516,11 @@ namespace dxvk {
         : FixedFunctionMask;
     }
 
+    inline static uint16_t EncodePointSize(DWORD Value) {
+      // Basically 13.3 fixed point, highest value is 8191.875
+      return uint16_t(std::clamp(bit::cast<float>(Value) * 8.0f, 0.0f, 65535.0f));
+    }
+
     D3D9ConstantBuffer& GetConstantBuffer(CbvIndex Index) {
       return m_constantBuffers[uint32_t(Index)];
     }
@@ -1673,6 +1670,7 @@ namespace dxvk {
     // m_state should be declared last (i.e. freed first), because it
     // references objects that can call back into the device when freed.
     Direct3DState9                  m_state;
+    D3D9PushData                    m_pushData = {};
 
     D3D9VkInteropDevice             m_d3d9Interop;
     D3D9ON12_ARGS                   m_d3d9On12Args = { };

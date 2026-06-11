@@ -26,6 +26,11 @@ namespace dxvk {
       std::tie(m_entryPoint, m_shaderStage) = findEntryPoint();
       dxbc_spv_assert(m_entryPoint);
 
+      setupSharedPushData();
+
+      if (m_shaderStage == ir::ShaderStage::eVertex)
+        setupVsPushData();
+
       setupStaticCbv();
       setupDynamicCbv();
 
@@ -88,9 +93,8 @@ namespace dxvk {
     uint32_t                  m_firstConstInt  = 0u;
     uint32_t                  m_firstConstBool = 0u;
 
-    dxbc_spv::ir::SsaDef      m_fogPushData = {};
-    dxbc_spv::ir::SsaDef      m_alphaTestPushData = {};
-    dxbc_spv::ir::SsaDef      m_pointSizePushData = {};
+    dxbc_spv::ir::SsaDef      m_sharedPushData = {};
+    dxbc_spv::ir::SsaDef      m_vsPushData = {};
 
     std::array<dxbc_spv::ir::SsaDef, DxvkLimits::MaxNumSpecConstants> m_specConstants = { };
     std::array<dxbc_spv::ir::SsaDef, D3D9SpecConstantId::SpecConstantCount> m_specFunctions = { };
@@ -202,6 +206,46 @@ namespace dxvk {
         auto name = debugName.getLiteralString(2u);
         m_builder.add(ir::Op::DebugName(m_staticCbv, name.c_str()));
       }
+    }
+
+    void setupSharedPushData() {
+      using namespace dxbc_spv;
+
+      auto type = ir::Type()
+        .addStructMember(ir::ScalarType::eU8, 3u)   // Fog color
+        .addStructMember(ir::ScalarType::eU8)       // Alpha ref
+        .addStructMember(ir::ScalarType::eF32)      // Fog scale
+        .addStructMember(ir::ScalarType::eF32)      // Fog end
+        .addStructMember(ir::ScalarType::eF32);     // Fog density
+
+      m_sharedPushData = m_builder.add(ir::Op::DclPushData(type, m_entryPoint,
+        D3D9SharedPushData::Offset, getPushDataStage(D3D9SharedPushData::Stages)));
+
+      m_builder.add(ir::Op::DebugName(m_sharedPushData, "global"));
+      m_builder.add(ir::Op::DebugMemberName(m_sharedPushData, 0u, "fogColor"));
+      m_builder.add(ir::Op::DebugMemberName(m_sharedPushData, 1u, "alphaRef"));
+      m_builder.add(ir::Op::DebugMemberName(m_sharedPushData, 2u, "fogDistanceScale"));
+      m_builder.add(ir::Op::DebugMemberName(m_sharedPushData, 3u, "fogDistanceEnd"));
+      m_builder.add(ir::Op::DebugMemberName(m_sharedPushData, 4u, "fogDensity"));
+    }
+
+    void setupVsPushData() {
+      using namespace dxbc_spv;
+
+      auto type = ir::Type()
+        .addStructMember(ir::ScalarType::eU16)      // Reserved
+        .addStructMember(ir::ScalarType::eU16)      // Point size
+        .addStructMember(ir::ScalarType::eU16)      // Minimum point size
+        .addStructMember(ir::ScalarType::eU16);     // Maximum point size
+
+      m_vsPushData = m_builder.add(ir::Op::DclPushData(type, m_entryPoint,
+        D3D9VsPushData::Offset, getPushDataStage(D3D9VsPushData::Stages)));
+
+      m_builder.add(ir::Op::DebugName(m_vsPushData, "vs"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 0u, "reserved"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 1u, "pointSize"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 2u, "pointSizeMin"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 3u, "pointSizeMax"));
     }
 
     void setupStaticCbv() {
@@ -670,13 +714,6 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef loadAlphaTestArgs(dxbc_spv::ir::SsaDef ref) {
       using namespace dxbc_spv;
 
-      if (!m_alphaTestPushData) {
-        m_alphaTestPushData = m_builder.add(ir::Op::DclPushData(ir::ScalarType::eU32,
-          m_entryPoint, offsetof(D3D9RenderStateInfo, alphaRef),
-          ir::ShaderStage::eVertex | ir::ShaderStage::ePixel));
-        m_builder.add(ir::Op::DebugName(m_alphaTestPushData, "alphaRef"));
-      }
-
       ir::Op resultOp = ir::Op(ir::OpCode::eCompositeConstruct, ir::makeLegacyAlphaTestType());
 
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
@@ -694,8 +731,10 @@ namespace dxvk {
           } break;
 
           case ir::LegacyAlphaTestLayout::eAlphaRef: {
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              ir::ScalarType::eU32, m_alphaTestPushData, ir::SsaDef())));
+            auto alphaRef = m_builder.addBefore(ref, ir::Op::PushDataLoad(
+              ir::ScalarType::eU8, m_sharedPushData, m_builder.makeConstant(1u)));
+            alphaRef = m_builder.addBefore(ref, ir::Op::ConvertItoI(ir::ScalarType::eU32, alphaRef));
+            resultOp.addOperand(alphaRef);
           } break;
         }
       }
@@ -705,23 +744,6 @@ namespace dxvk {
 
     dxbc_spv::ir::SsaDef loadFogArgs(dxbc_spv::ir::SsaDef ref) {
       using namespace dxbc_spv;
-
-      if (!m_fogPushData) {
-        auto fogDataType = ir::Type()
-          .addStructMember(ir::ScalarType::eF32, 3u)  // color
-          .addStructMember(ir::ScalarType::eF32)      // scale
-          .addStructMember(ir::ScalarType::eF32)      // end
-          .addStructMember(ir::ScalarType::eF32);     // density
-
-        m_fogPushData = m_builder.add(ir::Op::DclPushData(fogDataType,
-          m_entryPoint, offsetof(D3D9RenderStateInfo, fogColor),
-          ir::ShaderStage::eVertex | ir::ShaderStage::ePixel));
-
-        m_builder.add(ir::Op::DebugMemberName(m_fogPushData, 0u, "fogColor"));
-        m_builder.add(ir::Op::DebugMemberName(m_fogPushData, 1u, "fogDistScale"));
-        m_builder.add(ir::Op::DebugMemberName(m_fogPushData, 2u, "fogDistEnd"));
-        m_builder.add(ir::Op::DebugMemberName(m_fogPushData, 3u, "fogDensity"));
-      }
 
       ir::Op resultOp = ir::Op(ir::OpCode::eCompositeConstruct, ir::makeLegacyFogType());
 
@@ -742,23 +764,35 @@ namespace dxvk {
           } break;
 
           case ir::LegacyFogLayout::eFogColor: {
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              resultOp.getType().getSubType(i), m_fogPushData, m_builder.makeConstant(0u))));
+            // We store the raw D3DCOLOR in .bgr order. Convert to float and swizzle.
+            auto fogColor = m_builder.addBefore(ref, ir::Op::PushDataLoad(
+              ir::BasicType(ir::ScalarType::eU8, 3u), m_sharedPushData, m_builder.makeConstant(0u)));
+
+            ir::Op op(ir::OpCode::eCompositeConstruct, resultOp.getType().getSubType(i));
+
+            for (uint32_t i = 0u; i < 3u; i++) {
+              auto scalar = m_builder.addBefore(ref, ir::Op::CompositeExtract(ir::ScalarType::eU8, fogColor, m_builder.makeConstant(2u - i)));
+              scalar = m_builder.addBefore(ref, ir::Op::ConvertItoF(ir::ScalarType::eF32, scalar));
+              scalar = m_builder.addBefore(ref, ir::Op::FDiv(ir::ScalarType::eF32, scalar, m_builder.makeConstant(255.0f)));
+              op.addOperand(scalar);
+            }
+
+            resultOp.addOperand(m_builder.addBefore(ref, std::move(op)));
           } break;
 
           case ir::LegacyFogLayout::eFogScale: {
             resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              resultOp.getType().getSubType(i), m_fogPushData, m_builder.makeConstant(1u))));
+              resultOp.getType().getSubType(i), m_sharedPushData, m_builder.makeConstant(2u))));
           } break;
 
           case ir::LegacyFogLayout::eFogEnd: {
             resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              resultOp.getType().getSubType(i), m_fogPushData, m_builder.makeConstant(2u))));
+              resultOp.getType().getSubType(i), m_sharedPushData, m_builder.makeConstant(3u))));
           } break;
 
           case ir::LegacyFogLayout::eFogDensity: {
             resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              resultOp.getType().getSubType(i), m_fogPushData, m_builder.makeConstant(3u))));
+              resultOp.getType().getSubType(i), m_sharedPushData, m_builder.makeConstant(4u))));
           } break;
         }
       }
@@ -811,21 +845,6 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef loadPointArgs(dxbc_spv::ir::SsaDef ref) {
       using namespace dxbc_spv;
 
-      if (!m_pointSizePushData) {
-        auto pointSizeType = ir::Type()
-          .addStructMember(ir::ScalarType::eF32)  // size
-          .addStructMember(ir::ScalarType::eF32)  // min
-          .addStructMember(ir::ScalarType::eF32); // max
-
-        m_pointSizePushData = m_builder.add(ir::Op::DclPushData(pointSizeType,
-          m_entryPoint, offsetof(D3D9RenderStateInfo, pointSize),
-          ir::ShaderStage::eVertex | ir::ShaderStage::ePixel));
-
-        m_builder.add(ir::Op::DebugMemberName(m_pointSizePushData, 0u, "pointSize"));
-        m_builder.add(ir::Op::DebugMemberName(m_pointSizePushData, 1u, "pointSizeMin"));
-        m_builder.add(ir::Op::DebugMemberName(m_pointSizePushData, 2u, "pointSizeMax"));
-      }
-
       ir::Op resultOp = ir::Op(ir::OpCode::eCompositeConstruct, ir::makeLegacyPointArgsType());
 
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
@@ -838,18 +857,21 @@ namespace dxvk {
           } break;
 
           case ir::LegacyPointArgsLayout::ePointSize: {
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              ir::ScalarType::eF32, m_pointSizePushData, m_builder.makeConstant(0u))));
+            auto size = m_builder.addBefore(ref, ir::Op::PushDataLoad(
+              ir::ScalarType::eU16, m_vsPushData, m_builder.makeConstant(1u)));
+            resultOp.addOperand(emitDecodePointSize(ref, size));
           } break;
 
           case ir::LegacyPointArgsLayout::ePointSizeMin: {
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              ir::ScalarType::eF32, m_pointSizePushData, m_builder.makeConstant(1u))));
+            auto size = m_builder.addBefore(ref, ir::Op::PushDataLoad(
+              ir::ScalarType::eU16, m_vsPushData, m_builder.makeConstant(2u)));
+            resultOp.addOperand(emitDecodePointSize(ref, size));
           } break;
 
           case ir::LegacyPointArgsLayout::ePointSizeMax: {
-            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::PushDataLoad(
-              ir::ScalarType::eF32, m_pointSizePushData, m_builder.makeConstant(2u))));
+            auto size = m_builder.addBefore(ref, ir::Op::PushDataLoad(
+              ir::ScalarType::eU16, m_vsPushData, m_builder.makeConstant(3u)));
+            resultOp.addOperand(emitDecodePointSize(ref, size));
           } break;
         }
       }
@@ -1003,6 +1025,13 @@ namespace dxvk {
       return m_builder.addBefore(ref, std::move(resultOp));
     }
 
+    dxbc_spv::ir::SsaDef emitDecodePointSize(dxbc_spv::ir::SsaDef ref, dxbc_spv::ir::SsaDef size) {
+      using namespace dxbc_spv;
+
+      auto value = m_builder.addBefore(ref, ir::Op::ConvertItoF(ir::ScalarType::eF32, size));
+      return m_builder.addBefore(ref, ir::Op::FDiv(ir::ScalarType::eF32, value, m_builder.makeConstant(8.0f)));
+    }
+
     dxbc_spv::ir::SsaDef getDebugName(const dxbc_spv::ir::Op& decl, uint32_t index) {
       using namespace dxbc_spv;
 
@@ -1016,6 +1045,19 @@ namespace dxvk {
 
       return ir::SsaDef();
     }
+
+    static dxbc_spv::ir::ShaderStageMask getPushDataStage(VkShaderStageFlags flags) {
+      using namespace dxbc_spv;
+
+      if (flags == VK_SHADER_STAGE_VERTEX_BIT)
+        return ir::ShaderStage::eVertex;
+
+      if (flags == VK_SHADER_STAGE_FRAGMENT_BIT)
+        return ir::ShaderStage::ePixel;
+
+      return ir::ShaderStageMask();
+    }
+
   };
 
   class D3D9ShaderConverter : public DxvkIrShaderConverter {

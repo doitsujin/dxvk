@@ -53,8 +53,10 @@ namespace dxvk {
     static Rc<DxvkShader> buildFs(D3D9DeviceEx* pDevice);
 
     constexpr static uint32_t GetPushSamplerOffset(uint32_t samplerIndex) {
-      // Must not conflict with render state block
-      return MaxSharedPushDataSize + sizeof(uint16_t) * samplerIndex;
+      // Located directly after the PS push data block.
+      return MaxSharedPushDataSize +
+        sizeof(D3D9FfpsPushData) +
+        sizeof(uint16_t) * samplerIndex;
     }
 
   };

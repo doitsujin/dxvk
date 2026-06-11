@@ -29,7 +29,6 @@ layout(location = 0) out vec4 out_Color0;
 
 
 const uint TextureArgCount = 3;
-const uint MaxSharedPushDataSize = 64;
 
 #include "d3d9_fixed_function_common.glsl"
 
@@ -109,9 +108,13 @@ uniform SharedData {
 
 layout(push_constant, scalar, row_major)
 uniform RenderStates {
-    D3D9RenderStateInfo rs;
+    D3D9SharedPushData global;
+    D3D9VsPushData vs;
 
-    layout(offset = MaxSharedPushDataSize) uint packedSamplerIndices[TextureStageCount / 2];
+    layout(offset = MaxSharedPushDataSize)
+    D3D9FfpsPushData ffps;
+
+    uint packedSamplerIndices[TextureStageCount / 2u];
 };
 
 layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture2D t2d[TextureStageCount];
@@ -121,10 +124,11 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
 vec4 calculateFog(vec4 vPos, vec4 oColor) {
-    vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
-    float fogScale = rs.fogScale;
-    float fogEnd = rs.fogEnd;
-    float fogDensity = rs.fogDensity;
+    vec3 fogColor = unpackUnorm4x8(global.packedFogColorAndAlphaRef).bgr;
+    float fogScale = global.fogDistanceScale;
+    float fogEnd = global.fogDistanceEnd;
+    float fogDensity = global.fogDensity;
+
     D3DFOGMODE fogMode = specUint(SpecPixelFogMode);
     bool fogEnabled = specBool(SpecFogEnabled);
     if (!fogEnabled) {
@@ -293,7 +297,7 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
             reg = textureVal;
             break;
         case D3DTA_TFACTOR:
-            reg = decodeD3DColor(rs.textureFactor);
+            reg = decodeD3DColor(ffps.textureFactor);
             break;
     }
 
@@ -380,7 +384,7 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
             return mix(arg.arg2, arg.arg1, textureVal.aaaa);
 
         case D3DTOP_BLENDFACTORALPHA:
-            return mix(arg.arg2, arg.arg1, decodeD3DColor(rs.textureFactor).aaaa);
+            return mix(arg.arg2, arg.arg1, decodeD3DColor(ffps.textureFactor).aaaa);
 
         case D3DTOP_BLENDTEXTUREALPHAPM:
             return saturate(fma(arg.arg2, complement(textureVal.aaaa), arg.arg1));
@@ -430,7 +434,7 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
 void alphaTest() {
     uint alphaFunc = specUint(SpecAlphaCompareOp);
     uint alphaPrecision = specUint(SpecAlphaPrecisionBits);
-    uint alphaRefInitial = rs.alphaRef;
+    uint alphaRefInitial = bitfieldExtract(global.packedFogColorAndAlphaRef, 24, 8);
     float alphaRef;
     float alpha = out_Color0.a;
 
