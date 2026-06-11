@@ -70,6 +70,61 @@ namespace dxvk {
     Count
   };
 
+  /// Shared push data
+  struct D3D9SharedPushData {
+    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_ALL_GRAPHICS;
+    static constexpr uint32_t           Offset = 0u;
+
+    uint8_t fogColor[3] = {};
+    uint8_t alphaRef = 0u;
+
+    float fogDistanceScale = 0.0f;
+    float fogDistanceEnd = 0.0f;
+    float fogDensity = 0.0f;
+  };
+
+  /// Vertex shader push data
+  struct D3D9VsPushData {
+    // We don't have enough VS-only push data space available to fit all
+    // possible samplers, constant buffers and data in there, so put VS
+    // data into the shared block.
+    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_ALL_GRAPHICS;
+    static constexpr uint32_t           Offset = sizeof(D3D9SharedPushData);
+
+    uint16_t reserved = 0u;
+    // Point size, as 13.3 fixed-point
+    uint16_t pointSize = 0u;
+    uint16_t pointSizeMin = 0u;
+    uint16_t pointSizeMax = 0u;
+  };
+
+  /// Fixed-function vertex shader push data.
+  /// Can theoretically use up to 32 bytes.
+  struct D3D9FfvsPushData {
+    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_VERTEX_BIT;
+    static constexpr uint32_t           Offset = 0u;
+
+    float pointScaleA = 0.0f;
+    float pointScaleB = 0.0f;
+    float pointScaleC = 0.0f;
+  };
+
+  /// Fixed-function pixel shader push data.
+  struct D3D9FfpsPushData {
+    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    static constexpr uint32_t           Offset = 0u;
+
+    uint32_t textureFactor = 0u;
+  };
+
+  /// Complete push data state. Note that the data layout inside
+  /// this struct is different from what it is in shaders.
+  struct D3D9PushData {
+    D3D9SharedPushData shared;
+    D3D9VsPushData vs;
+    D3D9FfvsPushData ffvs;
+    D3D9FfpsPushData ffps;
+  };
 
   // This is needed in fixed function for POSITION_T support.
   // These are constants we need to * and add to move
