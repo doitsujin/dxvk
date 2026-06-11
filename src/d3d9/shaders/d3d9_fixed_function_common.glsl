@@ -8,24 +8,29 @@ const uint D3DFOG_EXP    = 1;
 const uint D3DFOG_EXP2   = 2;
 const uint D3DFOG_LINEAR = 3;
 
-struct D3D9RenderStateInfo {
-    float fogColor[3];
-    float fogScale;
-    float fogEnd;
-    float fogDensity;
+const uint MaxSharedPushDataSize = 64;
 
-    uint alphaRef;
+struct D3D9VsPushData {
+    uint packedReservedAndPointSize;
+    uint packedPointSizeMinMax;
+};
 
-    float pointSize;
-    float pointSizeMin;
-    float pointSizeMax;
+struct D3D9FfvsPushData {
     float pointScaleA;
     float pointScaleB;
     float pointScaleC;
+};
 
+struct D3D9FfpsPushData {
     uint textureFactor;
 };
 
+struct D3D9SharedPushData {
+    uint packedFogColorAndAlphaRef;
+    float fogDistanceScale;
+    float fogDistanceEnd;
+    float fogDensity;
+};
 
 // Thanks SPIRV-Cross
 spirv_instruction(set = "GLSL.std.450", id = 79) float spvNMin(float, float);
