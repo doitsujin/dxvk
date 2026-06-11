@@ -3435,22 +3435,24 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyRasterizerSampleCount() {
-    uint32_t sampleCount = m_state.om.sampleCount;
+    D3D11BuiltInPushData pushData = {};
+    pushData.maxTessFactor = m_maxTessFactor;
+    pushData.sampleCount = m_state.om.sampleCount;
 
-    if (unlikely(!sampleCount)) {
-      sampleCount = m_state.rs.state
+    if (unlikely(!pushData.sampleCount)) {
+      pushData.sampleCount = m_state.rs.state
         ? m_state.rs.state->Desc().ForcedSampleCount
         : 0u;
 
-      if (!sampleCount)
-        sampleCount = 1u;
+      if (!pushData.sampleCount)
+        pushData.sampleCount = 1u;
     }
 
     EmitCs([
-      cPushConstants = DxvkBuiltInPushData(sampleCount, m_maxTessFactor)
+      cPushData = pushData
     ] (DxvkContext* ctx) {
       ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
-        0u, sizeof(cPushConstants), &cPushConstants);
+        0u, sizeof(cPushData), &cPushData);
     });
   }
 
@@ -4916,8 +4918,10 @@ namespace dxvk {
       }
 
       // Initialize push constants
-      DxvkBuiltInPushData pc(1u, cMaxTessFactor);
-      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pc), &pc);
+      D3D11BuiltInPushData pushData = {};
+      pushData.maxTessFactor = cMaxTessFactor;
+
+      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pushData), &pushData);
     });
   }
 

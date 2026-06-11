@@ -1,3 +1,6 @@
+#include <optional>
+#include <utility>
+
 #include <dxbc/dxbc_container.h>
 #include <dxbc/dxbc_interface.h>
 #include <dxbc/dxbc_parser.h>
@@ -56,6 +59,8 @@ namespace dxvk {
       } else {
         if (!converter.convertShader(builder))
           throw DxvkError(str::format("Failed to convert shader: ", m_key.toString()));
+
+        lowerBuiltIns(builder);
       }
     }
 
@@ -98,8 +103,114 @@ namespace dxvk {
 
     bool                    m_lowerIcb = false;
 
+    struct BuiltInInfo {
+      dxbc_spv::ir::BuiltIn builtIn;
+      dxbc_spv::ir::BasicType type;
+      const char* name;
+    };
+
+    static const std::array<BuiltInInfo, 2u> s_builtIns;
+
+    static void lowerBuiltIns(dxbc_spv::ir::Builder& builder) {
+      using namespace dxbc_spv;
+
+      // Nothing to do for compute, our speshul built-ins are
+      // only used in graphics pipelines.
+      auto [entryPoint, shaderStage] = findEntryPoint(builder);
+
+      if (shaderStage == ir::ShaderStage::eCompute)
+        return;
+
+      // Set up push data
+      ir::Type pushDataType = ir::Type();
+
+      for (uint32_t i = 0u; i < s_builtIns.size(); i++)
+        pushDataType.addStructMember(s_builtIns[i].type);
+
+      ir::SsaDef pushData = builder.add(ir::Op::DclPushData(
+        pushDataType, entryPoint, 0u, ir::ShaderStageMask()));
+
+      builder.add(ir::Op::DebugName(pushData, "builtIns"));
+
+      for (uint32_t i = 0u; i < s_builtIns.size(); i++)
+        builder.add(ir::Op::DebugMemberName(pushData, i, s_builtIns[i].name));
+
+      // Gather built-in inputs
+      small_vector<ir::SsaDef, 32u> inputs;
+
+      for (auto iter = builder.getDeclarations().first;
+                iter != builder.getDeclarations().second; iter++) {
+        if (iter->getOpCode() == ir::OpCode::eDclInputBuiltIn)
+          inputs.push_back(iter->getDef());
+      }
+
+      // Rewrite input loads as push data loads
+      for (auto inputDef : inputs) {
+        const auto& inputOp = builder.getOp(inputDef);
+
+        auto builtIn = ir::BuiltIn(inputOp.getOperand(inputOp.getFirstLiteralOperandIndex()));
+        auto pushIndex = getBuiltInPushDataIndex(builtIn);
+
+        if (pushIndex)
+          rewriteBuiltIn(builder, inputDef, pushData, *pushIndex);
+      }
+    }
+
+    static void rewriteBuiltIn(dxbc_spv::ir::Builder& builder, dxbc_spv::ir::SsaDef def, dxbc_spv::ir::SsaDef pushData, uint32_t pushIndex) {
+      using namespace dxbc_spv;
+
+      small_vector<ir::SsaDef, 32u> uses;
+      builder.getUses(def, uses);
+
+      for (auto use : uses) {
+        const auto& useOp = builder.getOp(use);
+
+        if (useOp.getOpCode() == ir::OpCode::eInputLoad) {
+          auto pushType = s_builtIns[pushIndex].type;
+
+          auto loadType = useOp.getType().getBaseType(0u);
+          auto loadOp = builder.addBefore(use, ir::Op::PushDataLoad(
+            pushType, pushData, builder.makeConstant(pushIndex)));
+
+          // Convert to expected result type
+          ir::Op convertOp = (loadType.isFloatType())
+            ? ir::Op::ConvertItoF(loadType, loadOp)
+            : ir::Op::ConvertItoI(loadType, loadOp);
+
+          builder.rewriteOp(use, std::move(convertOp));
+        }
+      }
+    }
+
+    static std::optional<uint32_t> getBuiltInPushDataIndex(dxbc_spv::ir::BuiltIn builtIn) {
+      for (uint32_t i = 0u; i < s_builtIns.size(); i++) {
+        if (s_builtIns[i].builtIn == builtIn)
+          return std::make_optional(i);
+      }
+
+      return std::nullopt;
+    }
+
+    static std::pair<dxbc_spv::ir::SsaDef, dxbc_spv::ir::ShaderStage> findEntryPoint(dxbc_spv::ir::Builder& builder) {
+      using namespace dxbc_spv;
+
+      auto [a, b] = builder.getDeclarations();
+
+      for (auto iter = a; iter != b; iter++) {
+        if (iter->getOpCode() == ir::OpCode::eEntryPoint)
+          return std::make_pair(iter->getDef(), ir::ShaderStage(iter->getOperand(iter->getFirstLiteralOperandIndex())));
+      }
+
+      return {};
+    }
+
   };
 
+
+  const std::array<D3D11ShaderConverter::BuiltInInfo, 2u> D3D11ShaderConverter::s_builtIns = {{
+    { dxbc_spv::ir::BuiltIn::eTessFactorLimit,  dxbc_spv::ir::ScalarType::eU16, "maxTessFactor" },
+    { dxbc_spv::ir::BuiltIn::eSampleCount,      dxbc_spv::ir::ScalarType::eU16, "rasterizerSampleCount" },
+  }};
 
 
   
