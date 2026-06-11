@@ -4665,6 +4665,12 @@ namespace dxvk {
      || srcSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)
       return false;
 
+    // Also ignore multisampled images since we don't handle or enable any of
+    // the shaderStorageImageMultisample stuff and the corresponding DLRL cap.
+    // Only AMD/NV implement that anyway, so probably not worth it.
+    if (dstImage.info().sampleCount != VK_SAMPLE_COUNT_1_BIT)
+      return false;
+
     // Check whether the source image is bound as a color attachment
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     int32_t colorAttachmentIndex = findColorAttachmentIndex(srcImage, srcSubresourceRange);
