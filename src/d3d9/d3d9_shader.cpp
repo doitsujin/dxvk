@@ -233,7 +233,7 @@ namespace dxvk {
       using namespace dxbc_spv;
 
       auto type = ir::Type()
-        .addStructMember(ir::ScalarType::eU16)      // Reserved
+        .addStructMember(ir::ScalarType::eU16)      // Dynamic float count
         .addStructMember(ir::ScalarType::eU16)      // Point size
         .addStructMember(ir::ScalarType::eU16)      // Minimum point size
         .addStructMember(ir::ScalarType::eU16);     // Maximum point size
@@ -242,7 +242,7 @@ namespace dxvk {
         D3D9VsPushData::Offset, getPushDataStage(D3D9VsPushData::Stages)));
 
       m_builder.add(ir::Op::DebugName(m_vsPushData, "vs"));
-      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 0u, "reserved"));
+      m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 0u, "cFSize"));
       m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 1u, "pointSize"));
       m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 2u, "pointSizeMin"));
       m_builder.add(ir::Op::DebugMemberName(m_vsPushData, 3u, "pointSizeMax"));
@@ -318,12 +318,13 @@ namespace dxvk {
       if (!layout.isDynamicallyIndexed())
         return;
 
-      // Trivial, just emit a float vector array with the maximum required size.
-      auto cbvSize = layout.computeConstantCount(-1u);
+      // Over-declare by one element so that we can index past the
+      // last actual constant in order to read zero.
+      auto cbvSize = layout.computeConstantCount(-1u) + 1u;
       auto cbvType = ir::Type(ir::ScalarType::eF32, 4u).addArrayDimension(cbvSize);
 
-      m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint,
-        0u, D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, 1u));
+      m_dynamicCbv = m_builder.add(ir::Op::DclCbv(cbvType, m_entryPoint, 0u,
+        D3D9ShaderResourceMapping::CbvIndex::VSDynamicConstants, 1u).setFlags(ir::OpFlag::eInBounds));
       m_builder.add(ir::Op::DebugName(m_dynamicCbv, "cF"));
     }
 
@@ -355,8 +356,26 @@ namespace dxvk {
             auto cbvDescriptor = m_builder.addBefore(use, ir::Op::DescriptorLoad(
               ir::ScalarType::eCbv, m_dynamicCbv, m_builder.makeConstant(0u)));
 
-            m_builder.rewriteOp(use, ir::Op::BufferLoad(useOp.getType(),
-              cbvDescriptor, addressOp.getDef(), useOp.getType().byteSize()));
+            // The front-end promises to bind *at least* all statically
+            // indexed constants. Only clamp dynamic indices.
+            auto addressDef = addressOp.getDef();
+
+            if (!addressOp.isConstant()) {
+              auto cursor = m_builder.setCursor(m_builder.getPrev(use));
+
+              auto count = m_builder.add(ir::Op::PushDataLoad(ir::ScalarType::eU16,
+                m_vsPushData, m_builder.makeConstant(0u)));
+              count = m_builder.add(ir::Op::ConvertItoI(ir::ScalarType::eU32, count));
+
+              auto index = ir::extractFromVector(m_builder, addressDef, 0u);
+              index = m_builder.add(ir::Op::UMin(ir::ScalarType::eU32, index, count));
+              addressDef = ir::insertIntoVector(m_builder, addressDef, 0u, index);
+
+              m_builder.setCursor(cursor);
+            }
+
+            m_builder.rewriteOp(use, ir::Op::BufferLoad(useOp.getType(), cbvDescriptor,
+              addressDef, useOp.getType().byteSize()).setFlags(ir::OpFlag::eInBounds));
           } else {
             // For compacted constants, we need to map the source constant
             // to a member index in the static constant buffer struct.
