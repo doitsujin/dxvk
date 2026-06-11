@@ -54,7 +54,8 @@ namespace dxvk {
     static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_ALL_GRAPHICS;
     static constexpr uint32_t           Offset = sizeof(D3D9SharedPushData);
 
-    uint16_t reserved = 0u;
+    // Dynamically indexed float count
+    uint16_t floatCount = 0u;
     // Point size, as 13.3 fixed-point
     uint16_t pointSize = 0u;
     uint16_t pointSizeMin = 0u;
