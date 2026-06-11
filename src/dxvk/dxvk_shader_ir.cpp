@@ -1573,7 +1573,7 @@ namespace dxvk {
 
     void rewritePushData() {
       // Don't need to do anythig if the driver supports small types properly
-      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData))
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::SupportsSubDwordPushData))
         return;
 
       small_vector<dxbc_spv::ir::SsaDef, 16u> pushData;
