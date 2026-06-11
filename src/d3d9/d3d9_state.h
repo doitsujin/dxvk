@@ -112,7 +112,7 @@ namespace dxvk {
     float Phi;
   };
 
-  struct D3D9FFShaderKeyVSData {
+  struct D3D9PackedFFVSData {
     union {
       struct {
         uint32_t TexcoordIndices : 24;
@@ -159,17 +159,8 @@ namespace dxvk {
         // End of uint32_t
       } Contents;
 
-      uint32_t Primitive[5];
+      std::array<uint32_t, 5u> Primitive;
     };
-  };
-
-  struct D3D9FFShaderKeyVS {
-    D3D9FFShaderKeyVS() {
-      // memcmp safety
-      std::memset(&Data, 0, sizeof(Data));
-    }
-
-    D3D9FFShaderKeyVSData Data;
   };
 
   struct D3D9FixedFunctionVS {
@@ -187,7 +178,7 @@ namespace dxvk {
     D3DMATERIAL9 Material;
     float TweenFactor;
 
-    D3D9FFShaderKeyVSData Key;
+    D3D9PackedFFVSData Packed;
   };
 
   static constexpr uint32_t D3D9MaxVertexBlendTransformsHw = 8u;

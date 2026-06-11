@@ -8140,33 +8140,35 @@ namespace dxvk {
   }
 
 
-  D3D9FFShaderKeyVS D3D9DeviceEx::BuildFFKeyVS(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend, uint32_t lightCount) const {
-    D3D9FFShaderKeyVS key;
-    key.Data.Contents.VertexHasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
-    key.Data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0);
-    key.Data.Contents.VertexHasColor1    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
-    key.Data.Contents.VertexHasPointSize = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize);
-    key.Data.Contents.VertexHasFog       = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog);
+  D3D9PackedFFVSData D3D9DeviceEx::BuildPackedFFVSData(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend, uint32_t lightCount) const {
+    D3D9PackedFFVSData data;
+    data.Primitive = {};
 
-    bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.Data.Contents.VertexHasPositionT;
+    data.Contents.VertexHasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+    data.Contents.VertexHasColor0    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0);
+    data.Contents.VertexHasColor1    = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
+    data.Contents.VertexHasPointSize = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize);
+    data.Contents.VertexHasFog       = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog);
+
+    bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !data.Contents.VertexHasPositionT;
     bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
     uint32_t mask    = (lighting && colorVertex)
-                     ? (key.Data.Contents.VertexHasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
-                     | (key.Data.Contents.VertexHasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
+                     ? (data.Contents.VertexHasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
+                     | (data.Contents.VertexHasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
                      : 0;
 
-    key.Data.Contents.UseLighting      = lighting;
-    key.Data.Contents.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
-    key.Data.Contents.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
+    data.Contents.UseLighting      = lighting;
+    data.Contents.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
+    data.Contents.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
 
-    key.Data.Contents.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
+    data.Contents.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
 
-    key.Data.Contents.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
-    key.Data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
-    key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
-    key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
+    data.Contents.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
+    data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
+    data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
+    data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
 
-    key.Data.Contents.LightCount       = key.Data.Contents.UseLighting ? lightCount : 0;
+    data.Contents.LightCount       = data.Contents.UseLighting ? lightCount : 0;
 
     for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
       uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
@@ -8176,23 +8178,23 @@ namespace dxvk {
       transformFlags &= 0b111;
       index          &= 0b111;
 
-      key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
-      key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
-      key.Data.Contents.TexcoordIndices |= index          << (i * 3);
+      data.Contents.TransformFlags  |= transformFlags << (i * 3);
+      data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
+      data.Contents.TexcoordIndices |= index          << (i * 3);
     }
 
-    key.Data.Contents.VertexTexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+    data.Contents.VertexTexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
 
-    key.Data.Contents.VertexBlendMode  = uint32_t(vertexBlendMode);
+    data.Contents.VertexBlendMode  = uint32_t(vertexBlendMode);
 
     if (vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
-      key.Data.Contents.VertexBlendIndexed = indexedVertexBlend;
-      key.Data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
+      data.Contents.VertexBlendIndexed = indexedVertexBlend;
+      data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
     }
 
-    key.Data.Contents.VertexClipping = m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
+    data.Contents.VertexClipping = m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
 
-    return key;
+    return data;
   }
 
 
@@ -8291,7 +8293,7 @@ namespace dxvk {
 
       data->Material = m_state.material;
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
-      data->Key = BuildFFKeyVS(vertexBlendMode, indexedVertexBlend, lightIdx).Data;
+      data->Packed = BuildPackedFFVSData(vertexBlendMode, indexedVertexBlend, lightIdx);
     }
 
     if (m_dirty.test(D3D9DeviceDirtyFlag::FFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
