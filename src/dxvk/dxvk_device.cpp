@@ -779,11 +779,7 @@ namespace dxvk {
     if (m_features.vk12.shaderFloat16)
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::Supports16BitArithmetic);
 
-    // RADV currently can't pre-load SGPRs with sub-dword push data and will
-    // load them from memory instead, so promote everything to dwords.
-    if (m_features.vk11.storagePushConstant16
-     && m_features.vk12.storagePushConstant8
-     && !m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV))
+    if (m_features.vk11.storagePushConstant16 && m_features.vk12.storagePushConstant8)
       m_shaderOptions.flags.set(DxvkShaderCompileFlag::SupportsSubDwordPushData);
 
     // Need to tag typed storage image loads with the format on some devices
