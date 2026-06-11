@@ -795,18 +795,12 @@ namespace dxvk {
 
       m_localPushDataResourceMask |= ((1ull << dwordCount) - 1ull) << dwordIndex;
 
-      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-        // Add each word separately and pad with a dummy entry if unaligned
-        for (uint32_t i = 0u; i < wordCount; i++)
-          pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU16);
+      // Add each word separately and pad with a dummy entry if unaligned
+      for (uint32_t i = 0u; i < wordCount; i++)
+        pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU16);
 
-        if (wordCount & 1u)
-          pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU16);
-      } else {
-        // Add dword member for each pair fo samplers
-        for (uint32_t i = 0u; i < dwordCount; i++)
-          pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU32);
-      }
+      if (wordCount & 1u)
+        pushDataType.addStructMember(dxbc_spv::ir::ScalarType::eU16);
 
       // Declare actual push data structure
       auto def = m_builder.add(dxbc_spv::ir::Op::DclPushData(
@@ -815,23 +809,8 @@ namespace dxvk {
       m_localPushDataOffset += pushDataType.byteSize();
 
       // Add debug names for sampler indices
-      for (const auto& e : m_samplers) {
-        if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-          addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
-        } else if (!(e.samplerIndex % 2u)) {
-          std::string debugName = getDebugName(e.sampler);
-
-          for (const auto& eHi : m_samplers) {
-            if (eHi.samplerIndex == e.samplerIndex + 1u) {
-              debugName += "_";
-              debugName += getDebugName(eHi.sampler);
-              break;
-            }
-          }
-
-          addDebugMemberName(def, e.samplerIndex / 2u, debugName);
-        }
-      }
+      for (const auto& e : m_samplers)
+        addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
 
       return def;
     }
@@ -1038,30 +1017,16 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef loadConstantSamplerIndex(dxbc_spv::ir::SsaDef ref, dxbc_spv::ir::SsaDef pushDataDef, const SamplerInfo& info, uint32_t index) {
       uint32_t wordIndex = info.samplerIndex + index;
 
-      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData)) {
-        dxbc_spv::ir::SsaDef memberIndex = { };
+      dxbc_spv::ir::SsaDef memberIndex = { };
 
-        if (m_builder.getOp(pushDataDef).getType().isStructType())
-          memberIndex = m_builder.makeConstant(wordIndex);
+      if (m_builder.getOp(pushDataDef).getType().isStructType())
+        memberIndex = m_builder.makeConstant(wordIndex);
 
-        dxbc_spv::ir::SsaDef samplerIndex = m_builder.addBefore(ref,
-          dxbc_spv::ir::Op::PushDataLoad(dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
-        samplerIndex = m_builder.addBefore(ref, dxbc_spv::ir::Op::ConvertItoI(
-          dxbc_spv::ir::ScalarType::eU32, samplerIndex));
-        return samplerIndex;
-      } else {
-        dxbc_spv::ir::SsaDef bitIndex = m_builder.makeConstant(uint32_t(16u * (wordIndex % 2u)));
-        dxbc_spv::ir::SsaDef memberIndex = { };
-
-        if (m_builder.getOp(pushDataDef).getType().isStructType())
-          memberIndex = m_builder.makeConstant(uint32_t(wordIndex / 2u));
-
-        dxbc_spv::ir::SsaDef samplerIndex = m_builder.addBefore(ref,
-          dxbc_spv::ir::Op::PushDataLoad(dxbc_spv::ir::ScalarType::eU32, pushDataDef, memberIndex));
-        samplerIndex = m_builder.addBefore(ref, dxbc_spv::ir::Op::UBitExtract(
-          dxbc_spv::ir::ScalarType::eU32, samplerIndex, bitIndex, m_builder.makeConstant(16u)));
-        return samplerIndex;
-      }
+      dxbc_spv::ir::SsaDef samplerIndex = m_builder.addBefore(ref,
+        dxbc_spv::ir::Op::PushDataLoad(dxbc_spv::ir::ScalarType::eU16, pushDataDef, memberIndex));
+      samplerIndex = m_builder.addBefore(ref, dxbc_spv::ir::Op::ConvertItoI(
+        dxbc_spv::ir::ScalarType::eU32, samplerIndex));
+      return samplerIndex;
     }
 
 
