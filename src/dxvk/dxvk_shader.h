@@ -18,26 +18,6 @@ namespace dxvk {
   struct DxvkPipelineStats;
 
   /**
-   * \brief Push data to handle built-ins
-   */
-  struct DxvkBuiltInPushData {
-    static constexpr uint32_t SampleCountOffset = 0u;
-    static constexpr uint32_t SampleCountBits = 8u;
-
-    static constexpr uint32_t MaxTessFactorOffset = SampleCountOffset + SampleCountBits;
-    static constexpr uint32_t MaxTessFactorBits = 8u;
-
-    DxvkBuiltInPushData() = default;
-
-    explicit DxvkBuiltInPushData(uint32_t sampleCount, uint32_t maxTessFactor)
-    : builtIns((sampleCount   << SampleCountOffset)
-             | (maxTessFactor << MaxTessFactorOffset)) { }
-
-    uint32_t builtIns = 0u;
-  };
-
-
-  /**
    * \brief Shader compile flags
    */
   enum class DxvkShaderCompileFlag : uint32_t {

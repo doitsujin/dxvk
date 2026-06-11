@@ -609,10 +609,6 @@ namespace dxvk {
 
       auto builtIn = dxbc_spv::ir::BuiltIn(op->getOperand(op->getFirstLiteralOperandIndex()));
 
-      if (builtIn == dxbc_spv::ir::BuiltIn::eSampleCount
-       || builtIn == dxbc_spv::ir::BuiltIn::eTessFactorLimit)
-        return rewriteBuiltIn(op, builtIn);
-
       if (builtIn == dxbc_spv::ir::BuiltIn::eIsFullyCovered)
         m_metadata.flags.set(DxvkShaderFlag::UsesFragmentCoverage);
 
@@ -830,74 +826,6 @@ namespace dxvk {
       }
 
       return m_builtInPushData;
-    }
-
-
-    dxbc_spv::ir::Builder::iterator rewriteBuiltIn(dxbc_spv::ir::Builder::iterator op, dxbc_spv::ir::BuiltIn builtIn) {
-      // Map built-in to bit range in the built-in push data dword
-      static const std::array<std::tuple<dxbc_spv::ir::BuiltIn, uint16_t, uint16_t>, 2u> s_builtins = {{
-        { dxbc_spv::ir::BuiltIn::eSampleCount,     DxvkBuiltInPushData::SampleCountOffset,    DxvkBuiltInPushData::SampleCountBits },
-        { dxbc_spv::ir::BuiltIn::eTessFactorLimit, DxvkBuiltInPushData::MaxTessFactorOffset,  DxvkBuiltInPushData::MaxTessFactorBits },
-      }};
-
-      uint32_t bitIndex = 0u;
-      uint32_t bitCount = 32u;
-
-      for (const auto& e : s_builtins) {
-        auto [which, index, count] = e;
-
-        if (which == builtIn) {
-          bitIndex = index;
-          bitCount = count;
-          break;
-        }
-      }
-
-      // Emit helper function to actually load the push data dword
-      auto ref = m_builder.getCode().first->getDef();
-
-      auto helper = m_builder.addBefore(ref, dxbc_spv::ir::Op::Function(op->getType()));
-      auto cursor = m_builder.setCursor(helper);
-
-      m_builder.add(dxbc_spv::ir::Op::Label());
-
-      auto value = m_builder.add(dxbc_spv::ir::Op::PushDataLoad(
-        dxbc_spv::ir::ScalarType::eU32, defineBuiltInPushData(), dxbc_spv::ir::SsaDef()));
-      value = m_builder.add(dxbc_spv::ir::Op::UBitExtract(dxbc_spv::ir::ScalarType::eU32,
-        value, m_builder.makeConstant(bitIndex), m_builder.makeConstant(bitCount)));
-
-      if (op->getType() != dxbc_spv::ir::ScalarType::eU32) {
-        value = m_builder.add(op->getType().getBaseType(0u).isFloatType()
-          ? dxbc_spv::ir::Op::ConvertItoF(op->getType(), value)
-          : dxbc_spv::ir::Op::ConvertItoI(op->getType(), value));
-      }
-
-      m_builder.add(dxbc_spv::ir::Op::Return(op->getType(), value));
-      m_builder.add(dxbc_spv::ir::Op::FunctionEnd());
-      m_builder.setCursor(cursor);
-
-      auto debugName = getDebugName(op->getDef());
-
-      if (!debugName.empty())
-        m_builder.add(dxbc_spv::ir::Op::DebugName(helper, debugName.c_str()));
-
-      // Replace all input loads with a call to the helper function and remove
-      // any debug instructions, as well as the input declaration itself.
-      small_vector<dxbc_spv::ir::SsaDef, 64u> uses;
-      m_builder.getUses(op->getDef(), uses);
-
-      for (auto use : uses) {
-        const auto& useOp = m_builder.getOp(use);
-
-        if (useOp.getOpCode() == dxbc_spv::ir::OpCode::eInputLoad) {
-          m_builder.rewriteOp(useOp.getDef(),
-            dxbc_spv::ir::Op::FunctionCall(op->getType(), helper));
-        } else {
-          m_builder.remove(use);
-        }
-      }
-
-      return m_builder.iter(m_builder.remove(op->getDef()));
     }
 
 
