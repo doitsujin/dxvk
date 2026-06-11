@@ -236,7 +236,6 @@ float calculateFog(vec4 vPos) {
     vec4 specular = in_Color1;
     bool hasSpecular = vertexHasColor1();
 
-    vec3 fogColor = vec3(rs.fogColor[0], rs.fogColor[1], rs.fogColor[2]);
     float fogScale = rs.fogScale;
     float fogEnd = rs.fogEnd;
     float fogDensity = rs.fogDensity;
