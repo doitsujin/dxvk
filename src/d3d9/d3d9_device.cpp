@@ -7765,8 +7765,6 @@ namespace dxvk {
             attrib.binding = uint32_t(element.Stream);
             attrib.format = DecodeDecltype(D3DDECLTYPE(element.Type));
             attrib.offset = element.Offset;
-
-            bindMask |= 1u << attrib.binding;
           } else {
             attrib.binding = NullStreamIdx;
             attrib.format = VK_FORMAT_R32G32B32A32_SFLOAT;
@@ -7777,6 +7775,8 @@ namespace dxvk {
 
           vertexSizes[attrib.binding] = std::max(vertexSizes[attrib.binding],
             uint16_t(attrib.offset + lookupFormatInfo(attrib.format)->elementSize));
+
+          bindMask |= 1u << attrib.binding;
         }
 
         // Set up compacted bindings for all streams referenced by the
