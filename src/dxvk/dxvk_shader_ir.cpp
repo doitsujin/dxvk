@@ -267,6 +267,7 @@ namespace dxvk {
       rewriteSamplers();
       rewriteConstantBuffers();
       rewriteUavCounters();
+      rewritePushData();
 
       if (m_sharedPushDataOffset) {
         auto stageMask = (m_metadata.stage & VK_SHADER_STAGE_ALL_GRAPHICS)
@@ -354,6 +355,17 @@ namespace dxvk {
     struct ResourceAlias {
       bool hasAlias = false;
       bool hasBinding = false;
+    };
+
+    struct PushDataDwordEntry {
+      uint16_t member;
+      uint8_t bitIndex;
+      uint8_t bitCount;
+    };
+
+    struct PushDataDwordMap {
+      std::string debugName;
+      std::array<PushDataDwordEntry, 4u> components;
     };
 
     dxbc_spv::ir::Builder&        m_builder;
@@ -1379,6 +1391,236 @@ namespace dxvk {
 
         addBinding(binding);
       }
+    }
+
+
+    bool typeHasSubDwordMember(const dxbc_spv::ir::Type& type) {
+      for (uint32_t i = 0u; i < type.getStructMemberCount(); i++) {
+        if (byteSize(type.getBaseType(i).getBaseType()) < sizeof(uint32_t))
+          return true;
+      }
+
+      return false;
+    }
+
+
+    void lowerSubDwordPushData(dxbc_spv::ir::SsaDef pushDataDef) {
+      auto pushDataOp = m_builder.getOp(pushDataDef);
+      const auto& pushDataType = pushDataOp.getType();
+
+      if (!typeHasSubDwordMember(pushDataType))
+        return;
+
+      // Build new type and a look-up table to re-map members
+      small_vector<PushDataDwordMap, 64u> map;
+
+      dxbc_spv::ir::Type newType = {};
+
+      for (uint32_t i = 0u; i < pushDataType.getStructMemberCount(); i++) {
+        auto member = pushDataType.getBaseType(i);
+        auto scalarSize = byteSize(member.getBaseType());
+
+        if (scalarSize < sizeof(uint32_t)) {
+          // We enforce scalar alignment everywhere, so remapping sub-dword
+          // members is simple: If the offset is divisible by 4, we need to
+          // add a new dword, otherwise map it to bits of an existing one.
+          auto& entry = map.emplace_back();
+
+          for (uint32_t j = 0u; j < member.getVectorSize(); j++) {
+            uint32_t offset = pushDataType.byteOffset(i) + j * scalarSize;
+
+            if (!(offset % sizeof(uint32_t)))
+              newType.addStructMember(dxbc_spv::ir::ScalarType::eU32);
+
+            entry.components[j].member = newType.getStructMemberCount() - 1u;
+            entry.components[j].bitIndex = 8u * (offset % sizeof(uint32_t));
+            entry.components[j].bitCount = 8u * scalarSize;
+          }
+        } else {
+          // Add member as-is, but we still need to re-map the index. Leave
+          // bit count at 0 since this is not a dword entry.
+          uint32_t newIndex = newType.getStructMemberCount();
+          newType.addStructMember(member);
+
+          auto& entry = map.emplace_back();
+
+          for (uint32_t i = 0u; i < member.getVectorSize(); i++)
+            entry.components[i].member = newIndex;
+        }
+      }
+
+      // Rewrite loads and collect debug names since we'll need to re-emit
+      // those with appropriately remapped member indices and packing.
+      small_vector<dxbc_spv::ir::SsaDef, 256u> uses;
+      m_builder.getUses(pushDataDef, uses);
+
+      for (auto use : uses) {
+        auto useOp = m_builder.getOp(use);
+
+        switch (useOp.getOpCode()) {
+          case dxbc_spv::ir::OpCode::ePushDataLoad: {
+            dxbc_spv_assert(useOp.getType().isBasicType());
+            auto type = useOp.getType().getBaseType(0u);
+
+            auto addressOp = m_builder.getOpForOperand(useOp, 1u);
+            dxbc_spv_assert(!addressOp || addressOp.isConstant());
+
+            uint32_t addressComponent = 0u;
+            uint32_t memberIndex = 0u;
+
+            if (pushDataType.isStructType() && addressComponent < addressOp.getOperandCount())
+              memberIndex = uint32_t(addressOp.getOperand(addressComponent++));
+
+            dxbc_spv_assert(memberIndex < map.size());
+
+            if (byteSize(type.getBaseType()) < sizeof(uint32_t)) {
+              // Work out which component(s) to load
+              uint32_t componentIndex = 0u;
+              uint32_t componentCount = type.getVectorSize();
+
+              if (addressComponent < addressOp.getOperandCount())
+                componentIndex = uint32_t(addressOp.getOperand(addressComponent++));
+
+              // Process vectors one component at a time since components
+              // may straddle multiple different dwords.
+              dxbc_spv::ir::Op compositeOp(dxbc_spv::ir::OpCode::eCompositeConstruct, type);
+
+              for (uint32_t i = componentIndex; i < componentIndex + componentCount; i++) {
+                auto& info = map[memberIndex].components[i];
+
+                dxbc_spv::ir::SsaDef memberAddr = {};
+
+                if (newType.isStructType())
+                  memberAddr = m_builder.makeConstant(uint32_t(info.member));
+
+                dxbc_spv_assert(newType.getBaseType(info.member) == dxbc_spv::ir::ScalarType::eU32);
+
+                auto dw = m_builder.addBefore(use, dxbc_spv::ir::Op::PushDataLoad(
+                  dxbc_spv::ir::ScalarType::eU32, pushDataDef, memberAddr));
+
+                dw = m_builder.addBefore(use, dxbc_spv::ir::Op::UBitExtract(
+                  dxbc_spv::ir::ScalarType::eU32, dw,
+                  m_builder.makeConstant(uint32_t(info.bitIndex)),
+                  m_builder.makeConstant(uint32_t(info.bitCount))));
+
+                auto smallType = byteSize(type.getBaseType()) > 1u
+                  ? dxbc_spv::ir::ScalarType::eU16
+                  : dxbc_spv::ir::ScalarType::eU8;
+
+                dw = m_builder.addBefore(use, dxbc_spv::ir::Op::ConvertItoI(smallType, dw));
+
+                if (type.getBaseType() != smallType)
+                  dw = m_builder.addBefore(use, dxbc_spv::ir::Op::Cast(type.getBaseType(), dw));
+
+                compositeOp.addOperand(dw);
+              }
+
+              // Replace the original push data load with the new sequence of instructions.
+              auto result = dxbc_spv::ir::SsaDef(compositeOp.getOperand(0u));
+
+              if (type.isVector())
+                result = m_builder.addBefore(use, std::move(compositeOp));
+
+              m_builder.rewriteDef(use, result);
+            } else  {
+              // We forward any non-subdword member as-is, so the struct-ness of the
+              // push data block cannot have changed if we have at least one of these.
+              dxbc_spv_assert(newType.isStructType() == pushDataType.isStructType());
+
+              // Adjust member index, but otherwise forward load as-is.
+              if (newType.isStructType())
+                addressOp.setOperand(0u, map[memberIndex].components[0].member);
+
+              m_builder.rewriteOp(use, useOp.setOperand(1u, m_builder.add(std::move(addressOp))));
+            }
+          } break;
+
+          case dxbc_spv::ir::OpCode::eDebugName: {
+            if (!pushDataType.isStructType() && !map.empty())
+              map[0].debugName = useOp.getLiteralString(1u);
+
+            if (!newType.isStructType())
+              m_builder.remove(use);
+          } break;
+
+          case dxbc_spv::ir::OpCode::eDebugMemberName: {
+            uint32_t member = uint32_t(useOp.getOperand(1u));
+
+            if (member < map.size())
+              map[member].debugName = useOp.getLiteralString(2u);
+
+            m_builder.remove(use);
+          } break;
+
+          default:
+            dxbc_spv_unreachable();
+        }
+      }
+
+      // Fuse debug names of merged members
+      small_vector<std::string, 64u> debugNames(newType.getStructMemberCount());
+
+      for (uint32_t i = 0u; i < map.size(); i++) {
+        auto type = pushDataType.getBaseType(i);
+
+        if (map[i].debugName.empty())
+          continue;
+
+        static const char* swizzle = "xyzw";
+
+        bool straddles = map[i].components[0].member != map[i].components[type.getVectorSize() - 1u].member;
+
+        uint32_t lastMember = -1u;
+
+        for (uint32_t j = 0u; j < type.getVectorSize(); j++) {
+          uint32_t member = map[i].components[j].member;
+
+          if (lastMember != member) {
+            lastMember = member;
+
+            if (!debugNames[member].empty())
+              debugNames[member] += '_';
+
+            debugNames[member] += map[i].debugName;
+
+            if (straddles)
+              debugNames[member] += '.';
+          }
+
+          if (straddles)
+            debugNames[member] += swizzle[j];
+        }
+      }
+
+      for (uint32_t i = 0u; i < debugNames.size(); i++) {
+        if (!debugNames[i].empty()) {
+          if (newType.isStructType())
+            m_builder.add(dxbc_spv::ir::Op::DebugMemberName(pushDataDef, i, debugNames[i].c_str()));
+          else
+            m_builder.add(dxbc_spv::ir::Op::DebugName(pushDataDef, debugNames[i].c_str()));
+        }
+      }
+
+      // Rewrite declaration with new type
+      m_builder.rewriteOp(pushDataDef, pushDataOp.setType(std::move(newType)));
+    }
+
+
+    void rewritePushData() {
+      // Don't need to do anythig if the driver supports small types properly
+      if (m_info.options.flags.test(DxvkShaderCompileFlag::Supports16BitPushData))
+        return;
+
+      small_vector<dxbc_spv::ir::SsaDef, 16u> pushData;
+
+      for (auto iter = m_builder.getDeclarations().first;
+                iter != m_builder.getDeclarations().second; iter++) {
+        if (iter->getOpCode() == dxbc_spv::ir::OpCode::eDclPushData)
+          pushData.push_back(iter->getDef());
+      }
+
+      for (auto e : pushData)
+        lowerSubDwordPushData(e);
     }
 
 
