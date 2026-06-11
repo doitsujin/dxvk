@@ -1453,8 +1453,6 @@ namespace dxvk {
     void UpdatePointModeSpec(uint32_t mode);
     void UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode);
 
-    D3D9PackedFFVSData BuildPackedFFVSData(D3D9FF_VertexBlendMode vertexBlendMode, bool indexedVertexBlend, uint32_t lightCount) const;
-
     void BindSpecConstants();
 
     void TrackBufferMappingBufferSequenceNumber(

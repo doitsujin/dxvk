@@ -112,7 +112,22 @@ namespace dxvk {
     float Phi;
   };
 
-  struct D3D9PackedFFVSData {
+  struct D3D9FixedFunctionVS {
+    Matrix4 WorldView;
+    Matrix4 NormalMatrix;
+    Matrix4 InverseView;
+    Matrix4 Projection;
+
+    std::array<Matrix4, 8> TexcoordMatrices;
+
+    D3D9ViewportInfo ViewportInfo;
+
+    Vector4 GlobalAmbient;
+    std::array<D3D9Light, caps::MaxEnabledLights> Lights;
+    D3DMATERIAL9 Material;
+    float TweenFactor;
+
+    // Following part uses uint8 and bool so it's gonna be represented as uint32 in the shader and manually unpacked:
     std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordIndices;
     std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordFlags;
     std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordTransformFlags;
@@ -145,24 +160,6 @@ namespace dxvk {
     uint8_t AmbientSource;
     uint8_t SpecularSource;
     uint8_t EmissiveSource;
-  };
-
-  struct D3D9FixedFunctionVS {
-    Matrix4 WorldView;
-    Matrix4 NormalMatrix;
-    Matrix4 InverseView;
-    Matrix4 Projection;
-
-    std::array<Matrix4, 8> TexcoordMatrices;
-
-    D3D9ViewportInfo ViewportInfo;
-
-    Vector4 GlobalAmbient;
-    std::array<D3D9Light, caps::MaxEnabledLights> Lights;
-    D3DMATERIAL9 Material;
-    float TweenFactor;
-
-    D3D9PackedFFVSData Packed;
   };
 
   static constexpr uint32_t D3D9MaxVertexBlendTransformsHw = 8u;
