@@ -29,6 +29,16 @@ namespace dxvk {
   using D3D11ShaderTypeFlags = Flags<dxbc_spv::dxbc::ShaderType>;
 
   /**
+   * \brief D3D11 built-in push data
+   */
+  struct D3D11BuiltInPushData {
+    /// Tess factor limit, set via config. HS only.
+    uint16_t maxTessFactor = 0u;
+    /// Rasterizer sample count. PS only.
+    uint16_t sampleCount = 0u;
+  };
+
+  /**
    * \brief Translates D3D11 shader stage to corresponding Vulkan stage
    *
    * \param [in] ProgramType DXBC program type
