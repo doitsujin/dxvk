@@ -33,43 +33,6 @@ namespace dxvk {
     }
   };
 
-  struct D3D9RenderStateInfo {
-    std::array<float, 3> fogColor = { };
-    float fogScale   = 0.0f;
-    float fogEnd     = 1.0f;
-    float fogDensity = 1.0f;
-
-    uint32_t alphaRef = 0u;
-
-    float pointSize    = 1.0f;
-    float pointSizeMin = 1.0f;
-    float pointSizeMax = 64.0f;
-    float pointScaleA  = 1.0f;
-    float pointScaleB  = 0.0f;
-    float pointScaleC  = 0.0f;
-
-    uint32_t textureFactor = 0u;
-  };
-
-  enum class D3D9RenderStateItem {
-    FogColor   = 0,
-    FogScale   = 1,
-    FogEnd,
-    FogDensity,
-    AlphaRef,
-
-    PointSize,
-    PointSizeMin,
-    PointSizeMax,
-    PointScaleA,
-    PointScaleB,
-    PointScaleC,
-
-    TextureFactor,
-
-    Count
-  };
-
   /// Shared push data
   struct D3D9SharedPushData {
     static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_ALL_GRAPHICS;
