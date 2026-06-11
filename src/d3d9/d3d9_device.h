@@ -64,13 +64,7 @@ namespace dxvk {
     MultiSampleState,
     VertexBuffers,
     IndexBuffer,
-
-    FogState,
-    FogColor,
-    FogDensity,
-    FogScale,
-    FogEnd,
-
+    Fog,
     FFVertexData,
     FFVertexBlend,
     FFVertexShader,
