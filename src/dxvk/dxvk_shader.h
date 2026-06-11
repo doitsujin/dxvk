@@ -59,9 +59,9 @@ namespace dxvk {
     /// Whether the device supports 16-bit int and float
     /// arithmetic. Effectively enables min16 lowering.
     Supports16BitArithmetic     = 5u,
-    /// Whether 16-bit push data is supported. Used to
-    /// pack sampler indices in the binding model
-    Supports16BitPushData       = 6u,
+    /// Whether 16-bit and 8-bit push data is supported.
+    /// Used to pack sampler indices in the binding model.
+    SupportsSubDwordPushData    = 6u,
     /// Whether to lower unsigned int to float conversions.
     /// Needed to work around an Nvidia driver bug.
     LowerItoF                   = 7u,
