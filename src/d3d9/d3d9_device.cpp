@@ -6057,6 +6057,10 @@ namespace dxvk {
       copyArgs.floatConstantCount = dynamicFloatCount;
       copyArgs.flushNan = m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled;
 
+      // Over-allocate buffer by one constant so that we always have
+      // at least one entry that reads zeroes.
+      dynamicSize += sizeof(Vector4);
+
       // Allocate storage for dynamically indexed floats. Pad this
       // to the full allocation size as well so we write everything.
       auto& buffer = GetConstantBuffer(CbvIndex::VSDynamicConstants);
@@ -6067,6 +6071,12 @@ namespace dxvk {
       copyArgs.constFloatApi = m_state.vsConsts->fConsts;
 
       layout->copyConstantData(copyArgs);
+
+      // Pass float count to vertex shader
+      if (m_pushData.vs.floatCount != dynamicFloatCount) {
+        m_pushData.vs.floatCount = dynamicFloatCount;
+        m_dirty.set(D3D9DeviceDirtyFlag::PushDataVs);
+      }
     }
 
     constants.dirty = false;
