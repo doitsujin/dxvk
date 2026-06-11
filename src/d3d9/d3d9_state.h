@@ -113,54 +113,38 @@ namespace dxvk {
   };
 
   struct D3D9PackedFFVSData {
-    union {
-      struct {
-        uint32_t TexcoordIndices : 24;
+    std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordIndices;
+    std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordFlags;
+    std::array<uint8_t, caps::MaxTextureBlendStages> TexcoordTransformFlags;
 
-        uint32_t VertexHasPositionT : 1;
+    // How many vector components does each texcoord have
+    uint32_t VertexTexcoordDeclMask;
 
-        uint32_t VertexHasColor0 : 1; // Diffuse
-        uint32_t VertexHasColor1 : 1; // Specular
+    // Vertex Decl
+    bool VertexHasPositionT;
+    bool VertexHasColor0; // Diffuse
+    bool VertexHasColor1; // Specular
+    bool VertexHasPointSize;
+    bool VertexHasFog;
 
-        uint32_t VertexHasPointSize : 1;
+    // Blending
+    uint8_t VertexBlendMode;
+    bool VertexBlendIndexed;
+    uint8_t VertexBlendCount;
 
-        uint32_t UseLighting : 1;
+    // Misc
+    bool VertexClipping;
+    bool NormalizeNormals;
+    bool LocalViewer;
+    bool RangeFog;
 
-        uint32_t NormalizeNormals : 1;
-        uint32_t LocalViewer : 1;
-        uint32_t RangeFog : 1;
-
-        // End of uint32_t
-
-        uint32_t TexcoordFlags : 24;
-
-        uint32_t DiffuseSource : 2;
-        uint32_t AmbientSource : 2;
-        uint32_t SpecularSource : 2;
-        uint32_t EmissiveSource : 2;
-
-        // Next uint32_t
-
-        uint32_t TransformFlags : 24;
-
-        uint32_t LightCount : 4;
-
-        // End of uint32_t
-
-        uint32_t VertexTexcoordDeclMask : 24;
-        uint32_t VertexHasFog : 1;
-
-        uint32_t VertexBlendMode    : 2;
-        uint32_t VertexBlendIndexed : 1;
-        uint32_t VertexBlendCount   : 2;
-
-        uint32_t VertexClipping     : 1;
-
-        // End of uint32_t
-      } Contents;
-
-      std::array<uint32_t, 5u> Primitive;
-    };
+    // Lighting
+    bool UseLighting;
+    uint8_t LightCount;
+    uint8_t DiffuseSource;
+    uint8_t AmbientSource;
+    uint8_t SpecularSource;
+    uint8_t EmissiveSource;
   };
 
   struct D3D9FixedFunctionVS {
