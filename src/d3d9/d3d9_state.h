@@ -20,7 +20,31 @@ namespace dxvk {
   static constexpr uint32_t SamplerCount      = caps::MaxTexturesPS + caps::MaxTexturesVS + 1;
   static constexpr uint32_t TextureStageStateCount = DXVK_TSS_COUNT;
   static constexpr uint32_t PaletteEntryCount = 256;
-  
+
+  /// Helper function to update bit-packed spec constants
+  /// and check if the value has actually changed.
+  template<typename T, typename U>
+  bool updateSpecData(T& data, U value, uint32_t bitIndex, uint32_t bitCount) {
+    T mask = ((2u << (bitCount - 1u)) - 1u) << bitIndex;
+    T bits = (T(value) << bitIndex) & mask;
+
+    if ((data & mask) == bits)
+      return false;
+
+    data &= ~mask;
+    data |= bits;
+    return true;
+  }
+
+  template<typename T, typename U>
+  bool updateSpecData(T& data, U value) {
+    if (data == T(value))
+      return false;
+
+    data = T(value);
+    return true;
+  }
+
   struct D3D9ClipPlane {
     float coeff[4] = {};
 
@@ -88,6 +112,157 @@ namespace dxvk {
     D3D9VsPushData vs;
     D3D9FfvsPushData ffvs;
     D3D9FfpsPushData ffps;
+  };
+
+  /// Shared specialization constant data
+  struct D3D9SharedSpecData {
+    uint8_t fogMode     = 0u;
+    uint8_t pointMode   = 0u;
+    uint8_t drefScale   = 0u;
+    uint8_t clipPlanes  = 0u;
+
+    bool setFogEnabled(bool enable) {
+      return updateSpecData(fogMode, enable, 0u, 1u);
+    }
+
+    bool setVertexFogMode(uint32_t mode) {
+      return updateSpecData(fogMode, mode, 1u, 2u);
+    }
+
+    bool setPixelFogMode(uint32_t mode) {
+      return updateSpecData(fogMode, mode, 3u, 2u);
+    }
+
+    bool setPointScaleEnable(bool enable) {
+      return updateSpecData(pointMode, enable, 0u, 1u);
+    }
+
+    bool setPointSpriteEnable(bool enable) {
+      return updateSpecData(pointMode, enable, 1u, 1u);
+    }
+
+    bool setDrefScale(uint32_t shift) {
+      return updateSpecData(drefScale, shift);
+    }
+
+    bool setClipPlaneCount(uint32_t count) {
+      return updateSpecData(clipPlanes, count);
+    }
+  };
+
+  /// Vertex shader spec constants
+  struct D3D9VsSpecData {
+    uint8_t samplerTypes = 0u;
+    uint8_t samplerModes = 0u;
+    uint16_t boolConstants = 0u;
+
+    bool setSamplerType(uint32_t idx, uint32_t type) {
+      return updateSpecData(samplerTypes, type, idx * 2u, 2u);
+    }
+
+    bool setSamplerMode(uint32_t idx, uint32_t mode) {
+      return updateSpecData(samplerModes, mode, idx * 2u, 2u);
+    }
+
+    uint16_t setBoolConstants(uint32_t bits) {
+      return updateSpecData(boolConstants, bits);
+    }
+  };
+
+  /// Pixel shader spec constants
+  struct D3D9PsSpecData {
+    uint32_t samplerTypes = 0u;
+    uint32_t samplerModes = 0u;
+    uint8_t samplerProjection = 0u;
+    uint8_t alphaTest = 0u;
+    uint16_t boolConstants = 0u;
+
+    bool setSamplerType(uint32_t idx, uint32_t type) {
+      return updateSpecData(samplerTypes, type, idx * 2u, 2u);
+    }
+
+    bool setSamplerMode(uint32_t idx, uint32_t mode) {
+      return updateSpecData(samplerModes, mode, idx * 2u, 2u);
+    }
+
+    bool setSamplerProjection(uint32_t idx, bool enable) {
+      return updateSpecData(samplerProjection, enable, idx, 1u);
+    }
+
+    bool setAlphaCompareOp(uint32_t op) {
+      return updateSpecData(alphaTest, op, 0u, 4u);
+    }
+
+    bool setAlphaPrecision(uint32_t bits) {
+      return updateSpecData(alphaTest, bits, 4u, 4u);
+    }
+
+    uint16_t setBoolConstants(uint32_t bits) {
+      return updateSpecData(boolConstants, bits);
+    }
+  };
+
+  /// Fixed-function spec constants
+  struct D3D9FfpsSpecData {
+    uint16_t stageOps[8u];
+    uint16_t colorArgs[8u];
+    uint16_t alphaArgs[8u];
+
+    bool resetStage(uint32_t index) {
+      bool dirty = false;
+      dirty |= updateSpecData(stageOps[index], 0u, 0u, 12u);
+      dirty |= updateSpecData(colorArgs[index], 0u);
+      dirty |= updateSpecData(alphaArgs[index], 0u);
+      return dirty;
+    }
+
+    bool setHighetActiveStageIndex(uint32_t index) {
+      return updateSpecData(stageOps[0u], index, 12u, 3u);
+    }
+
+    bool setSpecularEnable(bool enable) {
+      return updateSpecData(stageOps[0u], enable, 15u, 1u);
+    }
+
+    bool setColorOp(uint32_t stage, D3DTEXTUREOP op) {
+      return updateSpecData(stageOps[stage], op, 0u, 5u);
+    }
+
+    bool setAlphaOp(uint32_t stage, D3DTEXTUREOP op) {
+      return updateSpecData(stageOps[stage], op, 5u, 5u);
+    }
+
+    bool setStoreTemp(uint32_t stage, bool enable) {
+      return updateSpecData(stageOps[stage], enable, 10u, 1u);
+    }
+
+    bool setColorArg(uint32_t stage, uint32_t index, uint32_t arg) {
+      return setArg(colorArgs[stage], index, arg);
+    }
+
+    bool setAlphaArg(uint32_t stage, uint32_t index, uint32_t arg) {
+      return setArg(alphaArgs[stage], index, arg);
+    }
+
+    static bool setArg(uint16_t& bitfield, uint32_t index, uint32_t arg) {
+      // Only 7 selectors are defined, so squeeze them into 3
+      // bits and pack the flags into the upper two bits.
+      uint32_t selector = arg &  D3DTA_SELECTMASK;
+      uint32_t modifier = arg & ~D3DTA_SELECTMASK;
+
+      bool dirty = false;
+      dirty |= updateSpecData(bitfield, selector, index * 5u + 0u, 3u);
+      dirty |= updateSpecData(bitfield, modifier, index * 5u + 3u, 2u);
+      return dirty;
+    }
+  };
+
+  /// All specialization constants combined
+  struct D3D9SpecData {
+    D3D9SharedSpecData shared;
+    D3D9VsSpecData vs;
+    D3D9PsSpecData ps;
+    D3D9FfpsSpecData ffps;
   };
 
   // This is needed in fixed function for POSITION_T support.
