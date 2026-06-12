@@ -70,7 +70,7 @@ namespace dxvk {
     D3D9ConstantBufferLayout constLayoutI(constMaskI.size(), constMaskI.data());
     D3D9ConstantBufferLayout constLayoutB;
 
-    if (m_isSWVP) {
+    if (m_isSWVP && m_shaderInfo.getType() == ShaderType::eVertex) {
       // Pad bool constants to a multiple of 16 bytes so we
       // can trivially keep all the other constants aligned
       uint32_t dwordCount = align(m_constants.boolCount, 32u) / 32u;
@@ -122,7 +122,8 @@ namespace dxvk {
         case RegisterType::eConstBool: {
           m_constants.boolCount = std::max(m_constants.boolCount, index + count);
 
-          if (!m_isSWVP) // SWVP raises the constant limit too high to use bit mask.
+          // SWVP raises the constant limit too high to use bit mask.
+          if (!m_isSWVP || m_shaderInfo.getType() != ShaderType::eVertex)
             m_constants.boolMask |= 1u << index;
         } break;
 
