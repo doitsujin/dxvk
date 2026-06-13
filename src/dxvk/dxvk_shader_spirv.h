@@ -127,16 +127,13 @@ namespace dxvk {
     DxvkShaderMetadata            m_metadata = { };
 
     std::unordered_multimap<uint32_t, DxvkSpirvDecorations> m_decorations = { };
-    std::unordered_map<uint32_t, uint32_t> m_idToOffset = { };
-
-    void gatherIdOffsets(
-            SpirvCodeBuffer&          code);
 
     void gatherMetadata(
             SpirvCodeBuffer&          code);
 
     void handleIoVariable(
             SpirvCodeBuffer&          code,
+      const std::unordered_map<uint32_t, uint32_t>& idToOffset,
       const SpirvInstruction&         type,
             spv::StorageClass         storage,
             uint32_t                  varId,
@@ -150,6 +147,7 @@ namespace dxvk {
 
     void handleDebugName(
             SpirvCodeBuffer&          code,
+      const std::unordered_map<uint32_t, uint32_t>& idToOffset,
             uint32_t                  stringId);
 
     const DxvkSpirvDecorations& getDecoration(
@@ -158,6 +156,7 @@ namespace dxvk {
 
     std::pair<uint32_t, uint32_t> getComponentCountForType(
             SpirvCodeBuffer&          code,
+      const std::unordered_map<uint32_t, uint32_t>& idToOffset,
       const SpirvInstruction&         type,
             spv::BuiltIn              builtIn) const;
 
@@ -165,6 +164,18 @@ namespace dxvk {
             SpirvCodeBuffer&          code,
       const DxvkShaderBindingMap*     bindings,
       const DxvkShaderLinkage*        linkage) const;
+
+    void lowerSpecDataBufferToConstants(
+            SpirvCodeBuffer&          code,
+      const DxvkShaderBinding&        binding);
+
+    static bool removeVariableFromEntryPoint(
+            SpirvCodeBuffer&          code,
+            SpirvInstruction&         entryPoint,
+            uint32_t                  varId);
+
+    static std::unordered_map<uint32_t, uint32_t> gatherIdOffsets(
+            SpirvCodeBuffer&          code);
 
     static VkShaderStageFlagBits getShaderStage(
             SpirvCodeBuffer&          code);
