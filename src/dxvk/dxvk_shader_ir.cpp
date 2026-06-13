@@ -117,6 +117,9 @@ namespace dxvk {
           uint32_t                regIndex) {
       DxvkShaderBinding binding(m_stage, setIndexForType(type), regIndex);
 
+      if (regSpace == DxvkIrShader::SpecDataSet)
+        binding = DxvkShaderBinding(m_stage, regSpace, regIndex);
+
       if (m_bindings) {
         auto dstBinding = m_bindings->mapBinding(binding);
 
@@ -1974,6 +1977,8 @@ namespace dxvk {
 
         if (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
           ioPass.resolvePatchConstantLocations(convertIoMap(linkage->prevStageOutputs, linkage->prevStage));
+      } else if (m_metadata.stage != VK_SHADER_STAGE_COMPUTE_BIT) {
+        ioPass.lowerSpecConstantsToCbv(SpecDataSet, 0u);
       }
 
       if (m_metadata.stage == VK_SHADER_STAGE_FRAGMENT_BIT
@@ -2167,6 +2172,7 @@ namespace dxvk {
 
     m_metadata = lowerBindingModelPass.getMetadata();
     m_layout = lowerBindingModelPass.getLayout();
+    m_layout.addSpecDataBuffer(DxvkShaderBinding(m_metadata.stage, SpecDataSet, 0u));
 
     serializeIr(builder);
   }

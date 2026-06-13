@@ -106,6 +106,9 @@ namespace dxvk {
 
   public:
 
+    // Arbitrarily chosen number that we know we won't use anywhere else
+    static constexpr uint32_t SpecDataSet = 7u;
+
     DxvkIrShader(
       const DxvkIrShaderCreateInfo&   info,
             Rc<DxvkIrShaderConverter> shader);
