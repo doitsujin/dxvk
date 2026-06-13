@@ -33,6 +33,7 @@ namespace dxvk {
     static constexpr uint32_t SamplerSet = 0u;
     static constexpr uint32_t SrvSet = 1u;
     static constexpr uint32_t CbvSet = 2u;
+    static constexpr uint32_t SpecDataSet = 3u;
   public:
 
     D3D9FFShaderModuleSet() = delete;
