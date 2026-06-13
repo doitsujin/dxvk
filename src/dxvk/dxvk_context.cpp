@@ -6794,6 +6794,9 @@ namespace dxvk {
     if (unlikely(m_features.test(DxvkContextFeature::DebugUtils))) {
       uint32_t color = getGraphicsPipelineDebugColor();
 
+      if (pipelineInfo.type == DxvkGraphicsPipelineType::BasePipeline)
+        color -= (color & 0xfcfcfcfcu) >> 2u;
+
       m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
         vk::makeLabel(color, m_state.gp.pipeline->debugName()));
     }
