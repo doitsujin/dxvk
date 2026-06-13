@@ -25,15 +25,7 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FFShaderModuleSet::buildVs() {
-    small_vector<DxvkBindingInfo, 4> bindings = {};
-
-    auto& specConstantBufferBinding = bindings.emplace_back();
-    specConstantBufferBinding.set            = CbvSet;
-    specConstantBufferBinding.binding        = D3D9ShaderResourceMapping::CbvIndex::SpecData;
-    specConstantBufferBinding.resourceIndex  = D3D9ShaderResourceMapping::CbvIndex::SpecData;
-    specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
-    specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+    small_vector<DxvkBindingInfo, 3> bindings = {};
 
     auto& fixedFunctionDataBinding = bindings.emplace_back();
     fixedFunctionDataBinding.set             = CbvSet;
@@ -67,6 +59,7 @@ namespace dxvk {
     info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_VERTEX_BIT,
       MaxSharedPushDataSize, sizeof(D3D9FfvsPushData), 4u, 0u);
     info.samplerHeap = DxvkShaderBinding();
+    info.specDataBuffer = DxvkShaderBinding(VK_SHADER_STAGE_VERTEX_BIT, SpecDataSet, 0u);
     info.debugName = "FF VS";
 
     return new DxvkSpirvShader(info, d3d9_fixed_function_vert);
@@ -74,15 +67,7 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FFShaderModuleSet::buildFs(D3D9DeviceEx* pDevice) {
-    small_vector<DxvkBindingInfo, 12> bindings = {};
-
-    auto& specConstantBufferBinding = bindings.emplace_back();
-    specConstantBufferBinding.set            = CbvSet;
-    specConstantBufferBinding.binding        = D3D9ShaderResourceMapping::CbvIndex::SpecData;
-    specConstantBufferBinding.resourceIndex  = D3D9ShaderResourceMapping::CbvIndex::SpecData;
-    specConstantBufferBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    specConstantBufferBinding.access = VK_ACCESS_UNIFORM_READ_BIT;
-    specConstantBufferBinding.flags.set(DxvkDescriptorFlag::UniformBuffer);
+    small_vector<DxvkBindingInfo, 10> bindings = {};
 
     auto& sharedDataBinding = bindings.emplace_back();
     sharedDataBinding.set             = CbvSet;
@@ -110,7 +95,6 @@ namespace dxvk {
       samplerBinding.descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLER;
       samplerBinding.blockOffset     = GetPushSamplerOffset(i);
       samplerBinding.flags.set(DxvkDescriptorFlag::PushData);
-      bindings.push_back(samplerBinding);
     }
 
     uint32_t flatShadingMask =
@@ -132,6 +116,7 @@ namespace dxvk {
     info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, MaxSharedPushDataSize,
       pushDataSize, 4u, ((1u << samplerDwordCount) - 1u) << pushDataSamplerShift);
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, SamplerSet, 0u);
+    info.specDataBuffer = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, SpecDataSet, 0u);
     info.debugName = "FF FS";
 
     return pDevice->GetOptions()->forceSampleRateShading
