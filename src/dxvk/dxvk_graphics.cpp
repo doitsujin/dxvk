@@ -957,9 +957,6 @@ namespace dxvk {
         addConstant(i, state.specConstants[i]);
     }
 
-    if (mask & (1u << MaxNumSpecConstants))
-      addConstant(MaxNumSpecConstants, VK_TRUE);
-
     if (scInfo.mapEntryCount) {
       scInfo.pMapEntries = scConstantMap.data();
       scInfo.dataSize = scInfo.mapEntryCount * sizeof(uint32_t);
