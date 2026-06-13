@@ -55,9 +55,9 @@ namespace dxvk {
     info.bindingCount = bindings.size();
     info.bindings = bindings.data();
     info.flatShadingInputs = 0;
-    info.sharedPushData = DxvkPushDataBlock(0u, MaxSharedPushDataSize, 4u, 0u);
-    info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_VERTEX_BIT,
-      MaxSharedPushDataSize, sizeof(D3D9FfvsPushData), 4u, 0u);
+    info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9SharedPushData), 4u, 0u);
+    info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_VERTEX_BIT, MaxSharedPushDataSize,
+      D3D9FfvsPushData::Offset + sizeof(D3D9FfvsPushData), 4u, 0u);
     info.samplerHeap = DxvkShaderBinding();
     info.specDataBuffer = DxvkShaderBinding(VK_SHADER_STAGE_VERTEX_BIT, SpecDataSet, 0u);
     info.debugName = "FF VS";
@@ -112,7 +112,7 @@ namespace dxvk {
     info.bindingCount = bindings.size();
     info.bindings = bindings.data();
     info.flatShadingInputs = flatShadingMask;
-    info.sharedPushData = DxvkPushDataBlock(0u, MaxSharedPushDataSize, 4u, 0u);
+    info.sharedPushData = DxvkPushDataBlock(0u, sizeof(D3D9SharedPushData), 4u, 0u);
     info.localPushData = DxvkPushDataBlock(VK_SHADER_STAGE_FRAGMENT_BIT, MaxSharedPushDataSize,
       pushDataSize, 4u, ((1u << samplerDwordCount) - 1u) << pushDataSamplerShift);
     info.samplerHeap = DxvkShaderBinding(VK_SHADER_STAGE_FRAGMENT_BIT, SamplerSet, 0u);

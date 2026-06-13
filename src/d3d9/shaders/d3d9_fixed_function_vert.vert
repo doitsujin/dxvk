@@ -147,9 +147,9 @@ uniform ClipPlanes {
 layout(push_constant, scalar, row_major)
 uniform RenderStates {
     D3D9SharedPushData global;
-    D3D9VsPushData vs;
 
     layout(offset = MaxSharedPushDataSize)
+    D3D9VsPushData vs;
     D3D9FfvsPushData ffvs;
 };
 
