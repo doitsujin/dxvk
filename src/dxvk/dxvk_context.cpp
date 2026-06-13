@@ -7172,11 +7172,15 @@ namespace dxvk {
     DxvkPipelineLayoutType pipelineLayoutType = getActivePipelineLayoutType(BindPoint);
     const auto* pipelineLayout = layout->getLayout(pipelineLayoutType);
 
+    // Check whether we need to update the embedded spec data block
+    bool updateSpecData = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      && m_flags.all(DxvkContextFlag::GpIndependentSets, DxvkContextFlag::GpDirtySpecDataBlock);
+
     // Check if there's anything to do; the mask can be empty
     // in case only unrelated bindings have been updated.
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
-    if (unlikely(!dirtySetMask))
+    if (unlikely(!dirtySetMask && !updateSpecData))
       return true;
 
     // Make sure we have enough space for the set. If this fails, the caller
@@ -7198,8 +7202,8 @@ namespace dxvk {
       dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
     }
 
-    std::array<uint32_t, DxvkDescriptorSets::SetCount> bufferIndices = { };
-    std::array<HeapOffset, DxvkDescriptorSets::SetCount> heapOffsets = { };
+    std::array<uint32_t, DxvkDescriptorSets::SetCount + 1u> bufferIndices = { };
+    std::array<HeapOffset, DxvkDescriptorSets::SetCount + 1u> heapOffsets = { };
 
     if constexpr (Model == DxvkBindingModel::DescriptorHeap) {
       // Make sure the heaps are actually valid and usable
@@ -7314,6 +7318,21 @@ namespace dxvk {
           }
         }
       }
+    }
+
+    if (unlikely(updateSpecData)) {
+      // Write current specialization consatnts directly into the descriptor heap
+      auto storage = m_cmd->allocateSpecData(pipelineLayout);
+      pipelineLayout->writeSpecData(storage.mapPtr, m_state.gp.state.sc.specConstants);
+
+      // Make sure that the descriptor offset gets updated properly. This uses the
+      // raw byte offset on the heap path, so don't apply the offset shift here.
+      uint32_t setIndex = DxvkDescriptorSets::GpIndependentSetCount;
+      heapOffsets[setIndex] = storage.offset;
+
+      dirtySetMask |= 1u << setIndex;
+
+      m_flags.clr(DxvkContextFlag::GpDirtySpecDataBlock);
     }
 
     do {
