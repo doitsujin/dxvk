@@ -6024,7 +6024,8 @@ namespace dxvk {
         DxvkContextFlag::GpDirtyDepthBias,
         DxvkContextFlag::GpDirtyDepthBounds,
         DxvkContextFlag::GpDirtyDepthClip,
-        DxvkContextFlag::GpDirtyDepthTest);
+        DxvkContextFlag::GpDirtyDepthTest,
+        DxvkContextFlag::GpDirtySpecDataBlock);
 
       m_flags.clr(
         DxvkContextFlag::GpRenderPassSuspended,
@@ -6669,6 +6670,7 @@ namespace dxvk {
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
+    m_flags.set(DxvkContextFlag::GpDirtySpecDataBlock);
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
     return true;
   }
@@ -6690,11 +6692,11 @@ namespace dxvk {
                 DxvkContextFlag::GpDynamicSampleLocations,
                 DxvkContextFlag::GpHasPushData,
                 DxvkContextFlag::GpIndependentSets);
-    
+
     m_flags.set(m_state.gp.state.useDynamicBlendConstants()
       ? DxvkContextFlag::GpDynamicBlendConstants
       : DxvkContextFlag::GpDirtyBlendConstants);
-    
+
     m_flags.set((!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
       ? DxvkContextFlags(DxvkContextFlag::GpDynamicRasterizerState,
                          DxvkContextFlag::GpDynamicDepthBias)
@@ -6762,14 +6764,17 @@ namespace dxvk {
                            DxvkContextFlag::GpDirtyStencilRef));
 
       m_flags.set(
-        DxvkContextFlag::GpDirtyMultisampleState);
+        DxvkContextFlag::GpDirtyMultisampleState,
+        DxvkContextFlag::GpDirtySpecDataBlock);
     }
 
     // If necessary, dirty descriptor sets due to layout incompatibilities
     auto newPipelineLayoutType = getActivePipelineLayoutType(VK_PIPELINE_BIND_POINT_GRAPHICS);
 
-    if (newPipelineLayoutType != oldPipelineLayoutType)
+    if (newPipelineLayoutType != oldPipelineLayoutType) {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+      m_flags.set(DxvkContextFlag::GpDirtySpecDataBlock);
+    }
 
     // Also update push constant status when we know the final layout
     auto layout = m_state.gp.pipeline->getLayout()->getLayout(newPipelineLayoutType);
@@ -6851,7 +6856,8 @@ namespace dxvk {
 
     if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       m_flags.clr(DxvkContextFlag::GpDirtySpecConstants);
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState,
+                  DxvkContextFlag::GpDirtySpecDataBlock);
     } else {
       m_flags.clr(DxvkContextFlag::CpDirtySpecConstants);
       m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
@@ -7151,6 +7157,7 @@ namespace dxvk {
     // need to re-allocate all sets too.
     if (!m_cmd->canAllocateDescriptors(pipelineLayout)) {
       m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS | VK_SHADER_STAGE_COMPUTE_BIT);
+      m_flags.set(DxvkContextFlag::GpDirtySpecDataBlock);
 
       if (!m_cmd->createDescriptorRange())
         return false;
@@ -8227,7 +8234,8 @@ namespace dxvk {
         return false;
     }
     
-    if (m_descriptorState.hasDirtyResources(VK_SHADER_STAGE_ALL_GRAPHICS)) {
+    if (m_descriptorState.hasDirtyResources(VK_SHADER_STAGE_ALL_GRAPHICS)
+     || unlikely(m_flags.all(DxvkContextFlag::GpIndependentSets, DxvkContextFlag::GpDirtySpecDataBlock))) {
       if (unlikely(!this->updateGraphicsShaderResources())) {
         // This can only happen if we were inside a secondary command buffer.
         // Technically it would be sufficient to only restart the secondary

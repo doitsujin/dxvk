@@ -49,6 +49,7 @@ namespace dxvk {
     GpDirtySampleLocations,     ///< Sample locations have changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDirtySpecConstants,       ///< Graphics spec constants are out of date
+    GpDirtySpecDataBlock,       ///< Spec constant fallback data is out of date
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
