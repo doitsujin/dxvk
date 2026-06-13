@@ -480,6 +480,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Allocates storage for spec constant data
+     *
+     * The same restrictions as for allocateDescriptors apply.
+     * \param [in] layout Pipeline layout
+     * \returns Allocated descriptor heap range
+     */
+    DxvkResourceBufferInfo allocateSpecData(const DxvkPipelineLayout* layout) {
+      return m_descriptorRange->alloc(layout->getSpecDataMemorySize());
+    }
+
+    /**
      * \brief Sets resources and push constants
      *
      * Allocates and writes a descriptor set and sets push constant
