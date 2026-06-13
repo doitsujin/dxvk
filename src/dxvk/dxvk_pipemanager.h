@@ -277,6 +277,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries descriptor layout for spec data UBO
+     * \returns Descriptor set layout with an inline UBO
+     */
+    VkDescriptorSetLayout getSpecDataSetLayout() const {
+      return m_specLayout;
+    }
+
+    /**
      * \brief Stops async compiler threads
      */
     void stopWorkerThreads();
@@ -286,9 +294,11 @@ namespace dxvk {
     DxvkDevice*               m_device;
     DxvkPipelineWorkers       m_workers;
     DxvkPipelineStats         m_stats;
-    
-    dxvk::mutex m_layoutMutex;
-    
+
+    VkDescriptorSetLayout     m_specLayout = VK_NULL_HANDLE;
+
+    dxvk::mutex               m_layoutMutex;
+
     std::unordered_map<
       DxvkDescriptorSetLayoutKey,
       DxvkDescriptorSetLayout,
@@ -336,6 +346,8 @@ namespace dxvk {
 
     DxvkShaderPipelineLibrary* findPipelineLibraryLocked(
       const DxvkShaderPipelineLibraryKey& key);
+
+    VkDescriptorSetLayout createSpecDataSetLayout();
 
   };
   

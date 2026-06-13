@@ -180,12 +180,18 @@ namespace dxvk {
     Logger::info(str::format("Graphics pipeline libraries ",
       (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
 
+    if (!m_device->canUseDescriptorHeap())
+      m_specLayout = createSpecDataSetLayout();
+
     createNullFsPipelineLibrary()->compilePipeline();
   }
   
   
   DxvkPipelineManager::~DxvkPipelineManager() {
-    
+    auto vk = m_device->vkd();
+
+    if (!m_device->canUseDescriptorHeap())
+      vk->vkDestroyDescriptorSetLayout(vk->device(), m_specLayout, nullptr);
   }
   
   
@@ -406,6 +412,31 @@ namespace dxvk {
       return &pair->second;
 
     return createPipelineLibraryLocked(key);
+  }
+
+
+  VkDescriptorSetLayout DxvkPipelineManager::createSpecDataSetLayout() {
+    auto vk = m_device->vkd();
+
+    VkDescriptorSetLayoutBinding binding = {};
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
+    binding.descriptorCount = sizeof(DxvkScInfo);
+    binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+
+    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    info.bindingCount = 1u;
+    info.pBindings = &binding;
+
+    if (m_device->canUseDescriptorBuffer())
+      info.flags |= VK_DESCRIPTOR_SET_LAYOUT_CREATE_DESCRIPTOR_BUFFER_BIT_EXT;
+
+    VkDescriptorSetLayout layout = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateDescriptorSetLayout(vk->device(), &info, nullptr, &layout);
+
+    if (vr != VK_SUCCESS)
+      throw DxvkError("DXVK: Failed to create spec data fallback layout");
+
+    return layout;
   }
 
 }
