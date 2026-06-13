@@ -330,6 +330,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries set layout for spec constant data UBO
+     * \returns Legacy descriptor set layout for spec data
+     */
+    VkDescriptorSetLayout getSpecDataSetLayout() {
+      return m_objects.pipelineManager().getSpecDataSetLayout();
+    }
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */

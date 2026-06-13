@@ -146,7 +146,10 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,       MaxSets / 64 },
     }};
 
-    VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
+    VkDescriptorPoolInlineUniformBlockCreateInfo inlineUboInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_INLINE_UNIFORM_BLOCK_CREATE_INFO };
+    inlineUboInfo.maxInlineUniformBlockBindings = MaxSets / 2u;
+
+    VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO, &inlineUboInfo };
     info.maxSets       = MaxSets;
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();

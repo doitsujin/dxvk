@@ -251,6 +251,19 @@ namespace dxvk {
     if (m_device->canUseDescriptorHeap())
       return std::make_pair(align(sizeof(DxvkScInfo), alignment), 0u);
 
+    if (m_device->canUseDescriptorBuffer()) {
+      auto vk = m_device->vkd();
+
+      VkDeviceSize size = 0u;
+      VkDeviceSize offset = 0u;
+
+      VkDescriptorSetLayout layout = m_device->getSpecDataSetLayout();
+      vk->vkGetDescriptorSetLayoutSizeEXT(vk->device(), layout, &size);
+      vk->vkGetDescriptorSetLayoutBindingOffsetEXT(vk->device(), layout, 0u, &offset);
+
+      return std::make_pair(align(size, alignment), offset);
+    }
+
     return std::make_pair(0u, 0u);
   }
 
@@ -297,13 +310,16 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     // Gather descriptor set layout objects, some of these may be null.
-    small_vector<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets + 1u> setLayouts;
+    small_vector<VkDescriptorSetLayout, DxvkPipelineLayoutKey::MaxSets + 2u> setLayouts;
 
     if (m_flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap))
       setLayouts.push_back(m_device->getSamplerDescriptorSet().layout);
 
     for (uint32_t i = 0; i < key.getDescriptorSetCount(); i++)
       setLayouts.push_back(m_setLayouts[i] ? m_setLayouts[i]->getSetLayout() : VK_NULL_HANDLE);
+
+    if (key.getType() == DxvkPipelineLayoutType::Independent)
+      setLayouts.push_back(m_device->getSpecDataSetLayout());
 
     // Set up push constant range, if any
     VkPushConstantRange pushConstantRange = { };
