@@ -80,8 +80,6 @@ namespace dxvk {
 
     dxbc_spv::ir::ShaderStage m_shaderStage = {};
     dxbc_spv::ir::SsaDef      m_entryPoint = {};
-    dxbc_spv::ir::SsaDef      m_specSelector = {};
-    dxbc_spv::ir::SsaDef      m_specCbv = {};
     dxbc_spv::ir::SsaDef      m_clipPlaneCbv = {};
     dxbc_spv::ir::SsaDef      m_textureStageCbv = {};
 
@@ -609,26 +607,6 @@ namespace dxvk {
       return std::nullopt;
     }
 
-    dxbc_spv::ir::SsaDef emitSpecConstantSelector() {
-      using namespace dxbc_spv;
-
-      auto result = m_builder.add(ir::Op::DclSpecConstant(ir::ScalarType::eBool,
-        m_entryPoint, DxvkLimits::MaxNumSpecConstants, false));
-      m_builder.add(ir::Op::DebugName(result, "IsOptimized"));
-
-      return result;
-    }
-
-    dxbc_spv::ir::SsaDef emitSpecConstantCbv() {
-      using namespace dxbc_spv;
-
-      auto specDataType = ir::Type(ir::ScalarType::eU32).addArrayDimension(DxvkLimits::MaxNumSpecConstants);
-      auto result = m_builder.add(ir::Op::DclCbv(specDataType, m_entryPoint,
-        0u, D3D9ShaderResourceMapping::CbvIndex::SpecData, 1u).setFlags(ir::OpFlag::eInBounds));
-      m_builder.add(ir::Op::DebugName(result, "specData"));
-      return result;
-    }
-
     dxbc_spv::ir::SsaDef emitSpecConstantLoadRaw(
             D3D9SpecConstantId          specConstant) {
       using namespace dxbc_spv;
@@ -641,19 +619,7 @@ namespace dxvk {
         m_builder.add(ir::Op::DebugName(specDef, str::format("SpecConst", layout.dwordOffset).c_str()));
       }
 
-      if (!m_specSelector)
-        m_specSelector = emitSpecConstantSelector();
-
-      if (!m_specCbv)
-        m_specCbv = emitSpecConstantCbv();
-
-      auto cbvDescriptor = m_builder.add(ir::Op::DescriptorLoad(ir::ScalarType::eCbv, m_specCbv, m_builder.makeConstant(0u)));
-      auto cbvLoad = m_builder.add(ir::Op::BufferLoad(ir::ScalarType::eU32, cbvDescriptor,
-        m_builder.makeConstant(layout.dwordOffset), 4u).setFlags(ir::OpFlag::eInBounds));
-
-      auto dword = m_builder.add(ir::Op::Select(ir::ScalarType::eU32, m_specSelector, specDef, cbvLoad));
-
-      return m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, dword,
+      return m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, specDef,
         m_builder.makeConstant(layout.bitOffset),
         m_builder.makeConstant(layout.sizeInBits)));
     }
