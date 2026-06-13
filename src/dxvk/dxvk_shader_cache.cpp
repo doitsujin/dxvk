@@ -418,6 +418,21 @@ namespace dxvk {
       layout.addSamplerHeap(binding);
     }
 
+    // Read spec data mappings
+    uint32_t specDataCount = 0u;
+
+    if (!read(stream, offset, specDataCount))
+      return false;
+
+    for (uint32_t i = 0u; i < specDataCount; i++) {
+      DxvkShaderBinding binding = { };
+
+      if (!read(stream, offset, binding))
+        return false;
+
+      layout.addSpecDataBuffer(binding);
+    }
+
     return true;
   }
 
@@ -531,6 +546,11 @@ namespace dxvk {
 
     for (size_t i = 0u; i < layout.getSamplerHeapBindingCount(); i++)
       status = status && write(stream, layout.getSamplerHeapBinding(i));
+
+    status = status && write(stream, uint32_t(layout.getSpecDataBindingCount()));
+
+    for (size_t i = 0u; i < layout.getSpecDataBindingCount(); i++)
+      status = status && write(stream, layout.getSpecDataBinding(i));
 
     return status;
   }
