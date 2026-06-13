@@ -1720,6 +1720,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries number of spec data buffer bindings
+     * \returns Spec data buffer binding count
+     */
+    uint32_t getSpecDataBindingCount() const {
+      return m_specDataBuffers.size();
+    }
+
+    /**
+     * \brief Queries spec data buffer binding info
+     *
+     * \param [in] index Spec data buffer binding index
+     * \returns Set and binding for a given shader stage
+     */
+    DxvkShaderBinding getSpecDataBinding(uint32_t index) const {
+      return m_specDataBuffers[index];
+    }
+
+    /**
      * \brief Adds push data block
      * \param [in] range Push data block
      */
@@ -1748,6 +1766,16 @@ namespace dxvk {
       const DxvkShaderBinding&        binding);
 
     /**
+     * \brief Adds specialization data buffer declaration
+     *
+     * For linked pipelines, this buffer will be mapped to
+     * an inline uniform buffer managed by the backend.
+     * This buffer must not appear in optimized pipelines.
+     */
+    void addSpecDataBuffer(
+      const DxvkShaderBinding&        binding);
+
+    /**
      * \brief Merges another layout
      *
      * Adds push constants and bindings from the given
@@ -1766,6 +1794,7 @@ namespace dxvk {
 
     small_vector<DxvkShaderDescriptor, 32u> m_bindings;
     small_vector<DxvkShaderBinding, 4u> m_samplerHeaps;
+    small_vector<DxvkShaderBinding, 4u> m_specDataBuffers;
 
   };
 

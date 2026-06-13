@@ -657,6 +657,7 @@ namespace dxvk {
     auto& layout = m_layouts[uint32_t(type)];
 
     uint32_t virtualBindingCount = 0u;
+    uint32_t baseSetIndex = uint32_t(flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap));
 
     // Generate descriptor set layout keys from all bindings
     std::array<DxvkDescriptorSetLayoutKey, MaxSets> setLayoutKeys = { };
@@ -672,10 +673,8 @@ namespace dxvk {
       DxvkShaderBinding dstMapping(srcMapping);
 
       if (binding.usesDescriptor()) {
-        uint32_t realSet = set + uint32_t(flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap));
-
         auto bindingIndex = setLayoutKeys[set].add(DxvkDescriptorSetLayoutBinding(binding));
-        dstMapping = DxvkShaderBinding(binding.getStageMask(), realSet, bindingIndex);
+        dstMapping = DxvkShaderBinding(binding.getStageMask(), set + baseSetIndex, bindingIndex);
 
         layout.setStateMasks[set] |= computeStateMask(binding);
       } else {
@@ -716,9 +715,17 @@ namespace dxvk {
     if (flags.test(DxvkPipelineLayoutFlag::UsesSamplerHeap)) {
       DxvkShaderBinding dstMapping(builder.getStageMask(), 0u, 0u);
 
-      for (uint32_t i = 0u; i < builder.getSamplerHeapBindingCount(); i++) {
+      for (uint32_t i = 0u; i < builder.getSamplerHeapBindingCount(); i++)
         layout.bindingMap.addBinding(builder.getSamplerHeapBinding(i), dstMapping);
-      }
+    }
+
+    // Remap spec data buffer when using independent sets.
+    if (type == DxvkPipelineLayoutType::Independent) {
+      DxvkShaderBinding dstMapping(builder.getStageMask(),
+        baseSetIndex + DxvkDescriptorSets::GpIndependentSetCount, 0u);
+
+      for (uint32_t i = 0u; i < builder.getSpecDataBindingCount(); i++)
+        layout.bindingMap.addBinding(builder.getSpecDataBinding(i), dstMapping);
     }
 
     // Create the actual descriptor set layout objects
@@ -929,6 +936,12 @@ namespace dxvk {
   }
 
 
+  void DxvkPipelineLayoutBuilder::addSpecDataBuffer(
+    const DxvkShaderBinding&        binding) {
+    m_specDataBuffers.push_back(binding);
+  }
+
+
   void DxvkPipelineLayoutBuilder::addLayout(
     const DxvkPipelineLayoutBuilder& layout) {
     m_stageMask |= layout.m_stageMask;
@@ -947,6 +960,9 @@ namespace dxvk {
 
     for (uint32_t i = 0u; i < layout.getSamplerHeapBindingCount(); i++)
       addSamplerHeap(layout.getSamplerHeapBinding(i));
+
+    for (uint32_t i = 0u; i < layout.getSpecDataBindingCount(); i++)
+      addSpecDataBuffer(layout.getSpecDataBinding(i));
   }
 
 }
