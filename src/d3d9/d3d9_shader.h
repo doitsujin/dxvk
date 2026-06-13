@@ -52,14 +52,13 @@ namespace dxvk {
    */
   struct D3D9ShaderResourceMapping {
     enum CbvIndex : uint32_t {
-      VSClipPlanes            = 3u,
-      VSFixedFunction         = 4u,
-      VSVertexBlendData       = 5u,
-      VSStaticConstants       = 6u,
-      VSDynamicConstants      = 7u,
-      PSShared                = 11u,
-      PSStaticConstants       = 12u,
-      SpecData                = 20u,
+      VSClipPlanes            = 0u,
+      VSFixedFunction         = 1u,
+      VSVertexBlendData       = 2u,
+      VSStaticConstants       = 3u,
+      VSDynamicConstants      = 4u,
+      PSShared                = 5u,
+      PSStaticConstants       = 6u,
 
       Count
     };
