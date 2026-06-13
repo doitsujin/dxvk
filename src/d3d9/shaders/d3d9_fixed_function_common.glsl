@@ -52,11 +52,11 @@ spirv_instruction(set = "GLSL.std.450", id = 81) vec4 spvNClamp(vec4, vec4, vec4
 #define CBV_SET                 2
 #define SPEC_DATA_SET           3
 
-#define CBV_VS_CLIP_PLANES      3
-#define CBV_VS_FIXED_FUNCTION   4
-#define CBV_VS_VERTEX_BLEND     5
+#define CBV_VS_CLIP_PLANES      0
+#define CBV_VS_FIXED_FUNCTION   1
+#define CBV_VS_VERTEX_BLEND     2
 
-#define CBV_PS_SHARED           11
+#define CBV_PS_SHARED           5
 
 layout(set = SPEC_DATA_SET, binding = 0, scalar) uniform SpecConsts {
     uint specDword0;

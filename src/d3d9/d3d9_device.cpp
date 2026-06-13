@@ -7516,7 +7516,8 @@ namespace dxvk {
       });
     }
 
-    BindSpecConstants();
+    if (m_dirty.test(D3D9DeviceDirtyFlag::SpecializationEntries))
+      BindSpecConstants();
 
     if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::VertexBuffers) && UploadVBOs)) {
       for (uint32_t i = 0; i < caps::MaxStreams; i++) {
@@ -9069,21 +9070,12 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::BindSpecConstants() {
-    if (!m_dirty.test(D3D9DeviceDirtyFlag::SpecializationEntries))
-      return;
+    m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
 
     EmitCs([cSpecInfo = m_specInfo](DxvkContext* ctx) {
       for (size_t i = 0; i < cSpecInfo.data.size(); i++)
         ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, cSpecInfo.data[i]);
     });
-
-    // Write spec constants into buffer for fast-linked pipelines to use it.
-    // TODO get rid of the fallback buffer and rework everything to use push
-    // data instead.
-    auto mapPtr = GetConstantBuffer(CbvIndex::SpecData).Alloc(sizeof(m_specInfo.data));
-    memcpy(mapPtr, m_specInfo.data.data(), sizeof(m_specInfo.data));
-
-    m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
 
 

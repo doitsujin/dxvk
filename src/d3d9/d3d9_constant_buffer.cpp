@@ -199,9 +199,6 @@ namespace dxvk {
       case Kind::PSStaticConstants:
         return VK_SHADER_STAGE_FRAGMENT_BIT;
 
-      case Kind::SpecData:
-        return VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-
       case Kind::Count:
         break;
     }
@@ -245,8 +242,7 @@ namespace dxvk {
     bool useCached = CbvType == Kind::VSClipPlanes
                   || CbvType == Kind::VSFixedFunction
                   || CbvType == Kind::VSVertexBlendData
-                  || CbvType == Kind::PSShared
-                  || CbvType == Kind::SpecData;
+                  || CbvType == Kind::PSShared;
 
     if (useCached)
       flags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
@@ -264,10 +260,7 @@ namespace dxvk {
     if (option != Tristate::Auto)
       return option == Tristate::True;
 
-    // No point whatsoever in streaming the spec data buffer to
-    // VRAM since it won't be used most of the time anyway
-    return dxvkDevice->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-      && CbvType != Kind::SpecData;
+    return dxvkDevice->properties().core.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
   }
 
 }
