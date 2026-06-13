@@ -35,6 +35,12 @@ namespace dxvk {
         info.samplerHeap.getBinding()));
     }
 
+    if (m_info.specDataBuffer.getStageMask() & m_metadata.stage) {
+      m_layout.addSpecDataBuffer(DxvkShaderBinding(m_metadata.stage,
+        info.specDataBuffer.getSet(),
+        info.specDataBuffer.getBinding()));
+    }
+
     if (!info.debugName.empty())
       m_debugName = info.debugName;
     else if (m_debugName.empty())

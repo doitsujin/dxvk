@@ -22,6 +22,8 @@ namespace dxvk {
     DxvkPushDataBlock localPushData;
     /// Descriptor set and binding of global sampler heap
     DxvkShaderBinding samplerHeap;
+    /// Descriptor set and binding of spec constant UBO
+    DxvkShaderBinding specDataBuffer;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
     /// Tess control patch vertex count
