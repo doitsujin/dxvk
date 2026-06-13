@@ -67,6 +67,10 @@ namespace dxvk {
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) {
     SpirvCodeBuffer spirvCode = m_code;
+
+    if (linkage && (m_info.specDataBuffer.getStageMask() & m_metadata.stage))
+      lowerSpecDataBufferToConstants(spirvCode, m_info.specDataBuffer);
+
     patchResourceBindingsAndIoLocations(spirvCode, bindings, linkage);
 
     // Undefined I/O handling is coarse, and not supported for tessellation shaders.
@@ -119,8 +123,9 @@ namespace dxvk {
   }
 
 
-  void DxvkSpirvShader::gatherIdOffsets(
-          SpirvCodeBuffer&          code) {
+  std::unordered_map<uint32_t, uint32_t> DxvkSpirvShader::gatherIdOffsets(SpirvCodeBuffer& code) {
+    std::unordered_map<uint32_t, uint32_t> idToOffset;
+
     for (auto i = code.begin(); i != code.end(); i++) {
       auto ins = *i;
 
@@ -141,26 +146,30 @@ namespace dxvk {
         case spv::OpTypeOpaque:
         case spv::OpTypePointer:
         case spv::OpTypeFunction: {
-          m_idToOffset.insert({ ins.arg(1u), ins.offset() });
+          idToOffset.insert({ ins.arg(1u), ins.offset() });
         } break;
 
         case spv::OpConstant:
         case spv::OpVariable: {
-          m_idToOffset.insert({ ins.arg(2u), ins.offset() });
+          idToOffset.insert({ ins.arg(2u), ins.offset() });
         } break;
 
         case spv::OpFunction:
-          return;
+          return idToOffset;;
 
         default:
           break;
       }
     }
+
+    return idToOffset;
   }
 
 
   void DxvkSpirvShader::gatherMetadata(
           SpirvCodeBuffer&          code) {
+    auto idToOffset = gatherIdOffsets(code);
+
     for (auto i = code.begin(); i != code.end(); i++) {
       auto ins = *i;
 
@@ -267,15 +276,15 @@ namespace dxvk {
 
         case spv::OpSource: {
           if (ins.length() > 3u)
-            handleDebugName(code, ins.arg(3u));
+            handleDebugName(code, idToOffset, ins.arg(3u));
         } break;
 
         case spv::OpVariable: {
           auto varId = ins.arg(2u);
           auto storage = spv::StorageClass(ins.arg(3u));
 
-          SpirvInstruction ptrType(code.data(), m_idToOffset.at(ins.arg(1u)), code.dwords());
-          SpirvInstruction varType(code.data(), m_idToOffset.at(ptrType.arg(3u)), code.dwords());
+          SpirvInstruction ptrType(code.data(), idToOffset.at(ins.arg(1u)), code.dwords());
+          SpirvInstruction varType(code.data(), idToOffset.at(ptrType.arg(3u)), code.dwords());
 
           switch (storage) {
             case spv::StorageClassInput:
@@ -292,18 +301,18 @@ namespace dxvk {
                   (m_metadata.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
 
                 if (isArrayInput || isArrayOutput)
-                  varType = SpirvInstruction(code.data(), m_idToOffset.at(varType.arg(2u)), code.dwords());
+                  varType = SpirvInstruction(code.data(), idToOffset.at(varType.arg(2u)), code.dwords());
               }
 
               if (varType.opCode() == spv::OpTypeStruct) {
                 auto structId = varType.arg(1u);
 
                 for (uint32_t i = 2u; i < varType.length(); i++) {
-                  SpirvInstruction memberType(code.data(), m_idToOffset.at(varType.arg(i)), code.dwords());
-                  handleIoVariable(code, memberType, storage, structId, int32_t(i - 2u));
+                  SpirvInstruction memberType(code.data(), idToOffset.at(varType.arg(i)), code.dwords());
+                  handleIoVariable(code, idToOffset, memberType, storage, structId, int32_t(i - 2u));
                 }
               } else {
-                handleIoVariable(code, varType, storage, varId, -1);
+                handleIoVariable(code, idToOffset, varType, storage, varId, -1);
               }
            } break;
 
@@ -330,6 +339,22 @@ namespace dxvk {
               }
             } break;
 
+            case spv::StorageClassUniform: {
+              if (varType.opCode() == spv::OpTypeStruct) {
+                // If this is the spec data buffer, mark spec constants as used
+                if (m_info.specDataBuffer.getStageMask() & m_metadata.stage) {
+                  auto decorations = m_decorations.find(varId);
+
+                  if (decorations != m_decorations.end()
+                   && decorations->second.set == m_info.specDataBuffer.getSet()
+                   && decorations->second.binding == m_info.specDataBuffer.getBinding()) {
+                    uint32_t memberCount = varType.length() - 2u;
+                    m_metadata.specConstantMask |= (1u << memberCount) - 1u;
+                  }
+                }
+              }
+            } break;
+
             default:
               break;
           }
@@ -347,6 +372,7 @@ namespace dxvk {
 
   void DxvkSpirvShader::handleIoVariable(
           SpirvCodeBuffer&          code,
+    const std::unordered_map<uint32_t, uint32_t>& idToOffset,
     const SpirvInstruction&         type,
           spv::StorageClass         storage,
           uint32_t                  varId,
@@ -388,7 +414,7 @@ namespace dxvk {
     if (decoration.component)
       varInfo.componentIndex = *decoration.component;
 
-    auto componentInfo = getComponentCountForType(code, type, varInfo.builtIn);
+    auto componentInfo = getComponentCountForType(code, idToOffset, type, varInfo.builtIn);
 
     varInfo.componentCount = componentInfo.first;
     varInfo.isPatchConstant = decoration.patch;
@@ -484,10 +510,11 @@ namespace dxvk {
 
   void DxvkSpirvShader::handleDebugName(
           SpirvCodeBuffer&          code,
+    const std::unordered_map<uint32_t, uint32_t>& idToOffset,
           uint32_t                  stringId) {
-    auto e = m_idToOffset.find(stringId);
+    auto e = idToOffset.find(stringId);
 
-    if (e == m_idToOffset.end())
+    if (e == idToOffset.end())
       return;
 
     SpirvInstruction str(code.data(), e->second, code.dwords());
@@ -527,6 +554,7 @@ namespace dxvk {
 
   std::pair<uint32_t, uint32_t> DxvkSpirvShader::getComponentCountForType(
           SpirvCodeBuffer&          code,
+    const std::unordered_map<uint32_t, uint32_t>& idToOffset,
     const SpirvInstruction&         type,
           spv::BuiltIn              builtIn) const {
     switch (type.opCode()) {
@@ -540,8 +568,8 @@ namespace dxvk {
         return std::make_pair(type.arg(3u), 1u);
 
       case spv::OpTypeArray: {
-        auto nested = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(2u)), code.dwords());
-        auto length = SpirvInstruction(code.data(), m_idToOffset.at(type.arg(3u)), code.dwords());
+        auto nested = SpirvInstruction(code.data(), idToOffset.at(type.arg(2u)), code.dwords());
+        auto length = SpirvInstruction(code.data(), idToOffset.at(type.arg(3u)), code.dwords());
 
         if (builtIn == spv::BuiltInClipDistance
          || builtIn == spv::BuiltInCullDistance
@@ -552,7 +580,7 @@ namespace dxvk {
           return std::make_pair(length.arg(3u), 1u);
         }
 
-        return std::make_pair(getComponentCountForType(code, nested, builtIn).first, length.arg(3u));
+        return std::make_pair(getComponentCountForType(code, idToOffset, nested, builtIn).first, length.arg(3u));
       }
 
       default:
@@ -565,6 +593,8 @@ namespace dxvk {
           SpirvCodeBuffer&            code,
     const DxvkShaderBindingMap*       bindings,
     const DxvkShaderLinkage*          linkage) const {
+    auto idToOffset = gatherIdOffsets(code);
+
     for (auto i = code.begin(); i != code.end(); i++) {
       auto ins = *i;
 
@@ -604,7 +634,7 @@ namespace dxvk {
                 break;
 
               // Ensure that what we're patching is actually an output variable
-              SpirvInstruction var(code.data(), m_idToOffset.at(ins.arg(1u)), code.dwords());
+              SpirvInstruction var(code.data(), idToOffset.at(ins.arg(1u)), code.dwords());
 
               if (spv::StorageClass(var.arg(3u)) != spv::StorageClassOutput)
                 break;
@@ -646,6 +676,209 @@ namespace dxvk {
           break;
       }
     }
+  }
+
+
+  void DxvkSpirvShader::lowerSpecDataBufferToConstants(
+          SpirvCodeBuffer&          code,
+    const DxvkShaderBinding&        binding) {
+    // Find actual buffer variable to replace
+    uint32_t bufferId = 0u;
+
+    for (const auto& e : m_decorations) {
+      if (e.second.set == binding.getSet()
+       && e.second.binding == binding.getBinding()) {
+        bufferId = e.first;
+        break;
+      }
+    }
+
+    if (!bufferId)
+      return;
+
+    std::vector<std::pair<uint32_t, uint32_t>> specMembers;
+
+    // Find types and gather decorations for spec constants
+    auto idToOffset = gatherIdOffsets(code);
+
+    SpirvInstruction bufDecl(code.data(), idToOffset.at(bufferId), code.dwords());
+    SpirvInstruction ptrType(code.data(), idToOffset.at(bufDecl.arg(1u)), code.dwords());
+    SpirvInstruction bufType(code.data(), idToOffset.at(ptrType.arg(3u)), code.dwords());
+
+    // Assume that the types are not otherwise used
+    uint32_t ptrTypeId = ptrType.arg(1u);
+    uint32_t bufTypeId = bufType.arg(1u);
+
+    if (bufType.opCode() != spv::OpTypeStruct) {
+      Logger::err(str::format("DXVK: Unexpected type for spec data buffer type: ", bufType.opCode()));
+      return;
+    }
+
+    // Allocate IDs for spec constants
+    bool hasDeclaredSpecIds = false;
+
+    for (uint32_t i = 2u; i < bufType.length(); i++)
+      specMembers.emplace_back(bufType.arg(i), code.allocId());
+
+    // Access chain ID to spec constant index mapping
+    std::unordered_map<uint32_t, uint32_t> accessChainToSpecId;
+    std::unordered_map<uint32_t, uint32_t> constants;
+
+    auto iter = code.begin();
+
+    while (iter != code.end()) {
+      auto ins = *iter;
+
+      switch (ins.opCode()) {
+        case spv::OpEntryPoint: {
+          // Remove variable from entry point
+          if (removeVariableFromEntryPoint(code, ins, bufferId)) {
+            iter = SpirvInstructionIterator(code.data(), ins.offset(), code.dwords());
+            continue;
+          }
+        } break;
+
+        case spv::OpConstant: {
+          constants.insert({ ins.arg(2), ins.arg(3) });
+        } break;
+
+        case spv::OpDecorate: {
+          // If we haven't already, emit spec ID decorations for the new
+          // specialization constants. We are guaranteed to encounter this
+          // at least once for the set/binding decorations.
+          if (!std::exchange(hasDeclaredSpecIds, true)) {
+            uint32_t index = 0u;
+
+            code.beginInsertion(ins.offset());
+
+            for (const auto& e : specMembers) {
+              code.putIns(spv::OpDecorate, 4);
+              code.putWord(e.second);
+              code.putWord(spv::DecorationSpecId);
+              code.putWord(index++);
+            }
+
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } [[fallthrough]];
+
+        case spv::OpName:
+        case spv::OpMemberDecorate: {
+          // Remove all decorations targeting the buffer or buffer type
+          if (ins.arg(1) == bufferId || ins.arg(1) == bufTypeId || ins.arg(1) == ptrTypeId) {
+            code.beginInsertion(ins.offset());
+            code.erase(ins.length());
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } break;
+
+        case spv::OpMemberName: {
+          // Repurpose member names to become debug names
+          // for the corresponding spec constant
+          if (ins.arg(1) == bufTypeId) {
+            code.beginInsertion(ins.offset() + ins.length());
+            code.putIns(spv::OpName, ins.length() - 1);
+            code.putWord(specMembers.at(ins.arg(2)).second);
+
+            for (uint32_t i = 3u; i < ins.length(); i++)
+              code.putWord(ins.arg(i));
+
+            code.endInsertion();
+
+            code.beginInsertion(ins.offset());
+            code.erase(ins.length());
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } break;
+
+        case spv::OpAccessChain:
+        case spv::OpInBoundsAccessChain: {
+          // Remove access chain instruction, but remember
+          // which spec constant this loads so that we can
+          // replace any load using the access chain
+          if (ins.arg(3) == bufferId) {
+            accessChainToSpecId.insert({ ins.arg(2), constants.at(ins.arg(4)) });
+
+            code.beginInsertion(ins.offset());
+            code.erase(ins.length());
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } break;
+
+        case spv::OpVariable: {
+          if (ins.arg(2) == bufferId) {
+            // Remove buffer variable and replace it with
+            // the actual spec constant declarations
+            code.beginInsertion(ins.offset());
+            code.erase(ins.length());
+
+            for (const auto& e : specMembers) {
+              code.putIns(spv::OpSpecConstant, 4);
+              code.putWord(e.first);
+              code.putWord(e.second);
+              code.putWord(0u);
+            }
+
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } break;
+
+        case spv::OpLoad: {
+          // Replace loads from the buffer with copy of the
+          // respective spec constant
+          auto entry = accessChainToSpecId.find(ins.arg(3));
+
+          if (entry != accessChainToSpecId.end()) {
+            auto type = ins.arg(1);
+            auto id = ins.arg(2);
+
+            code.beginInsertion(ins.offset());
+            code.erase(ins.length());
+
+            code.putIns(spv::OpCopyObject, 4);
+            code.putWord(type);
+            code.putWord(id);
+            code.putWord(specMembers.at(entry->second).second);
+
+            iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+            continue;
+          }
+        } break;
+
+        default:
+          break;
+      }
+
+      iter++;
+    }
+  }
+
+
+  bool DxvkSpirvShader::removeVariableFromEntryPoint(
+          SpirvCodeBuffer&          code,
+          SpirvInstruction&         entryPoint,
+          uint32_t                  varId) {
+    uint32_t argIdx = 2 + code.strLen(entryPoint.chr(2));
+
+    while (argIdx < entryPoint.length()) {
+      if (entryPoint.arg(argIdx) == varId) {
+        entryPoint.setArg(0, spv::OpEntryPoint | ((entryPoint.length() - 1) << spv::WordCountShift));
+
+        code.beginInsertion(entryPoint.offset() + argIdx);
+        code.erase(1);
+        code.endInsertion();
+        return true;
+      }
+
+      argIdx += 1;
+    }
+
+    return false;
   }
 
 
@@ -819,21 +1052,7 @@ namespace dxvk {
     if (spirvVersion < spvVersion(1, 4)) {
       for (auto ins : code) {
         if (ins.opCode() == spv::OpEntryPoint) {
-          uint32_t argIdx = 2 + code.strLen(ins.chr(2));
-
-          while (argIdx < ins.length()) {
-            if (ins.arg(argIdx) == inputVarId) {
-              ins.setArg(0, spv::OpEntryPoint | ((ins.length() - 1) << spv::WordCountShift));
-
-              code.beginInsertion(ins.offset() + argIdx);
-              code.erase(1);
-              code.endInsertion();
-              break;
-            }
-
-            argIdx += 1;
-          }
-
+          removeVariableFromEntryPoint(code, ins, inputVarId);
           break;
         }
       }
