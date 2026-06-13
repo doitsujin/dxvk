@@ -21,7 +21,7 @@ namespace dxvk {
     MaxVertexBindingStride      =  2048,
     MaxTotalPushDataSize        =   256,
     MaxSharedPushDataSize       =    32,
-    MaxPerStagePushDataSize     =    32,
+    MaxPerStagePushDataSize     =    40,
     MaxReservedPushDataSize     =    16,
   };
   
