@@ -878,6 +878,7 @@ namespace dxvk {
       ENABLE_FEATURE(vk12, uniformBufferStandardLayout, true),
       ENABLE_FEATURE(vk12, vulkanMemoryModel, true),
 
+      ENABLE_FEATURE(vk13, inlineUniformBlock, true),
       ENABLE_FEATURE(vk13, computeFullSubgroups, true),
       ENABLE_FEATURE(vk13, dynamicRendering, true),
       ENABLE_FEATURE(vk13, maintenance4, true),
