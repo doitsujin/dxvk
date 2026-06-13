@@ -109,7 +109,6 @@ uniform SharedData {
 layout(push_constant, scalar, row_major)
 uniform RenderStates {
     D3D9SharedPushData global;
-    D3D9VsPushData vs;
 
     layout(offset = MaxSharedPushDataSize)
     D3D9FfpsPushData ffps;

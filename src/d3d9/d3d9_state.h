@@ -48,11 +48,8 @@ namespace dxvk {
 
   /// Vertex shader push data
   struct D3D9VsPushData {
-    // We don't have enough VS-only push data space available to fit all
-    // possible samplers, constant buffers and data in there, so put VS
-    // data into the shared block.
-    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_ALL_GRAPHICS;
-    static constexpr uint32_t           Offset = sizeof(D3D9SharedPushData);
+    static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_VERTEX_BIT;
+    static constexpr uint32_t           Offset = 0u;
 
     // Dynamically indexed float count
     uint16_t floatCount = 0u;
@@ -66,7 +63,7 @@ namespace dxvk {
   /// Can theoretically use up to 32 bytes.
   struct D3D9FfvsPushData {
     static constexpr VkShaderStageFlags Stages = VK_SHADER_STAGE_VERTEX_BIT;
-    static constexpr uint32_t           Offset = 0u;
+    static constexpr uint32_t           Offset = sizeof(D3D9VsPushData);
 
     float pointScaleA = 0.0f;
     float pointScaleB = 0.0f;
