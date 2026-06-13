@@ -1454,12 +1454,16 @@ namespace dxvk {
     struct {
       uint32_t          offsetShift   = 0u;
       VkDeviceSize      setMemorySize = 0u;
+      VkDeviceSize      specDataSize  = 0u;
+      VkDeviceSize      specDataOffset = 0u;
     } m_heap;
 
     struct {
       std::vector<VkDescriptorMappingSourcePushIndexEXT>  pushIndex;
       std::vector<VkDescriptorSetAndBindingMappingEXT>    mappings;
     } m_mapping;
+
+    std::pair<VkDeviceSize, VkDeviceSize> computeSpecDataSetLayout();
 
     void initMetadata(
       const DxvkPipelineLayoutKey&      key);

@@ -245,6 +245,16 @@ namespace dxvk {
   }
 
 
+  std::pair<VkDeviceSize, VkDeviceSize> DxvkPipelineLayout::computeSpecDataSetLayout() {
+    VkDeviceSize alignment = m_device->getDescriptorProperties().getDescriptorSetAlignment();
+
+    if (m_device->canUseDescriptorHeap())
+      return std::make_pair(align(sizeof(DxvkScInfo), alignment), 0u);
+
+    return std::make_pair(0u, 0u);
+  }
+
+
   void DxvkPipelineLayout::initMetadata(
     const DxvkPipelineLayoutKey&      key) {
     // Determine bind point based on shader stages
@@ -260,6 +270,11 @@ namespace dxvk {
       m_heap.setMemorySize += key.getDescriptorSetLayout(i)
         ? key.getDescriptorSetLayout(i)->getMemorySize()
         : 0u;
+    }
+
+    if (key.getType() == DxvkPipelineLayoutType::Independent) {
+      std::tie(m_heap.specDataSize, m_heap.specDataOffset) = computeSpecDataSetLayout();
+      m_heap.setMemorySize += m_heap.specDataSize;
     }
 
     // Compute merged push data block from all used blocks
@@ -344,28 +359,49 @@ namespace dxvk {
     for (uint32_t set = 0u; set < m_setLayouts.size(); set++) {
       auto layout = m_setLayouts[set];
 
-      if (!layout)
-        continue;
+      if (layout) {
+        for (uint32_t i = 0u; i < layout->getBindingCount(); i++) {
+          auto bindingInfo = layout->getBindingInfo(i);
 
-      for (uint32_t i = 0u; i < layout->getBindingCount(); i++) {
-        auto bindingInfo = layout->getBindingInfo(i);
+          auto& entry = m_mapping.mappings.emplace_back();
+          entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+          entry.descriptorSet = setIndex;
+          entry.firstBinding = i;
+          entry.bindingCount = 1u;
+          entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
+          entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
 
-        auto& entry = m_mapping.mappings.emplace_back();
-        entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
-        entry.descriptorSet = setIndex + set;
-        entry.firstBinding = i;
-        entry.bindingCount = 1u;
-        entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_ALL_EXT;
-        entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_HEAP_WITH_PUSH_INDEX_EXT;
-
-        auto& pushIndex = entry.sourceData.pushIndex;
-        pushIndex.heapOffset = bindingInfo.offset;
-        pushIndex.pushOffset = pushBase + sizeof(uint32_t) * set;
-        pushIndex.heapIndexStride = 1u << m_heap.offsetShift;
-        pushIndex.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(bindingInfo.descriptorType).size;
+          auto& pushIndex = entry.sourceData.pushIndex;
+          pushIndex.heapOffset = bindingInfo.offset;
+          pushIndex.pushOffset = pushBase;
+          pushIndex.heapIndexStride = 1u << m_heap.offsetShift;
+          pushIndex.heapArrayStride = m_device->getDescriptorProperties().getDescriptorTypeInfo(bindingInfo.descriptorType).size;
+        }
       }
+
+      setIndex += 1u;
+      pushBase += sizeof(uint32_t);
     }
 
+    // For fast-linked pipelines, add an inline UBO offset after all
+    // the actual sets that points to spec constant fallback data
+    if (key.getType() == DxvkPipelineLayoutType::Independent) {
+      auto& entry = m_mapping.mappings.emplace_back();
+      entry.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_AND_BINDING_MAPPING_EXT;
+      entry.descriptorSet = setIndex;
+      entry.firstBinding = 0u;
+      entry.bindingCount = 1u;
+      entry.resourceMask = VK_SPIRV_RESOURCE_TYPE_UNIFORM_BUFFER_BIT_EXT;
+      entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_RESOURCE_HEAP_DATA_EXT;
+
+      auto& heapData = entry.sourceData.heapData;
+      heapData.pushOffset = pushBase;
+
+      setIndex += 1u;
+      pushBase += sizeof(uint32_t);
+    }
+
+    // Add push address mappings for PushData buffers
     for (uint32_t i = 0u; i < key.getVaBindingCount(); i++) {
       auto bindingInfo = key.getVaBinding(i);
 
@@ -504,6 +540,9 @@ namespace dxvk {
     // Reserve push data space for heap offsets
     if (type != DxvkPipelineLayoutType::BuiltIn && device->canUseDescriptorHeap())
       pushDataSize += sizeof(uint32_t) * setInfos.count;
+
+    if (type == DxvkPipelineLayoutType::Independent && device->canUseDescriptorHeap())
+      pushDataSize += sizeof(uint32_t);
 
     if (type == DxvkPipelineLayoutType::Independent) {
       // For independent layouts, we don't know in advance how the other stages
