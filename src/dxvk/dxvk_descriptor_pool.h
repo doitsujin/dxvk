@@ -51,6 +51,17 @@ namespace dxvk {
       const DxvkDescriptorSetLayout*  layout);
 
     /**
+     * \brief Allocates a single descriptor set
+     *
+     * \param [in] trackingId Submission tracking ID
+     * \param [in] layout Descriptor set layout
+     * \returns The descriptor set
+     */
+    VkDescriptorSet alloc(
+            uint64_t                  trackingId,
+            VkDescriptorSetLayout     layout);
+
+    /**
      * \brief Declares given submission ID as complete
      *
      * Used for tracking descriptor pool lifetimes.
