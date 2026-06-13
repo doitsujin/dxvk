@@ -5992,7 +5992,7 @@ namespace dxvk {
     uint32_t dynamicFloatCount = 0u;
 
     if (ShaderType == D3D9ShaderType::VertexShader)
-      dynamicFloatCount = constants.changedFloatCount;
+      dynamicFloatCount = layout->getLayout(D3D9ConstantType::Float).computeConstantCount(constants.changedFloatCount);
 
     bool isDynamicallyIndexed = ShaderType == D3D9ShaderType::VertexShader
       && layout->getLayout(D3D9ConstantType::Float).isDynamicallyIndexed();
