@@ -6930,6 +6930,7 @@ namespace dxvk {
     // Find out which sets we actually need to update based on the pipeline
     // layout. This may be an empty mask if only unrelated resources were
     // changed, but we have no way of knowing that up-front.
+    uint32_t baseSetIndex = uint32_t(pipelineLayout->usesSamplerHeap());
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
     if (likely(dirtySetMask)) {
@@ -7124,7 +7125,7 @@ namespace dxvk {
         VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
         bindInfo.stageFlags = pipelineLayout->getShaderStageMask();
         bindInfo.layout = pipelineLayout->getPipelineLayout();
-        bindInfo.firstSet = first + uint32_t(pipelineLayout->usesSamplerHeap());
+        bindInfo.firstSet = first + baseSetIndex;
         bindInfo.descriptorSetCount = count;
         bindInfo.pDescriptorSets = &sets[first];
 
@@ -7132,6 +7133,33 @@ namespace dxvk {
 
         dirtySetMask &= countMask;
       } while (dirtySetMask);
+    }
+
+    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+     && unlikely(m_flags.all(DxvkContextFlag::GpIndependentSets, DxvkContextFlag::GpDirtySpecDataBlock))) {
+      VkDescriptorSet set = m_descriptorPool->alloc(m_trackingId, m_device->getSpecDataSetLayout());
+
+      VkWriteDescriptorSetInlineUniformBlock blockInfo = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK };
+      blockInfo.dataSize = sizeof(DxvkScInfo);
+      blockInfo.pData = m_state.gp.state.sc.specConstants;
+
+      VkWriteDescriptorSet writeInfo = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, &blockInfo };
+      writeInfo.dstSet = set;
+      writeInfo.descriptorCount = blockInfo.dataSize;
+      writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
+
+      m_cmd->updateDescriptorSets(1u, &writeInfo);
+
+      VkBindDescriptorSetsInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_DESCRIPTOR_SETS_INFO };
+      bindInfo.stageFlags = pipelineLayout->getShaderStageMask();
+      bindInfo.layout = pipelineLayout->getPipelineLayout();
+      bindInfo.firstSet = baseSetIndex + DxvkDescriptorSets::GpIndependentSetCount;
+      bindInfo.descriptorSetCount = 1u;
+      bindInfo.pDescriptorSets = &set;
+
+      m_cmd->cmdBindDescriptorSets(DxvkCmdBuffer::ExecBuffer, &bindInfo);
+
+      m_flags.clr(DxvkContextFlag::GpDirtySpecDataBlock);
     }
   }
 
