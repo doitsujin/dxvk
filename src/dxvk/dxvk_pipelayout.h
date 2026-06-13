@@ -1393,6 +1393,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries size of specialization constant fallback data
+     *
+     * Only relevant for layouts used with fast-linked pipelines.
+     * \returns Size of specialization constant data block, in bytes
+     */
+    VkDeviceSize getSpecDataMemorySize() const {
+      return m_heap.specDataSize;
+    }
+
+    /**
      * \brief Queries non-empty push data block mask
      */
     uint32_t getPushDataMask() const {
@@ -1430,6 +1440,14 @@ namespace dxvk {
       result.pMappings = m_mapping.mappings.data();
       return result;
     }
+
+    /**
+     * \brief Helper to write spec constant data to the heap
+     *
+     * \param [in] dst Pointer to allocated heap memory
+     * \param [in] data Specialization constant data
+     */
+    void writeSpecData(void* dst, const uint32_t* data) const;
 
   private:
 

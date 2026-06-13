@@ -245,6 +245,26 @@ namespace dxvk {
   }
 
 
+  void DxvkPipelineLayout::writeSpecData(void* dst, const uint32_t* data) const {
+    auto dstPtr = reinterpret_cast<char*>(dst);
+
+    size_t offset = 0u;
+
+    if (unlikely(m_heap.specDataOffset)) {
+      std::memset(dstPtr + offset, 0, m_heap.specDataOffset);
+      offset += m_heap.specDataOffset;
+    }
+
+    size_t dataSize = sizeof(DxvkScInfo);
+    std::memcpy(dstPtr + offset, data, dataSize);
+
+    offset += dataSize;
+
+    if (offset < m_heap.specDataSize)
+      std::memset(dstPtr + offset, 0, m_heap.specDataSize - offset);
+  }
+
+
   std::pair<VkDeviceSize, VkDeviceSize> DxvkPipelineLayout::computeSpecDataSetLayout() {
     VkDeviceSize alignment = m_device->getDescriptorProperties().getDescriptorSetAlignment();
 
