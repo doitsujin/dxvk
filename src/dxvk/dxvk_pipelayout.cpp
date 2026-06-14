@@ -234,6 +234,8 @@ namespace dxvk {
       initMappings(key);
     else
       initPipelineLayout(key);
+
+    initPushDataCopy();
   }
 
 
@@ -262,6 +264,42 @@ namespace dxvk {
 
     if (offset < m_heap.specDataSize)
       std::memset(dstPtr + offset, 0, m_heap.specDataSize - offset);
+  }
+
+
+  void DxvkPipelineLayout::gatherPushData(void* dst, const void* srcData, const void* srcResources) const {
+    auto dstPtr = reinterpret_cast<uint32_t*>(dst);
+
+    auto srcPtr = reinterpret_cast<const uint32_t*>(srcData);
+    auto resPtr = reinterpret_cast<const uint32_t*>(srcResources);
+
+    for (const auto& e : m_pushData.copies) {
+      auto copyDst = dstPtr + e.dstDwordOffset;
+      auto copySrc = (e.isResource ? resPtr : srcPtr) + e.srcDwordOffset;
+
+      #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+      // Optimize for small copies (typically ≤32 bytes), and use
+      // the fact that all blocks are at least dword-aligned
+      uint32_t dwordIndex = 0u;
+
+      while (dwordIndex + 4u <= e.dwordCount) {
+        __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i*>(copySrc + dwordIndex));
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(copyDst + dwordIndex), data);
+        dwordIndex += 4u;
+      }
+
+      if (e.dwordCount & 2u) {
+        __m128i data = _mm_loadu_si64(copySrc + dwordIndex);
+        _mm_storeu_si64(copyDst + dwordIndex, data);
+        dwordIndex += 2u;
+      }
+
+      if (e.dwordCount & 1u)
+        std::memcpy(copyDst + dwordIndex, copySrc + dwordIndex, sizeof(uint32_t));
+      #else
+      std::memcpy(copyDst, copySrc, e.dwordCount * sizeof(uint32_t));
+      #endif
+    }
   }
 
 
@@ -452,6 +490,63 @@ namespace dxvk {
       entry.source = VK_DESCRIPTOR_MAPPING_SOURCE_PUSH_ADDRESS_EXT;
       entry.sourceData.pushAddressOffset = bindingInfo.vaOffset;
     }
+  }
+
+
+  void DxvkPipelineLayout::initPushDataCopy() {
+    for (auto i : bit::BitMask(getPushDataMask())) {
+      auto block = getPushDataBlock(i);
+      auto resourceMask = block.getResourceDwordMask();
+
+      // Copies need to be entirely dword-aligned, so pad in case any
+      // push data block begins or ends outside of a dword boundary.
+      auto srcOffset = DxvkPushDataBlock::computeBlockOffsetForIndex(i) / sizeof(uint32_t);
+
+      auto dstOffset = block.getOffset() / sizeof(uint32_t);
+      auto dstEnd = align<uint32_t>(block.getOffset() + block.getSize(), sizeof(uint32_t)) / sizeof(uint32_t);
+
+      auto blockSize = dstEnd - dstOffset;
+
+      // Add and merge copy ranges for individual push data dwords
+      for (uint32_t i = 0u; i < blockSize; i++) {
+        PushDataCopy copy = {};
+        copy.dwordCount = 1u;
+
+        if (resourceMask & (1ull << i)) {
+          // Resource data is expected to laid out correctly already, so
+          // we need to use the "destination" offset even for the source
+          copy.isResource = true;
+          copy.dstDwordOffset = dstOffset + i;
+          copy.srcDwordOffset = dstOffset + i;
+        } else {
+          // Constant data is packed per stage
+          copy.dstDwordOffset = dstOffset + i;
+          copy.srcDwordOffset = srcOffset + i;
+        }
+
+        addPushDataCopyEntry(copy);
+      }
+    }
+  }
+
+
+  void DxvkPipelineLayout::addPushDataCopyEntry(const PushDataCopy& e) {
+    if (!e.dwordCount)
+      return;
+
+    if (!m_pushData.copies.empty()) {
+      auto& last = m_pushData.copies.back();
+
+      if (last.isResource == e.isResource
+       && last.srcDwordOffset + last.dwordCount == e.srcDwordOffset
+       && last.dstDwordOffset + last.dwordCount == e.dstDwordOffset) {
+        last.dwordCount += e.dwordCount;
+        return;
+      }
+    }
+
+    m_pushData.copies.push_back(e);
+    m_pushData.needsGather |= !e.isResource;
   }
 
 

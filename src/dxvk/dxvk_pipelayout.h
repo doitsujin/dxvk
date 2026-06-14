@@ -1449,6 +1449,29 @@ namespace dxvk {
      */
     void writeSpecData(void* dst, const uint32_t* data) const;
 
+    /**
+     * \brief Checks whether complex push data copies are required
+     *
+     * If all push data is sourced from resource data, the complex
+     * gather step can be skipped, otherwise it is required.
+     * \returns \c true if push the data layout requires gather.
+     */
+    bool needsPushDataGather() const {
+      return m_pushData.needsGather;
+    }
+
+    /**
+     * \brief Helper to gather and compact push data
+     *
+     * Takes base pointers to per-stage data and resource data and writes
+     * them to a packed byte array as defined by the layout's merged push
+     * data block. Push data is copied at dword granularity.
+     * \param [in] dst Destination pointer
+     * \param [in] srcData Pointer to per-stage data
+     * \param [in] srcResources Pointer to resource data
+     */
+    void gatherPushData(void* dst, const void* srcData, const void* srcResources) const;
+
   private:
 
     DxvkDevice*             m_device;
@@ -1459,6 +1482,13 @@ namespace dxvk {
 
     std::array<const DxvkDescriptorSetLayout*, DxvkPipelineLayoutKey::MaxSets> m_setLayouts = { };
 
+    struct PushDataCopy {
+      bool    isResource      = false;
+      uint8_t srcDwordOffset  = 0u;
+      uint8_t dstDwordOffset  = 0u;
+      uint8_t dwordCount      = 0u;
+    };
+
     struct {
       VkPipelineLayout  layout = VK_NULL_HANDLE;
     } m_legacy;
@@ -1467,6 +1497,9 @@ namespace dxvk {
       DxvkPushDataBlock mergedBlock = { };
       uint32_t          blockMask   = 0u;
       std::array<DxvkPushDataBlock, DxvkPushDataBlock::MaxBlockCount> blocks = { };
+
+      small_vector<PushDataCopy, 8u> copies;
+      bool              needsGather = false;
     } m_pushData;
 
     struct {
@@ -1491,6 +1524,10 @@ namespace dxvk {
 
     void initMappings(
       const DxvkPipelineLayoutKey&      key);
+
+    void initPushDataCopy();
+
+    void addPushDataCopyEntry(const PushDataCopy& e);
 
   };
 
