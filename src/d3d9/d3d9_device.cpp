@@ -3152,8 +3152,8 @@ namespace dxvk {
 
     m_state.vertexBuffers[0].vertexBuffer = nullptr;
     m_state.vertexBuffers[0].offset       = 0;
+    m_state.vertexBuffers[0].length       = 0;
     m_state.vertexBuffers[0].stride       = 0;
-
     return D3D_OK;
   }
 
@@ -3222,10 +3222,10 @@ namespace dxvk {
 
     m_state.vertexBuffers[0].vertexBuffer = nullptr;
     m_state.vertexBuffers[0].offset       = 0;
+    m_state.vertexBuffers[0].length       = 0;
     m_state.vertexBuffers[0].stride       = 0;
 
     m_state.indices = nullptr;
-
     return D3D_OK;
   }
 
@@ -3685,46 +3685,52 @@ namespace dxvk {
 
     D3D9VertexBuffer* buffer = static_cast<D3D9VertexBuffer*>(pStreamData);
 
-    if (unlikely(ShouldRecord()))
+    if (unlikely(ShouldRecord())) {
       return m_recorder->SetStreamSource(
-        StreamNumber,
-        buffer,
-        OffsetInBytes,
-        Stride);
+        StreamNumber, buffer, OffsetInBytes, Stride);
+    }
 
     auto& vbo = m_state.vertexBuffers[StreamNumber];
-    bool needsUpdate = vbo.vertexBuffer != buffer;
 
-    if (needsUpdate)
-      vbo.vertexBuffer = buffer;
+    if (vbo.vertexBuffer != buffer) {
+      const uint32_t bit = 1u << StreamNumber;
+      m_vbSlotTracking.uploadPerDraw &= ~bit;
+      m_vbSlotTracking.needsUpload &= ~bit;
 
-    const uint32_t bit = 1u << StreamNumber;
-    m_vbSlotTracking.bound &= ~bit;
-    m_vbSlotTracking.uploadPerDraw &= ~bit;
-    m_vbSlotTracking.needsUpload &= ~bit;
+      if (likely(buffer)) {
+        const D3D9CommonBuffer* commonBuffer = GetCommonBuffer(buffer);
+        m_vbSlotTracking.bound |= bit;
 
-    if (buffer != nullptr) {
-      needsUpdate |= vbo.offset != OffsetInBytes
-                  || vbo.stride != Stride;
+        if (commonBuffer->DoPerDrawUpload() || CanOnlySWVP())
+          m_vbSlotTracking.uploadPerDraw |= bit;
 
+        if (commonBuffer->NeedsUpload())
+          m_vbSlotTracking.needsUpload |= bit;
+
+        vbo.vertexBuffer = buffer;
+        vbo.length = commonBuffer->Desc()->Size;
+        vbo.offset = OffsetInBytes;
+        vbo.stride = Stride;
+
+        BindVertexBuffer(StreamNumber, buffer,
+          vbo.offset, vbo.length, vbo.stride);
+      } else {
+        // D3D9 doesn't actually unbind any vertex buffer when passing null.
+        // Operation Flashpoint: Red River relies on this behavior.
+        m_vbSlotTracking.bound &= ~bit;
+
+        vbo.vertexBuffer = nullptr;
+        vbo.offset = 0u;
+        vbo.length = 0u;
+        vbo.stride = 0u;
+      }
+    } else if (likely(buffer && (vbo.offset != OffsetInBytes || vbo.stride != Stride))) {
       vbo.offset = OffsetInBytes;
       vbo.stride = Stride;
 
-      const D3D9CommonBuffer* commonBuffer = GetCommonBuffer(buffer);
-      m_vbSlotTracking.bound |= bit;
-      if (commonBuffer->DoPerDrawUpload() || CanOnlySWVP())
-        m_vbSlotTracking.uploadPerDraw |= bit;
-      if (commonBuffer->NeedsUpload()) {
-        m_vbSlotTracking.needsUpload |= bit;
-      }
-    } else {
-      // D3D9 doesn't actually unbind any vertex buffer when passing null.
-      // Operation Flashpoint: Red River relies on this behavior.
-      needsUpdate = false;
+      BindVertexBufferRange(StreamNumber,
+        vbo.offset, vbo.length, vbo.stride);
     }
-
-    if (needsUpdate)
-      BindVertexBuffer(StreamNumber, buffer, OffsetInBytes, Stride);
 
     return D3D_OK;
   }
@@ -7515,7 +7521,8 @@ namespace dxvk {
     if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::VertexBuffers) && UploadVBOs)) {
       for (uint32_t i = 0; i < caps::MaxStreams; i++) {
         const D3D9VBO& vbo = m_state.vertexBuffers[i];
-        BindVertexBuffer(i, vbo.vertexBuffer.ptr(), vbo.offset, vbo.stride);
+        BindVertexBuffer(i, vbo.vertexBuffer.ptr(),
+          vbo.offset, vbo.length, vbo.stride);
       }
       m_dirty.clr(D3D9DeviceDirtyFlag::VertexBuffers);
     }
@@ -7752,20 +7759,46 @@ namespace dxvk {
         UINT                              Slot,
         D3D9VertexBuffer*                 pBuffer,
         UINT                              Offset,
+        UINT                              Length,
         UINT                              Stride) {
     if (likely(pBuffer)) {
+      Offset = std::min(Offset, Length);
+
       EmitCs([
         cSlotId       = Slot,
-        cBufferSlice  = pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset),
+        cBuffer       = pBuffer->GetCommonBuffer()->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(),
+        cOffset       = Offset,
+        cLength       = Length - Offset,
         cStride       = Stride
       ] (DxvkContext* ctx) mutable {
-        ctx->bindVertexBuffer(cSlotId, std::move(cBufferSlice), cStride);
+        DxvkBufferSlice slice(std::move(cBuffer), cOffset, cLength);
+        ctx->bindVertexBuffer(cSlotId, std::move(slice), cStride);
       });
     } else {
       EmitCs([cSlotId = Slot] (DxvkContext* ctx) mutable {
         ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
       });
     }
+  }
+
+
+  void D3D9DeviceEx::BindVertexBufferRange(
+          UINT                              Slot,
+          UINT                              Offset,
+          UINT                              Length,
+          UINT                              Stride) {
+    // Fast path for when only the offset of an already bound
+    // buffer changes to avoid ref-counting overhead.
+    Offset = std::min(Offset, Length);
+
+    EmitCs([
+      cSlotId       = Slot,
+      cOffset       = Offset,
+      cLength       = Length - Offset,
+      cStride       = Stride
+    ] (DxvkContext* ctx) {
+      ctx->bindVertexBufferRange(cSlotId, cOffset, cLength, cStride);
+    });
   }
 
 
