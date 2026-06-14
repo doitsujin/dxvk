@@ -7831,8 +7831,8 @@ namespace dxvk {
       m_cmd->cmdSetBlendConstants(&m_state.dyn.blendConstants.r);
     }
 
-    if (m_flags.all(DxvkContextFlag::GpDirtyRasterizerState,
-                    DxvkContextFlag::GpDynamicRasterizerState)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyRasterizerState,
+                             DxvkContextFlag::GpDynamicRasterizerState))) {
       m_flags.clr(DxvkContextFlag::GpDirtyRasterizerState);
 
       m_cmd->cmdSetRasterizerState(
@@ -7867,8 +7867,8 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.all(DxvkContextFlag::GpDirtyStencilTest,
-                    DxvkContextFlag::GpDynamicStencilTest)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyStencilTest,
+                             DxvkContextFlag::GpDynamicStencilTest))) {
       m_flags.clr(DxvkContextFlag::GpDirtyStencilTest);
 
       if (m_state.dyn.depthStencilState.stencilTest()) {
@@ -7904,16 +7904,16 @@ namespace dxvk {
       }
     }
 
-    if (m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
-                    DxvkContextFlag::GpDynamicStencilTest)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
+                             DxvkContextFlag::GpDynamicStencilTest))) {
       m_flags.clr(DxvkContextFlag::GpDirtyStencilRef);
 
       m_cmd->cmdSetStencilReference(VK_STENCIL_FRONT_AND_BACK,
         m_state.dyn.stencilReference);
     }
     
-    if (m_flags.all(DxvkContextFlag::GpDirtyDepthBias,
-                    DxvkContextFlag::GpDynamicDepthBias)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthBias,
+                             DxvkContextFlag::GpDynamicDepthBias))) {
       m_flags.clr(DxvkContextFlag::GpDirtyDepthBias);
 
       if (m_device->features().extDepthBiasControl.depthBiasControl) {
@@ -7936,8 +7936,8 @@ namespace dxvk {
       }
     }
     
-    if (m_flags.all(DxvkContextFlag::GpDirtyDepthBounds,
-                    DxvkContextFlag::GpDynamicDepthBounds)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthBounds,
+                             DxvkContextFlag::GpDynamicDepthBounds))) {
       m_flags.clr(DxvkContextFlag::GpDirtyDepthBounds);
 
       m_cmd->cmdSetDepthBounds(
