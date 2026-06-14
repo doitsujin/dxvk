@@ -812,6 +812,9 @@ namespace dxvk {
       for (const auto& e : m_samplers)
         addDebugMemberName(def, e.samplerIndex, getDebugName(e.sampler));
 
+      if (wordCount & 1u)
+        addDebugMemberName(def, wordCount, "sPad");
+
       return def;
     }
 
