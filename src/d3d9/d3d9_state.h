@@ -207,6 +207,7 @@ namespace dxvk {
     Com<D3D9VertexBuffer, false> vertexBuffer;
 
     UINT              offset = 0;
+    UINT              length = 0;
     UINT              stride = 0;
   };
 
