@@ -474,11 +474,11 @@ namespace dxvk {
       m_autoDepthStencil = nullptr;
 
       // Unbind all buffers that were still bound to the backend to avoid leaks.
-      EmitCs([](DxvkContext* ctx) {
+      EmitCs([] (DxvkContext* ctx) {
         ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
-        for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+
+        for (uint32_t i = 0; i < caps::MaxStreams; i++)
           ctx->bindVertexBuffer(i, DxvkBufferSlice(), 0);
-        }
       });
 
       // Tests show that regular D3D9 ends the scene in Reset
@@ -7753,33 +7753,38 @@ namespace dxvk {
         D3D9VertexBuffer*                 pBuffer,
         UINT                              Offset,
         UINT                              Stride) {
-    EmitCs([
-      cSlotId       = Slot,
-      cBufferSlice  = pBuffer != nullptr ?
-          pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset)
-        : DxvkBufferSlice(),
-      cStride       = pBuffer != nullptr ? Stride : 0
-    ] (DxvkContext* ctx) mutable {
-      ctx->bindVertexBuffer(cSlotId, std::move(cBufferSlice), cStride);
-    });
+    if (likely(pBuffer)) {
+      EmitCs([
+        cSlotId       = Slot,
+        cBufferSlice  = pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset),
+        cStride       = Stride
+      ] (DxvkContext* ctx) mutable {
+        ctx->bindVertexBuffer(cSlotId, std::move(cBufferSlice), cStride);
+      });
+    } else {
+      EmitCs([cSlotId = Slot] (DxvkContext* ctx) mutable {
+        ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
+      });
+    }
   }
 
 
   void D3D9DeviceEx::BindIndices() {
-    D3D9CommonBuffer* buffer = GetCommonBuffer(m_state.indices);
+    if (likely(m_state.indices)) {
+      D3D9CommonBuffer* buffer = m_state.indices->GetCommonBuffer();
+      VkIndexType indexType = DecodeIndexType(buffer->Desc()->Format);
 
-    D3D9Format format = buffer != nullptr
-                      ? buffer->Desc()->Format
-                      : D3D9Format::INDEX32;
-
-    const VkIndexType indexType = DecodeIndexType(format);
-
-    EmitCs([
-      cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>() : DxvkBufferSlice(),
-      cIndexType   = indexType
-    ](DxvkContext* ctx) mutable {
-      ctx->bindIndexBuffer(std::move(cBufferSlice), cIndexType);
-    });
+      EmitCs([
+        cBufferSlice = buffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(),
+        cIndexType   = indexType
+      ](DxvkContext* ctx) mutable {
+        ctx->bindIndexBuffer(std::move(cBufferSlice), cIndexType);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
+      });
+    }
   }
 
 
