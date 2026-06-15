@@ -87,6 +87,14 @@ namespace dxvk {
     D3D9FfpsPushData ffps;
   };
 
+  /// Sampler modes
+  enum class D3D9SamplerMode : uint8_t {
+    Default   = 0,
+    Fetch4    = 1,
+    Dref      = 2,
+    DrefClamp = 3,
+  };
+
   /// Specialization constant data. Each dword corresponds to one numbered
   /// spec constants inside shaders and in the backend.
   ///

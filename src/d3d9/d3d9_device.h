@@ -77,7 +77,6 @@ namespace dxvk {
     FFPixelShader,
     FFViewport,
     FFPixelData,
-    FFGlobalSpecular,
     SharedPixelShaderData,
     DepthBounds,
     PointScale,
@@ -997,8 +996,6 @@ namespace dxvk {
 
     void UpdateClipPlanes();
 
-    void UpdateGlobalSpecular();
-
     template<typename T>
     void UpdatePushDataBlock(const T& Block);
 
@@ -1448,14 +1445,6 @@ namespace dxvk {
 
     void BindAlphaTestState();
 
-    void UpdateAlphaTestSpec(VkCompareOp alphaOp, uint32_t precision);
-    void UpdateVertexBoolSpec(uint32_t value);
-    void UpdatePixelBoolSpec(uint32_t value);
-    void UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t fetch4);
-    void UpdateCommonSamplerSpec(uint32_t boundMask, uint32_t depthMask, uint32_t drefMask, uint32_t projections);
-    void UpdatePointModeSpec(uint32_t mode);
-    void UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode);
-
     void BindSpecConstants();
 
     void TrackBufferMappingBufferSequenceNumber(
@@ -1622,8 +1611,6 @@ namespace dxvk {
     D3D9RTSlotTracking              m_rtSlotTracking;
 
     D3D9VBSlotTracking              m_vbSlotTracking;
-
-    D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
 
     bool                            m_isSWVP;
     bool                            m_isD3D8Compatible;

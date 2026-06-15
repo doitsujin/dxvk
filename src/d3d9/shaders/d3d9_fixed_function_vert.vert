@@ -128,6 +128,25 @@ const uint DXVK_TSS_TCI_SPHEREMAP                   = 0x00040000;
 const uint TCIOffset = 16;
 const uint TCIMask = (7 << TCIOffset);
 
+// Number of active clipping planes
+uint getClipPlaneCount() {
+    return bitfieldExtract(alphaTestAndModeArgs, 16, 3);
+}
+
+// Checks whether point scaling is
+bool isPointScalingEnabled() {
+    return bitfieldExtract(packedProjMaskAndFfArgs, 16, 1) != 0;
+}
+
+// Checks whether active pixel shader is SM3
+bool boundPsIsShaderModel3() {
+    return bitfieldExtract(packedProjMaskAndFfArgs, 24, 1) != 0;
+}
+
+// Checks sampler projection state without accessing all sampler state
+bool isSamplerProjected(uint idx) {
+    return bitfieldExtract(packedProjMaskAndFfArgs, int(idx), 1) != 0;
+}
 
 layout(set = CBV_SET, binding = CBV_VS_FIXED_FUNCTION, scalar, row_major)
 uniform ShaderData {
@@ -245,6 +264,8 @@ bool vertexClipping() {
 
 
 float calculateFog(vec4 vPos) {
+    FogState fogState = getFogState();
+
     vec4 specular = in_Color1;
     bool hasSpecular = vertexHasColor1();
 
@@ -252,9 +273,7 @@ float calculateFog(vec4 vPos) {
     float fogEnd = global.fogDistanceEnd;
     float fogDensity = global.fogDensity;
 
-    D3DFOGMODE fogMode = specUint(SpecVertexFogMode);
-
-    if (!specBool(SpecFogEnabled))
+    if (!fogState.enable)
         return 0.0;
 
     float w = vPos.w;
@@ -270,7 +289,7 @@ float calculateFog(vec4 vPos) {
     if (vertexHasPositionT()) {
         fogFactor = hasSpecular ? specular.w : 1.0;
     } else {
-        switch (fogMode) {
+        switch (fogState.vertexMode) {
             default:
             case D3DFOG_NONE:
                 fogFactor = hasSpecular ? specular.w : 1.0;
@@ -289,7 +308,7 @@ float calculateFog(vec4 vPos) {
             case D3DFOG_EXP:
                 fogFactor = depth * fogDensity;
 
-                if (fogMode == D3DFOG_EXP2)
+                if (fogState.vertexMode == D3DFOG_EXP2)
                     fogFactor *= fogFactor;
 
                 // Provides the rcp.
@@ -307,8 +326,7 @@ float calculatePointSize(vec4 vtx) {
     vec3 pointSizeArgs = decodePointSize();
 
     float value = vertexHasPointSize() ? in_PointSize : pointSizeArgs.x;
-    uint pointMode = specUint(SpecPointMode);
-    bool isScale = bitfieldExtract(pointMode, 0, 1) != 0;
+
     float scaleC = ffvs.pointScaleC;
     float scaleB = ffvs.pointScaleB;
     float scaleA = ffvs.pointScaleA;
@@ -323,7 +341,7 @@ float calculatePointSize(vec4 vtx) {
     scaleValue = sqrt(scaleValue);
     scaleValue = value / scaleValue;
 
-    value = isScale ? scaleValue : value;
+    value = isPointScalingEnabled() ? scaleValue : value;
 
     float pointSizeMin = pointSizeArgs.y;
     float pointSizeMax = pointSizeArgs.z;
@@ -336,7 +354,7 @@ void emitVsClipping(vec4 vtx) {
     vec4 worldPos = data.InverseView * vtx;
 
     // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
-    uint clipPlaneCount = specUint(SpecClipPlaneCount);
+    uint clipPlaneCount = getClipPlaneCount();
 
     // Compute clip distances
     for (uint i = 0; i < MaxClipPlaneCount; i++) {
@@ -552,8 +570,7 @@ void main() {
             transformed = transformed * data.TexcoordMatrices[i];
         }
 
-        // TODO: Shouldn't projected be checked per texture stage?
-        if (specUint(SpecSamplerProjected) != 0u && projIndex < 4) {
+        if (isSamplerProjected(i) && projIndex < 4) {
             // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
             float projValue = transformed[projIndex];
 
@@ -562,12 +579,11 @@ void main() {
             transformed.w = projValue;
         }
 
-        // TODO: Shouldn't projected be checked per texture stage?
-        uint totalComponents = (specUint(SpecSamplerProjected) != 0u && projIndex < 4) ? 3 : 4;
-        for (uint j = count; j < totalComponents; j++) {
-            // Discard the components that exceed the specified D3DTTFF_COUNT
+        uint totalComponents = (isSamplerProjected(i) && projIndex < 4) ? 3 : 4;
+
+        // Discard the components that exceed the specified D3DTTFF_COUNT
+        for (uint j = count; j < totalComponents; j++)
             transformed[j] = 0.0;
-        }
 
         transformedTexCoords[i] = transformed;
     }
@@ -692,7 +708,7 @@ void main() {
         finalColor1 = clamp(finalColor1, vec4(0.0), vec4(1.0));
 
         out_Color0 = finalColor0;
-        if (specBool(SpecFFGlobalSpecularEnabled)) {
+        if (isSpecularEnabled()) {
             out_Color1 = finalColor1;
         } else {
             out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, 1.0);
