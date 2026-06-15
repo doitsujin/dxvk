@@ -167,7 +167,7 @@ namespace dxvk {
 
     void lowerSpecDataBufferToConstants(
             SpirvCodeBuffer&          code,
-      const DxvkShaderBinding&        binding);
+      const DxvkShaderBinding&        binding) const;
 
     static bool removeVariableFromEntryPoint(
             SpirvCodeBuffer&          code,

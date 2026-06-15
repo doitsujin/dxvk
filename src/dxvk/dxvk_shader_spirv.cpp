@@ -681,7 +681,7 @@ namespace dxvk {
 
   void DxvkSpirvShader::lowerSpecDataBufferToConstants(
           SpirvCodeBuffer&          code,
-    const DxvkShaderBinding&        binding) {
+    const DxvkShaderBinding&        binding) const {
     // Find actual buffer variable to replace
     uint32_t bufferId = 0u;
 
@@ -775,20 +775,28 @@ namespace dxvk {
         } break;
 
         case spv::OpMemberName: {
-          // Repurpose member names to become debug names
-          // for the corresponding spec constant
+          // Repurpose member names to become debug names for the corresponding
+          // spec constant. Need to create a full copy of everything relevant
+          // here since we invalidate iterators.
           if (ins.arg(1) == bufTypeId) {
-            code.beginInsertion(ins.offset() + ins.length());
-            code.putIns(spv::OpName, ins.length() - 1);
-            code.putWord(specMembers.at(ins.arg(2)).second);
+            uint32_t offset = ins.offset();
+            uint32_t length = ins.length();
+            uint32_t specId = ins.arg(2);
 
-            for (uint32_t i = 3u; i < ins.length(); i++)
-              code.putWord(ins.arg(i));
+            small_vector<uint32_t, 16> words;
 
-            code.endInsertion();
+            for (uint32_t i = 3u; i < length; i++)
+              words.push_back(ins.arg(i));
 
-            code.beginInsertion(ins.offset());
-            code.erase(ins.length());
+            code.beginInsertion(offset);
+            code.erase(length);
+
+            code.putIns(spv::OpName, length - 1);
+            code.putWord(specMembers.at(specId).second);
+
+            for (auto word : words)
+              code.putWord(word);
+
             iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
             continue;
           }
