@@ -1175,29 +1175,27 @@ namespace dxvk {
       const DxvkBlendMode&      blendMode);
     
     /**
-     * \brief Sets specialization constants
+     * \brief Sets specialization constant data
      * 
-     * Replaces current specialization constants
-     * with the given list of constant entries.
-     * \param [in] pipeline Graphics or Compute pipeline
+     * \param [in] pipeline Pipeline bind point
      * \param [in] index Constant index
-     * \param [in] value Constant value
+     * \param [in] count Constant count
+     * \param [in] data Pointer to specialization data
      */
-    void setSpecConstant(
+    void setSpecConstants(
             VkPipelineBindPoint pipeline,
             uint32_t            index,
-            uint32_t            value) {
+            uint32_t            count,
+      const void*               data) {
       auto& scState = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.constants : m_state.cp.constants;
-      
-      if (scState.data[index] != value) {
-        scState.data[index] = value;
 
-        if (scState.mask & (1u << index)) {
-          m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
-            ? DxvkContextFlag::GpDirtySpecConstants
-            : DxvkContextFlag::CpDirtySpecConstants);
-        }
+      uint32_t dirtyMask = bit::bcndcpy(&scState.data[index], data, count);
+
+      if (scState.mask & dirtyMask) {
+        m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
+          ? DxvkContextFlag::GpDirtySpecConstants
+          : DxvkContextFlag::CpDirtySpecConstants);
       }
     }
     
