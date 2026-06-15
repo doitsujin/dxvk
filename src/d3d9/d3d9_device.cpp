@@ -8950,16 +8950,11 @@ namespace dxvk {
   void D3D9DeviceEx::BindSpecConstants() {
     m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
 
-    EmitCs([cSpecData = m_specData] (DxvkContext* ctx) {
-      // Need to get a little bit creative to stay in spec here since constants
-      // are exposed as dwords, yet the raw type is not built on top of dwords.
-      auto data = reinterpret_cast<const char*>(&cSpecData);
-
-      for (uint32_t i = 0u; i < sizeof(cSpecData) / sizeof(uint32_t); i++) {
-        uint32_t dword;
-        std::memcpy(&dword, data + i * sizeof(uint32_t), sizeof(uint32_t));
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, dword);
-      }
+    EmitCs([
+      cSpecData = m_specData
+    ] (DxvkContext* ctx) {
+      ctx->setSpecConstants(VK_PIPELINE_BIND_POINT_GRAPHICS,
+        0u, sizeof(cSpecData) / sizeof(uint32_t), &cSpecData);
     });
   }
 
