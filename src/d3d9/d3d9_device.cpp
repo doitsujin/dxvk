@@ -7417,7 +7417,7 @@ namespace dxvk {
       UpdateFixedFunctionPS();
     }
 
-    uint32_t nullTextureMask = usedSamplerMask & ~usedTextureMask;
+    uint32_t nullOrUnusedMask = ~usedSamplerMask | ~usedTextureMask;
     uint32_t depthTextureMask = m_textureSlotTracking.depth;
     uint32_t drefClampMask = m_textureSlotTracking.drefClamp;
     uint32_t fetch4TextureMask = UseProgrammablePS() ? m_textureSlotTracking.fetch4 : 0u;
@@ -7425,8 +7425,8 @@ namespace dxvk {
     bool specDirty = false;
     specDirty |= m_specData.setSamplerProjectionMask(m_textureSlotTracking.projected & usedTextureMask);
     specDirty |= m_specData.setPsSamplers(m_textureSlotTracking.textureType,
-      nullTextureMask, fetch4TextureMask, depthTextureMask, drefClampMask);
-    specDirty |= m_specData.setVsSamplers(nullTextureMask, depthTextureMask, drefClampMask);
+      nullOrUnusedMask, fetch4TextureMask, depthTextureMask, drefClampMask);
+    specDirty |= m_specData.setVsSamplers(nullOrUnusedMask, depthTextureMask, drefClampMask);
 
     if (specDirty)
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
