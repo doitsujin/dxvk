@@ -305,6 +305,54 @@ namespace dxvk::bit {
     #endif
   }
 
+
+  /**
+   * \brief Compares and copies dwords and returns dirty mask
+   *
+   * \param [in] dstData Destination data
+   * \param [in] srcData Source data
+   * \param [in] count Number of dwords to compare and copy
+   * \returns Mask of dwords actually changed and copied
+   */
+  inline uint32_t bcndcpy(void* dstData, const void* srcData, uint32_t count) {
+    auto srcPtr = reinterpret_cast<const char*>(srcData);
+    auto dstPtr = reinterpret_cast<      char*>(dstData);
+
+    uint32_t mask = 0u;
+    uint32_t index = 0u;
+
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
+    while (index + 4u <= count) {
+      auto src = reinterpret_cast<const __m128i*>(srcPtr + index * sizeof(uint32_t));
+      auto dst = reinterpret_cast<      __m128i*>(dstPtr + index * sizeof(uint32_t));
+
+      auto srcData = _mm_loadu_si128(src);
+      auto dstData = _mm_loadu_si128(dst);
+
+      auto eqMask = _mm_cmpeq_epi32(dstData, srcData);
+      mask |= (_mm_movemask_ps(_mm_castsi128_ps(eqMask)) ^ 0xf) << index;
+
+      _mm_storeu_si128(dst, srcData);
+
+      index += 4u;
+    }
+    #endif
+
+    while (index < count) {
+      auto src = srcPtr + index * sizeof(uint32_t);
+      auto dst = dstPtr + index * sizeof(uint32_t);
+
+      bool dirty = std::memcmp(dst, src, sizeof(uint32_t));
+      mask |= dirty ? 1u << index : 0u;
+
+      std::memcpy(dst, src, sizeof(uint32_t));
+      index += 1u;
+    }
+
+    return mask;
+  }
+
+
   template <size_t Bits>
   class bitset {
     static constexpr size_t Dwords = align(Bits, 32) / 32;
