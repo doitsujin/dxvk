@@ -51,6 +51,10 @@ namespace dxvk {
   class D3D9FormatHelper;
   class D3D9UserDefinedAnnotation;
 
+  enum class D3D9CmdType : uint32_t {
+    None,
+  };
+
   enum class D3D9DeviceDirtyFlag : uint32_t {
     Framebuffer,
     ClipPlanes,
@@ -1221,6 +1225,11 @@ namespace dxvk {
 
     template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
+      if (unlikely(m_csDataType != D3D9CmdType::None)) {
+        m_csData = nullptr;
+        m_csDataType = D3D9CmdType::None;
+      }
+
       if (unlikely(!m_csChunk->push(command))) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
@@ -1233,10 +1242,11 @@ namespace dxvk {
     }
 
     template<typename M, bool AllowFlush = true, typename Cmd>
-    M* EmitCsCmd(size_t count, Cmd&& command) {
-      auto csData = m_csChunk->pushCmd<M, Cmd>(command, count);
+    M* EmitCsCmd(D3D9CmdType type, size_t count, Cmd&& command) {
+      m_csDataType = type;
+      m_csData = m_csChunk->pushCmd<M, Cmd>(command, count);
 
-      if (unlikely(!csData)) {
+      if (unlikely(!m_csData)) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
 
@@ -1245,10 +1255,10 @@ namespace dxvk {
 
         // We must record this command after the potential
         // flush since the caller may still access the data
-        csData = m_csChunk->pushCmd<M, Cmd>(command, count);
+        m_csData = m_csChunk->pushCmd<M, Cmd>(command, count);
       }
 
-      return reinterpret_cast<M*>(csData->first());
+      return reinterpret_cast<M*>(m_csData->first());
     }
 
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
@@ -1650,6 +1660,9 @@ namespace dxvk {
     DxvkCsThread                    m_csThread;
     DxvkCsChunkRef                  m_csChunk;
     uint64_t                        m_csSeqNum = 0ull;
+
+    D3D9CmdType                     m_csDataType = D3D9CmdType::None;
+    DxvkCsDataBlock*                m_csData = nullptr;
 
     Rc<sync::Fence>                 m_submissionFence;
     uint64_t                        m_submissionId = 0ull;
