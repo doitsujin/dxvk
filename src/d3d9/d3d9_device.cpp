@@ -3036,8 +3036,6 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       uint32_t vertexCount = GetVertexCount(cPrimType, cPrimCount);
 
-      ApplyPrimitiveType(ctx, cPrimType);
-
       // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
 
       VkDrawIndirectCommand draw = { };
@@ -3091,8 +3089,6 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
-      ApplyPrimitiveType(ctx, cPrimType);
-
       VkDrawIndexedIndirectCommand draw = { };
       draw.indexCount    = drawInfo.vertexCount;
       draw.instanceCount = drawInfo.instanceCount;
@@ -3138,8 +3134,6 @@ namespace dxvk {
       cStride       = VertexStreamZeroStride,
       cVertexCount  = vertexCount
     ](DxvkContext* ctx) mutable {
-      ApplyPrimitiveType(ctx, cPrimType);
-
       // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
       VkDrawIndirectCommand draw = { };
       draw.vertexCount = cVertexCount;
@@ -3206,8 +3200,6 @@ namespace dxvk {
                         static_cast<D3D9Format>(IndexDataFormat))
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
-
-      ApplyPrimitiveType(ctx, cPrimType);
 
       VkDrawIndexedIndirectCommand draw = { };
       draw.indexCount    = drawInfo.vertexCount;
@@ -3319,8 +3311,6 @@ namespace dxvk {
 
         Logger::warn("D3D9DeviceEx::ProcessVertices: instancing unsupported");
       }
-
-      ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
 
       // We need to bind the buffer as a view rather than a raw buffer.
       // In order to avoid view bloat, create a format-less view for
@@ -7542,6 +7532,8 @@ namespace dxvk {
                     D3D9DeviceDirtyFlag::PushDataFfvs,
                     D3D9DeviceDirtyFlag::PushDataFfps))
       UpdatePushData();
+
+    ApplyPrimitiveType(PrimitiveType);
   }
 
 
@@ -8397,14 +8389,20 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::ApplyPrimitiveType(
-    DxvkContext*      pContext,
-    D3DPRIMITIVETYPE  PrimType) {
+  void D3D9DeviceEx::ApplyPrimitiveType(D3DPRIMITIVETYPE PrimType) {
+    // Special handling for ProcessVertices
+    if (unlikely(PrimType == D3DPT_FORCE_DWORD))
+      PrimType = D3DPT_POINTLIST;
+
     if (m_iaState.primitiveType != PrimType) {
       m_iaState.primitiveType = PrimType;
 
-      auto iaState = DecodeInputAssemblyState(PrimType);
-      pContext->setInputAssemblyState(iaState);
+      EmitCs([
+        cPrimType = PrimType
+      ] (DxvkContext* ctx) {
+        auto iaState = DecodeInputAssemblyState(cPrimType);
+        ctx->setInputAssemblyState(iaState);
+      });
     }
   }
 

@@ -1436,9 +1436,7 @@ namespace dxvk {
 
     void UpdateFixedFunctionPS();
 
-    void ApplyPrimitiveType(
-      DxvkContext*      pContext,
-      D3DPRIMITIVETYPE  PrimType);
+    void ApplyPrimitiveType(D3DPRIMITIVETYPE PrimType);
 
     bool UseProgrammableVS();
 
