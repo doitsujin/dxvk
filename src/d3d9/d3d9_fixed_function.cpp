@@ -4,7 +4,6 @@
 
 #include "d3d9_device.h"
 #include "d3d9_util.h"
-#include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_hash.h"
 #include "../dxvk/dxvk_shader_spirv.h"
