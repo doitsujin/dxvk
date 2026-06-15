@@ -170,6 +170,8 @@ namespace dxvk {
           SpirvCodeBuffer&          code) {
     auto idToOffset = gatherIdOffsets(code);
 
+    uint32_t specDataBufferId = 0u;
+
     for (auto i = code.begin(); i != code.end(); i++) {
       auto ins = *i;
 
@@ -340,18 +342,15 @@ namespace dxvk {
             } break;
 
             case spv::StorageClassUniform: {
-              if (varType.opCode() == spv::OpTypeStruct) {
-                // If this is the spec data buffer, mark spec constants as used
-                if (m_info.specDataBuffer.getStageMask() & m_metadata.stage) {
-                  auto decorations = m_decorations.find(varId);
+              // If this is the spec data buffer, memorize its ID so we can
+              // inspect access chains for any acceessed spec constant
+              if (m_info.specDataBuffer.getStageMask() & m_metadata.stage) {
+                auto decorations = m_decorations.find(varId);
 
-                  if (decorations != m_decorations.end()
-                   && decorations->second.set == m_info.specDataBuffer.getSet()
-                   && decorations->second.binding == m_info.specDataBuffer.getBinding()) {
-                    uint32_t memberCount = varType.length() - 2u;
-                    m_metadata.specConstantMask |= (1u << memberCount) - 1u;
-                  }
-                }
+                if (decorations != m_decorations.end()
+                 && decorations->second.set == m_info.specDataBuffer.getSet()
+                 && decorations->second.binding == m_info.specDataBuffer.getBinding())
+                  specDataBufferId = varId;
               }
             } break;
 
@@ -360,8 +359,21 @@ namespace dxvk {
           }
         } break;
 
-        case spv::OpFunction:
-          return;
+        case spv::OpAccessChain:
+        case spv::OpInBoundsAccessChain: {
+          if (ins.arg(3) == specDataBufferId) {
+            auto offset = idToOffset.at(ins.arg(4));
+            auto constDef = SpirvInstruction(m_code.data(), offset, m_code.dwords());
+
+            if (constDef.opCode() != spv::OpConstant) {
+              Logger::err("DXVK: Expected constant index into spec data buffer");
+              break;
+            }
+
+            uint32_t index = constDef.arg(3u);
+            m_metadata.specConstantMask |= 1u << index;
+          }
+        } break;
 
         default:
           break;
