@@ -1444,7 +1444,7 @@ namespace dxvk {
 
     bool UseProgrammablePS();
 
-    uint32_t GetAlphaTestPrecision();
+    uint32_t GetAlphaTestPrecision(D3D9Surface* rt);
 
     void BindAlphaTestState();
 
