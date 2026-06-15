@@ -492,9 +492,12 @@ namespace dxvk {
                                || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY
                                || m_properties.vk12.driverID == VK_DRIVER_ID_MESA_NVK;
 
-      // Heap regresses performance on the initial NV driver releases
-      if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
-        enableDescriptorHeap = m_featuresSupported.khrMaintenance11.maintenance11;
+      // Heap regresses performance on the initial NV driver releases.
+      // The maintenance11 check enables it on 595 Vulkan beta drivers.
+      if (m_properties.vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
+        enableDescriptorHeap = m_properties.driverVersion >= Version(610u, 0u, 0u)
+          || m_featuresSupported.khrMaintenance11.maintenance11;
+      }
 
       applyTristate(enableDescriptorHeap, instance.options().enableDescriptorHeap);
 
