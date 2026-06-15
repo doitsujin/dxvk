@@ -87,6 +87,242 @@ namespace dxvk {
     D3D9FfpsPushData ffps;
   };
 
+  /// Specialization constant data. Each dword corresponds to one numbered
+  /// spec constants inside shaders and in the backend.
+  ///
+  /// Spec constants are packed in such a way that shaders can use only
+  /// those constants that they actually need, with minimal unrelated
+  /// state. This helps keep the number of redundant pipeline variants
+  /// to a minimum, while requiring little normalization in the front-end.
+  struct D3D9SpecData {
+    // Spec ID 0: Common parameters used by all pipelines. Alpha compare
+    // op is packed into the lower 4 bits of the alpha test byte, alpha
+    // precision into the upper 4 bits.
+    uint8_t alphaTest = 0u;
+    bool enablePointSprite = false;
+    uint8_t clipPlaneCount = 0u;
+    uint8_t drefScale = 0u;
+
+    // Spec ID 1: Fog. Used in fixed-function pipelines as
+    // well as pixel shaders with Shader Model 2 and below.
+    uint8_t fogEnable = 0u;
+    uint8_t fogModeVertex = 0u;
+    uint8_t fogModePixel = 0u;
+    uint8_t spec1Pad = 0u;
+
+    // Spec ID 2: Parameters used in fixed-function pipelines. The
+    // projection mask is also used in shader model 1 pixel shaders.
+    uint8_t samplerProjMask = 0u;
+    bool enableGlobalSpecular = false;
+    bool enablePointScale = false;
+    bool psIsShaderModel3 = false;
+
+    // Spec ID 3: Vertex shader sampler info and bool
+    // constants. Used in programmable shaders only.
+    uint8_t vsSamplerTypes = 0u;
+    uint8_t vsSamplerModes = 0u;
+    uint16_t vsBoolConstants = 0u;
+
+    // Spec ID 4: Pixel shader sampler types, two bits per sampler.
+    // Fixed-function will only use the lower 16 bits.
+    uint32_t psSamplerTypes = 0u;
+
+    // Spec ID 5: Pixel shader sampler modes, two bits per sampler.
+    // Fixed-function will only use the lower 16 bits.
+    uint32_t psSamplerModes = 0u;
+
+    // Spec ID 6: Pixel shader boolean constants.
+    // Programmable shaders only. 16 bits used.
+    uint16_t psBoolConstants = 0u;
+    uint16_t spec6Pad = 0u;
+
+    // Spec ID 7: Reserved.
+    uint32_t spec7Pad = 0u;
+
+    // Spec ID 8..11: Texture stage ops for fixed function.
+    // Each stage is packed as follows:
+    // - Bits 0..4: Color op
+    // - Bits 5..7: Unused
+    // - Bits 8..12: Alpha op
+    // - Bits 13..14: Unused;
+    // - Bit 15: Whether to store result in temp
+    std::array<uint16_t, 8u> stageOps = {};
+
+    // Spec ID 12..19: Arguments for each texture stage:
+    // - Bits 0..4: Color arg 0, with flags packed into bits 3..4
+    // - Bits 5..9: Color arg 1
+    // - Bits 10..14: Color arg 2
+    // - Bit 15: Unused
+    // - Bits 16..20: Alpha arg 0
+    // - Bits 21..25: Alpha arg 1
+    // - Bits 26..30: Alpha arg 2
+    // - Bit 31: Unused
+    std::array<uint32_t, 8u> stageArgs = {};
+
+    bool setAlphaCompareOp(VkCompareOp op) {
+      return set(alphaTest, op, 0u, 4u);
+    }
+
+    bool setAlphaPrecision(uint32_t precision) {
+      return set(alphaTest, precision, 4u, 4u);
+    }
+
+    bool setDrefScale(uint32_t shift) {
+      return set(drefScale, shift);
+    }
+
+    bool setClipPlaneCount(uint32_t count) {
+      return set(clipPlaneCount, count);
+    }
+
+    bool setPointScale(bool enable) {
+      return set(enablePointScale, enable);
+    }
+
+    bool setPointSprite(bool enable) {
+      return set(enablePointSprite, enable);
+    }
+
+    bool setGlobalSpecular(bool enable) {
+      return set(enableGlobalSpecular, enable);
+    }
+
+    bool setFogMode(bool enable, D3DFOGMODE vertexFog, D3DFOGMODE pixelFog) {
+      bool dirty = false;
+      dirty |= set(fogEnable,     enable);
+      dirty |= set(fogModeVertex, enable && !pixelFog ? vertexFog : D3DFOG_NONE);
+      dirty |= set(fogModePixel,  enable              ? pixelFog  : D3DFOG_NONE);
+      return dirty;
+    }
+
+    bool setSamplerProjectionMask(uint32_t mask) {
+      return set(samplerProjMask, mask);
+    }
+
+    bool setPsSamplers(uint64_t textureTypes, uint32_t nullMask,
+        uint32_t fetch4Mask, uint32_t drefMask, uint32_t drefClampMask) {
+      return updateSamplers(psSamplerTypes, psSamplerModes, textureTypes,
+        nullMask, fetch4Mask, drefMask, drefClampMask);
+    }
+
+    bool setVsSamplers(uint32_t nullMask, uint32_t drefMask, uint32_t drefClampMask) {
+      return updateSamplers(vsSamplerTypes, vsSamplerModes, 0u,
+        nullMask      >> FirstVSSamplerSlot, 0u,
+        drefMask      >> FirstVSSamplerSlot,
+        drefClampMask >> FirstVSSamplerSlot);
+    }
+
+    bool setPsShaderModel(uint32_t majorVersion) {
+      return set(psIsShaderModel3, majorVersion >= 3u);
+    }
+
+    bool setVsBoolConstants(uint32_t bits) {
+      return set(vsBoolConstants, bits);
+    }
+
+    bool setPsBoolConstants(uint32_t bits) {
+      return set(psBoolConstants, bits);
+    }
+
+    bool setTextureStage(uint32_t stage, DWORD colorOp, DWORD alphaOp, DWORD resultArg,
+        DWORD colorArg0, DWORD colorArg1, DWORD colorArg2,
+        DWORD alphaArg0, DWORD alphaArg1, DWORD alphaArg2) {
+      uint16_t ops = 0u;
+      ops |= getTextureOp(colorOp) << 0u;
+      ops |= getTextureOp(alphaOp) << 8u;
+
+      if ((resultArg & D3DTA_SELECTMASK) == D3DTA_TEMP)
+        ops |= 1u << 15u;
+
+      uint32_t args = 0u;
+
+      if (colorOp != D3DTOP_DISABLE) {
+        args |= getTextureArg(colorArg0) <<  0u;
+        args |= getTextureArg(colorArg1) <<  5u;
+        args |= getTextureArg(colorArg2) << 10u;
+      }
+
+      if (alphaOp != D3DTOP_DISABLE) {
+        args |= getTextureArg(alphaArg0) << 16u;
+        args |= getTextureArg(alphaArg1) << 21u;
+        args |= getTextureArg(alphaArg2) << 26u;
+      }
+
+      bool dirty = false;
+      dirty |= set(stageOps[stage], ops);
+      dirty |= set(stageArgs[stage], args);
+      return dirty;
+    }
+
+    bool disableTextureStage(uint32_t stage) {
+      uint32_t ops = D3DTOP_DISABLE | (D3DTOP_DISABLE << 5u);
+
+      bool dirty = false;
+      dirty |= set(stageOps[stage], ops);
+      dirty |= set(stageArgs[stage], 0u);
+      return dirty;
+    }
+
+    template<typename T>
+    static bool updateSamplers(T& types, T& modes, uint32_t textureTypes, uint32_t nullMask,
+        uint32_t fetch4Mask, uint32_t drefMask, uint32_t drefClampMask) {
+      // Forward null texture mask as texture type '3'
+      uint32_t nullTypes = bit::interleave(nullMask, nullMask);
+      uint32_t newTypes = nullTypes | textureTypes;
+
+      // As for the modes, treat it as a two-bit value:
+      // - 0: Default mode
+      // - 1: Fetch4 (color only)
+      // - 2: Depth-compare
+      // - 3: Depth-compare with dref clamp
+      uint32_t newFetch4 = fetch4Mask & ~drefMask;
+      uint32_t newClamp = drefClampMask & drefMask;
+
+      uint32_t newModes = bit::interleave(newFetch4 | newClamp, drefMask) & ~nullTypes;
+
+      bool dirty = false;
+      dirty |= set(types, newTypes);
+      dirty |= set(modes, newModes);
+      return dirty;
+    }
+
+    static uint16_t getTextureOp(DWORD op) {
+      return uint16_t(op) & 0x1fu;
+    }
+
+    static uint32_t getTextureArg(DWORD arg) {
+      // Shift flags one  to the right to pack everything
+      // into 5 bits, only 7 selectors are defined.
+      uint32_t select = arg & D3DTA_SELECTMASK;
+      uint32_t flags = arg & ~D3DTA_SELECTMASK;
+      return uint32_t(select | (flags >> 1u)) & 0x1fu;
+    }
+
+    template<typename T, typename U>
+    static bool set(T& dst, U data) {
+      if (dst == T(data))
+        return false;
+
+      dst = T(data);
+      return true;
+    }
+
+    template<typename T, typename U>
+    static bool set(T& dst, U data, uint32_t bitIndex, uint32_t bitCount) {
+      T mask = ((T(1u) << bitCount) - 1u) << bitIndex;
+      T bits = (T(data) << bitIndex) & mask;
+
+      if ((dst & mask) == bits)
+        return false;
+
+      dst &= ~mask;
+      dst |= bits;
+      return true;
+    }
+  };
+
+  static_assert(sizeof(D3D9SpecData) <= sizeof(uint32_t) * MaxNumSpecConstants);
+
   // This is needed in fixed function for POSITION_T support.
   // These are constants we need to * and add to move
   // Window Coords -> Real Coords w/ respect to the viewport.

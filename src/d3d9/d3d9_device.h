@@ -1691,6 +1691,7 @@ namespace dxvk {
     // references objects that can call back into the device when freed.
     Direct3DState9                  m_state;
     D3D9PushData                    m_pushData = {};
+    D3D9SpecData                    m_specData = {};
 
     D3D9VkInteropDevice             m_d3d9Interop;
     D3D9ON12_ARGS                   m_d3d9On12Args = { };
