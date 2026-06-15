@@ -6,6 +6,7 @@
 #extension GL_EXT_control_flow_attributes : require
 #extension GL_EXT_nonuniform_qualifier : require
 
+#include "d3d9_fixed_function_common.glsl"
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
 #ifndef INTERP_MODE
@@ -27,23 +28,58 @@ layout(location = 11) INTERP_MODE in float in_Fog;
 
 layout(location = 0) out vec4 out_Color0;
 
+// Alpha test parameters
+const uint VK_COMPARE_OP_NEVER             = 0;
+const uint VK_COMPARE_OP_LESS              = 1;
+const uint VK_COMPARE_OP_EQUAL             = 2;
+const uint VK_COMPARE_OP_LESS_OR_EQUAL     = 3;
+const uint VK_COMPARE_OP_GREATER           = 4;
+const uint VK_COMPARE_OP_NOT_EQUAL         = 5;
+const uint VK_COMPARE_OP_GREATER_OR_EQUAL  = 6;
+const uint VK_COMPARE_OP_ALWAYS            = 7;
 
-const uint TextureArgCount = 3;
-
-#include "d3d9_fixed_function_common.glsl"
-
-struct D3D9SharedPSStage {
-    float Constant[4];
-    float BumpEnvMat[2][2];
-    float BumpEnvLScale;
-    float BumpEnvLOffset;
-    float Padding[2];
+struct AlphaTestState {
+    uint compareOp;
+    uint precisionBits;
 };
 
-struct D3D9SharedPS {
-    D3D9SharedPSStage Stages[TextureStageCount];
+AlphaTestState getAlphaTestState() {
+    AlphaTestState result;
+    result.compareOp = bitfieldExtract(alphaTestAndModeArgs, 0, 3);
+    result.precisionBits = bitfieldExtract(alphaTestAndModeArgs, 4, 4);
+    return result;
+}
+
+// Sampler state
+const uint TEXTURE_TYPE_2D         = 0;
+const uint TEXTURE_TYPE_3D         = 1;
+const uint TEXTURE_TYPE_CUBE       = 2;
+const uint TEXTURE_TYPE_NULL       = 3;
+
+const uint SAMPLER_MODE_DEFAULT    = 0;
+const uint SAMPLER_MODE_FETCH4     = 1;
+const uint SAMPLER_MODE_DREF       = 2;
+const uint SAMPLER_MODE_DREF_CLAMP = 3;
+
+struct SamplerState {
+    bool projected;
+    uint type;
+    uint mode;
+    float drefScale;
 };
 
+SamplerState getSamplerState(uint idx) {
+    uint drefScaleShift = bitfieldExtract(alphaTestAndModeArgs, 24, 8);
+
+    SamplerState result;
+    result.projected = bitfieldExtract(packedProjMaskAndFfArgs, int(idx), 1) != 0;
+    result.type = bitfieldExtract(psSamplerTypes, int(idx + idx), 2);
+    result.mode = bitfieldExtract(psSamplerModes, int(idx + idx), 2);
+    result.drefScale = 1.0f / max(1.0f, float(1u << drefScaleShift) - 1.0f);
+    return result;
+}
+
+// Fixed-function texture stage parameters
 const uint D3DTOP_DISABLE                   = 1;
 const uint D3DTOP_SELECTARG1                = 2;
 const uint D3DTOP_SELECTARG2                = 3;
@@ -71,35 +107,81 @@ const uint D3DTOP_DOTPRODUCT3               = 24;
 const uint D3DTOP_MULTIPLYADD               = 25;
 const uint D3DTOP_LERP                      = 26;
 
-const uint D3DTA_SELECTMASK     = 0x0000000f;
-const uint D3DTA_DIFFUSE        = 0x00000000;
-const uint D3DTA_CURRENT        = 0x00000001;
-const uint D3DTA_TEXTURE        = 0x00000002;
-const uint D3DTA_TFACTOR        = 0x00000003;
-const uint D3DTA_SPECULAR       = 0x00000004;
-const uint D3DTA_TEMP           = 0x00000005;
-const uint D3DTA_CONSTANT       = 0x00000006;
-const uint D3DTA_COMPLEMENT     = 0x00000010;
-const uint D3DTA_ALPHAREPLICATE = 0x00000020;
+// These differ from the actual D3D definitions. DXVK will shift
+// the modifiers one to the right since only 7 args are defined.
+const uint D3DTA_SELECTMASK                 = 0x07;
 
-const uint D3DRTYPE_SURFACE       = 1;
-const uint D3DRTYPE_VOLUME        = 2;
-const uint D3DRTYPE_TEXTURE       = 3;
-const uint D3DRTYPE_VOLUMETEXTURE = 4;
-const uint D3DRTYPE_CUBETEXTURE   = 5;
-const uint D3DRTYPE_VERTEXBUFFER  = 6;
-const uint D3DRTYPE_INDEXBUFFER   = 7;
+const uint D3DTA_DIFFUSE                    = 0x00;
+const uint D3DTA_CURRENT                    = 0x01;
+const uint D3DTA_TEXTURE                    = 0x02;
+const uint D3DTA_TFACTOR                    = 0x03;
+const uint D3DTA_SPECULAR                   = 0x04;
+const uint D3DTA_TEMP                       = 0x05;
+const uint D3DTA_CONSTANT                   = 0x06;
 
-const uint VK_COMPARE_OP_NEVER            = 0;
-const uint VK_COMPARE_OP_LESS             = 1;
-const uint VK_COMPARE_OP_EQUAL            = 2;
-const uint VK_COMPARE_OP_LESS_OR_EQUAL    = 3;
-const uint VK_COMPARE_OP_GREATER          = 4;
-const uint VK_COMPARE_OP_NOT_EQUAL        = 5;
-const uint VK_COMPARE_OP_GREATER_OR_EQUAL = 6;
-const uint VK_COMPARE_OP_ALWAYS           = 7;
+const uint D3DTA_COMPLEMENT                 = 0x08;
+const uint D3DTA_ALPHAREPLICATE             = 0x10;
 
-const uint PerTextureStageSpecConsts = SpecFFTextureStage1ColorOp - SpecFFTextureStage0ColorOp;
+struct TextureStageArguments {
+    uint arg0;
+    uint arg1;
+    uint arg2;
+};
+
+struct TextureStage {
+    bool storeToTemp;
+    uint colorOp;
+    uint alphaOp;
+    TextureStageArguments colorArgs;
+    TextureStageArguments alphaArgs;
+};
+
+TextureStage getTextureStage(uint idx) {
+    uint ops = 0u;
+    uint args = 0u;
+
+    switch (idx) {
+        case 0: ops = packedStageOps01 >>  0; args = packedStageArgs0; break;
+        case 1: ops = packedStageOps01 >> 16; args = packedStageArgs1; break;
+        case 2: ops = packedStageOps23 >>  0; args = packedStageArgs2; break;
+        case 3: ops = packedStageOps23 >> 16; args = packedStageArgs3; break;
+        case 4: ops = packedStageOps45 >>  0; args = packedStageArgs4; break;
+        case 5: ops = packedStageOps45 >> 16; args = packedStageArgs5; break;
+        case 6: ops = packedStageOps67 >>  0; args = packedStageArgs6; break;
+        case 7: ops = packedStageOps67 >> 16; args = packedStageArgs7; break;
+    }
+
+    TextureStage result;
+    result.storeToTemp = bitfieldExtract(ops, 15, 1) != 0;
+    result.colorOp = bitfieldExtract(ops, 0, 5);
+    result.alphaOp = bitfieldExtract(ops, 8, 5);
+    result.colorArgs.arg0 = bitfieldExtract(args,  0, 5);
+    result.colorArgs.arg1 = bitfieldExtract(args,  5, 5);
+    result.colorArgs.arg2 = bitfieldExtract(args, 10, 5);
+    result.alphaArgs.arg0 = bitfieldExtract(args, 16, 5);
+    result.alphaArgs.arg1 = bitfieldExtract(args, 21, 5);
+    result.alphaArgs.arg2 = bitfieldExtract(args, 26, 5);
+    return result;
+}
+
+
+// Checks whether point sprites are enabled
+bool isPointSpriteEnabled() {
+    return bitfieldExtract(alphaTestAndModeArgs, 8, 1) != 0;
+}
+
+struct D3D9SharedPSStage {
+    float Constant[4];
+    float BumpEnvMat[2][2];
+    float BumpEnvLScale;
+    float BumpEnvLOffset;
+    float Padding[2];
+};
+
+struct D3D9SharedPS {
+    D3D9SharedPSStage Stages[TextureStageCount];
+};
+
 
 layout(set = CBV_SET, binding = CBV_PS_SHARED, scalar, row_major)
 uniform SharedData {
@@ -123,22 +205,22 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
 vec4 calculateFog(vec4 vPos, vec4 oColor) {
+    FogState fogState = getFogState();
+
     vec3 fogColor = unpackUnorm4x8(global.packedFogColorAndAlphaRef).bgr;
     float fogScale = global.fogDistanceScale;
     float fogEnd = global.fogDistanceEnd;
     float fogDensity = global.fogDensity;
 
-    D3DFOGMODE fogMode = specUint(SpecPixelFogMode);
-    bool fogEnabled = specBool(SpecFogEnabled);
-    if (!fogEnabled) {
+    if (!fogState.enable)
         return oColor;
-    }
 
     float w = vPos.w;
     float z = vPos.z;
     float depth = z * (1.0 / w);
     float fogFactor;
-    switch (fogMode) {
+
+    switch (fogState.pixelMode) {
         case D3DFOG_NONE:
             fogFactor = in_Fog;
             break;
@@ -155,7 +237,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
         case D3DFOG_EXP:
             fogFactor = depth * fogDensity;
 
-            if (fogMode == D3DFOG_EXP2)
+            if (fogState.pixelMode == D3DFOG_EXP2)
                 fogFactor *= fogFactor;
 
             // Provides the rcp.
@@ -171,20 +253,6 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
     vec3 fogFact3 = vec3(fogFactor);
     vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
     return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
-}
-
-
-// [D3D8] Scale Dref to [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
-float adjustDref(float reference, uint samplerIndex) {
-    uint drefScaleFactor = specUint(SpecDrefScaling);
-    if (drefScaleFactor != 0) {
-        float maxDref = 1.0 / (float(1 << drefScaleFactor) - 1.0);
-        reference *= maxDref;
-    }
-    if (specBool(SpecSamplerDrefClamp, samplerIndex)) {
-        reference = clamp(reference, 0.0, 1.0);
-    }
-    return reference;
 }
 
 
@@ -210,48 +278,53 @@ uint loadSamplerHeapIndex(uint samplerBindingIndex) {
 }
 
 
+float adjustDref(float dref, SamplerState state) {
+    dref *= state.drefScale;
+
+    if (state.mode == SAMPLER_MODE_DREF_CLAMP)
+        dref = clamp(dref, 0.0f, 1.0f);
+
+    return dref;
+}
+
 vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
-    if (specBool(SpecSamplerProjected, stage)) {
+    SamplerState state = getSamplerState(stage);
+
+    if (state.projected)
         texcoord /= texcoord.w;
-    }
 
     uint previousStageColorOp = 0;
+
     if (stage > 0) {
-        previousStageColorOp = specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * (stage - 1));
+        uint previousStageColorOp = getTextureStage(stage - 1u).colorOp;
+
+        if (previousStageColorOp == D3DTOP_BUMPENVMAP || previousStageColorOp == D3DTOP_BUMPENVMAPLUMINANCE)
+            texcoord = calculateBumpmapCoords(stage, texcoord, previousStageTextureVal);
     }
 
-    if (stage != 0 && (
-        previousStageColorOp == D3DTOP_BUMPENVMAP
-        || previousStageColorOp == D3DTOP_BUMPENVMAPLUMINANCE)) {
-        texcoord = calculateBumpmapCoords(stage, texcoord, previousStageTextureVal);
-    }
+    // We should never get null textures in FFPS since the corresponding
+    // texture stage should get disabled instead.
+    vec4 texVal = vec4(999.0);
 
-    vec4 texVal;
-    uint textureType = D3DRTYPE_TEXTURE + specUint(SpecSamplerType, 2u * stage, 2u);
-    switch (textureType) {
-        case D3DRTYPE_TEXTURE:
-            if (specBool(SpecSamplerDepthMode, stage)) {
-                texcoord.z = adjustDref(texcoord.z, stage);
+    switch (state.type) {
+        case TEXTURE_TYPE_2D:
+            if (state.mode >= SAMPLER_MODE_DREF) {
+                texcoord.z = adjustDref(texcoord.z, state);
                 texVal = texture(sampler2DShadow(t2d[stage], sampler_heap[loadSamplerHeapIndex(stage)]), texcoord.xyz).xxxx;
             } else {
                 texVal = texture(sampler2D(t2d[stage], sampler_heap[loadSamplerHeapIndex(stage)]), texcoord.xy);
             }
             break;
-        case D3DRTYPE_CUBETEXTURE:
-            if (specBool(SpecSamplerDepthMode, stage)) {
-                texcoord.w = adjustDref(texcoord.w, stage);
+        case TEXTURE_TYPE_CUBE:
+            if (state.mode >= SAMPLER_MODE_DREF) {
+                texcoord.w = adjustDref(texcoord.w, state);
                 texVal = texture(samplerCubeShadow(tcube[stage], sampler_heap[loadSamplerHeapIndex(stage)]), texcoord).xxxx;
             } else {
                 texVal = texture(samplerCube(tcube[stage], sampler_heap[loadSamplerHeapIndex(stage)]), texcoord.xyz);
             }
             break;
-        case D3DRTYPE_VOLUMETEXTURE:
+        case TEXTURE_TYPE_3D:
             texVal = texture(sampler3D(t3d[stage], sampler_heap[loadSamplerHeapIndex(stage)]), texcoord.xyz);
-            break;
-        default:
-            // This should never happen unless there's a major bug in the API implementation.
-            // Produce a value that's obviously wrong to make it obvious when it somehow does happen.
-            texVal = vec4(999.9);
             break;
     }
 
@@ -311,12 +384,6 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
     return reg;
 }
 
-struct TextureStageArguments {
-    uint arg0;
-    uint arg1;
-    uint arg2;
-};
-
 struct TextureStageArgumentValues {
     vec4 arg0;
     vec4 arg1;
@@ -329,11 +396,6 @@ TextureStageArgumentValues readArgValues(uint stage, const TextureStageArguments
     argVals.arg1 = readArgValue(stage, args.arg1, current, temp, textureVal);
     argVals.arg2 = readArgValue(stage, args.arg2, current, temp, textureVal);
     return argVals;
-}
-
-uint repackArg(uint arg) {
-    // Move the flags by 1 bit. 0x18 = 0b11000
-    return (arg & ~0x18) | ((arg & 0x18) << 1u);
 }
 
 vec4 complement(vec4 val) {
@@ -430,74 +492,43 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
 }
 
 
-void alphaTest() {
-    uint alphaFunc = specUint(SpecAlphaCompareOp);
-    uint alphaPrecision = specUint(SpecAlphaPrecisionBits);
+bool alphaTest(float alpha) {
+    AlphaTestState alphaTest = getAlphaTestState();
+
     uint alphaRefInitial = bitfieldExtract(global.packedFogColorAndAlphaRef, 24, 8);
     float alphaRef;
-    float alpha = out_Color0.a;
 
-    if (alphaFunc == VK_COMPARE_OP_ALWAYS) {
-        return;
+    if (alphaTest.compareOp < VK_COMPARE_OP_ALWAYS) {
+        // Check if the given bit precision is supported
+        bool useIntPrecision = alphaTest.precisionBits <= 8;
+
+        if (useIntPrecision) {
+            // Adjust alpha ref to the given range
+            uint alphaRefInt = (alphaRefInitial << alphaTest.precisionBits) | (alphaRefInitial >> (8u - alphaTest.precisionBits));
+
+            // Convert alpha ref to float since we'll do the comparison based on that
+            alphaRef = float(alphaRefInt);
+
+            // Adjust alpha to the given range and round
+            float alphaFactor = float((256u << alphaTest.precisionBits) - 1u);
+
+            alpha = roundEven(alpha * alphaFactor);
+        } else {
+            alphaRef = float(alphaRefInitial) / 255.0;
+        }
+
+        switch (alphaTest.compareOp) {
+            case VK_COMPARE_OP_LESS:                return alpha <  alphaRef;
+            case VK_COMPARE_OP_EQUAL:               return alpha == alphaRef;
+            case VK_COMPARE_OP_LESS_OR_EQUAL:       return alpha <= alphaRef;
+            case VK_COMPARE_OP_GREATER:             return alpha >  alphaRef;
+            case VK_COMPARE_OP_NOT_EQUAL:           return alpha != alphaRef;
+            case VK_COMPARE_OP_GREATER_OR_EQUAL:    return alpha >= alphaRef;
+            default:                                return false;  // NEVER
+        }
     }
 
-    // Check if the given bit precision is supported
-    bool useIntPrecision = alphaPrecision <= 8;
-    if (useIntPrecision) {
-        // Adjust alpha ref to the given range
-        uint alphaRefInt = (alphaRefInitial << alphaPrecision) | (alphaRefInitial >> (8 - alphaPrecision));
-
-        // Convert alpha ref to float since we'll do the comparison based on that
-        alphaRef = float(alphaRefInt);
-
-        // Adjust alpha to the given range and round
-        float alphaFactor = float((256u << alphaPrecision) - 1u);
-
-        alpha = roundEven(alpha * alphaFactor);
-    } else {
-        alphaRef = float(alphaRefInitial) / 255.0;
-    }
-
-    bool atestResult;
-    switch (alphaFunc) {
-        case VK_COMPARE_OP_NEVER:
-            atestResult = false;
-            break;
-
-        case VK_COMPARE_OP_LESS:
-            atestResult = alpha < alphaRef;
-            break;
-
-        case VK_COMPARE_OP_EQUAL:
-            atestResult = alpha == alphaRef;
-            break;
-
-        case VK_COMPARE_OP_LESS_OR_EQUAL:
-            atestResult = alpha <= alphaRef;
-            break;
-
-        case VK_COMPARE_OP_GREATER:
-            atestResult = alpha > alphaRef;
-            break;
-
-        case VK_COMPARE_OP_NOT_EQUAL:
-            atestResult = alpha != alphaRef;
-            break;
-
-        case VK_COMPARE_OP_GREATER_OR_EQUAL:
-            atestResult = alpha >= alphaRef;
-            break;
-
-        default:
-        case VK_COMPARE_OP_ALWAYS:
-            atestResult = true;
-            break;
-    }
-
-    bool atestDiscard = !atestResult;
-    if (atestDiscard) {
-        demote;
-    }
+    return true;
 }
 
 struct TextureStageState {
@@ -507,11 +538,9 @@ struct TextureStageState {
 };
 
 vec4 getTexCoord(uint stage) {
-    const uint pointMode = specUint(SpecPointMode);
-
     // If point sprites are enabled, we need to replace the
     // input texture coordinate with the point coordinate
-    if (bitfieldExtract(pointMode, 1, 1) == 1u)
+    if (isPointSpriteEnabled())
         return vec4(gl_PointCoord, 0.0f, 0.0f);
 
     switch (stage) {
@@ -529,72 +558,40 @@ vec4 getTexCoord(uint stage) {
 }
 
 TextureStageState runTextureStage(uint stage, TextureStageState state) {
-    if (stage > specUint(SpecFFLastActiveTextureStage)) {
-        return state;
-    }
-
-    const uint colorOp = specUint(SpecFFTextureStage0ColorOp + PerTextureStageSpecConsts * stage);
+    TextureStage info = getTextureStage(stage);
 
     // This cancels all subsequent stages.
-    if (colorOp == D3DTOP_DISABLE)
+    if (info.colorOp == D3DTOP_DISABLE)
         return state;
 
-    const bool resultIsTemp = specBool(SpecFFTextureStage0ResultIsTemp + PerTextureStageSpecConsts * stage);
-    vec4 dst = resultIsTemp ? state.temp : state.current;
+    vec4 prev = info.storeToTemp ? state.temp : state.current;
+    vec4 next = prev;
 
-    const uint alphaOp = specUint(SpecFFTextureStage0AlphaOp + PerTextureStageSpecConsts * stage);
-
-    const TextureStageArguments colorArgs = {
-        // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-        repackArg(specUint(SpecFFTextureStage0ColorArg0 + stage)),
-        repackArg(specUint(SpecFFTextureStage0ColorArg1 + PerTextureStageSpecConsts * stage)),
-        repackArg(specUint(SpecFFTextureStage0ColorArg2 + PerTextureStageSpecConsts * stage))
-    };
-    const TextureStageArguments alphaArgs = {
-        // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-        repackArg(specUint(SpecFFTextureStage0AlphaArg0 + stage)),
-        repackArg(specUint(SpecFFTextureStage0AlphaArg1 + PerTextureStageSpecConsts * stage)),
-        repackArg(specUint(SpecFFTextureStage0AlphaArg2 + PerTextureStageSpecConsts * stage))
-    };
-
-    vec4 textureVal = vec4(0.0f, 0.0f, 0.0f, 1.0f);
-
-    if (!specBool(SpecSamplerNull, stage))
-        textureVal = sampleTexture(stage, getTexCoord(stage), state.previousStageTextureVal);
+    vec4 textureVal = sampleTexture(stage, getTexCoord(stage), state.previousStageTextureVal);
 
     // Fast path if alpha/color path is identical.
     // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
-    const bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
-    if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
-        TextureStageArgumentValues colorArgVals = readArgValues(stage, colorArgs, state.current, state.temp, textureVal);
-        dst = calculateTextureStage(colorOp, dst, colorArgVals, state.current, textureVal);
+    bool fastPath = info.colorOp == info.alphaOp &&
+        info.colorArgs.arg0 == info.alphaArgs.arg0 &&
+        info.colorArgs.arg1 == info.alphaArgs.arg1 &&
+        info.colorArgs.arg2 == info.alphaArgs.arg2;
+
+    if (fastPath || info.colorOp == D3DTOP_DOTPRODUCT3) {
+        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal);
+        next = calculateTextureStage(info.colorOp, prev, colorArgVals, state.current, textureVal);
     } else {
-        vec4 colorResult = dst;
-        vec4 alphaResult = dst;
+        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal);
+        next.rgb = calculateTextureStage(info.colorOp, prev, colorArgVals, state.current, textureVal).rgb;
 
-        TextureStageArgumentValues colorArgVals = readArgValues(stage, colorArgs, state.current, state.temp, textureVal);
-        colorResult = calculateTextureStage(colorOp, dst, colorArgVals, state.current, textureVal);
-
-        if (alphaOp != D3DTOP_DISABLE) {
-            TextureStageArgumentValues alphaArgVals = readArgValues(stage, alphaArgs, state.current, state.temp, textureVal);
-            alphaResult = calculateTextureStage(alphaOp, dst, alphaArgVals, state.current, textureVal);
-        }
-
-        dst.xyz = colorResult.xyz;
-
-        // src0.x, src0.y, src0.z src1.w
-        if (alphaOp != D3DTOP_DISABLE) {
-            dst.a = alphaResult.a;
+        if (info.alphaOp != D3DTOP_DISABLE) {
+            TextureStageArgumentValues alphaArgVals = readArgValues(stage, info.alphaArgs, state.current, state.temp, textureVal);
+            next.a = calculateTextureStage(info.alphaOp, prev, alphaArgVals, state.current, textureVal).a;
         }
     }
 
-    if (resultIsTemp) {
-        state.temp = dst;
-    } else {
-        state.current = dst;
-    }
+    state.temp = info.storeToTemp ? next : state.temp;
+    state.current = info.storeToTemp ? state.current : next;
     state.previousStageTextureVal = textureVal;
-
     return state;
 }
 
@@ -620,13 +617,13 @@ void main() {
     state = runTextureStage(6, state);
     state = runTextureStage(7, state);
 
-    if (specBool(SpecFFGlobalSpecularEnabled)) {
+    if (isSpecularEnabled())
         state.current.xyz += in_Color1.xyz;
-    }
 
     state.current = calculateFog(gl_FragCoord, state.current);
 
     out_Color0 = state.current;
 
-    alphaTest();
+    if (!alphaTest(state.current.a))
+        demote;
 }

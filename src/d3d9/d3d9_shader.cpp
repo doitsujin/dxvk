@@ -74,6 +74,23 @@ namespace dxvk {
 
   private:
 
+    struct SpecFunction {
+      uint8_t specId   = 0u;
+      uint8_t bitIndex = 0u;
+      uint8_t bitCount = 0u;
+      bool    isIndexed = false;
+      dxbc_spv::ir::ScalarType type = {};
+      dxbc_spv::ir::SsaDef function = {};
+
+      bool matchesKey(const SpecFunction& other) const {
+        return specId == other.specId
+            && bitIndex == other.bitIndex
+            && bitCount == other.bitCount
+            && isIndexed == other.isIndexed
+            && type == other.type;
+      }
+    };
+
     dxbc_spv::ir::Builder&    m_builder;
     D3D9ShaderOptions         m_options;
     const D3D9ShaderAnalysis& m_analysis;
@@ -95,7 +112,7 @@ namespace dxvk {
     dxbc_spv::ir::SsaDef      m_vsPushData = {};
 
     std::array<dxbc_spv::ir::SsaDef, DxvkLimits::MaxNumSpecConstants> m_specConstants = { };
-    std::array<dxbc_spv::ir::SsaDef, D3D9SpecConstantId::SpecConstantCount> m_specFunctions = { };
+    small_vector<SpecFunction, 32u>                                   m_specFunctions;
 
     std::pair<dxbc_spv::ir::SsaDef, dxbc_spv::ir::ShaderStage> findEntryPoint() {
       using namespace dxbc_spv;
@@ -412,31 +429,33 @@ namespace dxvk {
       // function to actually fetch a single boolean from the source.
       const auto& layout = m_analysis.GetConstantLayout()->getLayout(D3D9ConstantType::Bool);
 
-      auto ref = m_builder.getCode().first->getDef();
-
-      auto loadArg = m_builder.add(ir::Op::DclParam(ir::ScalarType::eU32));
-      m_builder.add(ir::Op::DebugName(loadArg, "index"));
-
-      auto loadFn = m_builder.addBefore(ref, ir::Op::Function(ir::ScalarType::eBool).addParam(loadArg));
-      m_builder.add(ir::Op::DebugName(loadFn, "loadBoolConstant"));
-
-      auto cursor = m_builder.setCursor(loadFn);
+      ir::SsaDef loadFn = {};
 
       if (!layout.computeConstantCount(0u)) {
-        // Build helper function to extract boolean from spec constant
-        auto constIndex = m_builder.add(ir::Op::ParamLoad(ir::ScalarType::eU32, loadFn, loadArg));
+        // Emit regular indexed spec constant function
+        uint32_t offset = m_shaderStage == ir::ShaderStage::eVertex
+          ? offsetof(D3D9SpecData, vsBoolConstants)
+          : offsetof(D3D9SpecData, psBoolConstants);
 
-        auto constBits = emitSpecConstantLoadRaw(m_shaderStage == ir::ShaderStage::eVertex
-          ? D3D9SpecConstantId::SpecVertexShaderBools
-          : D3D9SpecConstantId::SpecPixelShaderBools);
+        SpecFunction fn = {};
+        fn.specId = offset / 4u;
+        fn.bitIndex = (offset % 4u) * 8u;
+        fn.bitCount = 1u;
+        fn.isIndexed = true;
+        fn.type = ir::ScalarType::eBool;
 
-        auto constMask = m_builder.add(ir::Op::IShl(ir::ScalarType::eU32, m_builder.makeConstant(1u), constIndex));
-
-        auto result = m_builder.add(ir::Op::IAnd(ir::ScalarType::eU32, constBits, constMask));
-        result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
-        m_builder.add(ir::Op::Return(ir::ScalarType::eBool, result));
+        loadFn = getSpecConstantFunction(fn, "loadBoolConstant");
       } else {
         dxbc_spv_assert(m_staticCbv);
+        auto ref = m_builder.getCode().first->getDef();
+
+        auto loadArg = m_builder.add(ir::Op::DclParam(ir::ScalarType::eU32));
+        m_builder.add(ir::Op::DebugName(loadArg, "index"));
+
+        loadFn = m_builder.addBefore(ref, ir::Op::Function(ir::ScalarType::eBool).addParam(loadArg));
+        m_builder.add(ir::Op::DebugName(loadFn, "loadBoolConstant"));
+
+        auto cursor = m_builder.setCursor(loadFn);
 
         // This is all extremely awful, but compilers should be able to constant-fold
         // all the indices and optimize. We should basically never hit this, anyway.
@@ -474,12 +493,11 @@ namespace dxvk {
         auto result = m_builder.add(ir::Op::IAnd(ir::ScalarType::eU32, dword, dwordMask));
         result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
 
+        // Finalize helper function
         m_builder.add(ir::Op::Return(ir::ScalarType::eBool, result));
+        m_builder.add(ir::Op::FunctionEnd());
+        m_builder.setCursor(cursor);
       }
-
-      // Finalize helper function
-      m_builder.add(ir::Op::FunctionEnd());
-      m_builder.setCursor(cursor);
 
       // Replace all loads with function calls
       dxvk::small_vector<ir::SsaDef, 256u> uses;
@@ -607,93 +625,114 @@ namespace dxvk {
       return std::nullopt;
     }
 
-    dxbc_spv::ir::SsaDef emitSpecConstantLoadRaw(
-            D3D9SpecConstantId          specConstant) {
+    dxbc_spv::ir::SsaDef emitSpecConstant(uint32_t specId) {
       using namespace dxbc_spv;
 
-      auto& layout = D3D9SpecializationInfo::Layout[specConstant];
-      auto& specDef = m_specConstants.at(layout.dwordOffset);
+      static const std::array<const char*, 7u> s_specNames = {{
+        "commonState",
+        "fogState",
+        "samplerProjMask",
+        "vsSamplerStateAndBoolConstants",
+        "psSamplerTypes",
+        "psSamplerModes",
+        "psBoolConstants",
+      }};
+
+      auto& specDef = m_specConstants.at(specId);
 
       if (!specDef) {
-        specDef = m_builder.add(ir::Op::DclSpecConstant(ir::ScalarType::eU32, m_entryPoint, layout.dwordOffset, 0u));
-        m_builder.add(ir::Op::DebugName(specDef, str::format("SpecConst", layout.dwordOffset).c_str()));
+        specDef = m_builder.add(ir::Op::DclSpecConstant(ir::ScalarType::eU32, m_entryPoint, specId, 0u));
+        m_builder.add(ir::Op::DebugName(specDef, s_specNames.at(specId)));
       }
 
-      return m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, specDef,
-        m_builder.makeConstant(layout.bitOffset),
-        m_builder.makeConstant(layout.sizeInBits)));
+      return specDef;
     }
 
-    dxbc_spv::ir::SsaDef emitSpecConstantLoadIndexed(
-            D3D9SpecConstantId          specConstant,
-      const char*                       name,
-            dxbc_spv::ir::SsaDef        ref,
-            dxbc_spv::ir::ScalarType    type,
-            uint32_t                    indexBits,
-            uint32_t                    indexBase,
-            dxbc_spv::ir::SsaDef        index) {
+    dxbc_spv::ir::SsaDef buildSpecConstantFunction(SpecFunction fn, const char* name) {
       using namespace dxbc_spv;
 
-      if (!m_specFunctions.at(specConstant)) {
-        auto codeStart = m_builder.getCode().first->getDef();
+      auto codeStart = m_builder.getCode().first->getDef();
 
-        // Build function and load spec constant value
-        auto funcArg = ir::SsaDef();
-        auto funcOp = ir::Op::Function(type);
+      // Build function and load spec constant value
+      auto funcArg = ir::SsaDef();
+      auto funcOp = ir::Op::Function(fn.type);
 
-        if (indexBits) {
-          funcArg = m_builder.add(ir::Op::DclParam(ir::ScalarType::eU32));
-          m_builder.add(ir::Op::DebugName(funcArg, "index"));
-          funcOp.addOperand(funcArg);
-        }
-
-        auto funcDef =  m_builder.addBefore(codeStart, std::move(funcOp));
-
-        if (name)
-          m_builder.add(ir::Op::DebugName(funcDef, name));
-
-        auto cursor = m_builder.setCursor(funcDef);
-        auto result = emitSpecConstantLoadRaw(specConstant);
-
-        // Extract requested bits if this is an indexed bit mask
-        if (indexBits) {
-          auto indexValue = m_builder.add(ir::Op::ParamLoad(ir::ScalarType::eU32, funcDef, funcArg));
-          indexValue = m_builder.add(ir::Op::IAdd(ir::ScalarType::eU32, indexValue, m_builder.makeConstant(indexBase)));
-          indexValue = m_builder.add(ir::Op::IMul(ir::ScalarType::eU32, indexValue, m_builder.makeConstant(indexBits)));
-          result = m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, result, indexValue, m_builder.makeConstant(indexBits)));
-        }
-
-        // Convert to requested return type
-        if (type == ir::ScalarType::eBool)
-          result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
-        else
-          result = m_builder.add(ir::Op::ConsumeAs(type, result));
-
-        // Finalize function
-        m_builder.add(ir::Op::Return(type, result));
-        m_builder.add(ir::Op::FunctionEnd());
-        m_builder.setCursor(cursor);
-
-        m_specFunctions.at(specConstant) = funcDef;
+      if (fn.isIndexed) {
+        funcArg = m_builder.add(ir::Op::DclParam(ir::ScalarType::eU32));
+        m_builder.add(ir::Op::DebugName(funcArg, "index"));
+        funcOp.addOperand(funcArg);
       }
 
-      // Build function call op that the caller can add
-      auto result = ir::Op::FunctionCall(type, m_specFunctions.at(specConstant));
+      fn.function = m_builder.addBefore(codeStart, std::move(funcOp));
 
-      if (indexBits)
-        result.addOperand(index);
+      if (name)
+        m_builder.add(ir::Op::DebugName(fn.function, name));
 
-      return m_builder.addBefore(ref, std::move(result));
+      auto cursor = m_builder.setCursor(fn.function);
+      auto result = emitSpecConstant(fn.specId);
+
+      // Extract requested bits if this is an indexed bit mask
+      if (fn.bitCount < 32u) {
+        auto bitIndexDef = m_builder.makeConstant(uint32_t(fn.bitIndex));
+        auto bitCountDef = m_builder.makeConstant(uint32_t(fn.bitCount));
+
+        if (fn.isIndexed) {
+          auto indexValue = m_builder.add(ir::Op::ParamLoad(ir::ScalarType::eU32, fn.function, funcArg));
+          indexValue = m_builder.add(ir::Op::IMul(ir::ScalarType::eU32, indexValue, bitCountDef));
+          bitIndexDef = m_builder.add(ir::Op::IAdd(ir::ScalarType::eU32, bitIndexDef, indexValue));
+        }
+
+        result = m_builder.add(ir::Op::UBitExtract(ir::ScalarType::eU32, result, bitIndexDef, bitCountDef));
+      }
+
+      // Convert to requested return type
+      if (fn.type == ir::ScalarType::eBool)
+        result = m_builder.add(ir::Op::INe(ir::ScalarType::eBool, result, m_builder.makeConstant(0u)));
+      else
+        result = m_builder.add(ir::Op::ConsumeAs(fn.type, result));
+
+      // Finalize function
+      m_builder.add(ir::Op::Return(fn.type, result));
+      m_builder.add(ir::Op::FunctionEnd());
+      m_builder.setCursor(cursor);
+      return fn.function;
+    }
+
+    dxbc_spv::ir::SsaDef getSpecConstantFunction(SpecFunction fn, const char* name) {
+      for (auto& e : m_specFunctions) {
+        if (e.matchesKey(fn))
+          return e.function;
+      }
+
+      fn.function = buildSpecConstantFunction(fn, name);
+      m_specFunctions.push_back(fn);
+      return fn.function;
     }
 
     dxbc_spv::ir::SsaDef emitSpecConstantLoad(
-            D3D9SpecConstantId          specConstant,
+            uint32_t                    byteOffset,
+            uint32_t                    bitIndex,
+            uint32_t                    bitCount,
       const char*                       name,
             dxbc_spv::ir::SsaDef        ref,
-            dxbc_spv::ir::ScalarType    type) {
+            dxbc_spv::ir::ScalarType    type,
+            dxbc_spv::ir::SsaDef        index) {
       using namespace dxbc_spv;
 
-      return emitSpecConstantLoadIndexed(specConstant, name, ref, type, 0u, 0u, ir::SsaDef());
+      SpecFunction fn = {};
+      fn.specId = byteOffset / 4u;
+      fn.bitIndex = bitIndex + 8u * (byteOffset % 4u);
+      fn.bitCount = bitCount;
+      fn.isIndexed = bool(index);
+      fn.type = type;
+
+      // Build function call op that the caller can add
+      auto result = ir::Op::FunctionCall(type, getSpecConstantFunction(fn, name));
+
+      if (index)
+        result.addOperand(index);
+
+      return m_builder.addBefore(ref, std::move(result));
     }
 
     dxbc_spv::ir::SsaDef loadAlphaTestArgs(dxbc_spv::ir::SsaDef ref) {
@@ -704,15 +743,13 @@ namespace dxvk {
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
         switch (ir::LegacyAlphaTestLayout(i)) {
           case ir::LegacyAlphaTestLayout::eAlphaCompareOp: {
-            resultOp.addOperand(emitSpecConstantLoad(
-              D3D9SpecConstantId::SpecAlphaCompareOp,
-              "alphaCompareOp", ref, ir::ScalarType::eU32));
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, alphaTest),
+              0u, 3u, "alphaCompareOp", ref, ir::ScalarType::eU32, ir::SsaDef()));
           } break;
 
           case ir::LegacyAlphaTestLayout::eAlphaPrecision: {
-            resultOp.addOperand(emitSpecConstantLoad(
-              D3D9SpecConstantId::SpecAlphaPrecisionBits,
-              "alphaPrecisionBits", ref, ir::ScalarType::eU32));
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, alphaTest),
+              4u, 4u, "alphaPrecisionBits", ref, ir::ScalarType::eU32, ir::SsaDef()));
           } break;
 
           case ir::LegacyAlphaTestLayout::eAlphaRef: {
@@ -735,17 +772,17 @@ namespace dxvk {
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
         switch (ir::LegacyFogLayout(i)) {
           case ir::LegacyFogLayout::eFogEnable: {
-            resultOp.addOperand(emitSpecConstantLoad(D3D9SpecConstantId::SpecFogEnabled,
-              "fogEnable", ref, ir::ScalarType::eBool));
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, fogEnable),
+              0u, 1u, "fogEnable", ref, ir::ScalarType::eBool, ir::SsaDef()));
           } break;
 
           case ir::LegacyFogLayout::eFogMode: {
-            auto spec = m_shaderStage == ir::ShaderStage::eVertex
-              ? D3D9SpecConstantId::SpecVertexFogMode
-              : D3D9SpecConstantId::SpecPixelFogMode;
+            auto offset = m_shaderStage == ir::ShaderStage::eVertex
+              ? offsetof(D3D9SpecData, fogModeVertex)
+              : offsetof(D3D9SpecData, fogModePixel);
 
-            resultOp.addOperand(emitSpecConstantLoad(spec,
-              "fogMode", ref, ir::ScalarType::eU32));
+            resultOp.addOperand(emitSpecConstantLoad(offset,
+              0u, 2u, "fogMode", ref, ir::ScalarType::eU32, ir::SsaDef()));
           } break;
 
           case ir::LegacyFogLayout::eFogColor: {
@@ -803,9 +840,8 @@ namespace dxvk {
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
         switch (ir::LegacyClipPlaneLayout(i)) {
           case ir::LegacyClipPlaneLayout::eClipPlaneCount: {
-            resultOp.addOperand(emitSpecConstantLoad(
-              D3D9SpecConstantId::SpecClipPlaneCount,
-              "clipPlaneCount", ref, ir::ScalarType::eU32));
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, clipPlaneCount),
+              0u, 3u, "clipPlaneCount", ref, ir::ScalarType::eU32, ir::SsaDef()));
           } break;
 
           case ir::LegacyClipPlaneLayout::eClipPlane0:
@@ -836,9 +872,8 @@ namespace dxvk {
         switch (ir::LegacyPointArgsLayout(i)) {
           case ir::LegacyPointArgsLayout::eIsPointSprite: {
             // Bit 1 of the point mode spec constant
-            resultOp.addOperand(emitSpecConstantLoadIndexed(
-              D3D9SpecConstantId::SpecPointMode, "pointMode", ref,
-              ir::ScalarType::eBool, 1u, 0u, m_builder.makeConstant(1u)));
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, enablePointSprite),
+              0u, 1u, "enablePointSprite", ref, ir::ScalarType::eBool, ir::SsaDef()));
           } break;
 
           case ir::LegacyPointArgsLayout::ePointSize: {
@@ -872,7 +907,20 @@ namespace dxvk {
       // indices in vertex shaders to read the proper state bits.
       // *Everything* here is based on spec constants.
       bool isVs = m_shaderStage == ir::ShaderStage::eVertex;
-      uint32_t baseSampler = isVs ? FirstVSSamplerSlot : 0u;
+
+      auto samplerTypeOffset = isVs
+        ? offsetof(D3D9SpecData, vsSamplerTypes)
+        : offsetof(D3D9SpecData, psSamplerTypes);
+
+      auto samplerModeOffset = isVs
+        ? offsetof(D3D9SpecData, vsSamplerModes)
+        : offsetof(D3D9SpecData, psSamplerModes);
+
+      auto samplerMode = emitSpecConstantLoad(samplerModeOffset,
+        0u, 2u, "samplerMode", ref, ir::ScalarType::eU32, index);
+
+      auto samplerType = emitSpecConstantLoad(samplerTypeOffset,
+        0u, 2u, "samplerType", ref, ir::ScalarType::eU32, index);
 
       ir::Op resultOp = ir::Op(ir::OpCode::eCompositeConstruct,
         ir::makeLegacySamplerStateType(0u));
@@ -880,20 +928,12 @@ namespace dxvk {
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
         switch (ir::LegacySamplerStateLayout(i)) {
           case ir::LegacySamplerStateLayout::eTextureType: {
-            if (isVs) {
-              // Not used in VS since type must be declared explicitly
-              resultOp.addOperand(m_builder.makeConstant(0u));
-            } else {
-              resultOp.addOperand(emitSpecConstantLoadIndexed(
-                D3D9SpecConstantId::SpecSamplerType, "samplerType", ref,
-                ir::ScalarType::eU32, 2u, baseSampler, index));
-            }
+            resultOp.addOperand(samplerType);
           } break;
 
           case ir::LegacySamplerStateLayout::eUseDepthCompare: {
-            resultOp.addOperand(emitSpecConstantLoadIndexed(
-              D3D9SpecConstantId::SpecSamplerDepthMode, "samplerDepthCompare", ref,
-              ir::ScalarType::eBool, 1u, baseSampler, index));
+            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::UGe(ir::ScalarType::eBool,
+              samplerMode, m_builder.makeConstant(uint32_t(D3D9SamplerMode::Dref)))));
           } break;
 
           case ir::LegacySamplerStateLayout::eUseProjection: {
@@ -901,16 +941,16 @@ namespace dxvk {
               // Not a thing in VS
               resultOp.addOperand(m_builder.makeConstant(false));
             } else {
-              resultOp.addOperand(emitSpecConstantLoadIndexed(
-                D3D9SpecConstantId::SpecSamplerProjected, "samplerProjection", ref,
-                ir::ScalarType::eBool, 1u, baseSampler, index));
+              auto proj = emitSpecConstantLoad(offsetof(D3D9SpecData, samplerProjMask),
+                0u, 1u, "samplerProjection", ref, ir::ScalarType::eBool, index);
+              auto cond = m_builder.addBefore(ref, ir::Op::ULt(ir::ScalarType::eBool, index, m_builder.makeConstant(8u)));
+              resultOp.addOperand(m_builder.addBefore(ref, ir::Op::BAnd(ir::ScalarType::eBool, cond, proj)));
             }
           } break;
 
           case ir::LegacySamplerStateLayout::eIsNull: {
-            resultOp.addOperand(emitSpecConstantLoadIndexed(
-              D3D9SpecConstantId::SpecSamplerNull, "samplerNull", ref,
-              ir::ScalarType::eBool, 1u, baseSampler, index));
+            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::IEq(
+              ir::ScalarType::eBool, samplerType, m_builder.makeConstant(3u))));
           } break;
 
           case ir::LegacySamplerStateLayout::eUseGather: {
@@ -918,21 +958,19 @@ namespace dxvk {
               // Not a thing in VS
               resultOp.addOperand(m_builder.makeConstant(false));
             } else {
-              resultOp.addOperand(emitSpecConstantLoadIndexed(
-                D3D9SpecConstantId::SpecSamplerFetch4, "samplerFetch4", ref,
-                ir::ScalarType::eBool, 1u, baseSampler, index));
+              resultOp.addOperand(m_builder.addBefore(ref, ir::Op::IEq(ir::ScalarType::eBool,
+                samplerMode, m_builder.makeConstant(uint32_t(D3D9SamplerMode::Fetch4)))));
             }
           } break;
 
           case ir::LegacySamplerStateLayout::eDrefClamp: {
-            resultOp.addOperand(emitSpecConstantLoadIndexed(
-              D3D9SpecConstantId::SpecSamplerDrefClamp, "samplerDrefClamp", ref,
-              ir::ScalarType::eBool, 1u, baseSampler, index));
+            resultOp.addOperand(m_builder.addBefore(ref, ir::Op::IEq(ir::ScalarType::eBool,
+              samplerMode, m_builder.makeConstant(uint32_t(D3D9SamplerMode::DrefClamp)))));
           } break;
 
           case ir::LegacySamplerStateLayout::eDrefScale: {
-            auto drefShift = emitSpecConstantLoad(D3D9SpecConstantId::SpecDrefScaling,
-              "samplerDrefScaleBits", ref, ir::ScalarType::eU32);
+            auto drefShift = emitSpecConstantLoad(offsetof(D3D9SpecData, drefScale),
+              0u, 8u, "samplerDrefScaleBits", ref, ir::ScalarType::eU32, ir::SsaDef());
             drefShift = m_builder.addBefore(ref, ir::Op::UMax(ir::ScalarType::eU32, drefShift, m_builder.makeConstant(1u)));
 
             // We need to divide dref by (1 << shift) - 1
@@ -1175,6 +1213,5 @@ namespace dxvk {
     m_modules.insert({ ShaderKey, *pShader });
     return D3D_OK;
   }
-
-
+#
 }

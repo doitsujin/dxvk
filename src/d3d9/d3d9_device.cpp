@@ -142,14 +142,11 @@ namespace dxvk {
                 D3D9DeviceDirtyFlag::FFVertexShader,
                 D3D9DeviceDirtyFlag::FFPixelShader,
                 D3D9DeviceDirtyFlag::FFViewport,
-                D3D9DeviceDirtyFlag::FFGlobalSpecular,
                 D3D9DeviceDirtyFlag::SharedPixelShaderData,
                 D3D9DeviceDirtyFlag::DepthBounds,
-                D3D9DeviceDirtyFlag::PointScale);
+                D3D9DeviceDirtyFlag::PointScale,
+                D3D9DeviceDirtyFlag::SpecializationEntries);
 
-    m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-
-    m_specInfo.set<SpecDrefScaling, uint32_t>(m_d3d9Options.drefScaling);
     m_specData.setDrefScale(m_d3d9Options.drefScaling);
 
     BindFFUbershader<D3D9ShaderType::VertexShader>();
@@ -2469,8 +2466,6 @@ namespace dxvk {
           break;
 
         case D3DRS_SPECULARENABLE:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFGlobalSpecular);
-
           if (m_specData.setGlobalSpecular(bool(Value)))
             m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
           break;
@@ -3922,24 +3917,6 @@ namespace dxvk {
 
     if (shader != nullptr) {
       BindShader<D3D9ShaderType::PixelShader>(newShader);
-
-      bool dirty = m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(0u);
-      constexpr uint32_t perTextureStageSpecConsts = static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - static_cast<uint32_t>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
-      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), 0u);
-        // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0ColorArg0 + i), 0u);
-        dirty |= m_specInfo.set(static_cast<D3D9SpecConstantId>(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg0 + i), 0u);
-      }
-      if (dirty) {
-        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-      }
 
       const auto& programInfo = GetCommonShader(m_state.pixelShader)->GetInfo();
 
@@ -6129,9 +6106,6 @@ namespace dxvk {
     for (uint32_t i = clipPlaneCount; i < caps::MaxClipPlanes; i++)
       dst[i] = D3D9ClipPlane();
 
-    if (m_specInfo.set<SpecClipPlaneCount>(clipPlaneCount))
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-
     if (m_specData.setClipPlaneCount(clipPlaneCount))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
@@ -6582,8 +6556,6 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdatePointMode(bool pointList) {
     if (likely(!pointList)) {
-      UpdatePointModeSpec(0u);
-
       bool dirty = false;
       dirty |= m_specData.setPointSprite(false);
       dirty |= m_specData.setPointScale(false);
@@ -6608,8 +6580,6 @@ namespace dxvk {
         m_pushData.ffvs.pointScaleC = scale * bit::cast<float>(rs[D3DRS_POINTSCALE_C]);
       }
 
-      UpdatePointModeSpec((scale ? 1u : 0u) | (sprite ? 2u : 0u));
-
       bool dirty = false;
       dirty |= m_specData.setPointScale(scale);
       dirty |= m_specData.setPointSprite(sprite);
@@ -6627,18 +6597,6 @@ namespace dxvk {
     bool fogEnabled = bool(rs[D3DRS_FOGENABLE]);
 
     // Only set up vertex frog if pixel fog is not used
-    D3DFOGMODE vsFog = D3DFOG_NONE;
-    D3DFOGMODE psFog = D3DFOG_NONE;
-
-    if (fogEnabled) {
-      psFog = D3DFOGMODE(rs[D3DRS_FOGTABLEMODE]);
-
-      if (psFog == D3DFOG_NONE)
-        vsFog = D3DFOGMODE(rs[D3DRS_FOGVERTEXMODE]);
-    }
-
-    UpdateFogModeSpec(fogEnabled, vsFog, psFog);
-
     if (m_specData.setFogMode(fogEnabled,
         D3DFOGMODE(rs[D3DRS_FOGVERTEXMODE]),
         D3DFOGMODE(rs[D3DRS_FOGTABLEMODE])))
@@ -6658,16 +6616,6 @@ namespace dxvk {
     m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : 0.0f;
 
     m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
-  }
-
-
-  void D3D9DeviceEx::UpdateGlobalSpecular() {
-    m_dirty.clr(D3D9DeviceDirtyFlag::FFGlobalSpecular);
-
-    bool specularEnabled = m_state.renderStates[D3DRS_SPECULARENABLE];
-
-    if (m_specInfo.set<D3D9SpecConstantId::SpecFFGlobalSpecularEnabled>(specularEnabled))
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
   }
 
 
@@ -7180,15 +7128,10 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    VkCompareOp alphaOp = m_alphaTestEnabled
-      ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
-      : VK_COMPARE_OP_ALWAYS;
+    VkCompareOp alphaOp = VK_COMPARE_OP_ALWAYS;
 
-    uint32_t precision = alphaOp != VK_COMPARE_OP_ALWAYS
-      ? GetAlphaTestPrecision(m_state.renderTargets[0].ptr())
-      : 0u;
-
-    UpdateAlphaTestSpec(alphaOp, precision);
+    if (m_alphaTestEnabled)
+      alphaOp = DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]));
 
     if (m_specData.setAlphaCompareOp(alphaOp))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
@@ -7444,9 +7387,6 @@ namespace dxvk {
 
     UpdatePointMode(PrimitiveType == D3DPT_POINTLIST);
 
-    if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::FFGlobalSpecular)))
-      UpdateGlobalSpecular();
-
     if (likely(UseProgrammableVS())) {
       UpdateShaderConstants<D3D9ShaderType::VertexShader>();
 
@@ -7455,77 +7395,32 @@ namespace dxvk {
           & m_consts[uint32_t(D3D9ShaderType::VertexShader)].shaderConstantsInfo.boolMask;
 
         if (m_specData.setVsBoolConstants(boolConstants))
-          m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries),
-
-        UpdateVertexBoolSpec(boolConstants);
-      } else
-        UpdateVertexBoolSpec(0);
-    }
-    else {
-      UpdateVertexBoolSpec(0);
+          m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
+      }
+    } else {
       UpdateFixedFunctionVS();
     }
 
     if (unlikely(m_dirty.test(D3D9DeviceDirtyFlag::InputLayout)))
       BindInputLayout();
 
-    uint32_t projected = m_textureSlotTracking.projected;
-
     if (likely(UseProgrammablePS())) {
       UpdateShaderConstants<D3D9ShaderType::PixelShader>();
-
-      const uint32_t psTextureMask = usedTextureMask & ((1u << caps::MaxTexturesPS) - 1u);
-      const uint32_t fetch4        = m_textureSlotTracking.fetch4    & psTextureMask;
-      uint32_t textureTypes        = m_textureSlotTracking.textureType;
-
-      const auto& programInfo = GetCommonShader(m_state.pixelShader)->GetInfo();
-      const bool useProgrammableVS = UseProgrammableVS();
-
-      // Fixed function shaders use the projected spec constant too.
-      if (likely(useProgrammableVS && (programInfo.getVersion().first > 2 || programInfo.getVersion().second > 3))) {
-        projected = 0u;
-      } else if (useProgrammableVS) {
-        // Programmable shaders can only sample textures in SM3 which doesn't use the projected state anymore.
-        // So we can restrict it to the ones that the pixel shader uses.
-        projected &= psTextureMask;
-      }
-
-      if (likely(programInfo.getVersion().first >= 2 && !m_d3d9Options.forceSamplerTypeSpecConstants)) {
-        // SM2 and up need to declare the sampler type in the shader.
-        textureTypes = 0u;
-      }
-
-      UpdatePixelShaderSamplerSpec(textureTypes, fetch4);
 
       uint32_t boolConstants = m_state.psConsts->bConsts[0]
         & m_consts[uint32_t(D3D9ShaderType::PixelShader)].shaderConstantsInfo.boolMask;
 
       if (m_specData.setPsBoolConstants(boolConstants))
-        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries),
-
-      UpdatePixelBoolSpec(boolConstants);
+        m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
     }
-    else {
-      // Fixed function shaders use the projected spec constant too.
-      if (likely(UseProgrammableVS())) {
-        const uint32_t psTextureMask = usedTextureMask & ((1u << 8u) - 1u);
-        projected &= psTextureMask;
-      }
-
-      UpdatePixelBoolSpec(0);
-      UpdatePixelShaderSamplerSpec(m_textureSlotTracking.textureType, 0u);
-
-      if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader))
-        UpdateFixedFunctionPS();
+    else if (m_dirty.test(D3D9DeviceDirtyFlag::FFPixelShader)) {
+      UpdateFixedFunctionPS();
     }
 
-    // TODO get rid of some unnecessary masking once we're done with the spec constant port
     uint32_t nullTextureMask = usedSamplerMask & ~usedTextureMask;
-    uint32_t depthTextureMask = m_textureSlotTracking.depth & usedTextureMask;
-    uint32_t drefClampMask = m_textureSlotTracking.drefClamp & depthTextureMask;
+    uint32_t depthTextureMask = m_textureSlotTracking.depth;
+    uint32_t drefClampMask = m_textureSlotTracking.drefClamp;
     uint32_t fetch4TextureMask = UseProgrammablePS() ? m_textureSlotTracking.fetch4 : 0u;
-
-    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask, drefClampMask, projected);
 
     bool specDirty = false;
     specDirty |= m_specData.setSamplerProjectionMask(m_textureSlotTracking.projected & usedTextureMask);
@@ -8353,16 +8248,10 @@ namespace dxvk {
       }
     };
 
-    // Spec constants...
-    const auto repackArg = [](uint32_t arg) {
-      return (arg & 0b111u) | ((arg & 0b110000u) >> 1u);
-    };
-
-    constexpr uint32_t perTextureStageSpecConsts = uint32_t(D3D9SpecConstantId::SpecFFTextureStage1ColorOp) - uint32_t(D3D9SpecConstantId::SpecFFTextureStage0ColorOp);
     bool dirty = false;
 
     // Work out which stages are actually in use
-    uint32_t lastActiveTextureStage = 0u;
+    uint32_t activeTextureStageCount = 0u;
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       auto& data = m_state.textureStages[i];
@@ -8389,10 +8278,10 @@ namespace dxvk {
           break;
       }
 
-      lastActiveTextureStage = i;
+      activeTextureStageCount += 1u;
     }
 
-    for (uint32_t i = 0u; i <= lastActiveTextureStage; i++) {
+    for (uint32_t i = 0u; i < activeTextureStageCount; i++) {
       auto& data = m_state.textureStages[i];
 
       DWORD resultArg = data[DXVK_TSS_RESULTARG];
@@ -8415,45 +8304,15 @@ namespace dxvk {
       }
 
       // The last stage *always* writes to current.
-      if (i == lastActiveTextureStage)
+      if (i + 1u == activeTextureStageCount)
         resultArg = D3DTA_CURRENT;
-
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), colorOp);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), repackArg(colorArg1));
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), repackArg(colorArg2));
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), alphaOp);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), repackArg(alphaArg1));
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), repackArg(alphaArg2));
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), resultIsTemp);
-      // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg0 + i), repackArg(colorArg0));
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg0 + i), repackArg(alphaArg0));
-
-      // The last stage *always* writes to current.
-      if (i == lastActiveTextureStage)
-        dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), false);
 
       dirty |= m_specData.setTextureStage(i, colorOp, alphaOp, resultArg,
         colorArg0, colorArg1, colorArg2, alphaArg0, alphaArg1, alphaArg2);
     }
 
-    for (uint32_t i = lastActiveTextureStage + 1u; i < caps::TextureStageCount; i++) {
-      // Set all of it to 0 to avoid unnecessary bloat
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorOp + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg1 + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg2 + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaOp + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg1 + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg2 + perTextureStageSpecConsts * i), 0);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ResultIsTemp + perTextureStageSpecConsts * i), 0);
-      // Color arg0 and alpha arg0 for all stages are packed after all the other FF spec consts
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0ColorArg0 + i), 0u);
-      dirty |= m_specInfo.set(D3D9SpecConstantId(D3D9SpecConstantId::SpecFFTextureStage0AlphaArg0 + i), 0u);
-
+    for (uint32_t i = activeTextureStageCount; i < caps::TextureStageCount; i++)
       dirty |= m_specData.disableTextureStage(i);
-    }
-
-    dirty |= m_specInfo.set<D3D9SpecConstantId::SpecFFLastActiveTextureStage>(lastActiveTextureStage);
 
     if (dirty)
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
@@ -8838,11 +8697,6 @@ namespace dxvk {
     // We should do this...
     m_dirty.set(D3D9DeviceDirtyFlag::InputLayout);
 
-    UpdatePixelShaderSamplerSpec(0u, 0u);
-    UpdateVertexBoolSpec(0u);
-    UpdatePixelBoolSpec(0u);
-    UpdateCommonSamplerSpec(0u, 0u, 0u, 0u);
-
     UpdateAnyColorWrites<0>();
     UpdateAnyColorWrites<1>();
     UpdateAnyColorWrites<2>();
@@ -9093,73 +8947,20 @@ namespace dxvk {
     }
   }
 
-  ////////////////////////////////////
-  // D3D9 Device Specialization State
-  ////////////////////////////////////
-
-  void D3D9DeviceEx::UpdateAlphaTestSpec(VkCompareOp alphaOp, uint32_t precision) {
-    bool dirty  = m_specInfo.set<SpecAlphaCompareOp>(uint32_t(alphaOp));
-         dirty |= m_specInfo.set<SpecAlphaPrecisionBits>(precision);
-
-    if (dirty)
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdateVertexBoolSpec(uint32_t value) {
-    if (m_specInfo.set<SpecVertexShaderBools>(value))
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdatePixelBoolSpec(uint32_t value) {
-    if (m_specInfo.set<SpecPixelShaderBools>(value))
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t fetch4) {
-    bool dirty  = m_specInfo.set<SpecSamplerType>(types);
-         dirty |= m_specInfo.set<SpecSamplerFetch4>(fetch4);
-
-    if (dirty)
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask, uint32_t drefMask, uint32_t projections) {
-    bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
-         dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
-         dirty |= m_specInfo.set<SpecSamplerDrefClamp>(drefMask);
-         dirty |= m_specInfo.set<SpecSamplerProjected>(projections);
-
-    if (dirty)
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdatePointModeSpec(uint32_t mode) {
-    if (m_specInfo.set<SpecPointMode>(mode))
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
-
-  void D3D9DeviceEx::UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode) {
-    bool dirty  = m_specInfo.set<SpecFogEnabled>(fogEnabled);
-         dirty |= m_specInfo.set<SpecVertexFogMode>(vertexFogMode);
-         dirty |= m_specInfo.set<SpecPixelFogMode>(pixelFogMode);
-
-    if (dirty)
-      m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
-  }
-
 
   void D3D9DeviceEx::BindSpecConstants() {
     m_dirty.clr(D3D9DeviceDirtyFlag::SpecializationEntries);
 
-    EmitCs([cSpecInfo = m_specInfo](DxvkContext* ctx) {
-      for (size_t i = 0; i < cSpecInfo.data.size(); i++)
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, cSpecInfo.data[i]);
+    EmitCs([cSpecData = m_specData] (DxvkContext* ctx) {
+      // Need to get a little bit creative to stay in spec here since constants
+      // are exposed as dwords, yet the raw type is not built on top of dwords.
+      auto data = reinterpret_cast<const char*>(&cSpecData);
+
+      for (uint32_t i = 0u; i < sizeof(cSpecData) / sizeof(uint32_t); i++) {
+        uint32_t dword;
+        std::memcpy(&dword, data + i * sizeof(uint32_t), sizeof(uint32_t));
+        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, dword);
+      }
     });
   }
 
