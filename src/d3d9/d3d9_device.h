@@ -21,7 +21,6 @@
 #include "d3d9_fixed_function.h"
 #include "d3d9_swvp_emu.h"
 
-#include "d3d9_spec_constants.h"
 #include "d3d9_interop.h"
 #include "d3d9_on_12.h"
 
