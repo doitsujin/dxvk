@@ -5876,6 +5876,10 @@ namespace dxvk {
     // can processe them before the first use.
     m_initializer->FlushCsChunk();
 
+    // Reset last CS command since it is no longer safe to access
+    m_csDataType = D3D9CmdType::None;
+    m_csData = nullptr;
+
     // Constant buffers may hold a pointer into the current chunk,
     // reset that here so the data won't get overwritten.
     for (auto& cbv : m_constantBuffers)
@@ -7651,7 +7655,7 @@ namespace dxvk {
         : GetFixedFunctionIsgn();
 
       auto elementCount = vertexElements.size();
-      auto elementData = EmitCsCmd<D3DVERTEXELEMENT9>(elementCount, [
+      auto elementData = EmitCsCmd<D3DVERTEXELEMENT9>(D3D9CmdType::None, elementCount, [
         &cIaState         = m_iaState,
         cInputSignature   = inputSignature,
         cStreamsInstanced = m_vbSlotTracking.instanced,
