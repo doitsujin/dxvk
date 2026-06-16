@@ -9840,6 +9840,9 @@ namespace dxvk {
     barrier.image = image.handle();
     barrier.subresourceRange = subresources;
 
+    if (barrier.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      barrier.subresourceRange.aspectMask = image.formatInfo()->aspectMask;
+
     // maintenance9 changed semantics for barriers involving 3D images
     if (image.info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT) {
       barrier.subresourceRange.baseArrayLayer = 0u;
