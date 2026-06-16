@@ -7321,7 +7321,8 @@ namespace dxvk {
 
 
   uint32_t D3D9DeviceEx::GetInstanceCount() const {
-    return std::max(m_state.streamFreq[0] & 0x7FFFFFu, 1u);
+    uint32_t instanceCount = std::max(m_state.streamFreq[0] & 0x7FFFFFu, 1u);
+    return m_vbSlotTracking.instanced ? instanceCount : 1u;
   }
 
 
