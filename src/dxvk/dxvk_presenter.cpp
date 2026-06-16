@@ -484,6 +484,11 @@ namespace dxvk {
   void Presenter::setSurfaceFormat(VkSurfaceFormatKHR format) {
     std::lock_guard lock(m_surfaceMutex);
 
+    if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+      format.colorSpace = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+      format.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+    }
+
     if (m_preferredFormat.format != format.format || m_preferredFormat.colorSpace != format.colorSpace) {
       m_preferredFormat = format;
       m_dirtySwapchain = true;
