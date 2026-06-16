@@ -94,7 +94,7 @@ namespace dxvk {
       uint32_t workerCount = coreCount;
 
       if (env::is32BitHostPlatform())
-        workerCount = std::min(workerCount, 16u);
+        workerCount = std::min(workerCount, 8u);
 
       // Number of workers that can process pipeline pipelines with normal
       // priority. Any other workers can only build high-priority pipelines.
