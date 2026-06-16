@@ -3013,39 +3013,39 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount))
       return D3D_OK;
 
-    bool dynamicSysmemVBOs;
+    bool dynamicSysmemVBOs = false;
+
     uint32_t firstIndex     = 0;
     int32_t baseVertexIndex = 0;
     uint32_t vertexCount    = GetVertexCount(PrimitiveType, PrimitiveCount);
-    UploadPerDrawData(
-      StartVertex,
-      vertexCount,
-      firstIndex,
-      0,
-      baseVertexIndex,
-      &dynamicSysmemVBOs,
-      nullptr
-    );
+
+    UploadPerDrawData(StartVertex, vertexCount, firstIndex, 0,
+      baseVertexIndex, &dynamicSysmemVBOs, nullptr);
 
     PrepareDraw(PrimitiveType, !dynamicSysmemVBOs, false);
 
-    EmitCs([this,
-      cPrimType    = PrimitiveType,
-      cPrimCount   = PrimitiveCount,
-      cStartVertex = StartVertex
-    ](DxvkContext* ctx) {
-      uint32_t vertexCount = GetVertexCount(cPrimType, cPrimCount);
+    // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
+    VkDrawIndirectCommand draw = {};
+    draw.vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
+    draw.instanceCount = 1u;
+    draw.firstVertex = StartVertex;
 
-      // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
+    // Batch draws without state changes if possible
+    if (m_csDataType == D3D9CmdType::Draw) {
+      auto* drawArgs = m_csChunk->pushData(m_csData, 1u);
 
-      VkDrawIndirectCommand draw = { };
-      draw.vertexCount   = vertexCount;
-      draw.instanceCount = 1u;
-      draw.firstVertex   = cStartVertex;
+      if (likely(drawArgs)) {
+        new (drawArgs) VkDrawIndirectCommand(draw);
+        return D3D_OK;
+      }
+    }
 
-      ctx->draw(1u, &draw);
-    });
+    EmitCsCmd<VkDrawIndirectCommand>(D3D9CmdType::Draw, 1u,
+      [this] (DxvkContext* ctx, const VkDrawIndirectCommand* drawArgs, uint32_t drawCount) {
+        ctx->draw(drawCount, drawArgs);
+      });
 
+    new (m_csData->first()) VkDrawIndirectCommand(draw);
     return D3D_OK;
   }
 
@@ -3065,39 +3065,50 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount || !NumVertices))
       return D3D_OK;
 
-    bool dynamicSysmemVBOs;
-    bool dynamicSysmemIBO;
+    bool dynamicSysmemVBOs = false;
+    bool dynamicSysmemIBO = false;
+
     uint32_t indexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
-    UploadPerDrawData(
-      MinVertexIndex,
-      NumVertices,
-      StartIndex,
-      indexCount,
-      BaseVertexIndex,
-      &dynamicSysmemVBOs,
-      &dynamicSysmemIBO
-    );
+
+    UploadPerDrawData(MinVertexIndex, NumVertices, StartIndex, indexCount,
+      BaseVertexIndex, &dynamicSysmemVBOs, &dynamicSysmemIBO);
 
     PrepareDraw(PrimitiveType, !dynamicSysmemVBOs, !dynamicSysmemIBO);
 
-    EmitCs([this,
-      cPrimType        = PrimitiveType,
-      cPrimCount       = PrimitiveCount,
-      cStartIndex      = StartIndex,
-      cBaseVertexIndex = BaseVertexIndex,
-      cInstanceCount   = GetInstanceCount()
-    ](DxvkContext* ctx) {
-      auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
+    VkDrawIndexedIndirectCommand draw = {};
+    draw.indexCount = indexCount;
+    draw.instanceCount = GetInstanceCount();
+    draw.firstIndex = StartIndex;
+    draw.vertexOffset = BaseVertexIndex;
 
-      VkDrawIndexedIndirectCommand draw = { };
-      draw.indexCount    = drawInfo.vertexCount;
-      draw.instanceCount = drawInfo.instanceCount;
-      draw.firstIndex    = cStartIndex;
-      draw.vertexOffset  = cBaseVertexIndex;
+    // Batch draws without state changes if possible
+    if (m_csDataType == D3D9CmdType::DrawIndexed) {
+      auto* drawArgs = m_csChunk->pushData(m_csData, 1u);
 
-      ctx->drawIndexed(1u, &draw);
+      if (likely(drawArgs)) {
+        new (drawArgs) VkDrawIndexedIndirectCommand(draw);
+        return D3D_OK;
+      }
+    }
+
+    EmitCsCmd<VkDrawIndexedIndirectCommand>(D3D9CmdType::DrawIndexed, 1u,
+      [this] (DxvkContext* ctx, VkDrawIndexedIndirectCommand* drawArgs, uint32_t drawCount) {
+      // If instancing is enabled for any vertex binding, but none of the instanced
+      // bindings are actually used, make sure to only draw a single instance anyway.
+      // If instancing is disabled, we don't need to do anything because any calls
+      // to GetInstanceCount will have returned 1 anyway.
+      // It is not possible for instancing state of any bindings to change without
+      // also issuing extra CS commands, so this is safe.
+      // TODO is this correct even with blending edge cases? This logic is old.
+      if (unlikely(m_iaState.streamsInstanced && !(m_iaState.streamsInstanced & m_iaState.streamsUsed))) {
+        for (uint32_t i = 0u; i < drawCount; i++)
+          drawArgs[i].instanceCount = 1u;
+      }
+
+      ctx->drawIndexed(drawCount, drawArgs);
     });
 
+    new (m_csData->first()) VkDrawIndexedIndirectCommand(draw);
     return D3D_OK;
   }
 

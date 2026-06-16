@@ -53,6 +53,8 @@ namespace dxvk {
 
   enum class D3D9CmdType : uint32_t {
     None,
+    Draw,
+    DrawIndexed,
   };
 
   enum class D3D9DeviceDirtyFlag : uint32_t {
