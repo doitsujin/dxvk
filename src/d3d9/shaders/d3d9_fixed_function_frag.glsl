@@ -204,7 +204,7 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
-vec4 calculateFog(vec4 vPos, vec4 oColor) {
+vec3 calculateFog(vec3 oColor) {
     FogState fogState = getFogState();
 
     vec3 fogColor = unpackUnorm4x8(global.packedFogColorAndAlphaRef).bgr;
@@ -215,10 +215,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
     if (!fogState.enable)
         return oColor;
 
-    float w = vPos.w;
-    float z = vPos.z;
-    float depth = z * (1.0 / w);
-    float fogFactor;
+    float fogFactor = 1.0f;
 
     switch (fogState.pixelMode) {
         case D3DFOG_NONE:
@@ -227,7 +224,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
 
         // (end - d) / (end - start)
         case D3DFOG_LINEAR:
-            fogFactor = fogEnd - depth;
+            fogFactor = fogEnd - in_Fog;
             fogFactor = fogFactor * fogScale;
             break;
 
@@ -235,7 +232,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
         case D3DFOG_EXP2:
         // 1 / (e^[d * density])
         case D3DFOG_EXP:
-            fogFactor = depth * fogDensity;
+            fogFactor = in_Fog * fogDensity;
 
             if (fogState.pixelMode == D3DFOG_EXP2)
                 fogFactor *= fogFactor;
@@ -247,12 +244,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
     }
 
     fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
-
-    vec4 color = oColor;
-    vec3 color3 = color.rgb;
-    vec3 fogFact3 = vec3(fogFactor);
-    vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
-    return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
+    return mix(fogColor, oColor, vec3(fogFactor));
 }
 
 
@@ -620,7 +612,7 @@ void main() {
     if (isSpecularEnabled())
         state.current.xyz += in_Color1.xyz;
 
-    state.current = calculateFog(gl_FragCoord, state.current);
+    state.current.rgb = calculateFog(state.current.rgb);
 
     out_Color0 = state.current;
 

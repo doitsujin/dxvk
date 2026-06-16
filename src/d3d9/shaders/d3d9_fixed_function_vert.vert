@@ -289,6 +289,8 @@ float calculateFog(vec4 vPos) {
     if (vertexHasPositionT()) {
         fogFactor = hasSpecular ? specular.w : 1.0;
     } else {
+        if (fogState.pixelMode != 0)
+            return depth;
         switch (fogState.vertexMode) {
             default:
             case D3DFOG_NONE:
