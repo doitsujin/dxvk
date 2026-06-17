@@ -1,6 +1,7 @@
 #include "dxgi_options.h"
 
 #include <unordered_map>
+#include <vector>
 
 namespace dxvk {
 
@@ -26,19 +27,110 @@ namespace dxvk {
     return id;
   }
 
-  /* First generation XeSS causes crash on proton for Intel due to missing
-   * Intel interface. Avoid crash by pretending to be non-Intel if the
-   * libxess.dll module is loaded by an application.
-   */
-  static bool isXessUsed() {
+  static HMODULE getXessModule() {
 #ifdef _WIN32
-      if (GetModuleHandleA("libxess") != nullptr ||
-          GetModuleHandleA("libxess_dx11") != nullptr)
-        return true;
-      else
-        return false;
+    HMODULE module = GetModuleHandleA("libxess");
+
+    if (module == nullptr)
+      module = GetModuleHandleA("libxess_dx11");
+
+    return module;
 #else
+    return nullptr;
+#endif
+  }
+
+  static bool getModuleVersion(HMODULE module, uint16_t& major, uint16_t& minor) {
+#ifdef _WIN32
+    using GetFileVersionInfoSizeAFn = DWORD (WINAPI *) (LPCSTR, LPDWORD);
+    using GetFileVersionInfoAFn = BOOL (WINAPI *) (LPCSTR, DWORD, DWORD, LPVOID);
+    using VerQueryValueAFn = BOOL (WINAPI *) (LPCVOID, LPCSTR, LPVOID*, PUINT);
+
+    HMODULE versionModule = LoadLibraryA("version.dll");
+
+    if (versionModule == nullptr)
       return false;
+
+    auto pGetFileVersionInfoSizeA = reinterpret_cast<GetFileVersionInfoSizeAFn>(GetProcAddress(versionModule, "GetFileVersionInfoSizeA"));
+    auto pGetFileVersionInfoA = reinterpret_cast<GetFileVersionInfoAFn>(GetProcAddress(versionModule, "GetFileVersionInfoA"));
+    auto pVerQueryValueA = reinterpret_cast<VerQueryValueAFn>(GetProcAddress(versionModule, "VerQueryValueA"));
+
+    if (pGetFileVersionInfoSizeA == nullptr || pGetFileVersionInfoA == nullptr || pVerQueryValueA == nullptr) {
+      FreeLibrary(versionModule);
+      return false;
+    }
+
+    char modulePath[MAX_PATH] = { };
+
+    if (!GetModuleFileNameA(module, modulePath, MAX_PATH)) {
+      FreeLibrary(versionModule);
+      return false;
+    }
+
+    DWORD dummy = 0;
+    DWORD infoSize = pGetFileVersionInfoSizeA(modulePath, &dummy);
+
+    if (!infoSize) {
+      FreeLibrary(versionModule);
+      return false;
+    }
+
+    std::vector<char> infoData(infoSize);
+
+    if (!pGetFileVersionInfoA(modulePath, 0, infoSize, infoData.data())) {
+      FreeLibrary(versionModule);
+      return false;
+    }
+
+    void* fileInfoData = nullptr;
+    UINT fileInfoSize = 0;
+
+    if (!pVerQueryValueA(infoData.data(), "\\", &fileInfoData, &fileInfoSize)
+     || fileInfoData == nullptr
+     || fileInfoSize < sizeof(VS_FIXEDFILEINFO)) {
+      FreeLibrary(versionModule);
+      return false;
+    }
+
+    auto* fileInfo = static_cast<VS_FIXEDFILEINFO*>(fileInfoData);
+
+    major = HIWORD(fileInfo->dwFileVersionMS);
+    minor = LOWORD(fileInfo->dwFileVersionMS);
+
+    FreeLibrary(versionModule);
+    return true;
+#else
+    return false;
+#endif
+  }
+
+  /* XeSS versions below 1.3 may crash on Proton for Intel due to missing
+   * Intel interface. Avoid the crash by pretending to be non-Intel.
+   */
+  static bool shouldHideIntelForXess() {
+#ifdef _WIN32
+    HMODULE module = getXessModule();
+
+    if (module == nullptr)
+      return false;
+
+    uint16_t major = 0;
+    uint16_t minor = 0;
+
+    if (!getModuleVersion(module, major, minor)) {
+      Logger::info("Detected XeSS usage, but failed to determine XeSS version; hiding Intel GPU Vendor as fallback");
+      return true;
+    }
+
+    if (major < 1 || (major == 1 && minor < 3)) {
+      Logger::info(str::format("Detected XeSS version ", major, ".", minor, ", hiding Intel GPU Vendor"));
+      return true;
+    }
+
+    Logger::info(str::format("Detected XeSS version ", major, ".", minor, ", keeping Intel GPU Vendor visible"));
+    return false;
+#else
+    return false;
 #endif
   }
 
@@ -113,9 +205,8 @@ namespace dxvk {
     this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
     this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
 
-    /* Force vendor ID to non-Intel ID when XeSS is in use */
-    if (isXessUsed()) {
-      Logger::info(str::format("Detected XeSS usage, hiding Intel GPU Vendor"));
+    /* Force vendor ID to non-Intel ID for old XeSS versions */
+    if (shouldHideIntelForXess()) {
       this->hideIntelGpu = true;
     }
 
