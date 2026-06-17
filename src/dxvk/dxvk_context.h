@@ -1337,6 +1337,10 @@ namespace dxvk {
     DxvkObjects*            m_common;
 
     uint64_t                m_trackingId = 0u;
+    uint64_t                m_submitWaitId = 0u;
+    uint64_t                m_submitLastId = 0u;
+    Rc<DxvkFence>           m_trackingFence;
+
     uint32_t                m_renderPassIndex = 0u;
     uint32_t                m_unsynchronizedDrawCount = 0u;
 
