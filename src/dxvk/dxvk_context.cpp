@@ -3549,7 +3549,12 @@ namespace dxvk {
     imageAccess.imageOffset = imageOffset;
     imageAccess.imageExtent = imageExtent;
 
-    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer,
+    // Try to perform image uploads on the async transfer queue
+    DxvkCmdBuffer cmdBuffer = (buffer->memFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+      ? DxvkCmdBuffer::InitBuffer
+      : DxvkCmdBuffer::SdmaBuffer;
+
+    cmdBuffer = prepareOutOfOrderTransfer(cmdBuffer,
       accessBatch.size(), accessBatch.data());
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
@@ -10525,21 +10530,16 @@ namespace dxvk {
       return DxvkCmdBuffer::ExecBuffer;
 
     // For SDMA copies, we need to verify a few things to make sure that
-    // the image can actually be written on the transfer queue. We don't
-    // know the copy region, so just check for maintenance11, which
-    // guarantees support for (1,1,1) transfer granularity.
+    // the image can actually be written on the transfer queue.
     if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) {
-      if (m_device->features().khrMaintenance11.maintenance11) {
-        // If the image hasn't been used in the previous submission,
-        // simply synchronize queues and perform the upload
+      // We can't do anything clever w.r.t. ownership transfers, so only
+      // allow SDMA copies to happen if we discard the entire image.
+      if (discard && m_device->features().khrMaintenance11.maintenance11) {
+        // If the image hasn't been used in the previous submission, simply
+        // synchronize queues and perform the upload. Don't attempt to discard
+        // images because emitting the initial transition would get weird.
         if (image.getTrackId() < m_submitLastId) {
           m_submitWaitId = std::max(m_submitWaitId, image.getTrackId());
-          return cmdBuffer;
-        }
-
-        // Otherwise, check if we can discard the image for writing
-        if (discard && access == DxvkAccess::Write && image.canRelocate()) {
-          invalidateImage(&image, image.allocateStorage(), image.info().layout);
           return cmdBuffer;
         }
       }
