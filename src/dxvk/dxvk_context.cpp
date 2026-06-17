@@ -9653,6 +9653,7 @@ namespace dxvk {
     // we can still try to move layout transitions that may be necessary to an
     // out-of-order command buffer in order to avoid additional barriers.
     bool promoteTransitions = m_imageLayoutTransitions.empty();
+    bool isSdma = cmdBuffer == DxvkCmdBuffer::SdmaBarriers;
 
     // Flush any barriers affecting the resources
     VkPipelineStageFlags2 srcStages = 0u;
@@ -9679,10 +9680,11 @@ namespace dxvk {
           }
         }
 
-        if (unlikely(e.stages & ~e.buffer->info().stages)
+        if (unlikely(isSdma)
+         || unlikely(e.stages & ~e.buffer->info().stages)
          || unlikely(e.access & ~e.buffer->info().access)) {
-          srcStages |= e.buffer->info().stages;
-          srcAccess |= e.buffer->info().access;
+          srcStages |= isSdma ? VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT : e.buffer->info().stages;
+          srcAccess |= isSdma ? VK_ACCESS_2_NONE : e.buffer->info().access;
           dstStages |= e.stages;
           dstAccess |= e.access;
         }
@@ -9713,10 +9715,11 @@ namespace dxvk {
           }
         }
 
-        if (unlikely(e.stages & ~e.image->info().stages)
+        if (unlikely(isSdma)
+         || unlikely(e.stages & ~e.image->info().stages)
          || unlikely(e.access & ~e.image->info().access)) {
-          srcStages |= e.image->info().stages;
-          srcAccess |= e.image->info().access;
+          srcStages |= isSdma ? VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT : e.image->info().stages;
+          srcAccess |= isSdma ? VK_ACCESS_2_NONE : e.image->info().access;
           dstStages |= e.stages;
           dstAccess |= e.access;
         }
