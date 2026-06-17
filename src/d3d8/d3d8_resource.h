@@ -29,18 +29,16 @@ namespace dxvk {
             DWORD       SizeOfData,
             DWORD       Flags) final {
       HRESULT hr;
+
       if (Flags & D3DSPD_IUNKNOWN) {
         if(unlikely(SizeOfData != sizeof(IUnknown*)))
           return D3DERR_INVALIDCALL;
-        IUnknown* unknown =
-          const_cast<IUnknown*>(
-            reinterpret_cast<const IUnknown*>(pData));
-        hr = m_privateData.setInterface(
-          refguid, unknown);
+
+        IUnknown* unknown = const_cast<IUnknown*>(reinterpret_cast<const IUnknown*>(pData));
+        hr = m_privateData.setInterface(refguid, unknown);
+      } else {
+        hr = m_privateData.setData(refguid, SizeOfData, pData);
       }
-      else
-        hr = m_privateData.setData(
-          refguid, SizeOfData, pData);
 
       if (unlikely(FAILED(hr)))
         return D3DERR_INVALIDCALL;

@@ -27,7 +27,6 @@ namespace dxvk {
 
       // cache adapter modes and mode counts for each d3d9 format
       for (d3d9::D3DFORMAT fmt : ADAPTER_FORMATS) {
-
         const UINT modeCount = m_d3d9->GetAdapterModeCount(adapter, fmt);
         for (UINT mode = 0; mode < modeCount; mode++) {
 
@@ -74,7 +73,6 @@ namespace dxvk {
 
     d3d9::D3DADAPTER_IDENTIFIER9 identifier9;
     HRESULT res = m_d3d9->GetAdapterIdentifier(Adapter, Flags, &identifier9);
-
     if (unlikely(FAILED(res)))
       return res;
 
@@ -93,7 +91,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT __stdcall D3D8Interface::EnumAdapterModes(
+  HRESULT STDMETHODCALLTYPE D3D8Interface::EnumAdapterModes(
           UINT Adapter,
           UINT Mode,
           D3DDISPLAYMODE* pMode) {
@@ -109,7 +107,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT __stdcall D3D8Interface::CreateDevice(
+  HRESULT STDMETHODCALLTYPE D3D8Interface::CreateDevice(
         UINT Adapter,
         D3DDEVTYPE DeviceType,
         HWND hFocusWindow,
@@ -122,7 +120,6 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     HRESULT res = ValidatePresentationParameters(pPresentationParameters);
-
     if (unlikely(FAILED(res)))
       return res;
 
@@ -136,7 +133,6 @@ namespace dxvk {
       &params,
       &pDevice9
     );
-
     if (unlikely(FAILED(res)))
       return res;
 

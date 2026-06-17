@@ -63,6 +63,7 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
 
       *ppDevice = ref(GetDevice());
+
       return D3D_OK;
     }
 

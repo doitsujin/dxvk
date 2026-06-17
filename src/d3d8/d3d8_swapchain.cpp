@@ -25,16 +25,14 @@ namespace dxvk {
     if (BackBuffer >= m_backBuffers.size() || m_backBuffers[BackBuffer] == nullptr) {
       Com<d3d9::IDirect3DSurface9> pSurface9;
       HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
+      if (unlikely(FAILED(res)))
+        return res;
 
-      if (likely(SUCCEEDED(res))) {
-        m_backBuffers[BackBuffer] = new D3D8Surface(GetParent(), D3DPOOL_DEFAULT, std::move(pSurface9));
-        *ppBackBuffer = m_backBuffers[BackBuffer].ref();
-      }
-
-      return res;
+      m_backBuffers[BackBuffer] = new D3D8Surface(GetParent(), D3DPOOL_DEFAULT, std::move(pSurface9));
     }
 
     *ppBackBuffer = m_backBuffers[BackBuffer].ref();
+
     return D3D_OK;
   }
 
