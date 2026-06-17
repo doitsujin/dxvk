@@ -28,18 +28,69 @@ namespace dxvk {
 
   /* First generation XeSS causes crash on proton for Intel due to missing
    * Intel interface. Avoid crash by pretending to be non-Intel if the
-   * libxess.dll module is loaded by an application.
-   */
-  static bool isXessUsed() {
-#ifdef _WIN32
-      if (GetModuleHandleA("libxess") != nullptr ||
-          GetModuleHandleA("libxess_dx11") != nullptr)
-        return true;
-      else
-        return false;
-#else
+   * libxess.dll module is loaded by an application. */
+  static bool isXess1xUsed() {
+    #ifdef _WIN32
+    HMODULE libxess = nullptr;
+
+    // Use Ex variant here to keep the library loaded while we use the handle
+    if (!GetModuleHandleExA(0u, "libxess", &libxess)
+     && !GetModuleHandleExA(0u, "libxess_dx11", &libxess))
       return false;
-#endif
+
+    if (!libxess)
+      return false;
+
+    // For some reason it seems to be impossible to just query
+    // the length, need to pre-allocate for the worst case
+    std::array<char, MAX_PATH + 1u> fileName = {};
+    auto nameLen = GetModuleFileNameA(libxess, fileName.data(), fileName.size());
+
+    // Should be safe to release the module now, we only operate
+    // on the actual file from now on
+    FreeLibrary(libxess);
+
+    if (!nameLen) {
+      Logger::warn("DXGI: Failed to get file name for XeSS module");
+      return true;
+    }
+
+    // Query version info blob size...
+    auto fiSize = GetFileVersionInfoSizeA(fileName.data(), nullptr);
+
+    if (!fiSize) {
+      Logger::warn("DXGI: Failed to get XeSS version info size");
+      return true;
+    }
+
+    // Retrieve actual version info blob
+    std::vector<char> fiData(fiSize);
+
+    if (!GetFileVersionInfoA(fileName.data(), 0u, fiSize, fiData.data())) {
+      Logger::warn("DXGI: Failed to get XeSS version info");
+      return true;
+    }
+
+    void* fiBlock = nullptr;
+    UINT fiBlockSize = 0u;
+
+    if (!VerQueryValueA(fiData.data(), "\\", &fiBlock, &fiBlockSize)) {
+      Logger::warn("DXGI: Failed to get XeSS version info block");
+      return true;
+    }
+
+    auto fiBlockTyped = reinterpret_cast<const VS_FIXEDFILEINFO*>(fiBlock);
+
+    if (!fiBlockTyped || fiBlockSize < sizeof(*fiBlockTyped)) {
+      Logger::warn("DXGI: Invalid XeSS version info block");
+      return true;
+    }
+
+    // XeSS 2.0 onwards should be fine
+    return fiBlockTyped->dwProductVersionMS < 0x20000u;
+    #else
+    return false;
+    #endif
   }
 
   static bool isNvapiEnabled() {
@@ -113,9 +164,9 @@ namespace dxvk {
     this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
     this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
 
-    /* Force vendor ID to non-Intel ID when XeSS is in use */
-    if (isXessUsed()) {
-      Logger::info(str::format("Detected XeSS usage, hiding Intel GPU Vendor"));
+    // Old XeSS libraries will crash if an Intel GPU is detected
+    if (isXess1xUsed()) {
+      Logger::info(str::format("Detected XeSS 1.x usage, hiding Intel GPU Vendor"));
       this->hideIntelGpu = true;
     }
 
