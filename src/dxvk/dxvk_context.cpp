@@ -71,6 +71,9 @@ namespace dxvk {
     // Add a fast path to query debug utils support
     if (m_device->debugFlags().test(DxvkDebugFlag::Capture))
       m_features.set(DxvkContextFeature::DebugUtils);
+
+    // Create timeline semaphore for resource tracking IDs
+    m_trackingFence = m_device->createFence(DxvkFenceCreateInfo());
   }
   
   
@@ -136,6 +139,14 @@ namespace dxvk {
   void DxvkContext::flushCommandList(
     const VkDebugUtilsLabelEXT*       reason,
           DxvkSubmitStatus*           status) {
+    // If necessary, block any async queue on previous command completion
+    if (m_submitWaitId)
+      m_cmd->waitFence(m_trackingFence, std::exchange(m_submitWaitId, 0ull));
+
+    // Signal tracking timeline to current tracking ID
+    m_cmd->signalFence(m_trackingFence, m_trackingId);
+    m_submitLastId = m_trackingId;
+
     // Flush pending descriptor updates and assign the sync
     // point to the submission
     if (m_features.any(DxvkContextFeature::DescriptorHeap,
