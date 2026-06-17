@@ -50,11 +50,22 @@ namespace dxvk {
     m_allocationCache = m_device->createAllocationCache(bufferUsage, memoryFlags);
 
     // Determine maximum tess factor based on device options
-    int32_t tessFactorOption = m_parent->GetOptions()->maxTessFactor;
-    m_maxTessFactor = std::min(m_device->properties().core.properties.limits.maxTessellationGenerationLevel, 64u);
+    if (!IsDeferred) {
+      int32_t maxTessFactor = int32_t(std::min(m_device->properties().core.properties.limits.maxTessellationGenerationLevel, 64u));
 
-    if (tessFactorOption > 0 && tessFactorOption < int32_t(m_maxTessFactor))
-      m_maxTessFactor = tessFactorOption;
+      if (m_parent->GetOptions()->maxTessFactor > 0)
+        maxTessFactor = std::min(maxTessFactor, m_parent->GetOptions()->maxTessFactor);
+
+      EmitCs([
+        cMaxTessFactor = maxTessFactor
+      ] (DxvkContext* ctx) {
+        D3D11HsPushData pushData = {};
+        pushData.maxTessFactor = float(cMaxTessFactor);
+
+        ctx->pushData(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+          0, sizeof(pushData), &pushData);
+      });
+    }
   }
 
 
@@ -3435,24 +3446,23 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyRasterizerSampleCount() {
-    D3D11BuiltInPushData pushData = {};
-    pushData.maxTessFactor = m_maxTessFactor;
-    pushData.sampleCount = m_state.om.sampleCount;
+    D3D11SpecData specData = {};
+    specData.sampleCount = m_state.om.sampleCount;
 
-    if (unlikely(!pushData.sampleCount)) {
-      pushData.sampleCount = m_state.rs.state
+    if (unlikely(!specData.sampleCount)) {
+      specData.sampleCount = m_state.rs.state
         ? m_state.rs.state->Desc().ForcedSampleCount
         : 0u;
 
-      if (!pushData.sampleCount)
-        pushData.sampleCount = 1u;
+      if (!specData.sampleCount)
+        specData.sampleCount = 1u;
     }
 
     EmitCs([
-      cPushData = pushData
+      cSpecData = specData
     ] (DxvkContext* ctx) {
-      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS,
-        0u, sizeof(cPushData), &cPushData);
+      ctx->setSpecConstants(VK_PIPELINE_BIND_POINT_GRAPHICS,
+        0u, sizeof(cSpecData), &cSpecData);
     });
   }
 
@@ -4824,8 +4834,7 @@ namespace dxvk {
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ResetCommandListState() {
     EmitCs([
-      cUsedBindings  = GetMaxUsedBindings(),
-      cMaxTessFactor = m_maxTessFactor
+      cUsedBindings  = GetMaxUsedBindings()
     ] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets(), 0u);
@@ -4916,12 +4925,6 @@ namespace dxvk {
           }
         }
       }
-
-      // Initialize push constants
-      D3D11BuiltInPushData pushData = {};
-      pushData.maxTessFactor = cMaxTessFactor;
-
-      ctx->pushData(VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(pushData), &pushData);
     });
   }
 

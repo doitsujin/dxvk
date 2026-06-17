@@ -28,14 +28,14 @@ namespace dxvk {
   using D3D11ShaderType = dxbc_spv::dxbc::ShaderType;
   using D3D11ShaderTypeFlags = Flags<dxbc_spv::dxbc::ShaderType>;
 
-  /**
-   * \brief D3D11 built-in push data
-   */
-  struct D3D11BuiltInPushData {
-    /// Tess factor limit, set via config. HS only.
-    uint16_t maxTessFactor = 0u;
-    /// Rasterizer sample count. PS only.
-    uint16_t sampleCount = 0u;
+  /** Hull shader push data */
+  struct D3D11HsPushData {
+    float maxTessFactor = 0.0f;
+  };
+
+  /** Specialization constants */
+  struct D3D11SpecData {
+    uint32_t sampleCount = 0u;
   };
 
   /**

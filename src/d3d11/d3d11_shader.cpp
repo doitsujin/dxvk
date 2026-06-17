@@ -109,8 +109,6 @@ namespace dxvk {
       const char* name;
     };
 
-    static const std::array<BuiltInInfo, 2u> s_builtIns;
-
     static void lowerBuiltIns(dxbc_spv::ir::Builder& builder) {
       using namespace dxbc_spv;
 
@@ -118,22 +116,25 @@ namespace dxvk {
       // only used in graphics pipelines.
       auto [entryPoint, shaderStage] = findEntryPoint(builder);
 
-      if (shaderStage == ir::ShaderStage::eCompute)
-        return;
+      ir::SsaDef pushData = {};
+      ir::SsaDef specSampleCount = {};
 
-      // Set up push data
-      ir::Type pushDataType = ir::Type();
+      switch (shaderStage) {
+        case ir::ShaderStage::eHull: {
+          pushData = builder.add(ir::Op::DclPushData(
+            ir::ScalarType::eF32, entryPoint, 0u, shaderStage));
+          builder.add(ir::Op::DebugName(pushData, "maxTessFactor"));
+        } break;
 
-      for (uint32_t i = 0u; i < s_builtIns.size(); i++)
-        pushDataType.addStructMember(s_builtIns[i].type);
+        case ir::ShaderStage::ePixel: {
+          specSampleCount = builder.add(ir::Op::DclSpecConstant(
+            ir::ScalarType::eU32, entryPoint, 0u, 0u));
+          builder.add(ir::Op::DebugName(specSampleCount, "vRasterizer"));
+        } break;
 
-      ir::SsaDef pushData = builder.add(ir::Op::DclPushData(
-        pushDataType, entryPoint, 0u, ir::ShaderStageMask()));
-
-      builder.add(ir::Op::DebugName(pushData, "builtIns"));
-
-      for (uint32_t i = 0u; i < s_builtIns.size(); i++)
-        builder.add(ir::Op::DebugMemberName(pushData, i, s_builtIns[i].name));
+        default:
+          return;
+      }
 
       // Gather built-in inputs
       small_vector<ir::SsaDef, 32u> inputs;
@@ -149,46 +150,44 @@ namespace dxvk {
         const auto& inputOp = builder.getOp(inputDef);
 
         auto builtIn = ir::BuiltIn(inputOp.getOperand(inputOp.getFirstLiteralOperandIndex()));
-        auto pushIndex = getBuiltInPushDataIndex(builtIn);
 
-        if (pushIndex)
-          rewriteBuiltIn(builder, inputDef, pushData, *pushIndex);
+        switch (builtIn) {
+          case ir::BuiltIn::eSampleCount: {
+            dxbc_spv_assert(specSampleCount);
+            rewriteBuiltIn(builder, inputDef, specSampleCount);
+          } break;
+
+          case ir::BuiltIn::eTessFactorLimit: {
+            dxbc_spv_assert(pushData);
+            rewriteBuiltIn(builder, inputDef, pushData);
+          } break;
+
+          default:
+            break;
+        }
       }
     }
 
-    static void rewriteBuiltIn(dxbc_spv::ir::Builder& builder, dxbc_spv::ir::SsaDef def, dxbc_spv::ir::SsaDef pushData, uint32_t pushIndex) {
+    static void rewriteBuiltIn(dxbc_spv::ir::Builder& builder, dxbc_spv::ir::SsaDef oldDef, dxbc_spv::ir::SsaDef newDef) {
       using namespace dxbc_spv;
 
       small_vector<ir::SsaDef, 32u> uses;
-      builder.getUses(def, uses);
+      builder.getUses(oldDef, uses);
+
+      const auto& newOp = builder.getOp(newDef);
 
       for (auto use : uses) {
         const auto& useOp = builder.getOp(use);
 
         if (useOp.getOpCode() == ir::OpCode::eInputLoad) {
-          auto pushType = s_builtIns[pushIndex].type;
-
-          auto loadType = useOp.getType().getBaseType(0u);
-          auto loadOp = builder.addBefore(use, ir::Op::PushDataLoad(
-            pushType, pushData, builder.makeConstant(pushIndex)));
-
-          // Convert to expected result type
-          ir::Op convertOp = (loadType.isFloatType())
-            ? ir::Op::ConvertItoF(loadType, loadOp)
-            : ir::Op::ConvertItoI(loadType, loadOp);
-
-          builder.rewriteOp(use, std::move(convertOp));
+          if (newOp.getOpCode() == ir::OpCode::eDclPushData) {
+            auto loadType = useOp.getType().getBaseType(0u);
+            builder.rewriteOp(use, ir::Op::PushDataLoad(loadType, newDef, ir::SsaDef()));
+          } else {
+            builder.rewriteDef(use, newDef);
+          }
         }
       }
-    }
-
-    static std::optional<uint32_t> getBuiltInPushDataIndex(dxbc_spv::ir::BuiltIn builtIn) {
-      for (uint32_t i = 0u; i < s_builtIns.size(); i++) {
-        if (s_builtIns[i].builtIn == builtIn)
-          return std::make_optional(i);
-      }
-
-      return std::nullopt;
     }
 
     static std::pair<dxbc_spv::ir::SsaDef, dxbc_spv::ir::ShaderStage> findEntryPoint(dxbc_spv::ir::Builder& builder) {
@@ -205,12 +204,6 @@ namespace dxvk {
     }
 
   };
-
-
-  const std::array<D3D11ShaderConverter::BuiltInInfo, 2u> D3D11ShaderConverter::s_builtIns = {{
-    { dxbc_spv::ir::BuiltIn::eTessFactorLimit,  dxbc_spv::ir::ScalarType::eU16, "maxTessFactor" },
-    { dxbc_spv::ir::BuiltIn::eSampleCount,      dxbc_spv::ir::ScalarType::eU16, "rasterizerSampleCount" },
-  }};
 
 
   
