@@ -1951,6 +1951,7 @@ namespace dxvk {
     void prepareSharedImages();
 
     bool transitionImageLayout(
+            DxvkCmdBuffer             cmdBuffer,
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             VkPipelineStageFlags2     srcStages,
