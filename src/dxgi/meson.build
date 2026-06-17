@@ -15,14 +15,17 @@ dxgi_src = [
 
 dxgi_ld_args      = []
 dxgi_link_depends = []
+dxgi_extra_dep    = []
 
-if platform != 'windows'
+if platform == 'windows'
+  dxgi_extra_dep    += [ cpp.find_library('version') ]
+else
   dxgi_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'dxgi.sym') ]
   dxgi_link_depends += files('dxgi.sym')
 endif
 
 dxgi_dll = shared_library(dxvk_name_prefix+'dxgi', dxgi_src, dxgi_res,
-  dependencies        : [ dxvk_dep ],
+  dependencies        : [ dxvk_dep, dxgi_extra_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'dxgi'+def_spec_ext,
