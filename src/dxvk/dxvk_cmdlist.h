@@ -401,7 +401,8 @@ namespace dxvk {
      * \param [in] value Value to wait for
      */
     void waitFence(Rc<DxvkFence> fence, uint64_t value) {
-      m_waitSemaphores.emplace_back(std::move(fence), value);
+      if (fence->getValue() < value)
+        m_waitSemaphores.emplace_back(std::move(fence), value);
     }
     
     /**
