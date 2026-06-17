@@ -118,6 +118,8 @@ namespace dxvk {
       const D3DPOOL                        Pool,
             Com<d3d9::IDirect3DTexture9>&& pTexture);
 
+    ~D3D8Texture2D();
+
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc);
@@ -146,6 +148,8 @@ namespace dxvk {
       const D3DPOOL                               Pool,
             Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture);
 
+    ~D3D8Texture3D();
+
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc);
@@ -173,6 +177,8 @@ namespace dxvk {
             D3D8Device*                         pDevice,
       const D3DPOOL                             Pool,
             Com<d3d9::IDirect3DCubeTexture9>&&  pTexture);
+
+    ~D3D8TextureCube();
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 

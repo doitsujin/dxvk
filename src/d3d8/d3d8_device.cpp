@@ -311,7 +311,14 @@ namespace dxvk {
     if (unlikely(FAILED(res)))
       return res;
 
-    *ppTexture = ref(new D3D8Texture2D(this, Pool, std::move(pTex9)));
+    IDirect3DTexture8* tex = new D3D8Texture2D(this, Pool, std::move(pTex9));
+
+    if (unlikely(m_d3d8Options.textureUAFGuard)) {
+      D3D8DeviceLock lock = LockDevice();
+      m_validTextures.insert(tex);
+    }
+
+    *ppTexture = ref(tex);
 
     return D3D_OK;
   }
@@ -349,7 +356,14 @@ namespace dxvk {
     if (unlikely(FAILED(res)))
       return res;
 
-    *ppVolumeTexture = ref(new D3D8Texture3D(this, Pool, std::move(pVolume9)));
+    IDirect3DVolumeTexture8* tex = new D3D8Texture3D(this, Pool, std::move(pVolume9));
+
+    if (unlikely(m_d3d8Options.textureUAFGuard)) {
+      D3D8DeviceLock lock = LockDevice();
+      m_validTextures.insert(tex);
+    }
+
+    *ppVolumeTexture = ref(tex);
 
     return D3D_OK;
   }
@@ -386,7 +400,14 @@ namespace dxvk {
     if (unlikely(FAILED(res)))
       return res;
 
-    *ppCubeTexture = ref(new D3D8TextureCube(this, Pool, std::move(pCube9)));
+    IDirect3DCubeTexture8* tex = new D3D8TextureCube(this, Pool, std::move(pCube9));
+
+    if (unlikely(m_d3d8Options.textureUAFGuard)) {
+      D3D8DeviceLock lock = LockDevice();
+      m_validTextures.insert(tex);
+    }
+
+    *ppCubeTexture = ref(tex);
 
     return D3D_OK;
   }
@@ -1364,7 +1385,9 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetTexture(Stage, pTexture);
 
-    D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
+    const bool isValidTexture = !m_d3d8Options.textureUAFGuard
+                              || m_validTextures.find(pTexture) != m_validTextures.end();
+    D3D8Texture2D* tex = isValidTexture ? static_cast<D3D8Texture2D*>(pTexture) : nullptr;
 
     // Splinter Cell: Force perspective divide when a shadow map is bound to slot 0
     if (unlikely(m_d3d8Options.shadowPerspectiveDivide && Stage == 0)) {

@@ -32,6 +32,9 @@ namespace dxvk {
     /// Force D3DTTFF_PROJECTED for the necessary stages when a depth texture is bound to slot 0.
     bool shadowPerspectiveDivide;
 
+    /// Keep track of live texture objects and validate them during SetTexture calls.
+    bool textureUAFGuard;
+
   };
 
 }
