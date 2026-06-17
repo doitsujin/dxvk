@@ -21,11 +21,12 @@ namespace dxvk {
 
     d3d9::D3DSURFACE_DESC surf;
     HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
+    if (unlikely(FAILED(res)))
+      return res;
 
-    if (likely(SUCCEEDED(res)))
-      ConvertSurfaceDesc8(&surf, pDesc);
+    ConvertSurfaceDesc8(&surf, pDesc);
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Texture2D::GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
@@ -64,11 +65,12 @@ namespace dxvk {
 
     d3d9::D3DVOLUME_DESC vol;
     HRESULT res = GetD3D9()->GetLevelDesc(Level, &vol);
+    if (unlikely(FAILED(res)))
+      return res;
 
-    if (likely(SUCCEEDED(res)))
-      ConvertVolumeDesc8(&vol, pDesc);
+    ConvertVolumeDesc8(&vol, pDesc);
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Texture3D::GetVolumeLevel(UINT Level, IDirect3DVolume8** ppVolumeLevel) {
@@ -113,11 +115,12 @@ namespace dxvk {
 
     d3d9::D3DSURFACE_DESC surf;
     HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
+    if (unlikely(FAILED(res)))
+      return res;
 
-    if (likely(SUCCEEDED(res)))
-      ConvertSurfaceDesc8(&surf, pDesc);
+    ConvertSurfaceDesc8(&surf, pDesc);
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8TextureCube::GetCubeMapSurface(

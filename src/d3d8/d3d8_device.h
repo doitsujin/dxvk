@@ -383,7 +383,7 @@ namespace dxvk {
       m_presentParams.BackBufferCount = std::max(m_presentParams.BackBufferCount, 1u);
 
       // Reset D3D8 exclusive render states
-      m_linePattern = {};
+      m_linePattern = { };
       m_zVisible    = 0;
 
       // Purge cached objects
@@ -431,39 +431,39 @@ namespace dxvk {
     D3DPRESENT_PARAMETERS m_presentParams;
     
     // Value of D3DRS_LINEPATTERN
-    D3DLINEPATTERN        m_linePattern   = {};
+    D3DLINEPATTERN        m_linePattern = { };
     // Value of D3DRS_ZVISIBLE (although the RS is not supported, its value is stored)
-    DWORD                 m_zVisible      = 0;
+    DWORD                 m_zVisible    = 0;
 
     bool                  m_shadowPerspectiveDivide = false;
 
-    D3D8StateBlock*                            m_recorder = nullptr;
-    DWORD                                      m_recorderToken = 0;
-    DWORD                                      m_token    = 0;
-    std::unordered_map<DWORD, D3D8StateBlock>  m_stateBlocks;
-    D3D8Batcher*                               m_batcher  = nullptr;
+    D3D8StateBlock*                           m_recorder = nullptr;
+    DWORD                                     m_recorderToken = 0;
+    DWORD                                     m_token    = 0;
+    std::unordered_map<DWORD, D3D8StateBlock> m_stateBlocks;
+    D3D8Batcher*                              m_batcher  = nullptr;
 
     struct D3D8VBO {
       Com<D3D8VertexBuffer, false>   buffer = nullptr;
       UINT                           stride = 0;
     };
 
-    std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
-    std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
+    std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES> m_textures;
+    std::array<D3D8VBO, d8caps::MAX_STREAMS>                          m_streams;
 
-    Com<D3D8IndexBuffer, false>        m_indices;
-    UINT                               m_baseVertexIndex = 0;
+    Com<D3D8IndexBuffer, false>          m_indices;
+    UINT                                 m_baseVertexIndex = 0;
 
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
     Com<D3D8Surface, false>              m_autoDepthStencil;
 
-    Com<D3D8Surface, false>     m_renderTarget;
-    Com<D3D8Surface, false>     m_depthStencil;
+    Com<D3D8Surface, false>              m_renderTarget;
+    Com<D3D8Surface, false>              m_depthStencil;
 
-    std::vector<D3D8VertexShaderInfo>               m_vertexShaders;
-    std::vector<Com<d3d9::IDirect3DPixelShader9>>   m_pixelShaders;
-    DWORD                                           m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
-    DWORD                                           m_currentPixelShader   = 0;
+    std::vector<D3D8VertexShaderInfo>             m_vertexShaders;
+    std::vector<Com<d3d9::IDirect3DPixelShader9>> m_pixelShaders;
+    DWORD                                         m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
+    DWORD                                         m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;

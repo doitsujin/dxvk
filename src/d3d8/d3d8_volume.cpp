@@ -18,11 +18,12 @@ namespace dxvk {
 
     d3d9::D3DVOLUME_DESC desc;
     HRESULT res = GetD3D9()->GetDesc(&desc);
+    if (unlikely(FAILED(res)))
+      return res;
 
-    if (likely(SUCCEEDED(res)))
-      ConvertVolumeDesc8(&desc, pDesc);
+    ConvertVolumeDesc8(&desc, pDesc);
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Volume::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {

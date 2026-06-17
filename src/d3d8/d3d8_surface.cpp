@@ -27,11 +27,12 @@ namespace dxvk {
 
     d3d9::D3DSURFACE_DESC desc;
     HRESULT res = GetD3D9()->GetDesc(&desc);
+    if (unlikely(FAILED(res)))
+      return res;
 
-    if (likely(SUCCEEDED(res)))
-      ConvertSurfaceDesc8(&desc, pDesc);
+    ConvertSurfaceDesc8(&desc, pDesc);
 
-    return res;
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Surface::LockRect(
@@ -68,7 +69,6 @@ namespace dxvk {
       FALSE,
       &image,
       NULL);
-
     if (FAILED(res))
       throw DxvkError("D3D8: Failed to create blit image");
 

@@ -54,4 +54,15 @@ namespace dxvk {
     }
   }
 
+  D3D8Options::D3D8Options(const Config& config) {
+    auto forceVsDeclStr           = config.getOption<std::string>("d3d8.forceVsDecl",             "");
+
+    this->batching                = config.getOption<bool>       ("d3d8.batching",                false);
+    this->placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",        false);
+    this->forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",      false);
+    this->shadowPerspectiveDivide = config.getOption<bool>       ("d3d8.shadowPerspectiveDivide", false);
+
+    parseVsDecl(forceVsDeclStr);
+  }
+
 }
