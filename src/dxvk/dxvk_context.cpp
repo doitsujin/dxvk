@@ -9742,26 +9742,39 @@ namespace dxvk {
           DxvkCmdBuffer             cmdBuffer,
           size_t                    count,
     const DxvkResourceAccess*       batch) {
-    for (size_t i = 0u; i < count; i++) {
-      const auto& e = batch[i];
+    if (likely(cmdBuffer < DxvkCmdBuffer::SdmaBuffer)) {
+      for (size_t i = 0u; i < count; i++) {
+        const auto& e = batch[i];
 
-      if (e.buffer) {
-        accessBuffer(cmdBuffer, *e.buffer, e.bufferOffset, e.bufferSize,
-          e.stages, e.access, e.buffer->info().stages, e.buffer->info().access,
-          DxvkAccessOp::None);
-      } else if (e.image) {
-        if (!e.imageExtent.width) {
-          accessImage(cmdBuffer, *e.image, e.imageSubresources,
-            e.imageLayout, e.stages, e.access, e.imageLayout,
-            e.image->info().stages, e.image->info().access,
+        if (e.buffer) {
+          accessBuffer(cmdBuffer, *e.buffer, e.bufferOffset, e.bufferSize,
+            e.stages, e.access, e.buffer->info().stages, e.buffer->info().access,
             DxvkAccessOp::None);
-        } else {
-          accessImageRegion(cmdBuffer, *e.image,
-            vk::pickSubresourceLayers(e.imageSubresources, 0u),
-            e.imageOffset, e.imageExtent, e.imageLayout,
-            e.stages, e.access, e.imageLayout,
-            e.image->info().stages, e.image->info().access,
-            DxvkAccessOp::None);
+        } else if (e.image) {
+          if (!e.imageExtent.width) {
+            accessImage(cmdBuffer, *e.image, e.imageSubresources,
+              e.imageLayout, e.stages, e.access, e.imageLayout,
+              e.image->info().stages, e.image->info().access,
+              DxvkAccessOp::None);
+          } else {
+            accessImageRegion(cmdBuffer, *e.image,
+              vk::pickSubresourceLayers(e.imageSubresources, 0u),
+              e.imageOffset, e.imageExtent, e.imageLayout,
+              e.stages, e.access, e.imageLayout,
+              e.image->info().stages, e.image->info().access,
+              DxvkAccessOp::None);
+          }
+        }
+      }
+    } else {
+      for (size_t i = 0u; i < count; i++) {
+        const auto& e = batch[i];
+
+        if (e.buffer) {
+          accessBufferTransfer(*e.buffer, e.stages, e.access);
+        } else if (e.image) {
+          accessImageTransfer(*e.image, e.imageSubresources,
+            e.imageLayout, e.stages, e.access);
         }
       }
     }
