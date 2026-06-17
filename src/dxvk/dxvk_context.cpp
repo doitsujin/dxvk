@@ -426,7 +426,11 @@ namespace dxvk {
     accessBatch.emplace_back(*dstBuffer, dstOffset, numBytes, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT);
     accessBatch.emplace_back(*srcBuffer, srcOffset, numBytes, VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
 
-    DxvkCmdBuffer cmdBuffer = prepareOutOfOrderTransfer(DxvkCmdBuffer::InitBuffer, accessBatch.size(), accessBatch.data());
+    DxvkCmdBuffer cmdBuffer = (srcBuffer->memFlags() & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+      ? DxvkCmdBuffer::InitBuffer
+      : DxvkCmdBuffer::SdmaBuffer;
+
+    cmdBuffer = prepareOutOfOrderTransfer(cmdBuffer, accessBatch.size(), accessBatch.data());
 
     if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
       this->endCurrentPass(true);
@@ -10433,7 +10437,7 @@ namespace dxvk {
 
     // If the buffer hasn't been used in the previous submission, we're
     // good. Force proper synchronization, but allow for some overlap.
-    if (buffer.getTrackId() < m_submitLastId) {
+    if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer && buffer.getTrackId() < m_submitLastId) {
       m_submitWaitId = std::max(m_submitWaitId, buffer.getTrackId());
       return cmdBuffer;
     }
