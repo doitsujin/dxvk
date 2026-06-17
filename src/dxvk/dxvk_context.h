@@ -2151,13 +2151,15 @@ namespace dxvk {
             size_t                    accessCount,
       const DxvkResourceAccess*       accessBatch);
 
-    bool prepareOutOfOrderTransfer(
+    DxvkCmdBuffer prepareOutOfOrderTransfer(
+            DxvkCmdBuffer             cmdBuffer,
             DxvkBuffer&               buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
             DxvkAccess                access);
 
-    bool prepareOutOfOrderTransfer(
+    DxvkCmdBuffer prepareOutOfOrderTransfer(
+            DxvkCmdBuffer             cmdBuffer,
             DxvkImage&                image,
       const VkImageSubresourceRange&  subresources,
             bool                      discard,

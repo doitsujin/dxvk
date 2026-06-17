@@ -10392,50 +10392,72 @@ namespace dxvk {
         : DxvkAccess::Read;
 
       if (e.buffer) {
-        if (!prepareOutOfOrderTransfer(*e.buffer, e.bufferOffset, e.bufferSize, access))
-          return DxvkCmdBuffer::ExecBuffer;
+        cmdBuffer = prepareOutOfOrderTransfer(cmdBuffer,
+          *e.buffer, e.bufferOffset, e.bufferSize, access);
       } else if (e.image) {
-        if (!prepareOutOfOrderTransfer(*e.image, e.imageSubresources, e.discard, access))
-          return DxvkCmdBuffer::ExecBuffer;
+        cmdBuffer = prepareOutOfOrderTransfer(cmdBuffer,
+          *e.image, e.imageSubresources, e.discard, access);
       }
+
+      if (cmdBuffer == DxvkCmdBuffer::ExecBuffer)
+        break;
     }
 
     return cmdBuffer;
   }
 
 
-  bool DxvkContext::prepareOutOfOrderTransfer(
+  DxvkCmdBuffer DxvkContext::prepareOutOfOrderTransfer(
+          DxvkCmdBuffer             cmdBuffer,
           DxvkBuffer&               buffer,
           VkDeviceSize              offset,
           VkDeviceSize              size,
           DxvkAccess                access) {
     // Sparse resources can alias, need to ignore.
     if (unlikely(buffer.info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT))
-      return false;
+      return DxvkCmdBuffer::ExecBuffer;
 
-    // If the resource hasn't been used yet or both uses are reads,
-    // we can use this buffer in the init command buffer
-    if (!buffer.isTracked(m_trackingId, access))
-      return true;
+    // If the buffer hasn't been used in the previous submission, we're
+    // good. Force proper synchronization, but allow for some overlap.
+    if (buffer.getTrackId() < m_submitLastId) {
+      m_submitWaitId = std::max(m_submitWaitId, buffer.getTrackId());
+      return cmdBuffer;
+    }
 
-    // Otherwise, our only option is to discard. We can only do that if
-    // we're writing the full buffer. Therefore, the resource being read
-    // should always be checked first to avoid unnecessary discards.
-    if (access != DxvkAccess::Write || size < buffer.info().size || offset)
-      return false;
+    // Similarly, if we're reading from a buffer that cannot be written by the
+    // GPU, we can also safely perform the transfer op on any command buffer.
+    if (access == DxvkAccess::Read && !(buffer.info().access & vk::AccessWriteMask))
+      return cmdBuffer;
 
-    // Check if the buffer can actually be discarded at all.
-    if (!buffer.canRelocate())
-      return false;
+    // Otherwise, our only option is to discard, which we can only do if we're
+    // writing the full buffer. Therefore, the resource being read should always
+    // be checked first so that unnecessary discards are avoided.
+    bool canDiscard = access == DxvkAccess::Write && !offset
+      && size == buffer.info().size && buffer.canRelocate();
+
+    if (!canDiscard && cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
+      cmdBuffer = DxvkCmdBuffer::InitBuffer;
+
+    // If the resource hasn't been used in the current command buffer yet or if
+    // both uses are reads, we can at least use this buffer in init commands
+    if (cmdBuffer < DxvkCmdBuffer::SdmaBuffer && !buffer.isTracked(m_trackingId, access))
+      return cmdBuffer;
+
+    // Buffer is in use, now we *really* need to discard
+    if (!canDiscard)
+      return DxvkCmdBuffer::ExecBuffer;
 
     // Ignore large buffers to keep memory overhead in check. Use a higher
     // threshold when a render pass is active to avoid interrupting it.
-    VkDeviceSize threshold = !m_flags.test(DxvkContextFlag::GpRenderPassActive)
-      ? MaxDiscardSizeInRp
-      : MaxDiscardSize;
+    // Also ignore the limit on SDMA since making large uploads asynchronous
+    // should be highly beneficial.
+    if (cmdBuffer < DxvkCmdBuffer::SdmaBuffer) {
+      VkDeviceSize threshold = m_flags.test(DxvkContextFlag::GpRenderPassActive)
+        ? MaxDiscardSizeInRp : MaxDiscardSize;
 
-    if (size > threshold)
-      return false;
+      if (size > threshold)
+        return DxvkCmdBuffer::ExecBuffer;
+    }
 
     // If the buffer is used for transform feedback in any way, we have to stop
     // the render pass anyway, but we can at least avoid an extra barrier.
@@ -10449,23 +10471,24 @@ namespace dxvk {
 
     // Actually allocate and assign new backing storage
     this->invalidateBuffer(&buffer, buffer.allocateStorage());
-    return true;
+    return cmdBuffer;
   }
 
 
-  bool DxvkContext::prepareOutOfOrderTransfer(
+  DxvkCmdBuffer DxvkContext::prepareOutOfOrderTransfer(
+          DxvkCmdBuffer             cmdBuffer,
           DxvkImage&                image,
     const VkImageSubresourceRange&  subresources,
           bool                      discard,
           DxvkAccess                access) {
     // Sparse resources can alias, need to ignore.
     if (unlikely(image.info().flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
-      return false;
+      return DxvkCmdBuffer::ExecBuffer;
 
     // Reject any images that use non-default image layouts since
     // per-subresource layout tracking relies on proper ordering
     if (unlikely(!image.hasUnifiedLayout()))
-      return false;
+      return DxvkCmdBuffer::ExecBuffer;
 
     // Ensure correct order of operations in case the image is a render
     // target and is either currently bound for rendering or has any
@@ -10473,12 +10496,42 @@ namespace dxvk {
     if (image.info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
       if (findOverlappingDeferredClear(image, subresources)
        || findOverlappingDeferredResolve(image, subresources))
-        return false;
+        return DxvkCmdBuffer::ExecBuffer;
 
       if (m_flags.test(DxvkContextFlag::GpRenderPassActive)) {
         if (isBoundAsRenderTarget(image, subresources))
-          return false;
+          return DxvkCmdBuffer::ExecBuffer;
       }
+    }
+
+    // Ignore images with more than one subresource since we'll
+    // usually see multiple uploads back to back
+    if (image.formatInfo()->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT
+     || image.info().numLayers > 1u || image.info().mipLevels > 1u)
+      return DxvkCmdBuffer::ExecBuffer;
+
+    // For SDMA copies, we need to verify a few things to make sure that
+    // the image can actually be written on the transfer queue. We don't
+    // know the copy region, so just check for maintenance11, which
+    // guarantees support for (1,1,1) transfer granularity.
+    if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) {
+      if (m_device->features().khrMaintenance11.maintenance11) {
+        // If the image hasn't been used in the previous submission,
+        // simply synchronize queues and perform the upload
+        if (image.getTrackId() < m_submitLastId) {
+          m_submitWaitId = std::max(m_submitWaitId, image.getTrackId());
+          return cmdBuffer;
+        }
+
+        // Otherwise, check if we can discard the image for writing
+        if (discard && access == DxvkAccess::Write && image.canRelocate()) {
+          invalidateImage(&image, image.allocateStorage(), image.info().layout);
+          return cmdBuffer;
+        }
+      }
+
+      // Fall back to regular out-of-order command buffer
+      cmdBuffer = DxvkCmdBuffer::InitBuffer;
     }
 
     // If the image hasn't been used yet or all uses are reads,
@@ -10487,7 +10540,16 @@ namespace dxvk {
     if (discard)
       access = DxvkAccess::Write;
 
-    return !image.isTracked(m_trackingId, access);
+    if (image.isTracked(m_trackingId, access))
+      return DxvkCmdBuffer::ExecBuffer;
+
+    // Don't do asynchronous image copies for now. We would only be able
+    // to support this if the image consists of only one subresource and
+    // if we can discard it.
+    if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer)
+      cmdBuffer = DxvkCmdBuffer::InitBuffer;
+
+    return cmdBuffer;
   }
 
 
