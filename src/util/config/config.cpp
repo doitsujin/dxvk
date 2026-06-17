@@ -1374,6 +1374,16 @@ namespace dxvk {
     { R"(\\Smash up Derby\\cars\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
+    /* Age of Pirates: Caribbean Tales            *
+     * Crashes due to a texture UAF otherwise     */
+    { R"(\\(Age of Pirates|Sea Dogs).*Caribbean Tales\\ENGINE\.exe$)", {{
+      { "d3d8.textureUAFGuard",             "True" },
+    }} },
+    /* Age of Pirates 2: City of Abandoned Ships  *
+     * Crashes due to a texture UAF otherwise     */
+    { R"(\\(Age of Pirates|Sea Dogs).*City of Abandoned Ships\\START\.exe$)", {{
+      { "d3d8.textureUAFGuard",             "True" },
+    }} },
   };
 
 

@@ -1,5 +1,6 @@
 #include "d3d8_texture.h"
 
+#include "d3d8_device.h"
 #include "d3d8_util.h"
 
 namespace dxvk {
@@ -11,6 +12,11 @@ namespace dxvk {
     const D3DPOOL                        Pool,
           Com<d3d9::IDirect3DTexture9>&& pTexture)
     : D3D8Texture2DBase(pDevice, Pool, std::move(pTexture), pTexture->GetLevelCount()) {
+  }
+
+  D3D8Texture2D::~D3D8Texture2D() {
+    if (unlikely(m_parent->GetOptions()->textureUAFGuard))
+      m_parent->RemoveValidTexture(this);
   }
 
   D3DRESOURCETYPE STDMETHODCALLTYPE D3D8Texture2D::GetType() { return D3DRTYPE_TEXTURE; }
@@ -56,6 +62,11 @@ namespace dxvk {
     const D3DPOOL                               Pool,
           Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture)
     : D3D8Texture3DBase(pDevice, Pool, std::move(pVolumeTexture), pVolumeTexture->GetLevelCount()) {}
+
+  D3D8Texture3D::~D3D8Texture3D() {
+    if (unlikely(m_parent->GetOptions()->textureUAFGuard))
+      m_parent->RemoveValidTexture(this);
+  }
 
   D3DRESOURCETYPE STDMETHODCALLTYPE D3D8Texture3D::GetType() { return D3DRTYPE_VOLUMETEXTURE; }
 
@@ -105,6 +116,11 @@ namespace dxvk {
     const D3DPOOL                             Pool,
           Com<d3d9::IDirect3DCubeTexture9>&&  pTexture)
     : D3D8TextureCubeBase(pDevice, Pool, std::move(pTexture), pTexture->GetLevelCount() * CUBE_FACES) {
+  }
+
+  D3D8TextureCube::~D3D8TextureCube() {
+    if (unlikely(m_parent->GetOptions()->textureUAFGuard))
+      m_parent->RemoveValidTexture(this);
   }
 
   D3DRESOURCETYPE STDMETHODCALLTYPE D3D8TextureCube::GetType() { return D3DRTYPE_CUBETEXTURE; }

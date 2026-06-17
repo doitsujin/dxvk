@@ -61,6 +61,7 @@ namespace dxvk {
     this->placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",        false);
     this->forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",      false);
     this->shadowPerspectiveDivide = config.getOption<bool>       ("d3d8.shadowPerspectiveDivide", false);
+    this->textureUAFGuard         = config.getOption<bool>       ("d3d8.textureUAFGuard",         false);
 
     parseVsDecl(forceVsDeclStr);
   }

@@ -15,6 +15,7 @@
 #include <array>
 #include <vector>
 #include <type_traits>
+#include <unordered_set>
 #include <unordered_map>
 
 namespace dxvk {
@@ -418,6 +419,14 @@ namespace dxvk {
       m_depthStencil = m_autoDepthStencil;
     }
 
+    void RemoveValidTexture(IDirect3DBaseTexture8* tex) {
+      D3D8DeviceLock lock = LockDevice();
+
+      auto textureIter = m_validTextures.find(tex);
+      if (likely(textureIter != m_validTextures.end()))
+        m_validTextures.erase(textureIter);
+    }
+
     friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle);
     friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8Device* device, DWORD Handle);
 
@@ -450,6 +459,8 @@ namespace dxvk {
 
     std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES> m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                          m_streams;
+
+    std::unordered_set<IDirect3DBaseTexture8*> m_validTextures;
 
     Com<D3D8IndexBuffer, false>          m_indices;
     UINT                                 m_baseVertexIndex = 0;
