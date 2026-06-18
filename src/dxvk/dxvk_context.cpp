@@ -2238,7 +2238,11 @@ namespace dxvk {
     for (const auto& clear : m_deferredClears) {
       int32_t attachmentIndex = -1;
 
-      if (useRenderPass && m_state.om.framebufferInfo.isFullSize(clear.imageView))
+      // Don't try to fuse clears when there are feedback loops. If we clear the
+      // area being read, there needs to be a barrier in between the clear and the
+      // first draw.
+      if (useRenderPass && m_state.om.framebufferInfo.isFullSize(clear.imageView)
+       && !(m_state.gp.state.om.feedbackLoop() & clear.imageView->info().aspects))
         attachmentIndex = m_state.om.framebufferInfo.findAttachment(clear.imageView);
 
       clearBatch.add(batchClear(clear.imageView, attachmentIndex,
