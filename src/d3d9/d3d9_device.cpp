@@ -8123,12 +8123,14 @@ namespace dxvk {
 
       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       auto NormalMatrix = inverse(WorldView);
+      auto Projection   = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
 
       auto data = GetConstantBuffer(CbvIndex::VSFixedFunction).AllocTyped<D3D9FixedFunctionVS>(1u);
       data->WorldView    = WorldView;
       data->NormalMatrix = NormalMatrix;
       data->InverseView  = transpose(inverse(m_state.transforms[GetTransformIndex(D3DTS_VIEW)]));
-      data->Projection   = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+      data->Projection   = Projection;
+      data->WorldViewProj = Projection * WorldView;
 
       for (uint32_t i = 0; i < data->TexcoordMatrices.size(); i++)
         data->TexcoordMatrices[i] = m_state.transforms[GetTransformIndex(D3DTS_TEXTURE0) + i];

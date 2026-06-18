@@ -377,6 +377,7 @@ namespace dxvk {
     Matrix4 NormalMatrix;
     Matrix4 InverseView;
     Matrix4 Projection;
+    Matrix4 WorldViewProj;
 
     std::array<Matrix4, 8> TexcoordMatrices;
 
