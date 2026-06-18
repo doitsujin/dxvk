@@ -22,11 +22,12 @@ layout(location = 15) in float in_PointSize;
 layout(location = 16) in vec4 in_BlendWeight;
 layout(location = 17) in vec4 in_BlendIndices;
 
+invariant gl_Position;
 
 // The locations need to match with RegisterLinkerSlot in dxso_util.cpp
-precise gl_Position;
 const uint MaxClipPlaneCount = 6;
 out float gl_ClipDistance[MaxClipPlaneCount];
+
 layout(location = 0) out vec4 out_Normal;
 layout(location = 1) out vec4 out_Texcoord0;
 layout(location = 2) out vec4 out_Texcoord1;
@@ -88,6 +89,7 @@ struct D3D9FixedFunctionVS {
     mat4 NormalMatrix;
     mat4 InverseView;
     mat4 Projection;
+    mat4 WorldViewProj;
 
     mat4 TexcoordMatrices[TextureStageCount];
 
@@ -349,6 +351,17 @@ float calculatePointSize(vec4 vtx) {
     return clamp(value, pointSizeMin, pointSizeMax);
 }
 
+// Precise dot product and matrix-vector product helpers. This needs to match
+// programmable shaders since some games rely on fixed-function and programmable
+// VS producing identical vertex positions (e.g. Railroad Tycoon 3).
+precise float dp4(vec4 a, vec4 b) {
+    return fma(a.w, b.w, fma(a.z, b.z, fma(a.y, b.y, a.x * b.x)));
+}
+
+precise vec4 vecTimesMat4(vec4 a, mat4 b) {
+    return vec4(dp4(a, b[0]), dp4(a, b[1]),
+                dp4(a, b[2]), dp4(a, b[3]));
+}
 
 void emitVsClipping(vec4 vtx) {
     vec4 worldPos = data.InverseView * vtx;
@@ -359,7 +372,7 @@ void emitVsClipping(vec4 vtx) {
     // Compute clip distances
     for (uint i = 0; i < MaxClipPlaneCount; i++) {
         vec4 clipPlane = clipPlanes[i];
-        float dist = dot(worldPos, clipPlane);
+        float dist = dp4(worldPos, clipPlane);
         bool clipPlaneEnabled = i < clipPlaneCount;
         float value = clipPlaneEnabled ? dist : 0.0;
         gl_ClipDistance[i] = value;
@@ -396,43 +409,37 @@ void main() {
             vec3 nrmSum = vec3(0.0);
 
             for (uint i = 0; i <= vertexBlendCount(); i++) {
-                uint arrayIndex;
-                if (vertexBlendIndexed()) {
+                uint arrayIndex = i;
+
+                if (vertexBlendIndexed())
                     arrayIndex = uint(roundEven(in_BlendIndices[i]));
-                } else {
-                    arrayIndex = i;
-                }
+
                 mat4 worldView = WorldViewArray[arrayIndex];
+                mat3 nrmMtx = mat3(worldView);
 
-                mat3 nrmMtx;
-                for (uint j = 0; j < 3; j++) {
-                    nrmMtx[j] = worldView[j].xyz;
-                }
-
-                vec4 vtxResult = vtx * worldView;
+                vec4 vtxResult = vecTimesMat4(vtx, worldView);
                 vec3 nrmResult = normal * nrmMtx;
 
-                float weight;
-                if (i != vertexBlendCount()) {
+                float weight = blendWeightRemaining;
+
+                if (i < vertexBlendCount()) {
                     weight = in_BlendWeight[i];
                     blendWeightRemaining -= weight;
-                } else {
-                    weight = blendWeightRemaining;
                 }
 
                 vec4 weightVec4 = vec4(weight, weight, weight, weight);
-
                 vtxSum = fma(vtxResult, weightVec4, vtxSum);
                 nrmSum = fma(nrmResult, weightVec4.xyz, nrmSum);
             }
 
             vtx = vtxSum;
             normal = nrmSum;
+            gl_Position = vecTimesMat4(vtx, data.Projection);
         } else {
-            vtx = vtx * data.WorldView;
+            gl_Position = vecTimesMat4(vtx, data.WorldViewProj);
+            vtx = vecTimesMat4(vtx, data.WorldView);
 
             mat3 nrmMtx = mat3(data.NormalMatrix);
-
             normal = nrmMtx * normal;
         }
 
@@ -441,8 +448,6 @@ void main() {
             bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
             normal = isZeroNormal ? normal : normalize(normal);
         }
-
-        gl_Position = vtx * data.Projection;
     } else {
         gl_Position *= data.ViewportInfo.inverseExtent;
         gl_Position += data.ViewportInfo.inverseOffset;
