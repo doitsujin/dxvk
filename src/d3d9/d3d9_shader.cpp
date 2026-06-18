@@ -776,6 +776,11 @@ namespace dxvk {
               0u, 1u, "fogEnable", ref, ir::ScalarType::eBool, ir::SsaDef()));
           } break;
 
+          case ir::LegacyFogLayout::eFogUseZ: {
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, fogUseZ),
+              0u, 1u, "fogUseZ", ref, ir::ScalarType::eBool, ir::SsaDef()));
+          } break;
+
           case ir::LegacyFogLayout::eFogMode: {
             auto offset = m_shaderStage == ir::ShaderStage::eVertex
               ? offsetof(D3D9SpecData, fogModeVertex)
