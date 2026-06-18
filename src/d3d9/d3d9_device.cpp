@@ -3565,8 +3565,8 @@ namespace dxvk {
       BindFFUbershader<D3D9ShaderType::VertexShader>();
     }
 
-    m_dirty.set(D3D9DeviceDirtyFlag::InputLayout);
-
+    m_dirty.set(D3D9DeviceDirtyFlag::InputLayout,
+                D3D9DeviceDirtyFlag::Fog);
     return D3D_OK;
   }
 
@@ -4639,8 +4639,12 @@ namespace dxvk {
 
     m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
-    if (idx == GetTransformIndex(D3DTS_VIEW) || idx >= GetTransformIndex(D3DTS_WORLD))
+    if (idx == GetTransformIndex(D3DTS_VIEW)
+     || idx >= GetTransformIndex(D3DTS_WORLD))
       m_dirty.set(D3D9DeviceDirtyFlag::FFVertexBlend);
+
+    if (idx == GetTransformIndex(D3DTS_PROJECTION))
+      m_dirty.set(D3D9DeviceDirtyFlag::Fog);
 
     return D3D_OK;
   }
@@ -6593,10 +6597,22 @@ namespace dxvk {
     m_dirty.clr(D3D9DeviceDirtyFlag::Fog);
 
     auto& rs = m_state.renderStates;
+
     bool fogEnabled = bool(rs[D3DRS_FOGENABLE]);
+    bool fogUseZ = false;
+
+    if (fogEnabled && !UseProgrammableVS()) {
+      // Z fog is only used if the projection matrix is not a perspective matrix,
+      // otherwise we get W fog, including programmable vertex shaders. SM2 pixel
+      // shaders behave just like fixed-function.
+      // The projection matrix logic is described in a truly prehistoric Nvidia paper:
+      // https://developer.download.nvidia.com/assets/gamedev/docs/Fog2.pdf
+      auto [wNear, wFar] = ComputeWNearFar();
+      fogUseZ = wNear == 1.0f && wFar == 1.0f;
+    }
 
     // Only set up vertex frog if pixel fog is not used
-    if (m_specData.setFogMode(fogEnabled,
+    if (m_specData.setFogMode(fogEnabled, fogUseZ,
         D3DFOGMODE(rs[D3DRS_FOGVERTEXMODE]),
         D3DFOGMODE(rs[D3DRS_FOGTABLEMODE])))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
@@ -6615,6 +6631,19 @@ namespace dxvk {
     m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : 0.0f;
 
     m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
+  }
+
+
+  std::pair<float, float> D3D9DeviceEx::ComputeWNearFar() const {
+    const auto& m = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+
+    if (m[2][2] == 0.0f || m[2][2] == m[2][3])
+      return std::make_pair(1.0f, 1.0f);
+
+    float wNear = m[3][3] - m[3][2] / m[2][2] * m[2][3];
+    float wFar = (m[3][3] - m[3][2]) / (m[2][2] - m[2][3]) * m[2][3] + m[3][3];
+
+    return std::make_pair(wNear, wFar);
   }
 
 

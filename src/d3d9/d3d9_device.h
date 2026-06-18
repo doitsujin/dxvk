@@ -958,6 +958,8 @@ namespace dxvk {
 
     void UpdateFog();
 
+    std::pair<float, float> ComputeWNearFar() const;
+
     void BindFramebuffer();
 
     void BindViewportAndScissor();
