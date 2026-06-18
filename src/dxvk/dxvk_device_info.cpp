@@ -847,10 +847,12 @@ namespace dxvk {
       ENABLE_FEATURE(core.features, wideLines, false),
 
       ENABLE_FEATURE(vk11, shaderDrawParameters, true),
+      ENABLE_FEATURE(vk11, storageBuffer16BitAccess, true),
       ENABLE_FEATURE(vk11, storagePushConstant16, false),
 
       ENABLE_FEATURE(vk12, bufferDeviceAddress, true),
       ENABLE_FEATURE(vk12, descriptorIndexing, true),
+      ENABLE_FEATURE(vk12, storageBuffer8BitAccess, true),
       ENABLE_FEATURE(vk12, storagePushConstant8, false),
       ENABLE_FEATURE(vk12, shaderUniformTexelBufferArrayDynamicIndexing, false),
       ENABLE_FEATURE(vk12, shaderStorageTexelBufferArrayDynamicIndexing, false),
