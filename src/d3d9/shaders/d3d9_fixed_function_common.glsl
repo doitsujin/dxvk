@@ -86,6 +86,7 @@ struct FogState {
     bool enable;
     uint pixelMode;
     uint vertexMode;
+    bool useZ;
 };
 
 FogState getFogState() {
@@ -93,6 +94,7 @@ FogState getFogState() {
     result.enable = bitfieldExtract(fogArgs, 0, 1) != 0u;
     result.vertexMode = bitfieldExtract(fogArgs, 8, 2);
     result.pixelMode = bitfieldExtract(fogArgs, 16, 2);
+    result.useZ = bitfieldExtract(fogArgs, 24, 1) != 0u;
     return result;
 }
 // Checks whether specular lighting is enabled

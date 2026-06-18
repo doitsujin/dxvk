@@ -204,7 +204,7 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
-vec4 calculateFog(vec4 vPos, vec4 oColor) {
+vec4 calculateFog(vec4 oColor) {
     FogState fogState = getFogState();
 
     vec3 fogColor = unpackUnorm4x8(global.packedFogColorAndAlphaRef).bgr;
@@ -215,9 +215,7 @@ vec4 calculateFog(vec4 vPos, vec4 oColor) {
     if (!fogState.enable)
         return oColor;
 
-    float w = vPos.w;
-    float z = vPos.z;
-    float depth = z * (1.0 / w);
+    float depth = fogState.useZ ? gl_FragCoord.z : (1.0 / gl_FragCoord.w);
     float fogFactor;
 
     switch (fogState.pixelMode) {
@@ -620,7 +618,7 @@ void main() {
     if (isSpecularEnabled())
         state.current.xyz += in_Color1.xyz;
 
-    state.current = calculateFog(gl_FragCoord, state.current);
+    state.current = calculateFog(state.current);
 
     out_Color0 = state.current;
 
