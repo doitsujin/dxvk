@@ -113,10 +113,10 @@ namespace dxvk {
 
     // Spec ID 1: Fog. Used in fixed-function pipelines as
     // well as pixel shaders with Shader Model 2 and below.
-    uint8_t fogEnable = 0u;
+    bool fogEnable = 0u;
     uint8_t fogModeVertex = 0u;
     uint8_t fogModePixel = 0u;
-    uint8_t spec1Pad = 0u;
+    bool fogUseZ = 0u;
 
     // Spec ID 2: Parameters used in fixed-function pipelines. The
     // projection mask is also used in shader model 1 pixel shaders.
@@ -195,11 +195,12 @@ namespace dxvk {
       return set(enableGlobalSpecular, enable);
     }
 
-    bool setFogMode(bool enable, D3DFOGMODE vertexFog, D3DFOGMODE pixelFog) {
+    bool setFogMode(bool enable, bool zFog, D3DFOGMODE vertexFog, D3DFOGMODE pixelFog) {
       bool dirty = false;
       dirty |= set(fogEnable,     enable);
       dirty |= set(fogModeVertex, enable && !pixelFog ? vertexFog : D3DFOG_NONE);
       dirty |= set(fogModePixel,  enable              ? pixelFog  : D3DFOG_NONE);
+      dirty |= set(fogUseZ,       enable && zFog);
       return dirty;
     }
 
