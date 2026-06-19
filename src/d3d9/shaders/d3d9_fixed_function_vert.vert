@@ -610,89 +610,65 @@ void main() {
         for (uint i = 0; i < lightCount(); i++) {
             D3D9Light light = data.Lights[i];
 
-            vec4 diffuse = light.Diffuse;
-            vec4 specular = light.Specular;
-            vec4 ambient = light.Ambient;
-            vec3 position = light.Position.xyz;
-            vec3 direction = light.Direction.xyz;
-            uint type = light.Type;
-            float range = light.Range;
-            float falloff = light.Falloff;
-            float atten0 = light.Attenuation0;
-            float atten1 = light.Attenuation1;
-            float atten2 = light.Attenuation2;
-            float theta = light.Theta;
-            float phi = light.Phi;
+            vec3 delta = light.Position.xyz - vtx.xyz;
+            float dist = length(delta);
 
-            bool isSpot = type == D3DLIGHT_SPOT;
-            bool isDirectional = type == D3DLIGHT_DIRECTIONAL;
+            // Directional light properties
+            vec3 hitDir = -light.Direction.xyz;
+            float atten = 1.0f;
 
-            bvec3 isDirectional3 = bvec3(isDirectional);
+            if (light.Type != D3DLIGHT_DIRECTIONAL) {
+                // Range-based attenuation
+                atten = fma(dist, light.Attenuation2, light.Attenuation1);
+                atten = fma(dist, atten, light.Attenuation0);
+                atten = 1.0 / atten;
+                atten = spvNMin(atten, FloatMaxValue);
+                atten = dist > light.Range ? 0.0 : atten;
 
-            vec3 vtx3 = vtx.xyz;
+                hitDir = normalize(delta);
+            }
 
-            vec3 delta = position - vtx3;
-            float d = length(delta);
-            vec3 hitDir = -direction;
-                 hitDir = mix(delta, hitDir, isDirectional3);
-                 hitDir = normalize(hitDir);
+            if (light.Type == D3DLIGHT_SPOT) {
+                // Angle-based attenuation
+                float rho = dot(-hitDir, light.Direction.xyz);
+                float spotAtten = rho - light.Phi;
+                      spotAtten = spotAtten / (light.Theta - light.Phi);
+                      spotAtten = pow(spotAtten, light.Falloff);
 
-            float atten = fma(d, atten2, atten1);
-                  atten = fma(d, atten, atten0);
-                  atten = 1.0 / atten;
-                  atten = spvNMin(atten, FloatMaxValue);
-
-                  atten = d > range ? 0.0 : atten;
-                  atten = isDirectional ? 1.0 : atten;
-
-            // Spot Lighting
-            {
-                float rho = dot(-hitDir, direction);
-                float spotAtten = rho - phi;
-                      spotAtten = spotAtten / (theta - phi);
-                      spotAtten = pow(spotAtten, falloff);
-
-                bool insideThetaAndPhi = rho <= theta;
-                bool insidePhi = rho > phi;
+                bool insideThetaAndPhi = rho <= light.Theta;
+                bool insidePhi = rho > light.Phi;
                      spotAtten = insidePhi ? spotAtten : 0.0;
                      spotAtten = insideThetaAndPhi ? spotAtten : 1.0;
                      spotAtten = clamp(spotAtten, 0.0, 1.0);
 
-                     spotAtten = atten * spotAtten;
-                     atten     = isSpot ? spotAtten : atten;
+                atten *= spotAtten;
             }
 
+            // Ambient + Diffuse
             float hitDot = dot(normal, hitDir);
                   hitDot = clamp(hitDot, 0.0, 1.0);
 
             float diffuseness = hitDot * atten;
+            ambientValue += light.Ambient * atten;
+            diffuseValue += light.Diffuse * diffuseness;
 
+            // Specular
             vec3 mid;
+
             if (localViewer()) {
-                mid = normalize(vtx3);
+                mid = normalize(vtx.xyz);
                 mid = hitDir - mid;
             } else {
                 mid = hitDir - vec3(0.0, 0.0, 1.0);
             }
 
-            mid = normalize(mid);
-
-            float midDot = dot(normal, mid);
+            float midDot = dot(normal, normalize(mid));
                   midDot = clamp(midDot, 0.0, 1.0);
-            bool doSpec = midDot > 0.0;
-                 doSpec = doSpec && hitDot > 0.0;
 
-            float specularness = pow(midDot, data.Material.Power);
-                  specularness *= atten;
-                  specularness = doSpec ? specularness : 0.0;
-
-            vec4 lightAmbient  = ambient * atten;
-            vec4 lightDiffuse  = diffuse * diffuseness;
-            vec4 lightSpecular = specular * specularness;
-
-            ambientValue  += lightAmbient;
-            diffuseValue  += lightDiffuse;
-            specularValue += lightSpecular;
+            if (midDot > 0.0 && hitDot > 0.0) {
+                float specularness = pow(midDot, data.Material.Power) * atten;
+                specularValue += light.Specular * specularness;
+            }
         }
 
         vec4 matDiffuse  = pickMaterialSource(diffuseSource(), data.Material.Diffuse);
