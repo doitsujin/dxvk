@@ -1384,6 +1384,11 @@ namespace dxvk {
     { R"(\\(Age of Pirates|Sea Dogs).*City of Abandoned Ships\\START\.exe$)", {{
       { "d3d8.textureUAFGuard",             "True" },
     }} },
+    /* Mafia - Improves poor texture filtering    */
+    { R"(\\Mafia\\Game\.exe$)", {{
+      { "d3d9.samplerAnisotropy",             "16" },
+    }} },
+
   };
 
 
