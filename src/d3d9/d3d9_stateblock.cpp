@@ -191,7 +191,9 @@ namespace dxvk {
     if (Index >= m_state.lights.size())
       m_state.lights.resize(Index + 1);
 
-    m_state.lights[Index] = *pLight;
+    auto& light = m_state.lights[Index];
+    light.isValid = true;
+    light.light = *pLight;
 
     m_captures.flags.set(D3D9CapturedStateFlag::Lights);
     return D3D_OK;
@@ -202,24 +204,13 @@ namespace dxvk {
     if (unlikely(Index >= m_state.lights.size()))
       m_state.lights.resize(Index + 1);
 
-    if (unlikely(!m_state.lights[Index]))
-      m_state.lights[Index] = DefaultLight;
+    // Apply default light on enable, but not disable.
+    // No idea if this is correct, but matches the old logic.
+    auto& light = m_state.lights[Index];
+    light.isEnabled = bool(Enable);
 
-    if (m_state.IsLightEnabled(Index) == !!Enable)
-      return D3D_OK;
-
-    uint32_t searchIndex = std::numeric_limits<uint32_t>::max();
-    uint32_t setIndex    = Index;
-
-    if (!Enable)
-      std::swap(searchIndex, setIndex);
-
-    for (auto& idx : m_state.enabledLightIndices) {
-      if (idx == searchIndex) {
-        idx = setIndex;
-        break;
-      }
-    }
+    if (Enable)
+      light.isValid = true;
 
     m_captures.lightEnabledChanges.set(Index, true);
     m_captures.flags.set(D3D9CapturedStateFlag::Lights);

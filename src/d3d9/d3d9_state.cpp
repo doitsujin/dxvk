@@ -8,9 +8,6 @@ namespace dxvk {
     D3D9State<ItemType>::D3D9State() {
       for (uint32_t i = 0; i < streamFreq.size(); i++)
         streamFreq[i] = 1;
-
-      for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
-        enabledLightIndices[i] = std::numeric_limits<uint32_t>::max();
     }
 
 

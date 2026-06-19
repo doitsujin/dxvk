@@ -373,6 +373,26 @@ namespace dxvk {
     float Phi;
   };
 
+  constexpr D3DLIGHT9 DefaultLight = {
+    D3DLIGHT_DIRECTIONAL,     // Type
+    {1.0f, 1.0f, 1.0f, 0.0f}, // Diffuse
+    {0.0f, 0.0f, 0.0f, 0.0f}, // Specular
+    {0.0f, 0.0f, 0.0f, 0.0f}, // Ambient
+    {0.0f, 0.0f, 0.0f},       // Position
+    {0.0f, 0.0f, 1.0f},       // Direction
+    0.0f,                     // Range
+    0.0f,                     // Falloff
+    0.0f, 0.0f, 0.0f,         // Attenuations [constant, linear, quadratic]
+    0.0f,                     // Theta
+    0.0f                      // Phi
+  };
+
+  struct D3D9LightState {
+    bool isValid = false;
+    bool isEnabled = false;
+    D3DLIGHT9 light = DefaultLight;
+  };
+
   struct D3D9FixedFunctionVS {
     Matrix4 WorldView;
     Matrix4 NormalMatrix;
@@ -452,20 +472,6 @@ namespace dxvk {
     UINT              offset = 0;
     UINT              length = 0;
     UINT              stride = 0;
-  };
-
-  constexpr D3DLIGHT9 DefaultLight = {
-    D3DLIGHT_DIRECTIONAL,     // Type
-    {1.0f, 1.0f, 1.0f, 0.0f}, // Diffuse
-    {0.0f, 0.0f, 0.0f, 0.0f}, // Specular
-    {0.0f, 0.0f, 0.0f, 0.0f}, // Ambient
-    {0.0f, 0.0f, 0.0f},       // Position
-    {0.0f, 0.0f, 1.0f},       // Direction
-    0.0f,                     // Range
-    0.0f,                     // Falloff
-    0.0f, 0.0f, 0.0f,         // Attenuations [constant, linear, quadratic]
-    0.0f,                     // Theta
-    0.0f                      // Phi
   };
 
   template <typename T>
@@ -589,15 +595,9 @@ namespace dxvk {
 
     ItemType<D3DMATERIAL9>                              material = {};
 
-    std::vector<std::optional<D3DLIGHT9>>               lights;
-    std::array<DWORD, caps::MaxEnabledLights>           enabledLightIndices;
+    std::vector<D3D9LightState>                         lights;
 
     float                                               nPatchSegments = 0.0f;
-
-    bool IsLightEnabled(DWORD Index) const {
-      const auto& enabledIndices = enabledLightIndices;
-      return std::find(enabledIndices.begin(), enabledIndices.end(), Index) != enabledIndices.end();
-    }
   };
 
   using D3D9CapturableState = D3D9State<dynamic_item>;
