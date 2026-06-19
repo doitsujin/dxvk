@@ -2171,9 +2171,11 @@ namespace dxvk {
     if (Index >= m_state.lights.size())
       m_state.lights.resize(Index + 1);
 
-    m_state.lights[Index] = *pLight;
+    auto& light = m_state.lights[Index];
+    light.isValid = true;
+    light.light = *pLight;
 
-    if (m_state.IsLightEnabled(Index))
+    if (light.isEnabled)
       m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     return D3D_OK;
@@ -2186,11 +2188,15 @@ namespace dxvk {
     if (unlikely(pLight == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(Index >= m_state.lights.size() || !m_state.lights[Index]))
+    if (unlikely(Index >= m_state.lights.size()))
       return D3DERR_INVALIDCALL;
 
-    *pLight = m_state.lights[Index].value();
+    auto& light = m_state.lights[Index];
 
+    if (unlikely(!light.isValid))
+      return D3DERR_INVALIDCALL;
+
+    *pLight = m_state.lights[Index].light;
     return D3D_OK;
   }
 
@@ -2206,27 +2212,16 @@ namespace dxvk {
     if (unlikely(Index >= m_state.lights.size()))
       m_state.lights.resize(Index + 1);
 
-    if (unlikely(!m_state.lights[Index]))
-      m_state.lights[Index] = DefaultLight;
+    auto& light = m_state.lights[Index];
 
-    if (m_state.IsLightEnabled(Index) == !!Enable)
+    if (light.isEnabled == bool(Enable))
       return D3D_OK;
 
-    uint32_t searchIndex = std::numeric_limits<uint32_t>::max();
-    uint32_t setIndex    = Index;
+    light.isValid = true;
+    light.isEnabled = bool(Enable);
 
-    if (!Enable)
-      std::swap(searchIndex, setIndex);
-
-    for (auto& idx : m_state.enabledLightIndices) {
-      if (idx == searchIndex) {
-        idx = setIndex;
-        m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
-        m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
-        break;
-      }
-    }
-
+    m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData,
+                D3D9DeviceDirtyFlag::FFVertexShader);
     return D3D_OK;
   }
 
@@ -2237,11 +2232,15 @@ namespace dxvk {
     if (unlikely(pEnable == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(Index >= m_state.lights.size() || !m_state.lights[Index]))
+    if (unlikely(Index >= m_state.lights.size()))
       return D3DERR_INVALIDCALL;
 
-    *pEnable = m_state.IsLightEnabled(Index) ? 128 : 0; // Weird quirk but OK.
+    auto& light = m_state.lights[Index];
 
+    if (unlikely(!light.isValid))
+      return D3DERR_INVALIDCALL;
+
+    *pEnable = light.isEnabled ? 128 : 0; // Weird quirk but OK.
     return D3D_OK;
   }
 
@@ -8169,18 +8168,20 @@ namespace dxvk {
       DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
 
       uint32_t lightIdx = 0;
-      for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
-        auto idx = m_state.enabledLightIndices[i];
-        if (idx == std::numeric_limits<uint32_t>::max())
+
+      for (auto& light : m_state.lights) {
+        if (!light.isEnabled)
           continue;
 
         // D3D8/9 will allow lights with invalid types to be set and retrieved,
         // and even enabled, however they won't affect overall lighting
-        const D3DLIGHT9& light = m_state.lights[idx].value();
-        if (unlikely(light.Type == 0 || light.Type > D3DLIGHT_DIRECTIONAL))
+        if (unlikely(!light.light.Type || light.light.Type > D3DLIGHT_DIRECTIONAL))
           continue;
 
-        data->Lights[lightIdx++] = D3D9Light(light, m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);
+        data->Lights[lightIdx++] = D3D9Light(light.light, m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);
+
+        if (lightIdx == caps::MaxEnabledLights)
+          break;
       }
 
       data->Material = m_state.material;
