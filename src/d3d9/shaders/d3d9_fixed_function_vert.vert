@@ -445,8 +445,8 @@ void main() {
 
         // Some games rely on normals not being normal.
         if (normalizeNormals()) {
-            bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
-            normal = isZeroNormal ? normal : normalize(normal);
+            float len = length(normal);
+            normal = len > 0.0f ? normal / len : vec3(0.0f, 0.0f, 1.0f);
         }
     } else {
         gl_Position *= data.ViewportInfo.inverseExtent;
