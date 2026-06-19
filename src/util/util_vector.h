@@ -150,19 +150,4 @@ namespace dxvk {
   static_assert(sizeof(Vector4)  == sizeof(float) * 4);
   static_assert(sizeof(Vector4i) == sizeof(int)   * 4);
 
-  inline Vector4 replaceNaN(Vector4 a) {
-    #ifdef DXVK_ARCH_X86
-    Vector4 result;
-    __m128 value = _mm_loadu_ps(a.data);
-    __m128 mask  = _mm_cmpeq_ps(value, value);
-           value = _mm_and_ps(value, mask);
-    _mm_storeu_ps(result.data, value);
-    return result;
-    #else
-    for (int i = 0; i < 4; i++)
-      a[i] = std::isnan(a[i]) ? 0.0f : a[i];
-    return a;
-    #endif
-  }
-
 }
