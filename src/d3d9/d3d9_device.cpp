@@ -7637,7 +7637,7 @@ namespace dxvk {
         : GetFixedFunctionIsgn();
 
       auto elementCount = vertexElements.size();
-      auto elementData = EmitCsCmd<D3DVERTEXELEMENT9>(D3D9CmdType::None, elementCount, [
+      auto elementBlock = EmitCsCmd<D3DVERTEXELEMENT9>(D3D9CmdType::None, elementCount, [
         &cIaState         = m_iaState,
         cInputSignature   = inputSignature,
         cStreamsInstanced = m_vbSlotTracking.instanced,
@@ -7732,7 +7732,7 @@ namespace dxvk {
       });
 
       for (uint32_t i = 0u; i < elementCount; i++)
-        elementData[i] = vertexElements[i];
+        new (elementBlock->at(i)) D3DVERTEXELEMENT9(vertexElements[i]);
     } else {
       EmitCs([&cIaState = m_iaState] (DxvkContext* ctx) {
         cIaState.streamsUsed = 0;

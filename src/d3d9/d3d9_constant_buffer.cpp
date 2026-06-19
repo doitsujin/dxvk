@@ -133,7 +133,7 @@ namespace dxvk {
     } else {
       // Need to discard GPU buffer as well so that we can safely
       // use the asynchronous transfer queue for uploads.
-      m_streamCmd = m_device->EmitCsCmd<StreamCommand>(D3D9CmdType::None, 1u, [
+      auto block = m_device->EmitCsCmd<StreamCommand>(D3D9CmdType::None, 1u, [
         cCpuBuffer = m_cpuBuffer,
         cGpuBuffer = m_gpuBuffer,
         cDiscard   = Discard
@@ -144,6 +144,7 @@ namespace dxvk {
         ctx->uploadBuffer(cGpuBuffer, cmd->offset, cCpuBuffer, cmd->offset, cmd->size);
       });
 
+      m_streamCmd = new (block->first()) StreamCommand();
       m_streamCmd->offset = Offset;
       m_streamCmd->size = Size;
     }
