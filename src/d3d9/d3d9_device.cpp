@@ -138,7 +138,6 @@ namespace dxvk {
                 D3D9DeviceDirtyFlag::Fog,
                 D3D9DeviceDirtyFlag::FFVertexData,
                 D3D9DeviceDirtyFlag::FFVertexBlend,
-                D3D9DeviceDirtyFlag::FFVertexShader,
                 D3D9DeviceDirtyFlag::FFPixelShader,
                 D3D9DeviceDirtyFlag::FFViewport,
                 D3D9DeviceDirtyFlag::SharedPixelShaderData,
@@ -2220,8 +2219,7 @@ namespace dxvk {
     light.isValid = true;
     light.isEnabled = bool(Enable);
 
-    m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData,
-                D3D9DeviceDirtyFlag::FFVertexShader);
+    m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
     return D3D_OK;
   }
 
@@ -2433,7 +2431,7 @@ namespace dxvk {
 
         case D3DRS_CLIPPLANEENABLE:
           if (!Value != !oldValue)
-            m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+            m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
           m_dirty.set(D3D9DeviceDirtyFlag::ClipPlanes);
           break;
@@ -2456,7 +2454,7 @@ namespace dxvk {
         case D3DRS_LIGHTING:
         case D3DRS_NORMALIZENORMALS:
         case D3DRS_LOCALVIEWER:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           break;
 
         case D3DRS_AMBIENT:
@@ -2479,7 +2477,7 @@ namespace dxvk {
           break;
 
         case D3DRS_RANGEFOGENABLE:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           break;
 
         case D3DRS_POINTSIZE: {
@@ -2563,14 +2561,14 @@ namespace dxvk {
           break;
 
         case D3DRS_VERTEXBLEND:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           break;
 
         case D3DRS_INDEXEDVERTEXBLENDENABLE:
           if (CanSWVP() && Value)
             m_dirty.set(D3D9DeviceDirtyFlag::FFVertexBlend);
 
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           break;
 
         case D3DRS_ADAPTIVETESS_Y: {
@@ -3427,7 +3425,7 @@ namespace dxvk {
                     || decl->GetTexcoordMask() != m_state.vertexDecl->GetTexcoordMask();
 
     if (dirtyFFShader)
-      m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+      m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     const bool wasUsingProgrammableVS = UseProgrammableVS();
 
@@ -3439,7 +3437,7 @@ namespace dxvk {
       if (usesProgrammableVS) {
         BindShader<D3D9ShaderType::VertexShader>(GetCommonShader(m_state.vertexShader));
       } else {
-        m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+        m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
         BindFFUbershader<D3D9ShaderType::VertexShader>();
       }
     }
@@ -3560,7 +3558,7 @@ namespace dxvk {
     if (usesProgrammableVS) {
       BindShader<D3D9ShaderType::VertexShader>(GetCommonShader(shader));
     } else if (wasUsingProgrammableVS) {
-      m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+      m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
       BindFFUbershader<D3D9ShaderType::VertexShader>();
     }
 
@@ -4681,7 +4679,7 @@ namespace dxvk {
           break;
 
         case DXVK_TSS_TEXCOORDINDEX:
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           break;
 
         case DXVK_TSS_TEXTURETRANSFORMFLAGS:
@@ -4689,7 +4687,7 @@ namespace dxvk {
           if (Value & D3DTTFF_PROJECTED)
             m_textureSlotTracking.projected |= 1 << Stage;
 
-          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+          m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
           m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
           break;
 
@@ -8108,12 +8106,6 @@ namespace dxvk {
         vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
     }
 
-    // Shader...
-    if (m_dirty.test(D3D9DeviceDirtyFlag::FFVertexShader)) {
-      m_dirty.clr(D3D9DeviceDirtyFlag::FFVertexShader);
-      m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
-    }
-
     // Viewport...
     if (hasPositionT && (m_dirty.test(D3D9DeviceDirtyFlag::FFViewport) || m_ffZTest != IsZTestEnabled())) {
       m_dirty.clr(D3D9DeviceDirtyFlag::FFViewport);
@@ -8570,7 +8562,7 @@ namespace dxvk {
     rs[D3DRS_LOCALVIEWER]            = TRUE;
     rs[D3DRS_RANGEFOGENABLE]         = FALSE;
     rs[D3DRS_NORMALIZENORMALS]       = FALSE;
-    m_dirty.set(D3D9DeviceDirtyFlag::FFVertexShader);
+    m_dirty.set(D3D9DeviceDirtyFlag::FFVertexData);
 
     // PS
     rs[D3DRS_SPECULARENABLE] = FALSE;
