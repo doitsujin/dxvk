@@ -2381,13 +2381,16 @@ namespace dxvk {
           break;
 
         case D3DRS_ZENABLE:
-          if (likely(!Value != !oldValue)) {
+          if (likely(Value != oldValue)) {
             if (likely(m_state.depthStencil != nullptr)) {
               // The depth test has been enabled or disabled => check for hazards
               UpdateActiveHazardsDS(std::numeric_limits<uint32_t>::max());
             }
 
             m_dirty.set(D3D9DeviceDirtyFlag::DepthStencilState);
+
+            if (m_specData.setWBuffer(Value == D3DZB_USEW))
+              m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
           }
           break;
 
@@ -4640,8 +4643,12 @@ namespace dxvk {
      || idx >= GetTransformIndex(D3DTS_WORLD))
       m_dirty.set(D3D9DeviceDirtyFlag::FFVertexBlend);
 
-    if (idx == GetTransformIndex(D3DTS_PROJECTION))
+    if (idx == GetTransformIndex(D3DTS_PROJECTION)) {
       m_dirty.set(D3D9DeviceDirtyFlag::Fog);
+
+      m_pushData.shared.wFar = ComputeWNearFar().second;
+      m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
+    }
 
     return D3D_OK;
   }

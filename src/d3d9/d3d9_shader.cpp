@@ -877,7 +877,7 @@ namespace dxvk {
         switch (ir::LegacyPointArgsLayout(i)) {
           case ir::LegacyPointArgsLayout::eIsPointSprite: {
             // Bit 1 of the point mode spec constant
-            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, enablePointSprite),
+            resultOp.addOperand(emitSpecConstantLoad(offsetof(D3D9SpecData, flags),
               0u, 1u, "enablePointSprite", ref, ir::ScalarType::eBool, ir::SsaDef()));
           } break;
 

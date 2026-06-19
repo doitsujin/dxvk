@@ -27,6 +27,7 @@ struct D3D9FfpsPushData {
 
 struct D3D9SharedPushData {
     uint packedFogColorAndAlphaRef;
+    float wFar;
     float fogDistanceScale;
     float fogDistanceEnd;
     float fogDensity;

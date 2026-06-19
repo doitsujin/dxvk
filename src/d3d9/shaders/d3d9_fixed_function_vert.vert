@@ -150,6 +150,10 @@ bool isSamplerProjected(uint idx) {
     return bitfieldExtract(packedProjMaskAndFfArgs, int(idx), 1) != 0;
 }
 
+bool isWBufferEnabled() {
+    return bitfieldExtract(alphaTestAndModeArgs, 9, 1) != 0;
+}
+
 layout(set = CBV_SET, binding = CBV_VS_FIXED_FUNCTION, scalar, row_major)
 uniform ShaderData {
     D3D9FixedFunctionVS data;
@@ -704,4 +708,7 @@ void main() {
 
     // We statically declare 6 clip planes, so we always need to write values.
     emitVsClipping(vtx);
+
+    if (isWBufferEnabled())
+        gl_Position.z = gl_Position.w * gl_Position.w / global.wFar;
 }

@@ -41,6 +41,8 @@ namespace dxvk {
     uint8_t fogColor[3] = {};
     uint8_t alphaRef = 0u;
 
+    float wFar = 0.0f;
+
     float fogDistanceScale = 0.0f;
     float fogDistanceEnd = 0.0f;
     float fogDensity = 0.0f;
@@ -107,7 +109,7 @@ namespace dxvk {
     // op is packed into the lower 4 bits of the alpha test byte, alpha
     // precision into the upper 4 bits.
     uint8_t alphaTest = 0u;
-    bool enablePointSprite = false;
+    uint8_t flags = 0u;
     uint8_t clipPlaneCount = 0u;
     uint8_t drefScale = 0u;
 
@@ -188,7 +190,11 @@ namespace dxvk {
     }
 
     bool setPointSprite(bool enable) {
-      return set(enablePointSprite, enable);
+      return set(flags, enable, 0u, 1u);
+    }
+
+    bool setWBuffer(bool enable) {
+      return set(flags, enable, 1u, 1u);
     }
 
     bool setGlobalSpecular(bool enable) {

@@ -489,7 +489,7 @@ namespace dxvk {
                                  /* | D3DPRASTERCAPS_ZBUFFERLESSHSR */
                                     | D3DPRASTERCAPS_FOGRANGE
                                     | D3DPRASTERCAPS_ANISOTROPY
-                                 /* | D3DPRASTERCAPS_WBUFFER */
+                                    | D3DPRASTERCAPS_WBUFFER
                                     | D3DPRASTERCAPS_WFOG
                                     | D3DPRASTERCAPS_ZFOG
                                     | D3DPRASTERCAPS_COLORPERSPECTIVE
