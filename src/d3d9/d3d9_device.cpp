@@ -3442,8 +3442,7 @@ namespace dxvk {
       }
     }
 
-    m_dirty.set(D3D9DeviceDirtyFlag::InputLayout);
-
+    m_dirty.set(D3D9DeviceDirtyFlag::InputLayout, D3D9DeviceDirtyFlag::Fog);
     return D3D_OK;
   }
 
@@ -6602,10 +6601,13 @@ namespace dxvk {
       // Z fog is only used if the projection matrix is not a perspective matrix,
       // otherwise we get W fog, including programmable vertex shaders. SM2 pixel
       // shaders behave just like fixed-function.
+      // PositionT also implies W fog, some D3D6 jank apparently relies on that.
       // The projection matrix logic is described in a truly prehistoric Nvidia paper:
       // https://developer.download.nvidia.com/assets/gamedev/docs/Fog2.pdf
-      auto [wNear, wFar] = ComputeWNearFar();
-      fogUseZ = wNear == 1.0f && wFar == 1.0f;
+      if (!m_state.vertexDecl || !m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)) {
+        auto [wNear, wFar] = ComputeWNearFar();
+        fogUseZ = wNear == 1.0f && wFar == 1.0f;
+      }
     }
 
     // Only set up vertex frog if pixel fog is not used
@@ -6614,20 +6616,22 @@ namespace dxvk {
         D3DFOGMODE(rs[D3DRS_FOGTABLEMODE])))
       m_dirty.set(D3D9DeviceDirtyFlag::SpecializationEntries);
 
-    // Update fog parameters
-    uint32_t fogColor = rs[D3DRS_FOGCOLOR];
-    float fogDensity = bit::cast<float>(rs[D3DRS_FOGDENSITY]);
-    float fogEnd   = bit::cast<float>(rs[D3DRS_FOGEND]);
-    float fogStart = bit::cast<float>(rs[D3DRS_FOGSTART]);
+    if (fogEnabled) {
+      // Update fog parameters.
+      uint32_t fogColor = rs[D3DRS_FOGCOLOR];
+      float fogDensity = bit::cast<float>(rs[D3DRS_FOGDENSITY]);
+      float fogEnd   = bit::cast<float>(rs[D3DRS_FOGEND]);
+      float fogStart = bit::cast<float>(rs[D3DRS_FOGSTART]);
 
-    m_pushData.shared.fogColor[0] = uint8_t(fogColor >>  0u);
-    m_pushData.shared.fogColor[1] = uint8_t(fogColor >>  8u);
-    m_pushData.shared.fogColor[2] = uint8_t(fogColor >> 16u);
-    m_pushData.shared.fogDensity = fogDensity;
-    m_pushData.shared.fogDistanceEnd = fogEnd;
-    m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : 0.0f;
+      m_pushData.shared.fogColor[0] = uint8_t(fogColor >>  0u);
+      m_pushData.shared.fogColor[1] = uint8_t(fogColor >>  8u);
+      m_pushData.shared.fogColor[2] = uint8_t(fogColor >> 16u);
+      m_pushData.shared.fogDensity = fogDensity;
+      m_pushData.shared.fogDistanceEnd = fogEnd;
+      m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : 0.0f;
 
-    m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
+      m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
+    }
   }
 
 
