@@ -512,6 +512,112 @@ vec4 transformTexCoord(uint idx, vec4 vertex, vec3 normal) {
 }
 
 
+struct Lighting {
+    vec4 diffuse;
+    vec4 specular;
+};
+
+
+Lighting computeLighting(vec4 vertex, vec3 normal) {
+    Lighting result;
+    result.diffuse = vertexHasColor0() ? in_Color0 : vec4(1.0, 1.0, 1.0, 1.0);
+    result.specular = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, boundPsIsShaderModel3() ? 0.0 : 1.0);
+
+    if (useLighting()) {
+        vec4 diffuseValue = vec4(0.0);
+        vec4 specularValue = vec4(0.0);
+        vec4 ambientValue = vec4(0.0);
+
+        for (uint i = 0; i < lightCount(); i++) {
+            D3D9Light light = data.Lights[i];
+
+            vec3 delta = light.Position.xyz - vertex.xyz;
+            float dist = length(delta);
+
+            // Directional light properties
+            vec3 hitDir = -light.Direction.xyz;
+            float atten = 1.0f;
+
+            if (light.Type != D3DLIGHT_DIRECTIONAL) {
+                // Range-based attenuation
+                atten = fma(dist, light.Attenuation2, light.Attenuation1);
+                atten = fma(dist, atten, light.Attenuation0);
+                atten = 1.0 / atten;
+                atten = spvNMin(atten, FloatMaxValue);
+                atten = dist > light.Range ? 0.0 : atten;
+
+                hitDir = normalize(delta);
+            }
+
+            if (light.Type == D3DLIGHT_SPOT) {
+                // Angle-based attenuation
+                float rho = dot(-hitDir, light.Direction.xyz);
+                float spotAtten = rho - light.Phi;
+                      spotAtten = spotAtten / (light.Theta - light.Phi);
+                      spotAtten = pow(spotAtten, light.Falloff);
+
+                bool insideThetaAndPhi = rho <= light.Theta;
+                bool insidePhi = rho > light.Phi;
+                     spotAtten = insidePhi ? spotAtten : 0.0;
+                     spotAtten = insideThetaAndPhi ? spotAtten : 1.0;
+                     spotAtten = clamp(spotAtten, 0.0, 1.0);
+
+                atten *= spotAtten;
+            }
+
+            // Ambient + Diffuse
+            float hitDot = dot(normal, hitDir);
+                  hitDot = clamp(hitDot, 0.0, 1.0);
+
+            float diffuseness = hitDot * atten;
+            ambientValue += light.Ambient * atten;
+            diffuseValue += light.Diffuse * diffuseness;
+
+            // Specular
+            vec3 mid;
+
+            if (localViewer()) {
+                mid = normalize(vertex.xyz);
+                mid = hitDir - mid;
+            } else {
+                mid = hitDir - vec3(0.0, 0.0, 1.0);
+            }
+
+            float midDot = dot(normal, normalize(mid));
+                  midDot = clamp(midDot, 0.0, 1.0);
+
+            if (midDot > 0.0 && hitDot > 0.0) {
+                float specularness = pow(midDot, data.Material.Power) * atten;
+                specularValue += light.Specular * specularness;
+            }
+        }
+
+        vec4 matDiffuse  = pickMaterialSource(diffuseSource(), data.Material.Diffuse);
+        vec4 matAmbient  = pickMaterialSource(ambientSource(), data.Material.Ambient);
+        vec4 matEmissive = pickMaterialSource(emissiveSource(), data.Material.Emissive);
+        vec4 matSpecular = pickMaterialSource(specularSource(), data.Material.Specular);
+
+        vec4 finalColor0 = fma(matAmbient, data.GlobalAmbient, matEmissive);
+             finalColor0 = fma(matAmbient, ambientValue, finalColor0);
+             finalColor0 = fma(matDiffuse, diffuseValue, finalColor0);
+             finalColor0.a = matDiffuse.a;
+
+        vec4 finalColor1 = matSpecular * specularValue;
+
+        // Saturate
+        finalColor0 = clamp(finalColor0, vec4(0.0), vec4(1.0));
+        finalColor1 = clamp(finalColor1, vec4(0.0), vec4(1.0));
+
+        result.diffuse = finalColor0;
+
+        if (isSpecularEnabled())
+            result.specular = finalColor1;
+    }
+
+    return result;
+}
+
+
 void main() {
     vec4 vtx = in_Position0;
     gl_Position = in_Position0;
@@ -593,101 +699,9 @@ void main() {
     out_Texcoord6 = transformTexCoord(6u, vtx, normal);
     out_Texcoord7 = transformTexCoord(7u, vtx, normal);
 
-    if (useLighting()) {
-        vec4 diffuseValue = vec4(0.0);
-        vec4 specularValue = vec4(0.0);
-        vec4 ambientValue = vec4(0.0);
-
-        for (uint i = 0; i < lightCount(); i++) {
-            D3D9Light light = data.Lights[i];
-
-            vec3 delta = light.Position.xyz - vtx.xyz;
-            float dist = length(delta);
-
-            // Directional light properties
-            vec3 hitDir = -light.Direction.xyz;
-            float atten = 1.0f;
-
-            if (light.Type != D3DLIGHT_DIRECTIONAL) {
-                // Range-based attenuation
-                atten = fma(dist, light.Attenuation2, light.Attenuation1);
-                atten = fma(dist, atten, light.Attenuation0);
-                atten = 1.0 / atten;
-                atten = spvNMin(atten, FloatMaxValue);
-                atten = dist > light.Range ? 0.0 : atten;
-
-                hitDir = normalize(delta);
-            }
-
-            if (light.Type == D3DLIGHT_SPOT) {
-                // Angle-based attenuation
-                float rho = dot(-hitDir, light.Direction.xyz);
-                float spotAtten = rho - light.Phi;
-                      spotAtten = spotAtten / (light.Theta - light.Phi);
-                      spotAtten = pow(spotAtten, light.Falloff);
-
-                bool insideThetaAndPhi = rho <= light.Theta;
-                bool insidePhi = rho > light.Phi;
-                     spotAtten = insidePhi ? spotAtten : 0.0;
-                     spotAtten = insideThetaAndPhi ? spotAtten : 1.0;
-                     spotAtten = clamp(spotAtten, 0.0, 1.0);
-
-                atten *= spotAtten;
-            }
-
-            // Ambient + Diffuse
-            float hitDot = dot(normal, hitDir);
-                  hitDot = clamp(hitDot, 0.0, 1.0);
-
-            float diffuseness = hitDot * atten;
-            ambientValue += light.Ambient * atten;
-            diffuseValue += light.Diffuse * diffuseness;
-
-            // Specular
-            vec3 mid;
-
-            if (localViewer()) {
-                mid = normalize(vtx.xyz);
-                mid = hitDir - mid;
-            } else {
-                mid = hitDir - vec3(0.0, 0.0, 1.0);
-            }
-
-            float midDot = dot(normal, normalize(mid));
-                  midDot = clamp(midDot, 0.0, 1.0);
-
-            if (midDot > 0.0 && hitDot > 0.0) {
-                float specularness = pow(midDot, data.Material.Power) * atten;
-                specularValue += light.Specular * specularness;
-            }
-        }
-
-        vec4 matDiffuse  = pickMaterialSource(diffuseSource(), data.Material.Diffuse);
-        vec4 matAmbient  = pickMaterialSource(ambientSource(), data.Material.Ambient);
-        vec4 matEmissive = pickMaterialSource(emissiveSource(), data.Material.Emissive);
-        vec4 matSpecular = pickMaterialSource(specularSource(), data.Material.Specular);
-
-        vec4 finalColor0 = fma(matAmbient, data.GlobalAmbient, matEmissive);
-             finalColor0 = fma(matAmbient, ambientValue, finalColor0);
-             finalColor0 = fma(matDiffuse, diffuseValue, finalColor0);
-             finalColor0.a = matDiffuse.a;
-
-        vec4 finalColor1 = matSpecular * specularValue;
-
-        // Saturate
-        finalColor0 = clamp(finalColor0, vec4(0.0), vec4(1.0));
-        finalColor1 = clamp(finalColor1, vec4(0.0), vec4(1.0));
-
-        out_Color0 = finalColor0;
-
-        if (isSpecularEnabled())
-            out_Color1 = finalColor1;
-        else
-            out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, boundPsIsShaderModel3() ? 0.0 : 1.0);
-    } else {
-        out_Color0 = vertexHasColor0() ? in_Color0 : vec4(1.0, 1.0, 1.0, 1.0);
-        out_Color1 = vertexHasColor1() ? in_Color1 : vec4(0.0, 0.0, 0.0, boundPsIsShaderModel3() ? 0.0 : 1.0);
-    }
+    Lighting lighting = computeLighting(vtx, normal);
+    out_Color0 = lighting.diffuse;
+    out_Color1 = lighting.specular;
 
     out_Fog = calculateFog(vtx);
 
