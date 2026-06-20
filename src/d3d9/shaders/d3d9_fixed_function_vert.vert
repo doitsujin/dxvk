@@ -363,6 +363,10 @@ precise vec4 vecTimesMat4(vec4 a, mat4 b) {
                 dp4(a, b[2]), dp4(a, b[3]));
 }
 
+float mul_legacy(float a, float b) {
+    return (b == 0.0f ? 0.0f : a) * (a == 0.0f ? 0.0f : b);
+}
+
 void emitVsClipping(vec4 vtx) {
     vec4 worldPos = data.InverseView * vtx;
 
@@ -382,6 +386,84 @@ vec4 pickMaterialSource(uint source, vec4 material) {
         return in_Color1;
     else
         return material;
+}
+
+
+struct Vertex {
+    vec4 coord;
+    vec4 transformed;
+    vec3 normal;
+};
+
+
+Vertex transformVertex() {
+    Vertex result;
+    result.coord = in_Position0;
+    result.normal = in_Normal0.xyz;
+
+    if (blendMode() == D3D9FF_VertexBlendMode_Tween) {
+        result.coord = mix(result.coord, in_Position1, data.TweenFactor);
+        result.normal = mix(result.normal, in_Normal1.xyz, data.TweenFactor);
+    }
+
+    if (!vertexHasPositionT()) {
+        if (blendMode() == D3D9FF_VertexBlendMode_Normal) {
+            float blendWeightRemaining = 1.0;
+
+            vec4 vtxSum = vec4(0.0);
+            vec3 nrmSum = vec3(0.0);
+
+            for (uint i = 0; i <= vertexBlendCount(); i++) {
+                uint arrayIndex = i;
+
+                if (vertexBlendIndexed())
+                    arrayIndex = uint(roundEven(in_BlendIndices[i]));
+
+                mat4 worldView = WorldViewArray[arrayIndex];
+                mat3 nrmMtx = mat3(worldView);
+
+                vec4 vtxResult = vecTimesMat4(result.coord, worldView);
+                vec3 nrmResult = result.normal * nrmMtx;
+
+                float weight = blendWeightRemaining;
+
+                if (i < vertexBlendCount()) {
+                    weight = in_BlendWeight[i];
+                    blendWeightRemaining -= weight;
+                }
+
+                vtxSum = fma(vtxResult, weight.xxxx, vtxSum);
+                nrmSum = fma(nrmResult, weight.xxx, nrmSum);
+            }
+
+            result.coord = vtxSum;
+            result.normal = nrmSum;
+            result.transformed = vecTimesMat4(result.coord, data.Projection);
+        } else {
+            // Apply pre-multiplied world-view-projection matrix, Railroad Tycoon 3
+            // relies on this and will break if we apply matrices one by one.
+            result.transformed = vecTimesMat4(result.coord, data.WorldViewProj);
+            result.coord = vecTimesMat4(result.coord, data.WorldView);
+            result.normal = mat3(data.NormalMatrix) * result.normal;
+        }
+
+        if (normalizeNormals()) {
+            float normalScale = inversesqrt(dot(result.normal, result.normal));
+            result.normal.x = mul_legacy(result.normal.x, normalScale);
+            result.normal.y = mul_legacy(result.normal.y, normalScale);
+            result.normal.z = mul_legacy(result.normal.z, normalScale);
+        }
+
+        return result;
+    } else {
+        // We still need to account for perspective correction here...
+        result.transformed = fma(result.coord, data.ViewportInfo.inverseExtent, data.ViewportInfo.inverseOffset);
+
+        float rhw = result.transformed.w == 0.0 ? 1.0 : 1.0 / result.transformed.w;
+        result.transformed.xyz *= rhw;
+        result.transformed.w = rhw;
+        return result;
+    }
 }
 
 
@@ -432,7 +514,7 @@ vec4 transformTexCoord(uint idx, vec4 vertex, vec3 normal) {
         case DXVK_TSS_TCI_PASSTHRU:
             transformed = loadTexcoord(inputIndex & 0xffu);
 
-            if (texcoordCount < 4) {
+            if (texcoordCount < 4u) {
                 // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
                 transformed.w = 0.0;
             }
@@ -500,7 +582,7 @@ vec4 transformTexCoord(uint idx, vec4 vertex, vec3 normal) {
     // Discard the components that exceed the specified D3DTTFF_COUNT
     vec4 result = mix(transformed, vec4(0.0f), lessThan(count.xxxx, uvec4(1u, 2u, 3u, 4u)));
 
-    if (isSamplerProjected(idx) && projIndex < 4) {
+    if (isSamplerProjected(idx) && projIndex < 4u) {
         // The projection idx is always based on the flags, even when the input
         // mode is not DXVK_TSS_TCI_PASSTHRU. The w component is only used for
         // projection or unused, so always insert the divisor there. The pixel
@@ -619,94 +701,27 @@ Lighting computeLighting(vec4 vertex, vec3 normal) {
 
 
 void main() {
-    vec4 vtx = in_Position0;
-    gl_Position = in_Position0;
-    vec3 normal = in_Normal0.xyz;
+    Vertex vtx = transformVertex();
 
-    if (blendMode() == D3D9FF_VertexBlendMode_Tween) {
-        vec4 vtx1 = in_Position1;
-        vec3 normal1 = in_Normal1.xyz;
-        vtx = mix(vtx, vtx1, data.TweenFactor);
-        normal = mix(normal, normal1, data.TweenFactor);
-    }
+    gl_Position = vtx.transformed;
+    gl_PointSize = calculatePointSize(vtx.coord);
 
-    if (!vertexHasPositionT()) {
-        if (blendMode() == D3D9FF_VertexBlendMode_Normal) {
-            float blendWeightRemaining = 1.0;
-            vec4 vtxSum = vec4(0.0);
-            vec3 nrmSum = vec3(0.0);
+    emitVsClipping(vtx.coord);
 
-            for (uint i = 0; i <= vertexBlendCount(); i++) {
-                uint arrayIndex = i;
+    out_Normal = vec4(vtx.normal, 1.0);
 
-                if (vertexBlendIndexed())
-                    arrayIndex = uint(roundEven(in_BlendIndices[i]));
+    out_Texcoord0 = transformTexCoord(0u, vtx.coord, vtx.normal);
+    out_Texcoord1 = transformTexCoord(1u, vtx.coord, vtx.normal);
+    out_Texcoord2 = transformTexCoord(2u, vtx.coord, vtx.normal);
+    out_Texcoord3 = transformTexCoord(3u, vtx.coord, vtx.normal);
+    out_Texcoord4 = transformTexCoord(4u, vtx.coord, vtx.normal);
+    out_Texcoord5 = transformTexCoord(5u, vtx.coord, vtx.normal);
+    out_Texcoord6 = transformTexCoord(6u, vtx.coord, vtx.normal);
+    out_Texcoord7 = transformTexCoord(7u, vtx.coord, vtx.normal);
 
-                mat4 worldView = WorldViewArray[arrayIndex];
-                mat3 nrmMtx = mat3(worldView);
-
-                vec4 vtxResult = vecTimesMat4(vtx, worldView);
-                vec3 nrmResult = normal * nrmMtx;
-
-                float weight = blendWeightRemaining;
-
-                if (i < vertexBlendCount()) {
-                    weight = in_BlendWeight[i];
-                    blendWeightRemaining -= weight;
-                }
-
-                vec4 weightVec4 = vec4(weight, weight, weight, weight);
-                vtxSum = fma(vtxResult, weightVec4, vtxSum);
-                nrmSum = fma(nrmResult, weightVec4.xyz, nrmSum);
-            }
-
-            vtx = vtxSum;
-            normal = nrmSum;
-            gl_Position = vecTimesMat4(vtx, data.Projection);
-        } else {
-            gl_Position = vecTimesMat4(vtx, data.WorldViewProj);
-            vtx = vecTimesMat4(vtx, data.WorldView);
-
-            mat3 nrmMtx = mat3(data.NormalMatrix);
-            normal = nrmMtx * normal;
-        }
-
-        // Some games rely on normals not being normal.
-        if (normalizeNormals()) {
-            bool isZeroNormal = all(equal(normal, vec3(0.0, 0.0, 0.0)));
-            normal = isZeroNormal ? normal : normalize(normal);
-        }
-    } else {
-        gl_Position *= data.ViewportInfo.inverseExtent;
-        gl_Position += data.ViewportInfo.inverseOffset;
-
-        // We still need to account for perspective correction here...
-
-        float w = gl_Position.w;
-        float rhw = w == 0.0 ? 1.0 : 1.0 / w;
-        gl_Position.xyz *= rhw;
-        gl_Position.w = rhw;
-    }
-
-    out_Normal = vec4(normal, 1.0);
-
-    out_Texcoord0 = transformTexCoord(0u, vtx, normal);
-    out_Texcoord1 = transformTexCoord(1u, vtx, normal);
-    out_Texcoord2 = transformTexCoord(2u, vtx, normal);
-    out_Texcoord3 = transformTexCoord(3u, vtx, normal);
-    out_Texcoord4 = transformTexCoord(4u, vtx, normal);
-    out_Texcoord5 = transformTexCoord(5u, vtx, normal);
-    out_Texcoord6 = transformTexCoord(6u, vtx, normal);
-    out_Texcoord7 = transformTexCoord(7u, vtx, normal);
-
-    Lighting lighting = computeLighting(vtx, normal);
+    Lighting lighting = computeLighting(vtx.coord, vtx.normal);
     out_Color0 = lighting.diffuse;
     out_Color1 = lighting.specular;
 
-    out_Fog = calculateFog(vtx);
-
-    gl_PointSize = calculatePointSize(vtx);
-
-    // We statically declare 6 clip planes, so we always need to write values.
-    emitVsClipping(vtx);
+    out_Fog = calculateFog(vtx.coord);
 }
