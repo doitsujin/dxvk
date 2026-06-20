@@ -370,13 +370,8 @@ void emitVsClipping(vec4 vtx) {
     uint clipPlaneCount = getClipPlaneCount();
 
     // Compute clip distances
-    for (uint i = 0; i < MaxClipPlaneCount; i++) {
-        vec4 clipPlane = clipPlanes[i];
-        float dist = dp4(worldPos, clipPlane);
-        bool clipPlaneEnabled = i < clipPlaneCount;
-        float value = clipPlaneEnabled ? dist : 0.0;
-        gl_ClipDistance[i] = value;
-    }
+    for (uint i = 0u; i < MaxClipPlaneCount; i++)
+        gl_ClipDistance[i] = i < clipPlaneCount ? dp4(worldPos, clipPlanes[i]) : 0.0;
 }
 
 
