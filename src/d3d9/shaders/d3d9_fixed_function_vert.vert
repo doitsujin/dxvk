@@ -385,6 +385,133 @@ vec4 pickMaterialSource(uint source, vec4 material) {
 }
 
 
+vec4 loadTexcoord(uint idx) {
+    vec4 result = vec4(0.0f);
+    result = mix(result, in_Texcoord0, bvec4(idx == 0u));
+    result = mix(result, in_Texcoord1, bvec4(idx == 1u));
+    result = mix(result, in_Texcoord2, bvec4(idx == 2u));
+    result = mix(result, in_Texcoord3, bvec4(idx == 3u));
+    result = mix(result, in_Texcoord4, bvec4(idx == 4u));
+    result = mix(result, in_Texcoord5, bvec4(idx == 5u));
+    result = mix(result, in_Texcoord6, bvec4(idx == 6u));
+    result = mix(result, in_Texcoord7, bvec4(idx == 7u));
+    return result;
+}
+
+
+float vectorExtract(vec4 vector, uint idx) {
+    float result = vector.x;
+    result = mix(result, vector.y, idx == 1u);
+    result = mix(result, vector.z, idx == 2u);
+    result = mix(result, vector.w, idx == 3u);
+    return result;
+}
+
+
+vec4 transformTexCoord(uint idx, vec4 vertex, vec3 normal) {
+    // 0b111 = 7
+    uint inputIndex = texcoordIndex(idx);
+    uint inputFlags = texcoordFlags(idx) << TCIOffset;
+    uint texcoordCount = bitfieldExtract(vertexTexcoordDeclMask(), int(inputIndex) * 3, 3);
+
+    vec4 transformed = vec4(0.0f);
+
+    uint flags = texcoordTransformFlags(idx);
+
+    // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
+    // but D3D9 does not apply the transformation matrix.
+    bool applyTransform = flags > D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
+
+    uint count = min(flags, 4u);
+
+    // A projection component index of 4 means we won't do projection
+    uint projIndex = count != 0u ? count - 1u : 4u;
+
+    switch (inputFlags) {
+        default:
+        case DXVK_TSS_TCI_PASSTHRU:
+            transformed = loadTexcoord(inputIndex & 0xffu);
+
+            if (texcoordCount < 4) {
+                // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
+                transformed.w = 0.0;
+            }
+
+            if (applyTransform && !vertexHasPositionT()) {
+                /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
+                Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
+                if (texcoordCount <= 1) {
+                    // y gets padded to 1 for some reason
+                    transformed.y = 1.0;
+                }*/
+
+                // The first component after the last one thats backed by a vertex buffer gets padded to 1 for some reason.
+                if (texcoordCount >= 1u)
+                    transformed = mix(transformed, vec4(1.0f), equal(uvec4(0u, 1u, 2u, 3u), texcoordCount.xxxx));
+            } else if (texcoordCount != 0 && !applyTransform) {
+                // COUNT0, COUNT1, COUNT > 4 => take count from vertex decl if that's not zero
+                count = texcoordCount;
+            }
+
+            projIndex = count != 0u ? count - 1u : 4u;
+            break;
+
+        case DXVK_TSS_TCI_CAMERASPACENORMAL:
+            transformed = vec4(normal, 1.0f);
+
+            if (!applyTransform) {
+                count = 3u;
+                projIndex = 4u;
+            }
+            break;
+
+        case DXVK_TSS_TCI_CAMERASPACEPOSITION:
+            transformed = vertex;
+            if (!applyTransform) {
+                count = 3u;
+                projIndex = 4u;
+            }
+            break;
+
+        case DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR: {
+            vec3 reflection = reflect(normalize(vertex.xyz), normal);
+            transformed = vec4(reflection, 1.0f);
+
+            if (!applyTransform) {
+                count = 3u;
+                projIndex = 4u;
+            }
+
+            break;
+        }
+
+        case DXVK_TSS_TCI_SPHEREMAP: {
+            vec3 reflection = reflect(normalize(vertex.xyz), normal);
+
+            float m = length(reflection + vec3(0.0f, 0.0f, 1.0f)) * 2.0f;
+            transformed = vec4(reflection.xy / m + 0.5f, 0.0f, 1.0f);
+            break;
+        }
+    }
+
+    if (applyTransform && !vertexHasPositionT())
+        transformed = transformed * data.TexcoordMatrices[idx];
+
+    // Discard the components that exceed the specified D3DTTFF_COUNT
+    vec4 result = mix(transformed, vec4(0.0f), lessThan(count.xxxx, uvec4(1u, 2u, 3u, 4u)));
+
+    if (isSamplerProjected(idx) && projIndex < 4) {
+        // The projection idx is always based on the flags, even when the input
+        // mode is not DXVK_TSS_TCI_PASSTHRU. The w component is only used for
+        // projection or unused, so always insert the divisor there. The pixel
+        // shader will then decide whether to project or not.
+        result.w = vectorExtract(transformed, projIndex);
+    }
+
+    return result;
+}
+
+
 void main() {
     vec4 vtx = in_Position0;
     gl_Position = in_Position0;
@@ -455,147 +582,16 @@ void main() {
         gl_Position.w = rhw;
     }
 
-    vec4 outNrm = vec4(normal, 1.0);
-    out_Normal = outNrm;
+    out_Normal = vec4(normal, 1.0);
 
-    vec4 texCoords[TextureStageCount];
-    texCoords[0] = in_Texcoord0;
-    texCoords[1] = in_Texcoord1;
-    texCoords[2] = in_Texcoord2;
-    texCoords[3] = in_Texcoord3;
-    texCoords[4] = in_Texcoord4;
-    texCoords[5] = in_Texcoord5;
-    texCoords[6] = in_Texcoord6;
-    texCoords[7] = in_Texcoord7;
-
-    vec4 transformedTexCoords[TextureStageCount];
-
-    for (uint i = 0; i < TextureStageCount; i++) {
-        // 0b111 = 7
-        uint inputIndex = texcoordIndex(i);
-        uint inputFlags = texcoordFlags(i);
-        uint texcoordCount = (vertexTexcoordDeclMask() >> (inputIndex * 3)) & 7;
-
-        vec4 transformed;
-
-        uint flags = texcoordTransformFlags(i);
-
-        // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
-        // but D3D9 does not apply the transformation matrix.
-        bool applyTransform = flags > D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
-
-        uint count = min(flags, 4u);
-
-        // A projection component index of 4 means we won't do projection
-        uint projIndex = count != 0 ? count - 1 : 4;
-
-        switch (inputFlags) {
-            default:
-            case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
-                transformed = texCoords[inputIndex & 0xFF];
-
-                if (texcoordCount < 4) {
-                    // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
-                    transformed.w = 0.0;
-                }
-
-                if (applyTransform && !vertexHasPositionT()) {
-                    /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
-                    Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
-                    if (texcoordCount <= 1) {
-                      // y gets padded to 1 for some reason
-                      transformed.y = 1.0;
-                    }*/
-
-                    if (texcoordCount >= 1 && texcoordCount < 4) {
-                        // The first component after the last one thats backed by a vertex buffer gets padded to 1 for some reason.
-                        uint idx = texcoordCount;
-                        transformed[idx] = 1.0;
-                    }
-                } else if (texcoordCount != 0 && !applyTransform) {
-                    // COUNT0, COUNT1, COUNT > 4 => take count from vertex decl if that's not zero
-                    count = texcoordCount;
-                }
-
-                projIndex = count != 0 ? count - 1 : 4;
-                break;
-
-            case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
-                transformed = outNrm;
-                if (!applyTransform) {
-                    count = 3;
-                    projIndex = 4;
-                }
-                break;
-
-            case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
-                transformed = vtx;
-                if (!applyTransform) {
-                    count = 3;
-                    projIndex = 4;
-                }
-                break;
-
-            case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
-                vec3 vtx3 = vtx.xyz;
-                vtx3 = normalize(vtx3);
-
-                vec3 reflection = reflect(vtx3, normal);
-                transformed = vec4(reflection, 1.0);
-                if (!applyTransform) {
-                    count = 3;
-                    projIndex = 4;
-                }
-                break;
-            }
-
-            case (DXVK_TSS_TCI_SPHEREMAP >> TCIOffset): {
-                vec3 vtx3 = vtx.xyz;
-                vtx3 = normalize(vtx3);
-
-                vec3 reflection = reflect(vtx3, normal);
-                float m = length(reflection + vec3(0.0, 0.0, 1.0)) * 2.0;
-
-                transformed = vec4(
-                    reflection.x / m + 0.5,
-                    reflection.y / m + 0.5,
-                    0.0,
-                    1.0
-                );
-                break;
-            }
-        }
-
-        if (applyTransform && !vertexHasPositionT()) {
-            transformed = transformed * data.TexcoordMatrices[i];
-        }
-
-        if (isSamplerProjected(i) && projIndex < 4) {
-            // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
-            float projValue = transformed[projIndex];
-
-            // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
-            // The fragment shader will then decide whether to project or not.
-            transformed.w = projValue;
-        }
-
-        uint totalComponents = (isSamplerProjected(i) && projIndex < 4) ? 3 : 4;
-
-        // Discard the components that exceed the specified D3DTTFF_COUNT
-        for (uint j = count; j < totalComponents; j++)
-            transformed[j] = 0.0;
-
-        transformedTexCoords[i] = transformed;
-    }
-
-    out_Texcoord0 = transformedTexCoords[0];
-    out_Texcoord1 = transformedTexCoords[1];
-    out_Texcoord2 = transformedTexCoords[2];
-    out_Texcoord3 = transformedTexCoords[3];
-    out_Texcoord4 = transformedTexCoords[4];
-    out_Texcoord5 = transformedTexCoords[5];
-    out_Texcoord6 = transformedTexCoords[6];
-    out_Texcoord7 = transformedTexCoords[7];
+    out_Texcoord0 = transformTexCoord(0u, vtx, normal);
+    out_Texcoord1 = transformTexCoord(1u, vtx, normal);
+    out_Texcoord2 = transformTexCoord(2u, vtx, normal);
+    out_Texcoord3 = transformTexCoord(3u, vtx, normal);
+    out_Texcoord4 = transformTexCoord(4u, vtx, normal);
+    out_Texcoord5 = transformTexCoord(5u, vtx, normal);
+    out_Texcoord6 = transformTexCoord(6u, vtx, normal);
+    out_Texcoord7 = transformTexCoord(7u, vtx, normal);
 
     if (useLighting()) {
         vec4 diffuseValue = vec4(0.0);
