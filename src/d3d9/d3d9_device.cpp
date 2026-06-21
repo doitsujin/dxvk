@@ -1753,6 +1753,9 @@ namespace dxvk {
         m_dirty.set(D3D9DeviceDirtyFlag::MultiSampleState);
         m_dirty.set(D3D9DeviceDirtyFlag::AlphaTestState);
       }
+
+      // FFPS may optimize out color ops if unused
+      m_dirty.set(D3D9DeviceDirtyFlag::FFPixelShader);
     }
 
     return D3D_OK;
@@ -8332,6 +8335,7 @@ namespace dxvk {
 
     // Work out which stages are actually in use
     uint32_t activeTextureStageCount = 0u;
+    uint32_t firstDiscardableStage = 0u;
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       auto& data = m_state.textureStages[i];
@@ -8355,11 +8359,18 @@ namespace dxvk {
           break;
       }
 
+      // Bump texcoords feed back into alpha, so we cannot discard any color stages
+      // that feed into these texture coordinates even when not rendering color.
+      if (colorOp == D3DTOP_BUMPENVMAP || colorOp == D3DTOP_BUMPENVMAPLUMINANCE)
+        firstDiscardableStage = i + 1u;
+
       activeTextureStageCount += 1u;
     }
 
     // Track which textures are used to avoid unnecessary
     // binding and unnecessary hazard checks.
+    bool hasColorRt = m_state.renderTargets[0u] && !m_state.renderTargets[0u]->IsNull();
+
     uint32_t currTextures = 0u;
     uint32_t tempTextures = 0u;
 
@@ -8386,6 +8397,15 @@ namespace dxvk {
       if (i == 0 && resultIsTemp && colorOp != D3DTOP_DISABLE && alphaOp == D3DTOP_DISABLE) {
         alphaOp   = D3DTOP_SELECTARG1;
         alphaArg1 = D3DTA_DIFFUSE;
+      }
+
+      // Discard color if we can. We will generally have to
+      // preserve alpha for alpha test, ATOC, etc.
+      if (!hasColorRt && i >= firstDiscardableStage) {
+        colorOp = D3DTOP_SELECTARG1;
+        colorArg0 = D3DTA_DIFFUSE;
+        colorArg1 = D3DTA_DIFFUSE;
+        colorArg2 = D3DTA_DIFFUSE;
       }
 
       // The last stage *always* writes to current.
