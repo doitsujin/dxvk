@@ -175,6 +175,9 @@ namespace dxvk {
 
     /** Whether there's a texture bound to a slot that needs to have its mip maps generated */
     uint32_t needsMipGen = 0;
+
+    /** Texture stages used by fixed-function pixel shader */
+    uint32_t ffpsTextures = 0u;
   };
 
   struct D3D9RTSlotTracking {
@@ -1520,7 +1523,7 @@ namespace dxvk {
     inline D3D9ShaderMasks PSShaderMasks() const {
       return m_state.pixelShader != nullptr
         ? m_state.pixelShader->GetCommonShader()->GetShaderMask()
-        : FixedFunctionMask;
+        : D3D9ShaderMasks { m_textureSlotTracking.ffpsTextures, 0x1u };
     }
 
     inline static uint16_t EncodePointSize(DWORD Value) {

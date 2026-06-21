@@ -233,7 +233,7 @@ namespace dxvk {
       return set(psBoolConstants, bits);
     }
 
-    bool setTextureStage(uint32_t stage, DWORD colorOp, DWORD alphaOp, DWORD resultArg,
+    bool setTextureStage(uint32_t stage, D3DTEXTUREOP colorOp, D3DTEXTUREOP alphaOp, DWORD resultArg,
         DWORD colorArg0, DWORD colorArg1, DWORD colorArg2,
         DWORD alphaArg0, DWORD alphaArg1, DWORD alphaArg2) {
       uint16_t ops = 0u;
@@ -295,7 +295,7 @@ namespace dxvk {
       return dirty;
     }
 
-    static uint16_t getTextureOp(DWORD op) {
+    static uint16_t getTextureOp(D3DTEXTUREOP op) {
       return uint16_t(op) & 0x1fu;
     }
 
