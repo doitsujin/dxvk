@@ -8237,7 +8237,7 @@ namespace dxvk {
         // Doing this is safe even in case shader writes are used, because we keep
         // the actual tracking info intact. On the other hand, we cannot safely do
         // this if there are any pending writes without issuing a barrier.
-        if ((++m_unsynchronizedDrawCount == MaxUnsynchronizedDraws) && m_execBarriers.hasPendingAccess(vk::AccessWriteMask))
+        if ((++m_unsynchronizedDrawCount == MaxUnsynchronizedDraws) && !m_execBarriers.hasPendingAccess(vk::AccessWriteMask))
           m_flags.clr(DxvkContextFlag::GpRenderPassUnsynchronized);
       }
     }
