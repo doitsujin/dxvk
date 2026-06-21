@@ -8162,8 +8162,6 @@ namespace dxvk {
 
       data->ViewportInfo = m_viewportInfo;
 
-      DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
-
       uint32_t lightIdx = 0;
 
       for (auto& light : m_state.lights) {
@@ -8182,6 +8180,7 @@ namespace dxvk {
       }
 
       data->Material = m_state.material;
+      data->GlobalAmbient = m_state.renderStates[D3DRS_AMBIENT];
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
 
       bool vertexHasPositionT = m_state.vertexDecl != nullptr && m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);

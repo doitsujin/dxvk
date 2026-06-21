@@ -95,9 +95,9 @@ struct D3D9FixedFunctionVS {
 
     D3D9ViewportInfo ViewportInfo;
 
-    vec4 GlobalAmbient;
     D3D9Light Lights[MaxEnabledLights];
     D3DMATERIAL9 Material;
+    uint GlobalAmbient;
     float TweenFactor;
 
     uint DataPrimitives[12];
@@ -679,7 +679,7 @@ Lighting computeLighting(vec4 vertex, vec3 normal) {
         vec4 matEmissive = pickMaterialSource(emissiveSource(), data.Material.Emissive);
         vec4 matSpecular = pickMaterialSource(specularSource(), data.Material.Specular);
 
-        vec4 finalColor0 = fma(matAmbient, data.GlobalAmbient, matEmissive);
+        vec4 finalColor0 = fma(matAmbient, decodeD3DColor(data.GlobalAmbient), matEmissive);
              finalColor0 = fma(matAmbient, ambientValue, finalColor0);
              finalColor0 = fma(matDiffuse, diffuseValue, finalColor0);
              finalColor0.a = matDiffuse.a;

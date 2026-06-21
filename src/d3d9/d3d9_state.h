@@ -404,9 +404,9 @@ namespace dxvk {
 
     D3D9ViewportInfo ViewportInfo;
 
-    Vector4 GlobalAmbient;
     std::array<D3D9Light, caps::MaxEnabledLights> Lights;
     D3DMATERIAL9 Material;
+    uint32_t GlobalAmbient;
     float TweenFactor;
 
     // Following part uses uint8 and bool so it's gonna be represented as uint32 in the shader and manually unpacked:
