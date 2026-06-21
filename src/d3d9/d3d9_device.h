@@ -1547,6 +1547,13 @@ namespace dxvk {
 
     void InitShaderOptions();
 
+    static D3D9TextureStageStateFlags GetTextureStageStateFlags(
+            D3DTEXTUREOP          Op,
+            UINT                  Arg0,
+            UINT                  Arg1,
+            UINT                  Arg2,
+            bool                  Premodulate);
+
     Com<D3D9InterfaceEx>            m_parent;
     D3D9Options                     m_d3d9Options;
     D3DDEVTYPE                      m_deviceType;

@@ -25,6 +25,15 @@ namespace dxvk {
     D3D9FF_VertexBlendMode_Tween,
   };
 
+  // Texture stage properties
+  enum class D3D9TextureStageStateFlag {
+    UsesTexture = 0u,
+    UsesCurrent = 1u,
+    UsesTemp    = 2u,
+  };
+
+  using D3D9TextureStageStateFlags = Flags<D3D9TextureStageStateFlag>;
+
   // No idea what this is
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
