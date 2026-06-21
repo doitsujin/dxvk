@@ -7466,7 +7466,8 @@ namespace dxvk {
       auto data = GetConstantBuffer(CbvIndex::PSShared).AllocTyped<D3D9SharedPS>(1u);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][DXVK_TSS_CONSTANT]), data->Stages[i].Constant);
+        data->Stages[i].Constant = m_state.textureStages[i][DXVK_TSS_CONSTANT];
+        data->Stages[i].Padding = 0u;
 
         // Flip major-ness so we can get away with a nice easy
         // dot in the shader without complex access

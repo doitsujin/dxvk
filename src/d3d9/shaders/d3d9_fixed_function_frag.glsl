@@ -171,11 +171,11 @@ bool isPointSpriteEnabled() {
 }
 
 struct D3D9SharedPSStage {
-    float Constant[4];
+    uint Constant;
+    uint Padding;
     float BumpEnvMat[2][2];
     float BumpEnvLScale;
     float BumpEnvLOffset;
-    float Padding[2];
 };
 
 struct D3D9SharedPS {
@@ -344,12 +344,7 @@ vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal
     vec4 reg = vec4(1.0);
     switch (arg & D3DTA_SELECTMASK) {
         case D3DTA_CONSTANT:
-            reg = vec4(
-                sharedData.Stages[stage].Constant[0],
-                sharedData.Stages[stage].Constant[1],
-                sharedData.Stages[stage].Constant[2],
-                sharedData.Stages[stage].Constant[3]
-            );
+            reg = decodeD3DColor(sharedData.Stages[stage].Constant);
             break;
         case D3DTA_CURRENT:
             reg = current;

@@ -999,12 +999,12 @@ namespace dxvk {
       dxbc_spv_assert(index);
 
       auto textureStageCbvType = ir::Type()
-        .addStructMember(ir::ScalarType::eF32, 4u)  // constant
+        .addStructMember(ir::ScalarType::eU32)      // constant color
+        .addStructMember(ir::ScalarType::eU32)      // padding
         .addStructMember(ir::ScalarType::eF32, 2u)  // matrix row 0
         .addStructMember(ir::ScalarType::eF32, 2u)  // matrix row 1
         .addStructMember(ir::ScalarType::eF32)      // luminance scale
         .addStructMember(ir::ScalarType::eF32)      // luminance offset
-        .addStructMember(ir::ScalarType::eF32, 2u)  // padding
         .addArrayDimension(caps::TextureStageCount);
 
       if (!m_textureStageCbv) {
@@ -1014,11 +1014,11 @@ namespace dxvk {
 
         m_builder.add(ir::Op::DebugName(m_textureStageCbv, "textureStages"));
         m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 0u, "constant"));
-        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 1u, "bumpMat0"));
-        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 2u, "bumpMat1"));
-        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 3u, "bumpLScale"));
-        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 4u, "bumpLOffset"));
-        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 5u, "reserved"));
+        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 1u, "reserved"));
+        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 2u, "bumpMat0"));
+        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 3u, "bumpMat1"));
+        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 4u, "bumpLScale"));
+        m_builder.add(ir::Op::DebugMemberName(m_textureStageCbv, 5u, "bumpLOffset"));
       }
 
       ir::Op resultOp = ir::Op(ir::OpCode::eCompositeConstruct,
@@ -1027,10 +1027,10 @@ namespace dxvk {
       for (uint32_t i = 0u; i < resultOp.getType().getStructMemberCount(); i++) {
         auto member = [i] {
           switch (ir::LegacyTextureStageLayout(i)) {
-            case ir::LegacyTextureStageLayout::eBumpMat0: return 1u;
-            case ir::LegacyTextureStageLayout::eBumpMat1: return 2u;
-            case ir::LegacyTextureStageLayout::eBumpScale: return 3u;
-            case ir::LegacyTextureStageLayout::eBumpOffset: return 4u;
+            case ir::LegacyTextureStageLayout::eBumpMat0: return 2u;
+            case ir::LegacyTextureStageLayout::eBumpMat1: return 3u;
+            case ir::LegacyTextureStageLayout::eBumpScale: return 4u;
+            case ir::LegacyTextureStageLayout::eBumpOffset: return 5u;
           }
 
           dxbc_spv_unreachable();
