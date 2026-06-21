@@ -2190,8 +2190,14 @@ namespace dxvk {
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
+    // Handle obscure setups where cached memory is unavailable.
     if (!m_memTypesByPropertyFlags[hostCachedIndex])
       m_memTypesByPropertyFlags[hostCachedIndex] = m_memTypesByPropertyFlags[hostCoherentIndex];
+
+    // If we zero mapped memory, we need good CPU memory bandwidth.
+    // Prefer uncached system memory over HVV in that case.
+    if (m_device->config().zeroMappedMemory)
+      m_memTypesByPropertyFlags[hostVisibleVramIndex] = m_memTypesByPropertyFlags[hostCoherentIndex];
 
     // On tilers, we are likely running on an ARM system where uncached
     // stores are expected to be very slow. Always use cached memory
