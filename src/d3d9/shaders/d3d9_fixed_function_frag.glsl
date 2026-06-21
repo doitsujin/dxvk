@@ -300,9 +300,10 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
             texcoord = calculateBumpmapCoords(stage, texcoord, previousStageTextureVal);
     }
 
-    // We should never get null textures in FFPS since the corresponding
-    // texture stage should get disabled instead.
-    vec4 texVal = vec4(999.0);
+    // The only time we should ever be able to observe a null texture is with
+    // D3DTOP_PREMODULATE. It's not 100% clear what's supposed to happen in
+    // that case, but make it so that the multiplication has no effect for now.
+    vec4 texVal = vec4(1.0f);
 
     switch (state.type) {
         case TEXTURE_TYPE_2D:
@@ -340,14 +341,14 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
 }
 
 
-vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal) {
+vec4 readArgValue(uint stage, uint arg, vec4 current, vec4 temp, vec4 textureVal, bool premodulate) {
     vec4 reg = vec4(1.0);
     switch (arg & D3DTA_SELECTMASK) {
         case D3DTA_CONSTANT:
             reg = decodeD3DColor(sharedData.Stages[stage].Constant);
             break;
         case D3DTA_CURRENT:
-            reg = current;
+            reg = mix(current, current * textureVal, premodulate.xxxx);
             break;
         case D3DTA_DIFFUSE:
             reg = in_Color0;
@@ -383,11 +384,11 @@ struct TextureStageArgumentValues {
     vec4 arg2;
 };
 
-TextureStageArgumentValues readArgValues(uint stage, const TextureStageArguments args, vec4 current, vec4 temp, vec4 textureVal) {
+TextureStageArgumentValues readArgValues(uint stage, const TextureStageArguments args, vec4 current, vec4 temp, vec4 textureVal, bool premodulate) {
     TextureStageArgumentValues argVals;
-    argVals.arg0 = readArgValue(stage, args.arg0, current, temp, textureVal);
-    argVals.arg1 = readArgValue(stage, args.arg1, current, temp, textureVal);
-    argVals.arg2 = readArgValue(stage, args.arg2, current, temp, textureVal);
+    argVals.arg0 = readArgValue(stage, args.arg0, current, temp, textureVal, premodulate);
+    argVals.arg1 = readArgValue(stage, args.arg1, current, temp, textureVal, premodulate);
+    argVals.arg2 = readArgValue(stage, args.arg2, current, temp, textureVal, premodulate);
     return argVals;
 }
 
@@ -447,7 +448,7 @@ vec4 calculateTextureStage(uint op, vec4 dst, const TextureStageArgumentValues a
             return mix(arg.arg2, arg.arg1, current.aaaa);
 
         case D3DTOP_PREMODULATE:
-            return dst; // Not implemented
+            return arg.arg1;
 
         case D3DTOP_MODULATEALPHA_ADDCOLOR:
             return saturate(fma(arg.arg1.aaaa, arg.arg2, arg.arg1));
@@ -528,6 +529,8 @@ struct TextureStageState {
     vec4 current;
     vec4 temp;
     vec4 previousStageTextureVal;
+    bool premodulateColor;
+    bool premodulateAlpha;
 };
 
 vec4 getTexCoord(uint stage) {
@@ -567,17 +570,18 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
     bool fastPath = info.colorOp == info.alphaOp &&
         info.colorArgs.arg0 == info.alphaArgs.arg0 &&
         info.colorArgs.arg1 == info.alphaArgs.arg1 &&
-        info.colorArgs.arg2 == info.alphaArgs.arg2;
+        info.colorArgs.arg2 == info.alphaArgs.arg2 &&
+        state.premodulateColor == state.premodulateAlpha;
 
     if (fastPath || info.colorOp == D3DTOP_DOTPRODUCT3) {
-        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal);
+        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal, state.premodulateColor);
         next = calculateTextureStage(info.colorOp, prev, colorArgVals, state.current, textureVal);
     } else {
-        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal);
+        TextureStageArgumentValues colorArgVals = readArgValues(stage, info.colorArgs, state.current, state.temp, textureVal, state.premodulateColor);
         next.rgb = calculateTextureStage(info.colorOp, prev, colorArgVals, state.current, textureVal).rgb;
 
         if (info.alphaOp != D3DTOP_DISABLE) {
-            TextureStageArgumentValues alphaArgVals = readArgValues(stage, info.alphaArgs, state.current, state.temp, textureVal);
+            TextureStageArgumentValues alphaArgVals = readArgValues(stage, info.alphaArgs, state.current, state.temp, textureVal, state.premodulateAlpha);
             next.a = calculateTextureStage(info.alphaOp, prev, alphaArgVals, state.current, textureVal).a;
         }
     }
@@ -585,6 +589,8 @@ TextureStageState runTextureStage(uint stage, TextureStageState state) {
     state.temp = info.storeToTemp ? next : state.temp;
     state.current = info.storeToTemp ? state.current : next;
     state.previousStageTextureVal = textureVal;
+    state.premodulateColor = info.colorOp == D3DTOP_PREMODULATE;
+    state.premodulateAlpha = info.alphaOp == D3DTOP_PREMODULATE;
     return state;
 }
 
@@ -598,6 +604,8 @@ void main() {
     // Temp starts off as equal to vec4(0)
     state.temp = vec4(0.0);
     state.previousStageTextureVal = vec4(0.0);
+    state.premodulateColor = false;
+    state.premodulateAlpha = false;
 
     // If we turn this into a loop, performance becomes very poor on the proprietary Nvidia driver
     // because it fails to unroll it.
