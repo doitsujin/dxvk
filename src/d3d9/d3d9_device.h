@@ -1550,6 +1550,9 @@ namespace dxvk {
 
     void InitShaderOptions();
 
+    static uint32_t GetTextureStageArgMask(
+            D3DTEXTUREOP          Op);
+
     static D3D9TextureStageStateFlags GetTextureStageStateFlags(
             D3DTEXTUREOP          Op,
             UINT                  Arg0,

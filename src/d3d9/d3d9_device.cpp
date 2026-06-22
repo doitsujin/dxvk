@@ -8253,44 +8253,43 @@ namespace dxvk {
   }
 
 
+  uint32_t D3D9DeviceEx::GetTextureStageArgMask(
+          D3DTEXTUREOP          Op) {
+    switch (Op) {
+      // No args used
+      case D3DTOP_DISABLE:
+      case D3DTOP_BUMPENVMAP:
+      case D3DTOP_BUMPENVMAPLUMINANCE:
+        return 0b000u;
+
+      // Arg 1 only
+      case D3DTOP_SELECTARG1:
+      case D3DTOP_PREMODULATE:
+        return 0b010u;
+
+      // Arg 2 only
+      case D3DTOP_SELECTARG2:
+        return 0b100u;
+
+      // Arg 0, 1, 2
+      case D3DTOP_MULTIPLYADD:
+      case D3DTOP_LERP:
+        return 0b111u;
+
+      // Arg 1, 2
+      default:
+        return 0b110u;
+    }
+  }
+
+
   D3D9TextureStageStateFlags D3D9DeviceEx::GetTextureStageStateFlags(
           D3DTEXTUREOP          Op,
           UINT                  Arg0,
           UINT                  Arg1,
           UINT                  Arg2,
           bool                  Premodulate) {
-    uint32_t usedArgMask;
-
-    switch (Op) {
-      // No args used
-      case D3DTOP_DISABLE:
-      case D3DTOP_BUMPENVMAP:
-      case D3DTOP_BUMPENVMAPLUMINANCE: {
-        usedArgMask = 0b000u;
-      } break;
-
-      // Arg 1 only
-      case D3DTOP_SELECTARG1:
-      case D3DTOP_PREMODULATE: {
-        usedArgMask = 0b010u;
-      } break;
-
-      // Arg 2 only
-      case D3DTOP_SELECTARG2: {
-        usedArgMask = 0b100u;
-      } break;
-
-      // Arg 0, 1, 2
-      case D3DTOP_MULTIPLYADD:
-      case D3DTOP_LERP: {
-        usedArgMask = 0b111u;
-      } break;
-
-      // Arg 1, 2
-      default: {
-        usedArgMask = 0b110u;
-      } break;
-    }
+    uint32_t usedArgMask = GetTextureStageArgMask(Op);
 
     // Some ops inherently sample the texture or use the current
     // accumulator even if there is no explicit texture argument
@@ -8310,6 +8309,7 @@ namespace dxvk {
 
     for (uint32_t i = 0u; i < args.size(); i++) {
       if (usedArgMask & (1u << i)) {
+        // Strip modifiers from arguments.
         auto arg = args[i] & D3DTA_SELECTMASK;
 
         if (arg == D3DTA_TEXTURE)
@@ -8377,19 +8377,25 @@ namespace dxvk {
       bool resultIsTemp = resultArg == D3DTA_TEMP;
 
       D3DTEXTUREOP colorOp = D3DTEXTUREOP(data[DXVK_TSS_COLOROP]);
-      DWORD colorArg1 = data[DXVK_TSS_COLORARG1];
-      DWORD colorArg2 = data[DXVK_TSS_COLORARG2];
-      DWORD colorArg0 = data[DXVK_TSS_COLORARG0];
-
       D3DTEXTUREOP alphaOp = D3DTEXTUREOP(data[DXVK_TSS_ALPHAOP]);
-      DWORD alphaArg1 = data[DXVK_TSS_ALPHAARG1];
-      DWORD alphaArg2 = data[DXVK_TSS_ALPHAARG2];
-      DWORD alphaArg0 = data[DXVK_TSS_ALPHAARG0];
 
-      // TODO work out what this does and resolve in shader?
-      if (i == 0 && resultIsTemp && colorOp != D3DTOP_DISABLE && alphaOp == D3DTOP_DISABLE) {
+      uint32_t colorArgMask = GetTextureStageArgMask(colorOp);
+      uint32_t alphaArgMask = GetTextureStageArgMask(alphaOp);
+
+      DWORD colorArg0 = (colorArgMask & 0b001u) ? data[DXVK_TSS_COLORARG0] : 0u;
+      DWORD colorArg1 = (colorArgMask & 0b010u) ? data[DXVK_TSS_COLORARG1] : 0u;
+      DWORD colorArg2 = (colorArgMask & 0b100u) ? data[DXVK_TSS_COLORARG2] : 0u;
+
+      DWORD alphaArg0 = (alphaArgMask & 0b001u) ? data[DXVK_TSS_ALPHAARG0] : 0u;
+      DWORD alphaArg1 = (alphaArgMask & 0b010u) ? data[DXVK_TSS_ALPHAARG1] : 0u;
+      DWORD alphaArg2 = (alphaArgMask & 0b100u) ? data[DXVK_TSS_ALPHAARG2] : 0u;
+
+      // Initialize first alpha stage with diffuse alpha if left undefined.
+      if (!i && resultIsTemp && colorOp != D3DTOP_DISABLE && alphaOp == D3DTOP_DISABLE) {
         alphaOp   = D3DTOP_SELECTARG1;
+        alphaArg0 = 0u;
         alphaArg1 = D3DTA_DIFFUSE;
+        alphaArg2 = 0u;
       }
 
       // The last stage *always* writes to current.
