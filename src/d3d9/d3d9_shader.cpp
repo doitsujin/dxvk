@@ -405,8 +405,10 @@ namespace dxvk {
 
             dxbc_spv_assert(dstIndex);
 
+            auto cbvType = m_builder.getOp(m_staticCbv).getType();
+
             auto memberIndex = dstIndex.value_or(0u) + (isFloat ? 0u : m_firstConstInt);
-            auto memberType = m_builder.getOp(m_staticCbv).getType().getBaseType(memberIndex);
+            auto memberType = cbvType.getBaseType(cbvType.isStructType() ? memberIndex : 0u);
 
             if (addressOp.getOperandCount() > 1u)
               memberType = memberType.getBaseType();
