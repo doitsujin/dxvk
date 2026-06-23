@@ -40,7 +40,10 @@ namespace dxvk {
     
     // Apply initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
-      throw DxvkError("DXGI: Failed to set initial fullscreen state");
+    {
+      Logger::warn("DXGI: EnterFullscreenMode failed. Creating a windowed swapchain instead.");
+      m_descFs.Windowed = TRUE;
+    }
 
     // Ensure that RGBA16 swap chains are scRGB if supported
     UpdateColorSpace(m_desc.Format, m_colorSpace);
@@ -717,6 +720,20 @@ namespace dxvk {
 
     if (!wsi::isWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+
+    if (!(m_descFs.ScanlineOrdering >= DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED
+     && m_descFs.ScanlineOrdering <= DXGI_MODE_SCANLINE_ORDER_LOWER_FIELD_FIRST))
+    {
+      Logger::err(str::format("DXGI: EnterFullscreenMode: Invalid scanline order ", m_descFs.ScanlineOrdering));
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
+    if (!(m_descFs.Scaling >= DXGI_MODE_SCALING_UNSPECIFIED
+     && m_descFs.Scaling <= DXGI_MODE_SCALING_STRETCHED))
+    {
+      Logger::err(str::format("DXGI: EnterFullscreenMode: Invalid scaling ", m_descFs.Scaling));
+      return DXGI_ERROR_INVALID_CALL;
+    }
     
     if (output == nullptr) {
       if (FAILED(GetOutputFromMonitor(wsi::getWindowMonitor(m_window), &output))) {
