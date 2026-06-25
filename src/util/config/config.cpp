@@ -1171,6 +1171,11 @@ namespace dxvk {
     { R"(\\SCSDestinations\.exe$)", {{
       { "d3d9.supportCubeDepthFormats",     "True" },
     }} },
+    /* Splinter Cell: Double Agent                *
+     * AMD path have a semi or fully black world  */
+    { R"(\\(SplinterCell4|SCDA_online)\.exe$)", {{
+      { "d3d9.hideAmdGpu",                  "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
