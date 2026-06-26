@@ -300,10 +300,10 @@ vec4 sampleTexture(uint stage, vec4 texcoord, vec4 previousStageTextureVal) {
             texcoord = calculateBumpmapCoords(stage, texcoord, previousStageTextureVal);
     }
 
-    // The only time we should ever be able to observe a null texture is with
-    // D3DTOP_PREMODULATE. It's not 100% clear what's supposed to happen in
-    // that case, but make it so that the multiplication has no effect for now.
-    vec4 texVal = vec4(1.0f);
+    // We can encounter null textures in certain scenarios where only alpha
+    // samples the texture, or the color op itself implicitly samples. For
+    // some reason this appears to return a null vector on native.
+    vec4 texVal = vec4(0.0f);
 
     switch (state.type) {
         case TEXTURE_TYPE_2D:
