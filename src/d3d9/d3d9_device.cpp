@@ -8351,15 +8351,17 @@ namespace dxvk {
       if (colorOp == D3DTOP_DISABLE)
         break;
 
-      // If the stage is invalid (ie. it's set to sample a texture and none is bound),
-      // this and all subsequent stages get disabled. Ignore D3DTOP_PREMODULATE here
-      // since it's not clear how that is supposed to behave; shader handles it.
+      // The stage is invalid and gets disabled, along with all subsequent stages,
+      // if and only if any active color argument for the given color op is TEXTURE.
+      // Alpha is ignored, and implicit texture sampling is also ignored.
       if (!m_state.textures[i]) {
-        D3D9TextureStageStateFlags flags = {};
-        flags.set(GetTextureStageStateFlags(colorOp, data[DXVK_TSS_COLORARG0], data[DXVK_TSS_COLORARG1], data[DXVK_TSS_COLORARG2], false));
-        flags.set(GetTextureStageStateFlags(alphaOp, data[DXVK_TSS_ALPHAARG0], data[DXVK_TSS_ALPHAARG1], data[DXVK_TSS_ALPHAARG2], false));
+        uint32_t colorArgMask = GetTextureStageArgMask(colorOp);
 
-        if (flags.test(D3D9TextureStageStateFlag::UsesTexture))
+        DWORD colorArg0 = ((colorArgMask & 0b001u) ? data[DXVK_TSS_COLORARG0] : D3DTA_CURRENT) & D3DTA_SELECTMASK;
+        DWORD colorArg1 = ((colorArgMask & 0b010u) ? data[DXVK_TSS_COLORARG1] : D3DTA_CURRENT) & D3DTA_SELECTMASK;
+        DWORD colorArg2 = ((colorArgMask & 0b100u) ? data[DXVK_TSS_COLORARG2] : D3DTA_CURRENT) & D3DTA_SELECTMASK;
+
+        if (colorArg0 == D3DTA_TEXTURE || colorArg1 == D3DTA_TEXTURE || colorArg2 == D3DTA_TEXTURE)
           break;
       }
 
