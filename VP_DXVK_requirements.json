@@ -138,6 +138,7 @@
                 "VK_KHR_unified_image_layouts": 1,
                 "VK_EXT_border_color_swizzle": 1,
                 "VK_EXT_descriptor_heap": 1,
+                "VK_EXT_dynamic_rendering_unused_attachments": 1,
                 "VK_EXT_extended_dynamic_state3": 1,
                 "VK_EXT_line_rasterization": 1,
                 "VK_EXT_pageable_device_local_memory": 1
@@ -203,6 +204,9 @@
                 },
                 "VkPhysicalDeviceShaderSubgroupUniformControlFlowFeaturesKHR": {
                     "shaderSubgroupUniformControlFlow": true
+                },
+                "VkPhysicalDeviceDynamicRenderingUnusedAttachmentsFeaturesEXT": {
+                    "dynamicRenderingUnusedAttachments": true
                 }
             }
         },

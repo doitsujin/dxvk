@@ -24,6 +24,7 @@ namespace dxvk {
     HANDLE_EXT(extDepthBiasControl);               \
     HANDLE_EXT(extDescriptorBuffer);               \
     HANDLE_EXT(extDescriptorHeap);                 \
+    HANDLE_EXT(extDynamicRenderingUnusedAttachments); \
     HANDLE_EXT(extExtendedDynamicState3);          \
     HANDLE_EXT(extFragmentShaderInterlock);        \
     HANDLE_EXT(extFullScreenExclusive);            \
@@ -918,6 +919,9 @@ namespace dxvk {
 
       /* Descriptor heaps for a more efficient binding model */
       ENABLE_EXT_FEATURE(extDescriptorHeap, descriptorHeap, false),
+
+      /* Unused attachments to silence VVL around pipelines with rasterizer discard */
+      ENABLE_EXT_FEATURE(extDynamicRenderingUnusedAttachments, dynamicRenderingUnusedAttachments, false),
 
       /* Dynamic state to further improve the graphics_pipeline_library experience */
       ENABLE_EXT_FEATURE(extExtendedDynamicState3, extendedDynamicState3AlphaToCoverageEnable, false),
