@@ -8346,7 +8346,6 @@ namespace dxvk {
 
       // All subsequent stages are disabled too following the first disabled stage.
       auto colorOp = D3DTEXTUREOP(data[DXVK_TSS_COLOROP]);
-      auto alphaOp = D3DTEXTUREOP(data[DXVK_TSS_ALPHAOP]);
 
       if (colorOp == D3DTOP_DISABLE)
         break;
