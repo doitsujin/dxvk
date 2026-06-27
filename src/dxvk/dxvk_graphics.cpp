@@ -578,6 +578,9 @@ namespace dxvk {
       rsInfo.rasterizerDiscardEnable = VK_TRUE;
     }
 
+    if (shaders.gs && !shaders.gs->metadata().flags.test(DxvkShaderFlag::ExportsPosition))
+      rsInfo.rasterizerDiscardEnable = VK_TRUE;
+
     // Set up depth clip state. Require depth clip support,
     // this is *not* equivalent to disabling depth clamp.
     rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
@@ -1019,11 +1022,11 @@ namespace dxvk {
     m_vsLibrary     (vsLibrary),
     m_fsLibrary     (fsLibrary),
     m_debugName     (createDebugName()) {
-    m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->metadata().inputs.computeMask() : 0u;
-    m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->metadata().outputs.computeMask() : 0u;
+    m_vsIn  = m_shaders.vs ? m_shaders.vs->metadata().inputs.computeMask() : 0u;
+    m_fsOut = m_shaders.fs ? m_shaders.fs->metadata().outputs.computeMask() : 0u;
     m_specConstantMask = this->computeSpecConstantMask();
 
-    if (m_shaders.gs != nullptr) {
+    if (m_shaders.gs) {
       if (m_shaders.gs->metadata().flags.test(DxvkShaderFlag::HasTransformFeedback)) {
         m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
 
@@ -1033,7 +1036,8 @@ namespace dxvk {
                          |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
       }
 
-      if (m_shaders.gs->metadata().rasterizedStream < 0)
+      if (m_shaders.gs->metadata().rasterizedStream < 0
+       || !m_shaders.gs->metadata().flags.test(DxvkShaderFlag::ExportsPosition))
         m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
@@ -1044,7 +1048,7 @@ namespace dxvk {
         m_flags.set(DxvkGraphicsPipelineFlag::UnrollMergedDraws);
     }
 
-    if (m_shaders.fs != nullptr) {
+    if (m_shaders.fs) {
       if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::HasSampleRateShading))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleRateShading);
       if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
