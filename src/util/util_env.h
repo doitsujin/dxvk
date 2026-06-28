@@ -18,6 +18,11 @@ namespace dxvk::env {
   }
 
   /**
+   * \brief Checks whether winevulkan is loaded
+   */
+  bool isWineVulkan();
+
+  /**
    * \brief Gets environment variable
    * 
    * If the variable is not defined, this will return

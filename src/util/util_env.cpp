@@ -36,6 +36,15 @@ namespace dxvk::env {
   }
 
 
+  bool isWineVulkan() {
+#ifdef _WIN32
+    return bool(::GetModuleHandleA("winevulkan.dll"));
+#else
+    return false;
+#endif
+  }
+
+
   size_t matchFileExtension(const std::string& name, const char* ext) {
     auto pos = name.find_last_of('.');
 
