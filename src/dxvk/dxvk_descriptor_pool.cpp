@@ -60,8 +60,10 @@ namespace dxvk {
       info.descriptorPool = m_pool.second.pool;
       vr = vk->vkAllocateDescriptorSets(vk->device(), &info, &set);
 
-      if (vr != VK_SUCCESS)
+      if (vr != VK_SUCCESS) {
+        Logger::err(str::format("failed pool: ", m_pool.second.pool));
         throw DxvkError(str::format("Failed to allocate descriptor set: ", vr));
+      }
     }
 
     m_pool.second.trackingId = trackingId;
@@ -88,8 +90,10 @@ namespace dxvk {
     if (!pools.empty()) {
       auto vk = m_device->vkd();
 
-      for (const auto& pool : pools)
+      for (const auto& pool : pools) {
         vk->vkResetDescriptorPool(vk->device(), pool.second, 0u);
+        Logger::err(str::format("reset pool: ", pool.second));
+      }
 
       std::lock_guard lock(m_mutex);
 
@@ -167,6 +171,7 @@ namespace dxvk {
     if (vr)
       throw DxvkError(str::format("Failed create descriptor pool: ", vr));
 
+    Logger::err(str::format("create pool: ", pool));
     m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount, 1);
     return pool;
   }
