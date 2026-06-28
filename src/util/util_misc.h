@@ -21,8 +21,14 @@ namespace dxvk {
    */
   inline auto computeRefreshPeriod(uint64_t numerator, uint64_t denominator) {
     using unit = std::chrono::nanoseconds;
-    unit::rep ns = unit::rep(unit::period::den * denominator)
-                 / unit::rep(unit::period::num * numerator);
+
+    unit::rep ns = 0u;
+
+    if (numerator && denominator) {
+      unit::rep ns = unit::rep(unit::period::den * denominator)
+                   / unit::rep(unit::period::num * numerator);
+    }
+
     return unit(ns);
   }
 
@@ -36,7 +42,7 @@ namespace dxvk {
    */
   template<typename TimePoint, typename Duration>
   uint64_t computeRefreshCount(TimePoint t0, TimePoint t1, Duration refreshPeriod) {
-    if (t1 < t0)
+    if (t1 < t0 || !refreshPeriod.count())
       return 0;
 
     auto duration = std::chrono::duration_cast<Duration>(t1 - t0);
