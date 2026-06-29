@@ -535,7 +535,10 @@ namespace dxvk {
      * Frees allocation if necessary
      */
     force_inline void decRef() {
-      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_acquire) == 1u))
+      // Release publishes prior uses of the allocation before the reference is
+      // dropped; acquire ensures the thread that drops the last reference
+      // observes them before freeing.
+      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_acq_rel) == 1u))
         free();
     }
 
