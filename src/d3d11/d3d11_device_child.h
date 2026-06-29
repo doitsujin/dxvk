@@ -120,7 +120,7 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE AddRef() {
-      uint32_t refCount = m_refCount.fetch_add(1u, std::memory_order_acquire);
+      uint32_t refCount = m_refCount.fetch_add(1u);
 
       if (unlikely(!refCount)) {
         AddRefPrivate();
@@ -131,7 +131,7 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE Release() {
-      uint32_t refCount = m_refCount.fetch_sub(1u, std::memory_order_release) - 1u;
+      uint32_t refCount = m_refCount.fetch_sub(1u) - 1u;
 
       if (unlikely(!refCount)) {
         ID3D11Device* device = this->GetParentInterface();
@@ -154,16 +154,16 @@ namespace dxvk {
       // - Thread 1: Gets unblocked
       // - Thread 1: StateObjectSet::Destroy returns
       // In this scenario, only one thread can safely destroy the object.
-      uint32_t expected = m_refPrivate.load(std::memory_order_relaxed);
+      uint32_t expected = m_refPrivate.load();
       uint32_t desired;
 
       do {
         desired = ((expected + 1u) & RefMask) | (expected & ~RefMask);
-      } while (!m_refPrivate.compare_exchange_strong(expected, desired, std::memory_order_acquire));
+      } while (!m_refPrivate.compare_exchange_strong(expected, desired));
     }
 
     void ReleasePrivate() {
-      uint32_t refCount = m_refPrivate.fetch_add(ReleaseValue, std::memory_order_release) + ReleaseValue;
+      uint32_t refCount = m_refPrivate.fetch_add(ReleaseValue) + ReleaseValue;
 
       uint32_t addRefCount = (refCount & RefMask) / AddRefValue;
       uint32_t releaseCount = (refCount & ~RefMask) / ReleaseValue;
@@ -173,7 +173,7 @@ namespace dxvk {
     }
 
     BOOL IsCurrent(uint32_t version) {
-      return m_refPrivate.load(std::memory_order_relaxed) == version;
+      return m_refPrivate.load() == version;
     }
 
   private:

@@ -176,7 +176,7 @@ namespace dxvk {
      * \brief Increments reference count
      */
     force_inline void incRef() {
-      m_refCount.fetch_add(1u, std::memory_order_acquire);
+      m_refCount.fetch_add(1u);
     }
 
     /**
@@ -185,7 +185,7 @@ namespace dxvk {
      * Recycles the sampler once the ref count reaches zero.
      */
     force_inline void decRef() {
-      if (m_refCount.fetch_sub(1u, std::memory_order_relaxed) == 1u)
+      if (m_refCount.fetch_sub(1u) == 1u)
         release();
     }
 

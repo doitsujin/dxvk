@@ -7258,7 +7258,7 @@ namespace dxvk {
 
       // Let the main thread know about current sampler stats
       uint64_t liveCount = m_dxvkDevice->getSamplerStats().liveCount;
-      m_lastSamplerStats.store(liveCount | (cBindId << SamplerCountBits), std::memory_order_relaxed);
+      m_lastSamplerStats.store(liveCount | (cBindId << SamplerCountBits));
     });
   }
 
@@ -7546,7 +7546,7 @@ namespace dxvk {
     // Update current stats from CS thread and check again. We
     // don't want to do this every time due to potential cache
     // thrashing.
-    uint64_t lastStats = m_lastSamplerStats.load(std::memory_order_relaxed);
+    uint64_t lastStats = m_lastSamplerStats.load();
     m_lastSamplerLiveCount = lastStats & SamplerCountMask;
     m_lastSamplerBindCount = lastStats >> SamplerCountBits;
 
@@ -7563,7 +7563,7 @@ namespace dxvk {
     while (++sequenceNumber <= GetCurrentSequenceNumber()) {
       SynchronizeCsThread(sequenceNumber);
 
-      uint64_t lastStats = m_lastSamplerStats.load(std::memory_order_relaxed);
+      uint64_t lastStats = m_lastSamplerStats.load();
       m_lastSamplerLiveCount = lastStats & SamplerCountMask;
       m_lastSamplerBindCount = lastStats >> SamplerCountBits;
 

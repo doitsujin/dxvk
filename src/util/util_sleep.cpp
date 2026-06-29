@@ -29,7 +29,7 @@ namespace dxvk {
     initializePlatformSpecifics();
     m_sleepThreshold = 4 * m_sleepGranularity;
 
-    m_initialized.store(true, std::memory_order_release);
+    m_initialized.store(true);
   }
 
 
@@ -73,7 +73,7 @@ namespace dxvk {
       return t0;
 
     // If necessary, initialize function pointers and some values
-    if (!m_initialized.load(std::memory_order_acquire))
+    if (!m_initialized.load())
       initialize();
 
     // Busy-wait for the last couple of milliseconds since sleeping

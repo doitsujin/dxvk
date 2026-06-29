@@ -38,11 +38,11 @@ namespace dxvk {
     ~DxvkShaderCache();
 
     void incRef() {
-      m_useCount.fetch_add(1u, std::memory_order_acquire);
+      m_useCount.fetch_add(1u);
     }
 
     void decRef() {
-      if (m_useCount.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_useCount.fetch_sub(1u) == 1u)
         freeInstance();
     }
 

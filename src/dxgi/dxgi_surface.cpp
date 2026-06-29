@@ -54,7 +54,7 @@ namespace dxvk {
 
     HINSTANCE hInstance = ::GetModuleHandle(nullptr);
 
-    if (!s_wndClassRegistered.load(std::memory_order_acquire)) {
+    if (!s_wndClassRegistered.load()) {
       WNDCLASSEXW wndClass = { };
       wndClass.cbSize = sizeof(wndClass);
       wndClass.style = CS_HREDRAW | CS_VREDRAW;
@@ -67,7 +67,7 @@ namespace dxvk {
       if (!atom)
         Logger::warn("DxgiSurfaceFactory: Failed to register dummy window class");
 
-      s_wndClassRegistered.store(!!atom, std::memory_order_release);
+      s_wndClassRegistered.store(!!atom);
     }
 
     HWND hWnd = ::CreateWindowW(L"DXVKDUMMYWNDCLASS", L"DXVKDUMMYWINDOW",

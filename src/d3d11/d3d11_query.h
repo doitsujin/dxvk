@@ -50,7 +50,7 @@ namespace dxvk {
     
     void DoDeferredEnd() {
       m_state = D3D11_VK_QUERY_ENDED;
-      m_resetCtr.fetch_add(1, std::memory_order_acquire);
+      m_resetCtr.fetch_add(1);
     }
 
     bool IsScoped() const {

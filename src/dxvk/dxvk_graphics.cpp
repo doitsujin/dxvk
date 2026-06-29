@@ -1142,11 +1142,11 @@ namespace dxvk {
     // Exit if another thread is already compiling
     // an optimized version of this pipeline
     if (instance->isCompiling.load()
-     || instance->isCompiling.exchange(VK_TRUE, std::memory_order_acquire))
+     || instance->isCompiling.exchange(VK_TRUE))
       return;
 
     VkPipeline pipeline = this->getOptimizedPipeline(state);
-    instance->fastHandle.store(pipeline, std::memory_order_release);
+    instance->fastHandle.store(pipeline);
 
     // Log pipeline state on error
     if (!pipeline)
@@ -1418,7 +1418,7 @@ namespace dxvk {
       auto [status, handle] = createOptimizedPipeline(key);
 
       entry.first->second.pipeline = handle;
-      entry.first->second.status.store(status, std::memory_order_release);
+      entry.first->second.status.store(status);
 
       return handle;
     } else {
@@ -1427,7 +1427,7 @@ namespace dxvk {
       // on multiple threads in parallel, which is problematic on some drivers.
       // This should be quite rare anyway.
       sync::spin(1000u, [&entry] {
-        auto status = entry.first->second.status.load(std::memory_order_acquire);
+        auto status = entry.first->second.status.load();
         return status != VK_NOT_READY;
       });
 

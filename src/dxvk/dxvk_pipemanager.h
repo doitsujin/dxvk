@@ -70,8 +70,8 @@ namespace dxvk {
      */
     DxvkPipelineWorkerStats getStats() const {
       DxvkPipelineWorkerStats result;
-      result.tasksCompleted = m_tasksCompleted.load(std::memory_order_acquire);
-      result.tasksTotal = m_tasksTotal.load(std::memory_order_relaxed);
+      result.tasksCompleted = m_tasksCompleted.load();
+      result.tasksTotal = m_tasksTotal.load();
       return result;
     }
 

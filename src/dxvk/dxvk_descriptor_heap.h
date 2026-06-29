@@ -57,7 +57,7 @@ namespace dxvk {
      * \returns \c true if the descriptor range is in use
      */
     bool isInUse() const {
-      return m_useCount.load(std::memory_order_relaxed) != 0u;
+      return m_useCount.load() != 0u;
     }
 
     /**
@@ -173,7 +173,7 @@ namespace dxvk {
      * \brief Increments ref count
      */
     void incRef() {
-      m_useCount.fetch_add(1u, std::memory_order_acquire);
+      m_useCount.fetch_add(1u);
     }
 
     /**
@@ -181,7 +181,7 @@ namespace dxvk {
      * Frees object when the last reference is removed.
      */
     void decRef() {
-      if (m_useCount.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_useCount.fetch_sub(1u) == 1u)
         delete this;
     }
 
@@ -231,13 +231,13 @@ namespace dxvk {
 
 
   inline void DxvkResourceDescriptorRange::incRef() {
-    if (m_useCount.fetch_add(1u, std::memory_order_acquire) == 0u)
+    if (m_useCount.fetch_add(1u) == 0u)
       m_heap->incRef();
   }
 
 
   inline void DxvkResourceDescriptorRange::decRef() {
-    if (m_useCount.fetch_sub(1u, std::memory_order_release) == 1u)
+    if (m_useCount.fetch_sub(1u) == 1u)
       m_heap->decRef();
   }
 

@@ -43,7 +43,7 @@ namespace dxvk {
      * \brief Increments ref count
      */
     force_inline void incRef() {
-      m_refs.fetch_add(1u, std::memory_order_acquire);
+      m_refs.fetch_add(1u);
     }
 
     /**
@@ -53,7 +53,7 @@ namespace dxvk {
      * references exist for this event.
      */
     force_inline void decRef() {
-      if (m_refs.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_refs.fetch_sub(1u) == 1u)
         free();
     }
 
@@ -95,7 +95,7 @@ namespace dxvk {
      * \brief Increments reference count
      */
     force_inline void incRef() {
-      m_refCount.fetch_add(1u, std::memory_order_acquire);
+      m_refCount.fetch_add(1u);
     }
 
     /**
@@ -103,7 +103,7 @@ namespace dxvk {
      * Frees the event as necessary.
      */
     force_inline void decRef() {
-      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_refCount.fetch_sub(1u) == 1u)
         delete this;
     }
 

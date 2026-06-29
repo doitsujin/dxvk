@@ -113,7 +113,7 @@ namespace dxvk {
      * \brief Increments query reference count
      */
     force_inline void incRef() {
-      m_refCount.fetch_add(1u, std::memory_order_acquire);
+      m_refCount.fetch_add(1u);
     }
 
     /**
@@ -121,7 +121,7 @@ namespace dxvk {
      * Returns the query to its allocator if necessary.
      */
     force_inline void decRef() {
-      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_refCount.fetch_sub(1u) == 1u)
         free();
     }
 
@@ -171,14 +171,14 @@ namespace dxvk {
      * \brief Increments reference count
      */
     force_inline void incRef() {
-      m_refCount.fetch_add(1u, std::memory_order_acquire);
+      m_refCount.fetch_add(1u);
     }
 
     /**
      * \brief Decrements reference count
      */
     force_inline void decRef() {
-      if (m_refCount.fetch_sub(1u, std::memory_order_release) == 1u)
+      if (m_refCount.fetch_sub(1u) == 1u)
         delete this;
     }
 

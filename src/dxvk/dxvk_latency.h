@@ -67,7 +67,7 @@ namespace dxvk {
      * \brief Increments ref count
      */
     void incRef() {
-      m_refCount.fetch_add(1, std::memory_order_acquire);
+      m_refCount.fetch_add(1);
     }
 
     /**
@@ -76,7 +76,7 @@ namespace dxvk {
      * Destroys the object when there are no users left.
      */
     void decRef() {
-      if (m_refCount.fetch_sub(1, std::memory_order_release) == 1u)
+      if (m_refCount.fetch_sub(1) == 1u)
         delete this;
     }
 

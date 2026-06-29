@@ -1226,7 +1226,7 @@ namespace dxvk {
           VkImageCreateInfo*    pInfo) {
     const Rc<DxvkImage> image = m_texture->GetImage();
 
-    if (!m_locked.load(std::memory_order_acquire)) {
+    if (!m_locked.load()) {
       // Need to make sure that the image cannot be relocated. This may
       // be entered by multiple threads, which is fine since the actual
       // work is serialized into the CS thread and only the first call
@@ -1236,7 +1236,7 @@ namespace dxvk {
 
       static_cast<D3D11Device*>(device.ptr())->LockImage(image, 0u);
 
-      m_locked.store(true, std::memory_order_release);
+      m_locked.store(true);
     }
 
     const DxvkImageCreateInfo& info = image->info();

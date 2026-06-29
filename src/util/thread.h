@@ -48,7 +48,7 @@ namespace dxvk {
     ThreadProc            proc;
 
     void decRef() {
-      if (refs.fetch_sub(1, std::memory_order_release) == 1)
+      if (refs.fetch_sub(1) == 1)
         delete this;
     }
   };

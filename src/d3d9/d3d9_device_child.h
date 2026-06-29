@@ -28,7 +28,7 @@ namespace dxvk {
       uint32_t oldRefCount, refCount;
 
       do {
-        oldRefCount = this->m_refCount.load(std::memory_order_acquire);
+        oldRefCount = this->m_refCount.load();
 
         // clamp value to 0 to prevent underruns
         if (unlikely(!oldRefCount))
@@ -36,10 +36,7 @@ namespace dxvk {
 
         refCount = oldRefCount - 1;
 
-      } while (!this->m_refCount.compare_exchange_weak(oldRefCount,
-                                                       refCount,
-                                                       std::memory_order_release,
-                                                       std::memory_order_acquire));
+      } while (!this->m_refCount.compare_exchange_weak(oldRefCount, refCount));
 
       if (unlikely(!refCount)) {
         auto* pDevice = GetDevice();

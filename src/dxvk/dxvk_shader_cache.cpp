@@ -62,7 +62,7 @@ namespace dxvk {
       if (!openWriteOnlyLocked())
         Logger::warn(str::format("Failed to re-initialize shader cache ", name));
 
-      m_status.store(Status::OpenWriteOnly, std::memory_order_release);
+      m_status.store(Status::OpenWriteOnly);
     }
 
     return shader;
@@ -89,7 +89,7 @@ namespace dxvk {
 
 
   bool DxvkShaderCache::ensureStatus(Status status) {
-    auto currentStatus = m_status.load(std::memory_order_acquire);
+    auto currentStatus = m_status.load();
 
     if (currentStatus == Status::Uninitialized)
       currentStatus = initialize();
@@ -100,14 +100,14 @@ namespace dxvk {
 
   DxvkShaderCache::Status DxvkShaderCache::initialize() {
     std::unique_lock lock(m_fileMutex);
-    auto status = m_status.load(std::memory_order_relaxed);
+    auto status = m_status.load();
 
     if (status != Status::Uninitialized)
       return status;
 
     status = tryInitializeLocked();
 
-    m_status.store(status, std::memory_order_release);
+    m_status.store(status);
     return status;
   }
 
@@ -683,7 +683,7 @@ namespace dxvk {
     // The ref count can only be incremented from 0 to 1 inside a locked
     // context, so this check is safe. Don't destroy the object if another
     // thread has essentially revived it.
-    if (m_useCount.load(std::memory_order_relaxed) || s_instance.instance != this) {
+    if (m_useCount.load() || s_instance.instance != this) {
       if (s_instance.instance == this)
         s_instance.instance = nullptr;
 

@@ -527,7 +527,7 @@ namespace dxvk {
      * \brief Increments reference count
      */
     force_inline void incRef() {
-      m_useCount.fetch_add(1u, std::memory_order_acquire);
+      m_useCount.fetch_add(1u);
     }
 
     /**
@@ -535,7 +535,7 @@ namespace dxvk {
      * Frees allocation if necessary
      */
     force_inline void decRef() {
-      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_release) == 1u))
+      if (unlikely(m_useCount.fetch_sub(1u) == 1u))
         free();
     }
 

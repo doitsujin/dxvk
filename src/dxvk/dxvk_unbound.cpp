@@ -14,12 +14,12 @@ namespace dxvk {
 
 
   DxvkResourceBufferInfo DxvkUnboundResources::bufferInfo() {
-    if (unlikely(!m_bufferCreated.load(std::memory_order_acquire))) {
+    if (unlikely(!m_bufferCreated.load())) {
       std::lock_guard lock(m_mutex);
 
-      if (!m_bufferCreated.load(std::memory_order_acquire)) {
+      if (!m_bufferCreated.load()) {
         m_buffer = createBuffer();
-        m_bufferCreated.store(true, std::memory_order_release);
+        m_bufferCreated.store(true);
       }
     }
 
@@ -28,12 +28,12 @@ namespace dxvk {
 
 
   DxvkSamplerDescriptor DxvkUnboundResources::samplerInfo() {
-    if (unlikely(!m_samplerCreated.load(std::memory_order_acquire))) {
+    if (unlikely(!m_samplerCreated.load())) {
       std::lock_guard lock(m_mutex);
 
-      if (!m_samplerCreated.load(std::memory_order_acquire)) {
+      if (!m_samplerCreated.load()) {
         m_sampler = createSampler();
-        m_samplerCreated.store(true, std::memory_order_release);
+        m_samplerCreated.store(true);
       }
     }
 

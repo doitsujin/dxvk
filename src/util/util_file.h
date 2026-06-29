@@ -46,11 +46,11 @@ namespace dxvk::util {
     virtual bool flush() = 0;
 
     force_inline void incRef() {
-      m_refCount.fetch_add(1u, std::memory_order_acquire);
+      m_refCount.fetch_add(1u);
     }
 
     force_inline void decRef() {
-      if (m_refCount.fetch_sub(1u, std::memory_order_acquire) == 1u)
+      if (m_refCount.fetch_sub(1u) == 1u)
         delete this;
     }
 

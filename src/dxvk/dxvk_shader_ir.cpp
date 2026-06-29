@@ -2163,12 +2163,12 @@ namespace dxvk {
 
 
   void DxvkIrShader::convertIr(const char* reason) {
-    if (m_convertedIr.load(std::memory_order_acquire))
+    if (m_convertedIr.load())
       return;
 
     std::lock_guard lock(m_mutex);
 
-    if (m_convertedIr.load(std::memory_order_relaxed))
+    if (m_convertedIr.load())
       return;
 
     if (reason && Logger::logLevel() <= LogLevel::Debug)
@@ -2184,7 +2184,7 @@ namespace dxvk {
     // Destroy original converter, we no longer need it
     m_baseIr = nullptr;
 
-    m_convertedIr.store(true, std::memory_order_release);
+    m_convertedIr.store(true);
 
     // Need to do this *after* marking the conversion as done since lowering
     // to SPIR-V itself will otherwise call into this method again
