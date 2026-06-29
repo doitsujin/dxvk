@@ -25,8 +25,8 @@ namespace dxvk {
     unit::rep ns = 0u;
 
     if (numerator && denominator) {
-      unit::rep ns = unit::rep(unit::period::den * denominator)
-                   / unit::rep(unit::period::num * numerator);
+      ns = unit::rep(unit::period::den * denominator)
+         / unit::rep(unit::period::num * numerator);
     }
 
     return unit(ns);
