@@ -1304,7 +1304,7 @@ namespace dxvk {
     const DxvkBufferImportInfo&       importInfo) {
     Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
     allocation->m_flags.set(DxvkAllocationFlag::Imported);
-    allocation->m_resourceCookie = allocation->m_resourceCookie;
+    allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_size = createInfo.size;
     allocation->m_mapPtr = importInfo.mapPtr;
     allocation->m_buffer = importInfo.buffer;
@@ -1323,7 +1323,7 @@ namespace dxvk {
           VkImage                     imageHandle) {
     Rc<DxvkResourceAllocation> allocation = m_allocationPool.create(this, nullptr);
     allocation->m_flags.set(DxvkAllocationFlag::Imported);
-    allocation->m_resourceCookie = allocation->m_resourceCookie;
+    allocation->m_resourceCookie = allocationInfo.resourceCookie;
     allocation->m_image = imageHandle;
 
     return allocation;
