@@ -6254,7 +6254,7 @@ namespace dxvk {
 
     // Otherwise, we are probably good. Post-processing and UI passes don't
     // typically have a lot of draws, or a lot of resources per draw.
-    return true;
+    return false;
   }
 
 
