@@ -535,7 +535,7 @@ namespace dxvk {
      * Frees allocation if necessary
      */
     force_inline void decRef() {
-      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_acquire) == 1u))
+      if (unlikely(m_useCount.fetch_sub(1u, std::memory_order_release) == 1u))
         free();
     }
 
