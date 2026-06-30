@@ -7183,16 +7183,21 @@ namespace dxvk {
 
     if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
      && unlikely(m_flags.all(DxvkContextFlag::GpIndependentSets, DxvkContextFlag::GpDirtySpecDataBlock))) {
+      DxvkResourceBufferInfo specData = allocateSpecDataBuffer(pipelineLayout);
+      pipelineLayout->writeSpecData(specData.mapPtr, m_state.gp.state.sc.specConstants);
+
       VkDescriptorSet set = m_descriptorPool->alloc(m_trackingId, m_device->getSpecDataSetLayout());
 
-      VkWriteDescriptorSetInlineUniformBlock blockInfo = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK };
-      blockInfo.dataSize = sizeof(DxvkScInfo);
-      blockInfo.pData = m_state.gp.state.sc.specConstants;
+      VkDescriptorBufferInfo bufferInfo = {};
+      bufferInfo.buffer = specData.buffer;
+      bufferInfo.offset = specData.offset;
+      bufferInfo.range = specData.size;
 
-      VkWriteDescriptorSet writeInfo = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET, &blockInfo };
+      VkWriteDescriptorSet writeInfo = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
       writeInfo.dstSet = set;
-      writeInfo.descriptorCount = blockInfo.dataSize;
-      writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
+      writeInfo.descriptorCount = 1u;
+      writeInfo.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      writeInfo.pBufferInfo = &bufferInfo;
 
       m_cmd->updateDescriptorSets(1u, &writeInfo);
 
