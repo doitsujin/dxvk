@@ -419,9 +419,15 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     VkDescriptorSetLayoutBinding binding = {};
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
-    binding.descriptorCount = sizeof(DxvkScInfo);
     binding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+
+    if (m_device->canUseDescriptorBuffer()) {
+      binding.descriptorType = VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK;
+      binding.descriptorCount = sizeof(DxvkScInfo);
+    } else {
+      binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+      binding.descriptorCount = 1u;
+    }
 
     VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     info.bindingCount = 1u;
