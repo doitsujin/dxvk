@@ -322,7 +322,9 @@ namespace dxvk {
       return std::make_pair(align(size, alignment), offset);
     }
 
-    return std::make_pair(0u, 0u);
+    // On the legacy path, we use a plain uniform buffer.
+    alignment = std::max<VkDeviceSize>(CACHE_LINE_SIZE, m_device->properties().core.properties.limits.minUniformBufferOffsetAlignment);
+    return std::make_pair(align<VkDeviceSize>(sizeof(DxvkScInfo), alignment), 0u);
   }
 
 
