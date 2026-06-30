@@ -550,13 +550,6 @@ namespace dxvk {
     if (m_properties.vk12.driverID == VK_DRIVER_ID_QUALCOMM_PROPRIETARY)
       m_featuresSupported.extMultiDraw.multiDraw = VK_FALSE;
 
-    // Intel drivers on Windows throw OUT_OF_POOL_MEMORY errors with inline uniform
-    // blocks for some reason. Disable GPL as a workaround if legacy binding is used.
-    if (m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS
-     && !m_featuresSupported.extDescriptorHeap.descriptorHeap
-     && !m_featuresSupported.extDescriptorBuffer.descriptorBuffer)
-      m_featuresSupported.extGraphicsPipelineLibrary.graphicsPipelineLibrary = VK_FALSE;
-
     // If we're running off a device without a sparse binding queue,
     // disable all the sparse binding features as well
     uint32_t sparseQueue = findQueueFamily(VK_QUEUE_SPARSE_BINDING_BIT, VK_QUEUE_SPARSE_BINDING_BIT);
