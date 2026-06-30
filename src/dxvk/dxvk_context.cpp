@@ -9128,6 +9128,28 @@ namespace dxvk {
   }
 
 
+  DxvkResourceBufferInfo DxvkContext::allocateSpecDataBuffer(const DxvkPipelineLayout* layout) {
+    if (unlikely(!m_specBuffer)) {
+      DxvkBufferCreateInfo bufInfo;
+      bufInfo.size    = layout->getSpecDataMemorySize();
+      bufInfo.usage   = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+      bufInfo.stages  = m_device->getShaderPipelineStages();
+      bufInfo.access  = VK_ACCESS_2_UNIFORM_READ_BIT;
+      bufInfo.debugName = "Spec data buffer";
+
+      m_specBuffer = m_device->createBuffer(bufInfo,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    } else {
+      m_cmd->track(m_specBuffer->assignStorage(m_specBuffer->allocateStorage()));
+    }
+
+    m_cmd->track(m_specBuffer, DxvkAccess::Write);
+    return m_specBuffer->getSliceInfo();
+  }
+
+
   void DxvkContext::freeZeroBuffer() {
     constexpr uint64_t ZeroBufferLifetime = 4096u;
 

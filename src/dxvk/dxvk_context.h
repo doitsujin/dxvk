@@ -1346,6 +1346,7 @@ namespace dxvk {
 
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkBuffer>          m_zeroBuffer;
+    Rc<DxvkBuffer>          m_specBuffer;
 
     Rc<DxvkBuffer>          m_scratchBuffer;
     VkDeviceSize            m_scratchOffset = 0u;
@@ -1882,6 +1883,9 @@ namespace dxvk {
     
     Rc<DxvkBuffer> createZeroBuffer(
             VkDeviceSize              size);
+
+    DxvkResourceBufferInfo allocateSpecDataBuffer(
+      const DxvkPipelineLayout*       layout);
 
     void freeZeroBuffer();
 
