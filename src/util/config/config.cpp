@@ -1362,6 +1362,11 @@ namespace dxvk {
     { R"(\\Smash up Derby\\cars\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
+    /* Manhunt                                    *
+     * Broken AI behavior above 60 FPS (game bug) */
+    { R"(\\manhunt\.exe$)", {{
+      { "d3d9.maxFrameRate",                 "-60" },
+    }} },
   };
 
 
