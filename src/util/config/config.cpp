@@ -1395,6 +1395,11 @@ namespace dxvk {
     { R"(\\Mafia\\Game\.exe$)", {{
       { "d3d9.samplerAnisotropy",             "16" },
     }} },
+    /* Manhunt                                    *
+     * Broken AI behavior above 60 FPS (game bug) */
+    { R"(\\manhunt\.exe$)", {{
+      { "d3d9.maxFrameRate",                 "-60" },
+    }} },
 
   };
 
