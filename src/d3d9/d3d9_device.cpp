@@ -8149,7 +8149,7 @@ namespace dxvk {
       m_dirty.clr(D3D9DeviceDirtyFlag::FFVertexData);
 
       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
-      auto NormalMatrix = inverse(WorldView);
+      auto NormalMatrix = tryInverse(WorldView).value_or(Matrix4(1.0f));
       auto Projection   = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
 
       auto data = GetConstantBuffer(CbvIndex::VSFixedFunction).AllocTyped<D3D9FixedFunctionVS>(1u);
