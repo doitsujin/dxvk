@@ -8439,10 +8439,13 @@ namespace dxvk {
       if (flags.test(D3D9TextureStageStateFlag::UsesTemp))
         stageTextures |= tempTextures;
 
-      if (resultIsTemp)
-        tempTextures = stageTextures;
-      else
-        currTextures = stageTextures;
+      // Bump env forwards the previous value unmodified
+      auto& dstMask = resultIsTemp ? tempTextures : currTextures;
+
+      if (colorOp == D3DTOP_BUMPENVMAP || colorOp == D3DTOP_BUMPENVMAPLUMINANCE)
+        stageTextures |= dstMask;
+
+      dstMask = stageTextures;
 
       // Ensure subsequent stage gets bound for premodulate
       premodulateColor = colorOp == D3DTOP_PREMODULATE;
