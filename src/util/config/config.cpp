@@ -536,7 +536,6 @@ namespace dxvk {
      * on non strict float path with dxvk 3.0     */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
       { "d3d9.supportDFFormats",           "False" },
-      { "d3d9.floatEmulation",            "Strict" },
     }} },
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
