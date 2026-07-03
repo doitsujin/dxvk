@@ -525,6 +525,11 @@ namespace dxvk {
        || m_properties.vk12.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)
         enableDescriptorBuffer = !m_hasFmask;
 
+      // Workaround for https://gitlab.freedesktop.org/mesa/mesa/-/work_items/15795.
+      // Does not affect Battlemage, and EDB generally costs perf on Intel.
+      if (m_properties.vk12.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
+        enableDescriptorBuffer = m_properties.vk13.minSubgroupSize < 16u;
+
       applyTristate(enableDescriptorBuffer, instance.options().enableDescriptorBuffer);
 
       if (!enableDescriptorBuffer)
