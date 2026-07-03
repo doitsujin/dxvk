@@ -109,6 +109,15 @@ namespace dxvk {
   }
 
 
+  void DxvkShaderStageInfo::addStage(
+          VkShaderStageFlagBits   stage) {
+    auto& stageInfo = m_stageInfos[m_stageCount++];
+    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, m_next };
+    stageInfo.stage = stage;
+    stageInfo.pName = "main";
+  }
+
+
   DxvkShaderStageInfo::~DxvkShaderStageInfo() {
 
   }
@@ -207,12 +216,8 @@ namespace dxvk {
       return;
 
     if (m_device->mustTrackPipelineLifetime()) {
-      // On 32-bit, we need to aggressively save memory. Write pipeline binaries into
-      // unmappable memory and try to reuse those for subsequent uses of the pipeline.
-      // If pipeline binaries are unavaialble, pray that we hit the driver's own cache.
-      if (m_device->features().khrPipelineBinary.pipelineBinaries)
-        queryPipelineBinaries(pipeline);
-
+      // Destroy pipeline to save memory and rely on unmapping
+      // or the driver cache to recreate it on the next use.
       auto vk = m_device->vkd();
       vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
     } else {
@@ -250,20 +255,64 @@ namespace dxvk {
       return VK_NULL_HANDLE;
 
     this->notifyLibraryCompile();
-    return this->compileShaderPipeline();
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (!m_binaries.empty())
+      pipeline = this->compileShaderPipelineWithBinaries();
+
+    if (!pipeline)
+      pipeline = this->compileShaderPipeline(nullptr);
+
+    return pipeline;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipeline() {
+  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipelineWithBinaries() {
+    auto vk = m_device->vkd();
+
+    std::vector<VkPipelineBinaryKHR> binaries(m_binaries.size());
+
+    bool success = true;
+
+    for (size_t i = 0u; i < m_binaries.size() && success; i++) {
+      if (!(binaries.at(i) = m_manager->createBinary(m_binaries.at(i))))
+        success = false;
+    }
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (success) {
+      VkPipelineBinaryInfoKHR binaryInfo = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_INFO_KHR };
+      binaryInfo.binaryCount = binaries.size();
+      binaryInfo.pPipelineBinaries = binaries.data();
+
+      if (!(pipeline = compileShaderPipeline(&binaryInfo)))
+        Logger::warn(str::format("DXVK: Failed to create pipeline from binaries"));
+    }
+
+    // Clean up binaries regardless of success status
+    for (auto& binary : binaries)
+      vk->vkDestroyPipelineBinaryKHR(vk->device(), binary, nullptr);
+
+    return pipeline;
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipeline(
+    const VkPipelineBinaryInfoKHR*      binaries) {
     DxvkShaderStageInfo stageInfo(m_device, getPipelineLibraryLayout());
     VkShaderStageFlags stageMask = getShaderStages();
 
     for (auto stages = stageMask; stages; stages &= stages - 1u) {
       auto stage = VkShaderStageFlagBits(stages & -stages);
 
-      // Decompress code and generate identifier as needed
-      SpirvCodeBuffer spirvCode = this->getShaderCode(stage);
-      stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+      if (binaries) {
+        stageInfo.addStage(stage);
+      } else {
+        SpirvCodeBuffer spirvCode = this->getShaderCode(stage);
+        stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+      }
 
       stages &= stages - 1;
     }
@@ -273,15 +322,22 @@ namespace dxvk {
     VkPipelineCreateFlags2 flags = 0u;
 
     if (m_device->mustTrackPipelineLifetime()
-     && m_device->features().khrPipelineBinary.pipelineBinaries)
+     && m_device->features().khrPipelineBinary.pipelineBinaries
+     && m_binaries.empty())
       flags |= VK_PIPELINE_CREATE_2_CAPTURE_DATA_BIT_KHR;
 
     if (stageMask & VK_SHADER_STAGE_VERTEX_BIT)
-      pipeline = compileVertexShaderPipeline(stageInfo, flags);
+      pipeline = compileVertexShaderPipeline(stageInfo, flags, binaries);
     else if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
-      pipeline = compileFragmentShaderPipeline(stageInfo, flags);
+      pipeline = compileFragmentShaderPipeline(stageInfo, flags, binaries);
     else if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
-      pipeline = compileComputeShaderPipeline(stageInfo, flags);
+      pipeline = compileComputeShaderPipeline(stageInfo, flags, binaries);
+
+    // Write pipeline binaries into unmappable memory and try to reuse
+    // those for subsequent uses of the pipeline. If pipeline binaries
+    // are unavaialble, pray that we hit the driver's own cache.
+    if (flags & VK_PIPELINE_CREATE_2_CAPTURE_DATA_BIT_KHR)
+      queryPipelineBinaries(pipeline);
 
     return pipeline;
   }
@@ -289,7 +345,8 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags2        flags) {
+          VkPipelineCreateFlags2        flags,
+    const VkPipelineBinaryInfoKHR*      binaries) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -338,7 +395,7 @@ namespace dxvk {
     }
 
     // Only the view mask is used as input, and since we do not use MultiView, it is always 0
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, binaries };
 
     VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
     flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
@@ -365,7 +422,7 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+    if (vr)
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
 
     return vr ? VK_NULL_HANDLE : pipeline;
@@ -374,7 +431,8 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags2        flags) {
+          VkPipelineCreateFlags2        flags,
+    const VkPipelineBinaryInfoKHR*      binaries) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -441,7 +499,7 @@ namespace dxvk {
     VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
 
     // Only the view mask is used as input, and since we do not use MultiView, it is always 0
-    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
+    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO, binaries };
 
     VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
     flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
@@ -478,7 +536,8 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(
     const DxvkShaderStageInfo&          stageInfo,
-          VkPipelineCreateFlags2        flags) {
+          VkPipelineCreateFlags2        flags,
+    const VkPipelineBinaryInfoKHR*      binaries) {
     auto vk = m_device->vkd();
 
     // Compile the compute pipeline as normal
@@ -491,7 +550,7 @@ namespace dxvk {
     if (m_device->canUseDescriptorBuffer())
       flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_BUFFER_BIT_EXT;
 
-    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO, binaries };
     info.stage        = *stageInfo.getStageInfos();
     info.layout       = getPipelineLibraryLayout()->getPipelineLayout();
     info.basePipelineIndex = -1;
@@ -502,7 +561,7 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
+    if (vr)
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create compute shader pipeline: ", vr));
 
     return vr ? VK_NULL_HANDLE : pipeline;

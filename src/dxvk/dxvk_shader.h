@@ -416,6 +416,15 @@ namespace dxvk {
             SpirvCodeBuffer&&       code,
       const VkSpecializationInfo*   specInfo);
 
+    /**
+     * \brief Adds a shader stage without code
+     *
+     * Must only be used together with shader binaries.
+     * \param [in] stage Shader stage
+     */
+    void addStage(
+            VkShaderStageFlagBits   stage);
+
   private:
 
     const DxvkDevice* m_device;
@@ -588,19 +597,25 @@ namespace dxvk {
 
     VkPipeline compileShaderPipelineLocked();
 
-    VkPipeline compileShaderPipeline();
+    VkPipeline compileShaderPipelineWithBinaries();
+
+    VkPipeline compileShaderPipeline(
+      const VkPipelineBinaryInfoKHR*      binaries);
 
     VkPipeline compileVertexShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags2        flags);
+            VkPipelineCreateFlags2        flags,
+      const VkPipelineBinaryInfoKHR*      binaries);
 
     VkPipeline compileFragmentShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags2        flags);
+            VkPipelineCreateFlags2        flags,
+      const VkPipelineBinaryInfoKHR*      binaries);
 
     VkPipeline compileComputeShaderPipeline(
       const DxvkShaderStageInfo&          stageInfo,
-            VkPipelineCreateFlags2        flags);
+            VkPipelineCreateFlags2        flags,
+      const VkPipelineBinaryInfoKHR*      binaries);
 
     SpirvCodeBuffer getShaderCode(
             VkShaderStageFlagBits         stage) const;
