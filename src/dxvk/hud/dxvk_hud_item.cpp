@@ -698,6 +698,7 @@ namespace dxvk::hud {
     m_graphicsPipelines = counters.getCtr(DxvkStatCounter::PipeCountGraphics);
     m_graphicsLibraries = counters.getCtr(DxvkStatCounter::PipeCountLibrary);
     m_computePipelines  = counters.getCtr(DxvkStatCounter::PipeCountCompute);
+    m_binarySize = counters.getCtr(DxvkStatCounter::PipeBinarySize);
   }
 
 
@@ -720,6 +721,14 @@ namespace dxvk::hud {
     position.y += 20;
     renderer.drawText(16, position, 0xffff40ff, "Compute shaders:");
     renderer.drawText(16, { position.x + 240, position.y }, 0xffffffffu, str::format(m_computePipelines));
+
+    if (m_binarySize) {
+      position.y += 20;
+      renderer.drawText(16, position, 0xffff40ff, "Shader binaries:");
+      renderer.drawText(16, { position.x + 240, position.y }, 0xffffffffu, m_binarySize < (1u << 20)
+        ? str::format(m_binarySize >> 10, " kB")
+        : str::format(m_binarySize >> 20, " MB"));
+    }
 
     position.y += 8;
     return position;

@@ -21,6 +21,7 @@ namespace dxvk {
     PipeCountCompute,         ///< Number of compute pipelines
     PipeTasksDone,            ///< Boolean indicating compiler activity
     PipeTasksTotal,           ///< Boolean indicating compiler activity
+    PipeBinarySize,           ///< Total pipeline binary size
     QueueSubmitCount,         ///< Number of command buffer submissions
     QueuePresentCount,        ///< Number of present calls / frames
     GpuSyncCount,             ///< Number of GPU synchronizations

@@ -413,6 +413,7 @@ namespace dxvk {
       return std::nullopt;
     }
 
+    m_device->addStatCtr(DxvkStatCounter::PipeBinarySize, size);
     return std::make_optional(key);
   }
 
