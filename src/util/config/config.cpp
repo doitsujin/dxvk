@@ -532,8 +532,7 @@ namespace dxvk {
       { "d3d9.lenientClear",                "True" },
       { "d3d9.supportDFFormats",           "False" },
     }} },
-    /* Gothic 3 - Rendering such as water broken  *
-     * on non strict float path with dxvk 3.0     */
+    /* Gothic 3                                   */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
       { "d3d9.supportDFFormats",           "False" },
     }} },
