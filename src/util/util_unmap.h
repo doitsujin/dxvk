@@ -218,6 +218,7 @@ namespace dxvk {
     MemoryFileRegion(MemoryFilePool& pool, size_t size)
     : m_pool      (&pool)
     , m_allocation(pool.alloc(size))
+    , m_size      (size)
     , m_mapPtr    (nullptr) { }
 
     ~MemoryFileRegion() {
@@ -227,6 +228,7 @@ namespace dxvk {
     MemoryFileRegion(MemoryFileRegion&& other)
     : m_pool        (std::exchange(other.m_pool,        nullptr))
     , m_allocation  (std::exchange(other.m_allocation,  -1))
+    , m_size        (std::exchange(other.m_size,        size_t(0)))
     , m_mapPtr      (std::exchange(other.m_mapPtr,      nullptr)) {
 
     }
@@ -236,6 +238,7 @@ namespace dxvk {
 
       m_pool        = std::exchange(other.m_pool,        nullptr);
       m_allocation  = std::exchange(other.m_allocation,  -1);
+      m_size        = std::exchange(other.m_size,        size_t(0));
       m_mapPtr      = std::exchange(other.m_mapPtr,      nullptr);
       return *this;
     }
@@ -270,6 +273,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries size
+     * \returns Size, in bytes
+     */
+    size_t size() const {
+      return m_size;
+    }
+
+    /**
      * \brief Checks whether allocation is valid
      * \returns \c true if allocation is valid
      */
@@ -281,6 +292,7 @@ namespace dxvk {
 
     MemoryFilePool* m_pool        = nullptr;
     int32_t         m_allocation  = -1;
+    size_t          m_size        = 0u;
     void*           m_mapPtr      = nullptr;
 
     void free() {
@@ -320,7 +332,8 @@ namespace dxvk {
     MemoryFileRegion() = default;
 
     MemoryFileRegion(MemoryFilePool& pool, size_t size)
-    : m_data(std::malloc(size)) { }
+    : m_data(std::malloc(size))
+    , m_size(size) { }
 
     ~MemoryFileRegion() {
       if (m_data)
@@ -328,13 +341,15 @@ namespace dxvk {
     }
 
     MemoryFileRegion(MemoryFileRegion&& other)
-    : m_data(std::exchange(other.m_data, nullptr)) { }
+    : m_data(std::exchange(other.m_data, nullptr))
+    , m_size(std::exchange(other.m_size, size_t(0))) { }
 
     MemoryFileRegion& operator = (MemoryFileRegion&& other) {
       if (m_data)
         std::free(m_data);
 
       m_data = std::exchange(other.m_data, nullptr);
+      m_size = std::exchange(other.m_size, size_t(0));
       return *this;
     }
 
@@ -348,6 +363,10 @@ namespace dxvk {
       return true;
     }
 
+    size_t size() const {
+      return m_size;
+    }
+
     explicit operator bool () const {
       return m_data != nullptr;
     }
@@ -355,6 +374,7 @@ namespace dxvk {
   private:
 
     void* m_data = nullptr;
+    size_t m_size = 0u;
 
   };
 #endif

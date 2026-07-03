@@ -329,6 +329,94 @@ namespace dxvk {
   }
 
 
+  VkPipelineBinaryKHR DxvkPipelineManager::createBinary(const VkPipelineBinaryKeyKHR& key) {
+    std::lock_guard lock(m_shaderBinaryMutex);
+
+    auto entry = m_shaderBinaries.find(key);
+
+    if (entry == m_shaderBinaries.end()) {
+      Logger::warn(str::format("DXVK: Pipeline binary not found."));
+      return VK_NULL_HANDLE;
+    }
+
+    auto vk = m_device->vkd();
+
+    VkPipelineBinaryKHR binary = VK_NULL_HANDLE;
+
+    VkPipelineBinaryDataKHR data = {};
+    data.dataSize = entry->second.size();
+    data.pData = entry->second.map();
+
+    if (!data.pData) {
+      Logger::warn(str::format("DXVK: Failed to create pipeline binary: Out of memory."));
+      return VK_NULL_HANDLE;
+    }
+
+    VkPipelineBinaryKeysAndDataKHR binaryInfo = {};
+    binaryInfo.binaryCount = 1u;
+    binaryInfo.pPipelineBinaryKeys = &key;
+    binaryInfo.pPipelineBinaryData = &data;
+
+    VkPipelineBinaryCreateInfoKHR info = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR };
+    info.pKeysAndDataInfo = &binaryInfo;
+
+    VkPipelineBinaryHandlesInfoKHR handles = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR };
+    handles.pipelineBinaryCount = 1u;
+    handles.pPipelineBinaries = &binary;
+
+    VkResult vr = vk->vkCreatePipelineBinariesKHR(vk->device(), &info, nullptr, &handles);
+
+    if (vr != VK_SUCCESS)
+      Logger::warn(str::format("DXVK: Failed to create pipeline binary: ", vr));
+
+    entry->second.unmap();
+    return binary;
+  }
+
+
+  std::optional<VkPipelineBinaryKeyKHR> DxvkPipelineManager::insertBinary(VkPipelineBinaryKHR binary) {
+    auto vk = m_device->vkd();
+
+    // Query look-up key and size *before* locking the structure
+    size_t size = 0u;
+    VkPipelineBinaryKeyKHR key = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_KEY_KHR };
+
+    VkPipelineBinaryDataInfoKHR query = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_DATA_INFO_KHR };
+    query.pipelineBinary = binary;
+
+    VkResult vr = vk->vkGetPipelineBinaryDataKHR(vk->device(), &query, &key, &size, nullptr);
+
+    if (vr < 0 || !size) {
+      Logger::err(str::format("DXVK: Failed to retrieve pipeline binary: ", vr));
+      return std::nullopt;
+    }
+
+    // Look up or create entry for the given key. Binaries with
+    // the same key may be reused across different pipelines.
+    std::lock_guard lock(m_shaderBinaryMutex);
+
+    auto entry = m_shaderBinaries.emplace(std::piecewise_construct,
+      std::forward_as_tuple(key),
+      std::forward_as_tuple(m_shaderBinaryMemory, size));
+
+    if (!entry.second)
+      return std::make_optional(key);
+
+    // Write binary into mapped blob and immediately unmap it
+    vr = vk->vkGetPipelineBinaryDataKHR(vk->device(), &query, &key, &size, entry.first->second.map());
+    entry.first->second.unmap();
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("DXVK: Failed to retrieve pipeline binary: ", vr));
+
+      m_shaderBinaries.erase(entry.first);
+      return std::nullopt;
+    }
+
+    return std::make_optional(key);
+  }
+
+
   DxvkPipelineCount DxvkPipelineManager::getPipelineCount() const {
     DxvkPipelineCount result;
     result.numGraphicsPipelines = m_stats.numGraphicsPipelines.load();

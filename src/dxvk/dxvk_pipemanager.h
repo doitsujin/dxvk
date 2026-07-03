@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <mutex>
@@ -7,6 +6,9 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_graphics.h"
+
+#include "../util/util_bit.h"
+#include "../util/util_unmap.h"
 
 namespace dxvk {
 
@@ -36,6 +38,26 @@ namespace dxvk {
   struct DxvkPipelineWorkerStats {
     uint64_t tasksCompleted;
     uint64_t tasksTotal;
+  };
+
+  /**
+   * \brief Shader binary key
+   */
+  struct DxvkShaderBinaryKey {
+    DxvkShaderBinaryKey() = default;
+    DxvkShaderBinaryKey(const VkPipelineBinaryKeyKHR& k) {
+      std::memcpy(key.data(), k.key, k.keySize);
+    }
+
+    std::array<uint8_t, VK_MAX_PIPELINE_BINARY_KEY_SIZE_KHR> key = {};
+
+    bool eq(const DxvkShaderBinaryKey& other) const {
+      return !std::memcmp(key.data(), other.key.data(), key.size());
+    }
+
+    size_t hash() const {
+      return size_t(bit::fnv1a_hash(key.data(), key.size()));
+    }
   };
 
   /**
@@ -263,6 +285,23 @@ namespace dxvk {
       const Rc<DxvkShader>&         shader);
 
     /**
+     * \brief Looks up shader binary blob by key
+     *
+     * \param [in] key Shader binary key
+     * \returns Mapped blob
+     */
+    VkPipelineBinaryKHR createBinary(const VkPipelineBinaryKeyKHR& key);
+
+    /**
+     * \brief Writes back shader binary blob for key
+     *
+     * \param [in] key Shader binary key
+     * \param [in] size Binary size, in bytes
+     * \returns Binary key on success
+     */
+    std::optional<VkPipelineBinaryKeyKHR> insertBinary(VkPipelineBinaryKHR binary);
+
+    /**
      * \brief Retrieves total pipeline count
      * \returns Number of compute/graphics pipelines
      */
@@ -335,6 +374,15 @@ namespace dxvk {
       DxvkGraphicsPipelineShaders,
       DxvkGraphicsPipeline,
       DxvkHash, DxvkEq> m_graphicsPipelines;
+
+    dxvk::mutex m_shaderBinaryMutex;
+
+    MemoryFilePool m_shaderBinaryMemory;
+
+    std::unordered_map<
+      DxvkShaderBinaryKey,
+      MemoryFileRegion,
+      DxvkHash, DxvkEq> m_shaderBinaries;
 
     DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
       const DxvkShaderPipelineLibraryKey& key);
