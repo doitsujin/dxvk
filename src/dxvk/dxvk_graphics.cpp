@@ -1357,19 +1357,18 @@ namespace dxvk {
     const DxvkGraphicsPipelineBaseInstanceKey& key) const {
     auto vk = m_device->vkd();
 
-    DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle();
-    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
+    VkPipeline vs = m_vsLibrary->acquirePipelineHandle();
+    VkPipeline fs = m_fsLibrary->acquirePipelineHandle();
 
-    if (!vs.handle || !fs.handle)
+    if (!vs || !fs)
       return VK_NULL_HANDLE;
 
     std::array<VkPipeline, 4> libraries = {{
-      key.viLibrary->getHandle(), vs.handle, fs.handle,
+      key.viLibrary->getHandle(), vs, fs,
       key.foLibrary->getHandle(),
     }};
 
     VkPipelineCreateFlags2CreateInfo flags = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
-    flags.flags = vs.linkFlags | fs.linkFlags;
 
     if (m_device->canUseDescriptorHeap())
       flags.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;

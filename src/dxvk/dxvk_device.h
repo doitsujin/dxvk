@@ -285,12 +285,6 @@ namespace dxvk {
     bool canUseGraphicsPipelineLibrary() const;
 
     /**
-     * \brief Checks whether pipeline creation cache control can be used
-     * \returns \c true if all required features are supported.
-     */
-    bool canUsePipelineCacheControl() const;
-
-    /**
      * \brief Checks whether sample locations can be used
      * \returns \c true if sample locations are supported for any of the given sample counts
      */

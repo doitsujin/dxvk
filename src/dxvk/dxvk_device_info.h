@@ -81,7 +81,6 @@ namespace dxvk {
     VkPhysicalDevicePageableDeviceLocalMemoryFeaturesEXT      extPageableDeviceLocalMemory    = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PAGEABLE_DEVICE_LOCAL_MEMORY_FEATURES_EXT };
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2                  = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT };
     VkBool32                                                  extSampleLocations              = VK_FALSE;
-    VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier       = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT };
     VkBool32                                                  extShaderStencilExport          = VK_FALSE;
     VkBool32                                                  extSwapchainColorSpace          = VK_FALSE;
     VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT          extSwapchainMaintenance1        = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT };
@@ -154,7 +153,6 @@ namespace dxvk {
     VkExtensionProperties extPageableDeviceLocalMemory      = vk::makeExtension(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME);
     VkExtensionProperties extRobustness2                    = vk::makeExtension(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME);
     VkExtensionProperties extSampleLocations                = vk::makeExtension(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME);
-    VkExtensionProperties extShaderModuleIdentifier         = vk::makeExtension(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME);
     VkExtensionProperties extShaderStencilExport            = vk::makeExtension(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME);
     VkExtensionProperties extSwapchainColorSpace            = vk::makeExtension(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME);
     VkExtensionProperties extSwapchainMaintenance1          = vk::makeExtension(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME);

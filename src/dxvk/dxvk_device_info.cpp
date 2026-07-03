@@ -38,7 +38,6 @@ namespace dxvk {
     HANDLE_EXT(extPageableDeviceLocalMemory);      \
     HANDLE_EXT(extRobustness2);                    \
     HANDLE_EXT(extSampleLocations);                \
-    HANDLE_EXT(extShaderModuleIdentifier);         \
     HANDLE_EXT(extShaderStencilExport);            \
     HANDLE_EXT(extSwapchainColorSpace);            \
     HANDLE_EXT(extSwapchainMaintenance1);          \
@@ -887,7 +886,6 @@ namespace dxvk {
       ENABLE_FEATURE(vk13, dynamicRendering, true),
       ENABLE_FEATURE(vk13, maintenance4, true),
       ENABLE_FEATURE(vk13, robustImageAccess, false),
-      ENABLE_FEATURE(vk13, pipelineCreationCacheControl, false),
       ENABLE_FEATURE(vk13, shaderDemoteToHelperInvocation, true),
       ENABLE_FEATURE(vk13, shaderZeroInitializeWorkgroupMemory, true),
       ENABLE_FEATURE(vk13, subgroupSizeControl, true),
@@ -970,9 +968,6 @@ namespace dxvk {
 
       /* Sample locations, used to "disable" MSAA rendering */
       ENABLE_EXT(extSampleLocations, false),
-
-      /* Shader module identifier, used for pipeline lifetime management in 32-bit */
-      ENABLE_EXT_FEATURE(extShaderModuleIdentifier, shaderModuleIdentifier, false),
 
       /* Stencil export, used both internally and in client APIs */
       ENABLE_EXT(extShaderStencilExport, false),

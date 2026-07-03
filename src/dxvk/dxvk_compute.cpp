@@ -41,7 +41,7 @@ namespace dxvk {
       // Retrieve actual pipeline handle on first use. This
       // may wait for an ongoing compile job to finish, or
       // compile the pipeline immediately on the calling thread.
-      m_libraryHandle = m_library->acquirePipelineHandle().handle;
+      m_libraryHandle = m_library->acquirePipelineHandle();
     }
 
     if (*m_libraryHandle) {

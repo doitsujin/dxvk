@@ -53,7 +53,6 @@
                     "synchronization2": true,
                     "shaderIntegerDotProduct": true,
                     "maintenance4": true,
-                    "pipelineCreationCacheControl": true,
                     "subgroupSizeControl": true,
                     "computeFullSubgroups": true,
                     "shaderDemoteToHelperInvocation": true,
