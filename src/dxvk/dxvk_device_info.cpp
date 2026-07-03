@@ -55,6 +55,7 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance9);                   \
     HANDLE_EXT(khrMaintenance10);                  \
     HANDLE_EXT(khrMaintenance11);                  \
+    HANDLE_EXT(khrPipelineBinary);                 \
     HANDLE_EXT(khrPipelineLibrary);                \
     HANDLE_EXT(khrPresentId);                      \
     HANDLE_EXT(khrPresentId2);                     \
@@ -90,7 +91,8 @@ namespace dxvk {
     HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
     HANDLE_EXT(khrMaintenance9);                   \
-    HANDLE_EXT(khrMaintenance10);
+    HANDLE_EXT(khrMaintenance10);                  \
+    HANDLE_EXT(khrPipelineBinary);
 
 
   DxvkDeviceCapabilities::DxvkDeviceCapabilities(
@@ -1009,6 +1011,9 @@ namespace dxvk {
       ENABLE_EXT_FEATURE(khrMaintenance9, maintenance9, false),
       ENABLE_EXT_FEATURE(khrMaintenance10, maintenance10, false),
       ENABLE_EXT_FEATURE(khrMaintenance11, maintenance11, false),
+
+      /* Pipeline binary, used to accelerate 32-bit pipeline loads */
+      ENABLE_EXT_FEATURE(khrPipelineBinary, pipelineBinaries, false),
 
       /* Dependency for graphics pipeline library */
       ENABLE_EXT(khrPipelineLibrary, false),

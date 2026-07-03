@@ -500,6 +500,14 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdBindDescriptorBufferEmbeddedSamplers2EXT);
     #endif
 
+    #ifdef VK_KHR_pipeline_binary
+    VULKAN_FN(vkCreatePipelineBinariesKHR);
+    VULKAN_FN(vkDestroyPipelineBinaryKHR);
+    VULKAN_FN(vkGetPipelineKeyKHR);
+    VULKAN_FN(vkGetPipelineBinaryDataKHR);
+    VULKAN_FN(vkReleaseCapturedPipelineDataKHR);
+    #endif
+
     #ifdef VK_KHR_present_wait
     VULKAN_FN(vkWaitForPresentKHR);
     #endif
