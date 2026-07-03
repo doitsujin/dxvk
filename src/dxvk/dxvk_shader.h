@@ -10,6 +10,8 @@
 
 #include "../spirv/spirv_code_buffer.h"
 
+#include "../util/util_unmap.h"
+
 namespace dxvk {
   
   class DxvkShader;
@@ -580,6 +582,8 @@ namespace dxvk {
 
     VkPipeline                      m_pipeline = VK_NULL_HANDLE;
 
+    std::vector<VkPipelineBinaryKeyKHR> m_binaries;
+
     void destroyShaderPipelineLocked();
 
     VkPipeline compileShaderPipelineLocked();
@@ -587,13 +591,16 @@ namespace dxvk {
     VkPipeline compileShaderPipeline();
 
     VkPipeline compileVertexShaderPipeline(
-      const DxvkShaderStageInfo&          stageInfo);
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileFragmentShaderPipeline(
-      const DxvkShaderStageInfo&          stageInfo);
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags2        flags);
 
     VkPipeline compileComputeShaderPipeline(
-      const DxvkShaderStageInfo&          stageInfo);
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags2        flags);
 
     SpirvCodeBuffer getShaderCode(
             VkShaderStageFlagBits         stage) const;
@@ -614,6 +621,8 @@ namespace dxvk {
     bool canCreatePipelineLibrary() const;
 
     bool canCreatePipelineLibraryForShader(DxvkShader& shader, bool needsPosition) const;
+
+    void queryPipelineBinaries(VkPipeline pipeline);
 
     const DxvkPipelineLayout* getPipelineLibraryLayout() const;
 

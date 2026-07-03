@@ -207,9 +207,12 @@ namespace dxvk {
       return;
 
     if (m_device->mustTrackPipelineLifetime()) {
-      // On 32-bit, destroy the pipeline immediately in order to
-      // save memory. We should hit the driver's disk cache once
-      // we need to recreate the pipeline.
+      // On 32-bit, we need to aggressively save memory. Write pipeline binaries into
+      // unmappable memory and try to reuse those for subsequent uses of the pipeline.
+      // If pipeline binaries are unavaialble, pray that we hit the driver's own cache.
+      if (m_device->features().khrPipelineBinary.pipelineBinaries)
+        queryPipelineBinaries(pipeline);
+
       auto vk = m_device->vkd();
       vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
     } else {
@@ -267,20 +270,26 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (stageMask & VK_SHADER_STAGE_VERTEX_BIT)
-      pipeline = compileVertexShaderPipeline(stageInfo);
-    else if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
-      pipeline = compileFragmentShaderPipeline(stageInfo);
-    else if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
-      pipeline = compileComputeShaderPipeline(stageInfo);
+    VkPipelineCreateFlags2 flags = 0u;
 
-    // Should be unreachable
+    if (m_device->mustTrackPipelineLifetime()
+     && m_device->features().khrPipelineBinary.pipelineBinaries)
+      flags |= VK_PIPELINE_CREATE_2_CAPTURE_DATA_BIT_KHR;
+
+    if (stageMask & VK_SHADER_STAGE_VERTEX_BIT)
+      pipeline = compileVertexShaderPipeline(stageInfo, flags);
+    else if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
+      pipeline = compileFragmentShaderPipeline(stageInfo, flags);
+    else if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+      pipeline = compileComputeShaderPipeline(stageInfo, flags);
+
     return pipeline;
   }
 
 
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
-    const DxvkShaderStageInfo&          stageInfo) {
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -332,7 +341,7 @@ namespace dxvk {
     VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
     VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
-    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR;
+    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
 
     if (m_device->canUseDescriptorHeap())
       flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
@@ -364,7 +373,8 @@ namespace dxvk {
 
 
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(
-    const DxvkShaderStageInfo&          stageInfo) {
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
@@ -434,7 +444,7 @@ namespace dxvk {
     VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
     VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO, &rtInfo };
-    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR;
+    flagsInfo.flags = VK_PIPELINE_CREATE_2_LIBRARY_BIT_KHR | flags;
 
     if (m_device->canUseDescriptorHeap())
       flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
@@ -467,11 +477,13 @@ namespace dxvk {
 
 
   VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(
-    const DxvkShaderStageInfo&          stageInfo) {
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags2        flags) {
     auto vk = m_device->vkd();
 
     // Compile the compute pipeline as normal
     VkPipelineCreateFlags2CreateInfo flagsInfo = { VK_STRUCTURE_TYPE_PIPELINE_CREATE_FLAGS_2_CREATE_INFO };
+    flagsInfo.flags |= flags;
 
     if (m_device->canUseDescriptorHeap())
       flagsInfo.flags |= VK_PIPELINE_CREATE_2_DESCRIPTOR_HEAP_BIT_EXT;
@@ -640,6 +652,59 @@ namespace dxvk {
     // building the shader's standalone pipeline library
     if (m_shaders.getShaderCount() == 1u)
       m_shaders.getShader(0u)->notifyCompile();
+  }
+
+
+  void DxvkShaderPipelineLibrary::queryPipelineBinaries(VkPipeline pipeline) {
+    auto vk = m_device->vkd();
+
+    VkPipelineBinaryCreateInfoKHR info = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_CREATE_INFO_KHR };
+    info.pipeline = pipeline;
+
+    VkPipelineBinaryHandlesInfoKHR handles = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR };
+    VkResult vr = vk->vkCreatePipelineBinariesKHR(vk->device(), &info, nullptr, &handles);
+
+    if (vr < 0 || !handles.pipelineBinaryCount) {
+      Logger::err(str::format("DXVK: Failed to create pipeline binaries: ", vr));
+      return;
+    }
+
+    std::vector<VkPipelineBinaryKHR> binaries(handles.pipelineBinaryCount);
+    handles.pPipelineBinaries = binaries.data();
+
+    vr = vk->vkCreatePipelineBinariesKHR(vk->device(), &info, nullptr, &handles);
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("DXVK: Failed to create pipeline binaries: ", vr));
+      return;
+    }
+
+    // Retrieve actual pipeline binary data
+    bool success = true;
+
+    for (size_t i = 0u; i < handles.pipelineBinaryCount; i++) {
+      auto key = m_manager->insertBinary(binaries.at(i));
+
+      if (!(success = key.has_value())) {
+        Logger::err(str::format("DXVK: Failed to retrieve pipeline binary"));
+        break;
+      }
+
+      m_binaries.push_back(key.value());
+    }
+
+    // Clean up binary objects regardless of success
+    for (auto binary : binaries)
+      vk->vkDestroyPipelineBinaryKHR(vk->device(), binary, nullptr);
+
+    if (!success)
+      m_binaries.clear();
+
+    // Won't need pipeline info anymore from this pipeline
+    VkReleaseCapturedPipelineDataInfoKHR releaseInfo = { VK_STRUCTURE_TYPE_RELEASE_CAPTURED_PIPELINE_DATA_INFO_KHR };
+    releaseInfo.pipeline = pipeline;
+
+    vk->vkReleaseCapturedPipelineDataKHR(vk->device(), &releaseInfo, nullptr);
   }
 
 
