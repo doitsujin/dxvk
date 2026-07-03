@@ -9,6 +9,7 @@ util_src = files([
   'util_matrix.cpp',
   'util_shared_res.cpp',
   'util_sleep.cpp',
+  'util_unmap.cpp',
 
   'thread.cpp',
 
