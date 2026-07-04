@@ -9,11 +9,11 @@ namespace dxvk::hud {
 
 
   void HudTextureMemory::update(dxvk::high_resolution_clock::time_point time) {
-    D3D9MemoryAllocator* allocator = m_device->GetAllocator();
+    auto stats = m_device->GetAllocator()->getStats();
 
-    m_maxAllocated = std::max(m_maxAllocated, allocator->AllocatedMemory());
-    m_maxUsed = std::max(m_maxUsed, allocator->UsedMemory());
-    m_maxMapped = std::max(m_maxMapped, allocator->MappedMemory());
+    m_maxAllocated = std::max(m_maxAllocated, stats.memoryAllocated);
+    m_maxUsed = std::max(m_maxUsed, stats.memoryUsed);
+    m_maxMapped = std::max(m_maxMapped, stats.memoryMapped);
 
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
