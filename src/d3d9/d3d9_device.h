@@ -12,7 +12,6 @@
 #include "d3d9_constant_buffer.h"
 #include "d3d9_constant_copy.h"
 #include "d3d9_constant_set.h"
-#include "d3d9_mem.h"
 
 #include "d3d9_state.h"
 
