@@ -27,9 +27,9 @@ namespace dxvk::hud {
 
     D3D9DeviceEx* m_device;
 
-    uint32_t m_maxAllocated = 0;
-    uint32_t m_maxUsed      = 0;
-    uint32_t m_maxMapped    = 0;
+    uint64_t m_maxAllocated = 0;
+    uint64_t m_maxUsed      = 0;
+    uint64_t m_maxMapped    = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();

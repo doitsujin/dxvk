@@ -9005,7 +9005,7 @@ namespace dxvk {
     // Will only be called inside the device lock
     void *ptr = pTexture->GetData(Subresource);
 
-#ifdef D3D9_ALLOW_UNMAPPING
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
     if (likely(pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)) {
       m_mappedTextures.insert(pTexture);
     }
@@ -9016,7 +9016,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::TouchMappedTexture(D3D9CommonTexture* pTexture) {
-#ifdef D3D9_ALLOW_UNMAPPING
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
     if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
       return;
 
@@ -9027,7 +9027,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::RemoveMappedTexture(D3D9CommonTexture* pTexture) {
-#ifdef D3D9_ALLOW_UNMAPPING
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
     if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
       return;
 
@@ -9040,15 +9040,16 @@ namespace dxvk {
   void D3D9DeviceEx::UnmapTextures() {
     // Will only be called inside the device lock
 
-#ifdef D3D9_ALLOW_UNMAPPING
-    uint32_t mappedMemory = m_memoryAllocator.MappedMemory();
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
+    uint32_t mappedMemory = m_memoryAllocator.getStats().memoryMapped;
+
     if (likely(mappedMemory < uint32_t(m_d3d9Options.textureMemory)))
       return;
 
     uint32_t threshold = (m_d3d9Options.textureMemory / 4) * 3;
 
     auto iter = m_mappedTextures.leastRecentlyUsedIter();
-    while (m_memoryAllocator.MappedMemory() >= threshold && iter != m_mappedTextures.leastRecentlyUsedEndIter()) {
+    while (m_memoryAllocator.getStats().memoryMapped >= threshold && iter != m_mappedTextures.leastRecentlyUsedEndIter()) {
       if (unlikely((*iter)->IsAnySubresourceLocked() != 0)) {
         iter++;
         continue;
