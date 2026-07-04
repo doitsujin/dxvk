@@ -3,7 +3,6 @@
 #include "d3d9_format.h"
 #include "d3d9_util.h"
 #include "d3d9_caps.h"
-#include "d3d9_mem.h"
 #include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_device.h"
