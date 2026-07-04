@@ -61,6 +61,20 @@ namespace dxvk {
   };
 
   /**
+   * \brief Shader binary
+   */
+  struct DxvkShaderBinary {
+    DxvkShaderBinary() = default;
+
+    DxvkShaderBinary(MemoryFilePool& pool, size_t size)
+    : file(pool, size) { }
+
+    MemoryFileRegion    file;
+    uint32_t            useCount = 0u;
+    VkPipelineBinaryKHR object = VK_NULL_HANDLE;
+  };
+
+  /**
    * \brief Pipeline priority
    */
   enum class DxvkPipelinePriority : uint32_t {
@@ -288,9 +302,18 @@ namespace dxvk {
      * \brief Looks up shader binary blob by key
      *
      * \param [in] key Shader binary key
+     * \returns Binary blob
+     */
+    VkPipelineBinaryKHR acquireBinary(const VkPipelineBinaryKeyKHR& key);
+
+    /**
+     * \brief Releases shader binary blob
+     *
+     * Useful when a pipeline library is being destroyed.
+     * \param [in] key Shader binary key
      * \returns Mapped blob
      */
-    VkPipelineBinaryKHR createBinary(const VkPipelineBinaryKeyKHR& key);
+    void releaseBinary(const VkPipelineBinaryKeyKHR& key);
 
     /**
      * \brief Writes back shader binary blob for key
@@ -381,7 +404,7 @@ namespace dxvk {
 
     std::unordered_map<
       DxvkShaderBinaryKey,
-      MemoryFileRegion,
+      DxvkShaderBinary,
       DxvkHash, DxvkEq> m_shaderBinaries;
 
     DxvkShaderPipelineLibrary* createPipelineLibraryLocked(

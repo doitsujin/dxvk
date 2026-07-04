@@ -233,6 +233,11 @@ namespace dxvk {
     if (m_pipeline)
       vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
 
+    if (std::exchange(m_compiledWithBinaries, false)) {
+      for (const auto& binary : m_binaries)
+        m_manager->releaseBinary(binary);
+    }
+
     m_pipeline = VK_NULL_HANDLE;
   }
 
@@ -276,7 +281,7 @@ namespace dxvk {
     bool success = true;
 
     for (size_t i = 0u; i < m_binaries.size() && success; i++) {
-      if (!(binaries.at(i) = m_manager->createBinary(m_binaries.at(i))))
+      if (!(binaries.at(i) = m_manager->acquireBinary(m_binaries.at(i))))
         success = false;
     }
 
@@ -291,10 +296,9 @@ namespace dxvk {
         Logger::warn(str::format("DXVK: Failed to create pipeline from binaries"));
     }
 
-    // Clean up binaries regardless of success status
-    for (auto& binary : binaries)
-      vk->vkDestroyPipelineBinaryKHR(vk->device(), binary, nullptr);
-
+    // We referenced all the binaries once, make sure to
+    // release them once the pipeline is no longer needed.
+    m_compiledWithBinaries = true;
     return pipeline;
   }
 

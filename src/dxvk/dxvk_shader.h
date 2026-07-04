@@ -588,6 +588,7 @@ namespace dxvk {
     dxvk::mutex                     m_mutex;
     uint32_t                        m_useCount      = 0u;
     bool                            m_compiledOnce  = false;
+    bool                            m_compiledWithBinaries = false;
 
     VkPipeline                      m_pipeline = VK_NULL_HANDLE;
 

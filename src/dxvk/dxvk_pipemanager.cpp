@@ -329,7 +329,7 @@ namespace dxvk {
   }
 
 
-  VkPipelineBinaryKHR DxvkPipelineManager::createBinary(const VkPipelineBinaryKeyKHR& key) {
+  VkPipelineBinaryKHR DxvkPipelineManager::acquireBinary(const VkPipelineBinaryKeyKHR& key) {
     std::lock_guard lock(m_shaderBinaryMutex);
 
     auto entry = m_shaderBinaries.find(key);
@@ -339,13 +339,17 @@ namespace dxvk {
       return VK_NULL_HANDLE;
     }
 
+    // Increment binary ref count
+    entry->second.useCount += 1u;
+
+    if (entry->second.object)
+      return entry->second.object;
+
     auto vk = m_device->vkd();
 
-    VkPipelineBinaryKHR binary = VK_NULL_HANDLE;
-
     VkPipelineBinaryDataKHR data = {};
-    data.dataSize = entry->second.size();
-    data.pData = entry->second.map();
+    data.dataSize = entry->second.file.size();
+    data.pData = entry->second.file.map();
 
     if (!data.pData) {
       Logger::warn(str::format("DXVK: Failed to create pipeline binary: Out of memory."));
@@ -362,15 +366,34 @@ namespace dxvk {
 
     VkPipelineBinaryHandlesInfoKHR handles = { VK_STRUCTURE_TYPE_PIPELINE_BINARY_HANDLES_INFO_KHR };
     handles.pipelineBinaryCount = 1u;
-    handles.pPipelineBinaries = &binary;
+    handles.pPipelineBinaries = &entry->second.object;
 
     VkResult vr = vk->vkCreatePipelineBinariesKHR(vk->device(), &info, nullptr, &handles);
 
     if (vr != VK_SUCCESS)
       Logger::warn(str::format("DXVK: Failed to create pipeline binary: ", vr));
 
-    entry->second.unmap();
-    return binary;
+    entry->second.file.unmap();
+    return entry->second.object;
+  }
+
+
+  void DxvkPipelineManager::releaseBinary(const VkPipelineBinaryKeyKHR& key) {
+    std::lock_guard lock(m_shaderBinaryMutex);
+
+    auto entry = m_shaderBinaries.find(key);
+
+    if (entry == m_shaderBinaries.end() || !entry->second.useCount) {
+      Logger::warn("DXVK: Invalid pipeline binary released");
+      return;
+    }
+
+    if (!(--entry->second.useCount)) {
+      auto vk = m_device->vkd();
+      vk->vkDestroyPipelineBinaryKHR(vk->device(), entry->second.object, nullptr);
+
+      entry->second.object = VK_NULL_HANDLE;
+    }
   }
 
 
@@ -403,8 +426,8 @@ namespace dxvk {
       return std::make_optional(key);
 
     // Write binary into mapped blob and immediately unmap it
-    vr = vk->vkGetPipelineBinaryDataKHR(vk->device(), &query, &key, &size, entry.first->second.map());
-    entry.first->second.unmap();
+    vr = vk->vkGetPipelineBinaryDataKHR(vk->device(), &query, &key, &size, entry.first->second.file.map());
+    entry.first->second.file.unmap();
 
     if (vr != VK_SUCCESS) {
       Logger::err(str::format("DXVK: Failed to retrieve pipeline binary: ", vr));
