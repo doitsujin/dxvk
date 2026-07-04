@@ -731,14 +731,6 @@ namespace dxvk {
     hints.preferRenderPassOps = tilerMode;
     hints.preferCachedMemory = tilerMode;
 
-    // Honeykrisp does not have native support for secondary command buffers
-    // and would suffer from added CPU overhead, so be less aggressive.
-    // TODO: Enable ANV once mesa issue 12791 is resolved.
-    // RADV has issues on RDNA4 up to version 25.0.1.
-    hints.preferPrimaryCmdBufs = m_adapter->matchesDriver(VK_DRIVER_ID_MESA_HONEYKRISP)
-                              || m_adapter->matchesDriver(VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA)
-                              || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, Version(), Version(25, 0, 2));
-
     // Compute-based mip generation has some potential for performance
     // regressions or driver issues. Just enable it on Nvidia and RADV
     // (GFX10+) for now, where it is proven to work.

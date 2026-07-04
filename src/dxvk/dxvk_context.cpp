@@ -6425,14 +6425,11 @@ namespace dxvk {
     // them to enable MSAA resolve attachments. Also ignore render passes with only
     // one color attachment here since those tend to only have a small number of
     // draws and we are almost certainly going to use the output anyway.
-    bool useSecondaryCmdBuffer = !m_device->perfHints().preferPrimaryCmdBufs
-      && renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
+    bool useSecondaryCmdBuffer = false;
 
     if (m_device->perfHints().preferRenderPassOps) {
-      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT;
-
-      if (!m_device->perfHints().preferPrimaryCmdBufs)
-        useSecondaryCmdBuffer |= depthStencilAspects || colorInfoCount > 1u || !hasMipmappedRt;
+      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT
+                           || depthStencilAspects || colorInfoCount > 1u || !hasMipmappedRt;
     }
 
     if (useSecondaryCmdBuffer) {
