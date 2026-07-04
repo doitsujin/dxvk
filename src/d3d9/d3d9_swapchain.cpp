@@ -1086,7 +1086,7 @@ namespace dxvk {
 
       hud->addItem<hud::HudSWVPState>("swvp", -1, m_parent);
 
-#ifdef D3D9_ALLOW_UNMAPPING
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
       hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
 #endif
     }

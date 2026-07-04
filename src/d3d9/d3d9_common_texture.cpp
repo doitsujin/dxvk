@@ -95,7 +95,7 @@ namespace dxvk {
 
     // Initialization is handled by D3D9Initializer
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
-      m_data = m_device->GetAllocator()->Alloc(paddedSize);
+      m_data = MemoryFileRegion(*m_device->GetAllocator(), paddedSize);
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
       CreateBuffer(false, paddedSize);
   }
@@ -301,13 +301,14 @@ namespace dxvk {
 
 
   void* D3D9CommonTexture::GetData(UINT Subresource) {
-    if (unlikely(m_buffer != nullptr))
+    if (unlikely(m_buffer))
       return m_buffer->mapPtr(m_memoryOffset[Subresource]);
 
-    m_data.Map();
-    uint8_t* ptr = reinterpret_cast<uint8_t*>(m_data.Ptr());
-    if (ptr == nullptr)
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(m_data.map());
+
+    if (!ptr)
       return nullptr;
+
     ptr += m_memoryOffset[Subresource];
     return ptr;
   }
@@ -341,12 +342,10 @@ namespace dxvk {
     m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
 
     if (Initialize) {
-      if (m_data) {
-        m_data.Map();
-        std::memcpy(m_buffer->mapPtr(0), m_data.Ptr(), m_totalSize);
-      } else {
+      if (m_data)
+        std::memcpy(m_buffer->mapPtr(0), m_data.map(), m_totalSize);
+      else
         std::memset(m_buffer->mapPtr(0), 0, m_totalSize);
-      }
     }
     m_data = {};
   }
@@ -601,7 +600,7 @@ namespace dxvk {
     if (m_desc.Format == D3D9Format::NULL_FORMAT)
       return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
 
-#ifdef D3D9_ALLOW_UNMAPPING
+#ifdef DXVK_USE_UNMAPPABLE_MEMORY
     if (m_device->GetOptions()->textureMemory != 0 && m_desc.Pool != D3DPOOL_DEFAULT)
       return D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE;
 #endif
