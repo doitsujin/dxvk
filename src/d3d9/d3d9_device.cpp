@@ -8376,6 +8376,7 @@ namespace dxvk {
 
     uint32_t currTextures = 0u;
     uint32_t tempTextures = 0u;
+    uint32_t bumpTextures = 0u;
 
     bool premodulateColor = false;
     bool premodulateAlpha = false;
@@ -8425,7 +8426,7 @@ namespace dxvk {
         colorArg0, colorArg1, colorArg2, alphaArg0, alphaArg1, alphaArg2);
 
       // Update texture masks
-      uint32_t stageTextures = 0u;
+      uint32_t stageTextures = std::exchange(bumpTextures, 0u);
 
       D3D9TextureStageStateFlags flags = {};
       flags.set(GetTextureStageStateFlags(colorOp, colorArg0, colorArg1, colorArg2, premodulateColor));
@@ -8441,8 +8442,10 @@ namespace dxvk {
       // Bump env forwards the previous value unmodified
       auto& dstMask = resultIsTemp ? tempTextures : currTextures;
 
-      if (colorOp == D3DTOP_BUMPENVMAP || colorOp == D3DTOP_BUMPENVMAPLUMINANCE)
+      if (colorOp == D3DTOP_BUMPENVMAP || colorOp == D3DTOP_BUMPENVMAPLUMINANCE) {
+        bumpTextures = stageTextures;
         stageTextures |= dstMask;
+      }
 
       dstMask = stageTextures;
 
