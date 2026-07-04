@@ -117,7 +117,7 @@ namespace dxvk {
     uint32_t identifierSize = std::min(identifier.identifierSize, VK_MAX_SHADER_MODULE_IDENTIFIER_SIZE_EXT);
 
     auto& moduleId = m_moduleInfos[m_stageCount].moduleIdentifier;
-    moduleId.createInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT };
+    moduleId.createInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT, m_next };
     moduleId.createInfo.identifierSize = identifierSize;
     moduleId.createInfo.pIdentifier = moduleId.data.data();
     std::memcpy(moduleId.data.data(), identifier.identifier, identifierSize);
