@@ -1575,7 +1575,7 @@ namespace dxvk {
     // Second memory allocator used for D3D9 shader bytecode.
     // Most games never access the stored bytecode, so putting that
     // into the same chunks as texture memory would waste address space.
-    D3D9MemoryAllocator             m_shaderAllocator;
+    MemoryFilePool                  m_shaderAllocator;
 
     uint32_t                        m_frameLatency = DefaultFrameLatency;
 

@@ -1,19 +1,19 @@
 #pragma once
 
+#include <array>
+#include <string>
+
+#include <sm3/sm3_parser.h>
+
 #include "../dxvk/dxvk_shader.h"
 #include "../dxvk/dxvk_shader_key.h"
 #include "../dxvk/dxvk_shader_ir.h"
 
-#include <sm3/sm3_parser.h>
+#include "../util/util_unmap.h"
 
 #include "d3d9_resource.h"
-#include "d3d9_util.h"
-#include "d3d9_mem.h"
-
-#include <array>
-#include <string>
-
 #include "d3d9_shader_analysis.h"
+#include "d3d9_util.h"
 
 namespace dxvk {
 
@@ -143,17 +143,16 @@ namespace dxvk {
 
     D3D9Shader(
             D3D9DeviceEx*        pDevice,
-            D3D9MemoryAllocator* pAllocator,
+            MemoryFilePool*      pAllocator,
       const D3D9CommonShader&    CommonShader,
       const void*                pShaderBytecode,
             uint32_t             BytecodeLength)
       : D3D9DeviceChild<Base>( pDevice )
       , m_shader             ( CommonShader )
-      , m_bytecode           ( pAllocator->Alloc(BytecodeLength) )
+      , m_bytecode           ( *pAllocator, BytecodeLength )
       , m_bytecodeLength     ( BytecodeLength ) {
-      m_bytecode.Map();
-      std::memcpy(m_bytecode.Ptr(), pShaderBytecode, BytecodeLength);
-      m_bytecode.Unmap();
+      std::memcpy(m_bytecode.map(), pShaderBytecode, BytecodeLength);
+      m_bytecode.unmap();
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
@@ -185,11 +184,9 @@ namespace dxvk {
         return D3D_OK;
       }
 
-      m_bytecode.Map();
       uint32_t copyAmount = std::min(*pSizeOfData, m_bytecodeLength);
-      std::memcpy(pOut, m_bytecode.Ptr(), copyAmount);
-      m_bytecode.Unmap();
-
+      std::memcpy(pOut, m_bytecode.map(), copyAmount);
+      m_bytecode.unmap();
       return D3D_OK;
     }
 
@@ -201,7 +198,7 @@ namespace dxvk {
 
     D3D9CommonShader m_shader;
 
-    D3D9Memory       m_bytecode;
+    MemoryFileRegion m_bytecode;
     uint32_t         m_bytecodeLength;
 
   };
@@ -214,7 +211,7 @@ namespace dxvk {
 
     D3D9VertexShader(
             D3D9DeviceEx*        pDevice,
-            D3D9MemoryAllocator* pAllocator,
+            MemoryFilePool*      pAllocator,
       const D3D9CommonShader&    CommonShader,
       const void*                pShaderBytecode,
             uint32_t             BytecodeLength)
@@ -228,7 +225,7 @@ namespace dxvk {
 
     D3D9PixelShader(
             D3D9DeviceEx*        pDevice,
-            D3D9MemoryAllocator* pAllocator,
+            MemoryFilePool*      pAllocator,
       const D3D9CommonShader&    CommonShader,
       const void*                pShaderBytecode,
             uint32_t             BytecodeLength)
