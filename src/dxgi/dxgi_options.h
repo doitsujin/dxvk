@@ -17,6 +17,15 @@ namespace dxvk {
   struct DxgiOptions {
     DxgiOptions(const Config& config);
 
+    void incRef() {
+      m_useCount.fetch_add(1u);
+    }
+
+    void decRef() {
+      if (m_useCount.fetch_sub(1u) == 1u)
+        delete this;
+    }
+
     /// Override PCI vendor and device IDs reported to the
     /// application. This may make apps think they are running
     /// on a different GPU than they do and behave differently.
@@ -58,6 +67,11 @@ namespace dxvk {
 
     /// Forced refresh rate, disable other modes
     uint32_t forceRefreshRate;
+
+  private:
+
+    std::atomic<uint32_t> m_useCount = { 0u };
+
   };
   
 }

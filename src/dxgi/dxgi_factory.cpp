@@ -10,6 +10,7 @@
 namespace dxvk {
 
   static Singleton<DxvkInstance>   g_dxvkInstance;
+  static Singleton<DxgiOptions>    g_dxgiOptions;
 
   static dxvk::mutex               s_globalHDRStateMutex;
   static DXVK_VK_GLOBAL_HDR_STATE  s_globalHDRState{};
@@ -81,8 +82,8 @@ namespace dxvk {
   DxgiFactory::DxgiFactory(UINT Flags)
   : m_instance        (g_dxvkInstance.acquire(0)),
     m_interop         (this),
-    m_options         (m_instance->config()),
-    m_monitorInfo     (this, m_options),
+    m_options         (g_dxgiOptions.acquire(m_instance->config())),
+    m_monitorInfo     (this, *m_options),
     m_flags           (Flags),
     m_monitorFallback (false),
     m_destructionNotifier(this) {
@@ -132,6 +133,7 @@ namespace dxvk {
   
   
   DxgiFactory::~DxgiFactory() {
+    g_dxgiOptions.release();
     g_dxvkInstance.release();
   }
   
@@ -282,7 +284,7 @@ namespace dxvk {
           IDXGISwapChain1**     ppSwapChain) {
     InitReturnPtr(ppSwapChain);
 
-    if (!m_options.enableDummyCompositionSwapchain) {
+    if (!m_options->enableDummyCompositionSwapchain) {
       Logger::err("DxgiFactory::CreateSwapChainForComposition: Not implemented");
       return E_NOTIMPL;
     }
