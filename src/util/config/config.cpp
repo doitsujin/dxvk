@@ -1174,6 +1174,11 @@ namespace dxvk {
     { R"(\\(SplinterCell4|SCDA_online)\.exe$)", {{
       { "d3d9.hideAmdGpu",                  "True" },
     }} },
+    /* Splinter Cell: Chaos Theory                *
+     * Passes incorrect values when locking a vertex buffer  */
+    { R"(\\splintercell3\.exe$)", {{
+      { "d3d9.ignoreDefaultBufferLockRange", "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
