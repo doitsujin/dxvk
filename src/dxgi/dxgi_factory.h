@@ -182,7 +182,7 @@ namespace dxvk {
     }
 
     const DxgiOptions* GetOptions() const {
-      return &m_options;
+      return m_options.ptr();
     }
 
     DxgiMonitorInfo* GetMonitorInfo() {
@@ -195,7 +195,7 @@ namespace dxvk {
     
     Rc<DxvkInstance> m_instance;
     DxgiVkFactory    m_interop;
-    DxgiOptions      m_options;
+    Rc<DxgiOptions>  m_options;
     DxgiMonitorInfo  m_monitorInfo;
     UINT             m_flags;
     BOOL             m_monitorFallback;
