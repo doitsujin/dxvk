@@ -134,6 +134,11 @@ namespace dxvk {
     /// objects because they never get their proper UVs.
     bool forceDrawTimeBufferUpload;
 
+    /// Ignore the lock range passed to Buffer::Lock for buffers in the D3DPOOL_DEFAULT and mark the whole buffer
+    /// dirty instead.
+    /// Used for games that pass incorrect values.
+    bool ignoreDefaultBufferLockRange;
+
     /// Don't use non seamless cube maps
     bool seamlessCubes;
 

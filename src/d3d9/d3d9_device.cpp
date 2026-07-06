@@ -5482,7 +5482,8 @@ namespace dxvk {
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
     //  how that works given it is meant to be a DIRECT access..?)
     const bool respectUserBounds = !(Flags & D3DLOCK_DISCARD) &&
-                                    SizeToLock != 0;
+                                    SizeToLock != 0 &&
+                                    !m_d3d9Options.ignoreDefaultBufferLockRange;
 
     // If we don't respect the bounds, encompass it all in our tests/checks
     // These values may be out of range and don't get clamped.
