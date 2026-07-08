@@ -592,6 +592,10 @@ namespace dxvk {
      * spec-constantly chose the sampler type     *
      * automagically.                             */
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
+    /* The game passes incorrect values when      *
+     * locking a vertex buffer causing it to      *
+     * render "behind" the initial loading screen */
+      { "d3d9.ignoreDefaultBufferLockRange", "True" },
     }} },
     /* Counter Strike: Global Offensive
        Needs NVAPI to avoid a forced AO + Smoke
