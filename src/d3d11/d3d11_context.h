@@ -1264,7 +1264,22 @@ namespace dxvk {
       if (likely(pBuffer != nullptr))
         bufferSize = static_cast<D3D11Buffer*>(pBuffer)->Desc()->ByteWidth;
 
-      return uint64_t(bufferSize) >= uint64_t(Offset) + uint64_t(Size);
+      return !(Offset % sizeof(uint32_t)) && (uint64_t(bufferSize) >= uint64_t(Offset) + uint64_t(Size));
+    }
+
+    static uint32_t ClampDrawCount(UINT Count, ID3D11Buffer* pBuffer, UINT Offset, UINT Stride, UINT Size) {
+      if (unlikely(!pBuffer) || unlikely(Offset % sizeof(uint32_t)))
+        return 0u;
+
+      UINT bufferSize = static_cast<D3D11Buffer*>(pBuffer)->Desc()->ByteWidth;
+
+      if (unlikely(bufferSize < Size))
+        return 0u;
+
+      if (unlikely(!Stride))
+        return Count;
+
+      return std::min(Count, (bufferSize - Size) / Stride + 1u);
     }
 
   private:

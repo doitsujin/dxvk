@@ -48,6 +48,12 @@ namespace dxvk {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
     
+    DrawCount = m_ctx->ClampDrawCount(DrawCount, pBufferForArgs,
+      ByteOffsetForArgs, ByteStrideForArgs, sizeof(VkDrawIndirectCommand));
+
+    if (unlikely(!DrawCount))
+      return;
+
     if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
       m_ctx->ApplyDirtyGraphicsBindings();
 
@@ -69,6 +75,12 @@ namespace dxvk {
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
+
+    DrawCount = m_ctx->ClampDrawCount(DrawCount, pBufferForArgs,
+      ByteOffsetForArgs, ByteStrideForArgs, sizeof(VkDrawIndexedIndirectCommand));
+
+    if (unlikely(!DrawCount))
+      return;
 
     if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
       m_ctx->ApplyDirtyGraphicsBindings();
@@ -94,6 +106,15 @@ namespace dxvk {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
 
+    if (unlikely(!m_ctx->ValidateDrawBufferSize(pBufferForCount, ByteOffsetForCount, sizeof(uint32_t))))
+      return;
+
+    MaxDrawCount = m_ctx->ClampDrawCount(MaxDrawCount, pBufferForArgs,
+      ByteOffsetForArgs, ByteStrideForArgs, sizeof(VkDrawIndirectCommand));
+
+    if (unlikely(!MaxDrawCount))
+      return;
+
     if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
       m_ctx->ApplyDirtyGraphicsBindings();
 
@@ -118,6 +139,15 @@ namespace dxvk {
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
+
+    if (unlikely(!m_ctx->ValidateDrawBufferSize(pBufferForCount, ByteOffsetForCount, sizeof(uint32_t))))
+      return;
+
+    MaxDrawCount = m_ctx->ClampDrawCount(MaxDrawCount, pBufferForArgs,
+      ByteOffsetForArgs, ByteStrideForArgs, sizeof(VkDrawIndexedIndirectCommand));
+
+    if (unlikely(!MaxDrawCount))
+      return;
 
     if (unlikely(m_ctx->HasDirtyGraphicsBindings()))
       m_ctx->ApplyDirtyGraphicsBindings();
