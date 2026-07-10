@@ -514,6 +514,12 @@ namespace dxvk::vk {
     VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
 
+    #ifdef VK_NV_device_diagnostic_checkpoints
+    VULKAN_FN(vkCmdSetCheckpointNV);
+    VULKAN_FN(vkGetQueueCheckpointDataNV);
+    VULKAN_FN(vkGetQueueCheckpointData2NV);
+    #endif
+
     #ifdef VK_NV_low_latency2
     VULKAN_FN(vkSetLatencySleepModeNV);
     VULKAN_FN(vkLatencySleepNV);
