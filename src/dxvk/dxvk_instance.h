@@ -41,6 +41,7 @@ namespace dxvk {
     Validation        = 0,
     Capture           = 1,
     Markers           = 2,
+    Hang              = 3,
   };
 
   using DxvkDebugFlags = Flags<DxvkDebugFlag>;
