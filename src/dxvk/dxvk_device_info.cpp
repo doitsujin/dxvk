@@ -68,6 +68,7 @@ namespace dxvk {
     HANDLE_EXT(khrSwapchainMutableFormat);         \
     HANDLE_EXT(khrUnifiedImageLayouts);            \
     HANDLE_EXT(khrWin32KeyedMutex);                \
+    HANDLE_EXT(amdBufferMarker);                   \
     HANDLE_EXT(nvDeviceDiagnosticCheckpoints);     \
     HANDLE_EXT(nvLowLatency2);                     \
     HANDLE_EXT(nvRawAccessChains);                 \
@@ -612,8 +613,10 @@ namespace dxvk {
       m_featuresSupported.nvLowLatency2 = VK_FALSE;
 
     // Disable debug extensions if hang debugging is disabled
-    if (!instance.debugFlags().test(DxvkDebugFlag::Hang))
+    if (!instance.debugFlags().test(DxvkDebugFlag::Hang)) {
+      m_featuresSupported.amdBufferMarker = VK_FALSE;
       m_featuresSupported.nvDeviceDiagnosticCheckpoints = VK_FALSE;
+    }
   }
 
 
@@ -1053,6 +1056,9 @@ namespace dxvk {
 
       /* Keyed mutex support in wine */
       ENABLE_EXT(khrWin32KeyedMutex, false),
+
+      /* Hang debugging on AMD */
+      ENABLE_EXT(amdBufferMarker, false),
 
       /* Hang debugging on Nvidia */
       ENABLE_EXT(nvDeviceDiagnosticCheckpoints, false),
