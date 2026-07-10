@@ -1250,21 +1250,12 @@ namespace dxvk {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
-    static uint32_t GetIndirectCommandStride(const D3D11CmdDrawIndirectData* cmdData, uint32_t offset, uint32_t minStride) {
+    static uint32_t GetIndirectCommandStride(const D3D11CmdDrawIndirectData* cmdData, VkDeviceSize offset, uint32_t minStride) {
       if (likely(cmdData->stride))
         return cmdData->offset + cmdData->count * cmdData->stride == offset ? cmdData->stride : 0;
 
-      uint32_t stride = offset - cmdData->offset;
-      return stride >= minStride && stride <= 32 ? stride : 0;
-    }
-
-    static bool ValidateDrawBufferSize(ID3D11Buffer* pBuffer, UINT Offset, UINT Size) {
-      UINT bufferSize = 0;
-
-      if (likely(pBuffer != nullptr))
-        bufferSize = static_cast<D3D11Buffer*>(pBuffer)->Desc()->ByteWidth;
-
-      return uint64_t(bufferSize) >= uint64_t(Offset) + uint64_t(Size);
+      VkDeviceSize stride = offset - cmdData->offset;
+      return stride >= minStride && stride <= 32u ? uint32_t(stride) : 0u;
     }
 
   private:
