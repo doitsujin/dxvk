@@ -1563,6 +1563,13 @@ namespace dxvk {
             uint32_t              maxCount,
             uint32_t              stride);
 
+    std::pair<uint32_t, VkDeviceSize> computeDrawCount(
+            uint32_t              count,
+            VkDeviceSize          bufferSize,
+            VkDeviceSize          argOffset,
+            VkDeviceSize          argStride,
+            VkDeviceSize          argSize);
+
     void generateMipmapsHw(
       const Rc<DxvkImageView>&        imageView,
             VkFilter                  filter);
@@ -2108,9 +2115,7 @@ namespace dxvk {
 
     void accessDrawBuffer(
             VkDeviceSize              offset,
-            uint32_t                  count,
-            uint32_t                  stride,
-            uint32_t                  size);
+            VkDeviceSize              size);
 
     void accessDrawCountBuffer(
             VkDeviceSize              offset);

@@ -842,6 +842,9 @@ namespace dxvk {
           VkDeviceSize      offset) {
     auto argInfo = m_state.id.argBuffer.getSliceInfo();
 
+    if (unlikely(offset + sizeof(VkDispatchIndirectCommand) > argInfo.size))
+      return;
+
     if (this->commitComputeState<true>()) {
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -853,7 +856,7 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
 
-      accessDrawBuffer(offset, 1, 0, sizeof(VkDispatchIndirectCommand));
+      accessDrawBuffer(offset, sizeof(VkDispatchIndirectCommand));
 
       this->trackDrawBuffer();
     }
@@ -1696,13 +1699,19 @@ namespace dxvk {
           uint32_t                  count,
           uint32_t                  stride,
           bool                      unroll) {
-    constexpr VkDeviceSize elementSize = Indexed
+    constexpr VkDeviceSize ElementSize = Indexed
       ? sizeof(VkDrawIndexedIndirectCommand)
       : sizeof(VkDrawIndirectCommand);
 
-    if (this->commitGraphicsState<Indexed, true>()) {
-      auto argInfo = m_state.id.argBuffer.getSliceInfo();
+    VkDeviceSize argSize = 0u;
 
+    auto argInfo = m_state.id.argBuffer.getSliceInfo();
+    std::tie(count, argSize) = computeDrawCount(count, argInfo.size, offset, stride, ElementSize);
+
+    if (unlikely(!count))
+      return;
+
+    if (this->commitGraphicsState<Indexed, true>()) {
       if (likely(count == 1u || !unroll || !needsDrawBarriers())) {
         if (Indexed) {
           m_cmd->cmdDrawIndexedIndirect(argInfo.buffer,
@@ -1722,7 +1731,7 @@ namespace dxvk {
 
         if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
          || m_state.id.argBuffer.buffer()->hasGfxStores())
-          accessDrawBuffer(offset, count, stride, elementSize);
+          accessDrawBuffer(offset, argSize);
       } else {
         // If the pipeline has order-sensitive stores, submit one
         // draw at a time and insert barriers in between.
@@ -1740,7 +1749,7 @@ namespace dxvk {
 
           if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
            || m_state.id.argBuffer.buffer()->hasGfxStores())
-            accessDrawBuffer(offset, 1u, stride, elementSize);
+            accessDrawBuffer(offset, ElementSize);
 
           offset += stride;
         }
@@ -1757,10 +1766,21 @@ namespace dxvk {
           VkDeviceSize          countOffset,
           uint32_t              maxCount,
           uint32_t              stride) {
-    if (this->commitGraphicsState<Indexed, true>()) {
-      auto argInfo = m_state.id.argBuffer.getSliceInfo();
-      auto cntInfo = m_state.id.cntBuffer.getSliceInfo();
+    constexpr VkDeviceSize ElementSize = Indexed
+      ? sizeof(VkDrawIndexedIndirectCommand)
+      : sizeof(VkDrawIndirectCommand);
 
+    VkDeviceSize argSize = 0u;
+
+    auto argInfo = m_state.id.argBuffer.getSliceInfo();
+    auto cntInfo = m_state.id.cntBuffer.getSliceInfo();
+
+    std::tie(maxCount, argSize) = computeDrawCount(maxCount, argInfo.size, offset, stride, ElementSize);
+
+    if (unlikely(!maxCount || countOffset + sizeof(uint32_t) > cntInfo.size))
+      return;
+
+    if (this->commitGraphicsState<Indexed, true>()) {
       if (Indexed) {
         m_cmd->cmdDrawIndexedIndirectCount(
           argInfo.buffer, argInfo.offset + offset,
@@ -1776,16 +1796,34 @@ namespace dxvk {
       m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1u);
 
       if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
-       || m_state.id.argBuffer.buffer()->hasGfxStores()) {
-        accessDrawBuffer(offset, maxCount, stride, Indexed
-          ? sizeof(VkDrawIndexedIndirectCommand)
-          : sizeof(VkDrawIndirectCommand));
-      }
+       || m_state.id.argBuffer.buffer()->hasGfxStores())
+        accessDrawBuffer(offset, argSize);
 
       if (m_flags.test(DxvkContextFlag::GpRenderPassUnsynchronized)
        || m_state.id.cntBuffer.buffer()->hasGfxStores())
         accessDrawCountBuffer(countOffset);
     }
+  }
+
+
+  std::pair<uint32_t, VkDeviceSize> DxvkContext::computeDrawCount(
+          uint32_t              count,
+          VkDeviceSize          bufferSize,
+          VkDeviceSize          argOffset,
+          VkDeviceSize          argStride,
+          VkDeviceSize          argSize) {
+    if (unlikely(!count || bufferSize < argOffset + argSize))
+      return std::make_pair(0u, 0u);
+
+    VkDeviceSize accessSize = (count - 1u) * argStride + argSize;
+    VkDeviceSize remainingSize = bufferSize - argOffset;
+
+    if (unlikely(remainingSize < accessSize)) {
+      count = 1u + uint32_t((remainingSize - argSize) / argStride);
+      accessSize = (count - 1u) * argStride + argSize;
+    }
+
+    return std::make_pair(count, accessSize);
   }
 
 
@@ -10278,14 +10316,10 @@ namespace dxvk {
 
   void DxvkContext::accessDrawBuffer(
           VkDeviceSize              offset,
-          uint32_t                  count,
-          uint32_t                  stride,
-          uint32_t                  size) {
-    uint32_t dataSize = count ? (count - 1u) * stride + size : 0u;
-
+          VkDeviceSize              size) {
     accessBuffer(DxvkCmdBuffer::ExecBuffer,
       *m_state.id.argBuffer.buffer(),
-      m_state.id.argBuffer.offset() + offset, dataSize,
+      m_state.id.argBuffer.offset() + offset, size,
       VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT,
       VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR,
       DxvkAccessOp::None);
