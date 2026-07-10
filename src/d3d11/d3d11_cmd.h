@@ -27,7 +27,7 @@ namespace dxvk {
    * draws to execute.
    */
   struct D3D11CmdDrawIndirectData {
-    uint32_t            offset;
+    VkDeviceSize        offset;
     uint32_t            count;
     uint32_t            stride;
   };
