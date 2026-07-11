@@ -7,6 +7,7 @@
 #include "dxvk_context.h"
 #include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
+#include "dxvk_hang.h"
 #include "dxvk_image.h"
 #include "dxvk_instance.h"
 #include "dxvk_latency.h"
@@ -133,6 +134,14 @@ namespace dxvk {
      */
     DxvkDebugFlags debugFlags() const {
       return m_debugFlags;
+    }
+
+    /**
+     * \brief Retrieves checkpoint buffer for debug purposes
+     * \returns Checkpoint buffer, or \c nullptr.
+     */
+    DxvkCheckpointBuffer* getCheckpointBuffer() {
+      return m_debugFlags.test(DxvkDebugFlag::Hang) ? &m_checkpoints : nullptr;
     }
 
     /**
@@ -754,6 +763,7 @@ namespace dxvk {
 
     DxvkDevicePerfHints         m_perfHints;
     DxvkObjects                 m_objects;
+    DxvkCheckpointBuffer        m_checkpoints;
 
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;

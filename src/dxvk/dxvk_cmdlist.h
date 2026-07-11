@@ -21,6 +21,8 @@
 
 namespace dxvk {
 
+  class DxvkCheckpointBuffer;
+
   /**
    * \brief Immediate descriptor write
    *
@@ -1277,6 +1279,8 @@ namespace dxvk {
     DxvkDevice*               m_device;
     Rc<vk::DeviceFn>          m_vkd;
     Rc<vk::InstanceFn>        m_vki;
+
+    DxvkCheckpointBuffer*     m_checkpoints = nullptr;
     
     Rc<DxvkCommandPool>       m_graphicsPool;
     Rc<DxvkCommandPool>       m_transferPool;
