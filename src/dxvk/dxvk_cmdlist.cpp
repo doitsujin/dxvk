@@ -1,8 +1,16 @@
+#include <algorithm>
 
 #include "dxvk_cmdlist.h"
 #include "dxvk_device.h"
 
 namespace dxvk {
+
+  DxvkDeviceQueue getQueueForCommandBuffer(DxvkDevice* device, DxvkCmdBuffer cmdBuffer) {
+    return cmdBuffer < DxvkCmdBuffer::SdmaBuffer
+      ? device->queues().graphics
+      : device->queues().transfer;
+  }
+
 
   DxvkCommandSubmission::DxvkCommandSubmission() {
 
@@ -234,6 +242,8 @@ namespace dxvk {
       m_transferPool = new DxvkCommandPool(device, transferQueue.queueFamily);
     else
       m_transferPool = m_graphicsPool;
+
+    resetCheckpoints();
   }
   
   
@@ -406,8 +416,15 @@ namespace dxvk {
     // For consistency, end all command buffers here,
     // regardless of whether they have been used.
     for (uint32_t i = 0; i < m_cmd.cmdBuffers.size(); i++) {
-      if (m_cmd.cmdBuffers[i])
+      if (m_cmd.cmdBuffers[i]) {
+        if (m_checkpoints) {
+          m_checkpoints->endCommandBuffer(
+            getQueueForCommandBuffer(m_device, DxvkCmdBuffer(i)),
+            m_cmd.cmdBuffers[i], m_checkpointIds[i]);
+        }
+
         endCommandBuffer(m_cmd.cmdBuffers[i]);
+      }
     }
 
     // Reset all command buffer handles
@@ -451,6 +468,8 @@ namespace dxvk {
 
   
   void DxvkCommandList::reset() {
+    resetCheckpoints();
+
     // We will re-apply heap bindings first thing in a
     // new command list, so reset this flag here
     m_descriptorHeapInvalidated = false;
@@ -1044,6 +1063,85 @@ namespace dxvk {
       VkDeviceSize dataSize = range->getAllocationOffset() - baseOffset;
       addStatCtr(DxvkStatCounter::DescriptorHeapUsed, dataSize);
     }
+  }
+
+
+  void DxvkCommandList::resetCheckpoints() {
+    std::fill(m_checkpointIds.begin(), m_checkpointIds.end(), -1);
+  }
+
+
+  void DxvkCommandList::debugMarker(
+          DxvkCmdBuffer                 cmdBuffer,
+    const char*                         text) {
+    if (m_checkpoints) {
+      auto cmdIndex = uint32_t(cmdBuffer);
+
+      m_checkpointIds.at(cmdIndex) = m_checkpoints->addCheckpoint(
+        getQueueForCommandBuffer(m_device, cmdBuffer), getCmdBuffer(cmdBuffer),
+        m_checkpointIds.at(cmdIndex), text);
+    }
+  }
+
+
+  void DxvkCommandList::debugDispatch(
+          DxvkCmdBuffer                 cmdBuffer,
+    const char*                         text,
+          uint32_t                      x,
+          uint32_t                      y,
+          uint32_t                      z) {
+    debugMarker(cmdBuffer, str::format(text, " (", x, ", ", y, ", ", z, ")").c_str());
+  }
+
+
+  void DxvkCommandList::debugDraw(
+          DxvkCmdBuffer                 cmdBuffer,
+    const char*                         text,
+          uint32_t                      count,
+          uint32_t                      instances) {
+    debugMarker(cmdBuffer, str::format(text, " (", count, ", ", instances, ")").c_str());
+  }
+
+
+  void DxvkCommandList::debugDrawMulti(
+          DxvkCmdBuffer                 cmdBuffer,
+    const char*                         text,
+          uint32_t                      count) {
+    debugMarker(cmdBuffer, str::format(text, " (", count, ")").c_str());
+  }
+
+
+  void DxvkCommandList::debugDrawIndirect(
+          DxvkCmdBuffer                 cmdBuffer,
+    const char*                         text,
+          uint32_t                      count,
+          uint32_t                      stride) {
+    debugMarker(cmdBuffer, str::format(text, " (", count, ", ", stride, ")").c_str());
+  }
+
+
+  void DxvkCommandList::debugBarrier(
+          DxvkCmdBuffer                 cmdBuffer,
+    const VkDependencyInfo*             depInfo) {
+    VkMemoryBarrier2 barrier = {};
+
+    for (uint32_t i = 0u; i < depInfo->memoryBarrierCount; i++) {
+      barrier.srcStageMask |= depInfo->pMemoryBarriers[i].srcStageMask;
+      barrier.srcAccessMask |= depInfo->pMemoryBarriers[i].srcAccessMask;
+      barrier.dstStageMask |= depInfo->pMemoryBarriers[i].dstStageMask;
+      barrier.dstAccessMask |= depInfo->pMemoryBarriers[i].dstAccessMask;
+    }
+
+    for (uint32_t i = 0u; i < depInfo->imageMemoryBarrierCount; i++) {
+      barrier.srcStageMask |= depInfo->pImageMemoryBarriers[i].srcStageMask;
+      barrier.srcAccessMask |= depInfo->pImageMemoryBarriers[i].srcAccessMask;
+      barrier.dstStageMask |= depInfo->pImageMemoryBarriers[i].dstStageMask;
+      barrier.dstAccessMask |= depInfo->pImageMemoryBarriers[i].dstAccessMask;
+    }
+
+    debugMarker(cmdBuffer, str::format("Barrier (", depInfo->memoryBarrierCount, ", ", depInfo->imageMemoryBarrierCount, "): ",
+      "0x", std::hex, barrier.srcStageMask, ":0x", std::hex, barrier.srcAccessMask, " -> ",
+      "0x", std::hex, barrier.dstStageMask, ":0x", std::hex, barrier.dstAccessMask).c_str());
   }
 
 }

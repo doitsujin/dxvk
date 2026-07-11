@@ -597,6 +597,9 @@ namespace dxvk {
     void cmdBeginRendering(
             DxvkCmdBuffer             cmdBuffer,
       const VkRenderingInfo*          pRenderingInfo) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "BeginRendering");
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdBeginRendering(getCmdBuffer(cmdBuffer), pRenderingInfo);
@@ -608,6 +611,9 @@ namespace dxvk {
             uint32_t                  bufferCount,
       const VkBuffer*                 counterBuffers,
       const VkDeviceSize*             counterOffsets) {
+      if (unlikely(m_checkpoints))
+        debugMarker(DxvkCmdBuffer::ExecBuffer, "BeginTransformFeedback");
+
       m_vkd->vkCmdBeginTransformFeedbackEXT(getCmdBuffer(),
         firstBuffer, bufferCount, counterBuffers, counterOffsets);
     }
@@ -678,6 +684,9 @@ namespace dxvk {
 
     void cmdBlitImage(
         const VkBlitImageInfo2*     pBlitInfo) {
+      if (unlikely(m_checkpoints))
+        debugMarker(DxvkCmdBuffer::ExecBuffer, "BlitImage");
+
       m_cmd.execCommands = true;
 
       m_vkd->vkCmdBlitImage2(getCmdBuffer(), pBlitInfo);
@@ -690,6 +699,9 @@ namespace dxvk {
       const VkClearAttachment*      pAttachments,
             uint32_t                rectCount,
       const VkClearRect*            pRects) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "ClearAttachments");
+
       m_vkd->vkCmdClearAttachments(getCmdBuffer(cmdBuffer),
         attachmentCount, pAttachments, rectCount, pRects);
     }
@@ -702,6 +714,9 @@ namespace dxvk {
       const VkClearColorValue*      pColor,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "ClearColorImage");
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdClearColorImage(getCmdBuffer(cmdBuffer),
@@ -717,6 +732,9 @@ namespace dxvk {
       const VkClearDepthStencilValue* pDepthStencil,
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "ClearDepthStencilImage");
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdClearDepthStencilImage(getCmdBuffer(cmdBuffer),
@@ -728,8 +746,10 @@ namespace dxvk {
     void cmdCopyBuffer(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyBufferInfo2*      copyInfo) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "CopyBuffer");
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdCopyBuffer2(getCmdBuffer(cmdBuffer), copyInfo);
     }
     
@@ -737,8 +757,10 @@ namespace dxvk {
     void cmdCopyBufferToImage(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyBufferToImageInfo2* copyInfo) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "CopyBufferToImage");
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdCopyBufferToImage2(getCmdBuffer(cmdBuffer), copyInfo);
     }
     
@@ -746,8 +768,10 @@ namespace dxvk {
     void cmdCopyImage(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyImageInfo2*       copyInfo) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "CopyImage");
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdCopyImage2(getCmdBuffer(cmdBuffer), copyInfo);
     }
     
@@ -755,8 +779,10 @@ namespace dxvk {
     void cmdCopyImageToBuffer(
             DxvkCmdBuffer           cmdBuffer,
       const VkCopyImageToBufferInfo2* copyInfo) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "CopyImageToBuffer");
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdCopyImageToBuffer2(getCmdBuffer(cmdBuffer), copyInfo);
     }
 
@@ -783,8 +809,10 @@ namespace dxvk {
             uint32_t                x,
             uint32_t                y,
             uint32_t                z) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+     if (unlikely(m_checkpoints))
+        debugDispatch(cmdBuffer, "Dispatch", x, y, z);
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdDispatch(getCmdBuffer(cmdBuffer), x, y, z);
     }
     
@@ -793,8 +821,10 @@ namespace dxvk {
             DxvkCmdBuffer           cmdBuffer,
             VkBuffer                buffer,
             VkDeviceSize            offset) {
-      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
+     if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "DispatchIndirect");
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vkd->vkCmdDispatchIndirect(getCmdBuffer(cmdBuffer), buffer, offset);
     }
     
@@ -804,6 +834,9 @@ namespace dxvk {
             uint32_t                instanceCount,
             uint32_t                firstVertex,
             uint32_t                firstInstance) {
+      if (unlikely(m_checkpoints))
+        debugDraw(DxvkCmdBuffer::ExecBuffer, "Draw", vertexCount, instanceCount);
+
       m_vkd->vkCmdDraw(getCmdBuffer(),
         vertexCount, instanceCount,
         firstVertex, firstInstance);
@@ -815,6 +848,9 @@ namespace dxvk {
       const VkMultiDrawInfoEXT*     drawInfos,
             uint32_t                instanceCount,
             uint32_t                firstInstance) {
+      if (unlikely(m_checkpoints))
+        debugDrawMulti(DxvkCmdBuffer::ExecBuffer, "DrawMulti", drawCount);
+
       m_vkd->vkCmdDrawMultiEXT(getCmdBuffer(),
         drawCount, drawInfos, instanceCount, firstInstance, sizeof(*drawInfos));
     }
@@ -825,6 +861,9 @@ namespace dxvk {
             VkDeviceSize            offset,
             uint32_t                drawCount,
             uint32_t                stride) {
+      if (unlikely(m_checkpoints))
+        debugDrawIndirect(DxvkCmdBuffer::ExecBuffer, "DrawIndirect", drawCount, stride);
+
       m_vkd->vkCmdDrawIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
     }
@@ -837,6 +876,9 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
+      if (unlikely(m_checkpoints))
+        debugDrawIndirect(DxvkCmdBuffer::ExecBuffer, "DrawIndirectCount", maxDrawCount, stride);
+
       m_vkd->vkCmdDrawIndirectCount(getCmdBuffer(), buffer,
         offset, countBuffer, countOffset, maxDrawCount, stride);
     }
@@ -848,6 +890,9 @@ namespace dxvk {
             uint32_t                firstIndex,
             int32_t                 vertexOffset,
             uint32_t                firstInstance) {
+      if (unlikely(m_checkpoints))
+        debugDraw(DxvkCmdBuffer::ExecBuffer, "DrawIndexed", indexCount, instanceCount);
+
       m_vkd->vkCmdDrawIndexed(getCmdBuffer(),
         indexCount, instanceCount,
         firstIndex, vertexOffset,
@@ -860,6 +905,9 @@ namespace dxvk {
       const VkMultiDrawIndexedInfoEXT* drawInfos,
             uint32_t                instanceCount,
             uint32_t                firstInstance) {
+      if (unlikely(m_checkpoints))
+        debugDrawMulti(DxvkCmdBuffer::ExecBuffer, "DrawMultiIndexed", drawCount);
+
       m_vkd->vkCmdDrawMultiIndexedEXT(getCmdBuffer(), drawCount,
         drawInfos, instanceCount, firstInstance, sizeof(*drawInfos), nullptr);
     }
@@ -870,6 +918,9 @@ namespace dxvk {
             VkDeviceSize            offset,
             uint32_t                drawCount,
             uint32_t                stride) {
+      if (unlikely(m_checkpoints))
+        debugDrawIndirect(DxvkCmdBuffer::ExecBuffer, "DrawIndexedIndirect", drawCount, stride);
+
       m_vkd->vkCmdDrawIndexedIndirect(getCmdBuffer(),
         buffer, offset, drawCount, stride);
     }
@@ -882,6 +933,9 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
+      if (unlikely(m_checkpoints))
+        debugDrawIndirect(DxvkCmdBuffer::ExecBuffer, "DrawIndexedIndirectCount", maxDrawCount, stride);
+
       m_vkd->vkCmdDrawIndexedIndirectCount(getCmdBuffer(),
         buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
     }
@@ -894,6 +948,9 @@ namespace dxvk {
             VkDeviceSize            counterBufferOffset,
             uint32_t                counterOffset,
             uint32_t                vertexStride) {
+      if (unlikely(m_checkpoints))
+        debugDrawIndirect(DxvkCmdBuffer::ExecBuffer, "DrawIndirectVertexCount", 1, 0);
+
       m_vkd->vkCmdDrawIndirectByteCountEXT(getCmdBuffer(),
         instanceCount, firstInstance, counterBuffer,
         counterBufferOffset, counterOffset, vertexStride);
@@ -918,6 +975,9 @@ namespace dxvk {
     
     void cmdEndRendering(
             DxvkCmdBuffer             cmdBuffer) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "EndRendering");
+
       m_vkd->vkCmdEndRendering(getCmdBuffer(cmdBuffer));
     }
 
@@ -927,6 +987,9 @@ namespace dxvk {
             uint32_t                  bufferCount,
       const VkBuffer*                 counterBuffers,
       const VkDeviceSize*             counterOffsets) {
+      if (unlikely(m_checkpoints))
+        debugMarker(DxvkCmdBuffer::ExecBuffer, "EndTransformFeedback");
+
       m_vkd->vkCmdEndTransformFeedbackEXT(getCmdBuffer(),
         firstBuffer, bufferCount, counterBuffers, counterOffsets);
     }
@@ -938,6 +1001,9 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            size,
             uint32_t                data) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "FillBuffer");
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdFillBuffer(getCmdBuffer(cmdBuffer),
@@ -948,6 +1014,9 @@ namespace dxvk {
     void cmdPipelineBarrier(
             DxvkCmdBuffer           cmdBuffer,
       const VkDependencyInfo*       dependencyInfo) {
+      if (unlikely(m_checkpoints))
+        debugBarrier(cmdBuffer, dependencyInfo);
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_statCounters.addCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
@@ -983,6 +1052,9 @@ namespace dxvk {
 
     void cmdResolveImage(
       const VkResolveImageInfo2*    resolveInfo) {
+      if (unlikely(m_checkpoints))
+        debugMarker(DxvkCmdBuffer::ExecBuffer, "ResolveImage");
+
       m_cmd.execCommands = true;
 
       m_vkd->vkCmdResolveImage2(getCmdBuffer(), resolveInfo);
@@ -995,6 +1067,9 @@ namespace dxvk {
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
       const void*                   pData) {
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, "UpdateBuffer");
+
       m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
 
       m_vkd->vkCmdUpdateBuffer(getCmdBuffer(cmdBuffer),
@@ -1184,16 +1259,17 @@ namespace dxvk {
     void cmdBeginDebugUtilsLabel(
             DxvkCmdBuffer           cmdBuffer,
       const VkDebugUtilsLabelEXT&   labelInfo) {
-      m_cmd.execCommands = true;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, labelInfo.pLabelName);
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vki->vkCmdBeginDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer), &labelInfo);
     }
 
 
     void cmdEndDebugUtilsLabel(
             DxvkCmdBuffer           cmdBuffer) {
-      m_cmd.execCommands = true;
-
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vki->vkCmdEndDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer));
     }
 
@@ -1201,8 +1277,10 @@ namespace dxvk {
     void cmdInsertDebugUtilsLabel(
             DxvkCmdBuffer           cmdBuffer,
       const VkDebugUtilsLabelEXT&   labelInfo) {
-      m_cmd.execCommands = true;
+      if (unlikely(m_checkpoints))
+        debugMarker(cmdBuffer, labelInfo.pLabelName);
 
+      m_cmd.execCommands |= cmdBuffer == DxvkCmdBuffer::ExecBuffer;
       m_vki->vkCmdInsertDebugUtilsLabelEXT(getCmdBuffer(cmdBuffer), &labelInfo);
     }
 
@@ -1316,6 +1394,8 @@ namespace dxvk {
 
     bool m_descriptorHeapInvalidated = false;
 
+    std::array<int32_t, uint32_t(DxvkCmdBuffer::Count)> m_checkpointIds = {};
+
     force_inline VkCommandBuffer getCmdBuffer() const {
       // Allocation logic will always provide an execution buffer
       return m_cmd.cmdBuffers[uint32_t(DxvkCmdBuffer::ExecBuffer)];
@@ -1386,6 +1466,40 @@ namespace dxvk {
     void countDescriptorStats(
       const Rc<DxvkResourceDescriptorRange>& range,
             VkDeviceSize                  baseOffset);
+
+    void resetCheckpoints();
+
+    void debugMarker(
+            DxvkCmdBuffer                 cmdBuffer,
+      const char*                         text);
+
+    void debugDispatch(
+            DxvkCmdBuffer                 cmdBuffer,
+      const char*                         text,
+            uint32_t                      x,
+            uint32_t                      y,
+            uint32_t                      z);
+
+    void debugDraw(
+            DxvkCmdBuffer                 cmdBuffer,
+      const char*                         text,
+            uint32_t                      count,
+            uint32_t                      instances);
+
+    void debugDrawMulti(
+            DxvkCmdBuffer                 cmdBuffer,
+      const char*                         text,
+            uint32_t                      count);
+
+    void debugDrawIndirect(
+            DxvkCmdBuffer                 cmdBuffer,
+      const char*                         text,
+            uint32_t                      count,
+            uint32_t                      stride);
+
+    void debugBarrier(
+            DxvkCmdBuffer                 cmdBuffer,
+      const VkDependencyInfo*             depInfo);
 
     static VkBindHeapInfoEXT getHeapBindInfo(const DxvkDescriptorHeapBindingInfo& heapInfo) {
       VkBindHeapInfoEXT bindInfo = { VK_STRUCTURE_TYPE_BIND_HEAP_INFO_EXT };
