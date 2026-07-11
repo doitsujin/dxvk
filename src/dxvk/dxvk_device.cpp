@@ -24,6 +24,7 @@ namespace dxvk {
     m_properties        (caps.getProperties()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
+    m_checkpoints       (this),
     m_submissionQueue   (this, queueCallback) {
 
     if (adapter->kmtLocal()) {
