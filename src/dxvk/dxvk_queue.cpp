@@ -4,9 +4,11 @@
 namespace dxvk {
   
   DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device, const DxvkQueueCallback& callback)
-  : m_device(device), m_callback(callback),
-    m_submitThread([this] () { submitCmdLists(); }),
-    m_finishThread([this] () { finishCmdLists(); }) {
+  : m_device        (device),
+    m_checkpoints   (device->getCheckpointBuffer()),
+    m_callback      (callback),
+    m_submitThread  ([this] () { submitCmdLists(); }),
+    m_finishThread  ([this] () { finishCmdLists(); }) {
     auto vk = m_device->vkd();
 
     VkSemaphoreTypeCreateInfo semaphoreType = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
@@ -191,7 +193,10 @@ namespace dxvk {
 
       if (entry.status)
         entry.status->result = entry.result;
-      
+
+      if (entry.result == VK_ERROR_DEVICE_LOST && m_checkpoints)
+        m_checkpoints->printHangInfo();
+
       // On success, pass it on to the queue thread
       { std::unique_lock<dxvk::mutex> lock(m_mutex);
 
@@ -264,6 +269,9 @@ namespace dxvk {
           if (entry.latency.tracker && status == VK_SUCCESS)
             entry.latency.tracker->notifyGpuExecutionEnd(entry.latency.frameId);
         }
+
+        if (status == VK_ERROR_DEVICE_LOST && m_checkpoints)
+          m_checkpoints->printHangInfo();
 
         if (status != VK_SUCCESS) {
           m_lastError = status;
