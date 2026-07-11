@@ -514,6 +514,11 @@ namespace dxvk::vk {
     VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
 
+    #ifdef VK_KHR_device_fault
+    VULKAN_FN(vkGetDeviceFaultReportsKHR);
+    VULKAN_FN(vkGetDeviceFaultDebugInfoKHR);
+    #endif
+
     #ifdef VK_AMD_buffer_marker
     VULKAN_FN(vkCmdWriteBufferMarkerAMD);
     VULKAN_FN(vkCmdWriteBufferMarker2AMD);
