@@ -44,6 +44,7 @@ namespace dxvk {
     HANDLE_EXT(extSwapchainMaintenance1);          \
     HANDLE_EXT(extTransformFeedback);              \
     HANDLE_EXT(extVertexAttributeDivisor);         \
+    HANDLE_EXT(khrDeviceFault);                    \
     HANDLE_EXT(khrDynamicRenderingLocalRead);      \
     HANDLE_EXT(khrExternalMemoryWin32);            \
     HANDLE_EXT(khrExternalSemaphoreWin32);         \
@@ -88,6 +89,7 @@ namespace dxvk {
     HANDLE_EXT(extSampleLocations);                \
     HANDLE_EXT(extTransformFeedback);              \
     HANDLE_EXT(extVertexAttributeDivisor);         \
+    HANDLE_EXT(khrDeviceFault);                    \
     HANDLE_EXT(khrMaintenance5);                   \
     HANDLE_EXT(khrMaintenance6);                   \
     HANDLE_EXT(khrMaintenance7);                   \
@@ -614,6 +616,9 @@ namespace dxvk {
 
     // Disable debug extensions if hang debugging is disabled
     if (!instance.debugFlags().test(DxvkDebugFlag::Hang)) {
+      m_featuresSupported.khrDeviceFault.deviceFault = VK_FALSE;
+      m_featuresSupported.khrDeviceFault.deviceFaultVendorBinary = VK_FALSE;
+
       m_featuresSupported.amdBufferMarker = VK_FALSE;
       m_featuresSupported.nvDeviceDiagnosticCheckpoints = VK_FALSE;
     }
@@ -1002,6 +1007,10 @@ namespace dxvk {
       /* Vertex attribute divisor, used by client APIs */
       ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateDivisor, false),
       ENABLE_EXT_FEATURE(extVertexAttributeDivisor, vertexAttributeInstanceRateZeroDivisor, false),
+
+      /* Hang debugging */
+      ENABLE_EXT_FEATURE(khrDeviceFault, deviceFault, false),
+      ENABLE_EXT_FEATURE(khrDeviceFault, deviceFaultVendorBinary, false),
 
       /* Tiler stuff */
       ENABLE_EXT_FEATURE(khrDynamicRenderingLocalRead, dynamicRenderingLocalRead, false),
