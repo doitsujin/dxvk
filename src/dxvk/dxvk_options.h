@@ -79,6 +79,9 @@ namespace dxvk {
     /// deal with MSAA-related undefined behaviour.
     bool enableImplicitResolves = true;
 
+    /// Enables NV_raw_access_chains extension on Nvidia
+    bool enableNvRawAccessChains = true;
+
     /// Device name
     std::string deviceFilter;
   };

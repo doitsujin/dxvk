@@ -11,6 +11,7 @@ namespace dxvk {
     enableDescriptorBuffer = config.getOption<Tristate>("dxvk.enableDescriptorBuffer", Tristate::Auto);
     enableUnifiedImageLayout = config.getOption<bool> ("dxvk.enableUnifiedImageLayouts", true);
     enableImplicitResolves = config.getOption<bool>   ("dxvk.enableImplicitResolves", true);
+    enableNvRawAccessChains = config.getOption<bool>  ("dxvk.enableNvRawAccessChains", true);
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
