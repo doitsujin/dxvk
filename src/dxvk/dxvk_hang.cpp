@@ -72,6 +72,9 @@ namespace dxvk {
           int32_t               prev) {
     std::lock_guard lock(m_mutex);
 
+    if (prev < 0)
+      return;
+
     auto vk = m_device->vkd();
 
     if (m_device->features().nvDeviceDiagnosticCheckpoints) {
