@@ -1,7 +1,10 @@
+#include <optional>
 #include <iomanip>
 
 #include "dxvk_hang.h"
 #include "dxvk_device.h"
+
+#include "../util/util_file.h"
 
 namespace dxvk {
 
@@ -104,6 +107,9 @@ namespace dxvk {
 
     Logger::err("DXVK: Hang detected:");
 
+    if (m_device->features().khrDeviceFault.deviceFault)
+      logDeviceFaults();
+
     if (m_device->features().nvDeviceDiagnosticCheckpoints) {
       auto vk = m_device->vkd();
 
@@ -139,6 +145,9 @@ namespace dxvk {
     } else {
       Logger::err("Cannot determine hang location.");
     }
+
+    if (m_device->features().khrDeviceFault.deviceFaultVendorBinary)
+      dumpDeviceFaultInfo();
   }
 
 
@@ -262,6 +271,101 @@ namespace dxvk {
   }
 
 
+  void DxvkCheckpointBuffer::logDeviceFaults() {
+    auto vk = m_device->vkd();
+
+    uint32_t faultCount = 0u;
+    VkResult vr = vk->vkGetDeviceFaultReportsKHR(vk->device(), 0u, &faultCount, nullptr);
+
+    if (vr < 0) {
+      Logger::err(str::format("Failed to get device faults: ", vr));
+      return;
+    }
+
+    if (!faultCount)
+      return;
+
+    std::vector<VkDeviceFaultInfoKHR> faults(faultCount,
+      VkDeviceFaultInfoKHR { VK_STRUCTURE_TYPE_DEVICE_FAULT_INFO_KHR });
+    vr = vk->vkGetDeviceFaultReportsKHR(vk->device(), 0u, &faultCount, faults.data());
+
+    if (vr < 0) {
+      Logger::err(str::format("Failed to get device faults: ", vr));
+      return;
+    }
+
+    std::optional<uint64_t> groupId;
+
+    for (const auto& fault : faults) {
+      if (fault.groupId != groupId) {
+        groupId = std::make_optional(fault.groupId);
+
+        Logger::err(str::format("Device fault ", fault.groupId, ":"));
+      }
+
+      Logger::err(str::format(fault.description));
+
+      if (fault.flags & VK_DEVICE_FAULT_FLAG_MEMORY_ADDRESS_KHR)
+        Logger::err(str::format("- Memory address: ", faultAddressToString(fault.faultAddressInfo)));
+
+      if (fault.flags & VK_DEVICE_FAULT_FLAG_INSTRUCTION_ADDRESS_KHR)
+        Logger::err(str::format("- Instruction address: ", faultAddressToString(fault.instructionAddressInfo)));
+
+      if (fault.flags & VK_DEVICE_FAULT_FLAG_VENDOR_KHR) {
+        Logger::err(str::format("- Error code: 0x",
+          std::hex, fault.vendorInfo.vendorFaultCode,
+          " (0x", std::hex, fault.vendorInfo.vendorFaultData, ")"));
+        Logger::err(str::format("- Error info: ", fault.vendorInfo.description));
+      }
+    }
+  }
+
+
+  void DxvkCheckpointBuffer::dumpDeviceFaultInfo() {
+    auto vk = m_device->vkd();
+
+    VkDeviceFaultDebugInfoKHR debugInfo = { VK_STRUCTURE_TYPE_DEVICE_FAULT_DEBUG_INFO_KHR };
+    VkResult vr = vk->vkGetDeviceFaultDebugInfoKHR(vk->device(), &debugInfo);
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("Failed to get device fault debug info: ", vr));
+      return;
+    }
+
+    if (!debugInfo.vendorBinarySize) {
+      Logger::err("No vendor binary present.");
+      return;
+    }
+
+    std::vector<char> debugData(debugInfo.vendorBinarySize);
+    debugInfo.pVendorBinaryData = debugData.data();
+    vr = vk->vkGetDeviceFaultDebugInfoKHR(vk->device(), &debugInfo);
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("Failed to get device fault debug info: ", vr));
+      return;
+    }
+
+    std::string path = env::getEnvVar("DXVK_LOG_PATH");
+
+    if (!path.empty() && *path.rbegin() != '/')
+      path += '/';
+
+    path += env::getExeBaseName();
+    path += "_device_fault.bin";
+
+    util::File file(path, util::FileFlag::Truncate);
+
+    if (!file) {
+      Logger::err(str::format("Failed to open ", path));
+      return;
+    }
+
+    file.append(debugData.size(), debugData.data());
+    Logger::err(str::format("Dumped device fault debug info to ", path));
+  }
+
+
   std::pair<int32_t, int32_t> DxvkCheckpointBuffer::getCommandList(int32_t command) const {
     if (command == -1)
       return std::make_pair(-1, -1);
@@ -276,6 +380,22 @@ namespace dxvk {
       tail = m_checkpoints.at(tail).next;
 
     return std::make_pair(head, tail);
+  }
+
+
+  std::string DxvkCheckpointBuffer::faultAddressToString(const VkDeviceFaultAddressInfoKHR& address) {
+    VkDeviceAddress mask = VkDeviceAddress(1u) << address.addressPrecision;
+
+    VkDeviceAddress lo = address.reportedAddress & -mask;
+    VkDeviceAddress hi = address.reportedAddress | (mask - 1u);
+
+    std::string result = str::format("0x", std::hex, lo);
+
+    if (lo != hi)
+      result += str::format(" - 0x", std::hex, hi);
+
+    result += str::format(" (type ", std::dec, address.addressType, ")");
+    return result;
   }
 
 }

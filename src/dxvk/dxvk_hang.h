@@ -112,7 +112,13 @@ namespace dxvk {
             int32_t                 lastBegun,
             int32_t                 lastComplete);
 
+    void logDeviceFaults();
+
+    void dumpDeviceFaultInfo();
+
     std::pair<int32_t, int32_t> getCommandList(int32_t command) const;
+
+    static std::string faultAddressToString(const VkDeviceFaultAddressInfoKHR& address);
 
   };
 
