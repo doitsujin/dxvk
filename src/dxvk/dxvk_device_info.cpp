@@ -596,6 +596,10 @@ namespace dxvk {
       m_featuresSupported.extLineRasterization.smoothLines = VK_FALSE;
     }
 
+    // Apply raw access chain option
+    if (!instance.options().enableNvRawAccessChains)
+      m_featuresSupported.nvRawAccessChains.shaderRawAccessChains = VK_FALSE;
+
     // Ensure we only enable one of present_id or present_id_2. Prefer the
     // older versions of the present_id/wait extensions since the newer ones
     // cause issues with external layers and apparently some Wayland setups
