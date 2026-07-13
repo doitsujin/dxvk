@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../util/config/config.h"
+#include "../util/util_env.h"
 
 #include "../vulkan/vulkan_loader.h"
 
@@ -81,6 +82,9 @@ namespace dxvk {
 
     /// Enables NV_raw_access_chains extension on Nvidia
     bool enableNvRawAccessChains = true;
+
+    /// Enable descriptor update templates
+    bool enableDescriptorUpdateTemplates = env::is32BitHostPlatform();
 
     /// Device name
     std::string deviceFilter;
