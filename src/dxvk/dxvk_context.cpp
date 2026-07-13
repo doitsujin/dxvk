@@ -33,6 +33,9 @@ namespace dxvk {
       m_features.set(DxvkContextFeature::DescriptorBuffer);
     } else {
       m_descriptorPool = new DxvkDescriptorPool(device.ptr());
+
+      if (m_device->config().enableDescriptorUpdateTemplates)
+        m_features.set(DxvkContextFeature::DescriptorTemplates);
     }
 
     // Init framebuffer info with default render pass in case
@@ -7015,11 +7018,6 @@ namespace dxvk {
     uint32_t dirtySetMask = layout->getDirtySetMask(pipelineLayoutType, m_descriptorState);
 
     if (likely(dirtySetMask)) {
-      // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
-      // to struct conversion, so we should use descriptor update templates.
-      // For 64-bit applications, using templates is slower on some drivers.
-      constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
-
       std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
       m_descriptorPool->alloc(m_trackingId, pipelineLayout, dirtySetMask, sets.data());
 
@@ -7031,7 +7029,7 @@ namespace dxvk {
         for (uint32_t j = 0; j < range.bindingCount; j++) {
           const auto& binding = range.bindings[j];
 
-          if (!useDescriptorTemplates) {
+          if (!m_features.test(DxvkContextFeature::DescriptorTemplates)) {
             auto& descriptorWrite = m_legacyDescriptors.writes[descriptorCount];
             descriptorWrite.dstSet = sets[setIndex];
             descriptorWrite.dstBinding = binding.getBinding();
@@ -7179,7 +7177,7 @@ namespace dxvk {
           }
         }
 
-        if (useDescriptorTemplates) {
+        if (m_features.test(DxvkContextFeature::DescriptorTemplates)) {
           m_cmd->updateDescriptorSetWithTemplate(sets[setIndex],
             pipelineLayout->getDescriptorSetLayout(setIndex)->getSetUpdateTemplate(),
             m_legacyDescriptors.infos.data());
@@ -7188,7 +7186,7 @@ namespace dxvk {
       }
 
       // Update all descriptors in one go to avoid API call overhead
-      if (!useDescriptorTemplates) {
+      if (!m_features.test(DxvkContextFeature::DescriptorTemplates)) {
         m_cmd->updateDescriptorSets(descriptorCount,
           m_legacyDescriptors.writes.data());
       }
