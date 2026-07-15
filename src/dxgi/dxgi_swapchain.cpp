@@ -428,28 +428,14 @@ namespace dxvk {
     if (m_window && !wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
-    /* The following six flags are not allowed in ResizeBuffers() */
-    if (SwapChainFlags & (DXGI_SWAP_CHAIN_FLAG_NONPREROTATED | DXGI_SWAP_CHAIN_FLAG_DISPLAY_ONLY
-      | DXGI_SWAP_CHAIN_FLAG_FULLSCREEN_VIDEO))
-        return DXGI_ERROR_INVALID_CALL;
+    constexpr UINT PreserveFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-    if (SwapChainFlags & (DXGI_SWAP_CHAIN_FLAG_FOREGROUND_LAYER | DXGI_SWAP_CHAIN_FLAG_YUV_VIDEO
-      | DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING))
-        return E_INVALIDARG;
-
-    /* DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT can't be changed after the swapchain creation */
-    if ((m_desc.Flags ^ SwapChainFlags) & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
-        return E_INVALIDARG;
-
-    /* DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED can't be turned off once once it's set */
-    if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED
-      && !(SwapChainFlags & DXGI_SWAP_CHAIN_FLAG_HW_PROTECTED))
-        return E_INVALIDARG;
-
+    if ((m_desc.Flags & PreserveFlags) != (SwapChainFlags & PreserveFlags))
+      return DXGI_ERROR_INVALID_CALL;
+    
     std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
     m_desc.Width  = Width;
     m_desc.Height = Height;
-    m_desc.Flags = SwapChainFlags;
     
     if (m_window) {
       wsi::getWindowSize(m_window,
