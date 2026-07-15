@@ -436,6 +436,7 @@ namespace dxvk {
     std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
     m_desc.Width  = Width;
     m_desc.Height = Height;
+    m_desc.Flags  = SwapChainFlags;
     
     if (m_window) {
       wsi::getWindowSize(m_window,
