@@ -55,6 +55,8 @@ namespace dxvk {
     TimePoint       m_heuristicFrameTime  = TimePoint();
     bool            m_heuristicEnable     = false;
 
+    bool            m_warningShown    = false;
+
     bool testRefreshHeuristic(TimerDuration interval, TimePoint now, uint32_t maxLatency);
 
   };
