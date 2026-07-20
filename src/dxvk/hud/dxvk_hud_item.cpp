@@ -26,10 +26,7 @@ namespace dxvk::hud {
 
 
   HudItemSet::HudItemSet(const Rc<DxvkDevice>& device) {
-    std::string configStr = env::getEnvVar("DXVK_HUD");
-
-    if (configStr.empty())
-      configStr = device->config().hud;
+    std::string configStr = device->config().hud;
 
     std::string::size_type pos = 0;
     std::string::size_type end = 0;
