@@ -2061,8 +2061,10 @@ namespace dxvk {
 
     auto [hi, lo] = shaderInfo.getVersion();
 
-    if ((hi > 5u) || (hi == 5u && lo) || (hi == 4u && lo > 1u) || hi < 4u)
-      throw DxvkError(str::format("Invalid shader model: ", hi, "_", lo));
+    if ((hi > 5u) || (hi == 5u && lo) || (hi == 4u && lo > 1u) || hi < 4u) {
+      Logger::err(str::format("Invalid shader model: ", hi, "_", lo));
+      return E_INVALIDARG;
+    }
 
     // Check whether the stage matches or if we can create a pass-through GS
     auto shaderStage = [] (dxbc_spv::dxbc::ShaderType type) {
