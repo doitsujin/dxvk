@@ -204,7 +204,7 @@ layout(set = SRV_SET, binding = SRV_PS_BASE) uniform texture3D t3d[TextureStageC
 
 layout(set = SAMPLER_SET, binding = 0) uniform sampler sampler_heap[];
 
-vec4 calculateFog(vec4 oColor) {
+vec3 calculateFog(vec3 oColor) {
     FogState fogState = getFogState();
 
     vec3 fogColor = unpackUnorm4x8(global.packedFogColorAndAlphaRef).bgr;
@@ -246,12 +246,7 @@ vec4 calculateFog(vec4 oColor) {
 
     // Flush nan to 1 to "disable" fog, just to be safe
     fogFactor = spvNMax(spvNMin(fogFactor, 1.0f), 0.0f);
-
-    vec4 color = oColor;
-    vec3 color3 = color.rgb;
-    vec3 fogFact3 = vec3(fogFactor);
-    vec3 lerpedFrog = mix(fogColor, color3, fogFact3);
-    return vec4(lerpedFrog.r, lerpedFrog.g, lerpedFrog.b, color.a);
+    return mix(fogColor, oColor, fogFactor.xxx);
 }
 
 
@@ -622,7 +617,7 @@ void main() {
     if (isSpecularEnabled())
         state.current.xyz += in_Color1.xyz;
 
-    state.current = calculateFog(state.current);
+    state.current.xyz = calculateFog(state.current.xyz);
 
     out_Color0 = state.current;
 
