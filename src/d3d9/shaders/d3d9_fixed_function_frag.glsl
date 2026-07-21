@@ -244,7 +244,8 @@ vec4 calculateFog(vec4 oColor) {
             break;
     }
 
-    fogFactor = spvNClamp(fogFactor, 0.0, 1.0);
+    // Flush nan to 1 to "disable" fog, just to be safe
+    fogFactor = spvNMax(spvNMin(fogFactor, 1.0f), 0.0f);
 
     vec4 color = oColor;
     vec3 color3 = color.rgb;

@@ -6631,7 +6631,7 @@ namespace dxvk {
       m_pushData.shared.fogColor[2] = uint8_t(fogColor >> 16u);
       m_pushData.shared.fogDensity = fogDensity;
       m_pushData.shared.fogDistanceEnd = fogEnd;
-      m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : 0.0f;
+      m_pushData.shared.fogDistanceScale = (fogEnd != fogStart) ? 1.0f / (fogEnd - fogStart) : std::numeric_limits<float>::max();
 
       m_dirty.set(D3D9DeviceDirtyFlag::PushDataShared);
     }
