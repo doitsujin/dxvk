@@ -35,6 +35,19 @@ namespace dxvk {
 
     m_options = DxvkOptions(m_config);
 
+    std::string vkLoaderLayersDisableEnv = env::getEnvVar("VK_LOADER_LAYERS_DISABLE");
+    if (!vkLoaderLayersDisableEnv.empty())
+        Logger::info(str::format("VK_LOADER_LAYERS_DISABLE: ", vkLoaderLayersDisableEnv));
+
+    // Optionally override VK_LOADER_LAYERS_DISABLE with specified DXVK_LOADER_LAYERS_DISABLE
+    // Or set DXVK_OVERRIDE_VK_LOADER_LAYERS_DISABLE=1 alone, to clear VK_LOADER_LAYERS_DISABLE
+    std::string dxvkLoaderLayersDisableEnv = env::getEnvVar("DXVK_LOADER_LAYERS_DISABLE");
+    if (!dxvkLoaderLayersDisableEnv.empty() || env::getEnvVar("DXVK_OVERRIDE_VK_LOADER_LAYERS_DISABLE") == "1")
+    {
+        Logger::info(str::format("DXVK_LOADER_LAYERS_DISABLE: ", dxvkLoaderLayersDisableEnv));
+        env::setEnvVar("VK_LOADER_LAYERS_DISABLE", dxvkLoaderLayersDisableEnv.c_str());
+    }
+
     // Load Vulkan library
     if (!initVulkanLoader(args))
       throw DxvkError("Failed to load vulkan-1 library.");
