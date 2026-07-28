@@ -3764,6 +3764,27 @@ namespace dxvk {
   
 
 
+  static HMODULE d3d11_device_init_vendor_hacks(
+      const Rc<DxvkAdapter>& Adapter) {
+    if (Adapter->deviceProperties().core.properties.vendorID == uint32_t(DxvkGpuVendor::Intel)) {
+      char sysdir[MAX_PATH], path[MAX_PATH];
+      GetSystemDirectoryA(sysdir, sizeof(sysdir));
+      snprintf(path, sizeof(path),
+               "%s\\DriverStore\\FileRepository\\igd_faux.inf_1\\igd10iumd64.dll", sysdir);
+      HMODULE igd10iumd = ::LoadLibraryA(path);
+      if (igd10iumd)
+        Logger::info("Loaded igd10iumd64.dll for Intel driver workarounds");
+      return igd10iumd;
+    }
+    return nullptr;
+  }
+
+  static void d3d11_device_cleanup_vendor_hacks(HMODULE igd10iumd64) {
+    if (igd10iumd64)
+      ::FreeLibrary(igd10iumd64);
+  }
+
+
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
           ID3D12Device*       pD3D12Device,
@@ -3786,12 +3807,12 @@ namespace dxvk {
     m_metaDevice    (this),
     m_dxvkFactory   (this, &m_d3d11Device),
     m_destructionNotifier(this) {
-
+    m_vendorHacks.igd10iumd64 = d3d11_device_init_vendor_hacks(m_dxvkAdapter);
   }
-  
-  
-  D3D11DXGIDevice::~D3D11DXGIDevice() {
 
+
+  D3D11DXGIDevice::~D3D11DXGIDevice() {
+    d3d11_device_cleanup_vendor_hacks(m_vendorHacks.igd10iumd64);
   }
   
   
