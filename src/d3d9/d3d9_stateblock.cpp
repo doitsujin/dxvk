@@ -18,7 +18,7 @@ namespace dxvk {
   }
 
   D3D9StateBlock::~D3D9StateBlock() {
-    if (!m_parent->IsD3D8Compatible())
+    if (!m_parent->IsD3DCompatibile(D3DCompatibility::D3D8))
       m_parent->DecrementLosableCounter();
   }
 

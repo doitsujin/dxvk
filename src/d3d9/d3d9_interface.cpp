@@ -15,12 +15,12 @@ namespace dxvk {
   Singleton<DxvkInstance> g_dxvkInstance;
 
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended, const D3D9ON12_ARGS* pOverrideList, uint32_t OverrideCount)
-    : m_instance    ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
-    , m_d3d8Bridge  ( this )
-    , m_extended    ( bExtended ) 
-    , m_d3d9Options ( nullptr, m_instance->config() )
-    , m_d3d9Interop ( this )
-    , m_d3d9ExtInterface( this ) {
+    : m_instance         ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
+    , m_legacyD3DBridge  ( this )
+    , m_extended         ( bExtended )
+    , m_d3d9Options      ( nullptr, m_instance->config() )
+    , m_d3d9Interop      ( this )
+    , m_d3d9ExtInterface ( this ) {
     // D3D9 doesn't enumerate adapters like physical adapters...
     // only as connected displays.
 
@@ -97,8 +97,8 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(IDxvkD3D8InterfaceBridge)) {
-      *ppvObject = ref(&m_d3d8Bridge);
+    if (riid == __uuidof(IDxvkLegacyD3DInterfaceBridge)) {
+      *ppvObject = ref(&m_legacyD3DBridge);
       return S_OK;
     }
 
@@ -149,7 +149,7 @@ namespace dxvk {
     filter.Size             = sizeof(D3DDISPLAYMODEFILTER);
     filter.Format           = Format;
     filter.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
-    
+
     return this->GetAdapterModeCountEx(Adapter, &filter);
   }
 
@@ -213,7 +213,7 @@ namespace dxvk {
           D3DFORMAT           SurfaceFormat,
           BOOL                Windowed,
           D3DMULTISAMPLE_TYPE MultiSampleType,
-          DWORD*              pQualityLevels) { 
+          DWORD*              pQualityLevels) {
     if (auto* adapter = GetAdapter(Adapter))
       return adapter->CheckDeviceMultiSampleType(
         DeviceType, EnumerateFormat(SurfaceFormat),
@@ -500,7 +500,7 @@ namespace dxvk {
     // Allow D3DSWAPEFFECT_COPY to bypass this restriction in D3D8 compatibility
     // mode, since it may be a remapping of D3DSWAPEFFECT_COPY_VSYNC and RC Cars
     // depends on it not being validated.
-    if (unlikely(!IsD3D8Compatible()
+    if (unlikely(!m_d3dCompatibility.test(D3DCompatibility::D3D8)
               && pPresentationParameters->SwapEffect == D3DSWAPEFFECT_COPY
               && pPresentationParameters->BackBufferCount > 1))
       return D3DERR_INVALIDCALL;

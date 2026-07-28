@@ -54,7 +54,6 @@ namespace dxvk {
     , m_stagingBufferFence ( new sync::Fence() )
     , m_multithread        ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP             ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) != 0 )
-    , m_isD3D8Compatible   ( pParent->IsD3D8Compatible() )
     , m_csThread           ( dxvkDevice, dxvkDevice->createContext() )
     , m_csChunk            ( AllocCsChunk() )
     , m_submissionFence    ( new sync::Fence() )
@@ -62,7 +61,8 @@ namespace dxvk {
     , m_d3d9Interop        ( this )
     , m_d3d9On12Args       ( pAdapter->Get9On12Args() )
     , m_d3d9On12           ( this )
-    , m_d3d8Bridge         ( this ) {
+    , m_legacyD3DBridge    ( this )
+    , m_d3dCompatibility   ( pParent->GetD3DCompatibilityFlags() ) {
 
     InitShaderOptions();
 
@@ -189,8 +189,8 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(IDxvkD3D8Bridge)) {
-      *ppvObject = ref(&m_d3d8Bridge);
+    if (riid == __uuidof(IDxvkLegacyD3DDeviceBridge)) {
+      *ppvObject = ref(&m_legacyD3DBridge);
       return S_OK;
     }
 
@@ -514,7 +514,7 @@ namespace dxvk {
       Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
       // D3D8 returns D3DERR_DEVICELOST here, whereas D3D9 returns D3DERR_INVALIDCALL.
-      return m_isD3D8Compatible ? D3DERR_DEVICELOST : D3DERR_INVALIDCALL;
+      return m_d3dCompatibility.test(D3DCompatibility::D3D8) ? D3DERR_DEVICELOST : D3DERR_INVALIDCALL;
     }
 
     hr = ResetSwapChain(pPresentationParameters, nullptr);
@@ -1374,7 +1374,8 @@ namespace dxvk {
       // - both destination and source are depth stencil surfaces
       // - both destination and source are offscreen plain surfaces.
       // The only way to get a surface with resource type D3DRTYPE_SURFACE without USAGE_RT or USAGE_DS is CreateOffscreenPlainSurface.
-      if (unlikely((!dstHasAttachmentUsage && (!dstIsSurface || !srcIsSurface || srcHasAttachmentUsage)) && !m_isD3D8Compatible && !isCopy))
+      if (unlikely((!dstHasAttachmentUsage && (!dstIsSurface || !srcIsSurface || srcHasAttachmentUsage)) &&
+                                               !m_d3dCompatibility.test(D3DCompatibility::D3D8) && !isCopy))
         return D3DERR_INVALIDCALL;
     }
 
@@ -2495,7 +2496,7 @@ namespace dxvk {
             if ((Value == AlphaToCoverageEnable
               || Value == AlphaToCoverageDisable) &&
                  vendorId == amdVendorId &&
-                 !m_isD3D8Compatible) {
+                 !m_d3dCompatibility.test(D3DCompatibility::D3D8)) {
               UpdateAlphaToCoverangeAndAlphaTest();
               break;
             }
@@ -2512,7 +2513,7 @@ namespace dxvk {
             // INST (AMD specific)
             if (unlikely(Value == uint32_t(D3D9Format::INST) &&
                          vendorId == amdVendorId &&
-                         !m_isD3D8Compatible)) {
+                         !m_d3dCompatibility.test(D3DCompatibility::D3D8))) {
               // Geometry instancing is supported by SM3, but ATI/AMD
               // exposed this hack to retroactively enable it on their
               // SM2-capable hardware. It's esentially a no-op.
@@ -2521,7 +2522,7 @@ namespace dxvk {
 
             // CENT (AMD & Nvidia)
             if (unlikely(Value == uint32_t(D3D9Format::CENT) &&
-                         !m_isD3D8Compatible)) {
+                         !m_d3dCompatibility.test(D3DCompatibility::D3D8))) {
               // Centroid (alternate pixel center) hack.
               // Taken into account anyway, so yet another no-op.
               break;
@@ -2578,7 +2579,7 @@ namespace dxvk {
           const uint32_t vendorId = m_adapter->GetVendorId();
 
           // Nvidia's driver hack for ATOC (also supported on Intel), COPM and SSAA
-          if (likely(vendorId != amdVendorId && !m_isD3D8Compatible)) {
+          if (likely(vendorId != amdVendorId && !m_d3dCompatibility.test(D3DCompatibility::D3D8))) {
             // ATOC (Nvidia & Intel)
             constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::ATOC);
             // Disabling both ATOC and SSAA is done using D3DFMT_UNKNOWN (0)
@@ -2695,7 +2696,7 @@ namespace dxvk {
     try {
       const Com<D3D9StateBlock> sb = new D3D9StateBlock(this, stateBlockType);
       *ppSB = sb.ref();
-      if (!m_isD3D8Compatible)
+      if (!m_d3dCompatibility.test(D3DCompatibility::D3D8))
         m_losableResourceCounter++;
 
       return D3D_OK;
@@ -2730,7 +2731,7 @@ namespace dxvk {
     InitReturnPtr(ppSB);
 
     *ppSB = m_recorder.ref();
-    if (!m_isD3D8Compatible)
+    if (!m_d3dCompatibility.test(D3DCompatibility::D3D8))
       m_losableResourceCounter++;
     m_recorder = nullptr;
 
@@ -6887,7 +6888,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateAlphaToCoverangeAndAlphaTest() {
-    if (likely(!m_isD3D8Compatible)) {
+    if (likely(!m_d3dCompatibility.test(D3DCompatibility::D3D8))) {
       // ATOC is not supported by D3D8
       bool alphaToCoverageEnabled = true;
 
@@ -7907,8 +7908,8 @@ namespace dxvk {
     // Vertex shader version checks
     if (ShaderType == D3D9ShaderType::VertexShader) {
       // Late fixed-function capable hardware exposed support for VS 1.1
-      const uint32_t shaderModelVS = IsD3D8Compatible() ? 1u : std::max(1u, m_d3d9Options.shaderModel);
-
+      const uint32_t shaderModelVS = m_d3dCompatibility.test(D3DCompatibility::D3D8) ? 1u
+                                                                                     : std::max(1u, m_d3d9Options.shaderModel);
       if (unlikely(info.getVersion().first > shaderModelVS
                || (info.getVersion().first == 1 && info.getVersion().second > 1)
                // Skip checking the SM2 minor version, as it has a 2_x mode apparently
@@ -7918,8 +7919,8 @@ namespace dxvk {
       }
     // Pixel shader version checks
     } else if (ShaderType == D3D9ShaderType::PixelShader) {
-      const uint32_t shaderModelPS = IsD3D8Compatible() ? std::min(1u, m_d3d9Options.shaderModel) : m_d3d9Options.shaderModel;
-
+      const uint32_t shaderModelPS = m_d3dCompatibility.test(D3DCompatibility::D3D8) ? std::min(1u, m_d3d9Options.shaderModel)
+                                                                                     : m_d3d9Options.shaderModel;
       if (unlikely(info.getVersion().first > shaderModelPS
                || (info.getVersion().first == 1 && info.getVersion().second > 4)
                // Skip checking the SM2 minor version, as it has a 2_x mode apparently
@@ -8721,7 +8722,8 @@ namespace dxvk {
     rs[D3DRS_POINTSCALE_B]               = bit::cast<DWORD>(0.0f);
     rs[D3DRS_POINTSCALE_C]               = bit::cast<DWORD>(0.0f);
     rs[D3DRS_POINTSIZE]                  = bit::cast<DWORD>(1.0f);
-    rs[D3DRS_POINTSIZE_MIN]              = m_isD3D8Compatible ? bit::cast<DWORD>(0.0f) : bit::cast<DWORD>(1.0f);
+    rs[D3DRS_POINTSIZE_MIN]              = m_d3dCompatibility.test(D3DCompatibility::D3D8) ? bit::cast<DWORD>(0.0f)
+                                                                                           : bit::cast<DWORD>(1.0f);
     rs[D3DRS_POINTSIZE_MAX]              = bit::cast<DWORD>(limits.pointSizeRange[1]);
     m_pushData.vs.pointSize = EncodePointSize(rs[D3DRS_POINTSIZE]);
     m_pushData.vs.pointSizeMin = EncodePointSize(rs[D3DRS_POINTSIZE_MIN]);
@@ -8863,7 +8865,7 @@ namespace dxvk {
 
     // In D3D8, this represents the value of D3DRS_PATCHSEGMENTS.
     // It defaults to 1.0f and is reset as any other render state.
-    if (m_isD3D8Compatible)
+    if (m_d3dCompatibility.test(D3DCompatibility::D3D8))
       m_state.nPatchSegments = 1.0f;
 
     m_alphaTestEnabled = false;
