@@ -650,7 +650,7 @@ namespace dxvk {
   void D3D9VkFormatTable::RefreshFormatSupport(
     const D3D9Adapter*          pParent) {
     // W11V11U10 is only supported by D3D8
-    m_w11v11u10Support = pParent->IsD3D8Compatible();
+    m_w11v11u10Support = pParent->IsD3DCompatibile(D3DCompatibility::D3D8);
   }
 
 }

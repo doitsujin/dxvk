@@ -122,7 +122,7 @@ namespace dxvk {
     if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
-    const bool isD3D8Compatible = m_parent->IsD3D8Compatible();
+    const bool isD3D8Compatible = m_parent->IsD3DCompatibile(D3DCompatibility::D3D8);
     const bool isNvidia         = m_vendorId == uint32_t(DxvkGpuVendor::Nvidia);
     const bool isAmd            = m_vendorId == uint32_t(DxvkGpuVendor::Amd);
 
@@ -396,7 +396,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (unlikely(DeviceType == D3DDEVTYPE_SW)) {
-      if (m_parent->IsD3D8Compatible())
+      if (m_parent->IsD3DCompatibile(D3DCompatibility::D3D8))
         return D3DERR_INVALIDCALL;
       else
         return D3DERR_NOTAVAILABLE;
@@ -404,7 +404,8 @@ namespace dxvk {
 
     auto& options = m_parent->GetOptions();
 
-    const uint32_t maxShaderModel = m_parent->IsD3D8Compatible() ? std::min(1u, options.shaderModel) : options.shaderModel;
+    const uint32_t maxShaderModel = m_parent->IsD3DCompatibile(D3DCompatibility::D3D8) ? std::min(1u, options.shaderModel)
+                                                                                       : options.shaderModel;
     const auto& limits = m_caps.getProperties().core.properties.limits;
 
     // TODO: Actually care about what the adapter supports here.
@@ -883,8 +884,8 @@ namespace dxvk {
   }
 
 
-  bool D3D9Adapter::IsD3D8Compatible() const {
-    return m_parent->IsD3D8Compatible();
+  bool D3D9Adapter::IsD3DCompatibile(D3DCompatibility d3dCompatibility) const {
+    return m_parent->IsD3DCompatibile(d3dCompatibility);
   }
 
 

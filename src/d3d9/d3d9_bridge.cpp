@@ -8,28 +8,28 @@
 
 namespace dxvk {
 
-  DxvkD3D8Bridge::DxvkD3D8Bridge(D3D9DeviceEx* pDevice)
+  DxvkLegacyD3DDeviceBridge::DxvkLegacyD3DDeviceBridge(D3D9DeviceEx* pDevice)
     : m_device(pDevice) {
   }
 
-  DxvkD3D8Bridge::~DxvkD3D8Bridge() {
+  DxvkLegacyD3DDeviceBridge::~DxvkLegacyD3DDeviceBridge() {
   }
 
-  ULONG STDMETHODCALLTYPE DxvkD3D8Bridge::AddRef() {
+  ULONG STDMETHODCALLTYPE DxvkLegacyD3DDeviceBridge::AddRef() {
     return m_device->AddRef();
   }
 
-  ULONG STDMETHODCALLTYPE DxvkD3D8Bridge::Release() {
+  ULONG STDMETHODCALLTYPE DxvkLegacyD3DDeviceBridge::Release() {
     return m_device->Release();
   }
 
-  HRESULT STDMETHODCALLTYPE DxvkD3D8Bridge::QueryInterface(
+  HRESULT STDMETHODCALLTYPE DxvkLegacyD3DDeviceBridge::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
     return m_device->QueryInterface(riid, ppvObject);
   }
 
-  HRESULT DxvkD3D8Bridge::UpdateTextureFromBuffer(
+  HRESULT DxvkLegacyD3DDeviceBridge::UpdateTextureFromBuffer(
         IDirect3DSurface9*  pDestSurface,
         IDirect3DSurface9*  pSrcSurface,
         const RECT*         pSrcRect,
@@ -89,37 +89,37 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  bool DxvkD3D8Bridge::IsSupportedSurfaceFormat(D3DFORMAT Format) {
+  bool DxvkLegacyD3DDeviceBridge::IsSupportedSurfaceFormat(D3DFORMAT Format) {
     auto mapping = m_device->LookupFormat(EnumerateFormat(Format));
     return mapping.IsValid();
   }
 
-  DxvkD3D8InterfaceBridge::DxvkD3D8InterfaceBridge(D3D9InterfaceEx* pObject)
+  DxvkLegacyD3DInterfaceBridge::DxvkLegacyD3DInterfaceBridge(D3D9InterfaceEx* pObject)
     : m_interface(pObject) {
   }
 
-  DxvkD3D8InterfaceBridge::~DxvkD3D8InterfaceBridge() {
+  DxvkLegacyD3DInterfaceBridge::~DxvkLegacyD3DInterfaceBridge() {
   }
 
-  ULONG STDMETHODCALLTYPE DxvkD3D8InterfaceBridge::AddRef() {
+  ULONG STDMETHODCALLTYPE DxvkLegacyD3DInterfaceBridge::AddRef() {
     return m_interface->AddRef();
   }
 
-  ULONG STDMETHODCALLTYPE DxvkD3D8InterfaceBridge::Release() {
+  ULONG STDMETHODCALLTYPE DxvkLegacyD3DInterfaceBridge::Release() {
     return m_interface->Release();
   }
 
-  HRESULT STDMETHODCALLTYPE DxvkD3D8InterfaceBridge::QueryInterface(
+  HRESULT STDMETHODCALLTYPE DxvkLegacyD3DInterfaceBridge::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
     return m_interface->QueryInterface(riid, ppvObject);
   }
 
-  void DxvkD3D8InterfaceBridge::EnableD3D8CompatibilityMode() {
-    m_interface->EnableD3D8CompatibilityMode();
+  void DxvkLegacyD3DInterfaceBridge::SetD3DCompatibility(D3DCompatibility d3dCompatibility) const {
+    m_interface->SetD3DCompatibility(d3dCompatibility);
   }
 
-  const Config* DxvkD3D8InterfaceBridge::GetConfig() const {
+  const Config* DxvkLegacyD3DInterfaceBridge::GetConfig() const {
     return &m_interface->GetInstance()->config();
   }
 

@@ -4,6 +4,7 @@
 
 #include "d3d9_options.h"
 #include "d3d9_format.h"
+#include "d3d9_bridge.h"
 
 #include "../dxvk/dxvk_adapter.h"
 
@@ -103,7 +104,7 @@ namespace dxvk {
 
     bool IsExtended() const;
 
-    bool IsD3D8Compatible() const;
+    bool IsD3DCompatibile(D3DCompatibility d3dCompatibility) const;
 
     force_inline void incRef() {
       m_refCount.fetch_add(1u);
