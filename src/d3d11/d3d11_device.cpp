@@ -3766,7 +3766,7 @@ namespace dxvk {
 
   static HMODULE d3d11_device_init_vendor_hacks(
       const Rc<DxvkAdapter>& Adapter) {
-    if (Adapter->deviceProperties().core.properties.vendorID == uint32_t(DxvkGpuVendor::Intel)) {
+    if (Adapter->info().vendorId == uint32_t(DxvkGpuVendor::Intel)) {
       char sysdir[MAX_PATH], path[MAX_PATH];
       GetSystemDirectoryA(sysdir, sizeof(sysdir));
       snprintf(path, sizeof(path),
