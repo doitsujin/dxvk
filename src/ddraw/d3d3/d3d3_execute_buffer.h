@@ -58,9 +58,6 @@ namespace dxvk {
 
     std::vector<uint8_t> m_buffer;
 
-    uint32_t             m_buffCount  = 0;
-    static std::atomic<uint32_t> s_buffCount;
-
   };
 
 }

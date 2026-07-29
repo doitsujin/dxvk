@@ -65,9 +65,6 @@ namespace dxvk {
     Com<D3D6Interface, false>          m_d3d6Intf;
     Com<D3D3Interface, false>          m_d3d3Intf;
 
-    uint32_t                           m_intfCount  = 0;
-    static std::atomic<uint32_t>       s_intfCount;
-
   };
 
 }

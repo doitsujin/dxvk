@@ -9,8 +9,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D7Device::s_deviceCount = 0;
-
   D3D7Device::D3D7Device(
         D3DCommonDevice* commonD3DDevice,
         Com<IDirect3DDevice7>&& d3d7DeviceProxy,
@@ -79,10 +77,6 @@ namespace dxvk {
     m_commonD3DDevice->SetD3D7Device(this);
 
     m_textures.fill(nullptr);
-
-    m_deviceCount = ++s_deviceCount;
-
-    Logger::debug(str::format("D3D7Device: Created a new device nr. ((7-", m_deviceCount, "))"));
   }
 
   D3D7Device::~D3D7Device() {
@@ -91,8 +85,6 @@ namespace dxvk {
 
     if (m_commonD3DDevice->GetOrigin() == this)
       m_commonD3DDevice->SetOrigin(nullptr);
-
-    Logger::debug(str::format("D3D7Device: Device nr. ((7-", m_deviceCount, ")) bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE D3D7Device::QueryInterface(REFIID riid, void** ppvObject) {
@@ -1626,8 +1618,6 @@ namespace dxvk {
 
     for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
       const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
-
-      Logger::debug(str::format("D3D7Device::InitializeIndexBuffer: Creating D3D9 index buffer, size: ", ibSize));
 
       HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
                                               d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);

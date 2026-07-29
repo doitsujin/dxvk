@@ -4,24 +4,16 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D3ExecuteBuffer::s_buffCount = 0;
-
   D3D3ExecuteBuffer::D3D3ExecuteBuffer(D3D3Device* pParent, D3DEXECUTEBUFFERDESC* pDesc)
     : DDrawChildObject<D3D3Device, IDirect3DExecuteBuffer>(pParent) {
     if (likely(pDesc->dwFlags & D3DDEB_BUFSIZE)) {
       m_buffer.resize(pDesc->dwBufferSize);
-      Logger::debug(str::format("D3D3ExecuteBuffer: Buffer is initialized with size: ", pDesc->dwBufferSize));
     } else {
       Logger::warn("D3D3ExecuteBuffer: No buffer size specified during initialization");
     }
-
-    m_buffCount = ++s_buffCount;
-
-    Logger::debug(str::format("D3D3ExecuteBuffer: Created a new execute buffer nr. {{1-", m_buffCount, "}}:"));
   }
 
   D3D3ExecuteBuffer::~D3D3ExecuteBuffer() {
-    Logger::debug(str::format("D3D3ExecuteBuffer: Execute buffer nr. {{1-", m_buffCount, "}} bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE D3D3ExecuteBuffer::QueryInterface(REFIID riid, void** ppvObject) {

@@ -188,10 +188,6 @@ namespace dxvk {
 
     D3DMATRIX                       m_projectionMatrix = { };
     const D3DMATRIX*                m_legacyProjection = nullptr;
-
-    uint32_t                        m_deviceCount      = 0;
-    static std::atomic<uint32_t>    s_deviceCount;
-
   };
 
 }

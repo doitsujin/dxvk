@@ -226,9 +226,6 @@ namespace dxvk {
 
     std::array<Com<d3d9::IDirect3DIndexBuffer9>, ddrawCaps::IndexBufferCount> m_ib9;
 
-    uint32_t                        m_deviceCount        = 0;
-    static std::atomic<uint32_t>    s_deviceCount;
-
   };
 
 }

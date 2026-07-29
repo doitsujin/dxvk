@@ -12,8 +12,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D3Interface::s_intfCount = 0;
-
   D3D3Interface::D3D3Interface(
         D3DCommonInterface* commonD3DIntf,
         DDrawCommonInterface* commonIntf,
@@ -38,10 +36,6 @@ namespace dxvk {
             && m_commonD3DIntf->GetD3D6Interface() == nullptr)) {
       m_bridge->SetD3DCompatibility(D3DCompatibility::D3D3);
     }
-
-    m_intfCount = ++s_intfCount;
-
-    Logger::debug(str::format("D3D3Interface: Created a new interface nr. ((1-", m_intfCount, "))"));
   }
 
   D3D3Interface::~D3D3Interface() {
@@ -51,8 +45,6 @@ namespace dxvk {
     // Needed for D3D3 device creation from an IDirectDrawSurface object
     if (m_commonIntf->GetD3D3Interface() == this)
       m_commonIntf->SetD3D3Interface(nullptr);
-
-    Logger::debug(str::format("D3D3Interface: Interface nr. ((1-", m_intfCount, ")) bites the dust"));
   }
 
   // Interlocked refcount with the parent IDirectDraw

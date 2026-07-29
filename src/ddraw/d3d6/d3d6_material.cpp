@@ -11,24 +11,16 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D6Material::s_materialCount = 0;
-
   D3D6Material::D3D6Material(
         D3D6Interface* pParent)
     : DDrawChildObject<D3D6Interface, IDirect3DMaterial3>(pParent) {
     m_commonMaterial = new D3DCommonMaterial();
 
     m_commonMaterial->SetD3D6Material(this);
-
-    m_materialCount = ++s_materialCount;
-
-    Logger::debug(str::format("D3D6Material: Created a new material nr. [[3-", m_materialCount, "]]"));
   }
 
   D3D6Material::~D3D6Material() {
     m_commonMaterial->SetD3D6Material(nullptr);
-
-    Logger::debug(str::format("D3D6Material: Material nr. [[3-", m_materialCount, "]] bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE D3D6Material::QueryInterface(REFIID riid, void** ppvObject) {

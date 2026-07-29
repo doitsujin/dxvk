@@ -10,11 +10,9 @@ namespace dxvk {
         IUnknown* pParent)
     : DDrawWrappedObject<IUnknown, IDirectDrawGammaControl>(pParent, std::move(proxyGamma))
     , m_commonSurf ( commonSurf ) {
-    Logger::debug("DDrawGammaControl: Created a new gamma control interface");
   }
 
   DDrawGammaControl::~DDrawGammaControl() {
-    Logger::debug("DDrawGammaControl: A gamma control interface bites the dust");
   }
 
   HRESULT STDMETHODCALLTYPE DDrawGammaControl::QueryInterface(REFIID riid, void** ppvObject) {

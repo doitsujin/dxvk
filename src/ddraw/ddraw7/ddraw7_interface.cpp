@@ -16,8 +16,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> DDraw7Interface::s_intfCount = 0;
-
   DDraw7Interface::DDraw7Interface(
         DDrawCommonInterface* commonIntf,
         Com<IDirectDraw7>&& proxyIntf)
@@ -49,10 +47,6 @@ namespace dxvk {
       m_commonIntf->SetOrigin(this);
 
     m_commonIntf->SetDD7Interface(this);
-
-    m_intfCount = ++s_intfCount;
-
-    Logger::debug(str::format("DDraw7Interface: Created a new interface nr. <<7-", m_intfCount, ">>"));
   }
 
   DDraw7Interface::~DDraw7Interface() {
@@ -60,8 +54,6 @@ namespace dxvk {
       m_commonIntf->SetOrigin(nullptr);
 
     m_commonIntf->SetDD7Interface(nullptr);
-
-    Logger::debug(str::format("DDraw7Interface: Interface nr. <<7-", m_intfCount, ">> bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE DDraw7Interface::QueryInterface(REFIID riid, void** ppvObject) {
@@ -228,7 +220,7 @@ namespace dxvk {
         // on night tracks with "projected" lights, because they clearly were
         // designed with 16-bit Z buffers in mind. Fix it up by silently swapping
         // D16 for D24X8 on depth stencil creation.
-        Logger::info("DDraw7Interface::CreateSurface: Using D16 instead of D24X8");
+        Logger::debug("DDraw7Interface::CreateSurface: Using D16 instead of D24X8");
         lpDDSurfaceDesc->ddpfPixelFormat.dwZBufferBitDepth = 16;
         lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFF;
       } else if (unlikely(lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFFFF)) {
@@ -236,7 +228,7 @@ namespace dxvk {
           // In case of up-front unsupported and unadvertised D32 depth stencil use,
           // replace it with D24X8, as some games, such as Sacrifice, rely on it
           // to properly enable 32-bit display modes (and revert to 16-bit otherwise)
-          Logger::info("DDraw7Interface::CreateSurface: Using D24X8 instead of D32");
+          Logger::debug("DDraw7Interface::CreateSurface: Using D24X8 instead of D32");
           lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFFFF;
         } else {
           Logger::warn("DDraw7Interface::CreateSurface: Use of unsupported D32");
@@ -260,8 +252,6 @@ namespace dxvk {
         // (it needs to be based on the same incoming desc)
         if (unlikely(!surface7->GetCommonSurface()->Is8BitFormat() &&
                       m_commonIntf->GetOptions()->forceLegacyPresent)) {
-          Logger::debug("DDraw7Interface::CreateSurface: Creating shadow surface");
-
           DDSURFACEDESC2 shadowDesc = *lpDDSurfaceDesc;
           const DDSURFACEDESC2* primaryDesc = surface7->GetCommonSurface()->GetDesc2();
 

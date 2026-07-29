@@ -15,8 +15,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D6Device::s_deviceCount = 0;
-
   D3D6Device::D3D6Device(
         D3DCommonDevice* commonD3DDevice,
         D3D6Interface* pParent,
@@ -84,10 +82,6 @@ namespace dxvk {
     m_commonD3DDevice->SetD3D6Device(this);
 
     m_textures.fill(nullptr);
-
-    m_deviceCount = ++s_deviceCount;
-
-    Logger::debug(str::format("D3D6Device: Created a new device nr. ((3-", m_deviceCount, "))"));
   }
 
   D3D6Device::~D3D6Device() {
@@ -101,8 +95,6 @@ namespace dxvk {
 
     if (m_commonD3DDevice->GetOrigin() == this)
       m_commonD3DDevice->SetOrigin(nullptr);
-
-    Logger::debug(str::format("D3D6Device: Device nr. ((3-", m_deviceCount, ")) bites the dust"));
   }
 
   // Interlocked refcount with the origin device
@@ -2117,8 +2109,6 @@ namespace dxvk {
 
     for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
       const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
-
-      Logger::debug(str::format("D3D6Device::InitializeIndexBuffer: Creating D3D9 index buffer, size: ", ibSize));
 
       HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
                                               d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);

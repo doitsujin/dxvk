@@ -12,6 +12,8 @@ namespace dxvk {
 
     DDrawClassFactory(FunctionType createInstance);
 
+    ~DDrawClassFactory();
+
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
     HRESULT STDMETHODCALLTYPE CreateInstance(IUnknown *pUnkOuter, REFIID riid, void **ppvObject);

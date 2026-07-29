@@ -50,9 +50,6 @@ namespace dxvk {
 
     const char*           m_objectType = "D3D5Texture";
 
-    uint32_t              m_texCount   = 0;
-    static std::atomic<uint32_t> s_texCount;
-
   };
 
 }

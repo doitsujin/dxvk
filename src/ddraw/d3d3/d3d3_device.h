@@ -164,9 +164,6 @@ namespace dxvk {
     std::atomic<D3DMATRIXHANDLE>    m_matrixHandle     = 0;
     std::unordered_map<D3DMATRIXHANDLE, D3DMATRIX> m_matrices;
 
-    uint32_t                        m_deviceCount      = 0;
-    static std::atomic<uint32_t>    s_deviceCount;
-
   };
 
 }

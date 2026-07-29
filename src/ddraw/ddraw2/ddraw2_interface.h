@@ -81,9 +81,6 @@ namespace dxvk {
 
     Com<DDrawInterface, false> m_parentIntf;
 
-    uint32_t                   m_intfCount = 0;
-    static std::atomic<uint32_t> s_intfCount;
-
   };
 
 }

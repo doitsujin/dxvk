@@ -8,8 +8,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D3Texture::s_texCount = 0;
-
   D3D3Texture::D3D3Texture(
         D3DCommonTexture* commonTex,
         DDrawCommonSurface* commonSurf,
@@ -22,16 +20,10 @@ namespace dxvk {
       m_commonTex = new D3DCommonTexture(commonSurf);
 
     m_commonTex->SetD3D3Texture(this);
-
-    m_texCount = ++s_texCount;
-
-    Logger::debug(str::format("D3D3Texture: Created a new texture nr. [[1-", m_texCount, "]]"));
   }
 
   D3D3Texture::~D3D3Texture() {
     m_commonTex->SetD3D3Texture(nullptr);
-
-    Logger::debug(str::format("D3D3Texture: Texture nr. [[1-", m_texCount, "]] bites the dust"));
   }
 
   // Interlocked refcount with the parent IDirectDrawSurface

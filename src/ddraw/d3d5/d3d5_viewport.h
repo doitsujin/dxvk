@@ -86,9 +86,6 @@ namespace dxvk {
     Com<D3D6Viewport, false> m_viewport6;
     Com<D3D3Viewport, false> m_viewport3;
 
-    uint32_t                 m_viewportCount        = 0;
-    static std::atomic<uint32_t> s_viewportCount;
-
   };
 
 }

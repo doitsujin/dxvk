@@ -488,11 +488,11 @@ namespace dxvk {
       const DWORD backBuferCount = (m_desc2.dwFlags & DDSD_BACKBUFFERCOUNT) ? m_desc2.dwBackBufferCount :
                                    (m_desc.dwFlags & DDSD_BACKBUFFERCOUNT) ? m_desc.dwBackBufferCount : 0u;
 
-      Logger::debug(str::format("   Type:        ", type));
-      Logger::debug(str::format("   Dimensions:  ", m_rect.right, "x", m_rect.bottom));
-      Logger::debug(str::format("   Format:      ", GetD3D9Format()));
-      Logger::debug(str::format("   IsComplex:   ", IsComplex() ? "yes" : "no"));
-      Logger::debug(str::format("   IsAttached:  ", IsAttached() ? "yes" : "no"));
+      Logger::debug(str::format("   Type:        ", type,
+                              "\n   Dimensions:  ", m_rect.right, "x", m_rect.bottom,
+                              "\n   Format:      ", GetD3D9Format(),
+                              "\n   IsComplex:   ", IsComplex() ? "yes" : "no",
+                              "\n   IsAttached:  ", IsAttached() ? "yes" : "no"));
       if (mipMapCount)
         Logger::debug(str::format("   MipMaps:     ", mipMapCount));
       if (backBuferCount)

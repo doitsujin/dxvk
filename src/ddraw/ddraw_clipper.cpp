@@ -8,11 +8,9 @@ namespace dxvk {
         IUnknown* pParent)
     : DDrawWrappedObject<IUnknown, IDirectDrawClipper>(pParent, std::move(clipperProxy))
     , m_commonIntf ( commonIntf ) {
-    Logger::debug("DDrawClipper: Created a new clipper");
   }
 
   DDrawClipper::~DDrawClipper() {
-    Logger::debug("DDrawClipper: A clipper bites the dust");
   }
 
   HRESULT STDMETHODCALLTYPE DDrawClipper::Initialize(LPDIRECTDRAW lpDD, DWORD dwFlags) {

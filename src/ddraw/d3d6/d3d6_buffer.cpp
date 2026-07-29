@@ -13,8 +13,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D6VertexBuffer::s_buffCount = 0;
-
   D3D6VertexBuffer::D3D6VertexBuffer(
         D3D6Interface* pParent,
         DWORD creationFlags,
@@ -25,13 +23,9 @@ namespace dxvk {
     , m_desc ( *pDesc )
     , m_stride ( GetFVFSize(pDesc->dwFVF) )
     , m_size ( m_stride * pDesc->dwNumVertices ) {
-    m_buffCount = ++s_buffCount;
-
-    Logger::debug(str::format("D3D6VertexBuffer: Created a new buffer nr. {{1-", m_buffCount, "}}:"));
   }
 
   D3D6VertexBuffer::~D3D6VertexBuffer() {
-    Logger::debug(str::format("D3D6VertexBuffer: Buffer nr. {{1-", m_buffCount, "}} bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE D3D6VertexBuffer::QueryInterface(REFIID riid, void** ppvObject) {

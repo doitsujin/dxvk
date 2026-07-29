@@ -20,8 +20,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D5Viewport::s_viewportCount = 0;
-
   D3D5Viewport::D3D5Viewport(
         D3DCommonViewport* commonViewport,
         D3D5Interface* pParent)
@@ -35,10 +33,6 @@ namespace dxvk {
       m_commonViewport->SetOrigin(this);
 
     m_commonViewport->SetD3D5Viewport(this);
-
-    m_viewportCount = ++s_viewportCount;
-
-    Logger::debug(str::format("D3D5Viewport: Created a new viewport nr. [[2-", m_viewportCount, "]]"));
   }
 
   D3D5Viewport::~D3D5Viewport() {
@@ -53,8 +47,6 @@ namespace dxvk {
       m_commonViewport->SetOrigin(nullptr);
 
     m_commonViewport->SetD3D5Viewport(nullptr);
-
-    Logger::debug(str::format("D3D5Viewport: Viewport nr. [[2-", m_viewportCount, "]] bites the dust"));
   }
 
   // Interlocked refcount with the origin viewport
@@ -402,11 +394,11 @@ namespace dxvk {
 
     auto it = std::find(lights.begin(), lights.end(), d3dLight);
     if (likely(it != lights.end())) {
-      const DWORD lightIndex = d3dLight->GetIndex();
       if (m_commonViewport->HasDevice() && m_commonViewport->IsCurrentViewport() && d3dLight->IsActive()) {
-        //Logger::debug(str::format("D3D5Viewport: Disabling light nr. ", lightIndex));
+        const DWORD light9Index = d3dLight->GetIndex();
+        //Logger::debug(str::format("D3D5Viewport: Disabling light nr. ", light9Index));
         d3d9::IDirect3DDevice9* d3d9Device = m_commonViewport->GetCommonD3DDevice()->GetD3D9Device();
-        d3d9Device->LightEnable(lightIndex, FALSE);
+        d3d9Device->LightEnable(light9Index, FALSE);
       }
       lights.erase(it);
       d3dLight->SetViewport5(nullptr);
@@ -553,33 +545,33 @@ namespace dxvk {
     d3d9::IDirect3DDevice9* d3d9Device = m_commonViewport->GetCommonD3DDevice()->GetD3D9Device();
 
     for (auto light: lights) {
-      const DWORD lightIndex = light->GetIndex();
       if (m_commonViewport->HasDevice() && m_commonViewport->IsCurrentViewport() && light->IsActive()) {
-        //Logger::debug(str::format("D3D5Viewport: Disabling light nr. ", lightIndex));
-        d3d9Device->LightEnable(lightIndex, FALSE);
+        const DWORD light9Index = light->GetIndex();
+        //Logger::debug(str::format("D3D5Viewport: Disabling light nr. ", light9Index));
+        d3d9Device->LightEnable(light9Index, FALSE);
       }
     }
 
     return D3D_OK;
   }
 
-  HRESULT D3D5Viewport::ApplyAndActivateLight(DWORD index, D3DLight* light) {
+  HRESULT D3D5Viewport::ApplyAndActivateLight(DWORD light9Index, D3DLight* light) {
     d3d9::IDirect3DDevice9* d3d9Device = m_commonViewport->GetCommonD3DDevice()->GetD3D9Device();
 
-    HRESULT hr = d3d9Device->SetLight(index, light->GetD3D9Light());
+    HRESULT hr = d3d9Device->SetLight(light9Index, light->GetD3D9Light());
     if (unlikely(FAILED(hr))) {
       Logger::err("D3D5Viewport: Failed D3D9 SetLight call");
       return hr;
     }
 
     if (light->IsActive()) {
-      //Logger::debug(str::format("D3D5Viewport: Enabling D3D9 light nr. ", index));
-      hr = d3d9Device->LightEnable(index, TRUE);
+      //Logger::debug(str::format("D3D5Viewport: Enabling D3D9 light nr. ", light9Index));
+      hr = d3d9Device->LightEnable(light9Index, TRUE);
       if (unlikely(FAILED(hr)))
         Logger::err("D3D5Viewport: Failed D3D9 LightEnable call (TRUE)");
     } else {
-      //Logger::debug(str::format("D3D5Viewport: Disabling D3D9 light nr. ", index));
-      hr = d3d9Device->LightEnable(index, FALSE);
+      //Logger::debug(str::format("D3D5Viewport: Disabling D3D9 light nr. ", light9Index));
+      hr = d3d9Device->LightEnable(light9Index, FALSE);
       if (unlikely(FAILED(hr)))
         Logger::err("D3D5Viewport: Failed D3D9 LightEnable call (FALSE)");
     }

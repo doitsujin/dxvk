@@ -16,8 +16,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D5Interface::s_intfCount = 0;
-
   D3D5Interface::D3D5Interface(
         D3DCommonInterface* commonD3DIntf,
         DDrawCommonInterface* m_commonIntf,
@@ -38,17 +36,11 @@ namespace dxvk {
     m_commonD3DIntf->SetD3D5Interface(this);
 
     m_bridge->SetD3DCompatibility(D3DCompatibility::D3D5);
-
-    m_intfCount = ++s_intfCount;
-
-    Logger::debug(str::format("D3D5Interface: Created a new interface nr. ((2-", m_intfCount, "))"));
   }
 
   D3D5Interface::~D3D5Interface() {
     if (m_commonD3DIntf->GetD3D5Interface() == this)
       m_commonD3DIntf->SetD3D5Interface(nullptr);
-
-    Logger::debug(str::format("D3D5Interface: Interface nr. ((2-", m_intfCount, ")) bites the dust"));
   }
 
   // Interlocked refcount with the parent IDirectDraw

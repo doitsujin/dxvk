@@ -246,10 +246,6 @@ namespace dxvk {
       }
     }
 
-    const char* poolPlacement = pool == d3d9::D3DPOOL_DEFAULT ? "D3DPOOL_DEFAULT" :
-                                pool == d3d9::D3DPOOL_SYSTEMMEM ? "D3DPOOL_SYSTEMMEM" : "D3DPOOL_MANAGED";
-    Logger::debug(str::format("DDrawCommonSurface::InitializeD3D9: Placing in: ", poolPlacement));
-
     // Use the MSAA type that was determined to be supported during device creation
     const d3d9::D3DMULTISAMPLE_TYPE multiSampleType = m_commonD3DDevice->GetMultiSampleType();
     d3d9::IDirect3DDevice9* d3d9Device = m_commonD3DDevice->GetD3D9Device();
@@ -258,8 +254,6 @@ namespace dxvk {
 
     // Primary Surface
     if (IsPrimarySurface()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing primary surface");
-
       hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
 
       if (unlikely(unlikely(FAILED(hr)))) {
@@ -270,8 +264,6 @@ namespace dxvk {
       MarkAsD3D9BackBuffer();
     // Front Buffer
     } else if (IsFrontBuffer()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing front buffer");
-
       hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
 
       if (unlikely(unlikely(FAILED(hr)))) {
@@ -282,8 +274,6 @@ namespace dxvk {
       MarkAsD3D9BackBuffer();
     // Back Buffer
     } else if (IsBackBufferOrFlippable()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing back buffer");
-
       hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
 
       if (unlikely(FAILED(hr))) {
@@ -294,8 +284,6 @@ namespace dxvk {
       MarkAsD3D9BackBuffer();
     // Cube maps
     } else if (IsCubeMap()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing cube map");
-
       hr = d3d9Device->CreateCubeTexture(
         dwWidth, m_mipCount, usage,
         m_format9, pool, &m_cubeMap9, nullptr);
@@ -309,8 +297,6 @@ namespace dxvk {
       m_cubeMap9->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACE_POSITIVE_X, 0, &m_surface9);
     // Textures
     } else if (IsTexture()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing texture");
-
       hr = d3d9Device->CreateTexture(
         dwWidth, dwHeight, m_mipCount, usage,
         m_format9, pool, &m_texture9, nullptr);
@@ -324,8 +310,6 @@ namespace dxvk {
       m_texture9->GetSurfaceLevel(0, &m_surface9);
     // Depth Stencil
     } else if (IsDepthStencil()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing depth stencil");
-
       hr = d3d9Device->CreateDepthStencilSurface(
         dwWidth, dwHeight, m_format9,
         multiSampleType, 0, FALSE, &m_surface9, nullptr);
@@ -336,8 +320,6 @@ namespace dxvk {
       }
     // Overlays
     } else if (unlikely(IsOverlay())) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing overlay");
-
       hr = d3d9Device->CreateOffscreenPlainSurface(
         dwWidth, dwHeight, m_format9,
         pool, &m_surface9, nullptr);
@@ -348,8 +330,6 @@ namespace dxvk {
       }
     // Offscreen Plain Surfaces
     } else if (IsOffScreenPlainSurface()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing offscreen plain surface");
-
       if (unlikely(initRenderTarget)) {
         hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
 
@@ -372,8 +352,6 @@ namespace dxvk {
       }
     // Generic render target
     } else if (Is3DSurface()) {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing render target");
-
       // Must be lockable for blitting to work. Note that
       // D3D9 does not allow the creation of lockable RTs when
       // using MSAA, but we have a D3D7 exception in place.
@@ -387,8 +365,6 @@ namespace dxvk {
       }
     // We sometimes get generic surfaces, with only dimensions, format and placement info
     } else {
-      Logger::debug("DDrawCommonSurface::InitializeD3D9: Initializing generic surface");
-
       hr = d3d9Device->CreateOffscreenPlainSurface(
           dwWidth, dwHeight, m_format9,
           pool, &m_surface9, nullptr);

@@ -227,9 +227,6 @@ namespace dxvk {
     // will be held in a parent texture, and the next mip level will be held in the previous mip.
     std::unordered_map<IDirectDrawSurface*, Com<DDrawSurface, false>> m_attachedSurfaces;
 
-    uint32_t                  m_surfCount     = 0;
-    static std::atomic<uint32_t> s_surfCount;
-
   };
 
 }

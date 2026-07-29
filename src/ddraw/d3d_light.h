@@ -45,12 +45,15 @@ namespace dxvk {
       return m_viewport6 != nullptr || m_viewport5 != nullptr || m_viewport3 != nullptr;
     }
 
-    DWORD GetIndex() const {
-      return m_lightCount;
-    }
-
     bool IsActive() const {
       return m_isActive;
+    }
+
+    DWORD GetIndex() {
+      if (unlikely(!m_light9Index))
+        m_light9Index = ++s_light9Index;
+
+      return m_light9Index;
     }
 
   private:
@@ -66,8 +69,8 @@ namespace dxvk {
 
     d3d9::D3DLIGHT9  m_light9          = { };
 
-    uint32_t         m_lightCount      = 0;
-    static std::atomic<uint32_t> s_lightCount;
+    uint32_t         m_light9Index     = 0;
+    static std::atomic<uint32_t> s_light9Index;
 
   };
 

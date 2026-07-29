@@ -58,11 +58,11 @@ namespace dxvk {
     // Empire of the Ants erroneously marks all DDPF_RGB surfaces
     // with the DDPF_ZBUFFER flag as well, so prioritize DDPF_RGB
     if (fmt.dwFlags & DDPF_RGB) {
-      //Logger::debug(str::format("ConvertFormat: fmt.dwRGBBitCount:     ", fmt.dwRGBBitCount));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwRGBAlphaBitMask: ", fmt.dwRGBAlphaBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwRBitMask:        ", fmt.dwRBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwGBitMask:        ", fmt.dwGBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwBBitMask:        ", fmt.dwBBitMask));
+      //Logger::debug(str::format("ConvertFormat: fmt.dwRGBBitCount:     ", fmt.dwRGBBitCount,
+      //                        "\nConvertFormat: fmt.dwRGBAlphaBitMask: ", fmt.dwRGBAlphaBitMask,
+      //                        "\nConvertFormat: fmt.dwRBitMask:        ", fmt.dwRBitMask,
+      //                        "\nConvertFormat: fmt.dwGBitMask:        ", fmt.dwGBitMask,
+      //                        "\nConvertFormat: fmt.dwBBitMask:        ", fmt.dwBBitMask));
 
       switch (fmt.dwRGBBitCount) {
         case 8:
@@ -116,9 +116,9 @@ namespace dxvk {
     // Depth formats will traditionally store stencil info in the MSB, however
     // some games will apparently try to use the LSB, so handle both cases
     } else if (fmt.dwFlags & DDPF_ZBUFFER) {
-      //Logger::debug(str::format("ConvertFormat: fmt.dwZBufferBitDepth: ", fmt.dwZBufferBitDepth));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwZBitMask:        ",        fmt.dwZBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwStencilBitMask:  ",  fmt.dwStencilBitMask));
+      //Logger::debug(str::format("ConvertFormat: fmt.dwZBufferBitDepth: ", fmt.dwZBufferBitDepth,
+      //                        "\nConvertFormat: fmt.dwZBitMask:        ",        fmt.dwZBitMask,
+      //                        "\nConvertFormat: fmt.dwStencilBitMask:  ",  fmt.dwStencilBitMask));
 
       switch (fmt.dwZBufferBitDepth) {
         case 16:
@@ -198,10 +198,10 @@ namespace dxvk {
           break;
       }
     } else if (fmt.dwFlags & DDPF_BUMPDUDV) {
-      //Logger::debug(str::format("ConvertFormat: fmt.dwBumpBitCount:         ", fmt.dwBumpBitCount));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwBumpLuminanceBitMask: ", fmt.dwBumpLuminanceBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwBumpDvBitMask:        ", fmt.dwBumpDvBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwBumpDuBitMask:        ", fmt.dwBumpDuBitMask));
+      //Logger::debug(str::format("ConvertFormat: fmt.dwBumpBitCount:         ", fmt.dwBumpBitCount,
+      //                        "\nConvertFormat: fmt.dwBumpLuminanceBitMask: ", fmt.dwBumpLuminanceBitMask,
+      //                        "\nConvertFormat: fmt.dwBumpDvBitMask:        ", fmt.dwBumpDvBitMask,
+      //                        "\nConvertFormat: fmt.dwBumpDuBitMask:        ", fmt.dwBumpDuBitMask));
 
       switch (fmt.dwBumpBitCount) {
         case 16:
@@ -261,9 +261,9 @@ namespace dxvk {
       }
     // Luminance/alpha-luminance formats appear to be unused in practice in early D3D
     } else if (unlikely(fmt.dwFlags & DDPF_LUMINANCE)) {
-      //Logger::debug(str::format("ConvertFormat: fmt.dwLuminanceBitCount:     ", fmt.dwLuminanceBitCount));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwLuminanceAlphaBitMask: ", fmt.dwLuminanceAlphaBitMask));
-      //Logger::debug(str::format("ConvertFormat: fmt.dwLuminanceBitMask:      ", fmt.dwLuminanceBitMask));
+      //Logger::debug(str::format("ConvertFormat: fmt.dwLuminanceBitCount:     ", fmt.dwLuminanceBitCount,
+      //                        "\nConvertFormat: fmt.dwLuminanceAlphaBitMask: ", fmt.dwLuminanceAlphaBitMask,
+      //                        "\nConvertFormat: fmt.dwLuminanceBitMask:      ", fmt.dwLuminanceBitMask));
 
       switch (fmt.dwLuminanceBitCount) {
         case 8:

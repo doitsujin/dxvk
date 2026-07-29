@@ -10,8 +10,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D7Interface::s_intfCount = 0;
-
   D3D7Interface::D3D7Interface(
         D3DCommonInterface* commonD3DIntf,
         DDrawCommonInterface* commonIntf,
@@ -33,17 +31,11 @@ namespace dxvk {
     m_commonD3DIntf->SetD3D7Interface(this);
 
     m_bridge->SetD3DCompatibility(D3DCompatibility::D3D7);
-
-    m_intfCount = ++s_intfCount;
-
-    Logger::debug(str::format("D3D7Interface: Created a new interface nr. ((7-", m_intfCount, "))"));
   }
 
   D3D7Interface::~D3D7Interface() {
     if (m_commonD3DIntf->GetD3D7Interface() == this)
       m_commonD3DIntf->SetD3D7Interface(nullptr);
-
-    Logger::debug(str::format("D3D7Interface: Interface nr. ((7-", m_intfCount, ")) bites the dust"));
   }
 
   // Interlocked refcount with the parent IDirectDraw7

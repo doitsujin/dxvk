@@ -9,8 +9,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D5Texture::s_texCount = 0;
-
   D3D5Texture::D3D5Texture(
         D3DCommonTexture* commonTex,
         DDrawCommonSurface* commonSurf,
@@ -30,16 +28,10 @@ namespace dxvk {
     // but is true in the vast majority of cases, so use the distinction for logging purposes.
     if (isD3D6Texture)
       m_objectType = "D3D6Texture";
-
-    m_texCount = ++s_texCount;
-
-    Logger::debug(str::format(m_objectType, ": Created a new texture nr. [[2-", m_texCount, "]]"));
   }
 
   D3D5Texture::~D3D5Texture() {
     m_commonTex->SetD3D5Texture(nullptr);
-
-    Logger::debug(str::format(m_objectType, ": Texture nr. [[2-", m_texCount, "]] bites the dust"));
   }
 
   // Interlocked refcount with the parent IDirectDrawSurface/IDirectDrawSurface4

@@ -13,8 +13,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D7VertexBuffer::s_buffCount = 0;
-
   D3D7VertexBuffer::D3D7VertexBuffer(
         D3D7Interface* pParent,
         D3DVERTEXBUFFERDESC* pDesc)
@@ -24,16 +22,10 @@ namespace dxvk {
     , m_stride ( GetFVFSize(pDesc->dwFVF) )
     , m_size ( m_stride * pDesc->dwNumVertices ) {
     m_parent->AddRef();
-
-    m_buffCount = ++s_buffCount;
-
-    Logger::debug(str::format("D3D7VertexBuffer: Created a new buffer nr. {{7-", m_buffCount, "}}:"));
   }
 
   D3D7VertexBuffer::~D3D7VertexBuffer() {
     m_parent->Release();
-
-    Logger::debug(str::format("D3D7VertexBuffer: Buffer nr. {{7-", m_buffCount, "}} bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE D3D7VertexBuffer::QueryInterface(REFIID riid, void** ppvObject) {

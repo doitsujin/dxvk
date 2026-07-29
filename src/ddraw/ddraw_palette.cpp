@@ -4,18 +4,12 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> DDrawPalette::s_paletteCount = 0;
-
   DDrawPalette::DDrawPalette(
         Com<IDirectDrawPalette>&& paletteProxy,
         IUnknown* pParent)
     : DDrawWrappedObject<IUnknown, IDirectDrawPalette>(pParent, std::move(paletteProxy)) {
     if (m_parent != nullptr)
       m_parent->AddRef();
-
-    m_paletteCount = ++s_paletteCount;
-
-    Logger::debug(str::format("DDrawPalette: Created a new palette nr. [[1-", m_paletteCount, "]]"));
   }
 
   DDrawPalette::~DDrawPalette() {
@@ -24,8 +18,6 @@ namespace dxvk {
 
     if (m_parent != nullptr)
       m_parent->Release();
-
-    Logger::debug(str::format("DDrawPalette: Palette nr. [[1-", m_paletteCount, "]] bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE DDrawPalette::QueryInterface(REFIID riid, void** ppvObject) {

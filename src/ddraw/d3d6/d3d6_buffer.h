@@ -85,9 +85,6 @@ namespace dxvk {
 
     Com<d3d9::IDirect3DVertexBuffer9> m_vb9;
 
-    uint32_t                          m_buffCount     = 0;
-    static std::atomic<uint32_t>      s_buffCount;
-
   };
 
 }

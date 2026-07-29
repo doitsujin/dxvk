@@ -60,9 +60,6 @@ namespace dxvk {
 
     DDrawCommonInterface*              m_commonIntf = nullptr;
 
-    uint32_t                           m_intfCount  = 0;
-    static std::atomic<uint32_t>       s_intfCount;
-
   };
 
 }

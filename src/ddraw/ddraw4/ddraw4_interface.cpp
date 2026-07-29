@@ -17,8 +17,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> DDraw4Interface::s_intfCount = 0;
-
   DDraw4Interface::DDraw4Interface(
         DDrawCommonInterface* commonIntf,
         Com<IDirectDraw4>&& proxyIntf)
@@ -38,16 +36,10 @@ namespace dxvk {
     // Note: IDirectDraw4 can never be the origin interface
 
     m_commonIntf->SetDD4Interface(this);
-
-    m_intfCount = ++s_intfCount;
-
-    Logger::debug(str::format("DDraw4Interface: Created a new interface nr. <<4-", m_intfCount, ">>"));
   }
 
   DDraw4Interface::~DDraw4Interface() {
     m_commonIntf->SetDD4Interface(nullptr);
-
-    Logger::debug(str::format("DDraw4Interface: Interface nr. <<4-", m_intfCount, ">> bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE DDraw4Interface::QueryInterface(REFIID riid, void** ppvObject) {
@@ -237,7 +229,7 @@ namespace dxvk {
         // on night tracks with "projected" lights, because they clearly were
         // designed with 16-bit Z buffers in mind. Fix it up by silently swapping
         // D16 for D24X8 on depth stencil creation.
-        Logger::info("DDraw4Interface::CreateSurface: Using D16 instead of D24X8");
+        Logger::debug("DDraw4Interface::CreateSurface: Using D16 instead of D24X8");
         lpDDSurfaceDesc->ddpfPixelFormat.dwZBufferBitDepth = 16;
         lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFF;
       } else if (unlikely(lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFFFF)) {
@@ -245,7 +237,7 @@ namespace dxvk {
           // In case of up-front unsupported and unadvertised D32 depth stencil use,
           // replace it with D24X8, as some games, such as Sacrifice, rely on it
           // to properly enable 32-bit display modes (and revert to 16-bit otherwise)
-          Logger::info("DDraw4Interface::CreateSurface: Using D24X8 instead of D32");
+          Logger::debug("DDraw4Interface::CreateSurface: Using D24X8 instead of D32");
           lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFFFF;
         } else {
           Logger::warn("DDraw4Interface::CreateSurface: Use of unsupported D32");
@@ -269,8 +261,6 @@ namespace dxvk {
         // (it needs to be based on the same incoming desc)
         if (unlikely(!surface4->GetCommonSurface()->Is8BitFormat() &&
                       m_commonIntf->GetOptions()->forceLegacyPresent)) {
-          Logger::debug("DDraw4Interface::CreateSurface: Creating shadow surface");
-
           DDSURFACEDESC2 shadowDesc = *lpDDSurfaceDesc;
           const DDSURFACEDESC2* primaryDesc = surface4->GetCommonSurface()->GetDesc2();
 

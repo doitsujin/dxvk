@@ -9,8 +9,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> DDraw2Surface::s_surfCount = 0;
-
   DDraw2Surface::DDraw2Surface(
         DDrawCommonSurface* commonSurf,
         Com<IDirectDrawSurface2>&& surfProxy,
@@ -92,9 +90,7 @@ namespace dxvk {
 
     m_commonSurf->SetDD2Surface(this);
 
-    m_surfCount = ++s_surfCount;
-
-    Logger::debug(str::format("DDraw2Surface: Created a new surface nr. [[2-", m_surfCount, "]]"));
+    //Logger::debug(str::format("DDraw2Surface: Created a new surface nr. [[2-", std::hex, this, "]]"));
 
     // Note: IDirectDrawSurface2 can't ever be the origin surface
   }
@@ -122,7 +118,7 @@ namespace dxvk {
 
     m_commonSurf->SetDD2Surface(nullptr);
 
-    Logger::debug(str::format("DDraw2Surface: Surface nr. [[2-", m_surfCount, "]] bites the dust"));
+    //Logger::debug(str::format("DDraw2Surface: Surface nr. [[2-", std::hex, this, "]] bites the dust"));
   }
 
   HRESULT STDMETHODCALLTYPE DDraw2Surface::QueryInterface(REFIID riid, void** ppvObject) {
@@ -554,25 +550,6 @@ namespace dxvk {
     if (unlikely(lpDDSCaps == nullptr || lplpDDAttachedSurface == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    if (lpDDSCaps->dwCaps & DDSCAPS_PRIMARYSURFACE)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for the primary surface");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_FRONTBUFFER)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for the front buffer");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_BACKBUFFER)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for the back buffer");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_FLIP)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for a flippable surface");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_OFFSCREENPLAIN)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for an offscreen plain surface");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_ZBUFFER)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for a depth stencil");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_MIPMAP)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for a texture mip map");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_TEXTURE)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for a texture");
-    else if (lpDDSCaps->dwCaps & DDSCAPS_OVERLAY)
-      Logger::debug("DDraw2Surface::GetAttachedSurface: Querying for an overlay");
-
     Com<IDirectDrawSurface2> surface;
     HRESULT hr = m_proxy->GetAttachedSurface(lpDDSCaps, &surface);
     // These are rather common, as some games query expecting to get nothing in return, for
@@ -956,10 +933,10 @@ namespace dxvk {
       const bool initRenderTarget = m_commonSurf->GetCommonD3DDevice()->IsCurrentRenderTarget(m_commonSurf.ptr());
 
       HRESULT hr = m_commonSurf->InitializeD3D9(initRenderTarget);
-      if (unlikely(FAILED(hr)))
+      if (unlikely(FAILED(hr))) {
+        Logger::err(str::format("DDraw2Surface::InitializeOrUploadD3D9: Failed to initialize surface nr. [[2-", std::hex, this, "]]"));
         return hr;
-
-      Logger::debug(str::format("DDraw2Surface::InitializeOrUploadD3D9: Initialized surface nr. [[2-", m_surfCount, "]]"));
+      }
     }
 
     if (likely(m_commonSurf->IsInitialized()))
@@ -979,14 +956,14 @@ namespace dxvk {
 
     if (unlikely(m_commonSurf->IsD3D9BackBuffer())) {
       if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw2Surface::DownloadSurfaceData: Downloading nr. [[2-", m_surfCount, "]]"));
+        //Logger::debug(str::format("DDraw2Surface::DownloadSurfaceData: Downloading nr. [[2-", std::hex, this, "]]"));
         BlitToDDrawSurface<IDirectDrawSurface2, DDSURFACEDESC>(GetShadowOrProxied(), m_commonSurf->GetD3D9Surface(),
                                                                m_commonSurf->IsDXTFormat());
         m_commonSurf->UnDirtyD3D9Surface();
       }
     } else if (unlikely(m_commonSurf->IsD3D9DepthStencil())) {
       if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw2Surface::DownloadSurfaceData: Downloading nr. [[2-", m_surfCount, "]]"));
+        //Logger::debug(str::format("DDraw2Surface::DownloadSurfaceData: Downloading nr. [[2-", std::hex, this, "]]"));
         BlitToDDrawSurface<IDirectDrawSurface2, DDSURFACEDESC>(m_proxy.ptr(), m_commonSurf->GetD3D9Surface(),
                                                                m_commonSurf->IsDXTFormat());
         m_commonSurf->UnDirtyD3D9Surface();
@@ -999,7 +976,7 @@ namespace dxvk {
     if (!m_commonSurf->IsDDrawSurfaceDirty())
       return DD_OK;
 
-    //Logger::debug(str::format("DDraw2Surface::UploadSurfaceData: Uploading nr. [[2-", m_surfCount, "]]"));
+    //Logger::debug(str::format("DDraw2Surface::UploadSurfaceData: Uploading nr. [[2-", std::hex, this, "]]"));
 
     if (m_commonSurf->IsTexture()) {
       BlitToD3D9Texture<IDirectDrawSurface2, DDSURFACEDESC>(m_commonSurf->GetD3D9Texture(), m_proxy.ptr(),

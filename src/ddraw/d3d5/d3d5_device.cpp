@@ -22,8 +22,6 @@
 
 namespace dxvk {
 
-  std::atomic<uint32_t> D3D5Device::s_deviceCount = 0;
-
   D3D5Device::D3D5Device(
         D3DCommonDevice* commonD3DDevice,
         D3D5Interface* pParent,
@@ -84,10 +82,6 @@ namespace dxvk {
       m_commonD3DDevice->SetOrigin(this);
 
     m_commonD3DDevice->SetD3D5Device(this);
-
-    m_deviceCount = ++s_deviceCount;
-
-    Logger::debug(str::format("D3D5Device: Created a new device nr. ((2-", m_deviceCount, "))"));
   }
 
   D3D5Device::~D3D5Device() {
@@ -101,8 +95,6 @@ namespace dxvk {
 
     if (m_commonD3DDevice->GetOrigin() == this)
       m_commonD3DDevice->SetOrigin(nullptr);
-
-    Logger::debug(str::format("D3D5Device: Device nr. ((2-", m_deviceCount, ")) bites the dust"));
   }
 
   // Interlocked refcount with the origin device
