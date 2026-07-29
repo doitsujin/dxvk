@@ -1019,6 +1019,10 @@ namespace dxvk {
 
     uint32_t m_frameLatency = DefaultFrameLatency;
 
+    HMODULE initVendorHacks();
+
+    void cleanupVendorHacks();
+
   };
   
 }
