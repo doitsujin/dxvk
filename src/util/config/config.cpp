@@ -1764,6 +1764,14 @@ namespace dxvk {
     { R"(\\TS_D3D\.exe$)", {{
       { "ddraw.supportD16",                "False" },
     }} },
+    /* Project I.G.I.: I'm Going In - Performance */
+    { R"(\\IGI\.exe$)", {{
+      { "ddraw.managedVertexBuffers",       "True" },
+    }} },
+    /* Sonic World DX - Performance               */
+    { R"(\\Sonic World DX\.exe$)", {{
+      { "ddraw.managedVertexBuffers",       "True" },
+    }} },
 
     /**********************************************/
     /* D3D6 GAMES                                 */

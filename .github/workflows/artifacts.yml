@@ -31,6 +31,6 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: d7vk-${{ env.VERSION_NAME }}
-        path: build/dxvk-${{ env.VERSION_NAME }}
+        path: build/d7vk-${{ env.VERSION_NAME }}
         if-no-files-found: error
 
