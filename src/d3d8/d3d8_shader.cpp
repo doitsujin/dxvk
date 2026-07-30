@@ -136,8 +136,8 @@ namespace dxvk {
     uint32_t i = 0;
     DWORD token;
 
-    std::stringstream dbg;
-    dbg << "D3D8: Vertex Declaration Tokens:\n\t";
+    //std::stringstream dbg;
+    //dbg << "D3D8: Vertex Declaration Tokens:\n\t";
 
     WORD currentStream = 0;
     WORD currentOffset = 0;
@@ -165,74 +165,89 @@ namespace dxvk {
     if (options.forceVsDecl.size() == 0) do {
       token = pDeclaration[i++];
 
-      D3DVSD_TOKENTYPE tokenType = D3DVSD_TOKENTYPE(VSD_SHIFT_MASK(token, D3DVSD_TOKENTYPE));
+      const D3DVSD_TOKENTYPE tokenType = D3DVSD_TOKENTYPE(VSD_SHIFT_MASK(token, D3DVSD_TOKENTYPE));
 
       switch (tokenType) {
         case D3DVSD_TOKEN_NOP:
-          dbg << "NOP";
+          //dbg << "NOP";
           break;
         case D3DVSD_TOKEN_STREAM: {
-          dbg << "STREAM ";
+          //dbg << "STREAM ";
 
           // TODO: D3DVSD_STREAM_TESS
-          if (token & D3DVSD_STREAMTESSMASK) {
-            dbg << "TESS";
+          if (unlikely(token & D3DVSD_STREAMTESSMASK)) {
+            //dbg << "TESS";
+
+            static bool s_streamTessErrorShown;
+
+            if (!std::exchange(s_streamTessErrorShown, true))
+              Logger::warn("D3D8Device::CreateVertexShader: Unhandled D3DVSD_STREAMTESSMASK");
           }
 
-          DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
+          const DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
+          //dbg << ", num=" << streamNum;
 
           currentStream = WORD(streamNum);
           currentOffset = 0; // reset offset
 
-          dbg << ", num=" << streamNum;
           break;
         }
         case D3DVSD_TOKEN_STREAMDATA: {
-
-          dbg << "STREAMDATA ";
+          //dbg << "STREAMDATA ";
 
           // D3DVSD_SKIP
           if (token & VSD_SKIP_FLAG) {
-            auto skipCount = VSD_SHIFT_MASK(token, D3DVSD_SKIPCOUNT);
-            dbg << "SKIP " << " count=" << skipCount;
+            const DWORD skipCount = VSD_SHIFT_MASK(token, D3DVSD_SKIPCOUNT);
+            //dbg << "SKIP " << " count=" << skipCount;
             currentOffset += WORD(skipCount) * sizeof(DWORD);
             break;
           }
 
           // D3DVSD_REG
-          DWORD dataLoadType = VSD_SHIFT_MASK(token, D3DVSD_DATALOADTYPE);
+          const DWORD dataLoadType = VSD_SHIFT_MASK(token, D3DVSD_DATALOADTYPE);
 
-          if ( dataLoadType == 0 ) { // vertex
+          if (likely(dataLoadType == 0)) { // vertex
             D3DVSDT_TYPE     type = D3DVSDT_TYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
             D3DVSDE_REGISTER reg  = D3DVSDE_REGISTER(VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG));
+            //dbg << "type=" << type << ", register=" << reg;
 
             // FVF normals are expected to only have 3 components
             if (unlikely(pFunction == nullptr && reg == D3DVSDE_NORMAL && type != D3DVSDT_FLOAT3)) {
-              Logger::err("D3D8Device::CreateVertexShader: Invalid FVF declaration: D3DVSDE_NORMAL must use D3DVSDT_FLOAT3");
+              Logger::warn("D3D8Device::CreateVertexShader: Invalid FVF declaration: D3DVSDE_NORMAL must use D3DVSDT_FLOAT3");
               return D3DERR_INVALIDCALL;
             }
 
             addVertexElement(reg, type);
-
-            dbg << "type=" << type << ", register=" << reg;
+          // TODO: When would this bit be 1?
           } else {
-            // TODO: When would this bit be 1?
-            dbg << "D3DVSD_DATALOADTYPE " << dataLoadType;
+            //dbg << "D3DVSD_DATALOADTYPE " << dataLoadType;
+
+            static bool s_dataLoadTypeErrorShown;
+
+            if (!std::exchange(s_dataLoadTypeErrorShown, true))
+              Logger::warn("D3D8Device::CreateVertexShader: Unhandled non-zero D3DVSD_DATALOADTYPE");
           }
           break;
         }
-        case D3DVSD_TOKEN_TESSELLATOR:
-          dbg << "TESSELLATOR " << std::hex << token;
-          // TODO: D3DVSD_TOKEN_TESSELLATOR
-          break;
-        case D3DVSD_TOKEN_CONSTMEM: {
-          dbg << "CONSTMEM ";
-          DWORD count     = VSD_SHIFT_MASK(token, D3DVSD_CONSTCOUNT);
-          DWORD regCount  = count * 4;
-          DWORD addr      = VSD_SHIFT_MASK(token, D3DVSD_CONSTADDRESS);
-          DWORD rs        = VSD_SHIFT_MASK(token, D3DVSD_CONSTRS);
+        // TODO: D3DVSD_TOKEN_TESSELLATOR
+        case D3DVSD_TOKEN_TESSELLATOR: {
+          //dbg << "TESSELLATOR " << std::hex << token;
 
-          dbg << "count=" << count << ", addr=" << addr << ", rs=" << rs;
+          static bool s_tesselatorErrorShown;
+
+          if (!std::exchange(s_tesselatorErrorShown, true))
+            Logger::warn("D3D8Device::CreateVertexShader: Unhandled D3DVSD_TOKEN_TESSELLATOR");
+
+          break;
+        }
+        case D3DVSD_TOKEN_CONSTMEM: {
+          //dbg << "CONSTMEM ";
+
+          const DWORD count    = VSD_SHIFT_MASK(token, D3DVSD_CONSTCOUNT);
+          const DWORD regCount = count * 4;
+          //const DWORD rs       = VSD_SHIFT_MASK(token, D3DVSD_CONSTRS);
+          DWORD addr           = VSD_SHIFT_MASK(token, D3DVSD_CONSTADDRESS);
+          //dbg << "count=" << count << ", rs=" << rs << ", addr=" << addr;
 
           // Add a DEF instruction for each constant
           for (uint32_t j = 0; j < regCount; j += 4) {
@@ -248,26 +263,29 @@ namespace dxvk {
           break;
         }
         case D3DVSD_TOKEN_EXT: {
-          dbg << "EXT " << std::hex << token << " ";
-          DWORD extInfo = VSD_SHIFT_MASK(token, D3DVSD_EXTINFO);
-          DWORD extCount = VSD_SHIFT_MASK(token, D3DVSD_EXTCOUNT);
-          dbg << "info=" << extInfo << ", count=" << extCount;
+          //dbg << "EXT " << std::hex << token << " ";
+
+          /*const DWORD extInfo = VSD_SHIFT_MASK(token, D3DVSD_EXTINFO);
+          const DWORD extCount = VSD_SHIFT_MASK(token, D3DVSD_EXTCOUNT);
+          dbg << "info=" << extInfo << ", count=" << extCount;*/
+
           break;
         }
         case D3DVSD_TOKEN_END: {
+          //dbg << "END";
           vertexElements[elementIdx++] = D3DDECL_END();
-          dbg << "END";
           break;
         }
         default:
-          dbg << "UNKNOWN TYPE";
+          //dbg << "UNKNOWN TYPE " << std::hex << token << " ";
+          Logger::warn(str::format("D3D8Device::CreateVertexShader: Unhandled token type ", std::hex, token));
           break;
       }
-      dbg << "\n\t";
-      //dbg << std::hex << token << " ";
+
+      //dbg << "\n\t";
     } while (token != D3DVSD_END());
 
-    Logger::debug(dbg.str());
+    //Logger::debug(dbg.str());
 
     // If forceVsDecl is set, use that decl instead.
     if (options.forceVsDecl.size() > 0) {
@@ -283,20 +301,18 @@ namespace dxvk {
       // Copy first token (version)
       tokens.push_back(pFunction[0]);
 
-      DWORD vsMajor = D3DSHADER_VERSION_MAJOR(pFunction[0]);
-      DWORD vsMinor = D3DSHADER_VERSION_MINOR(pFunction[0]);
-      Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));
+      /*const DWORD vsMajor = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+      const DWORD vsMinor = D3DSHADER_VERSION_MINOR(pFunction[0]);
+      Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));*/
 
       // Insert dcl instructions
       for (UINT vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
-
         // If bit N is set then we need to dcl register vN
         if ((shaderInputRegisters & (1 << vn)) != 0) {
+          //Logger::debug(str::format("\tShader Input Regsiter: v", vn));
 
-          Logger::debug(str::format("\tShader Input Regsiter: v", vn));
-
-          DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
-          DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
+          const DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
+          const DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
 
           tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));                  // dcl opcode
           tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(usage), index));  // usage token
@@ -315,18 +331,17 @@ namespace dxvk {
       do {
         token = pFunction[i++];
 
-        DWORD opcode = token & D3DSI_OPCODE_MASK;
+        const DWORD opcode = token & D3DSI_OPCODE_MASK;
 
         // Instructions
         if ((token & VS_BIT_PARAM) == 0) {
-
           // Swizzle fixup for opcodes that require explicit use of a replicate swizzle.
           if (opcode == D3DSIO_RSQ  || opcode == D3DSIO_RCP
            || opcode == D3DSIO_EXP  || opcode == D3DSIO_LOG
            || opcode == D3DSIO_EXPP || opcode == D3DSIO_LOGP) {
-            tokens.push_back(token);                            // instr
-            tokens.push_back(token = pFunction[i++]);           // dest
-            token = pFunction[i++];                             // src0
+            tokens.push_back(token);                   // instr
+            tokens.push_back(token = pFunction[i++]);  // dest
+            token = pFunction[i++];                    // src0
 
             // If no swizzling is done, then use the w-component.
             // See d8vk#43 for more information as this may need to change in some cases.
