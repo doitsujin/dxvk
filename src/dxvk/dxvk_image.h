@@ -64,6 +64,9 @@ namespace dxvk {
     // to be in its default layout after each submission
     VkBool32 shared = VK_FALSE;
 
+    // Requests the image to not be relocated in the future
+    VkBool32 stableGpuAddress = VK_FALSE;
+
     // Image is likely to have a short lifetime
     VkBool32 transient = VK_FALSE;
 
@@ -103,7 +106,7 @@ namespace dxvk {
     uint32_t viewFormatCount = 0u;
     // View formats to add to the compatibility list
     const VkFormat* viewFormats = nullptr;
-    // Requtes the image to not be relocated in the future
+    // Requests the image to not be relocated in the future
     VkBool32 stableGpuAddress = VK_FALSE;
   };
 
