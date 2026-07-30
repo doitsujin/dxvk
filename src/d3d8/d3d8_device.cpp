@@ -41,8 +41,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize) {
-    Logger::debug(str::format("D3D8Device::GetInfo: ", DevInfoID));
-
     if (unlikely(pDevInfoStruct == nullptr || DevInfoStructSize == 0))
       return D3DERR_INVALIDCALL;
 
@@ -727,7 +725,6 @@ namespace dxvk {
     }
 
     for (uint32_t i = 0; i < cRects; i++) {
-
       RECT srcRect, dstRect;
       srcRect = pSourceRectsArray[i];
 
@@ -752,20 +749,6 @@ namespace dxvk {
 
       POINT dstPt = { dstRect.left, dstRect.top };
 
-      auto unsupported = [&] {
-        Logger::err(str::format("D3D8Device::CopyRects: Unsupported case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
-        return D3DERR_INVALIDCALL;
-      };
-
-      auto logError = [&] (HRESULT res) {
-        if (FAILED(res)) {
-          // Only a debug message because some games mess up CopyRects every frame in a way
-          // that fails on native too but are perfectly fine with it.
-          Logger::debug(str::format("D3D8Device::CopyRects: Failed to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
-        }
-        return res;
-      };
-
       switch (dstDesc.Pool) {
 
         // Dest: DEFAULT
@@ -773,31 +756,31 @@ namespace dxvk {
           switch (srcDesc.Pool) {
             case d3d9::D3DPOOL_DEFAULT: {
               // DEFAULT -> DEFAULT: use StretchRect
-              return logError(GetD3D9()->StretchRect(
+              return GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
                 dst->GetD3D9(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE
-              ));
+              );
             }
             case d3d9::D3DPOOL_MANAGED: {
               // MANAGED -> DEFAULT: UpdateTextureFromBuffer
-              return logError(m_bridge->UpdateTextureFromBuffer(
+              return m_bridge->UpdateTextureFromBuffer(
                 src->GetD3D9(),
                 dst->GetD3D9(),
                 &srcRect,
                 &dstPt
-              ));
+              );
             }
             case d3d9::D3DPOOL_SYSTEMMEM: {
               // SYSTEMMEM -> DEFAULT: use UpdateSurface
-              return logError(GetD3D9()->UpdateSurface(
+              return GetD3D9()->UpdateSurface(
                 src->GetD3D9(),
                 &srcRect,
                 dst->GetD3D9(),
                 &dstPt
-              ));
+              );
             }
             case d3d9::D3DPOOL_SCRATCH: {
               // SCRATCH -> DEFAULT: memcpy to a SYSTEMMEM temporary buffer and use UpdateSurface
@@ -805,7 +788,7 @@ namespace dxvk {
               const bool isSupportedSurfaceFormat = m_bridge->IsSupportedSurfaceFormat(srcDesc.Format);
               // UpdateSurface will not work on surface formats unsupported by D3DPOOL_DEFAULT
               if (unlikely(!isSupportedSurfaceFormat))
-                return logError(D3DERR_INVALIDCALL);
+                return D3DERR_INVALIDCALL;
 
               Com<IDirect3DSurface8> pTempImageSurface;
               // The temporary image surface is guaranteed to end up in SYSTEMMEM for supported formats
@@ -815,28 +798,24 @@ namespace dxvk {
                 D3DFORMAT(srcDesc.Format),
                 &pTempImageSurface
               );
-
-              if (FAILED(res)) {
-                return logError(res);
-              }
+              if (unlikely(FAILED(res)))
+                return res;
 
               Com<D3D8Surface> pBlitImage = static_cast<D3D8Surface*>(pTempImageSurface.ptr());
               // Temporary image surface dimensions are identical, so we can reuse srcDesc/Rect
               res = copyTextureBuffers(src.ptr(), pBlitImage.ptr(), srcDesc, srcDesc, srcRect, srcRect);
+              if (unlikely(FAILED(res)))
+                return res;
 
-              if (FAILED(res)) {
-                return logError(res);
-              }
-
-              return logError(GetD3D9()->UpdateSurface(
+              return GetD3D9()->UpdateSurface(
                 pBlitImage->GetD3D9(),
                 &srcRect,
                 dst->GetD3D9(),
                 &dstPt
-              ));
+              );
             }
             default: {
-              return unsupported();
+              return D3DERR_INVALIDCALL;
             }
           } break;
 
@@ -855,27 +834,24 @@ namespace dxvk {
                 pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
-
-              if (FAILED(res)) {
-                return logError(res);
-              }
+              if (unlikely(FAILED(res)))
+                return res;
 
               // Now sync the rendertarget data into main memory.
-              return logError(GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9()));
+              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
             }
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
             case d3d9::D3DPOOL_SCRATCH: {
               // MANAGED/SYSMEM/SCRATCH -> MANAGED: LockRect / memcpy
 
-              if (stretch) {
-                return logError(D3DERR_INVALIDCALL);
-              }
+              if (unlikely(stretch))
+                return D3DERR_INVALIDCALL;
 
-              return logError(copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect));
+              return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
             }
             default: {
-              return unsupported();
+              return D3DERR_INVALIDCALL;
             }
           } break;
 
@@ -891,7 +867,7 @@ namespace dxvk {
                 && srcDesc.Height == dstDesc.Height
                 && srcDesc.Format == dstDesc.Format
                 && !asymmetric) {
-              return logError(GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9()));
+              return GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
             }
           }
 
@@ -907,26 +883,23 @@ namespace dxvk {
                 pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
-
-              if (FAILED(res)) {
-                return logError(res);
-              }
+              if (unlikely(FAILED(res)))
+                return res;
 
               // Now sync the rendertarget data into main memory.
-              return logError(GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9()));
+              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
             }
             // MANAGED/SYSMEM/SCRATCH -> SYSMEM: LockRect / memcpy
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
             case d3d9::D3DPOOL_SCRATCH: {
-              if (stretch) {
-                return logError(D3DERR_INVALIDCALL);
-              }
+              if (unlikely(stretch))
+                return D3DERR_INVALIDCALL;
 
-              return logError(copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect));
+              return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
             }
             default: {
-              return unsupported();
+              return D3DERR_INVALIDCALL;
             }
           } break;
         }
@@ -943,7 +916,7 @@ namespace dxvk {
                 && srcDesc.Height == dstDesc.Height
                 && srcDesc.Format == dstDesc.Format
                 && !asymmetric) {
-              return logError(GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9()));
+              return GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
             }
           }
 
@@ -959,31 +932,28 @@ namespace dxvk {
                 pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
-
-              if (FAILED(res)) {
-                return logError(res);
-              }
+              if (unlikely(FAILED(res)))
+                return res;
 
               // Now sync the rendertarget data into main memory.
-              return logError(GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9()));
+              return GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
             }
             // MANAGED/SYSMEM/SCRATCH -> SCRATCH: LockRect / memcpy
             case d3d9::D3DPOOL_MANAGED:
             case d3d9::D3DPOOL_SYSTEMMEM:
             case d3d9::D3DPOOL_SCRATCH: {
-              if (stretch) {
-                return logError(D3DERR_INVALIDCALL);
-              }
+              if (unlikely(stretch))
+                return D3DERR_INVALIDCALL;
 
-              return logError(copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect));
+              return copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
             }
             default: {
-              return unsupported();
+              return D3DERR_INVALIDCALL;
             }
           } break;
         }
         default: {
-          return unsupported();
+          return D3DERR_INVALIDCALL;
         }
       }
     }
@@ -1888,13 +1858,13 @@ namespace dxvk {
   inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8Device* device, DWORD Handle) {
     Handle = getShaderIndex(Handle);
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
-      Logger::debug(str::format("D3D8: Invalid vertex shader index ", std::hex, Handle));
+      Logger::warn(str::format("D3D8Device: Invalid vertex shader handle ", std::hex, Handle));
       return nullptr;
     }
 
     D3D8VertexShaderInfo& info = device->m_vertexShaders[Handle];
     if (unlikely(info.pVertexDecl == nullptr && info.pVertexShader == nullptr)) {
-      Logger::debug(str::format("D3D8: Application provided deleted vertex shader ", std::hex, Handle));
+      Logger::warn(str::format("D3D8Device: Application provided deleted vertex shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -1914,7 +1884,7 @@ namespace dxvk {
     if (!isFVF(Handle)) {
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
-      if (!info)
+      if (unlikely(!info))
         return D3DERR_INVALIDCALL;
 
       StateChange();
@@ -1980,7 +1950,7 @@ namespace dxvk {
     if (!isFVF(Handle)) {
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
-      if (!info)
+      if (unlikely(!info))
         return D3DERR_INVALIDCALL;
 
       info->pVertexDecl = nullptr;
@@ -2082,14 +2052,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
-      Logger::debug(str::format("D3D8: Invalid pixel shader index ", std::hex, Handle));
+      Logger::warn(str::format("D3D8Device: Invalid pixel shader handle ", std::hex, Handle));
       return nullptr;
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle].ptr();
 
     if (unlikely(pPixelShader == nullptr)) {
-      Logger::debug(str::format("D3D8: Application provided deleted pixel shader ", std::hex, Handle));
+      Logger::warn(str::format("D3D8Device: Application provided deleted pixel shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -2103,17 +2073,16 @@ namespace dxvk {
       return m_recorder->SetPixelShader(Handle);
     }
 
-    if (Handle == DWORD(NULL)) {
+    if (!Handle) {
       StateChange();
-      m_currentPixelShader = DWORD(NULL);
+      m_currentPixelShader = 0;
       return GetD3D9()->SetPixelShader(nullptr);
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
-    if (unlikely(!pPixelShader)) {
+    if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;
-    }
 
     StateChange();
     HRESULT res = GetD3D9()->SetPixelShader(pPixelShader);
@@ -2143,9 +2112,8 @@ namespace dxvk {
 
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
-    if (unlikely(!pPixelShader)) {
+    if (unlikely(!pPixelShader))
       return D3DERR_INVALIDCALL;
-    }
 
     m_pixelShaders[getShaderIndex(Handle)] = nullptr;
 
