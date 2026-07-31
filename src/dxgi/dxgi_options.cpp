@@ -68,6 +68,15 @@ namespace dxvk {
       return true;
     }
 
+    // When XESS_LIB_OVERRIDE is set, the module is a native Linux .so and has
+    // no Windows version info resources, so the query below will always fail.
+    // Assume the user is intentionally using a modern XeSS that doesn't need
+    // the Intel GPU workaround.
+    if (!env::getEnvVar("XESS_LIB_OVERRIDE").empty()) {
+      Logger::info("DXGI: XeSS library override detected, skipping Intel GPU workaround");
+      return false;
+    }
+
     // Query version info blob size...
     auto fiSize = GetFileVersionInfoSizeA(fileName.data(), nullptr);
 
