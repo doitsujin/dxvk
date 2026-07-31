@@ -1,6 +1,7 @@
 #include "d3d9_format_helpers.h"
 
 #include <d3d9_convert_yuy2_uyvy.h>
+#include <d3d9_convert_r3g3b2.h>
 #include <d3d9_convert_l6v5u5.h>
 #include <d3d9_convert_x8l8v8u8.h>
 #include <d3d9_convert_a2w10v10u10.h>
@@ -43,6 +44,10 @@ namespace dxvk {
         break;
 
       case D3D9ConversionFormat_YV12:
+        ConvertGenericFormat(ctx, conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R8_UINT, { 1u, 1u });
+        break;
+
+      case D3D9ConversionFormat_R3G3B2:
         ConvertGenericFormat(ctx, conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R8_UINT, { 1u, 1u });
         break;
 
@@ -143,6 +148,7 @@ namespace dxvk {
   void D3D9FormatHelper::InitPipelines() {
     m_pipelines[D3D9ConversionFormat_YUY2] = CreatePipeline(sizeof(d3d9_convert_yuy2_uyvy), d3d9_convert_yuy2_uyvy, 0);
     m_pipelines[D3D9ConversionFormat_UYVY] = CreatePipeline(sizeof(d3d9_convert_yuy2_uyvy), d3d9_convert_yuy2_uyvy, 1);
+    m_pipelines[D3D9ConversionFormat_R3G3B2] = CreatePipeline(sizeof(d3d9_convert_r3g3b2), d3d9_convert_r3g3b2, 0);
     m_pipelines[D3D9ConversionFormat_L6V5U5] = CreatePipeline(sizeof(d3d9_convert_l6v5u5), d3d9_convert_l6v5u5, 0);
     m_pipelines[D3D9ConversionFormat_X8L8V8U8] = CreatePipeline(sizeof(d3d9_convert_x8l8v8u8), d3d9_convert_x8l8v8u8, 0);
     m_pipelines[D3D9ConversionFormat_A2W10V10U10] = CreatePipeline(sizeof(d3d9_convert_a2w10v10u10), d3d9_convert_a2w10v10u10, 0);

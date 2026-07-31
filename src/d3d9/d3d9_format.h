@@ -138,6 +138,7 @@ namespace dxvk {
     D3D9ConversionFormat_None = 0,
     D3D9ConversionFormat_YUY2 = 1,
     D3D9ConversionFormat_UYVY,
+    D3D9ConversionFormat_R3G3B2,
     D3D9ConversionFormat_L6V5U5,
     D3D9ConversionFormat_X8L8V8U8,
     D3D9ConversionFormat_A2W10V10U10,
@@ -239,6 +240,7 @@ namespace dxvk {
 
     bool m_dfSupport;
     bool m_x4r4g4b4Support;
+    bool m_r3g3b2Support;
     bool m_w11v11u10Support;
     bool m_d16lockableSupport;
 

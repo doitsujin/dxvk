@@ -45,7 +45,13 @@ namespace dxvk {
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
-      case D3D9Format::R3G3B2: return {}; // Unsupported
+      case D3D9Format::R3G3B2: return { // Supported in D3D7 and earlier
+        VK_FORMAT_R8_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE },
+        { D3D9ConversionFormat_R3G3B2, VK_FORMAT_B8G8R8A8_UNORM }};
 
       case D3D9Format::A8: return {
         VK_FORMAT_R8_UNORM,
@@ -488,6 +494,8 @@ namespace dxvk {
     // NVIDIA does not natively support any DF formats
     m_dfSupport = !isNvidia ? options.supportDFFormats : false;
     m_x4r4g4b4Support = options.supportX4R4G4B4;
+    // R3G3B2 is only supported by D3D7 and earlier
+    m_r3g3b2Support = false;
     // W11V11U10 is only supported by D3D8
     m_w11v11u10Support = false;
     // Only AMD supports D16_LOCKABLE natively
@@ -527,6 +535,9 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING mapping = ConvertFormatUnfixed(Format);
 
     if (Format == D3D9Format::X4R4G4B4 && !m_x4r4g4b4Support)
+      return D3D9_VK_FORMAT_MAPPING();
+
+    if (Format == D3D9Format::R3G3B2 && !m_r3g3b2Support)
       return D3D9_VK_FORMAT_MAPPING();
 
     if (Format == D3D9Format::W11V11U10 && !m_w11v11u10Support)
@@ -579,6 +590,7 @@ namespace dxvk {
       case D3D9Format::R8G8B8:
         return &r8b8g8;
 
+      // only supported by D3D7 and earlier
       case D3D9Format::R3G3B2:
         return &r3g3b2;
 
@@ -649,6 +661,8 @@ namespace dxvk {
 
   void D3D9VkFormatTable::RefreshFormatSupport(
     const D3D9Adapter*          pParent) {
+    // R3G2B2 is only supported by D3D7 and earlier
+    m_r3g3b2Support = pParent->IsD3DCompatibile(D3DCompatibility::D3D7);
     // W11V11U10 is only supported by D3D8
     m_w11v11u10Support = pParent->IsD3DCompatibile(D3DCompatibility::D3D8);
   }

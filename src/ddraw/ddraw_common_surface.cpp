@@ -181,16 +181,6 @@ namespace dxvk {
         Logger::warn("DDrawCommonSurface::InitializeD3D9: Unsupported format D3DFMT_P8");
 
       return DD_OK;
-    // Similarly, D3DFMT_R3G3B2 isn't supported by D3D9 dxvk, however some
-    // applications require it to be supported by ddraw, even if they do not
-    // use it. Simply ignore any D3DFMT_R3G3B2 textures/surfaces for now.
-    } else if (unlikely(m_format9 == d3d9::D3DFMT_R3G3B2)) {
-      static bool s_formatR3G3B2ErrorShown;
-
-      if (!std::exchange(s_formatR3G3B2ErrorShown, true))
-        Logger::warn("DDrawCommonSurface::InitializeD3D9: Unsupported format D3DFMT_R3G3B2");
-
-      return DD_OK;
     }
 
     d3d9::D3DPOOL pool;

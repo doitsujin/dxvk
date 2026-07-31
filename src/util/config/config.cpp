@@ -1493,17 +1493,13 @@ namespace dxvk {
       { "ddraw.forceLegacyPresent",         "True" },
       { "ddraw.legacyPresentGuard",       "Strict" },
     }} },
-    /* Etherlords                                 *
-     * Needs R3G3B2 support for text rendering    */
+    /* Etherlords                                 */
     { R"(\\Etherlords\.exe$)", {{
       { "ddraw.forceLegacyPresent",         "True" },
-      { "ddraw.supportR3G3B2",              "True" },
     }} },
-    /* Etherlords 2                               *
-     * Needs R3G3B2 support for text rendering    */
+    /* Etherlords 2                               */
     { R"(\\Etherlords2\.exe$)", {{
       { "ddraw.forceLegacyPresent",         "True" },
-      { "ddraw.supportR3G3B2",              "True" },
     }} },
     /* Evil Islands                               */
     { R"(\\Evil Islands\\game\.exe$)", {{

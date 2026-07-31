@@ -314,9 +314,7 @@ namespace dxvk {
     if (unlikely(hr != D3DENUMRET_OK))
       return D3D_OK;
 
-    // Not supported in D3D9, but some games need
-    // it to be advertised (for offscreen plain surfaces?)
-    if (unlikely(d3dOptions->supportR3G3B2)) {
+    if (d3dOptions->supportR3G3B2) {
       textureFormat = GetTextureFormat(d3d9::D3DFMT_R3G3B2);
       hr = cb(&textureFormat, ctx);
       if (unlikely(hr != D3DENUMRET_OK))

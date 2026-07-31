@@ -216,6 +216,17 @@ namespace dxvk {
     }
 
     if (likely(lpDDSurfaceDesc->dwFlags & DDSD_PIXELFORMAT)) {
+      // WineD3D will fail to create 8-bit texture surfaces at times, for whatever reason...
+      if (unlikely((lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_TEXTURE)
+               &&  (lpDDSurfaceDesc->ddpfPixelFormat.dwFlags & DDPF_RGB)
+               &&   lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount == 8
+               && !(lpDDSurfaceDesc->ddpfPixelFormat.dwFlags & DDPF_PALETTEINDEXED8))) {
+        static bool s_8bitTextureWarningShown;
+
+        if (!std::exchange(s_8bitTextureWarningShown, true))
+          Logger::warn("DDrawInterface::CreateSurface: Use of potentially unsupported 8-bit texture surface");
+      }
+
       // Work around a WineD3D bug/limitation that prevents
       // read back from L6V5U5 and X8L8V8U8 video memory surfaces
       //
