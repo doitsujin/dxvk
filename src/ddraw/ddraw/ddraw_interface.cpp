@@ -203,57 +203,61 @@ namespace dxvk {
 
     InitReturnPtr(lplpDDSurface);
 
-    // Because we are removing the DDSCAPS_WRITEONLY flag below, we need
-    // to first validate the combinations that would otherwise cause issues
-    HRESULT hr = ValidateSurfaceFlags(lpDDSurfaceDesc);
-    if (unlikely(FAILED(hr)))
-      return hr;
+    if (likely(lpDDSurfaceDesc->dwFlags & DDSD_CAPS)) {
+      // Because we are removing the DDSCAPS_WRITEONLY flag below, we need
+      // to first validate the combinations that would otherwise cause issues
+      HRESULT hr = ValidateSurfaceFlags(lpDDSurfaceDesc);
+      if (unlikely(FAILED(hr)))
+        return hr;
 
-    // We need to ensure we can always read from surfaces for upload to
-    // D3D9, so always strip the DDSCAPS_WRITEONLY flag on creation
-    lpDDSurfaceDesc->ddsCaps.dwCaps &= ~DDSCAPS_WRITEONLY;
-
-    // Work around a WineD3D bug/limitation that prevents
-    // read back from L6V5U5 and X8L8V8U8 video memory surfaces
-    //
-    // Note: Doing this for other surfaces/formats is a bad idea,
-    // because some games expect these flags to remain in place, and
-    // may crash in case they find that's not the case
-    if (unlikely((lpDDSurfaceDesc->ddpfPixelFormat.dwFlags & DDPF_BUMPLUMINANCE)
-              && (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_VIDEOMEMORY))) {
-      Logger::warn("DDrawInterface::CreateSurface: Video memory DDPF_BUMPLUMINANCE surface");
-      lpDDSurfaceDesc->ddsCaps.dwCaps &= ~DDSCAPS_VIDEOMEMORY &
-                                         ~DDSCAPS_LOCALVIDMEM &
-                                         ~DDSCAPS_NONLOCALVIDMEM;
-      lpDDSurfaceDesc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
+      // We need to ensure we can always read from surfaces for upload to
+      // D3D9, so always strip the DDSCAPS_WRITEONLY flag on creation
+      lpDDSurfaceDesc->ddsCaps.dwCaps &= ~DDSCAPS_WRITEONLY;
     }
 
-    if (unlikely(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_ZBUFFER)) {
-      if (unlikely(m_commonIntf->GetOptions()->useD16forD24X8
-                && lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFF
-                && lpDDSurfaceDesc->ddpfPixelFormat.dwStencilBitMask == 0x0)) {
-        // Games such as Need for Speed: Porsche are broken with 32-bit color
-        // on night tracks with "projected" lights, because they clearly were
-        // designed with 16-bit Z buffers in mind. Fix it up by silently swapping
-        // D16 for D24X8 on depth stencil creation.
-        Logger::debug("DDrawInterface::CreateSurface: Using D16 instead of D24X8");
-        lpDDSurfaceDesc->ddpfPixelFormat.dwZBufferBitDepth = 16;
-        lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFF;
-      } else if (unlikely(lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFFFF)) {
-        if (m_commonIntf->GetOptions()->useD24X8forD32) {
-          // In case of up-front unsupported and unadvertised D32 depth stencil use,
-          // replace it with D24X8, as some games, such as Sacrifice, rely on it
-          // to properly enable 32-bit display modes (and revert to 16-bit otherwise)
-          Logger::debug("DDrawInterface::CreateSurface: Using D24X8 instead of D32");
-          lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFFFF;
-        } else {
-          Logger::warn("DDrawInterface::CreateSurface: Use of unsupported D32");
+    if (likely(lpDDSurfaceDesc->dwFlags & DDSD_PIXELFORMAT)) {
+      // Work around a WineD3D bug/limitation that prevents
+      // read back from L6V5U5 and X8L8V8U8 video memory surfaces
+      //
+      // Note: Doing this for other surfaces/formats is a bad idea,
+      // because some games expect these flags to remain in place, and
+      // may crash in case they find that's not the case
+      if (unlikely((lpDDSurfaceDesc->ddpfPixelFormat.dwFlags == (DDPF_BUMPDUDV | DDPF_BUMPLUMINANCE))
+                && (lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_VIDEOMEMORY))) {
+        Logger::warn("DDrawInterface::CreateSurface: Video memory DDPF_BUMPLUMINANCE surface");
+        lpDDSurfaceDesc->ddsCaps.dwCaps &= ~DDSCAPS_VIDEOMEMORY &
+                                           ~DDSCAPS_LOCALVIDMEM &
+                                           ~DDSCAPS_NONLOCALVIDMEM;
+        lpDDSurfaceDesc->ddsCaps.dwCaps |= DDSCAPS_SYSTEMMEMORY;
+      }
+
+      if (unlikely(lpDDSurfaceDesc->ddsCaps.dwCaps & DDSCAPS_ZBUFFER)) {
+        if (unlikely(m_commonIntf->GetOptions()->useD16forD24X8
+                  && lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFF
+                  && lpDDSurfaceDesc->ddpfPixelFormat.dwStencilBitMask == 0x0)) {
+          // Games such as Need for Speed: Porsche are broken with 32-bit color
+          // on night tracks with "projected" lights, because they clearly were
+          // designed with 16-bit Z buffers in mind. Fix it up by silently swapping
+          // D16 for D24X8 on depth stencil creation.
+          Logger::debug("DDrawInterface::CreateSurface: Using D16 instead of D24X8");
+          lpDDSurfaceDesc->ddpfPixelFormat.dwZBufferBitDepth = 16;
+          lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFF;
+        } else if (unlikely(lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask == 0xFFFFFFFF)) {
+          if (m_commonIntf->GetOptions()->useD24X8forD32) {
+            // In case of up-front unsupported and unadvertised D32 depth stencil use,
+            // replace it with D24X8, as some games, such as Sacrifice, rely on it
+            // to properly enable 32-bit display modes (and revert to 16-bit otherwise)
+            Logger::debug("DDrawInterface::CreateSurface: Using D24X8 instead of D32");
+            lpDDSurfaceDesc->ddpfPixelFormat.dwZBitMask = 0xFFFFFF;
+          } else {
+            Logger::warn("DDrawInterface::CreateSurface: Use of unsupported D32");
+          }
         }
       }
     }
 
     Com<IDirectDrawSurface> ddrawSurfaceProxied;
-    hr = m_proxy->CreateSurface(lpDDSurfaceDesc, &ddrawSurfaceProxied, pUnkOuter);
+    HRESULT hr = m_proxy->CreateSurface(lpDDSurfaceDesc, &ddrawSurfaceProxied, pUnkOuter);
     // Some games simply try creating surfaces with various formats until something works...
     if (unlikely(FAILED(hr)))
       return hr;
@@ -463,8 +467,17 @@ namespace dxvk {
 
     const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
 
-    if (unlikely(d3dOptions->mask8BitModes && lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount == 8))
+    if (unlikely(d3dOptions->mask8BitModes
+              && lpDDSurfaceDesc->dwFlags & DDSD_PIXELFORMAT
+              && lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount == 8)) {
+      // Report a fake D3DFMT_R5G6B5 back buffer scenario
+      lpDDSurfaceDesc->ddpfPixelFormat.dwFlags = DDPF_RGB;
       lpDDSurfaceDesc->ddpfPixelFormat.dwRGBBitCount = 16;
+      lpDDSurfaceDesc->ddpfPixelFormat.dwRGBAlphaBitMask = 0x0000;
+      lpDDSurfaceDesc->ddpfPixelFormat.dwRBitMask = 0xf800;
+      lpDDSurfaceDesc->ddpfPixelFormat.dwGBitMask = 0x07e0;
+      lpDDSurfaceDesc->ddpfPixelFormat.dwBBitMask = 0x001f;
+    }
 
     return DD_OK;
   }
