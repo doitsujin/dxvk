@@ -53,12 +53,13 @@ namespace dxvk {
   using PositionArray = std::array<FLOAT, 8>;
   using TexCoordArray = std::array<std::array<FLOAT, 4>, ddrawCaps::MaxSimultaneousTextures>;
 
+#ifdef DXVK_SWVP_SSE2
   struct alignas(16) SIMDRow {
     __m128 lo; // Elements 0, 1, 2, 3
     __m128 hi; // Elements 4, 5, 6, 7
   };
 
-  inline void swap_rows_sse(SIMDRow& a, SIMDRow& b) {
+  inline void SwapRowsSSE(SIMDRow& a, SIMDRow& b) {
     __m128 temp_lo = a.lo;
     __m128 temp_hi = a.hi;
     a.lo = b.lo;
@@ -67,7 +68,7 @@ namespace dxvk {
     b.hi = temp_hi;
   }
 
-  inline void InvertMatrix_SSE2(D3DMATRIX *out, const D3DMATRIX *m) {
+  inline void InvertMatrix(D3DMATRIX *out, const D3DMATRIX *m) {
     SIMDRow r[4];
 
     auto get_val = [](const SIMDRow& row, int col) -> float {
@@ -91,14 +92,14 @@ namespace dxvk {
     r[3].lo = _mm_setr_ps(m->_41, m->_42, m->_43, m->_44);
     r[3].hi = _mm_setr_ps(0.0f, 0.0f, 0.0f, 1.0f);
 
-    if (std::abs(get_val(r[3], 0)) > std::abs(get_val(r[2], 0)))
-      swap_rows_sse(r[3], r[2]);
-    if (std::abs(get_val(r[2], 0)) > std::abs(get_val(r[1], 0)))
-      swap_rows_sse(r[2], r[1]);
-    if (std::abs(get_val(r[1], 0)) > std::abs(get_val(r[0], 0)))
-      swap_rows_sse(r[1], r[0]);
+    if (std::fabs(get_val(r[3], 0)) > std::fabs(get_val(r[2], 0)))
+      SwapRowsSSE(r[3], r[2]);
+    if (std::fabs(get_val(r[2], 0)) > std::fabs(get_val(r[1], 0)))
+      SwapRowsSSE(r[2], r[1]);
+    if (std::fabs(get_val(r[1], 0)) > std::fabs(get_val(r[0], 0)))
+      SwapRowsSSE(r[1], r[0]);
 
-    float pivot0 = get_val(r[0], 0);
+    const float pivot0 = get_val(r[0], 0);
     if (pivot0 == 0.0f)
       return;
 
@@ -112,27 +113,27 @@ namespace dxvk {
     eliminate_row(r[2], r[0], get_val(r[2], 0) / pivot0);
     eliminate_row(r[3], r[0], get_val(r[3], 0) / pivot0);
 
-    if (std::abs(get_val(r[3], 1)) > std::abs(get_val(r[2], 1)))
-      swap_rows_sse(r[3], r[2]);
-    if (std::abs(get_val(r[2], 1)) > std::abs(get_val(r[1], 1)))
-      swap_rows_sse(r[2], r[1]);
+    if (std::fabs(get_val(r[3], 1)) > std::fabs(get_val(r[2], 1)))
+      SwapRowsSSE(r[3], r[2]);
+    if (std::fabs(get_val(r[2], 1)) > std::fabs(get_val(r[1], 1)))
+      SwapRowsSSE(r[2], r[1]);
 
-    float pivot1 = get_val(r[1], 1);
+    const float pivot1 = get_val(r[1], 1);
     if (pivot1 == 0.0f)
       return;
 
     eliminate_row(r[2], r[1], get_val(r[2], 1) / pivot1);
     eliminate_row(r[3], r[1], get_val(r[3], 1) / pivot1);
 
-    if (std::abs(get_val(r[3], 2)) > std::abs(get_val(r[2], 2)))
-      swap_rows_sse(r[3], r[2]);
-    float pivot2 = get_val(r[2], 2);
+    if (std::fabs(get_val(r[3], 2)) > std::fabs(get_val(r[2], 2)))
+      SwapRowsSSE(r[3], r[2]);
+    const float pivot2 = get_val(r[2], 2);
     if (pivot2 == 0.0f)
       return;
 
     eliminate_row(r[3], r[2], get_val(r[3], 2) / pivot2);
 
-    float pivot3 = get_val(r[3], 3);
+    const float pivot3 = get_val(r[3], 3);
     if (pivot3 == 0.0f)
       return;
 
@@ -140,28 +141,28 @@ namespace dxvk {
     r[3].lo = _mm_mul_ps(r[3].lo, v_inv_pivot3);
     r[3].hi = _mm_mul_ps(r[3].hi, v_inv_pivot3);
 
-    float m2_3 = get_val(r[2], 3);
+    const float m2_3 = get_val(r[2], 3);
     r[2].lo = _mm_sub_ps(r[2].lo, _mm_mul_ps(_mm_set1_ps(m2_3), r[3].lo));
     r[2].hi = _mm_sub_ps(r[2].hi, _mm_mul_ps(_mm_set1_ps(m2_3), r[3].hi));
 
-    float s2 = get_val(r[2], 2);
+    const float s2 = get_val(r[2], 2);
     r[2].lo = _mm_mul_ps(r[2].lo, _mm_set1_ps(1.0f / s2));
     r[2].hi = _mm_mul_ps(r[2].hi, _mm_set1_ps(1.0f / s2));
 
-    float m1_3 = get_val(r[1], 3);
-    float m1_2 = get_val(r[1], 2);
+    const float m1_3 = get_val(r[1], 3);
+    const float m1_2 = get_val(r[1], 2);
     r[1].lo = _mm_sub_ps(r[1].lo, _mm_mul_ps(_mm_set1_ps(m1_3), r[3].lo));
     r[1].hi = _mm_sub_ps(r[1].hi, _mm_mul_ps(_mm_set1_ps(m1_3), r[3].hi));
     r[1].lo = _mm_sub_ps(r[1].lo, _mm_mul_ps(_mm_set1_ps(m1_2), r[2].lo));
     r[1].hi = _mm_sub_ps(r[1].hi, _mm_mul_ps(_mm_set1_ps(m1_2), r[2].hi));
 
-    float s1 = get_val(r[1], 1);
+    const float s1 = get_val(r[1], 1);
     r[1].lo = _mm_mul_ps(r[1].lo, _mm_set1_ps(1.0f / s1));
     r[1].hi = _mm_mul_ps(r[1].hi, _mm_set1_ps(1.0f / s1));
 
-    float m0_3 = get_val(r[0], 3);
-    float m0_2 = get_val(r[0], 2);
-    float m0_1 = get_val(r[0], 1);
+    const float m0_3 = get_val(r[0], 3);
+    const float m0_2 = get_val(r[0], 2);
+    const float m0_1 = get_val(r[0], 1);
     r[0].lo = _mm_sub_ps(r[0].lo, _mm_mul_ps(_mm_set1_ps(m0_3), r[3].lo));
     r[0].hi = _mm_sub_ps(r[0].hi, _mm_mul_ps(_mm_set1_ps(m0_3), r[3].hi));
     r[0].lo = _mm_sub_ps(r[0].lo, _mm_mul_ps(_mm_set1_ps(m0_2), r[2].lo));
@@ -169,7 +170,7 @@ namespace dxvk {
     r[0].lo = _mm_sub_ps(r[0].lo, _mm_mul_ps(_mm_set1_ps(m0_1), r[1].lo));
     r[0].hi = _mm_sub_ps(r[0].hi, _mm_mul_ps(_mm_set1_ps(m0_1), r[1].hi));
 
-    float s0 = get_val(r[0], 0);
+    const float s0 = get_val(r[0], 0);
     r[0].lo = _mm_mul_ps(r[0].lo, _mm_set1_ps(1.0f / s0));
     r[0].hi = _mm_mul_ps(r[0].hi, _mm_set1_ps(1.0f / s0));
 
@@ -180,7 +181,7 @@ namespace dxvk {
     out->_41 = get_val(r[3], 4); out->_42 = get_val(r[3], 5); out->_43 = get_val(r[3], 6); out->_44 = get_val(r[3], 7);
   }
 
-  inline __m128 cross_product_sse2(__m128 a, __m128 b) {
+  inline __m128 CrossProduct(__m128 a, __m128 b) {
     __m128 a_yzx = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 0, 2, 1));
     __m128 b_zxy = _mm_shuffle_ps(b, b, _MM_SHUFFLE(3, 1, 0, 2));
     __m128 a_zxy = _mm_shuffle_ps(a, a, _MM_SHUFFLE(3, 1, 0, 2));
@@ -189,26 +190,25 @@ namespace dxvk {
     return _mm_sub_ps(_mm_mul_ps(a_yzx, b_zxy), _mm_mul_ps(a_zxy, b_yzx));
   }
 
-  inline void InvertMatrixLegacy_SSE2(D3DMATRIX *out, const D3DMATRIX *in) {
+  inline void InvertMatrixLegacy(D3DMATRIX *out, const D3DMATRIX *in) {
     __m128 r1 = _mm_loadu_ps(&in->_11);
     __m128 r2 = _mm_loadu_ps(&in->_21);
     __m128 r3 = _mm_loadu_ps(&in->_31);
 
-    __m128 v_a = cross_product_sse2(r2, r3);
-    __m128 v_b = cross_product_sse2(r3, r1);
-    __m128 v_c = cross_product_sse2(r1, r2);
+    __m128 v_a = CrossProduct(r2, r3);
+    __m128 v_b = CrossProduct(r3, r1);
+    __m128 v_c = CrossProduct(r1, r2);
 
     __m128 dot = _mm_mul_ps(r1, v_a);
 
-    float det;
     float temp_det[4];
     _mm_storeu_ps(temp_det, dot);
-    det = temp_det[0] + temp_det[1] + temp_det[2];
+    const float det = temp_det[0] + temp_det[1] + temp_det[2];
 
-    if (std::fabs(det) <= std::numeric_limits<float>::min() * 10)
+    if (std::fabs(det) <= std::numeric_limits<float>::min() * 10.0f)
       return;
 
-    float inv_det = 1.0f / det;
+    const float inv_det = 1.0f / det;
 
     v_a = _mm_mul_ps(v_a, _mm_set1_ps(inv_det));
     v_b = _mm_mul_ps(v_b, _mm_set1_ps(inv_det));
@@ -224,25 +224,7 @@ namespace dxvk {
     out->_31 = va[2]; out->_32 = vb[2]; out->_33 = vc[2];
   }
 
-  inline void ComputeNormalMatrix(D3DMATRIX &normal_matrix, bool isLegacy, const D3DMATRIX &wv) {
-    D3DMATRIX mv = wv;
-    if (isLegacy)
-      InvertMatrixLegacy_SSE2(&mv, &mv);
-    else
-      InvertMatrix_SSE2(&mv, &mv);
-
-    normal_matrix._11 = mv._11;
-    normal_matrix._12 = mv._21;
-    normal_matrix._13 = mv._31;
-    normal_matrix._21 = mv._12;
-    normal_matrix._22 = mv._22;
-    normal_matrix._23 = mv._32;
-    normal_matrix._31 = mv._13;
-    normal_matrix._32 = mv._23;
-    normal_matrix._33 = mv._33;
-  }
-
-  inline D3DMATRIX D3DMatrixMultiply4x4_SSE2(const D3DMATRIX& a, const D3DMATRIX& b) {
+  inline D3DMATRIX D3DMatrixMultiply4x4(const D3DMATRIX& a, const D3DMATRIX& b) {
     D3DMATRIX result;
 
     const __m128 b0 = _mm_loadu_ps(&b._11);
@@ -250,13 +232,13 @@ namespace dxvk {
     const __m128 b2 = _mm_loadu_ps(&b._31);
     const __m128 b3 = _mm_loadu_ps(&b._41);
 
-    #define MULROW(dst, src)                                            \
-    do {                                                                \
-        __m128 r = _mm_mul_ps(_mm_set1_ps((src)[0]), b0);               \
-        r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[1]), b1));       \
-        r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[2]), b2));       \
-        r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[3]), b3));       \
-        _mm_storeu_ps((dst), r);                                        \
+    #define MULROW(dst, src)                                          \
+    do {                                                              \
+      __m128 r = _mm_mul_ps(_mm_set1_ps((src)[0]), b0);               \
+      r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[1]), b1));       \
+      r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[2]), b2));       \
+      r = _mm_add_ps(r, _mm_mul_ps(_mm_set1_ps((src)[3]), b3));       \
+      _mm_storeu_ps((dst), r);                                        \
     } while (0)
 
     MULROW(&result._11, &a._11);
@@ -268,8 +250,7 @@ namespace dxvk {
     return result;
   }
 
-  inline D3DVECTOR4 D3DVec4Transform_SSE2(const D3DMATRIX& m, const D3DVECTOR4& v)
-  {
+  inline D3DVECTOR4 D3DVec4Transform(const D3DMATRIX& m, const D3DVECTOR4& v) {
     D3DVECTOR4 result;
 
     const __m128 r0 = _mm_loadu_ps(&m._11);
@@ -287,7 +268,7 @@ namespace dxvk {
     return result;
   }
 
-  inline D3DVECTOR D3DVec3Transform_SSE2(const D3DMATRIX& m, const D3DVECTOR& v) {
+  inline D3DVECTOR D3DVec3Transform(const D3DMATRIX& m, const D3DVECTOR& v) {
     const __m128 vx = _mm_set1_ps(v.x);
     const __m128 vy = _mm_set1_ps(v.y);
     const __m128 vz = _mm_set1_ps(v.z);
@@ -306,7 +287,7 @@ namespace dxvk {
     return D3DVECTOR{tmp.x, tmp.y, tmp.z};
   }
 
-  inline D3DVECTOR D3DVec4to3Transform_SSE2(const D3DMATRIX& m, const D3DVECTOR4& v) {
+  inline D3DVECTOR D3DVec4to3Transform(const D3DMATRIX& m, const D3DVECTOR4& v) {
     const __m128 r0 = _mm_loadu_ps(&m._11);
     const __m128 r1 = _mm_loadu_ps(&m._21);
     const __m128 r2 = _mm_loadu_ps(&m._31);
@@ -323,7 +304,7 @@ namespace dxvk {
     return D3DVECTOR{tmp.x, tmp.y, tmp.z};
   }
 
-  inline float D3DVec3Dot_SSE2(const D3DVECTOR* a, const D3DVECTOR* b) {
+  inline float D3DVec3Dot(const D3DVECTOR* a, const D3DVECTOR* b) {
     if (a == nullptr || b == nullptr)
       return 0.0f;
 
@@ -337,8 +318,9 @@ namespace dxvk {
     return _mm_cvtss_f32(t);
   }
 
-  inline __m128 D3DVec3Normalize_SSECore(__m128 v) {
-    __m128 mul = _mm_mul_ps(v, v);
+  inline D3DVECTOR D3DVec3Normalize(const D3DVECTOR& v) {
+    __m128 vec = _mm_setr_ps(v.x, v.y, v.z, 0.0f);
+    __m128 mul = _mm_mul_ps(vec, vec);
     __m128 sum = _mm_add_ps(mul, _mm_shuffle_ps(mul, mul, _MM_SHUFFLE(1,0,3,2)));
     sum = _mm_add_ss(sum, _mm_shuffle_ps(sum, sum, _MM_SHUFFLE(2,3,0,1)));
 
@@ -348,13 +330,7 @@ namespace dxvk {
 
     inv = _mm_mul_ss(inv, _mm_sub_ss(three, _mm_mul_ss(_mm_mul_ss(sum, inv), inv)));
     inv = _mm_mul_ss(inv, half);
-
-    return _mm_shuffle_ps(inv, inv, 0x00);
-  }
-
-  inline D3DVECTOR D3DVec3Normalize(const D3DVECTOR& v) {
-    __m128 vec = _mm_setr_ps(v.x, v.y, v.z, 0.0f);
-    __m128 inv = D3DVec3Normalize_SSECore(vec);
+    inv = _mm_shuffle_ps(inv, inv, 0x00);
 
     vec = _mm_mul_ps(vec, inv);
 
@@ -366,7 +342,7 @@ namespace dxvk {
     return out;
   }
 
-  inline void D3DColorClamp_SSE2(D3DCOLORVALUE& color) {
+  inline void D3DColorClamp(D3DCOLORVALUE& color) {
     __m128 c = _mm_loadu_ps(&color.r);
 
     c = _mm_min_ps(c, _mm_set1_ps(1.0f));
@@ -375,7 +351,7 @@ namespace dxvk {
     _mm_storeu_ps(&color.r, c);
   }
 
-  inline void ColorVMultiplyAdd_SSE2(D3DCOLORVALUE& out, const D3DCOLORVALUE& color, float value) {
+  inline void ColorVMultiplyAdd(D3DCOLORVALUE& out, const D3DCOLORVALUE& color, float value) {
     __m128 va = _mm_loadu_ps(&color.r);
     __m128 vb = _mm_loadu_ps(&out.r);
 
@@ -388,7 +364,7 @@ namespace dxvk {
     out.a = alpha;
   }
 
-  inline float D3DSSE_Mad2_Add_Scalar_SSE2(float a1, float a2, float b1, float b2, float c) {
+  inline float D3DMad2AddScalar(float a1, float a2, float b1, float b2, float c) {
     __m128 r = _mm_mul_ss(_mm_set_ss(a1), _mm_set_ss(a2));
     r = _mm_add_ss(r, _mm_mul_ss(_mm_set_ss(b1), _mm_set_ss(b2)));
     r = _mm_add_ss(r, _mm_set_ss(c));
@@ -396,7 +372,7 @@ namespace dxvk {
     return _mm_cvtss_f32(r);
   }
 
-  inline void D3DColorMulRGB_SetAlpha_SSE2(D3DCOLORVALUE& a, const D3DCOLORVALUE& b, bool legacy) {
+  inline void D3DColorMulRGBSetAlpha(D3DCOLORVALUE& a, const D3DCOLORVALUE& b, bool legacy) {
     __m128 va = _mm_loadu_ps(&a.r);
     __m128 vb = _mm_loadu_ps(&b.r);
 
@@ -409,44 +385,228 @@ namespace dxvk {
     else
       a.a = b.a;
   }
+#else
+  inline void InvertMatrix(D3DMATRIX *out, const D3DMATRIX *m) {
+    float tmp[4][8];
 
-  // D3DCOLOR is DWORD packed ARGB, uint8_t per component
-  // D3DCOLORVALUE is struct with float per component normalized to 0.0f - 1.0f
-  inline D3DCOLOR ColorVToColor(const D3DCOLORVALUE& c) {
-    return D3DCOLOR_ARGB(
-      static_cast<int>(roundf(c.a * 255.0f)),
-      static_cast<int>(roundf(c.r * 255.0f)),
-      static_cast<int>(roundf(c.g * 255.0f)),
-      static_cast<int>(roundf(c.b * 255.0f))
-    );
+    tmp[0][0] = m->_11; tmp[0][1] = m->_12; tmp[0][2] = m->_13; tmp[0][3] = m->_14;
+    tmp[0][4] = 1.0f;   tmp[0][5] = 0.0f;   tmp[0][6] = 0.0f;   tmp[0][7] = 0.0f;
+    tmp[1][0] = m->_21; tmp[1][1] = m->_22; tmp[1][2] = m->_23; tmp[1][3] = m->_24;
+    tmp[1][4] = 0.0f;   tmp[1][5] = 1.0f;   tmp[1][6] = 0.0f;   tmp[1][7] = 0.0f;
+    tmp[2][0] = m->_31; tmp[2][1] = m->_32; tmp[2][2] = m->_33; tmp[2][3] = m->_34;
+    tmp[2][4] = 0.0f;   tmp[2][5] = 0.0f;   tmp[2][6] = 1.0f;   tmp[2][7] = 0.0f;
+    tmp[3][0] = m->_41; tmp[3][1] = m->_42; tmp[3][2] = m->_43; tmp[3][3] = m->_44;
+    tmp[3][4] = 0.0f;   tmp[3][5] = 0.0f;   tmp[3][6] = 0.0f;   tmp[3][7] = 1.0f;
+
+    for (int i = 0; i < 4; ++i) {
+      int max_row = i;
+      float max_val = std::fabs(tmp[i][i]);
+      for (int k = i + 1; k < 4; ++k) {
+        const float val = std::fabs(tmp[k][i]);
+        if (val > max_val) {
+          max_val = val;
+          max_row = k;
+        }
+      }
+
+      if (max_val < std::numeric_limits<float>::min() * 10.0f)
+        return;
+
+      if (max_row != i) {
+        for (int j = 0; j < 8; ++j) {
+          std::swap(tmp[i][j], tmp[max_row][j]);
+        }
+      }
+
+      const float pivot = tmp[i][i];
+      for (int j = i; j < 8; ++j) {
+        tmp[i][j] /= pivot;
+      }
+
+      for (int k = 0; k < 4; ++k) {
+        if (k != i) {
+          const float factor = tmp[k][i];
+          for (int j = 0; j < 8; ++j) {
+            tmp[k][j] -= factor * tmp[i][j];
+          }
+        }
+      }
+    }
+
+    out->_11 = tmp[0][4]; out->_12 = tmp[0][5]; out->_13 = tmp[0][6]; out->_14 = tmp[0][7];
+    out->_21 = tmp[1][4]; out->_22 = tmp[1][5]; out->_23 = tmp[1][6]; out->_24 = tmp[1][7];
+    out->_31 = tmp[2][4]; out->_32 = tmp[2][5]; out->_33 = tmp[2][6]; out->_34 = tmp[2][7];
+    out->_41 = tmp[3][4]; out->_42 = tmp[3][5]; out->_43 = tmp[3][6]; out->_44 = tmp[3][7];
   }
 
-  inline D3DCOLORVALUE ColorToColorV(const D3DCOLOR& c) {
-    D3DCOLORVALUE result;
-
-    result.a = ((c >> 24) & 0xFF) / 255.0f;
-    result.r = ((c >> 16) & 0xFF) / 255.0f;
-    result.g = ((c >> 8)  & 0xFF) / 255.0f;
-    result.b = ((c >> 0)  & 0xFF) / 255.0f;
-
-    return result;
+  inline D3DVECTOR CrossProduct(const D3DVECTOR& a, const D3DVECTOR& b) {
+    return D3DVECTOR{
+      a.y * b.z - a.z * b.y,
+      a.z * b.x - a.x * b.z,
+      a.x * b.y - a.y * b.x
+    };
   }
 
-  inline D3DCOLORVALUE ColorVClamp(const D3DCOLORVALUE& color, float min, float max) {
-    D3DCOLORVALUE result;
+  inline void InvertMatrixLegacy(D3DMATRIX *out, const D3DMATRIX *in) {
+    D3DVECTOR r1 = { in->_11, in->_12, in->_13 };
+    D3DVECTOR r2 = { in->_21, in->_22, in->_23 };
+    D3DVECTOR r3 = { in->_31, in->_32, in->_33 };
 
-    result.r = std::clamp(color.r, min, max);
-    result.g = std::clamp(color.g, min, max);
-    result.b = std::clamp(color.b, min, max);
-    result.a = std::clamp(color.a, min, max);
+    D3DVECTOR v_a = CrossProduct(r2, r3);
+    D3DVECTOR v_b = CrossProduct(r3, r1);
+    D3DVECTOR v_c = CrossProduct(r1, r2);
 
-    return result;
+    const float det = r1.x * v_a.x + r1.y * v_a.y + r1.z * v_a.z;
+
+    if (std::fabs(det) <= std::numeric_limits<float>::min() * 10.0f)
+      return;
+
+    const float inv_det = 1.0f / det;
+
+    out->_11 = v_a.x * inv_det; out->_12 = v_b.x * inv_det; out->_13 = v_c.x * inv_det;
+    out->_21 = v_a.y * inv_det; out->_22 = v_b.y * inv_det; out->_23 = v_c.y * inv_det;
+    out->_31 = v_a.z * inv_det; out->_32 = v_b.z * inv_det; out->_33 = v_c.z * inv_det;
+  }
+
+  inline D3DMATRIX D3DMatrixMultiply4x4(const D3DMATRIX& a, const D3DMATRIX& b) {
+    return D3DMATRIX{
+      a._11 * b._11 + a._12 * b._21 + a._13 * b._31 + a._14 * b._41,
+      a._11 * b._12 + a._12 * b._22 + a._13 * b._32 + a._14 * b._42,
+      a._11 * b._13 + a._12 * b._23 + a._13 * b._33 + a._14 * b._43,
+      a._11 * b._14 + a._12 * b._24 + a._13 * b._34 + a._14 * b._44,
+      a._21 * b._11 + a._22 * b._21 + a._23 * b._31 + a._24 * b._41,
+      a._21 * b._12 + a._22 * b._22 + a._23 * b._32 + a._24 * b._42,
+      a._21 * b._13 + a._22 * b._23 + a._23 * b._33 + a._24 * b._43,
+      a._21 * b._14 + a._22 * b._24 + a._23 * b._34 + a._24 * b._44,
+      a._31 * b._11 + a._32 * b._21 + a._33 * b._31 + a._34 * b._41,
+      a._31 * b._12 + a._32 * b._22 + a._33 * b._32 + a._34 * b._42,
+      a._31 * b._13 + a._32 * b._23 + a._33 * b._33 + a._34 * b._43,
+      a._31 * b._14 + a._32 * b._24 + a._33 * b._34 + a._34 * b._44,
+      a._41 * b._11 + a._42 * b._21 + a._43 * b._31 + a._44 * b._41,
+      a._41 * b._12 + a._42 * b._22 + a._43 * b._32 + a._44 * b._42,
+      a._41 * b._13 + a._42 * b._23 + a._43 * b._33 + a._44 * b._43,
+      a._41 * b._14 + a._42 * b._24 + a._43 * b._34 + a._44 * b._44
+    };
+  }
+
+  inline D3DVECTOR4 D3DVec4Transform(const D3DMATRIX& m, const D3DVECTOR4& v)   {
+    return D3DVECTOR4{
+      m._11 * v.x + m._21 * v.y + m._31 * v.z + m._41 * v.w,
+      m._12 * v.x + m._22 * v.y + m._32 * v.z + m._42 * v.w,
+      m._13 * v.x + m._23 * v.y + m._33 * v.z + m._43 * v.w,
+      m._14 * v.x + m._24 * v.y + m._34 * v.z + m._44 * v.w
+    };
+  }
+
+  inline D3DVECTOR D3DVec3Transform(const D3DMATRIX& m, const D3DVECTOR& v) {
+    return D3DVECTOR{
+      m._11 * v.x + m._21 * v.y + m._31 * v.z,
+      m._12 * v.x + m._22 * v.y + m._32 * v.z,
+      m._13 * v.x + m._23 * v.y + m._33 * v.z
+    };
+  }
+
+  inline D3DVECTOR D3DVec4to3Transform(const D3DMATRIX& m, const D3DVECTOR4& v) {
+    return D3DVECTOR{
+      m._11 * v.x + m._21 * v.y + m._31 * v.z + m._41 * v.w,
+      m._12 * v.x + m._22 * v.y + m._32 * v.z + m._42 * v.w,
+      m._13 * v.x + m._23 * v.y + m._33 * v.z + m._43 * v.w
+    };
+  }
+
+  inline float D3DVec3Dot(const D3DVECTOR* a, const D3DVECTOR* b) {
+    if (a == nullptr || b == nullptr)
+      return 0.0f;
+
+    return (a->x * b->x) + (a->y * b->y) + (a->z * b->z);
+  }
+
+  inline D3DVECTOR D3DVec3Normalize(const D3DVECTOR& v) {
+    const float dot = v.x * v.x + v.y * v.y + v.z * v.z;
+
+    if (dot <= 0.0f) {
+      return D3DVECTOR{0.0f, 0.0f, 0.0f};
+    }
+
+    const float inv_mag = 1.0f / std::sqrtf(dot);
+
+    return D3DVECTOR{v.x * inv_mag, v.y * inv_mag, v.z * inv_mag};
+  }
+
+  inline void D3DColorClamp(D3DCOLORVALUE& color) {
+    color.r = std::clamp(color.r, 0.0f, 1.0f);
+    color.g = std::clamp(color.g, 0.0f, 1.0f);
+    color.b = std::clamp(color.b, 0.0f, 1.0f);
+    color.a = std::clamp(color.a, 0.0f, 1.0f);
   }
 
   inline void ColorVMultiplyAdd(D3DCOLORVALUE& out, const D3DCOLORVALUE& color, float value) {
     out.r += color.r * value;
     out.g += color.g * value;
     out.b += color.b * value;
+  }
+
+  inline float D3DMad2AddScalar(float a1, float a2, float b1, float b2, float c) {
+    return a1 * a2 + b1 * b2  + c;
+  }
+
+  inline void D3DColorMulRGBSetAlpha(D3DCOLORVALUE& a, const D3DCOLORVALUE& b, bool legacy) {
+    a.r *= b.r;
+    a.g *= b.g;
+    a.b *= b.b;
+
+    if (legacy)
+      a.a = 0.0f;
+    else
+      a.a = b.a;
+  }
+#endif
+
+  inline void ComputeNormalMatrix(D3DMATRIX& normal_matrix, bool isLegacy, const D3DMATRIX& wv) {
+    D3DMATRIX mv = wv;
+    if (isLegacy)
+      InvertMatrixLegacy(&mv, &mv);
+    else
+      InvertMatrix(&mv, &mv);
+
+    normal_matrix._11 = mv._11;
+    normal_matrix._12 = mv._21;
+    normal_matrix._13 = mv._31;
+    normal_matrix._21 = mv._12;
+    normal_matrix._22 = mv._22;
+    normal_matrix._23 = mv._32;
+    normal_matrix._31 = mv._13;
+    normal_matrix._32 = mv._23;
+    normal_matrix._33 = mv._33;
+  }
+
+  // D3DCOLOR is DWORD packed ARGB, uint8_t per component
+  // D3DCOLORVALUE is RGBA struct with float per component normalized to 0.0f - 1.0f
+  inline D3DCOLOR ColorVToColor(const D3DCOLORVALUE& c) {
+    return D3DCOLOR_ARGB(
+      static_cast<int>(std::roundf(c.a * 255.0f)),
+      static_cast<int>(std::roundf(c.r * 255.0f)),
+      static_cast<int>(std::roundf(c.g * 255.0f)),
+      static_cast<int>(std::roundf(c.b * 255.0f))
+    );
+  }
+
+  inline D3DCOLORVALUE ColorToColorV(const D3DCOLOR& c) {
+    return D3DCOLORVALUE{
+      ((c >> 16) & 0xFF) / 255.0f,
+      ((c >> 8)  & 0xFF) / 255.0f,
+      ((c >> 0)  & 0xFF) / 255.0f,
+      ((c >> 24) & 0xFF) / 255.0f,
+    };
+  }
+
+  inline D3DCOLORVALUE ColorVClamp(const D3DCOLORVALUE& color, float min, float max) {
+    return D3DCOLORVALUE{
+      std::clamp(color.r, min, max),
+      std::clamp(color.g, min, max),
+      std::clamp(color.b, min, max),
+      std::clamp(color.a, min, max),
+    };
   }
 
   inline void MaterialColorSource(
@@ -497,19 +657,12 @@ namespace dxvk {
     return materialColor;
   }
 
-  inline Vector4 NormalizeVec3(const Vector4& v) {
-    Vector4 result = normalize(Vector4(v.x, v.y, v.z, 0.0f));
-    result.w = 0.0f;
-
-    return result;
-  }
-
   inline void ApplyLight(
         const PVLIGHT* light9, bool localViewer, D3DCOLORVALUE& diffuse, D3DCOLORVALUE& specular,
         const D3DVECTOR* normals, const D3DVECTOR* hitDirection, const D3DVECTOR* position,
         float attenuation, float materialPower, bool isLegacy) {
-    const float direction_dot = std::clamp(D3DVec3Dot_SSE2(hitDirection, normals), 0.0f, 1.0f);
-    ColorVMultiplyAdd_SSE2(diffuse, light9->Diffuse, direction_dot * attenuation);
+    const float direction_dot = std::clamp(D3DVec3Dot(hitDirection, normals), 0.0f, 1.0f);
+    ColorVMultiplyAdd(diffuse, light9->Diffuse, direction_dot * attenuation);
 
     D3DVECTOR mid = *hitDirection;
     if (localViewer) {
@@ -521,15 +674,15 @@ namespace dxvk {
     }
 
     mid = D3DVec3Normalize(mid);
-    const float direction_transformed_dot = D3DVec3Dot_SSE2(normals, &mid);
+    const float direction_transformed_dot = D3DVec3Dot(normals, &mid);
     if (direction_transformed_dot > 0.0f && (!isLegacy || materialPower > 0.0f) && direction_dot > 0.0f)
-      ColorVMultiplyAdd_SSE2(specular, light9->Specular, powf(direction_transformed_dot, materialPower) * attenuation);
+      ColorVMultiplyAdd(specular, light9->Specular, powf(direction_transformed_dot, materialPower) * attenuation);
   }
 
   inline void ApplyFog(
         float* specularAlpha, D3DFOGMODE vertexMode, float density,
         float start, float end, bool useRange, const D3DVECTOR& position) {
-    const float coord = useRange ? sqrtf(D3DVec3Dot_SSE2(&position, &position)) : fabsf(position.z);
+    const float coord = useRange ? std::sqrtf(D3DVec3Dot(&position, &position)) : fabsf(position.z);
 
     switch (vertexMode) {
       // (end - coord) / (end - start)
@@ -775,9 +928,9 @@ namespace dxvk {
     }
 
     const bool needsCorrection = pvData->isLegacy && pvData->correction != nullptr;
-    const D3DMATRIX wv         = D3DMatrixMultiply4x4_SSE2(world9, view9);
-    const D3DMATRIX wvp        = !needsCorrection ? D3DMatrixMultiply4x4_SSE2(wv, projection9)
-                                                  : D3DMatrixMultiply4x4_SSE2(D3DMatrixMultiply4x4_SSE2(wv, projection9), *pvData->correction);
+    const D3DMATRIX wv         = D3DMatrixMultiply4x4(world9, view9);
+    const D3DMATRIX wvp        = !needsCorrection ? D3DMatrixMultiply4x4(wv, projection9)
+                                                  : D3DMatrixMultiply4x4(D3DMatrixMultiply4x4(wv, projection9), *pvData->correction);
 
     D3DFOGMODE fogVertexMode;
     float fogStart, fogEnd, fogDensity;
@@ -827,18 +980,18 @@ namespace dxvk {
 
         switch (l->Type) {
             case D3DLIGHT_DIRECTIONAL:
-              l->LightDirection = D3DVec3Normalize(D3DVec4to3Transform_SSE2(view9, {-light.Direction.x, -light.Direction.y, -light.Direction.z, 0.0f}));
+              l->LightDirection = D3DVec3Normalize(D3DVec4to3Transform(view9, {-light.Direction.x, -light.Direction.y, -light.Direction.z, 0.0f}));
               break;
             case D3DLIGHT_POINT:
-              l->LightPosition = D3DVec4to3Transform_SSE2(view9, {light.Position.x, light.Position.y, light.Position.z, 1.0f});
+              l->LightPosition = D3DVec4to3Transform(view9, {light.Position.x, light.Position.y, light.Position.z, 1.0f});
               l->Attenuation0 = light.Attenuation0;
               l->Attenuation1 = light.Attenuation1;
               l->Attenuation2 = light.Attenuation2;
               l->Range = light.Range;
               break;
             case D3DLIGHT_SPOT:
-              l->LightDirection = D3DVec3Normalize(D3DVec4to3Transform_SSE2(view9, {light.Direction.x, light.Direction.y, light.Direction.z, 0.0f}));
-              l->LightPosition = D3DVec4to3Transform_SSE2(view9, {light.Position.x, light.Position.y, light.Position.z, 1.0f});
+              l->LightDirection = D3DVec3Normalize(D3DVec4to3Transform(view9, {light.Direction.x, light.Direction.y, light.Direction.z, 0.0f}));
+              l->LightPosition = D3DVec4to3Transform(view9, {light.Position.x, light.Position.y, light.Position.z, 1.0f});
               l->cosHalfPhi = cosf(light.Phi / 2.0f);
               l->cosHalfTheta = cosf(light.Theta / 2.0f);
               l->Attenuation0 = light.Attenuation0;
@@ -871,7 +1024,7 @@ namespace dxvk {
       PositionArray outPosition;
       memcpy(outPosition.data(), inPosition.data(), sizeof(PositionArray));
       if (likely(!(pvData->inFVF & D3DFVF_XYZRHW))) {
-        D3DVECTOR4 h = D3DVec4Transform_SSE2(wvp, D3DVECTOR4{inPosition[0], inPosition[1], inPosition[2], 1.0f});
+        D3DVECTOR4 h = D3DVec4Transform(wvp, D3DVECTOR4{inPosition[0], inPosition[1], inPosition[2], 1.0f});
 
         // Hidden & Dangerous (D3D6) relies on division by zero and NAN/INF output
         const float rhw = 1.0f / h.w;
@@ -893,7 +1046,7 @@ namespace dxvk {
       D3DCOLORVALUE diffuse  = {0.0f, 0.0f, 0.0f, 0.0f};
       D3DCOLORVALUE specular = {0.0f, 0.0f, 0.0f, 0.0f};
 
-      D3DVECTOR4 WVPosition = D3DVec4Transform_SSE2(wv, D3DVECTOR4{inPosition[0], inPosition[1], inPosition[2], 1.0f});
+      D3DVECTOR4 WVPosition = D3DVec4Transform(wv, D3DVECTOR4{inPosition[0], inPosition[1], inPosition[2], 1.0f});
       const D3DVECTOR WVPosition3 = {WVPosition.x, WVPosition.y, WVPosition.z};
       const float positionScale = 1.0f / WVPosition.w;
       WVPosition.x *= positionScale;
@@ -909,7 +1062,7 @@ namespace dxvk {
         if (inNormals != nullptr) {
           D3DMATRIX normalMatrix{};
           ComputeNormalMatrix(normalMatrix, pvData->isLegacy, wv);
-          normals = D3DVec3Transform_SSE2(normalMatrix, *inNormals);
+          normals = D3DVec3Transform(normalMatrix, *inNormals);
           if (isEnabledNormalizeNormals)
             normals = D3DVec3Normalize(normals);
         }
@@ -930,8 +1083,8 @@ namespace dxvk {
             case D3DLIGHT_SPOT: {
               hitDirection = D3DVECTOR{light.LightPosition.x - WVPosition.x, light.LightPosition.y - WVPosition.y,
                                        light.LightPosition.z - WVPosition.z};
-              Vector4 destination(1.0f, 0.0f, D3DVec3Dot_SSE2(&hitDirection, &hitDirection), 0.0f);
-              destination.y = sqrtf(destination.z);
+              Vector4 destination(1.0f, 0.0f, D3DVec3Dot(&hitDirection, &hitDirection), 0.0f);
+              destination.y = std::sqrtf(destination.z);
               if (pvData->isLegacy) {
                 destination.y = (light.Range - destination.y) / light.Range;
                 if (destination.y <= 0.0f)
@@ -951,7 +1104,7 @@ namespace dxvk {
 
               if (lightType == D3DLIGHT_SPOT) {
                 const D3DVECTOR revHit = {-hitDirection.x, -hitDirection.y, -hitDirection.z};
-                const float rho = D3DVec3Dot_SSE2(&revHit, &light.LightDirection);
+                const float rho = D3DVec3Dot(&revHit, &light.LightDirection);
                 if (rho <= light.cosHalfPhi)
                   attenuation = 0.0f;
                 else if (rho <= light.cosHalfTheta)
@@ -964,7 +1117,7 @@ namespace dxvk {
               continue;
           }
 
-          ColorVMultiplyAdd_SSE2(ambient, light.Ambient, attenuation);
+          ColorVMultiplyAdd(ambient, light.Ambient, attenuation);
           if (inNormals != nullptr)
             ApplyLight(&light, isEnabledLocalViewer, diffuse, specular, &normals,
                      &hitDirection, &NVWPosition, attenuation, materialPower, pvData->isLegacy);
@@ -973,12 +1126,12 @@ namespace dxvk {
         D3DCOLORVALUE materialAmbient  = ColorFromMaterialSource(inDiffuse, inSpecular, sourceAmbient, material9.Ambient);
         D3DCOLORVALUE materialEmissive = ColorFromMaterialSource(inDiffuse, inSpecular, sourceEmissive, material9.Emissive);
 
-        diffuse.r = D3DSSE_Mad2_Add_Scalar_SSE2(ambient.r, materialAmbient.r, diffuse.r, materialDiffuse.r, materialEmissive.r);
-        diffuse.g = D3DSSE_Mad2_Add_Scalar_SSE2(ambient.g, materialAmbient.g, diffuse.g, materialDiffuse.g, materialEmissive.g);
-        diffuse.b = D3DSSE_Mad2_Add_Scalar_SSE2(ambient.b, materialAmbient.b, diffuse.b, materialDiffuse.b, materialEmissive.b);
+        diffuse.r = D3DMad2AddScalar(ambient.r, materialAmbient.r, diffuse.r, materialDiffuse.r, materialEmissive.r);
+        diffuse.g = D3DMad2AddScalar(ambient.g, materialAmbient.g, diffuse.g, materialDiffuse.g, materialEmissive.g);
+        diffuse.b = D3DMad2AddScalar(ambient.b, materialAmbient.b, diffuse.b, materialDiffuse.b, materialEmissive.b);
         diffuse.a = materialDiffuse.a;
 
-        D3DColorMulRGB_SetAlpha_SSE2(specular, materialSpecular, pvData->isLegacy);
+        D3DColorMulRGBSetAlpha(specular, materialSpecular, pvData->isLegacy);
       } else {
         diffuse  = materialDiffuse;
         specular = materialSpecular;
@@ -987,8 +1140,8 @@ namespace dxvk {
       if (isEnabledFog)
         ApplyFog(&specular.a, fogVertexMode, fogDensity, fogStart, fogEnd, isEnabledFogRange, WVPosition3);
 
-      D3DColorClamp_SSE2(diffuse);
-      D3DColorClamp_SSE2(specular);
+      D3DColorClamp(diffuse);
+      D3DColorClamp(specular);
 
       const D3DCOLOR outDiffuse  = ColorVToColor(diffuse);
       const D3DCOLOR outSpecular = ColorVToColor(specular);

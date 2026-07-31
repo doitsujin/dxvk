@@ -68,6 +68,13 @@ namespace dxvk {
       }
     }
 
+#ifdef DXVK_SWVP_SSE2
+    static bool s_sse2InfoShown;
+
+    if (!std::exchange(s_sse2InfoShown, true))
+      Logger::info("D7VK: Using SSE2 optimizations for SWVP");
+#endif
+
     return hDDraw;
   }
 
