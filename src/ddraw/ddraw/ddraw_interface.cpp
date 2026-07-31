@@ -346,7 +346,35 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE DDrawInterface::EnumDisplayModes(DWORD dwFlags, LPDDSURFACEDESC lpDDSurfaceDesc, LPVOID lpContext, LPDDENUMMODESCALLBACK lpEnumModesCallback) {
-    return m_proxy->EnumDisplayModes(dwFlags, lpDDSurfaceDesc, lpContext, lpEnumModesCallback);
+    if (unlikely(lpEnumModesCallback == nullptr))
+      return DDERR_INVALIDPARAMS;
+
+    std::vector<DDSURFACEDESC> displayModes;
+    HRESULT hr = m_proxy->EnumDisplayModes(dwFlags, lpDDSurfaceDesc, reinterpret_cast<void*>(&displayModes), EnumDisplayModesCallback);
+    if (unlikely(FAILED(hr)))
+      return hr;
+
+    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
+
+    hr = DDENUMRET_OK;
+
+    auto displayModeIt = displayModes.begin();
+    while (displayModeIt != displayModes.end() && hr == DDENUMRET_OK) {
+      DDSURFACEDESC dmDesc = *displayModeIt;
+
+      if (unlikely(d3dOptions->mask8BitModes && dmDesc.ddpfPixelFormat.dwRGBBitCount == 8)) {
+        static bool s_maskModeWarningShown;
+
+        if (!std::exchange(s_maskModeWarningShown, true))
+          Logger::warn("DDrawInterface::EnumDisplayModes: Masking 8-bit display modes");
+      } else {
+        hr = lpEnumModesCallback(&dmDesc, lpContext);
+      }
+
+      ++displayModeIt;
+    }
+
+    return DD_OK;
   }
 
   HRESULT STDMETHODCALLTYPE DDrawInterface::EnumSurfaces(DWORD dwFlags, LPDDSURFACEDESC lpDDSD, LPVOID lpContext, LPDDENUMSURFACESCALLBACK lpEnumSurfacesCallback) {

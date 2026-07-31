@@ -544,6 +544,22 @@ namespace dxvk {
     return DD_OK;
   }
 
+  inline HRESULT STDMETHODCALLTYPE EnumDisplayModesCallback(DDSURFACEDESC* desc, void* ctx) {
+    auto& displayModes = *static_cast<std::vector<DDSURFACEDESC>*>(ctx);
+
+    displayModes.push_back(*desc);
+
+    return DDENUMRET_OK;
+  }
+
+  inline HRESULT STDMETHODCALLTYPE EnumDisplayModesCallback2(DDSURFACEDESC2* desc, void* ctx) {
+    auto& displayModes = *static_cast<std::vector<DDSURFACEDESC2>*>(ctx);
+
+    displayModes.push_back(*desc);
+
+    return DDENUMRET_OK;
+  }
+
   inline HRESULT STDMETHODCALLTYPE ListBackBufferSurfacesCallback(IDirectDrawSurface* subsurf, DDSURFACEDESC* desc, void* ctx) {
     IDirectDrawSurface** nextBackBuffer = static_cast<IDirectDrawSurface**>(ctx);
 
