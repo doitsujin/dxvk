@@ -978,7 +978,7 @@ namespace dxvk {
     if (unlikely(dstTextureInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
       return D3DERR_INVALIDCALL;
 
-    const DxvkFormatInfo* formatInfo = lookupFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(dstTextureInfo->GetFormatMapping().Format);
 
     VkOffset3D srcOffset = { 0u, 0u, 0u };
     VkOffset3D dstOffset = { 0u, 0u, 0u };
@@ -1801,7 +1801,7 @@ namespace dxvk {
       const int32_t vendorId = m_dxvkDevice->properties().core.properties.vendorID;
       const bool exact = m_depthBiasRepresentation.depthBiasExact;
       const bool forceUnorm = m_depthBiasRepresentation.depthBiasRepresentation == VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
-      const float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId, exact, forceUnorm);
+      const float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().Format, vendorId, exact, forceUnorm);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_dirty.set(D3D9DeviceDirtyFlag::DepthBias);
@@ -1940,7 +1940,7 @@ namespace dxvk {
       if (Flags & D3DCLEAR_STENCIL)
         depthAspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      depthAspectMask &= lookupFormatInfo(m_state.depthStencil->GetCommonTexture()->GetFormatMapping().FormatColor)->aspectMask;
+      depthAspectMask &= lookupFormatInfo(m_state.depthStencil->GetCommonTexture()->GetFormatMapping().Format)->aspectMask;
     }
 
     auto ClearImageView = [this](
@@ -4990,7 +4990,7 @@ namespace dxvk {
 
     auto& formatMapping = pResource->GetFormatMapping();
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
-      ? lookupFormatInfo(formatMapping.FormatColor) : UnsupportedFormatInfo(pResource->Desc()->Format);
+      ? lookupFormatInfo(formatMapping.Format) : UnsupportedFormatInfo(pResource->Desc()->Format);
 
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
@@ -5286,7 +5286,7 @@ namespace dxvk {
     // Now that data has been written into the buffer,
     // we need to copy its contents into the image
 
-    auto formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
+    auto formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().Format);
     auto srcSubresource = pSrcTexture->GetSubresourceFromIndex(
       formatInfo->aspectMask, SrcSubresource);
 
@@ -5396,7 +5396,7 @@ namespace dxvk {
       D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
       VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
 
-      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.FormatColor);
+      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.Format);
       VkImageSubresourceLayers convertedDstLayers = { convertedFormatInfo->aspectMask, dstSubresource.mipLevel, dstSubresource.arrayLayer, 1 };
 
       util::packImageData(
@@ -8542,8 +8542,8 @@ namespace dxvk {
       srcSubresource.aspectMask = dstSubresource.aspectMask & srcSubresource.aspectMask;
     } else if (unlikely(dstSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT && srcSubresource.aspectMask != VK_IMAGE_ASPECT_COLOR_BIT)) {
       Logger::err(str::format("D3D9DeviceEx::ResolveZ: Trying to blit from ",
-        srcFormatInfo.FormatColor, " (aspect ", srcSubresource.aspectMask, ")", " to ",
-        dstFormatInfo.FormatColor, " (aspect ", dstSubresource.aspectMask, ")"
+        srcFormatInfo.Format, " (aspect ", srcSubresource.aspectMask, ")", " to ",
+        dstFormatInfo.Format, " (aspect ", dstSubresource.aspectMask, ")"
       ));
       return;
     }

@@ -149,7 +149,7 @@ namespace dxvk {
 
   struct D3D9_CONVERSION_FORMAT_INFO {
     D3D9ConversionFormat FormatType     = D3D9ConversionFormat_None;
-    VkFormat             FormatColor    = VK_FORMAT_UNDEFINED;
+    VkFormat             Format    = VK_FORMAT_UNDEFINED;
     VkFormat             FormatSrgb     = VK_FORMAT_UNDEFINED;
   };
 
@@ -167,8 +167,8 @@ namespace dxvk {
   struct D3D9_VK_FORMAT_MAPPING {
     union {
       struct {
-        VkFormat          FormatColor;                          ///< Corresponding color format
-        VkFormat          FormatSrgb;                           ///< Corresponding color format
+        VkFormat          Format;                               ///< Corresponding format
+        VkFormat          FormatSrgb;                           ///< Corresponding SRGB format
       };
       VkFormat            Formats[2];
     };
@@ -178,7 +178,7 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
     D3D9_CONVERSION_FORMAT_INFO ConversionFormatInfo = { };
 
-    bool IsValid() const { return FormatColor != VK_FORMAT_UNDEFINED; }
+    bool IsValid() const { return Format != VK_FORMAT_UNDEFINED; }
   };
 
   D3D9_VK_FORMAT_MAPPING ConvertFormatUnfixed(D3D9Format Format);
