@@ -295,8 +295,10 @@ namespace dxvk {
       // Adreno 7XX GPUs cannot report general support for 8x MSAA because they do not support it for 128 bit formats.
       // So take the format into consideration when checking whether the sample count is supported.
 
+      auto formatMapping = GetFormatMapping(SurfaceFormat);
+
       DxvkFormatQuery query = { };
-      query.format = dst.FormatColor;
+      query.format = formatMapping.Format;
       query.type   = VK_IMAGE_TYPE_2D; // D3D9 only allows using MSAA with 2D textures
       query.tiling = VK_IMAGE_TILING_OPTIMAL;
       query.usage  = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
