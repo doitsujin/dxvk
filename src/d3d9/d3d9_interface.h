@@ -139,8 +139,6 @@ namespace dxvk {
         : nullptr;
     }
 
-    bool IsExtended() { return m_extended; }
-
     D3DCompatibilityFlags GetD3DCompatibilityFlags() const {
       return m_d3dCompatibility;
     }
@@ -151,10 +149,16 @@ namespace dxvk {
 
     void SetD3DCompatibility(D3DCompatibility d3dCompatibility) {
       m_d3dCompatibility.set(d3dCompatibility);
-      RefreshAdapterFormatTables();
 
-      if (d3dCompatibility == D3DCompatibility::D3D8)
-        Logger::info("The D3D9 interface is now operating in D3D8 compatibility mode.");
+      switch (d3dCompatibility) {
+        case D3DCompatibility::D3D8:
+          Logger::info("The D3D9 interface is now operating in D3D8 compatibility mode.");
+          break;
+        default:
+          break;
+      }
+
+      RefreshAdapterFormatTables();
     }
 
     Rc<DxvkInstance> GetInstance() { return m_instance; }
@@ -177,8 +181,6 @@ namespace dxvk {
     DxvkLegacyD3DInterfaceBridge  m_legacyD3DBridge;
     D3DCompatibilityFlags         m_d3dCompatibility;
 
-    bool                          m_extended;
-
     D3D9Options                   m_d3d9Options;
 
     std::vector<Rc<D3D9Adapter>>  m_adapters;
@@ -187,7 +189,7 @@ namespace dxvk {
 
     bool m_unlockAdditionalFormats = false;
 
-    D3D9VkExtInterface            m_d3d9ExtInterface;
+    D3D9VkExtInterface            m_d3d9VkExtInterface;
 
     static const D3D9ON12_ARGS* Find9On12Args(
       const Rc<DxvkAdapter>& Adapter,

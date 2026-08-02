@@ -5,7 +5,8 @@
 #include "../util/util_flags.h"
 
 enum class DxvkD3DCompatibility : uint8_t {
-  D3D8,
+  D3D9Ex,
+  D3D8
 };
 
 /**

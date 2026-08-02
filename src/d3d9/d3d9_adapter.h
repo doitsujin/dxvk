@@ -102,8 +102,6 @@ namespace dxvk {
 
     void RefreshFormatsTable() const;
 
-    bool IsExtended() const;
-
     bool IsD3DCompatibile(D3DCompatibility d3dCompatibility) const;
 
     force_inline void incRef() {

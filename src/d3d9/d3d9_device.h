@@ -807,8 +807,6 @@ namespace dxvk {
 
     bool SupportsVCacheQuery() const;
 
-    bool IsExtended();
-
     HWND GetWindow();
 
     const Rc<DxvkDevice>& GetDXVKDevice() {
@@ -1079,7 +1077,7 @@ namespace dxvk {
     void ConsiderFlush(GpuFlushType FlushType);
 
     bool ChangeReportedMemory(int64_t delta) {
-      if (IsExtended())
+      if (m_d3dCompatibility.test(D3DCompatibility::D3D9Ex))
         return true;
 
       int64_t availableMemory = m_availableMemory.fetch_add(delta);

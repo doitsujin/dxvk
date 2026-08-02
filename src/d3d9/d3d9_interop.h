@@ -157,6 +157,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE UnlockAdditionalFormats();
 
   private:
+
     D3D9InterfaceEx *m_interface;
 
   };
