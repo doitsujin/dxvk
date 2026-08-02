@@ -478,7 +478,7 @@ namespace dxvk {
             D3D9Adapter*     pParent,
       const Rc<DxvkAdapter>& adapter,
       const D3D9Options&     options)
-    : m_isExtended (pParent->IsExtended()) {
+    : m_isExtended (pParent->IsD3DCompatibile(D3DCompatibility::D3D9Ex)) {
 
     const uint32_t vendorId = pParent->GetVendorId();
     const bool     isNvidia = vendorId == uint32_t(DxvkGpuVendor::Nvidia);
@@ -616,14 +616,14 @@ namespace dxvk {
       case D3D9Format::D32F_LOCKABLE:
         return &d32f_lockable;
 
-      // only considered on d3d9Ex interfaces
+      // only considered on D3D9Ex interfaces
       case D3D9Format::D32_LOCKABLE:
         if (m_isExtended)
           return &d32_lockable;
 
         [[fallthrough]];
 
-      // only considered on d3d9Ex interfaces
+      // only considered on D3D9Ex interfaces
       case D3D9Format::S8_LOCKABLE:
         if (m_isExtended)
           return &s8_lockable;

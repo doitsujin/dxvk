@@ -358,7 +358,8 @@ namespace dxvk {
           const D3D9_COMMON_TEXTURE_DESC& desc,
           IDirect3DResource9**            ppResult) {
     try {
-      const Com<ResourceType> texture = new ResourceType(m_device, &desc, m_device->IsExtended());
+      const bool isExtended = m_device->IsD3DCompatibile(D3DCompatibility::D3D9Ex);
+      const Com<ResourceType> texture = new ResourceType(m_device, &desc, isExtended);
       m_device->m_initializer->InitTexture(texture->GetCommonTexture());
       *ppResult = texture.ref();
 

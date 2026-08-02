@@ -80,12 +80,14 @@ namespace dxvk {
     copyToStringArray(pIdentifier->DeviceName,  displayName.c_str());    // The GDI device name. Not the actual device name.
     copyToStringArray(pIdentifier->Driver,      m_deviceDriver.c_str()); // This is the driver's dll.
 
+    const bool isExtended = m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex);
+
     pIdentifier->DeviceIdentifier       = m_deviceGuid;
     pIdentifier->DeviceId               = m_deviceId;
     pIdentifier->VendorId               = m_vendorId;
     pIdentifier->Revision               = 0;
     pIdentifier->SubSysId               = 0;
-    pIdentifier->WHQLLevel              = m_parent->IsExtended() ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
+    pIdentifier->WHQLLevel              = isExtended ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
     pIdentifier->DriverVersion.QuadPart = INT64_MAX;
 
     return D3D_OK;
@@ -526,7 +528,7 @@ namespace dxvk {
                                     | D3DPBLENDCAPS_BLENDFACTOR;
 
     // Only 9Ex devices advertise D3DPBLENDCAPS_SRCCOLOR2 and D3DPBLENDCAPS_INVSRCCOLOR2
-    if (m_parent->IsExtended())
+    if (m_parent->IsD3DCompatibile(D3DCompatibility::D3D9Ex))
       pCaps->SrcBlendCaps          |= D3DPBLENDCAPS_SRCCOLOR2
                                     | D3DPBLENDCAPS_INVSRCCOLOR2;
 
@@ -878,11 +880,6 @@ namespace dxvk {
 
   void D3D9Adapter::RefreshFormatsTable() const {
     m_d3d9Formats->RefreshFormatSupport(this);
-  }
-
-
-  bool D3D9Adapter::IsExtended() const {
-    return m_parent->IsExtended();
   }
 
 

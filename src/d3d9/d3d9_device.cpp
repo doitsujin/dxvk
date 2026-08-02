@@ -179,12 +179,10 @@ namespace dxvk {
 
     *ppvObject = nullptr;
 
-    bool extended = m_parent->IsExtended()
-                 && riid == __uuidof(IDirect3DDevice9Ex);
-
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3DDevice9)
-     || extended) {
+     || (m_d3dCompatibility.test(D3DCompatibility::D3D9Ex) &&
+         riid == __uuidof(IDirect3DDevice9Ex))) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -392,7 +390,7 @@ namespace dxvk {
   }
 
 
-  void    STDMETHODCALLTYPE D3D9DeviceEx::SetCursorPosition(int X, int Y, DWORD Flags) {
+  void STDMETHODCALLTYPE D3D9DeviceEx::SetCursorPosition(int X, int Y, DWORD Flags) {
     D3D9DeviceLock lock = LockDevice();
 
     // I was not able to find an instance
@@ -407,7 +405,7 @@ namespace dxvk {
   }
 
 
-  BOOL    STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
+  BOOL STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
     D3D9DeviceLock lock = LockDevice();
 
     return m_cursor.ShowCursor(bShow);
@@ -440,7 +438,7 @@ namespace dxvk {
   }
 
 
-  UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetNumberOfSwapChains() {
+  UINT STDMETHODCALLTYPE D3D9DeviceEx::GetNumberOfSwapChains() {
     // This only counts the implicit swapchain...
 
     return 1;
@@ -463,7 +461,7 @@ namespace dxvk {
         return hr;
     }
 
-    if (!IsExtended()) {
+    if (!m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)) {
       // The internal references are always cleared, regardless of whether the Reset call succeeds.
       ResetState(pPresentationParameters);
       m_implicitSwapchain->DestroyBackBuffers();
@@ -501,6 +499,8 @@ namespace dxvk {
 
     m_cursor.ResetCursor();
 
+    const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
     /*
       * Before calling the IDirect3DDevice9::Reset method for a device,
       * an application should release any explicit render targets,
@@ -510,7 +510,7 @@ namespace dxvk {
       * We have to check after ResetState clears the references held by SetTexture, etc.
       * This matches what Windows D3D9 does.
     */
-    if (unlikely(m_losableResourceCounter.load() != 0 && !IsExtended() && m_d3d9Options.countLosableResources)) {
+    if (unlikely(m_losableResourceCounter.load() != 0 && !isExtended && m_d3d9Options.countLosableResources)) {
       Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
       m_deviceLostState = D3D9DeviceLostState::NotReset;
       // D3D8 returns D3DERR_DEVICELOST here, whereas D3D9 returns D3DERR_INVALIDCALL.
@@ -519,7 +519,7 @@ namespace dxvk {
 
     hr = ResetSwapChain(pPresentationParameters, nullptr);
     if (unlikely(FAILED(hr))) {
-      if (!IsExtended()) {
+      if (!isExtended) {
         Logger::warn("Device reset failed: Device not reset");
         m_deviceLostState = D3D9DeviceLostState::NotReset;
       }
@@ -654,7 +654,8 @@ namespace dxvk {
                    !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_TEXTURE, desc)))
         return E_INVALIDARG;
 
-      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, IsExtended(), pSharedHandle);
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, isExtended, pSharedHandle);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
@@ -722,7 +723,8 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc, IsExtended());
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc, isExtended);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
 
@@ -788,7 +790,8 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc, IsExtended());
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc, isExtended);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
 
@@ -831,7 +834,9 @@ namespace dxvk {
     desc.Type   = D3DRTYPE_VERTEXBUFFER;
     desc.Usage  = Usage;
 
-    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, IsExtended())))
+    const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
+    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, isExtended)))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
@@ -839,7 +844,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc, IsExtended());
+      const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc, isExtended);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppVertexBuffer = buffer.ref();
 
@@ -881,7 +886,9 @@ namespace dxvk {
     desc.Type   = D3DRTYPE_INDEXBUFFER;
     desc.Usage  = Usage;
 
-    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, IsExtended())))
+    const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
+    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc, isExtended)))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(pSharedHandle != nullptr && *pSharedHandle != nullptr &&
@@ -889,7 +896,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc, IsExtended());
+      const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc, isExtended);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppIndexBuffer = buffer.ref();
 
@@ -1363,7 +1370,7 @@ namespace dxvk {
       bool srcHasAttachmentUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
 
       // D3D9Ex allows StretchRect to regular (non-RT) textures if it is a simple copy.
-      bool isCopy = IsExtended()
+      bool isCopy = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)
         && pSourceRect == nullptr && pDestRect == nullptr // Yes, the rects have to be null. Even passing a rect that is the same size as the texture is invalid.
         && srcTextureInfo->Desc()->Pool == D3DPOOL_DEFAULT
         && dstTextureInfo->Desc()->Pool == D3DPOOL_DEFAULT
@@ -4304,7 +4311,8 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       m_losableResourceCounter++;
@@ -4383,7 +4391,8 @@ namespace dxvk {
                    !ValidateSharedTexture(*pSharedHandle, D3DRTYPE_SURFACE, desc)))
         return E_INVALIDARG;
 
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture(), initialData);
       *ppSurface = surface.ref();
 
@@ -4448,7 +4457,8 @@ namespace dxvk {
       return E_INVALIDARG;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, IsExtended(), nullptr, pSharedHandle);
+      const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, isExtended, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       m_losableResourceCounter++;
@@ -4709,11 +4719,6 @@ namespace dxvk {
     }
 
     return D3D_OK;
-  }
-
-
-  bool D3D9DeviceEx::IsExtended() {
-    return m_parent->IsExtended();
   }
 
 
@@ -8922,6 +8927,8 @@ namespace dxvk {
       m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
     }
 
+    const bool isExtended = m_d3dCompatibility.test(D3DCompatibility::D3D9Ex);
+
     if (pPresentationParameters->EnableAutoDepthStencil) {
       D3D9_COMMON_TEXTURE_DESC desc;
       desc.Width              = pPresentationParameters->BackBufferWidth;
@@ -8942,13 +8949,13 @@ namespace dxvk {
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_SURFACE, &desc)))
         return D3DERR_NOTAVAILABLE;
 
-      m_autoDepthStencil = new D3D9Surface(this, &desc, IsExtended(), nullptr, nullptr);
+      m_autoDepthStencil = new D3D9Surface(this, &desc, isExtended, nullptr, nullptr);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
       m_losableResourceCounter++;
     }
 
-    if (!IsExtended()) {
+    if (!isExtended) {
       SetRenderTarget(0, m_implicitSwapchain->GetBackBuffer(0));
     } else {
       // Extended devices will not reset the MinZ/MaxZ viewport values
@@ -9091,7 +9098,7 @@ namespace dxvk {
   void D3D9DeviceEx::NotifyWindowActivated(HWND window, bool activated) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (likely(!m_d3d9Options.deviceLossOnFocusLoss || IsExtended()))
+    if (likely(!m_d3d9Options.deviceLossOnFocusLoss || m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)))
       return;
 
     if (activated && m_deviceLostState == D3D9DeviceLostState::Lost) {

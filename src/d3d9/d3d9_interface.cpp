@@ -15,12 +15,11 @@ namespace dxvk {
   Singleton<DxvkInstance> g_dxvkInstance;
 
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended, const D3D9ON12_ARGS* pOverrideList, uint32_t OverrideCount)
-    : m_instance         ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
-    , m_legacyD3DBridge  ( this )
-    , m_extended         ( bExtended )
-    , m_d3d9Options      ( nullptr, m_instance->config() )
-    , m_d3d9Interop      ( this )
-    , m_d3d9ExtInterface ( this ) {
+    : m_instance           ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
+    , m_legacyD3DBridge    ( this )
+    , m_d3d9Options        ( nullptr, m_instance->config() )
+    , m_d3d9Interop        ( this )
+    , m_d3d9VkExtInterface ( this ) {
     // D3D9 doesn't enumerate adapters like physical adapters...
     // only as connected displays.
 
@@ -74,8 +73,13 @@ namespace dxvk {
     }
 #endif
 
+    if (bExtended) {
+      m_d3dCompatibility.set(D3DCompatibility::D3D9Ex);
+      Logger::info("The D3D9 interface is operating in D3D9Ex mode.");
+    }
+
     if (unlikely(m_d3d9Options.shaderModel == 0))
-      Logger::warn("D3D9InterfaceEx: WARNING! Fixed-function exclusive mode is enabled.");
+      Logger::warn("WARNING! Fixed-function exclusive mode is enabled.");
   }
 
 
@@ -92,7 +96,8 @@ namespace dxvk {
 
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3D9)
-     || (m_extended && riid == __uuidof(IDirect3D9Ex))) {
+     || (m_d3dCompatibility.test(D3DCompatibility::D3D9Ex) &&
+         riid == __uuidof(IDirect3D9Ex))) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -109,7 +114,7 @@ namespace dxvk {
     }
 
     if (riid == __uuidof(ID3D9VkExtInterface)) {
-      *ppvObject = ref(&m_d3d9ExtInterface);
+      *ppvObject = ref(&m_d3d9VkExtInterface);
       return S_OK;
     }
 
@@ -472,7 +477,7 @@ namespace dxvk {
     if (unlikely(pPresentationParameters == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (m_extended) {
+    if (m_d3dCompatibility.test(D3DCompatibility::D3D9Ex)) {
       // The swap effect value on a D3D9Ex device
       // can not be higher than D3DSWAPEFFECT_FLIPEX.
       if (unlikely(pPresentationParameters->SwapEffect > D3DSWAPEFFECT_FLIPEX))
