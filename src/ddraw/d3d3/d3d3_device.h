@@ -94,10 +94,6 @@ namespace dxvk {
       return m_multithread.AcquireLock();
     }
 
-    D3DSTATS GetStatsInternal() const {
-      return m_stats;
-    }
-
     DDrawSurface* GetRenderTarget() const {
       return m_rt.ptr();
     }

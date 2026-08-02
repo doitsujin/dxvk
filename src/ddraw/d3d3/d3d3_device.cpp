@@ -73,6 +73,8 @@ namespace dxvk {
       m_commonD3DDevice->SetOrigin(this);
 
     m_commonD3DDevice->SetD3D3Device(this);
+
+    m_stats.dwSize = sizeof(D3DSTATS);
   }
 
   D3D3Device::~D3D3Device() {
@@ -232,10 +234,7 @@ namespace dxvk {
     if (unlikely(stats->dwSize != sizeof(D3DSTATS)))
       return DDERR_INVALIDPARAMS;
 
-    const DWORD dwSize = stats->dwSize;
-
     *stats = m_stats;
-    stats->dwSize = dwSize;
 
     return D3D_OK;
   }
@@ -624,6 +623,8 @@ namespace dxvk {
                 break;
               }
             }
+
+            m_stats.dwVerticesProcessed += pv.dwCount;
           }
 
           ptr += instruction->bSize * instruction->wCount;

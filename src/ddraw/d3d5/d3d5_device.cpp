@@ -222,21 +222,21 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D5Device::GetStats(D3DSTATS *stats) {
     D3DDeviceLock lock = LockDevice();
 
+    // Forward the call directly to the D3D3 device, if one exists
+    if (likely(m_device3 != nullptr))
+      return m_device3->GetStats(stats);
+
     if (unlikely(stats == nullptr))
       return DDERR_INVALIDPARAMS;
 
     if (unlikely(stats->dwSize != sizeof(D3DSTATS)))
       return DDERR_INVALIDPARAMS;
 
-    D3DSTATS newStats = { };
+    // Otherwise, simply return an empty stats struct
+    D3DSTATS blankStats = { };
+    blankStats.dwSize = sizeof(D3DSTATS);
 
-    if (likely(m_commonD3DDevice->GetD3D3Device() != nullptr))
-      newStats = m_commonD3DDevice->GetD3D3Device()->GetStatsInternal();
-
-    const DWORD dwSize = stats->dwSize;
-
-    *stats = newStats;
-    stats->dwSize = dwSize;
+    *stats = blankStats;
 
     return D3D_OK;
   }
