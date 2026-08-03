@@ -23,6 +23,13 @@ namespace dxvk {
     , m_desc ( *pDesc )
     , m_stride ( GetFVFSize(pDesc->dwFVF) )
     , m_size ( m_stride * pDesc->dwNumVertices ) {
+    // In the fortunate scenario where a D3D6 device is already present
+    // when a vertex buffer is created, initialize the buffer on the spot
+    // rather than deferring the initialization to the first Lock()
+    // or ProcessVertices() call, since that can cause hitching
+    RefreshD3DDevice();
+    if (m_d3d6Device != nullptr)
+      InitializeD3D9();
   }
 
   D3D6VertexBuffer::~D3D6VertexBuffer() {

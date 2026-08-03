@@ -1964,9 +1964,15 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                  "30" },
       { "ddraw.managedVertexBuffers",       "True" },
     }} },
-    /* Catechumen - fixes runaway physics         */
+    /* Catechumen - Fixes runaway physics         */
     { R"(\\Catechumen\.exe$)", {{
       { "d3d9.maxFrameRate",                  "30" },
+    }} },
+    /* MechWarrior 3 - Fixes missing main menu    *
+     * backgrounds on exit and other transitions  */
+    { R"(\\Mech3\.exe$)", {{
+      { "ddraw.forceLegacyPresent",         "True" },
+      { "ddraw.emulateFrontBuffer",         "True" },
     }} },
 
     /**********************************************/
