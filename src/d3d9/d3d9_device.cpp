@@ -1332,6 +1332,10 @@ namespace dxvk {
       uint32_t(blitInfo.dstOffsets[1].y - blitInfo.dstOffsets[0].y),
       uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
 
+    if (unlikely(srcCopyExtent.width == 0 || srcCopyExtent.height == 0
+      || dstCopyExtent.width == 0 || dstCopyExtent.height == 0))
+      return D3D_OK;
+
     bool srcIsDS = IsDepthStencilFormat(srcFormat);
     bool dstIsDS = IsDepthStencilFormat(dstFormat);
     if (unlikely(srcIsDS || dstIsDS)) {
