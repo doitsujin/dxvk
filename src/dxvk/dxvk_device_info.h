@@ -391,6 +391,8 @@ namespace dxvk {
     bool                                  m_hasMeshShader = false;
     bool                                  m_hasFmask = false;
 
+    bool                                  m_relaxRequiredFeaturesForMetal = false;
+
     std::vector<const VkExtensionProperties*> m_extensionList;
 
     std::vector<DxvkDeviceQueueInfo>      m_queuesAvailable;
