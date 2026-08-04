@@ -726,7 +726,8 @@ namespace dxvk {
                   || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_V3DV)
                   || m_adapter->matchesDriver(VK_DRIVER_ID_BROADCOM_PROPRIETARY)
                   || m_adapter->matchesDriver(VK_DRIVER_ID_IMAGINATION_OPEN_SOURCE_MESA)
-                  || m_adapter->matchesDriver(VK_DRIVER_ID_IMAGINATION_PROPRIETARY);
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_IMAGINATION_PROPRIETARY)
+                  || m_adapter->matchesDriver(VK_DRIVER_ID_MESA_KOSMICKRISP);
 
     applyTristate(tilerMode, m_options.tilerMode);
     hints.preferRenderPassOps = tilerMode;
