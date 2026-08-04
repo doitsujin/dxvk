@@ -62,6 +62,8 @@ namespace dxvk {
 
     DDrawCommonInterface*              m_commonIntf = nullptr;
 
+    D3DDEVICEDESC2                     m_desc;
+
     Com<D3D6Interface, false>          m_d3d6Intf;
     Com<D3D3Interface, false>          m_d3d3Intf;
 

@@ -447,7 +447,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  inline D3DDEVICEDESC3 GetD3D3Caps(const IID rclsid, const D3DOptions* options) {
+  inline D3DDEVICEDESC3 GetD3D3BaseCaps(const D3DOptions* options) {
     D3DDEVICEDESC3 desc;
 
     desc.dwSize    = sizeof(D3DDEVICEDESC3);
@@ -476,14 +476,6 @@ namespace dxvk {
                    | D3DDEVCAPS_TEXTUREVIDEOMEMORY
                    | D3DDEVCAPS_TLVERTEXSYSTEMMEMORY
                    | D3DDEVCAPS_TLVERTEXVIDEOMEMORY;
-
-    // Also advertised in D3D3
-    if (rclsid == IID_IDirect3DHALDevice) {
-      desc.dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
-                      | D3DDEVCAPS_HWTRANSFORMANDLIGHT
-                      | D3DDEVCAPS_DRAWPRIMITIVES2
-                      | D3DDEVCAPS_DRAWPRIMITIVES2EX;
-    }
 
     D3DTRANSFORMCAPS transformCaps;
     transformCaps.dwSize = sizeof(D3DTRANSFORMCAPS);
@@ -617,7 +609,21 @@ namespace dxvk {
     return desc;
   }
 
-  inline D3DDEVICEDESC2 GetD3D5Caps(const IID rclsid, const D3DOptions* options) {
+  inline void ApplyD3D3DeviceCaps(D3DDEVICEDESC3* desc, const IID rclsid) {
+    if (rclsid == IID_IDirect3DHALDevice) {
+      desc->dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
+                       | D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       | D3DDEVCAPS_DRAWPRIMITIVES2
+                       | D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    } else {
+      desc->dwDevCaps &= ~D3DDEVCAPS_HWRASTERIZATION
+                       & ~D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    }
+  }
+
+  inline D3DDEVICEDESC2 GetD3D5BaseCaps(const D3DOptions* options) {
     D3DDEVICEDESC2 desc;
 
     desc.dwSize    = sizeof(D3DDEVICEDESC2);
@@ -654,14 +660,6 @@ namespace dxvk {
     // Powerslide uses a broken rendering path if non-local video memory is advertized
     if (likely(options->nonLocalVideoMemory)) {
       desc.dwDevCaps |= D3DDEVCAPS_TEXTURENONLOCALVIDMEM;
-    }
-
-    // Also advertised in D3D5
-    if (rclsid == IID_IDirect3DHALDevice) {
-      desc.dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
-                      | D3DDEVCAPS_HWTRANSFORMANDLIGHT
-                      | D3DDEVCAPS_DRAWPRIMITIVES2
-                      | D3DDEVCAPS_DRAWPRIMITIVES2EX;
     }
 
     D3DTRANSFORMCAPS transformCaps;
@@ -822,7 +820,21 @@ namespace dxvk {
     return desc;
   }
 
-  inline D3DDEVICEDESC GetD3D6Caps(const IID rclsid, const D3DOptions* options) {
+  inline void ApplyD3D5DeviceCaps(D3DDEVICEDESC2* desc, const IID rclsid) {
+    if (rclsid == IID_IDirect3DHALDevice) {
+      desc->dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
+                       | D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       | D3DDEVCAPS_DRAWPRIMITIVES2
+                       | D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    } else {
+      desc->dwDevCaps &= ~D3DDEVCAPS_HWRASTERIZATION
+                       & ~D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    }
+  }
+
+  inline D3DDEVICEDESC GetD3D6BaseCaps(const D3DOptions* options) {
     D3DDEVICEDESC desc;
 
     desc.dwSize    = sizeof(D3DDEVICEDESC);
@@ -859,14 +871,6 @@ namespace dxvk {
     // Powerslide uses a broken rendering path if non-local video memory is advertized
     if (likely(options->nonLocalVideoMemory)) {
       desc.dwDevCaps |= D3DDEVCAPS_TEXTURENONLOCALVIDMEM;
-    }
-
-    // Also advertised in D3D6
-    if (rclsid == IID_IDirect3DHALDevice) {
-      desc.dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
-                      | D3DDEVCAPS_HWTRANSFORMANDLIGHT
-                      | D3DDEVCAPS_DRAWPRIMITIVES2
-                      | D3DDEVCAPS_DRAWPRIMITIVES2EX;
     }
 
     D3DTRANSFORMCAPS transformCaps;
@@ -1087,7 +1091,21 @@ namespace dxvk {
     return desc;
   }
 
-  inline D3DDEVICEDESC7 GetD3D7Caps(const IID rclsid, const D3DOptions* options) {
+  inline void ApplyD3D6DeviceCaps(D3DDEVICEDESC* desc, const IID rclsid) {
+    if (rclsid == IID_IDirect3DHALDevice) {
+      desc->dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
+                       | D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       | D3DDEVCAPS_DRAWPRIMITIVES2
+                       | D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    } else {
+      desc->dwDevCaps &= ~D3DDEVCAPS_HWRASTERIZATION
+                       & ~D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2
+                       & ~D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    }
+  }
+
+  inline D3DDEVICEDESC7 GetD3D7BaseCaps(const D3DOptions* options) {
     D3DDEVICEDESC7 desc7;
 
     desc7.dwDevCaps = D3DDEVCAPS_CANBLTSYSTONONLOCAL
@@ -1104,7 +1122,6 @@ namespace dxvk {
                  // | D3DDEVCAPS_SORTDECREASINGZ
                  // | D3DDEVCAPS_SORTEXACT
                  // | D3DDEVCAPS_SORTINCREASINGZ
-                 // | D3DDEVCAPS_STRIDEDVERTICES // Mentioned in the docs, but apparently is a ghost
                  // | D3DDEVCAPS_TEXTURENONLOCALVIDMEM // Exposed through a config option
                  // | D3DDEVCAPS_TEXTURESYSTEMMEMORY
                     | D3DDEVCAPS_TEXTUREVIDEOMEMORY
@@ -1114,18 +1131,6 @@ namespace dxvk {
     // Powerslide uses a broken rendering path if non-local video memory is advertized
     if (likely(options->nonLocalVideoMemory)) {
       desc7.dwDevCaps |= D3DDEVCAPS_TEXTURENONLOCALVIDMEM;
-    }
-
-    if (rclsid == IID_IDirect3DTnLHalDevice) {
-      desc7.dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
-                       | D3DDEVCAPS_HWTRANSFORMANDLIGHT
-                       | D3DDEVCAPS_DRAWPRIMITIVES2
-                       | D3DDEVCAPS_DRAWPRIMITIVES2EX;
-    }
-    else if (rclsid == IID_IDirect3DHALDevice) {
-      desc7.dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
-                       | D3DDEVCAPS_DRAWPRIMITIVES2
-                       | D3DDEVCAPS_DRAWPRIMITIVES2EX;
     }
 
     D3DPRIMCAPS prim;
@@ -1325,7 +1330,7 @@ namespace dxvk {
     desc7.dwMaxActiveLights        = ddrawCaps::MaxEnabledLights;
     desc7.dvMaxVertexW             = 1e10f;
 
-    desc7.deviceGUID               = rclsid;
+    desc7.deviceGUID               = GUID_NULL;
 
     desc7.wMaxUserClipPlanes       = ddrawCaps::MaxClipPlanes;
     desc7.wMaxVertexBlendMatrices  = 4;
@@ -1343,6 +1348,26 @@ namespace dxvk {
     desc7.dwReserved4              = 0;
 
     return desc7;
+  }
+
+  inline void ApplyD3D7DeviceCaps(D3DDEVICEDESC7* desc7, const IID rclsid) {
+    desc7->deviceGUID = rclsid;
+
+    if (rclsid == IID_IDirect3DTnLHalDevice) {
+      desc7->dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
+                        | D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                        | D3DDEVCAPS_DRAWPRIMITIVES2
+                        | D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    } else if (rclsid == IID_IDirect3DHALDevice) {
+      desc7->dwDevCaps |= D3DDEVCAPS_HWRASTERIZATION
+                        | D3DDEVCAPS_DRAWPRIMITIVES2
+                        | D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    } else {
+      desc7->dwDevCaps &= ~D3DDEVCAPS_HWRASTERIZATION
+                        & ~D3DDEVCAPS_HWTRANSFORMANDLIGHT
+                        & ~D3DDEVCAPS_DRAWPRIMITIVES2
+                        & ~D3DDEVCAPS_DRAWPRIMITIVES2EX;
+    }
   }
 
   inline Matrix4 MatrixD3DTo4(const D3DMATRIX* m) {

@@ -27,6 +27,10 @@ namespace dxvk {
     if (m_commonD3DIntf == nullptr)
       m_commonD3DIntf = new D3DCommonInterface();
 
+    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
+    // Retrieve and cache the base capabilities
+    m_desc = GetD3D6BaseCaps(d3dOptions);
+
     d3d9::IDirect3D9* d3d9Intf = m_commonD3DIntf->GetD3D9Interface();
 
     // Get the bridge interface to D3D9
@@ -131,8 +135,10 @@ namespace dxvk {
 
     // Software emulation, this is expected to be exposed
     GUID guidRGB = IID_IDirect3DRGBDevice;
-    D3DDEVICEDESC descRGB_HAL = GetD3D6Caps(IID_IDirect3DRGBDevice, d3dOptions);
-    D3DDEVICEDESC descRGB_HEL = descRGB_HAL;
+    D3DDEVICEDESC descRGB_HAL = m_desc;
+    ApplyD3D6DeviceCaps(&descRGB_HAL, guidRGB);
+    D3DDEVICEDESC descRGB_HEL = m_desc;
+    ApplyD3D6DeviceCaps(&descRGB_HEL, guidRGB);
     descRGB_HAL.dwFlags = 0;
     descRGB_HAL.dcmColorModel = 0;
     // Some applications apparently care about HAL texture caps
@@ -159,8 +165,10 @@ namespace dxvk {
 
     // Hardware acceleration
     GUID guidHAL = IID_IDirect3DHALDevice;
-    D3DDEVICEDESC descHAL_HAL = GetD3D6Caps(IID_IDirect3DHALDevice, d3dOptions);
-    D3DDEVICEDESC descHAL_HEL = descHAL_HAL;
+    D3DDEVICEDESC descHAL_HAL = m_desc;
+    ApplyD3D6DeviceCaps(&descHAL_HAL, guidHAL);
+    D3DDEVICEDESC descHAL_HEL = m_desc;
+    ApplyD3D6DeviceCaps(&descHAL_HEL, guidHAL);
     descHAL_HEL.dcmColorModel = 0;
     // Some applications apparently care about RGB texture caps
     descHAL_HEL.dpcLineCaps.dwTextureCaps &= ~D3DPTEXTURECAPS_PERSPECTIVE
@@ -231,11 +239,11 @@ namespace dxvk {
     if (unlikely(!IsValidFindDeviceResultSize(lpD3DFDR->dwSize)))
       return DDERR_INVALIDPARAMS;
 
-    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
-
     // Software emulation, this is expected to be exposed
-    D3DDEVICEDESC descRGB_HAL = GetD3D6Caps(IID_IDirect3DRGBDevice, d3dOptions);
-    D3DDEVICEDESC descRGB_HEL = descRGB_HAL;
+    D3DDEVICEDESC descRGB_HAL = m_desc;
+    ApplyD3D6DeviceCaps(&descRGB_HAL, IID_IDirect3DRGBDevice);
+    D3DDEVICEDESC descRGB_HEL = m_desc;
+    ApplyD3D6DeviceCaps(&descRGB_HEL, IID_IDirect3DRGBDevice);
     descRGB_HAL.dwFlags = 0;
     descRGB_HAL.dcmColorModel = 0;
     // Some applications apparently care about HAL texture caps
@@ -247,8 +255,10 @@ namespace dxvk {
                                            & ~D3DPTEXTURECAPS_NONPOW2CONDITIONAL;
 
     // Hardware acceleration
-    D3DDEVICEDESC descHAL_HAL = GetD3D6Caps(IID_IDirect3DHALDevice, d3dOptions);
-    D3DDEVICEDESC descHAL_HEL = descHAL_HAL;
+    D3DDEVICEDESC descHAL_HAL = m_desc;
+    ApplyD3D6DeviceCaps(&descHAL_HAL, IID_IDirect3DHALDevice);
+    D3DDEVICEDESC descHAL_HEL = m_desc;
+    ApplyD3D6DeviceCaps(&descHAL_HEL, IID_IDirect3DHALDevice);
     descHAL_HEL.dcmColorModel = 0;
     // Some applications apparently care about HEL texture caps
     descHAL_HEL.dpcLineCaps.dwTextureCaps &= ~D3DPTEXTURECAPS_PERSPECTIVE

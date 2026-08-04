@@ -21,6 +21,10 @@ namespace dxvk {
     if (m_commonD3DIntf == nullptr)
       m_commonD3DIntf = new D3DCommonInterface();
 
+    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
+    // Retrieve and cache the base capabilities
+    m_desc = GetD3D7BaseCaps(d3dOptions);
+
     d3d9::IDirect3D9* d3d9Intf = m_commonD3DIntf->GetD3D9Interface();
 
     // Get the bridge interface to D3D9
@@ -107,7 +111,8 @@ namespace dxvk {
     HRESULT hr;
 
     // Software emulation, this is expected to be exposed
-    D3DDEVICEDESC7 desc7RGB = GetD3D7Caps(IID_IDirect3DRGBDevice, d3dOptions);
+    D3DDEVICEDESC7 desc7RGB = m_desc;
+    ApplyD3D7DeviceCaps(&desc7RGB, IID_IDirect3DRGBDevice);
     if (likely(!d3dOptions->legacyDeviceNames)) {
       static char deviceDescRGB[100] = "D7VK RGB";
       static char deviceNameRGB[100] = "D7VK RGB";
@@ -121,7 +126,8 @@ namespace dxvk {
       return D3D_OK;
 
     // Hardware acceleration (no T&L)
-    D3DDEVICEDESC7 desc7HAL = GetD3D7Caps(IID_IDirect3DHALDevice, d3dOptions);
+    D3DDEVICEDESC7 desc7HAL = m_desc;
+    ApplyD3D7DeviceCaps(&desc7HAL, IID_IDirect3DHALDevice);
     if (likely(!d3dOptions->legacyDeviceNames)) {
       static char deviceDescHAL[100] = "D7VK HAL";
       static char deviceNameHAL[100] = "D7VK HAL";
@@ -135,7 +141,8 @@ namespace dxvk {
       return D3D_OK;
 
     // Hardware acceleration with T&L
-    D3DDEVICEDESC7 desc7TNL = GetD3D7Caps(IID_IDirect3DTnLHalDevice, d3dOptions);
+    D3DDEVICEDESC7 desc7TNL = m_desc;
+    ApplyD3D7DeviceCaps(&desc7TNL, IID_IDirect3DTnLHalDevice);
     if (likely(!d3dOptions->legacyDeviceNames)) {
       static char deviceDescTNL[100] = "D7VK T&L HAL";
       static char deviceNameTNL[100] = "D7VK T&L HAL";

@@ -22,6 +22,10 @@ namespace dxvk {
     if (m_commonD3DIntf == nullptr)
       m_commonD3DIntf = new D3DCommonInterface();
 
+    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
+    // Retrieve and cache the base capabilities
+    m_desc = GetD3D3BaseCaps(d3dOptions);
+
     d3d9::IDirect3D9* d3d9Intf = m_commonD3DIntf->GetD3D9Interface();
 
     // Get the bridge interface to D3D9
@@ -142,8 +146,10 @@ namespace dxvk {
     // RAMP device (monochrome), this is expected to be exposed
     GUID guidRAMP = IID_IDirect3DRampDevice;
     // The caps of a RAMP device are mostly identical to an RGB device
-    D3DDEVICEDESC3 desc3RAMP_HAL = GetD3D3Caps(IID_IDirect3DRGBDevice, d3dOptions);
-    D3DDEVICEDESC3 desc3RAMP_HEL = desc3RAMP_HAL;
+    D3DDEVICEDESC3 desc3RAMP_HAL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3RAMP_HAL, guidRAMP);
+    D3DDEVICEDESC3 desc3RAMP_HEL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3RAMP_HEL, guidRAMP);
     D3DDEVICEDESC descRAMP_HAL = { };
     D3DDEVICEDESC descRAMP_HEL = { };
     desc3RAMP_HAL.dwFlags = 0;
@@ -175,8 +181,10 @@ namespace dxvk {
 
     // Software emulation, this is expected to be exposed
     GUID guidRGB = IID_IDirect3DRGBDevice;
-    D3DDEVICEDESC3 desc3RGB_HAL = GetD3D3Caps(IID_IDirect3DRGBDevice, d3dOptions);
-    D3DDEVICEDESC3 desc3RGB_HEL = desc3RGB_HAL;
+    D3DDEVICEDESC3 desc3RGB_HAL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3RGB_HAL, guidRGB);
+    D3DDEVICEDESC3 desc3RGB_HEL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3RGB_HEL, guidRGB);
     D3DDEVICEDESC descRGB_HAL = { };
     D3DDEVICEDESC descRGB_HEL = { };
     desc3RGB_HAL.dwFlags = 0;
@@ -207,8 +215,10 @@ namespace dxvk {
 
     // Hardware acceleration
     GUID guidHAL = IID_IDirect3DHALDevice;
-    D3DDEVICEDESC3 desc3HAL_HAL = GetD3D3Caps(IID_IDirect3DHALDevice, d3dOptions);
-    D3DDEVICEDESC3 desc3HAL_HEL = desc3HAL_HAL;
+    D3DDEVICEDESC3 desc3HAL_HAL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3HAL_HAL, guidHAL);
+    D3DDEVICEDESC3 desc3HAL_HEL = m_desc;
+    ApplyD3D3DeviceCaps(&desc3HAL_HEL, guidHAL);
     D3DDEVICEDESC descHAL_HAL = { };
     D3DDEVICEDESC descHAL_HEL = { };
     desc3HAL_HEL.dcmColorModel = 0;
@@ -282,11 +292,11 @@ namespace dxvk {
     if (unlikely(!IsValidFindDeviceResultSize(lpD3DFDR->dwSize)))
       return DDERR_INVALIDPARAMS;
 
-    const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
-
     // Software emulation, this is expected to be exposed
-    D3DDEVICEDESC3 descRGB_HAL = GetD3D3Caps(IID_IDirect3DRGBDevice, d3dOptions);
-    D3DDEVICEDESC3 descRGB_HEL = descRGB_HAL;
+    D3DDEVICEDESC3 descRGB_HAL = m_desc;
+    ApplyD3D3DeviceCaps(&descRGB_HAL, IID_IDirect3DRGBDevice);
+    D3DDEVICEDESC3 descRGB_HEL = m_desc;
+    ApplyD3D3DeviceCaps(&descRGB_HEL, IID_IDirect3DRGBDevice);
     descRGB_HAL.dwFlags = 0;
     descRGB_HAL.dcmColorModel = 0;
     // Some applications apparently care about HAL texture caps
@@ -298,8 +308,10 @@ namespace dxvk {
                                            & ~D3DPTEXTURECAPS_NONPOW2CONDITIONAL;
 
     // Hardware acceleration
-    D3DDEVICEDESC3 descHAL_HAL = GetD3D3Caps(IID_IDirect3DHALDevice, d3dOptions);
-    D3DDEVICEDESC3 descHAL_HEL = descHAL_HAL;
+    D3DDEVICEDESC3 descHAL_HAL = m_desc;
+    ApplyD3D3DeviceCaps(&descHAL_HAL, IID_IDirect3DHALDevice);
+    D3DDEVICEDESC3 descHAL_HEL = m_desc;
+    ApplyD3D3DeviceCaps(&descHAL_HEL, IID_IDirect3DHALDevice);
     descHAL_HEL.dcmColorModel = 0;
     // Some applications apparently care about HEL texture caps
     descHAL_HEL.dpcLineCaps.dwTextureCaps &= ~D3DPTEXTURECAPS_PERSPECTIVE

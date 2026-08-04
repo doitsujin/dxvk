@@ -32,7 +32,8 @@ namespace dxvk {
 
     const D3DOptions* d3dOptions = m_commonIntf->GetOptions();
     // Retrieve and cache the device capabilities
-    m_desc = GetD3D7Caps(deviceGUID, d3dOptions);
+    m_desc = GetD3D7BaseCaps(d3dOptions);
+    ApplyD3D7DeviceCaps(&m_desc, deviceGUID);
 
     d3d9::IDirect3DDevice9* device9;
 
