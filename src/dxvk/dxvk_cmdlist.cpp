@@ -343,9 +343,15 @@ namespace dxvk {
 
       if (isLast) {
         // Signal per-command list semaphores on the final submission
-        for (size_t i = 0; i < m_signalSemaphores.size(); i++) {
-          m_commandSubmission.signalSemaphore(m_signalSemaphores[i].fence->handle(),
-            m_signalSemaphores[i].value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+        for (const auto& semaphore : m_signalSemaphores) {
+          // HACK: Support equal-value signals, including shared fences,
+          // by skipping the redundant Vulkan timeline signal.
+          if (semaphore.fence->getValue() == semaphore.value) {
+            continue;
+          }
+
+          m_commandSubmission.signalSemaphore(semaphore.fence->handle(),
+            semaphore.value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 
         // Signal WSI semaphore on the final submission
