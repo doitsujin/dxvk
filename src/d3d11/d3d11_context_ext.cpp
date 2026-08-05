@@ -17,8 +17,31 @@ namespace dxvk {
   : m_ctx(pContext) {
     
   }
-  
-  
+
+  template <typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::SetMultiviewModeNV(
+      uint32_t NumViews, BOOL IndependentViewportMask) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
+    // A large share of the application's calls are redundant re-sets of
+    // the same values. Dedupe under the context lock, before the CS
+    // stream. Reads the authoritative copy on D3D11CommonContext rather
+    // than keeping a second copy here that could drift out of step.
+    if (NumViews == m_ctx->GetNvMultiviewNumViews() &&
+        bool(IndependentViewportMask) ==
+            m_ctx->GetNvMultiviewIndependentMask()) {
+      return;
+    }
+
+    m_ctx->SetNvMultiviewToggleState(NumViews, bool(IndependentViewportMask));
+
+    m_ctx->EmitCs(
+        [cNumViews = NumViews,
+         cIndependentMask = bool(IndependentViewportMask)](DxvkContext* ctx) {
+          ctx->setNvMultiviewState(cNumViews, cIndependentMask);
+        });
+  }
+
   template<typename ContextType>
   ULONG STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::AddRef() {
     return m_ctx->AddRef();
