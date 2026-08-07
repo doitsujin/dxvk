@@ -246,7 +246,15 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    AddViewportInternal(viewport);
+    D3D3Viewport* d3d3Viewport = static_cast<D3D3Viewport*>(viewport);
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d3Viewport);
+    if (unlikely(it != m_viewports.end())) {
+      Logger::warn("D3D3Device::AddViewport: Pre-existing viewport found");
+    } else {
+      m_viewports.push_back(d3d3Viewport);
+      d3d3Viewport->GetCommonViewport()->SetD3D3Device(this);
+    }
 
     return D3D_OK;
   }
@@ -257,12 +265,18 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    DeleteViewportInternal(viewport);
-
-    // Clear the current viewport if it is deleted from the device
     D3D3Viewport* d3d3Viewport = static_cast<D3D3Viewport*>(viewport);
-    if (m_currentViewport.ptr() == d3d3Viewport)
-      m_currentViewport = nullptr;
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d3Viewport);
+    if (likely(it != m_viewports.end())) {
+      m_viewports.erase(it);
+      d3d3Viewport->GetCommonViewport()->SetD3D3Device(nullptr);
+      // Clear the current viewport if it is deleted from the device
+      if (m_currentViewport.ptr() == d3d3Viewport)
+        m_currentViewport = nullptr;
+    } else {
+      Logger::warn("D3D3Device::DeleteViewport: Viewport not found");
+    }
 
     return D3D_OK;
   }
@@ -900,31 +914,7 @@ namespace dxvk {
     }
   }
 
-  inline void D3D3Device::AddViewportInternal(IDirect3DViewport* viewport) {
-    D3D3Viewport* d3d3Viewport = static_cast<D3D3Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d3Viewport);
-    if (unlikely(it != m_viewports.end())) {
-      Logger::warn("D3D3Device::AddViewportInternal: Pre-existing viewport found");
-    } else {
-      m_viewports.push_back(d3d3Viewport);
-      d3d3Viewport->GetCommonViewport()->SetD3D3Device(this);
-    }
-  }
-
-  inline void D3D3Device::DeleteViewportInternal(IDirect3DViewport* viewport) {
-    D3D3Viewport* d3d3Viewport = static_cast<D3D3Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d3Viewport);
-    if (likely(it != m_viewports.end())) {
-      m_viewports.erase(it);
-      d3d3Viewport->GetCommonViewport()->SetD3D3Device(nullptr);
-    } else {
-      Logger::warn("D3D3Device::DeleteViewportInternal: Viewport not found");
-    }
-  }
-
-  inline HRESULT STDMETHODCALLTYPE D3D3Device::SetLightStateInternal(D3DLIGHTSTATETYPE dwLightStateType, DWORD dwLightState) {
+  inline HRESULT D3D3Device::SetLightStateInternal(D3DLIGHTSTATETYPE dwLightStateType, DWORD dwLightState) {
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     switch (dwLightStateType) {
@@ -972,7 +962,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  inline HRESULT STDMETHODCALLTYPE D3D3Device::SetRenderStateInternal(D3DRENDERSTATETYPE dwRenderStateType, DWORD dwRenderState) {
+  inline HRESULT D3D3Device::SetRenderStateInternal(D3DRENDERSTATETYPE dwRenderStateType, DWORD dwRenderState) {
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
     d3d9::D3DRENDERSTATETYPE State9 = d3d9::D3DRENDERSTATETYPE(dwRenderStateType);
 

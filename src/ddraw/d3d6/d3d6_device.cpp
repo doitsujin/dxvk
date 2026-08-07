@@ -59,8 +59,15 @@ namespace dxvk {
     }
 
     // Common D3D9 index buffers
-    if (unlikely(FAILED(InitializeIndexBuffers()))) {
-      throw DxvkError("D3D6Device: ERROR! Failed to initialize D3D9 index buffers.");
+    static constexpr DWORD Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
+
+    for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
+      const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
+
+      HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
+                                              d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);
+      if (unlikely(FAILED(hr)))
+        throw DxvkError("D3D6Device: ERROR! Failed to initialize D3D9 index buffers.");
     }
 
     // Get the bridge interface to D3D9
@@ -230,7 +237,15 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    AddViewportInternal(viewport);
+    D3D6Viewport* d3d6Viewport = static_cast<D3D6Viewport*>(viewport);
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d6Viewport);
+    if (unlikely(it != m_viewports.end())) {
+      Logger::warn("D3D6Device::AddViewport: Pre-existing viewport found");
+    } else {
+      m_viewports.push_back(d3d6Viewport);
+      d3d6Viewport->GetCommonViewport()->SetD3D6Device(this);
+    }
 
     return D3D_OK;
   }
@@ -241,12 +256,18 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    DeleteViewportInternal(viewport);
-
-    // Clear the current viewport if it is deleted from the device
     D3D6Viewport* d3d6Viewport = static_cast<D3D6Viewport*>(viewport);
-    if (m_currentViewport.ptr() == d3d6Viewport)
-      m_currentViewport = nullptr;
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d6Viewport);
+    if (likely(it != m_viewports.end())) {
+      m_viewports.erase(it);
+      d3d6Viewport->GetCommonViewport()->SetD3D6Device(nullptr);
+      // Clear the current viewport if it is deleted from the device
+      if (m_currentViewport.ptr() == d3d6Viewport)
+        m_currentViewport = nullptr;
+    } else {
+      Logger::warn("D3D6Device::DeleteViewport: Viewport not found");
+    }
 
     return D3D_OK;
   }
@@ -1036,7 +1057,7 @@ namespace dxvk {
             return DDERR_INVALIDPARAMS;
         }
 
-        HRESULT hr = SetTextureWithHandle(surface4, dwRenderState);
+        HRESULT hr = SetTextureInternal(surface4, dwRenderState);
         if (unlikely(FAILED(hr)))
           return hr;
 
@@ -1761,15 +1782,9 @@ namespace dxvk {
       return D3DERR_VERTEXBUFFERLOCKED;
     }
 
-    uint8_t ibIndex = 0;
-    // Try to fit index buffer uploads into the smallest buffer size possible,
-    // out of the five available: XS, S, M, L and XL (XL being the theoretical max)
-    while (index_count > ddrawCaps::IndexCount[ibIndex]) {
-      ibIndex++;
-      if (unlikely(ibIndex > ddrawCaps::IndexBufferCount - 1)) {
-        Logger::err("D3D6Device::DrawIndexedPrimitiveVB: Exceeded size of largest index buffer");
-        return DDERR_UNSUPPORTED;
-      }
+    if (unlikely(index_count > ddrawCaps::MaxIndexCount)) {
+      Logger::err("D3D7Device::DrawIndexedPrimitiveVB: Exceeded size of largest index buffer");
+      return DDERR_UNSUPPORTED;
     }
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
@@ -1784,9 +1799,21 @@ namespace dxvk {
       device9->SetRenderState(d3d9::D3DRS_LIGHTING, FALSE);
     HandlePreDrawLegacyProjection(device9, flags);
 
+    uint8_t ibIndex = 0;
+    // Fit index buffer uploads into the smallest buffer size possible
+    while (index_count > ddrawCaps::IndexCount[ibIndex])
+      ibIndex++;
+
     d3d9::IDirect3DIndexBuffer9* ib9 = m_ib9[ibIndex].ptr();
 
-    UploadIndices(ib9, indices, index_count);
+    const size_t ibSize = index_count * sizeof(WORD);
+    void* pData = nullptr;
+
+    // Locking and unlocking are generally expected to work here
+    ib9->Lock(0, ibSize, &pData, D3DLOCK_DISCARD);
+    memcpy(pData, static_cast<void*>(indices), ibSize);
+    ib9->Unlock();
+
     device9->SetIndices(ib9);
     device9->SetFVF(vb6->GetFVF());
     device9->SetStreamSource(0, vb6->GetD3D9VertexBuffer(), 0, vb6->GetStride());
@@ -2101,33 +2128,6 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  inline HRESULT D3D6Device::InitializeIndexBuffers() {
-    static constexpr DWORD Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
-
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
-      const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
-
-      HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
-                                              d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);
-      if (unlikely(FAILED(hr)))
-        return hr;
-    }
-
-    return D3D_OK;
-  }
-
-  inline void D3D6Device::UploadIndices(d3d9::IDirect3DIndexBuffer9* ib9, WORD* indices, DWORD indexCount) {
-    const size_t size = indexCount * sizeof(WORD);
-    void* pData = nullptr;
-
-    // Locking and unlocking are generally expected to work here
-    ib9->Lock(0, size, &pData, D3DLOCK_DISCARD);
-    memcpy(pData, static_cast<void*>(indices), size);
-    ib9->Unlock();
-  }
-
   inline void D3D6Device::DDrawDirtySurfaceUpload() {
     // Render target
     m_rt->InitializeOrUploadD3D9();
@@ -2145,31 +2145,7 @@ namespace dxvk {
     }
   }
 
-  inline void D3D6Device::AddViewportInternal(IDirect3DViewport3* viewport) {
-    D3D6Viewport* d3d6Viewport = static_cast<D3D6Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d6Viewport);
-    if (unlikely(it != m_viewports.end())) {
-      Logger::warn("D3D6Device::AddViewportInternal: Pre-existing viewport found");
-    } else {
-      m_viewports.push_back(d3d6Viewport);
-      d3d6Viewport->GetCommonViewport()->SetD3D6Device(this);
-    }
-  }
-
-  inline void D3D6Device::DeleteViewportInternal(IDirect3DViewport3* viewport) {
-    D3D6Viewport* d3d6Viewport = static_cast<D3D6Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d6Viewport);
-    if (likely(it != m_viewports.end())) {
-      m_viewports.erase(it);
-       d3d6Viewport->GetCommonViewport()->SetD3D6Device(nullptr);
-    } else {
-      Logger::warn("D3D6Device::DeleteViewportInternal: Viewport not found");
-    }
-  }
-
-  inline HRESULT D3D6Device::SetTextureWithHandle(DDraw4Surface* surface, DWORD textureHandle) {
+  inline HRESULT D3D6Device::SetTextureInternal(DDraw4Surface* surface, DWORD textureHandle) {
     HRESULT hr;
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
@@ -2178,7 +2154,7 @@ namespace dxvk {
     if (surface == nullptr) {
       hr = device9->SetTexture(0, nullptr);
       if (unlikely(FAILED(hr))) {
-        Logger::err("D3D6Device::SetTextureWithHandle: Failed to unbind D3D9 texture");
+        Logger::err("D3D6Device::SetTextureInternal: Failed to unbind D3D9 texture");
         return hr;
       }
 
@@ -2197,7 +2173,7 @@ namespace dxvk {
 
     hr = surface->InitializeOrUploadD3D9();
     if (unlikely(FAILED(hr))) {
-      Logger::err("D3D6Device::SetTextureWithHandle: Failed to initialize/upload D3D9 texture");
+      Logger::err("D3D6Device::SetTextureInternal: Failed to initialize/upload D3D9 texture");
       return hr;
     }
 
@@ -2210,7 +2186,7 @@ namespace dxvk {
     if (likely(tex9 != nullptr)) {
       hr = device9->SetTexture(0, tex9);
       if (unlikely(FAILED(hr))) {
-        Logger::warn("D3D6Device::SetTextureWithHandle: Failed to bind D3D9 texture");
+        Logger::warn("D3D6Device::SetTextureInternal: Failed to bind D3D9 texture");
         return hr;
       }
 
@@ -2231,7 +2207,7 @@ namespace dxvk {
                               normalizedColorKey.dwColorSpaceHighValue);
       }
     } else {
-      Logger::err("D3D6Device::SetTextureWithHandle: Found no valid D3D9 texture");
+      Logger::err("D3D6Device::SetTextureInternal: Found no valid D3D9 texture");
     }
 
     m_commonD3DDevice->SetCurrentTextureHandle(textureHandle);

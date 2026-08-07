@@ -54,8 +54,15 @@ namespace dxvk {
     }
 
     // Common D3D9 index buffers
-    if (unlikely(FAILED(InitializeIndexBuffers()))) {
-      throw DxvkError("D3D7Device: ERROR! Failed to initialize D3D9 index buffers.");
+    static constexpr DWORD Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
+
+    for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
+      const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
+
+      HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
+                                              d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);
+      if (unlikely(FAILED(hr)))
+        throw DxvkError("D3D7Device: ERROR! Failed to initialize D3D9 index buffers.");
     }
 
     // Get the bridge interface to D3D9
@@ -1182,23 +1189,30 @@ namespace dxvk {
       return D3DERR_VERTEXBUFFERLOCKED;
     }
 
-    uint8_t ibIndex = 0;
-    // Fit index buffer uploads into the smallest buffer size possible
-    while (dwIndexCount > ddrawCaps::IndexCount[ibIndex]) {
-      ibIndex++;
-      if (unlikely(ibIndex > ddrawCaps::IndexBufferCount - 1)) {
-        Logger::err("D3D7Device::DrawIndexedPrimitiveVB: Exceeded size of largest index buffer");
-        return DDERR_UNSUPPORTED;
-      }
+    if (unlikely(dwIndexCount > ddrawCaps::MaxIndexCount)) {
+      Logger::err("D3D7Device::DrawIndexedPrimitiveVB: Exceeded size of largest index buffer");
+      return DDERR_UNSUPPORTED;
     }
 
     d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     DDrawDirtySurfaceUpload();
 
+    uint8_t ibIndex = 0;
+    // Fit index buffer uploads into the smallest buffer size possible
+    while (dwIndexCount > ddrawCaps::IndexCount[ibIndex])
+      ibIndex++;
+
     d3d9::IDirect3DIndexBuffer9* ib9 = m_ib9[ibIndex].ptr();
 
-    UploadIndices(ib9, lpwIndices, dwIndexCount);
+    const size_t ibSize = dwIndexCount * sizeof(WORD);
+    void* pData = nullptr;
+
+    // Locking and unlocking are generally expected to work here
+    ib9->Lock(0, ibSize, &pData, D3DLOCK_DISCARD);
+    memcpy(pData, static_cast<void*>(lpwIndices), ibSize);
+    ib9->Unlock();
+
     device9->SetIndices(ib9);
     device9->SetFVF(vb7->GetFVF());
     device9->SetStreamSource(0, vb7->GetD3D9VertexBuffer(), 0, vb7->GetStride());
@@ -1608,33 +1622,6 @@ namespace dxvk {
     // so there's no need to worry about it in this case
 
     return D3D_OK;
-  }
-
-  inline HRESULT D3D7Device::InitializeIndexBuffers() {
-    static constexpr DWORD Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
-
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    for (uint8_t ibIndex = 0; ibIndex < ddrawCaps::IndexBufferCount ; ibIndex++) {
-      const UINT ibSize = ddrawCaps::IndexCount[ibIndex] * sizeof(WORD);
-
-      HRESULT hr = device9->CreateIndexBuffer(ibSize, Usage, d3d9::D3DFMT_INDEX16,
-                                              d3d9::D3DPOOL_DEFAULT, &m_ib9[ibIndex], nullptr);
-      if (unlikely(FAILED(hr)))
-        return hr;
-    }
-
-    return D3D_OK;
-  }
-
-  inline void D3D7Device::UploadIndices(d3d9::IDirect3DIndexBuffer9* ib9, WORD* indices, DWORD indexCount) {
-    const size_t size = indexCount * sizeof(WORD);
-    void* pData = nullptr;
-
-    // Locking and unlocking are generally expected to work here
-    ib9->Lock(0, size, &pData, D3DLOCK_DISCARD);
-    memcpy(pData, static_cast<void*>(indices), size);
-    ib9->Unlock();
   }
 
   inline void D3D7Device::DDrawDirtySurfaceUpload() {

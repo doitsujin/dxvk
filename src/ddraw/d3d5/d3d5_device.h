@@ -135,10 +135,6 @@ namespace dxvk {
 
     inline void DDrawDirtySurfaceUpload();
 
-    inline void AddViewportInternal(IDirect3DViewport2* viewport);
-
-    inline void DeleteViewportInternal(IDirect3DViewport2* viewport);
-
     inline HRESULT SetTextureInternal(DDrawSurface* surface, DWORD textureHandle);
 
     inline void RefreshLastUsedDevice() {
@@ -181,13 +177,14 @@ namespace dxvk {
     Com<D3D5Viewport>               m_currentViewport;
     std::vector<Com<D3D5Viewport>>  m_viewports;
 
+    D3DMATRIX                       m_projectionMatrix = { };
+    const D3DMATRIX*                m_legacyProjection = nullptr;
+
     VertexStreamInfo                m_vertexStreamInfo;
     std::vector<D3DVERTEX>          m_vertexStream;
     std::vector<D3DLVERTEX>         m_lvertexStream;
     std::vector<D3DTLVERTEX>        m_tlvertexStream;
 
-    D3DMATRIX                       m_projectionMatrix = { };
-    const D3DMATRIX*                m_legacyProjection = nullptr;
   };
 
 }

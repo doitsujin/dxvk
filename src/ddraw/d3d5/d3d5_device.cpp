@@ -248,7 +248,15 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    AddViewportInternal(viewport);
+    D3D5Viewport* d3d5Viewport = static_cast<D3D5Viewport*>(viewport);
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d5Viewport);
+    if (unlikely(it != m_viewports.end())) {
+      Logger::warn("D3D5Device::AddViewport: Pre-existing viewport found");
+    } else {
+      m_viewports.push_back(d3d5Viewport);
+      d3d5Viewport->GetCommonViewport()->SetD3D5Device(this);
+    }
 
     return D3D_OK;
   }
@@ -259,12 +267,18 @@ namespace dxvk {
     if (unlikely(viewport == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    DeleteViewportInternal(viewport);
-
-    // Clear the current viewport if it is deleted from the device
     D3D5Viewport* d3d5Viewport = static_cast<D3D5Viewport*>(viewport);
-    if (m_currentViewport.ptr() == d3d5Viewport)
-      m_currentViewport = nullptr;
+
+    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d5Viewport);
+    if (likely(it != m_viewports.end())) {
+      m_viewports.erase(it);
+      d3d5Viewport->GetCommonViewport()->SetD3D5Device(nullptr);
+      // Clear the current viewport if it is deleted from the device
+      if (m_currentViewport.ptr() == d3d5Viewport)
+        m_currentViewport = nullptr;
+    } else {
+      Logger::warn("D3D5Device::DeleteViewport: Viewport not found");
+    }
 
     return D3D_OK;
   }
@@ -1581,30 +1595,6 @@ namespace dxvk {
       DDrawSurface* tex = DDrawCommonInterface::GetSurfaceFromTextureHandle(texHandle);
       if (likely(tex != nullptr))
         tex->InitializeOrUploadD3D9();
-    }
-  }
-
-  inline void D3D5Device::AddViewportInternal(IDirect3DViewport2* viewport) {
-    D3D5Viewport* d3d5Viewport = static_cast<D3D5Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d5Viewport);
-    if (unlikely(it != m_viewports.end())) {
-      Logger::warn("D3D5Device::AddViewportInternal: Pre-existing viewport found");
-    } else {
-      m_viewports.push_back(d3d5Viewport);
-      d3d5Viewport->GetCommonViewport()->SetD3D5Device(this);
-    }
-  }
-
-  inline void D3D5Device::DeleteViewportInternal(IDirect3DViewport2* viewport) {
-    D3D5Viewport* d3d5Viewport = static_cast<D3D5Viewport*>(viewport);
-
-    auto it = std::find(m_viewports.begin(), m_viewports.end(), d3d5Viewport);
-    if (likely(it != m_viewports.end())) {
-      m_viewports.erase(it);
-      d3d5Viewport->GetCommonViewport()->SetD3D5Device(nullptr);
-    } else {
-      Logger::warn("D3D5Device::DeleteViewportInternal: Viewport not found");
     }
   }
 

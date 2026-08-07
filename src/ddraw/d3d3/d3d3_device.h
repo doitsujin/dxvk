@@ -110,15 +110,11 @@ namespace dxvk {
 
     inline void DDrawDirtySurfaceUpload();
 
-    inline void AddViewportInternal(IDirect3DViewport* viewport);
-
-    inline void DeleteViewportInternal(IDirect3DViewport* viewport);
-
     inline HRESULT SetTextureInternal(DDrawSurface* surface, DWORD textureHandle);
 
-    inline HRESULT STDMETHODCALLTYPE SetRenderStateInternal(D3DRENDERSTATETYPE dwRenderStateType, DWORD dwRenderState);
+    inline HRESULT SetRenderStateInternal(D3DRENDERSTATETYPE dwRenderStateType, DWORD dwRenderState);
 
-    inline HRESULT STDMETHODCALLTYPE SetLightStateInternal(D3DLIGHTSTATETYPE dwLightStateType, DWORD dwLightState);
+    inline HRESULT SetLightStateInternal(D3DLIGHTSTATETYPE dwLightStateType, DWORD dwLightState);
 
     inline void DrawTriangleInternal(D3DTRIANGLE* triangle, uint16_t count, DWORD vertexCount, const D3DTLVERTEX* vertexBuffer);
 

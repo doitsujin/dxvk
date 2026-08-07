@@ -170,10 +170,6 @@ namespace dxvk {
 
   private:
 
-    inline HRESULT InitializeIndexBuffers();
-
-    inline void UploadIndices(d3d9::IDirect3DIndexBuffer9* ib9, WORD* indices, DWORD indexCount);
-
     inline void DDrawDirtySurfaceUpload();
 
     inline bool ShouldRecord() const { return m_recorder != nullptr; }

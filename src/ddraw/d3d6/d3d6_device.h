@@ -158,17 +158,9 @@ namespace dxvk {
 
   private:
 
-    inline HRESULT InitializeIndexBuffers();
-
-    inline void UploadIndices(d3d9::IDirect3DIndexBuffer9* ib9, WORD* indices, DWORD indexCount);
-
     inline void DDrawDirtySurfaceUpload();
 
-    inline void AddViewportInternal(IDirect3DViewport3* viewport);
-
-    inline void DeleteViewportInternal(IDirect3DViewport3* viewport);
-
-    inline HRESULT SetTextureWithHandle(DDraw4Surface* surface, DWORD textureHandle);
+    inline HRESULT SetTextureInternal(DDraw4Surface* surface, DWORD textureHandle);
 
     inline void RefreshLastUsedDevice() {
       if (unlikely(m_commonIntf->GetCommonD3DDevice() != m_commonD3DDevice.ptr()))
@@ -213,6 +205,9 @@ namespace dxvk {
     Com<D3D6Viewport>               m_currentViewport;
     std::vector<Com<D3D6Viewport>>  m_viewports;
 
+    D3DMATRIX                       m_projectionMatrix   = { };
+    const D3DMATRIX*                m_legacyProjection   = nullptr;
+
     VertexStreamInfo                m_vertexStreamInfo;
     std::vector<D3DVERTEX>          m_vertexStream;
     std::vector<D3DLVERTEX>         m_lvertexStream;
@@ -220,9 +215,6 @@ namespace dxvk {
 
     // D3D5Texture (aka IDirect3DTexture2) is shared between D3D5 and D3D6
     std::array<Com<D3D5Texture, false>, ddrawCaps::TextureStageCount> m_textures;
-
-    D3DMATRIX                       m_projectionMatrix   = { };
-    const D3DMATRIX*                m_legacyProjection   = nullptr;
 
     std::array<Com<d3d9::IDirect3DIndexBuffer9>, ddrawCaps::IndexBufferCount> m_ib9;
 
