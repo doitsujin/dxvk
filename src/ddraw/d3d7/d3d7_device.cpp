@@ -965,9 +965,9 @@ namespace dxvk {
     if (unlikely(lpvVertices == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     device9->SetFVF(dwVertexTypeDesc);
     HRESULT hr = device9->DrawPrimitiveUP(
@@ -997,9 +997,9 @@ namespace dxvk {
     if (unlikely(lpvVertices == nullptr || lpwIndices == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     device9->SetFVF(dwVertexTypeDesc);
     HRESULT hr = device9->DrawIndexedPrimitiveUP(
@@ -1059,9 +1059,9 @@ namespace dxvk {
     if (unlikely(lpVertexArray == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     // Transform strided vertex data to a standard vertex buffer stream
     PackedVertexBuffer pvb = TransformStridedtoUP(dwVertexTypeDesc, lpVertexArray, dwVertexCount);
@@ -1094,9 +1094,9 @@ namespace dxvk {
     if (unlikely(lpVertexArray == nullptr || lpwIndices == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     // Transform strided vertex data to a standard vertex buffer stream
     PackedVertexBuffer pvb = TransformStridedtoUP(dwVertexTypeDesc, lpVertexArray, dwVertexCount);
@@ -1145,9 +1145,9 @@ namespace dxvk {
       return D3DERR_VERTEXBUFFERLOCKED;
     }
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     device9->SetFVF(vb7->GetFVF());
     device9->SetStreamSource(0, vb7->GetD3D9VertexBuffer(), 0, vb7->GetStride());
@@ -1194,9 +1194,9 @@ namespace dxvk {
       return DDERR_UNSUPPORTED;
     }
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     uint8_t ibIndex = 0;
     // Fit index buffer uploads into the smallest buffer size possible

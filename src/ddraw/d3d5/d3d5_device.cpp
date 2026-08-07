@@ -1428,9 +1428,9 @@ namespace dxvk {
     if (unlikely(vertices == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD vertex_type5 = ConvertVertexType(vertex_type);
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&
@@ -1473,9 +1473,9 @@ namespace dxvk {
     if (unlikely(vertices == nullptr || indices == nullptr))
       return DDERR_INVALIDPARAMS;
 
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
     DDrawDirtySurfaceUpload();
+
+    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
 
     const DWORD fvf5 = ConvertVertexType(fvf);
     const bool useLighting = !(flags & D3DDP_DONOTLIGHT) &&

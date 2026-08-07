@@ -1316,10 +1316,6 @@ namespace dxvk {
   }
 
   inline void D3D3Device::DrawTriangleInternal(D3DTRIANGLE* triangle, uint16_t count, DWORD vertexCount, const D3DTLVERTEX* vertexBuffer) {
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    DDrawDirtySurfaceUpload();
-
     std::vector<D3DTLVERTEX> vertices;
 
     for (uint16_t i = 0; i < count; i++) {
@@ -1338,6 +1334,10 @@ namespace dxvk {
     }
 
     if (likely(!vertices.empty())) {
+      DDrawDirtySurfaceUpload();
+
+      d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
+
       device9->SetFVF(D3DFVF_TLVERTEX);
       HRESULT hr = device9->DrawPrimitiveUP(
            d3d9::D3DPT_TRIANGLELIST,
@@ -1357,10 +1357,6 @@ namespace dxvk {
   }
 
   inline void D3D3Device::DrawLineInternal(D3DLINE* line, uint16_t count, DWORD vertexCount, const D3DTLVERTEX* vertexBuffer) {
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    DDrawDirtySurfaceUpload();
-
     std::vector<D3DTLVERTEX> vertices;
 
     for (uint16_t i = 0; i < count; i++) {
@@ -1374,6 +1370,10 @@ namespace dxvk {
     }
 
     if (likely(!vertices.empty())) {
+      DDrawDirtySurfaceUpload();
+
+      d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
+
       device9->SetFVF(D3DFVF_TLVERTEX);
       HRESULT hr = device9->DrawPrimitiveUP(
            d3d9::D3DPT_LINELIST,
@@ -1393,10 +1393,6 @@ namespace dxvk {
   }
 
   inline void D3D3Device::DrawPointInternal(D3DPOINT* point, uint16_t count, DWORD vertexCount, const D3DTLVERTEX* vertexBuffer) {
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    DDrawDirtySurfaceUpload();
-
     std::vector<D3DTLVERTEX> vertices;
 
     for (uint16_t i = 0; i < count; i++) {
@@ -1411,6 +1407,10 @@ namespace dxvk {
     }
 
     if (likely(!vertices.empty())) {
+      DDrawDirtySurfaceUpload();
+
+      d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
+
       device9->SetFVF(D3DFVF_TLVERTEX);
       HRESULT hr = device9->DrawPrimitiveUP(
            d3d9::D3DPT_POINTLIST,
@@ -1424,15 +1424,12 @@ namespace dxvk {
       } else {
         Logger::err(str::format("D3D3Device::Execute: D3DOP_POINT failed to draw vertices: ", vertices.size()));
       }
+
       vertices.clear();
     }
   }
 
   inline void D3D3Device::DrawSpanInternal(D3DSPAN* span, uint16_t count, DWORD vertexCount, const D3DTLVERTEX* vertexBuffer) {
-    d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
-
-    DDrawDirtySurfaceUpload();
-
     std::vector<D3DTLVERTEX> vertices;
 
     for (uint16_t i = 0; i < count; i++) {
@@ -1447,6 +1444,10 @@ namespace dxvk {
     }
 
     if (likely(!vertices.empty())) {
+      DDrawDirtySurfaceUpload();
+
+      d3d9::IDirect3DDevice9* device9 = m_commonD3DDevice->GetD3D9Device();
+
       device9->SetFVF(D3DFVF_TLVERTEX);
       HRESULT hr = device9->DrawPrimitiveUP(
            d3d9::D3DPT_LINESTRIP,

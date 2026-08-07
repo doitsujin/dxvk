@@ -1239,8 +1239,8 @@ namespace dxvk {
       cubeTex9->GetCubeMapSurface(face, 0, &face9);
       face7->GetCommonSurface()->SetD3D9Surface(std::move(face9));
       m_attachedSurfaces.emplace(std::piecewise_construct,
-                                std::forward_as_tuple(face7->GetProxied()),
-                                std::forward_as_tuple(face7.ref()));
+                                 std::forward_as_tuple(face7->GetProxied()),
+                                 std::forward_as_tuple(face7.ref()));
     }
   }
 
