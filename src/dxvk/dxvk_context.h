@@ -1677,7 +1677,7 @@ namespace dxvk {
             VkRenderingAttachmentInfo&  attachment,
             DxvkAccess                  access) const;
 
-    void adjustRenderArea(const VkRect2D& rect);
+    void adjustRenderArea(const VkRect2D& rect, bool layered);
 
     void beginRenderPass();
     void endRenderPass(bool suspend);
