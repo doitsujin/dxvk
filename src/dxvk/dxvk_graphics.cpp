@@ -1058,6 +1058,9 @@ namespace dxvk {
       if (m_shaders.fs->metadata().flags.test(DxvkShaderFlag::ExportsSampleMask))
         m_flags.set(DxvkGraphicsPipelineFlag::HasSampleMaskExport);
     }
+
+    if (getLastPreRasterStage().metadata().flags.test(DxvkShaderFlag::ExportsLayer))
+      m_flags.set(DxvkGraphicsPipelineFlag::HasLayerExport);
   }
   
   
@@ -1505,6 +1508,19 @@ namespace dxvk {
   }
   
   
+  DxvkShader& DxvkGraphicsPipeline::getLastPreRasterStage() {
+    if (m_shaders.gs)
+      return *m_shaders.gs;
+
+    if (m_shaders.tes)
+      return *m_shaders.tes;
+
+    // TCS can't occur alone, so ignore.
+    // VS always exists.
+    return *m_shaders.vs;
+  }
+
+
   void DxvkGraphicsPipeline::destroyBasePipelines() {
     for (const auto& instance : m_basePipelines) {
       this->destroyVulkanPipeline(instance.second);
