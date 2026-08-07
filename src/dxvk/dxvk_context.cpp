@@ -2288,18 +2288,16 @@ namespace dxvk {
     }
 
     if (!attachments.empty()) {
+      DxvkFramebufferSize fbSize = m_state.om.framebufferInfo.size();
+
       VkClearRect clearRect = { };
-      clearRect.rect = m_state.om.renderingInfo.rendering.renderArea;
-      clearRect.layerCount = m_state.om.renderingInfo.rendering.layerCount;
+      clearRect.rect.extent = VkExtent2D { fbSize.width, fbSize.height };
+      clearRect.layerCount = fbSize.layers;
 
       m_cmd->cmdClearAttachments(DxvkCmdBuffer::ExecBuffer,
         attachments.size(), attachments.data(), 1u, &clearRect);
 
-      // Full clears require the render area to cover everything
-      m_state.om.renderAreaLo = VkOffset2D { 0, 0 };
-      m_state.om.renderAreaHi = VkOffset2D {
-        int32_t(clearRect.rect.extent.width),
-        int32_t(clearRect.rect.extent.height) };
+      adjustRenderArea(clearRect.rect, true);
     }
 
     m_deferredClears.clear();
@@ -2625,6 +2623,11 @@ namespace dxvk {
       renderingInfo.rendering.renderArea.extent = VkExtent2D {
         uint32_t(m_state.om.renderAreaHi.x - m_state.om.renderAreaLo.x),
         uint32_t(m_state.om.renderAreaHi.y - m_state.om.renderAreaLo.y) };
+
+      // If there are no layered clears or draws, set layer count to 1.
+      // May help reduce render pass memory usage on some GPUs.
+      if (!m_state.om.renderLayered)
+        renderingInfo.rendering.layerCount = 1u;
     }
   }
 
@@ -2649,13 +2652,14 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::adjustRenderArea(const VkRect2D& rect) {
+  void DxvkContext::adjustRenderArea(const VkRect2D& rect, bool layered) {
     m_state.om.renderAreaLo = VkOffset2D {
       std::min(m_state.om.renderAreaLo.x, rect.offset.x),
       std::min(m_state.om.renderAreaLo.y, rect.offset.y) };
     m_state.om.renderAreaHi = VkOffset2D {
       std::max(m_state.om.renderAreaHi.x, int32_t(rect.offset.x + rect.extent.width)),
       std::max(m_state.om.renderAreaHi.y, int32_t(rect.offset.y + rect.extent.height)) };
+    m_state.om.renderLayered |= layered;
   }
 
 
@@ -4215,7 +4219,7 @@ namespace dxvk {
       clearRect.rect.extent.height = extent.height;
       clearRect.layerCount = imageView->info().layerCount;
 
-      adjustRenderArea(clearRect.rect);
+      adjustRenderArea(clearRect.rect, true);
 
       // Check whether we can fold the clear into the curret render pass. This is the
       // case when the framebuffer size matches the clear size, even if the clear itself
@@ -4937,7 +4941,7 @@ namespace dxvk {
     m_cmd->cmdSetViewport(1, &viewport);
     m_cmd->cmdSetScissor(1, &scissor);
 
-    adjustRenderArea(scissor);
+    adjustRenderArea(scissor, true);
 
     std::array<DxvkDescriptorWrite, 2u> descriptors = { };
     descriptors[0].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
@@ -6477,6 +6481,7 @@ namespace dxvk {
     // Reset render area tracking, will be adjusted when drawing with viewports.
     m_state.om.renderAreaLo = VkOffset2D { int32_t(fbSize.width), int32_t(fbSize.height) };
     m_state.om.renderAreaHi = VkOffset2D { 0, 0 };
+    m_state.om.renderLayered = lateClearCount > 0u;
 
     if (lateClearCount)
       std::swap(m_state.om.renderAreaLo, m_state.om.renderAreaHi);
@@ -6900,6 +6905,11 @@ namespace dxvk {
       if (layout->usesSamplerHeap())
         updateSamplerSet<VK_PIPELINE_BIND_POINT_GRAPHICS>(layout);
     }
+
+    // Need to account for layered rendering after the render pass was
+    // actually begun, since binding the framebuffer resets this state.
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasLayerExport))
+      m_state.om.renderLayered = VK_TRUE;
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
@@ -7910,7 +7920,7 @@ namespace dxvk {
           std::min(scissor.extent.height, uint32_t(hi.y - lo.y)) };
 
         // Extend render area based on the final scissor rect
-        adjustRenderArea(dst);
+        adjustRenderArea(dst, false);
       }
 
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
