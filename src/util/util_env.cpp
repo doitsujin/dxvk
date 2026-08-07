@@ -6,6 +6,8 @@
 #ifdef __linux__
 #include <unistd.h>
 #include <limits.h>
+#elif defined(__APPLE__)
+#include <mach-o/dyld.h>
 #elif defined(__FreeBSD__)
 #include <sys/sysctl.h>
 #include <unistd.h>
@@ -113,7 +115,17 @@ namespace dxvk::env {
     }
 
     return std::string(exePath);
+#elif defined(__APPLE__)
+    uint32_t size = 0;
+    _NSGetExecutablePath(nullptr, &size);
+
+    std::vector<char> exePath(size);
+    if (_NSGetExecutablePath(exePath.data(), &size) != 0)
+      return "";
+
+    return std::string(exePath.data());
 #endif
+    return "";
   }
   
   
@@ -136,7 +148,11 @@ namespace dxvk::env {
 #else
     std::array<char, 16> posixName = {};
     dxvk::str::strlcpy(posixName.data(), name.c_str(), 16);
+#if defined(__APPLE__)
+    ::pthread_setname_np(posixName.data());
+#else
     ::pthread_setname_np(pthread_self(), posixName.data());
+#endif
 #endif
   }
 

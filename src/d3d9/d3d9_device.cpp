@@ -4727,7 +4727,8 @@ namespace dxvk {
 
 
   bool D3D9DeviceEx::SupportsSWVP() {
-    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics;
+    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics
+        && m_dxvkDevice->features().core.features.geometryShader;
   }
 
 
@@ -6105,7 +6106,9 @@ namespace dxvk {
     auto dst = GetConstantBuffer(CbvIndex::VSClipPlanes).AllocTyped<D3D9ClipPlane>(caps::MaxClipPlanes);
 
     uint32_t clipPlaneCount = 0u;
-    for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
+    const uint32_t maxClipPlanes = m_dxvkDevice->features().core.features.shaderClipDistance
+      ? caps::MaxClipPlanes : 0u;
+    for (uint32_t i = 0; i < maxClipPlanes; i++) {
       D3D9ClipPlane clipPlane = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
         ? m_state.clipPlanes[i]
         : D3D9ClipPlane();
@@ -7094,7 +7097,11 @@ namespace dxvk {
     state.setCullMode(DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE])));
     state.setDepthClip(true);
     state.setFrontFace(VK_FRONT_FACE_CLOCKWISE);
-    state.setPolygonMode(DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE])));
+    D3DFILLMODE fillMode = D3DFILLMODE(rs[D3DRS_FILLMODE]);
+    if (fillMode != D3DFILL_SOLID && !m_dxvkDevice->features().core.features.fillModeNonSolid) {
+      fillMode = D3DFILL_SOLID;
+    }
+    state.setPolygonMode(DecodeFillMode(fillMode));
     state.setFlatShading(m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT);
     state.setSampleCount(m_state.renderStates[D3DRS_MULTISAMPLEANTIALIAS]
       ? VkSampleCountFlags(0u)
