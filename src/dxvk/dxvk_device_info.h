@@ -114,8 +114,10 @@ namespace dxvk {
     VkBool32                                                  khrWin32KeyedMutex              = VK_FALSE;
     VkBool32                                                  amdBufferMarker                 = VK_FALSE;
     VkBool32                                                  nvDeviceDiagnosticCheckpoints   = VK_FALSE;
+    VkBool32                                                  nvGeometryShaderPassthrough     = VK_FALSE;
     VkBool32                                                  nvLowLatency2                   = VK_FALSE;
     VkPhysicalDeviceRawAccessChainsFeaturesNV                 nvRawAccessChains               = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV };
+    VkBool32                                                  nvViewportArray2                = VK_FALSE;
     VkBool32                                                  nvxBinaryImport                 = VK_FALSE;
     VkBool32                                                  nvxImageViewHandle              = VK_FALSE;
   };
@@ -189,8 +191,10 @@ namespace dxvk {
     VkExtensionProperties khrWin32KeyedMutex                = vk::makeExtension(VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME);
     VkExtensionProperties amdBufferMarker                   = vk::makeExtension(VK_AMD_BUFFER_MARKER_EXTENSION_NAME);
     VkExtensionProperties nvDeviceDiagnosticCheckpoints     = vk::makeExtension(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME);
+    VkExtensionProperties nvGeometryShaderPassthrough       = vk::makeExtension(VK_NV_GEOMETRY_SHADER_PASSTHROUGH_EXTENSION_NAME);
     VkExtensionProperties nvLowLatency2                     = vk::makeExtension(VK_NV_LOW_LATENCY_2_EXTENSION_NAME);
     VkExtensionProperties nvRawAccessChains                 = vk::makeExtension(VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME);
+    VkExtensionProperties nvViewportArray2                  = vk::makeExtension(VK_NV_VIEWPORT_ARRAY_2_EXTENSION_NAME);
     VkExtensionProperties nvxBinaryImport                   = vk::makeExtension(VK_NVX_BINARY_IMPORT_EXTENSION_NAME);
     VkExtensionProperties nvxImageViewHandle                = vk::makeExtension(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME);
   };
