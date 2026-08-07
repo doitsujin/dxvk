@@ -6481,16 +6481,9 @@ namespace dxvk {
     if (lateClearCount)
       std::swap(m_state.om.renderAreaLo, m_state.om.renderAreaHi);
 
-    // On drivers that don't natively support secondary command buffers, only use
-    // them to enable MSAA resolve attachments. Also ignore render passes with only
-    // one color attachment here since those tend to only have a small number of
-    // draws and we are almost certainly going to use the output anyway.
-    bool useSecondaryCmdBuffer = false;
-
-    if (m_device->perfHints().preferRenderPassOps) {
-      useSecondaryCmdBuffer = renderingInheritance.rasterizationSamples > VK_SAMPLE_COUNT_1_BIT
-                           || depthStencilAspects || colorInfoCount > 1u || !hasMipmappedRt;
-    }
+    // Some hardware will not work properly if we don't trim the render area,
+    // so unconditionally use secondary command buffers on all tiler setups.
+    bool useSecondaryCmdBuffer = m_device->perfHints().preferRenderPassOps;
 
     if (useSecondaryCmdBuffer) {
       // Begin secondary command buffer on tiling GPUs so that subsequent
