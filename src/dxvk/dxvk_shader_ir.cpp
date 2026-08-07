@@ -628,10 +628,12 @@ namespace dxvk {
           m_metadata.flags.set(DxvkShaderFlag::ExportsPosition);
         } break;
 
-        case dxbc_spv::ir::BuiltIn::eLayerIndex:
+        case dxbc_spv::ir::BuiltIn::eLayerIndex: {
+          m_metadata.flags.set(DxvkShaderFlag::ExportsLayer);
+        } break;
+
         case dxbc_spv::ir::BuiltIn::eViewportIndex: {
-          if (m_stage != dxbc_spv::ir::ShaderStage::eGeometry)
-            m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+          m_metadata.flags.set(DxvkShaderFlag::ExportsViewport);
         } break;
 
         case dxbc_spv::ir::BuiltIn::eSampleMask: {

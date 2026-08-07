@@ -182,11 +182,14 @@ namespace dxvk {
               m_metadata.flags.set(DxvkShaderFlag::HasSampleRateShading);
             } break;
 
-            case spv::CapabilityShaderLayer:
+            case spv::CapabilityShaderLayer: {
+              if (m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
+                m_metadata.flags.set(DxvkShaderFlag::ExportsLayer);
+            } break;
+
             case spv::CapabilityShaderViewportIndex: {
-              if (m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT
-               && m_metadata.stage != VK_SHADER_STAGE_GEOMETRY_BIT)
-                m_metadata.flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+              if (m_metadata.stage != VK_SHADER_STAGE_FRAGMENT_BIT)
+                m_metadata.flags.set(DxvkShaderFlag::ExportsViewport);
             } break;
 
             case spv::CapabilitySparseResidency: {
