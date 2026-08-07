@@ -1336,6 +1336,9 @@ namespace dxvk {
     Rc<DxvkDevice>          m_device;
     DxvkObjects*            m_common;
 
+    uint64_t                m_frameCount = 0u;
+    std::pair<uint64_t, uint64_t> m_framesToCapture = {};
+
     uint64_t                m_trackingId = 0u;
     uint64_t                m_submitWaitId = 0u;
     uint64_t                m_submitLastId = 0u;
@@ -2280,6 +2283,10 @@ namespace dxvk {
       m_cmd->track(view.image(), access);
     }
 
+    void beginFrameCapture();
+
+    void endFrameCapture();
+
     bool formatsAreImageCopyCompatible(
             VkFormat                  dstFormat,
             VkFormat                  srcFormat);
@@ -2298,6 +2305,8 @@ namespace dxvk {
 
     static VkFormat sanitizeTexelBufferFormat(
             VkFormat                  srcFormat);
+
+    static std::pair<uint64_t, uint64_t> parseFrameCaptureEnv();
 
   };
   

@@ -77,6 +77,10 @@ namespace dxvk {
 
     // Create timeline semaphore for resource tracking IDs
     m_trackingFence = m_device->createFence(DxvkFenceCreateInfo());
+
+    // Set up renderdoc capture helper
+    if (m_device->debugFlags().test(DxvkDebugFlag::Capture))
+      m_framesToCapture = parseFrameCaptureEnv();
   }
   
   
@@ -88,6 +92,13 @@ namespace dxvk {
   void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
     m_cmd = cmdList;
     m_cmd->init();
+
+    if (unlikely(!m_trackingId)) {
+      // If this is the first command list ever, check if
+      // we want to capture the first frame
+      if (!m_framesToCapture.first && m_framesToCapture.second)
+        beginFrameCapture();
+    }
 
     m_trackingId += 1u;
 
@@ -115,6 +126,14 @@ namespace dxvk {
 
   void DxvkContext::endFrame() {
     m_renderPassIndex = 0u;
+
+    if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
+      endFrameCapture();
+
+    m_frameCount += 1u;
+
+    if (m_frameCount >= m_framesToCapture.first && m_frameCount < m_framesToCapture.second)
+      beginFrameCapture();
   }
 
 
@@ -10670,6 +10689,22 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::beginFrameCapture() {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::SdmaBarriers,
+        vk::makeLabel(0, "capture-marker,begin_capture"));
+    }
+  }
+
+
+  void DxvkContext::endFrameCapture() {
+    if (m_features.test(DxvkContextFeature::DebugUtils)) {
+      m_cmd->cmdInsertDebugUtilsLabel(DxvkCmdBuffer::ExecBuffer,
+        vk::makeLabel(0, "capture-marker,end_capture"));
+    }
+  }
+
+
   bool DxvkContext::formatsAreBufferCopyCompatible(
           VkFormat                  imageFormat,
           VkFormat                  bufferFormat) {
@@ -10884,6 +10919,33 @@ namespace dxvk {
     // Unconditionally track for writing to not bother the caller with it.
     m_cmd->track(m_scratchBuffer, DxvkAccess::Write);
     return slice;
+  }
+
+
+  std::pair<uint64_t, uint64_t> DxvkContext::parseFrameCaptureEnv() {
+    auto string = env::getEnvVar("DXVK_CAPTURE_FRAMES");
+
+    try {
+      size_t index = 0u;
+
+      uint64_t first = std::stoull(string, &index);
+      uint64_t count = 1u;
+
+      if (index < string.size()) {
+        if (string[index] != ':')
+          return std::make_pair(0u, 0u);
+
+        count = std::stoull(string.substr(index + 1u, std::string::npos));
+      }
+
+      return std::make_pair(first, first + count);
+    } catch (const std::invalid_argument& e) {
+      Logger::err(e.what());
+      return std::make_pair(0u, 0u);
+    } catch (const std::out_of_range& e) {
+      Logger::err(e.what());
+      return std::make_pair(0u, 0u);
+    }
   }
 
 }
