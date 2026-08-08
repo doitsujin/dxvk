@@ -371,7 +371,8 @@ void emitVsClipping(vec4 vtx) {
     vec4 worldPos = data.InverseView * vtx;
 
     // Always consider clip planes enabled when doing GPL by forcing 6 for the quick value.
-    uint clipPlaneCount = getClipPlaneCount();
+    // Ignore clip planes for pre-transformed vertices.
+    uint clipPlaneCount = !vertexHasPositionT() ? getClipPlaneCount() : 0u;
 
     // Compute clip distances
     for (uint i = 0u; i < MaxClipPlaneCount; i++)
