@@ -104,8 +104,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE PageUnlock(DWORD dwFlags);
 
-    IDirectDrawSurface2* GetShadowOrProxied();
-
     HRESULT InitializeOrUploadD3D9();
 
     void DownloadSurfaceData();
@@ -116,6 +114,15 @@ namespace dxvk {
 
     DDraw2Surface* GetShadowSurface() const {
       return m_shadowSurf.ptr();
+    }
+
+    IDirectDrawSurface2* GetShadowOrProxied() {
+      d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
+
+      if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr))
+        return m_shadowSurf->GetProxied();
+
+      return m_proxy.ptr();
     }
 
     DDrawCommonSurface* GetCommonSurface() const {

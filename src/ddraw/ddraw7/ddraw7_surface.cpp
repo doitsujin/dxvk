@@ -954,7 +954,7 @@ namespace dxvk {
     }
 
     // We may need to recreate the d3d9 object based on the new desc
-    m_commonSurf->SetD3D9Surface(nullptr);
+    m_commonSurf->ResetD3D9Objects();
 
     return DD_OK;
   }
@@ -1072,19 +1072,8 @@ namespace dxvk {
     return DD_OK;
   }
 
-  IDirectDrawSurface7* DDraw7Surface::GetShadowOrProxied() {
-    d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
-
-    if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr))
-      return m_shadowSurf->GetProxied();
-
-    return m_proxy.ptr();
-  }
-
   HRESULT DDraw7Surface::InitializeD3D9RenderTarget() {
     m_commonSurf->RefreshD3D9Device();
-
-    m_commonSurf->MarkAsD3D9BackBuffer();
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
       if (m_commonSurf->IsTextureOrCubeMap())
@@ -1096,7 +1085,7 @@ namespace dxvk {
         return hr;
       }
 
-      if (unlikely(m_commonSurf->IsCubeMap()))
+      if (unlikely(m_commonSurf->GetD3D9SurfaceType() == D3D9SurfaceType::CubeTexture))
         InitializeAllCubeMapSurfaces();
 
       return UploadSurfaceData();
@@ -1107,8 +1096,6 @@ namespace dxvk {
 
   HRESULT DDraw7Surface::InitializeD3D9DepthStencil() {
     m_commonSurf->RefreshD3D9Device();
-
-    m_commonSurf->MarkAsD3D9DepthStencil();
 
     if (unlikely(!m_commonSurf->IsInitialized())) {
       HRESULT hr = m_commonSurf->InitializeD3D9(false);
@@ -1142,14 +1129,11 @@ namespace dxvk {
         return hr;
       }
 
-      if (unlikely(m_commonSurf->IsCubeMap()))
+      if (unlikely(m_commonSurf->GetD3D9SurfaceType() == D3D9SurfaceType::CubeTexture))
         InitializeAllCubeMapSurfaces();
     }
 
-    if (likely(m_commonSurf->IsInitialized()))
-      return UploadSurfaceData();
-
-    return DD_OK;
+    return UploadSurfaceData();
   }
 
   void DDraw7Surface::DownloadSurfaceData() {
@@ -1161,20 +1145,12 @@ namespace dxvk {
     if (likely(!m_commonIntf->GetOptions()->deviceResourceSharing))
       m_commonSurf->RefreshD3D9Device();
 
-    if (unlikely(m_commonSurf->IsD3D9BackBuffer())) {
-      if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw7Surface::DownloadSurfaceData: Downloading nr. [[7-", std::hex, this, "]]"));
-        BlitToDDrawSurface<IDirectDrawSurface7, DDSURFACEDESC2>(GetShadowOrProxied(), m_commonSurf->GetD3D9Surface(),
-                                                                m_commonSurf->IsDXTFormat());
-        m_commonSurf->UnDirtyD3D9Surface();
-      }
-    } else if (unlikely(m_commonSurf->IsD3D9DepthStencil())) {
-      if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw7Surface::DownloadSurfaceData: Downloading nr. [[7-", std::hex, this, "]]"));
-        BlitToDDrawSurface<IDirectDrawSurface7, DDSURFACEDESC2>(m_proxy.ptr(), m_commonSurf->GetD3D9Surface(),
-                                                                m_commonSurf->IsDXTFormat());
-        m_commonSurf->UnDirtyD3D9Surface();
-      }
+    // TODO: We are technically ignoring mip maps as is, though that will probably never be an issue
+    if (m_commonSurf->IsD3D9SurfaceDirty() && m_commonSurf->IsInitialized()) {
+      //Logger::debug(str::format("DDraw7Surface::DownloadSurfaceData: Downloading nr. [[7-", std::hex, this, "]]"));
+      BlitToDDrawSurface<IDirectDrawSurface7, DDSURFACEDESC2>(GetShadowOrProxied(), m_commonSurf->GetD3D9Surface(),
+                                                              m_commonSurf->IsDXTFormat());
+      m_commonSurf->UnDirtyD3D9Surface();
     }
   }
 
@@ -1290,38 +1266,42 @@ namespace dxvk {
 
     //Logger::debug(str::format("DDraw7Surface::UploadSurfaceData: Uploading nr. [[7-", std::hex, this, "]]"));
 
-    // Cube maps will also get marked as textures, so need to be handled first
-    if (unlikely(m_commonSurf->IsCubeMap())) {
-      // In theory we won't know which faces have been generated,
-      // so check them one by one, and upload as needed
-      const uint16_t mipCount    = m_commonSurf->GetMipCount();
-      const bool     isDXTFormat = m_commonSurf->IsDXTFormat();
-      if (likely(m_cubeMapSurfaces[0] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[0], mipCount, isDXTFormat);
+    D3D9SurfaceType d3d9SurfaceType = m_commonSurf->GetD3D9SurfaceType();
+
+    switch (d3d9SurfaceType) {
+      case D3D9SurfaceType::CubeTexture: {
+        // In theory we won't know which faces have been generated,
+        // so check them one by one, and upload as needed
+        const uint16_t mipCount    = m_commonSurf->GetMipCount();
+        const bool     isDXTFormat = m_commonSurf->IsDXTFormat();
+        if (likely(m_cubeMapSurfaces[0] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[0], mipCount, isDXTFormat);
+        }
+        if (likely(m_cubeMapSurfaces[1] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[1], mipCount, isDXTFormat);
+        }
+        if (likely(m_cubeMapSurfaces[2] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[2], mipCount, isDXTFormat);
+        }
+        if (likely(m_cubeMapSurfaces[3] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[3], mipCount, isDXTFormat);
+        }
+        if (likely(m_cubeMapSurfaces[4] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[4], mipCount, isDXTFormat);
+        }
+        if (likely(m_cubeMapSurfaces[5] != nullptr)) {
+          BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[5], mipCount, isDXTFormat);
+        }
+        break;
       }
-      if (likely(m_cubeMapSurfaces[1] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[1], mipCount, isDXTFormat);
-      }
-      if (likely(m_cubeMapSurfaces[2] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[2], mipCount, isDXTFormat);
-      }
-      if (likely(m_cubeMapSurfaces[3] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[3], mipCount, isDXTFormat);
-      }
-      if (likely(m_cubeMapSurfaces[4] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[4], mipCount, isDXTFormat);
-      }
-      if (likely(m_cubeMapSurfaces[5] != nullptr)) {
-        BlitToD3D9CubeMap(m_commonSurf->GetD3D9CubeTexture(), m_cubeMapSurfaces[5], mipCount, isDXTFormat);
-      }
-    // Blit all the mips for textures
-    } else if (m_commonSurf->IsTexture()) {
-      BlitToD3D9Texture<IDirectDrawSurface7, DDSURFACEDESC2>(m_commonSurf->GetD3D9Texture(), m_proxy.ptr(),
-                                                             m_commonSurf->GetMipCount(), m_commonSurf->IsDXTFormat());
-    // Blit surfaces directly
-    } else {
-      BlitToD3D9Surface<IDirectDrawSurface7, DDSURFACEDESC2>(m_commonSurf->GetD3D9Surface(), GetShadowOrProxied(),
-                                                             m_commonSurf->IsDXTFormat());
+      case D3D9SurfaceType::Texture:
+        BlitToD3D9Texture<IDirectDrawSurface7, DDSURFACEDESC2>(m_commonSurf->GetD3D9Texture(), m_proxy.ptr(),
+                                                               m_commonSurf->GetMipCount(), m_commonSurf->IsDXTFormat());
+        break;
+      default:
+        BlitToD3D9Surface<IDirectDrawSurface7, DDSURFACEDESC2>(m_commonSurf->GetD3D9Surface(), GetShadowOrProxied(),
+                                                               m_commonSurf->IsDXTFormat());
+        break;
     }
 
     m_commonSurf->UnDirtyDDrawSurface();

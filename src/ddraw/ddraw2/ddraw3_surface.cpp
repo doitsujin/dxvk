@@ -926,18 +926,9 @@ namespace dxvk {
     }
 
     // We may need to recreate the d3d9 object based on the new desc
-    m_commonSurf->SetD3D9Surface(nullptr);
+    m_commonSurf->ResetD3D9Objects();
 
     return DD_OK;
-  }
-
-  IDirectDrawSurface3* DDraw3Surface::GetShadowOrProxied() {
-    d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
-
-    if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr))
-      return m_shadowSurf->GetProxied();
-
-    return m_proxy.ptr();
   }
 
   HRESULT DDraw3Surface::InitializeOrUploadD3D9() {
@@ -960,10 +951,7 @@ namespace dxvk {
       }
     }
 
-    if (likely(m_commonSurf->IsInitialized()))
-      return UploadSurfaceData();
-
-    return DD_OK;
+    return UploadSurfaceData();
   }
 
   void DDraw3Surface::DownloadSurfaceData() {
@@ -975,20 +963,12 @@ namespace dxvk {
     if (likely(!m_commonIntf->GetOptions()->deviceResourceSharing))
       m_commonSurf->RefreshD3D9Device();
 
-    if (unlikely(m_commonSurf->IsD3D9BackBuffer())) {
-      if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw3Surface::DownloadSurfaceData: Downloading nr. [[3-", std::hex, this, "]]"));
-        BlitToDDrawSurface<IDirectDrawSurface3, DDSURFACEDESC>(GetShadowOrProxied(), m_commonSurf->GetD3D9Surface(),
-                                                               m_commonSurf->IsDXTFormat());
-        m_commonSurf->UnDirtyD3D9Surface();
-      }
-    } else if (unlikely(m_commonSurf->IsD3D9DepthStencil())) {
-      if (m_commonSurf->IsInitialized() && m_commonSurf->IsD3D9SurfaceDirty()) {
-        //Logger::debug(str::format("DDraw3Surface::DownloadSurfaceData: Downloading nr. [[3-", std::hex, this, "]]"));
-        BlitToDDrawSurface<IDirectDrawSurface3, DDSURFACEDESC>(m_proxy.ptr(), m_commonSurf->GetD3D9Surface(),
-                                                               m_commonSurf->IsDXTFormat());
-        m_commonSurf->UnDirtyD3D9Surface();
-      }
+    // TODO: We are technically ignoring mip maps as is, though that will probably never be an issue
+    if (m_commonSurf->IsD3D9SurfaceDirty() && m_commonSurf->IsInitialized()) {
+      //Logger::debug(str::format("DDraw3Surface::DownloadSurfaceData: Downloading nr. [[3-", std::hex, this, "]]"));
+      BlitToDDrawSurface<IDirectDrawSurface3, DDSURFACEDESC>(GetShadowOrProxied(), m_commonSurf->GetD3D9Surface(),
+                                                             m_commonSurf->IsDXTFormat());
+      m_commonSurf->UnDirtyD3D9Surface();
     }
   }
 
@@ -999,13 +979,17 @@ namespace dxvk {
 
     //Logger::debug(str::format("DDraw3Surface::UploadSurfaceData: Uploading nr. [[3-", std::hex, this, "]]"));
 
-    if (m_commonSurf->IsTexture()) {
-      BlitToD3D9Texture<IDirectDrawSurface3, DDSURFACEDESC>(m_commonSurf->GetD3D9Texture(), m_proxy.ptr(),
-                                                            m_commonSurf->GetMipCount(), m_commonSurf->IsDXTFormat());
-    // Blit surfaces directly
-    } else {
-      BlitToD3D9Surface<IDirectDrawSurface3, DDSURFACEDESC>(m_commonSurf->GetD3D9Surface(), GetShadowOrProxied(),
-                                                            m_commonSurf->IsDXTFormat());
+    D3D9SurfaceType d3d9SurfaceType = m_commonSurf->GetD3D9SurfaceType();
+
+    switch (d3d9SurfaceType) {
+      case D3D9SurfaceType::Texture:
+        BlitToD3D9Texture<IDirectDrawSurface3, DDSURFACEDESC>(m_commonSurf->GetD3D9Texture(), m_proxy.ptr(),
+                                                              m_commonSurf->GetMipCount(), m_commonSurf->IsDXTFormat());
+        break;
+      default:
+        BlitToD3D9Surface<IDirectDrawSurface3, DDSURFACEDESC>(m_commonSurf->GetD3D9Surface(), GetShadowOrProxied(),
+                                                              m_commonSurf->IsDXTFormat());
+        break;
     }
 
     m_commonSurf->UnDirtyDDrawSurface();

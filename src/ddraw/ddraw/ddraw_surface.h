@@ -101,8 +101,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE UpdateOverlayZOrder(DWORD dwFlags, LPDIRECTDRAWSURFACE lpDDSReference);
 
-    IDirectDrawSurface* GetShadowOrProxied();
-
     HRESULT InitializeD3D9RenderTarget();
 
     HRESULT InitializeD3D9DepthStencil();
@@ -119,6 +117,15 @@ namespace dxvk {
 
     DDrawSurface* GetShadowSurface() const {
       return m_shadowSurf.ptr();
+    }
+
+    IDirectDrawSurface* GetShadowOrProxied() {
+      d3d9::IDirect3DDevice9* d3d9Device = m_commonSurf->GetRefreshedD3D9Device();
+
+      if (unlikely(m_shadowSurf != nullptr && d3d9Device != nullptr))
+        return m_shadowSurf->GetProxied();
+
+      return m_proxy.ptr();
     }
 
     DDrawCommonSurface* GetCommonSurface() const {

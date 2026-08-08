@@ -135,13 +135,7 @@ namespace dxvk {
       // Check if the device has been recreated and reset all D3D9 resources
       if (m_commonD3DDevice != nullptr) {
         Logger::debug("DDrawCommonSurface: Device has changed, clearing all D3D9 resources");
-        m_cubeMap9 = nullptr;
-        m_texture9 = nullptr;
-        m_surface9 = nullptr;
-        // Also reset all D3D9 related tracking flags
-        m_isD3D9BackBuffer = false;
-        m_isD3D9DepthStencil = false;
-        m_dirtyD3D9 = false;
+        ResetD3D9Objects();
       }
 
       m_commonD3DDevice = commonD3DDevice;
@@ -240,129 +234,67 @@ namespace dxvk {
     const d3d9::D3DMULTISAMPLE_TYPE multiSampleType = m_commonD3DDevice->GetMultiSampleType();
     d3d9::IDirect3DDevice9* d3d9Device = m_commonD3DDevice->GetD3D9Device();
 
+    DetermineD3D9SurfaceType(initRenderTarget);
+
     HRESULT hr = DDERR_GENERIC;
 
-    // Primary Surface
-    if (IsPrimarySurface()) {
-      hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
-
-      if (unlikely(unlikely(FAILED(hr)))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve primary surface");
-        return hr;
-      }
-
-      MarkAsD3D9BackBuffer();
-    // Front Buffer
-    } else if (IsFrontBuffer()) {
-      hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
-
-      if (unlikely(unlikely(FAILED(hr)))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve front buffer");
-        return hr;
-      }
-
-      MarkAsD3D9BackBuffer();
-    // Back Buffer
-    } else if (IsBackBufferOrFlippable()) {
-      hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve back buffer");
-        return hr;
-      }
-
-      MarkAsD3D9BackBuffer();
-    // Cube maps
-    } else if (IsCubeMap()) {
-      hr = d3d9Device->CreateCubeTexture(
-        dwWidth, m_mipCount, usage,
-        m_format9, pool, &m_cubeMap9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create cube map");
-        return hr;
-      }
-
-      // Always attach the positive X face to this surface
-      m_cubeMap9->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACE_POSITIVE_X, 0, &m_surface9);
-    // Textures
-    } else if (IsTexture()) {
-      hr = d3d9Device->CreateTexture(
-        dwWidth, dwHeight, m_mipCount, usage,
-        m_format9, pool, &m_texture9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create texture");
-        return hr;
-      }
-
-      // Attach level 0 to this surface
-      m_texture9->GetSurfaceLevel(0, &m_surface9);
-    // Depth Stencil
-    } else if (IsDepthStencil()) {
-      hr = d3d9Device->CreateDepthStencilSurface(
-        dwWidth, dwHeight, m_format9,
-        multiSampleType, 0, FALSE, &m_surface9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create depth stencil");
-        return hr;
-      }
-    // Overlays
-    } else if (unlikely(IsOverlay())) {
-      hr = d3d9Device->CreateOffscreenPlainSurface(
-        dwWidth, dwHeight, m_format9,
-        pool, &m_surface9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create offscreen plain surface");
-        return hr;
-      }
-    // Offscreen Plain Surfaces
-    } else if (IsOffScreenPlainSurface()) {
-      if (unlikely(initRenderTarget)) {
+    switch (m_d3d9SurfaceType) {
+      case D3D9SurfaceType::BackBuffer:
         hr = d3d9Device->GetBackBuffer(0, m_backBufferIndex, d3d9::D3DBACKBUFFER_TYPE_MONO, &m_surface9);
-
         if (unlikely(unlikely(FAILED(hr)))) {
-          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve offscreen plain surface");
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to retrieve D3D9 back buffer");
           return hr;
         }
-
-        MarkAsD3D9BackBuffer();
-
-      } else {
-        hr = d3d9Device->CreateOffscreenPlainSurface(
-          dwWidth, dwHeight, m_format9,
-          pool, &m_surface9, nullptr);
-
+        break;
+      case D3D9SurfaceType::CubeTexture:
+        hr = d3d9Device->CreateCubeTexture(dwWidth, m_mipCount, usage,
+                                           m_format9, pool, &m_cubeMap9, nullptr);
         if (unlikely(FAILED(hr))) {
-          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create offscreen plain surface");
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 cube map");
           return hr;
         }
-      }
-    // Generic render target
-    } else if (Is3DSurface()) {
-      // Must be lockable for blitting to work. Note that
-      // D3D9 does not allow the creation of lockable RTs when
-      // using MSAA, but we have a D3D7 exception in place.
-      hr = d3d9Device->CreateRenderTarget(
-        dwWidth, dwHeight, m_format9,
-        multiSampleType, usage, TRUE, &m_surface9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create render target");
-        return hr;
-      }
-    // We sometimes get generic surfaces, with only dimensions, format and placement info
-    } else {
-      hr = d3d9Device->CreateOffscreenPlainSurface(
-          dwWidth, dwHeight, m_format9,
-          pool, &m_surface9, nullptr);
-
-      if (unlikely(FAILED(hr))) {
-        Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create offscreen plain surface");
-        return hr;
-      }
+        // Always attach the positive X face to this surface
+        m_cubeMap9->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACE_POSITIVE_X, 0, &m_surface9);
+        break;
+      case D3D9SurfaceType::Texture:
+        hr = d3d9Device->CreateTexture(dwWidth, dwHeight, m_mipCount, usage,
+                                       m_format9, pool, &m_texture9, nullptr);
+        if (unlikely(FAILED(hr))) {
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 texture");
+          return hr;
+        }
+        // Attach level 0 to this surface
+        m_texture9->GetSurfaceLevel(0, &m_surface9);
+        break;
+      case D3D9SurfaceType::DepthStencil:
+        hr = d3d9Device->CreateDepthStencilSurface(dwWidth, dwHeight, m_format9,
+                                                   multiSampleType, 0, FALSE, &m_surface9, nullptr);
+        if (unlikely(FAILED(hr))) {
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 depth stencil");
+          return hr;
+        }
+        break;
+      case D3D9SurfaceType::OffscreenPlainSurface:
+        hr = d3d9Device->CreateOffscreenPlainSurface(dwWidth, dwHeight, m_format9,
+                                                     pool, &m_surface9, nullptr);
+        if (unlikely(FAILED(hr))) {
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 offscreen plain surface");
+          return hr;
+        }
+        break;
+      case D3D9SurfaceType::RenderTarget:
+        // Must be lockable for blitting to work. Note that D3D9 does not allow the creation of
+        // lockable RTs when using MSAA, but we have a D3D7 exception in place.
+        hr = d3d9Device->CreateRenderTarget(dwWidth, dwHeight, m_format9,
+                                            multiSampleType, usage, TRUE, &m_surface9, nullptr);
+        if (unlikely(FAILED(hr))) {
+          Logger::err("DDrawCommonSurface::InitializeD3D9: Failed to create D3D9 render target");
+          return hr;
+        }
+        break;
+      default:
+        Logger::err("DDrawCommonSurface::InitializeD3D9: Unknown or undetermined D3D9 surface type");
+        return DDERR_UNSUPPORTED;
     }
 
     return DD_OK;

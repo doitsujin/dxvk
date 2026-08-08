@@ -10,6 +10,16 @@
 
 namespace dxvk {
 
+  enum class D3D9SurfaceType : uint8_t {
+    None,
+    BackBuffer,
+    CubeTexture,
+    Texture,
+    DepthStencil,
+    OffscreenPlainSurface,
+    RenderTarget
+  };
+
   class D3DCommonDevice;
 
   class DDraw7Surface;
@@ -85,8 +95,21 @@ namespace dxvk {
       return m_cubeMap9.ptr();
     }
 
+    void ResetD3D9Objects() {
+      m_cubeMap9 = nullptr;
+      m_texture9 = nullptr;
+      m_surface9 = nullptr;
+      // Also reset all D3D9 related tracking flags
+      m_d3d9SurfaceType = D3D9SurfaceType::None;
+      m_dirtyD3D9 = false;
+    }
+
     d3d9::D3DFORMAT GetD3D9Format() const {
       return m_format9;
+    }
+
+    D3D9SurfaceType GetD3D9SurfaceType() const {
+      return m_d3d9SurfaceType;
     }
 
     bool IsDesc2Set() const {
@@ -208,22 +231,6 @@ namespace dxvk {
 
     bool IsAttached() const {
       return m_isAttached;
-    }
-
-    void MarkAsD3D9BackBuffer() {
-      m_isD3D9BackBuffer = true;
-    }
-
-    bool IsD3D9BackBuffer() const {
-      return m_isD3D9BackBuffer;
-    }
-
-    void MarkAsD3D9DepthStencil() {
-      m_isD3D9DepthStencil = true;
-    }
-
-    bool IsD3D9DepthStencil() const {
-      return m_isD3D9DepthStencil;
     }
 
     void MarkWithTextureHandle() {
@@ -501,6 +508,46 @@ namespace dxvk {
 
   private:
 
+    // Note: The flag check order IS important here, as some flags take
+    // priority over others when considering D3D9 surface type mappings
+    inline void DetermineD3D9SurfaceType(const bool initRenderTarget) {
+      // Primary Surface
+      if (IsPrimarySurface()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::BackBuffer;
+      // Front Buffer
+      } else if (IsFrontBuffer()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::BackBuffer;
+      // Back Buffer
+      } else if (IsBackBufferOrFlippable()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::BackBuffer;
+      // Cube maps
+      } else if (IsCubeMap()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::CubeTexture;
+      // Textures
+      } else if (IsTexture()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::Texture;
+      // Depth Stencil
+      } else if (IsDepthStencil()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::DepthStencil;
+      // Overlays
+      } else if (unlikely(IsOverlay())) {
+        m_d3d9SurfaceType = D3D9SurfaceType::OffscreenPlainSurface;
+      // Offscreen Plain Surfaces
+      } else if (IsOffScreenPlainSurface()) {
+        if (unlikely(initRenderTarget)) {
+          m_d3d9SurfaceType = D3D9SurfaceType::BackBuffer;
+        } else {
+          m_d3d9SurfaceType = D3D9SurfaceType::OffscreenPlainSurface;
+        }
+      // Generic render target
+      } else if (Is3DSurface()) {
+        m_d3d9SurfaceType = D3D9SurfaceType::RenderTarget;
+      // We sometimes get generic surfaces, with only dimensions, format and placement info
+      } else {
+        m_d3d9SurfaceType = D3D9SurfaceType::OffscreenPlainSurface;
+      }
+    }
+
     inline void RefreshStaticDescData(const bool refreshFormat) {
       // determine and cache various frequently used flag combinations
       m_isRenderTarget          = IsFrontBuffer() || IsBackBuffer() || IsFlippable() || Is3DSurface();
@@ -522,14 +569,11 @@ namespace dxvk {
     bool                             m_dirtyDDraw         = false;
     bool                             m_dirtyD3D9          = false;
 
-    bool                             m_isAttached         = false;
-    bool                             m_isD3D9BackBuffer   = false;
-    bool                             m_isD3D9DepthStencil = false;
-
     bool                             m_isDesc2Set         = false;
     bool                             m_isDescSet          = false;
     bool                             m_hasTextureHandle   = false;
 
+    bool                             m_isAttached         = false;
     bool                             m_isRenderTarget     = false;
     bool                             m_isBackBufferOrFlippable = false;
 
@@ -542,6 +586,7 @@ namespace dxvk {
 
     DDSURFACEDESC                    m_desc               = { };
     DDSURFACEDESC2                   m_desc2              = { };
+    D3D9SurfaceType                  m_d3d9SurfaceType    = D3D9SurfaceType::None;
     RECT                             m_rect               = { };
 
     Com<DDrawClipper>                m_clipper;

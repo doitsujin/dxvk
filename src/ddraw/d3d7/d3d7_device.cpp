@@ -1587,8 +1587,7 @@ namespace dxvk {
     }
 
     DDrawCommonSurface* commonSurface = m_rt->GetCommonSurface();
-    commonSurface->SetD3D9Surface(nullptr);
-    commonSurface->UnDirtyD3D9Surface();
+    commonSurface->ResetD3D9Objects();
     // Ensure the DDraw surface content gets re-uploaded if needed
     commonSurface->DirtyDDrawSurface();
 
@@ -1597,8 +1596,7 @@ namespace dxvk {
 
     while (nextFlippable != nullptr) {
       commonSurface = nextFlippable->GetCommonSurface();
-      commonSurface->SetD3D9Surface(nullptr);
-      commonSurface->UnDirtyD3D9Surface();
+      commonSurface->ResetD3D9Objects();
       // Ensure the DDraw surface content gets re-uploaded if needed
       commonSurface->DirtyDDrawSurface();
 
@@ -1610,8 +1608,7 @@ namespace dxvk {
 
     while (parentSurf != nullptr) {
       commonSurface = parentSurf->GetCommonSurface();
-      commonSurface->SetD3D9Surface(nullptr);
-      commonSurface->UnDirtyD3D9Surface();
+      commonSurface->ResetD3D9Objects();
       // Ensure the DDraw surface content gets re-uploaded if needed
       commonSurface->DirtyDDrawSurface();
 
