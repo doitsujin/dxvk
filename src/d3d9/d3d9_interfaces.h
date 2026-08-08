@@ -4,6 +4,32 @@
 #include "../vulkan/vulkan_loader.h"
 
 /**
+ * \brief Queue family and handle
+ */
+struct D3D9VkDeviceQueue {
+  uint32_t family = VK_QUEUE_FAMILY_IGNORED;
+  VkQueue  queue  = VK_NULL_HANDLE;
+};
+
+/**
+ * \brief D3D9 VkDevice import info
+ */
+struct D3D9VkDeviceImportInfo {
+    VkDevice                          device          = VK_NULL_HANDLE;
+    D3D9VkDeviceQueue                 graphicsQueue   = {};
+    D3D9VkDeviceQueue                 transferQueue   = {};
+    D3D9VkDeviceQueue                 sparseQueue     = {};
+    uint32_t                          extensionCount  = 0u;
+    const char**                      extensionNames  = nullptr;
+    const VkPhysicalDeviceFeatures2*  features        = nullptr;
+    D3DDEVTYPE                        deviceType      = D3DDEVTYPE_HAL;
+    HWND                              focusWindow     = NULL;
+    DWORD                             behaviorFlags   = 0u;
+    D3DPRESENT_PARAMETERS*            presentParams   = nullptr;
+    D3DDISPLAYMODEEX*                 fullscreenMode  = nullptr;
+};
+
+/**
  * \brief D3D9 interface for Vulkan interop
  *
  * Provides access to the instance and physical device
@@ -48,6 +74,94 @@ ID3D9VkInteropInterface1 : public ID3D9VkInteropInterface {
   virtual HRESULT STDMETHODCALLTYPE GetInstanceExtensions(
           UINT*                       pExtensionCount,
     const char**                      ppExtensions) = 0;
+
+  /**
+   * \brief Queries required extensions
+   *
+   * All returned extensions \e must be enabled when
+   * using an external Vulkan device for DXVK.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Count Number of extensions
+   * \param [out] Extensions Extension properties, optional
+   * \returns \c D3D_OK on success, or if Extensions is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Count is nullptr
+   * \returns \c D3DERR_MOREDATA if the extension array is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceExtensions(
+          UINT                        Adapter,
+          uint32_t*                   Count,
+          VkExtensionProperties*      Extensions) = 0;
+
+  /**
+   * \brief Queries device queue create infos
+   *
+   * Writes an array of queues that can be used to create a Vulkan device
+   * compatible with DXVK. Applications are free to add or remove queues
+   * as they wish, however disabling queues may reduce performance, and at
+   * least one queue \e must support both graphics and, compute operations.
+   * For each written member of \c queues, if \c pQueuePriorities is non-null,
+   * it must point to an array of \c queueCount floats that can be \e written.
+   * As a result, this function needs to be called up to three times to query
+   * queue properties.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Count Number of queues to enable
+   * \param [out] Queues Queue properties
+   * \returns \c D3D_OK on success, or if Queues is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Count is nullptr
+   * \returns \c D3DERR_MOREDATA if if the queue array is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceQueues(
+          UINT                        Adapter,
+          uint32_t*                   Count,
+          VkDeviceQueueCreateInfo*    Queues) = 0;
+
+  /**
+   * \brief Queries required device features
+   *
+   * Returns a blob of memory containing feature structs, led by a single
+   * \c VkPhysicalDeviceFeatures2 structure at the start. The \c pNext
+   * chain includes all feature structs that are both known to DXVK and
+   * supported by the device. Applications can enable additional features
+   * by scanning feature structs by their \c sType, and change the \c pNext
+   * chain to insert feature structs that DXVK is not aware of.
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in,out] Size Memory data size, in bytes
+   * \param [out] Data Pointer to meory blob of \c Size bytes
+   * \returns \c D3D_OK on success, or if Data is \c nullptr
+   * \returns \c D3DERR_INVALIDCALL if the adapter cannot be found
+   * \returns \c D3DERR_INVALIDCALL if \c Size is nullptr
+   * \returns \c D3DERR_MOREDATA if the blob at \c Data is too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE QueryDeviceFeatures(
+          UINT                        Adapter,
+          size_t*                     Size,
+          void*                       Data) = 0;
+
+  /**
+   * \brief Create a D3D9 device for an existing Vulkan device.
+   * 
+   * The device must have been created with the following rules:
+   * - All extensions returned by \c QueryDeviceExtensions \e must be enabled
+   * - The \c graphicsQueue \e must support both graphics and compute operations
+   * - The \c transferQueue is optional if the \c graphicsQueue has \c VK_QUEUE_TRANSFER_BIT,
+   *   but you may still wish to supply a separate transfer queue for concurrency.
+   * - The \c sparseQueue is optional if the \c graphicsQueue has \c VK_QUEUE_SPARSE_BINDING_BIT,
+   *   in which case it is preferred to use the graphics queue for sparse binding.
+   * - All features returned by \c QueryDeviceFeatures \e must be enabled
+   * 
+   * \param [in] Adapter Adapter ordinal
+   * \param [in] pInfo Info about the created device
+   * \param [out] ppReturnedDevice The D3D9 device
+   */
+  virtual HRESULT STDMETHODCALLTYPE ImportDevice(
+          UINT                     Adapter,
+          D3D9VkDeviceImportInfo*  pInfo,
+          IDirect3DDevice9Ex**     ppReturnedDevice) = 0;
 };
 
 /**
